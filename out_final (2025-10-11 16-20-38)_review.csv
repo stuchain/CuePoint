@@ -1,0 +1,9 @@
+playlist_index,original_title,original_artists,beatport_title,beatport_artists,beatport_key,beatport_key_camelot,beatport_year,beatport_bpm,beatport_label,beatport_genres,beatport_release,beatport_release_date,beatport_track_id,beatport_url,title_sim,artist_sim,match_score,confidence,search_query_index,search_stop_query_index,candidate_index,review_reason
+3,The Night is Blue,Tim Green,,,,,,,,,,,,,0,0,0.0,low,0,0,0,"score<85,weak-artist-match,no-candidates"
+31,(F) Planet 9,Adam Port,Planet 9 Original Mix,Adam Port,Eb Major,5B,2018,122,Diynamic,"Melodic House & Techno, Afro House, Melodic House & Techno|Melodic House",,2018-10-19,11126850,https://www.beatport.com/track/planet-9/11126850,100.0,100,70.5,low,1,6,16,score<85
+49,[3] (F) Never Sleep Again (Keinemusik Remix),Solomun,Never Sleep Again Original Mix,Solomun,C Minor,5A,2021,120,NINL,"Indie Dance, Nu Disco / Disco, House",,2021-05-28,15341273,https://www.beatport.com/track/never-sleep-again/15341273,100.0,100,65.0,low,22,24,1,score<85
+119,[8-9] Tighter (CamelPhat Remix),"HOSH, CamelPhat",,,,,,,,,,,,,0,0,0.0,low,0,0,0,"score<85,weak-artist-match,no-candidates"
+134,"Cajmere, Dajae, Marco Lys - Cajmere ft. Dajae - Brighter Days (Marco Lys Remix)",,,,,,,,,,,,,,0,0,0.0,low,0,0,0,"score<85,no-candidates"
+136,Spectrum (Say my name) [Marco Generani remix],"Florence, The machine",,,,,,,,,,,,,0,0,0.0,low,0,0,0,"score<85,weak-artist-match,no-candidates"
+142,Bass Bousa (Original Mix),Nick Morgan,,,,,,,,,,,,,0,0,0.0,low,0,0,0,"score<85,weak-artist-match,no-candidates"
+153,"Loco Hot, Gilad Kahana & Tamir Muskat ",Tebra רמיקס,,,,,,,,,,,,,0,0,0.0,low,0,0,0,"score<85,weak-artist-match,no-candidates"
