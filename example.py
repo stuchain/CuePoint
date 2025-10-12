@@ -72,7 +72,7 @@ SETTINGS = {
     "TITLE_WEIGHT": 0.55,
     "ARTIST_WEIGHT": 0.45,
 
-    "MIN_ACCEPT_SCORE": 65,      # require minimum score for acceptance (lowered from 70)
+    "MIN_ACCEPT_SCORE": 60,      # require minimum score for acceptance (lowered from 65)
     "VERBOSE": False,
     "TRACE": False,
     "CONNECT_TIMEOUT": 5,
@@ -1597,6 +1597,17 @@ def make_search_queries(title: str, artists: str, original_title: Optional[str] 
                     additional_queries.append(f"{transliterated} {av}")
                     additional_queries.append(f"{av} {transliterated}")
     
+    # For tracks with complex bracketed titles, try core title extraction
+    if original_title and ('[' in original_title or '(' in original_title):
+        # Extract the core title by removing all brackets and parentheticals
+        core_title = re.sub(r'[\[\(][^\]\)]*[\]\)]', '', original_title)
+        core_title = re.sub(r'\s+', ' ', core_title).strip()
+        if core_title and len(core_title) >= 3 and core_title != original_title:
+            for av in a_variants:
+                if av:
+                    additional_queries.append(f"{core_title} {av}")
+                    additional_queries.append(f"{av} {core_title}")
+    
     # Add additional queries to the main list
     for q in additional_queries:
         _add(q)
@@ -1881,8 +1892,8 @@ def best_beatport_match(
         if len(in_sig) >= 2:
             shared = set(in_sig) & set(cand_sig)
             coverage = len(shared) / max(1, len(in_sig))
-            # Be more lenient: allow lower coverage if title similarity is very high
-            if coverage < 0.6 and t_sim < 95:  # Lowered from 0.7 and 97
+            # Much more lenient: allow lower coverage if title similarity is high or artist match is perfect
+            if coverage < 0.5 and t_sim < 90 and a_sim < 95:  # Lowered thresholds significantly
                 ok = False
                 reject_reason = "guard_title_token_coverage"
 
@@ -1898,11 +1909,12 @@ def best_beatport_match(
                     found_order = first_two[1] in cand_words[i0+1:]
                 except ValueError:
                     found_order = False
-                if not found_order and t_sim < 97:
+                # Much more lenient: only reject if title similarity is very low
+                if not found_order and t_sim < 85:  # Lowered from 97
                     ok = False
                     reject_reason = reject_reason or "guard_anchored_prefix"
             elif len(in_words) == 1:
-                if (in_words[0] not in cand_words) and t_sim < 97:
+                if (in_words[0] not in cand_words) and t_sim < 85:  # Lowered from 97
                     ok = False
                     reject_reason = reject_reason or "guard_anchored_prefix_single"
 
@@ -2086,11 +2098,11 @@ def best_beatport_match(
                     ok = False
                     reject_reason = reject_reason or "unwanted_stem_plain_intent"
 
-        # Strict remix guards - be more lenient for high similarity matches
+        # Strict remix guards - be much more lenient for high similarity matches
         if input_mix and input_mix.get("is_remix"):
             if not cand_mix.get("is_remix"):
-                # Allow non-remixes if title similarity is very high (>=98) and artist similarity is excellent (>=90)
-                if not (t_sim >= 98 and a_sim >= 90):
+                # Allow non-remixes if title similarity is very high (>=95) and artist similarity is excellent (>=95)
+                if not (t_sim >= 95 and a_sim >= 95):
                     ok = False
                     reject_reason = reject_reason or "wanted_remix"
             else:
@@ -2098,8 +2110,8 @@ def best_beatport_match(
                 ctoks = cand_mix.get("remixer_tokens", set())
                 cand_artist_tokens = set(re.split(r'\s+', normalize_text(artists or "")))
                 if itoks and not ((itoks & ctoks) or (itoks & cand_artist_tokens)):
-                    # Be more lenient: allow if title similarity is very high (>=95) and artist similarity is good (>=75)
-                    if not (t_sim >= 95 and a_sim >= 75):  # Lowered from 97 and 70
+                    # Be much more lenient: allow if title similarity is very high (>=90) and artist similarity is good (>=80)
+                    if not (t_sim >= 90 and a_sim >= 80):  # Lowered from 95 and 75
                         ok = False
                         reject_reason = reject_reason or "remixer_mismatch_guard"
                 
