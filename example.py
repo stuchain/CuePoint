@@ -1289,6 +1289,16 @@ def make_search_queries(title: str, artists: str, original_title: Optional[str] 
         title_variations.append(original_title)
         title_variations.append(t_clean)
         
+        # Add exact title variations for complex titles
+        if original_title != t_clean:
+            # Try the exact original title as-is
+            title_variations.append(original_title)
+            # Try removing only the leading markers like [3] (F) but keep the rest
+            exact_title = re.sub(r'^\[[\d\-\s]+\]\s*\([^)]*\)\s*', '', original_title)
+            exact_title = re.sub(r'\s+', ' ', exact_title).strip()
+            if exact_title and exact_title != original_title:
+                title_variations.append(exact_title)
+        
         # Remove common prefixes/suffixes and try variations
         base_title = re.sub(r'^\[[\d\-\s]+\]\s*', '', original_title)  # Remove [1], [2-3], etc.
         base_title = re.sub(r'\s*\(F\)\s*', ' ', base_title)  # Remove (F) markers
@@ -1697,6 +1707,32 @@ def make_search_queries(title: str, artists: str, original_title: Optional[str] 
     # Add additional queries to the main list
     for q in additional_queries:
         _add(q)
+    
+    # For tracks with complex bracketed titles, try exact title queries
+    if original_title and ('[' in original_title or '(' in original_title):
+        # Try the exact original title with different artist combinations
+        for av in a_variants:
+            if av:
+                _add(f"{original_title} {av}")
+                _add(f"{av} {original_title}")
+        
+        # Try removing brackets but keeping parentheses
+        no_brackets = re.sub(r'\[[^\]]*\]', '', original_title)
+        no_brackets = re.sub(r'\s+', ' ', no_brackets).strip()
+        if no_brackets and no_brackets != original_title:
+            for av in a_variants:
+                if av:
+                    _add(f"{no_brackets} {av}")
+                    _add(f"{av} {no_brackets}")
+        
+        # Try removing parentheses but keeping brackets
+        no_parens = re.sub(r'\([^)]*\)', '', original_title)
+        no_parens = re.sub(r'\s+', ' ', no_parens).strip()
+        if no_parens and no_parens != original_title:
+            for av in a_variants:
+                if av:
+                    _add(f"{no_parens} {av}")
+                    _add(f"{av} {no_parens}")
 
     return queries
 
@@ -1968,7 +2004,7 @@ def best_beatport_match(
         # Short-title stricter floor: for 1–2 significant tokens, require a very high title_sim
         in_sig_short = _significant_tokens(track_title)
         if 1 <= len(in_sig_short) <= 2:
-            if t_sim < 95:
+            if t_sim < 85:  # Lowered from 95 to 85
                 ok = False
                 reject_reason = "guard_short_title_high_floor"
 
@@ -2132,25 +2168,25 @@ def best_beatport_match(
             
             # Stricter artist matching requirements - but more lenient for high title similarity
             if not (overlap or remix_implies_overlap):
-                if a_sim < 35:  # Keep original threshold
+                if a_sim < 25:  # Lowered from 35 to 25
                     ok = False; reject_reason = "guard_artist_sim_no_overlap"
-                elif a_sim < 50 and t_sim < 90:  # More lenient: allow lower artist sim if title sim is very high
+                elif a_sim < 40 and t_sim < 85:  # More lenient: allow lower artist sim if title sim is high
                     ok = False; reject_reason = "guard_low_artist_high_title_required"
             
             # Dynamic title floor based on artist similarity - more lenient
-            title_floor = 75  # Lowered from 80
+            title_floor = 70  # Lowered from 75
             if (overlap or remix_implies_overlap) and a_sim >= 50:
-                title_floor = 70  # Lowered from 75
-            elif a_sim >= 70:
                 title_floor = 65  # Lowered from 70
+            elif a_sim >= 70:
+                title_floor = 60  # Lowered from 65
             elif a_sim >= 50:
-                title_floor = 72  # Lowered from 78
+                title_floor = 67  # Lowered from 72
             
             if t_sim < title_floor:
                 ok = False; reject_reason = reject_reason or "guard_title_sim_floor"
             
             # Special case: very high title similarity can override low artist similarity
-            if t_sim >= 92 and a_sim >= 25:  # Lowered thresholds
+            if t_sim >= 88 and a_sim >= 20:  # Further lowered thresholds
                 ok = True; reject_reason = ""
 
         # Prefer-plain hard guard: if input prefers plain and candidate is a remix, require very strong sims
@@ -2184,11 +2220,13 @@ def best_beatport_match(
                     ok = False
                     reject_reason = reject_reason or "unwanted_stem_plain_intent"
 
-        # Strict remix guards - STRICT: when remix is explicitly requested, require remix
+        # Strict remix guards - More lenient: when remix is explicitly requested, prefer remix but allow high-similarity matches
         if input_mix and input_mix.get("is_remix"):
             if not cand_mix.get("is_remix"):
-                ok = False
-                reject_reason = reject_reason or "wanted_remix"
+                # Allow non-remix if title and artist similarity are very high
+                if not (t_sim >= 90 and a_sim >= 80):
+                    ok = False
+                    reject_reason = reject_reason or "wanted_remix"
             else:
                 itoks = input_mix.get("remixer_tokens", set())
                 ctoks = cand_mix.get("remixer_tokens", set())
@@ -2859,7 +2897,7 @@ def main():
             "MAX_SEARCH_RESULTS": 20,             # global default (adaptive overrides)
             "PER_QUERY_CANDIDATE_CAP": 25,
             "MAX_QUERIES_PER_TRACK": 50,         # overall safety cap
-            "MIN_ACCEPT_SCORE": 0,
+            "MIN_ACCEPT_SCORE": 85,
             "CONNECT_TIMEOUT": 5,
             "READ_TIMEOUT": 10,
         })
