@@ -72,7 +72,7 @@ SETTINGS = {
     "TITLE_WEIGHT": 0.55,
     "ARTIST_WEIGHT": 0.45,
 
-    "MIN_ACCEPT_SCORE": 60,      # require minimum score for acceptance (lowered from 65)
+    "MIN_ACCEPT_SCORE": 55,      # require minimum score for acceptance (lowered from 60)
     "VERBOSE": False,
     "TRACE": False,
     "CONNECT_TIMEOUT": 5,
@@ -230,9 +230,30 @@ def sanitize_title_for_search(title: str) -> str:
     t = title
     t = t.replace("—", " ").replace("–", " ").replace("‐", " ").replace("-", " ")
     t = re.sub(r"www\.[^\s]+", " ", t)
+    
+    # Handle complex artist-title patterns like "Cajmere, Dajae, Marco Lys - Cajmere ft. Dajae - Brighter Days (Marco Lys Remix)"
+    if " - " in t and t.count(" - ") >= 2:
+        # Split by " - " and take the last part as the actual title
+        parts = t.split(" - ")
+        if len(parts) >= 3:
+            t = parts[-1]  # Take the last part as the title
+    
+    # Handle patterns like "Artist1, Artist2 - Title (Remix)" -> extract just "Title"
+    if " - " in t and "(" in t:
+        # Find the last " - " and take everything after it
+        last_dash = t.rfind(" - ")
+        if last_dash != -1:
+            title_part = t[last_dash + 3:].strip()
+            if title_part:
+                t = title_part
+    
     t = re.sub(r"\((?:\s*(?:original mix|extended mix|radio edit|club mix|edit|vip|version)\s*)\)", " ", t, flags=re.I)
     t = re.sub(r"\[(?:\s*(?:original mix|extended mix|radio edit|club mix|edit|vip|version)\s*)\]", " ", t, flags=re.I)
     t = re.sub(r"\b(original mix|extended mix|radio edit|club mix|edit|vip|version)\b", " ", t, flags=re.I)
+    
+    # Remove numeric prefixes like [2-3], [3], etc.
+    t = re.sub(r"\[[\d\-\s]+\]\s*", " ", t)
+    
     t = re.sub(r"\([^)]*\)", " ", t)
     t = re.sub(r"\[[^\]]*\]", " ", t)
     t = re.sub(r"\s{2,}", " ", t).strip()
@@ -459,6 +480,7 @@ def _split_display_names(s: str) -> List[str]:
 
 def _extract_remixer_names_from_title(title: str) -> List[str]:
     names = []
+    # Extract from parenthetical remix patterns
     for m in re.findall(r'\(([^)]*?)\bremix\b[^)]*\)', title, flags=re.I):
         core = m
         parts = re.split(r',|&| and | x |/|\+', core, flags=re.I)
@@ -467,6 +489,30 @@ def _extract_remixer_names_from_title(title: str) -> List[str]:
             p = re.sub(r'\s{2,}', ' ', p).strip()
             if p and len(p) <= 64:
                 names.append(p)
+    
+    # Also extract from bracket patterns like [Marco Generani remix]
+    for m in re.findall(r'\[([^\]]*?)\bremix\b[^\]]*\]', title, flags=re.I):
+        core = m
+        parts = re.split(r',|&| and | x |/|\+', core, flags=re.I)
+        for p in parts:
+            p = re.sub(r'\b(remix|edit|version|mix)\b', '', p, flags=re.I)
+            p = re.sub(r'\s{2,}', ' ', p).strip()
+            if p and len(p) <= 64:
+                names.append(p)
+    
+    # Also extract from bracket patterns without "remix" keyword like [Marco Generani]
+    for m in re.findall(r'\[([^\]]+)\]', title):
+        bracket_content = m.strip()
+        # Skip if it looks like a number or single letter
+        if not re.match(r'^[\d\s\-]+$', bracket_content) and len(bracket_content) > 1:
+            # Check if it contains remix-related terms
+            if re.search(r'\b(remix|edit|version|mix|rework|refire)\b', bracket_content, flags=re.I):
+                parts = re.split(r',|&| and | x |/|\+', bracket_content, flags=re.I)
+                for p in parts:
+                    p = re.sub(r'\b(remix|edit|version|mix|rework|refire)\b', '', p, flags=re.I)
+                    p = re.sub(r'\s{2,}', ' ', p).strip()
+                    if p and len(p) <= 64:
+                        names.append(p)
 
     # Fallback: detect "... <name> remix" without brackets (unicode-safe)
     t = re.sub(r'\s{2,}', ' ', title).strip()
@@ -1425,11 +1471,20 @@ def make_search_queries(title: str, artists: str, original_title: Optional[str] 
     if remixers_from_title:
         for tb in title_bases:
             for r in remixers_from_title:
-                rr = f"{r} remix".strip()
-                if rr:
-                    _add(f"{tb} {rr}")
-                    if SETTINGS.get("PRIORITY_REVERSE_STAGE", True) or SETTINGS.get("REVERSE_REMIX_HINTS", True):
-                        _add(f"{rr} {tb}")
+                # Generate multiple remix query variations
+                rr_variants = [
+                    f"{r} remix",
+                    f"{r} remix original mix",  # Sometimes remixes are labeled as "Original Mix"
+                    f"{r} extended remix",
+                    f"{r} extended mix",
+                    f"{r} club remix",
+                    f"{r} club mix"
+                ]
+                for rr in rr_variants:
+                    if rr.strip():
+                        _add(f"{tb} {rr}")
+                        if SETTINGS.get("PRIORITY_REVERSE_STAGE", True) or SETTINGS.get("REVERSE_REMIX_HINTS", True):
+                            _add(f"{rr} {tb}")
 
     # PRIORITY STAGE: Full title + ONE artist, then + TWO-artist subsets
     single_artists = toks[:] + (remixers_from_title[:] if remixers_from_title else [])
@@ -1607,6 +1662,37 @@ def make_search_queries(title: str, artists: str, original_title: Optional[str] 
                 if av:
                     additional_queries.append(f"{core_title} {av}")
                     additional_queries.append(f"{av} {core_title}")
+    
+    # For tracks with complex titles like "[3] (F) Never Sleep Again (Keinemusik Remix)", try simplified versions
+    if original_title and re.search(r'^\[[\d\-\s]+\]\s*\([^)]*\)\s*', original_title):
+        # Remove leading [number] and (F) patterns
+        simplified = re.sub(r'^\[[\d\-\s]+\]\s*\([^)]*\)\s*', '', original_title)
+        simplified = re.sub(r'\s+', ' ', simplified).strip()
+        if simplified and len(simplified) >= 3 and simplified != original_title:
+            for av in a_variants:
+                if av:
+                    additional_queries.append(f"{simplified} {av}")
+                    additional_queries.append(f"{av} {simplified}")
+    
+    # For tracks with complex titles like "Spectrum (Say my name) [Marco Generani remix]", try different parsing
+    if original_title and '[' in original_title and ']' in original_title:
+        # Extract title before brackets
+        before_brackets = original_title.split('[')[0].strip()
+        if before_brackets and len(before_brackets) >= 3:
+            for av in a_variants:
+                if av:
+                    additional_queries.append(f"{before_brackets} {av}")
+                    additional_queries.append(f"{av} {before_brackets}")
+        
+        # Extract remixer from brackets
+        bracket_match = re.search(r'\[([^\]]*remix[^\]]*)\]', original_title, flags=re.I)
+        if bracket_match:
+            remixer = bracket_match.group(1).strip()
+            if remixer:
+                for av in a_variants:
+                    if av:
+                        additional_queries.append(f"{before_brackets} {remixer} {av}")
+                        additional_queries.append(f"{av} {before_brackets} {remixer}")
     
     # Add additional queries to the main list
     for q in additional_queries:
@@ -2073,7 +2159,7 @@ def best_beatport_match(
                 ok = False
                 reject_reason = reject_reason or "unwanted_remix_plain_intent"
 
-        # Explicit Original/Extended intent: be more lenient with remixes if title/artist match is very high
+        # Explicit Original/Extended intent: More lenient - allow remixes if title/artist match is very high
         if effective_input_mix and (effective_input_mix.get("is_original") or effective_input_mix.get("is_extended")):
             if cand_mix.get("is_remix"):
                 # Allow remixes if title similarity is very high (>=95) and artist similarity is good (>=80)
@@ -2098,22 +2184,19 @@ def best_beatport_match(
                     ok = False
                     reject_reason = reject_reason or "unwanted_stem_plain_intent"
 
-        # Strict remix guards - be much more lenient for high similarity matches
+        # Strict remix guards - STRICT: when remix is explicitly requested, require remix
         if input_mix and input_mix.get("is_remix"):
             if not cand_mix.get("is_remix"):
-                # Allow non-remixes if title similarity is very high (>=95) and artist similarity is excellent (>=95)
-                if not (t_sim >= 95 and a_sim >= 95):
-                    ok = False
-                    reject_reason = reject_reason or "wanted_remix"
+                ok = False
+                reject_reason = reject_reason or "wanted_remix"
             else:
                 itoks = input_mix.get("remixer_tokens", set())
                 ctoks = cand_mix.get("remixer_tokens", set())
                 cand_artist_tokens = set(re.split(r'\s+', normalize_text(artists or "")))
                 if itoks and not ((itoks & ctoks) or (itoks & cand_artist_tokens)):
-                    # Be much more lenient: allow if title similarity is very high (>=90) and artist similarity is good (>=80)
-                    if not (t_sim >= 90 and a_sim >= 80):  # Lowered from 95 and 75
-                        ok = False
-                        reject_reason = reject_reason or "remixer_mismatch_guard"
+                    # STRICT: require remixer token match when specific remixer is requested
+                    ok = False
+                    reject_reason = reject_reason or "remixer_mismatch_guard"
                 
                 # When a specific remixer is requested, avoid edits/radio/club/vip even more aggressively
                 if itoks and (cand_mix.get("is_edit") or cand_mix.get("is_radio") or cand_mix.get("is_club") or cand_mix.get("is_vip")):
@@ -2193,7 +2276,7 @@ def best_beatport_match(
         # Log the raw DDG count (faithful), not the capped count
         queries_audit.append((i, q, len(urls_all), q_elapsed))
 
-        print(f"[{idx}]   q{i} → {len(urls)} candidates (raw={len(urls_all)}, MR={mr}, cap={cap_i or '-'})", flush=True)
+        print(f"[{idx}]   q{i} -> {len(urls)} candidates (raw={len(urls_all)}, MR={mr}, cap={cap_i or '-'})", flush=True)
 
         cand_index_map = {u: j for j, u in enumerate(urls, start=1)}
 
@@ -2334,7 +2417,14 @@ def process_track(idx: int, rb: RBTrack) -> Tuple[Dict[str, str], List[Dict[str,
         title_only_search = True
 
     clean_title_for_log = sanitize_title_for_search(title_for_search)
-    print(f"[{idx}] Searching Beatport for: {clean_title_for_log} - {original_artists or artists_for_scoring}", flush=True)
+    # Handle Unicode encoding for Windows
+    try:
+        print(f"[{idx}] Searching Beatport for: {clean_title_for_log} - {original_artists or artists_for_scoring}", flush=True)
+    except UnicodeEncodeError:
+        # Fallback to ASCII-safe version
+        safe_title = clean_title_for_log.encode('ascii', 'ignore').decode('ascii')
+        safe_artists = (original_artists or artists_for_scoring).encode('ascii', 'ignore').decode('ascii')
+        print(f"[{idx}] Searching Beatport for: {safe_title} - {safe_artists}", flush=True)
     if extracted and title_only_search:
         print(f"[{idx}]   (artists inferred from title for scoring; search is title-only)", flush=True)
 
@@ -2346,7 +2436,12 @@ def process_track(idx: int, rb: RBTrack) -> Tuple[Dict[str, str], List[Dict[str,
 
     print(f"[{idx}]   queries:", flush=True)
     for i, q in enumerate(queries, 1):
-        print(f"[{idx}]     {i}. site:beatport.com/track {q}", flush=True)
+        try:
+            print(f"[{idx}]     {i}. site:beatport.com/track {q}", flush=True)
+        except UnicodeEncodeError:
+            # Fallback to ASCII-safe version
+            safe_q = q.encode('ascii', 'ignore').decode('ascii')
+            print(f"[{idx}]     {i}. site:beatport.com/track {safe_q}", flush=True)
 
     # NEW: parse intent + special phrases from original title and pass to matcher
     input_mix_flags = _parse_mix_flags(rb.title)
@@ -2421,10 +2516,21 @@ def process_track(idx: int, rb: RBTrack) -> Tuple[Dict[str, str], List[Dict[str,
         })
 
     if best and best.score >= SETTINGS["MIN_ACCEPT_SCORE"]:
-        print(f"[{idx}] -> Match: {best.title} - {best.artists} "
-              f"(key {best.key or '?'}, year {best.release_year or '?'}) "
-              f"(score {best.score:.1f}, t_sim {best.title_sim}, a_sim {best.artist_sim}) "
-              f"[q{best.query_index}/cand{best.candidate_index}, {dur:.0f} ms]", flush=True)
+        # Handle Unicode encoding for Windows
+        try:
+            print(f"[{idx}] -> Match: {best.title} - {best.artists} "
+                  f"(key {best.key or '?'}, year {best.release_year or '?'}) "
+                  f"(score {best.score:.1f}, t_sim {best.title_sim}, a_sim {best.artist_sim}) "
+                  f"[q{best.query_index}/cand{best.candidate_index}, {dur:.0f} ms]", flush=True)
+        except UnicodeEncodeError:
+            # Fallback to ASCII-safe version
+            safe_title = best.title.encode('ascii', 'ignore').decode('ascii')
+            safe_artists = best.artists.encode('ascii', 'ignore').decode('ascii')
+            safe_key = (best.key or '?').encode('ascii', 'ignore').decode('ascii')
+            print(f"[{idx}] -> Match: {safe_title} - {safe_artists} "
+                  f"(key {safe_key}, year {best.release_year or '?'}) "
+                  f"(score {best.score:.1f}, t_sim {best.title_sim}, a_sim {best.artist_sim}) "
+                  f"[q{best.query_index}/cand{best.candidate_index}, {dur:.0f} ms]", flush=True)
 
         m = re.search(r'/track/[^/]+/(\d+)', best.url)
         beatport_track_id = m.group(1) if m else ""
@@ -2454,7 +2560,11 @@ def process_track(idx: int, rb: RBTrack) -> Tuple[Dict[str, str], List[Dict[str,
         }
         return main_row, cand_rows, queries_rows
     else:
-        print(f"[{idx}] -> No match candidates found. [{dur:.0f} ms]", flush=True)
+        try:
+            print(f"[{idx}] -> No match candidates found. [{dur:.0f} ms]", flush=True)
+        except UnicodeEncodeError:
+            # Fallback to ASCII-safe version
+            print(f"[{idx}] -> No match candidates found. [{dur:.0f} ms]", flush=True)
         main_row = {
             "playlist_index": str(idx),
             "original_title": rb.title,
@@ -2553,6 +2663,7 @@ def run(xml_path: str, playlist_name: str, out_csv_base: str):
         writer.writerows(rows)
 
     review_rows: List[Dict[str, str]] = []
+    review_indices = set()  # Track which playlist indices need review
     for r in rows:
         score = float(r.get("match_score", "0") or 0)
         artist_sim = int(r.get("artist_sim", "0") or 0)
@@ -2568,13 +2679,14 @@ def run(xml_path: str, playlist_name: str, out_csv_base: str):
         if reason:
             rr = dict(r); rr["review_reason"] = ",".join(reason)
             review_rows.append(rr)
+            review_indices.add(int(r.get("playlist_index", "0")))
 
     if review_rows:
         with open(out_review, "w", newline="", encoding="utf-8") as f2:
             writer2 = csv.DictWriter(f2, fieldnames=main_fields + ["review_reason"])
             writer2.writeheader()
             writer2.writerows(review_rows)
-        print(f"Review list: {len(review_rows)} rows → {out_review}")
+        print(f"Review list: {len(review_rows)} rows -> {out_review}")
 
     cand_fields = [
         "playlist_index","original_title","original_artists",
@@ -2584,12 +2696,38 @@ def run(xml_path: str, playlist_name: str, out_csv_base: str):
         "title_sim","artist_sim","base_score","bonus_year","bonus_key","final_score",
         "guard_ok","reject_reason","search_query_index","search_query_text","candidate_index","elapsed_ms","winner",
     ]
+
+    # Create review-specific candidates CSV
+    review_candidates = [c for c in all_candidates if int(c.get("playlist_index", "0")) in review_indices]
+    if review_candidates:
+        out_review_cands = re.sub(r"\.csv$", "_review_candidates.csv", out_main) if out_main.lower().endswith(".csv") else out_main + "_review_candidates.csv"
+        with open(out_review_cands, "w", newline="", encoding="utf-8") as fc:
+            wc = csv.DictWriter(fc, fieldnames=cand_fields)
+            wc.writeheader()
+            wc.writerows(review_candidates)
+        print(f"Review candidates: {len(review_candidates)} rows -> {out_review_cands}")
+
+    queries_fields = [
+        "playlist_index","original_title","original_artists",
+        "search_query_index","search_query_text","candidate_count","elapsed_ms",
+        "is_winner","winner_candidate_index","is_stop"
+    ]
+
+    # Create review-specific queries CSV
+    review_queries = [q for q in all_queries if int(q.get("playlist_index", "0")) in review_indices]
+    if review_queries:
+        out_review_queries = re.sub(r"\.csv$", "_review_queries.csv", out_main) if out_main.lower().endswith(".csv") else out_main + "_review_queries.csv"
+        with open(out_review_queries, "w", newline="", encoding="utf-8") as fq:
+            wq = csv.DictWriter(fq, fieldnames=queries_fields)
+            wq.writeheader()
+            wq.writerows(review_queries)
+        print(f"Review queries: {len(review_queries)} rows -> {out_review_queries}")
     if all_candidates:
         with open(out_cands, "w", newline="", encoding="utf-8") as fc:
             wc = csv.DictWriter(fc, fieldnames=cand_fields)
             wc.writeheader()
             wc.writerows(all_candidates)
-        print(f"Candidates: {len(all_candidates)} rows → {out_cands}")
+        print(f"Candidates: {len(all_candidates)} rows -> {out_cands}")
 
     if all_queries:
         queries_fields = [
@@ -2601,9 +2739,9 @@ def run(xml_path: str, playlist_name: str, out_csv_base: str):
             wq = csv.DictWriter(fq, fieldnames=queries_fields)
             wq.writeheader()
             wq.writerows(all_queries)
-        print(f"Queries: {len(all_queries)} rows → {out_queries}")
+        print(f"Queries: {len(all_queries)} rows -> {out_queries}")
 
-    print(f"\nDone. Wrote {len(rows)} rows → {out_main}")
+    print(f"\nDone. Wrote {len(rows)} rows -> {out_main}")
 
 # -----------------------------
 # CLI
