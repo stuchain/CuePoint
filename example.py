@@ -1031,7 +1031,7 @@ def parse_track_page(url: str) -> Tuple[str, str, Optional[str], Optional[int], 
 # -----------------------------
 def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
     """
-    No final slice here — let per-track time budget and query cap be the guardrails.
+    Enhanced search with multiple query strategies and better fallback.
     """
     urls: List[str] = []
     try:
@@ -1039,11 +1039,27 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
         ql = (query or "").lower()
         if (" remix" in ql) or ("extended mix" in ql) or ("re-fire" in ql) or ("refire" in ql) or ("rework" in ql) or ("re-edit" in ql) or ("(" in ql and ")" in ql) or re.search(r"\bstyler\b", ql):
             mr = max(mr, 120)
+        
+        # Try multiple search strategies
+        search_queries = [
+            f"site:beatport.com/track {query}",
+            f"site:beatport.com/track \"{query}\"",  # Quoted version
+            f"site:beatport.com {query}",  # Broader search
+        ]
+        
         with DDGS() as ddgs:
-            for r in ddgs.text(f"site:beatport.com/track {query}", region="us-en", max_results=mr):
-                href = r.get("href") or r.get("url") or ""
-                if "beatport.com/track/" in href:
-                    urls.append(href)
+            for search_q in search_queries:
+                try:
+                    for r in ddgs.text(search_q, region="us-en", max_results=mr):
+                        href = r.get("href") or r.get("url") or ""
+                        if "beatport.com/track/" in href:
+                            urls.append(href)
+                    # If we found enough results, break
+                    if len(urls) >= 10:
+                        break
+                except Exception as e:
+                    vlog(idx, f"[search] ddgs error for '{search_q}': {e!r}")
+                    continue
     except Exception as e:
         vlog(idx, f"[search] ddgs error: {e!r}")
         return []
@@ -1052,29 +1068,54 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
         if is_track_url(u) and u not in seen:
             seen.add(u); out.append(u)
 
-    # Fallback: when few /track/ results, mine related Beatport pages for /track/ links
+    # Enhanced fallback: when we don't find the expected track, try broader searches
     try:
         LOW_TRACK_THRESHOLD = 4
         ql = (query or "").lower().strip()
         primary_tok = ql.split()[0] if ql else ""
         needs_fallback = len(out) < LOW_TRACK_THRESHOLD
+        
+        # Check if we found the primary token in any URL
         if primary_tok and len(primary_tok) >= 3:
             found_primary = any((primary_tok in u.lower()) for u in out)
             if not found_primary:
                 needs_fallback = True
+        
+        # More aggressive fallback for specific cases
         if needs_fallback and (" " in ql):
             extra_pages: list[str] = []
+            
+            # Try broader searches
+            fallback_queries = [
+                f"site:beatport.com {query}",
+                f"site:beatport.com \"{query}\"",
+                f"beatport.com {query}",
+            ]
+            
             with DDGS() as ddgs:
-                for r in ddgs.text(f"site:beatport.com {query}", region="us-en", max_results=20):
-                    href = r.get("href") or r.get("url") or ""
-                    if href and "beatport.com" in href:
-                        extra_pages.append(href)
-            for page_url in extra_pages[:6]:
+                for fallback_q in fallback_queries:
+                    try:
+                        for r in ddgs.text(fallback_q, region="us-en", max_results=20):
+                            href = r.get("href") or r.get("url") or ""
+                            if href and "beatport.com" in href:
+                                extra_pages.append(href)
+                    except Exception as e:
+                        vlog(idx, f"[fallback-search] error for '{fallback_q}': {e!r}")
+                        continue
+            
+            # Process extra pages to find track links
+            for page_url in extra_pages[:6]:  # Reverted back to 6
                 if "/track/" in page_url:
+                    # If it's already a track URL, add it directly
+                    if is_track_url(page_url) and page_url not in seen:
+                        seen.add(page_url); out.append(page_url)
                     continue
+                    
                 soup = request_html(page_url)
                 if not soup:
                     continue
+                    
+                # Look for track links
                 for a in soup.select('a[href^="/track/"]'):
                     try:
                         href = a.get("href") or ""
@@ -1087,6 +1128,44 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                         continue
     except Exception as _e:
         vlog(idx, f"[fallback-release] skipped: {_e!r}")
+
+    # Special case: if we have very few results and the query looks like a specific track,
+    # try to construct potential URLs based on common Beatport patterns
+    if len(out) < 3 and ql and " " in ql:
+        try:
+            # Extract potential track name and artist from query
+            parts = ql.split()
+            if len(parts) >= 2:
+                # Try common URL patterns
+                potential_urls = []
+                
+                # Pattern 1: /track/track-name/track-id (we don't know ID, but try common patterns)
+                track_name = "-".join(parts[:-1])  # Everything except last part (artist)
+                artist_name = parts[-1]  # Last part (artist)
+                
+                # Pattern 2: /track/track-name-artist/track-id
+                combined_name = "-".join(parts)
+                
+                # We can't guess track IDs, but we can try to find them via broader search
+                broader_searches = [
+                    f"site:beatport.com {track_name} {artist_name}",
+                    f"site:beatport.com \"{track_name}\" {artist_name}",
+                    f"beatport.com {track_name} {artist_name}",
+                ]
+                
+                with DDGS() as ddgs:
+                    for broad_q in broader_searches:
+                        try:
+                            for r in ddgs.text(broad_q, region="us-en", max_results=10):
+                                href = r.get("href") or r.get("url") or ""
+                                if href and "beatport.com/track/" in href and href not in seen:
+                                    seen.add(href); out.append(href)
+                        except Exception as e:
+                            vlog(idx, f"[broader-search] error for '{broad_q}': {e!r}")
+                            continue
+        except Exception as e:
+            vlog(idx, f"[url-construction] error: {e!r}")
+
 
     if SETTINGS["TRACE"]:
         for i, u in enumerate(out, 1):
@@ -2004,7 +2083,7 @@ def best_beatport_match(
         # Short-title stricter floor: for 1–2 significant tokens, require a very high title_sim
         in_sig_short = _significant_tokens(track_title)
         if 1 <= len(in_sig_short) <= 2:
-            if t_sim < 85:  # Lowered from 95 to 85
+            if t_sim < 70:  # Lowered from 85 to 70
                 ok = False
                 reject_reason = "guard_short_title_high_floor"
 
@@ -2320,8 +2399,8 @@ def best_beatport_match(
 
         # Schedule fetches only for URLs we haven't seen before in this track
         to_fetch = [u for u in urls if u not in visited_urls]
-        # Mark all as visited (prevents re-scheduling on later queries)
-        for u in urls:
+        # IMPORTANT: Mark as visited only those we are actually going to fetch
+        for u in to_fetch:
             visited_urls.add(u)
         if not to_fetch and SETTINGS["TRACE"]:
             tlog(idx, f"[q{i}] all {len(urls)} candidates already visited; skipping fetch")
@@ -2338,12 +2417,17 @@ def best_beatport_match(
 
         with ThreadPoolExecutor(max_workers=SETTINGS["CANDIDATE_WORKERS"]) as ex:
             futures = [ex.submit(fetch, u) for u in to_fetch]
+            processed_count = 0
+            failed_count = 0
 
             if SETTINGS.get("RUN_ALL_QUERIES"):
                 for fut in as_completed(futures) if futures else []:
                     try:
                         u, title, artists, key, year, bpm, label, genres, rel_name, rel_date, ems = fut.result()
-                    except Exception:
+                        processed_count += 1
+                    except Exception as e:
+                        failed_count += 1
+                        vlog(idx, f"[fetch-error] {u}: {e}")
                         continue
                     if not title:
                         consider(u, "", "", None, None, None, None, None, None, None, i, q, cand_index_map.get(u, 0), ems)
@@ -2357,7 +2441,10 @@ def best_beatport_match(
                     for fut in as_completed(futures, timeout=join_timeout) if futures else []:
                         try:
                             u, title, artists, key, year, bpm, label, genres, rel_name, rel_date, ems = fut.result()
-                        except Exception:
+                            processed_count += 1
+                        except Exception as e:
+                            failed_count += 1
+                            vlog(idx, f"[fetch-error] {u}: {e}")
                             continue
                         if not title:
                             consider(u, "", "", None, None, None, None, None, None, None, i, q, cand_index_map.get(u, 0), ems)
@@ -2366,12 +2453,15 @@ def best_beatport_match(
                             continue
                         consider(u, title, artists, key, year, bpm, label, genres, rel_name, rel_date, i, q, cand_index_map.get(u, 0), ems)
                 except FuturesTimeoutError:
-                    vlog(idx, "[warn] candidate fetch join timed out; capturing finished futures and continuing")
+                    vlog(idx, f"[warn] candidate fetch join timed out ({join_timeout}s); capturing finished futures and continuing")
                     for fut in futures:
                         if fut.done():
                             try:
                                 u, title, artists, key, year, bpm, label, genres, rel_name, rel_date, ems = fut.result()
-                            except Exception:
+                                processed_count += 1
+                            except Exception as e:
+                                failed_count += 1
+                                vlog(idx, f"[fetch-error] {u}: {e}")
                                 continue
                             if not title:
                                 consider(u, "", "", None, None, None, None, None, None, None, i, q, cand_index_map.get(u, 0), ems)
@@ -2379,6 +2469,10 @@ def best_beatport_match(
                                 candidates_log[-1].guard_ok = False
                                 continue
                             consider(u, title, artists, key, year, bpm, label, genres, rel_name, rel_date, i, q, cand_index_map.get(u, 0), ems)
+            
+            # Log processing summary
+            if failed_count > 0:
+                vlog(idx, f"[q{i}] processed {processed_count}/{len(to_fetch)} candidates, {failed_count} failed")
 
         # ----- Remix-specific early exit (lower threshold) -----
         if (not SETTINGS.get("RUN_ALL_QUERIES")) and remix_like_intent and best and best.guard_ok:
@@ -2647,6 +2741,9 @@ def run(xml_path: str, playlist_name: str, out_csv_base: str):
     all_candidates: List[Dict[str, str]] = []
     all_queries: List[Dict[str, str]] = []
 
+    # Track processed Beatport IDs to avoid duplicates
+    processed_beatport_ids: set[str] = set()
+
     inputs: List[Tuple[int, RBTrack]] = []
     for idx, tid in enumerate(tids, start=1):
         rb = tracks_by_id.get(tid)
@@ -2656,12 +2753,31 @@ def run(xml_path: str, playlist_name: str, out_csv_base: str):
     if SETTINGS["TRACK_WORKERS"] > 1:
         with ThreadPoolExecutor(max_workers=SETTINGS["TRACK_WORKERS"]) as ex:
             for main_row, cand_rows, query_rows in ex.map(lambda args: process_track(*args), inputs):
+                # Check for duplicate Beatport track ID
+                beatport_id = main_row.get("beatport_track_id", "")
+                if beatport_id and beatport_id in processed_beatport_ids:
+                    print(f"[SKIP] Duplicate Beatport ID {beatport_id} for track: {main_row.get('original_title', '')}", flush=True)
+                    continue
+                
+                if beatport_id:
+                    processed_beatport_ids.add(beatport_id)
+                
                 rows.append(main_row)
                 all_candidates.extend(cand_rows)
                 all_queries.extend(query_rows)
     else:
         for args in inputs:
             main_row, cand_rows, query_rows = process_track(*args)
+            
+            # Check for duplicate Beatport track ID
+            beatport_id = main_row.get("beatport_track_id", "")
+            if beatport_id and beatport_id in processed_beatport_ids:
+                print(f"[SKIP] Duplicate Beatport ID {beatport_id} for track: {main_row.get('original_title', '')}", flush=True)
+                continue
+            
+            if beatport_id:
+                processed_beatport_ids.add(beatport_id)
+            
             rows.append(main_row)
             all_candidates.extend(cand_rows)
             all_queries.extend(query_rows)
@@ -2860,19 +2976,19 @@ def main():
             "ARTIST_WEIGHT": 0.45,
 
             # ---- Early exit tuning ----
-            "EARLY_EXIT_SCORE": 98,               # exit when >=95 and mix/phrase ok
-            "EARLY_EXIT_MIN_QUERIES": 2,         # minimum queries before early exit
+            "EARLY_EXIT_SCORE": 95,               # exit when >=95 and mix/phrase ok
+            "EARLY_EXIT_MIN_QUERIES": 12,         # minimum queries before early exit
             "EARLY_EXIT_REQUIRE_MIX_OK": True,    # candidate must satisfy mix intent
-            "EARLY_EXIT_FAMILY_SCORE": 5,        # consensus threshold for family
-            "EARLY_EXIT_FAMILY_AFTER": 5,         # don't allow family exit before 5 queries
+            "EARLY_EXIT_FAMILY_SCORE": 93,       # consensus threshold for family
+            "EARLY_EXIT_FAMILY_AFTER": 8,         # don't allow family exit before 8 queries
             "EARLY_EXIT_MIN_QUERIES_REMIX": 5,    # quicker for explicit remix/special
             "REMIX_MAX_QUERIES": 24,              # cap when remix/special intent
 
             # ---- Adaptive max_results per query shape ----
             "ADAPTIVE_MAX_RESULTS": True,
-            "MR_LOW": 10,                         # grams/combos
-            "MR_MED": 20,                         # full-title + artist
-            "MR_HIGH": 40,                       # phrases/remix/rare patterns
+            "MR_LOW": 15,                         # grams/combos
+            "MR_MED": 40,                         # full-title + artist
+            "MR_HIGH": 100,                       # phrases/remix/rare patterns
 
             # ---- Query-generation shape preferences ----
             "FULL_TITLE_WITH_ARTIST_ONLY": True,  # prefer "<full title> + artist" shapes
@@ -2894,8 +3010,8 @@ def main():
             "MAX_COMBO_QUERIES": None,
 
             # ---- Safeguards / misc ----
-            "MAX_SEARCH_RESULTS": 20,             # global default (adaptive overrides)
-            "PER_QUERY_CANDIDATE_CAP": 25,
+            "MAX_SEARCH_RESULTS": 50,             # global default (adaptive overrides)
+            "PER_QUERY_CANDIDATE_CAP": None,
             "MAX_QUERIES_PER_TRACK": 50,         # overall safety cap
             "MIN_ACCEPT_SCORE": 85,
             "CONNECT_TIMEOUT": 5,

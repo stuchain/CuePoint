@@ -1,0 +1,3 @@
+playlist_index,original_title,original_artists,beatport_title,beatport_artists,beatport_key,beatport_key_camelot,beatport_year,beatport_bpm,beatport_label,beatport_genres,beatport_release,beatport_release_date,beatport_track_id,beatport_url,title_sim,artist_sim,match_score,confidence,search_query_index,search_stop_query_index,candidate_index,review_reason
+2,(F) Planet 9,Adam Port,,,,,,,,,,,,,0,0,0.0,low,0,0,0,"score<85,weak-artist-match,no-candidates"
+6,[8-9] Tighter (CamelPhat Remix),"HOSH, CamelPhat",,,,,,,,,,,,,0,0,0.0,low,0,0,0,"score<85,weak-artist-match,no-candidates"

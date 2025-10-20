@@ -1,0 +1,89 @@
+playlist_index,original_title,original_artists,search_query_index,search_query_text,candidate_count,elapsed_ms,is_winner,winner_candidate_index,is_stop
+1,The Night is Blue,Tim Green,1,The Night is Blue Tim Green,10,3007,Y,1,N
+1,The Night is Blue,Tim Green,2,Tim Green The Night is Blue,105,81775,N,,Y
+2,(F) Planet 9,Adam Port,1,(F) Planet 9 Adam Port,111,30540,N,,N
+2,(F) Planet 9,Adam Port,2,Adam Port (F) Planet 9,106,64722,Y,106,N
+2,(F) Planet 9,Adam Port,3,Planet 9 Adam Port,106,44559,N,,N
+2,(F) Planet 9,Adam Port,4,Adam Port Planet 9,105,21231,N,,N
+2,(F) Planet 9,Adam Port,5,Planet 9 (F) Adam Port,105,15411,N,,N
+2,(F) Planet 9,Adam Port,6,Adam Port Planet 9 (F),105,13631,N,,Y
+3,Planet 9 ,Adam Port,1,Planet 9 Adam Port,13,2518,Y,10,N
+3,Planet 9 ,Adam Port,2,Adam Port Planet 9,105,85914,N,,Y
+4,[3] (F) Never Sleep Again (Keinemusik Remix),Solomun,1,[3] (F) Never Sleep Again (Keinemusik Remix) Keinemusik remix,111,99976,N,,N
+4,[3] (F) Never Sleep Again (Keinemusik Remix),Solomun,2,Keinemusik remix [3] (F) Never Sleep Again (Keinemusik Remix),105,12036,N,,N
+4,[3] (F) Never Sleep Again (Keinemusik Remix),Solomun,3,[3] (F) Never Sleep Again (Keinemusik Remix) Keinemusik remix original mix,105,43350,N,,N
+4,[3] (F) Never Sleep Again (Keinemusik Remix),Solomun,4,Keinemusik remix original mix [3] (F) Never Sleep Again (Keinemusik Remix),105,18525,N,,N
+4,[3] (F) Never Sleep Again (Keinemusik Remix),Solomun,5,[3] (F) Never Sleep Again (Keinemusik Remix) Keinemusik extended remix,105,17352,N,,N
+4,[3] (F) Never Sleep Again (Keinemusik Remix),Solomun,6,Keinemusik extended remix [3] (F) Never Sleep Again (Keinemusik Remix),105,11680,N,,N
+4,[3] (F) Never Sleep Again (Keinemusik Remix),Solomun,7,[3] (F) Never Sleep Again (Keinemusik Remix) Keinemusik extended mix,0,15837,N,,N
+4,[3] (F) Never Sleep Again (Keinemusik Remix),Solomun,8,Keinemusik extended mix [3] (F) Never Sleep Again (Keinemusik Remix),105,15830,N,,N
+4,[3] (F) Never Sleep Again (Keinemusik Remix),Solomun,9,[3] (F) Never Sleep Again (Keinemusik Remix) Keinemusik club remix,105,14473,N,,N
+4,[3] (F) Never Sleep Again (Keinemusik Remix),Solomun,10,Keinemusik club remix [3] (F) Never Sleep Again (Keinemusik Remix),105,21843,N,,N
+4,[3] (F) Never Sleep Again (Keinemusik Remix),Solomun,11,[3] (F) Never Sleep Again (Keinemusik Remix) Keinemusik club mix,112,11173,Y,1,Y
+5,[5] Tighter (Whitesquare Extended Remix),HOSH Jalja,1,[5] Tighter (Whitesquare Extended Remix) Whitesquare Extended remix,120,20314,Y,1,N
+5,[5] Tighter (Whitesquare Extended Remix),HOSH Jalja,2,Whitesquare Extended remix [5] Tighter (Whitesquare Extended Remix),106,68751,N,,N
+5,[5] Tighter (Whitesquare Extended Remix),HOSH Jalja,3,[5] Tighter (Whitesquare Extended Remix) Whitesquare Extended remix original mix,106,34589,N,,N
+5,[5] Tighter (Whitesquare Extended Remix),HOSH Jalja,4,Whitesquare Extended remix original mix [5] Tighter (Whitesquare Extended Remix),105,29785,N,,N
+5,[5] Tighter (Whitesquare Extended Remix),HOSH Jalja,5,[5] Tighter (Whitesquare Extended Remix) Whitesquare Extended extended remix,105,20390,N,,Y
+6,[8-9] Tighter (CamelPhat Remix),"HOSH, CamelPhat",1,[8-9] Tighter (CamelPhat Remix) CamelPhat remix,115,17894,N,,N
+6,[8-9] Tighter (CamelPhat Remix),"HOSH, CamelPhat",2,CamelPhat remix [8-9] Tighter (CamelPhat Remix),115,87766,N,,N
+6,[8-9] Tighter (CamelPhat Remix),"HOSH, CamelPhat",3,[8-9] Tighter (CamelPhat Remix) CamelPhat remix original mix,115,36575,N,,N
+6,[8-9] Tighter (CamelPhat Remix),"HOSH, CamelPhat",4,CamelPhat remix original mix [8-9] Tighter (CamelPhat Remix),105,32582,N,,N
+6,[8-9] Tighter (CamelPhat Remix),"HOSH, CamelPhat",5,[8-9] Tighter (CamelPhat Remix) CamelPhat extended remix,105,15886,N,,N
+6,[8-9] Tighter (CamelPhat Remix),"HOSH, CamelPhat",6,CamelPhat extended remix [8-9] Tighter (CamelPhat Remix),105,11959,N,,N
+6,[8-9] Tighter (CamelPhat Remix),"HOSH, CamelPhat",7,[8-9] Tighter (CamelPhat Remix) CamelPhat extended mix,105,10419,N,,N
+6,[8-9] Tighter (CamelPhat Remix),"HOSH, CamelPhat",8,CamelPhat extended mix [8-9] Tighter (CamelPhat Remix),105,17062,N,,N
+6,[8-9] Tighter (CamelPhat Remix),"HOSH, CamelPhat",9,[8-9] Tighter (CamelPhat Remix) CamelPhat club remix,105,12342,N,,N
+6,[8-9] Tighter (CamelPhat Remix),"HOSH, CamelPhat",10,CamelPhat club remix [8-9] Tighter (CamelPhat Remix),105,10407,N,,N
+6,[8-9] Tighter (CamelPhat Remix),"HOSH, CamelPhat",11,[8-9] Tighter (CamelPhat Remix) CamelPhat club mix,105,10097,N,,N
+6,[8-9] Tighter (CamelPhat Remix),"HOSH, CamelPhat",12,CamelPhat club mix [8-9] Tighter (CamelPhat Remix),105,11047,N,,N
+6,[8-9] Tighter (CamelPhat Remix),"HOSH, CamelPhat",13,Tighter CamelPhat remix,105,14713,N,,N
+6,[8-9] Tighter (CamelPhat Remix),"HOSH, CamelPhat",14,CamelPhat remix Tighter,105,17529,N,,N
+6,[8-9] Tighter (CamelPhat Remix),"HOSH, CamelPhat",15,Tighter CamelPhat remix original mix,105,20069,N,,N
+6,[8-9] Tighter (CamelPhat Remix),"HOSH, CamelPhat",16,CamelPhat remix original mix Tighter,105,20957,N,,N
+6,[8-9] Tighter (CamelPhat Remix),"HOSH, CamelPhat",17,Tighter CamelPhat extended remix,115,10833,N,,N
+6,[8-9] Tighter (CamelPhat Remix),"HOSH, CamelPhat",18,CamelPhat extended remix Tighter,106,9237,N,,N
+6,[8-9] Tighter (CamelPhat Remix),"HOSH, CamelPhat",19,Tighter CamelPhat extended mix,114,12965,N,,N
+6,[8-9] Tighter (CamelPhat Remix),"HOSH, CamelPhat",20,CamelPhat extended mix Tighter,114,10919,N,,N
+6,[8-9] Tighter (CamelPhat Remix),"HOSH, CamelPhat",21,Tighter CamelPhat club remix,115,9923,N,,N
+6,[8-9] Tighter (CamelPhat Remix),"HOSH, CamelPhat",22,CamelPhat club remix Tighter,115,9654,N,,N
+6,[8-9] Tighter (CamelPhat Remix),"HOSH, CamelPhat",23,Tighter CamelPhat club mix,106,9889,N,,N
+6,[8-9] Tighter (CamelPhat Remix),"HOSH, CamelPhat",24,CamelPhat club mix Tighter,115,11500,N,,Y
+7,[7-8] Batonga (Extended Mix),"Bontan, AMEME, Don Bello Ni",1,[7-8] Batonga (Extended Mix) Bontan,131,17404,Y,106,N
+7,[7-8] Batonga (Extended Mix),"Bontan, AMEME, Don Bello Ni",2,Bontan [7-8] Batonga (Extended Mix),131,68039,N,,N
+7,[7-8] Batonga (Extended Mix),"Bontan, AMEME, Don Bello Ni",3,[7-8] Batonga (Extended Mix) AMEME,116,39107,N,,N
+7,[7-8] Batonga (Extended Mix),"Bontan, AMEME, Don Bello Ni",4,AMEME [7-8] Batonga (Extended Mix),105,23073,N,,N
+7,[7-8] Batonga (Extended Mix),"Bontan, AMEME, Don Bello Ni",5,[7-8] Batonga (Extended Mix) Don Bello Ni,105,16193,N,,N
+7,[7-8] Batonga (Extended Mix),"Bontan, AMEME, Don Bello Ni",6,Don Bello Ni [7-8] Batonga (Extended Mix),105,10503,N,,N
+7,[7-8] Batonga (Extended Mix),"Bontan, AMEME, Don Bello Ni",7,[7-8] Batonga (Extended Mix) Bontan AMEME,105,15994,N,,N
+7,[7-8] Batonga (Extended Mix),"Bontan, AMEME, Don Bello Ni",8,Bontan AMEME [7-8] Batonga (Extended Mix),105,12544,N,,N
+7,[7-8] Batonga (Extended Mix),"Bontan, AMEME, Don Bello Ni",9,[7-8] Batonga (Extended Mix) Bontan & AMEME,105,11283,N,,N
+7,[7-8] Batonga (Extended Mix),"Bontan, AMEME, Don Bello Ni",10,Bontan & AMEME [7-8] Batonga (Extended Mix),105,20104,N,,N
+7,[7-8] Batonga (Extended Mix),"Bontan, AMEME, Don Bello Ni",11,[7-8] Batonga (Extended Mix) Bontan Don Bello Ni,105,11382,N,,N
+7,[7-8] Batonga (Extended Mix),"Bontan, AMEME, Don Bello Ni",12,Bontan Don Bello Ni [7-8] Batonga (Extended Mix),20,18246,N,,Y
+8,Bass Bousa (Original Mix),Nick Morgan,1,Bass Bousa (Original Mix) Nick Morgan,115,23664,N,,N
+8,Bass Bousa (Original Mix),Nick Morgan,2,Nick Morgan Bass Bousa (Original Mix),138,72160,Y,121,N
+8,Bass Bousa (Original Mix),Nick Morgan,3,Bass Bousa Nick Morgan,105,44640,N,,N
+8,Bass Bousa (Original Mix),Nick Morgan,4,Nick Morgan Bass Bousa,105,19043,N,,N
+8,Bass Bousa (Original Mix),Nick Morgan,5,Bass Bousa (Original Mix) (Original Mix) Nick Morgan,105,15517,N,,N
+8,Bass Bousa (Original Mix),Nick Morgan,6,Nick Morgan Bass Bousa (Original Mix) (Original Mix),105,13314,N,,Y
+9,Night Tales (Original Mix),Bross (RO),1,Night Tales (Original Mix) Bross (RO),8,5138,Y,8,N
+9,Night Tales (Original Mix),Bross (RO),2,Bross (RO) Night Tales (Original Mix),105,106105,N,,N
+9,Night Tales (Original Mix),Bross (RO),3,Night Tales Bross (RO),106,27501,N,,N
+9,Night Tales (Original Mix),Bross (RO),4,Bross (RO) Night Tales,105,32954,N,,N
+9,Night Tales (Original Mix),Bross (RO),5,Night Tales (Original Mix) (Original Mix) Bross (RO),105,15984,N,,N
+9,Night Tales (Original Mix),Bross (RO),6,Bross (RO) Night Tales (Original Mix) (Original Mix),105,13929,N,,Y
+10,Mystika (Original Mix),DSF,1,Mystika (Original Mix) DSF,16,2438,Y,11,N
+10,Mystika (Original Mix),DSF,2,DSF Mystika (Original Mix),105,91496,N,,N
+10,Mystika (Original Mix),DSF,3,Mystika DSF,116,41442,N,,N
+10,Mystika (Original Mix),DSF,4,DSF Mystika,105,23534,N,,N
+10,Mystika (Original Mix),DSF,5,Mystika (Original Mix) (Original Mix) DSF,105,12381,N,,N
+10,Mystika (Original Mix),DSF,6,DSF Mystika (Original Mix) (Original Mix),105,11232,N,,Y
+11,Sebastien Leger - Son of Sun (Orginal Mix),,1,Sebastien Leger - Son of Sun (Orginal Mix) Sebastien Leger,205,18605,Y,147,N
+11,Sebastien Leger - Son of Sun (Orginal Mix),,2,Sebastien Leger Sebastien Leger - Son of Sun (Orginal Mix),105,13148,N,,N
+11,Sebastien Leger - Son of Sun (Orginal Mix),,3,Son of Sun Sebastien Leger,105,17025,N,,N
+11,Sebastien Leger - Son of Sun (Orginal Mix),,4,Sebastien Leger Son of Sun,105,18398,N,,N
+11,Sebastien Leger - Son of Sun (Orginal Mix),,5,Son of Sun (Orginal Mix) Sebastien Leger,105,11536,N,,N
+11,Sebastien Leger - Son of Sun (Orginal Mix),,6,Sebastien Leger Son of Sun (Orginal Mix),113,13143,N,,N
+11,Sebastien Leger - Son of Sun (Orginal Mix),,7,Sebastien Leger - Son of Sun Sebastien Leger,11,15321,N,,N
+11,Sebastien Leger - Son of Sun (Orginal Mix),,8,Sebastien Leger Sebastien Leger - Son of Sun,105,16845,N,,Y
