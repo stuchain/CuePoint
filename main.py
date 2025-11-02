@@ -81,28 +81,28 @@ def main():
         SETTINGS.update({
             # ---- Core speed/concurrency ----
             "ENABLE_CACHE": True,
-            "CANDIDATE_WORKERS": 10,
-            "TRACK_WORKERS": 10,
-            "PER_TRACK_TIME_BUDGET_SEC": None,
+            "CANDIDATE_WORKERS": 15,  # Increased from 10 for faster candidate fetching
+            "TRACK_WORKERS": 12,  # Increased from 10 for more parallel track processing
+            "PER_TRACK_TIME_BUDGET_SEC": 45,  # Increased to allow priority queries to complete
 
             # ---- Similarity weights ----
             "TITLE_WEIGHT": 0.55,
             "ARTIST_WEIGHT": 0.45,
 
             # ---- Early exit tuning ----
-            "EARLY_EXIT_SCORE": 95,
-            "EARLY_EXIT_MIN_QUERIES": 12,
-            "EARLY_EXIT_REQUIRE_MIX_OK": True,
-            "EARLY_EXIT_FAMILY_SCORE": 93,
-            "EARLY_EXIT_FAMILY_AFTER": 8,
-            "EARLY_EXIT_MIN_QUERIES_REMIX": 5,
-            "REMIX_MAX_QUERIES": 24,
+            "EARLY_EXIT_SCORE": 90,  # Lowered from 95 to exit earlier
+            "EARLY_EXIT_MIN_QUERIES": 8,  # Increased to allow more remix queries before exit
+            "EARLY_EXIT_REQUIRE_MIX_OK": False,  # Disabled for faster exits
+            "EARLY_EXIT_FAMILY_SCORE": 88,  # Lowered from 93 for faster exits
+            "EARLY_EXIT_FAMILY_AFTER": 5,  # Reduced from 8
+            "EARLY_EXIT_MIN_QUERIES_REMIX": 6,  # Increased to ensure remix queries complete
+            "REMIX_MAX_QUERIES": 30,  # Increased to allow more remix-specific queries
 
             # ---- Adaptive max_results per query shape ----
             "ADAPTIVE_MAX_RESULTS": True,
-            "MR_LOW": 15,
-            "MR_MED": 40,
-            "MR_HIGH": 100,
+            "MR_LOW": 10,  # Reduced from 15
+            "MR_MED": 25,  # Reduced from 40
+            "MR_HIGH": 50,  # Reduced from 100
 
             # ---- Query-generation shape preferences ----
             "FULL_TITLE_WITH_ARTIST_ONLY": True,
@@ -112,24 +112,29 @@ def main():
             "REVERSE_REMIX_HINTS": True,
             "QUOTED_TITLE_VARIANT": False,
 
-            # ---- N-gram / combos controls (kept but mostly off) ----
-            "TITLE_GRAM_MAX": 3,
-            "CROSS_TITLE_GRAMS_WITH_ARTISTS": True,
+            # ---- N-gram / combos controls (reduced for speed) ----
+            "TITLE_GRAM_MAX": 2,  # Reduced from 3 to generate fewer queries
+            "CROSS_TITLE_GRAMS_WITH_ARTISTS": False,  # Disabled for speed
             "CROSS_SMALL_ONLY": True,
             "RUN_EXHAUSTIVE_COMBOS": False,
             "TITLE_COMBO_MIN_LEN": 2,
-            "TITLE_COMBO_MAX_LEN": 6,
+            "TITLE_COMBO_MAX_LEN": 4,  # Reduced from 6
             "INCLUDE_PERMUTATIONS": False,
-            "PERMUTATION_K_CAP": 5,
-            "MAX_COMBO_QUERIES": None,
+            "PERMUTATION_K_CAP": 3,  # Reduced from 5
+            "MAX_COMBO_QUERIES": 15,  # Added cap instead of None
 
             # ---- Safeguards / misc ----
-            "MAX_SEARCH_RESULTS": 50,
-            "PER_QUERY_CANDIDATE_CAP": None,
-            "MAX_QUERIES_PER_TRACK": 50,
-            "MIN_ACCEPT_SCORE": 85,
-            "CONNECT_TIMEOUT": 5,
-            "READ_TIMEOUT": 10,
+            "MAX_SEARCH_RESULTS": 50,  # Increased for better remix discovery
+            "PER_QUERY_CANDIDATE_CAP": None,  # Removed cap to find tracks that appear later in search results
+            "MAX_QUERIES_PER_TRACK": 40,  # Increased slightly to allow more remix queries
+            "USE_BROWSER_AUTOMATION": True,  # Enable browser automation for remix queries that direct search misses
+            
+            # ---- Search strategy ----
+            "USE_DIRECT_SEARCH_FOR_REMIXES": True,  # Use direct Beatport search for remix queries
+            "USE_BROWSER_AUTOMATION": True,  # Enable browser automation for remix queries (finds JS-rendered tracks)
+            "MIN_ACCEPT_SCORE": 70,  # Lowered from 85 to catch more valid matches
+            "CONNECT_TIMEOUT": 3,  # Reduced from 5 for faster failures
+            "READ_TIMEOUT": 8,  # Reduced from 10
         })
 
     SETTINGS["VERBOSE"] = bool(args.verbose)

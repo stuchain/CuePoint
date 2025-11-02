@@ -152,24 +152,17 @@ def make_search_queries(title: str, artists: str, original_title: Optional[str] 
     title_bases: List[str] = []
 
     # Generate multiple variations of the title for better matching
+    # NOTE: Only use cleaned titles - never include [F], [3], etc. prefixes in queries
     title_variations = []
     if original_title and t_clean:
-        title_variations.append(original_title)
+        # Always prefer cleaned title - never use original with prefixes
         title_variations.append(t_clean)
-
-        if original_title != t_clean:
-            exact_title = re.sub(r'^\[[\d\-\s]+\]\s*\([^)]*\)\s*', '', original_title)
-            exact_title = re.sub(r'\s+', ' ', exact_title).strip()
-            if exact_title and exact_title != original_title:
-                title_variations.append(exact_title)
-
-        base_title = re.sub(r'^\[[\d\-\s]+\]\s*', '', original_title)
-        base_title = re.sub(r'\s*\(F\)\s*', ' ', base_title)
-        base_title = re.sub(r'\s*www\.[^\s]+\s*', ' ', base_title)
-        base_title = re.sub(r'\s+', ' ', base_title).strip()
-        if base_title != original_title:
-            title_variations.append(base_title)
-            title_variations.append(sanitize_title_for_search(base_title))
+        
+        # Only add original if it's already clean (no prefixes)
+        # Check if original has prefixes like [3], [F], etc.
+        has_prefixes = bool(re.search(r'^\[[\d\-\s]+\]|\([A-Za-z]\)', original_title.strip()))
+        if not has_prefixes and original_title != t_clean:
+            title_variations.append(original_title)
 
         generic_ph = _extract_generic_parenthetical_phrases(original_title)
         remix_ph = _extract_remix_phrases(original_title)
@@ -310,8 +303,117 @@ def make_search_queries(title: str, artists: str, original_title: Optional[str] 
             seenq.add(k)
             queries.append(q.strip())
 
-    # PRIORITY STAGE 0: Full title + "<remixer> remix" first
+    # Extract remixers and base title
     remixers_from_title = _extract_remixer_names_from_title(original_title or "") if original_title else []
+    
+    # PRIORITY STAGE -0.5: Use exact original title format for remixes (highest priority)
+    # Beatport's own search uses exact title format like "Never Sleep Again (Keinemusik Remix)"
+    # This often works better than DuckDuckGo's indexed results
+    if remixers_from_title and original_title:
+        # For remixes, preserve the full title structure (including remix part)
+        # Only remove numeric/bracket prefixes like [3], [F] but keep remix info
+        exact_title = original_title.strip()
+        # Remove only numeric/bracket prefixes like [3], [8-9], (F) at the start
+        exact_title = re.sub(r'^\[[\d\-\s]+\]\s*', '', exact_title, flags=re.IGNORECASE)
+        exact_title = re.sub(r'^\s*\([A-Za-z]\)\s*', '', exact_title, flags=re.IGNORECASE)
+        exact_title = exact_title.strip()
+        
+        if exact_title and len(exact_title.split()) >= 2:
+            # Try exact format as Beatport would search it (preserving remix)
+            _add(f'"{exact_title}"')
+            # Also try without quotes (broader)
+            _add(exact_title)
+            # Try with original artist if available
+            if toks:
+                for a in toks[:1]:  # First artist
+                    if a and a.strip():
+                        _add(f'"{exact_title}" {a}')
+                        _add(f'{a} "{exact_title}"')
+    
+    # Extract base title (without remix/extended/etc. suffixes) for better matching
+    # Beatport often lists remixes as "Base Title - Original Artist (Remixer Remix)"
+    base_title_no_remix = t_clean
+    if original_title:
+        # Remove remix patterns more aggressively - try multiple strategies
+        base = original_title
+        
+        # Strategy 1: Remove parenthetical patterns containing remix/extended/original mix
+        base = re.sub(r'\s*\([^)]*\b(remix|extended\s+mix|original\s+mix|edit|version)\b[^)]*\)', '', base, flags=re.I)
+        # Strategy 2: Remove bracket patterns
+        base = re.sub(r'\s*\[[^\]]*\b(remix|extended\s+mix|original\s+mix|edit|version)\b[^\]]*\]', '', base, flags=re.I)
+        # Strategy 3: Remove any parenthetical that looks like a remix/extended indication
+        base = re.sub(r'\s*\([^)]*(?:remix|extended|rework|refire|re-fire|edit)[^)]*\)', '', base, flags=re.I)
+        # Strategy 4: Remove standalone remix/extended keywords at the end
+        base = re.sub(r'\s+\b(remix|extended\s+mix|original\s+mix|edit|version)\b\s*$', '', base, flags=re.I)
+        
+        # Clean and sanitize
+        base = sanitize_title_for_search(base).strip()
+        
+        # Ensure we got a meaningful base (at least 3 characters)
+        if base and len(base) >= 3 and base != t_clean:
+            base_title_no_remix = base
+        # If base extraction failed, try using t_clean but remove remix keywords
+        elif t_clean:
+            base_fallback = re.sub(r'\s+\b(remix|extended\s+mix|original\s+mix|edit|version)\b\s*$', '', t_clean, flags=re.I).strip()
+            if base_fallback and len(base_fallback) >= 3:
+                base_title_no_remix = base_fallback
+    
+    # PRIORITY STAGE 0: Base title (without remix) + ORIGINAL ARTIST first
+    # This is MORE reliable than quoted queries for DuckDuckGo
+    # This is crucial because Beatport often lists remixes with base title + original artist
+    if toks and base_title_no_remix and base_title_no_remix != "":
+        # Try each original artist with base title first
+        for a in toks:
+            if a and a.strip():
+                _add(f"{base_title_no_remix} {a}")
+                _add(f"{a} {base_title_no_remix}")
+        
+        # Try two-artist combinations with base title
+        if len(toks) >= 2:
+            for a1, a2 in combinations(toks, 2):
+                _add(f"{base_title_no_remix} {a1} {a2}")
+                _add(f"{base_title_no_remix} {a1} & {a2}")
+                _add(f"{a1} {a2} {base_title_no_remix}")
+    
+    # PRIORITY STAGE 0.3: Base title + original artist + remixer (all together)
+    # Beatport sometimes lists as "Title OriginalArtist (Remixer Remix)"
+    # Use quoted queries for better precision on remix searches
+    if toks and remixers_from_title and base_title_no_remix:
+        for a in toks[:1]:  # Use first artist primarily
+            if a and a.strip():
+                for r in remixers_from_title:
+                    if r and r.strip():
+                        # Quoted title for precision
+                        if len(base_title_no_remix.split()) >= 1:
+                            _add(f'"{base_title_no_remix}" {a} {r} remix')
+                            _add(f'"{base_title_no_remix}" {a} {r}')
+                            _add(f'{a} "{base_title_no_remix}" {r} remix')
+                        # Unquoted variants (broader)
+                        _add(f"{base_title_no_remix} {a} {r}")
+                        _add(f"{base_title_no_remix} {a} {r} remix")
+                        _add(f"{a} {base_title_no_remix} {r}")
+                        _add(f"{r} {base_title_no_remix} {a}")
+    
+    # PRIORITY STAGE 0.5: Base title + remixer (but after original artist)
+    # Use quoted queries for better precision when searching for specific remixes
+    if remixers_from_title and base_title_no_remix:
+        for r in remixers_from_title:
+            if r and r.strip():
+                # Unquoted variants (broader search)
+                _add(f"{base_title_no_remix} {r}")
+                _add(f"{r} {base_title_no_remix}")
+                # Quoted variants for better precision (remix-specific)
+                if len(base_title_no_remix.split()) >= 1:  # Quote if at least one word
+                    _add(f'"{base_title_no_remix}" {r} remix')
+                    _add(f'"{base_title_no_remix}" {r}')
+                # Also try with "remix" suffix (unquoted)
+                _add(f"{base_title_no_remix} {r} remix")
+                if SETTINGS.get("REVERSE_REMIX_HINTS", True):
+                    _add(f"{r} remix {base_title_no_remix}")
+                    if len(base_title_no_remix.split()) >= 1:
+                        _add(f'{r} remix "{base_title_no_remix}"')
+
+    # PRIORITY STAGE 0.75: Full title with remix + "<remixer> remix" variants
     if remixers_from_title:
         for tb in title_bases:
             for r in remixers_from_title:
@@ -327,7 +429,22 @@ def make_search_queries(title: str, artists: str, original_title: Optional[str] 
                         if SETTINGS.get("PRIORITY_REVERSE_STAGE", True) or SETTINGS.get("REVERSE_REMIX_HINTS", True):
                             _add(f"{rr} {tb}")
 
-    # PRIORITY STAGE: Full title + ONE artist, then + TWO-artist subsets
+    # PRIORITY STAGE 0.8: Quoted full title variations (lower priority - often returns wrong results)
+    # Only quote multi-word titles, and only try a few
+    for tb in title_bases[:2]:  # Try first 2 title variations only
+        if tb and tb.strip():
+            title_words = len(tb.split())
+            if title_words >= 2:  # Only quote multi-word titles
+                # Quoted exact title (but lower priority - base title + artist is more reliable)
+                _add(f'"{tb}"')
+                # Quoted title + artist
+                if toks:
+                    for a in toks[:1]:  # First artist
+                        if a and a.strip():
+                            _add(f'"{tb}" {a}')
+                            _add(f'{a} "{tb}"')
+
+    # PRIORITY STAGE 1: Full title + ONE artist, then + TWO-artist subsets
     single_artists = toks[:] + (remixers_from_title[:] if remixers_from_title else [])
     two_artist_pairs: List[Tuple[str, str]] = []
     if len(toks) >= 2:

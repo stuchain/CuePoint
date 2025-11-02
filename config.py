@@ -26,6 +26,12 @@ SETTINGS = {
     "CONNECT_TIMEOUT": 5,
     "READ_TIMEOUT": 10,
     "ENABLE_CACHE": False,       # auto-enabled in fast/turbo if requests-cache is present
+    
+    # Search strategy
+    "USE_DIRECT_SEARCH_FOR_REMIXES": True,  # Use direct Beatport search for remix queries (more reliable)
+    "PREFER_DIRECT_SEARCH": False,  # If True, prefer direct search over DuckDuckGo for all queries
+    "USE_BROWSER_AUTOMATION": False,  # Use browser automation (Playwright/Selenium) as fallback - slower but most reliable
+    "BROWSER_TIMEOUT_SEC": 30,  # Timeout for browser automation operations
 
     # Early exit
     "EARLY_EXIT_SCORE": 95,         # Stop early if a guard-passing candidate reaches ≥95

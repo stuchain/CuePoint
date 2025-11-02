@@ -332,8 +332,10 @@ def _mix_bonus(input_mix: Dict[str, object], cand_mix: Dict[str, object]) -> Tup
             bonus += 6
             reason = reason or "mix_match"
         elif (in_orig and c_ext) or (in_ext and c_orig):
-            bonus += 4  # treat Original↔Extended as compatible
-            reason = reason or "mix_compatible_orig_ext"
+            # Prefer exact match when available - give small penalty for mismatch
+            # This prevents matching Original when Extended is explicitly requested (and vice versa)
+            bonus -= 2  # Small penalty for mismatch
+            reason = reason or "mix_orig_ext_mismatch"
         if c_alt:
             bonus -= 10
             reason = reason or "avoid_altmix"
@@ -365,7 +367,16 @@ def _mix_bonus(input_mix: Dict[str, object], cand_mix: Dict[str, object]) -> Tup
             else:
                 bonus += 3; reason = reason or "any_remix_ok"
         else:
-            bonus -= 4; reason = reason or "wanted_remix"
+            # When remix is requested, penalize original/extended/plain mixes
+            # Especially if a specific remixer is requested
+            itoks = input_mix.get("remixer_tokens", set())
+            if itoks:
+                # Specific remixer requested but found original/extended - moderate-heavy penalty
+                # Large enough to prefer remixes, but not so large as to block all matches
+                bonus -= 12; reason = reason or "wanted_specific_remix_got_original"
+            else:
+                # Remix requested but no specific remixer - moderate penalty
+                bonus -= 6; reason = reason or "wanted_remix"
 
     if not (prefer_plain or in_orig or in_ext or in_remx):
         if c_alt:

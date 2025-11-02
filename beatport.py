@@ -340,21 +340,104 @@ def parse_track_page(url: str) -> Tuple[str, str, Optional[str], Optional[int], 
     return title or "", artists or "", key, year, bpm, label, genres, rel_name, rel_date_iso
 
 
+def track_urls(idx: int, query: str, max_results: int, use_direct_search: Optional[bool] = None) -> List[str]:
+    """
+    Unified search function that can use direct Beatport search, DuckDuckGo, or both.
+    
+    Args:
+        idx: Track index for logging
+        query: Search query
+        max_results: Maximum results to return
+        use_direct_search: If True, use direct Beatport search; if False, use DuckDuckGo;
+                          if None, use SETTINGS to decide (hybrid mode for remixes)
+    
+    Returns:
+        List of Beatport track URLs
+    """
+    # Check if we should use direct search
+    if use_direct_search is None:
+        # Auto-detect: use direct search for remix queries (more reliable)
+        ql = (query or "").lower()
+        has_remix_keywords = (" remix" in ql) or ("extended mix" in ql) or ("(" in ql and ")" in ql)
+        use_direct_search = SETTINGS.get("USE_DIRECT_SEARCH_FOR_REMIXES", True) and has_remix_keywords
+    
+    if use_direct_search:
+        # Try direct Beatport search with multiple methods
+        try:
+            from beatport_search import beatport_search_direct, beatport_search_browser
+            
+            # Method 1: Try API/direct HTML scraping
+            direct_urls = beatport_search_direct(idx, query, max_results)
+            if direct_urls:
+                # If we found some results but it's a remix query and we found very few, try browser automation
+                ql = (query or "").lower()
+                is_remix_query = (" remix" in ql) or ("extended mix" in ql) or ("(" in ql and ")" in ql)
+                if is_remix_query and len(direct_urls) < 5 and SETTINGS.get("USE_BROWSER_AUTOMATION", False):
+                    vlog(idx, f"[search] Direct search found {len(direct_urls)} URLs for remix query, trying browser automation")
+                    browser_urls = beatport_search_browser(idx, query, max_results)
+                    if browser_urls:
+                        # Merge results (browser automation finds more)
+                        seen = set(direct_urls)
+                        for url in browser_urls:
+                            if url not in seen:
+                                seen.add(url)
+                                direct_urls.append(url)
+                                if len(direct_urls) >= max_results:
+                                    break
+                        vlog(idx, f"[search] Combined: {len(direct_urls)} URLs (direct + browser)")
+                
+                if direct_urls:
+                    return direct_urls[:max_results]
+            
+            # Method 2: Try browser automation if enabled and direct search found nothing
+            # For remix queries, browser automation is critical since pages are JS-rendered
+            if SETTINGS.get("USE_BROWSER_AUTOMATION", False):
+                browser_urls = beatport_search_browser(idx, query, max_results)
+                if browser_urls:
+                    vlog(idx, f"[search] Browser automation found {len(browser_urls)} URLs")
+                    return browser_urls
+            
+            # If both fail, fall through to DuckDuckGo
+        except ImportError:
+            # beatport_search module not available, fall through to DuckDuckGo
+            pass
+        except Exception as e:
+            vlog(idx, f"[search] direct search failed: {e!r}, falling back to DuckDuckGo")
+    
+    # Fall back to DuckDuckGo
+    return ddg_track_urls(idx, query, max_results)
+
+
 def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
     """Enhanced search with multiple query strategies and better fallback."""
     urls: List[str] = []
     try:
         mr = max_results if max_results and max_results > 0 else 60
         ql = (query or "").lower()
+        # Increase max results for remix/extended queries - they often need more results to find the right track
+        # For exact quoted remix queries (like "Never Sleep Again (Keinemusik Remix)"), increase even more
+        is_exact_remix_query = query.startswith('"') and query.endswith('"') and ((" remix" in ql) or ("(" in ql and ")" in ql))
         if (" remix" in ql) or ("extended mix" in ql) or ("re-fire" in ql) or ("refire" in ql) or ("rework" in ql) or ("re-edit" in ql) or ("(" in ql and ")" in ql) or re.search(r"\bstyler\b", ql):
-            mr = max(mr, 120)
+            if is_exact_remix_query:
+                mr = max(mr, 200)  # Even higher for exact quoted remix queries
+            else:
+                mr = max(mr, 150)  # Increased from 120 for better remix discovery
         
-        # Try multiple search strategies
-        search_queries = [
-            f"site:beatport.com/track {query}",
-            f"site:beatport.com/track \"{query}\"",  # Quoted version
-            f"site:beatport.com {query}",  # Broader search
-        ]
+        # Try multiple search strategies - prioritize quoted/exact matches
+        # For quoted queries, try quoted first (more specific)
+        if query.startswith('"') and query.endswith('"'):
+            # Already quoted, use as-is
+            search_queries = [
+                f'site:beatport.com/track {query}',
+                f'site:beatport.com {query}',
+            ]
+        else:
+            # Not quoted - try quoted version first for better precision
+            search_queries = [
+                f'site:beatport.com/track "{query}"',  # Quoted version first (better precision)
+                f"site:beatport.com/track {query}",
+                f"site:beatport.com {query}",  # Broader search last
+            ]
         
         with DDGS() as ddgs:
             for search_q in search_queries:
@@ -363,8 +446,9 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                         href = r.get("href") or r.get("url") or ""
                         if "beatport.com/track/" in href:
                             urls.append(href)
-                    # If we found enough results, break
-                    if len(urls) >= 10:
+                    # For remix queries, don't break early - we need to find specific tracks
+                    # Only break early for non-remix queries with many results
+                    if len(urls) >= 20 and (" remix" not in ql and "extended mix" not in ql):
                         break
                 except Exception as e:
                     vlog(idx, f"[search] ddgs error for '{search_q}': {e!r}")

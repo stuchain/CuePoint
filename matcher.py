@@ -13,7 +13,7 @@ from typing import Dict, List, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeoutError
 from rapidfuzz import fuzz
 
-from beatport import BeatportCandidate, ddg_track_urls, is_track_url, parse_track_page
+from beatport import BeatportCandidate, track_urls, is_track_url, parse_track_page
 from config import NEAR_KEYS, SETTINGS
 from mix_parser import (
     _any_phrase_token_set_in_title,
@@ -160,6 +160,7 @@ def best_beatport_match(
     parsed_cache: Dict[str, Tuple[str, str, Optional[str], Optional[int], Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]]] = {}
     visited_urls: set[str] = set()
 
+    # track_title should already be cleaned (no [F], [3], etc.) but ensure it's clean
     base_title_clean = sanitize_title_for_search(track_title).strip().lower()
     artist_word_set = set()
     for tok in _artist_tokens(track_artists_for_scoring or ""):
@@ -245,7 +246,7 @@ def best_beatport_match(
         if len(in_sig) >= 2:
             shared = set(in_sig) & set(cand_sig)
             coverage = len(shared) / max(1, len(in_sig))
-            if coverage < 0.5 and t_sim < 90 and a_sim < 95:
+            if coverage < 0.3 and t_sim < 85 and a_sim < 90:  # More lenient: 0.3 coverage, lower thresholds
                 ok = False
                 reject_reason = "guard_title_token_coverage"
 
@@ -277,6 +278,37 @@ def best_beatport_match(
                 pass
 
         final = comp + yb + kb + mix_bonus + gen_bonus + special_bonus
+        
+        # Special boost for remix queries when we have high artist similarity but low title similarity
+        # This handles cases where the remix title format differs significantly
+        # CRITICAL: When artist similarity is 100% (perfect match), accept even with very low title similarity
+        # This catches cases like "Never Sleep Again Keinemusik Remix" where the track is found but title format differs
+        # BUT: Only apply this boost for remix queries, not for regular tracks (to prevent wrong matches like "Late Night Shopping" for "Night Tales")
+        if a_sim >= 95:  # Very high artist similarity
+            if input_mix and input_mix.get("is_remix") and cand_mix.get("is_remix"):
+                # Remix to remix with perfect artist match - huge boost
+                final += 25
+            elif input_mix and input_mix.get("is_remix"):
+                # Looking for remix, found something with perfect artist match
+                final += 15
+            elif input_mix and input_mix.get("is_remix"):
+                # Don't boost non-remix matches for remix queries unless title similarity is reasonable
+                pass
+            elif t_sim >= 10:  # At least some title similarity
+                # Perfect artist match - boost even non-remixes (but only if not a remix query)
+                final += 20
+        
+        if input_mix and input_mix.get("is_remix") and a_sim >= 80 and t_sim < 50:
+            # If artist similarity is very high, boost the score even with low title similarity
+            # This helps catch remixes that are the same track but with different title formatting
+            if cand_mix.get("is_remix"):
+                # Additional boost for remix-to-remix matches with high artist sim
+                final += 15  # Significant boost
+            elif t_sim >= 10:  # At least some title similarity
+                final += 10  # Moderate boost
+        
+        # Note: We rely on the large penalty (-20) from mix_bonus for specific remixer mismatches
+        # instead of a strict guard, so that we don't block valid matches when no remixes exist
 
         if title_only_mode:
             if not (t_sim >= 88):
@@ -287,15 +319,29 @@ def best_beatport_match(
             remix_implies_overlap = title_mentions_input_remix(title, track_artists_for_scoring)
 
             if not (overlap or remix_implies_overlap):
-                if a_sim < 25:
+                if a_sim < 20:  # Lowered from 25 to 20 for more leniency
                     ok = False
                     reject_reason = "guard_artist_sim_no_overlap"
 
-            title_floor = 65
-            if (overlap or remix_implies_overlap) and a_sim >= 50:
-                title_floor = 60
+            # For remix queries, be more lenient with title similarity
+            # Remixes often have different title formatting
+            is_remix_query = input_mix and input_mix.get("is_remix")
+            title_floor = 60  # Lowered from 65 to 60
+            if is_remix_query:
+                # Much more lenient for remix queries - remixers in title can vary
+                title_floor = 50  # Lower base for remixes
+                if (overlap or remix_implies_overlap) and a_sim >= 50:
+                    title_floor = 45  # Even lower if artist matches
+                elif a_sim >= 70:
+                    title_floor = 40
+                elif a_sim >= 85:
+                    title_floor = 35  # Very lenient for high artist sim on remixes
+            elif (overlap or remix_implies_overlap) and a_sim >= 50:
+                title_floor = 55  # Lowered from 60 to 55
             elif a_sim >= 70:
-                title_floor = 55
+                title_floor = 50  # Lowered from 55 to 50
+            elif a_sim >= 85:  # Very high artist sim allows even lower title
+                title_floor = 45
 
             if t_sim < title_floor:
                 ok = False
@@ -330,7 +376,9 @@ def best_beatport_match(
 
         budget = SETTINGS.get("PER_TRACK_TIME_BUDGET_SEC")
         elapsed = time.perf_counter() - start
-        if (not SETTINGS.get("RUN_ALL_QUERIES") and budget and elapsed > budget):
+        # Always allow at least the first 5 priority queries to complete
+        min_priority_queries = 5
+        if (not SETTINGS.get("RUN_ALL_QUERIES") and budget and elapsed > budget and i > min_priority_queries):
             vlog(idx, "[timeout] per-track budget exceeded")
             break
 
@@ -344,7 +392,8 @@ def best_beatport_match(
 
         t_q0 = time.perf_counter()
         mr = _pick_max_results_for_query(q)
-        urls_all = ddg_track_urls(idx, q, max_results=mr)
+        # Use unified track_urls which can use direct search or DuckDuckGo based on query type
+        urls_all = track_urls(idx, q, max_results=mr)
         q_elapsed = int((time.perf_counter() - t_q0) * 1000)
 
         cap = SETTINGS.get("PER_QUERY_CANDIDATE_CAP")

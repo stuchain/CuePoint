@@ -28,7 +28,8 @@ def process_track(idx: int, rb: RBTrack) -> Tuple[Dict[str, str], List[Dict[str,
     t0 = time.perf_counter()
 
     original_artists = rb.artists or ""
-    title_for_search = rb.title
+    # Clean the title right away to remove [F], [3], etc. - never use original with prefixes for search/scoring
+    title_for_search = sanitize_title_for_search(rb.title)
     artists_for_scoring = original_artists
 
     title_only_search = False
@@ -37,11 +38,13 @@ def process_track(idx: int, rb: RBTrack) -> Tuple[Dict[str, str], List[Dict[str,
     if not original_artists.strip():
         ex = extract_artists_from_title(rb.title)
         if ex:
-            artists_for_scoring, title_for_search = ex
+            artists_for_scoring, extracted_title = ex
+            # Clean the extracted title too
+            title_for_search = sanitize_title_for_search(extracted_title)
             extracted = True
         title_only_search = True
 
-    clean_title_for_log = sanitize_title_for_search(title_for_search)
+    clean_title_for_log = title_for_search  # Already cleaned above
     try:
         print(f"[{idx}] Searching Beatport for: {clean_title_for_log} - {original_artists or artists_for_scoring}", flush=True)
     except UnicodeEncodeError:
@@ -312,8 +315,8 @@ def run(xml_path: str, playlist_name: str, out_csv_base: str):
         artist_sim = int(r.get("artist_sim", "0") or 0)
         artists_present = bool((r.get("original_artists") or "").strip())
         reason = []
-        if score < 85:
-            reason.append("score<85")
+        if score < 70:  # Lowered from 85 to 70 to match MIN_ACCEPT_SCORE
+            reason.append("score<70")
         if artists_present and artist_sim < 35:
             if not _artist_token_overlap(r.get("original_artists", ""), r.get("beatport_artists", "")):
                 reason.append("weak-artist-match")

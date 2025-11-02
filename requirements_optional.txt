@@ -1,0 +1,12 @@
+# Optional dependencies for enhanced Beatport search
+
+# Browser automation - choose one or both:
+
+# Playwright (recommended - faster, more modern)
+playwright>=1.40.0
+# After installing: playwright install chromium
+
+# Selenium (alternative)
+selenium>=4.15.0
+# Also need ChromeDriver or GeckoDriver in PATH
+
