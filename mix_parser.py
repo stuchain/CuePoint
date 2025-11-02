@@ -3,6 +3,19 @@
 
 """
 Mix and remix parsing utilities
+
+This module extracts mix/remix information from track titles:
+- Standard mix types: Original Mix, Extended Mix, Remix, Edit, etc.
+- Special variants: Re-fire, Rework, VIP, Dub, etc.
+- Remixer names: Extracts who did the remix
+- Generic phrases: Custom parenthetical phrases like "(Ivory Re-fire)"
+
+Key functions:
+- _parse_mix_flags(): Detects mix type flags from title
+- _extract_remix_phrases(): Extracts remix information
+- _extract_remixer_names_from_title(): Finds remixer names
+- _extract_generic_parenthetical_phrases(): Finds custom phrases
+- _mix_bonus(): Calculates scoring bonuses/penalties for mix matches
 """
 
 import html
@@ -11,20 +24,21 @@ from typing import Dict, List, Tuple
 
 from text_processing import _strip_accents, normalize_text, _word_tokens
 
+# Regular expressions for detecting mix types in titles
 MIX_PATTERNS = {
-    "original": re.compile(r"\boriginal\s+mix\b", re.I),
-    "extended": re.compile(r"\bextended\s+mix\b", re.I),
-    "club":     re.compile(r"\bclub\s+mix\b", re.I),
-    "radio":    re.compile(r"\bradio\s+edit\b|\bradio\s+mix\b", re.I),
-    "edit":     re.compile(r"\bedit\b", re.I),
-    "remix":    re.compile(r"\bremix\b", re.I),
-    "dub":      re.compile(r"\bdub\s+mix\b|\bdub\b", re.I),
-    "guitar":   re.compile(r"\bguitar\s+mix\b|\bguitar\b", re.I),
-    "vip":      re.compile(r"\bvip\b", re.I),
-    "rework":   re.compile(r"\bre[-\s]?work\b", re.I),
-    "refire":   re.compile(r"\bre[-\s]?fire\b", re.I),
-    "acapella": re.compile(r"\bacapella\b", re.I),
-    "instrumental": re.compile(r"\binstrumental\b", re.I),
+    "original": re.compile(r"\boriginal\s+mix\b", re.I),      # "Original Mix"
+    "extended": re.compile(r"\bextended\s+mix\b", re.I),      # "Extended Mix"
+    "club":     re.compile(r"\bclub\s+mix\b", re.I),          # "Club Mix"
+    "radio":    re.compile(r"\bradio\s+edit\b|\bradio\s+mix\b", re.I),  # "Radio Edit" or "Radio Mix"
+    "edit":     re.compile(r"\bedit\b", re.I),                # "Edit"
+    "remix":    re.compile(r"\bremix\b", re.I),               # "Remix"
+    "dub":      re.compile(r"\bdub\s+mix\b|\bdub\b", re.I),   # "Dub Mix" or "Dub"
+    "guitar":   re.compile(r"\bguitar\s+mix\b|\bguitar\b", re.I),  # "Guitar Mix"
+    "vip":      re.compile(r"\bvip\b", re.I),               # "VIP"
+    "rework":   re.compile(r"\bre[-\s]?work\b", re.I),        # "Rework", "Re-work", "Re work"
+    "refire":   re.compile(r"\bre[-\s]?fire\b", re.I),        # "Refire", "Re-fire", "Re fire"
+    "acapella": re.compile(r"\bacapella\b", re.I),            # "Acapella"
+    "instrumental": re.compile(r"\binstrumental\b", re.I),     # "Instrumental"
 }
 
 

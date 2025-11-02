@@ -3,6 +3,18 @@
 
 """
 Text processing utilities: normalization, sanitization, and similarity scoring
+
+This module provides functions for:
+1. Text normalization: Removing accents, converting to lowercase, handling Unicode
+2. Title sanitization: Removing prefixes like [F], [3], cleaning for search
+3. Similarity scoring: Using RapidFuzz for fuzzy string matching
+4. Artist processing: Splitting artist strings, calculating artist similarity
+
+Key functions:
+- normalize_text(): Normalizes text for comparison (removes accents, lowercase, etc.)
+- sanitize_title_for_search(): Cleans titles by removing prefixes and noise
+- score_components(): Calculates title and artist similarity scores
+- artists_similarity(): Compares two artist strings using fuzzy matching
 """
 
 import html
@@ -17,25 +29,63 @@ from config import SETTINGS
 
 
 def _strip_accents(s: str) -> str:
-    """Strip accents from a string"""
+    """
+    Strip accents/diacritics from a string using Unicode decomposition
+    
+    Example:
+        "café" → "cafe"
+        "naïve" → "naive"
+    
+    Args:
+        s: Input string (may contain accented characters)
+    
+    Returns:
+        String with accents removed
+    """
     if not s:
         return ""
+    # Unicode normalization: decompose characters, then filter out combining marks (accents)
     return "".join(ch for ch in unicodedata.normalize("NFKD", s) if not unicodedata.combining(ch))
 
 
 def normalize_text(s: str) -> str:
-    """Normalize text for comparison"""
+    """
+    Normalize text for fuzzy comparison
+    
+    This function prepares text for similarity matching by:
+    1. Removing HTML entities and accents
+    2. Converting to lowercase
+    3. Removing common noise (feat. clauses, mix types, etc.)
+    4. Standardizing whitespace and punctuation
+    
+    Example:
+        "Never Sleep Again (Extended Mix) feat. John" → "never sleep again"
+    
+    Args:
+        s: Input text string
+    
+    Returns:
+        Normalized string ready for comparison
+    """
     if not s:
         return ""
-    s = _strip_accents(html.unescape(s))
-    s = s.lower().strip()
-    s = s.replace("—", " ").replace("–", " ").replace("‐", " ").replace("-", " ")
+    s = _strip_accents(html.unescape(s))  # Remove accents and HTML entities
+    s = s.lower().strip()  # Convert to lowercase
+    s = s.replace("—", " ").replace("–", " ").replace("‐", " ").replace("-", " ")  # Normalize dashes
+    
+    # Remove "feat." clauses (they vary too much between sources)
     s = re.sub(r"\s+\(feat\.?.*?\)", "", s, flags=re.I)
     s = re.sub(r"\s+\[feat\.?.*?\]", "", s, flags=re.I)
     s = re.sub(r"\s+feat\.?.*$", "", s, flags=re.I)
+    
+    # Remove mix type indicators (they're handled separately)
     s = re.sub(r"\((original mix|extended mix|edit|remix|vip|dub|version|radio edit|club mix)\)", "", s, flags=re.I)
+    
+    # Keep only alphanumeric, spaces, &, /
     s = re.sub(r"[^a-z0-9\s&/]+", " ", s)
-    s = re.sub(r"\s+", " ", s).strip()
+    s = re.sub(r"\s+", " ", s).strip()  # Normalize whitespace
+    
+    # Remove mix type keywords that weren't in parentheses
     s = re.sub(r'\b(original\s+mix|extended\s+mix|radio\s+edit|club\s+mix|edit|vip|version)\b', ' ', s, flags=re.I)
     s = re.sub(r'(?i)(original\s*mix|extended\s*mix|radio\s*edit|club\s*mix|edit|vip|version)$', ' ', s)
     s = re.sub(r'(?i)(originalmix|extendedmix|radioedit|clubmix)$', ' ', s)
@@ -43,29 +93,50 @@ def normalize_text(s: str) -> str:
 
 
 def sanitize_title_for_search(title: str) -> str:
-    """Sanitize title for search queries"""
+    """
+    Sanitize track title for search queries
+    
+    This function removes noise from titles that would hurt search accuracy:
+    - Numeric prefixes like [2-3], [3], [F]
+    - Parenthetical mix type indicators
+    - Complex artist-title patterns (extracts just the title part)
+    - Non-Latin characters (keeps basic Latin with accents)
+    
+    Critical: This function ensures we NEVER search with prefixes like [F], [3]
+    These are Rekordbox-specific markers that don't exist in Beatport titles.
+    
+    Example:
+        "[8-9] Tighter (CamelPhat Remix)" → "Tighter"
+        "[F] Never Sleep Again" → "Never Sleep Again"
+    
+    Args:
+        title: Original track title from Rekordbox
+    
+    Returns:
+        Clean title ready for search queries
+    """
     if not title:
         return ""
     t = title
     t = t.replace("—", " ").replace("–", " ").replace("‐", " ").replace("-", " ")
-    t = re.sub(r"www\.[^\s]+", " ", t)
+    t = re.sub(r"www\.[^\s]+", " ", t)  # Remove URLs
     
-    # Handle complex artist-title patterns like "Cajmere, Dajae, Marco Lys - Cajmere ft. Dajae - Brighter Days (Marco Lys Remix)"
+    # Handle complex patterns like "Artist1 - Artist2 - Title (Remix)"
+    # Extract just the title part (last segment after " - ")
     if " - " in t and t.count(" - ") >= 2:
-        # Split by " - " and take the last part as the actual title
         parts = t.split(" - ")
         if len(parts) >= 3:
             t = parts[-1]  # Take the last part as the title
     
-    # Handle patterns like "Artist1, Artist2 - Title (Remix)" -> extract just "Title"
+    # Extract title from "Artist - Title (Remix)" pattern
     if " - " in t and "(" in t:
-        # Find the last " - " and take everything after it
         last_dash = t.rfind(" - ")
         if last_dash != -1:
             title_part = t[last_dash + 3:].strip()
             if title_part:
                 t = title_part
     
+    # Remove mix type indicators (parenthesized or bracketed)
     t = re.sub(r"\((?:\s*(?:original mix|extended mix|radio edit|club mix|edit|vip|version)\s*)\)", " ", t, flags=re.I)
     t = re.sub(r"\[(?:\s*(?:original mix|extended mix|radio edit|club mix|edit|vip|version)\s*)\]", " ", t, flags=re.I)
     t = re.sub(r"\b(original mix|extended mix|radio edit|club mix|edit|vip|version)\b", " ", t, flags=re.I)
@@ -73,12 +144,15 @@ def sanitize_title_for_search(title: str) -> str:
     # Remove numeric prefixes like [2-3], [3], etc.
     t = re.sub(r"\[[\d\-\s]+\]\s*", " ", t)
     
+    # Remove all remaining parenthetical/bracketed content
     t = re.sub(r"\([^)]*\)", " ", t)
     t = re.sub(r"\[[^\]]*\]", " ", t)
     t = re.sub(r"\s{2,}", " ", t).strip()
+    
     # Remove single-letter bracket tokens like (F) or [F]
     t = re.sub(r"\s*[\[(]\s*[A-Za-z]\s*[\])]\s*", " ", t)
-    # Remove Hebrew and other non-Latin characters but keep the core title
+    
+    # Remove non-Latin characters (keeps basic Latin with accents)
     t = re.sub(r'[^\x00-\x7F\u0100-\u017F\u0180-\u024F\u1E00-\u1EFF]', ' ', t)
     t = re.sub(r"\s{2,}", " ", t).strip()
     return t
@@ -108,11 +182,36 @@ def artists_similarity(a: str, b: str) -> int:
 
 
 def score_components(title_a: str, artists_a: str, title_b: str, artists_b: str) -> Tuple[int, int, float]:
-    """Calculate similarity scores for title and artists"""
+    """
+    Calculate similarity scores for title and artists
+    
+    This is the core scoring function that calculates:
+    - Title similarity (0-100): How similar the titles are
+    - Artist similarity (0-100): How similar the artists are
+    - Combined score: Weighted combination based on TITLE_WEIGHT and ARTIST_WEIGHT
+    
+    Uses RapidFuzz's token_set_ratio for title matching (order-independent, set-based).
+    Uses custom artist matching that handles multiple artists and separators.
+    
+    Args:
+        title_a: First title
+        artists_a: First artist string
+        title_b: Second title (candidate)
+        artists_b: Second artist string (candidate)
+    
+    Returns:
+        Tuple of (title_sim, artist_sim, combined_score)
+        - title_sim: 0-100 integer
+        - artist_sim: 0-100 integer
+        - combined_score: Weighted float (typically 0-100)
+    """
     t1 = normalize_text(title_a)
     t2 = normalize_text(title_b)
+    # token_set_ratio: Order-independent, set-based comparison
+    # "A B C" vs "C B A" = 100% (same tokens, different order)
     title_sim = fuzz.token_set_ratio(t1, t2)
     artist_sim = artists_similarity(artists_a, artists_b)
+    # Weighted combination (typically 55% title, 45% artist)
     comp = SETTINGS["TITLE_WEIGHT"] * title_sim + SETTINGS["ARTIST_WEIGHT"] * artist_sim
     return title_sim, artist_sim, comp
 

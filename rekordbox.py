@@ -3,6 +3,14 @@
 
 """
 Rekordbox XML parsing utilities
+
+This module parses Rekordbox XML export files and extracts:
+1. Track information (ID, title, artists)
+2. Playlist definitions (playlist names and their track IDs)
+
+Key functions:
+- parse_rekordbox(): Main parser that extracts tracks and playlists
+- extract_artists_from_title(): Extracts artist names from title when artist field is empty
 """
 
 import re
@@ -14,14 +22,36 @@ import xml.etree.ElementTree as ET
 
 @dataclass
 class RBTrack:
-    """Rekordbox track data"""
+    """
+    Rekordbox track data structure
+    
+    Attributes:
+        track_id: Unique track ID from Rekordbox
+        title: Track title (may contain prefixes like [F], [3])
+        artists: Artist string (may be empty)
+    """
     track_id: str
     title: str
     artists: str
 
 
 def parse_rekordbox(xml_path: str) -> Tuple[Dict[str, RBTrack], Dict[str, List[str]]]:
-    """Parse Rekordbox XML file and extract tracks and playlists"""
+    """
+    Parse Rekordbox XML export file and extract tracks and playlists
+    
+    Rekordbox XML structure:
+    - COLLECTION: Contains all tracks
+    - PLAYLISTS: Contains playlist definitions
+    - Each playlist (NODE with Type="1") contains TRACK references
+    
+    Args:
+        xml_path: Path to Rekordbox XML export file
+    
+    Returns:
+        Tuple of:
+        - tracks_by_id: Dictionary mapping track ID -> RBTrack
+        - playlists: Dictionary mapping playlist name -> list of track IDs
+    """
     tree = ET.parse(xml_path)
     root = tree.getroot()
 
@@ -55,7 +85,21 @@ def parse_rekordbox(xml_path: str) -> Tuple[Dict[str, RBTrack], Dict[str, List[s
 
 
 def extract_artists_from_title(title: str) -> Optional[Tuple[str, str]]:
-    """Extract artists from title string if formatted as 'Artists - Title'"""
+    """
+    Extract artist names from title if title follows "Artists - Title" format
+    
+    Some Rekordbox tracks have artist information embedded in the title field
+    instead of the artist field. This function attempts to extract it.
+    
+    Example:
+        "John Smith - Never Sleep Again" → ("John Smith", "Never Sleep Again")
+    
+    Args:
+        title: Title string that may contain artist information
+    
+    Returns:
+        Tuple of (artists, cleaned_title) if extraction successful, else None
+    """
     if not title:
         return None
     t = title.strip()

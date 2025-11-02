@@ -3,6 +3,19 @@
 
 """
 CLI entry point for Rekordbox → Beatport metadata enricher
+
+This script serves as the command-line interface for the Rekordbox to Beatport
+metadata enricher. It parses command-line arguments, applies configuration presets,
+and orchestrates the track matching process.
+
+The workflow:
+1. Parse command-line arguments (XML path, playlist name, output file, etc.)
+2. Apply configuration presets (--fast, --turbo, --myargs, etc.)
+3. Call processor.run() to process all tracks in the playlist
+4. Output CSV files are generated in the output/ directory
+
+Example usage:
+    python main.py --xml collection.xml --playlist "My Playlist" --myargs --auto-research
 """
 
 import argparse
@@ -14,31 +27,50 @@ from utils import startup_banner
 
 
 def main():
-    """Main CLI entry point"""
+    """
+    Main CLI entry point
+    
+    This function:
+    1. Sets up argument parser with all available options
+    2. Applies configuration presets based on flags (--fast, --turbo, --myargs, etc.)
+    3. Shows startup banner with configuration fingerprint
+    4. Calls processor.run() to execute the main processing logic
+    """
+    # Set up command-line argument parser with all available options
     ap = argparse.ArgumentParser(description="Enrich Rekordbox playlist with Beatport metadata (Accuracy + Logs + Candidates)")
-    ap.add_argument("--xml", required=True, help="Path to Rekordbox XML export")
-    ap.add_argument("--playlist", required=True, help="Playlist name in the XML")
+    
+    # Required arguments
+    ap.add_argument("--xml", required=True, help="Path to Rekordbox XML export file")
+    ap.add_argument("--playlist", required=True, help="Playlist name in the XML file")
     ap.add_argument("--out", default="beatport_enriched.csv", help="Output CSV base name (timestamp auto-appended)")
 
-    ap.add_argument("--fast", action="store_true", help="Faster defaults (safe)")
-    ap.add_argument("--turbo", action="store_true", help="Maximum speed (be gentle)")
+    # Performance presets - these optimize for speed vs accuracy tradeoffs
+    ap.add_argument("--fast", action="store_true", help="Faster defaults (safe) - reduces search results and time budgets")
+    ap.add_argument("--turbo", action="store_true", help="Maximum speed (be gentle) - aggressive speed optimizations")
     ap.add_argument("--exhaustive", action="store_true",
                     help="Explode query variants (grams×artists), raise DDG per-query cap, extend time budget")
 
-    ap.add_argument("--verbose", action="store_true", help="Verbose logs")
-    ap.add_argument("--trace", action="store_true", help="Very detailed per-candidate logs")
+    # Logging options
+    ap.add_argument("--verbose", action="store_true", help="Verbose logs - shows detailed progress information")
+    ap.add_argument("--trace", action="store_true", help="Very detailed per-candidate logs - shows every candidate evaluated")
 
-    ap.add_argument("--seed", type=int, default=0, help="Random seed for determinism (default 0)")
+    # Determinism control
+    ap.add_argument("--seed", type=int, default=0, help="Random seed for determinism (default 0) - ensures reproducible results")
 
+    # Advanced query options
     ap.add_argument("--all-queries", action="store_true",
                 help="Run EVERY query variation: disable time budget, wait for all candidates, allow tri-gram crosses")
     ap.add_argument("--myargs", action="store_true",
-                    help="Apply your custom settings bundle (edit the dict in code below)")
+                    help="Apply your custom settings bundle (edit the dict in code below) - optimized preset for typical use")
     ap.add_argument("--auto-research", action="store_true",
-                    help="Automatically re-search unmatched tracks without prompting")
+                    help="Automatically re-search unmatched tracks without prompting - useful for batch processing")
 
     args = ap.parse_args()
 
+    # Apply --fast preset: optimizes for speed with reasonable accuracy
+    # - Fewer search results per query (12 vs 50)
+    # - More parallel workers for faster processing
+    # - Shorter time budget per track (15s vs 25s)
     if args.fast:
         SETTINGS.update({
             "MAX_SEARCH_RESULTS": 12,
@@ -47,6 +79,10 @@ def main():
             "PER_TRACK_TIME_BUDGET_SEC": 15,
             "ENABLE_CACHE": True,
         })
+    # Apply --turbo preset: maximum speed with minimal accuracy tradeoffs
+    # - Very few search results (12)
+    # - Maximum parallelism (12 candidate workers, 8 track workers)
+    # - Very short time budget (10s per track)
     if args.turbo:
         SETTINGS.update({
             "MAX_SEARCH_RESULTS": 12,
@@ -55,6 +91,11 @@ def main():
             "PER_TRACK_TIME_BUDGET_SEC": 10,
             "ENABLE_CACHE": True,
         })
+    # Apply --exhaustive preset: maximum accuracy with more queries and time
+    # - Many search results (100)
+    # - High parallelism (16 candidate workers, 8+ track workers)
+    # - Long time budget (100s+ per track)
+    # - Enables cross-title-grams with artists for more query variants
     if args.exhaustive:
         SETTINGS.update({
             "MAX_SEARCH_RESULTS": 100,
@@ -66,6 +107,10 @@ def main():
             "CROSS_SMALL_ONLY": True,
             "REVERSE_ORDER_QUERIES": False,
         })
+    # Apply --all-queries preset: run every possible query variation
+    # - No time budget limit (None)
+    # - All query generation features enabled
+    # - Maximum workers for parallel processing
     if args.all_queries:
         SETTINGS.update({
             "RUN_ALL_QUERIES": True,
@@ -78,7 +123,9 @@ def main():
             "ENABLE_CACHE": True,
         })
 
-    # Custom bundle preset (edit values here to taste)
+    # Custom bundle preset: optimized for typical use cases
+    # This is the recommended preset for most users - balances speed and accuracy
+    # Edit values here to customize for your specific needs
     if args.myargs:
         SETTINGS.update({
             # ---- Core speed/concurrency ----
@@ -139,11 +186,21 @@ def main():
             "READ_TIMEOUT": 8,  # Reduced from 10
         })
 
-    SETTINGS["VERBOSE"] = bool(args.verbose)
-    SETTINGS["TRACE"] = bool(args.trace)
-    SETTINGS["SEED"] = int(args.seed)
+    # Apply logging and determinism settings from command line
+    SETTINGS["VERBOSE"] = bool(args.verbose)  # Enable verbose logging
+    SETTINGS["TRACE"] = bool(args.trace)      # Enable trace-level logging (very detailed)
+    SETTINGS["SEED"] = int(args.seed)        # Set random seed for reproducibility
 
+    # Display startup banner with configuration fingerprint
     startup_banner(sys.argv[0], args)
+    
+    # Execute the main processing pipeline
+    # This will:
+    # 1. Parse the Rekordbox XML file
+    # 2. Extract tracks from the specified playlist
+    # 3. For each track, generate search queries and find best Beatport matches
+    # 4. Write results to CSV files in the output/ directory
+    # 5. Optionally re-search unmatched tracks if --auto-research is enabled
     run(args.xml, args.playlist, args.out, auto_research=args.auto_research)
 
 

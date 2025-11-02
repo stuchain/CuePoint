@@ -3,6 +3,18 @@
 
 """
 Beatport scraping and parsing utilities
+
+This module handles:
+1. Fetching Beatport track URLs via DuckDuckGo search
+2. Parsing Beatport track pages to extract metadata
+3. Handling HTTP errors and retries
+4. Extracting structured data (JSON-LD, HTML)
+
+Key functions:
+- track_urls(): Finds Beatport track URLs via DuckDuckGo search
+- parse_track_page(): Parses a single Beatport track page
+- request_html(): Robust HTTP fetching with retry logic
+- _parse_structured_json_ld(): Extracts structured data from pages
 """
 
 import json
@@ -24,7 +36,16 @@ from utils import vlog
 
 @dataclass
 class BeatportCandidate:
-    """Represents a Beatport track candidate"""
+    """
+    Represents a Beatport track candidate with all metadata
+    
+    This dataclass stores all information about a candidate track:
+    - Basic info: URL, title, artists
+    - Musical metadata: Key, year, BPM
+    - Release info: Label, genres, release name/date
+    - Scoring info: Similarity scores, bonuses, guard status
+    - Search info: Which query found it, candidate index
+    """
     url: str
     title: str
     artists: str

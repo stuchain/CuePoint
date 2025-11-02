@@ -3,6 +3,21 @@
 
 """
 Search query generation utilities
+
+This module generates intelligent search query variants from track titles and artists.
+The goal is to maximize the probability of finding the correct Beatport match by
+creating queries that cover different ways the track might be searched.
+
+Query generation strategy:
+1. Priority queries: Full title + artist combinations (most specific, highest priority)
+2. N-gram queries: Title word sequences (1-word, 2-word, 3-word fragments)
+3. Remix queries: Special handling for remix/extended mix variants
+4. Special phrase queries: For custom parenthetical phrases like "(Ivory Re-fire)"
+5. Reverse queries: "Artist Title" format when "Title Artist" doesn't work
+
+Key functions:
+- make_search_queries(): Main function that generates all query variants
+- Helper functions for N-grams, artist tokens, prefixes, etc.
 """
 
 import re
@@ -24,7 +39,18 @@ from text_processing import _word_tokens, normalize_text, sanitize_title_for_sea
 
 
 def _ordered_unique(seq: List[str]) -> List[str]:
-    """Remove duplicates while preserving order"""
+    """
+    Remove duplicates while preserving order
+    
+    Example:
+        ["A", "B", "A", "C"] → ["A", "B", "C"]
+    
+    Args:
+        seq: List of strings (may contain duplicates)
+    
+    Returns:
+        List of unique strings in original order
+    """
     seen = set()
     out = []
     for s in seq:
@@ -36,7 +62,19 @@ def _ordered_unique(seq: List[str]) -> List[str]:
 
 
 def _subset_join(tokens: List[str], max_r: Optional[int] = None) -> List[str]:
-    """Generate all combinations of tokens up to max_r"""
+    """
+    Generate all combinations of tokens (all possible subsets)
+    
+    Example:
+        ["A", "B", "C"] → ["A", "B", "C", "A B", "A C", "B C", "A B C"]
+    
+    Args:
+        tokens: List of token strings
+        max_r: Maximum subset size (None = all sizes)
+    
+    Returns:
+        List of token combinations as space-joined strings
+    """
     if not tokens:
         return []
     out = []
@@ -49,12 +87,27 @@ def _subset_join(tokens: List[str], max_r: Optional[int] = None) -> List[str]:
 
 
 def _artist_tokens(a: str) -> List[str]:
-    """Split artist string into individual artist tokens"""
+    """
+    Split artist string into individual artist tokens
+    
+    Handles common separators: commas, ampersands, slashes, "x", "vs", "feat.", etc.
+    
+    Example:
+        "John Smith, Jane Doe & Bob feat. Alice" → ["John Smith", "Jane Doe", "Bob", "Alice"]
+    
+    Args:
+        a: Artist string (may contain multiple artists)
+    
+    Returns:
+        List of individual artist names (normalized, deduplicated)
+    """
+    # Split on common artist separators
     parts = re.split(
         r"\s*(?:,|&|/| x | vs | with | feat\.?| ft\.?| featuring )\s*",
         a, flags=re.IGNORECASE
     )
     tokens = [re.sub(r"\s{2,}", " ", p).strip() for p in parts if p and p.strip()]
+    # Deduplicate while preserving order
     seen, unique = set(), []
     for tok in tokens:
         k = tok.lower()
@@ -65,7 +118,23 @@ def _artist_tokens(a: str) -> List[str]:
 
 
 def _title_prefixes(tokens: List[str], k_min: int = 2, k_max: Optional[int] = None) -> List[str]:
-    """Generate left-anchored prefixes from tokens"""
+    """
+    Generate left-anchored prefixes from title tokens
+    
+    Creates contiguous prefixes from the start of the title.
+    Used for N-gram generation when LINEAR_PREFIX_ONLY is True.
+    
+    Example:
+        ["Never", "Sleep", "Again"] → ["Never", "Never Sleep", "Never Sleep Again"]
+    
+    Args:
+        tokens: List of title word tokens
+        k_min: Minimum prefix length (default: 2)
+        k_max: Maximum prefix length (None = all tokens)
+    
+    Returns:
+        List of prefix strings
+    """
     n = len(tokens)
     if n == 0:
         return []
@@ -82,14 +151,29 @@ def _title_prefixes(tokens: List[str], k_min: int = 2, k_max: Optional[int] = No
 
 def make_search_queries(title: str, artists: str, original_title: Optional[str] = None) -> List[str]:
     """
-    Build robust queries (deterministic, precision-first).
+    Build robust search queries from track title and artist information
     
-    Includes:
-    • PRIORITY: Full title × ONE-artist, then Full title × TWO-artist subsets
-    • Full title bases × artist variants (drop-one/many subsets, join styles)
-    • Title n-grams (left-anchored prefixes if LINEAR_PREFIX_ONLY)
-    • (Optional) Exhaustive title combos 2..N × artist subsets
-    • Quoted/unquoted permutations (mostly disabled), optional reversed order, de-duplicated
+    This is the main query generation function that creates multiple query variants
+    to maximize the probability of finding the correct Beatport match.
+    
+    Query generation strategy (in priority order):
+    1. PRIORITY: Full title + one artist, then full title + two-artist subsets
+    2. Full title bases × artist variants (all artist combinations)
+    3. Title N-grams (1-word, 2-word, 3-word sequences) × artist variants
+    4. Remix-specific queries (with remixer names, extended mix, etc.)
+    5. Special phrase queries (for custom parenthetical phrases)
+    6. Reverse order queries ("Artist Title" format)
+    7. (Optional) Exhaustive title combinations (if enabled)
+    
+    Queries are de-duplicated and ordered by priority (most specific first).
+    
+    Args:
+        title: Clean track title (already sanitized)
+        artists: Artist string (may be empty for title-only search)
+        original_title: Original title from Rekordbox (for mix/remix detection)
+    
+    Returns:
+        List of search query strings (ordered by priority)
     """
     def _Q(s: str) -> str:
         return (s or "").strip().strip('"').strip()

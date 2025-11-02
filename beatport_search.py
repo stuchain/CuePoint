@@ -2,12 +2,22 @@
 # -*- coding: utf-8 -*-
 
 """
-Direct Beatport search implementation - multiple methods:
-1. Direct HTML scraping (works if page has static links)
-2. API endpoint discovery and usage
-3. Browser automation (Selenium/Playwright) as fallback
+Direct Beatport search implementation - multiple methods
 
-This is more reliable than DuckDuckGo for finding tracks, especially remixes
+This module provides alternative search methods to DuckDuckGo:
+1. Direct HTML scraping: Parses Beatport search pages directly
+2. API endpoint discovery: Uses Beatport's internal API endpoints
+3. Browser automation: Uses Playwright/Selenium as fallback for JS-rendered content
+
+Why multiple methods?
+- DuckDuckGo can miss remixes that appear later in Beatport's own search
+- Direct search is more reliable for specific remix queries
+- Browser automation finds JavaScript-rendered tracks that static scraping misses
+
+Key functions:
+- beatport_search_via_api(): Searches using Beatport's API
+- beatport_search_via_html(): Searches by parsing HTML
+- beatport_search_via_browser(): Searches using browser automation
 """
 
 import json
