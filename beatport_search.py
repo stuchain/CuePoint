@@ -205,7 +205,10 @@ def beatport_search_direct(idx: int, query: str, max_results: int = 50) -> List[
             return api_urls
         
         # Beatport search URL format
-        clean_query = query.strip('"')
+        # Remove all quote marks (single, double, triple) from query for URL encoding
+        clean_query = query.strip('"').strip("'").strip()
+        # Remove any remaining quote marks in the middle
+        clean_query = clean_query.replace('"""', '').replace('"', '').replace("'", '')
         encoded_query = quote_plus(clean_query)
         search_url = f"{BASE_URL}/search?q={encoded_query}"
         
@@ -317,7 +320,10 @@ def beatport_search_browser(idx: int, query: str, max_results: int = 50) -> List
             page = browser.new_page()
             
             # Navigate to search page
-            clean_query = query.strip('"')
+            # Remove all quote marks (single, double, triple) from query for URL encoding
+            clean_query = query.strip('"').strip("'").strip()
+            # Remove any remaining quote marks in the middle
+            clean_query = clean_query.replace('"""', '').replace('"', '').replace("'", '')
             encoded_query = quote_plus(clean_query)
             search_url = f"{BASE_URL}/search?q={encoded_query}"
             
@@ -373,7 +379,10 @@ def beatport_search_browser(idx: int, query: str, max_results: int = 50) -> List
         driver = webdriver.Chrome(options=options)
         
         try:
-            clean_query = query.strip('"')
+            # Remove all quote marks (single, double, triple) from query for URL encoding
+            clean_query = query.strip('"').strip("'").strip()
+            # Remove any remaining quote marks in the middle
+            clean_query = clean_query.replace('"""', '').replace('"', '').replace("'", '')
             encoded_query = quote_plus(clean_query)
             search_url = f"{BASE_URL}/search?q={encoded_query}"
             

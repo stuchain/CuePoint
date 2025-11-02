@@ -340,7 +340,7 @@ def parse_track_page(url: str) -> Tuple[str, str, Optional[str], Optional[int], 
     return title or "", artists or "", key, year, bpm, label, genres, rel_name, rel_date_iso
 
 
-def track_urls(idx: int, query: str, max_results: int, use_direct_search: Optional[bool] = None) -> List[str]:
+def track_urls(idx: int, query: str, max_results: int, use_direct_search: Optional[bool] = None, fallback_to_browser: bool = False) -> List[str]:
     """
     Unified search function that can use direct Beatport search, DuckDuckGo, or both.
     
@@ -350,6 +350,8 @@ def track_urls(idx: int, query: str, max_results: int, use_direct_search: Option
         max_results: Maximum results to return
         use_direct_search: If True, use direct Beatport search; if False, use DuckDuckGo;
                           if None, use SETTINGS to decide (hybrid mode for remixes)
+        fallback_to_browser: If True and other methods find many results but might miss the track,
+                           try browser automation as fallback
     
     Returns:
         List of Beatport track URLs
@@ -357,8 +359,23 @@ def track_urls(idx: int, query: str, max_results: int, use_direct_search: Option
     # Check if we should use direct search
     if use_direct_search is None:
         # Auto-detect: use direct search for remix queries OR original mix queries (more reliable)
-        ql = (query or "").lower()
-        has_remix_keywords = (" remix" in ql) or ("extended mix" in ql) or ("(" in ql and ")" in ql)
+        # FIRST: Extract search terms if query has "site:beatport.com" prefix (DuckDuckGo format)
+        search_terms_for_detection = query
+        if "site:beatport.com" in query.lower():
+            parts = query.split("site:beatport.com", 1)
+            if len(parts) > 1:
+                search_terms_for_detection = parts[1].strip()
+                # Remove "/track" prefix if present
+                if search_terms_for_detection.startswith("/track"):
+                    search_terms_for_detection = search_terms_for_detection[6:].strip()
+                search_terms_for_detection = search_terms_for_detection.strip()
+        
+        # Clean query for detection - remove quotes but preserve parentheses (they indicate remix info)
+        clean_query_for_detection = search_terms_for_detection.strip('"').strip("'").strip()
+        # Remove quote marks but preserve parentheses
+        clean_query_for_detection = clean_query_for_detection.replace('"""', '').replace('"', '').replace("'", '')
+        ql = (clean_query_for_detection or "").lower()
+        has_remix_keywords = (" remix" in ql) or ("extended mix" in ql) or (ql.count("(") > 0 and ql.count(")") > 0)
         has_original_mix = "original mix" in ql
         use_direct_search = SETTINGS.get("USE_DIRECT_SEARCH_FOR_REMIXES", True) and (has_remix_keywords or has_original_mix)
     
@@ -368,35 +385,92 @@ def track_urls(idx: int, query: str, max_results: int, use_direct_search: Option
             from beatport_search import beatport_search_direct, beatport_search_browser
             
             # Method 1: Try API/direct HTML scraping
-            direct_urls = beatport_search_direct(idx, query, max_results)
-            if direct_urls:
+            # Extract just the search terms if query has "site:beatport.com" prefix
+            search_query = query
+            if "site:beatport.com" in query.lower():
+                # Extract the part after "site:beatport.com/track" or just "site:beatport.com"
+                parts = query.split("site:beatport.com", 1)
+                if len(parts) > 1:
+                    search_query = parts[1].strip()
+                    # Remove "/track" prefix if present
+                    if search_query.startswith("/track"):
+                        search_query = search_query[6:].strip()
+                    search_query = search_query.strip()
+                    # Remove quotes for search (but preserve for browser search)
+                    search_query = search_query.strip('"').strip("'").strip()
+                    search_query = search_query.replace('"""', '').replace('"', '').replace("'", '')
+            
+            direct_urls = beatport_search_direct(idx, search_query, max_results)
+            # Clean query for remix detection - use search_query (already cleaned) instead of original query
+            clean_query_for_check = search_query.strip('"').strip("'").strip()
+            clean_query_for_check = clean_query_for_check.replace('"""', '').replace('"', '').replace("'", '')
+            ql = (clean_query_for_check or "").lower()
+            is_remix_query = (" remix" in ql) or ("extended mix" in ql) or (ql.count("(") > 0 and ql.count(")") > 0)
+            
+            # If direct search found results, check if we need browser automation for remix queries
+            if direct_urls and len(direct_urls) > 0:
                 # If we found some results but it's a remix query and we found very few, try browser automation
-                ql = (query or "").lower()
-                is_remix_query = (" remix" in ql) or ("extended mix" in ql) or ("(" in ql and ")" in ql)
                 if is_remix_query and len(direct_urls) < 5 and SETTINGS.get("USE_BROWSER_AUTOMATION", False):
                     vlog(idx, f"[search] Direct search found {len(direct_urls)} URLs for remix query, trying browser automation")
-                    browser_urls = beatport_search_browser(idx, query, max_results)
+                    browser_urls = beatport_search_browser(idx, search_query, max_results)
                     if browser_urls:
-                        # Merge results (browser automation finds more)
+                        # Merge results (browser automation finds more, prepend its results)
                         seen = set(direct_urls)
+                        merged = []
+                        # First add browser results (more reliable)
                         for url in browser_urls:
                             if url not in seen:
                                 seen.add(url)
-                                direct_urls.append(url)
-                                if len(direct_urls) >= max_results:
+                                merged.append(url)
+                                if len(merged) >= max_results:
                                     break
-                        vlog(idx, f"[search] Combined: {len(direct_urls)} URLs (direct + browser)")
+                        # Then add direct search results
+                        for url in direct_urls:
+                            if url not in seen:
+                                seen.add(url)
+                                merged.append(url)
+                                if len(merged) >= max_results:
+                                    break
+                        vlog(idx, f"[search] Combined {len(merged)} URLs (browser {len(browser_urls)} + direct {len(direct_urls)})")
+                        return merged[:max_results]
                 
                 if direct_urls:
                     return direct_urls[:max_results]
             
-            # Method 2: Try browser automation if enabled and direct search found nothing
+            # Method 2: Try browser automation if enabled and direct search found nothing OR very few results
             # For remix queries, browser automation is critical since pages are JS-rendered
+            # CRITICAL: If direct search found very few results (<10) for a remix query, try browser automation
+            # This fixes cases like "Tighter (CamelPhat Remix) HOSH" where direct search might miss the track
             if SETTINGS.get("USE_BROWSER_AUTOMATION", False):
-                browser_urls = beatport_search_browser(idx, query, max_results)
-                if browser_urls:
-                    vlog(idx, f"[search] Browser automation found {len(browser_urls)} URLs")
-                    return browser_urls
+                # If direct search found nothing, or if it's a remix query and found very few results, try browser
+                should_try_browser = False
+                if direct_urls is None or len(direct_urls) == 0:
+                    should_try_browser = True
+                    vlog(idx, f"[search] Direct search found 0 URLs, trying browser automation")
+                elif is_remix_query and len(direct_urls) < 10:
+                    # For remix queries, if we found <10 results, browser might find more
+                    vlog(idx, f"[search] Direct search found only {len(direct_urls)} URLs for remix query, trying browser automation")
+                    should_try_browser = True
+                
+                if should_try_browser:
+                    # Use the cleaned search_query (without site: prefix) for browser automation
+                    browser_query = search_query if 'search_query' in locals() else query
+                    browser_urls = beatport_search_browser(idx, browser_query, max_results)
+                    if browser_urls:
+                        vlog(idx, f"[search] Browser automation found {len(browser_urls)} URLs")
+                        # If direct search also found some, merge them (browser results first, they're more reliable)
+                        if direct_urls and len(direct_urls) > 0:
+                            seen = set(browser_urls)
+                            merged = list(browser_urls)
+                            for url in direct_urls:
+                                if url not in seen:
+                                    seen.add(url)
+                                    merged.append(url)
+                                    if len(merged) >= max_results:
+                                        break
+                            vlog(idx, f"[search] Merged {len(merged)} URLs (browser {len(browser_urls)} + direct {len(direct_urls)})")
+                            return merged[:max_results]
+                        return browser_urls
             
             # If both fail, fall through to DuckDuckGo
         except ImportError:
@@ -406,7 +480,60 @@ def track_urls(idx: int, query: str, max_results: int, use_direct_search: Option
             vlog(idx, f"[search] direct search failed: {e!r}, falling back to DuckDuckGo")
     
     # Fall back to DuckDuckGo
-    return ddg_track_urls(idx, query, max_results)
+    ddg_urls = ddg_track_urls(idx, query, max_results)
+    
+    # CRITICAL: If DuckDuckGo finds many results (50+) but we're looking for a specific track,
+    # try browser automation to find the exact track. This fixes cases like:
+    # - "Tim Green The Night is Blue" where DDG returns 100+ results but misses the correct track
+    # - Queries with artist names that might be better found via Beatport's own search
+    # Only do this if:
+    # 1) fallback_to_browser is True (explicit request), OR
+    # 2) Query looks like an artist+title search (has space and likely artist name)
+    should_try_browser = False
+    if fallback_to_browser:
+        should_try_browser = True
+    elif len(ddg_urls) >= 50 and SETTINGS.get("USE_BROWSER_AUTOMATION", False):
+        # Auto-detect artist+title queries: if query has spaces and looks like it might be
+        # a specific track search (not just a title), try browser automation
+        ql = (query or "").strip()
+        words = ql.split()
+        # If query has 2+ words and doesn't look like just a quoted title, likely artist+title
+        if len(words) >= 2 and not (query.startswith('"') and query.endswith('"')):
+            # Check if it's not a remix query (those already use direct search)
+            if not ((" remix" in ql.lower()) or ("extended mix" in ql.lower())):
+                should_try_browser = True
+    
+    if should_try_browser and SETTINGS.get("USE_BROWSER_AUTOMATION", False):
+        vlog(idx, f"[search] DDG found {len(ddg_urls)} results, trying browser automation for better accuracy")
+        try:
+            from beatport_search import beatport_search_browser
+            browser_urls = beatport_search_browser(idx, query, max_results)
+            if browser_urls:
+                # Merge browser results with DDG results (browser is more reliable, prepend its results)
+                seen = set()
+                merged = []
+                # First add browser results (more reliable)
+                for url in browser_urls:
+                    if url not in seen:
+                        seen.add(url)
+                        merged.append(url)
+                        if len(merged) >= max_results:
+                            break
+                # Then add DDG results that aren't already there
+                for url in ddg_urls:
+                    if url not in seen:
+                        seen.add(url)
+                        merged.append(url)
+                        if len(merged) >= max_results:
+                            break
+                vlog(idx, f"[search] Combined {len(merged)} URLs (browser {len(browser_urls)} + DDG {len(ddg_urls)})")
+                return merged[:max_results]
+        except ImportError:
+            pass
+        except Exception as e:
+            vlog(idx, f"[search] Browser fallback failed: {e!r}")
+    
+    return ddg_urls
 
 
 def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
