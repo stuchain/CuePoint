@@ -358,6 +358,21 @@ def make_search_queries(title: str, artists: str, original_title: Optional[str] 
             if base_fallback and len(base_fallback) >= 3:
                 base_title_no_remix = base_fallback
     
+    # PRIORITY STAGE -0.3: Base title + ALL original artists + remixer (HIGHEST PRIORITY for remixes)
+    # This MUST run before single-artist queries to find tracks like "Tighter HOSH CamelPhat Remix"
+    if len(toks) >= 2 and remixers_from_title and base_title_no_remix:
+        for r in remixers_from_title:
+            if r and r.strip():
+                # Combine all artists with remixer - CRITICAL for multi-artist remixes
+                all_artists = " ".join(toks[:2])  # First 2 artists
+                _add(f"{base_title_no_remix} {all_artists} {r}")
+                _add(f"{base_title_no_remix} {all_artists} {r} remix")
+                _add(f"{all_artists} {base_title_no_remix} {r}")
+                _add(f"{all_artists} {r} {base_title_no_remix}")
+                if len(base_title_no_remix.split()) >= 1:
+                    _add(f'"{base_title_no_remix}" {all_artists} {r}')
+                    _add(f'{all_artists} "{base_title_no_remix}" {r}')
+    
     # PRIORITY STAGE 0: Base title (without remix) + ORIGINAL ARTIST first
     # This is MORE reliable than quoted queries for DuckDuckGo
     # This is crucial because Beatport often lists remixes with base title + original artist
@@ -379,7 +394,7 @@ def make_search_queries(title: str, artists: str, original_title: Optional[str] 
     # Beatport sometimes lists as "Title OriginalArtist (Remixer Remix)"
     # Use quoted queries for better precision on remix searches
     if toks and remixers_from_title and base_title_no_remix:
-        for a in toks[:1]:  # Use first artist primarily
+        for a in toks[:2]:  # Use first 2 artists (for multi-artist tracks like "HOSH, CamelPhat")
             if a and a.strip():
                 for r in remixers_from_title:
                     if r and r.strip():
@@ -393,7 +408,7 @@ def make_search_queries(title: str, artists: str, original_title: Optional[str] 
                         _add(f"{base_title_no_remix} {a} {r} remix")
                         _add(f"{a} {base_title_no_remix} {r}")
                         _add(f"{r} {base_title_no_remix} {a}")
-    
+        
     # PRIORITY STAGE 0.5: Base title + remixer (but after original artist)
     # Use quoted queries for better precision when searching for specific remixes
     if remixers_from_title and base_title_no_remix:

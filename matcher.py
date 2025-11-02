@@ -298,6 +298,35 @@ def best_beatport_match(
                 # Perfect artist match - boost even non-remixes (but only if not a remix query)
                 final += 20
         
+        # CRITICAL FIX: For exact artist matches (100%), heavily penalize wrong artist matches
+        # This ensures "The Night is Blue" by Tim Green is preferred over Elenos Jeneral
+        if track_artists_for_scoring and artists:
+            # Check if we have an exact artist match vs a partial match
+            from text_processing import split_artists
+            
+            input_artist_tokens = set([t.lower() for t in split_artists(track_artists_for_scoring)])
+            cand_artist_tokens = set([t.lower() for t in split_artists(artists)])
+            
+            # If input has specific artist and candidate doesn't match well, penalize
+            if len(input_artist_tokens) > 0:
+                overlap_count = len(input_artist_tokens & cand_artist_tokens)
+                total_input = len(input_artist_tokens)
+                
+                # If we have specific artist but candidate doesn't match most of them
+                if overlap_count < total_input * 0.5 and a_sim < 50:
+                    # Significant penalty for wrong artist when we have specific input artist
+                    final -= 30
+                # If candidate has exact artist match, boost it
+                elif overlap_count == total_input and a_sim >= 95 and t_sim >= 50:
+                    # Bonus for perfect artist + reasonable title match
+                    final += 15
+                # Special case: If title is exact match but artist is wrong, still penalize
+                # This prevents "The Night is Blue" by Elenos Jeneral from beating Tim Green
+                # BUT: Only if artist similarity is very low (< 30), and reduce penalty to avoid rejecting valid matches
+                elif t_sim >= 95 and overlap_count == 0 and a_sim < 30:
+                    # Exact title but completely wrong artist with very low similarity - moderate penalty
+                    final -= 15
+        
         if input_mix and input_mix.get("is_remix") and a_sim >= 80 and t_sim < 50:
             # If artist similarity is very high, boost the score even with low title similarity
             # This helps catch remixes that are the same track but with different title formatting

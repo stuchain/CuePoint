@@ -95,7 +95,7 @@ def main():
             "EARLY_EXIT_REQUIRE_MIX_OK": False,  # Disabled for faster exits
             "EARLY_EXIT_FAMILY_SCORE": 88,  # Lowered from 93 for faster exits
             "EARLY_EXIT_FAMILY_AFTER": 5,  # Reduced from 8
-            "EARLY_EXIT_MIN_QUERIES_REMIX": 6,  # Increased to ensure remix queries complete
+            "EARLY_EXIT_MIN_QUERIES_REMIX": 12,  # Increased to ensure multi-artist+remixer queries complete (they're in first 10-12 queries)
             "REMIX_MAX_QUERIES": 30,  # Increased to allow more remix-specific queries
 
             # ---- Adaptive max_results per query shape ----
