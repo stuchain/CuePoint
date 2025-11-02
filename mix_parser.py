@@ -366,6 +366,21 @@ def _mix_bonus(input_mix: Dict[str, object], cand_mix: Dict[str, object]) -> Tup
                     bonus -= 6; reason = reason or "remixer_mismatch"
             else:
                 bonus += 3; reason = reason or "any_remix_ok"
+        elif c_ext:
+            # CRITICAL: Extended Remix IS compatible with Remix request
+            # Many tracks are listed as "Extended Remix" but are just longer versions of "Remix"
+            # Example: "CamelPhat Remix" request should match "CamelPhat Extended Remix"
+            itoks = input_mix.get("remixer_tokens", set())
+            ctoks = cand_mix.get("remixer_tokens", set())
+            # If remixer tokens match, treat extended remix as valid match
+            if itoks and ctoks and (itoks & ctoks):
+                bonus += 8; reason = "remix_extended_remix_compatible"
+            elif not itoks:
+                # No specific remixer requested, extended remix is acceptable
+                bonus += 2; reason = "remix_extended_remix_compatible"
+            else:
+                # Remixer mismatch, but still compatible format
+                bonus -= 2; reason = reason or "remixer_mismatch_but_compatible_format"
         else:
             # When remix is requested, penalize original/extended/plain mixes
             # Especially if a specific remixer is requested
@@ -402,19 +417,22 @@ def _mix_ok_for_early_exit(input_mix: Dict[str, object], cand_mix: Dict[str, obj
 
     # Remix explicitly requested
     if input_mix.get("is_remix"):
-        if not cand_mix.get("is_remix"):
-            return False
-        itoks = set(input_mix.get("remixer_tokens", set()))
-        if itoks:
-            ctoks = set(cand_mix.get("remixer_tokens", set()))
-            # 1) Direct remixer token match from candidate title
-            if itoks & ctoks:
-                return True
-            # 2) Fallback: remixer appears among candidate artists
-            artist_tokens = set(re.split(r'\s+', normalize_text(cand_artists or "")))
-            return bool(itoks & artist_tokens)
-        # remix requested but no specific remixer given → accept any remix
-        return True
+        # CRITICAL: Extended Remix IS compatible with Remix request
+        # Many tracks are listed as "Extended Remix" but are just longer versions of "Remix"
+        if cand_mix.get("is_remix") or cand_mix.get("is_extended"):
+            itoks = set(input_mix.get("remixer_tokens", set()))
+            if itoks:
+                ctoks = set(cand_mix.get("remixer_tokens", set()))
+                # 1) Direct remixer token match from candidate title
+                if itoks & ctoks:
+                    return True
+                # 2) Fallback: remixer appears among candidate artists
+                artist_tokens = set(re.split(r'\s+', normalize_text(cand_artists or "")))
+                return bool(itoks & artist_tokens)
+            # remix requested but no specific remixer given → accept any remix or extended remix
+            return True
+        # Not a remix or extended remix - reject
+        return False
 
     # No explicit mix intent → OK
     return True

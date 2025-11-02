@@ -239,6 +239,23 @@ def best_beatport_match(
         reject_reason = ""
         t_sim, a_sim, comp = score_components(track_title, track_artists_for_scoring, title, artists or "")
 
+        # CRITICAL GUARD: Prevent subset matches like "Sun" matching "Son of Sun" with 100% similarity
+        # This happens because fuzz.token_set_ratio considers "Sun" to be 100% match to "Son of Sun"
+        # We need to penalize cases where candidate title is much shorter than input title
+        if title and track_title:
+            input_words = set(track_title.lower().split())
+            cand_words = set(title.lower().split())
+            # If candidate has significantly fewer words (less than 50% of input words), it's likely a subset
+            if len(cand_words) > 0 and len(input_words) > len(cand_words):
+                word_ratio = len(cand_words) / len(input_words)
+                if word_ratio < 0.5 and t_sim >= 85:  # High similarity but candidate is subset (lowered threshold to 85)
+                    # This is likely wrong - penalize heavily
+                    ok = False
+                    reject_reason = "guard_title_subset_match"
+                elif word_ratio < 0.67 and t_sim >= 90:  # Very high similarity but candidate is significantly shorter (lowered threshold to 90)
+                    # Moderate penalty - reduce score but don't reject
+                    t_sim = max(70, t_sim - 15)  # Reduce similarity by 15 points (but keep at least 70)
+
         # Guards and scoring logic (simplified but functional)
         in_sig = _significant_tokens(track_title)
         cand_sig = _significant_tokens(title or "")

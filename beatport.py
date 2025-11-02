@@ -356,10 +356,11 @@ def track_urls(idx: int, query: str, max_results: int, use_direct_search: Option
     """
     # Check if we should use direct search
     if use_direct_search is None:
-        # Auto-detect: use direct search for remix queries (more reliable)
+        # Auto-detect: use direct search for remix queries OR original mix queries (more reliable)
         ql = (query or "").lower()
         has_remix_keywords = (" remix" in ql) or ("extended mix" in ql) or ("(" in ql and ")" in ql)
-        use_direct_search = SETTINGS.get("USE_DIRECT_SEARCH_FOR_REMIXES", True) and has_remix_keywords
+        has_original_mix = "original mix" in ql
+        use_direct_search = SETTINGS.get("USE_DIRECT_SEARCH_FOR_REMIXES", True) and (has_remix_keywords or has_original_mix)
     
     if use_direct_search:
         # Try direct Beatport search with multiple methods

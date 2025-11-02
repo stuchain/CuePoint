@@ -358,37 +358,118 @@ def make_search_queries(title: str, artists: str, original_title: Optional[str] 
             if base_fallback and len(base_fallback) >= 3:
                 base_title_no_remix = base_fallback
     
-    # PRIORITY STAGE -0.3: Base title + ALL original artists + remixer (HIGHEST PRIORITY for remixes)
-    # This MUST run before single-artist queries to find tracks like "Tighter HOSH CamelPhat Remix"
-    if len(toks) >= 2 and remixers_from_title and base_title_no_remix:
-        for r in remixers_from_title:
-            if r and r.strip():
-                # Combine all artists with remixer - CRITICAL for multi-artist remixes
-                all_artists = " ".join(toks[:2])  # First 2 artists
-                _add(f"{base_title_no_remix} {all_artists} {r}")
-                _add(f"{base_title_no_remix} {all_artists} {r} remix")
-                _add(f"{all_artists} {base_title_no_remix} {r}")
-                _add(f"{all_artists} {r} {base_title_no_remix}")
-                if len(base_title_no_remix.split()) >= 1:
-                    _add(f'"{base_title_no_remix}" {all_artists} {r}')
-                    _add(f'{all_artists} "{base_title_no_remix}" {r}')
+    # PRIORITY STAGE -0.3: Base title + ALL original artists + remixer/extended (HIGHEST PRIORITY for remixes/extended)
+    # This MUST run before single-artist queries to find tracks like "Tighter HOSH CamelPhat Remix" or "Batonga Bontan AMEME Extended Mix"
+    # Check for remixers OR extended mix intent
+    has_extended_intent = False
+    if original_title:
+        mix_flags_check = _parse_mix_flags(original_title)
+        has_extended_intent = bool(mix_flags_check.get("is_extended"))
+    
+    if len(toks) >= 2 and (remixers_from_title or has_extended_intent) and base_title_no_remix:
+        if remixers_from_title:
+            # Remix queries: combine all artists with remixer
+            # CRITICAL: Filter out remixers from artist tokens to avoid duplication
+            # (e.g., if "CamelPhat" is both an artist and remixer, only include it once)
+            toks_for_remix = []
+            remixer_tokens_lower_remix = {r.lower().strip() for r in remixers_from_title if r}
+            for tok in toks:
+                if tok.lower().strip() not in remixer_tokens_lower_remix:
+                    toks_for_remix.append(tok)
+            # If all artists were filtered out, use original toks (but this shouldn't happen)
+            if not toks_for_remix:
+                toks_for_remix = toks
+            
+            for r in remixers_from_title:
+                if r and r.strip():
+                    # Use filtered artists to avoid duplication
+                    all_artists = " ".join(toks_for_remix[:2]) if toks_for_remix else " ".join(toks[:2])
+                    if all_artists:  # Only add if we have artists
+                        _add(f"{base_title_no_remix} {all_artists} {r}")
+                        _add(f"{base_title_no_remix} {all_artists} {r} remix")
+                        _add(f"{all_artists} {base_title_no_remix} {r}")
+                        _add(f"{all_artists} {r} {base_title_no_remix}")
+                        if len(base_title_no_remix.split()) >= 1:
+                            _add(f'"{base_title_no_remix}" {all_artists} {r}')
+                            _add(f'{all_artists} "{base_title_no_remix}" {r}')
+                    # Also try with just the remixer (no artists) if artists were filtered
+                    _add(f"{base_title_no_remix} {r}")
+                    _add(f"{base_title_no_remix} {r} remix")
+                    if len(base_title_no_remix.split()) >= 1:
+                        _add(f'"{base_title_no_remix}" {r}')
+                        _add(f'"{base_title_no_remix}" {r} remix')
+        
+        if has_extended_intent and len(toks) >= 2:
+            # Extended mix queries: combine ALL artists together for better matching
+            # Example: "Batonga Bontan AMEME Don Bello Ni Extended Mix"
+            all_artists_full = " ".join(toks[:3]) if len(toks) >= 3 else " ".join(toks[:2])
+            # Try with all artists first (most specific)
+            _add(f"{base_title_no_remix} {all_artists_full}")
+            _add(f"{all_artists_full} {base_title_no_remix}")
+            # Try with extended mix suffix
+            _add(f"{base_title_no_remix} {all_artists_full} Extended Mix")
+            _add(f"{base_title_no_remix} {all_artists_full} Extended")
+            _add(f"{all_artists_full} {base_title_no_remix} Extended Mix")
+            if len(base_title_no_remix.split()) >= 1:
+                _add(f'"{base_title_no_remix}" {all_artists_full}')
+                _add(f'{all_artists_full} "{base_title_no_remix}"')
+                _add(f'"{base_title_no_remix}" {all_artists_full} Extended Mix')
+            
+            # Also try with just first 2 artists (for compatibility)
+            all_artists_pair = " ".join(toks[:2])
+            _add(f"{base_title_no_remix} {all_artists_pair}")
+            _add(f"{all_artists_pair} {base_title_no_remix}")
+            _add(f"{base_title_no_remix} {all_artists_pair} Extended Mix")
+            if len(base_title_no_remix.split()) >= 1:
+                _add(f'"{base_title_no_remix}" {all_artists_pair}')
+                _add(f'{all_artists_pair} "{base_title_no_remix}" Extended Mix')
     
     # PRIORITY STAGE 0: Base title (without remix) + ORIGINAL ARTIST first
     # This is MORE reliable than quoted queries for DuckDuckGo
     # This is crucial because Beatport often lists remixes with base title + original artist
-    if toks and base_title_no_remix and base_title_no_remix != "":
+    # CRITICAL: Exclude remixers from artist tokens to avoid duplication
+    # (e.g., if "CamelPhat" is both an artist and remixer, don't duplicate it)
+    toks_filtered = []
+    if remixers_from_title:
+        remixer_tokens_lower = {r.lower().strip() for r in remixers_from_title if r}
+        for tok in toks:
+            if tok.lower().strip() not in remixer_tokens_lower:
+                toks_filtered.append(tok)
+        # Only use filtered tokens if we removed something (otherwise use original toks)
+        if len(toks_filtered) < len(toks):
+            toks_for_stage0 = toks_filtered if toks_filtered else toks
+        else:
+            toks_for_stage0 = toks
+    else:
+        toks_for_stage0 = toks
+    
+    if toks_for_stage0 and base_title_no_remix and base_title_no_remix != "":
         # Try each original artist with base title first
-        for a in toks:
+        for a in toks_for_stage0:
             if a and a.strip():
                 _add(f"{base_title_no_remix} {a}")
                 _add(f"{a} {base_title_no_remix}")
         
         # Try two-artist combinations with base title
-        if len(toks) >= 2:
-            for a1, a2 in combinations(toks, 2):
+        if len(toks_for_stage0) >= 2:
+            for a1, a2 in combinations(toks_for_stage0, 2):
                 _add(f"{base_title_no_remix} {a1} {a2}")
                 _add(f"{base_title_no_remix} {a1} & {a2}")
                 _add(f"{a1} {a2} {base_title_no_remix}")
+    
+    # PRIORITY STAGE 0.25: Base title + original artist + "Original Mix" if present in title
+    # This ensures queries like "Bass Bousa Original Mix" are generated for direct search
+    if original_title and base_title_no_remix:
+        input_mix_flags = _parse_mix_flags(original_title)
+        if input_mix_flags.get("is_original") and toks:
+            for a in toks[:2]:  # First 2 artists
+                if a and a.strip():
+                    _add(f"{base_title_no_remix} {a} Original Mix")
+                    _add(f"{base_title_no_remix} Original Mix {a}")
+                    _add(f"{a} {base_title_no_remix} Original Mix")
+                    if len(base_title_no_remix.split()) >= 1:
+                        _add(f'"{base_title_no_remix}" {a} Original Mix')
+                        _add(f'{a} "{base_title_no_remix}" Original Mix')
     
     # PRIORITY STAGE 0.3: Base title + original artist + remixer (all together)
     # Beatport sometimes lists as "Title OriginalArtist (Remixer Remix)"
