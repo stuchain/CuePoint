@@ -6,6 +6,7 @@ Track processing orchestration
 """
 
 import csv
+import io
 import os
 import random
 import re
@@ -211,7 +212,7 @@ def process_track(idx: int, rb: RBTrack) -> Tuple[Dict[str, str], List[Dict[str,
         return main_row, cand_rows, queries_rows
 
 
-def run(xml_path: str, playlist_name: str, out_csv_base: str):
+def run(xml_path: str, playlist_name: str, out_csv_base: str, auto_research: bool = False):
     """Main processing function"""
     random.seed(SETTINGS["SEED"])
 
@@ -229,8 +230,9 @@ def run(xml_path: str, playlist_name: str, out_csv_base: str):
     rows: List[Dict[str, str]] = []
     all_candidates: List[Dict[str, str]] = []
     all_queries: List[Dict[str, str]] = []
-
-    processed_beatport_ids: set[str] = set()
+    unmatched_tracks: List[Tuple[int, RBTrack]] = []  # Track unmatched tracks for re-search
+    # NOTE: We no longer track processed_beatport_ids globally - if the same Beatport track
+    # matches multiple playlist tracks, all matches should appear in the output.
 
     inputs: List[Tuple[int, RBTrack]] = []
     for idx, tid in enumerate(tids, start=1):
@@ -238,35 +240,33 @@ def run(xml_path: str, playlist_name: str, out_csv_base: str):
         if rb:
             inputs.append((idx, rb))
 
+    # NOTE: We no longer skip duplicate Beatport IDs - if the same Beatport track matches
+    # multiple playlist tracks, all matches should appear in the output.
+    # However, we still optimize performance by skipping re-fetching/re-parsing candidates
+    # that have already been seen for the same track (handled in matcher.py via visited_urls).
+    # Create a mapping for quick lookup
+    inputs_map = {idx: rb for idx, rb in inputs}
+    
     if SETTINGS["TRACK_WORKERS"] > 1:
         with ThreadPoolExecutor(max_workers=SETTINGS["TRACK_WORKERS"]) as ex:
             for main_row, cand_rows, query_rows in ex.map(lambda args: process_track(*args), inputs):
-                beatport_id = main_row.get("beatport_track_id", "")
-                if beatport_id and beatport_id in processed_beatport_ids:
-                    print(f"[SKIP] Duplicate Beatport ID {beatport_id} for track: {main_row.get('original_title', '')}", flush=True)
-                    continue
-
-                if beatport_id:
-                    processed_beatport_ids.add(beatport_id)
-
                 rows.append(main_row)
                 all_candidates.extend(cand_rows)
                 all_queries.extend(query_rows)
+                # Track unmatched tracks (no URL means no match found)
+                if not (main_row.get("beatport_url") or "").strip():
+                    idx = int(main_row.get("playlist_index", "0"))
+                    if idx > 0 and idx in inputs_map:
+                        unmatched_tracks.append((idx, inputs_map[idx]))
     else:
         for args in inputs:
             main_row, cand_rows, query_rows = process_track(*args)
-
-            beatport_id = main_row.get("beatport_track_id", "")
-            if beatport_id and beatport_id in processed_beatport_ids:
-                print(f"[SKIP] Duplicate Beatport ID {beatport_id} for track: {main_row.get('original_title', '')}", flush=True)
-                continue
-
-            if beatport_id:
-                processed_beatport_ids.add(beatport_id)
-
             rows.append(main_row)
             all_candidates.extend(cand_rows)
             all_queries.extend(query_rows)
+            # Track unmatched tracks
+            if not (main_row.get("beatport_url") or "").strip():
+                unmatched_tracks.append(args)
 
     # Create output directory if it doesn't exist
     output_dir = "output"
@@ -303,10 +303,26 @@ def run(xml_path: str, playlist_name: str, out_csv_base: str):
         "search_stop_query_index",
         "candidate_index",
     ]
-    with open(out_main, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=main_fields)
-        writer.writeheader()
-        writer.writerows(rows)
+    def _write_csv_no_trailing_newline(filepath: str, fieldnames: List[str], rows: List[Dict[str, str]]):
+        """Write CSV file without trailing newline"""
+        with open(filepath, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            if rows:
+                # Write all rows except the last one normally
+                for row in rows[:-1]:
+                    writer.writerow(row)
+                # Write the last row manually without trailing newline
+                if len(rows) > 0:
+                    last_row = rows[-1]
+                    # Use StringIO to format the last row properly (handles escaping)
+                    temp_buf = io.StringIO()
+                    temp_writer = csv.DictWriter(temp_buf, fieldnames=fieldnames)
+                    temp_writer.writerow(last_row)
+                    last_row_str = temp_buf.getvalue().rstrip('\n\r')
+                    f.write(last_row_str)
+    
+    _write_csv_no_trailing_newline(out_main, main_fields, rows)
 
     review_rows: List[Dict[str, str]] = []
     review_indices = set()
@@ -329,10 +345,7 @@ def run(xml_path: str, playlist_name: str, out_csv_base: str):
             review_indices.add(int(r.get("playlist_index", "0")))
 
     if review_rows:
-        with open(out_review, "w", newline="", encoding="utf-8") as f2:
-            writer2 = csv.DictWriter(f2, fieldnames=main_fields + ["review_reason"])
-            writer2.writeheader()
-            writer2.writerows(review_rows)
+        _write_csv_no_trailing_newline(out_review, main_fields + ["review_reason"], review_rows)
         print(f"Review list: {len(review_rows)} rows -> {out_review}")
 
     cand_fields = [
@@ -348,10 +361,7 @@ def run(xml_path: str, playlist_name: str, out_csv_base: str):
     if review_candidates:
         base_review_cands = re.sub(r"\.csv$", "_review_candidates.csv", base_filename) if base_filename.lower().endswith(".csv") else base_filename + "_review_candidates.csv"
         out_review_cands = os.path.join(output_dir, base_review_cands)
-        with open(out_review_cands, "w", newline="", encoding="utf-8") as fc:
-            wc = csv.DictWriter(fc, fieldnames=cand_fields)
-            wc.writeheader()
-            wc.writerows(review_candidates)
+        _write_csv_no_trailing_newline(out_review_cands, cand_fields, review_candidates)
         print(f"Review candidates: {len(review_candidates)} rows -> {out_review_cands}")
 
     queries_fields = [
@@ -364,24 +374,159 @@ def run(xml_path: str, playlist_name: str, out_csv_base: str):
     if review_queries:
         base_review_queries = re.sub(r"\.csv$", "_review_queries.csv", base_filename) if base_filename.lower().endswith(".csv") else base_filename + "_review_queries.csv"
         out_review_queries = os.path.join(output_dir, base_review_queries)
-        with open(out_review_queries, "w", newline="", encoding="utf-8") as fq:
-            wq = csv.DictWriter(fq, fieldnames=queries_fields)
-            wq.writeheader()
-            wq.writerows(review_queries)
+        _write_csv_no_trailing_newline(out_review_queries, queries_fields, review_queries)
         print(f"Review queries: {len(review_queries)} rows -> {out_review_queries}")
     if all_candidates:
-        with open(out_cands, "w", newline="", encoding="utf-8") as fc:
-            wc = csv.DictWriter(fc, fieldnames=cand_fields)
-            wc.writeheader()
-            wc.writerows(all_candidates)
+        _write_csv_no_trailing_newline(out_cands, cand_fields, all_candidates)
         print(f"Candidates: {len(all_candidates)} rows -> {out_cands}")
 
     if all_queries:
-        with open(out_queries, "w", newline="", encoding="utf-8") as fq:
-            wq = csv.DictWriter(fq, fieldnames=queries_fields)
-            wq.writeheader()
-            wq.writerows(all_queries)
+        _write_csv_no_trailing_newline(out_queries, queries_fields, all_queries)
         print(f"Queries: {len(all_queries)} rows -> {out_queries}")
 
     print(f"\nDone. Wrote {len(rows)} rows -> {out_main}")
+    
+    # Offer to re-search unmatched tracks
+    if unmatched_tracks:
+        print(f"\n{'='*80}")
+        print(f"Found {len(unmatched_tracks)} unmatched track(s):")
+        print(f"{'='*80}")
+        for idx, track in unmatched_tracks:
+            artists_str = track.artists or "(no artists)"
+            try:
+                print(f"  [{idx}] {track.title} - {artists_str}")
+            except UnicodeEncodeError:
+                safe_title = track.title.encode('ascii', 'ignore').decode('ascii')
+                safe_artists = artists_str.encode('ascii', 'ignore').decode('ascii')
+                print(f"  [{idx}] {safe_title} - {safe_artists}")
+        
+        print(f"\n{'='*80}")
+        # Check if auto-research is enabled or if we're in an interactive environment
+        if auto_research:
+            response = 'y'
+            print("Auto-research enabled: Re-searching unmatched tracks automatically...")
+        elif sys.stdin.isatty():
+            try:
+                response = input("Search again for these tracks with enhanced settings? (y/n): ").strip().lower()
+            except (EOFError, KeyboardInterrupt):
+                print("\nRe-search skipped (interrupted).")
+                response = 'n'
+        else:
+            # Non-interactive mode - skip prompt
+            print("Non-interactive mode: Skipping re-search prompt.")
+            print("(To enable re-search, use --auto-research flag or run in interactive terminal)")
+            response = 'n'
+        
+        if response == 'y' or response == 'yes':
+            print("\nRe-searching unmatched tracks with enhanced settings...")
+            print("=" * 80)
+            
+            # Enhance settings for re-search
+            original_settings = {
+                "PER_TRACK_TIME_BUDGET_SEC": SETTINGS.get("PER_TRACK_TIME_BUDGET_SEC"),
+                "MAX_SEARCH_RESULTS": SETTINGS.get("MAX_SEARCH_RESULTS"),
+                "MAX_QUERIES_PER_TRACK": SETTINGS.get("MAX_QUERIES_PER_TRACK"),
+                "REMIX_MAX_QUERIES": SETTINGS.get("REMIX_MAX_QUERIES"),
+                "MIN_ACCEPT_SCORE": SETTINGS.get("MIN_ACCEPT_SCORE"),
+            }
+            
+            # Temporarily enhance settings for re-search
+            SETTINGS["PER_TRACK_TIME_BUDGET_SEC"] = max(original_settings["PER_TRACK_TIME_BUDGET_SEC"] or 45, 90)
+            SETTINGS["MAX_SEARCH_RESULTS"] = max(original_settings["MAX_SEARCH_RESULTS"] or 50, 100)
+            SETTINGS["MAX_QUERIES_PER_TRACK"] = max(original_settings["MAX_QUERIES_PER_TRACK"] or 40, 60)
+            SETTINGS["REMIX_MAX_QUERIES"] = max(original_settings["REMIX_MAX_QUERIES"] or 30, 50)
+            SETTINGS["MIN_ACCEPT_SCORE"] = max(original_settings["MIN_ACCEPT_SCORE"] or 70, 60)  # More lenient
+            
+            # Re-search unmatched tracks
+            new_rows = []
+            new_candidates = []
+            new_queries = []
+            updated_indices = set()
+            
+            for idx, rb in unmatched_tracks:
+                print(f"\nRe-searching [{idx}] {rb.title} - {rb.artists or '(no artists)'}")
+                main_row, cand_rows, query_rows = process_track(idx, rb)
+                
+                # Only add if we found a match
+                if (main_row.get("beatport_url") or "").strip():
+                    new_rows.append(main_row)
+                    new_candidates.extend(cand_rows)
+                    new_queries.extend(query_rows)
+                    updated_indices.add(idx)
+            
+            # Restore original settings
+            for key, value in original_settings.items():
+                if value is not None:
+                    SETTINGS[key] = value
+            
+            if new_rows:
+                print(f"\n{'='*80}")
+                print(f"Found {len(new_rows)} new match(es)!")
+                
+                # Update existing rows with new matches
+                rows_dict = {int(r.get("playlist_index", "0")): r for r in rows}
+                for new_row in new_rows:
+                    idx = int(new_row.get("playlist_index", "0"))
+                    rows_dict[idx] = new_row  # Replace the unmatched row with matched row
+                
+                # Rebuild rows list maintaining order
+                updated_rows = [rows_dict.get(int(r.get("playlist_index", "0")), r) for r in rows]
+                
+                # Append new candidates and queries
+                all_candidates.extend(new_candidates)
+                all_queries.extend(new_queries)
+                
+                # Write updated CSV files
+                _write_csv_no_trailing_newline(out_main, main_fields, updated_rows)
+                print(f"Updated main CSV: {len(updated_rows)} rows -> {out_main}")
+                
+                if new_candidates:
+                    _write_csv_no_trailing_newline(out_cands, cand_fields, all_candidates)
+                    print(f"Updated candidates CSV: {len(all_candidates)} rows -> {out_cands}")
+                
+                if new_queries:
+                    _write_csv_no_trailing_newline(out_queries, queries_fields, all_queries)
+                    print(f"Updated queries CSV: {len(all_queries)} rows -> {out_queries}")
+                
+                # Update review files if needed
+                review_rows = []
+                review_indices = set()
+                for r in updated_rows:
+                    score = float(r.get("match_score", "0") or 0)
+                    artist_sim = int(r.get("artist_sim", "0") or 0)
+                    artists_present = bool((r.get("original_artists") or "").strip())
+                    reason = []
+                    if score < 70:
+                        reason.append("score<70")
+                    if artists_present and artist_sim < 35:
+                        if not _artist_token_overlap(r.get("original_artists", ""), r.get("beatport_artists", "")):
+                            reason.append("weak-artist-match")
+                    if (r.get("beatport_url") or "").strip() == "":
+                        reason.append("no-candidates")
+                    if reason:
+                        rr = dict(r)
+                        rr["review_reason"] = ",".join(reason)
+                        review_rows.append(rr)
+                        review_indices.add(int(r.get("playlist_index", "0")))
+                
+                if review_rows:
+                    _write_csv_no_trailing_newline(out_review, main_fields + ["review_reason"], review_rows)
+                    print(f"Updated review CSV: {len(review_rows)} rows -> {out_review}")
+                    
+                    review_candidates = [c for c in all_candidates if int(c.get("playlist_index", "0")) in review_indices]
+                    if review_candidates:
+                        _write_csv_no_trailing_newline(out_review_cands, cand_fields, review_candidates)
+                        print(f"Updated review candidates CSV: {len(review_candidates)} rows -> {out_review_cands}")
+                    
+                    review_queries = [q for q in all_queries if int(q.get("playlist_index", "0")) in review_indices]
+                    if review_queries:
+                        _write_csv_no_trailing_newline(out_review_queries, queries_fields, review_queries)
+                        print(f"Updated review queries CSV: {len(review_queries)} rows -> {out_review_queries}")
+            else:
+                print(f"\nNo new matches found after re-search.")
+            
+            print(f"\n{'='*80}")
+            print("Re-search complete.")
+        else:
+            print("Re-search skipped.")
 

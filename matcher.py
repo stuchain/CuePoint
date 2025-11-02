@@ -157,8 +157,10 @@ def best_beatport_match(
     queries_audit: List[Tuple[int, str, int, int]] = []
     last_q_processed = 0
 
-    parsed_cache: Dict[str, Tuple[str, str, Optional[str], Optional[int], Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]]] = {}
+    parsed_cache: Dict[str, Tuple[str, str, Optional[str], Optional[int], Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]]] = {}  # Keyed by URL
+    parsed_cache_by_id: Dict[str, Tuple[str, str, Optional[str], Optional[int], Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]]] = {}  # Keyed by track ID
     visited_urls: set[str] = set()
+    visited_track_ids: set[str] = set()  # Track IDs we've already parsed for this track (to avoid re-parsing the same track ID)
 
     # track_title should already be cleaned (no [F], [3], etc.) but ensure it's clean
     base_title_clean = sanitize_title_for_search(track_title).strip().lower()
@@ -242,17 +244,18 @@ def best_beatport_match(
         # CRITICAL GUARD: Prevent subset matches like "Sun" matching "Son of Sun" with 100% similarity
         # This happens because fuzz.token_set_ratio considers "Sun" to be 100% match to "Son of Sun"
         # We need to penalize cases where candidate title is much shorter than input title
+        # Use significant tokens (excluding stopwords) for accurate comparison
         if title and track_title:
-            input_words = set(track_title.lower().split())
-            cand_words = set(title.lower().split())
-            # If candidate has significantly fewer words (less than 50% of input words), it's likely a subset
-            if len(cand_words) > 0 and len(input_words) > len(cand_words):
-                word_ratio = len(cand_words) / len(input_words)
-                if word_ratio < 0.5 and t_sim >= 85:  # High similarity but candidate is subset (lowered threshold to 85)
-                    # This is likely wrong - penalize heavily
+            input_sig = set([t.lower() for t in _significant_tokens(track_title)])
+            cand_sig = set([t.lower() for t in _significant_tokens(title)])
+            # If candidate has significantly fewer significant tokens (less than 50% of input tokens), it's likely a subset
+            if len(cand_sig) > 0 and len(input_sig) > len(cand_sig):
+                token_ratio = len(cand_sig) / len(input_sig)
+                if token_ratio < 0.5 and t_sim >= 85:  # High similarity but candidate is subset
+                    # This is likely wrong - reject it
                     ok = False
                     reject_reason = "guard_title_subset_match"
-                elif word_ratio < 0.67 and t_sim >= 90:  # Very high similarity but candidate is significantly shorter (lowered threshold to 90)
+                elif token_ratio < 0.67 and t_sim >= 90:  # Very high similarity but candidate is significantly shorter
                     # Moderate penalty - reduce score but don't reject
                     t_sim = max(70, t_sim - 15)  # Reduce similarity by 15 points (but keep at least 70)
 
@@ -375,13 +378,15 @@ def best_beatport_match(
             title_floor = 60  # Lowered from 65 to 60
             if is_remix_query:
                 # Much more lenient for remix queries - remixers in title can vary
-                title_floor = 50  # Lower base for remixes
+                # Example: "Tighter (CamelPhat Remix)" vs "Tighter (feat. Jalja) CamelPhat Extended Remix"
+                # Title similarity might be lower due to "feat. Jalja" addition, but remixer matches
+                title_floor = 45  # Lowered from 50 for remixes
                 if (overlap or remix_implies_overlap) and a_sim >= 50:
-                    title_floor = 45  # Even lower if artist matches
+                    title_floor = 40  # Even lower if artist matches
                 elif a_sim >= 70:
-                    title_floor = 40
+                    title_floor = 35
                 elif a_sim >= 85:
-                    title_floor = 35  # Very lenient for high artist sim on remixes
+                    title_floor = 30  # Very lenient for high artist sim on remixes
             elif (overlap or remix_implies_overlap) and a_sim >= 50:
                 title_floor = 55  # Lowered from 60 to 55
             elif a_sim >= 70:
@@ -451,9 +456,34 @@ def best_beatport_match(
         print(f"[{idx}]   q{i} -> {len(urls)} candidates (raw={len(urls_all)}, MR={mr})", flush=True)
 
         cand_index_map = {u: j for j, u in enumerate(urls, start=1)}
-        to_fetch = [u for u in urls if u not in visited_urls]
+        
+        # Filter out URLs we've already visited OR track IDs we've already parsed
+        # Extract track ID from URL: https://www.beatport.com/track/{slug}/{track_id}
+        def extract_track_id_from_url(url: str) -> Optional[str]:
+            """Extract Beatport track ID from URL"""
+            match = re.search(r'/track/[^/]+/(\d+)', url)
+            return match.group(1) if match else None
+        
+        to_fetch = []
+        skipped_by_id = []  # Track URLs skipped because we've already parsed this track ID
+        
+        for u in urls:
+            if u in visited_urls:
+                continue  # Already visited this URL
+            track_id = extract_track_id_from_url(u)
+            if track_id and track_id in visited_track_ids:
+                # We've already parsed this track ID - use cached data if available
+                if track_id in parsed_cache_by_id:
+                    skipped_by_id.append((u, track_id))
+                continue  # Skip re-parsing
+            to_fetch.append(u)
+        
+        # Mark URLs as visited and track IDs as parsed
         for u in to_fetch:
             visited_urls.add(u)
+            track_id = extract_track_id_from_url(u)
+            if track_id:
+                visited_track_ids.add(track_id)
 
         def fetch(u):
             if u in parsed_cache:
@@ -462,6 +492,10 @@ def best_beatport_match(
             t0 = time.perf_counter()
             title, artists, key, year, bpm, label, genres, rel_name, rel_date = parse_track_page(u)
             parsed_cache[u] = (title, artists, key, year, bpm, label, genres, rel_name, rel_date)
+            # Also cache by track ID for faster lookup if we see the same track ID with different URL
+            track_id = extract_track_id_from_url(u)
+            if track_id:
+                parsed_cache_by_id[track_id] = (title, artists, key, year, bpm, label, genres, rel_name, rel_date)
             return u, title, artists, key, year, bpm, label, genres, rel_name, rel_date, int((time.perf_counter() - t0) * 1000)
 
         with ThreadPoolExecutor(max_workers=SETTINGS["CANDIDATE_WORKERS"]) as ex:
@@ -480,6 +514,16 @@ def best_beatport_match(
                         candidates_log[-1].guard_ok = False
                         continue
                     consider(u, title, artists, key, year, bpm, label, genres, rel_name, rel_date, i, q, cand_index_map.get(u, 0), ems)
+                
+                # Handle URLs that were skipped because we've already parsed their track ID
+                # Use cached data from parsed_cache_by_id
+                for u, track_id in skipped_by_id:
+                    if track_id in parsed_cache_by_id:
+                        title, artists, key, year, bpm, label, genres, rel_name, rel_date = parsed_cache_by_id[track_id]
+                        # Mark URL as visited to avoid re-considering
+                        visited_urls.add(u)
+                        # Consider this candidate using cached data (no re-parsing needed)
+                        consider(u, title, artists, key, year, bpm, label, genres, rel_name, rel_date, i, q, cand_index_map.get(u, 0), 0)
             else:
                 join_timeout = max(6, 3 * len(to_fetch))
                 try:
@@ -495,6 +539,16 @@ def best_beatport_match(
                             candidates_log[-1].guard_ok = False
                             continue
                         consider(u, title, artists, key, year, bpm, label, genres, rel_name, rel_date, i, q, cand_index_map.get(u, 0), ems)
+                
+                    # Handle URLs that were skipped because we've already parsed their track ID
+                    # Use cached data from parsed_cache_by_id
+                    for u, track_id in skipped_by_id:
+                        if track_id in parsed_cache_by_id:
+                            title, artists, key, year, bpm, label, genres, rel_name, rel_date = parsed_cache_by_id[track_id]
+                            # Mark URL as visited to avoid re-considering
+                            visited_urls.add(u)
+                            # Consider this candidate using cached data (no re-parsing needed)
+                            consider(u, title, artists, key, year, bpm, label, genres, rel_name, rel_date, i, q, cand_index_map.get(u, 0), 0)
                 except FuturesTimeoutError:
                     vlog(idx, f"[warn] candidate fetch join timed out")
                     for fut in futures:

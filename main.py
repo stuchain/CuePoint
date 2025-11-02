@@ -34,6 +34,8 @@ def main():
                 help="Run EVERY query variation: disable time budget, wait for all candidates, allow tri-gram crosses")
     ap.add_argument("--myargs", action="store_true",
                     help="Apply your custom settings bundle (edit the dict in code below)")
+    ap.add_argument("--auto-research", action="store_true",
+                    help="Automatically re-search unmatched tracks without prompting")
 
     args = ap.parse_args()
 
@@ -142,7 +144,7 @@ def main():
     SETTINGS["SEED"] = int(args.seed)
 
     startup_banner(sys.argv[0], args)
-    run(args.xml, args.playlist, args.out)
+    run(args.xml, args.playlist, args.out, auto_research=args.auto_research)
 
 
 if __name__ == "__main__":

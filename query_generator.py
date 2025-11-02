@@ -387,17 +387,27 @@ def make_search_queries(title: str, artists: str, original_title: Optional[str] 
                     if all_artists:  # Only add if we have artists
                         _add(f"{base_title_no_remix} {all_artists} {r}")
                         _add(f"{base_title_no_remix} {all_artists} {r} remix")
+                        # Try extended remix variants (common on Beatport)
+                        _add(f"{base_title_no_remix} {all_artists} {r} extended remix")
+                        _add(f"{base_title_no_remix} {all_artists} {r} extended mix")
                         _add(f"{all_artists} {base_title_no_remix} {r}")
                         _add(f"{all_artists} {r} {base_title_no_remix}")
                         if len(base_title_no_remix.split()) >= 1:
                             _add(f'"{base_title_no_remix}" {all_artists} {r}')
                             _add(f'{all_artists} "{base_title_no_remix}" {r}')
+                            _add(f'"{base_title_no_remix}" {all_artists} {r} extended remix')
+                            _add(f'"{base_title_no_remix}" {all_artists} {r} extended mix')
                     # Also try with just the remixer (no artists) if artists were filtered
                     _add(f"{base_title_no_remix} {r}")
                     _add(f"{base_title_no_remix} {r} remix")
+                    # Try extended remix variants (common on Beatport)
+                    _add(f"{base_title_no_remix} {r} extended remix")
+                    _add(f"{base_title_no_remix} {r} extended mix")
                     if len(base_title_no_remix.split()) >= 1:
                         _add(f'"{base_title_no_remix}" {r}')
                         _add(f'"{base_title_no_remix}" {r} remix')
+                        _add(f'"{base_title_no_remix}" {r} extended remix')
+                        _add(f'"{base_title_no_remix}" {r} extended mix')
         
         if has_extended_intent and len(toks) >= 2:
             # Extended mix queries: combine ALL artists together for better matching
