@@ -34,17 +34,20 @@ SETTINGS = {
                                   # Higher = more candidates but slower. Raised from default to improve
                                   # recall on sparse queries (rare tracks, remixes)
     
-    "CANDIDATE_WORKERS": 8,      # Number of parallel threads for fetching candidate track data from Beatport
+    "CANDIDATE_WORKERS": 15,     # Number of parallel threads for fetching candidate track data from Beatport
                                   # Each thread processes one candidate URL at a time
                                   # Higher = faster but more load on Beatport servers
+                                  # Optimized for fast candidate fetching (was 8)
     
-    "TRACK_WORKERS": 1,          # Number of parallel threads for processing tracks in the playlist
+    "TRACK_WORKERS": 12,          # Number of parallel threads for processing tracks in the playlist
                                   # Each thread processes one track's queries and matching
                                   # Higher = faster overall but more memory usage
+                                  # Optimized for parallel track processing (was 1)
     
-    "PER_TRACK_TIME_BUDGET_SEC": 25,  # Maximum time (in seconds) to spend searching for matches per track
+    "PER_TRACK_TIME_BUDGET_SEC": 45,  # Maximum time (in seconds) to spend searching for matches per track
                                         # After this time, the best match found so far is accepted
                                         # None = no time limit (run all queries)
+                                        # Increased to allow priority queries to complete (was 25)
 
     # ========================================================================
     # SIMILARITY & SCORING SETTINGS
@@ -57,9 +60,9 @@ SETTINGS = {
     "ARTIST_WEIGHT": 0.45,         # Weight for artist similarity in final score (45% of total)
                                     # Lower = artist mismatches are less penalized
     
-    "MIN_ACCEPT_SCORE": 55,        # Minimum total score required to accept a match
+    "MIN_ACCEPT_SCORE": 70,        # Minimum total score required to accept a match
                                    # Scores range from 0-200+ (title + artist + bonuses)
-                                   # Lowered from 60 to catch more valid but imperfect matches
+                                   # Optimized to catch more valid matches while maintaining quality (was 55)
     
     # ========================================================================
     # LOGGING SETTINGS
@@ -72,15 +75,17 @@ SETTINGS = {
     # NETWORK & CACHING SETTINGS
     # ========================================================================
     
-    "CONNECT_TIMEOUT": 5,          # HTTP connection timeout in seconds
+    "CONNECT_TIMEOUT": 3,          # HTTP connection timeout in seconds
                                    # How long to wait when establishing connection to Beatport
+                                   # Reduced for faster failures (was 5)
     
-    "READ_TIMEOUT": 10,            # HTTP read timeout in seconds
+    "READ_TIMEOUT": 8,             # HTTP read timeout in seconds
                                    # How long to wait for response data after connection established
+                                   # Reduced for faster failures (was 10)
     
-    "ENABLE_CACHE": False,         # Enable HTTP response caching (requires requests-cache package)
-                                   # Automatically enabled in --fast/--turbo presets if available
+    "ENABLE_CACHE": True,          # Enable HTTP response caching (requires requests-cache package)
                                    # Speeds up repeated runs by caching Beatport page responses
+                                   # Enabled by default for better performance (was False)
     
     # ========================================================================
     # SEARCH STRATEGY SETTINGS
@@ -95,9 +100,9 @@ SETTINGS = {
                                             # for ALL queries (not just remixes)
                                             # Direct search is slower but more accurate
     
-    "USE_BROWSER_AUTOMATION": False,        # Use browser automation (Playwright/Selenium) as fallback
+    "USE_BROWSER_AUTOMATION": True,         # Use browser automation (Playwright/Selenium) as fallback
                                             # Slower but most reliable - can find JavaScript-rendered content
-                                            # Only used when other methods fail
+                                            # Enabled by default for maximum reliability (was False)
     
     "BROWSER_TIMEOUT_SEC": 30,              # Timeout for browser automation operations in seconds
                                             # How long to wait for page to load in browser
@@ -108,17 +113,17 @@ SETTINGS = {
     # Early exit stops searching once a very good match is found, saving time
     # These settings control when early exit is allowed
     
-    "EARLY_EXIT_SCORE": 95,         # Stop searching if a candidate reaches this score or higher
+    "EARLY_EXIT_SCORE": 90,         # Stop searching if a candidate reaches this score or higher
                                     # Score must pass all guard checks (not rejected)
-                                    # High threshold (95) ensures only excellent matches trigger early exit
+                                    # Optimized for faster exits on very good matches (was 95)
     
-    "EARLY_EXIT_MIN_QUERIES": 12,   # Minimum number of queries to run before allowing early exit
+    "EARLY_EXIT_MIN_QUERIES": 8,    # Minimum number of queries to run before allowing early exit
                                     # Prevents premature exit on lucky first-query matches
-                                    # Ensures at least basic queries are tried
+                                    # Allows more remix queries before exit (was 12)
     
-    "EARLY_EXIT_REQUIRE_MIX_OK": True,  # Require mix-type compatibility for early exit
+    "EARLY_EXIT_REQUIRE_MIX_OK": False,  # Require mix-type compatibility for early exit
                                          # e.g., don't exit early if searching for "remix" but found "original mix"
-                                         # True = more conservative, False = faster exits
+                                         # Disabled for faster exits (was True)
 
     # ========================================================================
     # EARLY EXIT (FAMILY CONSENSUS) SETTINGS
@@ -126,12 +131,13 @@ SETTINGS = {
     # Alternative early exit rules for "family" queries (full title + subset of artists)
     # These are more lenient than the main early exit to allow faster exits on strong partial matches
     
-    "EARLY_EXIT_FAMILY_SCORE": 93,      # Allow early exit on strong full-title + one-artist match
-                                        # Lower than main EARLY_EXIT_SCORE (93 vs 95) for faster exits
-                                        # Useful when full artist list isn't available or partial match is very strong
+    "EARLY_EXIT_FAMILY_SCORE": 88,      # Allow early exit on strong full-title + one-artist match
+                                        # Lower than main EARLY_EXIT_SCORE (88 vs 90) for faster exits
+                                        # Optimized for faster exits on strong partial matches (was 93)
     
-    "EARLY_EXIT_FAMILY_AFTER": 8,       # Minimum queries before family consensus early exit is allowed
+    "EARLY_EXIT_FAMILY_AFTER": 5,       # Minimum queries before family consensus early exit is allowed
                                         # Ensures enough queries have been tried before accepting partial match
+                                        # Reduced for faster exits (was 8)
     
     "EARLY_EXIT_FAMILY_AFTER_ORIGINAL": 6,  # For original mix tracks, allow family exit after fewer queries
                                              # Original mixes are easier to match, so less validation needed
@@ -149,14 +155,17 @@ SETTINGS = {
                                    # True = use MR_LOW/MED/HIGH based on query specificity
                                    # False = always use MAX_SEARCH_RESULTS
     
-    "MR_LOW": 15,                  # Max results for low-specificity queries (title-only, short queries)
+    "MR_LOW": 10,                  # Max results for low-specificity queries (title-only, short queries)
                                    # Fewer results because generic queries return many irrelevant matches
+                                   # Reduced for speed (was 15)
     
-    "MR_MED": 40,                  # Max results for medium-specificity queries (partial title + artist)
+    "MR_MED": 25,                  # Max results for medium-specificity queries (partial title + artist)
                                    # Moderate results for balanced precision/recall
+                                   # Reduced for speed (was 40)
     
-    "MR_HIGH": 100,                # Max results for high-specificity queries (full title + full artists)
+    "MR_HIGH": 50,                 # Max results for high-specificity queries (full title + full artists)
                                    # Many results because specific queries are more likely to be relevant
+                                   # Reduced for speed (was 100)
 
     # ========================================================================
     # CANDIDATE LIMITS
@@ -171,15 +180,16 @@ SETTINGS = {
     # ========================================================================
     # Settings specific to tracks with explicit remix or special variant indicators in title
     
-    "EARLY_EXIT_MIN_QUERIES_REMIX": 5,    # Allow earlier exit for remix tracks (fewer queries needed)
-                                          # Remix queries are more specific, so faster validation is acceptable
+    "EARLY_EXIT_MIN_QUERIES_REMIX": 12,   # Allow earlier exit for remix tracks (fewer queries needed)
+                                          # Increased to ensure multi-artist+remixer queries complete (was 5)
+                                          # These queries are typically in the first 10-12 queries
     
-    "EARLY_EXIT_SCORE_REMIX": 93,         # Lower threshold for remix early exit (93 vs 95)
+    "EARLY_EXIT_SCORE_REMIX": 93,         # Lower threshold for remix early exit (93 vs 90)
                                           # Remix matches are often harder to find, so slightly lower bar
     
-    "REMIX_MAX_QUERIES": 24,              # Hard cap on queries when remix intent is explicit in title
+    "REMIX_MAX_QUERIES": 30,              # Hard cap on queries when remix intent is explicit in title
                                           # Prevents excessive queries for remix-specific searches
-                                          # Remix queries tend to be more numerous (many remixer variants)
+                                          # Increased to allow more remix-specific queries (was 24)
     
     "ALLOW_GENERIC_ARTIST_REMIX_HINTS": False,  # Don't add generic "<artist> remix" queries unless enabled
                                                  # Generic remix hints can generate too many queries
@@ -196,13 +206,13 @@ SETTINGS = {
     # ========================================================================
     # Controls how search queries are generated from track title and artist information
     
-    "TITLE_GRAM_MAX": 3,                 # Maximum N-gram size to extract from title (up to trigrams)
-                                         # N-grams: 1-word, 2-word, 3-word sequences from title
-                                         # Higher = more query variants but exponentially more queries
+    "TITLE_GRAM_MAX": 2,                 # Maximum N-gram size to extract from title (up to bigrams)
+                                         # N-grams: 1-word, 2-word sequences from title
+                                         # Reduced for speed (was 3) - higher = more queries but exponentially slower
     
-    "CROSS_TITLE_GRAMS_WITH_ARTISTS": True,  # Cross title N-grams with artist name variants
-                                            # Creates queries like "title words" + "artist1", "title words" + "artist2"
-                                            # False = only use full title, True = generates many more queries
+    "CROSS_TITLE_GRAMS_WITH_ARTISTS": False,  # Cross title N-grams with artist name variants
+                                               # Creates queries like "title words" + "artist1", "title words" + "artist2"
+                                               # Disabled for speed (was True) - False = fewer but faster queries
     
     "CROSS_SMALL_ONLY": True,            # Only cross small N-grams (uni/bi-grams) with artists
                                         # Prevents explosion: "1 word" + artist, "2 words" + artist
@@ -268,20 +278,21 @@ SETTINGS = {
     "TITLE_COMBO_MIN_LEN": 2,            # Minimum word count for title combinations (start at 2-word combos)
                                          # Skip single words (too generic)
     
-    "TITLE_COMBO_MAX_LEN": 6,            # Maximum word count for title combinations
+    "TITLE_COMBO_MAX_LEN": 4,            # Maximum word count for title combinations
                                          # Cap prevents explosion with long titles
-                                         # "Never Sleep Again Tonight Forever" = 5 words max combo
+                                         # Reduced for speed (was 6)
     
     "INCLUDE_PERMUTATIONS": False,       # Also generate permuted word orders (not just order-preserving)
                                          # "Never Sleep" → also "Sleep Never"
                                          # Disabled by default (too many queries, rarely helpful)
     
-    "PERMUTATION_K_CAP": 5,              # Only permute when word count <= this number
-                                         # Permutations of 5+ words generate too many queries
+    "PERMUTATION_K_CAP": 3,              # Only permute when word count <= this number
+                                         # Permutations of 3+ words generate too many queries
+                                         # Reduced for speed (was 5)
     
-    "MAX_COMBO_QUERIES": None,           # Optional hard cap on combination queries
-                                         # None = no cap, int = maximum combo queries to generate
+    "MAX_COMBO_QUERIES": 15,             # Optional hard cap on combination queries
                                          # Safety valve to prevent accidental query explosion
+                                         # Added cap instead of None for speed (was None)
     
     "QUOTED_TITLE_VARIANT": False,       # Generate quoted title variants ("Title" vs Title)
                                          # Disabled globally - quotes rarely affect Beatport search results
@@ -299,9 +310,9 @@ SETTINGS = {
     # QUERY LIMITS
     # ========================================================================
     
-    "MAX_QUERIES_PER_TRACK": 200,        # Hard cap on total queries generated per track
+    "MAX_QUERIES_PER_TRACK": 40,         # Hard cap on total queries generated per track
                                          # Prevents runaway query generation
-                                         # Once cap is reached, remaining queries are skipped
+                                         # Optimized to allow remix queries while maintaining speed (was 200)
     # ========================================================================
     # GENERIC PARENTHETICAL PHRASE SCORING (e.g., "Ivory Re-fire", "Club Mix")
     # ========================================================================

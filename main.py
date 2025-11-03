@@ -61,7 +61,7 @@ def main():
     ap.add_argument("--all-queries", action="store_true",
                 help="Run EVERY query variation: disable time budget, wait for all candidates, allow tri-gram crosses")
     ap.add_argument("--myargs", action="store_true",
-                    help="Apply your custom settings bundle (edit the dict in code below) - optimized preset for typical use")
+                    help="Ultra-aggressive preset: goes beyond defaults for maximum match discovery (slower but finds more tracks)")
     ap.add_argument("--auto-research", action="store_true",
                     help="Automatically re-search unmatched tracks without prompting - useful for batch processing")
 
@@ -123,67 +123,38 @@ def main():
             "ENABLE_CACHE": True,
         })
 
-    # Custom bundle preset: optimized for typical use cases
-    # This is the recommended preset for most users - balances speed and accuracy
-    # Edit values here to customize for your specific needs
+    # Ultra-aggressive preset: goes beyond defaults for maximum match discovery
+    # Note: Default settings now match what --myargs used to apply
+    # This preset enables even more aggressive settings for users who want maximum coverage
     if args.myargs:
         SETTINGS.update({
-            # ---- Core speed/concurrency ----
-            "ENABLE_CACHE": True,
-            "CANDIDATE_WORKERS": 15,  # Increased from 10 for faster candidate fetching
-            "TRACK_WORKERS": 12,  # Increased from 10 for more parallel track processing
-            "PER_TRACK_TIME_BUDGET_SEC": 45,  # Increased to allow priority queries to complete
+            # ---- Core speed/concurrency (ultra) ----
+            "CANDIDATE_WORKERS": 20,  # Even more parallel workers (default: 15)
+            "TRACK_WORKERS": 16,  # Even more parallel track processing (default: 12)
+            "PER_TRACK_TIME_BUDGET_SEC": 60,  # Extended time budget (default: 45)
 
-            # ---- Similarity weights ----
-            "TITLE_WEIGHT": 0.55,
-            "ARTIST_WEIGHT": 0.45,
+            # ---- Early exit tuning (more lenient) ----
+            "EARLY_EXIT_SCORE": 88,  # Even lower threshold for faster exits (default: 90)
+            "EARLY_EXIT_MIN_QUERIES": 6,  # Fewer queries before exit allowed (default: 8)
+            "EARLY_EXIT_FAMILY_SCORE": 85,  # Even lower family score (default: 88)
+            "EARLY_EXIT_FAMILY_AFTER": 3,  # Fewer queries for family exit (default: 5)
+            "REMIX_MAX_QUERIES": 40,  # Even more remix queries (default: 30)
 
-            # ---- Early exit tuning ----
-            "EARLY_EXIT_SCORE": 90,  # Lowered from 95 to exit earlier
-            "EARLY_EXIT_MIN_QUERIES": 8,  # Increased to allow more remix queries before exit
-            "EARLY_EXIT_REQUIRE_MIX_OK": False,  # Disabled for faster exits
-            "EARLY_EXIT_FAMILY_SCORE": 88,  # Lowered from 93 for faster exits
-            "EARLY_EXIT_FAMILY_AFTER": 5,  # Reduced from 8
-            "EARLY_EXIT_MIN_QUERIES_REMIX": 12,  # Increased to ensure multi-artist+remixer queries complete (they're in first 10-12 queries)
-            "REMIX_MAX_QUERIES": 30,  # Increased to allow more remix-specific queries
+            # ---- Query generation (more exhaustive) ----
+            "TITLE_GRAM_MAX": 3,  # Enable trigrams (default: 2)
+            "CROSS_TITLE_GRAMS_WITH_ARTISTS": True,  # Enable title-gram crossing (default: False)
+            "MAX_QUERIES_PER_TRACK": 60,  # More queries per track (default: 40)
+            "TITLE_COMBO_MAX_LEN": 5,  # Longer title combos (default: 4)
+            "MAX_COMBO_QUERIES": 25,  # More combo queries (default: 15)
 
-            # ---- Adaptive max_results per query shape ----
-            "ADAPTIVE_MAX_RESULTS": True,
-            "MR_LOW": 10,  # Reduced from 15
-            "MR_MED": 25,  # Reduced from 40
-            "MR_HIGH": 50,  # Reduced from 100
+            # ---- Search depth (ultra) ----
+            "MAX_SEARCH_RESULTS": 75,  # More search results (default: 50)
+            "MR_LOW": 15,  # More results for low-specificity queries (default: 10)
+            "MR_MED": 35,  # More results for medium queries (default: 25)
+            "MR_HIGH": 75,  # More results for high-specificity queries (default: 50)
 
-            # ---- Query-generation shape preferences ----
-            "FULL_TITLE_WITH_ARTIST_ONLY": True,
-            "LINEAR_PREFIX_ONLY": True,
-            "REVERSE_ORDER_QUERIES": False,
-            "PRIORITY_REVERSE_STAGE": True,
-            "REVERSE_REMIX_HINTS": True,
-            "QUOTED_TITLE_VARIANT": False,
-
-            # ---- N-gram / combos controls (reduced for speed) ----
-            "TITLE_GRAM_MAX": 2,  # Reduced from 3 to generate fewer queries
-            "CROSS_TITLE_GRAMS_WITH_ARTISTS": False,  # Disabled for speed
-            "CROSS_SMALL_ONLY": True,
-            "RUN_EXHAUSTIVE_COMBOS": False,
-            "TITLE_COMBO_MIN_LEN": 2,
-            "TITLE_COMBO_MAX_LEN": 4,  # Reduced from 6
-            "INCLUDE_PERMUTATIONS": False,
-            "PERMUTATION_K_CAP": 3,  # Reduced from 5
-            "MAX_COMBO_QUERIES": 15,  # Added cap instead of None
-
-            # ---- Safeguards / misc ----
-            "MAX_SEARCH_RESULTS": 50,  # Increased for better remix discovery
-            "PER_QUERY_CANDIDATE_CAP": None,  # Removed cap to find tracks that appear later in search results
-            "MAX_QUERIES_PER_TRACK": 40,  # Increased slightly to allow more remix queries
-            "USE_BROWSER_AUTOMATION": True,  # Enable browser automation for remix queries that direct search misses
-            
-            # ---- Search strategy ----
-            "USE_DIRECT_SEARCH_FOR_REMIXES": True,  # Use direct Beatport search for remix queries
-            "USE_BROWSER_AUTOMATION": True,  # Enable browser automation for remix queries (finds JS-rendered tracks)
-            "MIN_ACCEPT_SCORE": 70,  # Lowered from 85 to catch more valid matches
-            "CONNECT_TIMEOUT": 3,  # Reduced from 5 for faster failures
-            "READ_TIMEOUT": 8,  # Reduced from 10
+            # ---- Scoring (more lenient) ----
+            "MIN_ACCEPT_SCORE": 65,  # Even more lenient acceptance (default: 70)
         })
 
     # Apply logging and determinism settings from command line

@@ -105,8 +105,10 @@ playwright install     # if using Playwright
 
 2. **Run the enricher**:
    ```bash
-   python main.py --xml collection.xml --playlist "My Playlist" --myargs --auto-research
+   python main.py --xml collection.xml --playlist "My Playlist" --auto-research
    ```
+   
+   Note: Default settings are already optimized! Use `--myargs` for ultra-aggressive settings if you need maximum coverage.
 
 3. **Check the output**:
    - Results are in the `output/` directory
@@ -122,15 +124,22 @@ playwright install     # if using Playwright
 python main.py --xml collection.xml --playlist "Playlist Name" --out output.csv
 ```
 
-### Recommended Usage (Optimized Settings)
+### Recommended Usage (Default Settings Are Already Optimized)
 
 ```bash
-python main.py --xml collection.xml --playlist "My Playlist" --myargs --auto-research
+python main.py --xml collection.xml --playlist "My Playlist" --auto-research
 ```
 
 **Flags Explained**:
-- `--myargs`: Uses optimized preset settings (recommended for most users)
 - `--auto-research`: Automatically re-searches unmatched tracks without prompting
+- `--myargs`: Ultra-aggressive preset (optional) - goes beyond defaults for maximum coverage
+
+**Note**: Default settings already include:
+- Browser automation enabled
+- High parallelism (15 candidate workers, 12 track workers)
+- 45-second time budget per track
+- 40 queries per track
+- Optimized scoring thresholds
 
 ### Full Example
 
@@ -151,7 +160,7 @@ Create a simple script to process multiple playlists:
 ```bash
 #!/bin/bash
 for playlist in "Playlist 1" "Playlist 2" "Playlist 3"; do
-  python main.py --xml collection.xml --playlist "$playlist" --myargs --auto-research --out "${playlist}.csv"
+  python main.py --xml collection.xml --playlist "$playlist" --auto-research --out "${playlist}.csv"
 done
 ```
 
@@ -221,8 +230,8 @@ The matching process uses a **multi-layered approach**:
    - Special phrase validation (must match custom phrases)
 
 5. **Early Exit**: Stops searching when excellent match found
-   - Score ≥ 95: Immediate acceptance
-   - Score ≥ 93 after 8+ queries: Fast exit for strong matches
+   - Score ≥ 90: Immediate acceptance (optimized threshold)
+   - Score ≥ 88 after 5+ queries: Fast exit for strong partial matches
 
 ### Example: How a Track Gets Matched
 
@@ -356,24 +365,30 @@ All settings are in `config.py` and can be modified. Key settings:
 
 - `TITLE_WEIGHT`: Title similarity weight (default: 0.55 = 55%)
 - `ARTIST_WEIGHT`: Artist similarity weight (default: 0.45 = 45%)
-- `MIN_ACCEPT_SCORE`: Minimum score to accept match (default: 55)
+- `MIN_ACCEPT_SCORE`: Minimum score to accept match (default: 70)
 
 #### Early Exit
 
-- `EARLY_EXIT_SCORE`: Stop if candidate reaches this score (default: 95)
-- `EARLY_EXIT_MIN_QUERIES`: Minimum queries before early exit (default: 12)
+- `EARLY_EXIT_SCORE`: Stop if candidate reaches this score (default: 90)
+- `EARLY_EXIT_MIN_QUERIES`: Minimum queries before early exit (default: 8)
 
 #### Query Generation
 
-- `TITLE_GRAM_MAX`: Maximum N-gram size (default: 3)
-- `MAX_QUERIES_PER_TRACK`: Hard cap on queries (default: 200)
-- `REMIX_MAX_QUERIES`: Max queries for remix tracks (default: 24)
+- `TITLE_GRAM_MAX`: Maximum N-gram size (default: 2)
+- `MAX_QUERIES_PER_TRACK`: Hard cap on queries (default: 40)
+- `REMIX_MAX_QUERIES`: Max queries for remix tracks (default: 30)
 
 ### Configuration Presets
 
-The tool includes several presets via command-line flags:
+**Default Settings**: Already optimized with:
+- Browser automation enabled
+- High parallelism (15 candidate workers, 12 track workers)
+- 45-second time budget, 40 queries per track
+- Optimized scoring and early exit thresholds
 
-- `--myargs`: Optimized preset (recommended) - balances speed and accuracy
+**Optional Presets** (via command-line flags):
+
+- `--myargs`: Ultra-aggressive preset - goes beyond defaults for maximum coverage (slower, finds more)
 - `--fast`: Faster defaults (fewer results, shorter time budgets)
 - `--turbo`: Maximum speed (aggressive optimizations)
 - `--exhaustive`: Maximum accuracy (more queries, longer time budgets)
@@ -393,8 +408,8 @@ See `main.py` for preset definitions (can be customized).
 ### Optional Arguments
 
 - `--out FILENAME`: Base filename for output CSV (default: `beatport_enriched.csv`)
-- `--myargs`: Apply optimized preset settings (recommended)
-- `--auto-research`: Automatically re-search unmatched tracks
+- `--myargs`: Ultra-aggressive preset - goes beyond defaults for maximum coverage (optional)
+- `--auto-research`: Automatically re-search unmatched tracks (recommended)
 - `--fast`: Faster defaults (safe)
 - `--turbo`: Maximum speed (be gentle)
 - `--exhaustive`: Maximum accuracy (more queries, longer time)
@@ -410,7 +425,7 @@ See `main.py` for preset definitions (can be customized).
 python main.py --xml collection.xml --playlist "My Playlist"
 
 # Recommended run (optimized settings + auto re-search)
-python main.py --xml collection.xml --playlist "My Playlist" --myargs --auto-research
+python main.py --xml collection.xml --playlist "My Playlist" --auto-research
 
 # Fast run (fewer results, shorter time)
 python main.py --xml collection.xml --playlist "My Playlist" --fast
@@ -419,7 +434,7 @@ python main.py --xml collection.xml --playlist "My Playlist" --fast
 python main.py --xml collection.xml --playlist "My Playlist" --exhaustive
 
 # Verbose logging
-python main.py --xml collection.xml --playlist "My Playlist" --myargs --verbose
+python main.py --xml collection.xml --playlist "My Playlist" --verbose
 
 # Custom output filename
 python main.py --xml collection.xml --playlist "My Playlist" --out my_results.csv
