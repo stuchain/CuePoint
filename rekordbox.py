@@ -19,6 +19,8 @@ from typing import Dict, List, Optional, Tuple
 
 import xml.etree.ElementTree as ET
 
+from error_handling import error_file_not_found, error_xml_parsing
+
 
 @dataclass
 class RBTrack:
@@ -51,9 +53,45 @@ def parse_rekordbox(xml_path: str) -> Tuple[Dict[str, RBTrack], Dict[str, List[s
         Tuple of:
         - tracks_by_id: Dictionary mapping track ID -> RBTrack
         - playlists: Dictionary mapping playlist name -> list of track IDs
+    
+    Raises:
+        FileNotFoundError: If XML file doesn't exist
+        ET.ParseError: If XML parsing fails
     """
-    tree = ET.parse(xml_path)
-    root = tree.getroot()
+    # Check if file exists first
+    import os
+    if not os.path.exists(xml_path):
+        raise FileNotFoundError(f"XML file not found: {xml_path}")
+    
+    try:
+        tree = ET.parse(xml_path)
+        root = tree.getroot()
+    except ET.ParseError as e:
+        # Try to get line number from error if available
+        line_number = None
+        if hasattr(e, 'position'):
+            # ElementTree ParseError position is (line, column)
+            if isinstance(e.position, tuple) and len(e.position) > 0:
+                line_number = e.position[0]
+        elif hasattr(e, 'lineno'):
+            line_number = e.lineno
+        
+        # Create comprehensive error message and raise a custom exception
+        # We'll format it but need to preserve the original error
+        formatted_msg = error_xml_parsing(xml_path, e, line_number)
+        # Create a new exception with formatted message but preserve original
+        formatted_error = ET.ParseError(formatted_msg)
+        formatted_error.__cause__ = e
+        raise formatted_error from e
+    except Exception as e:
+        # Handle any other parsing-related exceptions
+        if isinstance(e, (FileNotFoundError, ET.ParseError)):
+            raise
+        # For other exceptions, provide generic error
+        formatted_msg = error_xml_parsing(xml_path, e, None)
+        new_error = Exception(formatted_msg)
+        new_error.__cause__ = e
+        raise new_error from e
 
     tracks_by_id: Dict[str, RBTrack] = {}
     playlists: Dict[str, List[str]] = {}

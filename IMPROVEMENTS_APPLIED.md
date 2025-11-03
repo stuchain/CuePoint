@@ -1,5 +1,86 @@
 # Improvements Applied
 
+## Improvement #5: Better Error Messages with Actionable Fixes ✅
+
+**Date**: 2025-11-03  
+**Status**: Completed
+
+### What Was Added:
+- Comprehensive error handling module (`error_handling.py`) with context-aware error messages
+- Specific suggestions for fixing common issues
+- Lists available options (playlists, files) when relevant
+- Context information (current directory, file paths, available options)
+
+### Error Types Improved:
+1. **File Not Found Errors**:
+   - Shows absolute path, current directory, and file existence status
+   - Suggests checking file path and common variations
+   - Detects if file might be in current directory
+
+2. **Playlist Not Found Errors**:
+   - Lists all available playlists from XML file
+   - Suggests similar playlist names (fuzzy matching)
+   - Shows total number of playlists available
+
+3. **XML Parsing Errors**:
+   - Shows line numbers where errors occurred (when available)
+   - Suggests re-exporting from Rekordbox
+   - Provides specific error context
+
+4. **Network Errors**:
+   - Context-aware suggestions based on error type (timeout, connection, SSL, rate limiting)
+   - Suggests checking VPN, firewall, connection, and rate limiting
+   - Provides guidance for increasing timeouts
+
+5. **Configuration Errors**:
+   - Shows invalid setting keys and expected vs actual types
+   - Suggests checking YAML syntax and value types
+   - References template configuration file
+
+6. **Missing Dependencies**:
+   - Provides exact install commands
+   - Suggests checking Python environment
+   - Special handling for Playwright (includes browser installation step)
+
+### Files Modified:
+- `error_handling.py`: Created new module with comprehensive error message functions
+- `main.py`: Updated to use better error messages for config file errors and missing dependencies
+- `processor.py`: Updated to show available playlists when playlist not found, and better XML file error handling
+- `rekordbox.py`: Enhanced XML parsing error messages with line numbers and context
+
+### Example Error Messages:
+```
+================================================================================
+ERROR: Playlist Not Found
+================================================================================
+
+Playlist "My Playlist" was not found in the XML file
+
+Context:
+  Requested playlist: My Playlist
+  Available playlists:
+    - Playlist 1
+    - Playlist 2
+    - My Playlists
+  Total playlists: 3
+
+Suggested fixes:
+  1. Check the playlist name for typos or case sensitivity
+  2. Ensure the playlist exists in your Rekordbox XML export
+  3. Did you mean one of these? My Playlists
+
+See also: Export your playlists from Rekordbox to include them in the XML file
+================================================================================
+```
+
+### Benefits:
+- Reduces user frustration by providing actionable guidance
+- Saves time by showing available options directly
+- Helps users understand what went wrong and how to fix it
+- Reduces support burden with self-service error resolution
+
+---
+
 ## Improvement #3: Configuration File Support (YAML) ✅
 
 **Date**: 2025-11-03  

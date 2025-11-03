@@ -22,6 +22,7 @@ import argparse
 import sys
 
 from config import SETTINGS, load_config_from_yaml
+from error_handling import error_file_not_found, error_config_invalid, error_missing_dependency, print_error
 from processor import run
 from utils import startup_banner
 
@@ -78,9 +79,34 @@ def main():
             yaml_settings = load_config_from_yaml(args.config)
             SETTINGS.update(yaml_settings)
             print(f"Loaded configuration from: {args.config}")
+        except FileNotFoundError as e:
+            print_error(error_file_not_found(args.config, "Configuration", "Check the --config file path"))
+        except ImportError as e:
+            if "yaml" in str(e).lower() or "pyyaml" in str(e).lower():
+                print_error(error_missing_dependency("pyyaml", "pip install pyyaml>=6.0"))
+            else:
+                print_error(error_missing_dependency(str(e).split()[-1] if e.args else "unknown"))
+        except ValueError as e:
+            # Extract key information from ValueError if possible
+            error_msg = str(e)
+            invalid_key = None
+            expected_type = None
+            actual_value = None
+            
+            # Try to parse ValueError message for key details
+            if "Setting" in error_msg and "expects" in error_msg:
+                parts = error_msg.split("Setting ")[1].split(" expects ")
+                if len(parts) == 2:
+                    invalid_key = parts[0].strip()
+                    type_parts = parts[1].split(", got ")
+                    if len(type_parts) == 2:
+                        expected_type = type_parts[0].strip()
+                        value_parts = type_parts[1].split(" (")
+                        actual_value = value_parts[0].strip() if value_parts else None
+            
+            print_error(error_config_invalid(args.config, e, invalid_key, expected_type, actual_value))
         except Exception as e:
-            print(f"Error loading configuration file {args.config}: {e}", file=sys.stderr)
-            sys.exit(1)
+            print_error(error_config_invalid(args.config, e))
 
     # Apply --fast preset: optimizes for speed with reasonable accuracy
     # - Fewer search results per query (12 vs 50)

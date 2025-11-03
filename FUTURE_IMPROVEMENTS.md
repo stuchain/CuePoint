@@ -11,7 +11,7 @@ Use this checklist to track implemented improvements. Check off items as they're
 - [x] [2. Summary Statistics Report](#2-summary-statistics-report)
 - [x] [3. Configuration File Support (YAML)](#3-configuration-file-support-yaml)
 - [ ] [4. Multiple Candidate Output Option](#4-multiple-candidate-output-option)
-- [ ] [5. Better Error Messages with Actionable Fixes](#5-better-error-messages-with-actionable-fixes)
+- [x] [5. Better Error Messages with Actionable Fixes](#5-better-error-messages-with-actionable-fixes)
 
 ### ⚡ Medium Effort (P1 - 3-5 days each)
 - [ ] [6. Retry Logic with Exponential Backoff](#6-retry-logic-with-exponential-backoff)
@@ -168,7 +168,7 @@ python main.py --xml collection.xml --playlist "My Playlist" --top-candidates 3
 
 ---
 
-### 5. Better Error Messages with Actionable Fixes
+### Improv
 
 **Effort:** 1-2 days (ongoing)  
 **Impact:** Medium - Reduces user frustration and support burden

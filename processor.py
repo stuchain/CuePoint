@@ -31,6 +31,7 @@ from typing import Dict, List, Tuple
 from tqdm import tqdm
 
 from config import HAVE_CACHE, SETTINGS
+from error_handling import error_playlist_not_found, error_file_not_found, print_error
 from matcher import _camelot_key, _confidence_label, best_beatport_match
 from mix_parser import _extract_generic_parenthetical_phrases, _parse_mix_flags
 from query_generator import make_search_queries
@@ -463,13 +464,28 @@ def run(xml_path: str, playlist_name: str, out_csv_base: str, auto_research: boo
         requests_cache.install_cache("bp_cache", expire_after=60 * 60 * 24)
 
     # Parse Rekordbox XML file to extract tracks and playlists
-    tracks_by_id, playlists = parse_rekordbox(xml_path)
+    try:
+        tracks_by_id, playlists = parse_rekordbox(xml_path)
+    except FileNotFoundError:
+        print_error(error_file_not_found(xml_path, "XML", "Check the --xml file path"))
+        return
+    except Exception as e:
+        # XML parsing errors are handled in rekordbox.py
+        # The error message is already formatted in rekordbox.py, so just print it
+        error_msg = str(e)
+        # If the error message is already formatted (starts with "="), print it as-is
+        if error_msg.startswith("="):
+            print_error(error_msg, exit_code=None)
+        else:
+            # Otherwise, format it ourselves
+            from error_handling import error_xml_parsing
+            print_error(error_xml_parsing(xml_path, e, None), exit_code=None)
+        return
     
     # Validate that requested playlist exists in the XML
     if playlist_name not in playlists:
-        raise SystemExit(
-            f'Playlist "{playlist_name}" not found. Available: {", ".join(sorted(playlists.keys()))}'
-        )
+        print_error(error_playlist_not_found(playlist_name, list(playlists.keys())))
+        return
 
     # Get track IDs for the requested playlist
     tids = playlists[playlist_name]
