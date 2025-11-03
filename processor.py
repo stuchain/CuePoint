@@ -25,8 +25,10 @@ import random
 import re
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, List, Tuple
+
+from tqdm import tqdm
 
 from config import HAVE_CACHE, SETTINGS
 from matcher import _camelot_key, _confidence_label, best_beatport_match
@@ -361,32 +363,74 @@ def run(xml_path: str, playlist_name: str, out_csv_base: str, auto_research: boo
     
     # Process tracks in parallel if TRACK_WORKERS > 1, otherwise sequential
     # Parallel processing speeds up large playlists significantly
+    # Progress tracking: matched/unmatched counts for progress bar display
+    matched_count = 0
+    unmatched_count = 0
+    
     if SETTINGS["TRACK_WORKERS"] > 1:
         # PARALLEL MODE: Process multiple tracks simultaneously
         # Uses ThreadPoolExecutor to run process_track() in parallel
         # Results are collected as they complete (order may vary)
-        with ThreadPoolExecutor(max_workers=SETTINGS["TRACK_WORKERS"]) as ex:
-            for main_row, cand_rows, query_rows in ex.map(lambda args: process_track(*args), inputs):
-                rows.append(main_row)
-                all_candidates.extend(cand_rows)
-                all_queries.extend(query_rows)
-                # Track unmatched tracks (no URL means no match found)
-                # Extract index from result and look up original track
-                if not (main_row.get("beatport_url") or "").strip():
-                    idx = int(main_row.get("playlist_index", "0"))
-                    if idx > 0 and idx in inputs_map:
-                        unmatched_tracks.append((idx, inputs_map[idx]))
+        # Use as_completed() with tqdm to show real-time progress
+        with tqdm(total=len(inputs), desc="Processing tracks", unit="track", 
+                  bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]') as pbar:
+            with ThreadPoolExecutor(max_workers=SETTINGS["TRACK_WORKERS"]) as ex:
+                # Submit all tasks - process_track takes (idx, rb) as separate args
+                future_to_args = {ex.submit(process_track, idx, rb): (idx, rb) for idx, rb in inputs}
+                
+                # Process completed tasks as they finish
+                for future in as_completed(future_to_args):
+                    main_row, cand_rows, query_rows = future.result()
+                    rows.append(main_row)
+                    all_candidates.extend(cand_rows)
+                    all_queries.extend(query_rows)
+                    
+                    # Track matched/unmatched for progress display
+                    if (main_row.get("beatport_url") or "").strip():
+                        matched_count += 1
+                    else:
+                        unmatched_count += 1
+                        # Track unmatched tracks (no URL means no match found)
+                        idx = int(main_row.get("playlist_index", "0"))
+                        if idx > 0 and idx in inputs_map:
+                            unmatched_tracks.append((idx, inputs_map[idx]))
+                    
+                    # Update progress bar with current stats
+                    pbar.set_postfix({
+                        'matched': matched_count,
+                        'unmatched': unmatched_count,
+                        'current': f"Track {main_row.get('playlist_index', '?')}"
+                    })
+                    pbar.update(1)
     else:
         # SEQUENTIAL MODE: Process tracks one at a time
         # Slower but uses less memory and easier to debug
-        for args in inputs:
-            main_row, cand_rows, query_rows = process_track(*args)
-            rows.append(main_row)
-            all_candidates.extend(cand_rows)
-            all_queries.extend(query_rows)
-            # Track unmatched tracks directly from input args
-            if not (main_row.get("beatport_url") or "").strip():
-                unmatched_tracks.append(args)
+        # Use tqdm to show progress bar
+        with tqdm(total=len(inputs), desc="Processing tracks", unit="track",
+                  bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]') as pbar:
+            for args in inputs:
+                idx, rb = args
+                main_row, cand_rows, query_rows = process_track(*args)
+                rows.append(main_row)
+                all_candidates.extend(cand_rows)
+                all_queries.extend(query_rows)
+                
+                # Track matched/unmatched for progress display
+                if (main_row.get("beatport_url") or "").strip():
+                    matched_count += 1
+                else:
+                    unmatched_count += 1
+                    # Track unmatched tracks directly from input args
+                    unmatched_tracks.append(args)
+                
+                # Update progress bar with current stats
+                current_title = rb.title[:30] + "..." if len(rb.title) > 30 else rb.title
+                pbar.set_postfix({
+                    'matched': matched_count,
+                    'unmatched': unmatched_count,
+                    'current': f"#{idx}: {current_title}"
+                })
+                pbar.update(1)
 
     # ========================================================================
     # OUTPUT FILE GENERATION
