@@ -387,9 +387,9 @@ Settings in the YAML file are merged with defaults. CLI flags still override YAM
 
 **Note**: YAML support requires `pyyaml>=6.0`, which is included in `requirements.txt`.
 
-### Configuration File: `config.py`
+### Configuration File: `SRC/config.py`
 
-All default settings are in `config.py` and can be modified directly if you prefer code-based configuration. Key settings:
+All default settings are in `SRC/config.py` and can be modified directly if you prefer code-based configuration. Key settings:
 
 #### Search & Concurrency
 
@@ -431,7 +431,7 @@ All default settings are in `config.py` and can be modified directly if you pref
 - `--exhaustive`: Maximum accuracy (more queries, longer time budgets)
 - `--all-queries`: Run every query variation (very slow, most thorough)
 
-See `main.py` for preset definitions (can be customized).
+See `SRC/main.py` for preset definitions (can be customized).
 
 ---
 
@@ -504,7 +504,7 @@ python main.py --xml collection.xml --playlist "My Playlist" --config config.yam
 1. Review the `*_candidates.csv` file to see alternative candidates
 2. Check `review_reason` in review file for specific issues
 3. Verify original track data is accurate
-4. Consider lowering `MIN_ACCEPT_SCORE` in `config.py` (not recommended)
+4. Consider lowering `MIN_ACCEPT_SCORE` in `SRC/config.py` (not recommended)
 
 ### Incorrect Matches
 
@@ -523,7 +523,7 @@ python main.py --xml collection.xml --playlist "My Playlist" --config config.yam
 **Solutions**:
 1. Use `--fast` or `--turbo` presets
 2. Reduce `TRACK_WORKERS` to 1 (sequential processing)
-3. Enable caching: `ENABLE_CACHE = True` in `config.py` (enabled by default)
+3. Enable caching: `ENABLE_CACHE = True` in `SRC/config.py` (enabled by default)
 4. Reduce `MAX_SEARCH_RESULTS` or `PER_TRACK_TIME_BUDGET_SEC`
 
 **Note**: HTTP response caching (`requests-cache`) is included in `requirements.txt` and enabled by default.
@@ -543,37 +543,44 @@ python main.py --xml collection.xml --playlist "My Playlist" --config config.yam
 
 ```
 CuePoint/
-├── main.py                 # CLI entry point, argument parsing, presets
-├── config.py               # Configuration settings and constants
-├── processor.py            # Main orchestration (parsing, processing, output)
-├── matcher.py              # Matching and scoring logic
-├── query_generator.py      # Search query generation
-├── beatport_search.py      # Beatport search implementation (direct + browser)
-├── beatport.py             # Beatport scraping and parsing
-├── rekordbox.py            # Rekordbox XML parsing
-├── text_processing.py      # Text normalization and similarity
-├── mix_parser.py           # Mix/remix phrase extraction
-├── utils.py                # Logging and timestamp utilities
+├── main.py                 # Wrapper script (runs SRC/main.py)
+├── SRC/                    # Source code directory
+│   ├── main.py             # CLI entry point, argument parsing, presets
+│   ├── config.py           # Configuration settings and constants
+│   ├── processor.py        # Main orchestration (parsing, processing, output)
+│   ├── matcher.py          # Matching and scoring logic
+│   ├── query_generator.py  # Search query generation
+│   ├── beatport_search.py  # Beatport search implementation (direct + browser)
+│   ├── beatport.py         # Beatport scraping and parsing
+│   ├── rekordbox.py        # Rekordbox XML parsing
+│   ├── text_processing.py  # Text normalization and similarity
+│   ├── mix_parser.py       # Mix/remix phrase extraction
+│   ├── utils.py            # Logging and timestamp utilities
+│   └── __init__.py         # Package initialization
+├── DOCS/                   # Documentation directory
+│   ├── DESIGNS/           # Detailed design documents
+│   └── *.md               # Documentation files
 ├── output/                 # Output directory (created automatically)
 │   └── *.csv              # Generated CSV files
 ├── collection.xml          # Rekordbox XML export (user-provided)
 ├── README.md               # This file
-└── requirements.txt        # Python dependencies
+├── requirements.txt        # Python dependencies
+└── config.yaml.template    # YAML configuration template
 ```
 
 ### Module Responsibilities
 
-- **main.py**: CLI interface, argument parsing, preset application
-- **processor.py**: Orchestrates entire pipeline, CSV output, re-search feature
-- **matcher.py**: Core matching algorithm, scoring, guards, early exit
-- **query_generator.py**: Generates intelligent search query variants
-- **beatport_search.py**: Multi-method Beatport search (DuckDuckGo, direct, browser)
-- **beatport.py**: Scrapes and parses Beatport track pages
-- **rekordbox.py**: Parses Rekordbox XML, extracts playlists and tracks
-- **text_processing.py**: Normalizes text, calculates similarities
-- **mix_parser.py**: Extracts mix type information (remix, extended, etc.)
-- **config.py**: All configuration settings in one place
-- **utils.py**: Shared utility functions (logging, timestamps)
+- **SRC/main.py**: CLI interface, argument parsing, preset application
+- **SRC/processor.py**: Orchestrates entire pipeline, CSV output, re-search feature
+- **SRC/matcher.py**: Core matching algorithm, scoring, guards, early exit
+- **SRC/query_generator.py**: Generates intelligent search query variants
+- **SRC/beatport_search.py**: Multi-method Beatport search (DuckDuckGo, direct, browser)
+- **SRC/beatport.py**: Scrapes and parses Beatport track pages
+- **SRC/rekordbox.py**: Parses Rekordbox XML, extracts playlists and tracks
+- **SRC/text_processing.py**: Normalizes text, calculates similarities
+- **SRC/mix_parser.py**: Extracts mix type information (remix, extended, etc.)
+- **SRC/config.py**: All configuration settings in one place
+- **SRC/utils.py**: Shared utility functions (logging, timestamps)
 
 ---
 
@@ -581,7 +588,7 @@ CuePoint/
 
 ### Customizing Query Generation
 
-Edit `query_generator.py` to modify query generation:
+Edit `SRC/query_generator.py` to modify query generation:
 
 - Add custom query patterns
 - Adjust N-gram generation
@@ -589,7 +596,7 @@ Edit `query_generator.py` to modify query generation:
 
 ### Customizing Scoring
 
-Edit `matcher.py` to modify scoring:
+Edit `SRC/matcher.py` to modify scoring:
 
 - Adjust similarity weights
 - Add custom bonuses/penalties
@@ -597,7 +604,7 @@ Edit `matcher.py` to modify scoring:
 
 ### Adding Search Methods
 
-Edit `beatport_search.py` to add new search methods:
+Edit `SRC/beatport_search.py` to add new search methods:
 
 - Add new API endpoints
 - Implement alternative search engines
@@ -607,7 +614,7 @@ Edit `beatport_search.py` to add new search methods:
 
 For large playlists (100+ tracks):
 
-1. **Caching**: Enabled by default (`ENABLE_CACHE = True` in `config.py`, `requests-cache` included in requirements)
+1. **Caching**: Enabled by default (`ENABLE_CACHE = True` in `SRC/config.py`, `requests-cache` included in requirements)
 2. **Increase Parallelism**: Set `TRACK_WORKERS = 8` or higher
 3. **Adjust Time Budgets**: Increase `PER_TRACK_TIME_BUDGET_SEC` if matches are missed
 4. **Batch Processing**: Process playlists in smaller batches
