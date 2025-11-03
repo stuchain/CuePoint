@@ -1,0 +1,29 @@
+# CuePoint - Rekordbox → Beatport Metadata Enricher
+# Required dependencies for core functionality
+
+# HTTP requests and web scraping
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+
+# DuckDuckGo search integration
+ddgs>=0.1.0
+
+# Fuzzy string matching for track/artist similarity
+rapidfuzz>=3.0.0
+
+# Date parsing for release dates
+python-dateutil>=2.8.0
+
+# HTTP response caching (enabled by default)
+# Speeds up repeated runs by caching Beatport page responses
+requests-cache>=1.1.0
+
+# Browser automation for JavaScript-rendered content
+# Playwright (recommended - faster, more modern)
+# After installing: playwright install chromium
+playwright>=1.40.0
+
+# Selenium (alternative browser automation)
+# Also need ChromeDriver or GeckoDriver in PATH
+selenium>=4.15.0
+

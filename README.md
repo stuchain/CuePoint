@@ -79,20 +79,13 @@ Install required packages:
 pip install -r requirements.txt
 ```
 
-Optional packages (for enhanced functionality):
+After installing, set up Playwright browser binaries:
 
 ```bash
-pip install requests-cache  # HTTP response caching (speeds up repeated runs)
+playwright install chromium
 ```
 
-### Optional Browser Automation
-
-For browser automation fallback (finds JavaScript-rendered content):
-
-```bash
-pip install playwright  # or selenium
-playwright install     # if using Playwright
-```
+**Note**: This downloads the Chromium browser used for automated web scraping. This is required for the browser automation feature that finds JavaScript-rendered content on Beatport.
 
 ---
 
@@ -482,9 +475,10 @@ python main.py --xml collection.xml --playlist "My Playlist" --out my_results.cs
 **Solutions**:
 1. Use `--fast` or `--turbo` presets
 2. Reduce `TRACK_WORKERS` to 1 (sequential processing)
-3. Enable caching: `ENABLE_CACHE = True` in `config.py`
-4. Install `requests-cache` for HTTP response caching
-5. Reduce `MAX_SEARCH_RESULTS` or `PER_TRACK_TIME_BUDGET_SEC`
+3. Enable caching: `ENABLE_CACHE = True` in `config.py` (enabled by default)
+4. Reduce `MAX_SEARCH_RESULTS` or `PER_TRACK_TIME_BUDGET_SEC`
+
+**Note**: HTTP response caching (`requests-cache`) is included in `requirements.txt` and enabled by default.
 
 ### Unicode/Encoding Errors
 
@@ -565,11 +559,10 @@ Edit `beatport_search.py` to add new search methods:
 
 For large playlists (100+ tracks):
 
-1. **Enable Caching**: Set `ENABLE_CACHE = True` in `config.py`
-2. **Install requests-cache**: `pip install requests-cache`
-3. **Increase Parallelism**: Set `TRACK_WORKERS = 8` or higher
-4. **Adjust Time Budgets**: Increase `PER_TRACK_TIME_BUDGET_SEC` if matches are missed
-5. **Batch Processing**: Process playlists in smaller batches
+1. **Caching**: Enabled by default (`ENABLE_CACHE = True` in `config.py`, `requests-cache` included in requirements)
+2. **Increase Parallelism**: Set `TRACK_WORKERS = 8` or higher
+3. **Adjust Time Budgets**: Increase `PER_TRACK_TIME_BUDGET_SEC` if matches are missed
+4. **Batch Processing**: Process playlists in smaller batches
 
 ### Reproducibility
 
