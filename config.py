@@ -6,7 +6,7 @@ Configuration settings and constants for Rekordbox → Beatport metadata enriche
 
 This module contains all configuration settings that control the behavior of the
 metadata enrichment process. Settings can be overridden via command-line presets
-(--fast, --turbo, --myargs) or modified programmatically.
+(--fast, --turbo, --myargs), YAML configuration files (--config), or modified programmatically.
 
 Key configuration categories:
 1. Search & Concurrency: How many results to fetch, how many parallel workers
@@ -15,8 +15,29 @@ Key configuration categories:
 4. Query Generation: Controls for generating search query variants
 5. Search Strategy: Which search methods to use (DuckDuckGo, direct Beatport, browser)
 6. Timeouts & Limits: Network timeouts and query/candidate limits
+
+YAML Configuration File Support:
+Settings can be loaded from a YAML file using the --config flag. The configuration
+file uses a nested structure that maps to the flat SETTINGS dictionary. Settings
+loaded from YAML are merged with defaults, and can still be overridden by CLI flags.
+
+Example config.yaml structure:
+    performance:
+      candidate_workers: 15
+      track_workers: 12
+      time_budget_sec: 45
+      max_search_results: 50
+    
+    matching:
+      min_accept_score: 70
+      early_exit_score: 90
+    
+    query_generation:
+      title_gram_max: 2
+      max_queries_per_track: 40
 """
 
+import os
 import requests
 
 # -----------------------------
@@ -384,4 +405,180 @@ NEAR_KEYS = {
     "g#": {"ab"}, "ab": {"g#"},  # G-sharp = A-flat
     "a#": {"bb"}, "bb": {"a#"},  # A-sharp = B-flat
 }
+
+# ========================================================================
+# YAML CONFIGURATION FILE SUPPORT
+# ========================================================================
+
+def _flatten_yaml_dict(nested_dict: dict, parent_key: str = "", sep: str = "_") -> dict:
+    """
+    Flatten a nested dictionary structure to match SETTINGS keys
+    
+    Converts nested YAML structure to flat dictionary keys:
+    {"performance": {"candidate_workers": 15}} -> {"CANDIDATE_WORKERS": 15}
+    
+    Args:
+        nested_dict: Nested dictionary from YAML file
+        parent_key: Parent key prefix for nested items
+        sep: Separator to use between nested keys
+    
+    Returns:
+        Flattened dictionary with uppercase keys matching SETTINGS format
+    """
+    items = []
+    for key, value in nested_dict.items():
+        # Convert key to uppercase to match SETTINGS convention
+        new_key = key.upper()
+        if parent_key:
+            new_key = f"{parent_key}{sep}{new_key}"
+        
+        if isinstance(value, dict):
+            # Recursively flatten nested dictionaries
+            items.extend(_flatten_yaml_dict(value, new_key, sep=sep).items())
+        else:
+            items.append((new_key, value))
+    return dict(items)
+
+
+def _map_yaml_keys_to_settings(yaml_dict: dict) -> dict:
+    """
+    Map YAML file keys to SETTINGS dictionary keys
+    
+    This function handles the mapping from user-friendly YAML structure to
+    the internal SETTINGS dictionary keys. It supports both nested structures
+    and direct key mappings.
+    
+    Args:
+        yaml_dict: Flattened dictionary from YAML file (already processed by _flatten_yaml_dict)
+    
+    Returns:
+        Dictionary with keys matching SETTINGS format
+    """
+    # Mapping from common YAML keys to SETTINGS keys
+    # This handles user-friendly nested key names (e.g., "performance.candidate_workers")
+    key_mapping = {
+        "PERFORMANCE_CANDIDATE_WORKERS": "CANDIDATE_WORKERS",
+        "PERFORMANCE_TRACK_WORKERS": "TRACK_WORKERS",
+        "PERFORMANCE_TIME_BUDGET_SEC": "PER_TRACK_TIME_BUDGET_SEC",
+        "PERFORMANCE_MAX_SEARCH_RESULTS": "MAX_SEARCH_RESULTS",
+        "MATCHING_MIN_ACCEPT_SCORE": "MIN_ACCEPT_SCORE",
+        "MATCHING_EARLY_EXIT_SCORE": "EARLY_EXIT_SCORE",
+        "MATCHING_EARLY_EXIT_MIN_QUERIES": "EARLY_EXIT_MIN_QUERIES",
+        "QUERY_GENERATION_TITLE_GRAM_MAX": "TITLE_GRAM_MAX",
+        "QUERY_GENERATION_MAX_QUERIES_PER_TRACK": "MAX_QUERIES_PER_TRACK",
+        "QUERY_GENERATION_CROSS_TITLE_GRAMS_WITH_ARTISTS": "CROSS_TITLE_GRAMS_WITH_ARTISTS",
+        "NETWORK_CONNECT_TIMEOUT": "CONNECT_TIMEOUT",
+        "NETWORK_READ_TIMEOUT": "READ_TIMEOUT",
+        "NETWORK_ENABLE_CACHE": "ENABLE_CACHE",
+        "SEARCH_USE_BROWSER_AUTOMATION": "USE_BROWSER_AUTOMATION",
+        "SEARCH_BROWSER_TIMEOUT_SEC": "BROWSER_TIMEOUT_SEC",
+        "LOGGING_VERBOSE": "VERBOSE",
+        "LOGGING_TRACE": "TRACE",
+        "DETERMINISM_SEED": "SEED",
+    }
+    
+    # Also allow direct SETTINGS key names (uppercase, no nesting)
+    # This allows users to directly specify SETTINGS keys if they prefer
+    result = {}
+    for key, value in yaml_dict.items():
+        # Try mapping first, then use key directly if it matches SETTINGS
+        mapped_key = key_mapping.get(key, key)
+        # Only include keys that exist in SETTINGS
+        if mapped_key in SETTINGS:
+            result[mapped_key] = value
+        elif key in SETTINGS:
+            # Allow direct SETTINGS keys
+            result[key] = value
+        # Silently ignore unknown keys (allows YAML files with extra comments/sections)
+    
+    return result
+
+
+def load_config_from_yaml(yaml_path: str) -> dict:
+    """
+    Load configuration settings from a YAML file
+    
+    The YAML file can use a nested structure for organization. Nested keys are
+    automatically flattened and mapped to SETTINGS dictionary keys.
+    
+    Example YAML structure:
+        performance:
+          candidate_workers: 15
+          track_workers: 12
+          time_budget_sec: 45
+        
+        matching:
+          min_accept_score: 70
+    
+    Settings from YAML are merged with defaults. CLI flags still override YAML settings.
+    
+    Args:
+        yaml_path: Path to YAML configuration file
+    
+    Returns:
+        Dictionary of settings to merge into SETTINGS
+    
+    Raises:
+        FileNotFoundError: If YAML file doesn't exist
+        yaml.YAMLError: If YAML file is invalid
+        ValueError: If YAML contains invalid setting values
+    """
+    try:
+        import yaml
+    except ImportError:
+        raise ImportError(
+            "YAML support requires pyyaml. Install with: pip install pyyaml>=6.0"
+        )
+    
+    if not os.path.exists(yaml_path):
+        raise FileNotFoundError(f"Configuration file not found: {yaml_path}")
+    
+    with open(yaml_path, "r", encoding="utf-8") as f:
+        yaml_content = yaml.safe_load(f)
+    
+    if not isinstance(yaml_content, dict):
+        raise ValueError(f"YAML file must contain a dictionary at root level: {yaml_path}")
+    
+    # Flatten nested structure
+    flattened = _flatten_yaml_dict(yaml_content)
+    
+    # Map to SETTINGS keys
+    settings_dict = _map_yaml_keys_to_settings(flattened)
+    
+    # Validate setting types
+    for key, value in settings_dict.items():
+        default_value = SETTINGS.get(key)
+        if default_value is not None:
+            # Type check: ensure YAML value matches default type
+            if type(value) != type(default_value):
+                # Allow int/float conversion for numeric types
+                if isinstance(default_value, (int, float)) and isinstance(value, (int, float)):
+                    pass  # OK - both numeric
+                elif isinstance(default_value, bool) and isinstance(value, bool):
+                    pass  # OK - both boolean
+                elif isinstance(default_value, bool) and isinstance(value, (str, int)):
+                    # Allow string/int to bool conversion
+                    if isinstance(value, str):
+                        settings_dict[key] = value.lower() in ("true", "1", "yes", "on")
+                    else:
+                        settings_dict[key] = bool(value)
+                elif isinstance(default_value, (int, float)) and isinstance(value, str):
+                    # Try to convert string to number
+                    try:
+                        if isinstance(default_value, int):
+                            settings_dict[key] = int(value)
+                        else:
+                            settings_dict[key] = float(value)
+                    except ValueError:
+                        raise ValueError(
+                            f"Setting {key} expects {type(default_value).__name__}, "
+                            f"got {type(value).__name__} ({value})"
+                        )
+                else:
+                    raise ValueError(
+                        f"Setting {key} expects {type(default_value).__name__}, "
+                        f"got {type(value).__name__} ({value})"
+                    )
+    
+    return settings_dict
 

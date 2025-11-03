@@ -1,0 +1,98 @@
+# CuePoint Configuration Template
+# Copy this file to config.yaml and customize your settings
+# Settings in YAML are merged with defaults, and CLI flags override YAML settings
+
+# Performance & Concurrency Settings
+# Control how many parallel workers and search results to use
+performance:
+  # Number of parallel threads for fetching candidate track data from Beatport
+  # Higher = faster but more load on servers (default: 15)
+  candidate_workers: 15
+  
+  # Number of parallel threads for processing tracks in the playlist
+  # Higher = faster overall but more memory usage (default: 12)
+  track_workers: 12
+  
+  # Maximum time (seconds) to spend searching for matches per track
+  # None = no time limit (default: 45)
+  time_budget_sec: 45
+  
+  # Maximum number of results to fetch per search query from DuckDuckGo
+  # Higher = more candidates but slower (default: 50)
+  max_search_results: 50
+
+# Matching & Scoring Settings
+# Control similarity thresholds and match acceptance criteria
+matching:
+  # Minimum total score required to accept a match
+  # Scores range from 0-200+ (title + artist + bonuses) (default: 70)
+  min_accept_score: 70
+  
+  # Stop searching if a candidate reaches this score or higher
+  # Score must pass all guard checks (default: 90)
+  early_exit_score: 90
+  
+  # Minimum number of queries to run before allowing early exit
+  # Prevents premature exit on lucky first-query matches (default: 8)
+  early_exit_min_queries: 8
+
+# Query Generation Settings
+# Control how search queries are generated from track information
+query_generation:
+  # Maximum N-gram size to extract from title (1-gram, 2-gram, etc.)
+  # Higher = more queries but exponentially slower (default: 2)
+  title_gram_max: 2
+  
+  # Hard cap on total queries generated per track
+  # Prevents runaway query generation (default: 40)
+  max_queries_per_track: 40
+  
+  # Cross title N-grams with artist name variants
+  # Creates more query combinations but can be slow (default: false)
+  cross_title_grams_with_artists: false
+
+# Network & Timeout Settings
+# Control HTTP timeouts and caching behavior
+network:
+  # HTTP connection timeout in seconds (default: 3)
+  connect_timeout: 3
+  
+  # HTTP read timeout in seconds (default: 8)
+  read_timeout: 8
+  
+  # Enable HTTP response caching (requires requests-cache package)
+  # Speeds up repeated runs by caching Beatport page responses (default: true)
+  enable_cache: true
+
+# Search Strategy Settings
+# Control which search methods to use
+search:
+  # Use browser automation (Playwright/Selenium) as fallback
+  # Slower but most reliable - can find JavaScript-rendered content (default: true)
+  use_browser_automation: true
+  
+  # Timeout for browser automation operations in seconds (default: 30)
+  browser_timeout_sec: 30
+
+# Logging Settings
+# Control verbosity of output
+logging:
+  # Enable verbose logging (detailed progress information) (default: false)
+  verbose: false
+  
+  # Enable trace-level logging (shows every candidate evaluated) (default: false)
+  trace: false
+
+# Determinism Settings
+# Control random seed for reproducible results
+determinism:
+  # Random seed for deterministic behavior
+  # Same seed + same input = same output (default: 0)
+  seed: 0
+
+# Note: Many more settings are available in the SETTINGS dictionary
+# You can also use direct SETTINGS key names (uppercase, no nesting) if preferred
+# Example:
+#   CANDIDATE_WORKERS: 20
+#   MIN_ACCEPT_SCORE: 75
+

@@ -14,6 +14,9 @@ rapidfuzz>=3.0.0
 # Date parsing for release dates
 python-dateutil>=2.8.0
 
+# YAML configuration file support
+pyyaml>=6.0
+
 # Progress bars for better user experience
 tqdm>=4.66.0
 

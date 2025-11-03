@@ -343,9 +343,53 @@ All output files are written to the `output/` directory with timestamps to preve
 
 ## Configuration
 
+### Configuration Options
+
+CuePoint supports multiple ways to configure settings:
+
+1. **Default settings** in `config.py` (hardcoded defaults)
+2. **YAML configuration file** (recommended for sharing/version control)
+3. **Command-line presets** (--fast, --turbo, --myargs, etc.)
+4. **Individual CLI flags** (--verbose, --seed, etc.)
+
+**Priority order**: CLI flags > CLI presets > YAML file > defaults
+
+### YAML Configuration File (Recommended)
+
+You can create a `config.yaml` file to customize settings. Use `config.yaml.template` as a starting point:
+
+```bash
+# Copy the template
+cp config.yaml.template config.yaml
+
+# Edit config.yaml with your preferred settings
+# Then use it:
+python main.py --xml collection.xml --playlist "My Playlist" --config config.yaml
+```
+
+**Example `config.yaml`:**
+```yaml
+performance:
+  candidate_workers: 20
+  track_workers: 10
+  time_budget_sec: 60
+
+matching:
+  min_accept_score: 75
+  early_exit_score: 88
+
+query_generation:
+  title_gram_max: 3
+  max_queries_per_track: 50
+```
+
+Settings in the YAML file are merged with defaults. CLI flags still override YAML settings, allowing you to use YAML for base configuration and CLI flags for one-time overrides.
+
+**Note**: YAML support requires `pyyaml>=6.0`, which is included in `requirements.txt`.
+
 ### Configuration File: `config.py`
 
-All settings are in `config.py` and can be modified. Key settings:
+All default settings are in `config.py` and can be modified directly if you prefer code-based configuration. Key settings:
 
 #### Search & Concurrency
 
@@ -401,6 +445,7 @@ See `main.py` for preset definitions (can be customized).
 ### Optional Arguments
 
 - `--out FILENAME`: Base filename for output CSV (default: `beatport_enriched.csv`)
+- `--config PATH`: Path to YAML configuration file (settings merged with defaults, CLI flags override)
 - `--myargs`: Ultra-aggressive preset - goes beyond defaults for maximum coverage (optional)
 - `--auto-research`: Automatically re-search unmatched tracks (recommended)
 - `--fast`: Faster defaults (safe)
@@ -431,6 +476,9 @@ python main.py --xml collection.xml --playlist "My Playlist" --verbose
 
 # Custom output filename
 python main.py --xml collection.xml --playlist "My Playlist" --out my_results.csv
+
+# Using YAML configuration file
+python main.py --xml collection.xml --playlist "My Playlist" --config config.yaml
 ```
 
 ---

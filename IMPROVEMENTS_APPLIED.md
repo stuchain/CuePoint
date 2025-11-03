@@ -1,5 +1,43 @@
 # Improvements Applied
 
+## Improvement #3: Configuration File Support (YAML) ✅
+
+**Date**: 2025-11-03  
+**Status**: Completed
+
+### What Was Added:
+- YAML configuration file support via `--config` flag
+- Nested YAML structure support (performance, matching, query_generation, etc.)
+- Automatic key mapping from user-friendly YAML keys to internal SETTINGS keys
+- Type validation and conversion (int, float, bool, string)
+- Settings priority: CLI flags > CLI presets > YAML file > defaults
+- Template configuration file (`config.yaml.template`) with examples
+- Support for both nested keys and direct SETTINGS key names
+
+### Files Modified:
+- `config.py`: Added `load_config_from_yaml()`, `_flatten_yaml_dict()`, and `_map_yaml_keys_to_settings()` functions
+- `main.py`: Added `--config` argument and YAML loading logic
+- `requirements.txt`: Added `pyyaml>=6.0` dependency
+- `config.yaml.template`: Created template file with comprehensive examples
+
+### Usage:
+```bash
+# Copy template and customize
+cp config.yaml.template config.yaml
+
+# Use with your config file
+python main.py --xml collection.xml --playlist "My Playlist" --config config.yaml
+```
+
+### Features:
+- User-friendly nested structure: `performance.candidate_workers: 20`
+- Type safety: Automatic validation and conversion
+- Flexible: Supports both nested keys and direct SETTINGS keys
+- Override-friendly: CLI flags still override YAML settings
+- Error handling: Clear error messages for invalid configurations
+
+---
+
 ## Improvement #2: Summary Statistics Report ✅
 
 **Date**: 2025-11-03  

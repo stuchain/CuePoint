@@ -21,7 +21,7 @@ Example usage:
 import argparse
 import sys
 
-from config import SETTINGS
+from config import SETTINGS, load_config_from_yaml
 from processor import run
 from utils import startup_banner
 
@@ -57,6 +57,10 @@ def main():
     # Determinism control
     ap.add_argument("--seed", type=int, default=0, help="Random seed for determinism (default 0) - ensures reproducible results")
 
+    # Configuration file
+    ap.add_argument("--config", type=str, default=None,
+                    help="Path to YAML configuration file - settings in file are merged with defaults, CLI flags override file settings")
+
     # Advanced query options
     ap.add_argument("--all-queries", action="store_true",
                 help="Run EVERY query variation: disable time budget, wait for all candidates, allow tri-gram crosses")
@@ -66,6 +70,17 @@ def main():
                     help="Automatically re-search unmatched tracks without prompting - useful for batch processing")
 
     args = ap.parse_args()
+
+    # Load configuration from YAML file if specified
+    # YAML settings are loaded first, then CLI presets override them
+    if args.config:
+        try:
+            yaml_settings = load_config_from_yaml(args.config)
+            SETTINGS.update(yaml_settings)
+            print(f"Loaded configuration from: {args.config}")
+        except Exception as e:
+            print(f"Error loading configuration file {args.config}: {e}", file=sys.stderr)
+            sys.exit(1)
 
     # Apply --fast preset: optimizes for speed with reasonable accuracy
     # - Fewer search results per query (12 vs 50)
