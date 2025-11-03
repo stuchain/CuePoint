@@ -1,4 +1,32 @@
-# Improvements Applied to Fix Match Rate
+# Improvements Applied
+
+## Improvement #2: Summary Statistics Report ✅
+
+**Date**: 2025-11-03  
+**Status**: Completed
+
+### What Was Added:
+- Comprehensive summary statistics report displayed after processing completes
+- Formatted ASCII-safe report with box-drawing characters for visual clarity
+- Detailed metrics including:
+  - Match success rate (matched/unmatched/review needed)
+  - Match quality breakdown (high/medium/low confidence)
+  - Average scores and similarity metrics
+  - Performance statistics (total queries, candidates, early exits)
+  - Genre breakdown (top 5 genres with percentages)
+  - Output file summary with row counts
+- Report automatically saved to `{output_base}_summary.txt` file
+- Unicode-safe formatting for Windows console compatibility
+
+### Files Modified:
+- `processor.py`: Added `generate_summary_report()` function and integrated into `run()` function
+
+### Usage:
+The summary is automatically displayed at the end of processing and saved to a text file in the `output/` directory.
+
+---
+
+## Previous Improvements: Fix Match Rate
 
 ## Issues Identified:
 1. **Track 16573632 (Keinemusik Remix) was found** but:
