@@ -436,9 +436,14 @@ gunicorn web.main:app -w 4 -k uvicorn.workers.UvicornWorker
 
 ### 8.2 Accessibility
 
-- **Non-technical users**: No command-line needed
 - **Remote access**: Use from anywhere
-- **Mobile support**: Responsive design
+- **Multi-user**: Multiple users can access server
+- **Mobile support**: Responsive design (read-only)
+
+### 8.3 When to Use
+
+- **Desktop GUI**: Primary choice for most users (local, standalone)
+- **Web Interface**: Use when remote access or server deployment is needed
 
 ---
 

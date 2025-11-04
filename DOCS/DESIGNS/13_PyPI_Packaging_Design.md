@@ -12,7 +12,7 @@
 
 ### 1.1 Problem Statement
 
-Installation requires cloning repo and manual setup.
+Installation requires cloning repo and manual setup. CLI users need an easy way to install and use the command-line version.
 
 ### 1.2 Solution Overview
 
@@ -22,6 +22,15 @@ Package for PyPI:
 3. Build and upload to PyPI
 4. Installable via `pip install cuepoint`
 5. Command-line entry point
+
+**Note:** This is primarily for CLI users. GUI users should use the standalone executables (see Design 17: Executable Packaging).
+
+### 1.3 Use Cases
+
+- **CLI Users**: Developers and power users who prefer command-line
+- **Scripting**: Automated workflows and batch processing
+- **Integration**: Programmatic access via Python API
+- **Development**: Easy installation for contributors
 
 ---
 
@@ -102,6 +111,9 @@ browser = [
     "playwright>=1.40.0",
     "selenium>=4.15.0",
 ]
+gui = [
+    "PySide6>=6.5.0",  # Optional GUI support
+]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
@@ -179,11 +191,14 @@ python -m twine upload dist/*
 ### 5.1 Installation
 
 ```bash
-# Basic installation
+# Basic installation (CLI only)
 pip install cuepoint
 
 # With browser automation support
 pip install cuepoint[browser]
+
+# With GUI support (requires PySide6)
+pip install cuepoint[gui]
 
 # Development installation
 pip install cuepoint[dev]
@@ -197,7 +212,16 @@ cuepoint --xml collection.xml --playlist "My Playlist"
 
 # Or still use as module
 python -m cuepoint --xml collection.xml --playlist "My Playlist"
+
+# Launch GUI (if GUI optional dependency installed)
+cuepoint-gui
 ```
+
+### 5.3 GUI vs CLI
+
+- **Standalone Executable**: Recommended for GUI users (no Python needed)
+- **PyPI Package**: Recommended for CLI users and developers
+- **Both Use Same Core**: Same processing engine, different interfaces
 
 ---
 
