@@ -454,7 +454,247 @@ Already in `requirements.txt`.
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: 2025-11-03  
-**Author**: CuePoint Development Team
+---
+
+## 16. GUI Integration (PySide6)
+
+### 16.1 GUI Progress Widget Design
+
+**Location**: `SRC/gui/progress_widget.py` (NEW)
+
+**Component Structure**:
+```python
+# SRC/gui/progress_widget.py
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+    QProgressBar, QGroupBox
+)
+from PySide6.QtCore import Qt, Signal
+from gui_interface import ProgressInfo
+
+class ProgressWidget(QWidget):
+    """GUI progress widget for processing display"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._setup_ui()
+    
+    def _setup_ui(self):
+        """Set up progress widget UI"""
+        layout = QVBoxLayout()
+        
+        # Overall progress bar
+        self.overall_progress = QProgressBar()
+        self.overall_progress.setMinimum(0)
+        self.overall_progress.setMaximum(100)
+        self.overall_progress.setValue(0)
+        self.overall_progress.setFormat("%p% (%v/%m)")
+        layout.addWidget(self.overall_progress)
+        
+        # Current track info
+        self.current_track_label = QLabel("Ready to start...")
+        self.current_track_label.setWordWrap(True)
+        layout.addWidget(self.current_track_label)
+        
+        # Statistics group
+        stats_group = QGroupBox("Statistics")
+        stats_layout = QHBoxLayout()
+        
+        self.matched_label = QLabel("Matched: 0")
+        self.unmatched_label = QLabel("Unmatched: 0")
+        self.processing_label = QLabel("Processing: 0")
+        
+        stats_layout.addWidget(self.matched_label)
+        stats_layout.addWidget(self.unmatched_label)
+        stats_layout.addWidget(self.processing_label)
+        stats_layout.addStretch()
+        
+        stats_group.setLayout(stats_layout)
+        layout.addWidget(stats_group)
+        
+        # Time estimates
+        time_layout = QHBoxLayout()
+        self.elapsed_label = QLabel("Elapsed: 0s")
+        self.remaining_label = QLabel("Remaining: --")
+        time_layout.addWidget(self.elapsed_label)
+        time_layout.addWidget(self.remaining_label)
+        time_layout.addStretch()
+        layout.addLayout(time_layout)
+        
+        self.setLayout(layout)
+    
+    def update_progress(self, progress_info: ProgressInfo):
+        """Update progress from backend"""
+        # Update overall progress bar
+        if progress_info.total_tracks > 0:
+            percentage = int((progress_info.completed_tracks / progress_info.total_tracks) * 100)
+            self.overall_progress.setValue(percentage)
+            self.overall_progress.setMaximum(progress_info.total_tracks)
+        
+        # Update current track
+        if progress_info.current_track:
+            track_text = f"Track {progress_info.completed_tracks + 1}/{progress_info.total_tracks}: {progress_info.current_track.title} - {progress_info.current_track.artists}"
+            self.current_track_label.setText(track_text)
+        
+        # Update statistics
+        self.matched_label.setText(f"Matched: {progress_info.matched_count}")
+        self.unmatched_label.setText(f"Unmatched: {progress_info.unmatched_count}")
+        self.processing_label.setText(f"Processing: {progress_info.completed_tracks}")
+        
+        # Update time estimates
+        if progress_info.elapsed_time > 0:
+            elapsed_str = self._format_time(progress_info.elapsed_time)
+            self.elapsed_label.setText(f"Elapsed: {elapsed_str}")
+            
+            if progress_info.total_tracks > 0 and progress_info.completed_tracks > 0:
+                avg_time_per_track = progress_info.elapsed_time / progress_info.completed_tracks
+                remaining_tracks = progress_info.total_tracks - progress_info.completed_tracks
+                estimated_remaining = avg_time_per_track * remaining_tracks
+                remaining_str = self._format_time(estimated_remaining)
+                self.remaining_label.setText(f"Remaining: {remaining_str}")
+    
+    def _format_time(self, seconds: float) -> str:
+        """Format time in human-readable format"""
+        if seconds < 60:
+            return f"{seconds:.0f}s"
+        elif seconds < 3600:
+            minutes = int(seconds // 60)
+            secs = int(seconds % 60)
+            return f"{minutes}m {secs}s"
+        else:
+            hours = int(seconds // 3600)
+            minutes = int((seconds % 3600) // 60)
+            return f"{hours}h {minutes}m"
+    
+    def reset(self):
+        """Reset progress widget"""
+        self.overall_progress.setValue(0)
+        self.current_track_label.setText("Ready to start...")
+        self.matched_label.setText("Matched: 0")
+        self.unmatched_label.setText("Unmatched: 0")
+        self.processing_label.setText("Processing: 0")
+        self.elapsed_label.setText("Elapsed: 0s")
+        self.remaining_label.setText("Remaining: --")
+```
+
+### 16.2 Thread-Safe Progress Updates
+
+**Integration in MainWindow**:
+
+```python
+# SRC/gui/main_window.py
+from PySide6.QtCore import QThread, Signal
+from gui_interface import ProgressInfo, ProcessingController
+
+class ProcessingThread(QThread):
+    """Thread for running processing"""
+    
+    progress_updated = Signal(ProgressInfo)
+    processing_complete = Signal(list)
+    error_occurred = Signal(str)
+    
+    def __init__(self, xml_path: str, playlist_name: str):
+        super().__init__()
+        self.xml_path = xml_path
+        self.playlist_name = playlist_name
+        self.controller = ProcessingController()
+    
+    def run(self):
+        """Run processing in background thread"""
+        def progress_callback(progress_info: ProgressInfo):
+            # Emit signal to update GUI (thread-safe)
+            self.progress_updated.emit(progress_info)
+        
+        try:
+            results = process_playlist(
+                xml_path=self.xml_path,
+                playlist_name=self.playlist_name,
+                progress_callback=progress_callback,
+                controller=self.controller
+            )
+            self.processing_complete.emit(results)
+        except Exception as e:
+            self.error_occurred.emit(str(e))
+    
+    def cancel(self):
+        """Cancel processing"""
+        self.controller.cancel()
+
+# In MainWindow
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.progress_widget = ProgressWidget()
+        self.processing_thread = None
+    
+    def _start_processing(self):
+        """Start processing"""
+        # Reset progress widget
+        self.progress_widget.reset()
+        
+        # Create and start processing thread
+        self.processing_thread = ProcessingThread(
+            xml_path=self.xml_path,
+            playlist_name=self.playlist_name
+        )
+        
+        # Connect signals
+        self.processing_thread.progress_updated.connect(self.progress_widget.update_progress)
+        self.processing_thread.processing_complete.connect(self._on_processing_complete)
+        self.processing_thread.error_occurred.connect(self._on_error)
+        
+        # Start thread
+        self.processing_thread.start()
+    
+    def _on_processing_complete(self, results):
+        """Handle processing completion"""
+        # Update UI
+        self.progress_widget.overall_progress.setValue(100)
+        # ... show results ...
+    
+    def _cancel_processing(self):
+        """Cancel processing"""
+        if self.processing_thread and self.processing_thread.isRunning():
+            self.processing_thread.cancel()
+```
+
+### 16.3 Visual Design
+
+**Progress Bar Styling**:
+```python
+# Styled progress bar with color coding
+self.overall_progress.setStyleSheet("""
+    QProgressBar {
+        border: 2px solid #cccccc;
+        border-radius: 5px;
+        text-align: center;
+        font-weight: bold;
+    }
+    QProgressBar::chunk {
+        background-color: #4CAF50;
+        border-radius: 3px;
+    }
+""")
+```
+
+**Statistics Color Coding**:
+- **Matched**: Green (#4CAF50)
+- **Unmatched**: Red (#F44336)
+- **Processing**: Blue (#2196F3)
+
+### 16.4 Acceptance Criteria for GUI Integration
+
+- [ ] Progress widget displays correctly
+- [ ] Progress updates in real-time
+- [ ] Thread-safe updates work correctly
+- [ ] Time estimates calculate correctly
+- [ ] Visual design is clear and professional
+- [ ] Cancellation works correctly
+
+---
+
+**Document Version**: 2.0  
+**Last Updated**: 2025-01-27  
+**Author**: CuePoint Development Team  
+**GUI Integration**: Complete
 

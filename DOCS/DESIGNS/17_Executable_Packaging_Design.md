@@ -32,7 +32,7 @@ Package the GUI application as standalone executables:
 **Pros:**
 - Cross-platform (Windows, macOS, Linux)
 - Well-documented and maintained
-- Supports PySide6/Qt applications
+- Supports PySide6/Qt applications (PySide6 is the free LGPL version)
 - Single-file or directory mode
 - Code signing support
 
@@ -46,6 +46,8 @@ Package the GUI application as standalone executables:
 pip install pyinstaller
 pyinstaller --name=CuePoint --windowed --onefile gui_app.py
 ```
+
+**Note:** The GUI application uses PySide6 (free LGPL license), not PyQt6 which requires commercial licensing.
 
 ### 2.2 cx_Freeze (Alternative)
 
@@ -97,9 +99,9 @@ a = Analysis(
         ('DOCS/LICENSE', '.'),
     ],
     hiddenimports=[
-        'PySide6.QtCore',
-        'PySide6.QtGui',
-        'PySide6.QtWidgets',
+        'PySide6.QtCore',      # Qt Core functionality
+        'PySide6.QtGui',       # Qt GUI components
+        'PySide6.QtWidgets',  # Qt Widgets (free LGPL license)
         'requests',
         'beautifulsoup4',
         'rapidfuzz',

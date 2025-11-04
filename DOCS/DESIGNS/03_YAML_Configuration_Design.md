@@ -477,7 +477,545 @@ Already in `requirements.txt`.
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: 2025-11-03  
-**Author**: CuePoint Development Team
+---
+
+## 11. GUI Settings Panel Integration
+
+### 11.1 Settings Panel Widget Design
+
+**Location**: `SRC/gui/settings_panel.py` (NEW)
+
+**Component Structure**:
+```python
+# SRC/gui/settings_panel.py
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+    QGroupBox, QSpinBox, QDoubleSpinBox, QCheckBox,
+    QPushButton, QComboBox, QLineEdit, QTabWidget,
+    QFileDialog, QMessageBox
+)
+from PySide6.QtCore import Qt, Signal
+from typing import Dict, Any
+
+class SettingsPanel(QWidget):
+    """GUI settings panel for configuration"""
+    
+    settings_changed = Signal(dict)  # Emit when settings change
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.settings = {}
+        self._setup_ui()
+    
+    def _setup_ui(self):
+        """Set up settings panel UI"""
+        layout = QVBoxLayout()
+        
+        # Tab widget for organized sections
+        tabs = QTabWidget()
+        
+        # Performance tab
+        perf_tab = self._create_performance_tab()
+        tabs.addTab(perf_tab, "Performance")
+        
+        # Matching tab
+        match_tab = self._create_matching_tab()
+        tabs.addTab(match_tab, "Matching")
+        
+        # Query Generation tab
+        query_tab = self._create_query_tab()
+        tabs.addTab(query_tab, "Query Generation")
+        
+        # Network tab
+        network_tab = self._create_network_tab()
+        tabs.addTab(network_tab, "Network")
+        
+        # Search tab
+        search_tab = self._create_search_tab()
+        tabs.addTab(search_tab, "Search")
+        
+        # Logging tab
+        logging_tab = self._create_logging_tab()
+        tabs.addTab(logging_tab, "Logging")
+        
+        layout.addWidget(tabs)
+        
+        # Buttons
+        button_layout = QHBoxLayout()
+        
+        load_btn = QPushButton("Load from File...")
+        load_btn.clicked.connect(self._load_from_file)
+        button_layout.addWidget(load_btn)
+        
+        save_btn = QPushButton("Save to File...")
+        save_btn.clicked.connect(self._save_to_file)
+        button_layout.addWidget(save_btn)
+        
+        reset_btn = QPushButton("Reset to Defaults")
+        reset_btn.clicked.connect(self._reset_to_defaults)
+        button_layout.addWidget(reset_btn)
+        
+        button_layout.addStretch()
+        
+        apply_btn = QPushButton("Apply")
+        apply_btn.clicked.connect(self._apply_settings)
+        button_layout.addWidget(apply_btn)
+        
+        layout.addLayout(button_layout)
+        
+        self.setLayout(layout)
+    
+    def _create_performance_tab(self) -> QWidget:
+        """Create performance settings tab"""
+        widget = QWidget()
+        layout = QVBoxLayout()
+        
+        # Candidate Workers
+        workers_layout = QHBoxLayout()
+        workers_label = QLabel("Candidate Workers:")
+        self.candidate_workers_spin = QSpinBox()
+        self.candidate_workers_spin.setRange(1, 50)
+        self.candidate_workers_spin.setValue(15)
+        workers_layout.addWidget(workers_label)
+        workers_layout.addWidget(self.candidate_workers_spin)
+        workers_layout.addStretch()
+        layout.addLayout(workers_layout)
+        
+        # Track Workers
+        track_layout = QHBoxLayout()
+        track_label = QLabel("Track Workers:")
+        self.track_workers_spin = QSpinBox()
+        self.track_workers_spin.setRange(1, 20)
+        self.track_workers_spin.setValue(12)
+        track_layout.addWidget(track_label)
+        track_layout.addWidget(self.track_workers_spin)
+        track_layout.addStretch()
+        layout.addLayout(track_layout)
+        
+        # Time Budget
+        budget_layout = QHBoxLayout()
+        budget_label = QLabel("Time Budget (seconds):")
+        self.time_budget_spin = QSpinBox()
+        self.time_budget_spin.setRange(10, 300)
+        self.time_budget_spin.setValue(45)
+        budget_layout.addWidget(budget_label)
+        budget_layout.addWidget(self.time_budget_spin)
+        budget_layout.addStretch()
+        layout.addLayout(budget_layout)
+        
+        # Max Search Results
+        results_layout = QHBoxLayout()
+        results_label = QLabel("Max Search Results:")
+        self.max_results_spin = QSpinBox()
+        self.max_results_spin.setRange(10, 100)
+        self.max_results_spin.setValue(50)
+        results_layout.addWidget(results_label)
+        results_layout.addWidget(self.max_results_spin)
+        results_layout.addStretch()
+        layout.addLayout(results_layout)
+        
+        layout.addStretch()
+        widget.setLayout(layout)
+        return widget
+    
+    def _create_matching_tab(self) -> QWidget:
+        """Create matching settings tab"""
+        widget = QWidget()
+        layout = QVBoxLayout()
+        
+        # Min Accept Score
+        min_layout = QHBoxLayout()
+        min_label = QLabel("Min Accept Score:")
+        self.min_score_spin = QSpinBox()
+        self.min_score_spin.setRange(0, 200)
+        self.min_score_spin.setValue(70)
+        min_layout.addWidget(min_label)
+        min_layout.addWidget(self.min_score_spin)
+        min_layout.addStretch()
+        layout.addLayout(min_layout)
+        
+        # Early Exit Score
+        exit_layout = QHBoxLayout()
+        exit_label = QLabel("Early Exit Score:")
+        self.exit_score_spin = QSpinBox()
+        self.exit_score_spin.setRange(0, 200)
+        self.exit_score_spin.setValue(90)
+        exit_layout.addWidget(exit_label)
+        exit_layout.addWidget(self.exit_score_spin)
+        exit_layout.addStretch()
+        layout.addLayout(exit_layout)
+        
+        # Early Exit Min Queries
+        queries_layout = QHBoxLayout()
+        queries_label = QLabel("Early Exit Min Queries:")
+        self.exit_queries_spin = QSpinBox()
+        self.exit_queries_spin.setRange(1, 50)
+        self.exit_queries_spin.setValue(8)
+        queries_layout.addWidget(queries_label)
+        queries_layout.addWidget(self.exit_queries_spin)
+        queries_layout.addStretch()
+        layout.addLayout(queries_layout)
+        
+        layout.addStretch()
+        widget.setLayout(layout)
+        return widget
+    
+    def _create_query_tab(self) -> QWidget:
+        """Create query generation settings tab"""
+        widget = QWidget()
+        layout = QVBoxLayout()
+        
+        # Title Gram Max
+        gram_layout = QHBoxLayout()
+        gram_label = QLabel("Title Gram Max:")
+        self.title_gram_spin = QSpinBox()
+        self.title_gram_spin.setRange(1, 5)
+        self.title_gram_spin.setValue(2)
+        gram_layout.addWidget(gram_label)
+        gram_layout.addWidget(self.title_gram_spin)
+        gram_layout.addStretch()
+        layout.addLayout(gram_layout)
+        
+        # Max Queries Per Track
+        max_q_layout = QHBoxLayout()
+        max_q_label = QLabel("Max Queries Per Track:")
+        self.max_queries_spin = QSpinBox()
+        self.max_queries_spin.setRange(10, 100)
+        self.max_queries_spin.setValue(40)
+        max_q_layout.addWidget(max_q_label)
+        max_q_layout.addWidget(self.max_queries_spin)
+        max_q_layout.addStretch()
+        layout.addLayout(max_q_layout)
+        
+        # Cross Title Grams
+        cross_check = QCheckBox("Cross Title Grams with Artists")
+        cross_check.setChecked(False)
+        self.cross_grams_check = cross_check
+        layout.addWidget(cross_check)
+        
+        layout.addStretch()
+        widget.setLayout(layout)
+        return widget
+    
+    def _create_network_tab(self) -> QWidget:
+        """Create network settings tab"""
+        widget = QWidget()
+        layout = QVBoxLayout()
+        
+        # Connect Timeout
+        connect_layout = QHBoxLayout()
+        connect_label = QLabel("Connect Timeout (seconds):")
+        self.connect_timeout_spin = QSpinBox()
+        self.connect_timeout_spin.setRange(1, 30)
+        self.connect_timeout_spin.setValue(3)
+        connect_layout.addWidget(connect_label)
+        connect_layout.addWidget(self.connect_timeout_spin)
+        connect_layout.addStretch()
+        layout.addLayout(connect_layout)
+        
+        # Read Timeout
+        read_layout = QHBoxLayout()
+        read_label = QLabel("Read Timeout (seconds):")
+        self.read_timeout_spin = QSpinBox()
+        self.read_timeout_spin.setRange(1, 60)
+        self.read_timeout_spin.setValue(8)
+        read_layout.addWidget(read_label)
+        read_layout.addWidget(self.read_timeout_spin)
+        read_layout.addStretch()
+        layout.addLayout(read_layout)
+        
+        # Enable Cache
+        cache_check = QCheckBox("Enable Cache")
+        cache_check.setChecked(True)
+        self.enable_cache_check = cache_check
+        layout.addWidget(cache_check)
+        
+        layout.addStretch()
+        widget.setLayout(layout)
+        return widget
+    
+    def _create_search_tab(self) -> QWidget:
+        """Create search settings tab"""
+        widget = QWidget()
+        layout = QVBoxLayout()
+        
+        # Use Direct Search for Remixes
+        remix_check = QCheckBox("Use Direct Search for Remixes")
+        remix_check.setChecked(True)
+        self.direct_remix_check = remix_check
+        layout.addWidget(remix_check)
+        
+        # Prefer Direct Search
+        prefer_check = QCheckBox("Prefer Direct Search")
+        prefer_check.setChecked(False)
+        self.prefer_direct_check = prefer_check
+        layout.addWidget(prefer_check)
+        
+        # Use Browser Automation
+        browser_check = QCheckBox("Use Browser Automation")
+        browser_check.setChecked(True)
+        self.browser_check = browser_check
+        layout.addWidget(browser_check)
+        
+        # Browser Timeout
+        browser_timeout_layout = QHBoxLayout()
+        browser_timeout_label = QLabel("Browser Timeout (seconds):")
+        self.browser_timeout_spin = QSpinBox()
+        self.browser_timeout_spin.setRange(10, 120)
+        self.browser_timeout_spin.setValue(30)
+        browser_timeout_layout.addWidget(browser_timeout_label)
+        browser_timeout_layout.addWidget(self.browser_timeout_spin)
+        browser_timeout_layout.addStretch()
+        layout.addLayout(browser_timeout_layout)
+        
+        layout.addStretch()
+        widget.setLayout(layout)
+        return widget
+    
+    def _create_logging_tab(self) -> QWidget:
+        """Create logging settings tab"""
+        widget = QWidget()
+        layout = QVBoxLayout()
+        
+        # Verbose
+        verbose_check = QCheckBox("Verbose Logging")
+        verbose_check.setChecked(False)
+        self.verbose_check = verbose_check
+        layout.addWidget(verbose_check)
+        
+        # Trace
+        trace_check = QCheckBox("Trace Logging")
+        trace_check.setChecked(False)
+        self.trace_check = trace_check
+        layout.addWidget(trace_check)
+        
+        # Seed
+        seed_layout = QHBoxLayout()
+        seed_label = QLabel("Random Seed:")
+        self.seed_spin = QSpinBox()
+        self.seed_spin.setRange(0, 999999)
+        self.seed_spin.setValue(0)
+        seed_layout.addWidget(seed_label)
+        seed_layout.addWidget(self.seed_spin)
+        seed_layout.addStretch()
+        layout.addLayout(seed_layout)
+        
+        layout.addStretch()
+        widget.setLayout(layout)
+        return widget
+    
+    def load_settings(self, settings: Dict[str, Any]):
+        """Load settings into UI"""
+        self.settings = settings
+        
+        # Performance
+        self.candidate_workers_spin.setValue(settings.get('CANDIDATE_WORKERS', 15))
+        self.track_workers_spin.setValue(settings.get('TRACK_WORKERS', 12))
+        self.time_budget_spin.setValue(settings.get('PER_TRACK_TIME_BUDGET_SEC', 45))
+        self.max_results_spin.setValue(settings.get('MAX_SEARCH_RESULTS', 50))
+        
+        # Matching
+        self.min_score_spin.setValue(settings.get('MIN_ACCEPT_SCORE', 70))
+        self.exit_score_spin.setValue(settings.get('EARLY_EXIT_SCORE', 90))
+        self.exit_queries_spin.setValue(settings.get('EARLY_EXIT_MIN_QUERIES', 8))
+        
+        # Query Generation
+        self.title_gram_spin.setValue(settings.get('TITLE_GRAM_MAX', 2))
+        self.max_queries_spin.setValue(settings.get('MAX_QUERIES_PER_TRACK', 40))
+        self.cross_grams_check.setChecked(settings.get('CROSS_TITLE_GRAMS_WITH_ARTISTS', False))
+        
+        # Network
+        self.connect_timeout_spin.setValue(settings.get('CONNECT_TIMEOUT', 3))
+        self.read_timeout_spin.setValue(settings.get('READ_TIMEOUT', 8))
+        self.enable_cache_check.setChecked(settings.get('HAVE_CACHE', True))
+        
+        # Search
+        self.direct_remix_check.setChecked(settings.get('USE_DIRECT_SEARCH_FOR_REMIXES', True))
+        self.prefer_direct_check.setChecked(settings.get('PREFER_DIRECT_SEARCH', False))
+        self.browser_check.setChecked(settings.get('USE_BROWSER_AUTOMATION', True))
+        self.browser_timeout_spin.setValue(settings.get('BROWSER_TIMEOUT_SEC', 30))
+        
+        # Logging
+        self.verbose_check.setChecked(settings.get('VERBOSE', False))
+        self.trace_check.setChecked(settings.get('TRACE', False))
+        self.seed_spin.setValue(settings.get('SEED', 0))
+    
+    def get_settings(self) -> Dict[str, Any]:
+        """Get settings from UI"""
+        return {
+            # Performance
+            'CANDIDATE_WORKERS': self.candidate_workers_spin.value(),
+            'TRACK_WORKERS': self.track_workers_spin.value(),
+            'PER_TRACK_TIME_BUDGET_SEC': self.time_budget_spin.value(),
+            'MAX_SEARCH_RESULTS': self.max_results_spin.value(),
+            
+            # Matching
+            'MIN_ACCEPT_SCORE': self.min_score_spin.value(),
+            'EARLY_EXIT_SCORE': self.exit_score_spin.value(),
+            'EARLY_EXIT_MIN_QUERIES': self.exit_queries_spin.value(),
+            
+            # Query Generation
+            'TITLE_GRAM_MAX': self.title_gram_spin.value(),
+            'MAX_QUERIES_PER_TRACK': self.max_queries_spin.value(),
+            'CROSS_TITLE_GRAMS_WITH_ARTISTS': self.cross_grams_check.isChecked(),
+            
+            # Network
+            'CONNECT_TIMEOUT': self.connect_timeout_spin.value(),
+            'READ_TIMEOUT': self.read_timeout_spin.value(),
+            'HAVE_CACHE': self.enable_cache_check.isChecked(),
+            
+            # Search
+            'USE_DIRECT_SEARCH_FOR_REMIXES': self.direct_remix_check.isChecked(),
+            'PREFER_DIRECT_SEARCH': self.prefer_direct_check.isChecked(),
+            'USE_BROWSER_AUTOMATION': self.browser_check.isChecked(),
+            'BROWSER_TIMEOUT_SEC': self.browser_timeout_spin.value(),
+            
+            # Logging
+            'VERBOSE': self.verbose_check.isChecked(),
+            'TRACE': self.trace_check.isChecked(),
+            'SEED': self.seed_spin.value(),
+        }
+    
+    def _load_from_file(self):
+        """Load settings from YAML file"""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Load Configuration", "", "YAML Files (*.yaml *.yml);;All Files (*.*)"
+        )
+        if file_path:
+            try:
+                from config import load_config_from_yaml
+                settings = load_config_from_yaml(file_path)
+                self.load_settings(settings)
+                QMessageBox.information(self, "Settings", "Configuration loaded successfully!")
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to load configuration:\n{str(e)}")
+    
+    def _save_to_file(self):
+        """Save settings to YAML file"""
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "Save Configuration", "", "YAML Files (*.yaml *.yml);;All Files (*.*)"
+        )
+        if file_path:
+            try:
+                import yaml
+                settings = self.get_settings()
+                
+                # Convert to nested structure for user-friendly YAML
+                nested = self._flatten_to_nested(settings)
+                
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    yaml.dump(nested, f, default_flow_style=False, sort_keys=False)
+                
+                QMessageBox.information(self, "Settings", "Configuration saved successfully!")
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to save configuration:\n{str(e)}")
+    
+    def _reset_to_defaults(self):
+        """Reset to default settings"""
+        from config import SETTINGS
+        self.load_settings(SETTINGS)
+    
+    def _apply_settings(self):
+        """Apply settings"""
+        settings = self.get_settings()
+        self.settings_changed.emit(settings)
+```
+
+### 11.2 Integration with MainWindow
+
+**Settings Dialog**:
+
+```python
+# SRC/gui/main_window.py
+from PySide6.QtWidgets import QDialog, QDialogButtonBox
+from .settings_panel import SettingsPanel
+
+class SettingsDialog(QDialog):
+    """Settings dialog"""
+    
+    def __init__(self, current_settings: dict, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Settings")
+        self.setMinimumSize(600, 500)
+        
+        layout = QVBoxLayout()
+        
+        self.settings_panel = SettingsPanel()
+        self.settings_panel.load_settings(current_settings)
+        layout.addWidget(self.settings_panel)
+        
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel | QDialogButtonBox.RestoreDefaults
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        buttons.button(QDialogButtonBox.RestoreDefaults).clicked.connect(
+            self.settings_panel._reset_to_defaults
+        )
+        layout.addWidget(buttons)
+        
+        self.setLayout(layout)
+    
+    def get_settings(self) -> dict:
+        """Get settings from panel"""
+        return self.settings_panel.get_settings()
+
+# In MainWindow
+def _show_settings(self):
+    """Show settings dialog"""
+    dialog = SettingsDialog(self.current_settings, self)
+    if dialog.exec_() == QDialog.Accepted:
+        new_settings = dialog.get_settings()
+        # Apply settings
+        self._apply_settings(new_settings)
+```
+
+### 11.3 Preset Management
+
+**Preset Selector**:
+
+```python
+# Add preset selector to settings panel
+preset_combo = QComboBox()
+preset_combo.addItems(["Custom", "Fast", "Thorough", "Balanced"])
+preset_combo.currentTextChanged.connect(self._apply_preset)
+
+def _apply_preset(self, preset_name: str):
+    """Apply preset configuration"""
+    presets = {
+        'Fast': {
+            'CANDIDATE_WORKERS': 20,
+            'TRACK_WORKERS': 15,
+            'MIN_ACCEPT_SCORE': 60,
+            'EARLY_EXIT_SCORE': 85,
+        },
+        'Thorough': {
+            'CANDIDATE_WORKERS': 10,
+            'TRACK_WORKERS': 5,
+            'MIN_ACCEPT_SCORE': 80,
+            'EARLY_EXIT_SCORE': 95,
+        },
+        # ... more presets
+    }
+    
+    if preset_name in presets:
+        self.load_settings(presets[preset_name])
+```
+
+### 11.4 Acceptance Criteria for GUI Integration
+
+- [ ] Settings panel displays all settings correctly
+- [ ] Settings can be loaded from YAML file
+- [ ] Settings can be saved to YAML file
+- [ ] Settings validation works
+- [ ] Preset management works
+- [ ] Settings apply correctly to processing
+- [ ] UI is organized and user-friendly
+
+---
+
+**Document Version**: 2.0  
+**Last Updated**: 2025-01-27  
+**Author**: CuePoint Development Team  
+**GUI Integration**: Complete
 

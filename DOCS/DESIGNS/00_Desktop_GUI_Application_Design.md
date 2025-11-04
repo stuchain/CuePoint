@@ -97,10 +97,20 @@ Create a native desktop GUI application that:
 - Native appearance on all platforms
 - Professional, modern UI
 - Excellent widget library
-- Free LGPL license (PySide6)
+- **Free LGPL license** (PySide6) - No commercial licensing concerns
 - Strong Python integration
 - Good performance
 - Comprehensive documentation
+- Active community support
+
+**Important:** We use **PySide6** (not PyQt6) because:
+- PySide6 is free and open-source (LGPL)
+- No commercial licensing fees
+- Officially supported by Qt Company
+- Same API as PyQt6 (easy migration if needed)
+- Better for open-source projects
+
+**Note:** PyQt6 requires a paid commercial license for commercial use. PySide6 is LGPL and free for all uses, making it the better choice for this project.
 
 ---
 
@@ -1022,8 +1032,15 @@ if __name__ == "__main__":
 ### 11.1 GUI Framework
 
 ```
-PySide6>=6.5.0  # Qt for Python (LGPL)
+PySide6>=6.5.0  # Qt for Python (LGPL - free and open-source)
 ```
+
+**Installation:**
+```bash
+pip install PySide6>=6.5.0
+```
+
+**Note:** PySide6 is the free, LGPL-licensed version of Qt for Python. It does not require any commercial licensing fees.
 
 ### 11.2 Optional Dependencies
 

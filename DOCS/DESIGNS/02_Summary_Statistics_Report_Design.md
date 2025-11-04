@@ -500,7 +500,357 @@ def format_time(seconds: float) -> str:
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: 2025-11-03  
-**Author**: CuePoint Development Team
+---
+
+## 15. GUI Integration (PySide6)
+
+### 15.1 GUI Summary Widget Design
+
+**Location**: `SRC/gui/summary_widget.py` (NEW)
+
+**Component Structure**:
+```python
+# SRC/gui/summary_widget.py
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+    QGroupBox, QScrollArea, QGridLayout
+)
+from PySide6.QtCore import Qt
+from typing import List
+from gui_interface import ProcessingResult
+
+class SummaryWidget(QWidget):
+    """GUI widget for displaying summary statistics"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._setup_ui()
+    
+    def _setup_ui(self):
+        """Set up summary widget UI"""
+        layout = QVBoxLayout()
+        
+        # Scroll area for long summaries
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        
+        content = QWidget()
+        content_layout = QVBoxLayout()
+        
+        # Header section
+        header_group = self._create_header_section()
+        content_layout.addWidget(header_group)
+        
+        # Match results section
+        self.match_results_group = self._create_match_results_section()
+        content_layout.addWidget(self.match_results_group)
+        
+        # Match quality section
+        self.quality_group = self._create_quality_section()
+        content_layout.addWidget(self.quality_group)
+        
+        # Performance section
+        self.performance_group = self._create_performance_section()
+        content_layout.addWidget(self.performance_group)
+        
+        # Genre breakdown section
+        self.genre_group = self._create_genre_section()
+        content_layout.addWidget(self.genre_group)
+        
+        # Output files section
+        self.files_group = self._create_files_section()
+        content_layout.addWidget(self.files_group)
+        
+        content_layout.addStretch()
+        content.setLayout(content_layout)
+        scroll.setWidget(content)
+        
+        layout.addWidget(scroll)
+        self.setLayout(layout)
+    
+    def _create_header_section(self) -> QGroupBox:
+        """Create header section"""
+        group = QGroupBox("Processing Summary")
+        layout = QVBoxLayout()
+        
+        self.playlist_label = QLabel("Playlist: --")
+        self.tracks_label = QLabel("Total Tracks: --")
+        self.time_label = QLabel("Processing Time: --")
+        
+        layout.addWidget(self.playlist_label)
+        layout.addWidget(self.tracks_label)
+        layout.addWidget(self.time_label)
+        
+        group.setLayout(layout)
+        return group
+    
+    def _create_match_results_section(self) -> QGroupBox:
+        """Create match results section"""
+        group = QGroupBox("Match Results")
+        layout = QGridLayout()
+        
+        # Matched
+        matched_label = QLabel("Matched:")
+        matched_label.setStyleSheet("color: green; font-weight: bold;")
+        self.matched_value = QLabel("0 (0%)")
+        layout.addWidget(matched_label, 0, 0)
+        layout.addWidget(self.matched_value, 0, 1)
+        
+        # Unmatched
+        unmatched_label = QLabel("Unmatched:")
+        unmatched_label.setStyleSheet("color: red; font-weight: bold;")
+        self.unmatched_value = QLabel("0 (0%)")
+        layout.addWidget(unmatched_label, 1, 0)
+        layout.addWidget(self.unmatched_value, 1, 1)
+        
+        # Review needed
+        review_label = QLabel("Review Needed:")
+        review_label.setStyleSheet("color: orange; font-weight: bold;")
+        self.review_value = QLabel("0 (0%)")
+        layout.addWidget(review_label, 2, 0)
+        layout.addWidget(self.review_value, 2, 1)
+        
+        group.setLayout(layout)
+        return group
+    
+    def _create_quality_section(self) -> QGroupBox:
+        """Create match quality section"""
+        group = QGroupBox("Match Quality")
+        layout = QGridLayout()
+        
+        # High confidence
+        high_label = QLabel("High Confidence (≥90):")
+        self.high_value = QLabel("0 (0%)")
+        layout.addWidget(high_label, 0, 0)
+        layout.addWidget(self.high_value, 0, 1)
+        
+        # Medium confidence
+        medium_label = QLabel("Medium Confidence (70-89):")
+        self.medium_value = QLabel("0 (0%)")
+        layout.addWidget(medium_label, 1, 0)
+        layout.addWidget(self.medium_value, 1, 1)
+        
+        # Low confidence
+        low_label = QLabel("Low Confidence (<70):")
+        self.low_value = QLabel("0 (0%)")
+        layout.addWidget(low_label, 2, 0)
+        layout.addWidget(self.low_value, 2, 1)
+        
+        # Average score
+        avg_label = QLabel("Average Score:")
+        self.avg_value = QLabel("0.0")
+        layout.addWidget(avg_label, 3, 0)
+        layout.addWidget(self.avg_value, 3, 1)
+        
+        group.setLayout(layout)
+        return group
+    
+    def _create_performance_section(self) -> QGroupBox:
+        """Create performance section"""
+        group = QGroupBox("Performance")
+        layout = QGridLayout()
+        
+        # Total queries
+        queries_label = QLabel("Total Queries:")
+        self.queries_value = QLabel("0")
+        layout.addWidget(queries_label, 0, 0)
+        layout.addWidget(self.queries_value, 0, 1)
+        
+        # Avg queries/track
+        avg_queries_label = QLabel("Avg Queries/Track:")
+        self.avg_queries_value = QLabel("0.0")
+        layout.addWidget(avg_queries_label, 1, 0)
+        layout.addWidget(self.avg_queries_value, 1, 1)
+        
+        # Total candidates
+        candidates_label = QLabel("Total Candidates:")
+        self.candidates_value = QLabel("0")
+        layout.addWidget(candidates_label, 2, 0)
+        layout.addWidget(self.candidates_value, 2, 1)
+        
+        # Avg candidates/track
+        avg_candidates_label = QLabel("Avg Candidates/Track:")
+        self.avg_candidates_value = QLabel("0.0")
+        layout.addWidget(avg_candidates_label, 3, 0)
+        layout.addWidget(self.avg_candidates_value, 3, 1)
+        
+        # Early exits
+        exits_label = QLabel("Early Exits:")
+        self.exits_value = QLabel("0 (0%)")
+        layout.addWidget(exits_label, 4, 0)
+        layout.addWidget(self.exits_value, 4, 1)
+        
+        group.setLayout(layout)
+        return group
+    
+    def _create_genre_section(self) -> QGroupBox:
+        """Create genre breakdown section"""
+        group = QGroupBox("Genre Breakdown")
+        layout = QVBoxLayout()
+        
+        self.genre_list = QLabel("No genres")
+        self.genre_list.setWordWrap(True)
+        layout.addWidget(self.genre_list)
+        
+        group.setLayout(layout)
+        return group
+    
+    def _create_files_section(self) -> QGroupBox:
+        """Create output files section"""
+        group = QGroupBox("Output Files")
+        layout = QVBoxLayout()
+        
+        self.files_list = QLabel("No files")
+        self.files_list.setWordWrap(True)
+        layout.addWidget(self.files_list)
+        
+        group.setLayout(layout)
+        return group
+    
+    def display_summary(self, result: ProcessingResult):
+        """Display summary from ProcessingResult"""
+        # Header
+        self.playlist_label.setText(f"Playlist: {result.playlist_name}")
+        self.tracks_label.setText(f"Total Tracks: {result.total_tracks}")
+        self.time_label.setText(f"Processing Time: {self._format_time(result.processing_time)}")
+        
+        # Match results
+        total = result.total_tracks
+        matched_rate = (result.matched_count / total * 100) if total > 0 else 0
+        unmatched_rate = (result.unmatched_count / total * 100) if total > 0 else 0
+        review_rate = (result.review_needed_count / total * 100) if total > 0 else 0
+        
+        self.matched_value.setText(f"{result.matched_count} ({matched_rate:.1f}%)")
+        self.unmatched_value.setText(f"{result.unmatched_count} ({unmatched_rate:.1f}%)")
+        self.review_value.setText(f"{result.review_needed_count} ({review_rate:.1f}%)")
+        
+        # Quality
+        high_rate = (result.high_confidence_count / total * 100) if total > 0 else 0
+        medium_rate = (result.medium_confidence_count / total * 100) if total > 0 else 0
+        low_rate = (result.low_confidence_count / total * 100) if total > 0 else 0
+        
+        self.high_value.setText(f"{result.high_confidence_count} ({high_rate:.1f}%)")
+        self.medium_value.setText(f"{result.medium_confidence_count} ({medium_rate:.1f}%)")
+        self.low_value.setText(f"{result.low_confidence_count} ({low_rate:.1f}%)")
+        self.avg_value.setText(f"{result.average_score:.1f}")
+        
+        # Performance
+        self.queries_value.setText(str(result.total_queries))
+        self.avg_queries_value.setText(f"{result.avg_queries_per_track:.1f}")
+        self.candidates_value.setText(str(result.total_candidates))
+        self.avg_candidates_value.setText(f"{result.avg_candidates_per_track:.1f}")
+        exit_rate = (result.early_exits / total * 100) if total > 0 else 0
+        self.exits_value.setText(f"{result.early_exits} ({exit_rate:.1f}%)")
+        
+        # Genres
+        if result.top_genres:
+            genre_text = "\n".join([
+                f"• {genre}: {count} ({pct:.1f}%)"
+                for genre, count, pct in result.top_genres[:5]
+            ])
+            self.genre_list.setText(genre_text)
+        else:
+            self.genre_list.setText("No genres found")
+        
+        # Files
+        if result.output_files:
+            files_text = "\n".join([
+                f"• {path} ({rows} rows)"
+                for path, rows in result.output_files.items()
+            ])
+            self.files_list.setText(files_text)
+        else:
+            self.files_list.setText("No files generated")
+    
+    def _format_time(self, seconds: float) -> str:
+        """Format time in human-readable format"""
+        if seconds < 60:
+            return f"{seconds:.1f}s"
+        elif seconds < 3600:
+            minutes = int(seconds // 60)
+            secs = int(seconds % 60)
+            return f"{minutes}m {secs}s"
+        else:
+            hours = int(seconds // 3600)
+            minutes = int((seconds % 3600) // 60)
+            return f"{hours}h {minutes}m"
+```
+
+### 15.2 Integration with MainWindow
+
+**Display after processing completes**:
+
+```python
+# SRC/gui/main_window.py
+from .summary_widget import SummaryWidget
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.summary_widget = SummaryWidget()
+        # ... other widgets ...
+    
+    def _on_processing_complete(self, results: List[TrackResult]):
+        """Handle processing completion"""
+        # Generate summary from results
+        summary = self._generate_summary(results)
+        
+        # Display summary widget
+        self.summary_widget.display_summary(summary)
+        
+        # Show summary in results area (or tab)
+        self.results_area.setCurrentWidget(self.summary_widget)
+```
+
+### 15.3 Alternative: Rich Text Display
+
+**For more formatted display**:
+
+```python
+# Use QTextBrowser for rich text formatting
+from PySide6.QtWidgets import QTextBrowser
+
+class SummaryWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.browser = QTextBrowser()
+        layout = QVBoxLayout()
+        layout.addWidget(self.browser)
+        self.setLayout(layout)
+    
+    def display_summary_html(self, result: ProcessingResult):
+        """Display summary as HTML"""
+        html = f"""
+        <h2>CuePoint Processing Summary</h2>
+        <h3>{result.playlist_name}</h3>
+        <p><b>Total Tracks:</b> {result.total_tracks}</p>
+        <p><b>Processing Time:</b> {self._format_time(result.processing_time)}</p>
+        
+        <h3>Match Results</h3>
+        <ul>
+            <li><span style="color: green;">Matched:</span> {result.matched_count}</li>
+            <li><span style="color: red;">Unmatched:</span> {result.unmatched_count}</li>
+        </ul>
+        
+        <!-- More HTML formatting -->
+        """
+        self.browser.setHtml(html)
+```
+
+### 15.4 Acceptance Criteria for GUI Integration
+
+- [ ] Summary widget displays all statistics correctly
+- [ ] Visual formatting is clear and professional
+- [ ] Color coding works (green/red/orange)
+- [ ] Scroll area works for long summaries
+- [ ] Integration with processing completion works
+- [ ] Export to file option available
+
+---
+
+**Document Version**: 2.0  
+**Last Updated**: 2025-01-27  
+**Author**: CuePoint Development Team  
+**GUI Integration**: Complete
 

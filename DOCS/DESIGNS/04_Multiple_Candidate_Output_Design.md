@@ -301,7 +301,360 @@ SETTINGS = {
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: 2025-11-03  
-**Author**: CuePoint Development Team
+---
+
+## 11. GUI Table Integration
+
+### 11.1 Expandable Table Rows
+
+**Location**: `SRC/gui/results_view.py` (MODIFY)
+
+**Implementation**: Use QTreeWidget or expandable rows in QTableWidget:
+
+```python
+# SRC/gui/results_view.py
+from PySide6.QtWidgets import QTreeWidget, QTreeWidgetItem
+
+class ResultsView(QWidget):
+    """Results table view with expandable candidate rows"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.results: List[TrackResult] = []
+        self._setup_ui()
+    
+    def _setup_ui(self):
+        """Set up UI with tree widget for expandable rows"""
+        layout = QVBoxLayout()
+        
+        # Use QTreeWidget for expandable rows
+        self.tree = QTreeWidget()
+        self.tree.setHeaderLabels([
+            "Rank", "Title", "Artists", "Score", "Title Sim", "Artist Sim", 
+            "Key", "BPM", "Confidence", "URL"
+        ])
+        self.tree.setColumnWidth(0, 50)
+        self.tree.setColumnWidth(1, 250)
+        self.tree.setColumnWidth(2, 200)
+        self.tree.setColumnWidth(3, 80)
+        layout.addWidget(self.tree)
+        
+        self.setLayout(layout)
+    
+    def populate(self, results: List[TrackResult], show_top_n: int = 3):
+        """Populate tree with results and top candidates"""
+        self.results = results
+        self.tree.clear()
+        
+        for result in results:
+            # Main track row (always visible)
+            main_item = QTreeWidgetItem([
+                str(result.playlist_index),
+                result.title,
+                result.artist,
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ])
+            self.tree.addTopLevelItem(main_item)
+            
+            # Add best match as first child
+            if result.matched:
+                best_item = self._create_candidate_item(
+                    result, rank=1, is_best=True
+                )
+                main_item.addChild(best_item)
+                main_item.setExpanded(True)
+            
+            # Add top N candidates as children
+            if result.candidates:
+                top_candidates = sorted(
+                    result.candidates,
+                    key=lambda c: float(c.get('match_score', 0)),
+                    reverse=True
+                )[:show_top_n]
+                
+                for rank, candidate in enumerate(top_candidates, start=2):
+                    candidate_item = self._create_candidate_item(
+                        candidate, rank=rank, is_best=False
+                    )
+                    main_item.addChild(candidate_item)
+    
+    def _create_candidate_item(self, candidate_data: dict, rank: int, is_best: bool) -> QTreeWidgetItem:
+        """Create candidate item for tree"""
+        item = QTreeWidgetItem([
+            str(rank),
+            candidate_data.get('beatport_title', ''),
+            candidate_data.get('beatport_artists', ''),
+            candidate_data.get('match_score', '0'),
+            candidate_data.get('title_sim', '0'),
+            candidate_data.get('artist_sim', '0'),
+            candidate_data.get('beatport_key', ''),
+            candidate_data.get('beatport_bpm', ''),
+            candidate_data.get('confidence', ''),
+            candidate_data.get('beatport_url', '')
+        ])
+        
+        # Highlight best match
+        if is_best:
+            item.setForeground(0, QBrush(QColor(0, 150, 0)))  # Green
+            item.setBold(True)
+        
+        return item
+```
+
+### 11.2 Side-by-Side Candidate Comparison View
+
+**Location**: `SRC/gui/candidate_comparison.py` (NEW)
+
+**Dialog for comparing candidates**:
+
+```python
+# SRC/gui/candidate_comparison.py
+from PySide6.QtWidgets import (
+    QDialog, QVBoxLayout, QHBoxLayout, QLabel,
+    QPushButton, QTableWidget, QTableWidgetItem
+)
+from PySide6.QtCore import Qt
+
+class CandidateComparisonDialog(QDialog):
+    """Dialog for comparing multiple candidates"""
+    
+    candidate_selected = Signal(dict)  # Emit selected candidate
+    
+    def __init__(self, candidates: List[Dict], parent=None):
+        super().__init__(parent)
+        self.candidates = candidates
+        self._setup_ui()
+    
+    def _setup_ui(self):
+        """Set up comparison dialog"""
+        self.setWindowTitle("Compare Candidates")
+        self.setMinimumSize(900, 600)
+        
+        layout = QVBoxLayout()
+        
+        # Table with all candidates
+        self.table = QTableWidget()
+        self.table.setColumnCount(10)
+        self.table.setHorizontalHeaderLabels([
+            "Rank", "Title", "Artists", "Score", "Title Sim", 
+            "Artist Sim", "Key", "BPM", "Confidence", "URL"
+        ])
+        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.table.setSelectionMode(QTableWidget.SingleSelection)
+        self.table.doubleClicked.connect(self._on_row_double_clicked)
+        
+        # Populate table
+        self.table.setRowCount(len(self.candidates))
+        for row_idx, candidate in enumerate(self.candidates):
+            self.table.setItem(row_idx, 0, QTableWidgetItem(str(row_idx + 1)))
+            self.table.setItem(row_idx, 1, QTableWidgetItem(candidate.get('beatport_title', '')))
+            self.table.setItem(row_idx, 2, QTableWidgetItem(candidate.get('beatport_artists', '')))
+            self.table.setItem(row_idx, 3, QTableWidgetItem(str(candidate.get('match_score', 0))))
+            self.table.setItem(row_idx, 4, QTableWidgetItem(str(candidate.get('title_sim', 0))))
+            self.table.setItem(row_idx, 5, QTableWidgetItem(str(candidate.get('artist_sim', 0))))
+            self.table.setItem(row_idx, 6, QTableWidgetItem(candidate.get('beatport_key', '')))
+            self.table.setItem(row_idx, 7, QTableWidgetItem(candidate.get('beatport_bpm', '')))
+            self.table.setItem(row_idx, 8, QTableWidgetItem(candidate.get('confidence', '')))
+            self.table.setItem(row_idx, 9, QTableWidgetItem(candidate.get('beatport_url', '')))
+        
+        self.table.resizeColumnsToContents()
+        layout.addWidget(self.table)
+        
+        # Buttons
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        
+        select_btn = QPushButton("Select Candidate")
+        select_btn.clicked.connect(self._select_candidate)
+        button_layout.addWidget(select_btn)
+        
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(self.reject)
+        button_layout.addWidget(cancel_btn)
+        
+        layout.addLayout(button_layout)
+        self.setLayout(layout)
+    
+    def _on_row_double_clicked(self, index):
+        """Handle double-click on row"""
+        self._select_candidate()
+    
+    def _select_candidate(self):
+        """Select current candidate"""
+        row = self.table.currentRow()
+        if row >= 0:
+            self.candidate_selected.emit(self.candidates[row])
+            self.accept()
+```
+
+### 11.3 Manual Selection UI
+
+**Integration in ResultsView**:
+
+```python
+# SRC/gui/results_view.py
+from .candidate_comparison import CandidateComparisonDialog
+
+class ResultsView(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        # ... existing code ...
+        
+        # Add "View Candidates" button to toolbar
+        view_candidates_btn = QPushButton("View Candidates")
+        view_candidates_btn.clicked.connect(self._view_candidates)
+        # ... add to toolbar ...
+    
+    def _view_candidates(self):
+        """View candidates for selected track"""
+        selected_items = self.tree.selectedItems()
+        if not selected_items:
+            QMessageBox.information(self, "Selection", "Please select a track first.")
+            return
+        
+        item = selected_items[0]
+        
+        # Get track result
+        track_index = int(item.text(0))
+        result = next((r for r in self.results if r.playlist_index == track_index), None)
+        
+        if result and result.candidates:
+            # Show comparison dialog
+            dialog = CandidateComparisonDialog(result.candidates, self)
+            dialog.candidate_selected.connect(self._on_candidate_selected)
+            dialog.exec_()
+    
+    def _on_candidate_selected(self, candidate: dict):
+        """Handle candidate selection"""
+        # Update result with selected candidate
+        # Emit signal to update processing result
+        self.candidate_updated.emit(candidate)
+```
+
+### 11.4 Accept/Reject Button Placement
+
+**In Results Table Context Menu**:
+
+```python
+# SRC/gui/results_view.py
+def _show_context_menu(self, position):
+    """Show context menu for row"""
+    item = self.tree.itemAt(position)
+    if not item:
+        return
+    
+    menu = QMenu(self)
+    
+    # Accept match
+    accept_action = menu.addAction("✓ Accept Match")
+    accept_action.triggered.connect(lambda: self._accept_match(item))
+    
+    # Reject match
+    reject_action = menu.addAction("✗ Reject Match")
+    reject_action.triggered.connect(lambda: self._reject_match(item))
+    
+    menu.addSeparator()
+    
+    # View candidates
+    view_action = menu.addAction("View All Candidates...")
+    view_action.triggered.connect(lambda: self._view_candidates_for_item(item))
+    
+    menu.addSeparator()
+    
+    # Open URL
+    open_action = menu.addAction("Open Beatport URL")
+    open_action.triggered.connect(lambda: self._open_url(item))
+    
+    menu.exec_(self.tree.viewport().mapToGlobal(position))
+```
+
+### 11.5 Integration with Results Table View
+
+**Update ResultsView to support multiple candidates**:
+
+```python
+# SRC/gui/results_view.py
+class ResultsView(QWidget):
+    """Enhanced results view with multiple candidate support"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.show_top_n = 3  # Number of candidates to show per track
+        self._setup_ui()
+    
+    def _setup_ui(self):
+        """Set up UI"""
+        layout = QVBoxLayout()
+        
+        # Toolbar
+        toolbar = self._create_toolbar()
+        layout.addWidget(toolbar)
+        
+        # Tree widget for expandable rows
+        self.tree = QTreeWidget()
+        self.tree.setHeaderLabels([...])
+        layout.addWidget(self.tree)
+        
+        self.setLayout(layout)
+    
+    def _create_toolbar(self) -> QWidget:
+        """Create toolbar with candidate options"""
+        toolbar = QWidget()
+        layout = QHBoxLayout()
+        
+        # Show top N selector
+        n_label = QLabel("Show Top:")
+        layout.addWidget(n_label)
+        
+        self.top_n_spin = QSpinBox()
+        self.top_n_spin.setRange(1, 10)
+        self.top_n_spin.setValue(3)
+        self.top_n_spin.valueChanged.connect(self._on_top_n_changed)
+        layout.addWidget(self.top_n_spin)
+        
+        candidates_label = QLabel("Candidates")
+        layout.addWidget(candidates_label)
+        
+        layout.addStretch()
+        
+        # Expand all / Collapse all
+        expand_btn = QPushButton("Expand All")
+        expand_btn.clicked.connect(self.tree.expandAll)
+        layout.addWidget(expand_btn)
+        
+        collapse_btn = QPushButton("Collapse All")
+        collapse_btn.clicked.connect(self.tree.collapseAll)
+        layout.addWidget(collapse_btn)
+        
+        toolbar.setLayout(layout)
+        return toolbar
+    
+    def _on_top_n_changed(self, value: int):
+        """Handle top N change"""
+        self.show_top_n = value
+        self.populate(self.results, show_top_n=value)
+```
+
+### 11.6 Acceptance Criteria for GUI Integration
+
+- [ ] Expandable rows work correctly
+- [ ] Top N candidates display correctly
+- [ ] Candidate comparison dialog works
+- [ ] Manual selection updates results
+- [ ] Accept/Reject buttons work
+- [ ] Context menu functions correctly
+- [ ] Integration with results table works
+
+---
+
+**Document Version**: 2.0  
+**Last Updated**: 2025-01-27  
+**Author**: CuePoint Development Team  
+**GUI Integration**: Complete
 

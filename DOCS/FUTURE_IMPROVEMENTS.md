@@ -185,9 +185,11 @@ These improvements build the GUI application on top of the solid backend foundat
 - Professional, intuitive interface
 
 **Technology:**
-- **PySide6** (Qt for Python) - Native look and feel
+- **PySide6** (Qt for Python) - Native look and feel, free LGPL license
 - Modern UI with progress bars, tables, and visual feedback
 - Standalone executable (no Python installation needed)
+
+**Note:** PySide6 is the free, LGPL-licensed version of Qt for Python. It provides the same functionality as PyQt6 but without commercial licensing requirements.
 
 **User Experience:**
 1. Launch application (double-click executable)

@@ -112,7 +112,7 @@ browser = [
     "selenium>=4.15.0",
 ]
 gui = [
-    "PySide6>=6.5.0",  # Optional GUI support
+    "PySide6>=6.5.0",  # Qt for Python (LGPL - free and open-source)
 ]
 dev = [
     "pytest>=7.0.0",
@@ -197,7 +197,7 @@ pip install cuepoint
 # With browser automation support
 pip install cuepoint[browser]
 
-# With GUI support (requires PySide6)
+# With GUI support (requires PySide6 - free LGPL license)
 pip install cuepoint[gui]
 
 # Development installation
