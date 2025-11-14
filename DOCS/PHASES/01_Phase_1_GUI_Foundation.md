@@ -619,83 +619,16 @@ if __name__ == "__main__":
 
 ---
 
-### Step 1.11: Create Executable Packaging (1 week)
-**Files**: `build/` directory (NEW)
-
-**Dependencies**: Step 1.10 (application entry point)
-
-**What to create - EXACT STRUCTURE:**
-
-See `DOCS/DESIGNS/17_Executable_Packaging_Design.md` for complete details.
-
-**Key Components**:
-1. PyInstaller spec file
-2. Build scripts
-3. Installer scripts (NSIS/Inno Setup for Windows)
-4. Icon assets
-5. GitHub Actions workflow (optional)
-
-**Implementation Checklist**:
-- [ ] Create PyInstaller spec
-- [ ] Create build scripts
-- [ ] Create Windows installer
-- [ ] Create macOS DMG
-- [ ] Create Linux AppImage
-- [ ] Set up CI/CD (optional)
-
-**Acceptance Criteria**:
-- ✅ Executable builds successfully
-- ✅ Windows installer works
-- ✅ macOS app bundle works
-- ✅ Linux AppImage works
-- ✅ CI builds automatically (if set up)
-
-**Design Reference**: `DOCS/DESIGNS/17_Executable_Packaging_Design.md`
-
----
-
-### Step 1.12: GUI Enhancements (1-2 weeks)
-**Files**: Various GUI files (MODIFY)
-
-**Dependencies**: Steps 1.1-1.11 (core GUI working)
-
-**What to add**:
-- Icons and branding
-- Settings persistence
-- Recent files menu
-- Dark mode support
-- Menu bar and shortcuts
-- Help system
-
-**Implementation Checklist**:
-- [ ] Add application icons
-- [ ] Implement settings persistence
-- [ ] Add recent files
-- [ ] Implement dark mode
-- [ ] Add keyboard shortcuts
-- [ ] Create help system
-
-**Acceptance Criteria**:
-- ✅ Icons display correctly
-- ✅ Settings persist between sessions
-- ✅ Recent files work
-- ✅ Dark mode works
-- ✅ Shortcuts work
-- ✅ Help accessible
-
-**Design Reference**: `DOCS/DESIGNS/00_Desktop_GUI_Application_Design.md` (Section 6)
-**Design Reference**: `DOCS/DESIGNS/18_GUI_Enhancements_Design.md`
-
----
-
 ## Phase 1 Deliverables Checklist
 - [ ] GUI application launches
 - [ ] All core features work
-- [ ] Executable builds
-- [ ] Windows installer works
-- [ ] macOS app bundle works
-- [ ] Linux AppImage works
-- [ ] GUI enhancements complete
+- [ ] File selection works (browse + drag & drop)
+- [ ] Playlist selection works
+- [ ] Processing starts and shows progress
+- [ ] Results display correctly
+- [ ] CSV download works
+- [ ] Error handling shows user-friendly dialogs
+- [ ] Cancellation works
 - [ ] User testing done
 
 ---

@@ -2006,74 +2006,16 @@ SRC/gui/
 
 ---
 
-#### Step 1.11: Create Executable Packaging (1 week)
-**Files**: `build/` directory (NEW)
-
-**What to create:**
-- PyInstaller spec file
-- Build scripts
-- Installer scripts (NSIS/Inno Setup)
-- Icon assets
-- GitHub Actions workflow
-
-**Design Reference**: `DOCS/DESIGNS/17_Executable_Packaging_Design.md`
-
-**Implementation Details**:
-1. Create PyInstaller spec
-2. Create build scripts
-3. Create Windows installer
-4. Create macOS DMG
-5. Create Linux AppImage
-6. Set up CI/CD
-
-**Acceptance Criteria**:
-- Executable builds successfully
-- Windows installer works
-- macOS app bundle works
-- Linux AppImage works
-- CI builds automatically
-
----
-
-#### Step 1.12: GUI Enhancements (1-2 weeks)
-**Files**: Various GUI files (MODIFY)
-
-**What to add:**
-- Icons and branding
-- Settings persistence
-- Recent files menu
-- Dark mode support
-- Menu bar and shortcuts
-- Help system
-
-**Design Reference**: `DOCS/DESIGNS/00_Desktop_GUI_Application_Design.md` (Section 6)
-
-**Implementation Details**:
-1. Add application icons
-2. Implement settings persistence
-3. Add recent files
-4. Implement dark mode
-5. Add keyboard shortcuts
-6. Create help system
-
-**Acceptance Criteria**:
-- Icons display correctly
-- Settings persist between sessions
-- Recent files work
-- Dark mode works
-- Shortcuts work
-- Help accessible
-
----
-
 ### Phase 1 Deliverables Checklist
 - [ ] GUI application launches
 - [ ] All core features work
-- [ ] Executable builds
-- [ ] Windows installer works
-- [ ] macOS app bundle works
-- [ ] Linux AppImage works
-- [ ] GUI enhancements complete
+- [ ] File selection works (browse + drag & drop)
+- [ ] Playlist selection works
+- [ ] Processing starts and shows progress
+- [ ] Results display correctly
+- [ ] CSV download works
+- [ ] Error handling shows user-friendly dialogs
+- [ ] Cancellation works
 - [ ] User testing done
 
 ---
@@ -2147,10 +2089,29 @@ Enhance GUI with advanced features for better user experience.
 
 ---
 
+#### Step 2.4: Batch Playlist Processing (3-4 days)
+**File**: `SRC/gui/batch_processor.py` (NEW)
+
+**What to create:**
+- Multi-select playlist list
+- Batch queue
+- Progress per playlist
+- Pause/resume/cancel
+
+**Design Reference**: `DOCS/DESIGNS/08_Batch_Playlist_Processing_Design.md`
+
+**Acceptance Criteria**:
+- Batch processing works
+- Queue management works
+- Progress tracking works
+
+---
+
 ### Phase 2 Deliverables Checklist
-- [ ] Results table enhanced
+- [ ] Results table enhanced with sort/filter
 - [ ] Multiple candidates display
-- [ ] Export formats work
+- [ ] Export formats work (CSV, JSON, Excel)
+- [ ] Batch playlist processing works
 - [ ] All features tested
 
 ---
@@ -2231,12 +2192,85 @@ Add advanced features as needed.
 
 ---
 
+## 📦 Phase 5: Packaging & Polish (2-3 weeks)
+
+**Status**: 📝 Planned  
+**Priority**: 🚀 P2 - LOWER PRIORITY (Do after features are complete)  
+**Dependencies**: Phase 1 (GUI Foundation), Phase 2 (User Experience), Phase 3 (Reliability)
+
+**📄 Detailed Documentation**: See [`DOCS/PHASES/05_Phase_5_Packaging_Polish.md`](PHASES/05_Phase_5_Packaging_Polish.md) for complete implementation guide.
+
+### Goal
+Create distributable executables and add polish features for a professional finish.
+
+### Quick Overview
+
+#### Step 5.1: Create Executable Packaging (1 week)
+**Files**: `build/` directory (NEW)
+
+**What to create:**
+- PyInstaller spec file
+- Build scripts
+- Installer scripts (NSIS/Inno Setup)
+- Icon assets
+- GitHub Actions workflow
+
+**Design Reference**: `DOCS/DESIGNS/17_Executable_Packaging_Design.md`
+
+**Acceptance Criteria**:
+- Executable builds successfully
+- Windows installer works
+- macOS app bundle works
+- Linux AppImage works
+- CI builds automatically
+
+---
+
+#### Step 5.2: GUI Enhancements (1-2 weeks)
+**Files**: Various GUI files (MODIFY)
+
+**What to add:**
+- Icons and branding
+- Settings persistence
+- Recent files menu
+- Dark mode support
+- Menu bar and shortcuts
+- Help system
+
+**Design Reference**: `DOCS/DESIGNS/00_Desktop_GUI_Application_Design.md` (Section 6)
+**Design Reference**: `DOCS/DESIGNS/18_GUI_Enhancements_Design.md`
+
+**Acceptance Criteria**:
+- Icons display correctly
+- Settings persist between sessions
+- Recent files work
+- Dark mode works
+- Shortcuts work
+- Help accessible
+
+---
+
+### Phase 5 Deliverables Checklist
+- [ ] Executable builds for all platforms
+- [ ] Windows installer works
+- [ ] macOS app bundle works
+- [ ] Linux AppImage works
+- [ ] Icons and branding complete
+- [ ] Settings persistence works
+- [ ] Recent files menu works
+- [ ] Dark mode works
+- [ ] Keyboard shortcuts work
+- [ ] Help system complete
+
+---
+
 ## 📝 Implementation Notes
 
 ### Dependencies Between Phases
 1. **Phase 0 → Phase 1**: Backend must be GUI-ready before GUI can use it
 2. **Phase 1 → Phase 2**: Core GUI must work before enhancements
 3. **Phase 1 → Phase 3**: Core GUI needed for batch processing
+4. **Phase 1-3 → Phase 5**: Features should be complete before packaging and polish
 
 ### Testing Strategy
 - **Phase 0**: Unit tests + Integration tests
@@ -2263,9 +2297,14 @@ Add advanced features as needed.
 - [ ] Executable builds
 - [ ] Basic user testing passed
 
-### Phase 1 Success (Complete)
-- [ ] All features work
-- [ ] Polish complete
+### Phase 1 Success (MVP)
+- [ ] GUI launches and runs
+- [ ] Core features work
+- [ ] Basic user testing passed
+
+### Phase 5 Success (Polish)
+- [ ] Executables build and work
+- [ ] Polish features complete
 - [ ] User testing passed
 - [ ] Documentation complete
 
