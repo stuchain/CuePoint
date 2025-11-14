@@ -17,6 +17,9 @@ import os
 
 from gui.file_selector import FileSelector
 from gui.playlist_selector import PlaylistSelector
+from gui.progress_widget import ProgressWidget
+from gui_controller import GUIController
+from gui_interface import ProcessingError
 
 
 class MainWindow(QMainWindow):
@@ -24,7 +27,10 @@ class MainWindow(QMainWindow):
     
     def __init__(self, parent=None):
         super().__init__(parent)
+        # Create GUI controller for processing
+        self.controller = GUIController()
         self.init_ui()
+        self.setup_connections()
         
     def init_ui(self):
         """Initialize UI components"""
@@ -72,13 +78,23 @@ class MainWindow(QMainWindow):
         settings_group.setLayout(settings_layout)
         layout.addWidget(settings_group)
         
-        # Progress section (placeholder - will be replaced with ProgressWidget in Step 1.5)
+        # Start Processing button
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        self.start_button = QPushButton("Start Processing")
+        self.start_button.setMinimumHeight(40)
+        self.start_button.clicked.connect(self.start_processing)
+        button_layout.addWidget(self.start_button)
+        button_layout.addStretch()
+        layout.addLayout(button_layout)
+        
+        # Progress section - ProgressWidget (Step 1.5)
         # Initially hidden until processing starts
         self.progress_group = QGroupBox("Progress")
         progress_layout = QVBoxLayout()
-        progress_label = QLabel("Progress widget will go here")
-        progress_label.setStyleSheet("color: gray; font-style: italic; padding: 20px;")
-        progress_layout.addWidget(progress_label)
+        self.progress_widget = ProgressWidget()
+        self.progress_widget.cancel_requested.connect(self.on_cancel_requested)
+        progress_layout.addWidget(self.progress_widget)
         self.progress_group.setLayout(progress_layout)
         self.progress_group.setVisible(False)  # Hidden until processing starts
         layout.addWidget(self.progress_group)
@@ -87,9 +103,9 @@ class MainWindow(QMainWindow):
         # Initially hidden until processing completes
         self.results_group = QGroupBox("Results")
         results_layout = QVBoxLayout()
-        results_label = QLabel("Results view widget will go here")
-        results_label.setStyleSheet("color: gray; font-style: italic; padding: 20px;")
-        results_layout.addWidget(results_label)
+        self.results_label = QLabel("Results view widget will go here")
+        self.results_label.setStyleSheet("color: gray; font-style: italic; padding: 20px;")
+        results_layout.addWidget(self.results_label)
         self.results_group.setLayout(results_layout)
         self.results_group.setVisible(False)  # Hidden until processing completes
         layout.addWidget(self.results_group)
@@ -102,6 +118,13 @@ class MainWindow(QMainWindow):
         
         # Enable drag and drop for the window
         self.setAcceptDrops(True)
+    
+    def setup_connections(self):
+        """Set up signal connections for GUI controller"""
+        # Connect controller signals to handlers
+        self.controller.progress_updated.connect(self.on_progress_updated)
+        self.controller.processing_complete.connect(self.on_processing_complete)
+        self.controller.error_occurred.connect(self.on_error_occurred)
         
     def create_menu_bar(self):
         """Create menu bar with basic menus"""
@@ -169,3 +192,120 @@ class MainWindow(QMainWindow):
         if playlist_name:
             track_count = self.playlist_selector.get_playlist_track_count(playlist_name)
             self.statusBar().showMessage(f"Selected playlist: {playlist_name} ({track_count} tracks)")
+    
+    def start_processing(self):
+        """Start processing the selected playlist"""
+        # Get file path and playlist name
+        xml_path = self.file_selector.get_file_path()
+        playlist_name = self.playlist_selector.get_selected_playlist()
+        
+        # Validate inputs
+        if not xml_path or not self.file_selector.validate_file(xml_path):
+            self.statusBar().showMessage("Please select a valid XML file")
+            return
+        
+        if not playlist_name:
+            self.statusBar().showMessage("Please select a playlist")
+            return
+        
+        # Reset progress widget
+        self.progress_widget.reset()
+        
+        # Show progress section, hide results
+        self.progress_group.setVisible(True)
+        self.results_group.setVisible(False)
+        
+        # Disable start button during processing
+        self.start_button.setEnabled(False)
+        
+        # Enable cancel button
+        self.progress_widget.set_enabled(True)
+        
+        # Update status
+        self.statusBar().showMessage(f"Starting processing: {playlist_name}...")
+        
+        # Start processing via controller
+        self.controller.start_processing(
+            xml_path=xml_path,
+            playlist_name=playlist_name,
+            settings=None,  # Use default settings for now (will be configurable in Step 1.8)
+            auto_research=False  # Will be configurable in Step 1.8
+        )
+    
+    def on_cancel_requested(self):
+        """Handle cancel button click from ProgressWidget"""
+        self.controller.cancel_processing()
+        self.statusBar().showMessage("Cancelling processing...")
+        # Re-enable start button
+        self.start_button.setEnabled(True)
+        # Disable cancel button
+        self.progress_widget.set_enabled(False)
+    
+    def on_progress_updated(self, progress_info):
+        """Handle progress update from controller"""
+        # Update progress widget
+        self.progress_widget.update_progress(progress_info)
+        
+        # Update status bar
+        if progress_info.current_track:
+            title = progress_info.current_track.get('title', 'Unknown')
+            self.statusBar().showMessage(
+                f"Processing: {title} ({progress_info.completed_tracks}/{progress_info.total_tracks})"
+            )
+    
+    def on_processing_complete(self, results):
+        """Handle processing completion"""
+        # Hide progress, show results
+        self.progress_group.setVisible(False)
+        self.results_group.setVisible(True)
+        
+        # Re-enable start button
+        self.start_button.setEnabled(True)
+        
+        # Disable cancel button
+        self.progress_widget.set_enabled(False)
+        
+        # Calculate summary statistics
+        total = len(results)
+        matched = sum(1 for r in results if r.matched)
+        unmatched = total - matched
+        match_rate = (matched / total * 100) if total > 0 else 0
+        
+        # Update status bar
+        self.statusBar().showMessage(
+            f"Processing complete: {matched}/{total} matched ({match_rate:.1f}%)"
+        )
+        
+        # TODO: Update results view widget (Step 1.7)
+        # For now, just show a placeholder message
+        self.results_label.setText(
+            f"Processing complete!\n\n"
+            f"Total tracks: {total}\n"
+            f"Matched: {matched} ({match_rate:.1f}%)\n"
+            f"Unmatched: {unmatched}\n\n"
+            f"Results view widget will be implemented in Step 1.7"
+        )
+    
+    def on_error_occurred(self, error: ProcessingError):
+        """Handle error from controller"""
+        # Hide progress section
+        self.progress_group.setVisible(False)
+        
+        # Re-enable start button
+        self.start_button.setEnabled(True)
+        
+        # Disable cancel button
+        self.progress_widget.set_enabled(False)
+        
+        # Update status bar with error
+        self.statusBar().showMessage(f"Error: {error.message}")
+        
+        # TODO: Show error dialog (Step 1.9)
+        # For now, just show error in status bar
+        print(f"Error: {error.message}")
+        if error.details:
+            print(f"Details: {error.details}")
+        if error.suggestions:
+            print("Suggestions:")
+            for suggestion in error.suggestions:
+                print(f"  - {suggestion}")
