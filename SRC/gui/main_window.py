@@ -9,7 +9,7 @@ This module contains the MainWindow class for the GUI application.
 
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QMenuBar, QStatusBar, QGroupBox, QLabel, QPushButton
+    QMenuBar, QStatusBar, QGroupBox, QLabel, QPushButton, QTabWidget
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
@@ -19,6 +19,7 @@ from gui.file_selector import FileSelector
 from gui.playlist_selector import PlaylistSelector
 from gui.progress_widget import ProgressWidget
 from gui.results_view import ResultsView
+from gui.config_panel import ConfigPanel
 from gui_controller import GUIController
 from gui_interface import ProcessingError
 
@@ -43,14 +44,15 @@ class MainWindow(QMainWindow):
         # Create menu bar
         self.create_menu_bar()
         
-        # Central widget
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
+        # Create tab widget
+        self.tabs = QTabWidget()
+        self.setCentralWidget(self.tabs)
         
-        # Main layout
-        layout = QVBoxLayout(central_widget)
-        layout.setSpacing(15)
-        layout.setContentsMargins(10, 10, 10, 10)
+        # Main tab
+        main_tab = QWidget()
+        main_layout = QVBoxLayout(main_tab)
+        main_layout.setSpacing(15)
+        main_layout.setContentsMargins(10, 10, 10, 10)
         
         # File selection section
         file_group = QGroupBox("File Selection")
@@ -59,7 +61,7 @@ class MainWindow(QMainWindow):
         self.file_selector.file_selected.connect(self.on_file_selected)
         file_layout.addWidget(self.file_selector)
         file_group.setLayout(file_layout)
-        layout.addWidget(file_group)
+        main_layout.addWidget(file_group)
         
         # Playlist selection section
         playlist_group = QGroupBox("Playlist Selection")
@@ -68,16 +70,7 @@ class MainWindow(QMainWindow):
         self.playlist_selector.playlist_selected.connect(self.on_playlist_selected)
         playlist_layout.addWidget(self.playlist_selector)
         playlist_group.setLayout(playlist_layout)
-        layout.addWidget(playlist_group)
-        
-        # Settings section (placeholder - will be replaced with ConfigPanel widget in Step 1.8)
-        settings_group = QGroupBox("Settings")
-        settings_layout = QVBoxLayout()
-        settings_label = QLabel("Settings panel widget will go here")
-        settings_label.setStyleSheet("color: gray; font-style: italic; padding: 20px;")
-        settings_layout.addWidget(settings_label)
-        settings_group.setLayout(settings_layout)
-        layout.addWidget(settings_group)
+        main_layout.addWidget(playlist_group)
         
         # Start Processing button
         button_layout = QHBoxLayout()
@@ -87,7 +80,7 @@ class MainWindow(QMainWindow):
         self.start_button.clicked.connect(self.start_processing)
         button_layout.addWidget(self.start_button)
         button_layout.addStretch()
-        layout.addLayout(button_layout)
+        main_layout.addLayout(button_layout)
         
         # Progress section - ProgressWidget (Step 1.5)
         # Initially hidden until processing starts
@@ -98,7 +91,7 @@ class MainWindow(QMainWindow):
         progress_layout.addWidget(self.progress_widget)
         self.progress_group.setLayout(progress_layout)
         self.progress_group.setVisible(False)  # Hidden until processing starts
-        layout.addWidget(self.progress_group)
+        main_layout.addWidget(self.progress_group)
         
         # Results section - ResultsView widget (Step 1.7)
         # Initially hidden until processing completes
@@ -108,10 +101,21 @@ class MainWindow(QMainWindow):
         results_layout.addWidget(self.results_view)
         self.results_group.setLayout(results_layout)
         self.results_group.setVisible(False)  # Hidden until processing completes
-        layout.addWidget(self.results_group)
+        main_layout.addWidget(self.results_group)
         
         # Add stretch to push everything to top
-        layout.addStretch()
+        main_layout.addStretch()
+        
+        # Settings tab
+        settings_tab = QWidget()
+        settings_layout = QVBoxLayout(settings_tab)
+        settings_layout.setContentsMargins(10, 10, 10, 10)
+        self.config_panel = ConfigPanel()
+        settings_layout.addWidget(self.config_panel)
+        
+        # Add tabs
+        self.tabs.addTab(main_tab, "Main")
+        self.tabs.addTab(settings_tab, "Settings")
         
         # Status bar
         self.statusBar().showMessage("Ready")
@@ -224,12 +228,16 @@ class MainWindow(QMainWindow):
         # Update status
         self.statusBar().showMessage(f"Starting processing: {playlist_name}...")
         
+        # Get settings from config panel
+        settings = self.config_panel.get_settings()
+        auto_research = self.config_panel.get_auto_research()
+        
         # Start processing via controller
         self.controller.start_processing(
             xml_path=xml_path,
             playlist_name=playlist_name,
-            settings=None,  # Use default settings for now (will be configurable in Step 1.8)
-            auto_research=False  # Will be configurable in Step 1.8
+            settings=settings,
+            auto_research=auto_research
         )
     
     def on_cancel_requested(self):
