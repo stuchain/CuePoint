@@ -11,7 +11,7 @@ and exporting them to CSV files.
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QGroupBox, QFileDialog,
-    QMessageBox
+    QMessageBox, QLineEdit, QComboBox, QHeaderView
 )
 from PySide6.QtCore import Qt
 from typing import List, Optional
@@ -51,17 +51,38 @@ class ResultsView(QWidget):
         table_group = QGroupBox("Results")
         table_layout = QVBoxLayout()
         
+        # Filter controls
+        filter_layout = QHBoxLayout()
+        
+        # Search box
+        self.search_box = QLineEdit()
+        self.search_box.setPlaceholderText("Search...")
+        self.search_box.textChanged.connect(self.apply_filters)
+        filter_layout.addWidget(QLabel("Search:"))
+        filter_layout.addWidget(self.search_box)
+        
+        # Confidence filter
+        filter_layout.addWidget(QLabel("Confidence:"))
+        self.confidence_filter = QComboBox()
+        self.confidence_filter.addItems(["All", "High", "Medium", "Low"])
+        self.confidence_filter.currentTextChanged.connect(self.apply_filters)
+        filter_layout.addWidget(self.confidence_filter)
+        
+        filter_layout.addStretch()
+        table_layout.addLayout(filter_layout)
+        
         # Create table with key columns
         self.table = QTableWidget()
-        self.table.setColumnCount(8)
+        self.table.setColumnCount(11)
         self.table.setHorizontalHeaderLabels([
             "Index", "Title", "Artist", "Matched", 
-            "Beatport Title", "Score", "Key", "BPM"
+            "Beatport Title", "Beatport Artist", "Score", "Confidence", "Key", "BPM", "Year"
         ])
+        self.table.setSortingEnabled(True)
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         
         table_layout.addWidget(self.table)
         table_group.setLayout(table_layout)
@@ -136,9 +157,14 @@ class ResultsView(QWidget):
     
     def _populate_table(self):
         """Populate table with results"""
-        self.table.setRowCount(len(self.results))
+        # Apply filters first
+        filtered = self._filter_results()
         
-        for row, result in enumerate(self.results):
+        # Disable sorting temporarily to populate
+        self.table.setSortingEnabled(False)
+        self.table.setRowCount(len(filtered))
+        
+        for row, result in enumerate(filtered):
             # Index
             self.table.setItem(row, 0, QTableWidgetItem(str(result.playlist_index)))
             
@@ -161,22 +187,64 @@ class ResultsView(QWidget):
             beatport_title = result.beatport_title or ""
             self.table.setItem(row, 4, QTableWidgetItem(beatport_title))
             
+            # Beatport Artist (NEW COLUMN)
+            beatport_artists = result.beatport_artists or ""
+            self.table.setItem(row, 5, QTableWidgetItem(beatport_artists))
+            
             # Score
             score_text = f"{result.match_score:.1f}" if result.match_score is not None else "N/A"
             score_item = QTableWidgetItem(score_text)
             score_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.table.setItem(row, 5, score_item)
+            self.table.setItem(row, 6, score_item)
+            
+            # Confidence
+            confidence_text = result.confidence or ""
+            confidence_item = QTableWidgetItem(confidence_text.capitalize() if confidence_text else "")
+            self.table.setItem(row, 7, confidence_item)
             
             # Key (Camelot)
             key_text = result.beatport_key_camelot or result.beatport_key or ""
-            self.table.setItem(row, 6, QTableWidgetItem(key_text))
+            self.table.setItem(row, 8, QTableWidgetItem(key_text))
             
             # BPM
             bpm_text = result.beatport_bpm or ""
-            self.table.setItem(row, 7, QTableWidgetItem(bpm_text))
+            self.table.setItem(row, 9, QTableWidgetItem(bpm_text))
+            
+            # Year
+            year_text = result.beatport_year or ""
+            self.table.setItem(row, 10, QTableWidgetItem(year_text))
+        
+        # Re-enable sorting
+        self.table.setSortingEnabled(True)
         
         # Resize columns to content
         self.table.resizeColumnsToContents()
+    
+    def _filter_results(self) -> List[TrackResult]:
+        """Apply filters to results"""
+        filtered = self.results
+        
+        # Search filter
+        search_text = self.search_box.text().lower()
+        if search_text:
+            filtered = [
+                r for r in filtered
+                if search_text in r.title.lower() 
+                or search_text in (r.artist or "").lower()
+                or search_text in (r.beatport_title or "").lower()
+                or search_text in (r.beatport_artists or "").lower()
+            ]
+        
+        # Confidence filter
+        confidence = self.confidence_filter.currentText()
+        if confidence != "All":
+            filtered = [r for r in filtered if (r.confidence or "").lower() == confidence.lower()]
+            
+        return filtered
+    
+    def apply_filters(self):
+        """Apply filters and update table"""
+        self._populate_table()
     
     def export_main_csv(self):
         """Export main results CSV file"""
@@ -303,3 +371,5 @@ class ResultsView(QWidget):
         self.output_files = {}
         self.table.setRowCount(0)
         self.summary_label.setText("No results yet")
+        self.search_box.clear()
+        self.confidence_filter.setCurrentIndex(0)  # Reset to "All"

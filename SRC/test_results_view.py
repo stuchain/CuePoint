@@ -28,6 +28,7 @@ def create_sample_results():
         beatport_key="8A",
         beatport_key_camelot="8A",
         beatport_bpm="128",
+        beatport_year="2024",
         beatport_url="https://www.beatport.com/track/dance-with-me/123456",
         match_score=145.5,
         title_sim=95.0,
@@ -54,11 +55,31 @@ def create_sample_results():
         beatport_key="5A",
         beatport_key_camelot="5A",
         beatport_bpm="130",
+        beatport_year="2023",
         beatport_url="https://www.beatport.com/track/another-track/789012",
         match_score=85.0,
         title_sim=80.0,
         artist_sim=90.0,
         confidence="medium"
+    ))
+    
+    # Add a low confidence track
+    results.append(TrackResult(
+        playlist_index=4,
+        title="Low Confidence Track",
+        artist="Test Artist",
+        matched=True,
+        beatport_title="Low Confidence Track (Remix)",
+        beatport_artists="Test Artist & Friends",
+        beatport_key="12A",
+        beatport_key_camelot="12A",
+        beatport_bpm="125",
+        beatport_year="2022",
+        beatport_url="https://www.beatport.com/track/low-confidence/345678",
+        match_score=72.0,
+        title_sim=70.0,
+        artist_sim=74.0,
+        confidence="low"
     ))
     
     return results
