@@ -18,6 +18,7 @@ import os
 from gui.file_selector import FileSelector
 from gui.playlist_selector import PlaylistSelector
 from gui.progress_widget import ProgressWidget
+from gui.results_view import ResultsView
 from gui_controller import GUIController
 from gui_interface import ProcessingError
 
@@ -99,13 +100,12 @@ class MainWindow(QMainWindow):
         self.progress_group.setVisible(False)  # Hidden until processing starts
         layout.addWidget(self.progress_group)
         
-        # Results section (placeholder - will be replaced with ResultsView widget in Step 1.7)
+        # Results section - ResultsView widget (Step 1.7)
         # Initially hidden until processing completes
         self.results_group = QGroupBox("Results")
         results_layout = QVBoxLayout()
-        self.results_label = QLabel("Results view widget will go here")
-        self.results_label.setStyleSheet("color: gray; font-style: italic; padding: 20px;")
-        results_layout.addWidget(self.results_label)
+        self.results_view = ResultsView()
+        results_layout.addWidget(self.results_view)
         self.results_group.setLayout(results_layout)
         self.results_group.setVisible(False)  # Hidden until processing completes
         layout.addWidget(self.results_group)
@@ -265,25 +265,20 @@ class MainWindow(QMainWindow):
         # Disable cancel button
         self.progress_widget.set_enabled(False)
         
-        # Calculate summary statistics
+        # Get playlist name for file naming
+        playlist_name = self.playlist_selector.get_selected_playlist() or "playlist"
+        
+        # Update results view with results
+        self.results_view.set_results(results, playlist_name)
+        
+        # Calculate summary statistics for status bar
         total = len(results)
         matched = sum(1 for r in results if r.matched)
-        unmatched = total - matched
         match_rate = (matched / total * 100) if total > 0 else 0
         
         # Update status bar
         self.statusBar().showMessage(
             f"Processing complete: {matched}/{total} matched ({match_rate:.1f}%)"
-        )
-        
-        # TODO: Update results view widget (Step 1.7)
-        # For now, just show a placeholder message
-        self.results_label.setText(
-            f"Processing complete!\n\n"
-            f"Total tracks: {total}\n"
-            f"Matched: {matched} ({match_rate:.1f}%)\n"
-            f"Unmatched: {unmatched}\n\n"
-            f"Results view widget will be implemented in Step 1.7"
         )
     
     def on_error_occurred(self, error: ProcessingError):
