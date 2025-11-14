@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QCheckBox,
     QRadioButton, QButtonGroup, QGroupBox, QSpinBox, QDoubleSpinBox, QPushButton
 )
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Signal, Qt
 from typing import Dict, Any, Optional
 from config import SETTINGS
 
@@ -32,7 +32,28 @@ class ConfigPanel(QWidget):
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
         
-        # Performance Presets
+        # Message at top
+        message_label = QLabel("We don't touch what already works, if it takes too much time go touch some grass :)")
+        message_label.setWordWrap(True)
+        message_label.setAlignment(Qt.AlignCenter)
+        message_label.setStyleSheet("color: #666; font-style: italic; padding: 15px; font-size: 14px;")
+        layout.addWidget(message_label)
+        
+        layout.addSpacing(10)
+        
+        # Note: Auto-research is ALWAYS ON (removed checkbox)
+        # Note: Performance Preset and Verbose logging moved to advanced settings
+        
+        # Show Advanced Settings button
+        self.show_advanced_btn = QPushButton("Show Advanced Settings")
+        self.show_advanced_btn.clicked.connect(self._toggle_advanced_settings)
+        layout.addWidget(self.show_advanced_btn)
+        
+        # Advanced Settings (hidden by default) - ALL SETTINGS HERE
+        self.advanced_group = QGroupBox("Advanced Settings")
+        advanced_layout = QVBoxLayout()
+        
+        # Performance Presets (moved to advanced)
         preset_group = QGroupBox("Performance Preset")
         preset_layout = QVBoxLayout()
         
@@ -56,21 +77,14 @@ class ConfigPanel(QWidget):
         
         preset_layout.addLayout(preset_buttons_layout)
         preset_group.setLayout(preset_layout)
-        layout.addWidget(preset_group)
+        advanced_layout.addWidget(preset_group)
         
         # Connect preset changes
         self.preset_group.buttonClicked.connect(self._on_preset_changed)
         
-        # Processing Options
+        # Processing Options (moved to advanced)
         options_group = QGroupBox("Processing Options")
         options_layout = QVBoxLayout()
-        
-        self.auto_research_check = QCheckBox("Auto-research unmatched tracks")
-        self.auto_research_check.setChecked(False)
-        self.auto_research_check.setToolTip(
-            "Automatically re-search unmatched tracks with enhanced settings"
-        )
-        options_layout.addWidget(self.auto_research_check)
         
         self.verbose_check = QCheckBox("Enable verbose logging")
         self.verbose_check.setChecked(False)
@@ -80,16 +94,7 @@ class ConfigPanel(QWidget):
         options_layout.addWidget(self.verbose_check)
         
         options_group.setLayout(options_layout)
-        layout.addWidget(options_group)
-        
-        # Show Advanced Settings button
-        self.show_advanced_btn = QPushButton("Show Advanced Settings")
-        self.show_advanced_btn.clicked.connect(self._toggle_advanced_settings)
-        layout.addWidget(self.show_advanced_btn)
-        
-        # Advanced Settings (hidden by default)
-        self.advanced_group = QGroupBox("Advanced Settings")
-        advanced_layout = QVBoxLayout()
+        advanced_layout.addWidget(options_group)
         
         # Track Workers
         workers_layout = QHBoxLayout()
@@ -168,6 +173,7 @@ class ConfigPanel(QWidget):
         self.time_budget_spin.valueChanged.connect(self._on_setting_changed)
         self.min_score_spin.valueChanged.connect(self._on_setting_changed)
         self.max_results_spin.valueChanged.connect(self._on_setting_changed)
+        self.verbose_check.stateChanged.connect(self._on_setting_changed)
         
         layout.addStretch()
     
@@ -190,6 +196,9 @@ class ConfigPanel(QWidget):
             Dictionary of settings to pass to process_playlist()
         """
         settings = {}
+        
+        # Auto-research is always enabled
+        settings["auto_research"] = True
         
         # Get preset
         preset = self._get_selected_preset()
@@ -224,15 +233,20 @@ class ConfigPanel(QWidget):
             settings["EARLY_EXIT_SCORE"] = SETTINGS.get("EARLY_EXIT_SCORE", 90)
             settings["EARLY_EXIT_MIN_QUERIES"] = SETTINGS.get("EARLY_EXIT_MIN_QUERIES", 8)
         
-        # Add other settings
-        settings["VERBOSE"] = self.verbose_check.isChecked()
+        # Get advanced settings if visible (verbose logging is now in advanced)
+        if self.advanced_group.isVisible():
+            settings["VERBOSE"] = self.verbose_check.isChecked()
+        else:
+            # Default to False if advanced settings not visible
+            settings["VERBOSE"] = False
+        
         settings["ENABLE_CACHE"] = SETTINGS.get("ENABLE_CACHE", True)
         
         return settings
     
     def get_auto_research(self) -> bool:
-        """Get auto-research setting"""
-        return self.auto_research_check.isChecked()
+        """Get auto-research setting - always returns True"""
+        return True
     
     def _get_selected_preset(self) -> str:
         """Get currently selected preset"""
@@ -309,8 +323,7 @@ class ConfigPanel(QWidget):
         if balanced_button:
             balanced_button.setChecked(True)
         
-        # Reset checkboxes to defaults
-        self.auto_research_check.setChecked(False)
+        # Reset verbose checkbox to defaults (auto-research is always on, no checkbox)
         self.verbose_check.setChecked(SETTINGS.get("VERBOSE", False))
         
         # Reset to actual default values from config.py
