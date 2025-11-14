@@ -9,10 +9,11 @@ This module contains the MainWindow class for the GUI application.
 
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QMenuBar, QStatusBar, QGroupBox, QLabel, QPushButton, QTabWidget
+    QMenuBar, QStatusBar, QGroupBox, QLabel, QPushButton, QTabWidget,
+    QMenu, QMessageBox
 )
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QDragEnterEvent, QDropEvent
+from PySide6.QtCore import Qt, QSettings
+from PySide6.QtGui import QDragEnterEvent, QDropEvent, QKeySequence, QAction
 import os
 
 from gui.file_selector import FileSelector
@@ -20,7 +21,7 @@ from gui.playlist_selector import PlaylistSelector
 from gui.progress_widget import ProgressWidget
 from gui.results_view import ResultsView
 from gui.config_panel import ConfigPanel
-from gui.dialogs import ErrorDialog
+from gui.dialogs import ErrorDialog, AboutDialog, UserGuideDialog, KeyboardShortcutsDialog
 from gui_controller import GUIController
 from gui_interface import ProcessingError
 
@@ -132,29 +133,101 @@ class MainWindow(QMainWindow):
         self.controller.error_occurred.connect(self.on_error_occurred)
         
     def create_menu_bar(self):
-        """Create menu bar with basic menus"""
+        """Create menu bar with File, Edit, View, Help menus"""
         menubar = self.menuBar()
         
-        # File menu
+        # File Menu
         file_menu = menubar.addMenu("&File")
-        file_menu.addAction("&Open XML File...", self.on_file_open)
-        file_menu.addAction("&Recent Files")
+        
+        # Open XML File
+        open_action = QAction("&Open XML File...", self)
+        open_action.setShortcut(QKeySequence.Open)
+        open_action.triggered.connect(self.on_file_open)
+        file_menu.addAction(open_action)
+        
         file_menu.addSeparator()
-        file_menu.addAction("E&xit", self.close)
         
-        # Edit menu
+        # Recent Files submenu
+        self.recent_files_menu = QMenu("Recent Files", self)
+        self.recent_files_menu.aboutToShow.connect(self.update_recent_files_menu)
+        file_menu.addMenu(self.recent_files_menu)
+        
+        file_menu.addSeparator()
+        
+        # Exit
+        exit_action = QAction("E&xit", self)
+        exit_action.setShortcut(QKeySequence.Quit)
+        exit_action.triggered.connect(self.close)
+        file_menu.addAction(exit_action)
+        
+        # Edit Menu
         edit_menu = menubar.addMenu("&Edit")
-        edit_menu.addAction("&Settings...")
         
-        # View menu
+        # Copy selected results
+        copy_action = QAction("&Copy", self)
+        copy_action.setShortcut(QKeySequence.Copy)
+        copy_action.triggered.connect(self.on_copy_selected)
+        edit_menu.addAction(copy_action)
+        
+        # Select All
+        select_all_action = QAction("Select &All", self)
+        select_all_action.setShortcut(QKeySequence.SelectAll)
+        select_all_action.triggered.connect(self.on_select_all)
+        edit_menu.addAction(select_all_action)
+        
+        edit_menu.addSeparator()
+        
+        # Clear Results
+        clear_action = QAction("&Clear Results", self)
+        clear_action.triggered.connect(self.on_clear_results)
+        edit_menu.addAction(clear_action)
+        
+        # View Menu
         view_menu = menubar.addMenu("&View")
-        view_menu.addAction("&Show Progress")
-        view_menu.addAction("&Show Results")
         
-        # Help menu
+        # Show/Hide Progress
+        self.toggle_progress_action = QAction("Show &Progress", self)
+        self.toggle_progress_action.setCheckable(True)
+        self.toggle_progress_action.setChecked(True)
+        self.toggle_progress_action.triggered.connect(self.on_toggle_progress)
+        view_menu.addAction(self.toggle_progress_action)
+        
+        # Show/Hide Results
+        self.toggle_results_action = QAction("Show &Results", self)
+        self.toggle_results_action.setCheckable(True)
+        self.toggle_results_action.setChecked(True)
+        self.toggle_results_action.triggered.connect(self.on_toggle_results)
+        view_menu.addAction(self.toggle_results_action)
+        
+        view_menu.addSeparator()
+        
+        # Full Screen
+        fullscreen_action = QAction("&Full Screen", self)
+        fullscreen_action.setShortcut(QKeySequence.FullScreen)
+        fullscreen_action.setCheckable(True)
+        fullscreen_action.triggered.connect(self.toggle_fullscreen)
+        view_menu.addAction(fullscreen_action)
+        
+        # Help Menu
         help_menu = menubar.addMenu("&Help")
-        help_menu.addAction("&About")
-        help_menu.addAction("&Documentation")
+        
+        # User Guide
+        guide_action = QAction("&User Guide", self)
+        guide_action.setShortcut(QKeySequence.HelpContents)
+        guide_action.triggered.connect(self.on_show_user_guide)
+        help_menu.addAction(guide_action)
+        
+        # Keyboard Shortcuts
+        shortcuts_action = QAction("&Keyboard Shortcuts", self)
+        shortcuts_action.triggered.connect(self.on_show_shortcuts)
+        help_menu.addAction(shortcuts_action)
+        
+        help_menu.addSeparator()
+        
+        # About
+        about_action = QAction("&About CuePoint", self)
+        about_action.triggered.connect(self.on_show_about)
+        help_menu.addAction(about_action)
         
     def dragEnterEvent(self, event: QDragEnterEvent):
         """Handle drag enter event"""
@@ -184,6 +257,9 @@ class MainWindow(QMainWindow):
                 self.playlist_selector.load_xml_file(file_path)
                 playlist_count = len(self.playlist_selector.playlists)
                 self.statusBar().showMessage(f"File loaded: {playlist_count} playlists found")
+                
+                # Save to recent files
+                self.save_recent_file(file_path)
             except Exception as e:
                 self.statusBar().showMessage(f"Error loading XML: {str(e)}")
                 # Error dialog will be handled in later step
@@ -191,6 +267,154 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f"Invalid file: {file_path}")
             # Clear playlist selector if file is invalid
             self.playlist_selector.clear()
+    
+    def update_recent_files_menu(self):
+        """Update recent files menu with saved files"""
+        self.recent_files_menu.clear()
+        
+        settings = QSettings("CuePoint", "CuePoint")
+        recent_files = settings.value("recent_files", [])
+        
+        if not recent_files:
+            action = QAction("No recent files", self)
+            action.setEnabled(False)
+            self.recent_files_menu.addAction(action)
+        else:
+            for file_path in recent_files[:10]:  # Show last 10
+                action = QAction(os.path.basename(file_path), self)
+                action.setData(file_path)
+                action.triggered.connect(lambda checked, path=file_path: self.on_open_recent_file(path))
+                self.recent_files_menu.addAction(action)
+    
+    def on_open_recent_file(self, file_path: str):
+        """Open a recent file"""
+        if os.path.exists(file_path):
+            self.file_selector.set_file_path(file_path)
+            self.on_file_selected(file_path)
+        else:
+            # Remove invalid file from recent files
+            settings = QSettings("CuePoint", "CuePoint")
+            recent_files = settings.value("recent_files", [])
+            if file_path in recent_files:
+                recent_files.remove(file_path)
+                settings.setValue("recent_files", recent_files)
+            self.update_recent_files_menu()
+            QMessageBox.warning(
+                self,
+                "File Not Found",
+                f"The file no longer exists:\n{file_path}"
+            )
+    
+    def save_recent_file(self, file_path: str):
+        """Save file to recent files list"""
+        settings = QSettings("CuePoint", "CuePoint")
+        recent_files = settings.value("recent_files", [])
+        
+        if not isinstance(recent_files, list):
+            recent_files = []
+        
+        if file_path in recent_files:
+            recent_files.remove(file_path)
+        recent_files.insert(0, file_path)
+        
+        # Keep only last 10
+        recent_files = recent_files[:10]
+        settings.setValue("recent_files", recent_files)
+    
+    def on_copy_selected(self):
+        """Copy selected results to clipboard"""
+        # Get selected items from results table
+        if hasattr(self, 'results_view') and self.results_view.results:
+            selected_items = self.results_view.table.selectedItems()
+            if selected_items:
+                # Get selected rows
+                selected_rows = set()
+                for item in selected_items:
+                    selected_rows.add(item.row())
+                
+                # Build text to copy
+                lines = []
+                for row in sorted(selected_rows):
+                    row_data = []
+                    for col in range(self.results_view.table.columnCount()):
+                        item = self.results_view.table.item(row, col)
+                        row_data.append(item.text() if item else "")
+                    lines.append("\t".join(row_data))
+                
+                if lines:
+                    from PySide6.QtWidgets import QApplication
+                    clipboard = QApplication.clipboard()
+                    clipboard.setText("\n".join(lines))
+                    self.statusBar().showMessage("Copied to clipboard", 2000)
+            else:
+                self.statusBar().showMessage("No items selected", 2000)
+        else:
+            self.statusBar().showMessage("No results to copy", 2000)
+    
+    def on_select_all(self):
+        """Select all items in results table"""
+        if hasattr(self, 'results_view') and self.results_view.table.rowCount() > 0:
+            self.results_view.table.selectAll()
+            self.statusBar().showMessage("All items selected", 2000)
+        else:
+            self.statusBar().showMessage("No results to select", 2000)
+    
+    def on_clear_results(self):
+        """Clear results display"""
+        if hasattr(self, 'results_view'):
+            reply = QMessageBox.question(
+                self,
+                "Clear Results",
+                "Are you sure you want to clear all results?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            if reply == QMessageBox.Yes:
+                self.results_view.clear()
+                self.results_group.setVisible(False)
+                self.statusBar().showMessage("Results cleared", 2000)
+    
+    def on_toggle_progress(self):
+        """Toggle progress section visibility"""
+        is_visible = self.toggle_progress_action.isChecked()
+        self.progress_group.setVisible(is_visible)
+        # Update menu text based on current state
+        if is_visible:
+            self.toggle_progress_action.setText("Hide &Progress")
+        else:
+            self.toggle_progress_action.setText("Show &Progress")
+    
+    def on_toggle_results(self):
+        """Toggle results section visibility"""
+        is_visible = self.toggle_results_action.isChecked()
+        self.results_group.setVisible(is_visible)
+        # Update menu text based on current state
+        if is_visible:
+            self.toggle_results_action.setText("Hide &Results")
+        else:
+            self.toggle_results_action.setText("Show &Results")
+    
+    def toggle_fullscreen(self):
+        """Toggle full screen mode"""
+        if self.isFullScreen():
+            self.showNormal()
+        else:
+            self.showFullScreen()
+    
+    def on_show_user_guide(self):
+        """Show user guide dialog"""
+        dialog = UserGuideDialog(self)
+        dialog.exec()
+    
+    def on_show_shortcuts(self):
+        """Show keyboard shortcuts dialog"""
+        dialog = KeyboardShortcutsDialog(self)
+        dialog.exec()
+    
+    def on_show_about(self):
+        """Show about dialog"""
+        dialog = AboutDialog(self)
+        dialog.exec()
             
     def on_playlist_selected(self, playlist_name: str):
         """Handle playlist selection from PlaylistSelector"""
