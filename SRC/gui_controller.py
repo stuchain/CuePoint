@@ -124,6 +124,12 @@ class GUIController(QObject):
         """Initialize GUI controller"""
         super().__init__(parent)
         self.current_worker: Optional[ProcessingWorker] = None
+        # Batch processing state
+        self.batch_playlists: List[str] = []
+        self.batch_index: int = 0
+        self.batch_xml_path: str = ""
+        self.batch_settings: Optional[Dict[str, Any]] = None
+        self.batch_auto_research: bool = False
     
     def start_processing(
         self,
@@ -193,4 +199,102 @@ class GUIController(QObject):
         if self.current_worker:
             return self.current_worker.wait(timeout)
         return True
+    
+    def start_batch_processing(
+        self,
+        xml_path: str,
+        playlist_names: List[str],
+        settings: Optional[Dict[str, Any]] = None,
+        auto_research: bool = False
+    ):
+        """
+        Start batch processing multiple playlists sequentially.
+        
+        Args:
+            xml_path: Path to Rekordbox XML file
+            playlist_names: List of playlist names to process
+            settings: Optional settings override
+            auto_research: If True, auto-research unmatched tracks
+        """
+        # Cancel any existing processing
+        if self.current_worker and self.current_worker.isRunning():
+            self.cancel_processing()
+        
+        # Store batch processing state
+        self.batch_playlists = playlist_names
+        self.batch_index = 0
+        self.batch_xml_path = xml_path
+        self.batch_settings = settings
+        self.batch_auto_research = auto_research
+        self.current_batch_playlist_name = None  # Track current playlist being processed
+        self.last_completed_playlist_name = None  # Track last completed playlist name
+        
+        # Start processing first playlist
+        if self.batch_playlists:
+            self._process_next_playlist()
+    
+    def _process_next_playlist(self):
+        """Process next playlist in batch"""
+        if self.batch_index >= len(self.batch_playlists):
+            return
+        
+        playlist_name = self.batch_playlists[self.batch_index]
+        self.current_batch_playlist_name = playlist_name  # Store current playlist name
+        
+        # Create new worker thread
+        self.current_worker = ProcessingWorker(
+            xml_path=self.batch_xml_path,
+            playlist_name=playlist_name,
+            settings=self.batch_settings,
+            auto_research=self.batch_auto_research,
+            parent=self
+        )
+        
+        # Connect worker signals
+        self.current_worker.progress_updated.connect(self.progress_updated.emit)
+        self.current_worker.processing_complete.connect(self._on_batch_playlist_complete)
+        self.current_worker.error_occurred.connect(self._on_batch_playlist_error)
+        
+        # Start worker thread
+        self.current_worker.start()
+    
+    def _on_batch_playlist_complete(self, results: List[TrackResult]):
+        """Handle completion of a playlist in batch"""
+        # Get playlist name before incrementing index or processing next
+        playlist_name = self.current_batch_playlist_name
+        self.last_completed_playlist_name = playlist_name  # Store for GUI
+        
+        # Emit completion for this playlist (GUI will handle it)
+        self.processing_complete.emit(results)
+        
+        # Move to next playlist
+        self.batch_index += 1
+        if self.batch_index < len(self.batch_playlists):
+            # Process next playlist (this will update current_batch_playlist_name)
+            self._process_next_playlist()
+        else:
+            # Batch complete - clear worker but keep batch state for GUI
+            self.current_worker = None
+            self.current_batch_playlist_name = None
+            self.last_completed_playlist_name = None
+    
+    def _on_batch_playlist_error(self, error: ProcessingError):
+        """Handle error for a playlist in batch"""
+        # Get playlist name before incrementing index or processing next
+        playlist_name = self.current_batch_playlist_name
+        self.last_completed_playlist_name = playlist_name  # Store for GUI
+        
+        # Emit error (GUI will handle it)
+        self.error_occurred.emit(error)
+        
+        # Move to next playlist (continue batch)
+        self.batch_index += 1
+        if self.batch_index < len(self.batch_playlists):
+            # Process next playlist (this will update current_batch_playlist_name)
+            self._process_next_playlist()
+        else:
+            # Batch complete (with errors) - clear worker but keep batch state for GUI
+            self.current_worker = None
+            self.current_batch_playlist_name = None
+            self.last_completed_playlist_name = None
 

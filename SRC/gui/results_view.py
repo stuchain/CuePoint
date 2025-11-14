@@ -11,7 +11,8 @@ and exporting them to CSV files.
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QGroupBox, QFileDialog,
-    QMessageBox, QLineEdit, QComboBox, QHeaderView, QMenu, QDialog
+    QMessageBox, QLineEdit, QComboBox, QHeaderView, QMenu, QDialog,
+    QTabWidget, QScrollArea
 )
 from PySide6.QtCore import Qt, Signal
 from typing import List, Optional, Dict, Any
@@ -35,13 +36,18 @@ class ResultsView(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.results: List[TrackResult] = []
+        self.batch_results: Dict[str, List[TrackResult]] = {}  # For batch mode
         self.output_files: dict = {}
+        self.is_batch_mode = False
+        self.playlist_tables: Dict[str, QTableWidget] = {}  # Store tables for each playlist
+        self.playlist_filters: Dict[str, Dict[str, Any]] = {}  # Store filters for each playlist
         self.init_ui()
     
     def init_ui(self):
         """Initialize UI components"""
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
+        layout.setContentsMargins(5, 5, 5, 5)
         
         # Summary statistics group
         summary_group = QGroupBox("Summary Statistics")
@@ -52,9 +58,9 @@ class ResultsView(QWidget):
         summary_group.setLayout(summary_layout)
         layout.addWidget(summary_group)
         
-        # Results table
-        table_group = QGroupBox("Results")
-        table_layout = QVBoxLayout()
+        # Single playlist mode - Results table (hidden in batch mode)
+        self.single_table_group = QGroupBox("Results")
+        single_table_layout = QVBoxLayout()
         
         # Filter controls
         filter_layout = QHBoxLayout()
@@ -74,7 +80,7 @@ class ResultsView(QWidget):
         filter_layout.addWidget(self.confidence_filter)
         
         filter_layout.addStretch()
-        table_layout.addLayout(filter_layout)
+        single_table_layout.addLayout(filter_layout)
         
         # Create table with key columns
         self.table = QTableWidget()
@@ -96,9 +102,14 @@ class ResultsView(QWidget):
         # Enable double-click to view candidates
         self.table.doubleClicked.connect(self._on_row_double_clicked)
         
-        table_layout.addWidget(self.table)
-        table_group.setLayout(table_layout)
-        layout.addWidget(table_group, 1)  # Give table stretch priority
+        single_table_layout.addWidget(self.table)
+        self.single_table_group.setLayout(single_table_layout)
+        layout.addWidget(self.single_table_group, 1)  # Give table stretch priority
+        
+        # Batch mode - Tab widget for multiple playlists (hidden in single mode)
+        self.batch_tabs = QTabWidget()
+        self.batch_tabs.setVisible(False)
+        layout.addWidget(self.batch_tabs, 1)  # Give tabs stretch priority
         
         # Export buttons
         button_layout = QHBoxLayout()
@@ -122,20 +133,131 @@ class ResultsView(QWidget):
     
     def set_results(self, results: List[TrackResult], playlist_name: str = ""):
         """
-        Set results to display.
+        Set results to display (single playlist mode).
         
         Args:
             results: List of TrackResult objects
             playlist_name: Name of processed playlist (for file naming)
         """
+        self.is_batch_mode = False
         self.results = results
         self.playlist_name = playlist_name or "playlist"
+        
+        # Switch to single mode UI
+        self.single_table_group.setVisible(True)
+        self.batch_tabs.setVisible(False)
         
         # Update summary statistics
         self._update_summary()
         
         # Populate table
         self._populate_table()
+    
+    def set_batch_results(self, results_dict: Dict[str, List[TrackResult]]):
+        """
+        Set batch results to display (multiple playlists mode).
+        
+        Args:
+            results_dict: Dictionary mapping playlist_name -> List[TrackResult]
+        """
+        self.is_batch_mode = True
+        self.batch_results = results_dict
+        
+        # Switch to batch mode UI
+        self.single_table_group.setVisible(False)
+        self.batch_tabs.setVisible(True)
+        
+        # Clear existing tabs
+        self.batch_tabs.clear()
+        self.playlist_tables.clear()
+        self.playlist_filters.clear()
+        
+        # Create a tab for each playlist
+        for playlist_name, results in results_dict.items():
+            # Create tab even if results list is empty (to show that playlist was processed)
+            # But only if results is not None
+            if results is not None:
+                tab_widget = self._create_playlist_tab(playlist_name, results)
+                self.batch_tabs.addTab(tab_widget, playlist_name)
+        
+        # Update summary statistics (aggregate for all playlists)
+        self._update_batch_summary()
+    
+    def _create_playlist_tab(self, playlist_name: str, results: List[TrackResult]) -> QWidget:
+        """Create a tab widget for a single playlist with its own table and filters"""
+        tab_widget = QWidget()
+        tab_layout = QVBoxLayout(tab_widget)
+        tab_layout.setSpacing(10)
+        tab_layout.setContentsMargins(5, 5, 5, 5)
+        
+        # Filter controls for this playlist
+        filter_group = QGroupBox("Filters")
+        filter_layout = QHBoxLayout()
+        
+        # Search box
+        search_box = QLineEdit()
+        search_box.setPlaceholderText("Search...")
+        filter_layout.addWidget(QLabel("Search:"))
+        filter_layout.addWidget(search_box)
+        
+        # Confidence filter
+        confidence_filter = QComboBox()
+        confidence_filter.addItems(["All", "High", "Medium", "Low"])
+        filter_layout.addWidget(QLabel("Confidence:"))
+        filter_layout.addWidget(confidence_filter)
+        
+        filter_layout.addStretch()
+        filter_group.setLayout(filter_layout)
+        tab_layout.addWidget(filter_group)
+        
+        # Create table for this playlist
+        table = QTableWidget()
+        table.setColumnCount(11)
+        table.setHorizontalHeaderLabels([
+            "Index", "Title", "Artist", "Matched", 
+            "Beatport Title", "Beatport Artist", "Score", "Confidence", "Key", "BPM", "Year"
+        ])
+        table.setSortingEnabled(True)
+        table.setAlternatingRowColors(True)
+        table.setSelectionBehavior(QTableWidget.SelectRows)
+        table.setEditTriggers(QTableWidget.NoEditTriggers)
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        
+        # Enable context menu and double-click
+        table.setContextMenuPolicy(Qt.CustomContextMenu)
+        table.customContextMenuRequested.connect(
+            lambda pos: self._show_context_menu_for_table(pos, table, results)
+        )
+        table.doubleClicked.connect(
+            lambda index: self._on_row_double_clicked_for_table(index, table, results)
+        )
+        
+        # Store table and filters
+        self.playlist_tables[playlist_name] = table
+        self.playlist_filters[playlist_name] = {
+            'search': search_box,
+            'confidence': confidence_filter
+        }
+        
+        # Connect filter signals
+        search_box.textChanged.connect(
+            lambda text: self._apply_filters_for_playlist(playlist_name, results)
+        )
+        confidence_filter.currentTextChanged.connect(
+            lambda text: self._apply_filters_for_playlist(playlist_name, results)
+        )
+        
+        # Populate table (even if results is empty, we still want to show the table)
+        if results:
+            self._populate_table_for_playlist(table, results)
+        else:
+            # Show empty table with message
+            table.setRowCount(0)
+            table.setSortingEnabled(True)
+        
+        tab_layout.addWidget(table, 1)  # Give table stretch priority
+        
+        return tab_widget
     
     def _update_summary(self):
         """Update summary statistics display"""
@@ -159,6 +281,47 @@ class ResultsView(QWidget):
         
         summary_text = (
             f"✅ Processing Complete!\n\n"
+            f"Total tracks: {total}\n"
+            f"Matched: {matched} ({match_rate:.1f}%)\n"
+            f"Unmatched: {unmatched}\n"
+            f"Average match score: {avg_score:.1f}\n"
+            f"Confidence breakdown: High: {high_conf}, Medium: {medium_conf}, Low: {low_conf}"
+        )
+        
+        self.summary_label.setText(summary_text)
+    
+    def _update_batch_summary(self):
+        """Update summary statistics display for batch mode (aggregate all playlists)"""
+        if not self.batch_results:
+            self.summary_label.setText("No results yet")
+            return
+        
+        # Aggregate statistics across all playlists
+        total = 0
+        matched = 0
+        matched_scores = []
+        high_conf = 0
+        medium_conf = 0
+        low_conf = 0
+        
+        for playlist_name, results in self.batch_results.items():
+            if results:
+                total += len(results)
+                matched += sum(1 for r in results if r.matched)
+                matched_scores.extend([r.match_score for r in results if r.matched and r.match_score is not None])
+                high_conf += sum(1 for r in results if r.matched and r.confidence == "high")
+                medium_conf += sum(1 for r in results if r.matched and r.confidence == "medium")
+                low_conf += sum(1 for r in results if r.matched and r.confidence == "low")
+        
+        unmatched = total - matched
+        match_rate = (matched / total * 100) if total > 0 else 0
+        avg_score = sum(matched_scores) / len(matched_scores) if matched_scores else 0.0
+        
+        playlist_count = len([r for r in self.batch_results.values() if r])
+        
+        summary_text = (
+            f"✅ Batch Processing Complete!\n\n"
+            f"Playlists processed: {playlist_count}\n"
             f"Total tracks: {total}\n"
             f"Matched: {matched} ({match_rate:.1f}%)\n"
             f"Unmatched: {unmatched}\n"
@@ -258,6 +421,251 @@ class ResultsView(QWidget):
     def apply_filters(self):
         """Apply filters and update table"""
         self._populate_table()
+    
+    def _populate_table_for_playlist(self, table: QTableWidget, results: List[TrackResult]):
+        """Populate a specific table with results for a playlist"""
+        if not results:
+            # Empty results - show empty table
+            table.setSortingEnabled(False)
+            table.setRowCount(0)
+            table.setSortingEnabled(True)
+            return
+        
+        # Apply filters first
+        filtered = self._filter_results_for_playlist(results, table)
+        
+        # Disable sorting temporarily to populate
+        table.setSortingEnabled(False)
+        table.setRowCount(len(filtered))
+        
+        for row, result in enumerate(filtered):
+            # Index
+            table.setItem(row, 0, QTableWidgetItem(str(result.playlist_index)))
+            
+            # Title
+            table.setItem(row, 1, QTableWidgetItem(result.title))
+            
+            # Artist
+            table.setItem(row, 2, QTableWidgetItem(result.artist or ""))
+            
+            # Matched status
+            matched_item = QTableWidgetItem("✓" if result.matched else "✗")
+            matched_item.setTextAlignment(Qt.AlignCenter)
+            if result.matched:
+                matched_item.setForeground(Qt.darkGreen)
+            else:
+                matched_item.setForeground(Qt.darkRed)
+            table.setItem(row, 3, matched_item)
+            
+            # Beatport Title
+            beatport_title = result.beatport_title or ""
+            table.setItem(row, 4, QTableWidgetItem(beatport_title))
+            
+            # Beatport Artist
+            beatport_artists = result.beatport_artists or ""
+            table.setItem(row, 5, QTableWidgetItem(beatport_artists))
+            
+            # Score
+            score_text = f"{result.match_score:.1f}" if result.match_score is not None else "N/A"
+            score_item = QTableWidgetItem(score_text)
+            score_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            table.setItem(row, 6, score_item)
+            
+            # Confidence
+            confidence_text = result.confidence or ""
+            confidence_item = QTableWidgetItem(confidence_text.capitalize() if confidence_text else "")
+            table.setItem(row, 7, confidence_item)
+            
+            # Key (Camelot)
+            key_text = result.beatport_key_camelot or result.beatport_key or ""
+            table.setItem(row, 8, QTableWidgetItem(key_text))
+            
+            # BPM
+            bpm_text = str(result.beatport_bpm) if result.beatport_bpm else ""
+            table.setItem(row, 9, QTableWidgetItem(bpm_text))
+            
+            # Year
+            year_text = result.beatport_year or ""
+            table.setItem(row, 10, QTableWidgetItem(year_text))
+        
+        # Re-enable sorting
+        table.setSortingEnabled(True)
+    
+    def _filter_results_for_playlist(self, results: List[TrackResult], table: QTableWidget) -> List[TrackResult]:
+        """Apply filters to results for a specific playlist table"""
+        # Find which playlist this table belongs to
+        playlist_name = None
+        for name, t in self.playlist_tables.items():
+            if t == table:
+                playlist_name = name
+                break
+        
+        # If we can't find the playlist or filters, return all results (no filtering)
+        if playlist_name is None or playlist_name not in self.playlist_filters:
+            return results
+        
+        filters = self.playlist_filters[playlist_name]
+        filtered = list(results)  # Make a copy to avoid modifying original
+        
+        # Search filter
+        search_text = filters['search'].text().lower()
+        if search_text:
+            filtered = [
+                r for r in filtered
+                if search_text in r.title.lower() 
+                or search_text in (r.artist or "").lower()
+                or search_text in (r.beatport_title or "").lower()
+                or search_text in (r.beatport_artists or "").lower()
+            ]
+        
+        # Confidence filter
+        confidence = filters['confidence'].currentText()
+        if confidence != "All":
+            filtered = [r for r in filtered if (r.confidence or "").lower() == confidence.lower()]
+        
+        return filtered
+    
+    def _apply_filters_for_playlist(self, playlist_name: str, results: List[TrackResult]):
+        """Apply filters and update table for a specific playlist"""
+        if playlist_name in self.playlist_tables:
+            table = self.playlist_tables[playlist_name]
+            self._populate_table_for_playlist(table, results)
+    
+    def _show_context_menu_for_table(self, position, table: QTableWidget, results: List[TrackResult]):
+        """Show context menu for a specific table row"""
+        item = table.itemAt(position)
+        if item is None:
+            return
+        
+        row = item.row()
+        
+        # Get the result (need to account for filtering)
+        filtered = self._filter_results_for_playlist(results, table)
+        if row < 0 or row >= len(filtered):
+            return
+        
+        result = filtered[row]
+        
+        # Create context menu
+        menu = QMenu(self)
+        
+        # View candidates action (only if candidates exist)
+        if result.candidates:
+            view_candidates_action = menu.addAction("View Candidates...")
+            view_candidates_action.triggered.connect(
+                lambda: self._view_candidates_for_table_row(row, table, results)
+            )
+        else:
+            view_candidates_action = menu.addAction("No candidates available")
+            view_candidates_action.setEnabled(False)
+        
+        menu.exec(table.viewport().mapToGlobal(position))
+    
+    def _on_row_double_clicked_for_table(self, index, table: QTableWidget, results: List[TrackResult]):
+        """Handle double-click on a specific table row"""
+        row = index.row()
+        self._view_candidates_for_table_row(row, table, results)
+    
+    def _view_candidates_for_table_row(self, row: int, table: QTableWidget, results: List[TrackResult]):
+        """View candidates for a specific row in a playlist table"""
+        # Get filtered results
+        filtered = self._filter_results_for_playlist(results, table)
+        if row < 0 or row >= len(filtered):
+            return
+        
+        result = filtered[row]
+        
+        # Check if there are candidates
+        if not result.candidates:
+            QMessageBox.information(
+                self,
+                "No Candidates",
+                "No candidates available for this track."
+            )
+            return
+        
+        # Get current match info
+        current_match = None
+        if result.matched:
+            current_match = {
+                'candidate_title': result.beatport_title,
+                'candidate_artists': result.beatport_artists,
+                'beatport_url': result.beatport_url,
+                'match_score': result.match_score,
+                'title_sim': result.title_sim,
+                'artist_sim': result.artist_sim,
+                'beatport_key': result.beatport_key,
+                'beatport_key_camelot': result.beatport_key_camelot,
+                'beatport_bpm': result.beatport_bpm,
+                'beatport_year': result.beatport_year,
+            }
+        
+        # Show candidate dialog
+        dialog = CandidateDialog(
+            track_title=result.title,
+            track_artist=result.artist or "",
+            candidates=result.candidates,
+            current_match=current_match,
+            parent=self
+        )
+        
+        # Connect candidate selection
+        dialog.candidate_selected.connect(
+            lambda candidate: self._on_candidate_selected_for_playlist(result.playlist_index, candidate, results)
+        )
+        
+        dialog.exec()
+    
+    def _on_candidate_selected_for_playlist(self, playlist_index: int, candidate: Dict[str, Any], results: List[TrackResult]):
+        """Handle candidate selection for a playlist table - update the result"""
+        # Find the result by playlist_index
+        result = None
+        for r in results:
+            if r.playlist_index == playlist_index:
+                result = r
+                break
+        
+        if result is None:
+            return
+        
+        # Update result with selected candidate
+        result.beatport_title = candidate.get('candidate_title', candidate.get('beatport_title', ''))
+        result.beatport_artists = candidate.get('candidate_artists', candidate.get('beatport_artists', ''))
+        result.beatport_url = candidate.get('candidate_url', candidate.get('beatport_url', ''))
+        
+        # Update scores
+        try:
+            result.match_score = float(candidate.get('final_score', candidate.get('match_score', 0)))
+        except (ValueError, TypeError):
+            result.match_score = None
+        
+        try:
+            result.title_sim = float(candidate.get('title_sim', 0))
+        except (ValueError, TypeError):
+            result.title_sim = None
+        
+        try:
+            result.artist_sim = float(candidate.get('artist_sim', 0))
+        except (ValueError, TypeError):
+            result.artist_sim = None
+        
+        # Update other fields
+        result.beatport_key = candidate.get('beatport_key', '')
+        result.beatport_key_camelot = candidate.get('beatport_key_camelot', '')
+        result.beatport_bpm = candidate.get('beatport_bpm', '')
+        result.beatport_year = candidate.get('beatport_year', '')
+        
+        # Mark as matched
+        result.matched = True
+        result.confidence = candidate.get('confidence', 'medium')
+        
+        # Find which playlist this belongs to and refresh its table
+        for playlist_name, playlist_results in self.batch_results.items():
+            if result in playlist_results:
+                if playlist_name in self.playlist_tables:
+                    table = self.playlist_tables[playlist_name]
+                    self._populate_table_for_playlist(table, playlist_results)
+                break
     
     def show_export_dialog(self):
         """Show export dialog and handle export"""

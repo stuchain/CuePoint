@@ -10,10 +10,11 @@ This module contains the MainWindow class for the GUI application.
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QMenuBar, QStatusBar, QGroupBox, QLabel, QPushButton, QTabWidget,
-    QMenu, QMessageBox
+    QMenu, QMessageBox, QRadioButton, QButtonGroup, QScrollArea
 )
 from PySide6.QtCore import Qt, QSettings
 from PySide6.QtGui import QDragEnterEvent, QDropEvent, QKeySequence, QAction
+from typing import List, Dict
 import os
 
 from gui.file_selector import FileSelector
@@ -21,6 +22,7 @@ from gui.playlist_selector import PlaylistSelector
 from gui.progress_widget import ProgressWidget
 from gui.results_view import ResultsView
 from gui.config_panel import ConfigPanel
+from gui.batch_processor import BatchProcessorWidget
 from gui.dialogs import ErrorDialog, AboutDialog, UserGuideDialog, KeyboardShortcutsDialog
 from gui_controller import GUIController
 from gui_interface import ProcessingError
@@ -50,7 +52,12 @@ class MainWindow(QMainWindow):
         self.tabs = QTabWidget()
         self.setCentralWidget(self.tabs)
         
-        # Main tab
+        # Main tab - wrap in scroll area for scrolling
+        main_tab_scroll = QScrollArea()
+        main_tab_scroll.setWidgetResizable(True)
+        main_tab_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        main_tab_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        
         main_tab = QWidget()
         main_layout = QVBoxLayout(main_tab)
         main_layout.setSpacing(15)
@@ -65,24 +72,50 @@ class MainWindow(QMainWindow):
         file_group.setLayout(file_layout)
         main_layout.addWidget(file_group)
         
-        # Playlist selection section
-        playlist_group = QGroupBox("Playlist Selection")
-        playlist_layout = QVBoxLayout()
+        # Processing mode selection
+        mode_group = QGroupBox("Processing Mode")
+        mode_layout = QHBoxLayout()
+        self.mode_button_group = QButtonGroup()
+        
+        self.single_mode_radio = QRadioButton("Single Playlist")
+        self.single_mode_radio.setChecked(True)  # Default to single mode
+        self.single_mode_radio.toggled.connect(self.on_mode_changed)
+        self.mode_button_group.addButton(self.single_mode_radio, 0)
+        mode_layout.addWidget(self.single_mode_radio)
+        
+        self.batch_mode_radio = QRadioButton("Multiple Playlists")
+        self.batch_mode_radio.toggled.connect(self.on_mode_changed)
+        self.mode_button_group.addButton(self.batch_mode_radio, 1)
+        mode_layout.addWidget(self.batch_mode_radio)
+        
+        mode_layout.addStretch()
+        mode_group.setLayout(mode_layout)
+        main_layout.addWidget(mode_group)
+        
+        # Single playlist selection section (shown in single mode)
+        self.single_playlist_group = QGroupBox("Playlist Selection")
+        single_playlist_layout = QVBoxLayout()
         self.playlist_selector = PlaylistSelector()
         self.playlist_selector.playlist_selected.connect(self.on_playlist_selected)
-        playlist_layout.addWidget(self.playlist_selector)
-        playlist_group.setLayout(playlist_layout)
-        main_layout.addWidget(playlist_group)
+        single_playlist_layout.addWidget(self.playlist_selector)
+        self.single_playlist_group.setLayout(single_playlist_layout)
+        main_layout.addWidget(self.single_playlist_group)
         
-        # Start Processing button
-        button_layout = QHBoxLayout()
-        button_layout.addStretch()
+        # Batch processor widget (shown in batch mode)
+        self.batch_processor = BatchProcessorWidget()
+        self.batch_processor.setVisible(False)  # Hidden by default
+        main_layout.addWidget(self.batch_processor)
+        
+        # Start Processing button container (for single mode)
+        self.start_button_container = QWidget()
+        self.start_button_layout = QHBoxLayout(self.start_button_container)
+        self.start_button_layout.addStretch()
         self.start_button = QPushButton("Start Processing")
         self.start_button.setMinimumHeight(40)
         self.start_button.clicked.connect(self.start_processing)
-        button_layout.addWidget(self.start_button)
-        button_layout.addStretch()
-        main_layout.addLayout(button_layout)
+        self.start_button_layout.addWidget(self.start_button)
+        self.start_button_layout.addStretch()
+        main_layout.addWidget(self.start_button_container)
         
         # Progress section - ProgressWidget (Step 1.5)
         # Initially hidden until processing starts
@@ -99,14 +132,25 @@ class MainWindow(QMainWindow):
         # Initially hidden until processing completes
         self.results_group = QGroupBox("Results")
         results_layout = QVBoxLayout()
+        
+        # Wrap results view in scroll area for better scrolling
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.results_view = ResultsView()
-        results_layout.addWidget(self.results_view)
+        scroll_area.setWidget(self.results_view)
+        
+        results_layout.addWidget(scroll_area)
         self.results_group.setLayout(results_layout)
         self.results_group.setVisible(False)  # Hidden until processing completes
         main_layout.addWidget(self.results_group)
         
         # Add stretch to push everything to top
         main_layout.addStretch()
+        
+        # Set the main tab widget in the scroll area
+        main_tab_scroll.setWidget(main_tab)
         
         # Settings tab
         settings_tab = QWidget()
@@ -116,7 +160,7 @@ class MainWindow(QMainWindow):
         settings_layout.addWidget(self.config_panel)
         
         # Add tabs
-        self.tabs.addTab(main_tab, "Main")
+        self.tabs.addTab(main_tab_scroll, "Main")
         self.tabs.addTab(settings_tab, "Settings")
         
         # Status bar
@@ -131,6 +175,12 @@ class MainWindow(QMainWindow):
         self.controller.progress_updated.connect(self.on_progress_updated)
         self.controller.processing_complete.connect(self.on_processing_complete)
         self.controller.error_occurred.connect(self.on_error_occurred)
+        
+        # Connect batch processor signals
+        self.batch_processor.batch_started.connect(self.on_batch_started)
+        self.batch_processor.batch_cancelled.connect(self.on_batch_cancelled)
+        self.batch_processor.batch_completed.connect(self.on_batch_completed)
+        
         
     def create_menu_bar(self):
         """Create menu bar with File, Edit, View, Help menus"""
@@ -258,6 +308,9 @@ class MainWindow(QMainWindow):
                 playlist_count = len(self.playlist_selector.playlists)
                 self.statusBar().showMessage(f"File loaded: {playlist_count} playlists found")
                 
+                # Update batch processor with playlists
+                self.batch_processor.set_playlists(list(self.playlist_selector.playlists.keys()))
+                
                 # Save to recent files
                 self.save_recent_file(file_path)
             except Exception as e:
@@ -267,6 +320,27 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f"Invalid file: {file_path}")
             # Clear playlist selector if file is invalid
             self.playlist_selector.clear()
+            self.batch_processor.set_playlists([])
+    
+    def on_mode_changed(self):
+        """Handle processing mode change (single vs batch)"""
+        is_batch_mode = self.batch_mode_radio.isChecked()
+        
+        # Show/hide single playlist UI
+        self.single_playlist_group.setVisible(not is_batch_mode)
+        self.start_button_container.setVisible(not is_batch_mode)
+        
+        # Show/hide batch processor
+        self.batch_processor.setVisible(is_batch_mode)
+        
+        # Update batch processor with playlists if file is already loaded
+        if is_batch_mode and hasattr(self.playlist_selector, 'playlists'):
+            playlists = list(self.playlist_selector.playlists.keys())
+            self.batch_processor.set_playlists(playlists)
+        
+        # Update status bar
+        mode_text = "Multiple Playlists" if is_batch_mode else "Single Playlist"
+        self.statusBar().showMessage(f"Mode: {mode_text}")
     
     def update_recent_files_menu(self):
         """Update recent files menu with saved files"""
@@ -415,6 +489,153 @@ class MainWindow(QMainWindow):
         """Show about dialog"""
         dialog = AboutDialog(self)
         dialog.exec()
+    
+    def on_batch_started(self, playlist_names: List[str]):
+        """Handle batch processing started"""
+        xml_path = self.file_selector.get_file_path()
+        if not xml_path or not self.file_selector.validate_file(xml_path):
+            QMessageBox.warning(
+                self,
+                "No File Selected",
+                "Please select a valid XML file before starting batch processing."
+            )
+            self.batch_processor.cancel_batch_processing()
+            return
+        
+        # Get settings
+        settings = self.config_panel.get_settings()
+        auto_research = self.config_panel.get_auto_research()
+        
+        # Store playlist names for tracking
+        self.batch_playlist_names = playlist_names
+        
+        # Disconnect regular processing signals temporarily (if connected)
+        try:
+            self.controller.progress_updated.disconnect(self.on_progress_updated)
+        except:
+            pass
+        try:
+            self.controller.processing_complete.disconnect(self.on_processing_complete)
+        except:
+            pass
+        try:
+            self.controller.error_occurred.disconnect(self.on_error_occurred)
+        except:
+            pass
+        
+        # Connect controller signals to batch processor
+        self.controller.progress_updated.connect(self.batch_processor.on_playlist_progress)
+        self.controller.processing_complete.connect(self._on_batch_playlist_complete)
+        self.controller.error_occurred.connect(self._on_batch_playlist_error)
+        
+        # Start batch processing via controller
+        self.controller.start_batch_processing(
+            xml_path=xml_path,
+            playlist_names=playlist_names,
+            settings=settings,
+            auto_research=auto_research
+        )
+        
+        # Notify batch processor of first playlist start
+        if playlist_names:
+            self.batch_processor.on_playlist_started(playlist_names[0])
+    
+    def _on_batch_playlist_complete(self, results):
+        """Handle completion of a playlist in batch"""
+        # Get playlist name from controller (stored before processing next)
+        if hasattr(self.controller, 'last_completed_playlist_name') and self.controller.last_completed_playlist_name:
+            playlist_name = self.controller.last_completed_playlist_name
+            self.batch_processor.on_playlist_completed(playlist_name, results)
+            
+            # Check if batch is complete
+            if hasattr(self.controller, 'batch_index') and self.controller.batch_index >= len(self.batch_playlist_names):
+                # Batch complete - reconnect regular signals
+                self._reconnect_regular_signals()
+            elif hasattr(self.controller, 'batch_index') and self.controller.batch_index < len(self.batch_playlist_names):
+                # Notify start of next playlist
+                next_playlist_name = self.batch_playlist_names[self.controller.batch_index]
+                self.batch_processor.on_playlist_started(next_playlist_name)
+    
+    def _on_batch_playlist_error(self, error: ProcessingError):
+        """Handle error for a playlist in batch"""
+        # Get playlist name from controller (stored before processing next)
+        if hasattr(self.controller, 'last_completed_playlist_name') and self.controller.last_completed_playlist_name:
+            playlist_name = self.controller.last_completed_playlist_name
+            self.batch_processor.on_playlist_error(playlist_name, error)
+            
+            # Check if batch is complete
+            if hasattr(self.controller, 'batch_index') and self.controller.batch_index >= len(self.batch_playlist_names):
+                # Batch complete - reconnect regular signals
+                self._reconnect_regular_signals()
+            elif hasattr(self.controller, 'batch_index') and self.controller.batch_index < len(self.batch_playlist_names):
+                # Notify start of next playlist
+                next_playlist_name = self.batch_playlist_names[self.controller.batch_index]
+                self.batch_processor.on_playlist_started(next_playlist_name)
+    
+    def _reconnect_regular_signals(self):
+        """Reconnect regular processing signals after batch completes"""
+        try:
+            self.controller.progress_updated.disconnect(self.batch_processor.on_playlist_progress)
+        except:
+            pass
+        try:
+            self.controller.processing_complete.disconnect(self._on_batch_playlist_complete)
+        except:
+            pass
+        try:
+            self.controller.error_occurred.disconnect(self._on_batch_playlist_error)
+        except:
+            pass
+        
+        self.controller.progress_updated.connect(self.on_progress_updated)
+        self.controller.processing_complete.connect(self.on_processing_complete)
+        self.controller.error_occurred.connect(self.on_error_occurred)
+    
+    def on_batch_cancelled(self):
+        """Handle batch processing cancelled"""
+        self.controller.cancel_processing()
+        self.statusBar().showMessage("Batch processing cancelled")
+        
+        # Reconnect regular processing signals
+        self._reconnect_regular_signals()
+    
+    def on_batch_completed(self, results_dict: Dict[str, List]):
+        """Handle batch processing completion - display results in separate tables per playlist"""
+        # Pass all playlists, even empty ones (so user can see what was processed)
+        # Filter out None values only
+        filtered_dict = {name: results for name, results in results_dict.items() if results is not None}
+        
+        if not filtered_dict:
+            self.statusBar().showMessage("Batch processing complete, but no results to display")
+            return
+        
+        # Ensure we're on Main tab (should already be there, but just in case)
+        self.tabs.setCurrentIndex(0)
+        
+        # Hide batch processor progress, show results
+        # Note: batch processor has its own progress display, regular progress_group is for single mode
+        self.progress_group.setVisible(False)
+        self.results_group.setVisible(True)
+        
+        # Re-enable start button
+        self.start_button.setEnabled(True)
+        
+        # Disable cancel button
+        self.progress_widget.set_enabled(False)
+        
+        # Update results view with batch results (separate table per playlist)
+        self.results_view.set_batch_results(filtered_dict)
+        
+        # Calculate summary statistics for status bar
+        total = sum(len(results) for results in filtered_dict.values())
+        matched = sum(sum(1 for r in results if r.matched) for results in filtered_dict.values())
+        match_rate = (matched / total * 100) if total > 0 else 0
+        
+        # Update status bar
+        self.statusBar().showMessage(
+            f"Batch processing complete: {len(filtered_dict)} playlist(s), "
+            f"{total} total tracks, {matched}/{total} matched ({match_rate:.1f}%)"
+        )
             
     def on_playlist_selected(self, playlist_name: str):
         """Handle playlist selection from PlaylistSelector"""
