@@ -11,7 +11,7 @@ and exporting them to CSV files.
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QGroupBox, QFileDialog,
-    QMessageBox, QLineEdit, QComboBox, QHeaderView, QMenu
+    QMessageBox, QLineEdit, QComboBox, QHeaderView, QMenu, QDialog
 )
 from PySide6.QtCore import Qt, Signal
 from typing import List, Optional, Dict, Any
@@ -21,7 +21,8 @@ import platform
 
 from gui_interface import TrackResult
 from gui.candidate_dialog import CandidateDialog
-from output_writer import write_csv_files
+from gui.export_dialog import ExportDialog
+from output_writer import write_csv_files, write_json_file, write_excel_file
 from utils import with_timestamp
 
 
@@ -103,10 +104,11 @@ class ResultsView(QWidget):
         button_layout = QHBoxLayout()
         button_layout.addStretch()
         
-        self.export_main_btn = QPushButton("Export Main CSV")
-        self.export_main_btn.clicked.connect(self.export_main_csv)
-        button_layout.addWidget(self.export_main_btn)
+        self.export_btn = QPushButton("Export...")
+        self.export_btn.clicked.connect(self.show_export_dialog)
+        button_layout.addWidget(self.export_btn)
         
+        # Legacy export buttons (for backward compatibility)
         self.export_all_btn = QPushButton("Export All CSV Files")
         self.export_all_btn.clicked.connect(self.export_all_csv)
         button_layout.addWidget(self.export_all_btn)
@@ -257,45 +259,93 @@ class ResultsView(QWidget):
         """Apply filters and update table"""
         self._populate_table()
     
-    def export_main_csv(self):
-        """Export main results CSV file"""
+    def show_export_dialog(self):
+        """Show export dialog and handle export"""
         if not self.results:
             QMessageBox.warning(self, "No Results", "No results to export")
             return
         
-        # Get output directory
-        output_dir = QFileDialog.getExistingDirectory(
-            self,
-            "Select Output Directory",
-            "output"
-        )
+        # Get results to export (filtered or all)
+        dialog = ExportDialog(self)
+        if dialog.exec() != QDialog.Accepted:
+            return
         
-        if not output_dir:
+        options = dialog.get_export_options()
+        file_path = options.get('file_path')
+        
+        if not file_path:
+            QMessageBox.warning(self, "No File Selected", "Please select a file location")
+            return
+        
+        # Get results to export
+        results_to_export = self._filter_results() if options.get('export_filtered', False) else self.results
+        
+        if not results_to_export:
+            QMessageBox.warning(self, "No Results", "No results to export (filter may have excluded all results)")
             return
         
         try:
-            # Generate filename from playlist name
-            base_filename = f"{self.playlist_name.replace(' ', '_')}.csv"
-            timestamped_filename = with_timestamp(base_filename)
+            format_type = options.get('format', 'csv')
             
-            # Write CSV files
-            output_files = write_csv_files(self.results, timestamped_filename, output_dir)
-            
-            if output_files.get('main'):
-                self.output_files = output_files
+            if format_type == 'json':
+                # Export to JSON
+                write_json_file(
+                    results_to_export,
+                    file_path,
+                    playlist_name=self.playlist_name,
+                    include_candidates=options.get('include_candidates', False),
+                    include_queries=options.get('include_queries', False)
+                )
                 QMessageBox.information(
                     self,
                     "Export Complete",
-                    f"Main CSV file exported to:\n{output_files['main']}"
+                    f"JSON file exported to:\n{file_path}"
                 )
-            else:
-                QMessageBox.warning(self, "Export Failed", "Failed to export CSV file")
                 
+            elif format_type == 'excel':
+                # Export to Excel
+                write_excel_file(
+                    results_to_export,
+                    file_path,
+                    playlist_name=self.playlist_name
+                )
+                QMessageBox.information(
+                    self,
+                    "Export Complete",
+                    f"Excel file exported to:\n{file_path}"
+                )
+                
+            else:  # CSV
+                # Export to CSV (use existing function)
+                output_dir = os.path.dirname(file_path) or "output"
+                base_filename = os.path.basename(file_path)
+                # Remove extension if present
+                if base_filename.endswith('.csv'):
+                    base_filename = base_filename[:-4]
+                
+                output_files = write_csv_files(results_to_export, base_filename, output_dir)
+                self.output_files = output_files
+                
+                if output_files.get('main'):
+                    QMessageBox.information(
+                        self,
+                        "Export Complete",
+                        f"CSV file exported to:\n{output_files['main']}"
+                    )
+                else:
+                    QMessageBox.warning(self, "Export Failed", "Failed to export CSV file")
+                    
+        except ImportError as e:
+            QMessageBox.critical(
+                self,
+                "Export Error",
+                f"Missing dependency:\n{str(e)}\n\nPlease install required package."
+            )
         except Exception as e:
             QMessageBox.critical(
                 self,
                 "Export Error",
-                f"Error exporting CSV file:\n{str(e)}"
+                f"Error exporting file:\n{str(e)}"
             )
     
     def export_all_csv(self):

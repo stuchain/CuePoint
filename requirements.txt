@@ -33,3 +33,6 @@ playwright>=1.40.0
 # Also need ChromeDriver or GeckoDriver in PATH
 selenium>=4.15.0
 
+# Excel export support (for GUI export functionality)
+openpyxl>=3.1.0
+
