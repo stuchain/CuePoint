@@ -16,6 +16,7 @@ from PySide6.QtGui import QDragEnterEvent, QDropEvent
 import os
 
 from gui.file_selector import FileSelector
+from gui.playlist_selector import PlaylistSelector
 
 
 class MainWindow(QMainWindow):
@@ -53,12 +54,12 @@ class MainWindow(QMainWindow):
         file_group.setLayout(file_layout)
         layout.addWidget(file_group)
         
-        # Playlist selection section (placeholder - will be replaced with PlaylistSelector widget in Step 1.4)
+        # Playlist selection section
         playlist_group = QGroupBox("Playlist Selection")
         playlist_layout = QVBoxLayout()
-        playlist_label = QLabel("Playlist selector widget will go here")
-        playlist_label.setStyleSheet("color: gray; font-style: italic; padding: 20px;")
-        playlist_layout.addWidget(playlist_label)
+        self.playlist_selector = PlaylistSelector()
+        self.playlist_selector.playlist_selected.connect(self.on_playlist_selected)
+        playlist_layout.addWidget(self.playlist_selector)
         playlist_group.setLayout(playlist_layout)
         layout.addWidget(playlist_group)
         
@@ -149,6 +150,22 @@ class MainWindow(QMainWindow):
     def on_file_selected(self, file_path: str):
         """Handle file selection from FileSelector"""
         if self.file_selector.validate_file(file_path):
-            self.statusBar().showMessage(f"File selected: {os.path.basename(file_path)}")
+            self.statusBar().showMessage(f"Loading XML file: {os.path.basename(file_path)}...")
+            try:
+                # Load playlists into playlist selector
+                self.playlist_selector.load_xml_file(file_path)
+                playlist_count = len(self.playlist_selector.playlists)
+                self.statusBar().showMessage(f"File loaded: {playlist_count} playlists found")
+            except Exception as e:
+                self.statusBar().showMessage(f"Error loading XML: {str(e)}")
+                # Error dialog will be handled in later step
         else:
             self.statusBar().showMessage(f"Invalid file: {file_path}")
+            # Clear playlist selector if file is invalid
+            self.playlist_selector.clear()
+            
+    def on_playlist_selected(self, playlist_name: str):
+        """Handle playlist selection from PlaylistSelector"""
+        if playlist_name:
+            track_count = self.playlist_selector.get_playlist_track_count(playlist_name)
+            self.statusBar().showMessage(f"Selected playlist: {playlist_name} ({track_count} tracks)")
