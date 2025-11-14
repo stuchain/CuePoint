@@ -16,6 +16,7 @@ from PySide6.QtCore import Qt, QSettings
 from PySide6.QtGui import QDragEnterEvent, QDropEvent, QKeySequence, QAction
 from typing import List, Dict
 import os
+import sys
 
 from gui.file_selector import FileSelector
 from gui.playlist_selector import PlaylistSelector
@@ -23,9 +24,12 @@ from gui.progress_widget import ProgressWidget
 from gui.results_view import ResultsView
 from gui.config_panel import ConfigPanel
 from gui.batch_processor import BatchProcessorWidget
+from gui.history_view import HistoryView
 from gui.dialogs import ErrorDialog, AboutDialog, UserGuideDialog, KeyboardShortcutsDialog
 from gui_controller import GUIController
 from gui_interface import ProcessingError
+from output_writer import write_csv_files
+from utils import with_timestamp
 
 
 class MainWindow(QMainWindow):
@@ -159,9 +163,17 @@ class MainWindow(QMainWindow):
         self.config_panel = ConfigPanel()
         settings_layout.addWidget(self.config_panel)
         
+        # History tab (Past Searches)
+        history_tab = QWidget()
+        history_layout = QVBoxLayout(history_tab)
+        history_layout.setContentsMargins(10, 10, 10, 10)
+        self.history_view = HistoryView()
+        history_layout.addWidget(self.history_view)
+        
         # Add tabs
         self.tabs.addTab(main_tab_scroll, "Main")
         self.tabs.addTab(settings_tab, "Settings")
+        self.tabs.addTab(history_tab, "Past Searches")
         
         # Status bar
         self.statusBar().showMessage("Ready")
@@ -363,8 +375,8 @@ class MainWindow(QMainWindow):
     def on_open_recent_file(self, file_path: str):
         """Open a recent file"""
         if os.path.exists(file_path):
-            self.file_selector.set_file_path(file_path)
-            self.on_file_selected(file_path)
+            self.file_selector.set_file(file_path)
+            # set_file will emit file_selected signal, which will call on_file_selected
         else:
             # Remove invalid file from recent files
             settings = QSettings("CuePoint", "CuePoint")
@@ -623,6 +635,11 @@ class MainWindow(QMainWindow):
         # Disable cancel button
         self.progress_widget.set_enabled(False)
         
+        # Automatically save results for each playlist
+        for playlist_name, results in filtered_dict.items():
+            if results:  # Only save if there are results
+                self._auto_save_results(results, playlist_name)
+        
         # Update results view with batch results (separate table per playlist)
         self.results_view.set_batch_results(filtered_dict)
         
@@ -636,6 +653,74 @@ class MainWindow(QMainWindow):
             f"Batch processing complete: {len(filtered_dict)} playlist(s), "
             f"{total} total tracks, {matched}/{total} matched ({match_rate:.1f}%)"
         )
+    
+    def _auto_save_results(self, results, playlist_name: str):
+        """Automatically save results to CSV file"""
+        if not results:
+            return
+        
+        try:
+            # Sanitize playlist name for filename (remove invalid characters)
+            safe_playlist_name = "".join(c for c in playlist_name if c.isalnum() or c in (' ', '-', '_')).strip()
+            if not safe_playlist_name:
+                safe_playlist_name = "playlist"
+            
+            # Create base filename (write_csv_files will add timestamp)
+            base_filename = f"{safe_playlist_name}.csv"
+            
+            # Determine SRC directory
+            current_file = os.path.abspath(__file__)  # SRC/gui/main_window.py
+            src_dir = os.path.dirname(os.path.dirname(current_file))  # SRC/
+            
+            # Save to output directory in SRC folder
+            output_dir = os.path.join(src_dir, "output")
+            output_dir = os.path.abspath(output_dir)  # Ensure absolute path
+            os.makedirs(output_dir, exist_ok=True)
+            
+            # Write CSV files (this will add timestamp automatically)
+            output_files = write_csv_files(results, base_filename, output_dir)
+            
+            # Show success message in status bar
+            if output_files.get('main'):
+                main_file = output_files['main']
+                self.statusBar().showMessage(f"Results saved: {os.path.basename(main_file)}", 3000)
+                
+                # Refresh Past Searches tab to show the new file
+                if hasattr(self, 'history_view'):
+                    # Use QTimer to refresh after a delay to ensure file system has updated
+                    from PySide6.QtCore import QTimer
+                    from PySide6.QtWidgets import QListWidgetItem
+                    from datetime import datetime
+                    
+                    def refresh_with_file():
+                        # First do normal refresh
+                        self.history_view.refresh_recent_files()
+                        # Then manually ensure our file is in the list if it wasn't found
+                        if os.path.exists(main_file):
+                            # Check if file is already in list
+                            found = False
+                            for i in range(self.history_view.recent_list.count()):
+                                item = self.history_view.recent_list.item(i)
+                                if item and item.data(Qt.UserRole) == main_file:
+                                    found = True
+                                    break
+                            if not found:
+                                # Add it manually
+                                item = QListWidgetItem(os.path.basename(main_file))
+                                item.setData(Qt.UserRole, main_file)
+                                mtime = os.path.getmtime(main_file)
+                                dt = datetime.fromtimestamp(mtime)
+                                item.setToolTip(f"{main_file}\nModified: {dt.strftime('%Y-%m-%d %H:%M:%S')}")
+                                # Insert at top (newest first)
+                                self.history_view.recent_list.insertItem(0, item)
+                    QTimer.singleShot(1000, refresh_with_file)
+                
+        except Exception as e:
+            # Show error in status bar for longer
+            import traceback
+            error_msg = f"Warning: Could not auto-save results: {str(e)}"
+            self.statusBar().showMessage(error_msg, 10000)
+            print(f"Auto-save error: {traceback.format_exc()}")
             
     def on_playlist_selected(self, playlist_name: str):
         """Handle playlist selection from PlaylistSelector"""
@@ -713,6 +798,9 @@ class MainWindow(QMainWindow):
         self.progress_group.setVisible(False)
         self.results_group.setVisible(True)
         
+        # Switch to Main tab to show results
+        self.tabs.setCurrentIndex(0)
+        
         # Re-enable start button
         self.start_button.setEnabled(True)
         
@@ -722,18 +810,33 @@ class MainWindow(QMainWindow):
         # Get playlist name for file naming
         playlist_name = self.playlist_selector.get_selected_playlist() or "playlist"
         
-        # Update results view with results
-        self.results_view.set_results(results, playlist_name)
-        
-        # Calculate summary statistics for status bar
-        total = len(results)
-        matched = sum(1 for r in results if r.matched)
-        match_rate = (matched / total * 100) if total > 0 else 0
-        
-        # Update status bar
-        self.statusBar().showMessage(
-            f"Processing complete: {matched}/{total} matched ({match_rate:.1f}%)"
-        )
+        # Update results view with results first
+        if results:
+            # Ensure results group is visible and shown
+            self.results_group.setVisible(True)
+            self.results_group.show()
+            
+            # Update results view with results
+            self.results_view.set_results(results, playlist_name)
+            
+            # Force update the results view
+            self.results_view.update()
+            self.results_view.repaint()
+            
+            # Calculate summary statistics for status bar
+            total = len(results)
+            matched = sum(1 for r in results if r.matched)
+            match_rate = (matched / total * 100) if total > 0 else 0
+            
+            # Update status bar
+            self.statusBar().showMessage(
+                f"Processing complete: {matched}/{total} matched ({match_rate:.1f}%)"
+            )
+            
+            # Automatically save results to CSV (after displaying)
+            self._auto_save_results(results, playlist_name)
+        else:
+            self.statusBar().showMessage("Processing complete: No results to display", 5000)
     
     def on_error_occurred(self, error: ProcessingError):
         """Handle error from controller"""

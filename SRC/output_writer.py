@@ -48,7 +48,10 @@ def write_csv_files(
             'review': 'output/filename_review_20250127_123456.csv' (if needed)
         }
     """
+    # Ensure output_dir is absolute
+    output_dir = os.path.abspath(output_dir)
     os.makedirs(output_dir, exist_ok=True)
+    
     output_files = {}
     
     # Add timestamp to base filename
@@ -98,7 +101,12 @@ def write_main_csv(
     if not results:
         return None
     
+    # Ensure output directory exists
+    output_dir = os.path.abspath(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
+    
     filepath = os.path.join(output_dir, base_filename)
+    filepath = os.path.abspath(filepath)  # Ensure absolute path
     
     # Define CSV columns (must match old format exactly)
     fieldnames = [
@@ -110,13 +118,29 @@ def write_main_csv(
         "search_query_index", "search_stop_query_index", "candidate_index"
     ]
     
-    with open(filepath, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        for result in results:
-            writer.writerow(result.to_dict())
-    
-    return filepath
+    # Write file and ensure it's fully closed before returning
+    try:
+        with open(filepath, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            for result in results:
+                writer.writerow(result.to_dict())
+            # Force flush to ensure file is written to disk
+            f.flush()
+            os.fsync(f.fileno())
+        
+        # File should be closed now (context manager)
+        # Verify file actually exists and has content
+        if not os.path.exists(filepath):
+            return None
+        
+        file_size = os.path.getsize(filepath)
+        if file_size == 0:
+            return None
+        
+        return filepath
+    except Exception:
+        return None
 
 
 def write_candidates_csv(
@@ -142,6 +166,9 @@ def write_candidates_csv(
     
     if not all_candidates:
         return None
+    
+    # Ensure output directory exists
+    os.makedirs(output_dir, exist_ok=True)
     
     # Remove .csv extension and add _candidates
     base = base_filename.replace('.csv', '') if base_filename.endswith('.csv') else base_filename
@@ -181,6 +208,9 @@ def write_queries_csv(
     
     if not all_queries:
         return None
+    
+    # Ensure output directory exists
+    os.makedirs(output_dir, exist_ok=True)
     
     # Remove .csv extension and add _queries
     base = base_filename.replace('.csv', '') if base_filename.endswith('.csv') else base_filename

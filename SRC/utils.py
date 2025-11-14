@@ -53,13 +53,13 @@ def timestamp_now():
     """
     Get current timestamp as formatted string
     
-    Format: "YYYY-MM-DD HH-MM-SS"
-    Example: "2025-11-02 21-57-13"
+    Format: "dd/mm/yy HH:MM"
+    Example: "27/01/25 14:30"
     
     Returns:
         Timestamp string
     """
-    return time.strftime("%Y-%m-%d %H-%M-%S")
+    return time.strftime("%d/%m/%y %H:%M")
 
 
 def with_timestamp(path: str) -> str:
@@ -67,19 +67,25 @@ def with_timestamp(path: str) -> str:
     Add timestamp to a file path
     
     Inserts timestamp before file extension to prevent overwriting.
+    Timestamp is sanitized for Windows filename compatibility:
+    - Forward slashes replaced with dashes
+    - Colons replaced with dashes (Windows doesn't allow colons in filenames)
     
     Example:
-        "output.csv" → "output (2025-11-02 21-57-13).csv"
+        "output.csv" → "output (27-01-25 14-30).csv"
     
     Args:
         path: Original file path
     
     Returns:
-        Path with timestamp inserted
+        Path with timestamp inserted (sanitized for filenames)
     """
     base, ext = os.path.splitext(path)
     ts = timestamp_now()
-    return f"{base} ({ts}){ext or '.csv'}"
+    # Replace forward slashes and colons with dashes for Windows filename compatibility
+    # Windows doesn't allow : / < > | " ? * in filenames
+    ts_safe = ts.replace('/', '-').replace(':', '-')
+    return f"{base} ({ts_safe}){ext or '.csv'}"
 
 
 def startup_banner(script_path: str, args_namespace: argparse.Namespace):
