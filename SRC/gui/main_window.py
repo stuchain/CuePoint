@@ -20,6 +20,7 @@ from gui.playlist_selector import PlaylistSelector
 from gui.progress_widget import ProgressWidget
 from gui.results_view import ResultsView
 from gui.config_panel import ConfigPanel
+from gui.dialogs import ErrorDialog
 from gui_controller import GUIController
 from gui_interface import ProcessingError
 
@@ -303,12 +304,6 @@ class MainWindow(QMainWindow):
         # Update status bar with error
         self.statusBar().showMessage(f"Error: {error.message}")
         
-        # TODO: Show error dialog (Step 1.9)
-        # For now, just show error in status bar
-        print(f"Error: {error.message}")
-        if error.details:
-            print(f"Details: {error.details}")
-        if error.suggestions:
-            print("Suggestions:")
-            for suggestion in error.suggestions:
-                print(f"  - {suggestion}")
+        # Show error dialog
+        error_dialog = ErrorDialog(error, self)
+        error_dialog.exec()
