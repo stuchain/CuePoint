@@ -11,21 +11,25 @@ and exporting them to CSV files.
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QGroupBox, QFileDialog,
-    QMessageBox, QLineEdit, QComboBox, QHeaderView
+    QMessageBox, QLineEdit, QComboBox, QHeaderView, QMenu
 )
-from PySide6.QtCore import Qt
-from typing import List, Optional
+from PySide6.QtCore import Qt, Signal
+from typing import List, Optional, Dict, Any
 import os
 import subprocess
 import platform
 
 from gui_interface import TrackResult
+from gui.candidate_dialog import CandidateDialog
 from output_writer import write_csv_files
 from utils import with_timestamp
 
 
 class ResultsView(QWidget):
     """Widget for displaying processing results and exporting to CSV"""
+    
+    # Signal emitted when a result is updated (candidate selected)
+    result_updated = Signal(int, TrackResult)  # playlist_index, updated_result
     
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -83,6 +87,13 @@ class ResultsView(QWidget):
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        
+        # Enable context menu for viewing candidates
+        self.table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table.customContextMenuRequested.connect(self._show_context_menu)
+        
+        # Enable double-click to view candidates
+        self.table.doubleClicked.connect(self._on_row_double_clicked)
         
         table_layout.addWidget(self.table)
         table_group.setLayout(table_layout)
@@ -364,6 +375,159 @@ class ResultsView(QWidget):
                 "Error",
                 f"Could not open folder:\n{str(e)}"
             )
+    
+    def _show_context_menu(self, position):
+        """Show context menu for table row"""
+        item = self.table.itemAt(position)
+        if item is None:
+            return
+        
+        row = item.row()
+        
+        # Get the result (need to account for filtering)
+        filtered = self._filter_results()
+        if row < 0 or row >= len(filtered):
+            return
+        
+        result = filtered[row]
+        
+        # Create context menu
+        menu = QMenu(self)
+        
+        # View candidates action (only if candidates exist)
+        if result.candidates:
+            view_candidates_action = menu.addAction("View Candidates...")
+            view_candidates_action.triggered.connect(lambda: self._view_candidates_for_row(row))
+        else:
+            view_candidates_action = menu.addAction("No candidates available")
+            view_candidates_action.setEnabled(False)
+        
+        menu.exec(self.table.viewport().mapToGlobal(position))
+    
+    def _on_row_double_clicked(self, index):
+        """Handle double-click on table row"""
+        row = index.row()
+        self._view_candidates_for_row(row)
+    
+    def _view_candidates_for_row(self, row: int):
+        """View candidates for a specific row"""
+        # Get filtered results
+        filtered = self._filter_results()
+        if row < 0 or row >= len(filtered):
+            return
+        
+        result = filtered[row]
+        
+        # Check if there are candidates
+        if not result.candidates:
+            QMessageBox.information(
+                self,
+                "No Candidates",
+                f"No alternative candidates found for:\n{result.title} - {result.artist}"
+            )
+            return
+        
+        # Build current match dict if matched
+        current_match = None
+        if result.matched:
+            current_match = {
+                'beatport_title': result.beatport_title,
+                'beatport_artists': result.beatport_artists,
+                'beatport_url': result.beatport_url,
+                'match_score': result.match_score,
+                'title_sim': result.title_sim,
+                'artist_sim': result.artist_sim,
+                'beatport_key': result.beatport_key,
+                'beatport_key_camelot': result.beatport_key_camelot,
+                'beatport_bpm': result.beatport_bpm,
+                'beatport_year': result.beatport_year,
+            }
+        
+        # Show candidate dialog
+        dialog = CandidateDialog(
+            track_title=result.title,
+            track_artist=result.artist or "",
+            candidates=result.candidates,
+            current_match=current_match,
+            parent=self
+        )
+        
+        # Connect candidate selection
+        dialog.candidate_selected.connect(
+            lambda candidate: self._on_candidate_selected(result.playlist_index, candidate)
+        )
+        
+        dialog.exec()
+    
+    def _on_candidate_selected(self, playlist_index: int, candidate: Dict[str, Any]):
+        """Handle candidate selection - update the result"""
+        # Find the result by playlist_index
+        result = None
+        for r in self.results:
+            if r.playlist_index == playlist_index:
+                result = r
+                break
+        
+        if result is None:
+            return
+        
+        # Update result with selected candidate
+        result.beatport_title = candidate.get('candidate_title', candidate.get('beatport_title', ''))
+        result.beatport_artists = candidate.get('candidate_artists', candidate.get('beatport_artists', ''))
+        result.beatport_url = candidate.get('candidate_url', candidate.get('beatport_url', ''))
+        
+        # Update scores
+        try:
+            result.match_score = float(candidate.get('final_score', candidate.get('match_score', 0)))
+        except (ValueError, TypeError):
+            result.match_score = None
+        
+        try:
+            result.title_sim = float(candidate.get('title_sim', 0))
+        except (ValueError, TypeError):
+            result.title_sim = None
+        
+        try:
+            result.artist_sim = float(candidate.get('artist_sim', 0))
+        except (ValueError, TypeError):
+            result.artist_sim = None
+        
+        # Update metadata
+        result.beatport_key = candidate.get('candidate_key', candidate.get('beatport_key', ''))
+        result.beatport_key_camelot = candidate.get('candidate_key_camelot', '')
+        result.beatport_bpm = candidate.get('candidate_bpm', candidate.get('beatport_bpm', ''))
+        result.beatport_year = candidate.get('candidate_year', candidate.get('beatport_year', ''))
+        result.beatport_label = candidate.get('candidate_label', candidate.get('beatport_label', ''))
+        result.beatport_genres = candidate.get('candidate_genres', candidate.get('beatport_genres', ''))
+        result.beatport_release = candidate.get('candidate_release', candidate.get('beatport_release', ''))
+        result.beatport_release_date = candidate.get('candidate_release_date', candidate.get('beatport_release_date', ''))
+        
+        # Update confidence based on score
+        if result.match_score:
+            if result.match_score >= 90:
+                result.confidence = "high"
+            elif result.match_score >= 75:
+                result.confidence = "medium"
+            else:
+                result.confidence = "low"
+        
+        # Ensure matched is True
+        result.matched = True
+        
+        # Emit signal
+        self.result_updated.emit(playlist_index, result)
+        
+        # Refresh table display
+        self._populate_table()
+        
+        # Update summary
+        self._update_summary()
+        
+        QMessageBox.information(
+            self,
+            "Candidate Selected",
+            f"Updated match for:\n{result.title} - {result.artist}"
+        )
     
     def clear(self):
         """Clear results display"""

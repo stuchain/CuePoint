@@ -17,7 +17,7 @@ def create_sample_results():
     """Create sample TrackResult objects for testing"""
     results = []
     
-    # Sample matched track
+    # Sample matched track with candidates
     results.append(TrackResult(
         playlist_index=1,
         title="Dance With Me",
@@ -33,7 +33,45 @@ def create_sample_results():
         match_score=145.5,
         title_sim=95.0,
         artist_sim=100.0,
-        confidence="high"
+        confidence="high",
+        candidates=[
+            {
+                'candidate_title': 'Dance With Me',
+                'candidate_artists': 'Shadu',
+                'candidate_url': 'https://www.beatport.com/track/dance-with-me/123456',
+                'final_score': '145.5',
+                'title_sim': '95.0',
+                'artist_sim': '100.0',
+                'candidate_key_camelot': '8A',
+                'candidate_bpm': '128',
+                'candidate_year': '2024',
+                'candidate_label': 'Test Label'
+            },
+            {
+                'candidate_title': 'Dance With Me (Remix)',
+                'candidate_artists': 'Shadu & Friends',
+                'candidate_url': 'https://www.beatport.com/track/dance-with-me-remix/123457',
+                'final_score': '135.0',
+                'title_sim': '90.0',
+                'artist_sim': '85.0',
+                'candidate_key_camelot': '8B',
+                'candidate_bpm': '130',
+                'candidate_year': '2024',
+                'candidate_label': 'Test Label'
+            },
+            {
+                'candidate_title': 'Dance With Me (Extended Mix)',
+                'candidate_artists': 'Shadu',
+                'candidate_url': 'https://www.beatport.com/track/dance-with-me-extended/123458',
+                'final_score': '125.0',
+                'title_sim': '88.0',
+                'artist_sim': '95.0',
+                'candidate_key_camelot': '8A',
+                'candidate_bpm': '128',
+                'candidate_year': '2023',
+                'candidate_label': 'Test Label'
+            }
+        ]
     ))
     
     # Sample unmatched track
@@ -44,7 +82,7 @@ def create_sample_results():
         matched=False
     ))
     
-    # Sample matched track with medium confidence
+    # Sample matched track with medium confidence and candidates
     results.append(TrackResult(
         playlist_index=3,
         title="Another Track",
@@ -60,7 +98,33 @@ def create_sample_results():
         match_score=85.0,
         title_sim=80.0,
         artist_sim=90.0,
-        confidence="medium"
+        confidence="medium",
+        candidates=[
+            {
+                'candidate_title': 'Another Track (Original Mix)',
+                'candidate_artists': 'Another Artist',
+                'candidate_url': 'https://www.beatport.com/track/another-track/789012',
+                'final_score': '85.0',
+                'title_sim': '80.0',
+                'artist_sim': '90.0',
+                'candidate_key_camelot': '5A',
+                'candidate_bpm': '130',
+                'candidate_year': '2023',
+                'candidate_label': 'Test Label 2'
+            },
+            {
+                'candidate_title': 'Another Track',
+                'candidate_artists': 'Another Artist',
+                'candidate_url': 'https://www.beatport.com/track/another-track-alt/789013',
+                'final_score': '75.0',
+                'title_sim': '75.0',
+                'artist_sim': '85.0',
+                'candidate_key_camelot': '5B',
+                'candidate_bpm': '132',
+                'candidate_year': '2022',
+                'candidate_label': 'Test Label 2'
+            }
+        ]
     ))
     
     # Add a low confidence track
