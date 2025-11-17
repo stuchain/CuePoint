@@ -17,6 +17,9 @@ import sys
 import time
 
 from config import SETTINGS, HAVE_CACHE
+import random
+from functools import wraps
+from typing import Callable, Any, Optional, Type, Tuple
 
 
 def vlog(idx, *args):
@@ -114,4 +117,68 @@ def startup_banner(script_path: str, args_namespace: argparse.Namespace):
     if SETTINGS["ENABLE_CACHE"] and HAVE_CACHE:
         print("  Cache: enabled (requests-cache)", flush=True)
     print("", flush=True)
+
+
+def retry_with_backoff(
+    max_retries: int = 3,
+    backoff_base: float = 1.0,
+    backoff_max: float = 60.0,
+    jitter: bool = True,
+    exceptions: Tuple[Type[Exception], ...] = None
+):
+    """
+    Decorator for automatic retry with exponential backoff
+    
+    Args:
+        max_retries: Maximum number of retry attempts
+        backoff_base: Base delay in seconds (doubles each retry)
+        backoff_max: Maximum delay in seconds
+        jitter: Add random jitter to prevent thundering herd
+        exceptions: Tuple of exception types to catch and retry (defaults to common network exceptions)
+    """
+    if exceptions is None:
+        try:
+            from requests.exceptions import (
+                RequestException, Timeout, ConnectionError, 
+                HTTPError, SSLError
+            )
+            exceptions = (RequestException, Timeout, ConnectionError, HTTPError, SSLError)
+        except ImportError:
+            exceptions = (Exception,)
+    
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            last_exception = None
+            
+            for attempt in range(max_retries + 1):
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as e:
+                    last_exception = e
+                    
+                    if attempt == max_retries:
+                        # Last attempt failed, raise exception
+                        raise
+                    
+                    # Calculate backoff delay
+                    delay = min(backoff_base * (2 ** attempt), backoff_max)
+                    
+                    # Add jitter if enabled
+                    if jitter:
+                        jitter_amount = random.uniform(0, delay * 0.1)
+                        delay += jitter_amount
+                    
+                    # Wait before retrying
+                    time.sleep(delay)
+                    
+                    # Log retry attempt (if logger available)
+                    # logger.warning(f"Retry {attempt + 1}/{max_retries} for {func.__name__}: {str(e)}")
+            
+            # Should not reach here, but just in case
+            if last_exception:
+                raise last_exception
+                
+        return wrapper
+    return decorator
 

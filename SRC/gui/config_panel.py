@@ -93,6 +93,13 @@ class ConfigPanel(QWidget):
         )
         options_layout.addWidget(self.verbose_check)
         
+        self.track_performance_check = QCheckBox("Track performance statistics")
+        self.track_performance_check.setChecked(False)
+        self.track_performance_check.setToolTip(
+            "Enable real-time performance monitoring dashboard during processing"
+        )
+        options_layout.addWidget(self.track_performance_check)
+        
         options_group.setLayout(options_layout)
         advanced_layout.addWidget(options_group)
         
@@ -233,12 +240,10 @@ class ConfigPanel(QWidget):
             settings["EARLY_EXIT_SCORE"] = SETTINGS.get("EARLY_EXIT_SCORE", 90)
             settings["EARLY_EXIT_MIN_QUERIES"] = SETTINGS.get("EARLY_EXIT_MIN_QUERIES", 8)
         
-        # Get advanced settings if visible (verbose logging is now in advanced)
-        if self.advanced_group.isVisible():
-            settings["VERBOSE"] = self.verbose_check.isChecked()
-        else:
-            # Default to False if advanced settings not visible
-            settings["VERBOSE"] = False
+        # Get advanced settings (always read checkbox state, regardless of visibility)
+        # The checkboxes maintain their state even when the group is hidden
+        settings["VERBOSE"] = self.verbose_check.isChecked()
+        settings["track_performance"] = self.track_performance_check.isChecked()
         
         settings["ENABLE_CACHE"] = SETTINGS.get("ENABLE_CACHE", True)
         

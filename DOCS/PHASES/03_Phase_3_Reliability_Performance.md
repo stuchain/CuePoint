@@ -966,12 +966,185 @@ def fetch_track_data(url: str) -> Optional[Dict]:
 
 ---
 
+### Step 3.6: GUI Integration for Performance Dashboard (2-3 days)
+**Files**: `SRC/gui/main_window.py` (MODIFY), `SRC/gui/config_panel.py` (MODIFY)
+
+**Dependencies**: Step 3.3 (performance_view.py exists), Phase 1 (GUI working)
+
+**What to add - EXACT STRUCTURE:**
+
+**In `SRC/gui/config_panel.py`:**
+
+Add a checkbox in the Advanced Settings section:
+
+```python
+# In the Processing Options group, add:
+self.track_performance_check = QCheckBox("Track performance statistics")
+self.track_performance_check.setChecked(False)
+self.track_performance_check.setToolTip(
+    "Enable real-time performance monitoring dashboard during processing"
+)
+options_layout.addWidget(self.track_performance_check)
+```
+
+**In `SRC/gui/main_window.py`:**
+
+```python
+from gui.performance_view import PerformanceView
+
+# In init_ui(), after results_group:
+# Performance monitoring tab (only shown if enabled in settings)
+self.performance_view = PerformanceView()
+self.performance_tab_index = None  # Will be set when tab is added
+
+# In start_processing() method:
+# Check if performance tracking is enabled
+settings = self.config_panel.get_settings()
+if settings.get("track_performance", False):
+    # Add performance tab if not already added
+    if self.performance_tab_index is None:
+        self.performance_tab_index = self.tabs.addTab(
+            self.performance_view, 
+            "Performance"
+        )
+        self.performance_view.start_monitoring()
+    else:
+        # Tab already exists, just start monitoring
+        self.performance_view.start_monitoring()
+        self.tabs.setCurrentIndex(self.performance_tab_index)
+else:
+    # Remove performance tab if it exists
+    if self.performance_tab_index is not None:
+        self.tabs.removeTab(self.performance_tab_index)
+        self.performance_tab_index = None
+        self.performance_view.stop_monitoring()
+
+# In processing_complete() or similar:
+# Stop monitoring when processing completes
+if self.performance_view and self.performance_tab_index is not None:
+    self.performance_view.stop_monitoring()
+```
+
+**Implementation Checklist**:
+- [ ] Add "Track performance statistics" checkbox to config panel
+- [ ] Add performance view to main window
+- [ ] Show/hide performance tab based on settings
+- [ ] Start/stop monitoring when processing starts/ends
+- [ ] Test performance dashboard during actual processing
+- [ ] Verify settings persistence
+
+**Acceptance Criteria**:
+- ✅ Checkbox appears in Advanced Settings
+- ✅ Performance tab only appears when checkbox is checked
+- ✅ Performance dashboard updates in real-time during processing
+- ✅ Dashboard stops updating when processing completes
+- ✅ Settings persist between sessions
+
+---
+
+### Step 3.7: Cache Integration for Performance Tracking (2 days)
+**Files**: `SRC/matcher.py` (MODIFY), `SRC/beatport.py` (MODIFY)
+
+**Dependencies**: Step 3.2 (performance collection integrated), requests_cache available
+
+**What to modify - EXACT STRUCTURE:**
+
+**In `SRC/beatport.py`:**
+
+Modify `request_html()` to detect cache hits:
+
+```python
+@retry_with_backoff(...)
+def request_html(url: str) -> Tuple[Optional[BeautifulSoup], bool]:
+    """
+    Fetch a URL robustly, handling empty gzipped/brotli responses by retrying without compression.
+    
+    Returns:
+        Tuple of (BeautifulSoup object or None, cache_hit: bool)
+    """
+    to = (SETTINGS["CONNECT_TIMEOUT"], SETTINGS["READ_TIMEOUT"])
+    cache_hit = False
+    
+    # ... existing code ...
+    
+    resp = _get(url)
+    if resp:
+        # Check if response came from cache (requests_cache adds this attribute)
+        if hasattr(resp, 'from_cache'):
+            cache_hit = resp.from_cache
+        elif hasattr(resp, '_from_cache'):
+            cache_hit = resp._from_cache
+    
+    # ... rest of existing code ...
+    
+    return soup, cache_hit
+```
+
+**In `SRC/matcher.py`:**
+
+Update query execution to track cache hits:
+
+```python
+# In best_beatport_match(), modify track_urls() call:
+# We need to track cache hits from track_urls() calls
+# Since track_urls() calls request_html() internally, we need to modify track_urls()
+# to return cache hit information, or check cache status differently
+
+# Option 1: Modify track_urls() to return cache info
+# Option 2: Check cache status before calling track_urls()
+
+# For now, we'll modify track_urls() to return cache hit info
+urls_all, cache_hit = track_urls_with_cache_info(idx, q, max_results=mr)
+```
+
+**Alternative approach - Check cache before query:**
+
+```python
+# In best_beatport_match(), before calling track_urls():
+# Check if we can determine cache hit from requests_cache
+cache_hit = False
+try:
+    import requests_cache
+    if requests_cache.get_cache():
+        # Generate a cache key for this query
+        cache_key = f"track_urls:{q}:{mr}"
+        # Check if this key exists in cache
+        # Note: This is a simplified check - actual implementation may vary
+        cache_hit = cache_key in requests_cache.get_cache()._cache
+except:
+    pass
+
+# Then use cache_hit when recording query metrics
+```
+
+**Better approach - Modify track_urls to return cache info:**
+
+Create a wrapper or modify track_urls to track cache hits internally and expose them.
+
+**Implementation Checklist**:
+- [ ] Modify `request_html()` to return cache hit status
+- [ ] Modify `track_urls()` to track and return cache hit information
+- [ ] Update `best_beatport_match()` to use actual cache hit data
+- [ ] Test cache hit/miss tracking with real requests
+- [ ] Verify cache statistics are accurate
+
+**Acceptance Criteria**:
+- ✅ Cache hits are detected correctly
+- ✅ Cache misses are detected correctly
+- ✅ Cache statistics in performance dashboard are accurate
+- ✅ Cache hit rate calculation works correctly
+- ✅ Performance reports show correct cache statistics
+
+---
+
 ## Phase 3 Deliverables Checklist
 - [ ] Performance metrics collection system implemented
 - [ ] Performance collection integrated into processing pipeline
 - [ ] Performance monitoring dashboard displays real-time metrics
 - [ ] Performance reports generated automatically
 - [ ] Error recovery and retry logic implemented
+- [ ] GUI integration for performance dashboard (with settings toggle)
+- [ ] Cache hit/miss tracking integrated with actual cache system
 - [ ] All features tested and working
 - [ ] Performance improvements documented
 

@@ -548,3 +548,133 @@ def write_excel_file(
     
     return file_path
 
+
+def write_performance_report(stats, base_filename: str, output_dir: str = "output") -> str:
+    """
+    Generate and save performance report to file
+    
+    Args:
+        stats: PerformanceStats object
+        base_filename: Base filename for the report
+        output_dir: Output directory (default: "output")
+    
+    Returns:
+        Path to the generated report file
+    """
+    from performance import PerformanceStats
+    from collections import defaultdict
+    
+    # Ensure output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Generate report text
+    report_lines = []
+    report_lines.append("=" * 80)
+    report_lines.append("CuePoint Performance Analysis Report")
+    report_lines.append("=" * 80)
+    report_lines.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    report_lines.append("")
+    
+    # Overall Statistics
+    report_lines.append("Overall Performance:")
+    report_lines.append(f"  Total tracks processed: {stats.total_tracks}")
+    report_lines.append(f"  Matched tracks: {stats.matched_tracks} ({stats.match_rate():.1f}%)")
+    report_lines.append(f"  Unmatched tracks: {stats.unmatched_tracks}")
+    report_lines.append(f"  Total processing time: {_format_time_for_report(stats.total_time)}")
+    report_lines.append(f"  Average time per track: {_format_time_for_report(stats.average_time_per_track())}")
+    report_lines.append("")
+    
+    # Query Statistics
+    report_lines.append("Query Performance:")
+    report_lines.append(f"  Total queries executed: {len(stats.query_metrics)}")
+    report_lines.append(f"  Average time per query: {_format_time_for_report(stats.average_time_per_query())}")
+    report_lines.append("")
+    
+    # Query Type Breakdown
+    by_type = defaultdict(lambda: {"count": 0, "total_time": 0.0, "total_candidates": 0})
+    for query in stats.query_metrics:
+        qtype = query.query_type
+        by_type[qtype]["count"] += 1
+        by_type[qtype]["total_time"] += query.execution_time
+        by_type[qtype]["total_candidates"] += query.candidates_found
+    
+    report_lines.append("Query Performance by Type:")
+    for qtype, data in sorted(by_type.items()):
+        avg_time = data["total_time"] / data["count"] if data["count"] > 0 else 0.0
+        avg_candidates = data["total_candidates"] / data["count"] if data["count"] > 0 else 0.0
+        report_lines.append(f"  {qtype.replace('_', ' ').title()}:")
+        report_lines.append(f"    Count: {data['count']}")
+        report_lines.append(f"    Avg time: {_format_time_for_report(avg_time)}")
+        report_lines.append(f"    Avg candidates: {avg_candidates:.1f}")
+    report_lines.append("")
+    
+    # Cache Statistics
+    report_lines.append("Cache Performance:")
+    report_lines.append(f"  Cache hits: {stats.cache_stats['hits']}")
+    report_lines.append(f"  Cache misses: {stats.cache_stats['misses']}")
+    report_lines.append(f"  Hit rate: {stats.cache_hit_rate():.1f}%")
+    report_lines.append("")
+    
+    # Slowest Tracks
+    slowest = sorted(stats.track_metrics, key=lambda t: t.total_time, reverse=True)[:10]
+    report_lines.append("Slowest Tracks (Top 10):")
+    for track in slowest:
+        report_lines.append(f"  {track.track_title[:60]}: {_format_time_for_report(track.total_time)} ({track.total_queries} queries)")
+    report_lines.append("")
+    
+    # Bottleneck Analysis
+    bottlenecks = _identify_bottlenecks(stats)
+    if bottlenecks:
+        report_lines.append("Performance Bottlenecks:")
+        for bottleneck in bottlenecks:
+            report_lines.append(f"  • {bottleneck}")
+        report_lines.append("")
+    
+    # Write to file
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{base_filename}_performance_{timestamp}.txt"
+    filepath = os.path.join(output_dir, filename)
+    
+    with open(filepath, 'w', encoding='utf-8') as f:
+        f.write("\n".join(report_lines))
+    
+    return filepath
+
+
+def _format_time_for_report(seconds: float) -> str:
+    """Format time in seconds to human-readable string for reports"""
+    if seconds < 1.0:
+        return f"{seconds * 1000:.0f}ms"
+    elif seconds < 60.0:
+        return f"{seconds:.2f}s"
+    else:
+        minutes = int(seconds // 60)
+        secs = seconds % 60
+        return f"{minutes}m {secs:.1f}s"
+
+
+def _identify_bottlenecks(stats) -> List[str]:
+    """Identify performance bottlenecks"""
+    bottlenecks = []
+    
+    # Check query times
+    avg_query_time = stats.average_time_per_query()
+    if avg_query_time > 5.0:
+        bottlenecks.append(f"Slow queries (avg {avg_query_time:.1f}s per query)")
+    
+    # Check cache hit rate
+    hit_rate = stats.cache_hit_rate()
+    if hit_rate < 30.0 and stats.cache_stats["misses"] > 10:
+        bottlenecks.append(f"Low cache hit rate ({hit_rate:.1f}%)")
+    
+    # Check track processing time
+    avg_track_time = stats.average_time_per_track()
+    if avg_track_time > 60.0:
+        bottlenecks.append(f"Slow track processing (avg {avg_track_time:.1f}s per track)")
+    
+    # Check match rate
+    match_rate = stats.match_rate()
+    if match_rate < 50.0 and stats.total_tracks > 10:
+        bottlenecks.append(f"Low match rate ({match_rate:.1f}%)")
+    
+    return bottlenecks

@@ -31,7 +31,10 @@ from ddgs import DDGS
 
 from config import BASE_URL, SESSION, SETTINGS
 from mix_parser import _extract_remixer_names_from_title, _merge_name_lists, _split_display_names
-from utils import vlog
+from utils import vlog, retry_with_backoff
+
+# Cache hit tracking for performance metrics
+_last_cache_hit = False
 
 
 @dataclass
@@ -76,8 +79,20 @@ def is_track_url(u: str) -> bool:
     return bool(re.search(r"beatport\.com/track/[^/]+/\d+", u))
 
 
+def get_last_cache_hit() -> bool:
+    """Get the cache hit status from the last request_html() call"""
+    return _last_cache_hit
+
+
+@retry_with_backoff(
+    max_retries=3,
+    backoff_base=1.0,
+    backoff_max=30.0,
+    jitter=True
+)
 def request_html(url: str) -> Optional[BeautifulSoup]:
     """Fetch a URL robustly, handling empty gzipped/brotli responses by retrying without compression."""
+    global _last_cache_hit
     to = (SETTINGS["CONNECT_TIMEOUT"], SETTINGS["READ_TIMEOUT"])
 
     def _is_empty_body(resp: requests.Response) -> bool:
@@ -100,8 +115,21 @@ def request_html(url: str) -> Optional[BeautifulSoup]:
 
     def _get(u: str, headers: Optional[dict] = None) -> Optional[requests.Response]:
         try:
-            return SESSION.get(u, timeout=to, allow_redirects=True, headers=headers)
+            resp = SESSION.get(u, timeout=to, allow_redirects=True, headers=headers)
+            # Track cache hit status for performance metrics
+            if resp:
+                # Check if response came from cache (requests_cache adds this attribute)
+                if hasattr(resp, 'from_cache'):
+                    _last_cache_hit = resp.from_cache
+                elif hasattr(resp, '_from_cache'):
+                    _last_cache_hit = resp._from_cache
+                else:
+                    _last_cache_hit = False
+            else:
+                _last_cache_hit = False
+            return resp
         except requests.RequestException:
+            _last_cache_hit = False
             return None
 
     resp = _get(url)
@@ -232,6 +260,12 @@ def _parse_next_data(soup: BeautifulSoup) -> Dict[str, str]:
     return out
 
 
+@retry_with_backoff(
+    max_retries=2,
+    backoff_base=0.5,
+    backoff_max=10.0,
+    jitter=True
+)
 def parse_track_page(url: str) -> Tuple[str, str, Optional[str], Optional[int], Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]]:
     """Parse a Beatport track page and extract metadata"""
     soup = request_html(url)

@@ -27,7 +27,7 @@ from typing import Dict, List, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeoutError
 from rapidfuzz import fuzz
 
-from beatport import BeatportCandidate, track_urls, is_track_url, parse_track_page
+from beatport import BeatportCandidate, track_urls, is_track_url, parse_track_page, get_last_cache_hit
 from config import NEAR_KEYS, SETTINGS
 from mix_parser import (
     _any_phrase_token_set_in_title,
@@ -45,6 +45,7 @@ from text_processing import (
     score_components,
 )
 from utils import tlog, vlog
+from performance import performance_collector
 
 
 def _norm_key(k: Optional[str]) -> Optional[str]:
@@ -241,6 +242,18 @@ def _confidence_label(score: float) -> str:
     return "high" if score >= 95 else "med" if score >= 85 else "low"
 
 
+def _classify_query_type(query: str, query_index: int) -> str:
+    """Classify query type for metrics"""
+    if query_index == 0:
+        return "priority"
+    elif "remix" in query.lower() or "mix" in query.lower():
+        return "remix"
+    elif '"' in query:
+        return "exact_phrase"
+    else:
+        return "n_gram"
+
+
 def best_beatport_match(
     idx: int,
     track_title: str,
@@ -281,6 +294,11 @@ def best_beatport_match(
         - queries_audit: List of (query_index, query_text, candidate_count, elapsed_ms)
         - last_query_index: Last query index processed
     """
+    # Start track metrics
+    track_id = f"track_{idx}"
+    track_metrics = performance_collector.record_track_start(track_id, track_title)
+    track_start_time = time.perf_counter()
+    
     start = time.perf_counter()  # Start timer for time budget tracking
     best: Optional[BeatportCandidate] = None  # Best match found so far
     candidates_log: List[BeatportCandidate] = []  # All candidates evaluated
@@ -673,7 +691,10 @@ def best_beatport_match(
             min_q_for_exit = SETTINGS.get("EARLY_EXIT_MIN_QUERIES", 12)
 
         # Execute query to find candidate URLs
-        t_q0 = time.perf_counter()
+        query_start_time = time.perf_counter()
+        
+        # Determine query type for metrics
+        query_type = _classify_query_type(q, i)
         
         # Adaptive max results: more results for specific queries, fewer for generic
         mr = _pick_max_results_for_query(q)
@@ -681,13 +702,30 @@ def best_beatport_match(
         # Fetch candidate URLs using unified search (DuckDuckGo or direct Beatport)
         # track_urls() automatically chooses the best search method based on query type
         urls_all = track_urls(idx, q, max_results=mr)
-        q_elapsed = int((time.perf_counter() - t_q0) * 1000)
+        
+        # Check cache hit status (from the last HTTP request made by track_urls)
+        # Note: This tracks the last request, which may not represent all requests in track_urls
+        # but gives a reasonable approximation for performance metrics
+        cache_hit = get_last_cache_hit()
+        
+        query_execution_time = time.perf_counter() - query_start_time
+        q_elapsed = int(query_execution_time * 1000)
 
         cap = SETTINGS.get("PER_QUERY_CANDIDATE_CAP")
         cap_i = int(cap) if (isinstance(cap, (int, str)) and str(cap).isdigit()) else (cap if isinstance(cap, int) else None)
         urls = urls_all[:cap_i] if (cap_i and cap_i > 0 and len(urls_all) > cap_i) else urls_all
 
         queries_audit.append((i, q, len(urls_all), q_elapsed))
+        
+        # Record query metrics
+        performance_collector.record_query(
+            track_metrics=track_metrics,
+            query_text=q,
+            execution_time=query_execution_time,
+            candidates_found=len(urls),
+            cache_hit=cache_hit,
+            query_type=query_type
+        )
 
         print(f"[{idx}]   q{i} -> {len(urls)} candidates (raw={len(urls_all)}, MR={mr})", flush=True)
 
@@ -854,6 +892,8 @@ def best_beatport_match(
                     # Early exit if all conditions met
                     if mix_ok and generic_ok:
                         print(f"[{idx}]   early-exit on q{i}: best score {best.score:.1f}", flush=True)
+                        track_metrics.early_exit = True
+                        track_metrics.early_exit_query_index = i
                         break
 
     if best:
@@ -861,6 +901,20 @@ def best_beatport_match(
             if c.url == best.url:
                 c.is_winner = True
                 break
+    
+    # Complete track metrics
+    track_end_time = time.perf_counter()
+    total_time = track_end_time - track_start_time
+    
+    performance_collector.record_track_complete(
+        track_metrics=track_metrics,
+        total_time=total_time,
+        match_found=(best is not None),
+        match_score=best.score if best else 0.0,
+        early_exit=track_metrics.early_exit,
+        early_exit_query_index=track_metrics.early_exit_query_index,
+        candidates_evaluated=len(candidates_log)
+    )
 
     return best, candidates_log, queries_audit, last_q_processed
 

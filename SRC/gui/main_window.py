@@ -30,6 +30,7 @@ from gui_controller import GUIController
 from gui_interface import ProcessingError
 from output_writer import write_csv_files
 from utils import with_timestamp
+from gui.performance_view import PerformanceView
 
 
 class MainWindow(QMainWindow):
@@ -174,6 +175,10 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(main_tab_scroll, "Main")
         self.tabs.addTab(settings_tab, "Settings")
         self.tabs.addTab(history_tab, "Past Searches")
+        
+        # Performance monitoring view (created but not added to tabs yet)
+        self.performance_view = PerformanceView()
+        self.performance_tab_index = None  # Will be set when tab is added
         
         # Status bar
         self.statusBar().showMessage("Ready")
@@ -763,6 +768,36 @@ class MainWindow(QMainWindow):
         settings = self.config_panel.get_settings()
         auto_research = self.config_panel.get_auto_research()
         
+        # Handle performance monitoring tab
+        track_performance = settings.get("track_performance", False)
+        print(f"[DEBUG] track_performance setting: {track_performance}")  # Debug output
+        
+        if track_performance:
+            # Add performance tab if not already added
+            if self.performance_tab_index is None:
+                print("[DEBUG] Adding Performance tab")  # Debug output
+                self.performance_tab_index = self.tabs.addTab(
+                    self.performance_view, 
+                    "Performance"
+                )
+                self.performance_view.start_monitoring()
+                # Switch to performance tab to show it to the user
+                self.tabs.setCurrentIndex(self.performance_tab_index)
+                print(f"[DEBUG] Performance tab added at index {self.performance_tab_index}")  # Debug output
+            else:
+                # Tab already exists, just start monitoring
+                print("[DEBUG] Performance tab already exists, starting monitoring")  # Debug output
+                self.performance_view.start_monitoring()
+                # Switch to performance tab to show it to the user
+                self.tabs.setCurrentIndex(self.performance_tab_index)
+        else:
+            print("[DEBUG] track_performance is False, not adding Performance tab")  # Debug output
+            # Remove performance tab if it exists
+            if self.performance_tab_index is not None:
+                self.performance_view.stop_monitoring()
+                self.tabs.removeTab(self.performance_tab_index)
+                self.performance_tab_index = None
+        
         # Start processing via controller
         self.controller.start_processing(
             xml_path=xml_path,
@@ -794,6 +829,10 @@ class MainWindow(QMainWindow):
     
     def on_processing_complete(self, results):
         """Handle processing completion"""
+        # Stop performance monitoring if active
+        if self.performance_view and self.performance_tab_index is not None:
+            self.performance_view.stop_monitoring()
+        
         # Hide progress, show results
         self.progress_group.setVisible(False)
         self.results_group.setVisible(True)
