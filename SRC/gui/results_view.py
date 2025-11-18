@@ -695,14 +695,27 @@ class ResultsView(QWidget):
         try:
             format_type = options.get('format', 'csv')
             
+            # Get settings for processing info if needed
+            settings = None
+            if options.get('include_processing_info', False):
+                try:
+                    from config import SETTINGS
+                    settings = SETTINGS.copy() if SETTINGS else {}
+                except ImportError:
+                    settings = {}
+            
             if format_type == 'json':
-                # Export to JSON
+                # Export to JSON with enhanced options
                 write_json_file(
                     results_to_export,
                     file_path,
                     playlist_name=self.playlist_name,
                     include_candidates=options.get('include_candidates', False),
-                    include_queries=options.get('include_queries', False)
+                    include_queries=options.get('include_queries', False),
+                    include_metadata=options.get('include_metadata', True),
+                    include_processing_info=options.get('include_processing_info', False),
+                    compress=options.get('compress', False),
+                    settings=settings
                 )
                 QMessageBox.information(
                     self,
@@ -711,7 +724,7 @@ class ResultsView(QWidget):
                 )
                 
             elif format_type == 'excel':
-                # Export to Excel
+                # Export to Excel (with metadata option)
                 write_excel_file(
                     results_to_export,
                     file_path,
@@ -724,14 +737,22 @@ class ResultsView(QWidget):
                 )
                 
             else:  # CSV
-                # Export to CSV (use existing function)
+                # Export to CSV with enhanced options
                 output_dir = os.path.dirname(file_path) or "output"
                 base_filename = os.path.basename(file_path)
                 # Remove extension if present
-                if base_filename.endswith('.csv'):
-                    base_filename = base_filename[:-4]
+                for ext in ['.csv', '.tsv', '.psv']:
+                    if base_filename.endswith(ext):
+                        base_filename = base_filename[:-len(ext)]
+                        break
                 
-                output_files = write_csv_files(results_to_export, base_filename, output_dir)
+                output_files = write_csv_files(
+                    results_to_export, 
+                    base_filename, 
+                    output_dir,
+                    delimiter=options.get('delimiter', ','),
+                    include_metadata=options.get('include_metadata', True)
+                )
                 self.output_files = output_files
                 
                 if output_files.get('main'):

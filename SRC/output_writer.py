@@ -10,7 +10,9 @@ All functions take TrackResult objects as input and write CSV files.
 
 import csv
 import json
+import gzip
 import os
+import time
 from typing import List, Dict, Set, Optional, Any
 from datetime import datetime
 from gui_interface import TrackResult
@@ -29,15 +31,19 @@ except ImportError:
 def write_csv_files(
     results: List[TrackResult],
     base_filename: str,
-    output_dir: str = "output"
+    output_dir: str = "output",
+    delimiter: str = ",",
+    include_metadata: bool = True
 ) -> Dict[str, str]:
     """
-    Write all CSV files from TrackResult objects.
+    Write CSV files with custom delimiter.
     
     Args:
         results: List of TrackResult objects
         base_filename: Base filename (timestamp will be added)
         output_dir: Output directory (default: "output")
+        delimiter: CSV delimiter character (default: ",")
+        include_metadata: Include metadata columns
     
     Returns:
         Dictionary mapping file type to file path:
@@ -47,7 +53,14 @@ def write_csv_files(
             'queries': 'output/filename_queries_20250127_123456.csv',
             'review': 'output/filename_review_20250127_123456.csv' (if needed)
         }
+    
+    Raises:
+        ValueError: If invalid delimiter provided
     """
+    # Validate delimiter
+    if delimiter not in [",", ";", "\t", "|"]:
+        raise ValueError(f"Invalid delimiter: {delimiter}. Must be one of: , ; \\t |")
+    
     # Ensure output_dir is absolute
     output_dir = os.path.abspath(output_dir)
     os.makedirs(output_dir, exist_ok=True)
@@ -57,25 +70,62 @@ def write_csv_files(
     # Add timestamp to base filename
     timestamped_filename = with_timestamp(base_filename)
     
+    # Determine file extension based on delimiter
+    ext_map = {
+        ",": ".csv",
+        ";": ".csv",
+        "\t": ".tsv",
+        "|": ".psv"
+    }
+    extension = ext_map.get(delimiter, ".csv")
+    
+    # Remove existing extension if present and add correct one
+    if timestamped_filename.endswith(('.csv', '.tsv', '.psv')):
+        timestamped_filename = os.path.splitext(timestamped_filename)[0]
+    timestamped_filename = timestamped_filename + extension
+    
     # Write main results CSV
-    main_path = write_main_csv(results, timestamped_filename, output_dir)
+    main_path = write_main_csv(
+        results, 
+        timestamped_filename, 
+        output_dir,
+        delimiter=delimiter,
+        include_metadata=include_metadata
+    )
     if main_path:
         output_files['main'] = main_path
     
-    # Write candidates CSV
-    candidates_path = write_candidates_csv(results, timestamped_filename, output_dir)
+    # Write candidates CSV (with same delimiter)
+    candidates_path = write_candidates_csv(
+        results, 
+        timestamped_filename, 
+        output_dir,
+        delimiter=delimiter
+    )
     if candidates_path:
         output_files['candidates'] = candidates_path
     
-    # Write queries CSV
-    queries_path = write_queries_csv(results, timestamped_filename, output_dir)
+    # Write queries CSV (with same delimiter)
+    queries_path = write_queries_csv(
+        results, 
+        timestamped_filename, 
+        output_dir,
+        delimiter=delimiter
+    )
     if queries_path:
         output_files['queries'] = queries_path
     
     # Write review CSV (if there are tracks needing review)
     review_indices = _get_review_indices(results)
     if review_indices:
-        review_path = write_review_csv(results, review_indices, timestamped_filename, output_dir)
+        review_path = write_review_csv(
+            results, 
+            review_indices, 
+            timestamped_filename, 
+            output_dir,
+            delimiter=delimiter,
+            include_metadata=include_metadata
+        )
         if review_path:
             output_files['review'] = review_path
     
@@ -85,68 +135,113 @@ def write_csv_files(
 def write_main_csv(
     results: List[TrackResult],
     base_filename: str,
-    output_dir: str = "output"
+    output_dir: str = "output",
+    delimiter: str = ",",
+    include_metadata: bool = True
 ) -> Optional[str]:
     """
-    Write main results CSV file (one row per track).
+    Write main results CSV file (one row per track) with custom delimiter.
     
     Args:
         results: List of TrackResult objects
         base_filename: Base filename with timestamp
         output_dir: Output directory
+        delimiter: CSV delimiter character (default: ",")
+        include_metadata: Include metadata columns
     
     Returns:
         Path to written file, or None if no results
+    
+    Raises:
+        OSError: If file cannot be written
+        ValueError: If invalid delimiter provided
     """
     if not results:
         return None
     
-    # Ensure output directory exists
-    output_dir = os.path.abspath(output_dir)
-    os.makedirs(output_dir, exist_ok=True)
+    # Validate delimiter
+    if delimiter not in [",", ";", "\t", "|"]:
+        raise ValueError(f"Invalid delimiter: {delimiter}. Must be one of: , ; \\t |")
     
-    filepath = os.path.join(output_dir, base_filename)
-    filepath = os.path.abspath(filepath)  # Ensure absolute path
+    export_start_time = time.time()
     
-    # Define CSV columns (must match old format exactly)
-    fieldnames = [
-        "playlist_index", "original_title", "original_artists",
-        "beatport_title", "beatport_artists", "beatport_key", "beatport_key_camelot",
-        "beatport_year", "beatport_bpm", "beatport_label", "beatport_genres",
-        "beatport_release", "beatport_release_date", "beatport_track_id",
-        "beatport_url", "title_sim", "artist_sim", "match_score", "confidence",
-        "search_query_index", "search_stop_query_index", "candidate_index"
-    ]
-    
-    # Write file and ensure it's fully closed before returning
     try:
-        with open(filepath, 'w', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            for result in results:
-                writer.writerow(result.to_dict())
-            # Force flush to ensure file is written to disk
-            f.flush()
-            os.fsync(f.fileno())
+        # Ensure output directory exists
+        output_dir = os.path.abspath(output_dir)
+        os.makedirs(output_dir, exist_ok=True)
         
-        # File should be closed now (context manager)
-        # Verify file actually exists and has content
-        if not os.path.exists(filepath):
-            return None
+        filepath = os.path.join(output_dir, base_filename)
+        filepath = os.path.abspath(filepath)  # Ensure absolute path
         
-        file_size = os.path.getsize(filepath)
-        if file_size == 0:
-            return None
+        # Define CSV columns
+        fieldnames = [
+            "playlist_index", "original_title", "original_artists",
+            "beatport_title", "beatport_artists", "beatport_key", "beatport_key_camelot",
+            "beatport_year", "beatport_bpm", "beatport_url", "title_sim", 
+            "artist_sim", "match_score", "confidence",
+            "search_query_index", "search_stop_query_index", "candidate_index"
+        ]
         
-        return filepath
-    except Exception:
-        return None
+        # Add metadata columns if requested
+        if include_metadata:
+            fieldnames.extend([
+                "beatport_label", "beatport_genres", "beatport_release", 
+                "beatport_release_date", "beatport_track_id"
+            ])
+        
+        # Write file and ensure it's fully closed before returning
+        try:
+            with open(filepath, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter=delimiter)
+                writer.writeheader()
+                for result in results:
+                    row_dict = result.to_dict()
+                    # Filter to only include requested columns
+                    filtered_row = {k: row_dict.get(k, "") for k in fieldnames}
+                    writer.writerow(filtered_row)
+                # Force flush to ensure file is written to disk
+                f.flush()
+                os.fsync(f.fileno())
+            
+            # File should be closed now (context manager)
+            # Verify file actually exists and has content
+            if not os.path.exists(filepath):
+                return None
+            
+            file_size = os.path.getsize(filepath)
+            if file_size == 0:
+                return None
+            
+            # Track performance
+            export_duration = time.time() - export_start_time
+            
+            # Record export metrics (if performance tracking enabled)
+            try:
+                from performance import performance_collector
+                if hasattr(performance_collector, 'record_export'):
+                    performance_collector.record_export(
+                        format="csv",
+                        compressed=False,
+                        file_size=file_size,
+                        duration=export_duration,
+                        track_count=len(results)
+                    )
+            except (ImportError, AttributeError):
+                # Performance tracking not available or method doesn't exist
+                pass
+            
+            return filepath
+        except OSError as e:
+            raise OSError(f"Failed to write CSV file: {e}")
+    except Exception as e:
+        raise RuntimeError(f"CSV export failed: {e}") from e
 
 
 def write_candidates_csv(
     results: List[TrackResult],
     base_filename: str,
-    output_dir: str = "output"
+    output_dir: str = "output",
+    delimiter: str = ","
 ) -> Optional[str]:
     """
     Write candidates CSV file (all candidates evaluated for all tracks).
@@ -155,6 +250,7 @@ def write_candidates_csv(
         results: List of TrackResult objects
         base_filename: Base filename with timestamp
         output_dir: Output directory
+        delimiter: CSV delimiter character (default: ",")
     
     Returns:
         Path to written file, or None if no candidates
@@ -170,15 +266,19 @@ def write_candidates_csv(
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
     
-    # Remove .csv extension and add _candidates
-    base = base_filename.replace('.csv', '') if base_filename.endswith('.csv') else base_filename
-    filepath = os.path.join(output_dir, f"{base}_candidates.csv")
+    # Determine extension based on delimiter
+    ext_map = {",": ".csv", ";": ".csv", "\t": ".tsv", "|": ".psv"}
+    extension = ext_map.get(delimiter, ".csv")
+    
+    # Remove existing extension and add _candidates with correct extension
+    base = os.path.splitext(base_filename)[0]
+    filepath = os.path.join(output_dir, f"{base}_candidates{extension}")
     
     # Get fieldnames from first candidate
     fieldnames = list(all_candidates[0].keys())
     
     with open(filepath, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter=delimiter)
         writer.writeheader()
         writer.writerows(all_candidates)
     
@@ -188,7 +288,8 @@ def write_candidates_csv(
 def write_queries_csv(
     results: List[TrackResult],
     base_filename: str,
-    output_dir: str = "output"
+    output_dir: str = "output",
+    delimiter: str = ","
 ) -> Optional[str]:
     """
     Write queries CSV file (all queries executed for all tracks).
@@ -197,6 +298,7 @@ def write_queries_csv(
         results: List of TrackResult objects
         base_filename: Base filename with timestamp
         output_dir: Output directory
+        delimiter: CSV delimiter character (default: ",")
     
     Returns:
         Path to written file, or None if no queries
@@ -212,15 +314,19 @@ def write_queries_csv(
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
     
-    # Remove .csv extension and add _queries
-    base = base_filename.replace('.csv', '') if base_filename.endswith('.csv') else base_filename
-    filepath = os.path.join(output_dir, f"{base}_queries.csv")
+    # Determine extension based on delimiter
+    ext_map = {",": ".csv", ";": ".csv", "\t": ".tsv", "|": ".psv"}
+    extension = ext_map.get(delimiter, ".csv")
+    
+    # Remove existing extension and add _queries with correct extension
+    base = os.path.splitext(base_filename)[0]
+    filepath = os.path.join(output_dir, f"{base}_queries{extension}")
     
     # Get fieldnames from first query
     fieldnames = list(all_queries[0].keys())
     
     with open(filepath, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter=delimiter)
         writer.writeheader()
         writer.writerows(all_queries)
     
@@ -231,7 +337,9 @@ def write_review_csv(
     results: List[TrackResult],
     review_indices: Set[int],
     base_filename: str,
-    output_dir: str = "output"
+    output_dir: str = "output",
+    delimiter: str = ",",
+    include_metadata: bool = True
 ) -> Optional[str]:
     """
     Write review CSV file (tracks needing manual review).
@@ -241,6 +349,8 @@ def write_review_csv(
         review_indices: Set of playlist indices that need review
         base_filename: Base filename with timestamp
         output_dir: Output directory
+        delimiter: CSV delimiter character (default: ",")
+        include_metadata: Include metadata columns
     
     Returns:
         Path to written file, or None if no review tracks
@@ -249,25 +359,38 @@ def write_review_csv(
     if not review_results:
         return None
     
-    # Remove .csv extension and add _review
-    base = base_filename.replace('.csv', '') if base_filename.endswith('.csv') else base_filename
-    filepath = os.path.join(output_dir, f"{base}_review.csv")
+    # Determine extension based on delimiter
+    ext_map = {",": ".csv", ";": ".csv", "\t": ".tsv", "|": ".psv"}
+    extension = ext_map.get(delimiter, ".csv")
+    
+    # Remove existing extension and add _review with correct extension
+    base = os.path.splitext(base_filename)[0]
+    filepath = os.path.join(output_dir, f"{base}_review{extension}")
     
     # Use same format as main CSV
     fieldnames = [
         "playlist_index", "original_title", "original_artists",
         "beatport_title", "beatport_artists", "beatport_key", "beatport_key_camelot",
-        "beatport_year", "beatport_bpm", "beatport_label", "beatport_genres",
-        "beatport_release", "beatport_release_date", "beatport_track_id",
-        "beatport_url", "title_sim", "artist_sim", "match_score", "confidence",
+        "beatport_year", "beatport_bpm", "beatport_url", "title_sim", 
+        "artist_sim", "match_score", "confidence",
         "search_query_index", "search_stop_query_index", "candidate_index"
     ]
     
+    # Add metadata columns if requested
+    if include_metadata:
+        fieldnames.extend([
+            "beatport_label", "beatport_genres", "beatport_release", 
+            "beatport_release_date", "beatport_track_id"
+        ])
+    
     with open(filepath, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter=delimiter)
         writer.writeheader()
         for result in review_results:
-            writer.writerow(result.to_dict())
+            row_dict = result.to_dict()
+            # Filter to only include requested columns
+            filtered_row = {k: row_dict.get(k, "") for k in fieldnames}
+            writer.writerow(filtered_row)
     
     return filepath
 
@@ -372,10 +495,14 @@ def write_json_file(
     file_path: str,
     playlist_name: str = "",
     include_candidates: bool = False,
-    include_queries: bool = False
+    include_queries: bool = False,
+    include_metadata: bool = True,
+    include_processing_info: bool = False,
+    compress: bool = False,
+    settings: Optional[Dict[str, Any]] = None
 ) -> str:
     """
-    Write results to JSON file.
+    Write results to JSON file with enhanced options.
     
     Args:
         results: List of TrackResult objects
@@ -383,78 +510,154 @@ def write_json_file(
         playlist_name: Name of playlist (for metadata)
         include_candidates: Whether to include candidates data
         include_queries: Whether to include queries data
+        include_metadata: Include full metadata (genres, labels, etc.)
+        include_processing_info: Include processing information
+        compress: Compress output using gzip
+        settings: Processing settings to include (if include_processing_info is True)
     
     Returns:
         Path to written file
-    """
-    os.makedirs(os.path.dirname(file_path) if os.path.dirname(file_path) else ".", exist_ok=True)
     
-    # Build JSON structure
-    json_data = {
-        "metadata": {
-            "playlist_name": playlist_name or "Unknown",
-            "processed_at": datetime.now().isoformat(),
+    Raises:
+        OSError: If file cannot be written (permissions, disk full, etc.)
+        ValueError: If invalid parameters provided
+    """
+    # Start performance tracking
+    export_start_time = time.time()
+    
+    try:
+        # Determine if compression is needed based on file extension
+        if file_path.endswith('.gz'):
+            compress = True
+            # Remove .gz extension for base filename
+            if file_path.endswith('.json.gz'):
+                base_file_path = file_path[:-3]  # Remove .gz
+            else:
+                base_file_path = file_path[:-3]
+        else:
+            base_file_path = file_path
+        
+        # Ensure directory exists
+        output_dir = os.path.dirname(base_file_path) if os.path.dirname(base_file_path) else "."
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Build JSON structure
+        json_data = {
+            "version": "1.0",
+            "generated": datetime.now().isoformat(),
             "total_tracks": len(results),
             "matched_tracks": sum(1 for r in results if r.matched),
-            "unmatched_tracks": sum(1 for r in results if not r.matched)
-        },
-        "tracks": []
-    }
-    
-    # Convert tracks to JSON structure
-    for result in results:
-        track_data = {
-            "playlist_index": result.playlist_index,
-            "original": {
-                "title": result.title,
-                "artists": result.artist or ""
-            }
+            "tracks": []
         }
         
-        if result.matched and result.beatport_url:
-            track_data["match"] = {
-                "found": True,
-                "title": result.beatport_title or "",
-                "artists": result.beatport_artists or "",
-                "beatport_url": result.beatport_url,
-                "beatport_track_id": result.beatport_track_id or "",
-                "scores": {
+        # Add processing info if requested
+        if include_processing_info:
+            json_data["processing_info"] = {
+                "timestamp": datetime.now().isoformat(),
+                "settings": settings or {},
+                "export_format": "json",
+                "compressed": compress
+            }
+        
+        # Add track data
+        for result in results:
+            track_data = {
+                "playlist_index": result.playlist_index,
+                "title": result.title,
+                "artist": result.artist or "",
+                "matched": result.matched,
+            }
+            
+            if result.matched and result.beatport_url:
+                track_data["match"] = {
+                    "beatport_title": result.beatport_title or "",
+                    "beatport_artists": result.beatport_artists or "",
+                    "beatport_url": result.beatport_url,
                     "match_score": float(result.match_score) if result.match_score is not None else None,
-                    "title_sim": float(result.title_sim) if result.title_sim is not None else None,
-                    "artist_sim": float(result.artist_sim) if result.artist_sim is not None else None
-                },
-                "metadata": {
+                    "confidence": result.confidence or "unknown",
                     "key": result.beatport_key or "",
-                    "key_camelot": result.beatport_key_camelot or "",
-                    "year": int(result.beatport_year) if result.beatport_year and result.beatport_year.isdigit() else None,
                     "bpm": int(result.beatport_bpm) if result.beatport_bpm and result.beatport_bpm.isdigit() else None,
-                    "label": result.beatport_label or "",
-                    "genres": [g.strip() for g in (result.beatport_genres or "").split(",") if g.strip()],
-                    "release": result.beatport_release or "",
-                    "release_date": result.beatport_release_date or ""
-                },
-                "confidence": result.confidence or "unknown"
-            }
-        else:
-            track_data["match"] = {
-                "found": False
-            }
+                    "year": int(result.beatport_year) if result.beatport_year and result.beatport_year.isdigit() else None,
+                }
+                
+                # Include full metadata if requested
+                if include_metadata:
+                    track_data["match"]["metadata"] = {
+                        "label": result.beatport_label or "",
+                        "genres": [g.strip() for g in (result.beatport_genres or "").split(",") if g.strip()],
+                        "release": result.beatport_release or "",
+                        "release_date": result.beatport_release_date or "",
+                        "key_camelot": result.beatport_key_camelot or "",
+                        "beatport_track_id": result.beatport_track_id or "",
+                    }
+                    # Also include scores in metadata section
+                    track_data["match"]["scores"] = {
+                        "match_score": float(result.match_score) if result.match_score is not None else None,
+                        "title_sim": float(result.title_sim) if result.title_sim is not None else None,
+                        "artist_sim": float(result.artist_sim) if result.artist_sim is not None else None
+                    }
+            
+            # Add candidates if available
+            if include_candidates and result.candidates:
+                track_data["candidates"] = [
+                    {
+                        "title": c.get("beatport_title", ""),
+                        "artists": c.get("beatport_artists", ""),
+                        "url": c.get("beatport_url", ""),
+                        "score": c.get("match_score", 0),
+                    }
+                    for c in result.candidates[:10]  # Top 10 candidates
+                ]
+            
+            # Add queries if requested
+            if include_queries and result.queries:
+                track_data["queries"] = result.queries
+            
+            json_data["tracks"].append(track_data)
         
-        # Add candidates if requested
-        if include_candidates and result.candidates:
-            track_data["candidates"] = result.candidates
+        # Determine final filename
+        final_filepath = file_path
+        if compress and not final_filepath.endswith('.gz'):
+            final_filepath = final_filepath + '.gz'
         
-        # Add queries if requested
-        if include_queries and result.queries:
-            track_data["queries"] = result.queries
+        # Serialize to JSON
+        json_str = json.dumps(json_data, indent=2, ensure_ascii=False)
         
-        json_data["tracks"].append(track_data)
-    
-    # Write JSON file
-    with open(file_path, 'w', encoding='utf-8') as f:
-        json.dump(json_data, f, indent=2, ensure_ascii=False)
-    
-    return file_path
+        # Write to file (with compression if requested)
+        try:
+            if compress:
+                with gzip.open(final_filepath, 'wt', encoding='utf-8') as f:
+                    f.write(json_str)
+            else:
+                with open(final_filepath, 'w', encoding='utf-8') as f:
+                    f.write(json_str)
+        except OSError as e:
+            raise OSError(f"Failed to write export file: {e}")
+        
+        # Track performance
+        export_duration = time.time() - export_start_time
+        file_size = os.path.getsize(final_filepath)
+        
+        # Record export metrics (if performance tracking enabled)
+        try:
+            from performance import performance_collector
+            if hasattr(performance_collector, 'record_export'):
+                performance_collector.record_export(
+                    format="json",
+                    compressed=compress,
+                    file_size=file_size,
+                    duration=export_duration,
+                    track_count=len(results)
+                )
+        except (ImportError, AttributeError):
+            # Performance tracking not available or method doesn't exist
+            pass
+        
+        return final_filepath
+        
+    except Exception as e:
+        # Log error and re-raise with context
+        raise RuntimeError(f"JSON export failed: {e}") from e
 
 
 def write_excel_file(
