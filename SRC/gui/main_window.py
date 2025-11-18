@@ -10,7 +10,7 @@ This module contains the MainWindow class for the GUI application.
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QMenuBar, QStatusBar, QGroupBox, QLabel, QPushButton, QTabWidget,
-    QMenu, QMessageBox, QRadioButton, QButtonGroup, QScrollArea
+    QMenu, QMessageBox, QRadioButton, QButtonGroup, QScrollArea, QSplitter
 )
 from PySide6.QtCore import Qt, QSettings
 from PySide6.QtGui import QDragEnterEvent, QDropEvent, QKeySequence, QAction
@@ -57,16 +57,21 @@ class MainWindow(QMainWindow):
         self.tabs = QTabWidget()
         self.setCentralWidget(self.tabs)
         
-        # Main tab - wrap in scroll area for scrolling
-        main_tab_scroll = QScrollArea()
-        main_tab_scroll.setWidgetResizable(True)
-        main_tab_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        main_tab_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        
+        # Main tab - use splitter for resizable sections
         main_tab = QWidget()
         main_layout = QVBoxLayout(main_tab)
-        main_layout.setSpacing(15)
+        main_layout.setSpacing(10)
         main_layout.setContentsMargins(10, 10, 10, 10)
+        
+        # Create vertical splitter for resizable sections
+        main_splitter = QSplitter(Qt.Vertical)
+        main_splitter.setChildrenCollapsible(False)  # Prevent sections from being collapsed completely
+        
+        # Top section: Input controls (file selection, mode, playlist, buttons, progress)
+        top_section_widget = QWidget()
+        top_section_layout = QVBoxLayout(top_section_widget)
+        top_section_layout.setSpacing(15)
+        top_section_layout.setContentsMargins(0, 0, 0, 0)
         
         # File selection section
         file_group = QGroupBox("File Selection")
@@ -75,7 +80,7 @@ class MainWindow(QMainWindow):
         self.file_selector.file_selected.connect(self.on_file_selected)
         file_layout.addWidget(self.file_selector)
         file_group.setLayout(file_layout)
-        main_layout.addWidget(file_group)
+        top_section_layout.addWidget(file_group)
         
         # Processing mode selection
         mode_group = QGroupBox("Processing Mode")
@@ -95,7 +100,7 @@ class MainWindow(QMainWindow):
         
         mode_layout.addStretch()
         mode_group.setLayout(mode_layout)
-        main_layout.addWidget(mode_group)
+        top_section_layout.addWidget(mode_group)
         
         # Single playlist selection section (shown in single mode)
         self.single_playlist_group = QGroupBox("Playlist Selection")
@@ -104,12 +109,12 @@ class MainWindow(QMainWindow):
         self.playlist_selector.playlist_selected.connect(self.on_playlist_selected)
         single_playlist_layout.addWidget(self.playlist_selector)
         self.single_playlist_group.setLayout(single_playlist_layout)
-        main_layout.addWidget(self.single_playlist_group)
+        top_section_layout.addWidget(self.single_playlist_group)
         
         # Batch processor widget (shown in batch mode)
         self.batch_processor = BatchProcessorWidget()
         self.batch_processor.setVisible(False)  # Hidden by default
-        main_layout.addWidget(self.batch_processor)
+        top_section_layout.addWidget(self.batch_processor)
         
         # Start Processing button container (for single mode)
         self.start_button_container = QWidget()
@@ -120,7 +125,7 @@ class MainWindow(QMainWindow):
         self.start_button.clicked.connect(self.start_processing)
         self.start_button_layout.addWidget(self.start_button)
         self.start_button_layout.addStretch()
-        main_layout.addWidget(self.start_button_container)
+        top_section_layout.addWidget(self.start_button_container)
         
         # Progress section - ProgressWidget (Step 1.5)
         # Initially hidden until processing starts
@@ -131,31 +136,37 @@ class MainWindow(QMainWindow):
         progress_layout.addWidget(self.progress_widget)
         self.progress_group.setLayout(progress_layout)
         self.progress_group.setVisible(False)  # Hidden until processing starts
-        main_layout.addWidget(self.progress_group)
+        top_section_layout.addWidget(self.progress_group)
+        
+        # Add stretch to push everything to top
+        top_section_layout.addStretch()
+        
+        # Set maximum height for top section
+        top_section_widget.setMaximumHeight(600)
+        main_splitter.addWidget(top_section_widget)
+        
+        # Bottom section: Results
+        bottom_section_widget = QWidget()
+        bottom_section_layout = QVBoxLayout(bottom_section_widget)
+        bottom_section_layout.setContentsMargins(0, 0, 0, 0)
         
         # Results section - ResultsView widget (Step 1.7)
         # Initially hidden until processing completes
         self.results_group = QGroupBox("Results")
         results_layout = QVBoxLayout()
-        
-        # Wrap results view in scroll area for better scrolling
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.results_view = ResultsView()
-        scroll_area.setWidget(self.results_view)
-        
-        results_layout.addWidget(scroll_area)
+        results_layout.addWidget(self.results_view)
         self.results_group.setLayout(results_layout)
         self.results_group.setVisible(False)  # Hidden until processing completes
-        main_layout.addWidget(self.results_group)
+        bottom_section_layout.addWidget(self.results_group)
         
-        # Add stretch to push everything to top
-        main_layout.addStretch()
+        main_splitter.addWidget(bottom_section_widget)
         
-        # Set the main tab widget in the scroll area
-        main_tab_scroll.setWidget(main_tab)
+        # Set initial splitter sizes (40% top, 60% bottom)
+        main_splitter.setSizes([400, 600])
+        
+        # Add splitter to main layout
+        main_layout.addWidget(main_splitter, 1)  # Give splitter stretch priority
         
         # Settings tab
         settings_tab = QWidget()
@@ -172,7 +183,7 @@ class MainWindow(QMainWindow):
         history_layout.addWidget(self.history_view)
         
         # Add tabs
-        self.tabs.addTab(main_tab_scroll, "Main")
+        self.tabs.addTab(main_tab, "Main")
         self.tabs.addTab(settings_tab, "Settings")
         self.tabs.addTab(history_tab, "Past Searches")
         

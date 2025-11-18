@@ -6,7 +6,7 @@
 **Dependencies**: Phase 2 Step 2.3 (export dialog exists), Phase 0 (output_writer), Phase 3 (performance monitoring)
 
 ## Goal
-Enhance export functionality with additional options including metadata inclusion, processing information, compression, and custom delimiters to provide users with more flexible export capabilities.
+Enhance export functionality with additional options including metadata inclusion, processing information, compression, and custom delimiters to provide users with more flexible export capabilities. Additionally, add export functionality to the Past Searches (HistoryView) tab, allowing users to export previously loaded CSV files with the same enhanced options.
 
 ## Success Criteria
 - [ ] Enhanced export options available in export dialog
@@ -14,6 +14,9 @@ Enhance export functionality with additional options including metadata inclusio
 - [ ] Processing info inclusion works correctly
 - [ ] Compression works for JSON files
 - [ ] Custom delimiter works for CSV files
+- [ ] Export functionality available in Past Searches (HistoryView) tab
+- [ ] HistoryView export supports all formats and options (CSV, JSON, Excel)
+- [ ] HistoryView export works with filtered results
 - [ ] All export operations tracked in Phase 3 performance metrics
 - [ ] Error handling robust for all export operations
 - [ ] Backward compatibility maintained (existing exports still work)
@@ -494,7 +497,115 @@ def write_csv_files(
 
 ---
 
-### Substep 4.1.4: Integrate Enhanced Export into GUI (1-2 days)
+### Substep 4.1.4: Add Export Functionality to Past Searches (HistoryView) (4-6 hours)
+**File**: `SRC/gui/history_view.py` (MODIFY)
+
+**Dependencies**: Substep 4.1.1 (export dialog UI), Substep 4.1.2 (JSON export), Substep 4.1.3 (CSV export)
+
+**What to implement:**
+
+The Past Searches tab (HistoryView) allows users to view previously exported CSV files, but currently lacks export functionality. This substep adds the same enhanced export capabilities to HistoryView, allowing users to export filtered or unfiltered results from loaded CSV files.
+
+**Key Requirements:**
+- Export button in HistoryView UI (enabled only when CSV file is loaded)
+- Export filtered results or all results based on user selection
+- Support for CSV, JSON, and Excel formats with all enhanced options
+- Export functions that work directly with CSV row dictionaries (not TrackResult objects)
+- Proper handling of metadata inclusion/exclusion
+- Compression support for JSON exports
+- Custom delimiter support for CSV exports
+
+**Implementation Details:**
+
+```python
+# In HistoryView.__init__ or init_ui():
+# Add export button to status layout
+self.export_btn = QPushButton("Export...")
+self.export_btn.clicked.connect(self.show_export_dialog)
+self.export_btn.setEnabled(False)  # Disabled until file is loaded
+status_layout.addWidget(self.export_btn)
+
+# In load_csv_file():
+# Enable export button when file is loaded
+self.export_btn.setEnabled(True)
+
+# Add export methods:
+def show_export_dialog(self):
+    """Show export dialog and handle export for CSV row data"""
+    if not self.csv_rows:
+        QMessageBox.warning(self, "No Results", "No results to export. Please load a CSV file first.")
+        return
+    
+    dialog = ExportDialog(self)
+    if dialog.exec() != QDialog.Accepted:
+        return
+    
+    options = dialog.get_export_options()
+    rows_to_export = self.filtered_rows if options.get('export_filtered', False) else self.csv_rows
+    
+    # Call appropriate export method based on format
+    format_type = options.get('format', 'csv')
+    if format_type == 'json':
+        self._export_to_json(rows_to_export, file_path, options)
+    elif format_type == 'excel':
+        self._export_to_excel(rows_to_export, file_path, options)
+    else:  # CSV
+        self._export_to_csv(rows_to_export, file_path, options)
+
+def _export_to_csv(self, rows: List[dict], file_path: str, options: Dict[str, Any]):
+    """Export CSV row dictionaries to CSV file with custom delimiter"""
+    # Validate delimiter, determine extension, filter columns based on metadata option
+    # Use csv.DictWriter to write rows directly
+
+def _export_to_json(self, rows: List[dict], file_path: str, options: Dict[str, Any]):
+    """Export CSV row dictionaries to JSON file with compression support"""
+    # Build JSON structure with source file info
+    # Filter metadata if not included
+    # Support gzip compression
+
+def _export_to_excel(self, rows: List[dict], file_path: str, options: Dict[str, Any]):
+    """Export CSV row dictionaries to Excel file"""
+    # Use openpyxl to create workbook
+    # Filter columns based on metadata option
+    # Apply formatting to headers
+```
+
+**Implementation Checklist:**
+- [ ] Add export button to HistoryView UI
+- [ ] Enable/disable export button based on file load state
+- [ ] Implement `show_export_dialog` method
+- [ ] Implement `_export_to_csv` method for CSV row dictionaries
+- [ ] Implement `_export_to_json` method for CSV row dictionaries
+- [ ] Implement `_export_to_excel` method for CSV row dictionaries
+- [ ] Support metadata inclusion/exclusion
+- [ ] Support compression for JSON exports
+- [ ] Support custom delimiters for CSV exports
+- [ ] Handle filtered vs. unfiltered export
+- [ ] Add proper error handling
+- [ ] Test with various CSV file structures
+- [ ] Test with filtered results
+- [ ] Test all export formats
+
+**Error Handling:**
+- Handle empty CSV files
+- Handle missing columns
+- Handle invalid file paths
+- Handle compression errors
+- Handle Excel dependency (openpyxl) missing
+- Provide user-friendly error messages
+
+**Testing Requirements:**
+- Test export with loaded CSV files
+- Test export with filtered results
+- Test export with all formats (CSV, JSON, Excel)
+- Test metadata inclusion/exclusion
+- Test compression for JSON
+- Test custom delimiters for CSV
+- Test error conditions (empty file, invalid path, etc.)
+
+---
+
+### Substep 4.1.5: Integrate Enhanced Export into GUI (1-2 days)
 **Files**: `SRC/gui/export_dialog.py` (MODIFY), `SRC/gui/main_window.py` (MODIFY), `SRC/gui_controller.py` (MODIFY)
 
 **Dependencies**: Phase 2 Step 2.3 (export dialog exists), Substep 4.1.1 (enhanced dialog UI), Substep 4.1.2 (JSON export), Substep 4.1.3 (CSV export)
@@ -884,7 +995,7 @@ class MainWindow(QMainWindow):
 
 ---
 
-### Substep 4.1.5: Comprehensive Testing (1-2 days)
+### Substep 4.1.6: Comprehensive Testing (1-2 days)
 
 **Dependencies**: All previous substeps must be completed
 
@@ -1631,6 +1742,8 @@ if __name__ == '__main__':
 - [ ] Export integrates with Phase 3 performance dashboard
 - [ ] Export files can be imported/read by other tools
 - [ ] Export maintains backward compatibility with existing export code
+- [ ] HistoryView export works with filtered results from Step 4.2
+- [ ] HistoryView export maintains same format options as ResultsView export
 
 **Performance Testing**:
 - [ ] Export 100 tracks: < 2 seconds
@@ -1785,8 +1898,9 @@ if __name__ == '__main__':
 - [ ] Substep 4.1.1: Update Export Dialog UI
 - [ ] Substep 4.1.2: Enhance JSON Export
 - [ ] Substep 4.1.3: Enhance CSV Export
-- [ ] Substep 4.1.4: Integrate into GUI Controller
-- [ ] Substep 4.1.5: Testing
+- [ ] Substep 4.1.4: Add Export Functionality to Past Searches (HistoryView)
+- [ ] Substep 4.1.5: Integrate into GUI Controller
+- [ ] Substep 4.1.6: Testing
 - [ ] Documentation updated
 - [ ] User guide updated
 - [ ] All tests passing

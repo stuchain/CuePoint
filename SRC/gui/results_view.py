@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QGroupBox, QFileDialog,
     QMessageBox, QLineEdit, QComboBox, QHeaderView, QMenu, QDialog,
-    QTabWidget, QScrollArea, QSpinBox
+    QTabWidget, QScrollArea, QSpinBox, QSplitter
 )
 from PySide6.QtCore import Qt, Signal, QTimer
 from typing import List, Optional, Dict, Any
@@ -60,6 +60,16 @@ class ResultsView(QWidget):
         layout.setSpacing(10)
         layout.setContentsMargins(5, 5, 5, 5)
         
+        # Create vertical splitter for resizable sections
+        splitter = QSplitter(Qt.Vertical)
+        splitter.setChildrenCollapsible(False)  # Prevent sections from being collapsed completely
+        
+        # Top section: Summary and filters
+        top_widget = QWidget()
+        top_layout = QVBoxLayout(top_widget)
+        top_layout.setSpacing(10)
+        top_layout.setContentsMargins(0, 0, 0, 0)
+        
         # Summary statistics group
         summary_group = QGroupBox("Summary Statistics")
         summary_layout = QVBoxLayout()
@@ -67,13 +77,13 @@ class ResultsView(QWidget):
         self.summary_label.setWordWrap(True)
         summary_layout.addWidget(self.summary_label)
         summary_group.setLayout(summary_layout)
-        layout.addWidget(summary_group)
+        top_layout.addWidget(summary_group)
         
-        # Single playlist mode - Results table (hidden in batch mode)
-        self.single_table_group = QGroupBox("Results")
-        single_table_layout = QVBoxLayout()
+        # Filter controls section (in top widget)
+        filters_group = QGroupBox("Filters")
+        filters_layout = QVBoxLayout()
         
-        # Filter controls
+        # Basic filter controls
         filter_layout = QHBoxLayout()
         
         # Search box
@@ -91,7 +101,7 @@ class ResultsView(QWidget):
         filter_layout.addWidget(self.confidence_filter)
         
         filter_layout.addStretch()
-        single_table_layout.addLayout(filter_layout)
+        filters_layout.addLayout(filter_layout)
         
         # Advanced Filters Group
         advanced_filters_group = QGroupBox("Advanced Filters")
@@ -180,7 +190,18 @@ class ResultsView(QWidget):
         
         advanced_filters_layout.addWidget(self.advanced_filters_container)
         advanced_filters_group.setLayout(advanced_filters_layout)
-        single_table_layout.addWidget(advanced_filters_group)
+        filters_layout.addWidget(advanced_filters_group)
+        
+        filters_group.setLayout(filters_layout)
+        top_layout.addWidget(filters_group)
+        
+        # Add top section to splitter
+        top_widget.setMaximumHeight(400)  # Set max height for top section
+        splitter.addWidget(top_widget)
+        
+        # Bottom section: Results table (single playlist mode)
+        self.single_table_group = QGroupBox("Results")
+        single_table_layout = QVBoxLayout()
         
         # Result count and filter status
         status_layout = QHBoxLayout()
@@ -214,16 +235,34 @@ class ResultsView(QWidget):
         # Enable double-click to view candidates
         self.table.doubleClicked.connect(self._on_row_double_clicked)
         
-        single_table_layout.addWidget(self.table)
+        single_table_layout.addWidget(self.table, 1)  # Give table stretch priority
         self.single_table_group.setLayout(single_table_layout)
-        layout.addWidget(self.single_table_group, 1)  # Give table stretch priority
+        
+        # Create bottom widget for single mode
+        self.single_table_widget = QWidget()
+        single_table_widget_layout = QVBoxLayout(self.single_table_widget)
+        single_table_widget_layout.setContentsMargins(0, 0, 0, 0)
+        single_table_widget_layout.addWidget(self.single_table_group)
+        splitter.addWidget(self.single_table_widget)
+        
+        # Set initial splitter sizes (30% top, 70% bottom)
+        splitter.setSizes([300, 700])
         
         # Batch mode - Tab widget for multiple playlists (hidden in single mode)
         self.batch_tabs = QTabWidget()
         self.batch_tabs.setVisible(False)
-        layout.addWidget(self.batch_tabs, 1)  # Give tabs stretch priority
         
-        # Export buttons
+        # Create bottom widget for batch mode
+        self.batch_widget = QWidget()
+        batch_widget_layout = QVBoxLayout(self.batch_widget)
+        batch_widget_layout.setContentsMargins(0, 0, 0, 0)
+        batch_widget_layout.addWidget(self.batch_tabs)
+        splitter.addWidget(self.batch_widget)
+        
+        # Add splitter to main layout
+        layout.addWidget(splitter, 1)  # Give splitter stretch priority
+        
+        # Export buttons (outside splitter, at bottom)
         button_layout = QHBoxLayout()
         button_layout.addStretch()
         
@@ -258,7 +297,9 @@ class ResultsView(QWidget):
         
         # Switch to single mode UI
         self.single_table_group.setVisible(True)
+        self.single_table_widget.setVisible(True)
         self.batch_tabs.setVisible(False)
+        self.batch_widget.setVisible(False)
         
         # Update summary statistics
         self._update_summary()
@@ -278,7 +319,9 @@ class ResultsView(QWidget):
         
         # Switch to batch mode UI
         self.single_table_group.setVisible(False)
+        self.single_table_widget.setVisible(False)
         self.batch_tabs.setVisible(True)
+        self.batch_widget.setVisible(True)
         
         # Clear existing tabs
         self.batch_tabs.clear()
@@ -303,6 +346,16 @@ class ResultsView(QWidget):
         tab_layout.setSpacing(10)
         tab_layout.setContentsMargins(5, 5, 5, 5)
         
+        # Create vertical splitter for resizable sections
+        tab_splitter = QSplitter(Qt.Vertical)
+        tab_splitter.setChildrenCollapsible(False)
+        
+        # Top section: Filters
+        top_filter_widget = QWidget()
+        top_filter_layout = QVBoxLayout(top_filter_widget)
+        top_filter_layout.setSpacing(10)
+        top_filter_layout.setContentsMargins(0, 0, 0, 0)
+        
         # Filter controls for this playlist
         filter_group = QGroupBox("Filters")
         filter_layout = QHBoxLayout()
@@ -321,7 +374,7 @@ class ResultsView(QWidget):
         
         filter_layout.addStretch()
         filter_group.setLayout(filter_layout)
-        tab_layout.addWidget(filter_group)
+        top_filter_layout.addWidget(filter_group)
         
         # Advanced Filters Group for batch mode
         advanced_filters_group = QGroupBox("Advanced Filters")
@@ -404,7 +457,11 @@ class ResultsView(QWidget):
         
         advanced_filters_layout.addWidget(advanced_filters_container)
         advanced_filters_group.setLayout(advanced_filters_layout)
-        tab_layout.addWidget(advanced_filters_group)
+        top_filter_layout.addWidget(advanced_filters_group)
+        
+        # Add top filter section to splitter
+        top_filter_widget.setMaximumHeight(300)
+        tab_splitter.addWidget(top_filter_widget)
         
         # Create table for this playlist
         table = QTableWidget()
@@ -466,6 +523,20 @@ class ResultsView(QWidget):
             lambda: self._clear_filters_for_playlist(playlist_name, results)
         )
         
+        # Bottom section: Table
+        bottom_table_widget = QWidget()
+        bottom_table_layout = QVBoxLayout(bottom_table_widget)
+        bottom_table_layout.setContentsMargins(0, 0, 0, 0)
+        bottom_table_layout.addWidget(table, 1)  # Give table stretch priority
+        
+        tab_splitter.addWidget(bottom_table_widget)
+        
+        # Set initial splitter sizes (30% top, 70% bottom)
+        tab_splitter.setSizes([300, 700])
+        
+        # Add splitter to tab layout
+        tab_layout.addWidget(tab_splitter, 1)  # Give splitter stretch priority
+        
         # Populate table (even if results is empty, we still want to show the table)
         if results:
             self._populate_table_for_playlist(table, results)
@@ -473,8 +544,6 @@ class ResultsView(QWidget):
             # Show empty table with message
             table.setRowCount(0)
             table.setSortingEnabled(True)
-        
-        tab_layout.addWidget(table, 1)  # Give table stretch priority
         
         return tab_widget
     

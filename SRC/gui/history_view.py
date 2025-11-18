@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QFileDialog, QGroupBox,
     QListWidget, QListWidgetItem, QMessageBox, QHeaderView,
-    QLineEdit, QComboBox, QSpinBox
+    QLineEdit, QComboBox, QSpinBox, QDialog, QSplitter
 )
 from PySide6.QtCore import Qt, QTimer
 from typing import List, Optional, Dict, Any
@@ -19,8 +19,11 @@ import os
 import csv
 import sys
 import time
+import json
+import gzip
 from datetime import datetime
 from gui.candidate_dialog import CandidateDialog
+from gui.export_dialog import ExportDialog
 try:
     from performance import performance_collector
     PERFORMANCE_AVAILABLE = True
@@ -47,6 +50,16 @@ class HistoryView(QWidget):
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
         layout.setContentsMargins(10, 10, 10, 10)
+        
+        # Create vertical splitter for resizable sections
+        splitter = QSplitter(Qt.Vertical)
+        splitter.setChildrenCollapsible(False)  # Prevent sections from being collapsed completely
+        
+        # Top section: File selection and filters
+        top_widget = QWidget()
+        top_layout = QVBoxLayout(top_widget)
+        top_layout.setSpacing(10)
+        top_layout.setContentsMargins(0, 0, 0, 0)
         
         # File selection section
         file_group = QGroupBox("Select Past Search")
@@ -78,9 +91,9 @@ class HistoryView(QWidget):
         file_layout.addWidget(refresh_btn)
         
         file_group.setLayout(file_layout)
-        layout.addWidget(file_group)
+        top_layout.addWidget(file_group)
         
-        # Results display section
+        # Results display section (filters only, table goes in bottom section)
         results_group = QGroupBox("Search Results")
         results_layout = QVBoxLayout()
         
@@ -208,6 +221,13 @@ class HistoryView(QWidget):
         self.filter_status_label.setStyleSheet("color: gray;")
         status_layout.addStretch()
         status_layout.addWidget(self.filter_status_label)
+        
+        # Export button
+        self.export_btn = QPushButton("Export...")
+        self.export_btn.clicked.connect(self.show_export_dialog)
+        self.export_btn.setEnabled(False)  # Disabled until file is loaded
+        status_layout.addWidget(self.export_btn)
+        
         results_layout.addLayout(status_layout)
         
         # Results table (reuse same structure as ResultsView)
@@ -221,10 +241,38 @@ class HistoryView(QWidget):
         self.table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self._show_context_menu)
         self.table.doubleClicked.connect(self._on_row_double_clicked)
-        results_layout.addWidget(self.table, 1)
+        
+        # Note: filter_layout, summary_label, advanced_filters_group, and status_layout
+        # are already added to results_layout above, so don't add them again
+        
+        # Don't add table to results_layout - it goes in bottom section
+        # results_layout.addWidget(self.table, 1)  # REMOVED - table goes in bottom section
         
         results_group.setLayout(results_layout)
-        layout.addWidget(results_group, 1)
+        top_layout.addWidget(results_group)
+        
+        # Add top section to splitter
+        top_widget.setMaximumHeight(500)  # Set max height for top section
+        splitter.addWidget(top_widget)
+        
+        # Bottom section: Results table
+        bottom_widget = QWidget()
+        bottom_layout = QVBoxLayout(bottom_widget)
+        bottom_layout.setContentsMargins(0, 0, 0, 0)
+        
+        table_group = QGroupBox("Results Table")
+        table_layout = QVBoxLayout()
+        table_layout.addWidget(self.table, 1)
+        table_group.setLayout(table_layout)
+        bottom_layout.addWidget(table_group)
+        
+        splitter.addWidget(bottom_widget)
+        
+        # Set initial splitter sizes (40% top, 60% bottom)
+        splitter.setSizes([400, 600])
+        
+        # Add splitter to main layout
+        layout.addWidget(splitter, 1)  # Give splitter stretch priority
         
         # Load recent files on init
         self.refresh_recent_files()
@@ -277,6 +325,9 @@ class HistoryView(QWidget):
             
             self.current_csv_path = file_path
             self.file_path_label.setText(f"Loaded: {os.path.basename(file_path)}")
+            
+            # Enable export button
+            self.export_btn.setEnabled(True)
             
             # Update summary
             total = len(rows)
@@ -1020,4 +1071,227 @@ class HistoryView(QWidget):
                 self.recent_list.setCurrentItem(item)
                 self.recent_list.scrollToItem(item)
                 break
+    
+    def show_export_dialog(self):
+        """Show export dialog and handle export for CSV row data"""
+        if not self.csv_rows:
+            QMessageBox.warning(self, "No Results", "No results to export. Please load a CSV file first.")
+            return
+        
+        # Get rows to export (filtered or all)
+        dialog = ExportDialog(self)
+        if dialog.exec() != QDialog.Accepted:
+            return
+        
+        options = dialog.get_export_options()
+        file_path = options.get('file_path')
+        
+        if not file_path:
+            QMessageBox.warning(self, "No File Selected", "Please select a file location")
+            return
+        
+        # Get rows to export
+        rows_to_export = self.filtered_rows if options.get('export_filtered', False) else self.csv_rows
+        
+        if not rows_to_export:
+            QMessageBox.warning(self, "No Results", "No results to export (filter may have excluded all results)")
+            return
+        
+        try:
+            format_type = options.get('format', 'csv')
+            
+            if format_type == 'json':
+                self._export_to_json(rows_to_export, file_path, options)
+            elif format_type == 'excel':
+                self._export_to_excel(rows_to_export, file_path, options)
+            else:  # CSV
+                self._export_to_csv(rows_to_export, file_path, options)
+                
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Export Error",
+                f"Error exporting file:\n{str(e)}"
+            )
+    
+    def _export_to_csv(self, rows: List[dict], file_path: str, options: Dict[str, Any]):
+        """Export CSV row dictionaries to CSV file"""
+        delimiter = options.get('delimiter', ',')
+        include_metadata = options.get('include_metadata', True)
+        
+        # Validate delimiter
+        if delimiter not in [",", ";", "\t", "|"]:
+            raise ValueError(f"Invalid delimiter: {delimiter}")
+        
+        # Determine file extension
+        ext_map = {",": ".csv", ";": ".csv", "\t": ".tsv", "|": ".psv"}
+        extension = ext_map.get(delimiter, ".csv")
+        
+        # Ensure correct extension
+        if not file_path.endswith(extension):
+            file_path = os.path.splitext(file_path)[0] + extension
+        
+        # Get all column names from rows
+        if not rows:
+            raise ValueError("No rows to export")
+        
+        columns = list(rows[0].keys())
+        
+        # Filter columns if metadata not included
+        if not include_metadata:
+            metadata_cols = {'label', 'genres', 'release', 'release_date', 'beatport_label', 
+                           'beatport_genres', 'beatport_release', 'beatport_release_date'}
+            columns = [col for col in columns if col.lower() not in metadata_cols]
+        
+        # Write CSV file
+        os.makedirs(os.path.dirname(file_path) or '.', exist_ok=True)
+        
+        with open(file_path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=columns, delimiter=delimiter, extrasaction='ignore')
+            writer.writeheader()
+            writer.writerows(rows)
+        
+        QMessageBox.information(
+            self,
+            "Export Complete",
+            f"CSV file exported to:\n{file_path}"
+        )
+    
+    def _export_to_json(self, rows: List[dict], file_path: str, options: Dict[str, Any]):
+        """Export CSV row dictionaries to JSON file"""
+        include_metadata = options.get('include_metadata', True)
+        include_processing_info = options.get('include_processing_info', False)
+        compress = options.get('compress', False)
+        
+        # Build JSON structure
+        json_data = {
+            "version": "1.0",
+            "generated": datetime.now().isoformat(),
+            "source_file": self.current_csv_path or "unknown",
+            "total_tracks": len(rows),
+            "matched_tracks": sum(1 for r in rows if r.get('beatport_url', '').strip() or r.get('beatport_title', '').strip()),
+            "tracks": []
+        }
+        
+        # Add processing info if requested
+        if include_processing_info:
+            json_data["processing_info"] = {
+                "timestamp": datetime.now().isoformat(),
+                "export_format": "json",
+                "compressed": compress,
+                "source_csv": self.current_csv_path
+            }
+        
+        # Convert rows to track data
+        for row in rows:
+            track_data = dict(row)  # Copy all fields
+            
+            # Filter metadata if not included
+            if not include_metadata:
+                metadata_keys = ['label', 'genres', 'release', 'release_date', 
+                               'beatport_label', 'beatport_genres', 
+                               'beatport_release', 'beatport_release_date']
+                track_data = {k: v for k, v in track_data.items() if k.lower() not in metadata_keys}
+            
+            json_data["tracks"].append(track_data)
+        
+        # Determine filename
+        if compress and not file_path.endswith('.gz'):
+            file_path += '.gz'
+        elif not compress and file_path.endswith('.gz'):
+            file_path = file_path[:-3]
+        
+        # Ensure .json extension
+        if not file_path.endswith('.json') and not file_path.endswith('.json.gz'):
+            file_path = os.path.splitext(file_path)[0] + '.json'
+            if compress:
+                file_path += '.gz'
+        
+        # Write JSON file
+        os.makedirs(os.path.dirname(file_path) or '.', exist_ok=True)
+        json_str = json.dumps(json_data, indent=2, ensure_ascii=False)
+        
+        if compress:
+            with gzip.open(file_path, 'wt', encoding='utf-8') as f:
+                f.write(json_str)
+        else:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(json_str)
+        
+        QMessageBox.information(
+            self,
+            "Export Complete",
+            f"JSON file exported to:\n{file_path}"
+        )
+    
+    def _export_to_excel(self, rows: List[dict], file_path: str, options: Dict[str, Any]):
+        """Export CSV row dictionaries to Excel file"""
+        try:
+            from openpyxl import Workbook
+            from openpyxl.styles import Font, PatternFill, Alignment
+        except ImportError:
+            QMessageBox.warning(
+                self,
+                "Missing Dependency",
+                "Excel export requires openpyxl. Please install it:\npip install openpyxl"
+            )
+            return
+        
+        include_metadata = options.get('include_metadata', True)
+        
+        # Get all column names
+        if not rows:
+            raise ValueError("No rows to export")
+        
+        columns = list(rows[0].keys())
+        
+        # Filter columns if metadata not included
+        if not include_metadata:
+            metadata_cols = {'label', 'genres', 'release', 'release_date', 'beatport_label',
+                           'beatport_genres', 'beatport_release', 'beatport_release_date'}
+            columns = [col for col in columns if col.lower() not in metadata_cols]
+        
+        # Ensure .xlsx extension
+        if not file_path.endswith('.xlsx'):
+            file_path = os.path.splitext(file_path)[0] + '.xlsx'
+        
+        # Create workbook
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Search Results"
+        
+        # Write headers
+        header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF")
+        
+        for col_idx, col_name in enumerate(columns, 1):
+            cell = ws.cell(row=1, column=col_idx, value=col_name)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+        
+        # Write data rows
+        for row_idx, row_data in enumerate(rows, 2):
+            for col_idx, col_name in enumerate(columns, 1):
+                value = row_data.get(col_name, "")
+                ws.cell(row=row_idx, column=col_idx, value=value)
+        
+        # Auto-adjust column widths
+        for col_idx, col_name in enumerate(columns, 1):
+            max_length = len(str(col_name))
+            for row_idx in range(2, len(rows) + 2):
+                cell_value = ws.cell(row=row_idx, column=col_idx).value
+                if cell_value:
+                    max_length = max(max_length, len(str(cell_value)))
+            ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = min(max_length + 2, 50)
+        
+        # Save file
+        os.makedirs(os.path.dirname(file_path) or '.', exist_ok=True)
+        wb.save(file_path)
+        
+        QMessageBox.information(
+            self,
+            "Export Complete",
+            f"Excel file exported to:\n{file_path}"
+        )
 
