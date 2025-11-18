@@ -1,6 +1,6 @@
-# Step 4.5: Batch Processing Enhancements (OPTIONAL)
+# Batch Processing Enhancements (Future Feature)
 
-**Status**: 📝 Planned (Evaluate Need Based on User Requests)  
+**Status**: 📝 Future Consideration  
 **Priority**: 🚀 Low Priority (Only if users request batch processing features)  
 **Estimated Duration**: 2-3 days  
 **Dependencies**: Phase 1 (GUI), Phase 2 (batch processor), Phase 3 (performance monitoring)
@@ -721,7 +721,7 @@ if __name__ == '__main__':
   - Note: Batch mode tabs now include advanced filters (year, BPM, key) with resizable splitters
   - Each playlist tab has its own filter controls and can be filtered independently
 - [ ] Batch enhancements work with Step 4.3 (Async I/O)
-- [ ] Batch enhancements work with Step 4.4 (Database Integration)
+- [ ] Batch enhancements work with Database Integration (if implemented)
 
 **Acceptance Criteria Verification**:
 - ✅ Resume functionality works
@@ -790,7 +790,7 @@ if __name__ == '__main__':
 
 ---
 
-**IMPORTANT**: Only implement this step if users request batch processing enhancements.
+**IMPORTANT**: This is a future feature. Only implement if users request batch processing enhancements. Evaluate need based on user feedback.
 
-**Next Step**: After evaluation, proceed to other Phase 4 steps or Phase 5 if Phase 4 is complete.
+**See Also**: See `00_Future_Features_Overview.md` for other future features and implementation considerations.
 

@@ -42,32 +42,19 @@ Add advanced features to enhance functionality, performance, and integration cap
 (Async I/O has been moved to Phase 5 - see `../05_Phase_5_Async_IO.md`)
 
 ### Low Priority (Optional Features)
-4. **Step 4.4: Database Integration** (4-5 days, OPTIONAL)
-   - SQLite database for search history
-   - Only implement if users request database features
-   - See: `04_Step_4.4_Database_Integration.md`
-
-5. **Step 4.5: Batch Processing Enhancements** (2-3 days, OPTIONAL)
-   - Resume interrupted batch processing
-   - Batch statistics and reporting
-   - See: `05_Step_4.5_Batch_Processing_Enhancements.md`
-
-6. **Step 4.6: Keyboard Shortcuts and Accessibility** (1-2 days, OPTIONAL)
+4. **Step 4.6: Keyboard Shortcuts and Accessibility** (1-2 days, OPTIONAL)
    - Comprehensive keyboard shortcuts
    - Accessibility improvements
    - See: `06_Step_4.6_Keyboard_Shortcuts_Accessibility.md`
-
-7. **Step 4.7: Visual Analytics Dashboard** (3-4 days, OPTIONAL)
-   - Charts and graphs for statistics
-   - Visual insights into matching patterns
-   - Only implement if users request analytics/visualization
-   - See: `07_Step_4.7_Visual_Analytics_Dashboard.md`
 
 ### Future Features (Not in Current Phase 4 Scope)
 See `../05_Future_Features/00_Future_Features_Overview.md` for features that may be considered for future phases:
 - Traxsource Integration
 - Command-Line Interface (CLI)
 - Advanced Matching Rules
+- Database Integration
+- Batch Processing Enhancements
+- Visual Analytics Dashboard
 
 ---
 
@@ -118,17 +105,11 @@ All Phase 4 features must implement comprehensive error handling:
    - Graceful degradation to sync mode
    - Proper cleanup of async resources
 
-4. **Metadata Sources**
+4. **Metadata Sources** (Future Feature)
    - Handle API rate limits
    - Handle API authentication errors
    - Handle network failures
    - Continue with other sources if one fails
-
-5. **Database Integration**
-   - Handle database connection errors
-   - Handle schema migration errors
-   - Handle data corruption
-   - Provide backup/restore functionality
 
 ---
 
@@ -286,10 +267,7 @@ Each step must update:
 (Async I/O has been moved to Phase 5)
 
 ### Low Priority (Optional)
-- [ ] Database integration complete (if requested)
-- [ ] Batch processing enhancements (if requested)
 - [ ] Keyboard shortcuts and accessibility (if requested)
-- [ ] Visual analytics dashboard (if requested)
 
 ---
 

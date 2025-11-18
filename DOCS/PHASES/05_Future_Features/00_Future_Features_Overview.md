@@ -83,6 +83,83 @@ Enhance matching algorithm with advanced rules including genre matching, label m
 
 ---
 
+### 4. Database Integration
+**Original Step**: Step 4.4  
+**Estimated Duration**: 4-5 days  
+**Priority**: Low (Only if users request database features)
+
+**Description**:  
+Provide SQLite database storage for search history, results, and user preferences to enable advanced features like search history browsing, result comparison, and data persistence.
+
+**Key Features**:
+- SQLite database for search history
+- Result storage and retrieval
+- Search history browsing
+- Result comparison across searches
+- Data persistence across sessions
+- Analytics and statistics
+
+**Documentation**: See `04_Database_Integration.md` for complete implementation details.
+
+**When to Consider**:
+- Users request search history features
+- Users want to compare results across searches
+- Data persistence is needed
+- Analytics and statistics are requested
+
+---
+
+### 5. Batch Processing Enhancements
+**Original Step**: Step 4.5  
+**Estimated Duration**: 2-3 days  
+**Priority**: Low (Only if users request batch processing features)
+
+**Description**:  
+Enhance batch processing capabilities with features like resume interrupted processing, batch statistics, and improved progress tracking.
+
+**Key Features**:
+- Resume interrupted batch processing
+- Batch statistics and reporting
+- Improved progress tracking
+- State saving and loading
+- Error recovery for batch processing
+
+**Documentation**: See `05_Batch_Processing_Enhancements.md` for complete implementation details.
+
+**When to Consider**:
+- Users process large batches frequently
+- Interruptions are common
+- Users need detailed batch statistics
+- Progress tracking needs improvement
+
+---
+
+### 6. Visual Analytics Dashboard
+**Original Step**: Step 4.7  
+**Estimated Duration**: 3-4 days  
+**Priority**: Low (Only if users request analytics/visualization)
+
+**Description**:  
+Create a visual analytics dashboard with charts and graphs to help users understand their matching patterns, success rates, and track statistics.
+
+**Key Features**:
+- Charts and graphs for statistics
+- Match rate visualization
+- Genre distribution charts
+- Year and BPM distribution histograms
+- Artist statistics
+- Export charts as images
+
+**Documentation**: See `06_Visual_Analytics_Dashboard.md` for complete implementation details.
+
+**When to Consider**:
+- Users request visual analytics
+- Users want to understand matching patterns
+- Statistics visualization is needed
+- Data analysis and insights are requested
+
+---
+
 ## Implementation Considerations
 
 ### Evaluation Criteria
@@ -119,6 +196,9 @@ Priority should be determined by:
 - **Traxsource Integration**: `01_Traxsource_Integration.md`
 - **CLI Interface**: `02_CLI_Interface.md`
 - **Advanced Matching Rules**: `03_Advanced_Matching_Rules.md`
+- **Database Integration**: `04_Database_Integration.md`
+- **Batch Processing Enhancements**: `05_Batch_Processing_Enhancements.md`
+- **Visual Analytics Dashboard**: `06_Visual_Analytics_Dashboard.md`
 
 ---
 

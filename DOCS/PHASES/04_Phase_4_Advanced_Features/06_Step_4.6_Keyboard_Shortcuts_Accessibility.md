@@ -403,8 +403,8 @@ if __name__ == '__main__':
   - Consider shortcuts for focusing on specific filter controls (year, BPM, key)
   - Shortcuts should work in both single and batch mode tabs
 - [ ] Shortcuts work with Step 4.3 (Async I/O)
-- [ ] Shortcuts work with Step 4.4 (Database Integration)
-- [ ] Shortcuts work with Step 4.5 (Batch Processing)
+- [ ] Shortcuts work with Database Integration (if implemented as future feature)
+- [ ] Shortcuts work with Batch Processing Enhancements (if implemented as future feature)
 
 **Acceptance Criteria Verification**:
 - ✅ Keyboard shortcuts work

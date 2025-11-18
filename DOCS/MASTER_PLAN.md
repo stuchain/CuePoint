@@ -2186,15 +2186,15 @@ Add advanced features as needed.
 ### Features
 - Enhanced Export Features (Step 4.1)
 - Advanced Filtering (Step 4.2)
-- Database Integration (Step 4.4, optional)
-- Batch Processing Enhancements (Step 4.5, optional)
 - Keyboard Shortcuts (Step 4.6, optional)
-- Visual Analytics Dashboard (Step 4.7, optional)
 
 **Future Features** (see `DOCS/PHASES/05_Future_Features/`):
 - Traxsource Integration
 - Command-Line Interface (CLI)
 - Advanced Matching Rules
+- Database Integration
+- Batch Processing Enhancements
+- Visual Analytics Dashboard
 
 **Design References**: Available in `DOCS/DESIGNS/`
 
@@ -2219,6 +2219,37 @@ Refactor network I/O operations to use async/await for improved performance in p
 - Configurable via settings
 
 **IMPORTANT**: Only implement this phase if Phase 3 metrics show network I/O is a significant bottleneck (>40% of total time). Otherwise, skip to other phases.
+
+---
+
+## 🔧 Phase 6: Code Restructuring & Professional Organization (3-4 weeks)
+
+**Status**: 📝 Planned  
+**Priority**: 🚀 P1 - HIGH PRIORITY (Foundation for future development)  
+**Dependencies**: Phase 0 (Backend Foundation), Phase 1 (GUI Foundation), Phase 2 (User Experience), Phase 3 (Reliability & Performance)
+
+**📄 Detailed Documentation**: See [`DOCS/PHASES/06_Phase_6_Code_Restructuring.md`](PHASES/06_Phase_6_Code_Restructuring.md) for complete implementation guide.
+
+### Goal
+Restructure the codebase into a professional, maintainable architecture with proper separation of concerns, comprehensive testing, and clear organization. This establishes a solid foundation for easier future improvements and changes.
+
+### Quick Overview
+- Professional project structure
+- Separation of concerns (business logic, UI, data access)
+- Comprehensive test suite (>80% coverage)
+- Type hints throughout
+- Dependency injection
+- Standardized error handling and logging
+- Code style compliance (PEP 8)
+- Centralized configuration
+- All existing functionality preserved
+
+**Key Benefits**:
+- Easier maintenance and debugging
+- Faster feature development
+- Better code reusability
+- Improved team collaboration
+- Professional codebase ready for scaling
 
 ---
 
@@ -2294,6 +2325,44 @@ Create distributable executables and add polish features for a professional fini
 
 ---
 
+## 🎨 Phase 8: UI Restructuring & Modern Design (4-5 weeks)
+
+**Status**: 📝 Planned  
+**Priority**: 🚀 P1 - HIGH PRIORITY (User Experience Enhancement)  
+**Dependencies**: Phase 1 (GUI Foundation), Phase 2 (User Experience), Phase 6 (Code Restructuring recommended)
+
+**📄 Detailed Documentation**: See [`DOCS/PHASES/08_Phase_8_UI_Restructuring.md`](PHASES/08_Phase_8_UI_Restructuring.md) for complete implementation guide.
+
+### Goal
+Completely restructure the user interface to be modern, visually appealing (Pokemon 2D pixel art style), and "dumb easy" for non-technical users. Advanced settings and features will be available but hidden by default, creating a simple, intuitive experience for casual users while maintaining power-user capabilities.
+
+### Quick Overview
+- **Visual Design**: Pokemon 2D pixel art style with custom icons and graphics
+- **Simple Mode**: Default view shows only essential features for non-technical users
+- **Advanced Mode**: Power users can access all features via toggle
+- **Onboarding**: Interactive tutorial system for new users
+- **Custom Widgets**: Pixel art styled UI components
+- **Animations**: Smooth transitions and micro-interactions
+- **Accessibility**: Usable by users of all technical levels
+
+**Key Features**:
+- Simplified workflow: Select → Process → View → Export
+- Progressive disclosure: Advanced features hidden by default
+- Visual clarity: Clear hierarchy and feedback
+- Engaging design: Pokemon-inspired pixel art aesthetic
+- User-friendly: Intuitive for non-technical users
+- Power-user friendly: Full access to advanced features
+
+**Design Elements**:
+- Custom pixel art icons (16x16, 32x32)
+- Pokemon-style color palette
+- Character sprites for empty states
+- Animated loading indicators
+- Card-based layouts
+- Smooth animations (200-300ms transitions)
+
+---
+
 ## 📝 Implementation Notes
 
 ### Dependencies Between Phases
@@ -2301,7 +2370,10 @@ Create distributable executables and add polish features for a professional fini
 2. **Phase 1 → Phase 2**: Core GUI must work before enhancements
 3. **Phase 1 → Phase 3**: Core GUI needed for batch processing
 4. **Phase 1-3 → Phase 5**: Phase 3 metrics needed to evaluate if async I/O is needed
-5. **Phase 1-3 → Phase 7**: Features should be complete before packaging and polish
+5. **Phase 0-3 → Phase 6**: Code restructuring benefits from having existing codebase
+6. **Phase 1-2 → Phase 8**: UI restructuring builds on existing GUI foundation
+7. **Phase 6 → Phase 8** (Recommended): Code restructuring makes UI restructuring easier
+8. **Phase 1-3 → Phase 7**: Features should be complete before packaging and polish
 
 ### Testing Strategy
 - **Phase 0**: Unit tests + Integration tests
