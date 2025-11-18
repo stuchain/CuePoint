@@ -2,21 +2,84 @@
 
 **Status**: 📝 Planned  
 **Priority**: 🚀 P2 - LOWER PRIORITY  
-**Dependencies**: Phase 1 (GUI Foundation), Phase 2 (User Experience), Phase 3 (Reliability)
+**Dependencies**: Phase 1 (GUI Foundation), Phase 2 (User Experience), Phase 3 (Reliability & Performance)  
+**Estimated Duration**: 3-4 weeks (depending on which features are implemented)
 
 ## Goal
-Add advanced features to enhance functionality, performance, and integration capabilities based on user feedback and requirements.
+Add advanced features to enhance functionality, performance, and integration capabilities based on user feedback, performance metrics from Phase 3, and requirements analysis.
 
 ## Success Criteria
-- [ ] Features implemented as specified
-- [ ] All features tested
-- [ ] Documentation updated
-- [ ] Backward compatibility maintained
-- [ ] Performance impact acceptable
+- [ ] Features implemented as specified with comprehensive error handling
+- [ ] All features tested with unit tests and integration tests
+- [ ] Documentation updated (user guide, API docs, design docs)
+- [ ] Backward compatibility maintained (existing workflows continue to work)
+- [ ] Performance impact acceptable (validated using Phase 3 metrics)
+- [ ] Phase 3 integration complete (performance metrics guide decisions)
+- [ ] Error handling robust for all new features
+- [ ] User guide updated with new features
 
 ---
 
-## Implementation Steps
+## Documentation Structure
+
+Phase 4 documentation has been reorganized into a folder structure with individual step files:
+
+- **Overview**: `04_Phase_4_Advanced_Features/00_Phase_4_Overview.md` - Complete overview, strategy, and guidelines
+- **Step 4.1**: `04_Phase_4_Advanced_Features/01_Step_4.1_Enhanced_Export.md` - Enhanced export features
+- **Step 4.2**: `04_Phase_4_Advanced_Features/02_Step_4.2_Advanced_Filtering.md` - Advanced filtering and search
+- **Step 4.3**: `04_Phase_4_Advanced_Features/03_Step_4.3_Async_IO.md` - Async I/O refactoring (optional)
+- **Step 4.4**: `04_Phase_4_Advanced_Features/04_Step_4.4_Database_Integration.md` - Database integration (optional)
+- **Step 4.5**: `04_Phase_4_Advanced_Features/05_Step_4.5_Batch_Processing_Enhancements.md` - Batch processing enhancements (optional)
+- **Step 4.6**: `04_Phase_4_Advanced_Features/06_Step_4.6_Keyboard_Shortcuts_Accessibility.md` - Keyboard shortcuts and accessibility (optional)
+- **Step 4.7**: `04_Phase_4_Advanced_Features/07_Step_4.7_Visual_Analytics_Dashboard.md` - Visual analytics dashboard (optional)
+
+**Future Features** (moved to separate folder):
+- See `05_Future_Features/00_Future_Features_Overview.md` for Traxsource Integration, CLI Interface, and Advanced Matching Rules
+
+**For detailed implementation instructions, see the individual step files in the `04_Phase_4_Advanced_Features/` folder.**
+
+---
+
+## Quick Reference: Implementation Steps
+
+### High Priority Steps
+1. **Step 4.1: Enhanced Export Features** (2-3 days)
+   - See: `04_Phase_4_Advanced_Features/01_Step_4.1_Enhanced_Export.md`
+
+2. **Step 4.2: Advanced Filtering and Search** (2-3 days)
+   - See: `04_Phase_4_Advanced_Features/02_Step_4.2_Advanced_Filtering.md`
+
+### Medium Priority Steps (Evaluate Need)
+3. **Step 4.3: Async I/O Refactoring** (4-5 days, OPTIONAL)
+   - Only if Phase 3 metrics show network I/O bottleneck
+   - See: `04_Phase_4_Advanced_Features/03_Step_4.3_Async_IO.md`
+
+### Low Priority Steps (Optional)
+4. **Step 4.4: Database Integration** (4-5 days, OPTIONAL)
+   - Only if users request database features
+   - See: `04_Phase_4_Advanced_Features/04_Step_4.4_Database_Integration.md`
+
+5. **Step 4.5: Batch Processing Enhancements** (2-3 days, OPTIONAL)
+   - Only if users request batch processing features
+   - See: `04_Phase_4_Advanced_Features/05_Step_4.5_Batch_Processing_Enhancements.md`
+
+6. **Step 4.6: Keyboard Shortcuts and Accessibility** (1-2 days, OPTIONAL)
+   - Only if users request accessibility features
+   - See: `04_Phase_4_Advanced_Features/06_Step_4.6_Keyboard_Shortcuts_Accessibility.md`
+
+7. **Step 4.7: Visual Analytics Dashboard** (3-4 days, OPTIONAL)
+   - Only if users request analytics/visualization
+   - See: `04_Phase_4_Advanced_Features/07_Step_4.7_Visual_Analytics_Dashboard.md`
+
+### Future Features (Not in Current Phase 4 Scope)
+See `05_Future_Features/00_Future_Features_Overview.md` for:
+- Traxsource Integration
+- Command-Line Interface (CLI)
+- Advanced Matching Rules
+
+---
+
+## Detailed Implementation Steps
 
 ### Step 4.1: Enhanced Export Features (2-3 days)
 **File**: `SRC/output_writer.py` (MODIFY), `SRC/gui/export_dialog.py` (MODIFY)
@@ -708,6 +771,7 @@ def best_match_with_multiple_sources(
 ---
 
 ### Step 4.4: Database Integration (Optional, 4-5 days)
+**File**: `04_Phase_4_Advanced_Features/04_Step_4.4_Database_Integration.md`
 **Files**: `SRC/database.py` (NEW), `SRC/gui/database_view.py` (NEW)
 
 **Dependencies**: Phase 1 (GUI), Phase 2 (User Experience)
@@ -932,7 +996,8 @@ class CuePointDatabase:
 
 ---
 
-### Step 4.5: Advanced Filtering and Search (2-3 days)
+### Step 4.2: Advanced Filtering and Search (2-3 days)
+**File**: `04_Phase_4_Advanced_Features/02_Step_4.2_Advanced_Filtering.md`
 **File**: `SRC/gui/results_view.py` (MODIFY)
 
 **Dependencies**: Phase 2 Step 2.1 (results table exists)
@@ -1126,4 +1191,29 @@ class ResultsView(QWidget):
 
 ---
 
-*Features in Phase 4 are implemented on an as-needed basis. See individual design documents in `DOCS/DESIGNS/` for detailed specifications.*
+## Important Notes
+
+1. **Phase 3 Integration**: All Phase 4 features must integrate with Phase 3 performance monitoring. See the overview document for details.
+
+2. **Evaluation Before Implementation**: 
+   - Step 4.3 (Async I/O): Only implement if Phase 3 metrics show network I/O is a bottleneck
+   - Step 4.4 (Database): Only implement if users request database features
+   - Step 4.5 (Batch Enhancements): Only implement if users request it
+   - Step 4.6 (Shortcuts): Only implement if users request it
+   - Step 4.7 (Analytics Dashboard): Only implement if users request analytics/visualization
+   - Future Features: See `05_Future_Features/00_Future_Features_Overview.md` for Traxsource, CLI, and Advanced Matching Rules
+
+3. **Start with High Priority**: Begin with Step 4.1 (Enhanced Export) and Step 4.2 (Advanced Filtering) as these provide immediate user value.
+
+4. **See Individual Step Files**: Each step has a detailed document in the `04_Phase_4_Advanced_Features/` folder with:
+   - Complete implementation instructions
+   - Code examples
+   - Testing requirements
+   - Error handling strategies
+   - Phase 3 integration details
+   - Backward compatibility requirements
+   - Documentation requirements
+
+---
+
+*Features in Phase 4 are implemented on an as-needed basis. See individual step documents in `04_Phase_4_Advanced_Features/` for detailed specifications.*

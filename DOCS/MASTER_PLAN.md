@@ -2184,9 +2184,18 @@ Improve reliability and performance, add batch processing.
 Add advanced features as needed.
 
 ### Features
-- JSON Output Format
-- Async I/O Refactoring
-- Additional Metadata Sources
+- Enhanced Export Features (Step 4.1)
+- Advanced Filtering (Step 4.2)
+- Async I/O Refactoring (Step 4.3, optional)
+- Database Integration (Step 4.4, optional)
+- Batch Processing Enhancements (Step 4.5, optional)
+- Keyboard Shortcuts (Step 4.6, optional)
+- Visual Analytics Dashboard (Step 4.7, optional)
+
+**Future Features** (see `DOCS/PHASES/05_Future_Features/`):
+- Traxsource Integration
+- Command-Line Interface (CLI)
+- Advanced Matching Rules
 
 **Design References**: Available in `DOCS/DESIGNS/`
 

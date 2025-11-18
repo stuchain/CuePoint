@@ -41,6 +41,12 @@ from query_generator import make_search_queries
 from rekordbox import RBTrack, extract_artists_from_title, parse_rekordbox
 from text_processing import _artist_token_overlap, sanitize_title_for_search
 from utils import with_timestamp
+try:
+    from performance import performance_collector
+    PERFORMANCE_AVAILABLE = True
+except ImportError:
+    PERFORMANCE_AVAILABLE = False
+    performance_collector = None
 
 
 def generate_summary_report(
@@ -697,6 +703,13 @@ def process_playlist(
     Raises:
         ProcessingError: If XML file not found, playlist not found, or parsing errors occur
     """
+    # Start performance session
+    if PERFORMANCE_AVAILABLE and performance_collector:
+        try:
+            performance_collector.start_session()
+        except Exception:
+            pass  # Don't let performance collection errors break processing
+    
     # Track processing start time
     processing_start_time = time.perf_counter()
     
@@ -1018,6 +1031,13 @@ def process_playlist(
                                     matched_count += 1
                                     unmatched_count -= 1
                                     break
+    
+    # End performance session
+    if PERFORMANCE_AVAILABLE and performance_collector:
+        try:
+            performance_collector.end_session()
+        except Exception:
+            pass  # Don't let performance collection errors break processing
     
     return results
 
