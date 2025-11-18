@@ -9,7 +9,7 @@ tracking timing, query effectiveness, cache statistics, and generating performan
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 import time
 from collections import defaultdict
 
@@ -43,6 +43,15 @@ class TrackMetrics:
 
 
 @dataclass
+class FilterMetrics:
+    """Metrics for a filter operation"""
+    duration: float  # Filter operation time in seconds
+    initial_count: int  # Number of results before filtering
+    filtered_count: int  # Number of results after filtering
+    filters_applied: Dict[str, Any]  # Dictionary of active filters
+
+
+@dataclass
 class PerformanceStats:
     """Aggregate performance statistics for a processing session"""
     total_tracks: int = 0
@@ -51,6 +60,7 @@ class PerformanceStats:
     total_time: float = 0.0
     query_metrics: List[QueryMetrics] = field(default_factory=list)
     track_metrics: List[TrackMetrics] = field(default_factory=list)
+    filter_metrics: List[FilterMetrics] = field(default_factory=list)
     cache_stats: Dict[str, int] = field(default_factory=lambda: {"hits": 0, "misses": 0})
     start_time: Optional[float] = None
     end_time: Optional[float] = None
@@ -154,6 +164,20 @@ class PerformanceCollector:
             self._stats.matched_tracks += 1
         else:
             self._stats.unmatched_tracks += 1
+    
+    def record_filter_operation(self, duration: float, initial_count: int, 
+                               filtered_count: int, filters_applied: Dict[str, Any]):
+        """Record a filter operation for performance tracking"""
+        if not self._stats:
+            self.start_session()
+        
+        filter_metric = FilterMetrics(
+            duration=duration,
+            initial_count=initial_count,
+            filtered_count=filtered_count,
+            filters_applied=filters_applied
+        )
+        self._stats.filter_metrics.append(filter_metric)
     
     def get_stats(self) -> Optional[PerformanceStats]:
         """Get current performance statistics"""

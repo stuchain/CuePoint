@@ -12,19 +12,26 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QGroupBox, QFileDialog,
     QMessageBox, QLineEdit, QComboBox, QHeaderView, QMenu, QDialog,
-    QTabWidget, QScrollArea
+    QTabWidget, QScrollArea, QSpinBox
 )
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QTimer
 from typing import List, Optional, Dict, Any
 import os
 import subprocess
 import platform
+import time
 
 from gui_interface import TrackResult
 from gui.candidate_dialog import CandidateDialog
 from gui.export_dialog import ExportDialog
 from output_writer import write_csv_files, write_json_file, write_excel_file
 from utils import with_timestamp
+try:
+    from performance import performance_collector
+    PERFORMANCE_AVAILABLE = True
+except ImportError:
+    PERFORMANCE_AVAILABLE = False
+    performance_collector = None
 
 
 class ResultsView(QWidget):
@@ -41,6 +48,10 @@ class ResultsView(QWidget):
         self.is_batch_mode = False
         self.playlist_tables: Dict[str, QTableWidget] = {}  # Store tables for each playlist
         self.playlist_filters: Dict[str, Dict[str, Any]] = {}  # Store filters for each playlist
+        self.filtered_results: List[TrackResult] = []  # Store filtered results for single mode
+        self._filter_debounce_timer = QTimer()
+        self._filter_debounce_timer.setSingleShot(True)
+        self._filter_debounce_timer.timeout.connect(self._apply_filters_debounced)
         self.init_ui()
     
     def init_ui(self):
@@ -68,7 +79,7 @@ class ResultsView(QWidget):
         # Search box
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Search...")
-        self.search_box.textChanged.connect(self.apply_filters)
+        self.search_box.textChanged.connect(self._trigger_filter_debounced)
         filter_layout.addWidget(QLabel("Search:"))
         filter_layout.addWidget(self.search_box)
         
@@ -76,11 +87,112 @@ class ResultsView(QWidget):
         filter_layout.addWidget(QLabel("Confidence:"))
         self.confidence_filter = QComboBox()
         self.confidence_filter.addItems(["All", "High", "Medium", "Low"])
-        self.confidence_filter.currentTextChanged.connect(self.apply_filters)
+        self.confidence_filter.currentTextChanged.connect(self._trigger_filter_debounced)
         filter_layout.addWidget(self.confidence_filter)
         
         filter_layout.addStretch()
         single_table_layout.addLayout(filter_layout)
+        
+        # Advanced Filters Group
+        advanced_filters_group = QGroupBox("Advanced Filters")
+        advanced_filters_group.setCheckable(True)
+        advanced_filters_group.setChecked(False)  # Unchecked by default
+        advanced_filters_layout = QVBoxLayout()
+        
+        # Container widget for filter controls (to show/hide)
+        self.advanced_filters_container = QWidget()
+        container_layout = QVBoxLayout(self.advanced_filters_container)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Year range filter
+        year_layout = QHBoxLayout()
+        year_layout.addWidget(QLabel("Year Range:"))
+        self.year_min = QSpinBox()
+        self.year_min.setMinimum(1900)
+        self.year_min.setMaximum(2100)
+        self.year_min.setValue(1900)
+        self.year_min.setSpecialValueText("Any")
+        self.year_min.setToolTip("Minimum year (leave at 1900 for no minimum)")
+        self.year_min.setSuffix(" -")
+        self.year_min.valueChanged.connect(self._trigger_filter_debounced)
+        year_layout.addWidget(self.year_min)
+        
+        self.year_max = QSpinBox()
+        self.year_max.setMinimum(1900)
+        self.year_max.setMaximum(2100)
+        self.year_max.setValue(2100)
+        self.year_max.setSpecialValueText("Any")
+        self.year_max.setToolTip("Maximum year (leave at 2100 for no maximum)")
+        self.year_max.valueChanged.connect(self._trigger_filter_debounced)
+        year_layout.addWidget(self.year_max)
+        year_layout.addStretch()
+        container_layout.addLayout(year_layout)
+        
+        # BPM range filter
+        bpm_layout = QHBoxLayout()
+        bpm_layout.addWidget(QLabel("BPM Range:"))
+        self.bpm_min = QSpinBox()
+        self.bpm_min.setMinimum(60)
+        self.bpm_min.setMaximum(200)
+        self.bpm_min.setValue(60)
+        self.bpm_min.setSpecialValueText("Any")
+        self.bpm_min.setToolTip("Minimum BPM (leave at 60 for no minimum)")
+        self.bpm_min.setSuffix(" -")
+        self.bpm_min.valueChanged.connect(self._trigger_filter_debounced)
+        bpm_layout.addWidget(self.bpm_min)
+        
+        self.bpm_max = QSpinBox()
+        self.bpm_max.setMinimum(60)
+        self.bpm_max.setMaximum(200)
+        self.bpm_max.setValue(200)
+        self.bpm_max.setSpecialValueText("Any")
+        self.bpm_max.setToolTip("Maximum BPM (leave at 200 for no maximum)")
+        self.bpm_max.valueChanged.connect(self._trigger_filter_debounced)
+        bpm_layout.addWidget(self.bpm_max)
+        bpm_layout.addStretch()
+        container_layout.addLayout(bpm_layout)
+        
+        # Key filter
+        key_layout = QHBoxLayout()
+        key_layout.addWidget(QLabel("Musical Key:"))
+        self.key_filter = QComboBox()
+        keys = ["All"] + [f"{k} Major" for k in "C C# D D# E F F# G G# A A# B".split()] + \
+               [f"{k} Minor" for k in "C C# D D# E F F# G G# A A# B".split()]
+        self.key_filter.addItems(keys)
+        self.key_filter.setToolTip("Filter by musical key (only shows matched tracks with key data)")
+        self.key_filter.setMinimumWidth(150)
+        self.key_filter.currentTextChanged.connect(self._trigger_filter_debounced)
+        key_layout.addWidget(self.key_filter)
+        key_layout.addStretch()
+        container_layout.addLayout(key_layout)
+        
+        # Clear filters button
+        clear_button = QPushButton("Clear All Filters")
+        clear_button.setToolTip("Reset all filters to default values")
+        clear_button.clicked.connect(self.clear_filters)
+        container_layout.addWidget(clear_button)
+        
+        # Hide container by default
+        self.advanced_filters_container.setVisible(False)
+        
+        # Connect checkbox to show/hide container
+        advanced_filters_group.toggled.connect(self.advanced_filters_container.setVisible)
+        
+        advanced_filters_layout.addWidget(self.advanced_filters_container)
+        advanced_filters_group.setLayout(advanced_filters_layout)
+        single_table_layout.addWidget(advanced_filters_group)
+        
+        # Result count and filter status
+        status_layout = QHBoxLayout()
+        self.result_count_label = QLabel("0 results")
+        self.result_count_label.setStyleSheet("font-weight: bold;")
+        status_layout.addWidget(self.result_count_label)
+        
+        self.filter_status_label = QLabel("")
+        self.filter_status_label.setStyleSheet("color: gray;")
+        status_layout.addStretch()
+        status_layout.addWidget(self.filter_status_label)
+        single_table_layout.addLayout(status_layout)
         
         # Create table with key columns
         self.table = QTableWidget()
@@ -141,6 +253,7 @@ class ResultsView(QWidget):
         """
         self.is_batch_mode = False
         self.results = results
+        self.filtered_results = results.copy()
         self.playlist_name = playlist_name or "playlist"
         
         # Switch to single mode UI
@@ -210,6 +323,89 @@ class ResultsView(QWidget):
         filter_group.setLayout(filter_layout)
         tab_layout.addWidget(filter_group)
         
+        # Advanced Filters Group for batch mode
+        advanced_filters_group = QGroupBox("Advanced Filters")
+        advanced_filters_group.setCheckable(True)
+        advanced_filters_group.setChecked(False)  # Unchecked by default
+        advanced_filters_layout = QVBoxLayout()
+        
+        # Container widget for filter controls (to show/hide)
+        advanced_filters_container = QWidget()
+        container_layout = QVBoxLayout(advanced_filters_container)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Year range filter
+        year_layout = QHBoxLayout()
+        year_layout.addWidget(QLabel("Year Range:"))
+        year_min = QSpinBox()
+        year_min.setMinimum(1900)
+        year_min.setMaximum(2100)
+        year_min.setValue(1900)
+        year_min.setSpecialValueText("Any")
+        year_min.setToolTip("Minimum year (leave at 1900 for no minimum)")
+        year_min.setSuffix(" -")
+        year_layout.addWidget(year_min)
+        
+        year_max = QSpinBox()
+        year_max.setMinimum(1900)
+        year_max.setMaximum(2100)
+        year_max.setValue(2100)
+        year_max.setSpecialValueText("Any")
+        year_max.setToolTip("Maximum year (leave at 2100 for no maximum)")
+        year_layout.addWidget(year_max)
+        year_layout.addStretch()
+        container_layout.addLayout(year_layout)
+        
+        # BPM range filter
+        bpm_layout = QHBoxLayout()
+        bpm_layout.addWidget(QLabel("BPM Range:"))
+        bpm_min = QSpinBox()
+        bpm_min.setMinimum(60)
+        bpm_min.setMaximum(200)
+        bpm_min.setValue(60)
+        bpm_min.setSpecialValueText("Any")
+        bpm_min.setToolTip("Minimum BPM (leave at 60 for no minimum)")
+        bpm_min.setSuffix(" -")
+        bpm_layout.addWidget(bpm_min)
+        
+        bpm_max = QSpinBox()
+        bpm_max.setMinimum(60)
+        bpm_max.setMaximum(200)
+        bpm_max.setValue(200)
+        bpm_max.setSpecialValueText("Any")
+        bpm_max.setToolTip("Maximum BPM (leave at 200 for no maximum)")
+        bpm_layout.addWidget(bpm_max)
+        bpm_layout.addStretch()
+        container_layout.addLayout(bpm_layout)
+        
+        # Key filter
+        key_layout = QHBoxLayout()
+        key_layout.addWidget(QLabel("Musical Key:"))
+        key_filter = QComboBox()
+        keys = ["All"] + [f"{k} Major" for k in "C C# D D# E F F# G G# A A# B".split()] + \
+               [f"{k} Minor" for k in "C C# D D# E F F# G G# A A# B".split()]
+        key_filter.addItems(keys)
+        key_filter.setToolTip("Filter by musical key (only shows matched tracks with key data)")
+        key_filter.setMinimumWidth(150)
+        key_layout.addWidget(key_filter)
+        key_layout.addStretch()
+        container_layout.addLayout(key_layout)
+        
+        # Clear filters button
+        clear_button = QPushButton("Clear All Filters")
+        clear_button.setToolTip("Reset all filters to default values")
+        container_layout.addWidget(clear_button)
+        
+        # Hide container by default
+        advanced_filters_container.setVisible(False)
+        
+        # Connect checkbox to show/hide container
+        advanced_filters_group.toggled.connect(advanced_filters_container.setVisible)
+        
+        advanced_filters_layout.addWidget(advanced_filters_container)
+        advanced_filters_group.setLayout(advanced_filters_layout)
+        tab_layout.addWidget(advanced_filters_group)
+        
         # Create table for this playlist
         table = QTableWidget()
         table.setColumnCount(11)
@@ -236,7 +432,12 @@ class ResultsView(QWidget):
         self.playlist_tables[playlist_name] = table
         self.playlist_filters[playlist_name] = {
             'search': search_box,
-            'confidence': confidence_filter
+            'confidence': confidence_filter,
+            'year_min': year_min,
+            'year_max': year_max,
+            'bpm_min': bpm_min,
+            'bpm_max': bpm_max,
+            'key': key_filter
         }
         
         # Connect filter signals
@@ -245,6 +446,24 @@ class ResultsView(QWidget):
         )
         confidence_filter.currentTextChanged.connect(
             lambda text: self._apply_filters_for_playlist(playlist_name, results)
+        )
+        year_min.valueChanged.connect(
+            lambda val: self._apply_filters_for_playlist(playlist_name, results)
+        )
+        year_max.valueChanged.connect(
+            lambda val: self._apply_filters_for_playlist(playlist_name, results)
+        )
+        bpm_min.valueChanged.connect(
+            lambda val: self._apply_filters_for_playlist(playlist_name, results)
+        )
+        bpm_max.valueChanged.connect(
+            lambda val: self._apply_filters_for_playlist(playlist_name, results)
+        )
+        key_filter.currentTextChanged.connect(
+            lambda text: self._apply_filters_for_playlist(playlist_name, results)
+        )
+        clear_button.clicked.connect(
+            lambda: self._clear_filters_for_playlist(playlist_name, results)
         )
         
         # Populate table (even if results is empty, we still want to show the table)
@@ -336,13 +555,25 @@ class ResultsView(QWidget):
         # Apply filters first
         filtered = self._filter_results()
         
+        # Store current sort state
+        sort_column = self.table.horizontalHeader().sortIndicatorSection()
+        sort_order = self.table.horizontalHeader().sortIndicatorOrder()
+        
         # Disable sorting temporarily to populate
         self.table.setSortingEnabled(False)
         self.table.setRowCount(len(filtered))
         
+        # Calculate padding for index column (once, before loop)
+        max_index = max((r.playlist_index for r in filtered), default=1) if filtered else 1
+        padding = len(str(max_index))
+        
         for row, result in enumerate(filtered):
-            # Index
-            self.table.setItem(row, 0, QTableWidgetItem(str(result.playlist_index)))
+            # Index (pad with zeros for proper string sorting: 001, 002, ..., 099, 100)
+            index_str = str(result.playlist_index).zfill(padding)
+            index_item = QTableWidgetItem(index_str)
+            index_item.setData(Qt.EditRole, result.playlist_index)  # Store numeric value for sorting
+            index_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            self.table.setItem(row, 0, index_item)
             
             # Title
             self.table.setItem(row, 1, QTableWidgetItem(result.title))
@@ -393,15 +624,141 @@ class ResultsView(QWidget):
         # Re-enable sorting
         self.table.setSortingEnabled(True)
         
+        # Always default to Index column (column 0) in ascending order
+        # Only restore user's sort if they sorted by a different column
+        if sort_column >= 0 and sort_column != 0 and sort_order is not None:
+            # User sorted by a different column, restore that
+            self.table.sortItems(sort_column, sort_order)
+        else:
+            # Default: sort by Index column (column 0) in ascending order
+            # Clear any previous sort indicator first
+            self.table.horizontalHeader().setSortIndicator(-1, Qt.AscendingOrder)
+            self.table.sortItems(0, Qt.AscendingOrder)
+            self.table.horizontalHeader().setSortIndicator(0, Qt.AscendingOrder)
+        
         # Resize columns to content
         self.table.resizeColumnsToContents()
+        
+        # Set minimum column widths
+        for col in range(self.table.columnCount()):
+            current_width = self.table.columnWidth(col)
+            self.table.setColumnWidth(col, max(current_width, 80))
+    
+    def _trigger_filter_debounced(self):
+        """Trigger filter with debouncing for performance"""
+        # Reset timer (debounce: wait 300ms after last change)
+        self._filter_debounce_timer.stop()
+        self._filter_debounce_timer.start(300)
+    
+    def _apply_filters_debounced(self):
+        """Apply filters after debounce delay"""
+        self.apply_filters()
+    
+    def _year_in_range(self, result: TrackResult, min_year: Optional[int], max_year: Optional[int]) -> bool:
+        """
+        Check if result year is in range.
+        
+        Args:
+            result: TrackResult object
+            min_year: Minimum year (None for no minimum)
+            max_year: Maximum year (None for no maximum)
+        
+        Returns:
+            True if year is in range or no year data
+        """
+        if not result.matched or not result.beatport_year:
+            return False  # Only filter matched tracks with year data
+        
+        try:
+            year = int(result.beatport_year)
+            if min_year and year < min_year:
+                return False
+            if max_year and year > max_year:
+                return False
+            return True
+        except (ValueError, TypeError):
+            # Invalid year data, exclude from filtered results
+            return False
+    
+    def _bpm_in_range(self, result: TrackResult, min_bpm: Optional[int], max_bpm: Optional[int]) -> bool:
+        """
+        Check if result BPM is in range.
+        
+        Args:
+            result: TrackResult object
+            min_bpm: Minimum BPM (None for no minimum)
+            max_bpm: Maximum BPM (None for no maximum)
+        
+        Returns:
+            True if BPM is in range or no BPM data
+        """
+        if not result.matched or not result.beatport_bpm:
+            return False  # Only filter matched tracks with BPM data
+        
+        try:
+            bpm = float(result.beatport_bpm)
+            if min_bpm and bpm < min_bpm:
+                return False
+            if max_bpm and bpm > max_bpm:
+                return False
+            return True
+        except (ValueError, TypeError):
+            # Invalid BPM data, exclude from filtered results
+            return False
+    
+    def _update_filter_status(self):
+        """Update filter status label to show active filters"""
+        active_filters = []
+        
+        # Check year filter
+        if self.year_min.value() > 1900 or self.year_max.value() < 2100:
+            min_val = self.year_min.value() if self.year_min.value() > 1900 else None
+            max_val = self.year_max.value() if self.year_max.value() < 2100 else None
+            if min_val and max_val:
+                active_filters.append(f"Year: {min_val}-{max_val}")
+            elif min_val:
+                active_filters.append(f"Year: ≥{min_val}")
+            elif max_val:
+                active_filters.append(f"Year: ≤{max_val}")
+        
+        # Check BPM filter
+        if self.bpm_min.value() > 60 or self.bpm_max.value() < 200:
+            min_val = self.bpm_min.value() if self.bpm_min.value() > 60 else None
+            max_val = self.bpm_max.value() if self.bpm_max.value() < 200 else None
+            if min_val and max_val:
+                active_filters.append(f"BPM: {min_val}-{max_val}")
+            elif min_val:
+                active_filters.append(f"BPM: ≥{min_val}")
+            elif max_val:
+                active_filters.append(f"BPM: ≤{max_val}")
+        
+        # Check key filter
+        if self.key_filter.currentText() != "All":
+            active_filters.append(f"Key: {self.key_filter.currentText()}")
+        
+        # Check search box
+        if self.search_box.text():
+            active_filters.append("Search")
+        
+        # Check confidence filter
+        if self.confidence_filter.currentText() != "All":
+            active_filters.append(f"Confidence: {self.confidence_filter.currentText()}")
+        
+        if active_filters:
+            self.filter_status_label.setText(f"Active filters: {', '.join(active_filters)}")
+        else:
+            self.filter_status_label.setText("No filters active")
     
     def _filter_results(self) -> List[TrackResult]:
-        """Apply filters to results"""
-        filtered = self.results
+        """Apply filters to results including advanced filters"""
+        filter_start_time = time.time()
+        
+        # Start with all results
+        filtered = self.results.copy()
+        initial_count = len(filtered)
         
         # Search filter
-        search_text = self.search_box.text().lower()
+        search_text = self.search_box.text().lower().strip()
         if search_text:
             filtered = [
                 r for r in filtered
@@ -414,13 +771,77 @@ class ResultsView(QWidget):
         # Confidence filter
         confidence = self.confidence_filter.currentText()
         if confidence != "All":
-            filtered = [r for r in filtered if (r.confidence or "").lower() == confidence.lower()]
-            
+            filtered = [
+                r for r in filtered
+                if r.matched and (r.confidence or "").lower() == confidence.lower()
+            ]
+        
+        # Year range filter
+        year_min_val = self.year_min.value() if self.year_min.value() > 1900 else None
+        year_max_val = self.year_max.value() if self.year_max.value() < 2100 else None
+        
+        if year_min_val or year_max_val:
+            filtered = [
+                r for r in filtered
+                if self._year_in_range(r, year_min_val, year_max_val)
+            ]
+        
+        # BPM range filter
+        bpm_min_val = self.bpm_min.value() if self.bpm_min.value() > 60 else None
+        bpm_max_val = self.bpm_max.value() if self.bpm_max.value() < 200 else None
+        
+        if bpm_min_val or bpm_max_val:
+            filtered = [
+                r for r in filtered
+                if self._bpm_in_range(r, bpm_min_val, bpm_max_val)
+            ]
+        
+        # Key filter
+        key_filter_val = self.key_filter.currentText()
+        if key_filter_val != "All":
+            filtered = [
+                r for r in filtered
+                if r.matched and r.beatport_key and r.beatport_key == key_filter_val
+            ]
+        
+        # Store filtered results
+        self.filtered_results = filtered
+        
+        # Track performance
+        filter_duration = time.time() - filter_start_time
+        if PERFORMANCE_AVAILABLE and performance_collector:
+            performance_collector.record_filter_operation(
+                duration=filter_duration,
+                initial_count=initial_count,
+                filtered_count=len(filtered),
+                filters_applied={
+                    "search": bool(search_text),
+                    "confidence": confidence if confidence != "All" else None,
+                    "year_range": (year_min_val, year_max_val),
+                    "bpm_range": (bpm_min_val, bpm_max_val),
+                    "key": key_filter_val if key_filter_val != "All" else None
+                }
+            )
+        
         return filtered
     
     def apply_filters(self):
         """Apply filters and update table"""
         self._populate_table()
+        self._update_filter_status()
+        
+        # Update result count
+        count_text = f"{len(self.filtered_results)} of {len(self.results)} results"
+        if len(self.filtered_results) < len(self.results):
+            count_text += " (filtered)"
+        self.result_count_label.setText(count_text)
+        
+        # Show message if no results
+        if len(self.filtered_results) == 0 and len(self.results) > 0:
+            self.result_count_label.setStyleSheet("font-weight: bold; color: red;")
+            self.result_count_label.setText("No results match the current filters")
+        else:
+            self.result_count_label.setStyleSheet("font-weight: bold;")
     
     def _populate_table_for_playlist(self, table: QTableWidget, results: List[TrackResult]):
         """Populate a specific table with results for a playlist"""
@@ -434,13 +855,25 @@ class ResultsView(QWidget):
         # Apply filters first
         filtered = self._filter_results_for_playlist(results, table)
         
+        # Store current sort state
+        sort_column = table.horizontalHeader().sortIndicatorSection()
+        sort_order = table.horizontalHeader().sortIndicatorOrder()
+        
         # Disable sorting temporarily to populate
         table.setSortingEnabled(False)
         table.setRowCount(len(filtered))
         
+        # Calculate padding for index column (once, before loop)
+        max_index = max((r.playlist_index for r in filtered), default=1) if filtered else 1
+        padding = len(str(max_index))
+        
         for row, result in enumerate(filtered):
-            # Index
-            table.setItem(row, 0, QTableWidgetItem(str(result.playlist_index)))
+            # Index (pad with zeros for proper string sorting: 001, 002, ..., 099, 100)
+            index_str = str(result.playlist_index).zfill(padding)
+            index_item = QTableWidgetItem(index_str)
+            index_item.setData(Qt.EditRole, result.playlist_index)  # Store numeric value for sorting
+            index_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            table.setItem(row, 0, index_item)
             
             # Title
             table.setItem(row, 1, QTableWidgetItem(result.title))
@@ -490,9 +923,21 @@ class ResultsView(QWidget):
         
         # Re-enable sorting
         table.setSortingEnabled(True)
+        
+        # Always default to Index column (column 0) in ascending order
+        # Only restore user's sort if they sorted by a different column
+        if sort_column >= 0 and sort_column != 0 and sort_order is not None:
+            # User sorted by a different column, restore that
+            table.sortItems(sort_column, sort_order)
+        else:
+            # Default: sort by Index column (column 0) in ascending order
+            # Clear any previous sort indicator first
+            table.horizontalHeader().setSortIndicator(-1, Qt.AscendingOrder)
+            table.sortItems(0, Qt.AscendingOrder)
+            table.horizontalHeader().setSortIndicator(0, Qt.AscendingOrder)
     
     def _filter_results_for_playlist(self, results: List[TrackResult], table: QTableWidget) -> List[TrackResult]:
-        """Apply filters to results for a specific playlist table"""
+        """Apply filters to results for a specific playlist table including advanced filters"""
         # Find which playlist this table belongs to
         playlist_name = None
         for name, t in self.playlist_tables.items():
@@ -508,7 +953,7 @@ class ResultsView(QWidget):
         filtered = list(results)  # Make a copy to avoid modifying original
         
         # Search filter
-        search_text = filters['search'].text().lower()
+        search_text = filters['search'].text().lower().strip()
         if search_text:
             filtered = [
                 r for r in filtered
@@ -521,9 +966,55 @@ class ResultsView(QWidget):
         # Confidence filter
         confidence = filters['confidence'].currentText()
         if confidence != "All":
-            filtered = [r for r in filtered if (r.confidence or "").lower() == confidence.lower()]
+            filtered = [
+                r for r in filtered
+                if r.matched and (r.confidence or "").lower() == confidence.lower()
+            ]
+        
+        # Year range filter
+        year_min_val = filters['year_min'].value() if filters['year_min'].value() > 1900 else None
+        year_max_val = filters['year_max'].value() if filters['year_max'].value() < 2100 else None
+        
+        if year_min_val or year_max_val:
+            filtered = [
+                r for r in filtered
+                if self._year_in_range(r, year_min_val, year_max_val)
+            ]
+        
+        # BPM range filter
+        bpm_min_val = filters['bpm_min'].value() if filters['bpm_min'].value() > 60 else None
+        bpm_max_val = filters['bpm_max'].value() if filters['bpm_max'].value() < 200 else None
+        
+        if bpm_min_val or bpm_max_val:
+            filtered = [
+                r for r in filtered
+                if self._bpm_in_range(r, bpm_min_val, bpm_max_val)
+            ]
+        
+        # Key filter
+        key_filter_val = filters['key'].currentText()
+        if key_filter_val != "All":
+            filtered = [
+                r for r in filtered
+                if r.matched and r.beatport_key and r.beatport_key == key_filter_val
+            ]
         
         return filtered
+    
+    def _clear_filters_for_playlist(self, playlist_name: str, results: List[TrackResult]):
+        """Clear all filters for a specific playlist"""
+        if playlist_name not in self.playlist_filters:
+            return
+        
+        filters = self.playlist_filters[playlist_name]
+        filters['year_min'].setValue(1900)
+        filters['year_max'].setValue(2100)
+        filters['bpm_min'].setValue(60)
+        filters['bpm_max'].setValue(200)
+        filters['key'].setCurrentText("All")
+        filters['search'].clear()
+        filters['confidence'].setCurrentText("All")
+        self._apply_filters_for_playlist(playlist_name, results)
     
     def _apply_filters_for_playlist(self, playlist_name: str, results: List[TrackResult]):
         """Apply filters and update table for a specific playlist"""
@@ -1008,11 +1499,25 @@ class ResultsView(QWidget):
             f"Updated match for:\n{result.title} - {result.artist}"
         )
     
+    def clear_filters(self):
+        """Clear all filters to default values"""
+        self.year_min.setValue(1900)
+        self.year_max.setValue(2100)
+        self.bpm_min.setValue(60)
+        self.bpm_max.setValue(200)
+        self.key_filter.setCurrentText("All")
+        self.search_box.clear()
+        self.confidence_filter.setCurrentText("All")
+        self.apply_filters()
+    
     def clear(self):
         """Clear results display"""
         self.results = []
+        self.filtered_results = []
         self.output_files = {}
         self.table.setRowCount(0)
         self.summary_label.setText("No results yet")
         self.search_box.clear()
         self.confidence_filter.setCurrentIndex(0)  # Reset to "All"
+        self.result_count_label.setText("0 results")
+        self.filter_status_label.setText("")

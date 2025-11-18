@@ -10,15 +10,23 @@ This module contains the HistoryView class for viewing past search results from 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QFileDialog, QGroupBox,
-    QListWidget, QListWidgetItem, QMessageBox, QHeaderView
+    QListWidget, QListWidgetItem, QMessageBox, QHeaderView,
+    QLineEdit, QComboBox, QSpinBox
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from typing import List, Optional, Dict, Any
 import os
 import csv
 import sys
+import time
 from datetime import datetime
 from gui.candidate_dialog import CandidateDialog
+try:
+    from performance import performance_collector
+    PERFORMANCE_AVAILABLE = True
+except ImportError:
+    PERFORMANCE_AVAILABLE = False
+    performance_collector = None
 
 
 class HistoryView(QWidget):
@@ -28,6 +36,10 @@ class HistoryView(QWidget):
         super().__init__(parent)
         self.current_csv_path: Optional[str] = None
         self.csv_rows: List[dict] = []  # Store loaded CSV rows for updates
+        self.filtered_rows: List[dict] = []  # Store filtered rows
+        self._filter_debounce_timer = QTimer()
+        self._filter_debounce_timer.setSingleShot(True)
+        self._filter_debounce_timer.timeout.connect(self._apply_filters_debounced)
         self.init_ui()
     
     def init_ui(self):
@@ -76,6 +88,127 @@ class HistoryView(QWidget):
         self.summary_label = QLabel("No file loaded")
         self.summary_label.setWordWrap(True)
         results_layout.addWidget(self.summary_label)
+        
+        # Filter controls
+        filter_layout = QHBoxLayout()
+        
+        # Search box
+        self.search_box = QLineEdit()
+        self.search_box.setPlaceholderText("Search...")
+        self.search_box.textChanged.connect(self._trigger_filter_debounced)
+        filter_layout.addWidget(QLabel("Search:"))
+        filter_layout.addWidget(self.search_box)
+        
+        # Confidence filter
+        filter_layout.addWidget(QLabel("Confidence:"))
+        self.confidence_filter = QComboBox()
+        self.confidence_filter.addItems(["All", "High", "Medium", "Low"])
+        self.confidence_filter.currentTextChanged.connect(self._trigger_filter_debounced)
+        filter_layout.addWidget(self.confidence_filter)
+        
+        filter_layout.addStretch()
+        results_layout.addLayout(filter_layout)
+        
+        # Advanced Filters Group
+        advanced_filters_group = QGroupBox("Advanced Filters")
+        advanced_filters_group.setCheckable(True)
+        advanced_filters_group.setChecked(False)  # Unchecked by default
+        advanced_filters_layout = QVBoxLayout()
+        
+        # Container widget for filter controls (to show/hide)
+        self.advanced_filters_container = QWidget()
+        container_layout = QVBoxLayout(self.advanced_filters_container)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Year range filter
+        year_layout = QHBoxLayout()
+        year_layout.addWidget(QLabel("Year Range:"))
+        self.year_min = QSpinBox()
+        self.year_min.setMinimum(1900)
+        self.year_min.setMaximum(2100)
+        self.year_min.setValue(1900)
+        self.year_min.setSpecialValueText("Any")
+        self.year_min.setToolTip("Minimum year (leave at 1900 for no minimum)")
+        self.year_min.setSuffix(" -")
+        self.year_min.valueChanged.connect(self._trigger_filter_debounced)
+        year_layout.addWidget(self.year_min)
+        
+        self.year_max = QSpinBox()
+        self.year_max.setMinimum(1900)
+        self.year_max.setMaximum(2100)
+        self.year_max.setValue(2100)
+        self.year_max.setSpecialValueText("Any")
+        self.year_max.setToolTip("Maximum year (leave at 2100 for no maximum)")
+        self.year_max.valueChanged.connect(self._trigger_filter_debounced)
+        year_layout.addWidget(self.year_max)
+        year_layout.addStretch()
+        container_layout.addLayout(year_layout)
+        
+        # BPM range filter
+        bpm_layout = QHBoxLayout()
+        bpm_layout.addWidget(QLabel("BPM Range:"))
+        self.bpm_min = QSpinBox()
+        self.bpm_min.setMinimum(60)
+        self.bpm_min.setMaximum(200)
+        self.bpm_min.setValue(60)
+        self.bpm_min.setSpecialValueText("Any")
+        self.bpm_min.setToolTip("Minimum BPM (leave at 60 for no minimum)")
+        self.bpm_min.setSuffix(" -")
+        self.bpm_min.valueChanged.connect(self._trigger_filter_debounced)
+        bpm_layout.addWidget(self.bpm_min)
+        
+        self.bpm_max = QSpinBox()
+        self.bpm_max.setMinimum(60)
+        self.bpm_max.setMaximum(200)
+        self.bpm_max.setValue(200)
+        self.bpm_max.setSpecialValueText("Any")
+        self.bpm_max.setToolTip("Maximum BPM (leave at 200 for no maximum)")
+        self.bpm_max.valueChanged.connect(self._trigger_filter_debounced)
+        bpm_layout.addWidget(self.bpm_max)
+        bpm_layout.addStretch()
+        container_layout.addLayout(bpm_layout)
+        
+        # Key filter
+        key_layout = QHBoxLayout()
+        key_layout.addWidget(QLabel("Musical Key:"))
+        self.key_filter = QComboBox()
+        keys = ["All"] + [f"{k} Major" for k in "C C# D D# E F F# G G# A A# B".split()] + \
+               [f"{k} Minor" for k in "C C# D D# E F F# G G# A A# B".split()]
+        self.key_filter.addItems(keys)
+        self.key_filter.setToolTip("Filter by musical key (only shows matched tracks with key data)")
+        self.key_filter.setMinimumWidth(150)
+        self.key_filter.currentTextChanged.connect(self._trigger_filter_debounced)
+        key_layout.addWidget(self.key_filter)
+        key_layout.addStretch()
+        container_layout.addLayout(key_layout)
+        
+        # Clear filters button
+        clear_button = QPushButton("Clear All Filters")
+        clear_button.setToolTip("Reset all filters to default values")
+        clear_button.clicked.connect(self.clear_filters)
+        container_layout.addWidget(clear_button)
+        
+        # Hide container by default
+        self.advanced_filters_container.setVisible(False)
+        
+        # Connect checkbox to show/hide container
+        advanced_filters_group.toggled.connect(self.advanced_filters_container.setVisible)
+        
+        advanced_filters_layout.addWidget(self.advanced_filters_container)
+        advanced_filters_group.setLayout(advanced_filters_layout)
+        results_layout.addWidget(advanced_filters_group)
+        
+        # Result count and filter status
+        status_layout = QHBoxLayout()
+        self.result_count_label = QLabel("0 results")
+        self.result_count_label.setStyleSheet("font-weight: bold;")
+        status_layout.addWidget(self.result_count_label)
+        
+        self.filter_status_label = QLabel("")
+        self.filter_status_label.setStyleSheet("color: gray;")
+        status_layout.addStretch()
+        status_layout.addWidget(self.filter_status_label)
+        results_layout.addLayout(status_layout)
         
         # Results table (reuse same structure as ResultsView)
         self.table = QTableWidget()
@@ -215,9 +348,10 @@ class HistoryView(QWidget):
             
             # Store rows for potential updates
             self.csv_rows = rows
+            self.filtered_rows = rows.copy()
             
             # Populate table
-            self._populate_table(rows)
+            self.apply_filters()
             
             # Add to recent files if not already there
             self._add_to_recent_files(file_path)
@@ -229,8 +363,195 @@ class HistoryView(QWidget):
                 f"Error loading CSV file:\n{str(e)}"
             )
     
+    def _trigger_filter_debounced(self):
+        """Trigger filter with debouncing for performance"""
+        self._filter_debounce_timer.stop()
+        self._filter_debounce_timer.start(300)
+    
+    def _apply_filters_debounced(self):
+        """Apply filters after debounce delay"""
+        self.apply_filters()
+    
+    def _year_in_range(self, row: dict, min_year: Optional[int], max_year: Optional[int]) -> bool:
+        """Check if row year is in range"""
+        year_str = row.get('beatport_year', '').strip()
+        if not year_str:
+            return False
+        
+        try:
+            year = int(year_str)
+            if min_year and year < min_year:
+                return False
+            if max_year and year > max_year:
+                return False
+            return True
+        except (ValueError, TypeError):
+            return False
+    
+    def _bpm_in_range(self, row: dict, min_bpm: Optional[int], max_bpm: Optional[int]) -> bool:
+        """Check if row BPM is in range"""
+        bpm_str = row.get('beatport_bpm', '').strip()
+        if not bpm_str:
+            return False
+        
+        try:
+            bpm = float(bpm_str)
+            if min_bpm and bpm < min_bpm:
+                return False
+            if max_bpm and bpm > max_bpm:
+                return False
+            return True
+        except (ValueError, TypeError):
+            return False
+    
+    def _update_filter_status(self):
+        """Update filter status label to show active filters"""
+        active_filters = []
+        
+        if self.year_min.value() > 1900 or self.year_max.value() < 2100:
+            min_val = self.year_min.value() if self.year_min.value() > 1900 else None
+            max_val = self.year_max.value() if self.year_max.value() < 2100 else None
+            if min_val and max_val:
+                active_filters.append(f"Year: {min_val}-{max_val}")
+            elif min_val:
+                active_filters.append(f"Year: ≥{min_val}")
+            elif max_val:
+                active_filters.append(f"Year: ≤{max_val}")
+        
+        if self.bpm_min.value() > 60 or self.bpm_max.value() < 200:
+            min_val = self.bpm_min.value() if self.bpm_min.value() > 60 else None
+            max_val = self.bpm_max.value() if self.bpm_max.value() < 200 else None
+            if min_val and max_val:
+                active_filters.append(f"BPM: {min_val}-{max_val}")
+            elif min_val:
+                active_filters.append(f"BPM: ≥{min_val}")
+            elif max_val:
+                active_filters.append(f"BPM: ≤{max_val}")
+        
+        if self.key_filter.currentText() != "All":
+            active_filters.append(f"Key: {self.key_filter.currentText()}")
+        
+        if self.search_box.text():
+            active_filters.append("Search")
+        
+        if self.confidence_filter.currentText() != "All":
+            active_filters.append(f"Confidence: {self.confidence_filter.currentText()}")
+        
+        if active_filters:
+            self.filter_status_label.setText(f"Active filters: {', '.join(active_filters)}")
+        else:
+            self.filter_status_label.setText("No filters active")
+    
+    def _filter_rows(self) -> List[dict]:
+        """Apply filters to CSV rows"""
+        filter_start_time = time.time()
+        
+        filtered = self.csv_rows.copy()
+        initial_count = len(filtered)
+        
+        # Search filter
+        search_text = self.search_box.text().lower().strip()
+        if search_text:
+            filtered = [
+                r for r in filtered
+                if search_text in (r.get('original_title', '') or '').lower() 
+                or search_text in (r.get('original_artists', '') or '').lower()
+                or search_text in (r.get('beatport_title', '') or '').lower()
+                or search_text in (r.get('beatport_artists', '') or '').lower()
+            ]
+        
+        # Confidence filter
+        confidence = self.confidence_filter.currentText()
+        if confidence != "All":
+            filtered = [
+                r for r in filtered
+                if (r.get('confidence', '') or '').lower() == confidence.lower()
+            ]
+        
+        # Year range filter
+        year_min_val = self.year_min.value() if self.year_min.value() > 1900 else None
+        year_max_val = self.year_max.value() if self.year_max.value() < 2100 else None
+        
+        if year_min_val or year_max_val:
+            filtered = [
+                r for r in filtered
+                if self._year_in_range(r, year_min_val, year_max_val)
+            ]
+        
+        # BPM range filter
+        bpm_min_val = self.bpm_min.value() if self.bpm_min.value() > 60 else None
+        bpm_max_val = self.bpm_max.value() if self.bpm_max.value() < 200 else None
+        
+        if bpm_min_val or bpm_max_val:
+            filtered = [
+                r for r in filtered
+                if self._bpm_in_range(r, bpm_min_val, bpm_max_val)
+            ]
+        
+        # Key filter
+        key_filter_val = self.key_filter.currentText()
+        if key_filter_val != "All":
+            filtered = [
+                r for r in filtered
+                if (r.get('beatport_key', '') or '').strip() == key_filter_val
+            ]
+        
+        self.filtered_rows = filtered
+        
+        # Track performance
+        filter_duration = time.time() - filter_start_time
+        if PERFORMANCE_AVAILABLE and performance_collector:
+            performance_collector.record_filter_operation(
+                duration=filter_duration,
+                initial_count=initial_count,
+                filtered_count=len(filtered),
+                filters_applied={
+                    "search": bool(search_text),
+                    "confidence": confidence if confidence != "All" else None,
+                    "year_range": (year_min_val, year_max_val),
+                    "bpm_range": (bpm_min_val, bpm_max_val),
+                    "key": key_filter_val if key_filter_val != "All" else None
+                }
+            )
+        
+        return filtered
+    
+    def apply_filters(self):
+        """Apply filters and update table"""
+        filtered = self._filter_rows()
+        self._populate_table(filtered)
+        self._update_filter_status()
+        
+        # Update result count
+        count_text = f"{len(self.filtered_rows)} of {len(self.csv_rows)} results"
+        if len(self.filtered_rows) < len(self.csv_rows):
+            count_text += " (filtered)"
+        self.result_count_label.setText(count_text)
+        
+        # Show message if no results
+        if len(self.filtered_rows) == 0 and len(self.csv_rows) > 0:
+            self.result_count_label.setStyleSheet("font-weight: bold; color: red;")
+            self.result_count_label.setText("No results match the current filters")
+        else:
+            self.result_count_label.setStyleSheet("font-weight: bold;")
+    
+    def clear_filters(self):
+        """Clear all filters to default values"""
+        self.year_min.setValue(1900)
+        self.year_max.setValue(2100)
+        self.bpm_min.setValue(60)
+        self.bpm_max.setValue(200)
+        self.key_filter.setCurrentText("All")
+        self.search_box.clear()
+        self.confidence_filter.setCurrentText("All")
+        self.apply_filters()
+    
     def _populate_table(self, rows: List[dict]):
         """Populate table with CSV data"""
+        # Store current sort state
+        sort_column = self.table.horizontalHeader().sortIndicatorSection()
+        sort_order = self.table.horizontalHeader().sortIndicatorOrder()
+        
         if not rows:
             self.table.setRowCount(0)
             return
@@ -239,27 +560,101 @@ class HistoryView(QWidget):
         columns = list(rows[0].keys())
         
         # Set up table
+        self.table.setSortingEnabled(False)
         self.table.setColumnCount(len(columns))
         self.table.setHorizontalHeaderLabels(columns)
         self.table.setRowCount(len(rows))
         
         # Populate rows
+        # Find index column and calculate padding
+        index_col = -1
+        for col_idx, col_name in enumerate(columns):
+            if 'index' in col_name.lower() or 'playlist_index' in col_name.lower():
+                index_col = col_idx
+                break
+        
+        # Calculate padding for index column if found
+        padding = 1
+        if index_col >= 0:
+            max_index = 0
+            for row_data in rows:
+                try:
+                    idx_val = int(row_data.get(columns[index_col], 0) or 0)
+                    max_index = max(max_index, idx_val)
+                except (ValueError, TypeError):
+                    pass
+            padding = len(str(max_index)) if max_index > 0 else 1
+        
         for row_idx, row_data in enumerate(rows):
             for col_idx, col_name in enumerate(columns):
                 value = row_data.get(col_name, "")
-                item = QTableWidgetItem(str(value))
+                # Pad index column with zeros for proper sorting
+                if col_idx == index_col:
+                    try:
+                        numeric_value = int(value) if value else 0
+                        index_str = str(numeric_value).zfill(padding)
+                        item = QTableWidgetItem(index_str)
+                        item.setData(Qt.EditRole, numeric_value)
+                        item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                    except (ValueError, TypeError):
+                        item = QTableWidgetItem(str(value))
+                else:
+                    item = QTableWidgetItem(str(value))
                 self.table.setItem(row_idx, col_idx, item)
+        
+        # Re-enable sorting
+        self.table.setSortingEnabled(True)
+        
+        # Find the index column
+        index_col = -1
+        for col in range(self.table.columnCount()):
+            header = self.table.horizontalHeaderItem(col)
+            if header:
+                header_text = header.text().lower()
+                if 'index' in header_text or 'playlist_index' in header_text:
+                    index_col = col
+                    break
+        
+        # Always default to Index column in ascending order
+        # Only restore user's sort if they sorted by a different column
+        if index_col >= 0:
+            if sort_column >= 0 and sort_column != index_col and sort_order is not None:
+                # User sorted by a different column, restore that
+                self.table.sortItems(sort_column, sort_order)
+            else:
+                # Default: sort by Index column in ascending order
+                # Clear any previous sort indicator first
+                self.table.horizontalHeader().setSortIndicator(-1, Qt.AscendingOrder)
+                self.table.sortItems(index_col, Qt.AscendingOrder)
+                self.table.horizontalHeader().setSortIndicator(index_col, Qt.AscendingOrder)
         
         # Resize columns to content
         self.table.resizeColumnsToContents()
+        
+        # Set minimum column widths
+        for col in range(self.table.columnCount()):
+            current_width = self.table.columnWidth(col)
+            self.table.setColumnWidth(col, max(current_width, 80))
     
     def _on_candidate_selected(self, row: int, playlist_index: int, original_title: str, original_artists: str, candidate: Dict[str, Any]):
         """Handle candidate selection - update the CSV row and table display"""
-        if row < 0 or row >= len(self.csv_rows):
+        if row < 0 or row >= len(self.filtered_rows):
             return
         
-        # Update the CSV row data
-        csv_row = self.csv_rows[row]
+        # Get the filtered row
+        filtered_row = self.filtered_rows[row]
+        
+        # Find the corresponding row in csv_rows by matching key fields
+        csv_row = None
+        for csv_r in self.csv_rows:
+            if (csv_r.get('playlist_index') == filtered_row.get('playlist_index') and
+                csv_r.get('original_title', '').strip() == filtered_row.get('original_title', '').strip() and
+                csv_r.get('original_artists', '').strip() == filtered_row.get('original_artists', '').strip()):
+                csv_row = csv_r
+                break
+        
+        if csv_row is None:
+            return
         
         # Update match information
         csv_row['beatport_title'] = candidate.get('candidate_title', candidate.get('beatport_title', ''))
@@ -289,8 +684,8 @@ class HistoryView(QWidget):
         # Update candidate_index if available
         csv_row['candidate_index'] = candidate.get('candidate_index', '')
         
-        # Update the table display
-        self._update_table_row(row, csv_row)
+        # Re-apply filters to update the display
+        self.apply_filters()
         
         # Show confirmation
         QMessageBox.information(
