@@ -6,7 +6,7 @@
 **Dependencies**: Phase 2 Step 2.1 (results table exists), Phase 3 (performance monitoring)
 
 ## Goal
-Enhance the results view with advanced filtering options (year range, BPM range, key filter) to allow users to quickly find tracks matching specific criteria.
+Enhance the results view with advanced filtering options (year range, BPM range, key filter) to allow users to quickly find tracks matching specific criteria. Additionally, add the same advanced filtering capabilities to the Past Searches (HistoryView) tab, and implement resizable UI sections for improved user experience.
 
 ## Success Criteria
 - [ ] Year range filter works correctly
@@ -14,6 +14,9 @@ Enhance the results view with advanced filtering options (year range, BPM range,
 - [ ] Key filter works correctly
 - [ ] Filters combine correctly (AND logic)
 - [ ] Filters work with existing search box
+- [ ] Advanced filters available in HistoryView (Past Searches tab)
+- [ ] Resizable UI sections implemented (splitters in all views)
+- [ ] Sorting improvements (zero-padding, numeric sorting for playlist index)
 - [ ] Performance acceptable with large datasets
 - [ ] Filter operations tracked in Phase 3 metrics
 - [ ] Error handling robust
@@ -26,9 +29,21 @@ Enhance the results view with advanced filtering options (year range, BPM range,
 
 ### Current State Analysis
 - **Existing Filters**: Search box, confidence filter (implemented in Phase 2)
-- **Limitations**: No filtering by year, BPM, or key
-- **User Needs**: Users want to filter by musical attributes (year, BPM, key)
-- **Opportunity**: Add range filters for numeric attributes and dropdown for key
+- **Limitations**: 
+  - No filtering by year, BPM, or key
+  - No advanced filters in HistoryView (Past Searches tab)
+  - UI sections not resizable (fixed layout)
+  - Playlist index sorting issues (lexicographical instead of numeric)
+- **User Needs**: 
+  - Users want to filter by musical attributes (year, BPM, key)
+  - Users want same filtering capabilities in Past Searches tab
+  - Users want resizable UI sections for better space management
+  - Users want correct numerical sorting of playlist index
+- **Opportunity**: 
+  - Add range filters for numeric attributes and dropdown for key
+  - Extend filtering to HistoryView
+  - Implement resizable splitters for better UX
+  - Fix sorting with zero-padding and numeric data roles
 
 ### Filter Design
 - **Year Range**: Min/max spinboxes (1900-2100)
@@ -60,7 +75,7 @@ Enhance the results view with advanced filtering options (year range, BPM range,
 
 ## Implementation Steps
 
-### Substep 4.5.1: Add Advanced Filter UI Components (4-6 hours)
+### Substep 4.2.1: Add Advanced Filter UI Components (4-6 hours)
 **File**: `SRC/gui/results_view.py` (MODIFY)
 
 **What to add:**
@@ -185,7 +200,7 @@ class ResultsView(QWidget):
 
 ---
 
-### Substep 4.5.2: Implement Filter Logic (4-6 hours)
+### Substep 4.2.2: Implement Filter Logic (4-6 hours)
 **File**: `SRC/gui/results_view.py` (MODIFY)
 
 **What to implement:**
@@ -349,7 +364,101 @@ def _bpm_in_range(
 
 ---
 
-### Substep 4.2.3: Connect Filter Signals and Integrate into Results View (4-6 hours)
+### Substep 4.2.3: Add Advanced Filters to HistoryView (3-4 hours)
+**File**: `SRC/gui/history_view.py` (MODIFY)
+
+**Dependencies**: Substep 4.2.1 (UI components), Substep 4.2.2 (filter logic)
+
+**What to implement:**
+
+Extend advanced filtering capabilities to the Past Searches (HistoryView) tab, allowing users to filter previously loaded CSV files using the same advanced filters (year, BPM, key) as in the main results view.
+
+**Key Requirements:**
+- Replicate advanced filter UI components in HistoryView
+- Adapt filter logic to work with CSV row dictionaries (instead of TrackResult objects)
+- Support filtering on dictionary keys (e.g., `row['Year']`, `row['BPM']`, `row['Key']`)
+- Integrate with existing search and confidence filters
+- Add debouncing for performance
+- Add filter status and result count labels
+
+**Implementation Checklist:**
+- [ ] Add advanced filters group to HistoryView UI
+- [ ] Implement `_year_in_range` for dictionary rows
+- [ ] Implement `_bpm_in_range` for dictionary rows
+- [ ] Update `_filter_rows` to apply all filters
+- [ ] Add debouncing for filter operations
+- [ ] Add filter status label
+- [ ] Add result count label
+- [ ] Test with various CSV file structures
+- [ ] Test filter combinations
+
+**Error Handling:**
+- Handle missing columns in CSV data
+- Handle invalid year/BPM values in CSV
+- Handle empty CSV files
+- Provide clear feedback when no results match
+
+---
+
+### Substep 4.2.4: Implement Resizable UI Sections (2-3 hours)
+**Files**: `SRC/gui/main_window.py` (MODIFY), `SRC/gui/results_view.py` (MODIFY), `SRC/gui/history_view.py` (MODIFY)
+
+**Dependencies**: Substep 4.2.1 (UI components)
+
+**What to implement:**
+
+Add resizable splitters (QSplitter) to all major UI sections, allowing users to adjust the space allocated to filters/controls vs. results tables.
+
+**Key Requirements:**
+- Main tab: Splitter between input controls (top) and results section (bottom)
+- ResultsView (single mode): Splitter between summary/filters (top) and results table (bottom)
+- ResultsView (batch mode): Each playlist tab has splitter between filters (top) and table (bottom)
+- HistoryView: Splitter between file selection/filters (top) and results table (bottom)
+- Set appropriate initial split sizes (e.g., 30-40% top, 60-70% bottom)
+- Set maximum heights for top sections to prevent them from taking all space
+- Prevent sections from being collapsed completely
+
+**Implementation Checklist:**
+- [ ] Add QSplitter import to all relevant files
+- [ ] Implement splitter in MainWindow main tab
+- [ ] Implement splitter in ResultsView (single mode)
+- [ ] Implement splitter in ResultsView batch mode tabs
+- [ ] Implement splitter in HistoryView
+- [ ] Set initial split sizes appropriately
+- [ ] Set maximum heights for top sections
+- [ ] Test resizing behavior
+- [ ] Test with different window sizes
+
+---
+
+### Substep 4.2.5: Fix Playlist Index Sorting (1-2 hours)
+**Files**: `SRC/gui/results_view.py` (MODIFY), `SRC/gui/history_view.py` (MODIFY)
+
+**Dependencies**: Substep 4.2.1 (UI components)
+
+**What to implement:**
+
+Fix playlist index sorting to ensure correct numerical order (1, 2, 3, ...) instead of lexicographical order (1, 10, 11, ..., 2, 20, ...).
+
+**Key Requirements:**
+- Store numeric playlist_index in Qt.EditRole for correct numerical sorting
+- Display zero-padded index string (e.g., "001", "010", "100") for consistent lexicographical display
+- Calculate padding dynamically based on maximum index value
+- Default sort to Index column ascending if no previous sort state
+- Preserve user's sort state when filtering
+
+**Implementation Checklist:**
+- [ ] Update `_populate_table` in ResultsView to store numeric data in EditRole
+- [ ] Update `_populate_table` in HistoryView to store numeric data in EditRole
+- [ ] Implement zero-padding calculation based on max index
+- [ ] Display zero-padded index strings
+- [ ] Set default ascending sort on Index column
+- [ ] Test sorting with various index ranges (1-10, 1-100, 1-1000)
+- [ ] Test sorting preserves after filtering
+
+---
+
+### Substep 4.2.6: Connect Filter Signals and Integrate into Results View (4-6 hours)
 **File**: `SRC/gui/results_view.py` (MODIFY)
 
 **Dependencies**: Phase 2 Step 2.1 (results view exists), Substep 4.2.1 (UI components), Substep 4.2.2 (filter logic)
@@ -828,7 +937,7 @@ def setup_keyboard_shortcuts(self):
 
 ---
 
-### Substep 4.2.4: Comprehensive Testing (1-2 days)
+### Substep 4.2.7: Comprehensive Testing (1-2 days)
 
 **Dependencies**: All previous substeps must be completed
 
@@ -1633,10 +1742,13 @@ if __name__ == '__main__':
 ---
 
 ## Implementation Checklist Summary
-- [ ] Substep 4.5.1: Add Advanced Filter UI Components
-- [ ] Substep 4.5.2: Implement Filter Logic
-- [ ] Substep 4.5.3: Connect Filter Signals
-- [ ] Substep 4.5.4: Testing
+- [ ] Substep 4.2.1: Add Advanced Filter UI Components
+- [ ] Substep 4.2.2: Implement Filter Logic
+- [ ] Substep 4.2.3: Add Advanced Filters to HistoryView
+- [ ] Substep 4.2.4: Implement Resizable UI Sections
+- [ ] Substep 4.2.5: Fix Playlist Index Sorting
+- [ ] Substep 4.2.6: Connect Filter Signals and Integrate
+- [ ] Substep 4.2.7: Testing
 - [ ] Documentation updated
 - [ ] All tests passing
 

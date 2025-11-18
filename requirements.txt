@@ -3,6 +3,7 @@
 
 # HTTP requests and web scraping
 requests>=2.31.0
+aiohttp>=3.13.0
 beautifulsoup4>=4.12.0
 
 # DuckDuckGo search integration

@@ -2186,7 +2186,6 @@ Add advanced features as needed.
 ### Features
 - Enhanced Export Features (Step 4.1)
 - Advanced Filtering (Step 4.2)
-- Async I/O Refactoring (Step 4.3, optional)
 - Database Integration (Step 4.4, optional)
 - Batch Processing Enhancements (Step 4.5, optional)
 - Keyboard Shortcuts (Step 4.6, optional)
@@ -2201,20 +2200,42 @@ Add advanced features as needed.
 
 ---
 
-## 📦 Phase 5: Packaging & Polish (2-3 weeks)
+## ⚡ Phase 5: Async I/O Refactoring (4-5 days)
+
+**Status**: 📝 Planned (Evaluate Need Based on Phase 3 Metrics)  
+**Priority**: 🚀 Medium Priority (Only if Phase 3 shows network I/O bottleneck)  
+**Dependencies**: Phase 0 (backend), Phase 1 (GUI), Phase 3 (performance metrics), Python 3.7+ (for async/await)
+
+**📄 Detailed Documentation**: See [`DOCS/PHASES/05_Phase_5_Async_IO.md`](PHASES/05_Phase_5_Async_IO.md) for complete implementation guide.
+
+### Goal
+Refactor network I/O operations to use async/await for improved performance in parallel processing scenarios, but only if Phase 3 performance metrics indicate that network I/O is a significant bottleneck.
+
+### Quick Overview
+- Async Beatport search functions
+- Concurrent fetching for multiple tracks
+- Performance improvement (30-50% faster for multi-track processing)
+- Backward compatible (sync functions still available)
+- Configurable via settings
+
+**IMPORTANT**: Only implement this phase if Phase 3 metrics show network I/O is a significant bottleneck (>40% of total time). Otherwise, skip to other phases.
+
+---
+
+## 📦 Phase 7: Packaging & Polish (2-3 weeks)
 
 **Status**: 📝 Planned  
 **Priority**: 🚀 P2 - LOWER PRIORITY (Do after features are complete)  
 **Dependencies**: Phase 1 (GUI Foundation), Phase 2 (User Experience), Phase 3 (Reliability)
 
-**📄 Detailed Documentation**: See [`DOCS/PHASES/05_Phase_5_Packaging_Polish.md`](PHASES/05_Phase_5_Packaging_Polish.md) for complete implementation guide.
+**📄 Detailed Documentation**: See [`DOCS/PHASES/07_Phase_7_Packaging_Polish.md`](PHASES/07_Phase_7_Packaging_Polish.md) for complete implementation guide.
 
 ### Goal
 Create distributable executables and add polish features for a professional finish.
 
 ### Quick Overview
 
-#### Step 5.1: Create Executable Packaging (1 week)
+#### Step 7.1: Create Executable Packaging (1 week)
 **Files**: `build/` directory (NEW)
 
 **What to create:**
@@ -2235,7 +2256,7 @@ Create distributable executables and add polish features for a professional fini
 
 ---
 
-#### Step 5.2: GUI Enhancements (1-2 weeks)
+#### Step 7.2: GUI Enhancements (1-2 weeks)
 **Files**: Various GUI files (MODIFY)
 
 **What to add:**
@@ -2259,7 +2280,7 @@ Create distributable executables and add polish features for a professional fini
 
 ---
 
-### Phase 5 Deliverables Checklist
+### Phase 7 Deliverables Checklist
 - [ ] Executable builds for all platforms
 - [ ] Windows installer works
 - [ ] macOS app bundle works
@@ -2279,7 +2300,8 @@ Create distributable executables and add polish features for a professional fini
 1. **Phase 0 → Phase 1**: Backend must be GUI-ready before GUI can use it
 2. **Phase 1 → Phase 2**: Core GUI must work before enhancements
 3. **Phase 1 → Phase 3**: Core GUI needed for batch processing
-4. **Phase 1-3 → Phase 5**: Features should be complete before packaging and polish
+4. **Phase 1-3 → Phase 5**: Phase 3 metrics needed to evaluate if async I/O is needed
+5. **Phase 1-3 → Phase 7**: Features should be complete before packaging and polish
 
 ### Testing Strategy
 - **Phase 0**: Unit tests + Integration tests
@@ -2311,7 +2333,12 @@ Create distributable executables and add polish features for a professional fini
 - [ ] Core features work
 - [ ] Basic user testing passed
 
-### Phase 5 Success (Polish)
+### Phase 5 Success (Async I/O)
+- Async I/O implemented and working
+- Performance improvement measurable (30%+)
+- Backward compatibility maintained
+
+### Phase 7 Success (Polish)
 - [ ] Executables build and work
 - [ ] Polish features complete
 - [ ] User testing passed

@@ -33,13 +33,13 @@ Add advanced features to enhance functionality, performance, and integration cap
    - Year range filter
    - BPM range filter
    - Key filter
+   - Advanced filters in Past Searches (HistoryView)
+   - Resizable UI sections (splitters)
+   - Sorting improvements (zero-padding, numeric sorting)
    - See: `02_Step_4.2_Advanced_Filtering.md`
 
 ### Medium Priority (Evaluate Need Based on Phase 3 Metrics)
-3. **Step 4.3: Async I/O Refactoring** (4-5 days, OPTIONAL)
-   - Only implement if Phase 3 metrics show network I/O is bottleneck
-   - Requires performance analysis first
-   - See: `03_Step_4.3_Async_IO.md`
+(Async I/O has been moved to Phase 5 - see `../05_Phase_5_Async_IO.md`)
 
 ### Low Priority (Optional Features)
 4. **Step 4.4: Database Integration** (4-5 days, OPTIONAL)
@@ -92,7 +92,6 @@ See `../05_Future_Features/00_Future_Features_Overview.md` for features that may
    - Async vs sync performance comparison
 
 4. **Decision Making**
-   - Use Phase 3 metrics to determine if async I/O is needed
    - Use cache hit rates to optimize additional metadata sources
    - Use query performance to optimize filter operations
 
@@ -284,8 +283,7 @@ Each step must update:
 - [ ] Backward compatibility maintained
 
 ### Medium Priority (Optional)
-- [ ] Async I/O refactoring complete (if needed)
-- [ ] Performance improvements validated
+(Async I/O has been moved to Phase 5)
 
 ### Low Priority (Optional)
 - [ ] Database integration complete (if requested)
@@ -297,12 +295,11 @@ Each step must update:
 
 ## Next Steps
 
-1. **Review Phase 3 Metrics**: Analyze performance data to determine if async I/O is needed
-2. **User Feedback**: Collect user feedback to prioritize features
-3. **Start with High Priority**: Begin with Step 4.1 (Enhanced Export) and Step 4.2 (Advanced Filtering)
-4. **Evaluate Medium Priority**: Use Phase 3 metrics to decide on async I/O
-5. **Consider Low Priority**: Only implement if users request these features
-6. **Future Features**: See `../05_Future_Features/00_Future_Features_Overview.md` for features that may be considered for future phases
+1. **User Feedback**: Collect user feedback to prioritize features
+2. **Start with High Priority**: Begin with Step 4.1 (Enhanced Export) and Step 4.2 (Advanced Filtering)
+3. **Consider Low Priority**: Only implement if users request these features
+4. **Future Features**: See `../05_Future_Features/00_Future_Features_Overview.md` for features that may be considered for future phases
+5. **Async I/O**: See Phase 5 for async I/O implementation (moved from Phase 4)
 
 ---
 

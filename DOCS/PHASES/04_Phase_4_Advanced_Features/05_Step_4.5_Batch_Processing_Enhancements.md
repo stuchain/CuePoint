@@ -718,6 +718,8 @@ if __name__ == '__main__':
 - [ ] Batch enhancements work with Phase 3 performance tracking
 - [ ] Batch enhancements work with Step 4.1 (Enhanced Export)
 - [ ] Batch enhancements work with Step 4.2 (Advanced Filtering)
+  - Note: Batch mode tabs now include advanced filters (year, BPM, key) with resizable splitters
+  - Each playlist tab has its own filter controls and can be filtered independently
 - [ ] Batch enhancements work with Step 4.3 (Async I/O)
 - [ ] Batch enhancements work with Step 4.4 (Database Integration)
 

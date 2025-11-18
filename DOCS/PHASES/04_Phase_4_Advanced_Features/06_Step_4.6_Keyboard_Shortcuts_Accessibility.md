@@ -30,6 +30,8 @@ Add comprehensive keyboard shortcuts and accessibility improvements to make the 
 - **Navigation**: Tab (Next), Shift+Tab (Previous), Enter (Activate)
 - **Processing**: F5 (Start), Esc (Cancel)
 - **View**: F1 (Help), F11 (Full Screen)
+- **Filtering** (from Step 4.2): Ctrl+F (Focus search box), Ctrl+Shift+F (Clear all filters)
+  - Consider adding: Ctrl+Y (Focus year filter), Ctrl+B (Focus BPM filter), Ctrl+K (Focus key filter)
 
 ### Accessibility Design
 - **Tooltips**: All interactive elements
@@ -397,6 +399,9 @@ if __name__ == '__main__':
 **Cross-Step Integration Testing**:
 - [ ] Shortcuts work with Step 4.1 (Enhanced Export)
 - [ ] Shortcuts work with Step 4.2 (Advanced Filtering)
+  - Note: Advanced filters are now available in both ResultsView and HistoryView
+  - Consider shortcuts for focusing on specific filter controls (year, BPM, key)
+  - Shortcuts should work in both single and batch mode tabs
 - [ ] Shortcuts work with Step 4.3 (Async I/O)
 - [ ] Shortcuts work with Step 4.4 (Database Integration)
 - [ ] Shortcuts work with Step 4.5 (Batch Processing)

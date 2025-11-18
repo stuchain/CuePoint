@@ -1,4 +1,4 @@
-# Phase 5: Packaging & Polish (2-3 weeks)
+# Phase 7: Packaging & Polish (2-3 weeks)
 
 **Status**: 📝 Planned  
 **Priority**: 🚀 P2 - LOWER PRIORITY (Do after features are complete)  
@@ -24,7 +24,7 @@ Create distributable executables and add polish features for a professional fini
 
 ## Implementation Steps
 
-### Step 5.1: Create Executable Packaging (1 week)
+### Step 7.1: Create Executable Packaging (1 week)
 **Files**: `build/CuePoint.spec` (NEW), `build/build_windows.bat` (NEW), `build/build_macos.sh` (NEW), `build/build_linux.sh` (NEW)
 
 **Dependencies**: Phase 1 Step 1.10 (application entry point), Phase 2 complete, PyInstaller installed
@@ -266,10 +266,10 @@ app = BUNDLE(
 
 ---
 
-### Step 5.2: Create Windows Installer (2-3 days)
+### Step 7.2: Create Windows Installer (2-3 days)
 **Files**: `build/installer.nsi` (NEW) - NSIS script, or `build/installer.iss` (NEW) - Inno Setup script
 
-**Dependencies**: Step 5.1 (executable builds), NSIS or Inno Setup installed
+**Dependencies**: Step 7.1 (executable builds), NSIS or Inno Setup installed
 
 **What to create - EXACT STRUCTURE:**
 
@@ -403,7 +403,7 @@ pause
 
 ---
 
-### Step 5.3: Application Icons and Branding (1-2 days)
+### Step 7.3: Application Icons and Branding (1-2 days)
 **Files**: `assets/icon.ico` (NEW), `assets/icon.icns` (NEW), `assets/icon.png` (NEW), `assets/splash.png` (NEW)
 
 **Dependencies**: Phase 1 (GUI), graphics design tools
@@ -559,7 +559,7 @@ class AboutDialog(QDialog):
 
 ---
 
-### Step 5.4: Settings Persistence (Already Implemented - Verify) (1 day)
+### Step 7.4: Settings Persistence (Already Implemented - Verify) (1 day)
 **Files**: `SRC/gui/main_window.py` (VERIFY), `SRC/gui/config_panel.py` (VERIFY)
 
 **Dependencies**: Phase 1 (GUI), Phase 2 (Settings panel)
@@ -656,7 +656,7 @@ class ConfigPanel(QWidget):
 
 ---
 
-### Step 5.5: Help System Enhancement (2 days)
+### Step 7.5: Help System Enhancement (2 days)
 **Files**: `SRC/gui/dialogs.py` (MODIFY), `DOCS/USER_GUIDE.md` (NEW or UPDATE)
 
 **Dependencies**: Phase 2 Step 2.4 (Help menu exists)
@@ -953,7 +953,7 @@ For additional help, visit: [GitHub Issues](https://github.com/your-repo/issues)
 
 ---
 
-### Step 5.6: Final Testing and Quality Assurance (2-3 days)
+### Step 7.6: Final Testing and Quality Assurance (2-3 days)
 **Files**: `tests/` directory (UPDATE), `TESTING.md` (NEW)
 
 **Dependencies**: All previous steps complete
@@ -1090,7 +1090,7 @@ if __name__ == "__main__":
 
 ---
 
-## Phase 5 Deliverables Checklist
+## Phase 7 Deliverables Checklist
 - [ ] Executable builds for Windows
 - [ ] Executable builds for macOS (if on macOS)
 - [ ] Executable builds for Linux (if on Linux)

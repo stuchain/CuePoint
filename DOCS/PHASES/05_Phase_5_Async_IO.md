@@ -1,4 +1,4 @@
-# Step 4.3: Async I/O Refactoring (OPTIONAL)
+# Phase 5: Async I/O Refactoring
 
 **Status**: 📝 Planned (Evaluate Need Based on Phase 3 Metrics)  
 **Priority**: 🚀 Medium Priority (Only if Phase 3 shows network I/O bottleneck)  
@@ -27,7 +27,7 @@ Refactor network I/O operations to use async/await for improved performance in p
 **CRITICAL**: Before implementing, analyze Phase 3 performance metrics:
 
 **Step 1: Export Metrics to JSON**
-- Use `export_performance_metrics_json()` (from Substep 4.3.0) to export metrics
+- Use `export_performance_metrics_json()` (from Substep 5.0) to export metrics
 - This creates a JSON file with all `network_time` data needed for analysis
 
 **Step 2: Analyze Network Time**
@@ -74,7 +74,7 @@ Refactor network I/O operations to use async/await for improved performance in p
 
 ## Implementation Steps
 
-### Substep 4.3.0: Add JSON Export for Performance Metrics (4-6 hours)
+### Substep 5.0: Add JSON Export for Performance Metrics (4-6 hours)
 **File**: `SRC/output_writer.py` (MODIFY), `SRC/performance_analyzer.py` (NEW)
 
 **Purpose**: Export performance metrics to JSON format for analysis, enabling network time analysis needed for async I/O decision-making.
@@ -380,7 +380,7 @@ if stats:
 
 ---
 
-### Substep 4.3.1: Create Async Beatport Search Module (1-2 days)
+### Substep 5.1: Create Async Beatport Search Module (1-2 days)
 **File**: `SRC/async_beatport_search.py` (NEW)
 
 **What to implement:**
@@ -581,7 +581,7 @@ async def async_fetch_multiple_tracks(
 
 ---
 
-### Substep 4.3.2: Create Async Matcher Function (1-2 days)
+### Substep 5.2: Create Async Matcher Function (1-2 days)
 **File**: `SRC/matcher.py` (MODIFY)
 
 **What to add:**
@@ -706,7 +706,7 @@ async def async_best_beatport_match(
 
 ---
 
-### Substep 4.3.3: Add Async Wrapper in Processor (1 day)
+### Substep 5.3: Add Async Wrapper in Processor (1 day)
 **File**: `SRC/processor.py` (MODIFY)
 
 **What to add:**
@@ -831,10 +831,10 @@ def process_playlist_async(
 
 ---
 
-### Substep 4.3.4: Add Configuration and Mode Switching with UI Integration (1-2 days)
+### Substep 5.4: Add Configuration and Mode Switching with UI Integration (1-2 days)
 **Files**: `SRC/config.py` (MODIFY), `SRC/gui/config_panel.py` (MODIFY), `SRC/gui/main_window.py` (MODIFY)
 
-**Dependencies**: Phase 1 Step 1.3 (config panel exists), Substep 4.3.3 (async wrapper exists)
+**Dependencies**: Phase 1 Step 1.3 (config panel exists), Substep 5.3 (async wrapper exists)
 
 **What to implement - EXACT STRUCTURE:**
 
@@ -1154,537 +1154,20 @@ def start_processing(self):
 
 ---
 
-### Substep 4.3.5: Comprehensive Testing and Performance Validation (2-3 days)
+### Substep 5.5: Comprehensive Testing and Performance Validation (2-3 days)
 
 **Dependencies**: All previous substeps must be completed
 
-#### Part A: Unit Tests (`SRC/test_async_io.py`)
+**Testing Requirements**:
+- [ ] Unit tests for all async functions
+- [ ] Integration tests for async workflow
+- [ ] Performance tests comparing sync vs async
+- [ ] GUI tests for configuration UI
+- [ ] Error handling tests
+- [ ] Memory usage tests
+- [ ] Manual testing checklist completion
 
-```python
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-"""
-Comprehensive unit tests for async I/O functionality.
-
-Tests async functions, error handling, performance, and integration.
-"""
-
-import unittest
-import asyncio
-import aiohttp
-import time
-from unittest.mock import Mock, patch, AsyncMock
-from SRC.async_beatport_search import async_track_urls, async_fetch_track_data
-from SRC.async_matcher import async_best_beatport_match
-
-class TestAsyncIO(unittest.TestCase):
-    """Comprehensive tests for async I/O functionality"""
-    
-    def setUp(self):
-        """Set up test fixtures"""
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-    
-    def tearDown(self):
-        """Clean up test fixtures"""
-        self.loop.close()
-    
-    def run_async(self, coro):
-        """Helper to run async tests"""
-        return self.loop.run_until_complete(coro)
-    
-    async def test_async_track_urls_basic(self):
-        """Test async track URL search basic functionality"""
-        async with aiohttp.ClientSession() as session:
-            urls = await async_track_urls(session, "test query", max_results=5)
-            self.assertIsInstance(urls, list)
-            self.assertLessEqual(len(urls), 5)
-    
-    async def test_async_track_urls_empty_query(self):
-        """Test async track URL search with empty query"""
-        async with aiohttp.ClientSession() as session:
-            urls = await async_track_urls(session, "", max_results=5)
-            self.assertIsInstance(urls, list)
-            # Empty query should return empty list or handle gracefully
-    
-    async def test_async_track_urls_timeout(self):
-        """Test async track URL search timeout handling"""
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=0.1)) as session:
-            with self.assertRaises(asyncio.TimeoutError):
-                await async_track_urls(session, "test query", max_results=5)
-    
-    async def test_async_fetch_track_data_basic(self):
-        """Test async track data fetching basic functionality"""
-        test_url = "https://beatport.com/track/test/123"
-        async with aiohttp.ClientSession() as session:
-            # Mock the actual fetch
-            with patch('aiohttp.ClientSession.get') as mock_get:
-                mock_response = AsyncMock()
-                mock_response.status = 200
-                mock_response.text = AsyncMock(return_value="<html>...</html>")
-                mock_get.return_value.__aenter__.return_value = mock_response
-                
-                data = await async_fetch_track_data(session, test_url)
-                self.assertIsNotNone(data)
-    
-    async def test_async_fetch_track_data_404(self):
-        """Test async track data fetching with 404 error"""
-        test_url = "https://beatport.com/track/nonexistent/999"
-        async with aiohttp.ClientSession() as session:
-            with patch('aiohttp.ClientSession.get') as mock_get:
-                mock_response = AsyncMock()
-                mock_response.status = 404
-                mock_get.return_value.__aenter__.return_value = mock_response
-                
-                data = await async_fetch_track_data(session, test_url)
-                self.assertIsNone(data)
-    
-    async def test_async_fetch_track_data_retry(self):
-        """Test async track data fetching retry logic"""
-        test_url = "https://beatport.com/track/test/123"
-        async with aiohttp.ClientSession() as session:
-            call_count = 0
-            
-            async def mock_get(*args, **kwargs):
-                nonlocal call_count
-                call_count += 1
-                if call_count < 3:
-                    raise aiohttp.ClientError("Connection error")
-                mock_response = AsyncMock()
-                mock_response.status = 200
-                mock_response.text = AsyncMock(return_value="<html>...</html>")
-                return mock_response
-            
-            with patch('aiohttp.ClientSession.get', side_effect=mock_get):
-                data = await async_fetch_track_data(session, test_url, retry_attempts=3)
-                self.assertIsNotNone(data)
-                self.assertEqual(call_count, 3)
-    
-    async def test_async_best_beatport_match(self):
-        """Test async best beatport match function"""
-        async with aiohttp.ClientSession() as session:
-            result = await async_best_beatport_match(
-                session=session,
-                idx=1,
-                track_title="Test Track",
-                track_artists_for_scoring="Test Artist",
-                title_only_mode=False,
-                queries=["test query"],
-                max_concurrent_requests=5
-            )
-            self.assertIsNotNone(result)
-    
-    async def test_concurrent_request_limiting(self):
-        """Test that concurrent request limiting works"""
-        semaphore = asyncio.Semaphore(3)
-        request_count = 0
-        max_concurrent = 0
-        
-        async def make_request():
-            nonlocal request_count, max_concurrent
-            async with semaphore:
-                request_count += 1
-                current = request_count
-                max_concurrent = max(max_concurrent, current)
-                await asyncio.sleep(0.1)
-                request_count -= 1
-        
-        # Create 10 tasks but only 3 should run concurrently
-        tasks = [make_request() for _ in range(10)]
-        await asyncio.gather(*tasks)
-        
-        self.assertLessEqual(max_concurrent, 3)
-    
-    def test_performance_improvement_sync_vs_async(self):
-        """Test that async I/O is faster than sync for multiple requests"""
-        import time
-        
-        # Simulate sync processing (sequential)
-        def sync_process():
-            start = time.time()
-            for i in range(10):
-                time.sleep(0.1)  # Simulate network delay
-            return time.time() - start
-        
-        # Simulate async processing (concurrent)
-        async def async_process():
-            start = time.time()
-            await asyncio.gather(*[asyncio.sleep(0.1) for _ in range(10)])
-            return time.time() - start
-        
-        sync_time = sync_process()
-        async_time = self.run_async(async_process())
-        
-        # Async should be significantly faster (at least 30% improvement)
-        improvement = (sync_time - async_time) / sync_time
-        self.assertGreater(improvement, 0.3, 
-                          f"Async should be 30%+ faster, got {improvement*100:.1f}% improvement")
-    
-    async def test_error_handling_network_error(self):
-        """Test error handling for network errors"""
-        async with aiohttp.ClientSession() as session:
-            with patch('aiohttp.ClientSession.get', side_effect=aiohttp.ClientError("Network error")):
-                # Should handle error gracefully
-                try:
-                    await async_fetch_track_data(session, "https://invalid.url", retry_attempts=1)
-                except Exception as e:
-                    # Should be a handled error, not crash
-                    self.assertIsInstance(e, (aiohttp.ClientError, Exception))
-    
-    async def test_error_handling_timeout(self):
-        """Test error handling for timeouts"""
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=0.1)) as session:
-            with self.assertRaises(asyncio.TimeoutError):
-                await async_track_urls(session, "test", max_results=5)
-    
-    async def test_memory_usage_reasonable(self):
-        """Test that memory usage is reasonable with async I/O"""
-        import psutil
-        import os
-        
-        process = psutil.Process(os.getpid())
-        initial_memory = process.memory_info().rss / 1024 / 1024  # MB
-        
-        # Create many concurrent tasks
-        async def task():
-            await asyncio.sleep(0.01)
-        
-        tasks = [task() for _ in range(100)]
-        await asyncio.gather(*tasks)
-        
-        final_memory = process.memory_info().rss / 1024 / 1024  # MB
-        memory_increase = final_memory - initial_memory
-        
-        # Memory increase should be reasonable (< 100MB for 100 tasks)
-        self.assertLess(memory_increase, 100, 
-                       f"Memory increase too high: {memory_increase:.1f}MB")
-
-if __name__ == '__main__':
-    unittest.main()
-```
-
-#### Part B: GUI Integration Tests (`SRC/test_async_io_gui.py`)
-
-```python
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-"""
-GUI integration tests for async I/O configuration.
-
-Tests UI interactions, settings persistence, and mode switching.
-"""
-
-import unittest
-from unittest.mock import Mock, patch
-from PySide6.QtWidgets import QApplication
-from PySide6.QtTest import QTest
-from PySide6.QtCore import Qt
-import sys
-
-if not QApplication.instance():
-    app = QApplication(sys.argv)
-
-from SRC.gui.config_panel import ConfigPanel
-
-class TestAsyncIOGUI(unittest.TestCase):
-    """Tests for async I/O GUI components"""
-    
-    def setUp(self):
-        """Set up test fixtures"""
-        self.panel = ConfigPanel()
-    
-    def tearDown(self):
-        """Clean up test fixtures"""
-        self.panel.close()
-    
-    def test_async_io_checkbox_exists(self):
-        """Test async I/O checkbox exists"""
-        self.assertIsNotNone(self.panel.async_io_check)
-        self.assertFalse(self.panel.async_io_check.isChecked())  # Default disabled
-    
-    def test_async_settings_disabled_by_default(self):
-        """Test async settings are disabled when checkbox is unchecked"""
-        self.assertFalse(self.panel.async_io_check.isChecked())
-        self.assertFalse(self.panel.async_settings_widget.isEnabled())
-    
-    def test_async_settings_enabled_when_checked(self):
-        """Test async settings are enabled when checkbox is checked"""
-        self.panel.async_io_check.setChecked(True)
-        QApplication.processEvents()
-        self.assertTrue(self.panel.async_settings_widget.isEnabled())
-    
-    def test_max_concurrent_tracks_spinbox(self):
-        """Test max concurrent tracks spinbox"""
-        self.assertIsNotNone(self.panel.async_max_tracks)
-        self.assertEqual(self.panel.async_max_tracks.value(), 5)  # Default
-        self.assertEqual(self.panel.async_max_tracks.minimum(), 1)
-        self.assertEqual(self.panel.async_max_tracks.maximum(), 20)
-    
-    def test_max_concurrent_requests_spinbox(self):
-        """Test max concurrent requests spinbox"""
-        self.assertIsNotNone(self.panel.async_max_requests)
-        self.assertEqual(self.panel.async_max_requests.value(), 10)  # Default
-        self.assertEqual(self.panel.async_max_requests.minimum(), 1)
-        self.assertEqual(self.panel.async_max_requests.maximum(), 20)
-    
-    def test_recommendation_label_updates(self):
-        """Test recommendation label updates when settings change"""
-        self.panel.async_io_check.setChecked(True)
-        QApplication.processEvents()
-        
-        initial_text = self.panel.async_recommendation_label.text()
-        self.assertNotEqual(initial_text, "")
-        
-        # Change settings
-        self.panel.async_max_tracks.setValue(10)
-        QApplication.processEvents()
-        
-        new_text = self.panel.async_recommendation_label.text()
-        self.assertNotEqual(new_text, initial_text)
-        self.assertIn("10", new_text)
-    
-    def test_info_button_opens_dialog(self):
-        """Test info button opens information dialog"""
-        with patch('SRC.gui.config_panel.QMessageBox') as mock_msgbox:
-            mock_msg = Mock()
-            mock_msgbox.return_value = mock_msg
-            
-            # Find and click info button
-            info_button = None
-            for widget in self.panel.findChildren(QPushButton):
-                if "When to Use" in widget.text() or "Info" in widget.text():
-                    info_button = widget
-                    break
-            
-            if info_button:
-                QTest.mouseClick(info_button, Qt.LeftButton)
-                QApplication.processEvents()
-                # Dialog should have been created
-                mock_msgbox.assert_called()
-    
-    def test_settings_save_and_load(self):
-        """Test settings save and load correctly"""
-        # Set some values
-        self.panel.async_io_check.setChecked(True)
-        self.panel.async_max_tracks.setValue(7)
-        self.panel.async_max_requests.setValue(12)
-        
-        # Save
-        self.panel.save_settings()
-        
-        # Reset
-        self.panel.async_io_check.setChecked(False)
-        self.panel.async_max_tracks.setValue(5)
-        self.panel.async_max_requests.setValue(10)
-        
-        # Load
-        self.panel.load_settings()
-        
-        # Verify values restored
-        self.assertTrue(self.panel.async_io_check.isChecked())
-        self.assertEqual(self.panel.async_max_tracks.value(), 7)
-        self.assertEqual(self.panel.async_max_requests.value(), 12)
-
-if __name__ == '__main__':
-    unittest.main()
-```
-
-#### Part C: Integration Tests (`SRC/test_async_io_integration.py`)
-
-```python
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-"""
-Integration tests for async I/O functionality.
-
-Tests end-to-end async processing workflow.
-"""
-
-import unittest
-from unittest.mock import Mock, patch, AsyncMock
-from PySide6.QtWidgets import QApplication
-import sys
-import asyncio
-
-if not QApplication.instance():
-    app = QApplication(sys.argv)
-
-from SRC.processor import process_playlist, process_playlist_async
-from SRC.config import set_async_config, get_async_config
-
-class TestAsyncIOIntegration(unittest.TestCase):
-    """Integration tests for async I/O workflow"""
-    
-    def setUp(self):
-        """Set up test fixtures"""
-        # Save original config
-        self.original_config = get_async_config()
-    
-    def tearDown(self):
-        """Clean up test fixtures"""
-        # Restore original config
-        set_async_config(
-            enabled=self.original_config.get("enabled", False),
-            max_tracks=self.original_config.get("max_concurrent_tracks", 5),
-            max_requests=self.original_config.get("max_concurrent_requests", 10)
-        )
-    
-    @patch('SRC.processor.process_playlist_async')
-    def test_async_mode_enabled(self, mock_async):
-        """Test that async mode is used when enabled"""
-        set_async_config(enabled=True, max_tracks=5, max_requests=10)
-        
-        # Mock async function
-        mock_async.return_value = []
-        
-        # Process playlist (should use async)
-        try:
-            process_playlist("test.xml", "Test Playlist", {"async_io_enabled": True})
-        except Exception:
-            pass  # Expected to fail without real file
-        
-        # Verify async function was called
-        mock_async.assert_called()
-    
-    @patch('SRC.processor.process_playlist')
-    def test_sync_mode_when_disabled(self, mock_sync):
-        """Test that sync mode is used when async is disabled"""
-        set_async_config(enabled=False)
-        
-        # Mock sync function
-        mock_sync.return_value = []
-        
-        # Process playlist (should use sync)
-        try:
-            process_playlist("test.xml", "Test Playlist", {"async_io_enabled": False})
-        except Exception:
-            pass  # Expected to fail without real file
-        
-        # Verify sync function was called (not async)
-        # This is a simplified test - actual implementation may differ
-
-if __name__ == '__main__':
-    unittest.main()
-```
-
-#### Part D: Performance Tests (`SRC/test_async_io_performance.py`)
-
-```python
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-"""
-Performance tests for async I/O functionality.
-
-Tests performance improvements and validates metrics.
-"""
-
-import unittest
-import time
-import asyncio
-from unittest.mock import Mock, patch
-from SRC.processor import process_playlist, process_playlist_async
-from SRC.config import set_async_config
-
-class TestAsyncIOPerformance(unittest.TestCase):
-    """Performance tests for async I/O"""
-    
-    def test_async_vs_sync_performance(self):
-        """Test that async is faster than sync for multiple tracks"""
-        # This would require actual network requests or mocks
-        # Simplified version:
-        
-        # Simulate sync processing
-        def sync_simulate(num_tracks):
-            start = time.time()
-            for i in range(num_tracks):
-                time.sleep(0.1)  # Simulate network delay
-            return time.time() - start
-        
-        # Simulate async processing
-        async def async_simulate(num_tracks):
-            start = time.time()
-            await asyncio.gather(*[asyncio.sleep(0.1) for _ in range(num_tracks)])
-            return time.time() - start
-        
-        num_tracks = 10
-        sync_time = sync_simulate(num_tracks)
-        async_time = asyncio.run(async_simulate(num_tracks))
-        
-        # Async should be significantly faster
-        improvement = (sync_time - async_time) / sync_time
-        self.assertGreater(improvement, 0.3, 
-                          f"Async should be 30%+ faster, got {improvement*100:.1f}%")
-    
-    def test_performance_scales_with_tracks(self):
-        """Test that performance improvement scales with number of tracks"""
-        # More tracks = more improvement
-        # This is a conceptual test
-        pass
-
-if __name__ == '__main__':
-    unittest.main()
-```
-
-#### Part E: Manual Testing Checklist
-
-**UI Testing Checklist**:
-- [ ] Async I/O checkbox is visible in Advanced Settings
-- [ ] Checkbox is unchecked by default
-- [ ] Async settings are disabled when checkbox is unchecked
-- [ ] Async settings are enabled when checkbox is checked
-- [ ] Max concurrent tracks spinbox works correctly
-- [ ] Max concurrent requests spinbox works correctly
-- [ ] Recommendation label updates when settings change
-- [ ] Info button opens information dialog
-- [ ] Tooltips are helpful and accurate
-- [ ] Settings save correctly
-- [ ] Settings load correctly
-- [ ] Settings persist across application restarts
-
-**Functional Testing Checklist**:
-- [ ] Async mode can be enabled/disabled
-- [ ] Processing uses async mode when enabled
-- [ ] Processing uses sync mode when disabled
-- [ ] Concurrent tracks limit is respected
-- [ ] Concurrent requests limit is respected
-- [ ] Error handling works in async mode
-- [ ] Timeout handling works in async mode
-- [ ] Retry logic works in async mode
-- [ ] Performance improvement is measurable (30%+)
-- [ ] Memory usage is reasonable
-- [ ] No memory leaks with async processing
-
-**Performance Testing Checklist**:
-- [ ] Async mode is faster than sync for 10+ tracks
-- [ ] Performance improvement is 30%+ for multi-track playlists
-- [ ] Memory usage increase is reasonable (< 200MB for 100 tracks)
-- [ ] CPU usage is acceptable
-- [ ] Network utilization is efficient
-- [ ] No performance degradation for single tracks
-- [ ] Concurrent limits prevent resource exhaustion
-
-**Error Scenario Testing**:
-- [ ] Network errors handled gracefully
-- [ ] Timeout errors handled gracefully
-- [ ] Rate limiting handled gracefully
-- [ ] Invalid URLs handled gracefully
-- [ ] Connection errors don't crash application
-- [ ] Partial failures don't stop entire processing
-- [ ] Error messages are clear and helpful
-
-**Cross-Step Integration Testing**:
-- [ ] Async I/O works with Phase 3 performance tracking
-- [ ] Async I/O metrics appear in performance dashboard
-- [ ] Async I/O works with Step 4.1 (Enhanced Export)
-- [ ] Async I/O works with Step 4.2 (Advanced Filtering)
-- [ ] Async I/O works with other Phase 4 steps
-- [ ] Settings integrate with existing configuration system
-
-**Acceptance Criteria Verification**:
+**Acceptance Criteria**:
 - ✅ Async functions implemented and working
 - ✅ Concurrent fetching works correctly
 - ✅ Performance improvement measurable (30%+)
@@ -1800,18 +1283,18 @@ if __name__ == '__main__':
 ---
 
 ## Implementation Checklist Summary
-- [ ] Substep 4.3.0: Add JSON Export for Performance Metrics
-- [ ] Substep 4.3.1: Create Async Beatport Search Module
-- [ ] Substep 4.3.2: Create Async Matcher Function
-- [ ] Substep 4.3.3: Add Async Wrapper in Processor
-- [ ] Substep 4.3.4: Add Configuration and Mode Switching
-- [ ] Substep 4.3.5: Testing and Performance Validation
+- [ ] Substep 5.0: Add JSON Export for Performance Metrics
+- [ ] Substep 5.1: Create Async Beatport Search Module
+- [ ] Substep 5.2: Create Async Matcher Function
+- [ ] Substep 5.3: Add Async Wrapper in Processor
+- [ ] Substep 5.4: Add Configuration and Mode Switching
+- [ ] Substep 5.5: Testing and Performance Validation
 - [ ] Documentation updated
 - [ ] All tests passing
 
 ---
 
-**IMPORTANT**: Only implement this step if Phase 3 metrics show network I/O is a significant bottleneck (>40% of total time). Otherwise, skip to other Phase 4 steps.
+**IMPORTANT**: Only implement this phase if Phase 3 metrics show network I/O is a significant bottleneck (>40% of total time). Otherwise, skip to other phases.
 
-**Next Step**: After evaluation, proceed to other Phase 4 steps based on priority. See `00_Phase_4_Overview.md` for available steps.
+**Next Step**: After evaluation, proceed to other phases based on priority. See Phase 4 or Phase 7 for available options.
 
