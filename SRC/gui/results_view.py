@@ -24,6 +24,7 @@ import time
 from gui_interface import TrackResult
 from gui.candidate_dialog import CandidateDialog
 from gui.export_dialog import ExportDialog
+from gui.shortcut_manager import ShortcutManager, ShortcutContext
 from output_writer import write_csv_files, write_json_file, write_excel_file
 from utils import with_timestamp
 try:
@@ -52,7 +53,10 @@ class ResultsView(QWidget):
         self._filter_debounce_timer = QTimer()
         self._filter_debounce_timer.setSingleShot(True)
         self._filter_debounce_timer.timeout.connect(self._apply_filters_debounced)
+        # Create shortcut manager
+        self.shortcut_manager = ShortcutManager(self)
         self.init_ui()
+        self.setup_shortcuts()
     
     def init_ui(self):
         """Initialize UI components"""
@@ -87,17 +91,29 @@ class ResultsView(QWidget):
         filter_layout = QHBoxLayout()
         
         # Search box
+        search_label = QLabel("Search:")
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Search...")
         self.search_box.textChanged.connect(self._trigger_filter_debounced)
-        filter_layout.addWidget(QLabel("Search:"))
+        search_label.setBuddy(self.search_box)  # Associate label with input
+        self.search_box.setToolTip("Search for tracks by title, artist, or Beatport data (Ctrl+F)")
+        self.search_box.setAccessibleName("Search input field")
+        self.search_box.setAccessibleDescription("Enter text to search for tracks. Keyboard shortcut: Ctrl+F")
+        self.search_box.setFocusPolicy(Qt.StrongFocus)
+        filter_layout.addWidget(search_label)
         filter_layout.addWidget(self.search_box)
         
         # Confidence filter
-        filter_layout.addWidget(QLabel("Confidence:"))
+        confidence_label = QLabel("Confidence:")
         self.confidence_filter = QComboBox()
         self.confidence_filter.addItems(["All", "High", "Medium", "Low"])
         self.confidence_filter.currentTextChanged.connect(self._trigger_filter_debounced)
+        confidence_label.setBuddy(self.confidence_filter)  # Associate label with input
+        self.confidence_filter.setToolTip("Filter results by match confidence level")
+        self.confidence_filter.setAccessibleName("Confidence filter")
+        self.confidence_filter.setAccessibleDescription("Select confidence level to filter results")
+        self.confidence_filter.setFocusPolicy(Qt.StrongFocus)
+        filter_layout.addWidget(confidence_label)
         filter_layout.addWidget(self.confidence_filter)
         
         filter_layout.addStretch()
@@ -178,7 +194,10 @@ class ResultsView(QWidget):
         
         # Clear filters button
         clear_button = QPushButton("Clear All Filters")
-        clear_button.setToolTip("Reset all filters to default values")
+        clear_button.setToolTip("Reset all filters to default values (Ctrl+Shift+F)")
+        clear_button.setAccessibleName("Clear all filters button")
+        clear_button.setAccessibleDescription("Click to reset all filters. Keyboard shortcut: Ctrl+Shift+F")
+        clear_button.setFocusPolicy(Qt.StrongFocus)
         clear_button.clicked.connect(self.clear_filters)
         container_layout.addWidget(clear_button)
         
@@ -268,19 +287,130 @@ class ResultsView(QWidget):
         
         self.export_btn = QPushButton("Export...")
         self.export_btn.clicked.connect(self.show_export_dialog)
+        self.export_btn.setToolTip("Export results to CSV, JSON, or Excel format (Ctrl+E)")
+        self.export_btn.setAccessibleName("Export button")
+        self.export_btn.setAccessibleDescription("Click to export results. Keyboard shortcut: Ctrl+E")
+        self.export_btn.setFocusPolicy(Qt.StrongFocus)
         button_layout.addWidget(self.export_btn)
         
         # Legacy export buttons (for backward compatibility)
         self.export_all_btn = QPushButton("Export All CSV Files")
         self.export_all_btn.clicked.connect(self.export_all_csv)
+        self.export_all_btn.setToolTip("Export all CSV files (main, candidates, queries, review)")
+        self.export_all_btn.setAccessibleName("Export all CSV files button")
+        self.export_all_btn.setAccessibleDescription("Click to export all CSV files")
+        self.export_all_btn.setFocusPolicy(Qt.StrongFocus)
         button_layout.addWidget(self.export_all_btn)
         
         self.open_folder_btn = QPushButton("Open Output Folder")
         self.open_folder_btn.clicked.connect(self.open_output_folder)
+        self.open_folder_btn.setToolTip("Open the output folder in file explorer")
+        self.open_folder_btn.setAccessibleName("Open output folder button")
+        self.open_folder_btn.setAccessibleDescription("Click to open the output folder")
+        self.open_folder_btn.setFocusPolicy(Qt.StrongFocus)
         button_layout.addWidget(self.open_folder_btn)
         
         button_layout.addStretch()
         layout.addLayout(button_layout)
+    
+    def setup_shortcuts(self):
+        """Setup results view shortcuts"""
+        self.shortcut_manager.register_shortcut(
+            "focus_search",
+            "Ctrl+F",
+            self.focus_search_box,
+            ShortcutContext.RESULTS_VIEW,
+            "Focus search box"
+        )
+        
+        self.shortcut_manager.register_shortcut(
+            "clear_filters",
+            "Ctrl+Shift+F",
+            self.clear_filters,
+            ShortcutContext.RESULTS_VIEW,
+            "Clear all filters"
+        )
+        
+        self.shortcut_manager.register_shortcut(
+            "focus_year_filter",
+            "Ctrl+Y",
+            lambda: self.year_min.setFocus(),
+            ShortcutContext.RESULTS_VIEW,
+            "Focus year filter"
+        )
+        
+        self.shortcut_manager.register_shortcut(
+            "focus_bpm_filter",
+            "Ctrl+B",
+            lambda: self.bpm_min.setFocus(),
+            ShortcutContext.RESULTS_VIEW,
+            "Focus BPM filter"
+        )
+        
+        self.shortcut_manager.register_shortcut(
+            "focus_key_filter",
+            "Ctrl+K",
+            lambda: self.key_filter.setFocus(),
+            ShortcutContext.RESULTS_VIEW,
+            "Focus key filter"
+        )
+        
+        self.shortcut_manager.register_shortcut(
+            "select_all",
+            "Ctrl+A",
+            self.select_all_results,
+            ShortcutContext.RESULTS_VIEW,
+            "Select all results"
+        )
+        
+        self.shortcut_manager.register_shortcut(
+            "copy",
+            "Ctrl+C",
+            self.copy_selected,
+            ShortcutContext.RESULTS_VIEW,
+            "Copy selected results"
+        )
+        
+        self.shortcut_manager.register_shortcut(
+            "view_candidates",
+            "Enter",
+            self.view_selected_candidates,
+            ShortcutContext.RESULTS_VIEW,
+            "View candidates for selected row"
+        )
+        
+        # Set context
+        self.shortcut_manager.set_context(ShortcutContext.RESULTS_VIEW)
+    
+    def focus_search_box(self):
+        """Focus the search box"""
+        self.search_box.setFocus()
+        self.search_box.selectAll()
+    
+    def select_all_results(self):
+        """Select all results in table"""
+        if hasattr(self, 'table'):
+            self.table.selectAll()
+    
+    def copy_selected(self):
+        """Copy selected results to clipboard"""
+        if not hasattr(self, 'table'):
+            return
+        selected = self.table.selectedItems()
+        if selected:
+            # Copy to clipboard
+            from PySide6.QtWidgets import QApplication
+            text = "\n".join([item.text() for item in selected])
+            QApplication.clipboard().setText(text)
+    
+    def view_selected_candidates(self):
+        """View candidates for selected row"""
+        if not hasattr(self, 'table'):
+            return
+        selected_rows = self.table.selectionModel().selectedRows()
+        if selected_rows:
+            row = selected_rows[0].row()
+            self._view_candidates_for_row(row)
     
     def set_results(self, results: List[TrackResult], playlist_name: str = ""):
         """

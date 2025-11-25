@@ -9,13 +9,14 @@ This module contains error dialogs and confirmation dialogs for the GUI.
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTextEdit,
-    QTextBrowser, QTableWidget, QTableWidgetItem
+    QTextBrowser, QTableWidget, QTableWidgetItem, QTabWidget, QLineEdit
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
 from typing import Optional
 
 from gui_interface import ProcessingError, ErrorType
+from gui.shortcut_manager import ShortcutManager, ShortcutContext
 
 
 class ErrorDialog(QDialog):
@@ -335,16 +336,17 @@ class UserGuideDialog(QDialog):
 
 
 class KeyboardShortcutsDialog(QDialog):
-    """Keyboard shortcuts dialog"""
+    """Enhanced keyboard shortcuts dialog"""
     
-    def __init__(self, parent=None):
+    def __init__(self, shortcut_manager: Optional[ShortcutManager] = None, parent=None):
         super().__init__(parent)
+        self.shortcut_manager = shortcut_manager
         self.init_ui()
     
     def init_ui(self):
-        """Initialize UI components"""
+        """Initialize UI with enhanced features"""
         self.setWindowTitle("Keyboard Shortcuts - CuePoint")
-        self.setMinimumSize(600, 500)
+        self.setMinimumSize(800, 600)
         self.setModal(True)
         
         layout = QVBoxLayout(self)
@@ -356,33 +358,72 @@ class KeyboardShortcutsDialog(QDialog):
         title_label.setStyleSheet("font-size: 18px; font-weight: bold;")
         layout.addWidget(title_label)
         
-        # Shortcuts table
-        table = QTableWidget()
-        table.setColumnCount(2)
-        table.setHorizontalHeaderLabels(["Action", "Shortcut"])
-        table.setEditTriggers(QTableWidget.NoEditTriggers)
-        table.setAlternatingRowColors(True)
-        table.horizontalHeader().setStretchLastSection(True)
-        
-        # Define shortcuts
-        shortcuts = [
-            ("Open XML File", "Ctrl+O"),
-            ("Export Results", "Ctrl+E"),
-            ("Copy Selected", "Ctrl+C"),
-            ("Select All", "Ctrl+A"),
-            ("Clear Results", "Ctrl+Del"),
-            ("Toggle Full Screen", "F11"),
-            ("Show User Guide", "F1"),
-            ("Exit Application", "Ctrl+Q"),
-        ]
-        
-        table.setRowCount(len(shortcuts))
-        for row, (action, shortcut) in enumerate(shortcuts):
-            table.setItem(row, 0, QTableWidgetItem(action))
-            table.setItem(row, 1, QTableWidgetItem(shortcut))
-        
-        table.resizeColumnsToContents()
-        layout.addWidget(table)
+        # Search box (if shortcut manager is available)
+        if self.shortcut_manager:
+            search_layout = QHBoxLayout()
+            search_label = QLabel("Search:")
+            self.search_box = QLineEdit()
+            self.search_box.setPlaceholderText("Search shortcuts...")
+            self.search_box.textChanged.connect(self.filter_shortcuts)
+            search_layout.addWidget(search_label)
+            search_layout.addWidget(self.search_box)
+            layout.addLayout(search_layout)
+            
+            # Context tabs
+            self.tabs = QTabWidget()
+            
+            # Global shortcuts tab
+            global_tab = self.create_shortcuts_table(ShortcutContext.GLOBAL)
+            self.tabs.addTab(global_tab, "Global")
+            
+            # Main window tab
+            main_tab = self.create_shortcuts_table(ShortcutContext.MAIN_WINDOW)
+            self.tabs.addTab(main_tab, "Main Window")
+            
+            # Results view tab
+            results_tab = self.create_shortcuts_table(ShortcutContext.RESULTS_VIEW)
+            self.tabs.addTab(results_tab, "Results View")
+            
+            # Batch processor tab
+            batch_tab = self.create_shortcuts_table(ShortcutContext.BATCH_PROCESSOR)
+            self.tabs.addTab(batch_tab, "Batch Processor")
+            
+            # Settings tab
+            settings_tab = self.create_shortcuts_table(ShortcutContext.SETTINGS)
+            self.tabs.addTab(settings_tab, "Settings")
+            
+            layout.addWidget(self.tabs)
+            
+            # Customize button
+            customize_button = QPushButton("Customize Shortcuts...")
+            customize_button.clicked.connect(self.on_customize)
+            layout.addWidget(customize_button)
+        else:
+            # Fallback to simple table if no shortcut manager
+            table = QTableWidget()
+            table.setColumnCount(2)
+            table.setHorizontalHeaderLabels(["Action", "Shortcut"])
+            table.setEditTriggers(QTableWidget.NoEditTriggers)
+            table.setAlternatingRowColors(True)
+            table.horizontalHeader().setStretchLastSection(True)
+            
+            shortcuts = [
+                ("Open XML File", "Ctrl+O"),
+                ("Export Results", "Ctrl+E"),
+                ("Copy Selected", "Ctrl+C"),
+                ("Select All", "Ctrl+A"),
+                ("Toggle Full Screen", "F11"),
+                ("Show User Guide", "F1"),
+                ("Exit Application", "Ctrl+Q"),
+            ]
+            
+            table.setRowCount(len(shortcuts))
+            for row, (action, shortcut) in enumerate(shortcuts):
+                table.setItem(row, 0, QTableWidgetItem(action))
+                table.setItem(row, 1, QTableWidgetItem(shortcut))
+            
+            table.resizeColumnsToContents()
+            layout.addWidget(table)
         
         # Note
         note_label = QLabel(
@@ -400,3 +441,48 @@ class KeyboardShortcutsDialog(QDialog):
         close_btn.clicked.connect(self.accept)
         button_layout.addWidget(close_btn)
         layout.addLayout(button_layout)
+    
+    def create_shortcuts_table(self, context: str) -> QTableWidget:
+        """Create shortcuts table for a context"""
+        table = QTableWidget()
+        table.setColumnCount(2)
+        table.setHorizontalHeaderLabels(["Action", "Shortcut"])
+        table.setEditTriggers(QTableWidget.NoEditTriggers)
+        table.setAlternatingRowColors(True)
+        table.horizontalHeader().setStretchLastSection(True)
+        
+        # Get shortcuts for context
+        shortcuts = self.shortcut_manager.get_shortcuts_for_context(context)
+        table.setRowCount(len(shortcuts))
+        
+        for row, (action_id, (sequence, description)) in enumerate(shortcuts.items()):
+            table.setItem(row, 0, QTableWidgetItem(description))
+            table.setItem(row, 1, QTableWidgetItem(sequence))
+        
+        table.resizeColumnsToContents()
+        return table
+    
+    def filter_shortcuts(self, text: str):
+        """Filter shortcuts by search text"""
+        text = text.lower()
+        # Search in all tabs
+        for i in range(self.tabs.count()):
+            table = self.tabs.widget(i)
+            if isinstance(table, QTableWidget):
+                for row in range(table.rowCount()):
+                    action = table.item(row, 0)
+                    shortcut = table.item(row, 1)
+                    if action and shortcut:
+                        action_text = action.text().lower()
+                        shortcut_text = shortcut.text().lower()
+                        # Show row if text matches
+                        matches = text in action_text or text in shortcut_text
+                        table.setRowHidden(row, not matches)
+    
+    def on_customize(self):
+        """Open customization dialog"""
+        from gui.shortcut_customization_dialog import ShortcutCustomizationDialog
+        dialog = ShortcutCustomizationDialog(self.shortcut_manager, self)
+        dialog.exec()
+        # Refresh tables
+        self.init_ui()

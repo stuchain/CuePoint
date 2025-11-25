@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QMenu, QMessageBox, QRadioButton, QButtonGroup, QScrollArea, QSplitter
 )
 from PySide6.QtCore import Qt, QSettings
-from PySide6.QtGui import QDragEnterEvent, QDropEvent, QKeySequence, QAction
+from PySide6.QtGui import QDragEnterEvent, QDropEvent, QKeySequence, QAction, QKeyEvent
 from typing import List, Dict
 import os
 import sys
@@ -26,6 +26,7 @@ from gui.config_panel import ConfigPanel
 from gui.batch_processor import BatchProcessorWidget
 from gui.history_view import HistoryView
 from gui.dialogs import ErrorDialog, AboutDialog, UserGuideDialog, KeyboardShortcutsDialog
+from gui.shortcut_manager import ShortcutManager, ShortcutContext
 from gui_controller import GUIController
 from gui_interface import ProcessingError
 from output_writer import write_csv_files
@@ -40,8 +41,12 @@ class MainWindow(QMainWindow):
         super().__init__(parent)
         # Create GUI controller for processing
         self.controller = GUIController()
+        # Create shortcut manager
+        self.shortcut_manager = ShortcutManager(self)
+        self.shortcut_manager.shortcut_conflict.connect(self.on_shortcut_conflict)
         self.init_ui()
         self.setup_connections()
+        self.setup_shortcuts()
         
     def init_ui(self):
         """Initialize UI components"""
@@ -90,11 +95,19 @@ class MainWindow(QMainWindow):
         self.single_mode_radio = QRadioButton("Single Playlist")
         self.single_mode_radio.setChecked(True)  # Default to single mode
         self.single_mode_radio.toggled.connect(self.on_mode_changed)
+        self.single_mode_radio.setToolTip("Process a single playlist at a time")
+        self.single_mode_radio.setAccessibleName("Single playlist mode radio button")
+        self.single_mode_radio.setAccessibleDescription("Select to process one playlist at a time")
+        self.single_mode_radio.setFocusPolicy(Qt.StrongFocus)
         self.mode_button_group.addButton(self.single_mode_radio, 0)
         mode_layout.addWidget(self.single_mode_radio)
         
         self.batch_mode_radio = QRadioButton("Multiple Playlists")
         self.batch_mode_radio.toggled.connect(self.on_mode_changed)
+        self.batch_mode_radio.setToolTip("Process multiple playlists in batch")
+        self.batch_mode_radio.setAccessibleName("Multiple playlists mode radio button")
+        self.batch_mode_radio.setAccessibleDescription("Select to process multiple playlists in batch")
+        self.batch_mode_radio.setFocusPolicy(Qt.StrongFocus)
         self.mode_button_group.addButton(self.batch_mode_radio, 1)
         mode_layout.addWidget(self.batch_mode_radio)
         
@@ -123,6 +136,10 @@ class MainWindow(QMainWindow):
         self.start_button = QPushButton("Start Processing")
         self.start_button.setMinimumHeight(40)
         self.start_button.clicked.connect(self.start_processing)
+        self.start_button.setToolTip("Start processing the selected playlist (F5)")
+        self.start_button.setAccessibleName("Start processing button")
+        self.start_button.setAccessibleDescription("Click to start processing the selected playlist. Keyboard shortcut: F5")
+        self.start_button.setFocusPolicy(Qt.StrongFocus)
         self.start_button_layout.addWidget(self.start_button)
         self.start_button_layout.addStretch()
         top_section_layout.addWidget(self.start_button_container)
@@ -196,6 +213,10 @@ class MainWindow(QMainWindow):
         
         # Enable drag and drop for the window
         self.setAcceptDrops(True)
+        
+        # Set accessible name for main window
+        self.setAccessibleName("CuePoint main window")
+        self.setAccessibleDescription("Main application window for CuePoint Beatport Metadata Enricher")
     
     def setup_connections(self):
         """Set up signal connections for GUI controller"""
@@ -208,6 +229,148 @@ class MainWindow(QMainWindow):
         self.batch_processor.batch_started.connect(self.on_batch_started)
         self.batch_processor.batch_cancelled.connect(self.on_batch_cancelled)
         self.batch_processor.batch_completed.connect(self.on_batch_completed)
+    
+    def setup_shortcuts(self):
+        """Setup all keyboard shortcuts"""
+        # Global shortcuts
+        self.shortcut_manager.register_shortcut(
+            "open_file",
+            "Ctrl+O",
+            self.on_file_open,
+            ShortcutContext.GLOBAL,
+            "Open XML file"
+        )
+        
+        self.shortcut_manager.register_shortcut(
+            "export_results",
+            "Ctrl+E",
+            self.on_export_results,
+            ShortcutContext.GLOBAL,
+            "Export results"
+        )
+        
+        self.shortcut_manager.register_shortcut(
+            "quit",
+            "Ctrl+Q",
+            self.close,
+            ShortcutContext.GLOBAL,
+            "Quit application"
+        )
+        
+        self.shortcut_manager.register_shortcut(
+            "help",
+            "F1",
+            self.on_show_user_guide,
+            ShortcutContext.GLOBAL,
+            "Show help"
+        )
+        
+        self.shortcut_manager.register_shortcut(
+            "shortcuts",
+            "Ctrl+?",
+            self.on_show_shortcuts,
+            ShortcutContext.GLOBAL,
+            "Show keyboard shortcuts"
+        )
+        
+        self.shortcut_manager.register_shortcut(
+            "fullscreen",
+            "F11",
+            self.toggle_fullscreen,
+            ShortcutContext.GLOBAL,
+            "Toggle fullscreen"
+        )
+        
+        # Main window shortcuts
+        self.shortcut_manager.register_shortcut(
+            "new_session",
+            "Ctrl+N",
+            self.on_new_session,
+            ShortcutContext.MAIN_WINDOW,
+            "New session"
+        )
+        
+        self.shortcut_manager.register_shortcut(
+            "start_processing",
+            "F5",
+            self.start_processing,
+            ShortcutContext.GLOBAL,  # Changed to GLOBAL so it works from anywhere
+            "Start processing"
+        )
+        
+        self.shortcut_manager.register_shortcut(
+            "restart_processing",
+            "Ctrl+R",
+            self.on_restart_processing,
+            ShortcutContext.MAIN_WINDOW,
+            "Restart processing"
+        )
+        
+        # Settings shortcuts
+        self.shortcut_manager.register_shortcut(
+            "open_settings",
+            "Ctrl+,",
+            self.on_open_settings,
+            ShortcutContext.SETTINGS,
+            "Open settings"
+        )
+        
+        # Set initial context
+        self.shortcut_manager.set_context(ShortcutContext.MAIN_WINDOW)
+    
+    def on_shortcut_conflict(self, action_id1: str, action_id2: str):
+        """Handle shortcut conflicts"""
+        QMessageBox.warning(
+            self,
+            "Shortcut Conflict",
+            f"Shortcut conflict detected between '{action_id1}' and '{action_id2}'"
+        )
+    
+    def on_new_session(self):
+        """Start a new session (clear results)"""
+        reply = QMessageBox.question(
+            self,
+            "New Session",
+            "Clear all results and start a new session?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if reply == QMessageBox.Yes:
+            if hasattr(self, 'results_view'):
+                self.results_view.clear()
+            if hasattr(self, 'progress_widget'):
+                self.progress_widget.reset()
+            if hasattr(self, 'results_group'):
+                self.results_group.setVisible(False)
+            self.statusBar().showMessage("New session started", 2000)
+    
+    def on_restart_processing(self):
+        """Restart processing"""
+        if self.controller.is_processing():
+            self.controller.cancel_processing()
+        self.start_processing()
+    
+    def on_export_results(self):
+        """Export results via shortcut"""
+        if hasattr(self, 'results_view') and self.results_view.results:
+            self.results_view.show_export_dialog()
+        else:
+            self.statusBar().showMessage("No results to export", 2000)
+    
+    def on_open_settings(self):
+        """Open settings tab"""
+        # Find settings tab index
+        for i in range(self.tabs.count()):
+            if self.tabs.tabText(i) == "Settings":
+                self.tabs.setCurrentIndex(i)
+                break
+    
+    def keyPressEvent(self, event: QKeyEvent):
+        """Handle key press events for shortcut overlay"""
+        # Show shortcuts dialog when '?' is pressed (without Ctrl)
+        if event.key() == Qt.Key_Question and event.modifiers() == Qt.NoModifier:
+            self.on_show_shortcuts()
+        else:
+            super().keyPressEvent(event)
         
         
     def create_menu_bar(self):
@@ -220,6 +383,7 @@ class MainWindow(QMainWindow):
         # Open XML File
         open_action = QAction("&Open XML File...", self)
         open_action.setShortcut(QKeySequence.Open)
+        open_action.setToolTip("Open XML file (Ctrl+O)")
         open_action.triggered.connect(self.on_file_open)
         file_menu.addAction(open_action)
         
@@ -244,12 +408,14 @@ class MainWindow(QMainWindow):
         # Copy selected results
         copy_action = QAction("&Copy", self)
         copy_action.setShortcut(QKeySequence.Copy)
+        copy_action.setToolTip("Copy selected results (Ctrl+C)")
         copy_action.triggered.connect(self.on_copy_selected)
         edit_menu.addAction(copy_action)
         
         # Select All
         select_all_action = QAction("Select &All", self)
         select_all_action.setShortcut(QKeySequence.SelectAll)
+        select_all_action.setToolTip("Select all results (Ctrl+A)")
         select_all_action.triggered.connect(self.on_select_all)
         edit_menu.addAction(select_all_action)
         
@@ -282,6 +448,7 @@ class MainWindow(QMainWindow):
         # Full Screen
         fullscreen_action = QAction("&Full Screen", self)
         fullscreen_action.setShortcut(QKeySequence.FullScreen)
+        fullscreen_action.setToolTip("Toggle fullscreen mode (F11)")
         fullscreen_action.setCheckable(True)
         fullscreen_action.triggered.connect(self.toggle_fullscreen)
         view_menu.addAction(fullscreen_action)
@@ -292,11 +459,14 @@ class MainWindow(QMainWindow):
         # User Guide
         guide_action = QAction("&User Guide", self)
         guide_action.setShortcut(QKeySequence.HelpContents)
+        guide_action.setToolTip("Show user guide (F1)")
         guide_action.triggered.connect(self.on_show_user_guide)
         help_menu.addAction(guide_action)
         
         # Keyboard Shortcuts
         shortcuts_action = QAction("&Keyboard Shortcuts", self)
+        shortcuts_action.setShortcut(QKeySequence("Ctrl+?"))
+        shortcuts_action.setToolTip("Show keyboard shortcuts (Ctrl+?)")
         shortcuts_action.triggered.connect(self.on_show_shortcuts)
         help_menu.addAction(shortcuts_action)
         
@@ -510,7 +680,7 @@ class MainWindow(QMainWindow):
     
     def on_show_shortcuts(self):
         """Show keyboard shortcuts dialog"""
-        dialog = KeyboardShortcutsDialog(self)
+        dialog = KeyboardShortcutsDialog(self.shortcut_manager, self)
         dialog.exec()
     
     def on_show_about(self):
