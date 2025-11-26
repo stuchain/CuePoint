@@ -170,6 +170,11 @@ class ILoggingService(ABC):
     def error(self, message: str, **kwargs) -> None:
         """Log error message."""
         pass
+    
+    @abstractmethod
+    def critical(self, message: str, **kwargs) -> None:
+        """Log critical message."""
+        pass
 
 
 class IMatcherService(ABC):

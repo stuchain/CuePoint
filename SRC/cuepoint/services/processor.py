@@ -43,6 +43,10 @@ except ImportError:
 from cuepoint.models.config import HAVE_CACHE, SETTINGS
 from cuepoint.utils.errors import error_playlist_not_found, error_file_not_found, print_error
 from cuepoint.ui.gui_interface import TrackResult, ProcessingController, ProgressCallback, ProcessingError, ErrorType, ProgressInfo
+from cuepoint.utils.logger_helper import get_logger
+
+# Initialize logger for this module
+_logger = get_logger()
 from cuepoint.core.matcher import _camelot_key, _confidence_label, best_beatport_match
 from cuepoint.core.mix_parser import _extract_generic_parenthetical_phrases, _parse_mix_flags
 from cuepoint.services.output_writer import write_csv_files, write_review_candidates_csv, write_review_queries_csv
@@ -259,16 +263,16 @@ def process_track(idx: int, rb: RBTrack) -> Tuple[Dict[str, str], List[Dict[str,
     # Display track information being searched (with Unicode-safe fallback)
     clean_title_for_log = title_for_search  # Already cleaned above
     try:
-        print(f"[{idx}] Searching Beatport for: {clean_title_for_log} - {original_artists or artists_for_scoring}", flush=True)
+        _logger.info(f"[{idx}] Searching Beatport for: {clean_title_for_log} - {original_artists or artists_for_scoring}")
     except UnicodeEncodeError:
         # Fallback for terminals that can't handle Unicode (Windows console)
             safe_title = clean_title_for_log.encode('ascii', 'ignore').decode('ascii')
             safe_artists = (original_artists or artists_for_scoring).encode('ascii', 'ignore').decode('ascii')
-            print(f"[{idx}] Searching Beatport for: {safe_title} - {safe_artists}", flush=True)
+            _logger.info(f"[{idx}] Searching Beatport for: {safe_title} - {safe_artists}")
     
     # Inform user if artists were inferred from title
     if extracted and title_only_search:
-        print(f"[{idx}]   (artists inferred from title for scoring; search is title-only)", flush=True)
+        _logger.info(f"[{idx}]   (artists inferred from title for scoring; search is title-only)")
 
     # Generate search queries based on title and artist information
     # Query generator creates multiple query variants to maximize match probability
@@ -280,14 +284,14 @@ def process_track(idx: int, rb: RBTrack) -> Tuple[Dict[str, str], List[Dict[str,
     )
 
     # Display all generated queries for this track
-    print(f"[{idx}]   queries:", flush=True)
+    _logger.debug(f"[{idx}]   queries:")
     for i, q in enumerate(queries, 1):
         try:
-            print(f"[{idx}]     {i}. site:beatport.com/track {q}", flush=True)
+            _logger.debug(f"[{idx}]     {i}. site:beatport.com/track {q}")
         except UnicodeEncodeError:
             # Unicode-safe fallback
             safe_q = q.encode('ascii', 'ignore').decode('ascii')
-            print(f"[{idx}]     {i}. site:beatport.com/track {safe_q}", flush=True)
+            _logger.debug(f"[{idx}]     {i}. site:beatport.com/track {safe_q}")
 
     # Extract mix/remix information from original title for matching bonus/penalty
     # e.g., "Original Mix", "Extended Mix", "Remix", etc.
@@ -383,19 +387,19 @@ def process_track(idx: int, rb: RBTrack) -> Tuple[Dict[str, str], List[Dict[str,
     if best and best.score >= SETTINGS["MIN_ACCEPT_SCORE"]:
         # Display match information
         try:
-            print(f"[{idx}] -> Match: {best.title} - {best.artists} "
+            _logger.info(f"[{idx}] -> Match: {best.title} - {best.artists} "
               f"(key {best.key or '?'}, year {best.release_year or '?'}) "
               f"(score {best.score:.1f}, t_sim {best.title_sim}, a_sim {best.artist_sim}) "
-              f"[q{best.query_index}/cand{best.candidate_index}, {dur:.0f} ms]", flush=True)
+              f"[q{best.query_index}/cand{best.candidate_index}, {dur:.0f} ms]")
         except UnicodeEncodeError:
         # Unicode-safe fallback
             safe_title = best.title.encode('ascii', 'ignore').decode('ascii')
         safe_artists = best.artists.encode('ascii', 'ignore').decode('ascii')
         safe_key = (best.key or '?').encode('ascii', 'ignore').decode('ascii')
-        print(f"[{idx}] -> Match: {safe_title} - {safe_artists} "
+        _logger.info(f"[{idx}] -> Match: {safe_title} - {safe_artists} "
               f"(key {safe_key}, year {best.release_year or '?'}) "
               f"(score {best.score:.1f}, t_sim {best.title_sim}, a_sim {best.artist_sim}) "
-              f"[q{best.query_index}/cand{best.candidate_index}, {dur:.0f} ms]", flush=True)
+              f"[q{best.query_index}/cand{best.candidate_index}, {dur:.0f} ms]")
 
         # Extract Beatport track ID from URL (format: /track/slug/12345)
         m = re.search(r'/track/[^/]+/(\d+)', best.url)
@@ -430,7 +434,7 @@ def process_track(idx: int, rb: RBTrack) -> Tuple[Dict[str, str], List[Dict[str,
     else:
         # No match found (either no candidates or score too low)
         try:
-            print(f"[{idx}] -> No match candidates found. [{dur:.0f} ms]", flush=True)
+            _logger.info(f"[{idx}] -> No match candidates found. [{dur:.0f} ms]")
         except UnicodeEncodeError:
             pass
         
@@ -520,16 +524,16 @@ def process_track_with_callback(
             extracted = True
         title_only_search = True
     
-    # 2. Print statements (keep for CLI compatibility)
+    # 2. Log track search information
     try:
-        print(f"[{idx}] Searching Beatport for: {title_for_search} - {original_artists or artists_for_scoring}", flush=True)
+        _logger.info(f"[{idx}] Searching Beatport for: {title_for_search} - {original_artists or artists_for_scoring}")
     except UnicodeEncodeError:
         safe_title = title_for_search.encode('ascii', 'ignore').decode('ascii')
         safe_artists = (original_artists or artists_for_scoring).encode('ascii', 'ignore').decode('ascii')
-        print(f"[{idx}] Searching Beatport for: {safe_title} - {safe_artists}", flush=True)
+        _logger.info(f"[{idx}] Searching Beatport for: {safe_title} - {safe_artists}")
     
     if extracted and title_only_search:
-        print(f"[{idx}]   (artists inferred from title for scoring; search is title-only)", flush=True)
+        _logger.info(f"[{idx}]   (artists inferred from title for scoring; search is title-only)")
     
     # 3. Generate queries
     queries = make_search_queries(
@@ -538,13 +542,13 @@ def process_track_with_callback(
         original_title=rb.title
     )
     
-    print(f"[{idx}]   queries:", flush=True)
+    _logger.debug(f"[{idx}]   queries:")
     for i, q in enumerate(queries, 1):
         try:
-            print(f"[{idx}]     {i}. site:beatport.com/track {q}", flush=True)
+            _logger.debug(f"[{idx}]     {i}. site:beatport.com/track {q}")
         except UnicodeEncodeError:
             safe_q = q.encode('ascii', 'ignore').decode('ascii')
-            print(f"[{idx}]     {i}. site:beatport.com/track {safe_q}", flush=True)
+            _logger.debug(f"[{idx}]     {i}. site:beatport.com/track {safe_q}")
     
     # 4. Extract mix flags
     input_mix_flags = _parse_mix_flags(rb.title)
@@ -635,18 +639,18 @@ def process_track_with_callback(
     if best and best.score >= min_accept_score:
         # Match found
         try:
-            print(f"[{idx}] -> Match: {best.title} - {best.artists} "
+            _logger.info(f"[{idx}] -> Match: {best.title} - {best.artists} "
                   f"(key {best.key or '?'}, year {best.release_year or '?'}) "
                   f"(score {best.score:.1f}, t_sim {best.title_sim}, a_sim {best.artist_sim}) "
-                  f"[q{best.query_index}/cand{best.candidate_index}, {dur:.0f} ms]", flush=True)
+                  f"[q{best.query_index}/cand{best.candidate_index}, {dur:.0f} ms]")
         except UnicodeEncodeError:
             safe_title = best.title.encode('ascii', 'ignore').decode('ascii')
             safe_artists = best.artists.encode('ascii', 'ignore').decode('ascii')
             safe_key = (best.key or '?').encode('ascii', 'ignore').decode('ascii')
-            print(f"[{idx}] -> Match: {safe_title} - {safe_artists} "
+            _logger.info(f"[{idx}] -> Match: {safe_title} - {safe_artists} "
                   f"(key {safe_key}, year {best.release_year or '?'}) "
                   f"(score {best.score:.1f}, t_sim {best.title_sim}, a_sim {best.artist_sim}) "
-                  f"[q{best.query_index}/cand{best.candidate_index}, {dur:.0f} ms]", flush=True)
+                  f"[q{best.query_index}/cand{best.candidate_index}, {dur:.0f} ms]")
         
         m = re.search(r'/track/[^/]+/(\d+)', best.url)
         beatport_track_id = m.group(1) if m else ""
@@ -681,7 +685,7 @@ def process_track_with_callback(
     else:
         # No match found
         try:
-            print(f"[{idx}] -> No match candidates found. [{dur:.0f} ms]", flush=True)
+            _logger.info(f"[{idx}] -> No match candidates found. [{dur:.0f} ms]")
         except UnicodeEncodeError:
             pass
         
@@ -849,7 +853,7 @@ def process_playlist(
     track_workers = effective_settings.get("TRACK_WORKERS", SETTINGS.get("TRACK_WORKERS", 12))
     
     if track_workers > 1:
-        print(f"Using parallel processing with {track_workers} workers", flush=True)
+        _logger.info(f"Using parallel processing with {track_workers} workers")
         # PARALLEL MODE: Process multiple tracks simultaneously
         # Use ThreadPoolExecutor to run process_track_with_callback() in parallel
         with ThreadPoolExecutor(max_workers=track_workers) as ex:
@@ -927,7 +931,7 @@ def process_playlist(
     
     else:
         # SEQUENTIAL MODE: Process tracks one at a time
-        print(f"Using sequential processing (TRACK_WORKERS={track_workers})", flush=True)
+        _logger.info(f"Using sequential processing (TRACK_WORKERS={track_workers})")
         for idx, rb in inputs:
             # Check for cancellation
             if controller and controller.is_cancelled():
@@ -976,9 +980,9 @@ def process_playlist(
     if auto_research and not (controller and controller.is_cancelled()):
         unmatched_results = [r for r in results if not r.matched]
         if unmatched_results:
-            print(f"\n{'='*80}", flush=True)
-            print(f"Auto-research: Found {len(unmatched_results)} unmatched track(s), re-searching with enhanced settings...", flush=True)
-            print(f"{'='*80}\n", flush=True)
+            _logger.info(f"\n{'='*80}")
+            _logger.info(f"Auto-research: Found {len(unmatched_results)} unmatched track(s), re-searching with enhanced settings...")
+            _logger.info(f"{'='*80}\n")
             
             # Enhanced settings for re-search
             enhanced_settings = effective_settings.copy()
@@ -1005,7 +1009,7 @@ def process_playlist(
                 track_workers = enhanced_settings.get("TRACK_WORKERS", SETTINGS.get("TRACK_WORKERS", 12))
                 if track_workers > 1 and len(unmatched_inputs) > 1:
                     # Parallel re-search
-                    print(f"\nRe-searching {len(unmatched_inputs)} unmatched tracks using parallel processing with {min(track_workers, len(unmatched_inputs))} workers", flush=True)
+                    _logger.info(f"\nRe-searching {len(unmatched_inputs)} unmatched tracks using parallel processing with {min(track_workers, len(unmatched_inputs))} workers")
                     with ThreadPoolExecutor(max_workers=min(track_workers, len(unmatched_inputs))) as ex:
                         future_to_idx = {
                             ex.submit(
@@ -1037,7 +1041,7 @@ def process_playlist(
                 else:
                     # Sequential re-search (fallback)
                     reason = "only 1 unmatched track" if len(unmatched_inputs) == 1 else f"TRACK_WORKERS={track_workers}"
-                    print(f"\nRe-searching {len(unmatched_inputs)} unmatched tracks using sequential processing ({reason})", flush=True)
+                    _logger.info(f"\nRe-searching {len(unmatched_inputs)} unmatched tracks using sequential processing ({reason})")
                     for idx, rb in unmatched_inputs:
                         if controller and controller.is_cancelled():
                             break
@@ -1202,56 +1206,67 @@ def run(xml_path: str, playlist_name: str, out_csv_base: str, auto_research: boo
         review_queries_path = write_review_queries_csv(results, review_indices, base_filename, output_dir)
         if review_cands_path:
             output_files['review_candidates'] = review_cands_path
-            print(f"Review candidates: {len([c for r in results if r.playlist_index in review_indices for c in r.candidates])} rows -> {review_cands_path}")
+            _logger.info(f"Review candidates: {len([c for r in results if r.playlist_index in review_indices for c in r.candidates])} rows -> {review_cands_path}")
         if review_queries_path:
             output_files['review_queries'] = review_queries_path
-            print(f"Review queries: {len([q for r in results if r.playlist_index in review_indices for q in r.queries])} rows -> {review_queries_path}")
+            _logger.info(f"Review queries: {len([q for r in results if r.playlist_index in review_indices for q in r.queries])} rows -> {review_queries_path}")
     
-    # Print file output messages
+    # Log file output messages
     if output_files.get('main'):
-        print(f"\nDone. Wrote {len(rows)} rows -> {output_files['main']}")
+        _logger.info(f"\nDone. Wrote {len(rows)} rows -> {output_files['main']}")
     if output_files.get('candidates'):
-        print(f"Candidates: {len(all_candidates)} rows -> {output_files['candidates']}")
+        _logger.info(f"Candidates: {len(all_candidates)} rows -> {output_files['candidates']}")
     if output_files.get('queries'):
-        print(f"Queries: {len(all_queries)} rows -> {output_files['queries']}")
+        _logger.info(f"Queries: {len(all_queries)} rows -> {output_files['queries']}")
     if output_files.get('review'):
         review_count = len([r for r in results if r.playlist_index in review_indices])
-        print(f"Review list: {review_count} rows -> {output_files['review']}")
+        _logger.info(f"Review list: {review_count} rows -> {output_files['review']}")
     
     # Handle unmatched tracks display and re-search prompt (if not auto-research)
     unmatched_results = [r for r in results if not r.matched]
     if unmatched_results and not auto_research:
         # Display list of unmatched tracks
+        _logger.warning(f"\n{'='*80}")
+        _logger.warning(f"Found {len(unmatched_results)} unmatched track(s):")
+        _logger.warning(f"{'='*80}")
         print(f"\n{'='*80}")
         print(f"Found {len(unmatched_results)} unmatched track(s):")
         print(f"{'='*80}")
         for result in unmatched_results:
             artists_str = result.artist or "(no artists)"
             try:
+                _logger.warning(f"  [{result.playlist_index}] {result.title} - {artists_str}")
                 print(f"  [{result.playlist_index}] {result.title} - {artists_str}")
             except UnicodeEncodeError:
                 # Unicode-safe fallback
                 safe_title = result.title.encode('ascii', 'ignore').decode('ascii')
                 safe_artists = artists_str.encode('ascii', 'ignore').decode('ascii')
+                _logger.warning(f"  [{result.playlist_index}] {safe_title} - {safe_artists}")
                 print(f"  [{result.playlist_index}] {safe_title} - {safe_artists}")
         
+        _logger.warning(f"\n{'='*80}")
         print(f"\n{'='*80}")
         # Check if we're in an interactive environment
         if sys.stdin.isatty():
             # Interactive mode: prompt user for confirmation
             try:
                 response = input("Search again for these tracks with enhanced settings? (y/n): ").strip().lower()
+                _logger.info(f"User response to re-search prompt: {response}")
             except (EOFError, KeyboardInterrupt):
                 # User interrupted (Ctrl+C) or EOF
+                _logger.warning("\nRe-search skipped (interrupted).")
                 print("\nRe-search skipped (interrupted).")
                 response = 'n'
         else:
             # Non-interactive mode (piped input, script, etc.): skip prompt
+            _logger.info("Non-interactive mode: Skipping re-search prompt.")
             print("Non-interactive mode: Skipping re-search prompt.")
             print("(To enable re-search, use --auto-research flag or run in interactive terminal)")
+            _logger.info("(To enable re-search, use --auto-research flag or run in interactive terminal)")
             response = 'n'
         
         if response == 'y' or response == 'yes':
+            _logger.info("\nRe-searching unmatched tracks with enhanced settings...")
             print("\nRe-searching unmatched tracks with enhanced settings...")
             print("=" * 80)
             
@@ -1337,12 +1352,18 @@ def run(xml_path: str, playlist_name: str, out_csv_base: str, auto_research: boo
                 
                 new_matches = sum(1 for r in results if r.matched and (results_dict.get(r.playlist_index) is None or not results_dict.get(r.playlist_index).matched))
                 if new_matches > 0:
+                    _logger.info(f"\n{'='*80}")
+                    _logger.info(f"Found {new_matches} new match(es)!")
+                    _logger.info(f"Updated CSV files.")
                     print(f"\n{'='*80}")
                     print(f"Found {new_matches} new match(es)!")
                     print(f"Updated CSV files.")
                 else:
+                    _logger.info(f"\nNo new matches found after re-search.")
                     print(f"\nNo new matches found after re-search.")
                 
+                _logger.info(f"\n{'='*80}")
+                _logger.info("Re-search complete.")
                 print(f"\n{'='*80}")
                 print("Re-search complete.")
             except ProcessingError as e:
@@ -1350,6 +1371,7 @@ def run(xml_path: str, playlist_name: str, out_csv_base: str, auto_research: boo
             except Exception as e:
                 print_error(f"Re-search failed: {str(e)}", exit_code=None)
         else:
+            _logger.info("Re-search skipped.")
             print("Re-search skipped.")
     
     # Calculate total processing time
@@ -1365,7 +1387,8 @@ def run(xml_path: str, playlist_name: str, out_csv_base: str, auto_research: boo
         output_files=output_files
     )
     
-    # Print summary (already ASCII-safe)
+    # Print summary (already ASCII-safe) and log it
+    _logger.info("\n" + summary)
     print("\n" + summary)
     
     # Optionally save summary to file
@@ -1373,6 +1396,7 @@ def run(xml_path: str, playlist_name: str, out_csv_base: str, auto_research: boo
     try:
         with open(summary_file, "w", encoding="utf-8") as f:
             f.write(summary)
+        _logger.info(f"\nSummary saved to: {summary_file}")
         print(f"\nSummary saved to: {summary_file}")
     except Exception as e:
         # If we can't write summary file, just continue (non-critical)

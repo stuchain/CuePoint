@@ -1,0 +1,11 @@
+2025-11-26 14:02:36,917 - cuepoint - DEBUG - Debug message - C:\Users\Stelios\Desktop\CuePoint\src\cuepoint\services\logging_service.py:139
+2025-11-26 14:02:36,918 - cuepoint - INFO - Info message - C:\Users\Stelios\Desktop\CuePoint\src\cuepoint\services\logging_service.py:139
+2025-11-26 14:02:36,918 - cuepoint - WARNING - Warning message - C:\Users\Stelios\Desktop\CuePoint\src\cuepoint\services\logging_service.py:139
+2025-11-26 14:02:36,918 - cuepoint - ERROR - Error message - C:\Users\Stelios\Desktop\CuePoint\src\cuepoint\services\logging_service.py:139
+2025-11-26 14:02:36,918 - cuepoint - CRITICAL - Critical message - C:\Users\Stelios\Desktop\CuePoint\src\cuepoint\services\logging_service.py:139
+2025-11-26 14:02:36,918 - cuepoint - INFO - Message with context - C:\Users\Stelios\Desktop\CuePoint\src\cuepoint\services\logging_service.py:139
+2025-11-26 14:02:36,918 - cuepoint - ERROR - Error with exception - C:\Users\Stelios\Desktop\CuePoint\src\cuepoint\services\logging_service.py:139
+Traceback (most recent call last):
+  File "C:\Users\Stelios\Desktop\CuePoint\test_step_5_6.py", line 100, in test_logging_service
+    raise ValueError("Test exception")
+ValueError: Test exception
