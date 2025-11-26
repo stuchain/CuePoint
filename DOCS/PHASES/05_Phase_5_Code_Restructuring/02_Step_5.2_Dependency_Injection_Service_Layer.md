@@ -45,7 +45,7 @@ Decouple components using dependency injection and create a service layer that p
 
 ## Service Layer Architecture
 
-### Service Interfaces (Abstract Base Classes)
+### 5.2.1: Service Interfaces (Abstract Base Classes)
 
 ```python
 # src/cuepoint/services/interfaces.py
@@ -168,7 +168,7 @@ class ILoggingService(ABC):
 
 ## Dependency Injection Container
 
-### Simple DI Container Implementation
+### 5.2.2: Simple DI Container Implementation
 
 ```python
 # src/cuepoint/utils/di_container.py
@@ -268,7 +268,7 @@ def reset_container() -> None:
 
 ## Service Implementations
 
-### Processor Service Implementation
+### 5.2.3: Processor Service Implementation
 
 ```python
 # src/cuepoint/services/processor_service.py
@@ -416,7 +416,7 @@ class CacheService(ICacheService):
 
 ## Service Registration
 
-### Bootstrap Function
+### 5.2.4: Bootstrap Function
 
 ```python
 # src/cuepoint/services/bootstrap.py
@@ -479,7 +479,7 @@ def bootstrap_services() -> None:
 
 ## Refactoring Existing Code
 
-### Before (Direct Dependencies)
+### 5.2.5: Before (Direct Dependencies)
 
 ```python
 # OLD: Direct instantiation
@@ -546,7 +546,7 @@ class MainController:
 
 ## Testing with Dependency Injection
 
-### Mock Services for Testing
+### 5.2.6: Mock Services for Testing
 
 ```python
 # tests/unit/test_processor_service.py

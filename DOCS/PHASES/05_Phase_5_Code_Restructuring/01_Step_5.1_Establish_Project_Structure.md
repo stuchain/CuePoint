@@ -110,7 +110,7 @@ CuePoint/
 
 ## Implementation Plan
 
-### Phase 1: Create Directory Structure (1-2 hours)
+### 5.1.1: Create Directory Structure (1-2 hours)
 
 1. **Create Main Package Structure**
    ```bash
@@ -127,7 +127,7 @@ CuePoint/
    - `src/main.py` - CLI entry point (if needed)
    - `src/gui_app.py` - GUI application entry point
 
-### Phase 2: File Mapping and Migration (4-6 hours)
+### 5.1.2: File Mapping and Migration (4-6 hours)
 
 #### Core Module Mapping
 - `SRC/matcher.py` → `src/cuepoint/core/matcher.py`
@@ -167,7 +167,7 @@ CuePoint/
 #### Exceptions Module
 - Create `src/cuepoint/exceptions/cuepoint_exceptions.py` (custom exceptions)
 
-### Phase 3: Update Import Statements (6-8 hours)
+### 5.1.3: Update Import Statements (6-8 hours)
 
 #### Import Update Strategy
 
@@ -188,7 +188,7 @@ CuePoint/
    - Move existing tests to appropriate test directories
    - Update test imports to use new package structure
 
-### Phase 4: Update Build Configuration (2-3 hours)
+### 5.1.4: Update Build Configuration (2-3 hours)
 
 1. **Update `setup.py` or `pyproject.toml`**
    ```python
@@ -216,7 +216,7 @@ CuePoint/
 
 ## Detailed Implementation Steps
 
-### Step 1: Create Directory Structure
+### 5.1.1: Create Directory Structure
 
 **Files to Create:**
 - All package directories with `__init__.py` files
@@ -248,7 +248,7 @@ Contains Beatport API client, caching, and storage.
 # Similar for other packages...
 ```
 
-### Step 2: Move Files Systematically
+### 5.1.2: Move Files Systematically
 
 **Approach:**
 1. Move one module at a time
@@ -269,7 +269,7 @@ from cuepoint.core.text_processing import normalize_text
 # ... rest of implementation
 ```
 
-### Step 3: Update Import Statements
+### 5.1.3: Update Import Statements
 
 **Pattern Matching:**
 - `from matcher import ...` → `from cuepoint.core.matcher import ...`
@@ -303,7 +303,7 @@ def update_file_imports(file_path):
         f.write(content)
 ```
 
-### Step 4: Update Entry Points
+### 5.1.4: Update Entry Points
 
 **src/main.py:**
 ```python
@@ -343,7 +343,7 @@ if __name__ == "__main__":
     sys.exit(run_gui())
 ```
 
-### Step 5: Update Build Configuration
+### 5.1.5: Update Build Configuration
 
 **setup.py:**
 ```python

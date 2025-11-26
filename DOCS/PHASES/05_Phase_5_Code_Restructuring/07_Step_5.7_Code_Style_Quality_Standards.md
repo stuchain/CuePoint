@@ -29,7 +29,7 @@ Ensure code follows PEP 8 standards and establish quality standards with automat
 
 ## Tools Overview
 
-### Code Formatter: Black
+### 5.7.1: Code Formatter: Black
 
 **Purpose**: Automatically format code to PEP 8 style.
 
@@ -50,7 +50,7 @@ exclude = '''
 '''
 ```
 
-### Linter: Pylint
+### 5.7.2: Linter: Pylint
 
 **Purpose**: Check code quality and style issues.
 
@@ -72,7 +72,7 @@ max-line-length=100
 good-names=i,j,k,ex,Run,_,id,db
 ```
 
-### Import Sorter: isort
+### 5.7.3: Import Sorter: isort
 
 **Purpose**: Sort and organize imports.
 
@@ -89,7 +89,7 @@ ensure_newline_before_comments = true
 skip_glob = ["*/migrations/*", "*/venv/*"]
 ```
 
-### Type Checker: Mypy
+### 5.7.4: Type Checker: Mypy
 
 **Purpose**: Static type checking.
 
@@ -99,7 +99,7 @@ skip_glob = ["*/migrations/*", "*/venv/*"]
 
 ## Setup and Configuration
 
-### Install Tools
+### 5.7.5: Install Tools
 
 **requirements-dev.txt:**
 ```
@@ -111,7 +111,7 @@ flake8>=6.0.0
 pre-commit>=3.0.0
 ```
 
-### EditorConfig
+### 5.7.6: EditorConfig
 
 **.editorconfig:**
 ```ini
@@ -136,7 +136,7 @@ trim_trailing_whitespace = false
 
 ## Pre-commit Hooks
 
-### Pre-commit Configuration
+### 5.7.7: Pre-commit Configuration
 
 **.pre-commit-config.yaml:**
 ```yaml
@@ -179,7 +179,7 @@ repos:
         args: [--ignore-missing-imports]
 ```
 
-### Install Pre-commit Hooks
+### 5.7.8: Install Pre-commit Hooks
 
 ```bash
 # Install pre-commit
@@ -196,7 +196,7 @@ pre-commit run --all-files
 
 ## Code Style Guidelines
 
-### PEP 8 Compliance
+### 5.7.9: PEP 8 Compliance
 
 **Key Rules:**
 - Maximum line length: 100 characters
@@ -209,7 +209,7 @@ pre-commit run --all-files
   - Constants: `UPPER_SNAKE_CASE`
   - Private: `_leading_underscore`
 
-### Import Organization
+### 5.7.10: Import Organization
 
 **Order:**
 1. Standard library imports
@@ -233,7 +233,7 @@ from cuepoint.core.matcher import best_beatport_match
 from cuepoint.services.processor_service import ProcessorService
 ```
 
-### Function and Class Documentation
+### 5.7.11: Function and Class Documentation
 
 **Functions:**
 - Use docstrings for all public functions
@@ -245,7 +245,7 @@ from cuepoint.services.processor_service import ProcessorService
 - Keep classes focused
 - Use composition over inheritance when possible
 
-### Naming Conventions
+### 5.7.12: Naming Conventions
 
 ```python
 # Good
@@ -272,7 +272,7 @@ class track_processor:  # Wrong case
 
 ## Running Quality Checks
 
-### Manual Commands
+### 5.7.13: Manual Commands
 
 ```bash
 # Format code
@@ -300,7 +300,7 @@ pylint src/cuepoint && \
 mypy src/cuepoint
 ```
 
-### Makefile for Quality Checks
+### 5.7.14: Makefile for Quality Checks
 
 **Makefile:**
 ```makefile
@@ -329,7 +329,7 @@ check-format:
 
 ## IDE Configuration
 
-### VS Code Settings
+### 5.7.15: VS Code Settings
 
 **.vscode/settings.json:**
 ```json
@@ -349,7 +349,7 @@ check-format:
 }
 ```
 
-### PyCharm Configuration
+### 5.7.16: PyCharm Configuration
 
 1. **Black Formatter**:
    - Settings → Tools → Black
@@ -368,7 +368,7 @@ check-format:
 
 ## Quality Metrics
 
-### Code Quality Targets
+### 5.7.17: Code Quality Targets
 
 - **Cyclomatic Complexity**: < 10 per function
 - **Function Length**: < 50 lines
@@ -376,7 +376,7 @@ check-format:
 - **Import Count**: < 20 per file
 - **Pylint Score**: > 8.0/10
 
-### Measuring Quality
+### 5.7.18: Measuring Quality
 
 ```bash
 # Install radon for complexity metrics
@@ -396,7 +396,7 @@ radon cc src/cuepoint --html > complexity_report.html
 
 ## Common Style Issues and Fixes
 
-### Issue 1: Long Lines
+### 5.7.19: Long Lines
 **Fix**: Break into multiple lines or extract to function
 ```python
 # Bad
@@ -413,7 +413,7 @@ result = process_track(
 )
 ```
 
-### Issue 2: Too Many Parameters
+### 5.7.20: Too Many Parameters
 **Fix**: Use dataclass or dictionary
 ```python
 # Bad
@@ -435,7 +435,7 @@ def process_track(track: Track):
     pass
 ```
 
-### Issue 3: Unused Imports
+### 5.7.21: Unused Imports
 **Fix**: Remove or use isort to clean up
 ```bash
 isort --remove-unused-imports src/cuepoint

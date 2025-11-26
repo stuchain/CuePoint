@@ -28,7 +28,7 @@ Implement consistent error handling and logging throughout the application. Crea
 
 ## Custom Exception Hierarchy
 
-### Exception Base Classes
+### 5.6.1: Exception Base Classes
 
 ```python
 # src/cuepoint/exceptions/cuepoint_exceptions.py
@@ -95,7 +95,7 @@ class CacheError(CuePointException):
 
 ## Centralized Error Handler
 
-### Error Handler Implementation
+### 5.6.2: Error Handler Implementation
 
 ```python
 # src/cuepoint/utils/error_handler.py
@@ -194,7 +194,7 @@ class ErrorHandler:
 
 ## Logging Service Implementation
 
-### Logging Service Interface
+### 5.6.3: Logging Service Interface
 
 ```python
 # src/cuepoint/services/interfaces.py (addition)
@@ -228,7 +228,7 @@ class ILoggingService(ABC):
         pass
 ```
 
-### Logging Service Implementation
+### 5.6.4: Logging Service Implementation
 
 ```python
 # src/cuepoint/services/logging_service.py
@@ -325,7 +325,7 @@ class LoggingService(ILoggingService):
 
 ## Error Handling Patterns
 
-### Pattern 1: Try-Except with Specific Exceptions
+### 5.6.5: Try-Except with Specific Exceptions
 
 ```python
 from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError, ProcessingError
@@ -361,7 +361,7 @@ def process_track(track: Track, error_handler: ErrorHandler) -> TrackResult:
         raise
 ```
 
-### Pattern 2: Error Recovery
+### 5.6.6: Error Recovery
 
 ```python
 def fetch_with_retry(url: str, max_retries: int = 3) -> Optional[Dict]:
@@ -378,7 +378,7 @@ def fetch_with_retry(url: str, max_retries: int = 3) -> Optional[Dict]:
     return None
 ```
 
-### Pattern 3: Graceful Degradation
+### 5.6.7: Graceful Degradation
 
 ```python
 def process_with_fallback(track: Track) -> TrackResult:
@@ -403,7 +403,7 @@ def process_with_fallback(track: Track) -> TrackResult:
 
 ## Logging Best Practices
 
-### Log Levels
+### 5.6.8: Log Levels
 
 - **DEBUG**: Detailed information for debugging
 - **INFO**: General informational messages
@@ -439,7 +439,7 @@ logger.debug("Processing track", extra={
 
 ## Configuration
 
-### Logging Configuration File
+### 5.6.9: Logging Configuration File
 
 **config/logging.yaml:**
 ```yaml

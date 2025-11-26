@@ -87,7 +87,7 @@ Data Layer
 
 ## Refactoring Strategy
 
-### Step 1: Identify Business Logic in UI
+### 5.3.1: Identify Business Logic in UI
 
 **Areas to Refactor:**
 
@@ -113,7 +113,7 @@ Data Layer
    - Default value logic
    - Configuration transformation
 
-### Step 2: Create Controllers
+### 5.3.2: Create Controllers
 
 **Controller Responsibilities:**
 - Handle UI events
@@ -122,7 +122,7 @@ Data Layer
 - Manage UI state
 - Coordinate between UI components
 
-### Step 3: Extract Business Logic
+### 5.3.3: Extract Business Logic
 
 **Extraction Process:**
 1. Identify business logic in UI

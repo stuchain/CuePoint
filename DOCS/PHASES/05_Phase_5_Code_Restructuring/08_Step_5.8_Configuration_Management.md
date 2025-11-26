@@ -28,14 +28,14 @@ Centralize and improve configuration management with support for multiple config
 
 ## Configuration Architecture
 
-### Configuration Sources Priority
+### 5.8.1: Configuration Sources Priority
 
 1. **Command-line arguments** (highest priority)
 2. **Environment variables**
 3. **User configuration file** (`~/.cuepoint/config.yaml`)
 4. **Default configuration** (lowest priority)
 
-### Configuration Model
+### 5.8.2: Configuration Model
 
 ```python
 # src/cuepoint/models/config.py
@@ -179,7 +179,7 @@ class AppConfig:
 
 ## Configuration Service
 
-### Service Interface
+### 5.8.3: Service Interface
 
 ```python
 # src/cuepoint/services/interfaces.py (addition)
@@ -218,7 +218,7 @@ class IConfigService(ABC):
         pass
 ```
 
-### Service Implementation
+### 5.8.4: Service Implementation
 
 ```python
 # src/cuepoint/services/config_service.py
@@ -391,7 +391,7 @@ class ConfigService(IConfigService):
 
 ## Configuration File Format
 
-### YAML Configuration File
+### 5.8.5: YAML Configuration File
 
 **config/default.yaml:**
 ```yaml
@@ -439,7 +439,7 @@ ui:
 
 ## Command-Line Configuration
 
-### CLI Argument Parsing
+### 5.8.6: CLI Argument Parsing
 
 ```python
 # src/cuepoint/cli.py
@@ -497,7 +497,7 @@ def apply_cli_config(args, config_service: ConfigService):
 
 ## Configuration UI
 
-### Config Panel Updates
+### 5.8.7: Config Panel Updates
 
 ```python
 # src/cuepoint/ui/widgets/config_panel.py (updates)

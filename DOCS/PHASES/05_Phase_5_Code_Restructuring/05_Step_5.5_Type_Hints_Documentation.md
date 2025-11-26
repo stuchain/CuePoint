@@ -177,7 +177,7 @@ __all__ = [
 
 ## Implementation Plan
 
-### Phase 1: Core Modules (1 day)
+### 5.5.1: Core Modules (1 day)
 
 **Files to Update:**
 - `src/cuepoint/core/matcher.py`
@@ -192,7 +192,7 @@ __all__ = [
 4. Write docstrings for all classes
 5. Add module-level docstrings
 
-### Phase 2: Services (1 day)
+### 5.5.2: Services (1 day)
 
 **Files to Update:**
 - `src/cuepoint/services/processor_service.py`
@@ -206,7 +206,7 @@ __all__ = [
 3. Document service interfaces
 4. Document service methods
 
-### Phase 3: Data Layer (0.5 days)
+### 5.5.3: Data Layer (0.5 days)
 
 **Files to Update:**
 - `src/cuepoint/data/beatport.py`
@@ -217,7 +217,7 @@ __all__ = [
 1. Add type hints to data access functions
 2. Document data access APIs
 
-### Phase 4: UI Components (1 day)
+### 5.5.4: UI Components (1 day)
 
 **Files to Update:**
 - `src/cuepoint/ui/main_window.py`
@@ -229,7 +229,7 @@ __all__ = [
 2. Document UI components
 3. Document controller interfaces
 
-### Phase 8: Models and Utils (0.5 days)
+### 5.5.5: Models and Utils (0.5 days)
 
 **Files to Update:**
 - `src/cuepoint/models/*.py`

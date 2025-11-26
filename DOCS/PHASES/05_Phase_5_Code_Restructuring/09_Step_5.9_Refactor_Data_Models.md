@@ -28,7 +28,7 @@ Create clear, well-defined data models with validation, serialization, and prope
 
 ## Model Architecture
 
-### Core Models
+### 5.9.1: Core Models
 
 1. **Track**: Represents a track from playlist
 2. **TrackResult**: Represents processing result
@@ -40,7 +40,7 @@ Create clear, well-defined data models with validation, serialization, and prope
 
 ## Model Implementations
 
-### Track Model
+### 5.9.2: Track Model
 
 ```python
 # src/cuepoint/models/track.py
@@ -132,7 +132,7 @@ class Track:
         return f"{self.artist} - {self.title}"
 ```
 
-### BeatportCandidate Model
+### 5.9.3: BeatportCandidate Model
 
 ```python
 # src/cuepoint/models/beatport_candidate.py
@@ -236,7 +236,7 @@ class BeatportCandidate:
             return None
 ```
 
-### TrackResult Model
+### 5.9.4: TrackResult Model
 
 ```python
 # src/cuepoint/models/result.py
@@ -320,7 +320,7 @@ class TrackResult:
         return self.confidence >= threshold
 ```
 
-### Playlist Model
+### 5.9.5: Playlist Model
 
 ```python
 # src/cuepoint/models/playlist.py
@@ -404,7 +404,7 @@ class Playlist:
 
 ## Model Validation
 
-### Using Pydantic (Alternative Approach)
+### 5.9.6: Using Pydantic (Alternative Approach)
 
 If you prefer more advanced validation, consider using Pydantic:
 
@@ -440,7 +440,7 @@ class Track(BaseModel):
 
 ## Model Serialization
 
-### JSON Serialization
+### 5.9.7: JSON Serialization
 
 ```python
 # src/cuepoint/models/serialization.py
@@ -471,6 +471,8 @@ def save_results_to_json(results: List[TrackResult], filepath: Path) -> None:
 ---
 
 ## Model Relationships
+
+### 5.9.8: Model Relationship Diagram
 
 ```
 Playlist

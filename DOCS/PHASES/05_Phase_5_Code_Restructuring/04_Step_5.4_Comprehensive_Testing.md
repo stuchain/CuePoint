@@ -122,7 +122,7 @@ src/tests/
 
 ## Setup and Configuration
 
-### Dependencies
+### 5.4.1: Dependencies
 
 **requirements-dev.txt:**
 ```
@@ -136,7 +136,7 @@ coverage>=7.0.0
 pytest-xdist>=3.0.0  # For parallel test execution
 ```
 
-### Pytest Configuration
+### 5.4.2: Pytest Configuration
 
 **pytest.ini:**
 ```ini
@@ -161,7 +161,7 @@ markers =
     slow: Slow running tests
 ```
 
-### Test Configuration File
+### 5.4.3: Test Configuration File
 
 **src/tests/conftest.py:**
 ```python
@@ -243,7 +243,7 @@ def sample_beatport_data():
 
 ## Unit Tests
 
-### Core Module Tests
+### 5.4.4: Core Module Tests
 
 **src/tests/unit/core/test_matcher.py:**
 ```python
@@ -295,7 +295,7 @@ class TestMatcher:
         assert result is None
 ```
 
-### Service Tests
+### 5.4.5: Service Tests
 
 **src/tests/unit/services/test_processor_service.py:**
 ```python
@@ -374,6 +374,8 @@ class TestProcessorService:
 
 ## Integration Tests
 
+### 5.4.6: Integration Test Implementation
+
 **src/tests/integration/test_processor_integration.py:**
 ```python
 """Integration tests for processor."""
@@ -411,6 +413,8 @@ class TestProcessorIntegration:
 ---
 
 ## UI Tests
+
+### 5.4.7: UI Test Implementation
 
 **src/tests/ui/test_main_window.py:**
 ```python
@@ -461,6 +465,8 @@ class TestMainWindow:
 
 ## Performance Tests
 
+### 5.4.8: Performance Test Implementation
+
 **src/tests/performance/test_processing_performance.py:**
 ```python
 """Performance tests for processing."""
@@ -501,7 +507,7 @@ class TestProcessingPerformance:
 
 ## Coverage Configuration
 
-### Coverage Settings
+### 5.4.9: Coverage Settings
 
 **.coveragerc:**
 ```ini
@@ -528,7 +534,7 @@ exclude_lines =
 
 ## Running Tests
 
-### Basic Commands
+### 5.4.10: Basic Commands
 
 ```bash
 # Run all tests

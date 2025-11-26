@@ -29,7 +29,7 @@ Ensure that code restructuring doesn't degrade performance and optimize critical
 
 ## Performance Testing Strategy
 
-### Metrics to Measure
+### 5.10.1: Metrics to Measure
 
 1. **Processing Time**
    - Time to process single track
@@ -55,7 +55,7 @@ Ensure that code restructuring doesn't degrade performance and optimize critical
 
 ## Benchmarking Tools
 
-### Performance Profiling
+### 5.10.2: Performance Profiling
 
 **cProfile:**
 ```python
@@ -120,7 +120,7 @@ def benchmark_process_playlist(track_count: int = 100):
     return duration, results
 ```
 
-### Memory Profiling
+### 5.10.3: Memory Profiling
 
 **memory_profiler:**
 ```python
@@ -149,7 +149,7 @@ def process_playlist_memory():
 
 ## Performance Test Suite
 
-### Performance Test Framework
+### 5.10.4: Performance Test Framework
 
 ```python
 # src/tests/performance/test_performance.py
@@ -217,7 +217,7 @@ class TestProcessingPerformance:
 
 ## Performance Comparison
 
-### Before/After Comparison
+### 5.10.5: Before/After Comparison
 
 ```python
 # src/tests/performance/compare_performance.py
@@ -311,7 +311,7 @@ def generate_performance_report():
 
 ## Optimization Strategies
 
-### 1. Caching Optimization
+### 5.10.6: Caching Optimization
 
 ```python
 # Optimize cache usage
@@ -323,7 +323,7 @@ def optimize_cache():
     pass
 ```
 
-### 2. Lazy Loading
+### 5.10.7: Lazy Loading
 
 ```python
 # Use lazy loading for large datasets
@@ -338,7 +338,7 @@ class ResultsView:
         return self._results
 ```
 
-### 3. Batch Processing
+### 5.10.8: Batch Processing
 
 ```python
 # Process items in batches
@@ -352,7 +352,7 @@ def process_playlist_optimized(tracks: List[Track], batch_size: int = 10):
     return results
 ```
 
-### 4. Database Connection Pooling
+### 5.10.9: Database Connection Pooling
 
 ```python
 # If using database, use connection pooling
@@ -365,7 +365,7 @@ pool = QueuePool(
 )
 ```
 
-### 5. Async I/O (if applicable)
+### 5.10.10: Async I/O (if applicable)
 
 ```python
 # Use async I/O for network operations (see Phase 8)
@@ -381,7 +381,7 @@ async def fetch_multiple_tracks(urls: List[str]):
 
 ## Performance Monitoring
 
-### Add Performance Logging
+### 5.10.11: Add Performance Logging
 
 ```python
 # src/cuepoint/utils/performance.py
