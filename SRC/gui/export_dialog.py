@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from typing import List, Dict, Any, Optional
 import os
+from cuepoint.ui.controllers.export_controller import ExportController
 
 
 class ExportDialog(QDialog):
@@ -22,6 +23,8 @@ class ExportDialog(QDialog):
     
     def __init__(self, parent=None, current_format: str = "csv"):
         super().__init__(parent)
+        # Create export controller for business logic
+        self.export_controller = ExportController()
         self.file_path: Optional[str] = None
         self.selected_format = current_format
         self.init_ui()
@@ -180,26 +183,28 @@ class ExportDialog(QDialog):
         self.export_button.setEnabled(bool(text.strip()))
     
     def _update_file_extension_hint(self):
-        """Update file path extension hint based on selected format"""
+        """Update file path extension hint based on selected format using controller"""
         current_path = self.file_path_edit.text()
         if not current_path:
             return
         
         # Get selected format
         if self.json_radio.isChecked():
-            new_ext = ".json"
-            if self.compress_checkbox.isChecked():
-                new_ext = ".json.gz"
+            format_type = "json"
         elif self.csv_radio.isChecked():
-            delimiter = self.delimiter_combo.currentText()
-            if delimiter == "\t":
-                new_ext = ".tsv"
-            elif delimiter == "|":
-                new_ext = ".psv"
-            else:
-                new_ext = ".csv"
+            format_type = "csv"
         else:  # Excel
-            new_ext = ".xlsx"
+            format_type = "excel"
+        
+        # Get options for extension calculation
+        options = {
+            "format": format_type,
+            "compress": self.compress_checkbox.isChecked(),
+            "delimiter": self.delimiter_combo.currentText()
+        }
+        
+        # Get extension from controller
+        new_ext = self.export_controller.get_export_file_extension(format_type, options)
         
         # Update path if it has an extension
         if "." in current_path:
@@ -207,28 +212,40 @@ class ExportDialog(QDialog):
             self.file_path_edit.setText(base_path + new_ext)
     
     def _browse_file(self):
-        """Open file dialog to select output file"""
-        # Determine file filter based on selected format
+        """Open file dialog to select output file using controller"""
+        # Determine format and options
         if self.json_radio.isChecked():
-            if self.compress_checkbox.isChecked():
+            format_type = "json"
+        elif self.csv_radio.isChecked():
+            format_type = "csv"
+        else:  # Excel
+            format_type = "excel"
+        
+        options = {
+            "format": format_type,
+            "compress": self.compress_checkbox.isChecked(),
+            "delimiter": self.delimiter_combo.currentText()
+        }
+        
+        # Get extension from controller
+        default_ext = self.export_controller.get_export_file_extension(format_type, options)
+        
+        # Determine file filter based on format
+        if format_type == "json":
+            if options["compress"]:
                 file_filter = "Compressed JSON Files (*.json.gz);;JSON Files (*.json);;All Files (*.*)"
             else:
                 file_filter = "JSON Files (*.json);;All Files (*.*)"
-            default_ext = ".json"
-        elif self.csv_radio.isChecked():
-            delimiter = self.delimiter_combo.currentText()
+        elif format_type == "csv":
+            delimiter = options["delimiter"]
             if delimiter == "\t":
                 file_filter = "TSV Files (*.tsv);;All Files (*.*)"
-                default_ext = ".tsv"
             elif delimiter == "|":
                 file_filter = "PSV Files (*.psv);;All Files (*.*)"
-                default_ext = ".psv"
             else:
                 file_filter = "CSV Files (*.csv);;All Files (*.*)"
-                default_ext = ".csv"
         else:  # Excel
             file_filter = "Excel Files (*.xlsx);;All Files (*.*)"
-            default_ext = ".xlsx"
         
         file_path, _ = QFileDialog.getSaveFileName(
             self,
@@ -246,21 +263,24 @@ class ExportDialog(QDialog):
             # Export button will be enabled automatically via textChanged signal
     
     def _get_format_extension(self) -> str:
-        """Get file extension for selected format"""
+        """Get file extension for selected format using controller"""
+        # Determine format
         if self.json_radio.isChecked():
-            if self.compress_checkbox.isChecked():
-                return "json.gz"
-            return "json"
+            format_type = "json"
         elif self.excel_radio.isChecked():
-            return "xlsx"
-        else:  # CSV
-            delimiter = self.delimiter_combo.currentText()
-            if delimiter == "\t":
-                return "tsv"
-            elif delimiter == "|":
-                return "psv"
-            else:
-                return "csv"
+            format_type = "excel"
+        else:
+            format_type = "csv"
+        
+        options = {
+            "format": format_type,
+            "compress": self.compress_checkbox.isChecked(),
+            "delimiter": self.delimiter_combo.currentText()
+        }
+        
+        # Get extension from controller (remove leading dot)
+        ext = self.export_controller.get_export_file_extension(format_type, options)
+        return ext.lstrip('.')
     
     def get_export_options(self) -> Dict[str, Any]:
         """Get selected export options with enhancements"""
@@ -288,28 +308,20 @@ class ExportDialog(QDialog):
         return options
     
     def validate(self) -> bool:
-        """Validate export options"""
-        file_path = self.file_path_edit.text() or self.file_path
-        if not file_path:
+        """Validate export options using controller"""
+        # Get export options
+        options = self.get_export_options()
+        
+        # Validate using controller
+        is_valid, error_message = self.export_controller.validate_export_options(options)
+        
+        if not is_valid:
             QMessageBox.warning(
                 self,
                 "Invalid Options",
-                "Please select an output file location."
+                error_message or "Please check your export options."
             )
             return False
-        
-        # Check if directory exists and is writable
-        output_dir = os.path.dirname(file_path)
-        if output_dir and not os.path.exists(output_dir):
-            try:
-                os.makedirs(output_dir, exist_ok=True)
-            except OSError:
-                QMessageBox.warning(
-                    self,
-                    "Invalid Path",
-                    f"Cannot create output directory:\n{output_dir}"
-                )
-                return False
         
         return True
     

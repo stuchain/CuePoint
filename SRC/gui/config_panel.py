@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Signal, Qt
 from typing import Dict, Any, Optional
 from config import SETTINGS
+from cuepoint.ui.controllers.config_controller import ConfigController
 
 
 class ConfigPanel(QWidget):
@@ -24,6 +25,8 @@ class ConfigPanel(QWidget):
     
     def __init__(self, parent=None):
         super().__init__(parent)
+        # Create config controller for business logic
+        self.config_controller = ConfigController()
         self.init_ui()
         self.load_defaults()
     
@@ -210,28 +213,17 @@ class ConfigPanel(QWidget):
         # Get preset
         preset = self._get_selected_preset()
         
-        # Apply preset values
-        if preset == "fast":
-            settings["TRACK_WORKERS"] = 8
-            settings["PER_TRACK_TIME_BUDGET_SEC"] = 30
-            settings["MIN_ACCEPT_SCORE"] = 75.0
-            settings["MAX_SEARCH_RESULTS"] = 40
-        elif preset == "turbo":
-            settings["TRACK_WORKERS"] = 16
-            settings["PER_TRACK_TIME_BUDGET_SEC"] = 20
-            settings["MIN_ACCEPT_SCORE"] = 80.0
-            settings["MAX_SEARCH_RESULTS"] = 30
-        elif preset == "exhaustive":
-            settings["TRACK_WORKERS"] = 6
-            settings["PER_TRACK_TIME_BUDGET_SEC"] = 120
-            settings["MIN_ACCEPT_SCORE"] = 60.0
-            settings["MAX_SEARCH_RESULTS"] = 100
-        else:  # balanced (default) - use actual defaults from config.py
+        # Get preset values from controller
+        if preset == "balanced":
             # Use advanced settings values (which should match defaults when reset)
-            settings["TRACK_WORKERS"] = self.track_workers_spin.value()
-            settings["PER_TRACK_TIME_BUDGET_SEC"] = self.time_budget_spin.value()
-            settings["MIN_ACCEPT_SCORE"] = self.min_score_spin.value()
-            settings["MAX_SEARCH_RESULTS"] = self.max_results_spin.value()
+            custom_settings = {
+                "TRACK_WORKERS": self.track_workers_spin.value(),
+                "PER_TRACK_TIME_BUDGET_SEC": self.time_budget_spin.value(),
+                "MIN_ACCEPT_SCORE": self.min_score_spin.value(),
+                "MAX_SEARCH_RESULTS": self.max_results_spin.value()
+            }
+            # Merge with preset (balanced uses custom values)
+            settings.update(custom_settings)
             
             # Also include other default settings from config.py
             settings["CANDIDATE_WORKERS"] = SETTINGS.get("CANDIDATE_WORKERS", 15)
@@ -239,6 +231,10 @@ class ConfigPanel(QWidget):
             settings["ARTIST_WEIGHT"] = SETTINGS.get("ARTIST_WEIGHT", 0.45)
             settings["EARLY_EXIT_SCORE"] = SETTINGS.get("EARLY_EXIT_SCORE", 90)
             settings["EARLY_EXIT_MIN_QUERIES"] = SETTINGS.get("EARLY_EXIT_MIN_QUERIES", 8)
+        else:
+            # Apply preset values from controller
+            preset_values = self.config_controller.get_preset_values(preset)
+            settings.update(preset_values)
         
         # Get advanced settings (always read checkbox state, regardless of visibility)
         # The checkboxes maintain their state even when the group is hidden
@@ -263,29 +259,27 @@ class ConfigPanel(QWidget):
                 return obj_name.replace("preset_", "")
         return "balanced"
     
+    def _get_preset_values_from_controller(self, preset: str) -> Dict[str, Any]:
+        """Get preset values from controller"""
+        return self.config_controller.get_preset_values(preset)
+    
     def _on_preset_changed(self, button):
-        """Handle preset selection change"""
+        """Handle preset selection change using controller"""
         preset = self._get_selected_preset()
         
+        # Get preset values from controller
+        preset_values = self.config_controller.get_preset_values(preset)
+        
         # Update advanced settings based on preset
-        if preset == "fast":
-            self.track_workers_spin.setValue(8)
-            self.time_budget_spin.setValue(30)
-            self.min_score_spin.setValue(75.0)
-            self.max_results_spin.setValue(40)
-        elif preset == "turbo":
-            self.track_workers_spin.setValue(16)
-            self.time_budget_spin.setValue(20)
-            self.min_score_spin.setValue(80.0)
-            self.max_results_spin.setValue(30)
-        elif preset == "exhaustive":
-            self.track_workers_spin.setValue(6)
-            self.time_budget_spin.setValue(120)
-            self.min_score_spin.setValue(60.0)
-            self.max_results_spin.setValue(100)
-        else:  # balanced
+        if preset == "balanced":
             # Reset to actual defaults from config.py
             self.load_defaults()
+        else:
+            # Apply preset values from controller
+            self.track_workers_spin.setValue(preset_values.get("TRACK_WORKERS", 12))
+            self.time_budget_spin.setValue(preset_values.get("PER_TRACK_TIME_BUDGET_SEC", 45))
+            self.min_score_spin.setValue(preset_values.get("MIN_ACCEPT_SCORE", 70.0))
+            self.max_results_spin.setValue(preset_values.get("MAX_SEARCH_RESULTS", 50))
         
         # Disable advanced settings when preset is selected (except balanced)
         # Only disable if advanced settings are visible
