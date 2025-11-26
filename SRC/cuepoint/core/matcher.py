@@ -219,7 +219,14 @@ def _camelot_key(key: Optional[str]) -> str:
 
 @dataclass
 class MatchRow:
-    """Match result row"""
+    """Match result row for playlist processing.
+    
+    Represents a single row in a playlist with its index and data.
+    
+    Attributes:
+        playlist_index: Zero-based index of this row in the playlist.
+        row: Dictionary containing row data (column names to values).
+    """
     playlist_index: int
     row: Dict[str, str]
 
@@ -243,7 +250,27 @@ def _confidence_label(score: float) -> str:
 
 
 def _classify_query_type(query: str, query_index: int) -> str:
-    """Classify query type for metrics"""
+    """Classify query type for metrics tracking.
+    
+    Categorizes queries into types for performance analysis:
+    - "priority": First query (highest priority)
+    - "remix": Contains remix/mix keywords
+    - "exact_phrase": Contains quoted phrase
+    - "n_gram": Standard N-gram query
+    
+    Args:
+        query: Query string to classify.
+        query_index: Zero-based index of query in sequence.
+    
+    Returns:
+        Query type string: "priority", "remix", "exact_phrase", or "n_gram".
+    
+    Example:
+        >>> _classify_query_type("Never Sleep Again", 0)
+        'priority'
+        >>> _classify_query_type("CamelPhat Remix", 5)
+        'remix'
+    """
     if query_index == 0:
         return "priority"
     elif "remix" in query.lower() or "mix" in query.lower():
@@ -324,7 +351,14 @@ def best_beatport_match(
                 artist_word_set.add(w)
 
     def _is_full_title_plus_one_artist_query(q: str) -> bool:
-        """Check if query is full title + one artist"""
+        """Check if query is full title + one artist.
+        
+        Args:
+            q: Query string to check.
+        
+        Returns:
+            True if query matches pattern of full title plus one artist.
+        """
         if not base_title_clean:
             return False
         ql = (q or "").lower().strip()
@@ -353,7 +387,14 @@ def best_beatport_match(
         return False
 
     def _pick_max_results_for_query(q: str) -> int:
-        """Adaptive max_results based on query shape"""
+        """Determine adaptive max_results based on query shape.
+        
+        Args:
+            q: Query string.
+        
+        Returns:
+            Maximum number of results to fetch for this query type.
+        """
         if not SETTINGS.get("ADAPTIVE_MAX_RESULTS", True):
             return int(SETTINGS.get("MAX_SEARCH_RESULTS", 50))
         ql = (q or "").lower()
@@ -377,6 +418,15 @@ def best_beatport_match(
     best_is_family_shape = False
 
     def title_mentions_input_remix(cand_title: str, input_artists: str) -> bool:
+        """Check if candidate title mentions input artist as remixer.
+        
+        Args:
+            cand_title: Candidate track title.
+            input_artists: Input artist string.
+        
+        Returns:
+            True if candidate title contains input artist followed by "remix".
+        """
         ct = normalize_text(cand_title)
         toks = _artist_tokens(input_artists)
         for tok in toks:
@@ -387,9 +437,24 @@ def best_beatport_match(
                 return True
         return False
 
-    def consider(u, title, artists, key, year, bpm, label, genres, rel_name, rel_date, qidx, qtext, cidx, elapsed_ms):
+    def consider(
+        u: str,
+        title: Optional[str],
+        artists: Optional[str],
+        key: Optional[str],
+        year: Optional[int],
+        bpm: Optional[str],
+        label: Optional[str],
+        genres: Optional[str],
+        rel_name: Optional[str],
+        rel_date: Optional[str],
+        qidx: int,
+        qtext: str,
+        cidx: int,
+        elapsed_ms: int
+    ) -> None:
         """
-        Evaluate and score a single candidate track
+        Evaluate and score a single candidate track.
         
         This function:
         1. Calculates title and artist similarity scores
@@ -399,20 +464,20 @@ def best_beatport_match(
         5. Updates best match if this candidate is better
         
         Args:
-            u: Beatport track URL
-            title: Candidate track title
-            artists: Candidate track artists
-            key: Musical key
-            year: Release year
-            bpm: BPM
-            label: Record label
-            genres: Genres
-            rel_name: Release name
-            rel_date: Release date
-            qidx: Query index that found this candidate
-            qtext: Query text that found this candidate
-            cidx: Candidate index (position in query results)
-            elapsed_ms: Time spent parsing this candidate (milliseconds)
+            u: Beatport track URL.
+            title: Candidate track title.
+            artists: Candidate track artists.
+            key: Musical key.
+            year: Release year.
+            bpm: BPM string.
+            label: Record label.
+            genres: Genres string.
+            rel_name: Release name.
+            rel_date: Release date.
+            qidx: Query index that found this candidate.
+            qtext: Query text that found this candidate.
+            cidx: Candidate index (position in query results).
+            elapsed_ms: Time spent parsing this candidate (milliseconds).
         """
         nonlocal best, seen_generic_match, best_is_family_shape
         ok = True  # Whether candidate passes guards (not rejected)
@@ -738,7 +803,14 @@ def best_beatport_match(
         # Beatport URLs format: https://www.beatport.com/track/{slug}/{track_id}
         
         def extract_track_id_from_url(url: str) -> Optional[str]:
-            """Extract Beatport track ID from URL (the numeric ID at the end)"""
+            """Extract Beatport track ID from URL.
+            
+            Args:
+                url: Beatport track URL.
+            
+            Returns:
+                Track ID string if found, None otherwise.
+            """
             match = re.search(r'/track/[^/]+/(\d+)', url)
             return match.group(1) if match else None
         
@@ -773,15 +845,17 @@ def best_beatport_match(
         # ========================================================================
         # Fetch and parse candidate tracks in parallel for speed
         
-        def fetch(u):
-            """
-            Fetch and parse a single candidate track
+        def fetch(u: str) -> Tuple[str, Optional[str], Optional[str], Optional[str], Optional[int], Optional[str], Optional[str], Optional[str], Optional[str], Optional[str], int]:
+            """Fetch and parse a single candidate track.
             
             Uses caching to avoid re-parsing the same URL.
             Also caches by track ID to handle URLs with different slugs but same ID.
             
+            Args:
+                u: Beatport track URL to fetch.
+            
             Returns:
-                Tuple of (url, title, artists, key, year, bpm, label, genres, release_name, release_date, elapsed_ms)
+                Tuple of (url, title, artists, key, year, bpm, label, genres, release_name, release_date, elapsed_ms).
             """
             # Check URL cache first
             if u in parsed_cache:

@@ -11,28 +11,42 @@ showing relevant context.
 
 import os
 import sys
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 
 def format_error_message(
     error_type: str,
     message: str,
     suggestions: Optional[List[str]] = None,
-    context: Optional[dict] = None,
+    context: Optional[Dict[str, Any]] = None,
     see_also: Optional[str] = None
 ) -> str:
     """
-    Format a comprehensive error message with context and actionable fixes
+    Format a comprehensive error message with context and actionable fixes.
+    
+    Creates a formatted error message with sections for error type, message,
+    context information, suggested fixes, and references. Context values can
+    be strings, numbers, or lists (lists are displayed as bullet points).
     
     Args:
-        error_type: Type of error (e.g., "File Not Found", "Network Error")
-        message: Primary error message
-        suggestions: List of suggested fixes
-        context: Additional context information (e.g., current directory, available options)
-        see_also: Link or reference to documentation
+        error_type: Type of error (e.g., "File Not Found", "Network Error").
+        message: Primary error message describing what went wrong.
+        suggestions: Optional list of suggested fixes (numbered).
+        context: Optional dictionary of additional context information.
+            Values can be strings, numbers, or lists (lists shown as bullets).
+        see_also: Optional link or reference to documentation.
     
     Returns:
-        Formatted error message string
+        Formatted error message string with sections separated by lines.
+    
+    Example:
+        >>> msg = format_error_message(
+        ...     "File Not Found",
+        ...     "Could not find config.yaml",
+        ...     suggestions=["Check file path", "Create config.yaml.template"],
+        ...     context={"Current directory": "/home/user", "Files": ["file1.txt", "file2.txt"]}
+        ... )
+        >>> print(msg)
     """
     lines = []
     lines.append("=" * 80)
@@ -372,13 +386,22 @@ def error_missing_dependency(
     )
 
 
-def print_error(message: str, exit_code: int = 1) -> None:
+def print_error(message: str, exit_code: Optional[int] = 1) -> None:
     """
-    Print error message and optionally exit
+    Print error message and optionally exit.
+    
+    Prints the error message to stderr. If exit_code is not None, exits
+    the program with the specified exit code. If exit_code is None, only
+    prints the message without exiting.
     
     Args:
-        message: Error message to print
-        exit_code: Exit code (None to not exit)
+        message: Error message to print to stderr.
+        exit_code: Exit code to use when exiting (default: 1).
+            Set to None to print without exiting.
+    
+    Example:
+        >>> print_error("File not found", exit_code=1)  # Prints and exits
+        >>> print_error("Warning", exit_code=None)  # Only prints
     """
     print(message, file=sys.stderr)
     if exit_code is not None:

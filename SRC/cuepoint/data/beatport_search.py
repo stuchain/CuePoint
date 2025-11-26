@@ -1,23 +1,30 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-Direct Beatport search implementation - multiple methods
+"""Direct Beatport search implementation - multiple methods.
 
-This module provides alternative search methods to DuckDuckGo:
+This module provides alternative search methods to DuckDuckGo for finding
+Beatport track URLs. It includes multiple search strategies:
+
 1. Direct HTML scraping: Parses Beatport search pages directly
 2. API endpoint discovery: Uses Beatport's internal API endpoints
-3. Browser automation: Uses Playwright/Selenium as fallback for JS-rendered content
+3. Browser automation: Uses Playwright/Selenium for JS-rendered content
 
 Why multiple methods?
 - DuckDuckGo can miss remixes that appear later in Beatport's own search
 - Direct search is more reliable for specific remix queries
 - Browser automation finds JavaScript-rendered tracks that static scraping misses
 
-Key functions:
-- beatport_search_via_api(): Searches using Beatport's API
-- beatport_search_via_html(): Searches by parsing HTML
-- beatport_search_via_browser(): Searches using browser automation
+Key Functions:
+    beatport_search_direct(): Main direct search function (tries API then HTML)
+    beatport_search_via_api(): Searches using Beatport's API endpoints
+    beatport_search_browser(): Searches using browser automation (Playwright/Selenium)
+    beatport_search_hybrid(): Combines direct search with DuckDuckGo
+
+Example:
+    >>> from cuepoint.data.beatport_search import beatport_search_direct
+    >>> urls = beatport_search_direct(1, "Never Sleep Again (Keinemusik Remix)", 10)
+    >>> print(f"Found {len(urls)} track URLs")
 """
 
 import json
@@ -35,7 +42,22 @@ from cuepoint.utils.utils import vlog
 
 
 def _extract_track_ids_from_next_data(data: Any, seen: set, urls: List[str], max_results: int) -> None:
-    """Recursively extract track URLs from Next.js __NEXT_DATA__ structure"""
+    """Recursively extract track URLs from Next.js __NEXT_DATA__ structure.
+    
+    Traverses the Next.js data structure to find track objects and extract
+    their URLs. Handles various data structure patterns including React Query
+    dehydrated state and general nested structures.
+    
+    Args:
+        data: The Next.js __NEXT_DATA__ JSON structure (dict, list, or nested).
+        seen: Set of already-seen URLs to avoid duplicates (modified in-place).
+        urls: List to append found URLs to (modified in-place).
+        max_results: Maximum number of URLs to extract before stopping.
+    
+    Note:
+        This function modifies the `seen` and `urls` parameters in-place.
+        Stops early if max_results is reached or recursion depth exceeds 25.
+    """
     # First, try common Next.js patterns
     if isinstance(data, dict):
         # Pattern 1: props.pageProps.dehydratedState.queries (React Query)
@@ -105,7 +127,14 @@ def _extract_track_ids_from_next_data(data: Any, seen: set, urls: List[str], max
                                                 return
     
     # Fallback: General recursive traversal
-    def traverse(obj, depth=0, path=""):
+    def traverse(obj: Any, depth: int = 0, path: str = "") -> None:
+        """Recursively traverse data structure to find track objects.
+        
+        Args:
+            obj: The object to traverse (dict, list, or primitive).
+            depth: Current recursion depth (stops at 25).
+            path: Current path in the data structure (for debugging).
+        """
         if depth > 25 or len(urls) >= max_results:
             return
         
@@ -159,9 +188,24 @@ def _extract_track_ids_from_next_data(data: Any, seen: set, urls: List[str], max
 
 
 def beatport_search_via_api(idx: int, query: str, max_results: int = 50) -> List[str]:
-    """
-    Attempt to use Beatport's API endpoints directly.
-    This tries common API patterns used by Beatport.
+    """Attempt to use Beatport's API endpoints directly.
+    
+    Tries to access Beatport's internal API endpoints to search for tracks.
+    This method is faster than HTML scraping but may not always be available
+    or may return different results than the web interface.
+    
+    Args:
+        idx: Track index for logging purposes.
+        query: Search query string.
+        max_results: Maximum number of URLs to return. Defaults to 50.
+    
+    Returns:
+        List of Beatport track URLs found via API, or empty list if API
+        endpoints are not accessible or return no results.
+    
+    Note:
+        Tries multiple common API endpoint patterns. Returns empty list
+        if all attempts fail.
     """
     urls: List[str] = []
     
@@ -306,17 +350,32 @@ def beatport_search_direct(idx: int, query: str, max_results: int = 50) -> List[
 
 
 def beatport_search_browser(idx: int, query: str, max_results: int = 50) -> List[str]:
-    """
-    Use browser automation (Selenium or Playwright) to search Beatport.
+    """Use browser automation (Selenium or Playwright) to search Beatport.
+    
     This is the most reliable method as it fully renders JavaScript content.
+    Tries Playwright first (faster, more modern), falls back to Selenium if
+    Playwright is not available.
     
     Args:
-        idx: Track index for logging
-        query: Search query
-        max_results: Maximum results
-        
+        idx: Track index for logging purposes.
+        query: Search query string.
+        max_results: Maximum number of URLs to return. Defaults to 50.
+    
     Returns:
-        List of Beatport track URLs
+        List of unique Beatport track URLs found. May return fewer than
+        max_results if not enough matches are found.
+    
+    Raises:
+        ImportError: If neither Playwright nor Selenium are installed.
+        Exception: Various exceptions from browser automation libraries.
+    
+    Note:
+        Requires either playwright or selenium to be installed:
+        - Playwright: `pip install playwright && playwright install chromium`
+        - Selenium: `pip install selenium` (requires ChromeDriver)
+        
+        Browser runs in headless mode. Waits for track links to appear
+        before extracting URLs.
     """
     urls: List[str] = []
     
@@ -435,17 +494,25 @@ def beatport_search_browser(idx: int, query: str, max_results: int = 50) -> List
 
 
 def beatport_search_hybrid(idx: int, query: str, max_results: int = 50, prefer_direct: bool = True) -> List[str]:
-    """
-    Hybrid search: Try direct Beatport search first, fall back to DuckDuckGo if needed.
+    """Hybrid search: Try direct Beatport search first, fall back to DuckDuckGo if needed.
+    
+    Combines direct Beatport search with DuckDuckGo search to maximize
+    result coverage. Can prioritize either method based on prefer_direct flag.
     
     Args:
-        idx: Track index for logging
-        query: Search query
-        max_results: Maximum results
-        prefer_direct: If True, use direct search first; if False, try DuckDuckGo first
-        
+        idx: Track index for logging purposes.
+        query: Search query string.
+        max_results: Maximum number of URLs to return. Defaults to 50.
+        prefer_direct: If True, use direct Beatport search first and supplement
+            with DuckDuckGo if needed. If False, try DuckDuckGo first.
+    
     Returns:
-        List of unique Beatport track URLs
+        List of unique Beatport track URLs, combining results from both
+        search methods. Returns early if preferred method finds sufficient
+        results (70% of max_results for direct, 50% for DuckDuckGo).
+    
+    Note:
+        Removes duplicates when merging results from both methods.
     """
     from beatport import ddg_track_urls
     

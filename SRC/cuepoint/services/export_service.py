@@ -14,7 +14,11 @@ from cuepoint.services.output_writer import write_csv_files
 
 
 class ExportService(IExportService):
-    """Implementation of export service."""
+    """Service for exporting track results to various file formats.
+    
+    Supports exporting to CSV, JSON, and Excel formats. Handles file
+    creation, directory creation, and formatting.
+    """
     
     def export_to_csv(
         self,
@@ -22,7 +26,20 @@ class ExportService(IExportService):
         filepath: str,
         delimiter: str = ","
     ) -> None:
-        """Export results to CSV file."""
+        """Export results to CSV file.
+        
+        Exports track results to CSV format using the output_writer module.
+        Creates output directory if needed.
+        
+        Args:
+            results: List of TrackResult objects to export.
+            filepath: Full path to output CSV file.
+            delimiter: CSV delimiter (default: ",").
+        
+        Example:
+            >>> results = [TrackResult(...), TrackResult(...)]
+            >>> service.export_to_csv(results, "output/results.csv")
+        """
         import os
         base_filename = os.path.splitext(os.path.basename(filepath))[0]
         output_dir = os.path.dirname(filepath) or "output"
@@ -39,7 +56,19 @@ class ExportService(IExportService):
         results: List[TrackResult],
         filepath: str
     ) -> None:
-        """Export results to JSON file."""
+        """Export results to JSON file.
+        
+        Exports track results to JSON format with pretty printing.
+        Creates output directory if needed.
+        
+        Args:
+            results: List of TrackResult objects to export.
+            filepath: Full path to output JSON file.
+        
+        Example:
+            >>> results = [TrackResult(...), TrackResult(...)]
+            >>> service.export_to_json(results, "output/results.json")
+        """
         import json
         import os
         
@@ -54,7 +83,22 @@ class ExportService(IExportService):
         results: List[TrackResult],
         filepath: str
     ) -> None:
-        """Export results to Excel file."""
+        """Export results to Excel file.
+        
+        Exports track results to Excel format with styled headers.
+        Requires openpyxl package.
+        
+        Args:
+            results: List of TrackResult objects to export.
+            filepath: Full path to output Excel file.
+        
+        Raises:
+            ImportError: If openpyxl is not installed.
+        
+        Example:
+            >>> results = [TrackResult(...), TrackResult(...)]
+            >>> service.export_to_excel(results, "output/results.xlsx")
+        """
         try:
             from openpyxl import Workbook
             from openpyxl.styles import Font, PatternFill, Alignment

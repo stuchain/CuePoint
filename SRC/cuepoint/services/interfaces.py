@@ -16,7 +16,11 @@ from cuepoint.ui.gui_interface import TrackResult
 
 
 class IProcessorService(ABC):
-    """Interface for track processing service."""
+    """Interface for track processing service.
+    
+    Defines the contract for services that process tracks and playlists,
+    finding matches on Beatport and returning results.
+    """
     
     @abstractmethod
     def process_track(
@@ -25,7 +29,16 @@ class IProcessorService(ABC):
         track: RBTrack,
         settings: Optional[Dict[str, Any]] = None
     ) -> TrackResult:
-        """Process a single track and return result."""
+        """Process a single track and return match result.
+        
+        Args:
+            idx: Track index (1-based).
+            track: RBTrack object to process.
+            settings: Optional settings override.
+        
+        Returns:
+            TrackResult with match information.
+        """
         pass
     
     @abstractmethod
@@ -34,7 +47,15 @@ class IProcessorService(ABC):
         tracks: List[RBTrack],
         settings: Optional[Dict[str, Any]] = None
     ) -> List[TrackResult]:
-        """Process a playlist of tracks."""
+        """Process a playlist of tracks.
+        
+        Args:
+            tracks: List of RBTrack objects.
+            settings: Optional settings override.
+        
+        Returns:
+            List of TrackResult objects.
+        """
         pass
 
 
@@ -152,7 +173,11 @@ class ILoggingService(ABC):
 
 
 class IMatcherService(ABC):
-    """Interface for track matching service."""
+    """Interface for track matching service.
+    
+    Defines the contract for services that find best Beatport matches
+    for tracks using search queries and scoring algorithms.
+    """
     
     @abstractmethod
     def find_best_match(
@@ -167,10 +192,20 @@ class IMatcherService(ABC):
         input_mix: Optional[Dict[str, object]] = None,
         input_generic_phrases: Optional[List[str]] = None,
     ) -> tuple:
-        """
-        Find best Beatport match for a track.
+        """Find best Beatport match for a track.
+        
+        Args:
+            idx: Track index for logging.
+            track_title: Clean track title.
+            track_artists_for_scoring: Artist string for scoring.
+            title_only_mode: True if no artists available.
+            queries: List of search queries to execute.
+            input_year: Optional year from Rekordbox.
+            input_key: Optional key from Rekordbox.
+            input_mix: Mix type flags.
+            input_generic_phrases: Special parenthetical phrases.
         
         Returns:
-            Tuple of (best_candidate, all_candidates, queries_audit, last_query_index)
+            Tuple of (best_candidate, all_candidates, queries_audit, last_query_index).
         """
         pass

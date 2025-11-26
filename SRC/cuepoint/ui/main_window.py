@@ -1,10 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-Main Window Module - Main application window
+"""Main Window Module - Main application window.
 
-This module contains the MainWindow class for the GUI application.
+This module contains the MainWindow class, which is the primary window
+of the CuePoint application. It provides the main user interface including:
+
+- File and playlist selection
+- Processing mode selection (single vs batch)
+- Progress monitoring
+- Results display
+- Menu bar with File, Edit, View, and Help menus
+- Keyboard shortcuts management
+- Drag and drop support
+
+The MainWindow coordinates between various UI components and the
+GUIController for processing operations.
 """
 
 from PySide6.QtWidgets import (
@@ -14,7 +25,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QSettings
 from PySide6.QtGui import QDragEnterEvent, QDropEvent, QKeySequence, QAction, QKeyEvent
-from typing import List, Dict
+from typing import List, Dict, Optional, Any
 import os
 import sys
 
@@ -28,16 +39,43 @@ from cuepoint.ui.widgets.history_view import HistoryView
 from cuepoint.ui.widgets.dialogs import ErrorDialog, AboutDialog, UserGuideDialog, KeyboardShortcutsDialog
 from cuepoint.ui.widgets.shortcut_manager import ShortcutManager, ShortcutContext
 from cuepoint.ui.controllers.main_controller import GUIController
-from cuepoint.ui.gui_interface import ProcessingError
+from cuepoint.ui.gui_interface import ProcessingError, TrackResult, ProgressInfo
 from cuepoint.services.output_writer import write_csv_files
 from cuepoint.utils.utils import with_timestamp
 from cuepoint.ui.widgets.performance_view import PerformanceView
 
 
 class MainWindow(QMainWindow):
-    """Main application window"""
+    """Main application window for CuePoint Beatport Metadata Enricher.
     
-    def __init__(self, parent=None):
+    This is the primary window of the application, containing all UI components
+    including file selection, playlist selection, processing controls, progress
+    display, and results view. It manages the overall application state and
+    coordinates between different UI components.
+    
+    Attributes:
+        controller: GUIController instance for processing operations.
+        shortcut_manager: ShortcutManager instance for keyboard shortcuts.
+        file_selector: FileSelector widget for XML file selection.
+        playlist_selector: PlaylistSelector widget for playlist selection.
+        progress_widget: ProgressWidget for displaying processing progress.
+        results_view: ResultsView widget for displaying processing results.
+        config_panel: ConfigPanel widget for configuration settings.
+        batch_processor: BatchProcessorWidget for batch processing mode.
+        history_view: HistoryView widget for viewing past searches.
+        performance_view: PerformanceView widget for performance monitoring.
+        tabs: QTabWidget containing main, settings, and history tabs.
+        performance_tab_index: Optional index of performance monitoring tab.
+        batch_playlist_names: List of playlist names for batch processing.
+    
+    Example:
+        >>> app = QApplication(sys.argv)
+        >>> window = MainWindow()
+        >>> window.show()
+        >>> sys.exit(app.exec())
+    """
+    
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         # Create GUI controller for processing
         self.controller = GUIController()
@@ -48,8 +86,19 @@ class MainWindow(QMainWindow):
         self.setup_connections()
         self.setup_shortcuts()
         
-    def init_ui(self):
-        """Initialize UI components"""
+    def init_ui(self) -> None:
+        """Initialize all UI components and layout.
+        
+        Sets up the main window structure including:
+        - Window properties (title, size, geometry)
+        - Menu bar with File, Edit, View, and Help menus
+        - Tab widget with Main, Settings, and Past Searches tabs
+        - File selection and playlist selection widgets
+        - Processing mode selection (single vs batch)
+        - Progress widget and results view
+        - Status bar
+        - Drag and drop support
+        """
         # Window properties
         self.setWindowTitle("CuePoint - Beatport Metadata Enricher")
         self.setMinimumSize(800, 600)
@@ -218,8 +267,13 @@ class MainWindow(QMainWindow):
         self.setAccessibleName("CuePoint main window")
         self.setAccessibleDescription("Main application window for CuePoint Beatport Metadata Enricher")
     
-    def setup_connections(self):
-        """Set up signal connections for GUI controller"""
+    def setup_connections(self) -> None:
+        """Set up signal connections between controller and UI components.
+        
+        Connects controller signals (progress_updated, processing_complete,
+        error_occurred) to UI handlers, and connects batch processor signals
+        for batch processing mode.
+        """
         # Connect controller signals to handlers
         self.controller.progress_updated.connect(self.on_progress_updated)
         self.controller.processing_complete.connect(self.on_processing_complete)
@@ -230,8 +284,12 @@ class MainWindow(QMainWindow):
         self.batch_processor.batch_cancelled.connect(self.on_batch_cancelled)
         self.batch_processor.batch_completed.connect(self.on_batch_completed)
     
-    def setup_shortcuts(self):
-        """Setup all keyboard shortcuts"""
+    def setup_shortcuts(self) -> None:
+        """Set up all keyboard shortcuts for the application.
+        
+        Registers global shortcuts (Ctrl+O, Ctrl+E, Ctrl+Q, F1, F11, F5)
+        and context-specific shortcuts for main window and settings.
+        """
         # Global shortcuts
         self.shortcut_manager.register_shortcut(
             "open_file",
@@ -318,16 +376,25 @@ class MainWindow(QMainWindow):
         # Set initial context
         self.shortcut_manager.set_context(ShortcutContext.MAIN_WINDOW)
     
-    def on_shortcut_conflict(self, action_id1: str, action_id2: str):
-        """Handle shortcut conflicts"""
+    def on_shortcut_conflict(self, action_id1: str, action_id2: str) -> None:
+        """Handle keyboard shortcut conflicts.
+        
+        Args:
+            action_id1: ID of first conflicting action.
+            action_id2: ID of second conflicting action.
+        """
         QMessageBox.warning(
             self,
             "Shortcut Conflict",
             f"Shortcut conflict detected between '{action_id1}' and '{action_id2}'"
         )
     
-    def on_new_session(self):
-        """Start a new session (clear results)"""
+    def on_new_session(self) -> None:
+        """Start a new session by clearing all results and resetting progress.
+        
+        Prompts the user for confirmation before clearing results. Resets
+        the results view, progress widget, and hides the results group.
+        """
         reply = QMessageBox.question(
             self,
             "New Session",
@@ -343,29 +410,47 @@ class MainWindow(QMainWindow):
                 self.results_group.setVisible(False)
             self.statusBar().showMessage("New session started", 2000)
     
-    def on_restart_processing(self):
-        """Restart processing"""
+    def on_restart_processing(self) -> None:
+        """Restart processing of the current playlist.
+        
+        Cancels any ongoing processing and starts processing again with
+        the same playlist and settings.
+        """
         if self.controller.is_processing():
             self.controller.cancel_processing()
         self.start_processing()
     
-    def on_export_results(self):
-        """Export results via shortcut"""
+    def on_export_results(self) -> None:
+        """Export results via keyboard shortcut (Ctrl+E).
+        
+        Opens the export dialog if results are available, otherwise
+        shows a status message indicating no results to export.
+        """
         if hasattr(self, 'results_view') and self.results_view.results:
             self.results_view.show_export_dialog()
         else:
             self.statusBar().showMessage("No results to export", 2000)
     
-    def on_open_settings(self):
-        """Open settings tab"""
+    def on_open_settings(self) -> None:
+        """Open the Settings tab via keyboard shortcut (Ctrl+,).
+        
+        Finds and switches to the Settings tab in the tab widget.
+        """
         # Find settings tab index
         for i in range(self.tabs.count()):
             if self.tabs.tabText(i) == "Settings":
                 self.tabs.setCurrentIndex(i)
                 break
     
-    def keyPressEvent(self, event: QKeyEvent):
-        """Handle key press events for shortcut overlay"""
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        """Handle key press events for keyboard shortcuts.
+        
+        Shows the shortcuts dialog when '?' is pressed (without Ctrl).
+        Other key events are passed to the parent class.
+        
+        Args:
+            event: QKeyEvent containing key press information.
+        """
         # Show shortcuts dialog when '?' is pressed (without Ctrl)
         if event.key() == Qt.Key_Question and event.modifiers() == Qt.NoModifier:
             self.on_show_shortcuts()
@@ -373,8 +458,15 @@ class MainWindow(QMainWindow):
             super().keyPressEvent(event)
         
         
-    def create_menu_bar(self):
-        """Create menu bar with File, Edit, View, Help menus"""
+    def create_menu_bar(self) -> None:
+        """Create the application menu bar with all menus and actions.
+        
+        Creates the following menus:
+        - File: Open XML file, recent files, exit
+        - Edit: Copy, select all, clear results
+        - View: Toggle progress/results visibility, fullscreen
+        - Help: User guide, keyboard shortcuts, about
+        """
         menubar = self.menuBar()
         
         # File Menu
@@ -477,27 +569,50 @@ class MainWindow(QMainWindow):
         about_action.triggered.connect(self.on_show_about)
         help_menu.addAction(about_action)
         
-    def dragEnterEvent(self, event: QDragEnterEvent):
-        """Handle drag enter event"""
+    def dragEnterEvent(self, event: QDragEnterEvent) -> None:
+        """Handle drag enter event for drag-and-drop file support.
+        
+        Accepts the drag operation if a single XML file is being dragged.
+        
+        Args:
+            event: QDragEnterEvent containing drag information.
+        """
         if event.mimeData().hasUrls():
             urls = event.mimeData().urls()
             if len(urls) == 1 and urls[0].toLocalFile().endswith('.xml'):
                 event.acceptProposedAction()
                 
-    def dropEvent(self, event: QDropEvent):
-        """Handle drop event"""
+    def dropEvent(self, event: QDropEvent) -> None:
+        """Handle drop event for drag-and-drop file support.
+        
+        Processes the dropped file and forwards it to the file selector
+        if it's a valid XML file.
+        
+        Args:
+            event: QDropEvent containing drop information.
+        """
         files = [url.toLocalFile() for url in event.mimeData().urls()]
         if files and files[0].lower().endswith('.xml'):
             # Forward to file selector
             self.file_selector.set_file(files[0])
             event.acceptProposedAction()
             
-    def on_file_open(self):
-        """Handle File > Open menu action"""
+    def on_file_open(self) -> None:
+        """Handle File > Open menu action.
+        
+        Opens the file browser dialog to select an XML file for processing.
+        """
         self.file_selector.browse_file()
         
-    def on_file_selected(self, file_path: str):
-        """Handle file selection from FileSelector"""
+    def on_file_selected(self, file_path: str) -> None:
+        """Handle file selection from FileSelector widget.
+        
+        Validates the selected file, loads playlists into the playlist
+        selector, updates the batch processor, and saves to recent files.
+        
+        Args:
+            file_path: Path to the selected XML file.
+        """
         if self.file_selector.validate_file(file_path):
             self.statusBar().showMessage(f"Loading XML file: {os.path.basename(file_path)}...")
             try:
@@ -520,8 +635,13 @@ class MainWindow(QMainWindow):
             self.playlist_selector.clear()
             self.batch_processor.set_playlists([])
     
-    def on_mode_changed(self):
-        """Handle processing mode change (single vs batch)"""
+    def on_mode_changed(self) -> None:
+        """Handle processing mode change between single and batch modes.
+        
+        Shows/hides appropriate UI components based on the selected mode:
+        - Single mode: Shows playlist selector and start button
+        - Batch mode: Shows batch processor widget
+        """
         is_batch_mode = self.batch_mode_radio.isChecked()
         
         # Show/hide single playlist UI
@@ -540,8 +660,12 @@ class MainWindow(QMainWindow):
         mode_text = "Multiple Playlists" if is_batch_mode else "Single Playlist"
         self.statusBar().showMessage(f"Mode: {mode_text}")
     
-    def update_recent_files_menu(self):
-        """Update recent files menu with saved files"""
+    def update_recent_files_menu(self) -> None:
+        """Update the Recent Files submenu with saved file paths.
+        
+        Loads recent files from QSettings and populates the menu with
+        up to 10 most recent files. Shows "No recent files" if empty.
+        """
         self.recent_files_menu.clear()
         
         settings = QSettings("CuePoint", "CuePoint")
@@ -558,8 +682,15 @@ class MainWindow(QMainWindow):
                 action.triggered.connect(lambda checked, path=file_path: self.on_open_recent_file(path))
                 self.recent_files_menu.addAction(action)
     
-    def on_open_recent_file(self, file_path: str):
-        """Open a recent file"""
+    def on_open_recent_file(self, file_path: str) -> None:
+        """Open a file from the Recent Files menu.
+        
+        Validates that the file exists, then loads it. If the file
+        no longer exists, removes it from recent files and shows a warning.
+        
+        Args:
+            file_path: Path to the file to open.
+        """
         if os.path.exists(file_path):
             self.file_selector.set_file(file_path)
             # set_file will emit file_selected signal, which will call on_file_selected
@@ -577,8 +708,15 @@ class MainWindow(QMainWindow):
                 f"The file no longer exists:\n{file_path}"
             )
     
-    def save_recent_file(self, file_path: str):
-        """Save file to recent files list"""
+    def save_recent_file(self, file_path: str) -> None:
+        """Save a file path to the recent files list.
+        
+        Adds the file to the top of the recent files list and maintains
+        a maximum of 10 recent files. Saves to QSettings for persistence.
+        
+        Args:
+            file_path: Path to the file to save.
+        """
         settings = QSettings("CuePoint", "CuePoint")
         recent_files = settings.value("recent_files", [])
         
@@ -593,8 +731,12 @@ class MainWindow(QMainWindow):
         recent_files = recent_files[:10]
         settings.setValue("recent_files", recent_files)
     
-    def on_copy_selected(self):
-        """Copy selected results to clipboard"""
+    def on_copy_selected(self) -> None:
+        """Copy selected results to clipboard via Edit > Copy (Ctrl+C).
+        
+        Extracts selected rows from the results table and copies them
+        as tab-separated text to the clipboard.
+        """
         # Get selected items from results table
         if hasattr(self, 'results_view') and self.results_view.results:
             selected_items = self.results_view.table.selectedItems()
@@ -623,16 +765,23 @@ class MainWindow(QMainWindow):
         else:
             self.statusBar().showMessage("No results to copy", 2000)
     
-    def on_select_all(self):
-        """Select all items in results table"""
+    def on_select_all(self) -> None:
+        """Select all items in results table via Edit > Select All (Ctrl+A).
+        
+        Selects all rows in the results table if results are available.
+        """
         if hasattr(self, 'results_view') and self.results_view.table.rowCount() > 0:
             self.results_view.table.selectAll()
             self.statusBar().showMessage("All items selected", 2000)
         else:
             self.statusBar().showMessage("No results to select", 2000)
     
-    def on_clear_results(self):
-        """Clear results display"""
+    def on_clear_results(self) -> None:
+        """Clear results display via Edit > Clear Results.
+        
+        Prompts the user for confirmation before clearing all results
+        and hiding the results group.
+        """
         if hasattr(self, 'results_view'):
             reply = QMessageBox.question(
                 self,
@@ -646,8 +795,12 @@ class MainWindow(QMainWindow):
                 self.results_group.setVisible(False)
                 self.statusBar().showMessage("Results cleared", 2000)
     
-    def on_toggle_progress(self):
-        """Toggle progress section visibility"""
+    def on_toggle_progress(self) -> None:
+        """Toggle progress section visibility via View > Show/Hide Progress.
+        
+        Shows or hides the progress group based on the menu action state
+        and updates the menu text accordingly.
+        """
         is_visible = self.toggle_progress_action.isChecked()
         self.progress_group.setVisible(is_visible)
         # Update menu text based on current state
@@ -656,8 +809,12 @@ class MainWindow(QMainWindow):
         else:
             self.toggle_progress_action.setText("Show &Progress")
     
-    def on_toggle_results(self):
-        """Toggle results section visibility"""
+    def on_toggle_results(self) -> None:
+        """Toggle results section visibility via View > Show/Hide Results.
+        
+        Shows or hides the results group based on the menu action state
+        and updates the menu text accordingly.
+        """
         is_visible = self.toggle_results_action.isChecked()
         self.results_group.setVisible(is_visible)
         # Update menu text based on current state
@@ -666,30 +823,50 @@ class MainWindow(QMainWindow):
         else:
             self.toggle_results_action.setText("Show &Results")
     
-    def toggle_fullscreen(self):
-        """Toggle full screen mode"""
+    def toggle_fullscreen(self) -> None:
+        """Toggle fullscreen mode via View > Full Screen (F11).
+        
+        Switches between normal and fullscreen window modes.
+        """
         if self.isFullScreen():
             self.showNormal()
         else:
             self.showFullScreen()
     
-    def on_show_user_guide(self):
-        """Show user guide dialog"""
+    def on_show_user_guide(self) -> None:
+        """Show user guide dialog via Help > User Guide (F1).
+        
+        Opens a dialog displaying the user guide documentation.
+        """
         dialog = UserGuideDialog(self)
         dialog.exec()
     
-    def on_show_shortcuts(self):
-        """Show keyboard shortcuts dialog"""
+    def on_show_shortcuts(self) -> None:
+        """Show keyboard shortcuts dialog via Help > Keyboard Shortcuts (Ctrl+?).
+        
+        Opens a dialog displaying all available keyboard shortcuts.
+        """
         dialog = KeyboardShortcutsDialog(self.shortcut_manager, self)
         dialog.exec()
     
-    def on_show_about(self):
-        """Show about dialog"""
+    def on_show_about(self) -> None:
+        """Show about dialog via Help > About CuePoint.
+        
+        Opens a dialog displaying application information and version.
+        """
         dialog = AboutDialog(self)
         dialog.exec()
     
-    def on_batch_started(self, playlist_names: List[str]):
-        """Handle batch processing started"""
+    def on_batch_started(self, playlist_names: List[str]) -> None:
+        """Handle batch processing started signal from batch processor.
+        
+        Validates the XML file, gets settings, and starts batch processing
+        via the controller. Connects controller signals to batch processor
+        for progress updates.
+        
+        Args:
+            playlist_names: List of playlist names to process in batch.
+        """
         xml_path = self.file_selector.get_file_path()
         if not xml_path or not self.file_selector.validate_file(xml_path):
             QMessageBox.warning(
@@ -738,8 +915,15 @@ class MainWindow(QMainWindow):
         if playlist_names:
             self.batch_processor.on_playlist_started(playlist_names[0])
     
-    def _on_batch_playlist_complete(self, results):
-        """Handle completion of a playlist in batch"""
+    def _on_batch_playlist_complete(self, results: List[TrackResult]) -> None:
+        """Handle completion of a single playlist in batch processing.
+        
+        Notifies the batch processor of completion and checks if the batch
+        is complete. Reconnects regular signals when batch is finished.
+        
+        Args:
+            results: List of TrackResult objects for the completed playlist.
+        """
         # Get playlist name from controller (stored before processing next)
         if hasattr(self.controller, 'last_completed_playlist_name') and self.controller.last_completed_playlist_name:
             playlist_name = self.controller.last_completed_playlist_name
@@ -754,8 +938,15 @@ class MainWindow(QMainWindow):
                 next_playlist_name = self.batch_playlist_names[self.controller.batch_index]
                 self.batch_processor.on_playlist_started(next_playlist_name)
     
-    def _on_batch_playlist_error(self, error: ProcessingError):
-        """Handle error for a playlist in batch"""
+    def _on_batch_playlist_error(self, error: ProcessingError) -> None:
+        """Handle error for a single playlist in batch processing.
+        
+        Notifies the batch processor of the error and continues with the
+        next playlist. Reconnects regular signals when batch is finished.
+        
+        Args:
+            error: ProcessingError object containing error information.
+        """
         # Get playlist name from controller (stored before processing next)
         if hasattr(self.controller, 'last_completed_playlist_name') and self.controller.last_completed_playlist_name:
             playlist_name = self.controller.last_completed_playlist_name
@@ -770,8 +961,12 @@ class MainWindow(QMainWindow):
                 next_playlist_name = self.batch_playlist_names[self.controller.batch_index]
                 self.batch_processor.on_playlist_started(next_playlist_name)
     
-    def _reconnect_regular_signals(self):
-        """Reconnect regular processing signals after batch completes"""
+    def _reconnect_regular_signals(self) -> None:
+        """Reconnect regular processing signals after batch processing completes.
+        
+        Disconnects batch-specific signal handlers and reconnects the
+        regular signal handlers for single playlist processing mode.
+        """
         try:
             self.controller.progress_updated.disconnect(self.batch_processor.on_playlist_progress)
         except:
@@ -789,16 +984,28 @@ class MainWindow(QMainWindow):
         self.controller.processing_complete.connect(self.on_processing_complete)
         self.controller.error_occurred.connect(self.on_error_occurred)
     
-    def on_batch_cancelled(self):
-        """Handle batch processing cancelled"""
+    def on_batch_cancelled(self) -> None:
+        """Handle batch processing cancellation.
+        
+        Cancels the current processing operation and reconnects regular
+        processing signals.
+        """
         self.controller.cancel_processing()
         self.statusBar().showMessage("Batch processing cancelled")
         
         # Reconnect regular processing signals
         self._reconnect_regular_signals()
     
-    def on_batch_completed(self, results_dict: Dict[str, List]):
-        """Handle batch processing completion - display results in separate tables per playlist"""
+    def on_batch_completed(self, results_dict: Dict[str, List[TrackResult]]) -> None:
+        """Handle batch processing completion.
+        
+        Displays results in separate tables per playlist, automatically
+        saves results for each playlist, and updates the status bar with
+        summary statistics.
+        
+        Args:
+            results_dict: Dictionary mapping playlist names to lists of TrackResult objects.
+        """
         # Pass all playlists, even empty ones (so user can see what was processed)
         # Filter out None values only
         filtered_dict = {name: results for name, results in results_dict.items() if results is not None}
@@ -840,8 +1047,17 @@ class MainWindow(QMainWindow):
             f"{total} total tracks, {matched}/{total} matched ({match_rate:.1f}%)"
         )
     
-    def _auto_save_results(self, results, playlist_name: str):
-        """Automatically save results to CSV file"""
+    def _auto_save_results(self, results: List[TrackResult], playlist_name: str) -> None:
+        """Automatically save results to CSV file after processing.
+        
+        Creates a sanitized filename from the playlist name and saves
+        results to the output directory. Updates the history view to
+        show the new file.
+        
+        Args:
+            results: List of TrackResult objects to save.
+            playlist_name: Name of the playlist for file naming.
+        """
         if not results:
             return
         
@@ -908,14 +1124,26 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(error_msg, 10000)
             print(f"Auto-save error: {traceback.format_exc()}")
             
-    def on_playlist_selected(self, playlist_name: str):
-        """Handle playlist selection from PlaylistSelector"""
+    def on_playlist_selected(self, playlist_name: str) -> None:
+        """Handle playlist selection from PlaylistSelector widget.
+        
+        Updates the status bar with the selected playlist name and
+        track count.
+        
+        Args:
+            playlist_name: Name of the selected playlist.
+        """
         if playlist_name:
             track_count = self.playlist_selector.get_playlist_track_count(playlist_name)
             self.statusBar().showMessage(f"Selected playlist: {playlist_name} ({track_count} tracks)")
     
-    def start_processing(self):
-        """Start processing the selected playlist"""
+    def start_processing(self) -> None:
+        """Start processing the selected playlist.
+        
+        Validates inputs (XML file and playlist), resets progress widget,
+        shows progress section, disables start button, and starts processing
+        via the controller. Handles performance monitoring tab if enabled.
+        """
         # Get file path and playlist name
         xml_path = self.file_selector.get_file_path()
         playlist_name = self.playlist_selector.get_selected_playlist()
@@ -987,8 +1215,12 @@ class MainWindow(QMainWindow):
             auto_research=auto_research
         )
     
-    def on_cancel_requested(self):
-        """Handle cancel button click from ProgressWidget"""
+    def on_cancel_requested(self) -> None:
+        """Handle cancel button click from ProgressWidget.
+        
+        Cancels the current processing operation, re-enables the start button,
+        and disables the cancel button.
+        """
         self.controller.cancel_processing()
         self.statusBar().showMessage("Cancelling processing...")
         # Re-enable start button
@@ -996,8 +1228,15 @@ class MainWindow(QMainWindow):
         # Disable cancel button
         self.progress_widget.set_enabled(False)
     
-    def on_progress_updated(self, progress_info):
-        """Handle progress update from controller"""
+    def on_progress_updated(self, progress_info: ProgressInfo) -> None:
+        """Handle progress update from controller.
+        
+        Updates the progress widget and status bar with current processing
+        information.
+        
+        Args:
+            progress_info: ProgressInfo object containing progress details.
+        """
         # Update progress widget
         self.progress_widget.update_progress(progress_info)
         
@@ -1008,8 +1247,16 @@ class MainWindow(QMainWindow):
                 f"Processing: {title} ({progress_info.completed_tracks}/{progress_info.total_tracks})"
             )
     
-    def on_processing_complete(self, results):
-        """Handle processing completion"""
+    def on_processing_complete(self, results: List[TrackResult]) -> None:
+        """Handle processing completion.
+        
+        Stops performance monitoring if active, hides progress section,
+        shows results, updates results view, calculates summary statistics,
+        and automatically saves results to CSV.
+        
+        Args:
+            results: List of TrackResult objects from processing.
+        """
         # Stop performance monitoring if active
         if self.performance_view and self.performance_tab_index is not None:
             self.performance_view.stop_monitoring()
@@ -1058,8 +1305,15 @@ class MainWindow(QMainWindow):
         else:
             self.statusBar().showMessage("Processing complete: No results to display", 5000)
     
-    def on_error_occurred(self, error: ProcessingError):
-        """Handle error from controller"""
+    def on_error_occurred(self, error: ProcessingError) -> None:
+        """Handle error from controller.
+        
+        Hides progress section, re-enables start button, updates status bar,
+        and shows an error dialog with error details.
+        
+        Args:
+            error: ProcessingError object containing error information.
+        """
         # Hide progress section
         self.progress_group.setVisible(False)
         

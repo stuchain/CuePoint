@@ -102,13 +102,21 @@ class PerformanceCollector:
             cls._instance = super().__new__(cls)
         return cls._instance
     
-    def start_session(self):
-        """Start a new performance monitoring session"""
+    def start_session(self) -> None:
+        """Start a new performance monitoring session.
+        
+        Initializes a new PerformanceStats object and records the start time.
+        Should be called at the beginning of a processing session.
+        """
         self._stats = PerformanceStats()
         self._stats.start_time = time.perf_counter()
     
-    def end_session(self):
-        """End the current session"""
+    def end_session(self) -> None:
+        """End the current session.
+        
+        Records the end time and calculates total session duration.
+        Should be called at the end of a processing session.
+        """
         if self._stats:
             self._stats.end_time = time.perf_counter()
             if self._stats.start_time:
@@ -127,8 +135,19 @@ class PerformanceCollector:
     def record_query(self, track_metrics: TrackMetrics, query_text: str, 
                     execution_time: float, candidates_found: int, 
                     cache_hit: bool, query_type: str,
-                    network_time: float = 0.0, parse_time: float = 0.0):
-        """Record a query execution"""
+                    network_time: float = 0.0, parse_time: float = 0.0) -> None:
+        """Record a query execution.
+        
+        Args:
+            track_metrics: The TrackMetrics object to add the query to.
+            query_text: The search query text that was executed.
+            execution_time: Total execution time in seconds.
+            candidates_found: Number of candidate tracks found.
+            cache_hit: Whether the query result came from cache.
+            query_type: Type of query (e.g., "priority", "n_gram", "remix").
+            network_time: Time spent on network request in seconds (default: 0.0).
+            parse_time: Time spent parsing response in seconds (default: 0.0).
+        """
         query_metric = QueryMetrics(
             query_text=query_text,
             execution_time=execution_time,
@@ -151,8 +170,18 @@ class PerformanceCollector:
     def record_track_complete(self, track_metrics: TrackMetrics, 
                              total_time: float, match_found: bool, 
                              match_score: float = 0.0, early_exit: bool = False,
-                             early_exit_query_index: int = 0, candidates_evaluated: int = 0):
-        """Record completion of track processing"""
+                             early_exit_query_index: int = 0, candidates_evaluated: int = 0) -> None:
+        """Record completion of track processing.
+        
+        Args:
+            track_metrics: The TrackMetrics object to update.
+            total_time: Total processing time in seconds.
+            match_found: Whether a match was found for this track.
+            match_score: Confidence score of the match (default: 0.0).
+            early_exit: Whether processing stopped early (default: False).
+            early_exit_query_index: Index of query that triggered early exit (default: 0).
+            candidates_evaluated: Number of candidates evaluated (default: 0).
+        """
         track_metrics.total_time = total_time
         track_metrics.match_found = match_found
         track_metrics.match_score = match_score
@@ -166,8 +195,15 @@ class PerformanceCollector:
             self._stats.unmatched_tracks += 1
     
     def record_filter_operation(self, duration: float, initial_count: int, 
-                               filtered_count: int, filters_applied: Dict[str, Any]):
-        """Record a filter operation for performance tracking"""
+                               filtered_count: int, filters_applied: Dict[str, Any]) -> None:
+        """Record a filter operation for performance tracking.
+        
+        Args:
+            duration: Filter operation time in seconds.
+            initial_count: Number of results before filtering.
+            filtered_count: Number of results after filtering.
+            filters_applied: Dictionary of active filters and their values.
+        """
         if not self._stats:
             self.start_session()
         
@@ -183,8 +219,12 @@ class PerformanceCollector:
         """Get current performance statistics"""
         return self._stats
     
-    def reset(self):
-        """Reset all statistics"""
+    def reset(self) -> None:
+        """Reset all statistics.
+        
+        Clears all collected performance data. Useful for starting a new
+        monitoring session or testing.
+        """
         self._stats = None
 
 

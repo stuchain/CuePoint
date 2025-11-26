@@ -43,7 +43,22 @@ MIX_PATTERNS = {
 
 
 def _extract_remix_phrases(original_title: str) -> List[str]:
-    """Extract remix phrases from title"""
+    """Extract remix phrases from track title.
+    
+    Searches for parenthesized or bracketed phrases containing "remix"
+    in the title and returns them as a deduplicated list.
+    
+    Args:
+        original_title: Original track title from Rekordbox.
+    
+    Returns:
+        List of remix phrases found in the title, deduplicated.
+        Example: ["CamelPhat Remix", "Extended Remix"]
+    
+    Example:
+        >>> _extract_remix_phrases("Never Sleep Again (CamelPhat Remix)")
+        ['CamelPhat Remix']
+    """
     phrases = []
     for pat in (r'\(([^)]*remix[^)]*)\)', r'\[([^\]]*remix[^\]]*)\]'):
         for m in re.findall(pat, original_title, flags=re.I):
@@ -59,7 +74,22 @@ def _extract_remix_phrases(original_title: str) -> List[str]:
 
 
 def _extract_original_mix_phrases(original_title: str) -> List[str]:
-    """Extract original mix phrases from title"""
+    """Extract original mix phrases from track title.
+    
+    Searches for "Original Mix" in parenthesized, bracketed, or standalone
+    form and returns them as a deduplicated list.
+    
+    Args:
+        original_title: Original track title from Rekordbox.
+    
+    Returns:
+        List of original mix phrases found, deduplicated.
+        Example: ["Original Mix"]
+    
+    Example:
+        >>> _extract_original_mix_phrases("Bass Bousa (Original Mix)")
+        ['Original Mix']
+    """
     phrases = []
     # 1) Parenthesized/bracketed "Original Mix"
     for pat in (r'\(([^)]*original\s+mix[^)]*)\)', r'\[([^\]]*original\s+mix[^\]]*)\]'):
@@ -80,7 +110,22 @@ def _extract_original_mix_phrases(original_title: str) -> List[str]:
 
 
 def _extract_extended_mix_phrases(original_title: str) -> List[str]:
-    """Extract extended mix phrases from title"""
+    """Extract extended mix phrases from track title.
+    
+    Searches for parenthesized or bracketed phrases containing "Extended Mix"
+    and returns them as a deduplicated list.
+    
+    Args:
+        original_title: Original track title from Rekordbox.
+    
+    Returns:
+        List of extended mix phrases found, deduplicated.
+        Example: ["Extended Mix"]
+    
+    Example:
+        >>> _extract_extended_mix_phrases("Track Name (Extended Mix)")
+        ['Extended Mix']
+    """
     phrases = []
     for pat in (r'\(([^)]*extended\s+mix[^)]*)\)', r'\[([^\]]*extended\s+mix[^\]]*)\]'):
         for m in re.findall(pat, original_title, flags=re.I):
@@ -96,10 +141,28 @@ def _extract_extended_mix_phrases(original_title: str) -> List[str]:
 
 
 def _extract_generic_parenthetical_phrases(original_title: str) -> List[str]:
-    """
-    Return parenthesized/bracketed phrases that are NOT typical mix keywords,
-    so we can prioritize queries like 'Burn For You (Ivory Re-fire)' even
-    when they don't contain 'remix' or 'original mix'.
+    """Extract generic parenthetical phrases from track title.
+    
+    Returns parenthesized or bracketed phrases that are NOT typical mix
+    keywords (remix, original mix, etc.), allowing us to prioritize queries
+    like 'Burn For You (Ivory Re-fire)' even when they don't contain
+    standard mix keywords.
+    
+    Filters out:
+    - Standard mix keywords (remix, original mix, extended mix, etc.)
+    - Featuring clauses (feat., ft., featuring)
+    - Pure numeric/date patterns
+    
+    Args:
+        original_title: Original track title from Rekordbox.
+    
+    Returns:
+        List of generic parenthetical phrases, deduplicated.
+        Example: ["Ivory Re-fire", "Re-work"]
+    
+    Example:
+        >>> _extract_generic_parenthetical_phrases("Burn For You (Ivory Re-fire)")
+        ['Ivory Re-fire']
     """
     if not original_title:
         return []
@@ -125,7 +188,25 @@ def _extract_generic_parenthetical_phrases(original_title: str) -> List[str]:
 
 
 def _any_phrase_token_set_in_title(phrases: List[str], candidate_title: str) -> bool:
-    """True if ANY phrase appears in candidate title either by token subset OR by collapsed form (spaces/hyphens removed)."""
+    """Check if any phrase appears in candidate title.
+    
+    Returns True if ANY phrase from the list appears in the candidate title,
+    either by token subset matching OR by collapsed form matching
+    (spaces/hyphens removed).
+    
+    This handles variations like "Re-fire" vs "Refire" vs "Re fire".
+    
+    Args:
+        phrases: List of phrases to search for.
+        candidate_title: Candidate track title to search in.
+    
+    Returns:
+        True if any phrase matches, False otherwise.
+    
+    Example:
+        >>> _any_phrase_token_set_in_title(["Ivory Re-fire"], "Burn For You (Ivory Refire)")
+        True
+    """
     if not phrases or not candidate_title:
         return False
 
@@ -150,7 +231,23 @@ def _any_phrase_token_set_in_title(phrases: List[str], candidate_title: str) -> 
 
 
 def _infer_special_mix_intent(phrases: List[str]) -> Dict[str, bool]:
-    """Infer special 'mix intent' from generic parenthetical phrases, e.g. '(Ivory Re-fire)'."""
+    """Infer special mix intent from generic parenthetical phrases.
+    
+    Analyzes phrases to detect special mix variants like "Re-fire" or "Rework"
+    that aren't standard mix types but should be prioritized in matching.
+    
+    Args:
+        phrases: List of generic parenthetical phrases from title.
+    
+    Returns:
+        Dictionary with boolean flags:
+        - "want_refire": True if phrase contains "re-fire" or "refire"
+        - "want_rework": True if phrase contains "re-work" or "rework"
+    
+    Example:
+        >>> _infer_special_mix_intent(["Ivory Re-fire"])
+        {'want_refire': True, 'want_rework': False}
+    """
     want_refire = False
     want_rework = False
     for ph in phrases or []:
@@ -163,7 +260,22 @@ def _infer_special_mix_intent(phrases: List[str]) -> Dict[str, bool]:
 
 
 def _extract_bracket_artist_hints(original_title: str) -> List[str]:
-    """Extract artist hints from brackets"""
+    """Extract artist hints from bracket notation in title.
+    
+    Finds bracketed content that might contain artist names or hints,
+    excluding mix-related keywords and numeric patterns.
+    
+    Args:
+        original_title: Original track title from Rekordbox.
+    
+    Returns:
+        List of artist hints found in brackets, deduplicated.
+        Example: ["Artist Name"]
+    
+    Example:
+        >>> _extract_bracket_artist_hints("Track [Artist Name]")
+        ['Artist Name']
+    """
     hints = []
     for m in re.findall(r'\[([^\]]+)\]', original_title):
         token = m.strip()
@@ -184,7 +296,21 @@ def _extract_bracket_artist_hints(original_title: str) -> List[str]:
 
 
 def _merge_name_lists(*names_lists: List[str]) -> str:
-    """Merge name lists into a single string"""
+    """Merge multiple name lists into a single comma-separated string.
+    
+    Combines multiple lists of names, deduplicates them (case-insensitive),
+    and returns a comma-separated string.
+    
+    Args:
+        *names_lists: Variable number of lists of name strings.
+    
+    Returns:
+        Comma-separated string of unique names.
+    
+    Example:
+        >>> _merge_name_lists(["John", "Jane"], ["Jane", "Bob"])
+        'John, Jane, Bob'
+    """
     out = []
     seen = set()
     for names in names_lists:
@@ -197,13 +323,46 @@ def _merge_name_lists(*names_lists: List[str]) -> str:
 
 
 def _split_display_names(s: str) -> List[str]:
-    """Split display names string into list"""
+    """Split a display names string into a list of individual names.
+    
+    Handles common separators: commas, ampersands, "and", slashes.
+    
+    Args:
+        s: Display names string (e.g., "John, Jane & Bob").
+    
+    Returns:
+        List of individual name strings.
+    
+    Example:
+        >>> _split_display_names("John, Jane & Bob")
+        ['John', 'Jane', 'Bob']
+    """
     parts = re.split(r'\s*,\s*|\s*&\s*|\s+and\s+|/\s*', s)
     return [p.strip() for p in parts if p and p.strip()]
 
 
 def _extract_remixer_names_from_title(title: str) -> List[str]:
-    """Extract remixer names from title"""
+    """Extract remixer names from track title.
+    
+    Searches for remixer names in various formats:
+    - Parenthesized: "(CamelPhat Remix)"
+    - Bracketed: "[CamelPhat Remix]"
+    - Standalone: "... CamelPhat Remix"
+    
+    Handles Unicode characters and multiple remixers separated by
+    commas, ampersands, etc.
+    
+    Args:
+        title: Track title string.
+    
+    Returns:
+        List of remixer names found, deduplicated.
+        Example: ["CamelPhat", "Keinemusik"]
+    
+    Example:
+        >>> _extract_remixer_names_from_title("Never Sleep Again (CamelPhat Remix)")
+        ['CamelPhat']
+    """
     names = []
     # Extract from parenthetical remix patterns
     for m in re.findall(r'\(([^)]*?)\bremix\b[^)]*\)', title, flags=re.I):
@@ -269,7 +428,30 @@ def _extract_remixer_names_from_title(title: str) -> List[str]:
 
 
 def _parse_mix_flags(title: str) -> Dict[str, object]:
-    """Extract mix-type booleans and normalized remixer tokens from a title string."""
+    """Parse mix type flags and remixer information from track title.
+    
+    Detects all mix types present in the title and extracts remixer names.
+    Returns a comprehensive dictionary with boolean flags for each mix type
+    and remixer information.
+    
+    Args:
+        title: Track title string to parse.
+    
+    Returns:
+        Dictionary containing:
+        - Boolean flags: is_original, is_extended, is_remix, is_edit, etc.
+        - remixers: List of remixer names
+        - remixer_tokens: Set of normalized remixer tokens
+        - prefer_plain: True if no mix keywords found
+        - is_plain: True if no mix keywords found
+    
+    Example:
+        >>> flags = _parse_mix_flags("Track (CamelPhat Remix)")
+        >>> flags["is_remix"]
+        True
+        >>> flags["remixers"]
+        ['CamelPhat']
+    """
     t = _strip_accents(html.unescape(title or "")).lower()
     t = t.replace("—", " ").replace("–", " ").replace("‐", " ").replace("-", " ")
     t = re.sub(r"\s+", " ", t).strip()
@@ -312,7 +494,35 @@ def _parse_mix_flags(title: str) -> Dict[str, object]:
 
 
 def _mix_bonus(input_mix: Dict[str, object], cand_mix: Dict[str, object]) -> Tuple[int, str]:
-    """Return (bonus, reason). Positive favors a consistent mix; negative penalizes mismatches."""
+    """Calculate mix type matching bonus/penalty score.
+    
+    Compares input mix intent with candidate mix type and returns a bonus
+    (positive) or penalty (negative) score. Positive values favor consistent
+    mix types; negative values penalize mismatches.
+    
+    Scoring rules:
+    - Exact match (remix→remix, original→original): +6 to +12
+    - Compatible match (remix→extended remix): +2 to +8
+    - Mismatch (remix→original): -6 to -12
+    - Remixer match: +12 bonus
+    - Remixer mismatch: -6 penalty
+    
+    Args:
+        input_mix: Mix flags from input track (from _parse_mix_flags).
+        cand_mix: Mix flags from candidate track (from _parse_mix_flags).
+    
+    Returns:
+        Tuple of (bonus_score, reason_string):
+        - bonus_score: Integer bonus/penalty (positive = good, negative = bad)
+        - reason_string: Human-readable reason for the score
+    
+    Example:
+        >>> input_flags = _parse_mix_flags("Track (CamelPhat Remix)")
+        >>> cand_flags = _parse_mix_flags("Track (CamelPhat Remix)")
+        >>> bonus, reason = _mix_bonus(input_flags, cand_flags)
+        >>> bonus > 0
+        True
+    """
     bonus = 0
     reason = ""
 
@@ -416,8 +626,34 @@ def _mix_bonus(input_mix: Dict[str, object], cand_mix: Dict[str, object]) -> Tup
 
 
 def _mix_ok_for_early_exit(input_mix: Dict[str, object], cand_mix: Dict[str, object], cand_artists: str = "") -> bool:
-    """Gate for early-exit: candidate must satisfy input mix intent if present.
-    Also accepts a remixer match via candidate artists when title tokens are missing."""
+    """Check if candidate mix type satisfies input mix intent for early exit.
+    
+    Determines whether a candidate track's mix type is compatible with the
+    input track's mix intent. Used to gate early exit optimization - only
+    exit early if the match is not just high-scoring but also mix-compatible.
+    
+    Rules:
+    - Original/Extended requested → accept original, extended, or plain (no remix)
+    - Remix requested → accept remix or extended remix (with remixer match if specified)
+    - No explicit intent → accept any mix type
+    
+    Also accepts remixer matches via candidate artists when title tokens
+    are missing (fallback matching).
+    
+    Args:
+        input_mix: Mix flags from input track (from _parse_mix_flags).
+        cand_mix: Mix flags from candidate track (from _parse_mix_flags).
+        cand_artists: Candidate track artists string (for remixer fallback matching).
+    
+    Returns:
+        True if candidate mix type is compatible with input intent, False otherwise.
+    
+    Example:
+        >>> input_flags = _parse_mix_flags("Track (Original Mix)")
+        >>> cand_flags = _parse_mix_flags("Track (Original Mix)")
+        >>> _mix_ok_for_early_exit(input_flags, cand_flags)
+        True
+    """
     if not input_mix:
         return True
     # Original/Extended explicitly requested → accept original, extended, or plain (no explicit remix/alt)

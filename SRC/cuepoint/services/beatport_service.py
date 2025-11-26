@@ -14,18 +14,47 @@ from cuepoint.data.beatport import parse_track_page
 
 
 class BeatportService(IBeatportService):
-    """Implementation of Beatport API service."""
+    """Service for searching and fetching data from Beatport.
+    
+    This service provides access to Beatport's search and track data,
+    with built-in caching to reduce API calls and improve performance.
+    
+    Attributes:
+        cache_service: Service for caching search results and track data.
+        logging_service: Service for logging operations.
+    """
     
     def __init__(
         self,
         cache_service: ICacheService,
         logging_service: ILoggingService
-    ):
+    ) -> None:
+        """Initialize Beatport service.
+        
+        Args:
+            cache_service: Service for caching operations.
+            logging_service: Service for logging operations.
+        """
         self.cache_service = cache_service
         self.logging_service = logging_service
     
     def search_tracks(self, query: str, max_results: int = 50) -> List[str]:
-        """Search for tracks on Beatport and return URLs."""
+        """Search for tracks on Beatport and return URLs.
+        
+        Searches Beatport using a hybrid search strategy (DuckDuckGo + direct)
+        and returns a list of track URLs. Results are cached for 1 hour.
+        
+        Args:
+            query: Search query string.
+            max_results: Maximum number of results to return (default: 50).
+        
+        Returns:
+            List of Beatport track URLs.
+        
+        Example:
+            >>> urls = service.search_tracks("Never Sleep Again Tim Green", max_results=10)
+            >>> print(f"Found {len(urls)} tracks")
+        """
         # Check cache first
         cache_key = f"search:{query}:{max_results}"
         cached = self.cache_service.get(cache_key)
@@ -43,7 +72,27 @@ class BeatportService(IBeatportService):
         return urls
     
     def fetch_track_data(self, url: str) -> Optional[Dict[str, Any]]:
-        """Fetch track data from Beatport URL."""
+        """Fetch detailed track data from Beatport URL.
+        
+        Parses a Beatport track page and extracts all metadata:
+        title, artists, key, year, BPM, label, genres, release info.
+        Results are cached for 24 hours.
+        
+        Args:
+            url: Beatport track URL to fetch.
+        
+        Returns:
+            Dictionary containing track data, or None if fetch failed.
+            Keys: url, title, artists, key, year, bpm, label, genres,
+            release_name, release_date.
+        
+        Raises:
+            Logs errors but returns None instead of raising exceptions.
+        
+        Example:
+            >>> data = service.fetch_track_data("https://www.beatport.com/track/...")
+            >>> print(data["title"])
+        """
         # Check cache
         cache_key = f"track:{url}"
         cached = self.cache_service.get(cache_key)

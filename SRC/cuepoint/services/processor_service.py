@@ -25,7 +25,20 @@ from cuepoint.models.config import SETTINGS
 
 
 class ProcessorService(IProcessorService):
-    """Implementation of track processing service."""
+    """Service for processing tracks and playlists.
+    
+    This service coordinates the entire track processing workflow:
+    1. Extracts and sanitizes track information
+    2. Generates search queries
+    3. Executes matching via MatcherService
+    4. Builds and returns TrackResult objects
+    
+    Attributes:
+        beatport_service: Service for Beatport API access.
+        matcher_service: Service for finding best matches.
+        logging_service: Service for logging operations.
+        config_service: Service for configuration management.
+    """
     
     def __init__(
         self,
@@ -33,7 +46,15 @@ class ProcessorService(IProcessorService):
         matcher_service: IMatcherService,
         logging_service: ILoggingService,
         config_service: IConfigService
-    ):
+    ) -> None:
+        """Initialize processor service.
+        
+        Args:
+            beatport_service: Service for Beatport API access.
+            matcher_service: Service for finding best matches.
+            logging_service: Service for logging operations.
+            config_service: Service for configuration management.
+        """
         self.beatport_service = beatport_service
         self.matcher_service = matcher_service
         self.logging_service = logging_service
@@ -45,7 +66,32 @@ class ProcessorService(IProcessorService):
         track: RBTrack,
         settings: Optional[Dict[str, Any]] = None
     ) -> TrackResult:
-        """Process a single track."""
+        """Process a single track and return match result.
+        
+        This method:
+        1. Extracts and sanitizes track title and artists
+        2. Generates search queries
+        3. Executes matching via MatcherService
+        4. Builds TrackResult with match information
+        
+        Args:
+            idx: Track index (1-based) for logging.
+            track: RBTrack object containing track information.
+            settings: Optional settings dictionary to override defaults.
+        
+        Returns:
+            TrackResult object containing:
+            - Original track information
+            - Best match (if found) with Beatport data
+            - Match scores and confidence
+            - All candidates and queries executed
+        
+        Example:
+            >>> track = RBTrack(title="Never Sleep Again", artists="Tim Green")
+            >>> result = service.process_track(1, track)
+            >>> print(result.matched)
+            True
+        """
         # Use provided settings or fall back to config service
         effective_settings = settings if settings is not None else {
             key: self.config_service.get(key, SETTINGS.get(key))
@@ -185,7 +231,23 @@ class ProcessorService(IProcessorService):
         tracks: List[RBTrack],
         settings: Optional[Dict[str, Any]] = None
     ) -> List[TrackResult]:
-        """Process a playlist of tracks."""
+        """Process a playlist of tracks.
+        
+        Processes each track in sequence and returns a list of results.
+        Logs progress for each track.
+        
+        Args:
+            tracks: List of RBTrack objects to process.
+            settings: Optional settings dictionary to override defaults.
+        
+        Returns:
+            List of TrackResult objects, one per input track.
+        
+        Example:
+            >>> tracks = [RBTrack(...), RBTrack(...)]
+            >>> results = service.process_playlist(tracks)
+            >>> print(f"Processed {len(results)} tracks")
+        """
         results = []
         total = len(tracks)
         

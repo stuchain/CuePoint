@@ -1,20 +1,28 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-Beatport scraping and parsing utilities
+"""Beatport scraping and parsing utilities.
 
-This module handles:
+This module provides data access functions for interacting with Beatport:
 1. Fetching Beatport track URLs via DuckDuckGo search
 2. Parsing Beatport track pages to extract metadata
-3. Handling HTTP errors and retries
-4. Extracting structured data (JSON-LD, HTML)
+3. Handling HTTP errors and retries with exponential backoff
+4. Extracting structured data (JSON-LD, HTML, Next.js data)
 
-Key functions:
-- track_urls(): Finds Beatport track URLs via DuckDuckGo search
-- parse_track_page(): Parses a single Beatport track page
-- request_html(): Robust HTTP fetching with retry logic
-- _parse_structured_json_ld(): Extracts structured data from pages
+Key Functions:
+    track_urls(): Finds Beatport track URLs using multiple search strategies
+    parse_track_page(): Parses a single Beatport track page and extracts metadata
+    request_html(): Robust HTTP fetching with retry logic and cache detection
+    ddg_track_urls(): Enhanced DuckDuckGo search with multiple query strategies
+
+Data Classes:
+    BeatportCandidate: Represents a candidate track with all metadata and scoring info
+
+Example:
+    >>> from cuepoint.data.beatport import parse_track_page
+    >>> url = "https://www.beatport.com/track/title/123456"
+    >>> title, artists, key, year, bpm, label, genres, release, date = parse_track_page(url)
+    >>> print(f"Found: {title} by {artists}")
 """
 
 import json
@@ -75,12 +83,30 @@ class BeatportCandidate:
 
 
 def is_track_url(u: str) -> bool:
-    """Check if URL is a Beatport track URL"""
+    """Check if URL is a Beatport track URL.
+    
+    Args:
+        u: URL string to check.
+    
+    Returns:
+        True if URL matches Beatport track URL pattern, False otherwise.
+    
+    Example:
+        >>> is_track_url("https://www.beatport.com/track/title/123456")
+        True
+        >>> is_track_url("https://www.beatport.com/artist/artist-name")
+        False
+    """
     return bool(re.search(r"beatport\.com/track/[^/]+/\d+", u))
 
 
 def get_last_cache_hit() -> bool:
-    """Get the cache hit status from the last request_html() call"""
+    """Get the cache hit status from the last request_html() call.
+    
+    Returns:
+        True if the last HTTP request was served from cache, False otherwise.
+        This is useful for performance monitoring and metrics.
+    """
     return _last_cache_hit
 
 
@@ -91,7 +117,24 @@ def get_last_cache_hit() -> bool:
     jitter=True
 )
 def request_html(url: str) -> Optional[BeautifulSoup]:
-    """Fetch a URL robustly, handling empty gzipped/brotli responses by retrying without compression."""
+    """Fetch a URL robustly, handling empty gzipped/brotli responses by retrying without compression.
+    
+    This function implements robust HTTP fetching with:
+    - Automatic retry with exponential backoff
+    - Handling of empty compressed responses
+    - Cache detection for performance metrics
+    - Multiple fallback strategies for failed requests
+    
+    Args:
+        url: The URL to fetch.
+    
+    Returns:
+        BeautifulSoup object if successful, None if the request failed after all retries.
+    
+    Note:
+        The cache hit status is tracked globally and can be retrieved using
+        get_last_cache_hit() after calling this function.
+    """
     global _last_cache_hit
     to = (SETTINGS["CONNECT_TIMEOUT"], SETTINGS["READ_TIMEOUT"])
 
@@ -113,7 +156,7 @@ def request_html(url: str) -> Optional[BeautifulSoup]:
             return True
         return False
 
-    def _get(u: str, headers: Optional[dict] = None) -> Optional[requests.Response]:
+    def _get(u: str, headers: Optional[Dict[str, str]] = None) -> Optional[requests.Response]:
         try:
             resp = SESSION.get(u, timeout=to, allow_redirects=True, headers=headers)
             # Track cache hit status for performance metrics
@@ -170,7 +213,22 @@ def request_html(url: str) -> Optional[BeautifulSoup]:
 
 
 def _parse_structured_json_ld(soup: BeautifulSoup) -> Dict[str, str]:
-    """Parse structured JSON-LD data from page"""
+    """Parse structured JSON-LD data from page.
+    
+    Extracts structured metadata from JSON-LD script tags in the HTML.
+    Looks for MusicRecording and MusicComposition schema types.
+    
+    Args:
+        soup: BeautifulSoup object containing the parsed HTML page.
+    
+    Returns:
+        Dictionary containing extracted metadata fields such as:
+        - title: Track title
+        - artists: Artist names (comma-separated)
+        - remixers: Remixer names (comma-separated)
+        - release_name: Release/album name
+        - release_date: Release date string
+    """
     out = {}
     for tag in soup.find_all("script", {"type": "application/ld+json"}):
         try:
@@ -206,7 +264,26 @@ def _parse_structured_json_ld(soup: BeautifulSoup) -> Dict[str, str]:
 
 
 def _parse_next_data(soup: BeautifulSoup) -> Dict[str, str]:
-    """Parse Next.js __NEXT_DATA__ script"""
+    """Parse Next.js __NEXT_DATA__ script.
+    
+    Extracts track metadata from Next.js application data embedded in the page.
+    This is the primary data source for modern Beatport pages which use Next.js.
+    
+    Args:
+        soup: BeautifulSoup object containing the parsed HTML page.
+    
+    Returns:
+        Dictionary containing extracted metadata fields such as:
+        - title: Track title
+        - artists: Artist names (comma-separated)
+        - remixers: Remixer names (comma-separated)
+        - key: Musical key
+        - bpm: Beats per minute
+        - label: Record label
+        - genres: Genre names (comma-separated)
+        - release_name: Release/album name
+        - release_date: Release date string
+    """
     out = {}
     try:
         tag = soup.find("script", id="__NEXT_DATA__")
@@ -267,7 +344,30 @@ def _parse_next_data(soup: BeautifulSoup) -> Dict[str, str]:
     jitter=True
 )
 def parse_track_page(url: str) -> Tuple[str, str, Optional[str], Optional[int], Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]]:
-    """Parse a Beatport track page and extract metadata"""
+    """Parse a Beatport track page and extract metadata.
+    
+    Fetches and parses a Beatport track page, extracting all available metadata
+    using multiple parsing strategies (JSON-LD, Next.js data, HTML scraping).
+    
+    Args:
+        url: Beatport track URL to parse.
+    
+    Returns:
+        Tuple containing (in order):
+        - title: Track title (empty string if not found)
+        - artists: Artist names, comma-separated (empty string if not found)
+        - key: Musical key (None if not found)
+        - release_year: Release year as integer (None if not found)
+        - bpm: Beats per minute as string (None if not found)
+        - label: Record label (None if not found)
+        - genres: Genre names, comma-separated (None if not found)
+        - release_name: Release/album name (None if not found)
+        - release_date: Release date in ISO format (YYYY-MM-DD) (None if not found)
+    
+    Note:
+        This function uses retry logic with exponential backoff. If parsing fails
+        after all retries, returns empty/default values rather than raising exceptions.
+    """
     soup = request_html(url)
     if soup is None:
         return "", "", None, None, None, None, None, None, None
@@ -592,7 +692,28 @@ def track_urls(idx: int, query: str, max_results: int, use_direct_search: Option
 
 
 def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
-    """Enhanced search with multiple query strategies and better fallback."""
+    """Enhanced search with multiple query strategies and better fallback.
+    
+    Searches for Beatport track URLs using DuckDuckGo with multiple query
+    strategies and fallback mechanisms. Optimized for remix queries which
+    often require more results to find the correct track.
+    
+    Args:
+        idx: Track index for logging purposes.
+        query: Search query string (may include quotes for exact matches).
+        max_results: Maximum number of URLs to return.
+    
+    Returns:
+        List of unique Beatport track URLs found. May return fewer than
+        max_results if not enough matches are found.
+    
+    Note:
+        - For remix queries, automatically increases max_results to improve
+          discovery rate.
+        - Uses multiple search strategies (quoted, unquoted, with/without
+          site: prefix) to maximize results.
+        - Includes fallback mechanisms for cases with few results.
+    """
     urls: List[str] = []
     try:
         mr = max_results if max_results and max_results > 0 else 60

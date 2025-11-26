@@ -1069,7 +1069,7 @@ def process_playlist(
     return results
 
 
-def run(xml_path: str, playlist_name: str, out_csv_base: str, auto_research: bool = False):
+def run(xml_path: str, playlist_name: str, out_csv_base: str, auto_research: bool = False) -> None:
     """
     Main processing function - orchestrates the entire matching pipeline
     
@@ -1077,10 +1077,10 @@ def run(xml_path: str, playlist_name: str, out_csv_base: str, auto_research: boo
     This function maintains the existing CLI interface while using the new GUI-ready backend.
     
     Args:
-        xml_path: Path to Rekordbox XML export file
-        playlist_name: Name of playlist to process (must exist in XML)
-        out_csv_base: Base filename for output CSV files (timestamp auto-appended)
-        auto_research: If True, automatically re-search unmatched tracks without prompting
+        xml_path: Path to Rekordbox XML export file.
+        playlist_name: Name of playlist to process (must exist in XML).
+        out_csv_base: Base filename for output CSV files (timestamp auto-appended).
+        auto_research: If True, automatically re-search unmatched tracks without prompting.
     
     Output files (all in output/ directory):
         - {out_csv_base} (timestamp).csv: Main results (one row per track)
@@ -1089,6 +1089,9 @@ def run(xml_path: str, playlist_name: str, out_csv_base: str, auto_research: boo
         - {out_csv_base}_review_candidates.csv: Candidates for review tracks only
         - {out_csv_base}_queries.csv: All queries executed for all tracks
         - {out_csv_base}_review_queries.csv: Queries for review tracks only
+    
+    Returns:
+        None (writes output files and prints summary to console).
     """
     # Track processing start time for summary statistics
     processing_start_time = time.perf_counter()

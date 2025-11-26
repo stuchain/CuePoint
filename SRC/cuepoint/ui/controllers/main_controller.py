@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-GUI Controller Module - Thread-based processing controller for GUI
+"""GUI Controller Module - Thread-based processing controller for GUI.
 
 This module provides the GUI controller that bridges the GUI and backend processing,
 running processing in a background thread and emitting Qt signals for GUI updates.
+
+The module contains:
+
+- ProcessingWorker: QThread subclass that runs processing in background
+- GUIController: Main controller class that manages worker threads and signals
+
+This architecture ensures the GUI remains responsive during long-running
+processing operations by moving all processing to a separate thread.
 """
 
 from PySide6.QtCore import QObject, Signal, QThread
@@ -19,11 +26,39 @@ from cuepoint.services.processor import process_playlist
 
 
 class ProcessingWorker(QThread):
-    """
-    Worker thread for processing tracks in the background.
+    """Worker thread for processing tracks in the background.
     
     This runs process_playlist() in a separate thread to avoid blocking the GUI.
-    It emits Qt signals for progress updates, completion, and errors.
+    It emits Qt signals for progress updates, completion, and errors. The worker
+    thread allows the GUI to remain responsive during long-running processing
+    operations.
+    
+    Attributes:
+        xml_path: Path to Rekordbox XML file.
+        playlist_name: Name of playlist to process.
+        settings: Optional settings override dictionary.
+        auto_research: Whether to auto-research unmatched tracks.
+        controller: ProcessingController for cancellation support.
+    
+    Signals:
+        progress_updated: Emitted when processing progress updates.
+            Args:
+                progress_info: ProgressInfo object with current progress.
+        processing_complete: Emitted when processing completes successfully.
+            Args:
+                results: List of TrackResult objects.
+        error_occurred: Emitted when an error occurs during processing.
+            Args:
+                error: ProcessingError object with error details.
+    
+    Example:
+        >>> worker = ProcessingWorker(
+        ...     xml_path="collection.xml",
+        ...     playlist_name="My Playlist",
+        ...     settings={"max_candidates": 10}
+        ... )
+        >>> worker.progress_updated.connect(on_progress)
+        >>> worker.start()
     """
     
     # Signals emitted to update GUI (thread-safe)
@@ -58,12 +93,16 @@ class ProcessingWorker(QThread):
         # Create ProcessingController for cancellation support
         self.controller = ProcessingController()
     
-    def run(self):
-        """
-        Run processing in background thread.
+    def run(self) -> None:
+        """Run processing in background thread.
         
-        This method is called automatically when the thread starts.
-        It calls process_playlist() and emits signals for GUI updates.
+        This method is called automatically when the thread starts via start().
+        It calls process_playlist() and emits signals for GUI updates. Handles
+        exceptions and converts them to ProcessingError objects for consistent
+        error handling.
+        
+        Raises:
+            ProcessingError: If processing fails (emitted as signal).
         """
         try:
             # Create progress callback that emits signal
@@ -102,17 +141,47 @@ class ProcessingWorker(QThread):
             )
             self.error_occurred.emit(error)
     
-    def cancel(self):
-        """Request cancellation of processing"""
+    def cancel(self) -> None:
+        """Request cancellation of processing.
+        
+        Sets the cancellation flag in the ProcessingController, which will
+        cause process_playlist() to stop processing gracefully.
+        """
         self.controller.cancel()
 
 
 class GUIController(QObject):
-    """
-    Controller bridging GUI and core processing logic.
+    """Controller bridging GUI and core processing logic.
     
     This class manages the processing worker thread and provides a clean
-    interface for the GUI to start, cancel, and monitor processing.
+    interface for the GUI to start, cancel, and monitor processing. It handles
+    both single playlist and batch processing modes.
+    
+    Attributes:
+        current_worker: Currently active ProcessingWorker thread, or None.
+        batch_playlists: List of playlist names for batch processing.
+        batch_index: Current index in batch processing.
+        batch_xml_path: XML file path for batch processing.
+        batch_settings: Settings dictionary for batch processing.
+        batch_auto_research: Auto-research flag for batch processing.
+        current_batch_playlist_name: Name of currently processing playlist.
+        last_completed_playlist_name: Name of last completed playlist.
+    
+    Signals:
+        progress_updated: Emitted when processing progress updates.
+            Args:
+                progress_info: ProgressInfo object with current progress.
+        processing_complete: Emitted when processing completes successfully.
+            Args:
+                results: List of TrackResult objects.
+        error_occurred: Emitted when an error occurs during processing.
+            Args:
+                error: ProcessingError object with error details.
+    
+    Example:
+        >>> controller = GUIController()
+        >>> controller.progress_updated.connect(on_progress)
+        >>> controller.start_processing("collection.xml", "My Playlist")
     """
     
     # Signals emitted to GUI (connected from worker thread)
@@ -120,8 +189,12 @@ class GUIController(QObject):
     processing_complete = Signal(list)  # List[TrackResult]
     error_occurred = Signal(object)  # ProcessingError object
     
-    def __init__(self, parent: Optional[QObject] = None):
-        """Initialize GUI controller"""
+    def __init__(self, parent: Optional[QObject] = None) -> None:
+        """Initialize GUI controller.
+        
+        Args:
+            parent: Optional parent QObject for Qt object hierarchy.
+        """
         super().__init__(parent)
         self.current_worker: Optional[ProcessingWorker] = None
         # Batch processing state
@@ -137,15 +210,18 @@ class GUIController(QObject):
         playlist_name: str,
         settings: Optional[Dict[str, Any]] = None,
         auto_research: bool = False
-    ):
-        """
-        Start processing a playlist in background thread.
+    ) -> None:
+        """Start processing a playlist in background thread.
+        
+        Cancels any existing processing, creates a new ProcessingWorker thread,
+        connects signals, and starts processing. The worker thread will emit
+        signals for progress updates, completion, and errors.
         
         Args:
-            xml_path: Path to Rekordbox XML file
-            playlist_name: Name of playlist to process
-            settings: Optional settings override
-            auto_research: If True, auto-research unmatched tracks
+            xml_path: Path to Rekordbox XML file.
+            playlist_name: Name of playlist to process.
+            settings: Optional settings override dictionary.
+            auto_research: If True, auto-research unmatched tracks.
         """
         # Cancel any existing processing
         if self.current_worker and self.current_worker.isRunning():
@@ -168,8 +244,13 @@ class GUIController(QObject):
         # Start worker thread
         self.current_worker.start()
     
-    def cancel_processing(self):
-        """Cancel current processing operation"""
+    def cancel_processing(self) -> None:
+        """Cancel current processing operation.
+        
+        Requests cancellation of the current worker thread and waits for it
+        to finish (with a 5-second timeout). Forces termination if the thread
+        doesn't respond within the timeout.
+        """
         if self.current_worker and self.current_worker.isRunning():
             # Request cancellation
             self.current_worker.cancel()
@@ -183,7 +264,11 @@ class GUIController(QObject):
             self.current_worker = None
     
     def is_processing(self) -> bool:
-        """Check if processing is currently running"""
+        """Check if processing is currently running.
+        
+        Returns:
+            True if a worker thread exists and is running, False otherwise.
+        """
         return self.current_worker is not None and self.current_worker.isRunning()
     
     def wait_for_completion(self, timeout: int = 30000) -> bool:
@@ -206,15 +291,17 @@ class GUIController(QObject):
         playlist_names: List[str],
         settings: Optional[Dict[str, Any]] = None,
         auto_research: bool = False
-    ):
-        """
-        Start batch processing multiple playlists sequentially.
+    ) -> None:
+        """Start batch processing multiple playlists sequentially.
+        
+        Processes playlists one at a time, emitting signals for each playlist
+        completion. Continues with the next playlist even if one fails.
         
         Args:
-            xml_path: Path to Rekordbox XML file
-            playlist_names: List of playlist names to process
-            settings: Optional settings override
-            auto_research: If True, auto-research unmatched tracks
+            xml_path: Path to Rekordbox XML file.
+            playlist_names: List of playlist names to process.
+            settings: Optional settings override dictionary.
+            auto_research: If True, auto-research unmatched tracks.
         """
         # Cancel any existing processing
         if self.current_worker and self.current_worker.isRunning():
@@ -233,8 +320,12 @@ class GUIController(QObject):
         if self.batch_playlists:
             self._process_next_playlist()
     
-    def _process_next_playlist(self):
-        """Process next playlist in batch"""
+    def _process_next_playlist(self) -> None:
+        """Process next playlist in batch.
+        
+        Creates a new ProcessingWorker for the next playlist in the batch
+        and starts processing. Updates batch state tracking variables.
+        """
         if self.batch_index >= len(self.batch_playlists):
             return
         
@@ -258,8 +349,16 @@ class GUIController(QObject):
         # Start worker thread
         self.current_worker.start()
     
-    def _on_batch_playlist_complete(self, results: List[TrackResult]):
-        """Handle completion of a playlist in batch"""
+    def _on_batch_playlist_complete(self, results: List[TrackResult]) -> None:
+        """Handle completion of a playlist in batch processing.
+        
+        Stores the completed playlist name, emits the completion signal,
+        and moves to the next playlist in the batch. Clears worker state
+        when batch is complete.
+        
+        Args:
+            results: List of TrackResult objects for the completed playlist.
+        """
         # Get playlist name before incrementing index or processing next
         playlist_name = self.current_batch_playlist_name
         self.last_completed_playlist_name = playlist_name  # Store for GUI
@@ -278,8 +377,16 @@ class GUIController(QObject):
             self.current_batch_playlist_name = None
             self.last_completed_playlist_name = None
     
-    def _on_batch_playlist_error(self, error: ProcessingError):
-        """Handle error for a playlist in batch"""
+    def _on_batch_playlist_error(self, error: ProcessingError) -> None:
+        """Handle error for a playlist in batch processing.
+        
+        Stores the failed playlist name, emits the error signal, and
+        continues with the next playlist in the batch. Clears worker state
+        when batch is complete.
+        
+        Args:
+            error: ProcessingError object containing error information.
+        """
         # Get playlist name before incrementing index or processing next
         playlist_name = self.current_batch_playlist_name
         self.last_completed_playlist_name = playlist_name  # Store for GUI

@@ -1,16 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-Rekordbox XML parsing utilities
+"""Rekordbox XML parsing utilities.
 
-This module parses Rekordbox XML export files and extracts:
-1. Track information (ID, title, artists)
-2. Playlist definitions (playlist names and their track IDs)
+This module provides data access functions for parsing Rekordbox XML export files.
+It extracts track information and playlist definitions from the XML structure.
 
-Key functions:
-- parse_rekordbox(): Main parser that extracts tracks and playlists
-- extract_artists_from_title(): Extracts artist names from title when artist field is empty
+Key Functions:
+    parse_rekordbox(): Main parser that extracts tracks and playlists from XML
+    extract_artists_from_title(): Extracts artist names from title when artist
+        field is empty
+
+Data Classes:
+    RBTrack: Represents a single track from Rekordbox with track_id, title, and artists
+
+Example:
+    >>> from cuepoint.data.rekordbox import parse_rekordbox
+    >>> tracks, playlists = parse_rekordbox("collection.xml")
+    >>> print(f"Found {len(tracks)} tracks and {len(playlists)} playlists")
+    >>> for track_id, track in tracks.items():
+    ...     print(f"{track.title} by {track.artists}")
 """
 
 import re
@@ -24,13 +33,14 @@ from cuepoint.utils.errors import error_file_not_found, error_xml_parsing
 
 @dataclass
 class RBTrack:
-    """
-    Rekordbox track data structure
+    """Rekordbox track data structure.
+    
+    Represents a single track extracted from a Rekordbox XML export file.
     
     Attributes:
-        track_id: Unique track ID from Rekordbox
-        title: Track title (may contain prefixes like [F], [3])
-        artists: Artist string (may be empty)
+        track_id: Unique track ID from Rekordbox (string format).
+        title: Track title (may contain prefixes like [F], [3]).
+        artists: Artist string (may be empty if artist info is in title).
     """
     track_id: str
     title: str
@@ -123,20 +133,27 @@ def parse_rekordbox(xml_path: str) -> Tuple[Dict[str, RBTrack], Dict[str, List[s
 
 
 def extract_artists_from_title(title: str) -> Optional[Tuple[str, str]]:
-    """
-    Extract artist names from title if title follows "Artists - Title" format
+    """Extract artist names from title if title follows "Artists - Title" format.
     
     Some Rekordbox tracks have artist information embedded in the title field
-    instead of the artist field. This function attempts to extract it.
-    
-    Example:
-        "John Smith - Never Sleep Again" → ("John Smith", "Never Sleep Again")
+    instead of the artist field. This function attempts to extract it by
+    parsing common title formats.
     
     Args:
-        title: Title string that may contain artist information
+        title: Title string that may contain artist information. May include
+            prefixes like [F], [3], or numeric prefixes that are stripped.
     
     Returns:
-        Tuple of (artists, cleaned_title) if extraction successful, else None
+        Tuple of (artists, cleaned_title) if extraction successful, None otherwise.
+        The cleaned_title has artist info, feat. clauses, and parentheses removed.
+    
+    Example:
+        >>> extract_artists_from_title("John Smith - Never Sleep Again")
+        ('John Smith', 'Never Sleep Again')
+        >>> extract_artists_from_title("[F] Artist - Track (feat. Other)")
+        ('Artist', 'Track')
+        >>> extract_artists_from_title("Just a Title")
+        None
     """
     if not title:
         return None

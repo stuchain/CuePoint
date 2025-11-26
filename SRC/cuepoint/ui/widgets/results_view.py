@@ -1,11 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-Results View Widget Module - Results display and export
+"""Results View Widget Module - Results display and export.
 
-This module contains the ResultsView widget for displaying processing results
-and exporting them to CSV files.
+This module contains the ResultsView widget, which provides a comprehensive
+interface for displaying and managing processing results. Features include:
+
+- Summary statistics display
+- Filterable results table (search, confidence, year, BPM, key)
+- Support for single playlist and batch processing modes
+- Candidate viewing and selection
+- Export functionality (CSV, JSON, Excel)
+- Keyboard shortcuts for common operations
+
+The widget handles both single playlist results and batch results with
+separate tables per playlist in batch mode.
 """
 
 from PySide6.QtWidgets import (
@@ -36,12 +45,44 @@ except ImportError:
 
 
 class ResultsView(QWidget):
-    """Widget for displaying processing results and exporting to CSV"""
+    """Widget for displaying processing results and exporting to various formats.
+    
+    This widget provides a comprehensive view of processing results including:
+    - Summary statistics display
+    - Filterable results table (single playlist mode)
+    - Tabbed results view (batch mode with multiple playlists)
+    - Export functionality (CSV, JSON, Excel)
+    - Candidate selection and viewing
+    
+    The widget supports both single playlist and batch processing modes,
+    with separate UI layouts for each mode.
+    
+    Attributes:
+        results: List of TrackResult objects for single playlist mode.
+        batch_results: Dictionary mapping playlist names to TrackResult lists.
+        output_files: Dictionary of exported file paths.
+        is_batch_mode: Boolean indicating if in batch mode.
+        playlist_tables: Dictionary mapping playlist names to QTableWidget instances.
+        playlist_filters: Dictionary mapping playlist names to filter widget dictionaries.
+        filtered_results: List of filtered TrackResult objects for single mode.
+        playlist_name: Name of the current playlist (for file naming).
+    
+    Signals:
+        result_updated: Emitted when a candidate is selected for a result.
+            Args:
+                playlist_index: Index of the track in the playlist.
+                updated_result: Updated TrackResult object.
+    
+    Example:
+        >>> view = ResultsView()
+        >>> view.set_results(results, "My Playlist")
+        >>> view.show_export_dialog()
+    """
     
     # Signal emitted when a result is updated (candidate selected)
     result_updated = Signal(int, TrackResult)  # playlist_index, updated_result
     
-    def __init__(self, parent=None):
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self.results: List[TrackResult] = []
         self.batch_results: Dict[str, List[TrackResult]] = {}  # For batch mode
@@ -58,8 +99,16 @@ class ResultsView(QWidget):
         self.init_ui()
         self.setup_shortcuts()
     
-    def init_ui(self):
-        """Initialize UI components"""
+    def init_ui(self) -> None:
+        """Initialize all UI components and layout.
+        
+        Sets up the results view structure including:
+        - Summary statistics group
+        - Filter controls (search, confidence, advanced filters)
+        - Results table for single playlist mode
+        - Tab widget for batch mode
+        - Export buttons
+        """
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
         layout.setContentsMargins(5, 5, 5, 5)
@@ -313,8 +362,17 @@ class ResultsView(QWidget):
         button_layout.addStretch()
         layout.addLayout(button_layout)
     
-    def setup_shortcuts(self):
-        """Setup results view shortcuts"""
+    def setup_shortcuts(self) -> None:
+        """Set up keyboard shortcuts for the results view.
+        
+        Registers shortcuts for:
+        - Focus search box (Ctrl+F)
+        - Clear filters (Ctrl+Shift+F)
+        - Focus filters (Ctrl+Y, Ctrl+B, Ctrl+K)
+        - Select all (Ctrl+A)
+        - Copy (Ctrl+C)
+        - View candidates (Enter)
+        """
         self.shortcut_manager.register_shortcut(
             "focus_search",
             "Ctrl+F",
@@ -382,18 +440,28 @@ class ResultsView(QWidget):
         # Set context
         self.shortcut_manager.set_context(ShortcutContext.RESULTS_VIEW)
     
-    def focus_search_box(self):
-        """Focus the search box"""
+    def focus_search_box(self) -> None:
+        """Focus the search box and select all text.
+        
+        Called via keyboard shortcut (Ctrl+F) to quickly access search.
+        """
         self.search_box.setFocus()
         self.search_box.selectAll()
     
-    def select_all_results(self):
-        """Select all results in table"""
+    def select_all_results(self) -> None:
+        """Select all results in the table.
+        
+        Called via keyboard shortcut (Ctrl+A) to select all rows.
+        """
         if hasattr(self, 'table'):
             self.table.selectAll()
     
-    def copy_selected(self):
-        """Copy selected results to clipboard"""
+    def copy_selected(self) -> None:
+        """Copy selected results to clipboard.
+        
+        Called via keyboard shortcut (Ctrl+C) to copy selected table items
+        as text to the clipboard.
+        """
         if not hasattr(self, 'table'):
             return
         selected = self.table.selectedItems()
@@ -403,8 +471,12 @@ class ResultsView(QWidget):
             text = "\n".join([item.text() for item in selected])
             QApplication.clipboard().setText(text)
     
-    def view_selected_candidates(self):
-        """View candidates for selected row"""
+    def view_selected_candidates(self) -> None:
+        """View candidates for the selected row.
+        
+        Called via keyboard shortcut (Enter) to open the candidate dialog
+        for the currently selected row.
+        """
         if not hasattr(self, 'table'):
             return
         selected_rows = self.table.selectionModel().selectedRows()
@@ -470,7 +542,18 @@ class ResultsView(QWidget):
         self._update_batch_summary()
     
     def _create_playlist_tab(self, playlist_name: str, results: List[TrackResult]) -> QWidget:
-        """Create a tab widget for a single playlist with its own table and filters"""
+        """Create a tab widget for a single playlist with its own table and filters.
+        
+        Creates a complete tab widget with filter controls and results table
+        for displaying results from a single playlist in batch mode.
+        
+        Args:
+            playlist_name: Name of the playlist.
+            results: List of TrackResult objects for this playlist.
+        
+        Returns:
+            QWidget containing the tab layout with filters and table.
+        """
         tab_widget = QWidget()
         tab_layout = QVBoxLayout(tab_widget)
         tab_layout.setSpacing(10)
@@ -677,8 +760,15 @@ class ResultsView(QWidget):
         
         return tab_widget
     
-    def _update_summary(self):
-        """Update summary statistics display"""
+    def _update_summary(self) -> None:
+        """Update summary statistics display for single playlist mode.
+        
+        Calculates and displays:
+        - Total tracks, matched/unmatched counts
+        - Match rate percentage
+        - Average match score
+        - Confidence breakdown (high/medium/low)
+        """
         if not self.results:
             self.summary_label.setText("No results yet")
             return
@@ -708,8 +798,16 @@ class ResultsView(QWidget):
         
         self.summary_label.setText(summary_text)
     
-    def _update_batch_summary(self):
-        """Update summary statistics display for batch mode (aggregate all playlists)"""
+    def _update_batch_summary(self) -> None:
+        """Update summary statistics display for batch mode.
+        
+        Aggregates statistics across all playlists and displays:
+        - Number of playlists processed
+        - Total tracks across all playlists
+        - Matched/unmatched counts and match rate
+        - Average match score
+        - Confidence breakdown (high/medium/low)
+        """
         if not self.batch_results:
             self.summary_label.setText("No results yet")
             return
@@ -749,8 +847,13 @@ class ResultsView(QWidget):
         
         self.summary_label.setText(summary_text)
     
-    def _populate_table(self):
-        """Populate table with results"""
+    def _populate_table(self) -> None:
+        """Populate the results table with filtered results.
+        
+        Applies current filters, populates the table with TrackResult data,
+        and restores the previous sort state. Handles index padding for
+        proper numeric sorting.
+        """
         # Apply filters first
         filtered = self._filter_results()
         
@@ -843,14 +946,22 @@ class ResultsView(QWidget):
             current_width = self.table.columnWidth(col)
             self.table.setColumnWidth(col, max(current_width, 80))
     
-    def _trigger_filter_debounced(self):
-        """Trigger filter with debouncing for performance"""
+    def _trigger_filter_debounced(self) -> None:
+        """Trigger filter with debouncing for performance.
+        
+        Resets and starts a debounce timer (300ms) to avoid applying
+        filters on every keystroke, improving performance for large result sets.
+        """
         # Reset timer (debounce: wait 300ms after last change)
         self._filter_debounce_timer.stop()
         self._filter_debounce_timer.start(300)
     
-    def _apply_filters_debounced(self):
-        """Apply filters after debounce delay"""
+    def _apply_filters_debounced(self) -> None:
+        """Apply filters after debounce delay.
+        
+        Called by the debounce timer to actually apply filters after
+        the user has stopped typing/changing filter values.
+        """
         self.apply_filters()
     
     def _year_in_range(self, result: TrackResult, min_year: Optional[int], max_year: Optional[int]) -> bool:
@@ -905,8 +1016,12 @@ class ResultsView(QWidget):
             # Invalid BPM data, exclude from filtered results
             return False
     
-    def _update_filter_status(self):
-        """Update filter status label to show active filters"""
+    def _update_filter_status(self) -> None:
+        """Update filter status label to show active filters.
+        
+        Analyzes current filter values and displays a summary of
+        active filters in the filter status label.
+        """
         active_filters = []
         
         # Check year filter
@@ -1024,8 +1139,12 @@ class ResultsView(QWidget):
         
         return filtered
     
-    def apply_filters(self):
-        """Apply filters and update table"""
+    def apply_filters(self) -> None:
+        """Apply filters and update the table display.
+        
+        Filters results based on current filter values, updates the table,
+        updates filter status, and updates the result count label.
+        """
         self._populate_table()
         self._update_filter_status()
         
@@ -1042,8 +1161,16 @@ class ResultsView(QWidget):
         else:
             self.result_count_label.setStyleSheet("font-weight: bold;")
     
-    def _populate_table_for_playlist(self, table: QTableWidget, results: List[TrackResult]):
-        """Populate a specific table with results for a playlist"""
+    def _populate_table_for_playlist(self, table: QTableWidget, results: List[TrackResult]) -> None:
+        """Populate a specific table with results for a playlist in batch mode.
+        
+        Applies filters for the playlist, populates the table with TrackResult
+        data, and restores sort state. Handles empty results gracefully.
+        
+        Args:
+            table: QTableWidget to populate.
+            results: List of TrackResult objects for this playlist.
+        """
         if not results:
             # Empty results - show empty table
             table.setSortingEnabled(False)
@@ -1200,8 +1327,16 @@ class ResultsView(QWidget):
         
         return filtered
     
-    def _clear_filters_for_playlist(self, playlist_name: str, results: List[TrackResult]):
-        """Clear all filters for a specific playlist"""
+    def _clear_filters_for_playlist(self, playlist_name: str, results: List[TrackResult]) -> None:
+        """Clear all filters for a specific playlist in batch mode.
+        
+        Resets all filter widgets to default values and reapplies filters
+        to update the table display.
+        
+        Args:
+            playlist_name: Name of the playlist.
+            results: List of TrackResult objects for this playlist.
+        """
         if playlist_name not in self.playlist_filters:
             return
         
@@ -1215,14 +1350,36 @@ class ResultsView(QWidget):
         filters['confidence'].setCurrentText("All")
         self._apply_filters_for_playlist(playlist_name, results)
     
-    def _apply_filters_for_playlist(self, playlist_name: str, results: List[TrackResult]):
-        """Apply filters and update table for a specific playlist"""
+    def _apply_filters_for_playlist(self, playlist_name: str, results: List[TrackResult]) -> None:
+        """Apply filters and update table for a specific playlist in batch mode.
+        
+        Applies current filter values and repopulates the table for the
+        specified playlist.
+        
+        Args:
+            playlist_name: Name of the playlist.
+            results: List of TrackResult objects for this playlist.
+        """
         if playlist_name in self.playlist_tables:
             table = self.playlist_tables[playlist_name]
             self._populate_table_for_playlist(table, results)
     
-    def _show_context_menu_for_table(self, position, table: QTableWidget, results: List[TrackResult]):
-        """Show context menu for a specific table row"""
+    def _show_context_menu_for_table(
+        self, 
+        position: Any, 
+        table: QTableWidget, 
+        results: List[TrackResult]
+    ) -> None:
+        """Show context menu for a specific table row in batch mode.
+        
+        Creates and displays a context menu with options to view candidates
+        for the row at the specified position.
+        
+        Args:
+            position: Position where context menu was requested.
+            table: QTableWidget containing the row.
+            results: List of TrackResult objects for this playlist.
+        """
         item = table.itemAt(position)
         if item is None:
             return
@@ -1251,13 +1408,40 @@ class ResultsView(QWidget):
         
         menu.exec(table.viewport().mapToGlobal(position))
     
-    def _on_row_double_clicked_for_table(self, index, table: QTableWidget, results: List[TrackResult]):
-        """Handle double-click on a specific table row"""
+    def _on_row_double_clicked_for_table(
+        self, 
+        index: Any, 
+        table: QTableWidget, 
+        results: List[TrackResult]
+    ) -> None:
+        """Handle double-click on a specific table row in batch mode.
+        
+        Opens the candidate dialog for the double-clicked row.
+        
+        Args:
+            index: QModelIndex of the double-clicked row.
+            table: QTableWidget containing the row.
+            results: List of TrackResult objects for this playlist.
+        """
         row = index.row()
         self._view_candidates_for_table_row(row, table, results)
     
-    def _view_candidates_for_table_row(self, row: int, table: QTableWidget, results: List[TrackResult]):
-        """View candidates for a specific row in a playlist table"""
+    def _view_candidates_for_table_row(
+        self, 
+        row: int, 
+        table: QTableWidget, 
+        results: List[TrackResult]
+    ) -> None:
+        """View candidates for a specific row in a playlist table.
+        
+        Opens the candidate dialog to view and select alternative matches
+        for the track at the specified row.
+        
+        Args:
+            row: Row index in the table.
+            table: QTableWidget containing the row.
+            results: List of TrackResult objects for this playlist.
+        """
         # Get filtered results
         filtered = self._filter_results_for_playlist(results, table)
         if row < 0 or row >= len(filtered):
@@ -1306,8 +1490,22 @@ class ResultsView(QWidget):
         
         dialog.exec()
     
-    def _on_candidate_selected_for_playlist(self, playlist_index: int, candidate: Dict[str, Any], results: List[TrackResult]):
-        """Handle candidate selection for a playlist table - update the result"""
+    def _on_candidate_selected_for_playlist(
+        self, 
+        playlist_index: int, 
+        candidate: Dict[str, Any], 
+        results: List[TrackResult]
+    ) -> None:
+        """Handle candidate selection for a playlist table in batch mode.
+        
+        Updates the TrackResult with the selected candidate's data and
+        refreshes the table display.
+        
+        Args:
+            playlist_index: Index of the track in the playlist.
+            candidate: Dictionary containing candidate data.
+            results: List of TrackResult objects for this playlist.
+        """
         # Find the result by playlist_index
         result = None
         for r in results:
@@ -1357,8 +1555,13 @@ class ResultsView(QWidget):
                     self._populate_table_for_playlist(table, playlist_results)
                 break
     
-    def show_export_dialog(self):
-        """Show export dialog and handle export"""
+    def show_export_dialog(self) -> None:
+        """Show export dialog and handle export operation.
+        
+        Opens the export dialog, gets export options, and exports results
+        in the selected format (CSV, JSON, or Excel) with user-specified
+        options (filtered vs all, metadata, candidates, etc.).
+        """
         if not self.results:
             QMessageBox.warning(self, "No Results", "No results to export")
             return
@@ -1467,8 +1670,17 @@ class ResultsView(QWidget):
                 f"Error exporting file:\n{str(e)}"
             )
     
-    def export_all_csv(self):
-        """Export all CSV files (main, candidates, queries, review)"""
+    def export_all_csv(self) -> None:
+        """Export all CSV files (main, candidates, queries, review).
+        
+        Prompts for output directory and exports all CSV file types:
+        - Main results file
+        - Candidates file
+        - Queries file
+        - Review file
+        
+        Shows a summary message with all exported file names.
+        """
         if not self.results:
             QMessageBox.warning(self, "No Results", "No results to export")
             return
@@ -1517,8 +1729,12 @@ class ResultsView(QWidget):
                 f"Error exporting CSV files:\n{str(e)}"
             )
     
-    def open_output_folder(self):
-        """Open output folder in file explorer"""
+    def open_output_folder(self) -> None:
+        """Open output folder in file explorer.
+        
+        Opens the output directory (from last export or default "output")
+        in the system's file explorer. Creates the directory if it doesn't exist.
+        """
         # Use last export directory or default
         output_dir = "output"
         if self.output_files:
@@ -1545,8 +1761,15 @@ class ResultsView(QWidget):
                 f"Could not open folder:\n{str(e)}"
             )
     
-    def _show_context_menu(self, position):
-        """Show context menu for table row"""
+    def _show_context_menu(self, position: Any) -> None:
+        """Show context menu for table row in single playlist mode.
+        
+        Creates and displays a context menu with options to view candidates
+        for the row at the specified position.
+        
+        Args:
+            position: Position where context menu was requested.
+        """
         item = self.table.itemAt(position)
         if item is None:
             return
@@ -1573,13 +1796,26 @@ class ResultsView(QWidget):
         
         menu.exec(self.table.viewport().mapToGlobal(position))
     
-    def _on_row_double_clicked(self, index):
-        """Handle double-click on table row"""
+    def _on_row_double_clicked(self, index: Any) -> None:
+        """Handle double-click on table row in single playlist mode.
+        
+        Opens the candidate dialog for the double-clicked row.
+        
+        Args:
+            index: QModelIndex of the double-clicked row.
+        """
         row = index.row()
         self._view_candidates_for_row(row)
     
-    def _view_candidates_for_row(self, row: int):
-        """View candidates for a specific row"""
+    def _view_candidates_for_row(self, row: int) -> None:
+        """View candidates for a specific row in single playlist mode.
+        
+        Opens the candidate dialog to view and select alternative matches
+        for the track at the specified row.
+        
+        Args:
+            row: Row index in the table.
+        """
         # Get filtered results
         filtered = self._filter_results()
         if row < 0 or row >= len(filtered):
@@ -1628,8 +1864,17 @@ class ResultsView(QWidget):
         
         dialog.exec()
     
-    def _on_candidate_selected(self, playlist_index: int, candidate: Dict[str, Any]):
-        """Handle candidate selection - update the result"""
+    def _on_candidate_selected(self, playlist_index: int, candidate: Dict[str, Any]) -> None:
+        """Handle candidate selection in single playlist mode.
+        
+        Updates the TrackResult with the selected candidate's data,
+        refreshes the table display, updates summary, and emits the
+        result_updated signal.
+        
+        Args:
+            playlist_index: Index of the track in the playlist.
+            candidate: Dictionary containing candidate data.
+        """
         # Find the result by playlist_index
         result = None
         for r in self.results:
@@ -1698,8 +1943,12 @@ class ResultsView(QWidget):
             f"Updated match for:\n{result.title} - {result.artist}"
         )
     
-    def clear_filters(self):
-        """Clear all filters to default values"""
+    def clear_filters(self) -> None:
+        """Clear all filters to default values.
+        
+        Resets all filter widgets (search, confidence, year, BPM, key)
+        to their default values and reapplies filters.
+        """
         self.year_min.setValue(1900)
         self.year_max.setValue(2100)
         self.bpm_min.setValue(60)
@@ -1709,8 +1958,12 @@ class ResultsView(QWidget):
         self.confidence_filter.setCurrentText("All")
         self.apply_filters()
     
-    def clear(self):
-        """Clear results display"""
+    def clear(self) -> None:
+        """Clear results display.
+        
+        Clears all results, filtered results, output files, table data,
+        summary label, and resets all filter widgets to default values.
+        """
         self.results = []
         self.filtered_results = []
         self.output_files = {}

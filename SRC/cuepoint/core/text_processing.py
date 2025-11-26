@@ -159,7 +159,21 @@ def sanitize_title_for_search(title: str) -> str:
 
 
 def split_artists(artist_str: str) -> List[str]:
-    """Split artist string into list of individual artists"""
+    """Split artist string into list of individual artists.
+    
+    Handles common separators: commas, ampersands, "feat.", "ft.", etc.
+    Normalizes each artist name for comparison.
+    
+    Args:
+        artist_str: Artist string (may contain multiple artists).
+    
+    Returns:
+        List of individual normalized artist names.
+    
+    Example:
+        >>> split_artists("John, Jane & Bob feat. Alice")
+        ['john', 'jane', 'bob', 'alice']
+    """
     if not artist_str:
         return []
     s = artist_str.replace(" feat. ", ", ").replace(" ft. ", ", ").replace(" featuring ", ", ")
@@ -168,7 +182,25 @@ def split_artists(artist_str: str) -> List[str]:
 
 
 def artists_similarity(a: str, b: str) -> int:
-    """Calculate similarity between two artist strings"""
+    """Calculate similarity score between two artist strings.
+    
+    Compares artist strings by splitting them into individual artists
+    and using fuzzy matching to find the best match for each artist.
+    Returns the average similarity score.
+    
+    Args:
+        a: First artist string.
+        b: Second artist string.
+    
+    Returns:
+        Similarity score (0-100), where 100 is perfect match.
+    
+    Example:
+        >>> artists_similarity("John Smith", "John Smith")
+        100
+        >>> artists_similarity("John Smith", "Jane Doe")
+        0
+    """
     list_a = split_artists(a)
     list_b = split_artists(b)
     if not list_a or not list_b:
@@ -217,7 +249,22 @@ def score_components(title_a: str, artists_a: str, title_b: str, artists_b: str)
 
 
 def _artist_token_overlap(a: str, b: str) -> bool:
-    """Check if artist tokens overlap"""
+    """Check if artist strings have overlapping tokens.
+    
+    Compares artist strings by extracting normalized tokens and checking
+    for exact or partial token matches (e.g., "Adam Port" vs "Port").
+    
+    Args:
+        a: First artist string.
+        b: Second artist string.
+    
+    Returns:
+        True if any tokens overlap (exact or partial match), False otherwise.
+    
+    Example:
+        >>> _artist_token_overlap("Adam Port", "Port")
+        True
+    """
     def toks(x: str) -> set:
         x = _strip_accents(x.lower())
         x = re.sub(r'\([^)]*\)', ' ', x)
@@ -244,7 +291,21 @@ def _artist_token_overlap(a: str, b: str) -> bool:
 
 
 def _word_tokens(s: str) -> List[str]:
-    """Extract word tokens from normalized text"""
+    """Extract word tokens from normalized text.
+    
+    Normalizes the text and splits it into individual word tokens,
+    filtering out empty strings.
+    
+    Args:
+        s: Input text string.
+    
+    Returns:
+        List of word tokens (normalized, lowercase).
+    
+    Example:
+        >>> _word_tokens("Never Sleep Again")
+        ['never', 'sleep', 'again']
+    """
     s = normalize_text(s)
     toks = [t for t in re.split(r"\s+", s) if t]
     return toks
