@@ -1,9 +1,9 @@
-# Step 6.5: Add Type Hints & Documentation
+# Step 5.5: Add Type Hints & Documentation
 
 **Status**: 📝 Planned  
 **Priority**: 🚀 P1 - HIGH PRIORITY  
 **Estimated Duration**: 3-4 days  
-**Dependencies**: Step 6.1 (Project Structure)
+**Dependencies**: Step 5.1 (Project Structure)
 
 ---
 
@@ -229,7 +229,7 @@ __all__ = [
 2. Document UI components
 3. Document controller interfaces
 
-### Phase 5: Models and Utils (0.5 days)
+### Phase 6: Models and Utils (0.5 days)
 
 **Files to Update:**
 - `src/cuepoint/models/*.py`
@@ -533,5 +533,5 @@ After completing this step:
 1. Verify mypy passes without errors
 2. Review documentation quality
 3. Generate API documentation
-4. Proceed to Step 6.6: Standardize Error Handling & Logging
+4. Proceed to Step 5.6: Standardize Error Handling & Logging
 

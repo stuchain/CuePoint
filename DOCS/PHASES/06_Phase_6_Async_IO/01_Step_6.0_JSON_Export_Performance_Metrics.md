@@ -1,7 +1,7 @@
-# Step 5.0: Add JSON Export for Performance Metrics
+# Step 6.0: Add JSON Export for Performance Metrics
 
 **Status**: 📝 Planned  
-**Priority**: 🚀 HIGH (Required before other Phase 5 steps)  
+**Priority**: 🚀 HIGH (Required before other Phase 6 steps)  
 **Estimated Duration**: 4-6 hours  
 **Dependencies**: Phase 3 (performance metrics must be available)
 
@@ -590,9 +590,9 @@ metrics = load_metrics_from_json("output/playlist_analysis_metrics_20250125_1200
 percentage, recommendation = analyze_network_time_percentage(metrics)
 
 if "IMPLEMENT" in recommendation:
-    print("✅ Async I/O recommended - proceed with Phase 5")
+    print("✅ Async I/O recommended - proceed with Phase 6")
 elif "SKIP" in recommendation:
-    print("❌ Async I/O not recommended - skip Phase 5")
+    print("❌ Async I/O not recommended - skip Phase 6")
 else:
     print("⚠️ Evaluate case-by-case")
 ```
@@ -637,7 +637,7 @@ After completing this step:
 3. **Review recommendation**
 4. **Make decision**: Proceed with async I/O or skip to other phases
 
-**If recommendation is "IMPLEMENT"**: Proceed to Step 5.1  
+**If recommendation is "IMPLEMENT"**: Proceed to Step 6.1  
 **If recommendation is "SKIP"**: Skip to other phases  
 **If recommendation is "EVALUATE"**: Review other factors and decide
 

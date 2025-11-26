@@ -2,7 +2,7 @@
 
 **Status**: 📝 Planned  
 **Priority**: 🚀 P1 - HIGH PRIORITY (User Experience Enhancement)  
-**Dependencies**: Phase 1 (GUI Foundation), Phase 2 (User Experience), Phase 6 (Code Restructuring recommended)  
+**Dependencies**: Phase 1 (GUI Foundation), Phase 2 (User Experience), Phase 5 (Code Restructuring recommended)  
 **Estimated Duration**: 4-5 weeks
 
 ## Goal

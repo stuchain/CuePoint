@@ -1,4 +1,4 @@
-# Phase 6: Code Restructuring & Professional Organization
+# Phase 5: Code Restructuring & Professional Organization
 
 **Status**: 📝 Planned  
 **Priority**: 🚀 P1 - HIGH PRIORITY (Foundation for future development)  
@@ -135,7 +135,7 @@ CuePoint/
 
 ## Implementation Steps
 
-### Step 6.1: Establish Project Structure (2-3 days)
+### Step 5.1: Establish Project Structure (2-3 days)
 
 **Goal**: Create the new directory structure and move files to appropriate locations.
 
@@ -164,7 +164,7 @@ CuePoint/
 
 ---
 
-### Step 6.2: Implement Dependency Injection & Service Layer (3-4 days)
+### Step 5.2: Implement Dependency Injection & Service Layer (3-4 days)
 
 **Goal**: Decouple components using dependency injection and create a service layer.
 
@@ -193,7 +193,7 @@ CuePoint/
 
 ---
 
-### Step 6.3: Separate Business Logic from UI (4-5 days)
+### Step 5.3: Separate Business Logic from UI (4-5 days)
 
 **Goal**: Move all business logic out of UI components into dedicated modules.
 
@@ -221,7 +221,7 @@ CuePoint/
 
 ---
 
-### Step 6.4: Implement Comprehensive Testing (5-7 days)
+### Step 5.4: Implement Comprehensive Testing (5-7 days)
 
 **Goal**: Create a comprehensive test suite with >80% code coverage.
 
@@ -254,7 +254,7 @@ CuePoint/
 
 ---
 
-### Step 6.5: Add Type Hints & Documentation (3-4 days)
+### Step 5.5: Add Type Hints & Documentation (3-4 days)
 
 **Goal**: Add type hints throughout codebase and comprehensive docstrings.
 
@@ -284,7 +284,7 @@ CuePoint/
 
 ---
 
-### Step 6.6: Standardize Error Handling & Logging (2-3 days)
+### Step 5.6: Standardize Error Handling & Logging (2-3 days)
 
 **Goal**: Implement consistent error handling and logging throughout the application.
 
@@ -321,7 +321,7 @@ CuePoint/
 
 ---
 
-### Step 6.7: Code Style & Quality Standards (2-3 days)
+### Step 5.7: Code Style & Quality Standards (2-3 days)
 
 **Goal**: Ensure code follows PEP 8 and establish quality standards.
 
@@ -352,7 +352,7 @@ CuePoint/
 
 ---
 
-### Step 6.8: Configuration Management (2-3 days)
+### Step 5.8: Configuration Management (2-3 days)
 
 **Goal**: Centralize and improve configuration management.
 
@@ -382,7 +382,7 @@ CuePoint/
 
 ---
 
-### Step 6.9: Refactor Data Models (2-3 days)
+### Step 5.9: Refactor Data Models (2-3 days)
 
 **Goal**: Create clear, well-defined data models.
 
@@ -411,7 +411,7 @@ CuePoint/
 
 ---
 
-### Step 6.10: Performance & Optimization Review (2-3 days)
+### Step 5.10: Performance & Optimization Review (2-3 days)
 
 **Goal**: Ensure restructuring doesn't degrade performance.
 

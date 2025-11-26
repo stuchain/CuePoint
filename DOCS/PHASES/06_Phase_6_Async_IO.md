@@ -1,4 +1,4 @@
-# Phase 5: Async I/O Refactoring
+# Phase 6: Async I/O Refactoring
 
 **Status**: 📝 Planned (Evaluate Need Based on Phase 3 Metrics)  
 **Priority**: 🚀 Medium Priority (Only if Phase 3 shows network I/O bottleneck)  
@@ -27,7 +27,7 @@ Refactor network I/O operations to use async/await for improved performance in p
 **CRITICAL**: Before implementing, analyze Phase 3 performance metrics:
 
 **Step 1: Export Metrics to JSON**
-- Use `export_performance_metrics_json()` (from Substep 5.0) to export metrics
+- Use `export_performance_metrics_json()` (from Substep 6.0) to export metrics
 - This creates a JSON file with all `network_time` data needed for analysis
 
 **Step 2: Analyze Network Time**
@@ -74,7 +74,7 @@ Refactor network I/O operations to use async/await for improved performance in p
 
 ## Implementation Steps
 
-### Substep 5.0: Add JSON Export for Performance Metrics (4-6 hours)
+### Substep 6.0: Add JSON Export for Performance Metrics (4-6 hours)
 **File**: `SRC/output_writer.py` (MODIFY), `SRC/performance_analyzer.py` (NEW)
 
 **Purpose**: Export performance metrics to JSON format for analysis, enabling network time analysis needed for async I/O decision-making.
@@ -380,7 +380,7 @@ if stats:
 
 ---
 
-### Substep 5.1: Create Async Beatport Search Module (1-2 days)
+### Substep 6.1: Create Async Beatport Search Module (1-2 days)
 **File**: `SRC/async_beatport_search.py` (NEW)
 
 **What to implement:**
@@ -581,7 +581,7 @@ async def async_fetch_multiple_tracks(
 
 ---
 
-### Substep 5.2: Create Async Matcher Function (1-2 days)
+### Substep 6.2: Create Async Matcher Function (1-2 days)
 **File**: `SRC/matcher.py` (MODIFY)
 
 **What to add:**
@@ -706,7 +706,7 @@ async def async_best_beatport_match(
 
 ---
 
-### Substep 5.3: Add Async Wrapper in Processor (1 day)
+### Substep 6.3: Add Async Wrapper in Processor (1 day)
 **File**: `SRC/processor.py` (MODIFY)
 
 **What to add:**
@@ -831,7 +831,7 @@ def process_playlist_async(
 
 ---
 
-### Substep 5.4: Add Configuration and Mode Switching with UI Integration (1-2 days)
+### Substep 6.4: Add Configuration and Mode Switching with UI Integration (1-2 days)
 **Files**: `SRC/config.py` (MODIFY), `SRC/gui/config_panel.py` (MODIFY), `SRC/gui/main_window.py` (MODIFY)
 
 **Dependencies**: Phase 1 Step 1.3 (config panel exists), Substep 5.3 (async wrapper exists)
@@ -1154,7 +1154,7 @@ def start_processing(self):
 
 ---
 
-### Substep 5.5: Comprehensive Testing and Performance Validation (2-3 days)
+### Substep 6.5: Comprehensive Testing and Performance Validation (2-3 days)
 
 **Dependencies**: All previous substeps must be completed
 
@@ -1283,12 +1283,12 @@ def start_processing(self):
 ---
 
 ## Implementation Checklist Summary
-- [ ] Substep 5.0: Add JSON Export for Performance Metrics
-- [ ] Substep 5.1: Create Async Beatport Search Module
-- [ ] Substep 5.2: Create Async Matcher Function
-- [ ] Substep 5.3: Add Async Wrapper in Processor
-- [ ] Substep 5.4: Add Configuration and Mode Switching
-- [ ] Substep 5.5: Testing and Performance Validation
+- [ ] Substep 6.0: Add JSON Export for Performance Metrics
+- [ ] Substep 6.1: Create Async Beatport Search Module
+- [ ] Substep 6.2: Create Async Matcher Function
+- [ ] Substep 6.3: Add Async Wrapper in Processor
+- [ ] Substep 6.4: Add Configuration and Mode Switching
+- [ ] Substep 6.5: Testing and Performance Validation
 - [ ] Documentation updated
 - [ ] All tests passing
 

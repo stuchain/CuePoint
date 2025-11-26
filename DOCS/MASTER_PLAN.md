@@ -2200,13 +2200,13 @@ Add advanced features as needed.
 
 ---
 
-## ⚡ Phase 5: Async I/O Refactoring (4-5 days)
+## ⚡ Phase 6: Async I/O Refactoring (4-5 days)
 
 **Status**: 📝 Planned (Evaluate Need Based on Phase 3 Metrics)  
 **Priority**: 🚀 Medium Priority (Only if Phase 3 shows network I/O bottleneck)  
 **Dependencies**: Phase 0 (backend), Phase 1 (GUI), Phase 3 (performance metrics), Python 3.7+ (for async/await)
 
-**📄 Detailed Documentation**: See [`DOCS/PHASES/05_Phase_5_Async_IO.md`](PHASES/05_Phase_5_Async_IO.md) for complete implementation guide.
+**📄 Detailed Documentation**: See [`DOCS/PHASES/06_Phase_6_Async_IO.md`](PHASES/06_Phase_6_Async_IO.md) for complete implementation guide.
 
 ### Goal
 Refactor network I/O operations to use async/await for improved performance in parallel processing scenarios, but only if Phase 3 performance metrics indicate that network I/O is a significant bottleneck.
@@ -2222,13 +2222,13 @@ Refactor network I/O operations to use async/await for improved performance in p
 
 ---
 
-## 🔧 Phase 6: Code Restructuring & Professional Organization (3-4 weeks)
+## 🔧 Phase 5: Code Restructuring & Professional Organization (3-4 weeks)
 
 **Status**: 📝 Planned  
 **Priority**: 🚀 P1 - HIGH PRIORITY (Foundation for future development)  
 **Dependencies**: Phase 0 (Backend Foundation), Phase 1 (GUI Foundation), Phase 2 (User Experience), Phase 3 (Reliability & Performance)
 
-**📄 Detailed Documentation**: See [`DOCS/PHASES/06_Phase_6_Code_Restructuring.md`](PHASES/06_Phase_6_Code_Restructuring.md) for complete implementation guide.
+**📄 Detailed Documentation**: See [`DOCS/PHASES/05_Phase_5_Code_Restructuring.md`](PHASES/05_Phase_5_Code_Restructuring.md) for complete implementation guide.
 
 ### Goal
 Restructure the codebase into a professional, maintainable architecture with proper separation of concerns, comprehensive testing, and clear organization. This establishes a solid foundation for easier future improvements and changes.
@@ -2329,7 +2329,7 @@ Create distributable executables and add polish features for a professional fini
 
 **Status**: 📝 Planned  
 **Priority**: 🚀 P1 - HIGH PRIORITY (User Experience Enhancement)  
-**Dependencies**: Phase 1 (GUI Foundation), Phase 2 (User Experience), Phase 6 (Code Restructuring recommended)
+**Dependencies**: Phase 1 (GUI Foundation), Phase 2 (User Experience), Phase 5 (Code Restructuring recommended)
 
 **📄 Detailed Documentation**: See [`DOCS/PHASES/08_Phase_8_UI_Restructuring.md`](PHASES/08_Phase_8_UI_Restructuring.md) for complete implementation guide.
 
@@ -2369,10 +2369,10 @@ Completely restructure the user interface to be modern, visually appealing (Poke
 1. **Phase 0 → Phase 1**: Backend must be GUI-ready before GUI can use it
 2. **Phase 1 → Phase 2**: Core GUI must work before enhancements
 3. **Phase 1 → Phase 3**: Core GUI needed for batch processing
-4. **Phase 1-3 → Phase 5**: Phase 3 metrics needed to evaluate if async I/O is needed
-5. **Phase 0-3 → Phase 6**: Code restructuring benefits from having existing codebase
+4. **Phase 1-3 → Phase 6**: Phase 3 metrics needed to evaluate if async I/O is needed
+5. **Phase 0-3 → Phase 5**: Code restructuring benefits from having existing codebase
 6. **Phase 1-2 → Phase 8**: UI restructuring builds on existing GUI foundation
-7. **Phase 6 → Phase 8** (Recommended): Code restructuring makes UI restructuring easier
+7. **Phase 5 → Phase 8** (Recommended): Code restructuring makes UI restructuring easier
 8. **Phase 1-3 → Phase 7**: Features should be complete before packaging and polish
 
 ### Testing Strategy
@@ -2405,7 +2405,7 @@ Completely restructure the user interface to be modern, visually appealing (Poke
 - [ ] Core features work
 - [ ] Basic user testing passed
 
-### Phase 5 Success (Async I/O)
+### Phase 6 Success (Async I/O)
 - Async I/O implemented and working
 - Performance improvement measurable (30%+)
 - Backward compatibility maintained

@@ -1,4 +1,4 @@
-# Phase 6: Code Restructuring & Professional Organization - Overview
+# Phase 5: Code Restructuring & Professional Organization - Overview
 
 **Status**: 📝 Planned  
 **Priority**: 🚀 P1 - HIGH PRIORITY (Foundation for future development)  
@@ -143,19 +143,19 @@ CuePoint/
 
 ## Documentation Structure
 
-Phase 6 documentation is organized into individual step files:
+Phase 5 documentation is organized into individual step files:
 
 - **Overview**: `00_Phase_6_Overview.md` - This file (complete overview and strategy)
-- **Step 6.1**: `01_Step_6.1_Establish_Project_Structure.md` - Create directory structure and move files
-- **Step 6.2**: `02_Step_6.2_Dependency_Injection_Service_Layer.md` - Implement DI and service layer
-- **Step 6.3**: `03_Step_6.3_Separate_Business_Logic_UI.md` - Extract business logic from UI
-- **Step 6.4**: `04_Step_6.4_Comprehensive_Testing.md` - Create comprehensive test suite
-- **Step 6.5**: `05_Step_6.5_Type_Hints_Documentation.md` - Add type hints and docstrings
-- **Step 6.6**: `06_Step_6.6_Error_Handling_Logging.md` - Standardize error handling and logging
-- **Step 6.7**: `07_Step_6.7_Code_Style_Quality_Standards.md` - Enforce code style and quality
-- **Step 6.8**: `08_Step_6.8_Configuration_Management.md` - Centralize configuration management
-- **Step 6.9**: `09_Step_6.9_Refactor_Data_Models.md` - Create clear data models
-- **Step 6.10**: `10_Step_6.10_Performance_Optimization_Review.md` - Performance review and optimization
+- **Step 5.1**: `01_Step_6.1_Establish_Project_Structure.md` - Create directory structure and move files
+- **Step 5.2**: `02_Step_6.2_Dependency_Injection_Service_Layer.md` - Implement DI and service layer
+- **Step 5.3**: `03_Step_6.3_Separate_Business_Logic_UI.md` - Extract business logic from UI
+- **Step 5.4**: `04_Step_6.4_Comprehensive_Testing.md` - Create comprehensive test suite
+- **Step 5.5**: `05_Step_6.5_Type_Hints_Documentation.md` - Add type hints and docstrings
+- **Step 5.6**: `06_Step_6.6_Error_Handling_Logging.md` - Standardize error handling and logging
+- **Step 5.7**: `07_Step_6.7_Code_Style_Quality_Standards.md` - Enforce code style and quality
+- **Step 5.8**: `08_Step_6.8_Configuration_Management.md` - Centralize configuration management
+- **Step 5.9**: `09_Step_6.9_Refactor_Data_Models.md` - Create clear data models
+- **Step 5.10**: `10_Step_6.10_Performance_Optimization_Review.md` - Performance review and optimization
 
 **For detailed implementation instructions, see the individual step files.**
 
@@ -163,52 +163,52 @@ Phase 6 documentation is organized into individual step files:
 
 ## Implementation Steps Overview
 
-### Step 6.1: Establish Project Structure (2-3 days)
+### Step 5.1: Establish Project Structure (2-3 days)
 **Purpose**: Create the new directory structure and move files to appropriate locations with updated imports.
 
 **See**: `01_Step_6.1_Establish_Project_Structure.md`
 
-### Step 6.2: Implement Dependency Injection & Service Layer (3-4 days)
+### Step 5.2: Implement Dependency Injection & Service Layer (3-4 days)
 **Purpose**: Decouple components using dependency injection and create a service layer for better separation of concerns.
 
 **See**: `02_Step_6.2_Dependency_Injection_Service_Layer.md`
 
-### Step 6.3: Separate Business Logic from UI (4-5 days)
+### Step 5.3: Separate Business Logic from UI (4-5 days)
 **Purpose**: Move all business logic out of UI components into dedicated service classes and controllers.
 
 **See**: `03_Step_6.3_Separate_Business_Logic_UI.md`
 
-### Step 6.4: Implement Comprehensive Testing (5-7 days)
+### Step 5.4: Implement Comprehensive Testing (5-7 days)
 **Purpose**: Create a comprehensive test suite with >80% code coverage using pytest and related tools.
 
 **See**: `04_Step_6.4_Comprehensive_Testing.md`
 
-### Step 6.5: Add Type Hints & Documentation (3-4 days)
+### Step 5.5: Add Type Hints & Documentation (3-4 days)
 **Purpose**: Add type hints throughout codebase and comprehensive docstrings for all public APIs.
 
 **See**: `05_Step_6.5_Type_Hints_Documentation.md`
 
-### Step 6.6: Standardize Error Handling & Logging (2-3 days)
+### Step 5.6: Standardize Error Handling & Logging (2-3 days)
 **Purpose**: Implement consistent error handling and logging throughout the application.
 
 **See**: `06_Step_6.6_Error_Handling_Logging.md`
 
-### Step 6.7: Code Style & Quality Standards (2-3 days)
+### Step 5.7: Code Style & Quality Standards (2-3 days)
 **Purpose**: Ensure code follows PEP 8 and establish quality standards with automated tools.
 
 **See**: `07_Step_6.7_Code_Style_Quality_Standards.md`
 
-### Step 6.8: Configuration Management (2-3 days)
+### Step 5.8: Configuration Management (2-3 days)
 **Purpose**: Centralize and improve configuration management with multiple sources and validation.
 
 **See**: `08_Step_6.8_Configuration_Management.md`
 
-### Step 6.9: Refactor Data Models (2-3 days)
+### Step 5.9: Refactor Data Models (2-3 days)
 **Purpose**: Create clear, well-defined data models with validation and serialization.
 
 **See**: `09_Step_6.9_Refactor_Data_Models.md`
 
-### Step 6.10: Performance & Optimization Review (2-3 days)
+### Step 5.10: Performance & Optimization Review (2-3 days)
 **Purpose**: Ensure restructuring doesn't degrade performance and optimize critical paths.
 
 **See**: `10_Step_6.10_Performance_Optimization_Review.md`

@@ -39,7 +39,7 @@ Add advanced features to enhance functionality, performance, and integration cap
    - See: `02_Step_4.2_Advanced_Filtering.md`
 
 ### Medium Priority (Evaluate Need Based on Phase 3 Metrics)
-(Async I/O has been moved to Phase 5 - see `../05_Phase_5_Async_IO.md`)
+(Async I/O has been moved to Phase 6 - see `../06_Phase_6_Async_IO.md`)
 
 ### Low Priority (Optional Features)
 4. **Step 4.6: Keyboard Shortcuts and Accessibility** (1-2 days, OPTIONAL)
@@ -264,7 +264,7 @@ Each step must update:
 - [ ] Backward compatibility maintained
 
 ### Medium Priority (Optional)
-(Async I/O has been moved to Phase 5)
+(Async I/O has been moved to Phase 6)
 
 ### Low Priority (Optional)
 - [ ] Keyboard shortcuts and accessibility (if requested)
@@ -277,7 +277,7 @@ Each step must update:
 2. **Start with High Priority**: Begin with Step 4.1 (Enhanced Export) and Step 4.2 (Advanced Filtering)
 3. **Consider Low Priority**: Only implement if users request these features
 4. **Future Features**: See `../05_Future_Features/00_Future_Features_Overview.md` for features that may be considered for future phases
-5. **Async I/O**: See Phase 5 for async I/O implementation (moved from Phase 4)
+5. **Async I/O**: See Phase 6 for async I/O implementation (moved from Phase 4)
 
 ---
 

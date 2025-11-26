@@ -1,9 +1,9 @@
-# Step 5.5: Comprehensive Testing and Performance Validation
+# Step 6.5: Comprehensive Testing and Performance Validation
 
 **Status**: 📝 Planned  
-**Priority**: 🚀 High (Required before marking Phase 5 complete)  
+**Priority**: 🚀 High (Required before marking Phase 6 complete)  
 **Estimated Duration**: 2-3 days  
-**Dependencies**: All previous Phase 5 steps (5.0-5.4)
+**Dependencies**: All previous Phase 6 steps (6.0-6.4)
 
 ---
 
@@ -380,7 +380,7 @@ class TestAsyncPerformance(unittest.TestCase):
 - [ ] Phase 3 metrics exported and analyzed
 - [ ] Network time percentage >40% confirmed
 - [ ] Decision made to implement async I/O
-- [ ] All Phase 5 steps completed
+- [ ] All Phase 6 steps completed
 
 ## Configuration Testing
 - [ ] Open Settings tab
@@ -690,7 +690,7 @@ After completing this step:
 1. **Review test results**
 2. **Validate performance improvements**
 3. **Document findings**
-4. **Mark Phase 5 as complete** (if all criteria met)
+4. **Mark Phase 6 as complete** (if all criteria met)
 
 ---
 

@@ -1,9 +1,9 @@
-# Step 5.3: Add Async Wrapper in Processor
+# Step 6.3: Add Async Wrapper in Processor
 
 **Status**: 📝 Planned  
-**Priority**: 🚀 Medium (Only if Step 5.0 recommends implementation)  
+**Priority**: 🚀 Medium (Only if Step 6.0 recommends implementation)  
 **Estimated Duration**: 1 day  
-**Dependencies**: Step 5.2 (async matcher), Phase 0 (processor.py exists)
+**Dependencies**: Step 6.2 (async matcher), Phase 0 (processor.py exists)
 
 ---
 
@@ -450,7 +450,7 @@ After completing this step:
 
 1. **Test thoroughly** with real playlists
 2. **Compare performance** with sync version
-3. **Proceed to Step 5.4** to add UI configuration
+3. **Proceed to Step 6.4** to add UI configuration
 
 ---
 

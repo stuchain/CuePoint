@@ -1,9 +1,9 @@
-# Step 6.7: Code Style & Quality Standards
+# Step 5.7: Code Style & Quality Standards
 
 **Status**: 📝 Planned  
 **Priority**: 🚀 P1 - HIGH PRIORITY  
 **Estimated Duration**: 2-3 days  
-**Dependencies**: Step 6.1 (Project Structure)
+**Dependencies**: Step 5.1 (Project Structure)
 
 ---
 
@@ -93,7 +93,7 @@ skip_glob = ["*/migrations/*", "*/venv/*"]
 
 **Purpose**: Static type checking.
 
-**Configuration**: `mypy.ini` (see Step 6.5)
+**Configuration**: `mypy.ini` (see Step 5.5)
 
 ---
 
@@ -499,5 +499,5 @@ After completing this step:
 1. Verify all code is formatted
 2. Verify all linting errors fixed
 3. Set up CI/CD quality checks
-4. Proceed to Step 6.8: Configuration Management
+4. Proceed to Step 5.8: Configuration Management
 

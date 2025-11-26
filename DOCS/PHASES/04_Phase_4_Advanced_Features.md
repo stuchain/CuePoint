@@ -46,7 +46,7 @@ Phase 4 documentation has been reorganized into a folder structure with individu
    - See: `04_Phase_4_Advanced_Features/02_Step_4.2_Advanced_Filtering.md`
 
 ### Medium Priority Steps (Evaluate Need)
-(No medium priority steps currently - Async I/O has been moved to Phase 5)
+(No medium priority steps currently - Async I/O has been moved to Phase 6)
 
 ### Low Priority Steps (Optional)
 4. **Step 4.6: Keyboard Shortcuts and Accessibility** (1-2 days, OPTIONAL)
@@ -436,7 +436,7 @@ class ResultsView(QWidget):
 
 ### Feature Priority
 - **High Priority**: Enhanced export features, advanced filtering
-- **Medium Priority**: Async I/O refactoring (if performance issues) - See Phase 5
+- **Medium Priority**: Async I/O refactoring (if performance issues) - See Phase 6
 - **Low Priority**: Keyboard shortcuts and accessibility (if requested)
 
 ### Feature Implementation Checklist

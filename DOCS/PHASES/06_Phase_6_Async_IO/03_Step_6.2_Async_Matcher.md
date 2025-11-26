@@ -1,9 +1,9 @@
-# Step 5.2: Create Async Matcher Function
+# Step 6.2: Create Async Matcher Function
 
 **Status**: 📝 Planned  
-**Priority**: 🚀 Medium (Only if Step 5.0 recommends implementation)  
+**Priority**: 🚀 Medium (Only if Step 6.0 recommends implementation)  
 **Estimated Duration**: 1-2 days  
-**Dependencies**: Step 5.1 (async_beatport_search module), Phase 0 (matcher.py exists)
+**Dependencies**: Step 6.1 (async_beatport_search module), Phase 0 (matcher.py exists)
 
 ---
 
@@ -427,7 +427,7 @@ After completing this step:
 
 1. **Test thoroughly** with real tracks
 2. **Compare results** with sync version
-3. **Proceed to Step 5.3** to add processor wrapper
+3. **Proceed to Step 6.3** to add processor wrapper
 
 ---
 

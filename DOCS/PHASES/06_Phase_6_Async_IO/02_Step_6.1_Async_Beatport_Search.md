@@ -1,9 +1,9 @@
-# Step 5.1: Create Async Beatport Search Module
+# Step 6.1: Create Async Beatport Search Module
 
 **Status**: 📝 Planned  
-**Priority**: 🚀 Medium (Only if Step 5.0 recommends implementation)  
+**Priority**: 🚀 Medium (Only if Step 6.0 recommends implementation)  
 **Estimated Duration**: 1-2 days  
-**Dependencies**: Step 5.0 (metrics analysis), Phase 0 (beatport_search module exists)
+**Dependencies**: Step 6.0 (metrics analysis), Phase 0 (beatport_search module exists)
 
 ---
 
@@ -30,7 +30,7 @@ Create async/await versions of Beatport search functions for improved performanc
 ## Prerequisites
 
 **BEFORE starting this step:**
-1. ✅ Step 5.0 completed
+1. ✅ Step 6.0 completed
 2. ✅ Metrics analysis shows network I/O >40% of total time
 3. ✅ Decision made to implement async I/O
 4. ✅ `beatport_search.py` module exists and is working
@@ -671,7 +671,7 @@ After completing this step:
 
 1. **Test thoroughly** with real Beatport queries
 2. **Verify performance** improvements
-3. **Proceed to Step 5.2** to create async matcher function
+3. **Proceed to Step 6.2** to create async matcher function
 
 ---
 

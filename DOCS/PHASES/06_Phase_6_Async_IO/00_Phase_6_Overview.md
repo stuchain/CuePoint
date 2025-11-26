@@ -1,4 +1,4 @@
-# Phase 5: Async I/O Refactoring - Overview
+# Phase 6: Async I/O Refactoring - Overview
 
 **Status**: 📝 Planned (Evaluate Need Based on Phase 3 Metrics)  
 **Priority**: 🚀 Medium Priority (Only if Phase 3 shows network I/O bottleneck)  
@@ -34,7 +34,7 @@ Refactor network I/O operations to use async/await for improved performance in p
 **BEFORE implementing any async I/O code, you MUST:**
 
 1. **Export Phase 3 Metrics to JSON**
-   - Use `export_performance_metrics_json()` (from Step 5.0)
+   - Use `export_performance_metrics_json()` (from Step 6.0)
    - This creates a JSON file with all `network_time` data
 
 2. **Analyze Network Time**
@@ -64,15 +64,15 @@ Refactor network I/O operations to use async/await for improved performance in p
 
 ## Documentation Structure
 
-Phase 5 documentation is organized into individual step files:
+Phase 6 documentation is organized into individual step files:
 
 - **Overview**: `00_Phase_5_Overview.md` - This file (complete overview and strategy)
-- **Step 5.0**: `01_Step_5.0_JSON_Export_Performance_Metrics.md` - Export metrics for analysis
-- **Step 5.1**: `02_Step_5.1_Async_Beatport_Search.md` - Async search module
-- **Step 5.2**: `03_Step_5.2_Async_Matcher.md` - Async matcher function
-- **Step 5.3**: `04_Step_5.3_Async_Processor_Wrapper.md` - Processor integration
-- **Step 5.4**: `05_Step_5.4_Configuration_Mode_Switching.md` - UI configuration
-- **Step 5.5**: `06_Step_5.5_Testing_Performance_Validation.md` - Testing and validation
+- **Step 6.0**: `01_Step_5.0_JSON_Export_Performance_Metrics.md` - Export metrics for analysis
+- **Step 6.1**: `02_Step_5.1_Async_Beatport_Search.md` - Async search module
+- **Step 6.2**: `03_Step_5.2_Async_Matcher.md` - Async matcher function
+- **Step 6.3**: `04_Step_5.3_Async_Processor_Wrapper.md` - Processor integration
+- **Step 6.4**: `05_Step_5.4_Configuration_Mode_Switching.md` - UI configuration
+- **Step 6.5**: `06_Step_5.5_Testing_Performance_Validation.md` - Testing and validation
 
 **For detailed implementation instructions, see the individual step files.**
 
@@ -80,32 +80,32 @@ Phase 5 documentation is organized into individual step files:
 
 ## Implementation Steps Overview
 
-### Step 5.0: Add JSON Export for Performance Metrics (4-6 hours)
+### Step 6.0: Add JSON Export for Performance Metrics (4-6 hours)
 **Purpose**: Export performance metrics to JSON format for analysis, enabling network time analysis needed for async I/O decision-making.
 
 **See**: `01_Step_5.0_JSON_Export_Performance_Metrics.md`
 
-### Step 5.1: Create Async Beatport Search Module (1-2 days)
+### Step 6.1: Create Async Beatport Search Module (1-2 days)
 **Purpose**: Create async/await versions of Beatport search functions for improved performance in parallel processing scenarios.
 
 **See**: `02_Step_5.1_Async_Beatport_Search.md`
 
-### Step 5.2: Create Async Matcher Function (1-2 days)
+### Step 6.2: Create Async Matcher Function (1-2 days)
 **Purpose**: Create async version of the matcher function that uses async search functions.
 
 **See**: `03_Step_5.2_Async_Matcher.md`
 
-### Step 5.3: Add Async Wrapper in Processor (1 day)
+### Step 6.3: Add Async Wrapper in Processor (1 day)
 **Purpose**: Add async wrapper functions in processor to enable async processing mode.
 
 **See**: `04_Step_5.3_Async_Processor_Wrapper.md`
 
-### Step 5.4: Add Configuration and Mode Switching (1-2 days)
+### Step 6.4: Add Configuration and Mode Switching (1-2 days)
 **Purpose**: Add UI configuration for async I/O and mode switching between sync/async.
 
 **See**: `05_Step_5.4_Configuration_Mode_Switching.md`
 
-### Step 5.5: Comprehensive Testing and Performance Validation (2-3 days)
+### Step 6.5: Comprehensive Testing and Performance Validation (2-3 days)
 **Purpose**: Test all async functionality and validate performance improvements.
 
 **See**: `06_Step_5.5_Testing_Performance_Validation.md`
@@ -130,7 +130,7 @@ Phase 5 documentation is organized into individual step files:
 
 ### Implementation Order
 
-1. **Step 5.0** (MUST DO FIRST): Export metrics to analyze if async I/O is needed
+1. **Step 6.0** (MUST DO FIRST): Export metrics to analyze if async I/O is needed
 2. **If metrics show need**: Proceed with Steps 5.1-5.5
 3. **If metrics don't show need**: Skip to other phases
 
@@ -215,9 +215,9 @@ Phase 5 documentation is organized into individual step files:
 1. **Evaluation Before Implementation**: 
    - MUST analyze Phase 3 metrics first
    - Only implement if network I/O is a bottleneck
-   - Use Step 5.0 to export and analyze metrics
+   - Use Step 6.0 to export and analyze metrics
 
-2. **Start with Step 5.0**: 
+2. **Start with Step 6.0**: 
    - This step is required to make the decision
    - Export metrics and analyze network time percentage
    - Make informed decision based on data
@@ -235,13 +235,13 @@ Phase 5 documentation is organized into individual step files:
 
 ## Implementation Checklist Summary
 
-- [ ] **Step 5.0**: Add JSON Export for Performance Metrics (REQUIRED FIRST)
+- [ ] **Step 6.0**: Add JSON Export for Performance Metrics (REQUIRED FIRST)
 - [ ] **Evaluate metrics**: Determine if async I/O is needed
-- [ ] **If needed**: Step 5.1 - Create Async Beatport Search Module
-- [ ] **If needed**: Step 5.2 - Create Async Matcher Function
-- [ ] **If needed**: Step 5.3 - Add Async Wrapper in Processor
-- [ ] **If needed**: Step 5.4 - Add Configuration and Mode Switching
-- [ ] **If needed**: Step 5.5 - Testing and Performance Validation
+- [ ] **If needed**: Step 6.1 - Create Async Beatport Search Module
+- [ ] **If needed**: Step 6.2 - Create Async Matcher Function
+- [ ] **If needed**: Step 6.3 - Add Async Wrapper in Processor
+- [ ] **If needed**: Step 6.4 - Add Configuration and Mode Switching
+- [ ] **If needed**: Step 6.5 - Testing and Performance Validation
 - [ ] Documentation updated
 - [ ] All tests passing
 
@@ -249,5 +249,5 @@ Phase 5 documentation is organized into individual step files:
 
 **IMPORTANT**: Only implement Steps 5.1-5.5 if Phase 3 metrics show network I/O is a significant bottleneck (>40% of total time). Otherwise, skip to other phases.
 
-**Next Step**: Start with Step 5.0 to export and analyze metrics, then make an informed decision.
+**Next Step**: Start with Step 6.0 to export and analyze metrics, then make an informed decision.
 

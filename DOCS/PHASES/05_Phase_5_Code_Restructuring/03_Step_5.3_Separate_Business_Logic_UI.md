@@ -1,9 +1,9 @@
-# Step 6.3: Separate Business Logic from UI
+# Step 5.3: Separate Business Logic from UI
 
 **Status**: 📝 Planned  
 **Priority**: 🚀 P1 - HIGH PRIORITY  
 **Estimated Duration**: 4-5 days  
-**Dependencies**: Step 6.2 (Dependency Injection & Service Layer)
+**Dependencies**: Step 5.2 (Dependency Injection & Service Layer)
 
 ---
 
@@ -705,5 +705,5 @@ After completing this step:
 1. Verify UI works correctly
 2. Verify business logic is testable
 3. Run all tests
-4. Proceed to Step 6.4: Implement Comprehensive Testing
+4. Proceed to Step 5.4: Implement Comprehensive Testing
 

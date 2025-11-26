@@ -1,9 +1,9 @@
-# Step 6.9: Refactor Data Models
+# Step 5.9: Refactor Data Models
 
 **Status**: 📝 Planned  
 **Priority**: 🚀 P1 - HIGH PRIORITY  
 **Estimated Duration**: 2-3 days  
-**Dependencies**: Step 6.1 (Project Structure)
+**Dependencies**: Step 5.1 (Project Structure)
 
 ---
 
@@ -34,7 +34,7 @@ Create clear, well-defined data models with validation, serialization, and prope
 2. **TrackResult**: Represents processing result
 3. **BeatportCandidate**: Represents a Beatport match candidate
 4. **Playlist**: Represents a playlist
-5. **Configuration**: Application configuration (see Step 6.8)
+5. **Configuration**: Application configuration (see Step 5.8)
 
 ---
 
@@ -548,5 +548,5 @@ After completing this step:
 1. Verify all models work correctly
 2. Test model validation
 3. Test model serialization
-4. Proceed to Step 6.10: Performance & Optimization Review
+4. Proceed to Step 5.10: Performance & Optimization Review
 

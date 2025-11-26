@@ -1,9 +1,9 @@
-# Step 6.2: Implement Dependency Injection & Service Layer
+# Step 5.2: Implement Dependency Injection & Service Layer
 
 **Status**: 📝 Planned  
 **Priority**: 🚀 P1 - HIGH PRIORITY  
 **Estimated Duration**: 3-4 days  
-**Dependencies**: Step 6.1 (Project Structure)
+**Dependencies**: Step 5.1 (Project Structure)
 
 ---
 
@@ -626,5 +626,5 @@ def test_process_track():
 After completing this step:
 1. Verify all services work correctly
 2. Run tests to ensure functionality preserved
-3. Proceed to Step 6.3: Separate Business Logic from UI
+3. Proceed to Step 5.3: Separate Business Logic from UI
 

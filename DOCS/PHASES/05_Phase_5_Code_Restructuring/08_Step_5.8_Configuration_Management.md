@@ -1,9 +1,9 @@
-# Step 6.8: Configuration Management
+# Step 5.8: Configuration Management
 
 **Status**: 📝 Planned  
 **Priority**: 🚀 P1 - HIGH PRIORITY  
 **Estimated Duration**: 2-3 days  
-**Dependencies**: Step 6.1 (Project Structure), Step 6.2 (Dependency Injection)
+**Dependencies**: Step 5.1 (Project Structure), Step 5.2 (Dependency Injection)
 
 ---
 
@@ -620,5 +620,5 @@ After completing this step:
 1. Verify configuration loading works
 2. Test configuration validation
 3. Update UI to use configuration service
-4. Proceed to Step 6.9: Refactor Data Models
+4. Proceed to Step 5.9: Refactor Data Models
 

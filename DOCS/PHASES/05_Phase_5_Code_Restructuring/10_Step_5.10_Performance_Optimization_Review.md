@@ -1,4 +1,4 @@
-# Step 6.10: Performance & Optimization Review
+# Step 5.10: Performance & Optimization Review
 
 **Status**: 📝 Planned  
 **Priority**: 🚀 P1 - HIGH PRIORITY  
@@ -368,7 +368,7 @@ pool = QueuePool(
 ### 5. Async I/O (if applicable)
 
 ```python
-# Use async I/O for network operations (see Phase 5)
+# Use async I/O for network operations (see Phase 6)
 import asyncio
 
 async def fetch_multiple_tracks(urls: List[str]):
@@ -497,7 +497,7 @@ After completing this step:
 1. Review performance report
 2. Address any critical regressions
 3. Document performance characteristics
-4. Mark Phase 6 as complete
+4. Mark Phase 5 as complete
 5. Proceed to next phase (Phase 7 or Phase 8)
 
 ---

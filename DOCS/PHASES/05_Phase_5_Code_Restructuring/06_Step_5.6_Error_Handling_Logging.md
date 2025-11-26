@@ -1,9 +1,9 @@
-# Step 6.6: Standardize Error Handling & Logging
+# Step 5.6: Standardize Error Handling & Logging
 
 **Status**: 📝 Planned  
 **Priority**: 🚀 P1 - HIGH PRIORITY  
 **Estimated Duration**: 2-3 days  
-**Dependencies**: Step 6.1 (Project Structure), Step 6.2 (Dependency Injection)
+**Dependencies**: Step 5.1 (Project Structure), Step 5.2 (Dependency Injection)
 
 ---
 
@@ -518,5 +518,5 @@ After completing this step:
 1. Verify error handling works correctly
 2. Review log output quality
 3. Test error recovery
-4. Proceed to Step 6.7: Code Style & Quality Standards
+4. Proceed to Step 5.7: Code Style & Quality Standards
 

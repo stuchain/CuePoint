@@ -1,4 +1,4 @@
-# Step 6.1: Establish Project Structure
+# Step 5.1: Establish Project Structure
 
 **Status**: 📝 Planned  
 **Priority**: 🚀 P1 - HIGH PRIORITY  
@@ -492,7 +492,7 @@ After completing this step:
 1. Verify all imports work
 2. Run full test suite (if exists)
 3. Test application functionality
-4. Proceed to Step 6.2: Implement Dependency Injection & Service Layer
+4. Proceed to Step 5.2: Implement Dependency Injection & Service Layer
 
 ---
 
