@@ -13,11 +13,9 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
 from cuepoint.ui.widgets.file_selector import FileSelector
 
-def test_file_selector():
+def test_file_selector(qapp):
     """Test FileSelector widget"""
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication(sys.argv)
+    app = qapp
     
     # Create test window
     window = QWidget()
@@ -66,7 +64,14 @@ def test_file_selector():
     print("  - Visual feedback during drag (drop area turns blue)")
     print("  - Signal is emitted when file is selected")
     
-    sys.exit(app.exec())
+    # Don't call sys.exit in pytest - just verify widget was created
+    assert file_selector is not None
+    # For pytest, just verify creation - don't show window or exit
+    # For manual testing (when run as script), show the window
+    if __name__ == "__main__":
+        # Manual testing mode - show window and run event loop
+        sys.exit(app.exec())
+    # In pytest mode, just verify the widget was created successfully
 
 if __name__ == "__main__":
     test_file_selector()

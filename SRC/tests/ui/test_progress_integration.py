@@ -17,9 +17,9 @@ from cuepoint.ui.main_window import MainWindow
 from cuepoint.ui.gui_interface import ProgressInfo
 
 
-def test_progress_integration():
+def test_progress_integration(qapp):
     """Test ProgressWidget integration in MainWindow"""
-    app = QApplication(sys.argv)
+    app = qapp
     
     window = MainWindow()
     
@@ -48,7 +48,12 @@ def test_progress_integration():
     QTimer.singleShot(1000, simulate_updates)
     
     window.show()
-    sys.exit(app.exec())
+    
+    # For pytest, just verify the window was created
+    if __name__ == "__main__":
+        sys.exit(app.exec())
+    # In pytest mode, just verify creation
+    assert window is not None
 
 
 if __name__ == "__main__":

@@ -17,9 +17,9 @@ from cuepoint.ui.widgets.progress_widget import ProgressWidget
 from cuepoint.ui.gui_interface import ProgressInfo
 
 
-def test_progress_widget():
+def test_progress_widget(qapp):
     """Test ProgressWidget with simulated progress updates"""
-    app = QApplication(sys.argv)
+    app = qapp
     
     # Create main window
     window = QWidget()
@@ -102,7 +102,12 @@ def test_progress_widget():
     progress_widget.cancel_requested.connect(lambda: print("Cancel requested!"))
     
     window.show()
-    sys.exit(app.exec())
+    
+    # For pytest, just verify the widget was created
+    if __name__ == "__main__":
+        sys.exit(app.exec())
+    # In pytest mode, just verify creation
+    assert progress_widget is not None
 
 
 if __name__ == "__main__":

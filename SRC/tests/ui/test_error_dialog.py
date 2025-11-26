@@ -77,9 +77,9 @@ def create_test_errors():
     return errors
 
 
-def test_error_dialog():
+def test_error_dialog(qapp):
     """Test ErrorDialog with different error types"""
-    app = QApplication(sys.argv)
+    app = qapp
     
     window = QWidget()
     window.setWindowTitle("ErrorDialog Test")
@@ -95,7 +95,13 @@ def test_error_dialog():
         layout.addWidget(btn)
     
     window.show()
-    sys.exit(app.exec())
+    
+    # For pytest, just verify widgets were created
+    if __name__ == "__main__":
+        sys.exit(app.exec())
+    # In pytest mode, just verify creation
+    # The errors list is created in the function, so just verify the function completed
+    assert window is not None
 
 
 if __name__ == "__main__":

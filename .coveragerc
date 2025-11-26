@@ -1,0 +1,19 @@
+[run]
+source = src/cuepoint
+omit = 
+    */tests/*
+    */__pycache__/*
+    */venv/*
+    */env/*
+    */site-packages/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    @abstractmethod
+

@@ -152,9 +152,9 @@ def create_sample_results():
     return results
 
 
-def test_results_view():
+def test_results_view(qapp):
     """Test ResultsView widget"""
-    app = QApplication(sys.argv)
+    app = qapp
     
     window = QWidget()
     window.setWindowTitle("ResultsView Test")
@@ -183,7 +183,12 @@ def test_results_view():
     results_view.set_results(create_sample_results(), "Test Playlist")
     
     window.show()
-    sys.exit(app.exec())
+    
+    # For pytest, just verify the widget was created
+    if __name__ == "__main__":
+        sys.exit(app.exec())
+    # In pytest mode, just verify creation
+    assert results_view is not None
 
 
 if __name__ == "__main__":

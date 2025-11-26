@@ -15,9 +15,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
 from cuepoint.ui.widgets.config_panel import ConfigPanel
 
 
-def test_config_panel():
+def test_config_panel(qapp):
     """Test ConfigPanel widget"""
-    app = QApplication(sys.argv)
+    app = qapp
     
     window = QWidget()
     window.setWindowTitle("ConfigPanel Test")
@@ -56,7 +56,12 @@ def test_config_panel():
     show_settings()
     
     window.show()
-    sys.exit(app.exec())
+    
+    # For pytest, just verify the widget was created
+    if __name__ == "__main__":
+        sys.exit(app.exec())
+    # In pytest mode, just verify creation
+    assert config_panel is not None
 
 
 if __name__ == "__main__":
