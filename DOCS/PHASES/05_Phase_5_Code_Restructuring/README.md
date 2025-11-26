@@ -97,9 +97,9 @@ UI components (View) communicate with Controllers, which use Services to perform
 
 ## Related Phases
 
-- **Phase 6**: Async I/O Refactoring (may be done before or after Phase 5)
+- **Phase 8**: Async I/O Refactoring (may be done before or after Phase 5)
 - **Phase 7**: Packaging & Polish (builds on Phase 5)
-- **Phase 8**: UI Restructuring (builds on Phase 5)
+- **Phase 6**: UI Restructuring (builds on Phase 5)
 
 ## Notes
 

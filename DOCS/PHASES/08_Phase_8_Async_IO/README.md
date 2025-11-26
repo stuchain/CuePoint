@@ -1,13 +1,13 @@
-# Phase 6: Async I/O Refactoring - Documentation
+# Phase 8: Async I/O Refactoring - Documentation
 
 ## 📁 Documentation Structure
 
-This folder contains comprehensive, analytical documentation for each step of Phase 6 implementation.
+This folder contains comprehensive, analytical documentation for each step of Phase 8 implementation.
 
 ### Files Created
 
 1. **`00_Phase_6_Overview.md`** (8.7 KB)
-   - Complete overview of Phase 6
+   - Complete overview of Phase 8
    - Pre-implementation analysis requirements
    - Decision criteria for implementing async I/O
    - Implementation guidelines
@@ -130,8 +130,8 @@ This folder contains comprehensive, analytical documentation for each step of Ph
 ### For Implementation
 
 1. **Start with Overview**: Read `00_Phase_6_Overview.md` first
-2. **Do Step 6.0**: This is REQUIRED to make the decision
-3. **Analyze Metrics**: Use Step 6.0 tools to analyze
+2. **Do Step 8.0**: This is REQUIRED to make the decision
+3. **Analyze Metrics**: Use Step 8.0 tools to analyze
 4. **Make Decision**: Based on metrics, decide to proceed or skip
 5. **If Proceeding**: Follow steps 6.1-6.5 in order
 6. **Each Step**: Read the detailed step file for exact implementation
@@ -151,7 +151,7 @@ This folder contains comprehensive, analytical documentation for each step of Ph
 
 ### Critical Requirements
 
-1. **Step 6.0 is MANDATORY**: Must export and analyze metrics first
+1. **Step 8.0 is MANDATORY**: Must export and analyze metrics first
 2. **Decision Based on Data**: Only implement if network time >40%
 3. **Backward Compatibility**: Sync mode remains default
 4. **Performance Threshold**: Must show 30%+ improvement
@@ -177,7 +177,7 @@ This folder contains comprehensive, analytical documentation for each step of Ph
 
 ## 🔗 Related Documentation
 
-- **Phase 3**: Performance metrics (required before Phase 6)
+- **Phase 3**: Performance metrics (required before Phase 8)
 - **Phase 0**: Backend foundation (beatport_search, matcher, processor)
 - **Phase 1**: GUI foundation (config panel, main window)
 

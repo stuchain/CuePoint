@@ -368,7 +368,7 @@ pool = QueuePool(
 ### 5. Async I/O (if applicable)
 
 ```python
-# Use async I/O for network operations (see Phase 6)
+# Use async I/O for network operations (see Phase 8)
 import asyncio
 
 async def fetch_multiple_tracks(urls: List[str]):
@@ -498,7 +498,7 @@ After completing this step:
 2. Address any critical regressions
 3. Document performance characteristics
 4. Mark Phase 5 as complete
-5. Proceed to next phase (Phase 7 or Phase 8)
+5. Proceed to next phase (Phase 7 or Phase 6)
 
 ---
 

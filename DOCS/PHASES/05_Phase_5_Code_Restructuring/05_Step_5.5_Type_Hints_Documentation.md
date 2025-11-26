@@ -229,7 +229,7 @@ __all__ = [
 2. Document UI components
 3. Document controller interfaces
 
-### Phase 6: Models and Utils (0.5 days)
+### Phase 8: Models and Utils (0.5 days)
 
 **Files to Update:**
 - `src/cuepoint/models/*.py`

@@ -1,9 +1,9 @@
-# Step 6.4: Add Configuration and Mode Switching with UI Integration
+# Step 8.4: Add Configuration and Mode Switching with UI Integration
 
 **Status**: 📝 Planned  
-**Priority**: 🚀 Medium (Only if Step 6.0 recommends implementation)  
+**Priority**: 🚀 Medium (Only if Step 8.0 recommends implementation)  
 **Estimated Duration**: 1-2 days  
-**Dependencies**: Step 6.3 (async processor wrapper), Phase 1 (config panel exists)
+**Dependencies**: Step 8.3 (async processor wrapper), Phase 1 (config panel exists)
 
 ---
 
@@ -667,7 +667,7 @@ After completing this step:
 
 1. **Test UI** thoroughly
 2. **Test mode switching** between sync/async
-3. **Proceed to Step 6.5** for comprehensive testing
+3. **Proceed to Step 8.5** for comprehensive testing
 
 ---
 

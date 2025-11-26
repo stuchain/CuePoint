@@ -291,5 +291,5 @@ Phase 5 documentation is organized into individual step files:
 
 ---
 
-**Next Phase**: After code restructuring is complete, proceed to Phase 7 (Packaging & Polish) or Phase 8 (UI Restructuring & Modern Design) as prioritized.
+**Next Phase**: After code restructuring is complete, proceed to Phase 7 (Packaging & Polish) or Phase 6 (UI Restructuring & Modern Design) as prioritized.
 
