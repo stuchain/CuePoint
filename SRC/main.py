@@ -20,11 +20,19 @@ Example usage:
 
 import argparse
 import sys
+import os
 
-from config import SETTINGS, load_config_from_yaml
-from error_handling import error_file_not_found, error_config_invalid, error_missing_dependency, print_error
-from processor import run
-from utils import startup_banner
+# Add src to path for imports
+if __name__ == "__main__":
+    src_path = os.path.dirname(os.path.abspath(__file__))
+    if src_path not in sys.path:
+        sys.path.insert(0, src_path)
+
+from cuepoint.models.config import SETTINGS, load_config_from_yaml
+from cuepoint.utils.errors import error_file_not_found, error_config_invalid, error_missing_dependency, print_error
+from cuepoint.services.processor import run
+from cuepoint.utils.utils import startup_banner
+from cuepoint.services.bootstrap import bootstrap_services
 
 
 def main():
@@ -32,11 +40,15 @@ def main():
     Main CLI entry point
     
     This function:
-    1. Sets up argument parser with all available options
-    2. Applies configuration presets based on flags (--fast, --turbo, --myargs, etc.)
-    3. Shows startup banner with configuration fingerprint
-    4. Calls processor.run() to execute the main processing logic
+    1. Bootstraps services (dependency injection setup)
+    2. Sets up argument parser with all available options
+    3. Applies configuration presets based on flags (--fast, --turbo, --myargs, etc.)
+    4. Shows startup banner with configuration fingerprint
+    5. Calls processor.run() to execute the main processing logic
     """
+    # Bootstrap services (dependency injection setup)
+    bootstrap_services()
+    
     # Set up command-line argument parser with all available options
     ap = argparse.ArgumentParser(description="Enrich Rekordbox playlist with Beatport metadata (Accuracy + Logs + Candidates)")
     
@@ -102,7 +114,8 @@ def main():
                     if len(type_parts) == 2:
                         expected_type = type_parts[0].strip()
                         value_parts = type_parts[1].split(" (")
-                        actual_value = value_parts[0].strip() if value_parts else None
+                        if len(value_parts) >= 1:
+                            actual_value = value_parts[0].strip() if value_parts else None
             
             print_error(error_config_invalid(args.config, e, invalid_key, expected_type, actual_value))
         except Exception as e:
@@ -218,4 +231,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

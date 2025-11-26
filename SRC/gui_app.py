@@ -12,18 +12,22 @@ import sys
 import os
 from PySide6.QtWidgets import QApplication, QMessageBox
 
-# Add SRC to path if needed (for imports)
+# Add src to path if needed (for imports)
 if __name__ == "__main__":
     src_path = os.path.dirname(os.path.abspath(__file__))
     if src_path not in sys.path:
         sys.path.insert(0, src_path)
 
-from gui.main_window import MainWindow
+from cuepoint.ui.main_window import MainWindow
+from cuepoint.services.bootstrap import bootstrap_services
 
 
 def main():
     """Main entry point for GUI application"""
     try:
+        # Bootstrap services (dependency injection setup)
+        bootstrap_services()
+        
         # Create QApplication
         app = QApplication(sys.argv)
         app.setApplicationName("CuePoint")
@@ -61,4 +65,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
