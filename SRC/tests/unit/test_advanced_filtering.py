@@ -41,7 +41,7 @@ class TestAdvancedFiltering(unittest.TestCase):
         self.view = ResultsView()
         
         # Create comprehensive test data
-        self.view.results = [
+        test_results = [
             MockTrackResult(
                 playlist_index=1,
                 title="Track 2020",
@@ -99,7 +99,8 @@ class TestAdvancedFiltering(unittest.TestCase):
                 beatport_year=None
             ),
         ]
-        self.view.filtered_results = self.view.results.copy()
+        # Use set_results to properly initialize the controller
+        self.view.set_results(test_results, "Test Playlist")
     
     def tearDown(self):
         """Clean up test fixtures"""
@@ -109,7 +110,8 @@ class TestAdvancedFiltering(unittest.TestCase):
         """Test year range filter with minimum year only"""
         self.view.year_min.setValue(2020)
         self.view.year_max.setValue(2100)  # Default max
-        self.view.apply_filters()
+        # apply_filters calls _filter_results which updates filtered_results
+        self.view._filter_results()
         
         filtered = self.view.filtered_results
         # Should include tracks from 2020, 2023 (but not 2015, and not unmatched/no year)
@@ -123,7 +125,7 @@ class TestAdvancedFiltering(unittest.TestCase):
         """Test year range filter with maximum year only"""
         self.view.year_min.setValue(1900)  # Default min
         self.view.year_max.setValue(2020)
-        self.view.apply_filters()
+        self.view._filter_results()
         
         filtered = self.view.filtered_results
         years = [int(r.beatport_year) for r in filtered if r.matched and r.beatport_year]
@@ -136,7 +138,7 @@ class TestAdvancedFiltering(unittest.TestCase):
         """Test year range filter with both min and max"""
         self.view.year_min.setValue(2018)
         self.view.year_max.setValue(2022)
-        self.view.apply_filters()
+        self.view._filter_results()
         
         filtered = self.view.filtered_results
         years = [int(r.beatport_year) for r in filtered if r.matched and r.beatport_year]
@@ -149,7 +151,7 @@ class TestAdvancedFiltering(unittest.TestCase):
         """Test BPM range filter with minimum BPM only"""
         self.view.bpm_min.setValue(130)
         self.view.bpm_max.setValue(200)  # Default max
-        self.view.apply_filters()
+        self.view._filter_results()
         
         filtered = self.view.filtered_results
         bpms = [float(r.beatport_bpm) for r in filtered if r.matched and r.beatport_bpm]
@@ -162,7 +164,7 @@ class TestAdvancedFiltering(unittest.TestCase):
         """Test BPM range filter with maximum BPM only"""
         self.view.bpm_min.setValue(60)  # Default min
         self.view.bpm_max.setValue(130)
-        self.view.apply_filters()
+        self.view._filter_results()
         
         filtered = self.view.filtered_results
         bpms = [float(r.beatport_bpm) for r in filtered if r.matched and r.beatport_bpm]
@@ -174,7 +176,7 @@ class TestAdvancedFiltering(unittest.TestCase):
     def test_key_filter_specific_key(self):
         """Test key filter with specific key"""
         self.view.key_filter.setCurrentText("C Major")
-        self.view.apply_filters()
+        self.view._filter_results()
         
         filtered = self.view.filtered_results
         keys = [r.beatport_key for r in filtered if r.matched and r.beatport_key]
@@ -187,7 +189,7 @@ class TestAdvancedFiltering(unittest.TestCase):
         self.view.year_max.setValue(2023)
         self.view.bpm_min.setValue(128)
         self.view.bpm_max.setValue(135)
-        self.view.apply_filters()
+        self.view._filter_results()
         
         filtered = self.view.filtered_results
         for result in filtered:
@@ -217,6 +219,7 @@ class TestAdvancedFiltering(unittest.TestCase):
         self.assertEqual(self.view.search_box.text(), "")
         self.assertEqual(self.view.confidence_filter.currentText(), "All")
         
+        # clear_filters() calls _filter_results() internally, so filtered_results should be updated
         # Verify all results shown
         self.assertEqual(len(self.view.filtered_results), len(self.view.results))
 

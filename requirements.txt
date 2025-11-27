@@ -37,3 +37,13 @@ selenium>=4.15.0
 # Excel export support (for GUI export functionality)
 openpyxl>=3.1.0
 
+# Testing dependencies
+pytest>=7.0.0
+pytest-qt>=4.0.0
+pytest-cov>=4.0.0
+pytest-mock>=3.10.0
+pytest-asyncio>=0.21.0
+pytest-timeout>=2.1.0
+coverage>=7.0.0
+pytest-xdist>=3.0.0
+
