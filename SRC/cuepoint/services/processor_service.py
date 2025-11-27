@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional
 from cuepoint.core.mix_parser import _extract_generic_parenthetical_phrases, _parse_mix_flags
 from cuepoint.core.query_generator import make_search_queries
 from cuepoint.core.text_processing import sanitize_title_for_search
-from cuepoint.data.rekordbox import RBTrack, extract_artists_from_title
+from cuepoint.data.rekordbox import RBTrack, extract_artists_from_title, parse_rekordbox
 from cuepoint.models.config import SETTINGS
 from cuepoint.services.interfaces import (
     IBeatportService,
@@ -22,7 +22,14 @@ from cuepoint.services.interfaces import (
     IMatcherService,
     IProcessorService,
 )
-from cuepoint.ui.gui_interface import TrackResult
+from cuepoint.ui.gui_interface import (
+    ErrorType,
+    ProcessingController,
+    ProcessingError,
+    ProgressCallback,
+    ProgressInfo,
+    TrackResult,
+)
 
 
 class ProcessorService(IProcessorService):
@@ -256,5 +263,233 @@ class ProcessorService(IProcessorService):
             self.logging_service.info(f"Processing track {idx}/{total}")
             result = self.process_track(idx, track, settings)
             results.append(result)
+
+        return results
+
+    def process_playlist_from_xml(
+        self,
+        xml_path: str,
+        playlist_name: str,
+        settings: Optional[Dict[str, Any]] = None,
+        progress_callback: Optional[ProgressCallback] = None,
+        controller: Optional[ProcessingController] = None,
+        auto_research: bool = False,
+    ) -> List[TrackResult]:
+        """Process playlist from XML file with GUI-friendly interface.
+
+        This method processes all tracks in a playlist from a Rekordbox XML file
+        and returns structured results. It supports progress callbacks, cancellation,
+        and auto-research of unmatched tracks.
+
+        Args:
+            xml_path: Path to Rekordbox XML export file.
+            playlist_name: Name of playlist to process (must exist in XML).
+            settings: Optional settings override dictionary.
+            progress_callback: Optional callback for progress updates.
+            controller: Optional controller for cancellation support.
+            auto_research: If True, automatically re-search unmatched tracks with
+                enhanced settings.
+
+        Returns:
+            List of TrackResult objects (one per track).
+
+        Raises:
+            ProcessingError: If XML file not found, playlist not found, or parsing
+                errors occur.
+        """
+        # Track processing start time
+        processing_start_time = time.perf_counter()
+
+        # Use provided settings or fall back to config service
+        effective_settings = (
+            settings
+            if settings is not None
+            else {key: self.config_service.get(key, SETTINGS.get(key)) for key in SETTINGS.keys()}
+        )
+
+        # Parse Rekordbox XML file to extract tracks and playlists
+        try:
+            tracks_by_id, playlists = parse_rekordbox(xml_path)
+        except FileNotFoundError:
+            raise ProcessingError(
+                error_type=ErrorType.FILE_NOT_FOUND,
+                message=f"XML file not found: {xml_path}",
+                details="The specified Rekordbox XML export file does not exist.",
+                suggestions=[
+                    "Check that the file path is correct",
+                    "Verify the file exists and is readable",
+                    "Ensure the file path uses forward slashes (/) or escaped backslashes (\\)",
+                ],
+                recoverable=False,
+            )
+        except Exception as e:
+            # XML parsing errors
+            error_msg = str(e)
+            if error_msg.startswith("="):
+                # Error message already formatted by rekordbox.py
+                raise ProcessingError(
+                    error_type=ErrorType.XML_PARSE_ERROR,
+                    message=error_msg,
+                    details=f"Failed to parse XML file: {xml_path}",
+                    suggestions=[
+                        "Verify the XML file is a valid Rekordbox export",
+                        "Check that the file is not corrupted",
+                        "Try exporting a fresh XML file from Rekordbox",
+                    ],
+                    recoverable=False,
+                )
+            else:
+                # Generic parsing error
+                raise ProcessingError(
+                    error_type=ErrorType.XML_PARSE_ERROR,
+                    message=f"XML parsing failed: {error_msg}",
+                    details=f"Error occurred while parsing XML file: {xml_path}",
+                    suggestions=[
+                        "Verify the XML file is a valid Rekordbox export",
+                        "Check that the file is not corrupted",
+                        "Try exporting a fresh XML file from Rekordbox",
+                    ],
+                    recoverable=False,
+                )
+
+        # Validate that requested playlist exists in the XML
+        if playlist_name not in playlists:
+            available_playlists = sorted(playlists.keys())
+            raise ProcessingError(
+                error_type=ErrorType.PLAYLIST_NOT_FOUND,
+                message=f"Playlist '{playlist_name}' not found in XML file",
+                details=(
+                    f"Available playlists: {', '.join(available_playlists[:10])}"
+                    f"{'...' if len(available_playlists) > 10 else ''}"
+                ),
+                suggestions=[
+                    "Check the playlist name spelling (case-sensitive)",
+                    f"Verify '{playlist_name}' exists in your Rekordbox library",
+                    "Export a fresh XML file from Rekordbox",
+                    "Choose from available playlists listed above",
+                ],
+                recoverable=True,
+            )
+
+        # Get track IDs for the requested playlist
+        tids = playlists[playlist_name]
+
+        # Build list of tracks to process
+        tracks: List[RBTrack] = []
+        for tid in tids:
+            rb = tracks_by_id.get(tid)
+            if rb:
+                tracks.append(rb)
+
+        if not tracks:
+            raise ProcessingError(
+                error_type=ErrorType.VALIDATION_ERROR,
+                message=f"Playlist '{playlist_name}' is empty",
+                details="The playlist contains no valid tracks.",
+                suggestions=[
+                    "Verify the playlist has tracks in Rekordbox",
+                    "Export a fresh XML file from Rekordbox",
+                ],
+                recoverable=True,
+            )
+
+        # Process tracks
+        results: List[TrackResult] = []
+        matched_count = 0
+        unmatched_count = 0
+        total = len(tracks)
+
+        for idx, track in enumerate(tracks, 1):
+            # Check for cancellation
+            if controller and controller.is_cancelled():
+                self.logging_service.info("Processing cancelled by user")
+                break
+
+            # Process track
+            result = self.process_track(idx, track, effective_settings)
+            results.append(result)
+
+            # Update statistics
+            if result.matched:
+                matched_count += 1
+            else:
+                unmatched_count += 1
+
+            # Update progress callback
+            if progress_callback:
+                elapsed_time = time.perf_counter() - processing_start_time
+                progress_info = ProgressInfo(
+                    completed_tracks=idx,
+                    total_tracks=total,
+                    matched_count=matched_count,
+                    unmatched_count=unmatched_count,
+                    current_track={"title": track.title, "artists": track.artists or ""},
+                    elapsed_time=elapsed_time,
+                )
+                try:
+                    progress_callback(progress_info)
+                except Exception:
+                    # Don't let callback errors break processing
+                    pass
+
+        # Handle auto-research for unmatched tracks if requested and not cancelled
+        if auto_research and not (controller and controller.is_cancelled()):
+            unmatched_results = [r for r in results if not r.matched]
+            if unmatched_results:
+                self.logging_service.info(
+                    f"Auto-research: Found {len(unmatched_results)} unmatched "
+                    f"track(s), re-searching with enhanced settings..."
+                )
+
+                # Enhanced settings for re-search
+                enhanced_settings = effective_settings.copy()
+                enhanced_settings["PER_TRACK_TIME_BUDGET_SEC"] = max(
+                    enhanced_settings.get("PER_TRACK_TIME_BUDGET_SEC", 45), 90
+                )
+                enhanced_settings["MAX_SEARCH_RESULTS"] = max(
+                    enhanced_settings.get("MAX_SEARCH_RESULTS", 50), 100
+                )
+                enhanced_settings["MAX_QUERIES_PER_TRACK"] = max(
+                    enhanced_settings.get("MAX_QUERIES_PER_TRACK", 40), 60
+                )
+                enhanced_settings["MIN_ACCEPT_SCORE"] = max(
+                    enhanced_settings.get("MIN_ACCEPT_SCORE", 70), 60
+                )
+
+                # Re-search unmatched tracks
+                for result in unmatched_results:
+                    if controller and controller.is_cancelled():
+                        break
+
+                    idx = result.playlist_index
+                    # Find the original track
+                    track = tracks[idx - 1] if idx <= len(tracks) else None
+                    if track:
+                        new_result = self.process_track(idx, track, enhanced_settings)
+                        # Update the result if we found a match
+                        if new_result.matched:
+                            # Replace the unmatched result with the new matched result
+                            results[idx - 1] = new_result
+                            matched_count += 1
+                            unmatched_count -= 1
+
+                            # Update progress callback
+                            if progress_callback:
+                                elapsed_time = time.perf_counter() - processing_start_time
+                                progress_info = ProgressInfo(
+                                    completed_tracks=len(results),
+                                    total_tracks=total,
+                                    matched_count=matched_count,
+                                    unmatched_count=unmatched_count,
+                                    current_track={
+                                        "title": track.title,
+                                        "artists": track.artists or "",
+                                    },
+                                    elapsed_time=elapsed_time,
+                                )
+                                try:
+                                    progress_callback(progress_info)
+                                except Exception:
+                                    pass
 
         return results

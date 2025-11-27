@@ -127,8 +127,8 @@ def parse_rekordbox(xml_path: str) -> Tuple[Dict[str, RBTrack], Dict[str, List[s
                     ref = tr.get("Key") or tr.get("TrackID") or tr.get("ID")
                     if ref:
                         track_ids.append(ref)
-                if track_ids:
-                    playlists[pname] = track_ids
+                # Always add playlist, even if empty (empty playlists are valid)
+                playlists[pname] = track_ids
 
     return tracks_by_id, playlists
 

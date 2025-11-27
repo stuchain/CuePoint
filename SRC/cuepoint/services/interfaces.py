@@ -9,10 +9,10 @@ These interfaces enable dependency injection and testability.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from cuepoint.data.rekordbox import RBTrack
-from cuepoint.ui.gui_interface import TrackResult
+from cuepoint.ui.gui_interface import ProcessingController, ProgressCallback, TrackResult
 
 
 class ILoggingService(ABC):
@@ -151,4 +151,38 @@ class IProcessorService(ABC):
         self, tracks: List[RBTrack], settings: Optional[Dict[str, Any]] = None
     ) -> List[TrackResult]:
         """Process a playlist of tracks."""
+        pass
+
+    @abstractmethod
+    def process_playlist_from_xml(
+        self,
+        xml_path: str,
+        playlist_name: str,
+        settings: Optional[Dict[str, Any]] = None,
+        progress_callback: Optional[ProgressCallback] = None,
+        controller: Optional[ProcessingController] = None,
+        auto_research: bool = False,
+    ) -> List[TrackResult]:
+        """Process playlist from XML file with GUI-friendly interface.
+
+        This method processes all tracks in a playlist from a Rekordbox XML file
+        and returns structured results. It supports progress callbacks, cancellation,
+        and auto-research of unmatched tracks.
+
+        Args:
+            xml_path: Path to Rekordbox XML export file.
+            playlist_name: Name of playlist to process (must exist in XML).
+            settings: Optional settings override dictionary.
+            progress_callback: Optional callback for progress updates.
+            controller: Optional controller for cancellation support.
+            auto_research: If True, automatically re-search unmatched tracks with
+                enhanced settings.
+
+        Returns:
+            List of TrackResult objects (one per track).
+
+        Raises:
+            ProcessingError: If XML file not found, playlist not found, or parsing
+                errors occur.
+        """
         pass

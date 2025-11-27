@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import QObject, QThread, Signal
 
-from cuepoint.services.processor import process_playlist
+from cuepoint.services.interfaces import IProcessorService
 from cuepoint.ui.gui_interface import (
     ErrorType,
     ProcessingController,
@@ -27,6 +27,7 @@ from cuepoint.ui.gui_interface import (
     ProgressInfo,
     TrackResult,
 )
+from cuepoint.utils.di_container import get_container
 
 
 class ProcessingWorker(QThread):
@@ -101,21 +102,25 @@ class ProcessingWorker(QThread):
         """Run processing in background thread.
 
         This method is called automatically when the thread starts via start().
-        It calls process_playlist() and emits signals for GUI updates. Handles
-        exceptions and converts them to ProcessingError objects for consistent
-        error handling.
+        It uses ProcessorService from the DI container to process the playlist
+        and emits signals for GUI updates. Handles exceptions and converts them
+        to ProcessingError objects for consistent error handling.
 
         Raises:
             ProcessingError: If processing fails (emitted as signal).
         """
         try:
+            # Get ProcessorService from DI container
+            container = get_container()
+            processor_service: IProcessorService = container.resolve(IProcessorService)
+
             # Create progress callback that emits signal
             def progress_callback(progress_info: ProgressInfo):
                 """Progress callback that emits signal to GUI"""
                 self.progress_updated.emit(progress_info)
 
-            # Process playlist using backend function
-            results = process_playlist(
+            # Process playlist using ProcessorService
+            results = processor_service.process_playlist_from_xml(
                 xml_path=self.xml_path,
                 playlist_name=self.playlist_name,
                 settings=self.settings,
