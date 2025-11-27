@@ -179,7 +179,7 @@ def retry_with_backoff(
     """
     if exceptions is None:
         try:
-            from requests.exceptions import (
+            from requests.exceptions import (  # type: ignore[import-untyped]
                 ConnectionError,
                 HTTPError,
                 RequestException,

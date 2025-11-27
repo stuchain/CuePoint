@@ -92,19 +92,19 @@ class DIContainer:
         """
         # Check singletons first
         if interface in self._singletons:
-            return self._singletons[interface]
+            return self._singletons[interface]  # type: ignore[no-any-return]
 
         # Check factories
         if interface in self._factories:
             instance = self._factories[interface]()
-            return instance
+            return instance  # type: ignore[no-any-return]
 
         # Check transient services
         if interface in self._services:
             impl_class = self._services[interface]
             # Resolve dependencies for constructor
             instance = self._create_instance(impl_class)
-            return instance
+            return instance  # type: ignore[no-any-return]
 
         raise ValueError(f"Service {interface} not registered")
 

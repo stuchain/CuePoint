@@ -76,6 +76,16 @@ class IConfigService(ABC):
         """Set configuration value."""
         pass
 
+    @abstractmethod
+    def save(self) -> None:
+        """Save configuration to persistent storage."""
+        pass
+
+    @abstractmethod
+    def load(self) -> None:
+        """Load configuration from persistent storage."""
+        pass
+
 
 class IExportService(ABC):
     """Interface for export operations."""
@@ -115,9 +125,27 @@ class IMatcherService(ABC):
         input_generic_phrases: Optional[List[str]] = None,
     ) -> Tuple[Any, List[Any], List[Any], int]:
         """Find best Beatport match for a track.
-
+        
+        Executes search queries, fetches candidate data, scores candidates,
+        and returns the best match along with all candidates and query audit trail.
+        
+        Args:
+            idx: Track index (1-based) for logging.
+            track_title: Track title to match.
+            track_artists_for_scoring: Artist string for scoring (may differ from title).
+            title_only_mode: If True, only match on title (ignore artist).
+            queries: List of search queries to execute.
+            input_year: Optional input year for bonus scoring.
+            input_key: Optional input key for bonus scoring.
+            input_mix: Optional mix flags dictionary.
+            input_generic_phrases: Optional list of generic phrases from title.
+        
         Returns:
-            Tuple of (best_candidate, all_candidates, queries_audit, last_query_index)
+            Tuple containing:
+            - best_candidate: Best matching BeatportCandidate or None if no match
+            - all_candidates: List of all evaluated BeatportCandidate objects
+            - queries_audit: List of query execution audit tuples (query_index, query_text, candidate_count, elapsed_ms)
+            - last_query_index: Index of last query executed (0-based)
         """
         pass
 

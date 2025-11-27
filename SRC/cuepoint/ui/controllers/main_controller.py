@@ -112,7 +112,7 @@ class ProcessingWorker(QThread):
         try:
             # Get ProcessorService from DI container
             container = get_container()
-            processor_service: IProcessorService = container.resolve(IProcessorService)
+            processor_service: IProcessorService = container.resolve(IProcessorService)  # type: ignore[type-abstract]
 
             # Create progress callback that emits signal
             def progress_callback(progress_info: ProgressInfo):
@@ -212,6 +212,10 @@ class GUIController(QObject):
         self.batch_xml_path: str = ""
         self.batch_settings: Optional[Dict[str, Any]] = None
         self.batch_auto_research: bool = False
+        self.current_batch_playlist_name: Optional[str] = None
+        self.last_completed_playlist_name: Optional[str] = None
+        self.current_batch_playlist_name: Optional[str] = None
+        self.last_completed_playlist_name: Optional[str] = None
 
     def start_processing(
         self,
@@ -322,7 +326,7 @@ class GUIController(QObject):
         self.batch_xml_path = xml_path
         self.batch_settings = settings
         self.batch_auto_research = auto_research
-        self.current_batch_playlist_name = None  # Track current playlist being processed
+        # Track current playlist being processed (already initialized in __init__)
         self.last_completed_playlist_name = None  # Track last completed playlist name
 
         # Start processing first playlist

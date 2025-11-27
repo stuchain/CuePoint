@@ -130,6 +130,7 @@ class PerformanceCollector:
         if not self._stats:
             self.start_session()
 
+        assert self._stats is not None  # Type guard for mypy
         track_metrics = TrackMetrics(track_id=track_id, track_title=track_title)
         self._stats.track_metrics.append(track_metrics)
         self._stats.total_tracks += 1
@@ -169,6 +170,8 @@ class PerformanceCollector:
         )
         track_metrics.queries.append(query_metric)
         track_metrics.total_queries += 1
+        
+        assert self._stats is not None  # Type guard for mypy
         self._stats.query_metrics.append(query_metric)
 
         # Update cache stats
@@ -205,6 +208,7 @@ class PerformanceCollector:
         track_metrics.early_exit_query_index = early_exit_query_index
         track_metrics.candidates_evaluated = candidates_evaluated
 
+        assert self._stats is not None  # Type guard for mypy
         if match_found:
             self._stats.matched_tracks += 1
         else:
@@ -228,6 +232,7 @@ class PerformanceCollector:
         if not self._stats:
             self.start_session()
 
+        assert self._stats is not None  # Type guard for mypy
         filter_metric = FilterMetrics(
             duration=duration,
             initial_count=initial_count,

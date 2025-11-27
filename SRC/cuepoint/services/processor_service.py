@@ -463,7 +463,7 @@ class ProcessorService(IProcessorService):
 
                     idx = result.playlist_index
                     # Find the original track
-                    track = tracks[idx - 1] if idx <= len(tracks) else None
+                    track: Optional[RBTrack] = tracks[idx - 1] if idx <= len(tracks) else None
                     if track:
                         new_result = self.process_track(idx, track, enhanced_settings)
                         # Update the result if we found a match

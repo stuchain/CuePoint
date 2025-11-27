@@ -26,7 +26,7 @@ def get_logger() -> ILoggingService:
     try:
         container = get_container()
         if container.is_registered(ILoggingService):
-            return container.resolve(ILoggingService)
+            return container.resolve(ILoggingService)  # type: ignore[type-abstract,no-any-return]
     except Exception:
         pass
 

@@ -216,7 +216,7 @@ def error_xml_parsing(xml_path: str, error: Exception, line_number: Optional[int
     }
 
     if line_number:
-        context["Line number"] = line_number
+        context["Line number"] = str(line_number)
         suggestions.append(f"Check line {line_number} in the XML file for syntax errors")
 
     see_also = "Rekordbox XML export format documentation"

@@ -39,7 +39,7 @@ Example config.yaml structure:
 
 import os
 
-import requests
+import requests  # type: ignore[import-untyped]
 
 # -----------------------------
 # Main Configuration Dictionary
@@ -331,7 +331,7 @@ SESSION.headers.update(HEADERS)
 # Check if requests-cache is available for HTTP response caching
 # If available, responses are cached to speed up repeated runs
 try:
-    import requests_cache  # type: ignore  # noqa: F401
+    import requests_cache  # noqa: F401
 
     HAVE_CACHE = True
 except Exception:
@@ -375,7 +375,9 @@ def _flatten_yaml_dict(nested_dict: dict, parent_key: str = "", sep: str = "_") 
     Returns:
         Flattened dictionary with uppercase keys matching SETTINGS format
     """
-    items = []
+    from typing import Any, List
+    
+    items: list[tuple[str, Any]] = []
     for key, value in nested_dict.items():
         # Convert key to uppercase to match SETTINGS convention
         new_key = key.upper()
@@ -474,7 +476,7 @@ def load_config_from_yaml(yaml_path: str) -> dict:
         ValueError: If YAML contains invalid setting values
     """
     try:
-        import yaml
+        import yaml  # type: ignore[import-untyped]
     except ImportError:
         raise ImportError("YAML support requires pyyaml. Install with: pip install pyyaml>=6.0")
 

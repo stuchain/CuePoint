@@ -68,7 +68,7 @@ class BeatportService(IBeatportService):
         # Cache results (1 hour TTL)
         self.cache_service.set(cache_key, urls, ttl=3600)
 
-        return urls
+        return urls  # type: ignore[no-any-return]
 
     def fetch_track_data(self, url: str) -> Optional[Dict[str, Any]]:
         """Fetch detailed track data from Beatport URL.
@@ -120,7 +120,7 @@ class BeatportService(IBeatportService):
             # Cache result (24 hours TTL)
             self.cache_service.set(cache_key, track_data, ttl=86400)
 
-            return track_data
+            return track_data  # type: ignore[no-any-return]
         except Exception as e:
             self.logging_service.error(f"Error fetching track data from {url}: {e}")
             return None
