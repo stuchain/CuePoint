@@ -54,3 +54,6 @@ class TestConfigService:
         value = service.get("TITLE_WEIGHT", 0.5)
         assert value == SETTINGS.get("TITLE_WEIGHT")
 
+
+
+

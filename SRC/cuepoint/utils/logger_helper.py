@@ -9,17 +9,18 @@ Useful for legacy code that hasn't been migrated to dependency injection.
 """
 
 from typing import Optional
-from cuepoint.utils.di_container import get_container
+
 from cuepoint.services.interfaces import ILoggingService
 from cuepoint.services.logging_service import LoggingService
+from cuepoint.utils.di_container import get_container
 
 
 def get_logger() -> ILoggingService:
     """Get a logger instance.
-    
+
     Tries to get logger from DI container first. If not available,
     creates a new LoggingService instance.
-    
+
     Returns:
         ILoggingService instance.
     """
@@ -29,7 +30,6 @@ def get_logger() -> ILoggingService:
             return container.resolve(ILoggingService)
     except Exception:
         pass
-    
+
     # Fallback: create a new instance
     return LoggingService()
-

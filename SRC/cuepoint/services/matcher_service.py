@@ -7,14 +7,15 @@ Matcher Service Implementation
 Service for finding best Beatport matches for tracks.
 """
 
-from typing import List, Optional, Dict, Tuple
-from cuepoint.services.interfaces import IMatcherService
+from typing import Dict, List, Optional, Tuple
+
 from cuepoint.core.matcher import best_beatport_match
+from cuepoint.services.interfaces import IMatcherService
 
 
 class MatcherService(IMatcherService):
     """Implementation of track matching service."""
-    
+
     def find_best_match(
         self,
         idx: int,
@@ -29,7 +30,7 @@ class MatcherService(IMatcherService):
     ) -> tuple:
         """
         Find best Beatport match for a track.
-        
+
         Returns:
             Tuple of (best_candidate, all_candidates, queries_audit, last_query_index)
         """
@@ -44,5 +45,3 @@ class MatcherService(IMatcherService):
             input_mix=input_mix,
             input_generic_phrases=input_generic_phrases,
         )
-
-

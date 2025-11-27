@@ -133,3 +133,6 @@ class TestDIIntegration:
         assert beatport1.logging_service is beatport2.logging_service  # Same singleton
 
 
+
+
+

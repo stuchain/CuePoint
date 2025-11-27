@@ -1,6 +1,3 @@
-lxml-stubs
-types-PySocks
 types-PyYAML
-types-html5lib
 types-requests
 types-tqdm

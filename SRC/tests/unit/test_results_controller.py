@@ -170,3 +170,6 @@ def test_bpm_in_range(controller, sample_results):
     assert controller._bpm_in_range(result, 130, 140) is False
     assert controller._bpm_in_range(result, None, 127) is False
 
+
+
+

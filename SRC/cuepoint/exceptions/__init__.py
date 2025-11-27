@@ -3,13 +3,13 @@ Custom exceptions.
 """
 
 from cuepoint.exceptions.cuepoint_exceptions import (
-    CuePointException,
-    ProcessingError,
     BeatportAPIError,
-    ValidationError,
+    CacheError,
     ConfigurationError,
+    CuePointException,
     ExportError,
-    CacheError
+    ProcessingError,
+    ValidationError,
 )
 
 __all__ = [
@@ -19,6 +19,5 @@ __all__ = [
     "ValidationError",
     "ConfigurationError",
     "ExportError",
-    "CacheError"
+    "CacheError",
 ]
-

@@ -127,3 +127,6 @@ class TestMakeSearchQueries:
         # Should still generate some queries or return empty list
         assert isinstance(queries, list)
 
+
+
+
