@@ -39,7 +39,10 @@ from PySide6.QtWidgets import (
 )
 
 from cuepoint.services.output_writer import write_csv_files
+from cuepoint.ui.controllers.config_controller import ConfigController
+from cuepoint.ui.controllers.export_controller import ExportController
 from cuepoint.ui.controllers.main_controller import GUIController
+from cuepoint.ui.controllers.results_controller import ResultsController
 from cuepoint.ui.gui_interface import ProcessingError, ProgressInfo, TrackResult
 from cuepoint.ui.widgets.batch_processor import BatchProcessorWidget
 from cuepoint.ui.widgets.config_panel import ConfigPanel
@@ -92,6 +95,10 @@ class MainWindow(QMainWindow):
         super().__init__(parent)
         # Create GUI controller for processing
         self.controller = GUIController()
+        # Create controllers for UI components
+        self.results_controller = ResultsController()
+        self.export_controller = ExportController()
+        self.config_controller = ConfigController()
         # Create shortcut manager
         self.shortcut_manager = ShortcutManager(self)
         self.shortcut_manager.shortcut_conflict.connect(self.on_shortcut_conflict)
@@ -239,7 +246,10 @@ class MainWindow(QMainWindow):
         # Initially hidden until processing completes
         self.results_group = QGroupBox("Results")
         results_layout = QVBoxLayout()
-        self.results_view = ResultsView()
+        self.results_view = ResultsView(
+            results_controller=self.results_controller,
+            export_controller=self.export_controller,
+        )
         results_layout.addWidget(self.results_view)
         self.results_group.setLayout(results_layout)
         self.results_group.setVisible(False)  # Hidden until processing completes
@@ -257,14 +267,14 @@ class MainWindow(QMainWindow):
         settings_tab = QWidget()
         settings_layout = QVBoxLayout(settings_tab)
         settings_layout.setContentsMargins(10, 10, 10, 10)
-        self.config_panel = ConfigPanel()
+        self.config_panel = ConfigPanel(config_controller=self.config_controller)
         settings_layout.addWidget(self.config_panel)
 
         # History tab (Past Searches)
         history_tab = QWidget()
         history_layout = QVBoxLayout(history_tab)
         history_layout.setContentsMargins(10, 10, 10, 10)
-        self.history_view = HistoryView()
+        self.history_view = HistoryView(export_controller=self.export_controller)
         history_layout.addWidget(self.history_view)
 
         # Add tabs

@@ -37,6 +37,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from cuepoint.ui.controllers.export_controller import ExportController
 from cuepoint.ui.dialogs.export_dialog import ExportDialog
 from cuepoint.ui.widgets.candidate_dialog import CandidateDialog
 
@@ -52,8 +53,12 @@ except ImportError:
 class HistoryView(QWidget):
     """Widget for viewing past search results from CSV files"""
 
-    def __init__(self, parent=None):
+    def __init__(
+        self, export_controller: Optional[ExportController] = None, parent=None
+    ):
         super().__init__(parent)
+        # Use provided controller or create a new one
+        self.export_controller = export_controller or ExportController()
         self.current_csv_path: Optional[str] = None
         self.csv_rows: List[dict] = []  # Store loaded CSV rows for updates
         self.filtered_rows: List[dict] = []  # Store filtered rows
@@ -1164,7 +1169,7 @@ class HistoryView(QWidget):
             return
 
         # Get rows to export (filtered or all)
-        dialog = ExportDialog(self)
+        dialog = ExportDialog(export_controller=self.export_controller, parent=self)
         if dialog.exec() != QDialog.Accepted:
             return
 

@@ -46,6 +46,8 @@ from PySide6.QtWidgets import (
 )
 
 from cuepoint.services.output_writer import write_csv_files, write_excel_file, write_json_file
+from cuepoint.ui.controllers.export_controller import ExportController
+from cuepoint.ui.controllers.results_controller import ResultsController
 from cuepoint.ui.dialogs.export_dialog import ExportDialog
 from cuepoint.ui.gui_interface import TrackResult
 from cuepoint.ui.widgets.candidate_dialog import CandidateDialog
@@ -99,8 +101,16 @@ class ResultsView(QWidget):
     # Signal emitted when a result is updated (candidate selected)
     result_updated = Signal(int, TrackResult)  # playlist_index, updated_result
 
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
+    def __init__(
+        self,
+        results_controller: Optional[ResultsController] = None,
+        export_controller: Optional[ExportController] = None,
+        parent: Optional[QWidget] = None,
+    ) -> None:
         super().__init__(parent)
+        # Use provided controllers or create new ones
+        self.results_controller = results_controller or ResultsController()
+        self.export_controller = export_controller or ExportController()
         self.results: List[TrackResult] = []
         self.batch_results: Dict[str, List[TrackResult]] = {}  # For batch mode
         self.output_files: dict = {}
@@ -534,8 +544,10 @@ class ResultsView(QWidget):
         """
         self.is_batch_mode = False
         self.results = results
-        self.filtered_results = results.copy()
         self.playlist_name = playlist_name or "playlist"
+        # Use controller to set results
+        self.results_controller.set_results(results)
+        self.filtered_results = self.results_controller.filtered_results.copy()
 
         # Switch to single mode UI
         self.single_table_group.setVisible(True)
@@ -817,39 +829,24 @@ class ResultsView(QWidget):
     def _update_summary(self) -> None:
         """Update summary statistics display for single playlist mode.
 
-        Calculates and displays:
-        - Total tracks, matched/unmatched counts
-        - Match rate percentage
-        - Average match score
-        - Confidence breakdown (high/medium/low)
+        Uses ResultsController to calculate statistics.
         """
         if not self.results:
             self.summary_label.setText("No results yet")
             return
 
-        total = len(self.results)
-        matched = sum(1 for r in self.results if r.matched)
-        unmatched = total - matched
-        match_rate = (matched / total * 100) if total > 0 else 0
-
-        # Calculate average score for matched tracks
-        matched_scores = [
-            r.match_score for r in self.results if r.matched and r.match_score is not None
-        ]
-        avg_score = sum(matched_scores) / len(matched_scores) if matched_scores else 0.0
-
-        # Count by confidence
-        high_conf = sum(1 for r in self.results if r.matched and r.confidence == "high")
-        medium_conf = sum(1 for r in self.results if r.matched and r.confidence == "medium")
-        low_conf = sum(1 for r in self.results if r.matched and r.confidence == "low")
+        # Use controller to get summary statistics
+        stats = self.results_controller.get_summary_statistics()
 
         summary_text = (
             f"✅ Processing Complete!\n\n"
-            f"Total tracks: {total}\n"
-            f"Matched: {matched} ({match_rate:.1f}%)\n"
-            f"Unmatched: {unmatched}\n"
-            f"Average match score: {avg_score:.1f}\n"
-            f"Confidence breakdown: High: {high_conf}, Medium: {medium_conf}, Low: {low_conf}"
+            f"Total tracks: {stats['total']}\n"
+            f"Matched: {stats['matched']} ({stats['match_rate']:.1f}%)\n"
+            f"Unmatched: {stats['unmatched']}\n"
+            f"Average match score: {stats['avg_score']:.1f}\n"
+            f"Confidence breakdown: High: {stats['confidence_breakdown']['high']}, "
+            f"Medium: {stats['confidence_breakdown']['medium']}, "
+            f"Low: {stats['confidence_breakdown']['low']}"
         )
 
         self.summary_label.setText(summary_text)
@@ -857,50 +854,25 @@ class ResultsView(QWidget):
     def _update_batch_summary(self) -> None:
         """Update summary statistics display for batch mode.
 
-        Aggregates statistics across all playlists and displays:
-        - Number of playlists processed
-        - Total tracks across all playlists
-        - Matched/unmatched counts and match rate
-        - Average match score
-        - Confidence breakdown (high/medium/low)
+        Uses ResultsController to calculate aggregate statistics.
         """
         if not self.batch_results:
             self.summary_label.setText("No results yet")
             return
 
-        # Aggregate statistics across all playlists
-        total = 0
-        matched = 0
-        matched_scores = []
-        high_conf = 0
-        medium_conf = 0
-        low_conf = 0
-
-        for playlist_name, results in self.batch_results.items():
-            if results:
-                total += len(results)
-                matched += sum(1 for r in results if r.matched)
-                matched_scores.extend(
-                    [r.match_score for r in results if r.matched and r.match_score is not None]
-                )
-                high_conf += sum(1 for r in results if r.matched and r.confidence == "high")
-                medium_conf += sum(1 for r in results if r.matched and r.confidence == "medium")
-                low_conf += sum(1 for r in results if r.matched and r.confidence == "low")
-
-        unmatched = total - matched
-        match_rate = (matched / total * 100) if total > 0 else 0
-        avg_score = sum(matched_scores) / len(matched_scores) if matched_scores else 0.0
-
-        playlist_count = len([r for r in self.batch_results.values() if r])
+        # Use controller to get batch summary statistics
+        stats = self.results_controller.get_batch_summary_statistics(self.batch_results)
 
         summary_text = (
             f"✅ Batch Processing Complete!\n\n"
-            f"Playlists processed: {playlist_count}\n"
-            f"Total tracks: {total}\n"
-            f"Matched: {matched} ({match_rate:.1f}%)\n"
-            f"Unmatched: {unmatched}\n"
-            f"Average match score: {avg_score:.1f}\n"
-            f"Confidence breakdown: High: {high_conf}, Medium: {medium_conf}, Low: {low_conf}"
+            f"Playlists processed: {stats['playlist_count']}\n"
+            f"Total tracks: {stats['total']}\n"
+            f"Matched: {stats['matched']} ({stats['match_rate']:.1f}%)\n"
+            f"Unmatched: {stats['unmatched']}\n"
+            f"Average match score: {stats['avg_score']:.1f}\n"
+            f"Confidence breakdown: High: {stats['confidence_breakdown']['high']}, "
+            f"Medium: {stats['confidence_breakdown']['medium']}, "
+            f"Low: {stats['confidence_breakdown']['low']}"
         )
 
         self.summary_label.setText(summary_text)
@@ -1029,58 +1001,14 @@ class ResultsView(QWidget):
     def _year_in_range(
         self, result: TrackResult, min_year: Optional[int], max_year: Optional[int]
     ) -> bool:
-        """
-        Check if result year is in range.
-
-        Args:
-            result: TrackResult object
-            min_year: Minimum year (None for no minimum)
-            max_year: Maximum year (None for no maximum)
-
-        Returns:
-            True if year is in range or no year data
-        """
-        if not result.matched or not result.beatport_year:
-            return False  # Only filter matched tracks with year data
-
-        try:
-            year = int(result.beatport_year)
-            if min_year and year < min_year:
-                return False
-            if max_year and year > max_year:
-                return False
-            return True
-        except (ValueError, TypeError):
-            # Invalid year data, exclude from filtered results
-            return False
+        """Check if result's year is in range. Delegates to controller."""
+        return self.results_controller._year_in_range(result, min_year, max_year)
 
     def _bpm_in_range(
         self, result: TrackResult, min_bpm: Optional[int], max_bpm: Optional[int]
     ) -> bool:
-        """
-        Check if result BPM is in range.
-
-        Args:
-            result: TrackResult object
-            min_bpm: Minimum BPM (None for no minimum)
-            max_bpm: Maximum BPM (None for no maximum)
-
-        Returns:
-            True if BPM is in range or no BPM data
-        """
-        if not result.matched or not result.beatport_bpm:
-            return False  # Only filter matched tracks with BPM data
-
-        try:
-            bpm = float(result.beatport_bpm)
-            if min_bpm and bpm < min_bpm:
-                return False
-            if max_bpm and bpm > max_bpm:
-                return False
-            return True
-        except (ValueError, TypeError):
-            # Invalid BPM data, exclude from filtered results
-            return False
+        """Check if result's BPM is in range. Delegates to controller."""
+        return self.results_controller._bpm_in_range(result, min_bpm, max_bpm)
 
     def _update_filter_status(self) -> None:
         """Update filter status label to show active filters.
@@ -1130,56 +1058,31 @@ class ResultsView(QWidget):
             self.filter_status_label.setText("No filters active")
 
     def _filter_results(self) -> List[TrackResult]:
-        """Apply filters to results including advanced filters"""
+        """Apply filters to results using ResultsController."""
         filter_start_time = time.time()
+        initial_count = len(self.results)
 
-        # Start with all results
-        filtered = self.results.copy()
-        initial_count = len(filtered)
-
-        # Search filter
-        search_text = self.search_box.text().lower().strip()
-        if search_text:
-            filtered = [
-                r
-                for r in filtered
-                if search_text in r.title.lower()
-                or search_text in (r.artist or "").lower()
-                or search_text in (r.beatport_title or "").lower()
-                or search_text in (r.beatport_artists or "").lower()
-            ]
-
-        # Confidence filter
+        # Get filter values from UI
+        search_text = self.search_box.text().strip() or None
         confidence = self.confidence_filter.currentText()
-        if confidence != "All":
-            filtered = [
-                r
-                for r in filtered
-                if r.matched and (r.confidence or "").lower() == confidence.lower()
-            ]
-
-        # Year range filter
+        confidence_val = None if confidence == "All" else confidence
         year_min_val = self.year_min.value() if self.year_min.value() > 1900 else None
         year_max_val = self.year_max.value() if self.year_max.value() < 2100 else None
-
-        if year_min_val or year_max_val:
-            filtered = [r for r in filtered if self._year_in_range(r, year_min_val, year_max_val)]
-
-        # BPM range filter
         bpm_min_val = self.bpm_min.value() if self.bpm_min.value() > 60 else None
         bpm_max_val = self.bpm_max.value() if self.bpm_max.value() < 200 else None
-
-        if bpm_min_val or bpm_max_val:
-            filtered = [r for r in filtered if self._bpm_in_range(r, bpm_min_val, bpm_max_val)]
-
-        # Key filter
         key_filter_val = self.key_filter.currentText()
-        if key_filter_val != "All":
-            filtered = [
-                r
-                for r in filtered
-                if r.matched and r.beatport_key and r.beatport_key == key_filter_val
-            ]
+        key_val = None if key_filter_val == "All" else key_filter_val
+
+        # Use controller to apply filters
+        filtered = self.results_controller.apply_filters(
+            search_text=search_text,
+            confidence=confidence_val,
+            year_min=year_min_val,
+            year_max=year_max_val,
+            bpm_min=bpm_min_val,
+            bpm_max=bpm_max_val,
+            key=key_val,
+        )
 
         # Store filtered results
         self.filtered_results = filtered
@@ -1193,10 +1096,10 @@ class ResultsView(QWidget):
                 filtered_count=len(filtered),
                 filters_applied={
                     "search": bool(search_text),
-                    "confidence": confidence if confidence != "All" else None,
+                    "confidence": confidence_val,
                     "year_range": (year_min_val, year_max_val),
                     "bpm_range": (bpm_min_val, bpm_max_val),
-                    "key": key_filter_val if key_filter_val != "All" else None,
+                    "key": key_val,
                 },
             )
 
@@ -1627,7 +1530,7 @@ class ResultsView(QWidget):
             return
 
         # Get results to export (filtered or all)
-        dialog = ExportDialog(self)
+        dialog = ExportDialog(export_controller=self.export_controller, parent=self)
         if dialog.exec() != QDialog.Accepted:
             return
 
@@ -2002,11 +1905,18 @@ class ResultsView(QWidget):
         Resets all filter widgets (search, confidence, year, BPM, key)
         to their default values and reapplies filters.
         """
+        # Clear UI widgets
         self.year_min.setValue(1900)
         self.year_max.setValue(2100)
         self.bpm_min.setValue(60)
         self.bpm_max.setValue(200)
         self.key_filter.setCurrentText("All")
+        self.search_box.clear()
+        self.confidence_filter.setCurrentText("All")
+        
+        # Clear controller filters
+        self.results_controller.clear_filters()
+        self.filtered_results = self.results_controller.filtered_results.copy()
         self.search_box.clear()
         self.confidence_filter.setCurrentText("All")
         self.apply_filters()

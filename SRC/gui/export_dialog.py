@@ -7,24 +7,41 @@ Export Dialog Module
 This module contains the ExportDialog class for selecting export format and options.
 """
 
-from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QGroupBox, QRadioButton, QButtonGroup,
-    QCheckBox, QFileDialog, QMessageBox, QComboBox, QLineEdit
-)
-from PySide6.QtCore import Qt
-from typing import List, Dict, Any, Optional
 import os
+from typing import Any, Dict, List, Optional
+
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QButtonGroup,
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QFileDialog,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QRadioButton,
+    QVBoxLayout,
+)
+
 from cuepoint.ui.controllers.export_controller import ExportController
 
 
 class ExportDialog(QDialog):
     """Enhanced export dialog with additional options"""
     
-    def __init__(self, parent=None, current_format: str = "csv"):
+    def __init__(
+        self,
+        export_controller: Optional[ExportController] = None,
+        parent=None,
+        current_format: str = "csv",
+    ):
         super().__init__(parent)
-        # Create export controller for business logic
-        self.export_controller = ExportController()
+        # Use provided controller or create a new one
+        self.export_controller = export_controller or ExportController()
         self.file_path: Optional[str] = None
         self.selected_format = current_format
         self.init_ui()

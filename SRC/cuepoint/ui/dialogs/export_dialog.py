@@ -9,6 +9,7 @@ This module contains the ExportDialog class for selecting export format and opti
 
 import os
 from typing import Any, Dict, Optional
+
 from PySide6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
@@ -25,12 +26,21 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from cuepoint.ui.controllers.export_controller import ExportController
+
 
 class ExportDialog(QDialog):
     """Enhanced export dialog with additional options"""
 
-    def __init__(self, parent=None, current_format: str = "csv"):
+    def __init__(
+        self,
+        export_controller: Optional[ExportController] = None,
+        parent=None,
+        current_format: str = "csv",
+    ):
         super().__init__(parent)
+        # Use provided controller or create a new one
+        self.export_controller = export_controller or ExportController()
         self.file_path: Optional[str] = None
         self.selected_format = current_format
         self.init_ui()
