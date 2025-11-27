@@ -300,7 +300,7 @@ def beatport_search_direct(idx: int, query: str, max_results: int = 50) -> List[
         # Fetch the search page
         soup = request_html(search_url)
         if not soup:
-            vlog(idx, f"[beatport-direct] Failed to fetch search page")
+            vlog(idx, "[beatport-direct] Failed to fetch search page")
             return []
 
         # Method 1: Look for track links directly in HTML

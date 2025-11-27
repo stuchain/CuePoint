@@ -8,7 +8,7 @@ This module contains the BatchProcessorWidget class for processing multiple play
 """
 
 import time
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
@@ -383,7 +383,8 @@ class BatchProcessorWidget(QWidget):
         QMessageBox.warning(
             self,
             f"Error Processing {playlist_name}",
-            f"An error occurred while processing '{playlist_name}':\n\n{error.message}\n\nContinuing with next playlist...",
+            f"An error occurred while processing '{playlist_name}':\n\n{
+                error.message}\n\nContinuing with next playlist...",
         )
 
         # Mark as completed (with no results)

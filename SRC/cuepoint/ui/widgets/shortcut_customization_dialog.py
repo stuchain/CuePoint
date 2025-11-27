@@ -7,15 +7,13 @@ Shortcut Customization Dialog
 Allows users to customize keyboard shortcuts.
 """
 
-from typing import Dict, Optional, Tuple
+from typing import Dict
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeyEvent, QKeySequence
 from PySide6.QtWidgets import (
     QDialog,
-    QGroupBox,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QLineEdit,
     QMessageBox,

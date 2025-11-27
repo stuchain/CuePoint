@@ -19,8 +19,7 @@ GUIController for processing operations.
 """
 
 import os
-import sys
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from PySide6.QtCore import QSettings, Qt
 from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent, QKeyEvent, QKeySequence
@@ -28,16 +27,12 @@ from PySide6.QtWidgets import (
     QButtonGroup,
     QGroupBox,
     QHBoxLayout,
-    QLabel,
     QMainWindow,
     QMenu,
-    QMenuBar,
     QMessageBox,
     QPushButton,
     QRadioButton,
-    QScrollArea,
     QSplitter,
-    QStatusBar,
     QTabWidget,
     QVBoxLayout,
     QWidget,
@@ -61,7 +56,6 @@ from cuepoint.ui.widgets.playlist_selector import PlaylistSelector
 from cuepoint.ui.widgets.progress_widget import ProgressWidget
 from cuepoint.ui.widgets.results_view import ResultsView
 from cuepoint.ui.widgets.shortcut_manager import ShortcutContext, ShortcutManager
-from cuepoint.utils.utils import with_timestamp
 
 
 class MainWindow(QMainWindow):
@@ -892,15 +886,15 @@ class MainWindow(QMainWindow):
         # Disconnect regular processing signals temporarily (if connected)
         try:
             self.controller.progress_updated.disconnect(self.on_progress_updated)
-        except:
+        except BaseException:
             pass
         try:
             self.controller.processing_complete.disconnect(self.on_processing_complete)
-        except:
+        except BaseException:
             pass
         try:
             self.controller.error_occurred.disconnect(self.on_error_occurred)
-        except:
+        except BaseException:
             pass
 
         # Connect controller signals to batch processor
@@ -988,15 +982,15 @@ class MainWindow(QMainWindow):
         """
         try:
             self.controller.progress_updated.disconnect(self.batch_processor.on_playlist_progress)
-        except:
+        except BaseException:
             pass
         try:
             self.controller.processing_complete.disconnect(self._on_batch_playlist_complete)
-        except:
+        except BaseException:
             pass
         try:
             self.controller.error_occurred.disconnect(self._on_batch_playlist_error)
-        except:
+        except BaseException:
             pass
 
         self.controller.progress_updated.connect(self.on_progress_updated)
@@ -1039,7 +1033,8 @@ class MainWindow(QMainWindow):
         self.tabs.setCurrentIndex(0)
 
         # Hide batch processor progress, show results
-        # Note: batch processor has its own progress display, regular progress_group is for single mode
+        # Note: batch processor has its own progress display, regular
+        # progress_group is for single mode
         self.progress_group.setVisible(False)
         self.results_group.setVisible(True)
 
@@ -1272,9 +1267,10 @@ class MainWindow(QMainWindow):
         # Update status bar
         if progress_info.current_track:
             title = progress_info.current_track.get("title", "Unknown")
-            self.statusBar().showMessage(
-                f"Processing: {title} ({progress_info.completed_tracks}/{progress_info.total_tracks})"
+            track_info = (
+                f"{title} ({progress_info.completed_tracks}/{progress_info.total_tracks})"
             )
+            self.statusBar().showMessage(f"Processing: {track_info}")
 
     def on_processing_complete(self, results: List[TrackResult]) -> None:
         """Handle processing completion.

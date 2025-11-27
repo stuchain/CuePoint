@@ -130,7 +130,8 @@ SETTINGS = {
     # EARLY EXIT (FAMILY CONSENSUS) SETTINGS
     # ========================================================================
     # Alternative early exit rules for "family" queries (full title + subset of artists)
-    # These are more lenient than the main early exit to allow faster exits on strong partial matches
+    # These are more lenient than the main early exit to allow faster exits on
+    # strong partial matches
     "EARLY_EXIT_FAMILY_SCORE": 88,  # Allow early exit on strong full-title + one-artist match
     # Lower than main EARLY_EXIT_SCORE (88 vs 90) for faster exits
     # Optimized for faster exits on strong partial matches (was 93)
@@ -170,7 +171,8 @@ SETTINGS = {
     # REMIX/SPECIAL VARIANT SETTINGS
     # ========================================================================
     # Settings specific to tracks with explicit remix or special variant indicators in title
-    "EARLY_EXIT_MIN_QUERIES_REMIX": 12,  # Allow earlier exit for remix tracks (fewer queries needed)
+    # Allow earlier exit for remix tracks (fewer queries needed)
+    "EARLY_EXIT_MIN_QUERIES_REMIX": 12,
     # Increased to ensure multi-artist+remixer queries complete (was 5)
     # These queries are typically in the first 10-12 queries
     "EARLY_EXIT_SCORE_REMIX": 93,  # Lower threshold for remix early exit (93 vs 90)
@@ -199,7 +201,8 @@ SETTINGS = {
     "CROSS_SMALL_ONLY": True,  # Only cross small N-grams (uni/bi-grams) with artists
     # Prevents explosion: "1 word" + artist, "2 words" + artist
     # But NOT "10 words" + artist (too many combinations)
-    "REVERSE_ORDER_QUERIES": False,  # Generate queries with reversed order ("artist title" vs "title artist")
+    # Generate queries with reversed order ("artist title" vs "title artist")
+    "REVERSE_ORDER_QUERIES": False,
     # False = don't reverse by default (title first)
     # Reversed queries can find different results but add overhead
     "PRIORITY_REVERSE_STAGE": True,  # Allow reversed order queries only in priority query stage

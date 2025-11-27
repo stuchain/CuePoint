@@ -7,7 +7,7 @@ Progress Widget Module - Progress display widget
 This module contains the ProgressWidget class for displaying processing progress.
 """
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
@@ -98,7 +98,9 @@ class ProgressWidget(QWidget):
         if progress_info.current_track:
             title = progress_info.current_track.get("title", "Unknown")
             artists = progress_info.current_track.get("artists", "Unknown")
-            track_text = f"Track {progress_info.completed_tracks}/{progress_info.total_tracks}: {title} - {artists}"
+            track_text = f"Track {
+                progress_info.completed_tracks}/{
+                progress_info.total_tracks}: {title} - {artists}"
             self.current_track_label.setText(track_text)
         else:
             self.current_track_label.setText(

@@ -10,7 +10,7 @@ Structured logging service with file rotation and console output.
 import logging
 import logging.handlers
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from cuepoint.services.interfaces import ILoggingService
 

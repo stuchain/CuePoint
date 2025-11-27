@@ -159,8 +159,8 @@ class ProcessorService(IProcessorService):
                 f"[{idx}] Match found: {best.title} - {best.artists} (score: {best.score:.1f})"
             )
 
-            # Fetch full track data if needed
-            track_data = self.beatport_service.fetch_track_data(best.url)
+            # Fetch full track data if needed (for future use)
+            _ = self.beatport_service.fetch_track_data(best.url)
 
             # Build candidates list
             candidates = []

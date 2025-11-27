@@ -8,12 +8,11 @@ This module provides a GUI widget for displaying real-time performance metrics
 during playlist processing.
 """
 
+from performance import PerformanceStats, performance_collector
 import os
 import sys
 from collections import defaultdict
-from typing import Optional
-
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
@@ -29,7 +28,6 @@ from PySide6.QtWidgets import (
 
 # Import performance collector
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from performance import PerformanceStats, performance_collector
 
 
 class PerformanceView(QWidget):

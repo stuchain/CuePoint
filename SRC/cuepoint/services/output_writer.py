@@ -834,8 +834,6 @@ def write_performance_report(stats, base_filename: str, output_dir: str = "outpu
     """
     from collections import defaultdict
 
-    from performance import PerformanceStats
-
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
 
@@ -895,8 +893,10 @@ def write_performance_report(stats, base_filename: str, output_dir: str = "outpu
     slowest = sorted(stats.track_metrics, key=lambda t: t.total_time, reverse=True)[:10]
     report_lines.append("Slowest Tracks (Top 10):")
     for track in slowest:
+        title_preview = track.track_title[:60]
+        time_str = _format_time_for_report(track.total_time)
         report_lines.append(
-            f"  {track.track_title[:60]}: {_format_time_for_report(track.total_time)} ({track.total_queries} queries)"
+            f"  {title_preview}: {time_str} ({track.total_queries} queries)"
         )
     report_lines.append("")
 

@@ -22,9 +22,7 @@ class ConfigService(IConfigService):
         Args:
             settings: Optional dictionary of settings. If None, uses default SETTINGS.
         """
-        self._settings: Dict[str, Any] = (
-            settings.copy() if settings else SETTINGS.copy()
-        )
+        self._settings: Dict[str, Any] = settings.copy() if settings else SETTINGS.copy()
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get configuration value.
@@ -58,4 +56,3 @@ class ConfigService(IConfigService):
         # For now, this is a no-op as settings are loaded from module
         # Can be extended to load from YAML file
         pass
-

@@ -11,7 +11,6 @@ import csv
 import gzip
 import json
 import os
-import sys
 import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -358,7 +357,8 @@ class HistoryView(QWidget):
             # Try to extract timestamp from filename
             timestamp_info = ""
             try:
-                # Filename format: playlist_name (dd-mm-yy HH-MM).csv (dashes for Windows compatibility, no colons)
+                # Filename format: playlist_name (dd-mm-yy HH-MM).csv (dashes for Windows
+                # compatibility, no colons)
                 basename = os.path.basename(file_path)
                 if "(" in basename and ")" in basename:
                     # Extract timestamp from parentheses
@@ -366,10 +366,11 @@ class HistoryView(QWidget):
                     end_idx = basename.rfind(")")
                     if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
                         timestamp_str = basename[start_idx + 1 : end_idx]
-                        # Try to parse the timestamp (dd-mm-yy HH-MM) - new format with dashes (no colons)
+                        # Try to parse the timestamp (dd-mm-yy HH-MM) - new format with dashes (no
+                        # colons)
                         dt = datetime.strptime(timestamp_str, "%d-%m-%y %H-%M")
                         timestamp_info = f"\nSearch Date: {dt.strftime('%d/%m/%y %H:%M')}"
-            except:
+            except BaseException:
                 # Fallback: try old format with slashes
                 try:
                     # Filename format: playlist_name (dd/mm/yy HH:MM).csv
@@ -383,7 +384,7 @@ class HistoryView(QWidget):
                             # Try to parse the timestamp (dd/mm/yy HH:MM)
                             dt = datetime.strptime(timestamp_str, "%d/%m/%y %H:%M")
                             timestamp_info = f"\nSearch Date: {dt.strftime('%d/%m/%y %H:%M')}"
-                except:
+                except BaseException:
                     # Fallback to old formats
                     try:
                         # Try old format: playlist_name (YYYY-MM-DD HH:MM:SS).csv
@@ -395,7 +396,7 @@ class HistoryView(QWidget):
                                 timestamp_str = basename[start_idx + 1 : end_idx]
                                 dt = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
                                 timestamp_info = f"\nSearch Date: {dt.strftime('%d/%m/%y %H:%M')}"
-                    except:
+                    except BaseException:
                         # Fallback to very old format: playlist_20250127_123456.csv
                         try:
                             basename = os.path.basename(file_path)
@@ -410,7 +411,7 @@ class HistoryView(QWidget):
                                     timestamp_info = (
                                         f"\nSearch Date: {dt.strftime('%d/%m/%y %H:%M')}"
                                     )
-                        except:
+                        except BaseException:
                             pass
 
             summary_text = (
@@ -864,11 +865,16 @@ class HistoryView(QWidget):
                         timestamp_str = basename[start_idx + 1 : end_idx]
                         dt = datetime.strptime(timestamp_str, "%d-%m-%y %H-%M")
                         timestamp_info = f"\nSearch Date: {dt.strftime('%d/%m/%y %H:%M')}"
-            except:
+            except BaseException:
                 pass
 
+        file_basename = (
+            os.path.basename(self.current_csv_path)
+            if self.current_csv_path
+            else 'No file'
+        )
         summary_text = (
-            f"File: {os.path.basename(self.current_csv_path) if self.current_csv_path else 'No file'}\n"
+            f"File: {file_basename}\n"
             f"Total tracks: {total}\n"
             f"Matched: {matched} ({match_rate:.1f}%)"
             f"{timestamp_info}"
@@ -931,7 +937,7 @@ class HistoryView(QWidget):
             # Sort by final_score (descending) to rank them
             candidates.sort(key=lambda x: x.get("match_score", 0), reverse=True)
             return candidates
-        except Exception as e:
+        except Exception:
             return []
 
     def _show_context_menu(self, position):
@@ -1004,7 +1010,8 @@ class HistoryView(QWidget):
                 self,
                 "No Candidates",
                 "No candidates available for this track.\n\n"
-                "The candidates CSV file may not exist or this track had no candidates during the search.",
+                "The candidates CSV file may not exist or this track "
+                "had no candidates during the search.",
             )
             return
 
@@ -1013,7 +1020,6 @@ class HistoryView(QWidget):
         # Check if there's a beatport_url or beatport_title in the row
         # We need to find which column has the beatport data
         beatport_title_item = None
-        beatport_url_item = None
         for col in range(self.table.columnCount()):
             header = self.table.horizontalHeaderItem(col)
             if header:
@@ -1021,7 +1027,7 @@ class HistoryView(QWidget):
                 if "beatport" in header_text and "title" in header_text:
                     beatport_title_item = self.table.item(row, col)
                 elif "beatport" in header_text and "url" in header_text:
-                    beatport_url_item = self.table.item(row, col)
+                    _ = self.table.item(row, col)  # beatport_url_item unused
 
         if beatport_title_item and beatport_title_item.text().strip():
             # Find the matched candidate
@@ -1086,7 +1092,7 @@ class HistoryView(QWidget):
             # Also try os.listdir as fallback
             try:
                 dir_files = os.listdir(output_dir)
-            except Exception as e:
+            except Exception:
                 dir_files = []
 
             # Combine both methods and use set to deduplicate

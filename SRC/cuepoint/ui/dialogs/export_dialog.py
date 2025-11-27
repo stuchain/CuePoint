@@ -8,9 +8,7 @@ This module contains the ExportDialog class for selecting export format and opti
 """
 
 import os
-from typing import Any, Dict, List, Optional
-
-from PySide6.QtCore import Qt
+from typing import Any, Dict, Optional
 from PySide6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
@@ -85,7 +83,8 @@ class ExportDialog(QDialog):
         )
         self.include_metadata_checkbox.setChecked(True)
         self.include_metadata_checkbox.setToolTip(
-            "Include additional metadata fields like genres, labels, and release dates in the export"
+            "Include additional metadata fields like genres, labels, "
+            "and release dates in the export"
         )
         options_layout.addWidget(self.include_metadata_checkbox)
 
@@ -103,7 +102,8 @@ class ExportDialog(QDialog):
         self.compress_checkbox = QCheckBox("Compress output (gzip)")
         self.compress_checkbox.setChecked(False)
         self.compress_checkbox.setToolTip(
-            "Compress JSON output using gzip compression (significantly reduces file size for large exports)"
+            "Compress JSON output using gzip compression "
+            "(significantly reduces file size for large exports)"
         )
         # Initially disabled, enabled when JSON is selected
         self.compress_checkbox.setEnabled(self.json_radio.isChecked())

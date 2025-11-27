@@ -7,7 +7,7 @@ Matcher Service Implementation
 Service for finding best Beatport matches for tracks.
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from cuepoint.core.matcher import best_beatport_match
 from cuepoint.services.interfaces import IMatcherService

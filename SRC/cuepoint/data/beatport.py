@@ -200,7 +200,7 @@ def request_html(url: str) -> Optional[BeautifulSoup]:
 
     if resp and _is_empty_body(resp):
         vlog("fetch", "[http] still empty; retry with cache-buster + identity")
-        bust = f"_r={int(time.time()*1000)}"
+        bust = f"_r={int(time.time() * 1000)}"
         sep = "&" if ("?" in url) else "?"
         busted_url = f"{url}{sep}{bust}"
         h3 = dict(SESSION.headers)
@@ -791,9 +791,13 @@ def track_urls(
                         merged.append(url)
                         if len(merged) >= max_results:
                             break
+                merged_count = len(merged)
+                browser_count = len(browser_urls)
+                ddg_count = len(ddg_urls)
                 vlog(
                     idx,
-                    f"[search] Combined {len(merged)} URLs (browser {len(browser_urls)} + DDG {len(ddg_urls)})",
+                    f"[search] Combined {merged_count} URLs "
+                    f"(browser {browser_count} + DDG {ddg_count})",
                 )
                 return merged[:max_results]
         except ImportError:
@@ -831,8 +835,10 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
     try:
         mr = max_results if max_results and max_results > 0 else 60
         ql = (query or "").lower()
-        # Increase max results for remix/extended queries - they often need more results to find the right track
-        # For exact quoted remix queries (like "Never Sleep Again (Keinemusik Remix)"), increase even more
+        # Increase max results for remix/extended queries - they often need
+        # more results to find the right track
+        # For exact quoted remix queries (like "Never Sleep Again (Keinemusik
+        # Remix)"), increase even more
         is_exact_remix_query = (
             query.startswith('"')
             and query.endswith('"')

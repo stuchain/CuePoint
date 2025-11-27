@@ -218,7 +218,8 @@ def retry_with_backoff(
                     time.sleep(delay)
 
                     # Log retry attempt (if logger available)
-                    # logger.warning(f"Retry {attempt + 1}/{max_retries} for {func.__name__}: {str(e)}")
+                    # logger.warning(f"Retry {attempt + 1}/{max_retries} "
+                    #                f"for {func.__name__}: {str(e)}")
 
             # Should not reach here, but just in case
             if last_exception:
