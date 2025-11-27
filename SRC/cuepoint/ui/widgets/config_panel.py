@@ -7,7 +7,7 @@ Config Panel Module - Settings panel widget
 This module contains the ConfigPanel class for configuring processing settings.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
