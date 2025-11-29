@@ -1,10 +1,12 @@
 """Performance tests for processing."""
 
-import pytest
 import time
 from unittest.mock import Mock, patch
+
+import pytest
+
+from cuepoint.models.track import Track
 from cuepoint.services.processor_service import ProcessorService
-from cuepoint.data.rekordbox import RBTrack
 
 
 @pytest.mark.performance
@@ -21,7 +23,7 @@ class TestProcessingPerformance:
         """Test processing performance with large playlist."""
         # Create large playlist
         tracks = [
-            RBTrack(track_id=str(i), title=f"Track {i}", artists=f"Artist {i}")
+            Track(track_id=str(i), title=f"Track {i}", artist=f"Artist {i}")
             for i in range(100)
         ]
         
@@ -71,6 +73,8 @@ class TestProcessingPerformance:
         # Cache operations should be very fast
         assert set_duration < 1.0  # Should set 1000 items in < 1 second
         assert get_duration < 1.0  # Should get 1000 items in < 1 second
+
+
 
 
 
