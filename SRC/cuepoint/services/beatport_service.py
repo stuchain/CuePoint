@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 
 from cuepoint.data.beatport import parse_track_page
 from cuepoint.data.beatport_search import beatport_search_hybrid
+from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError
 from cuepoint.services.interfaces import IBeatportService, ICacheService, ILoggingService
 
 
@@ -60,15 +61,26 @@ class BeatportService(IBeatportService):
             return cached
 
         # Perform search
-        self.logging_service.info(f"Searching Beatport for: {query}")
-        urls = beatport_search_hybrid(
-            idx=0, query=query, max_results=max_results, prefer_direct=True
-        )
+        try:
+            self.logging_service.info(f"Searching Beatport for: {query}")
+            urls = beatport_search_hybrid(
+                idx=0, query=query, max_results=max_results, prefer_direct=True
+            )
 
-        # Cache results (1 hour TTL)
-        self.cache_service.set(cache_key, urls, ttl=3600)
+            # Cache results (1 hour TTL)
+            self.cache_service.set(cache_key, urls, ttl=3600)
 
-        return urls  # type: ignore[no-any-return]
+            return urls  # type: ignore[no-any-return]
+        except Exception as e:
+            error_msg = f"Failed to search Beatport for '{query}': {str(e)}"
+            self.logging_service.error(
+                error_msg, exc_info=e, extra={"query": query, "max_results": max_results}
+            )
+            raise BeatportAPIError(
+                message=error_msg,
+                error_code="BEATPORT_SEARCH_ERROR",
+                context={"query": query, "max_results": max_results},
+            ) from e
 
     def fetch_track_data(self, url: str) -> Optional[Dict[str, Any]]:
         """Fetch detailed track data from Beatport URL.
@@ -122,5 +134,9 @@ class BeatportService(IBeatportService):
 
             return track_data  # type: ignore[no-any-return]
         except Exception as e:
-            self.logging_service.error(f"Error fetching track data from {url}: {e}")
+            error_msg = f"Error fetching track data from {url}: {str(e)}"
+            self.logging_service.error(
+                error_msg, exc_info=e, extra={"url": url, "cache_key": cache_key}
+            )
+            # Return None instead of raising - allows processing to continue with other tracks
             return None

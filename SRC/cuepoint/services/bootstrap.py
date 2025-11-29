@@ -67,6 +67,8 @@ def bootstrap_services() -> None:
 
     container.register_factory(IProcessorService, create_processor_service)
 
-    # Register export service (no dependencies)
-    export_service = ExportService()
-    container.register_singleton(IExportService, export_service)
+    # Register export service (depends on logging)
+    def create_export_service() -> IExportService:
+        return ExportService(logging_service=container.resolve(ILoggingService))
+
+    container.register_factory(IExportService, create_export_service)

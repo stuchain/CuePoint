@@ -76,3 +76,4 @@ class CacheError(CuePointException):
     """Error in cache operations."""
 
     pass
+
