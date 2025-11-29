@@ -18,20 +18,35 @@ from typing import List, Dict
 import os
 import sys
 
-from gui.file_selector import FileSelector
-from gui.playlist_selector import PlaylistSelector
-from gui.progress_widget import ProgressWidget
-from gui.results_view import ResultsView
-from gui.config_panel import ConfigPanel
-from gui.batch_processor import BatchProcessorWidget
-from gui.history_view import HistoryView
-from gui.dialogs import ErrorDialog, AboutDialog, UserGuideDialog, KeyboardShortcutsDialog
-from gui.shortcut_manager import ShortcutManager, ShortcutContext
-from gui_controller import GUIController
-from gui_interface import ProcessingError
-from output_writer import write_csv_files
-from utils import with_timestamp
-from gui.performance_view import PerformanceView
+"""
+LEGACY MODULE - DEPRECATED
+
+This module has been moved to the legacy folder as part of Phase 5 migration.
+It is kept for backward compatibility and reference only.
+
+⚠️  DO NOT USE IN NEW CODE ⚠️
+
+Use the new Phase 5 GUI structure instead:
+- cuepoint.ui.main_window.MainWindow
+- cuepoint.ui.controllers.main_controller.GUIController
+
+This legacy module will be removed in a future version.
+"""
+
+from cuepoint.legacy.gui.file_selector import FileSelector
+from cuepoint.legacy.gui.playlist_selector import PlaylistSelector
+from cuepoint.legacy.gui.progress_widget import ProgressWidget
+from cuepoint.legacy.gui.results_view import ResultsView
+from cuepoint.legacy.gui.config_panel import ConfigPanel
+from cuepoint.legacy.gui.batch_processor import BatchProcessorWidget
+from cuepoint.legacy.gui.history_view import HistoryView
+from cuepoint.legacy.gui.dialogs import ErrorDialog, AboutDialog, UserGuideDialog, KeyboardShortcutsDialog
+from cuepoint.legacy.gui.shortcut_manager import ShortcutManager, ShortcutContext
+from cuepoint.legacy.gui_controller import GUIController
+from cuepoint.ui.gui_interface import ProcessingError
+from cuepoint.services.output_writer import write_csv_files
+from cuepoint.utils.utils import with_timestamp
+from cuepoint.legacy.gui.performance_view import PerformanceView
 
 
 class MainWindow(QMainWindow):

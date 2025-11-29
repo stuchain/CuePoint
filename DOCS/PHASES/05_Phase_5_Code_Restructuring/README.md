@@ -25,6 +25,7 @@ Phase 5 establishes a solid foundation for future development by:
 - **`08_Step_5.8_Configuration_Management.md`**: Centralize configuration management
 - **`09_Step_5.9_Refactor_Data_Models.md`**: Create clear data models
 - **`10_Step_5.10_Performance_Optimization_Review.md`**: Performance review and optimization
+- **`11_Step_5.11_CLI_Migration.md`**: Migrate CLI to Phase 5 architecture
 
 ## Implementation Order
 
@@ -40,6 +41,7 @@ The steps should be implemented in order, as each step builds on the previous on
 8. **Step 5.8**: Centralize configuration (improves maintainability)
 9. **Step 5.9**: Refactor data models (improves data handling)
 10. **Step 5.10**: Performance review (ensures no regressions)
+11. **Step 5.11**: Migrate CLI to Phase 5 architecture (completes migration)
 
 ## Key Concepts
 
@@ -75,7 +77,7 @@ UI components (View) communicate with Controllers, which use Services to perform
 
 ## Estimated Duration
 
-**Total**: 3-4 weeks
+**Total**: 4-5 weeks
 
 - Step 5.1: 2-3 days
 - Step 5.2: 3-4 days
@@ -87,6 +89,7 @@ UI components (View) communicate with Controllers, which use Services to perform
 - Step 5.8: 2-3 days
 - Step 5.9: 2-3 days
 - Step 5.10: 2-3 days
+- Step 5.11: 5-7 days
 
 ## Dependencies
 

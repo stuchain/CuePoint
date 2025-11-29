@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence, QKeyEvent
 from typing import Dict, Tuple, Optional
-from gui.shortcut_manager import ShortcutManager
+from cuepoint.legacy.gui.shortcut_manager import ShortcutManager
 
 
 class ShortcutCustomizationDialog(QDialog):

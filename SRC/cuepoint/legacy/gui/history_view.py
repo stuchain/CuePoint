@@ -22,8 +22,8 @@ import time
 import json
 import gzip
 from datetime import datetime
-from gui.candidate_dialog import CandidateDialog
-from gui.export_dialog import ExportDialog
+from cuepoint.legacy.gui.candidate_dialog import CandidateDialog
+from cuepoint.legacy.gui.export_dialog import ExportDialog
 try:
     from performance import performance_collector
     PERFORMANCE_AVAILABLE = True

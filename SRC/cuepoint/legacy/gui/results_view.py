@@ -2,6 +2,19 @@
 # -*- coding: utf-8 -*-
 
 """
+LEGACY MODULE - DEPRECATED
+
+This module has been moved to the legacy folder as part of Phase 5 migration.
+It is kept for backward compatibility and reference only.
+
+⚠️  DO NOT USE IN NEW CODE ⚠️
+
+Use the new Phase 5 GUI structure instead:
+- cuepoint.ui.widgets.results_view.ResultsView
+
+This legacy module will be removed in a future version.
+
+Original description:
 Results View Widget Module - Results display and export
 
 This module contains the ResultsView widget for displaying processing results
@@ -22,9 +35,9 @@ import platform
 import time
 
 from gui_interface import TrackResult
-from gui.candidate_dialog import CandidateDialog
-from gui.export_dialog import ExportDialog
-from gui.shortcut_manager import ShortcutManager, ShortcutContext
+from cuepoint.legacy.gui.candidate_dialog import CandidateDialog
+from cuepoint.legacy.gui.export_dialog import ExportDialog
+from cuepoint.legacy.gui.shortcut_manager import ShortcutManager, ShortcutContext
 from output_writer import write_csv_files, write_json_file, write_excel_file
 from utils import with_timestamp
 from cuepoint.ui.controllers.results_controller import ResultsController

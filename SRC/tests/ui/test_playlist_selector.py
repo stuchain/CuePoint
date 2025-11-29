@@ -5,13 +5,14 @@
 Test script for PlaylistSelector widget with real XML file
 """
 
-import sys
 import os
-from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QPushButton
 import sys
-import os
+
+from PySide6.QtWidgets import QApplication, QLabel, QPushButton, QVBoxLayout, QWidget
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
 from cuepoint.ui.widgets.playlist_selector import PlaylistSelector
+
 
 def test_playlist_selector():
     """Test PlaylistSelector widget with collection.xml"""
@@ -89,8 +90,12 @@ def test_playlist_selector():
     print("  - Selecting a playlist shows track count")
     print("  - Signal is emitted when playlist is selected")
     
-    sys.exit(app.exec())
+    # This is a manual UI test - skip for automated testing
+    # The test opens a window and requires manual interaction
+    import pytest
+    pytest.skip("Manual UI test - requires user interaction and cannot be automated")
 
 if __name__ == "__main__":
     test_playlist_selector()
+
 

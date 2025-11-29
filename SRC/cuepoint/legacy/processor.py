@@ -2,6 +2,22 @@
 # -*- coding: utf-8 -*-
 
 """
+LEGACY MODULE - DEPRECATED
+
+This module has been moved to the legacy folder as part of Phase 5 migration.
+It is kept for backward compatibility and reference only.
+
+⚠️  DO NOT USE IN NEW CODE ⚠️
+
+Use the new Phase 5 architecture instead:
+- ProcessorService (via DI container) for processing
+- CLIProcessor for CLI-specific concerns
+- See: cuepoint.services.processor_service
+- See: cuepoint.cli.cli_processor
+
+This legacy module will be removed in a future version.
+
+Original description:
 Track processing orchestration with multi-layered search architecture
 
 This module orchestrates the entire track matching pipeline:

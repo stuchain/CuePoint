@@ -131,7 +131,9 @@ class TestTypeHints:
         hints = get_type_hints(func)
         assert "xml_path" in hints
         assert "return" in hints
-        assert "Tuple" in str(hints["return"])
+        # parse_rekordbox now returns Dict[str, Playlist] instead of Tuple
+        return_type_str = str(hints["return"])
+        assert "Dict" in return_type_str or "dict" in return_type_str.lower(), f"Expected Dict, got {return_type_str}"
 
         # Test is_track_url
         func = beatport.is_track_url
@@ -306,11 +308,11 @@ class TestTypeChecking:
         """Test that all modules can be imported with type checking."""
         # This test verifies that imports work correctly
         # If there are circular import issues, this will fail
-        from cuepoint.services.processor_service import ProcessorService
+        from cuepoint.core.matcher import best_beatport_match
+        from cuepoint.data.rekordbox import RBTrack, parse_rekordbox
         from cuepoint.services.beatport_service import BeatportService
         from cuepoint.services.cache_service import CacheService
-        from cuepoint.core.matcher import best_beatport_match
-        from cuepoint.data.rekordbox import parse_rekordbox, RBTrack
+        from cuepoint.services.processor_service import ProcessorService
 
         # Verify types are accessible
         assert ProcessorService is not None
@@ -360,7 +362,7 @@ class TestInterfaceDocumentation:
     @pytest.mark.unit
     def test_interface_methods_documented(self):
         """Test that interface methods have docstrings."""
-        from cuepoint.services.interfaces import IProcessorService, IBeatportService
+        from cuepoint.services.interfaces import IBeatportService, IProcessorService
 
         assert IProcessorService.process_track.__doc__ is not None
         assert IBeatportService.search_tracks.__doc__ is not None

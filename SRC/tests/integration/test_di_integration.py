@@ -19,7 +19,7 @@ from cuepoint.services.interfaces import (
     ILoggingService,
     IMatcherService
 )
-from cuepoint.data.rekordbox import RBTrack
+from cuepoint.models.track import Track
 
 
 class TestDIIntegration:
@@ -94,10 +94,10 @@ class TestDIIntegration:
         """Test that processor service can process a track."""
         processor = self.container.resolve(IProcessorService)
         
-        track = RBTrack(
+        track = Track(
             track_id="1",
             title="Test Track",
-            artists="Test Artist"
+            artist="Test Artist"
         )
         
         # This will actually try to search Beatport, so we expect it might fail

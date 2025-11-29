@@ -2,6 +2,19 @@
 # -*- coding: utf-8 -*-
 
 """
+LEGACY MODULE - DEPRECATED
+
+This module has been moved to the legacy folder as part of Phase 5 migration.
+It is kept for backward compatibility and reference only.
+
+⚠️  DO NOT USE IN NEW CODE ⚠️
+
+Use the new Phase 5 GUI structure instead:
+- cuepoint.ui.widgets.file_selector.FileSelector
+
+This legacy module will be removed in a future version.
+
+Original description:
 File Selector Module - XML file selection widget
 
 This module contains the FileSelector class for selecting Rekordbox XML files.

@@ -16,7 +16,7 @@ from PySide6.QtGui import QIcon
 from typing import Optional
 
 from gui_interface import ProcessingError, ErrorType
-from gui.shortcut_manager import ShortcutManager, ShortcutContext
+from cuepoint.legacy.gui.shortcut_manager import ShortcutManager, ShortcutContext
 
 
 class ErrorDialog(QDialog):
@@ -481,7 +481,7 @@ class KeyboardShortcutsDialog(QDialog):
     
     def on_customize(self):
         """Open customization dialog"""
-        from gui.shortcut_customization_dialog import ShortcutCustomizationDialog
+        from cuepoint.legacy.gui.shortcut_customization_dialog import ShortcutCustomizationDialog
         dialog = ShortcutCustomizationDialog(self.shortcut_manager, self)
         dialog.exec()
         # Refresh tables

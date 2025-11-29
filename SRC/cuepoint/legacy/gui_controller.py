@@ -2,6 +2,20 @@
 # -*- coding: utf-8 -*-
 
 """
+LEGACY MODULE - DEPRECATED
+
+This module has been moved to the legacy folder as part of Phase 5 migration.
+It is kept for backward compatibility and reference only.
+
+⚠️  DO NOT USE IN NEW CODE ⚠️
+
+Use the new Phase 5 GUI structure instead:
+- cuepoint.ui.controllers.main_controller.GUIController
+- cuepoint.ui.controllers.main_controller.ProcessingWorker
+
+This legacy module will be removed in a future version.
+
+Original description:
 GUI Controller Module - Thread-based processing controller for GUI
 
 This module provides the GUI controller that bridges the GUI and backend processing,
@@ -11,11 +25,13 @@ running processing in a background thread and emitting Qt signals for GUI update
 from PySide6.QtCore import QObject, Signal, QThread
 from typing import Optional, Dict, Any, List
 
-from gui_interface import (
+from cuepoint.ui.gui_interface import (
     ProgressInfo, TrackResult, ProcessingController, 
     ProcessingError, ErrorType
 )
-from processor import process_playlist
+
+# For backward compatibility, use process_playlist from legacy
+from cuepoint.legacy.processor import process_playlist
 
 
 class ProcessingWorker(QThread):

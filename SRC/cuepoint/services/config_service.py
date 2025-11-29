@@ -202,6 +202,77 @@ class ConfigService(IConfigService):
             # Don't raise - just log warnings
             print(f"Warning: Configuration validation errors: {', '.join(errors)}")
 
+    def load_from_file(self, file_path: str) -> None:
+        """Load configuration from a specific YAML file.
+
+        This method loads configuration from the specified file and merges it
+        with existing configuration. Settings from the file will override
+        current settings but can still be overridden by subsequent set() calls.
+
+        Args:
+            file_path: Path to YAML configuration file.
+
+        Raises:
+            FileNotFoundError: If the file doesn't exist.
+            yaml.YAMLError: If the YAML file is invalid.
+            ValueError: If the YAML contains invalid values.
+        """
+        from pathlib import Path
+
+        config_path = Path(file_path)
+        if not config_path.exists():
+            raise FileNotFoundError(f"Configuration file not found: {file_path}")
+
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                file_data = yaml.safe_load(f) or {}
+                # Merge with existing config
+                loaded_config = AppConfig.from_dict(file_data)
+                # Update current config with loaded values
+                # This is a simple merge - loaded values override existing
+                for key, value in loaded_config.__dict__.items():
+                    if value is not None:
+                        setattr(self.config, key, value)
+
+                # Also update legacy settings for backward compatibility
+                # Flatten the loaded config to legacy format
+                if isinstance(file_data, dict):
+                    flattened = self._flatten_dict(file_data)
+                    for key, value in flattened.items():
+                        # Map to legacy keys if needed
+                        legacy_key = self._map_to_legacy_key(key)
+                        if legacy_key:
+                            self._legacy_settings[legacy_key] = value
+        except yaml.YAMLError as e:
+            raise ValueError(f"Invalid YAML in configuration file {file_path}: {e}") from e
+
+    def _flatten_dict(self, d: Dict[str, Any], parent_key: str = "", sep: str = ".") -> Dict[str, Any]:
+        """Flatten nested dictionary."""
+        items = []
+        for k, v in d.items():
+            new_key = f"{parent_key}{sep}{k}" if parent_key else k
+            if isinstance(v, dict):
+                items.extend(self._flatten_dict(v, new_key, sep=sep).items())
+            else:
+                items.append((new_key, v))
+        return dict(items)
+
+    def _map_to_legacy_key(self, key: str) -> Optional[str]:
+        """Map new dot-notation key to legacy flat key."""
+        # Simple mapping - can be extended
+        mapping = {
+            "performance.candidate_workers": "CANDIDATE_WORKERS",
+            "performance.track_workers": "TRACK_WORKERS",
+            "performance.time_budget_sec": "PER_TRACK_TIME_BUDGET_SEC",
+            "performance.max_search_results": "MAX_SEARCH_RESULTS",
+            "matching.min_accept_score": "MIN_ACCEPT_SCORE",
+            "matching.early_exit_score": "EARLY_EXIT_SCORE",
+            "logging.verbose": "VERBOSE",
+            "logging.trace": "TRACE",
+            "cache.enabled": "ENABLE_CACHE",
+        }
+        return mapping.get(key, key.upper().replace(".", "_"))
+
     def _load_from_env(self) -> None:
         """Load configuration from environment variables."""
         env_mappings = {

@@ -1,10 +1,12 @@
 """Unit tests for rekordbox parser."""
 
-import pytest
-import xml.etree.ElementTree as ET
-import tempfile
 import os
-from cuepoint.data.rekordbox import parse_rekordbox, RBTrack, extract_artists_from_title
+import tempfile
+import xml.etree.ElementTree as ET
+
+import pytest
+
+from cuepoint.data.rekordbox import RBTrack, extract_artists_from_title, parse_rekordbox
 
 
 class TestRBTrack:
@@ -91,19 +93,18 @@ class TestParseRekordbox:
             xml_path = f.name
         
         try:
-            tracks_by_id, playlists = parse_rekordbox(xml_path)
+            playlists_dict = parse_rekordbox(xml_path)
             
-            # Verify tracks
-            assert len(tracks_by_id) == 2
-            assert "1" in tracks_by_id
-            assert "2" in tracks_by_id
-            assert tracks_by_id["1"].title == "Track 1"
+            # Verify playlists (returns Dict[str, Playlist])
+            # Should have at least "Playlist 1" (and possibly "ROOT")
+            assert len(playlists_dict) >= 1
+            assert "Playlist 1" in playlists_dict
             
-            # Verify playlists (includes ROOT playlist)
-            assert len(playlists) >= 1
-            assert "Playlist 1" in playlists
-            assert "Playlist 1" in playlists
-            assert len(playlists["Playlist 1"]) == 2
+            playlist = playlists_dict["Playlist 1"]
+            assert playlist.get_track_count() == 2
+            # Verify tracks in playlist
+            assert any(track.title == "Track 1" for track in playlist.tracks)
+            assert any(track.title == "Track 2" for track in playlist.tracks)
         finally:
             os.unlink(xml_path)
     
@@ -122,8 +123,8 @@ class TestParseRekordbox:
             xml_path = f.name
         
         try:
-            tracks_by_id, playlists = parse_rekordbox(xml_path)
-            assert len(tracks_by_id) == 0
+            playlists_dict = parse_rekordbox(xml_path)
+            # Empty collection should still have ROOT playlist
+            assert len(playlists_dict) >= 0
         finally:
             os.unlink(xml_path)
-

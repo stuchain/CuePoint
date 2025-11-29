@@ -14,7 +14,7 @@ from cuepoint.services.export_service import ExportService
 from cuepoint.services.beatport_service import BeatportService
 from cuepoint.services.matcher_service import MatcherService
 from cuepoint.services.processor_service import ProcessorService
-from cuepoint.data.rekordbox import RBTrack
+from cuepoint.models.track import Track
 from cuepoint.models.result import TrackResult
 
 
@@ -180,7 +180,7 @@ class TestProcessorService:
         # Mock matcher to return no match
         matcher.find_best_match.return_value = (None, [], [], 0)
         
-        track = RBTrack(track_id="1", title="Test Track", artists="Test Artist")
+        track = Track(track_id="1", title="Test Track", artist="Test Artist")
         result = service.process_track(1, track)
         
         assert result.matched is False
@@ -200,8 +200,8 @@ class TestProcessorService:
         matcher.find_best_match.return_value = (None, [], [], 0)
         
         tracks = [
-            RBTrack(track_id="1", title="Track 1", artists="Artist 1"),
-            RBTrack(track_id="2", title="Track 2", artists="Artist 2"),
+            Track(track_id="1", title="Track 1", artist="Artist 1"),
+            Track(track_id="2", title="Track 2", artist="Artist 2"),
         ]
         
         results = service.process_playlist(tracks)

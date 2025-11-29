@@ -502,7 +502,8 @@ class KeyboardShortcutsDialog(QDialog):
 
     def on_customize(self):
         """Open customization dialog"""
-        from gui.shortcut_customization_dialog import ShortcutCustomizationDialog
+        # Use new GUI structure - legacy GUI has been moved
+        from cuepoint.ui.widgets.shortcut_customization_dialog import ShortcutCustomizationDialog
 
         dialog = ShortcutCustomizationDialog(self.shortcut_manager, self)
         dialog.exec()

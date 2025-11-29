@@ -11,7 +11,7 @@ and orchestrates the track matching process.
 The workflow:
 1. Parse command-line arguments (XML path, playlist name, output file, etc.)
 2. Apply configuration presets (--fast, --turbo, --myargs, etc.)
-3. Call processor.run() to process all tracks in the playlist
+3. Use CLIProcessor (Phase 5 architecture) to process all tracks in the playlist
 4. Output CSV files are generated in the output/ directory
 
 Example usage:
@@ -19,8 +19,8 @@ Example usage:
 """
 
 import argparse
-import sys
 import os
+import sys
 
 # Add src to path for imports
 if __name__ == "__main__":
@@ -28,11 +28,22 @@ if __name__ == "__main__":
     if src_path not in sys.path:
         sys.path.insert(0, src_path)
 
-from cuepoint.models.config import SETTINGS, load_config_from_yaml
-from cuepoint.utils.errors import error_file_not_found, error_config_invalid, error_missing_dependency, print_error
-from cuepoint.services.processor import run
-from cuepoint.utils.utils import startup_banner
+from cuepoint.cli.cli_processor import CLIProcessor
 from cuepoint.services.bootstrap import bootstrap_services
+from cuepoint.services.interfaces import (
+    IConfigService,
+    IExportService,
+    ILoggingService,
+    IProcessorService,
+)
+from cuepoint.utils.di_container import get_container
+from cuepoint.utils.errors import (
+    error_config_invalid,
+    error_file_not_found,
+    error_missing_dependency,
+    print_error,
+)
+from cuepoint.utils.utils import startup_banner
 
 
 def main():
@@ -44,10 +55,25 @@ def main():
     2. Sets up argument parser with all available options
     3. Applies configuration presets based on flags (--fast, --turbo, --myargs, etc.)
     4. Shows startup banner with configuration fingerprint
-    5. Calls processor.run() to execute the main processing logic
+    5. Uses CLIProcessor (Phase 5 architecture) to execute the main processing logic
     """
     # Bootstrap services (dependency injection setup)
     bootstrap_services()
+    
+    # Get services from DI container
+    container = get_container()
+    processor_service = container.resolve(IProcessorService)  # type: ignore
+    export_service = container.resolve(IExportService)  # type: ignore
+    config_service = container.resolve(IConfigService)  # type: ignore
+    logging_service = container.resolve(ILoggingService)  # type: ignore
+    
+    # Create CLI processor
+    cli_processor = CLIProcessor(
+        processor_service=processor_service,
+        export_service=export_service,
+        config_service=config_service,
+        logging_service=logging_service,
+    )
     
     # Set up command-line argument parser with all available options
     ap = argparse.ArgumentParser(description="Enrich Rekordbox playlist with Beatport metadata (Accuracy + Logs + Candidates)")
@@ -88,8 +114,14 @@ def main():
     # YAML settings are loaded first, then CLI presets override them
     if args.config:
         try:
+            # Use legacy load_config_from_yaml for backward compatibility
+            # Then update ConfigService with those values
+            from cuepoint.models.config import load_config_from_yaml
+            
             yaml_settings = load_config_from_yaml(args.config)
-            SETTINGS.update(yaml_settings)
+            # Update ConfigService with YAML settings
+            for key, value in yaml_settings.items():
+                config_service.set(key, value)
             print(f"Loaded configuration from: {args.config}")
         except FileNotFoundError as e:
             print_error(error_file_not_found(args.config, "Configuration", "Check the --config file path"))
@@ -126,107 +158,111 @@ def main():
     # - More parallel workers for faster processing
     # - Shorter time budget per track (15s vs 25s)
     if args.fast:
-        SETTINGS.update({
-            "MAX_SEARCH_RESULTS": 12,
-            "CANDIDATE_WORKERS": 8,
-            "TRACK_WORKERS": 4,
-            "PER_TRACK_TIME_BUDGET_SEC": 15,
-            "ENABLE_CACHE": True,
-        })
+        config_service.set("MAX_SEARCH_RESULTS", 12)
+        config_service.set("CANDIDATE_WORKERS", 8)
+        config_service.set("TRACK_WORKERS", 4)
+        config_service.set("PER_TRACK_TIME_BUDGET_SEC", 15)
+        config_service.set("ENABLE_CACHE", True)
+    
     # Apply --turbo preset: maximum speed with minimal accuracy tradeoffs
     # - Very few search results (12)
     # - Maximum parallelism (12 candidate workers, 8 track workers)
     # - Very short time budget (10s per track)
     if args.turbo:
-        SETTINGS.update({
-            "MAX_SEARCH_RESULTS": 12,
-            "CANDIDATE_WORKERS": 12,
-            "TRACK_WORKERS": 8,
-            "PER_TRACK_TIME_BUDGET_SEC": 10,
-            "ENABLE_CACHE": True,
-        })
+        config_service.set("MAX_SEARCH_RESULTS", 12)
+        config_service.set("CANDIDATE_WORKERS", 12)
+        config_service.set("TRACK_WORKERS", 8)
+        config_service.set("PER_TRACK_TIME_BUDGET_SEC", 10)
+        config_service.set("ENABLE_CACHE", True)
+    
     # Apply --exhaustive preset: maximum accuracy with more queries and time
     # - Many search results (100)
     # - High parallelism (16 candidate workers, 8+ track workers)
     # - Long time budget (100s+ per track)
     # - Enables cross-title-grams with artists for more query variants
     if args.exhaustive:
-        SETTINGS.update({
-            "MAX_SEARCH_RESULTS": 100,
-            "CANDIDATE_WORKERS": 16,
-            "TRACK_WORKERS": max(SETTINGS["TRACK_WORKERS"], 8),
-            "PER_TRACK_TIME_BUDGET_SEC": max(SETTINGS["PER_TRACK_TIME_BUDGET_SEC"], 100),
-            "ENABLE_CACHE": True,
-            "CROSS_TITLE_GRAMS_WITH_ARTISTS": True,
-            "CROSS_SMALL_ONLY": True,
-            "REVERSE_ORDER_QUERIES": False,
-        })
+        config_service.set("MAX_SEARCH_RESULTS", 100)
+        config_service.set("CANDIDATE_WORKERS", 16)
+        current_track_workers = config_service.get("TRACK_WORKERS", 8)
+        config_service.set("TRACK_WORKERS", max(current_track_workers, 8))
+        current_time_budget = config_service.get("PER_TRACK_TIME_BUDGET_SEC", 100)
+        config_service.set("PER_TRACK_TIME_BUDGET_SEC", max(current_time_budget, 100))
+        config_service.set("ENABLE_CACHE", True)
+        config_service.set("CROSS_TITLE_GRAMS_WITH_ARTISTS", True)
+        config_service.set("CROSS_SMALL_ONLY", True)
+        config_service.set("REVERSE_ORDER_QUERIES", False)
+    
     # Apply --all-queries preset: run every possible query variation
     # - No time budget limit (None)
     # - All query generation features enabled
     # - Maximum workers for parallel processing
     if args.all_queries:
-        SETTINGS.update({
-            "RUN_ALL_QUERIES": True,
-            "PER_TRACK_TIME_BUDGET_SEC": None,
-            "CROSS_SMALL_ONLY": False,
-            "TITLE_GRAM_MAX": max(SETTINGS["TITLE_GRAM_MAX"], 3),
-            "MAX_SEARCH_RESULTS": max(SETTINGS["MAX_SEARCH_RESULTS"], 20),
-            "CANDIDATE_WORKERS": max(SETTINGS["CANDIDATE_WORKERS"], 16),
-            "TRACK_WORKERS": max(SETTINGS["TRACK_WORKERS"], 10),
-            "ENABLE_CACHE": True,
-        })
+        config_service.set("RUN_ALL_QUERIES", True)
+        config_service.set("PER_TRACK_TIME_BUDGET_SEC", None)
+        config_service.set("CROSS_SMALL_ONLY", False)
+        current_title_gram_max = config_service.get("TITLE_GRAM_MAX", 3)
+        config_service.set("TITLE_GRAM_MAX", max(current_title_gram_max, 3))
+        current_max_search = config_service.get("MAX_SEARCH_RESULTS", 20)
+        config_service.set("MAX_SEARCH_RESULTS", max(current_max_search, 20))
+        current_candidate_workers = config_service.get("CANDIDATE_WORKERS", 16)
+        config_service.set("CANDIDATE_WORKERS", max(current_candidate_workers, 16))
+        current_track_workers = config_service.get("TRACK_WORKERS", 10)
+        config_service.set("TRACK_WORKERS", max(current_track_workers, 10))
+        config_service.set("ENABLE_CACHE", True)
 
     # Ultra-aggressive preset: goes beyond defaults for maximum match discovery
     # Note: Default settings now match what --myargs used to apply
     # This preset enables even more aggressive settings for users who want maximum coverage
     if args.myargs:
-        SETTINGS.update({
-            # ---- Core speed/concurrency (ultra) ----
-            "CANDIDATE_WORKERS": 20,  # Even more parallel workers (default: 15)
-            "TRACK_WORKERS": 16,  # Even more parallel track processing (default: 12)
-            "PER_TRACK_TIME_BUDGET_SEC": 60,  # Extended time budget (default: 45)
+        # ---- Core speed/concurrency (ultra) ----
+        config_service.set("CANDIDATE_WORKERS", 20)
+        config_service.set("TRACK_WORKERS", 16)
+        config_service.set("PER_TRACK_TIME_BUDGET_SEC", 60)
 
-            # ---- Early exit tuning (more lenient) ----
-            "EARLY_EXIT_SCORE": 88,  # Even lower threshold for faster exits (default: 90)
-            "EARLY_EXIT_MIN_QUERIES": 6,  # Fewer queries before exit allowed (default: 8)
-            "EARLY_EXIT_FAMILY_SCORE": 85,  # Even lower family score (default: 88)
-            "EARLY_EXIT_FAMILY_AFTER": 3,  # Fewer queries for family exit (default: 5)
-            "REMIX_MAX_QUERIES": 40,  # Even more remix queries (default: 30)
+        # ---- Early exit tuning (more lenient) ----
+        config_service.set("EARLY_EXIT_SCORE", 88)
+        config_service.set("EARLY_EXIT_MIN_QUERIES", 6)
+        config_service.set("EARLY_EXIT_FAMILY_SCORE", 85)
+        config_service.set("EARLY_EXIT_FAMILY_AFTER", 3)
+        config_service.set("REMIX_MAX_QUERIES", 40)
 
-            # ---- Query generation (more exhaustive) ----
-            "TITLE_GRAM_MAX": 3,  # Enable trigrams (default: 2)
-            "CROSS_TITLE_GRAMS_WITH_ARTISTS": True,  # Enable title-gram crossing (default: False)
-            "MAX_QUERIES_PER_TRACK": 60,  # More queries per track (default: 40)
-            "TITLE_COMBO_MAX_LEN": 5,  # Longer title combos (default: 4)
-            "MAX_COMBO_QUERIES": 25,  # More combo queries (default: 15)
+        # ---- Query generation (more exhaustive) ----
+        config_service.set("TITLE_GRAM_MAX", 3)
+        config_service.set("CROSS_TITLE_GRAMS_WITH_ARTISTS", True)
+        config_service.set("MAX_QUERIES_PER_TRACK", 60)
+        config_service.set("TITLE_COMBO_MAX_LEN", 5)
+        config_service.set("MAX_COMBO_QUERIES", 25)
 
-            # ---- Search depth (ultra) ----
-            "MAX_SEARCH_RESULTS": 75,  # More search results (default: 50)
-            "MR_LOW": 15,  # More results for low-specificity queries (default: 10)
-            "MR_MED": 35,  # More results for medium queries (default: 25)
-            "MR_HIGH": 75,  # More results for high-specificity queries (default: 50)
+        # ---- Search depth (ultra) ----
+        config_service.set("MAX_SEARCH_RESULTS", 75)
+        config_service.set("MR_LOW", 15)
+        config_service.set("MR_MED", 35)
+        config_service.set("MR_HIGH", 75)
 
-            # ---- Scoring (more lenient) ----
-            "MIN_ACCEPT_SCORE": 65,  # Even more lenient acceptance (default: 70)
-        })
+        # ---- Scoring (more lenient) ----
+        config_service.set("MIN_ACCEPT_SCORE", 65)
 
     # Apply logging and determinism settings from command line
-    SETTINGS["VERBOSE"] = bool(args.verbose)  # Enable verbose logging
-    SETTINGS["TRACE"] = bool(args.trace)      # Enable trace-level logging (very detailed)
-    SETTINGS["SEED"] = int(args.seed)        # Set random seed for reproducibility
+    config_service.set("VERBOSE", bool(args.verbose))
+    config_service.set("TRACE", bool(args.trace))
+    config_service.set("SEED", int(args.seed))
 
     # Display startup banner with configuration fingerprint
     startup_banner(sys.argv[0], args)
     
-    # Execute the main processing pipeline
+    # Execute the main processing pipeline using CLIProcessor
     # This will:
     # 1. Parse the Rekordbox XML file
     # 2. Extract tracks from the specified playlist
     # 3. For each track, generate search queries and find best Beatport matches
     # 4. Write results to CSV files in the output/ directory
     # 5. Optionally re-search unmatched tracks if --auto-research is enabled
-    run(args.xml, args.playlist, args.out, auto_research=args.auto_research)
+    cli_processor.process_playlist(
+        xml_path=args.xml,
+        playlist_name=args.playlist,
+        out_csv_base=args.out,
+        auto_research=args.auto_research,
+    )
 
 
 if __name__ == "__main__":
