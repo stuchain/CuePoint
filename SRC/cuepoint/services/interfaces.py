@@ -68,12 +68,25 @@ class IConfigService(ABC):
 
     @abstractmethod
     def get(self, key: str, default: Any = None) -> Any:
-        """Get configuration value."""
+        """Get configuration value by key (supports dot notation).
+
+        Args:
+            key: Configuration key. Supports dot notation (e.g., "beatport.timeout").
+            default: Default value if key not found.
+
+        Returns:
+            Configuration value or default.
+        """
         pass
 
     @abstractmethod
     def set(self, key: str, value: Any) -> None:
-        """Set configuration value."""
+        """Set configuration value by key (supports dot notation).
+
+        Args:
+            key: Configuration key in dot notation (e.g., "beatport.timeout").
+            value: Value to set.
+        """
         pass
 
     @abstractmethod
@@ -84,6 +97,39 @@ class IConfigService(ABC):
     @abstractmethod
     def load(self) -> None:
         """Load configuration from persistent storage."""
+        pass
+
+    @abstractmethod
+    def reset_to_defaults(self) -> None:
+        """Reset configuration to defaults."""
+        pass
+
+    @abstractmethod
+    def validate(self) -> List[str]:
+        """Validate configuration.
+
+        Returns:
+            List of validation errors (empty if valid).
+        """
+        pass
+
+    @abstractmethod
+    def register_change_callback(self, callback: Callable[[str, Any, Any], None]) -> None:
+        """Register a callback to be notified when configuration changes.
+
+        Args:
+            callback: Function that will be called with (key: str, old_value: Any, new_value: Any)
+                     when a configuration value changes.
+        """
+        pass
+
+    @abstractmethod
+    def unregister_change_callback(self, callback: Callable[[str, Any, Any], None]) -> None:
+        """Unregister a configuration change callback.
+
+        Args:
+            callback: Callback function to remove.
+        """
         pass
 
 
