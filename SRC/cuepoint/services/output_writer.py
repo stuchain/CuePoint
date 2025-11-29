@@ -16,7 +16,7 @@ import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set
 
-from cuepoint.ui.gui_interface import TrackResult
+from cuepoint.models.result import TrackResult
 from cuepoint.utils.utils import with_timestamp
 
 # Try to import openpyxl for Excel export
@@ -262,7 +262,7 @@ def write_candidates_csv(
     # Collect all candidates from all tracks
     all_candidates = []
     for result in results:
-        all_candidates.extend(result.candidates)
+        all_candidates.extend(result.candidates_data)  # Use candidates_data for dict format
 
     if not all_candidates:
         return None
@@ -307,7 +307,7 @@ def write_queries_csv(
     # Collect all queries from all tracks
     all_queries = []
     for result in results:
-        all_queries.extend(result.queries)
+        all_queries.extend(result.queries_data)  # Use queries_data for dict format
 
     if not all_queries:
         return None
@@ -426,7 +426,7 @@ def write_review_candidates_csv(
 
     all_candidates = []
     for result in review_results:
-        all_candidates.extend(result.candidates)
+        all_candidates.extend(result.candidates_data)  # Use candidates_data for dict format
 
     if not all_candidates:
         return None
@@ -457,7 +457,7 @@ def write_review_queries_csv(
 
     all_queries = []
     for result in review_results:
-        all_queries.extend(result.queries)
+        all_queries.extend(result.queries_data)  # Use queries_data for dict format
 
     if not all_queries:
         return None

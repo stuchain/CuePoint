@@ -13,7 +13,7 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
 from cuepoint.ui.widgets.results_view import ResultsView
-from cuepoint.ui.gui_interface import TrackResult
+from cuepoint.models.result import TrackResult
 
 
 def create_sample_results():

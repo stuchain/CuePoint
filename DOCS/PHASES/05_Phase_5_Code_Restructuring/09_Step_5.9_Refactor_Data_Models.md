@@ -494,17 +494,25 @@ BeatportCandidate
 
 ## Implementation Checklist
 
-- [ ] Identify all data structures
-- [ ] Create Track model
-- [ ] Create BeatportCandidate model
-- [ ] Create TrackResult model
-- [ ] Create Playlist model
-- [ ] Add validation to all models
-- [ ] Add serialization/deserialization
+### Model Creation (5.9.1-5.9.8)
+- [x] Identify all data structures
+- [x] Create Track model
+- [x] Create BeatportCandidate model
+- [x] Create TrackResult model
+- [x] Create Playlist model
+- [x] Add validation to all models
+- [x] Add serialization/deserialization
+- [x] Write model tests
+- [x] Document model relationships
+
+### Migration (5.9.9-5.9.13)
+- [ ] Phase 1: Create compatibility helpers
+- [ ] Phase 2: Migrate BeatportCandidate
+- [ ] Phase 3: Migrate TrackResult
+- [ ] Phase 4: Migrate RBTrack → Track (optional)
 - [ ] Update code to use models
-- [ ] Write model tests
-- [ ] Document model relationships
 - [ ] Update imports throughout codebase
+- [ ] Test all migrations
 
 ---
 
@@ -544,11 +552,150 @@ def test_track_serialization():
 
 ---
 
+## Migration Strategy
+
+### 5.9.9: Migration Overview
+
+After creating the new data models, migrate the existing codebase to use them. This is done in phases to minimize risk.
+
+**Migration Phases:**
+1. **Phase 1**: Create compatibility helpers (preparation)
+2. **Phase 2**: Migrate BeatportCandidate (lowest risk)
+3. **Phase 3**: Migrate TrackResult (medium risk)
+4. **Phase 4**: Migrate RBTrack → Track (highest risk, optional)
+
+### 5.9.10: Phase 1 - Compatibility Helpers
+
+Create compatibility/conversion functions to bridge old and new models.
+
+**Tasks:**
+- [ ] Create `SRC/cuepoint/models/compat.py` with conversion helpers:
+  - `track_from_rbtrack(rbtrack: RBTrack) -> Track`
+  - `beatport_candidate_from_old(old: OldBeatportCandidate) -> BeatportCandidate`
+  - `track_result_from_old(old: OldTrackResult) -> TrackResult`
+- [ ] Create tests for compatibility helpers (`tests/unit/models/test_compat.py`)
+- [ ] Verify `to_dict()` methods match old format exactly
+
+**Success Criteria:**
+- All conversion functions implemented and tested
+- Conversion functions handle edge cases
+- Tests pass with 100% coverage
+
+### 5.9.11: Phase 2 - BeatportCandidate Migration
+
+Migrate BeatportCandidate usage from `cuepoint.data.beatport` to `cuepoint.models.beatport_candidate`.
+
+**Files to Update:**
+- `SRC/cuepoint/core/matcher.py` - Change import, verify validation passes
+- `SRC/cuepoint/services/matcher_service.py` - Change import
+
+**Tasks:**
+- [ ] Update imports in `core/matcher.py`
+- [ ] Update imports in `services/matcher_service.py`
+- [ ] Verify all BeatportCandidate creation sites pass validation:
+  - URL is not empty
+  - Score is not negative
+  - Similarity scores are 0-100
+- [ ] Run matcher tests to ensure no validation errors
+- [ ] Test matching functionality end-to-end
+
+**Success Criteria:**
+- All imports updated
+- All tests passing
+- No validation errors
+- Matching functionality works correctly
+
+**Risk Level:** Low - Fields match, validation should pass
+
+### 5.9.12: Phase 3 - TrackResult Migration
+
+Migrate TrackResult usage from `cuepoint.ui.gui_interface` to `cuepoint.models.result`.
+
+**Files to Update:**
+- `SRC/cuepoint/ui/controllers/results_controller.py`
+- `SRC/cuepoint/ui/controllers/export_controller.py`
+- `SRC/cuepoint/services/export_service.py`
+- `SRC/cuepoint/services/output_writer.py`
+- `SRC/cuepoint/ui/widgets/results_view.py`
+
+**Tasks:**
+- [ ] Update imports in controllers (low impact - type hints only)
+- [ ] Update imports in export services
+- [ ] Verify `to_dict()` usage still works (should be identical)
+- [ ] Update `results_view.py` to handle `candidates` field change:
+  - Old: `List[Dict[str, Any]]`
+  - New: `List[BeatportCandidate]`
+  - Use `candidates_data` for dict format or convert
+- [ ] Test CSV/JSON/Excel export formats
+- [ ] Test results display in UI
+- [ ] Test filtering and candidate viewing
+
+**Success Criteria:**
+- All imports updated
+- Export formats unchanged (backward compatible)
+- UI displays correctly
+- All tests passing
+
+**Risk Level:** Medium - UI component, many usages, `candidates` field type change
+
+### 5.9.13: Phase 4 - RBTrack → Track Migration (Optional)
+
+Migrate from `RBTrack` to `Track` model. This is the highest risk migration.
+
+**Strategy:**
+- Keep `RBTrack` in `rekordbox.py` for XML parsing
+- Convert to `Track` after parsing using compatibility helper
+
+**Files to Update:**
+- `SRC/cuepoint/services/interfaces.py` - Update type hints
+- `SRC/cuepoint/services/processor_service.py` - Convert after parsing
+- `SRC/cuepoint/services/processor.py` - Optional (legacy code)
+
+**Tasks:**
+- [ ] Update interface type hints to use `Track`
+- [ ] Update processor service to convert `RBTrack` to `Track` after parsing
+- [ ] Use `track_from_rbtrack()` helper for conversion
+- [ ] Test full processing pipeline
+- [ ] Verify all track operations work with new model
+
+**Success Criteria:**
+- Processing pipeline works end-to-end
+- All track operations functional
+- No breaking changes
+
+**Risk Level:** High - Changes core data flow, affects all processing
+
+**Note:** This phase can be deferred if Phases 2-3 are successful and there's no immediate need.
+
+---
+
+## Migration Testing Strategy
+
+### Unit Tests
+- [ ] Compatibility helpers tested
+- [ ] Model validation tested
+- [ ] `to_dict()` compatibility verified
+
+### Integration Tests
+- [ ] Matcher service with new BeatportCandidate
+- [ ] Export service with new TrackResult
+- [ ] Results view with new TrackResult
+- [ ] Processor service with new Track (if Phase 4 done)
+
+### Regression Tests
+- [ ] CSV export format unchanged
+- [ ] JSON export format unchanged
+- [ ] Excel export format unchanged
+- [ ] UI displays all fields correctly
+
+---
+
 ## Next Steps
 
 After completing this step:
 1. Verify all models work correctly
 2. Test model validation
 3. Test model serialization
-4. Proceed to Step 5.10: Performance & Optimization Review
+4. **Complete migration phases (5.9.10-5.9.13)**
+5. Proceed to Step 5.10: Performance & Optimization Review
 

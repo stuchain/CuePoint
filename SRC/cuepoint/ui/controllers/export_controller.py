@@ -10,7 +10,7 @@ This controller handles export logic, separating business logic from UI presenta
 import os
 from typing import Any, Dict, List, Optional
 
-from cuepoint.ui.gui_interface import TrackResult
+from cuepoint.models.result import TrackResult
 
 
 class ExportController:

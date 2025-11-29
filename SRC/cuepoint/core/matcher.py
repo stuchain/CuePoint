@@ -42,11 +42,11 @@ from cuepoint.core.text_processing import (
     score_components,
 )
 from cuepoint.data.beatport import (
-    BeatportCandidate,
     get_last_cache_hit,
     parse_track_page,
     track_urls,
 )
+from cuepoint.models.beatport_candidate import BeatportCandidate
 from cuepoint.models.config import NEAR_KEYS, SETTINGS
 from cuepoint.utils.performance import performance_collector
 from cuepoint.utils.utils import tlog, vlog
@@ -814,7 +814,7 @@ def best_beatport_match(
             release_year=year,
             bpm=bpm,
             label=label,
-            genres=genres,
+            genre=genres,  # Note: new model uses "genre" instead of "genres"
             release_name=rel_name,
             release_date=rel_date,
             score=final,

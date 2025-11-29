@@ -24,7 +24,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from cuepoint.ui.gui_interface import ProcessingError, ProgressInfo, TrackResult
+from cuepoint.models.result import TrackResult
+from cuepoint.ui.gui_interface import ProcessingError, ProgressInfo
 
 
 class BatchProcessorWidget(QWidget):

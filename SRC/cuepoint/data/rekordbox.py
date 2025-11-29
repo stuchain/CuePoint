@@ -27,6 +27,9 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
+from cuepoint.models.compat import track_from_rbtrack
+from cuepoint.models.playlist import Playlist
+from cuepoint.models.track import Track
 from cuepoint.utils.errors import error_xml_parsing
 
 
@@ -47,9 +50,9 @@ class RBTrack:
     artists: str
 
 
-def parse_rekordbox(xml_path: str) -> Tuple[Dict[str, RBTrack], Dict[str, List[str]]]:
+def parse_rekordbox(xml_path: str) -> Dict[str, Playlist]:
     """
-    Parse Rekordbox XML export file and extract tracks and playlists
+    Parse Rekordbox XML export file and extract playlists with tracks.
 
     Rekordbox XML structure:
     - COLLECTION: Contains all tracks
@@ -60,13 +63,18 @@ def parse_rekordbox(xml_path: str) -> Tuple[Dict[str, RBTrack], Dict[str, List[s
         xml_path: Path to Rekordbox XML export file
 
     Returns:
-        Tuple of:
-        - tracks_by_id: Dictionary mapping track ID -> RBTrack
-        - playlists: Dictionary mapping playlist name -> list of track IDs
+        Dictionary mapping playlist name -> Playlist object.
+        Each Playlist contains Track objects (converted from RBTrack).
 
     Raises:
         FileNotFoundError: If XML file doesn't exist
         ET.ParseError: If XML parsing fails
+
+    Example:
+        >>> playlists = parse_rekordbox("collection.xml")
+        >>> print(f"Found {len(playlists)} playlists")
+        >>> for name, playlist in playlists.items():
+        ...     print(f"{name}: {playlist.get_track_count()} tracks")
     """
     # Check if file exists first
     import os
@@ -104,8 +112,9 @@ def parse_rekordbox(xml_path: str) -> Tuple[Dict[str, RBTrack], Dict[str, List[s
         new_error.__cause__ = e
         raise new_error from e
 
+    # First, parse all tracks into RBTrack objects (for XML parsing)
     tracks_by_id: Dict[str, RBTrack] = {}
-    playlists: Dict[str, List[str]] = {}
+    playlist_data: Dict[str, List[str]] = {}  # Temporary: playlist name -> track IDs
 
     collection = root.find(".//COLLECTION")
     if collection is not None:
@@ -116,6 +125,7 @@ def parse_rekordbox(xml_path: str) -> Tuple[Dict[str, RBTrack], Dict[str, List[s
             if tid and title:
                 tracks_by_id[tid] = RBTrack(track_id=tid, title=title, artists=artists)
 
+    # Parse playlist definitions (playlist name -> list of track IDs)
     playlists_root = root.find(".//PLAYLISTS")
     if playlists_root is not None:
         for node in playlists_root.findall(".//NODE"):
@@ -128,9 +138,27 @@ def parse_rekordbox(xml_path: str) -> Tuple[Dict[str, RBTrack], Dict[str, List[s
                     if ref:
                         track_ids.append(ref)
                 # Always add playlist, even if empty (empty playlists are valid)
-                playlists[pname] = track_ids
+                playlist_data[pname] = track_ids
 
-    return tracks_by_id, playlists
+    # Convert to Playlist objects with Track objects
+    playlists: Dict[str, Playlist] = {}
+    for playlist_name, track_ids in playlist_data.items():
+        # Convert RBTrack objects to Track objects and create Playlist
+        tracks: List[Track] = []
+        for idx, track_id in enumerate(track_ids, start=1):
+            rbtrack = tracks_by_id.get(track_id)
+            if rbtrack:
+                # Convert RBTrack to Track
+                track = track_from_rbtrack(rbtrack)
+                # Set position in playlist
+                track.position = idx
+                tracks.append(track)
+
+        # Create Playlist object
+        playlist = Playlist(name=playlist_name, tracks=tracks)
+        playlists[playlist_name] = playlist
+
+    return playlists
 
 
 def extract_artists_from_title(title: str) -> Optional[Tuple[str, str]]:

@@ -1,11 +1,13 @@
 """Unit tests for processor service."""
 
-import pytest
 from unittest.mock import Mock, patch
-from cuepoint.services.processor_service import ProcessorService
+
+import pytest
+
 from cuepoint.data.rekordbox import RBTrack
-from cuepoint.ui.gui_interface import TrackResult
-from cuepoint.data.beatport import BeatportCandidate
+from cuepoint.models.beatport_candidate import BeatportCandidate
+from cuepoint.models.result import TrackResult
+from cuepoint.services.processor_service import ProcessorService
 
 
 class TestProcessorService:
@@ -36,7 +38,7 @@ class TestProcessorService:
                 release_year=None,
                 bpm=None,
                 label=None,
-                genres=None,
+                genre=None,  # Note: new model uses "genre" instead of "genres"
                 release_name=None,
                 release_date=None,
                 score=95.0,
@@ -154,5 +156,7 @@ class TestProcessorService:
         assert isinstance(result, TrackResult)
         # Check that custom settings were passed to matcher
         call_args = mock_matcher.find_best_match.call_args
+        assert call_args is not None
+
         assert call_args is not None
 

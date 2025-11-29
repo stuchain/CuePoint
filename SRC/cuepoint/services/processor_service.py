@@ -13,7 +13,9 @@ from typing import Any, Dict, List, Optional
 from cuepoint.core.mix_parser import _extract_generic_parenthetical_phrases, _parse_mix_flags
 from cuepoint.core.query_generator import make_search_queries
 from cuepoint.core.text_processing import sanitize_title_for_search
-from cuepoint.data.rekordbox import RBTrack, extract_artists_from_title, parse_rekordbox
+from cuepoint.data.rekordbox import extract_artists_from_title, parse_rekordbox
+from cuepoint.models.compat import track_from_rbtrack
+from cuepoint.models.track import Track
 from cuepoint.models.config import SETTINGS
 from cuepoint.services.interfaces import (
     IBeatportService,
@@ -22,13 +24,13 @@ from cuepoint.services.interfaces import (
     IMatcherService,
     IProcessorService,
 )
+from cuepoint.models.result import TrackResult
 from cuepoint.ui.gui_interface import (
     ErrorType,
     ProcessingController,
     ProcessingError,
     ProgressCallback,
     ProgressInfo,
-    TrackResult,
 )
 
 
@@ -69,7 +71,7 @@ class ProcessorService(IProcessorService):
         self.config_service = config_service
 
     def process_track(
-        self, idx: int, track: RBTrack, settings: Optional[Dict[str, Any]] = None
+        self, idx: int, track: Track, settings: Optional[Dict[str, Any]] = None
     ) -> TrackResult:
         """Process a single track and return match result.
 
@@ -81,7 +83,7 @@ class ProcessorService(IProcessorService):
 
         Args:
             idx: Track index (1-based) for logging.
-            track: RBTrack object containing track information.
+            track: Track object containing track information.
             settings: Optional settings dictionary to override defaults.
 
         Returns:
@@ -92,7 +94,7 @@ class ProcessorService(IProcessorService):
             - All candidates and queries executed
 
         Example:
-            >>> track = RBTrack(title="Never Sleep Again", artists="Tim Green")
+            >>> track = Track(title="Never Sleep Again", artist="Tim Green")
             >>> result = service.process_track(1, track)
             >>> print(result.matched)
             True
@@ -107,7 +109,8 @@ class ProcessorService(IProcessorService):
         t0 = time.perf_counter()
 
         # Extract artists, clean title
-        original_artists = track.artists or ""
+        # Note: Track uses 'artist' (singular), RBTrack used 'artists' (plural)
+        original_artists = track.artist or ""
         title_for_search = sanitize_title_for_search(track.title)
         artists_for_scoring = original_artists
 
@@ -169,24 +172,41 @@ class ProcessorService(IProcessorService):
             # Fetch full track data if needed (for future use)
             _ = self.beatport_service.fetch_track_data(best.url)
 
-            # Build candidates list
-            candidates = []
+            # Build candidates_data list (for backward compatibility with export and UI)
+            # This format matches what CandidateDialog and export functions expect
+            candidates_data = []
             for cand in all_candidates:
-                candidates.append(
+                candidates_data.append(
                     {
-                        "url": cand.url,
+                        "candidate_url": cand.url,
+                        "candidate_title": cand.title,
+                        "candidate_artists": cand.artists,
+                        "candidate_key": cand.key or "",
+                        "candidate_key_camelot": cand.key or "",  # TODO: convert to Camelot
+                        "candidate_year": str(cand.release_year) if cand.release_year else "",
+                        "candidate_bpm": cand.bpm or "",
+                        "candidate_label": cand.label or "",
+                        "candidate_genres": cand.genre or "",  # Note: new model uses "genre"
+                        "candidate_release": cand.release_name or "",
+                        "candidate_release_date": cand.release_date or "",
+                        "final_score": cand.score,
+                        "match_score": cand.score,
+                        "title_sim": cand.title_sim,
+                        "artist_sim": cand.artist_sim,
+                        "base_score": cand.base_score,
+                        "bonus_year": cand.bonus_year,
+                        "bonus_key": cand.bonus_key,
+                        "url": cand.url,  # Also include direct fields for compatibility
                         "title": cand.title,
                         "artists": cand.artists,
                         "score": cand.score,
-                        "title_sim": cand.title_sim,
-                        "artist_sim": cand.artist_sim,
                     }
                 )
 
-            # Build queries list
-            queries_list = []
+            # Build queries_data list (for backward compatibility with export)
+            queries_data = []
             for q_idx, q_text, cand_count, elapsed_ms in queries_audit:
-                queries_list.append(
+                queries_data.append(
                     {
                         "index": q_idx,
                         "query": q_text,
@@ -200,6 +220,8 @@ class ProcessorService(IProcessorService):
                 title=track.title,
                 artist=original_artists or artists_for_scoring,
                 matched=True,
+                best_match=best,  # Set best_match to the BeatportCandidate object
+                candidates=all_candidates,  # List of BeatportCandidate objects
                 beatport_url=best.url,
                 beatport_title=best.title,
                 beatport_artists=best.artists,
@@ -208,7 +230,7 @@ class ProcessorService(IProcessorService):
                 beatport_year=str(best.release_year) if best.release_year else None,
                 beatport_bpm=best.bpm,
                 beatport_label=best.label,
-                beatport_genres=best.genres,
+                beatport_genres=best.genre,  # Note: new model uses "genre" instead of "genres"
                 beatport_release=best.release_name,
                 beatport_release_date=best.release_date,
                 match_score=best.score,
@@ -218,8 +240,9 @@ class ProcessorService(IProcessorService):
                 search_query_index=str(best.query_index),
                 search_stop_query_index=str(last_qidx),
                 candidate_index=str(best.candidate_index),
-                candidates=candidates,
-                queries=queries_list,
+                processing_time=dur / 1000.0,  # Convert ms to seconds
+                candidates_data=candidates_data,  # Dict format for export compatibility
+                queries_data=queries_data,  # Dict format for export compatibility
             )
         else:
             # No match found
@@ -237,7 +260,7 @@ class ProcessorService(IProcessorService):
             )
 
     def process_playlist(
-        self, tracks: List[RBTrack], settings: Optional[Dict[str, Any]] = None
+        self, tracks: List[Track], settings: Optional[Dict[str, Any]] = None
     ) -> List[TrackResult]:
         """Process a playlist of tracks.
 
@@ -245,14 +268,14 @@ class ProcessorService(IProcessorService):
         Logs progress for each track.
 
         Args:
-            tracks: List of RBTrack objects to process.
+            tracks: List of Track objects to process.
             settings: Optional settings dictionary to override defaults.
 
         Returns:
             List of TrackResult objects, one per input track.
 
         Example:
-            >>> tracks = [RBTrack(...), RBTrack(...)]
+            >>> tracks = [Track(...), Track(...)]
             >>> results = service.process_playlist(tracks)
             >>> print(f"Processed {len(results)} tracks")
         """
@@ -307,9 +330,9 @@ class ProcessorService(IProcessorService):
             else {key: self.config_service.get(key, SETTINGS.get(key)) for key in SETTINGS.keys()}
         )
 
-        # Parse Rekordbox XML file to extract tracks and playlists
+        # Parse Rekordbox XML file to extract playlists with tracks
         try:
-            tracks_by_id, playlists = parse_rekordbox(xml_path)
+            playlists = parse_rekordbox(xml_path)
         except FileNotFoundError:
             raise ProcessingError(
                 error_type=ErrorType.FILE_NOT_FOUND,
@@ -371,15 +394,9 @@ class ProcessorService(IProcessorService):
                 recoverable=True,
             )
 
-        # Get track IDs for the requested playlist
-        tids = playlists[playlist_name]
-
-        # Build list of tracks to process
-        tracks: List[RBTrack] = []
-        for tid in tids:
-            rb = tracks_by_id.get(tid)
-            if rb:
-                tracks.append(rb)
+        # Get the requested playlist (already contains Track objects)
+        playlist = playlists[playlist_name]
+        tracks = playlist.tracks
 
         if not tracks:
             raise ProcessingError(
@@ -423,7 +440,7 @@ class ProcessorService(IProcessorService):
                     total_tracks=total,
                     matched_count=matched_count,
                     unmatched_count=unmatched_count,
-                    current_track={"title": track.title, "artists": track.artists or ""},
+                    current_track={"title": track.title, "artists": track.artist or ""},
                     elapsed_time=elapsed_time,
                 )
                 try:
@@ -463,7 +480,7 @@ class ProcessorService(IProcessorService):
 
                     idx = result.playlist_index
                     # Find the original track
-                    track: Optional[RBTrack] = tracks[idx - 1] if idx <= len(tracks) else None
+                    track: Optional[Track] = tracks[idx - 1] if idx <= len(tracks) else None
                     if track:
                         new_result = self.process_track(idx, track, enhanced_settings)
                         # Update the result if we found a match
@@ -483,7 +500,7 @@ class ProcessorService(IProcessorService):
                                     unmatched_count=unmatched_count,
                                     current_track={
                                         "title": track.title,
-                                        "artists": track.artists or "",
+                                        "artists": track.artist or "",
                                     },
                                     elapsed_time=elapsed_time,
                                 )

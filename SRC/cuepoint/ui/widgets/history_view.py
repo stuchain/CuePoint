@@ -1057,16 +1057,45 @@ class HistoryView(QWidget):
         dialog.exec()
 
     def _get_output_dirs(self):
-        """Get list of output directory paths (only SRC/output folder)"""
-        # Determine SRC directory
-        current_file = os.path.abspath(__file__)  # SRC/gui/history_view.py
-        src_dir = os.path.dirname(os.path.dirname(current_file))  # SRC/
-
+        """Get list of output directory paths (project root/output folder)"""
         output_dirs = []
-        # Only use SRC output folder
+        
+        # Method 1: Try relative to current working directory
+        # When GUI runs, CWD is usually SRC/, so output/ would be SRC/output
+        # But output is actually at project root, so try going up one level
+        cwd = os.getcwd()
+        cwd_output = os.path.abspath("output")
+        if os.path.exists(cwd_output):
+            output_dirs.append(cwd_output)
+        
+        # Method 2: Try one level up from CWD (project root)
+        # If CWD is SRC/, go up to project root
+        parent_dir = os.path.dirname(cwd)
+        if parent_dir:  # Only if we can go up
+            parent_output = os.path.join(parent_dir, "output")
+            abs_parent_output = os.path.abspath(parent_output)
+            if os.path.exists(abs_parent_output) and abs_parent_output not in output_dirs:
+                output_dirs.append(abs_parent_output)
+        
+        # Method 3: Calculate from file location
+        # File is at: SRC/cuepoint/ui/widgets/history_view.py
+        # Go up 4 levels: widgets -> ui -> cuepoint -> SRC
+        current_file = os.path.abspath(__file__)
+        src_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file))))
+        
+        # Try SRC/output
         src_output = os.path.join(src_dir, "output")
-        if os.path.exists(src_output):
-            output_dirs.append(src_output)
+        abs_src_output = os.path.abspath(src_output)
+        if os.path.exists(abs_src_output) and abs_src_output not in output_dirs:
+            output_dirs.append(abs_src_output)
+        
+        # Method 4: Try project root/output (one level up from SRC)
+        project_root = os.path.dirname(src_dir) if os.path.dirname(src_dir) else src_dir
+        if project_root != src_dir:  # Only if project root is different from SRC
+            project_output = os.path.join(project_root, "output")
+            abs_project_output = os.path.abspath(project_output)
+            if os.path.exists(abs_project_output) and abs_project_output not in output_dirs:
+                output_dirs.append(abs_project_output)
 
         return output_dirs
 

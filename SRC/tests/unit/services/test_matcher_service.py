@@ -1,9 +1,11 @@
 """Unit tests for matcher service."""
 
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import patch, Mock
+
+from cuepoint.models.beatport_candidate import BeatportCandidate
 from cuepoint.services.matcher_service import MatcherService
-from cuepoint.data.beatport import BeatportCandidate
 
 
 class TestMatcherService:
@@ -25,7 +27,7 @@ class TestMatcherService:
                 release_year=None,
                 bpm=None,
                 label=None,
-                genres=None,
+                genre=None,  # Note: new model uses "genre" instead of "genres"
                 release_name=None,
                 release_date=None,
                 score=95.0,
@@ -94,6 +96,8 @@ class TestMatcherService:
         # Verify
         assert best is None
         assert len(candidates) == 0
+
+
 
 
 

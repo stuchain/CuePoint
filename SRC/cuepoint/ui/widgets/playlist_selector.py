@@ -11,6 +11,7 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QWidget
 
 from cuepoint.data.rekordbox import parse_rekordbox
+from cuepoint.models.playlist import Playlist
 
 
 class PlaylistSelector(QWidget):
@@ -20,8 +21,7 @@ class PlaylistSelector(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.playlists = {}
-        self.tracks_by_id = {}
+        self.playlists: dict[str, Playlist] = {}
         self.init_ui()
 
     def init_ui(self):
@@ -41,7 +41,7 @@ class PlaylistSelector(QWidget):
     def load_xml_file(self, xml_path: str):
         """Load XML file and populate playlists"""
         try:
-            self.tracks_by_id, self.playlists = parse_rekordbox(xml_path)
+            self.playlists = parse_rekordbox(xml_path)
 
             # Populate combobox
             self.combo.clear()
@@ -78,7 +78,7 @@ class PlaylistSelector(QWidget):
     def get_playlist_track_count(self, playlist_name: str) -> int:
         """Get track count for playlist"""
         if playlist_name in self.playlists:
-            return len(self.playlists[playlist_name])
+            return self.playlists[playlist_name].get_track_count()
         return 0
 
     def clear(self):
@@ -87,4 +87,3 @@ class PlaylistSelector(QWidget):
         self.combo.setEnabled(False)
         self.combo.setPlaceholderText("No XML file loaded")
         self.playlists = {}
-        self.tracks_by_id = {}

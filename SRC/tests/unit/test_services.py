@@ -15,7 +15,7 @@ from cuepoint.services.beatport_service import BeatportService
 from cuepoint.services.matcher_service import MatcherService
 from cuepoint.services.processor_service import ProcessorService
 from cuepoint.data.rekordbox import RBTrack
-from cuepoint.ui.gui_interface import TrackResult
+from cuepoint.models.result import TrackResult
 
 
 class TestCacheService:

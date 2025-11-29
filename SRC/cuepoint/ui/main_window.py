@@ -43,7 +43,8 @@ from cuepoint.ui.controllers.config_controller import ConfigController
 from cuepoint.ui.controllers.export_controller import ExportController
 from cuepoint.ui.controllers.main_controller import GUIController
 from cuepoint.ui.controllers.results_controller import ResultsController
-from cuepoint.ui.gui_interface import ProcessingError, ProgressInfo, TrackResult
+from cuepoint.models.result import TrackResult
+from cuepoint.ui.gui_interface import ProcessingError, ProgressInfo
 from cuepoint.ui.widgets.batch_processor import BatchProcessorWidget
 from cuepoint.ui.widgets.config_panel import ConfigPanel
 from cuepoint.ui.widgets.dialogs import (

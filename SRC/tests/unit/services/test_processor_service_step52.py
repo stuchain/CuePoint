@@ -11,19 +11,14 @@ import os
 import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
 from cuepoint.data.rekordbox import RBTrack
+from cuepoint.models.result import TrackResult
 from cuepoint.services.processor_service import ProcessorService
-from cuepoint.ui.gui_interface import (
-    ErrorType,
-    ProcessingController,
-    ProcessingError,
-    ProgressInfo,
-    TrackResult,
-)
+from cuepoint.ui.gui_interface import ErrorType, ProcessingController, ProcessingError, ProgressInfo
 
 
 class TestProcessorServiceProcessPlaylistFromXML:
@@ -67,7 +62,7 @@ class TestProcessorServiceProcessPlaylistFromXML:
             mock_config_service.get.side_effect = config_get
 
             # Setup matcher to return a match
-            from cuepoint.data.beatport import BeatportCandidate
+            from cuepoint.models.beatport_candidate import BeatportCandidate
 
             mock_matcher_service.find_best_match.return_value = (
                 BeatportCandidate(
@@ -78,7 +73,7 @@ class TestProcessorServiceProcessPlaylistFromXML:
                     release_year=None,
                     bpm=None,
                     label=None,
-                    genres=None,
+                    genre=None,  # Note: new model uses "genre" instead of "genres"
                     release_name=None,
                     release_date=None,
                     score=95.0,
@@ -432,7 +427,7 @@ class TestProcessorServiceProcessPlaylistFromXML:
             mock_config_service.get.side_effect = config_get
 
             # First call returns no match, second call (auto-research) returns match
-            from cuepoint.data.beatport import BeatportCandidate
+            from cuepoint.models.beatport_candidate import BeatportCandidate
 
             no_match = (None, [], [], 1)
             match = (
@@ -444,7 +439,7 @@ class TestProcessorServiceProcessPlaylistFromXML:
                     release_year=None,
                     bpm=None,
                     label=None,
-                    genres=None,
+                    genre=None,  # Note: new model uses "genre" instead of "genres"
                     release_name=None,
                     release_date=None,
                     score=95.0,

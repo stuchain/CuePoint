@@ -1,7 +1,7 @@
 """Pytest configuration and shared fixtures."""
 
-import sys
 import os
+import sys
 
 # Add src directory to Python path before any cuepoint imports
 # This ensures pytest can find the cuepoint module
@@ -10,17 +10,26 @@ _src_dir = os.path.dirname(_test_dir)
 if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
 
-import pytest
-from unittest.mock import Mock, MagicMock
 from typing import Generator
-from cuepoint.utils.di_container import DIContainer, reset_container
-from cuepoint.services.interfaces import (
-    IProcessorService, IBeatportService, ICacheService,
-    IExportService, IConfigService, ILoggingService, IMatcherService
-)
+from unittest.mock import MagicMock, Mock
+
+import pytest
+
 from cuepoint.data.rekordbox import RBTrack
-from cuepoint.data.beatport import BeatportCandidate
-from cuepoint.ui.gui_interface import TrackResult
+from cuepoint.models.beatport_candidate import BeatportCandidate
+from cuepoint.models.compat import track_from_rbtrack
+from cuepoint.models.result import TrackResult
+from cuepoint.models.track import Track
+from cuepoint.services.interfaces import (
+    IBeatportService,
+    ICacheService,
+    IConfigService,
+    IExportService,
+    ILoggingService,
+    IMatcherService,
+    IProcessorService,
+)
+from cuepoint.utils.di_container import DIContainer, reset_container
 
 
 @pytest.fixture(scope="function")
@@ -77,22 +86,22 @@ def mock_matcher_service() -> Mock:
 
 
 @pytest.fixture
-def sample_track() -> RBTrack:
-    """Create a sample Rekordbox track for testing."""
-    return RBTrack(
+def sample_track() -> Track:
+    """Create a sample Track for testing."""
+    return Track(
         track_id="12345",
         title="Test Track",
-        artists="Test Artist"
+        artist="Test Artist"
     )
 
 
 @pytest.fixture
-def sample_track_with_remix() -> RBTrack:
+def sample_track_with_remix() -> Track:
     """Create a sample track with remix in title."""
-    return RBTrack(
+    return Track(
         track_id="12346",
         title="Test Track (Remixer Remix)",
-        artists="Test Artist"
+        artist="Test Artist"
     )
 
 
@@ -107,7 +116,7 @@ def sample_beatport_candidate() -> BeatportCandidate:
         release_year=2023,
         bpm="128",
         label="Test Label",
-        genres="House",
+        genre="House",  # Note: new model uses "genre" instead of "genres"
         release_name="Test Release",
         release_date="2023-01-01",
         score=95.0,
@@ -159,6 +168,9 @@ def sample_track_result() -> TrackResult:
         beatport_bpm="128",
         beatport_label="Test Label",
         beatport_genres="House",
+        candidates=[],  # New model requires candidates field (list of BeatportCandidate)
+        candidates_data=[],  # Dict format for backward compatibility
+        queries_data=[],  # Dict format for backward compatibility
         match_score=95.0,
         title_sim=95.0,
         artist_sim=100.0,
@@ -178,12 +190,12 @@ def sample_track_result_unmatched() -> TrackResult:
 
 
 @pytest.fixture
-def sample_playlist() -> list[RBTrack]:
+def sample_playlist() -> list[Track]:
     """Create a sample playlist of tracks."""
     return [
-        RBTrack(track_id="1", title="Track 1", artists="Artist 1"),
-        RBTrack(track_id="2", title="Track 2", artists="Artist 2"),
-        RBTrack(track_id="3", title="Track 3", artists="Artist 3"),
+        Track(track_id="1", title="Track 1", artist="Artist 1"),
+        Track(track_id="2", title="Track 2", artist="Artist 2"),
+        Track(track_id="3", title="Track 3", artist="Artist 3"),
     ]
 
 
@@ -192,6 +204,13 @@ def qapp():
     """Create QApplication for UI tests."""
     try:
         from PySide6.QtWidgets import QApplication
+        app = QApplication.instance()
+        if app is None:
+            app = QApplication([])
+        yield app
+    except ImportError:
+        pytest.skip("PySide6 not available for UI tests")
+
         app = QApplication.instance()
         if app is None:
             app = QApplication([])

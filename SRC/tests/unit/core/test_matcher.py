@@ -1,17 +1,19 @@
 """Unit tests for matcher module."""
 
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
+
 from cuepoint.core.matcher import (
-    best_beatport_match,
+    _camelot_key,
+    _confidence_label,
+    _key_bonus,
     _norm_key,
     _significant_tokens,
     _year_bonus,
-    _key_bonus,
-    _camelot_key,
-    _confidence_label
+    best_beatport_match,
 )
-from cuepoint.data.beatport import BeatportCandidate
+from cuepoint.models.beatport_candidate import BeatportCandidate
 from cuepoint.models.config import NEAR_KEYS, SETTINGS
 
 
@@ -278,5 +280,7 @@ class TestBestBeatportMatch:
             if original_score is not None:
                 SETTINGS["EARLY_EXIT_SCORE"] = original_score
             SETTINGS["EARLY_EXIT_MIN_QUERIES"] = 12
+            SETTINGS["RUN_ALL_QUERIES"] = False
+
             SETTINGS["RUN_ALL_QUERIES"] = False
 

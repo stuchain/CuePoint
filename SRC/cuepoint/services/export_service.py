@@ -13,7 +13,7 @@ from typing import List, Optional
 from cuepoint.exceptions.cuepoint_exceptions import ExportError
 from cuepoint.services.interfaces import IExportService, ILoggingService
 from cuepoint.services.output_writer import write_csv_files
-from cuepoint.ui.gui_interface import TrackResult
+from cuepoint.models.result import TrackResult
 
 
 class ExportService(IExportService):

@@ -24,7 +24,7 @@ if not QApplication.instance():
 import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
-from cuepoint.ui.gui_interface import TrackResult
+from cuepoint.models.result import TrackResult
 from cuepoint.ui.dialogs.export_dialog import ExportDialog
 from cuepoint.services.output_writer import write_json_file, write_csv_files
 

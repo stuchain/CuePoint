@@ -10,7 +10,7 @@ Service for finding best Beatport matches for tracks.
 from typing import Dict, List, Optional, Tuple
 
 from cuepoint.core.matcher import best_beatport_match
-from cuepoint.data.beatport import BeatportCandidate
+from cuepoint.models.beatport_candidate import BeatportCandidate
 from cuepoint.services.interfaces import IMatcherService
 
 

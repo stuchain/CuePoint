@@ -23,7 +23,7 @@ from cuepoint.services.beatport_service import BeatportService
 from cuepoint.services.cache_service import CacheService
 from cuepoint.services.export_service import ExportService
 from cuepoint.services.logging_service import LoggingService
-from cuepoint.ui.gui_interface import TrackResult
+from cuepoint.models.result import TrackResult
 
 
 class TestBeatportServiceErrorHandling:

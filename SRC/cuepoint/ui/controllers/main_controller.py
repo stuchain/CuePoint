@@ -20,12 +20,12 @@ from typing import Any, Dict, List, Optional
 from PySide6.QtCore import QObject, QThread, Signal
 
 from cuepoint.services.interfaces import IProcessorService
+from cuepoint.models.result import TrackResult
 from cuepoint.ui.gui_interface import (
     ErrorType,
     ProcessingController,
     ProcessingError,
     ProgressInfo,
-    TrackResult,
 )
 from cuepoint.utils.di_container import get_container
 

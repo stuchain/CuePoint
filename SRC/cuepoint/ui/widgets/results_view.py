@@ -49,7 +49,7 @@ from cuepoint.services.output_writer import write_csv_files, write_excel_file, w
 from cuepoint.ui.controllers.export_controller import ExportController
 from cuepoint.ui.controllers.results_controller import ResultsController
 from cuepoint.ui.dialogs.export_dialog import ExportDialog
-from cuepoint.ui.gui_interface import TrackResult
+from cuepoint.models.result import TrackResult
 from cuepoint.ui.widgets.candidate_dialog import CandidateDialog
 from cuepoint.ui.widgets.shortcut_manager import ShortcutContext, ShortcutManager
 from cuepoint.utils.utils import with_timestamp
@@ -1410,7 +1410,7 @@ class ResultsView(QWidget):
         result = filtered[row]
 
         # Check if there are candidates
-        if not result.candidates:
+        if not result.candidates and not result.candidates_data:
             QMessageBox.information(
                 self, "No Candidates", "No candidates available for this track."
             )
@@ -1433,10 +1433,31 @@ class ResultsView(QWidget):
             }
 
         # Show candidate dialog
+        # Use candidates_data (dict format) for CandidateDialog, or convert BeatportCandidate objects
+        candidates_dicts = result.candidates_data if result.candidates_data else [
+            {
+                "candidate_url": c.url,
+                "candidate_title": c.title,
+                "candidate_artists": c.artists,
+                "candidate_key": c.key or "",
+                "candidate_key_camelot": c.key or "",
+                "candidate_year": str(c.release_year) if c.release_year else "",
+                "candidate_bpm": c.bpm or "",
+                "candidate_label": c.label or "",
+                "candidate_genres": c.genre or "",
+                "candidate_release": c.release_name or "",
+                "candidate_release_date": c.release_date or "",
+                "final_score": c.score,
+                "match_score": c.score,
+                "title_sim": c.title_sim,
+                "artist_sim": c.artist_sim,
+            }
+            for c in result.candidates
+        ]
         dialog = CandidateDialog(
             track_title=result.title,
             track_artist=result.artist or "",
-            candidates=result.candidates,
+            candidates=candidates_dicts,
             current_match=current_match,
             parent=self,
         )
@@ -1768,7 +1789,7 @@ class ResultsView(QWidget):
         result = filtered[row]
 
         # Check if there are candidates
-        if not result.candidates:
+        if not result.candidates and not result.candidates_data:
             QMessageBox.information(
                 self,
                 "No Candidates",
@@ -1793,10 +1814,31 @@ class ResultsView(QWidget):
             }
 
         # Show candidate dialog
+        # Use candidates_data (dict format) for CandidateDialog, or convert BeatportCandidate objects
+        candidates_dicts = result.candidates_data if result.candidates_data else [
+            {
+                "candidate_url": c.url,
+                "candidate_title": c.title,
+                "candidate_artists": c.artists,
+                "candidate_key": c.key or "",
+                "candidate_key_camelot": c.key or "",
+                "candidate_year": str(c.release_year) if c.release_year else "",
+                "candidate_bpm": c.bpm or "",
+                "candidate_label": c.label or "",
+                "candidate_genres": c.genre or "",
+                "candidate_release": c.release_name or "",
+                "candidate_release_date": c.release_date or "",
+                "final_score": c.score,
+                "match_score": c.score,
+                "title_sim": c.title_sim,
+                "artist_sim": c.artist_sim,
+            }
+            for c in result.candidates
+        ]
         dialog = CandidateDialog(
             track_title=result.title,
             track_artist=result.artist or "",
-            candidates=result.candidates,
+            candidates=candidates_dicts,
             current_match=current_match,
             parent=self,
         )

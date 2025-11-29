@@ -7,7 +7,7 @@ Unit tests for ResultsController
 
 import pytest
 from cuepoint.ui.controllers.results_controller import ResultsController
-from cuepoint.ui.gui_interface import TrackResult
+from cuepoint.models.result import TrackResult
 
 
 @pytest.fixture

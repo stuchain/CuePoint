@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Set
 from unittest.mock import patch, Mock
 
-from cuepoint.ui.gui_interface import TrackResult
+from cuepoint.models.result import TrackResult
 from cuepoint.services.output_writer import (
     write_csv_files,
     write_main_csv,

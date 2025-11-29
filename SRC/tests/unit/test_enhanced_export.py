@@ -7,20 +7,19 @@ Comprehensive unit tests for enhanced export features.
 Tests all export options, error conditions, and edge cases.
 """
 
-import unittest
-import os
-import tempfile
+import csv
 import gzip
 import json
-import csv
+import os
 import shutil
+import sys
+import tempfile
+import unittest
 from pathlib import Path
 
-import sys
-import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
-from cuepoint.ui.gui_interface import TrackResult
-from cuepoint.services.output_writer import write_json_file, write_csv_files
+from cuepoint.models.result import TrackResult
+from cuepoint.services.output_writer import write_csv_files, write_json_file
 
 
 class TestEnhancedExport(unittest.TestCase):
@@ -355,8 +354,8 @@ class TestEnhancedExport(unittest.TestCase):
     
     def test_csv_export_candidates_file(self):
         """Test CSV export creates candidates file when candidates exist"""
-        # Add candidates to test results
-        self.test_results[0].candidates = [
+        # Add candidates to test results (use candidates_data for dict format)
+        self.test_results[0].candidates_data = [
             {"beatport_title": "Candidate 1", "match_score": 85.0},
             {"beatport_title": "Candidate 2", "match_score": 80.0}
         ]
@@ -405,7 +404,7 @@ class TestEnhancedExport(unittest.TestCase):
     def test_export_large_dataset(self):
         """Test export with large dataset (performance test)"""
         import time
-        
+
         # Create large dataset
         large_results = [
             TrackResult(

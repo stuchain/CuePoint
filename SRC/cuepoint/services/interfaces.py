@@ -11,8 +11,9 @@ These interfaces enable dependency injection and testability.
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from cuepoint.data.rekordbox import RBTrack
-from cuepoint.ui.gui_interface import ProcessingController, ProgressCallback, TrackResult
+from cuepoint.models.result import TrackResult
+from cuepoint.models.track import Track
+from cuepoint.ui.gui_interface import ProcessingController, ProgressCallback
 
 
 class ILoggingService(ABC):
@@ -215,14 +216,14 @@ class IProcessorService(ABC):
 
     @abstractmethod
     def process_track(
-        self, idx: int, track: RBTrack, settings: Optional[Dict[str, Any]] = None
+        self, idx: int, track: Track, settings: Optional[Dict[str, Any]] = None
     ) -> TrackResult:
         """Process a single track and return result."""
         pass
 
     @abstractmethod
     def process_playlist(
-        self, tracks: List[RBTrack], settings: Optional[Dict[str, Any]] = None
+        self, tracks: List[Track], settings: Optional[Dict[str, Any]] = None
     ) -> List[TrackResult]:
         """Process a playlist of tracks."""
         pass

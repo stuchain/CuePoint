@@ -17,7 +17,7 @@ from cuepoint.ui.controllers.config_controller import ConfigController
 from cuepoint.ui.widgets.results_view import ResultsView
 from cuepoint.ui.dialogs.export_dialog import ExportDialog
 from cuepoint.ui.widgets.config_panel import ConfigPanel
-from cuepoint.ui.gui_interface import TrackResult
+from cuepoint.models.result import TrackResult
 
 
 @pytest.fixture(scope="session")

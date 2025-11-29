@@ -1,11 +1,14 @@
 """Unit tests for export service."""
 
-import pytest
-import os
 import json
+import os
 import tempfile
+
+import pytest
+
+from cuepoint.exceptions.cuepoint_exceptions import ExportError
+from cuepoint.models.result import TrackResult
 from cuepoint.services.export_service import ExportService
-from cuepoint.ui.gui_interface import TrackResult
 
 
 class TestExportService:
@@ -65,9 +68,13 @@ class TestExportService:
                 
                 # Verify file was created
                 assert os.path.exists(filepath)
-            except ImportError:
-                # openpyxl might not be available
-                pytest.skip("openpyxl not available for Excel export")
+            except ExportError as e:
+                # Check if it's the missing dependency error
+                if "EXPORT_EXCEL_MISSING_DEPENDENCY" in str(e) or "openpyxl" in str(e).lower():
+                    pytest.skip("openpyxl not available for Excel export")
+                else:
+                    # Re-raise if it's a different ExportError
+                    raise
     
     def test_export_multiple_results(
         self,
@@ -90,5 +97,7 @@ class TestExportService:
             # Verify all results are in file
             with open(filepath, 'r', encoding='utf-8') as f:
                 data = json.load(f)
+                assert len(data) == 2
+
                 assert len(data) == 2
 

@@ -10,7 +10,7 @@ Separates business logic from UI presentation.
 
 from typing import Any, Dict, List, Optional
 
-from cuepoint.ui.gui_interface import TrackResult
+from cuepoint.models.result import TrackResult
 
 
 class ResultsController:
