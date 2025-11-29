@@ -170,7 +170,7 @@ class PerformanceCollector:
         )
         track_metrics.queries.append(query_metric)
         track_metrics.total_queries += 1
-        
+
         assert self._stats is not None  # Type guard for mypy
         self._stats.query_metrics.append(query_metric)
 

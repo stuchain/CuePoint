@@ -332,4 +332,3 @@ class ResultsController:
             "avg_score": avg_score,
             "confidence_breakdown": {"high": high_conf, "medium": medium_conf, "low": low_conf},
         }
-

@@ -125,10 +125,10 @@ class IMatcherService(ABC):
         input_generic_phrases: Optional[List[str]] = None,
     ) -> Tuple[Any, List[Any], List[Any], int]:
         """Find best Beatport match for a track.
-        
+
         Executes search queries, fetches candidate data, scores candidates,
         and returns the best match along with all candidates and query audit trail.
-        
+
         Args:
             idx: Track index (1-based) for logging.
             track_title: Track title to match.
@@ -139,7 +139,7 @@ class IMatcherService(ABC):
             input_key: Optional input key for bonus scoring.
             input_mix: Optional mix flags dictionary.
             input_generic_phrases: Optional list of generic phrases from title.
-        
+
         Returns:
             Tuple containing:
             - best_candidate: Best matching BeatportCandidate or None if no match

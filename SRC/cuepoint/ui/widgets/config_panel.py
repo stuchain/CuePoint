@@ -34,9 +34,7 @@ class ConfigPanel(QWidget):
     # Signal emitted when settings change
     settings_changed = Signal(dict)
 
-    def __init__(
-        self, config_controller: Optional[ConfigController] = None, parent=None
-    ):
+    def __init__(self, config_controller: Optional[ConfigController] = None, parent=None):
         super().__init__(parent)
         # Use provided controller or create a new one
         self.config_controller = config_controller or ConfigController()

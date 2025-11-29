@@ -10,4 +10,3 @@ Modules:
     beatport_search: Direct Beatport search with multiple methods
     rekordbox: Rekordbox XML parsing utilities
 """
-

@@ -53,9 +53,7 @@ except ImportError:
 class HistoryView(QWidget):
     """Widget for viewing past search results from CSV files"""
 
-    def __init__(
-        self, export_controller: Optional[ExportController] = None, parent=None
-    ):
+    def __init__(self, export_controller: Optional[ExportController] = None, parent=None):
         super().__init__(parent)
         # Use provided controller or create a new one
         self.export_controller = export_controller or ExportController()
@@ -874,9 +872,7 @@ class HistoryView(QWidget):
                 pass
 
         file_basename = (
-            os.path.basename(self.current_csv_path)
-            if self.current_csv_path
-            else 'No file'
+            os.path.basename(self.current_csv_path) if self.current_csv_path else "No file"
         )
         summary_text = (
             f"File: {file_basename}\n"

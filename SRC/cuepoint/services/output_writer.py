@@ -895,9 +895,7 @@ def write_performance_report(stats, base_filename: str, output_dir: str = "outpu
     for track in slowest:
         title_preview = track.track_title[:60]
         time_str = _format_time_for_report(track.total_time)
-        report_lines.append(
-            f"  {title_preview}: {time_str} ({track.total_queries} queries)"
-        )
+        report_lines.append(f"  {title_preview}: {time_str} ({track.total_queries} queries)")
     report_lines.append("")
 
     # Bottleneck Analysis

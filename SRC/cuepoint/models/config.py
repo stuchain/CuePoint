@@ -376,7 +376,7 @@ def _flatten_yaml_dict(nested_dict: dict, parent_key: str = "", sep: str = "_") 
         Flattened dictionary with uppercase keys matching SETTINGS format
     """
     from typing import Any, List
-    
+
     items: list[tuple[str, Any]] = []
     for key, value in nested_dict.items():
         # Convert key to uppercase to match SETTINGS convention

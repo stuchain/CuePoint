@@ -151,9 +151,7 @@ def generate_summary_report(
         for r in rows
         if (r.get("beatport_url") or "").strip()
     ]
-    _ = (
-        sum(matched_artist_sims) / len(matched_artist_sims) if matched_artist_sims else 0
-    )
+    _ = sum(matched_artist_sims) / len(matched_artist_sims) if matched_artist_sims else 0
 
     # Performance statistics
     total_queries = len(all_queries)
@@ -615,9 +613,7 @@ def process_track_with_callback(
 
     # 2. Log track search information
     try:
-        search_info = (
-            f"{title_for_search} - {original_artists or artists_for_scoring}"
-        )
+        search_info = f"{title_for_search} - {original_artists or artists_for_scoring}"
         _logger.info(f"[{idx}] Searching Beatport for: {search_info}")
     except UnicodeEncodeError:
         safe_title = title_for_search.encode("ascii", "ignore").decode("ascii")
@@ -1355,29 +1351,15 @@ def run(
         if review_cands_path:
             output_files["review_candidates"] = review_cands_path
             review_cands_count = len(
-                [
-                    c
-                    for r in results
-                    if r.playlist_index in review_indices
-                    for c in r.candidates
-                ]
+                [c for r in results if r.playlist_index in review_indices for c in r.candidates]
             )
-            _logger.info(
-                f"Review candidates: {review_cands_count} rows -> {review_cands_path}"
-            )
+            _logger.info(f"Review candidates: {review_cands_count} rows -> {review_cands_path}")
         if review_queries_path:
             output_files["review_queries"] = review_queries_path
             review_queries_count = len(
-                [
-                    q
-                    for r in results
-                    if r.playlist_index in review_indices
-                    for q in r.queries
-                ]
+                [q for r in results if r.playlist_index in review_indices for q in r.queries]
             )
-            _logger.info(
-                f"Review queries: {review_queries_count} rows -> {review_queries_path}"
-            )
+            _logger.info(f"Review queries: {review_queries_count} rows -> {review_queries_path}")
 
     # Log file output messages
     if output_files.get("main"):

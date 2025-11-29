@@ -1913,7 +1913,7 @@ class ResultsView(QWidget):
         self.key_filter.setCurrentText("All")
         self.search_box.clear()
         self.confidence_filter.setCurrentText("All")
-        
+
         # Clear controller filters
         self.results_controller.clear_filters()
         self.filtered_results = self.results_controller.filtered_results.copy()

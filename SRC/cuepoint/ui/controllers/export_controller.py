@@ -192,4 +192,3 @@ class ExportController:
         base_filename = f"{safe_name}{extension}"
 
         return base_filename
-

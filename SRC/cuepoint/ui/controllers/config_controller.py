@@ -170,4 +170,3 @@ class ConfigController:
         if self.config_service:
             self.config_service.set(key, value)
             self.config_service.save()
-

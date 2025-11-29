@@ -1277,9 +1277,7 @@ class MainWindow(QMainWindow):
         # Update status bar
         if progress_info.current_track:
             title = progress_info.current_track.get("title", "Unknown")
-            track_info = (
-                f"{title} ({progress_info.completed_tracks}/{progress_info.total_tracks})"
-            )
+            track_info = f"{title} ({progress_info.completed_tracks}/{progress_info.total_tracks})"
             self.statusBar().showMessage(f"Processing: {track_info}")
 
     def on_processing_complete(self, results: List[TrackResult]) -> None:
