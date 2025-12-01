@@ -1,15 +1,16 @@
 """Unit tests for text_processing module."""
 
 import pytest
+
 from cuepoint.core.text_processing import (
+    _artist_token_overlap,
+    _strip_accents,
+    _word_tokens,
+    artists_similarity,
     normalize_text,
     sanitize_title_for_search,
     score_components,
-    artists_similarity,
     split_artists,
-    _strip_accents,
-    _word_tokens,
-    _artist_token_overlap
 )
 
 
@@ -203,4 +204,183 @@ class TestWordTokens:
     def test_word_tokens_empty(self):
         """Test word tokens with empty string."""
         assert _word_tokens("") == []
+
+    def test_normalize_text_html_entities(self):
+        """Test normalization with HTML entities."""
+        result = normalize_text("Test &amp; Track")
+        assert "&" not in result or "amp" not in result
+
+    def test_normalize_text_various_dashes(self):
+        """Test normalization with various dash types."""
+        result1 = normalize_text("Test—Track")
+        result2 = normalize_text("Test–Track")
+        result3 = normalize_text("Test-Track")
+        # All should normalize to spaces
+        assert "—" not in result1
+        assert "–" not in result2
+        assert "-" not in result3
+
+    def test_normalize_text_feat_variations(self):
+        """Test normalization with various feat. clause formats."""
+        result1 = normalize_text("Track (feat. Artist)")
+        result2 = normalize_text("Track [feat. Artist]")
+        result3 = normalize_text("Track feat. Artist")
+        # All should remove feat clauses
+        assert "feat" not in result1.lower()
+        assert "feat" not in result2.lower()
+        assert "feat" not in result3.lower()
+
+    def test_normalize_text_mix_type_variations(self):
+        """Test normalization with various mix type formats."""
+        result1 = normalize_text("Track (Original Mix)")
+        result2 = normalize_text("Track (Extended Mix)")
+        result3 = normalize_text("Track (Radio Edit)")
+        result4 = normalize_text("Track Original Mix")
+        # All should remove mix types
+        assert "original" not in result1.lower()
+        assert "extended" not in result2.lower()
+        assert "radio" not in result3.lower()
+        assert "original" not in result4.lower()
+
+    def test_sanitize_title_complex_pattern(self):
+        """Test sanitization with complex Artist1 - Artist2 - Title pattern."""
+        result = sanitize_title_for_search("Artist1 - Artist2 - Title (Remix)")
+        # The function first replaces dashes with spaces (line 134), then processes
+        # So it may contain all parts. We verify it processes correctly
+        assert "title" in result.lower()
+        assert len(result) > 0
+        # Verify parentheses and remix are removed
+        assert "remix" not in result.lower()
+        assert "(" not in result
+        assert ")" not in result
+
+    def test_sanitize_title_with_url(self):
+        """Test sanitization with URL in title."""
+        result = sanitize_title_for_search("Track www.example.com")
+        assert "www" not in result.lower()
+        assert "example" not in result.lower()
+
+    def test_sanitize_title_range_prefix(self):
+        """Test sanitization with range prefix like [2-3]."""
+        result = sanitize_title_for_search("[2-3] Track")
+        assert "[2-3]" not in result
+        assert "track" in result.lower()
+
+    def test_sanitize_title_multiple_brackets(self):
+        """Test sanitization with multiple bracket types."""
+        result = sanitize_title_for_search("[F] Track (Remix) [Extended]")
+        assert "[" not in result
+        assert "]" not in result
+        assert "(" not in result
+        assert ")" not in result
+
+    def test_sanitize_title_non_latin_chars(self):
+        """Test sanitization with non-Latin characters."""
+        result = sanitize_title_for_search("Track 中文")
+        # Should handle gracefully (may remove or keep depending on implementation)
+        assert isinstance(result, str)
+
+    def test_split_artists_feat_variations(self):
+        """Test splitting with various feat. formats."""
+        artists1 = split_artists("Artist A feat. Artist B")
+        artists2 = split_artists("Artist A ft. Artist B")
+        artists3 = split_artists("Artist A featuring Artist B")
+        # All should split into multiple artists
+        assert len(artists1) >= 2
+        assert len(artists2) >= 2
+        assert len(artists3) >= 2
+
+    def test_split_artists_various_separators(self):
+        """Test splitting with various separators."""
+        artists1 = split_artists("Artist A, Artist B")
+        artists2 = split_artists("Artist A & Artist B")
+        artists3 = split_artists("Artist A / Artist B")
+        artists4 = split_artists("Artist A x Artist B")
+        artists5 = split_artists("Artist A vs Artist B")
+        # All should split into multiple artists
+        assert len(artists1) >= 2
+        assert len(artists2) >= 2
+        assert len(artists3) >= 2
+        assert len(artists4) >= 2
+        assert len(artists5) >= 2
+
+    def test_split_artists_empty(self):
+        """Test splitting empty artist string."""
+        assert split_artists("") == []
+        assert split_artists("   ") == []
+
+    def test_artists_similarity_feat_handling(self):
+        """Test artist similarity with feat. clauses."""
+        score = artists_similarity("Artist A feat. Artist B", "Artist A & Artist B")
+        # Should still find similarity for Artist A
+        assert score > 0
+
+    def test_artists_similarity_order_independent(self):
+        """Test that artist similarity is order-independent."""
+        score1 = artists_similarity("Artist A, Artist B", "Artist B, Artist A")
+        score2 = artists_similarity("Artist A, Artist B", "Artist A, Artist B")
+        # Both should have high similarity
+        assert score1 >= 80
+        assert score2 >= 80
+
+    def test_artist_token_overlap_partial_match(self):
+        """Test artist token overlap with partial matches."""
+        # "Adam Port" contains "Port" token
+        assert _artist_token_overlap("Adam Port", "Port") is True
+        assert _artist_token_overlap("Port", "Adam Port") is True
+
+    def test_artist_token_overlap_exact_tokens(self):
+        """Test artist token overlap with exact token matches."""
+        assert _artist_token_overlap("John Smith", "John") is True
+        assert _artist_token_overlap("John Smith", "Smith") is True
+
+    def test_artist_token_overlap_no_overlap(self):
+        """Test artist token overlap when there's no overlap."""
+        assert _artist_token_overlap("John Smith", "Jane Doe") is False
+
+    def test_artist_token_overlap_with_parentheses(self):
+        """Test artist token overlap with parentheses."""
+        assert _artist_token_overlap("Artist (feat. Other)", "Artist") is True
+
+    def test_score_components_with_accents(self):
+        """Test scoring with accented characters."""
+        t_sim, a_sim, comp = score_components(
+            "Café Track",
+            "José Artist",
+            "Cafe Track",
+            "Jose Artist"
+        )
+        # Should handle accents and still find similarity
+        assert t_sim > 0
+        assert a_sim > 0
+
+    def test_score_components_different_order(self):
+        """Test scoring with different word order."""
+        t_sim, a_sim, comp = score_components(
+            "Never Sleep Again",
+            "Tim Green",
+            "Sleep Never Again",
+            "Green Tim"
+        )
+        # token_set_ratio should handle order differences
+        assert t_sim > 50  # Should still have good similarity
+        assert a_sim > 50
+
+    def test_sanitize_title_handles_none(self):
+        """Test sanitization handles None input."""
+        result = sanitize_title_for_search(None)
+        assert result == ""
+
+    def test_normalize_text_handles_none(self):
+        """Test normalization handles None input."""
+        result = normalize_text(None)
+        assert result == ""
+
+    def test_word_tokens_handles_special_chars(self):
+        """Test word tokens with special characters."""
+        tokens = _word_tokens("Track (Remix) feat. Artist")
+        # Should normalize and extract meaningful tokens
+        assert len(tokens) > 0
+        assert all(isinstance(t, str) for t in tokens)
+
 

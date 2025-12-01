@@ -3,7 +3,7 @@
 **Status**: 📝 Planned  
 **Priority**: 🚀 P1 - HIGH PRIORITY (Foundation for future development)  
 **Dependencies**: Phase 0 (Backend Foundation), Phase 1 (GUI Foundation), Phase 2 (User Experience), Phase 3 (Reliability & Performance)  
-**Estimated Duration**: 3-4 weeks
+**Estimated Duration**: 4-5 weeks (includes Step 5.12)
 
 ## Goal
 Restructure the codebase into a professional, maintainable architecture with proper separation of concerns, comprehensive testing, and clear organization. This phase establishes a solid foundation for easier future improvements, changes, and feature additions.
@@ -412,6 +412,14 @@ CuePoint/
 ---
 
 ### Step 5.10: Performance & Optimization Review (2-3 days)
+
+### Step 5.11: CLI Migration (3-4 days)
+**Status**: ✅ Complete  
+**See**: `DOCS/PHASES/05_Phase_5_Code_Restructuring/11_Step_5.11_CLI_Migration.md`
+
+### Step 5.12: Increase Test Coverage to 80% (3-4 weeks)
+**Status**: 📝 Planned  
+**See**: `DOCS/PHASES/05_Phase_5_Code_Restructuring/12_Step_5.12_Increase_Test_Coverage.md`
 
 **Goal**: Ensure restructuring doesn't degrade performance.
 

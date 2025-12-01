@@ -3,22 +3,23 @@
 
 """Unit tests for output_writer module."""
 
-import pytest
+import csv
 import os
 import tempfile
-import csv
 from pathlib import Path
 from typing import Set
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
+
+import pytest
 
 from cuepoint.models.result import TrackResult
 from cuepoint.services.output_writer import (
-    write_csv_files,
-    write_main_csv,
     write_candidates_csv,
+    write_csv_files,
+    write_excel_file,
+    write_main_csv,
     write_queries_csv,
     write_review_csv,
-    write_excel_file
 )
 
 
@@ -241,11 +242,11 @@ class TestWriteExcelFile:
     )
     def test_write_excel_file_success(self, sample_track_results, temp_output_dir):
         """Test writing Excel file."""
-        filename = "test_output.xlsx"
+        filename = os.path.join(temp_output_dir, "test_output.xlsx")
         result = write_excel_file(
             sample_track_results,
             filename,
-            temp_output_dir
+            "Test Playlist"  # playlist_name parameter, not output_dir
         )
         
         assert result is not None
@@ -262,4 +263,5 @@ class TestWriteExcelFile:
                     os.path.join(temp_output_dir, "test_output.xlsx"),
                     "Test Playlist"
                 )
+
 

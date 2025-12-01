@@ -1,0 +1,368 @@
+"""Unit tests for mix_parser module."""
+
+import pytest
+
+from cuepoint.core.mix_parser import (
+    _any_phrase_token_set_in_title,
+    _extract_generic_parenthetical_phrases,
+    _extract_remix_phrases,
+    _extract_remixer_names_from_title,
+    _mix_bonus,
+    _mix_ok_for_early_exit,
+    _parse_mix_flags,
+)
+
+
+class TestMixParser:
+    """Test mix parsing functions."""
+    
+    def test_parse_mix_flags_original(self):
+        """Test parsing original mix flags."""
+        flags = _parse_mix_flags("Track (Original Mix)")
+        assert flags["is_original"] is True
+        assert flags["is_remix"] is False
+    
+    def test_parse_mix_flags_remix(self):
+        """Test parsing remix flags."""
+        flags = _parse_mix_flags("Track (Remixer Remix)")
+        assert flags["is_remix"] is True
+        assert "Remixer" in flags["remixers"]
+    
+    def test_parse_mix_flags_extended(self):
+        """Test parsing extended mix flags."""
+        flags = _parse_mix_flags("Track (Extended Mix)")
+        assert flags["is_extended"] is True
+    
+    def test_parse_mix_flags_no_mix(self):
+        """Test parsing title with no mix indicators."""
+        flags = _parse_mix_flags("Track")
+        assert flags["is_plain"] is True
+        assert flags["is_original"] is False
+        assert flags["is_remix"] is False
+    
+    def test_extract_remix_phrases(self):
+        """Test extracting remix phrases."""
+        phrases = _extract_remix_phrases("Track (Remixer Remix)")
+        assert len(phrases) > 0
+        assert any("remix" in p.lower() for p in phrases)
+    
+    def test_extract_remixer_names_from_title(self):
+        """Test extracting remixer names."""
+        names = _extract_remixer_names_from_title("Track (Remixer Remix)")
+        assert len(names) > 0
+        assert "Remixer" in names
+    
+    def test_extract_generic_parenthetical_phrases(self):
+        """Test extracting generic parenthetical phrases."""
+        phrases = _extract_generic_parenthetical_phrases("Track (Ivory Re-fire)")
+        assert len(phrases) > 0
+        assert any("ivory" in p.lower() or "re-fire" in p.lower() or "refire" in p.lower() for p in phrases)
+    
+    def test_extract_generic_phrases_filters_mix_types(self):
+        """Test that generic phrases filter out standard mix types."""
+        phrases = _extract_generic_parenthetical_phrases("Track (Original Mix)")
+        # Should not include standard mix types
+        assert not any("original mix" in p.lower() for p in phrases)
+
+
+class TestMixBonus:
+    """Test mix bonus calculation."""
+    
+    def test_mix_bonus_original_match(self):
+        """Test bonus for original mix match."""
+        input_mix = {"is_original": True}
+        cand_mix = {"is_original": True}
+        bonus, reason = _mix_bonus(input_mix, cand_mix)
+        assert bonus > 0
+        assert "mix_match" in reason or reason == "mix_match"
+    
+    def test_mix_bonus_remix_match(self):
+        """Test bonus for remix match."""
+        input_mix = {"is_remix": True, "remixer_tokens": {"remixer"}}
+        cand_mix = {"is_remix": True, "remixer_tokens": {"remixer"}}
+        bonus, reason = _mix_bonus(input_mix, cand_mix)
+        assert bonus > 0
+    
+    def test_mix_bonus_remix_mismatch(self):
+        """Test penalty for remix/original mismatch."""
+        input_mix = {"is_remix": True, "remixer_tokens": {"remixer"}}
+        cand_mix = {"is_original": True}
+        bonus, reason = _mix_bonus(input_mix, cand_mix)
+        assert bonus < 0  # Should be penalized
+    
+    def test_mix_bonus_prefer_plain(self):
+        """Test bonus when plain title is preferred."""
+        input_mix = {"prefer_plain": True}
+        cand_mix = {"is_plain": True}
+        bonus, reason = _mix_bonus(input_mix, cand_mix)
+        assert bonus >= 0  # Should not be penalized
+
+
+class TestMixOkForEarlyExit:
+    """Test mix compatibility for early exit."""
+    
+    def test_mix_ok_original_requested(self):
+        """Test early exit OK for original mix request."""
+        input_mix = {"is_original": True}
+        cand_mix = {"is_original": True}
+        assert _mix_ok_for_early_exit(input_mix, cand_mix) is True
+    
+    def test_mix_ok_remix_requested(self):
+        """Test early exit OK for remix request."""
+        input_mix = {"is_remix": True, "remixer_tokens": {"remixer"}}
+        cand_mix = {"is_remix": True, "remixer_tokens": {"remixer"}}
+        assert _mix_ok_for_early_exit(input_mix, cand_mix) is True
+    
+    def test_mix_ok_remix_mismatch(self):
+        """Test early exit rejection for remix/original mismatch."""
+        input_mix = {"is_remix": True, "remixer_tokens": {"remixer"}}
+        cand_mix = {"is_original": True}
+        assert _mix_ok_for_early_exit(input_mix, cand_mix) is False
+    
+    def test_mix_ok_no_input_mix(self):
+        """Test early exit OK when no mix intent."""
+        assert _mix_ok_for_early_exit(None, {"is_remix": True}) is True
+
+
+class TestPhraseMatching:
+    """Test phrase matching functions."""
+    
+    def test_any_phrase_token_set_in_title(self):
+        """Test phrase token set matching."""
+        phrases = ["Ivory Re-fire"]
+        title = "Track (Ivory Re-fire)"
+        assert _any_phrase_token_set_in_title(phrases, title) is True
+    
+    def test_any_phrase_token_set_no_match(self):
+        """Test phrase token set when no match."""
+        phrases = ["Ivory Re-fire"]
+        title = "Track (Original Mix)"
+        assert _any_phrase_token_set_in_title(phrases, title) is False
+    
+    def test_any_phrase_token_set_empty(self):
+        """Test phrase token set with empty inputs."""
+        assert _any_phrase_token_set_in_title([], "Track") is False
+        assert _any_phrase_token_set_in_title(["Phrase"], "") is False
+
+    def test_parse_mix_flags_all_types(self):
+        """Test parsing all mix types."""
+        test_cases = [
+            ("Track (Original Mix)", "is_original"),
+            ("Track (Extended Mix)", "is_extended"),
+            ("Track (Club Mix)", "is_club"),
+            ("Track (Radio Edit)", "is_radio"),
+            ("Track (Edit)", "is_edit"),
+            ("Track (Remix)", "is_remix"),
+            ("Track (Dub Mix)", "is_dub"),
+            ("Track (Guitar Mix)", "is_guitar"),
+            ("Track (VIP)", "is_vip"),
+            ("Track (Rework)", "is_rework"),
+            ("Track (Re-fire)", "is_refire"),
+            ("Track (Acapella)", "is_acapella"),
+            ("Track (Instrumental)", "is_instrumental"),
+        ]
+        for title, flag_name in test_cases:
+            flags = _parse_mix_flags(title)
+            assert flags[flag_name] is True, f"Failed for {title}"
+
+    def test_parse_mix_flags_multiple_mix_types(self):
+        """Test parsing title with multiple mix types."""
+        flags = _parse_mix_flags("Track (Extended Remix)")
+        assert flags["is_extended"] is True
+        assert flags["is_remix"] is True
+
+    def test_parse_mix_flags_remixer_extraction(self):
+        """Test remixer name extraction."""
+        flags = _parse_mix_flags("Track (CamelPhat Remix)")
+        assert flags["is_remix"] is True
+        assert len(flags["remixers"]) > 0
+        assert "CamelPhat" in flags["remixers"]
+        assert len(flags["remixer_tokens"]) > 0
+
+    def test_parse_mix_flags_multiple_remixers(self):
+        """Test parsing multiple remixers."""
+        flags = _parse_mix_flags("Track (CamelPhat & ARTBAT Remix)")
+        assert flags["is_remix"] is True
+        assert len(flags["remixers"]) >= 1
+
+    def test_parse_mix_flags_brackets(self):
+        """Test parsing mix flags from brackets."""
+        flags1 = _parse_mix_flags("Track (Original Mix)")
+        flags2 = _parse_mix_flags("Track [Original Mix]")
+        assert flags1["is_original"] is True
+        assert flags2["is_original"] is True
+
+    def test_parse_mix_flags_html_entities(self):
+        """Test parsing with HTML entities."""
+        flags = _parse_mix_flags("Track &amp; (Remix)")
+        assert flags["is_remix"] is True
+
+    def test_parse_mix_flags_accents(self):
+        """Test parsing with accented characters."""
+        flags = _parse_mix_flags("Track (Café Remix)")
+        assert flags["is_remix"] is True
+
+    def test_extract_remix_phrases_brackets(self):
+        """Test extracting remix phrases from brackets."""
+        phrases = _extract_remix_phrases("Track [Remixer Remix]")
+        assert len(phrases) > 0
+        assert any("remix" in p.lower() for p in phrases)
+
+    def test_extract_remix_phrases_multiple(self):
+        """Test extracting multiple remix phrases."""
+        phrases = _extract_remix_phrases("Track (Remix) [Extended Remix]")
+        assert len(phrases) >= 1
+
+    def test_extract_remix_phrases_deduplication(self):
+        """Test that remix phrases are deduplicated."""
+        phrases = _extract_remix_phrases("Track (Remix) (Remix)")
+        # Should deduplicate
+        assert len(phrases) == 1
+
+    def test_extract_remixer_names_various_formats(self):
+        """Test extracting remixer names in various formats."""
+        test_cases = [
+            "Track (CamelPhat Remix)",
+            "Track (CamelPhat's Remix)",
+            "Track (CamelPhat Extended Remix)",
+            "Track (CamelPhat & ARTBAT Remix)",
+        ]
+        for title in test_cases:
+            names = _extract_remixer_names_from_title(title)
+            assert len(names) > 0
+            assert any("camelphat" in n.lower() for n in names)
+
+    def test_extract_generic_parenthetical_phrases_various(self):
+        """Test extracting various generic phrases."""
+        phrases1 = _extract_generic_parenthetical_phrases("Track (Ivory Re-fire)")
+        phrases2 = _extract_generic_parenthetical_phrases("Track (Custom Phrase)")
+        assert len(phrases1) > 0
+        assert len(phrases2) > 0
+
+    def test_extract_generic_parenthetical_phrases_brackets(self):
+        """Test extracting generic phrases from brackets."""
+        phrases = _extract_generic_parenthetical_phrases("Track [Custom Phrase]")
+        assert len(phrases) > 0
+
+    def test_extract_generic_parenthetical_phrases_empty(self):
+        """Test extracting generic phrases from title with no phrases."""
+        phrases = _extract_generic_parenthetical_phrases("Track")
+        assert len(phrases) == 0
+
+    def test_mix_bonus_remixer_match(self):
+        """Test bonus for remixer name match."""
+        input_mix = {
+            "is_remix": True,
+            "remixer_tokens": {"camelphat"}
+        }
+        cand_mix = {
+            "is_remix": True,
+            "remixer_tokens": {"camelphat"}
+        }
+        bonus, reason = _mix_bonus(input_mix, cand_mix)
+        assert bonus > 0
+        assert "remixer_match" in reason
+
+    def test_mix_bonus_remixer_mismatch(self):
+        """Test penalty for remixer name mismatch."""
+        input_mix = {
+            "is_remix": True,
+            "remixer_tokens": {"camelphat"}
+        }
+        cand_mix = {
+            "is_remix": True,
+            "remixer_tokens": {"other"}
+        }
+        bonus, reason = _mix_bonus(input_mix, cand_mix)
+        assert bonus < 0
+        assert "remixer_mismatch" in reason
+
+    def test_mix_bonus_extended_remix_compatible(self):
+        """Test that extended remix is compatible with remix request."""
+        input_mix = {
+            "is_remix": True,
+            "remixer_tokens": {"camelphat"}
+        }
+        cand_mix = {
+            "is_extended": True,
+            "is_remix": True,
+            "remixer_tokens": {"camelphat"}
+        }
+        bonus, reason = _mix_bonus(input_mix, cand_mix)
+        assert bonus > 0
+        assert "compatible" in reason.lower()
+
+    def test_mix_bonus_prefer_plain_penalty(self):
+        """Test penalty when prefer_plain but candidate has remix."""
+        input_mix = {"prefer_plain": True}
+        cand_mix = {"is_remix": True}
+        bonus, reason = _mix_bonus(input_mix, cand_mix)
+        assert bonus < 0
+        assert "prefer_plain" in reason
+
+    def test_mix_bonus_prefer_plain_bonus(self):
+        """Test bonus when prefer_plain and candidate is plain."""
+        input_mix = {"prefer_plain": True}
+        cand_mix = {"is_plain": True}
+        bonus, reason = _mix_bonus(input_mix, cand_mix)
+        assert bonus > 0
+
+    def test_mix_ok_for_early_exit_plain(self):
+        """Test early exit OK for plain titles."""
+        input_mix = {"is_plain": True}
+        cand_mix = {"is_plain": True}
+        assert _mix_ok_for_early_exit(input_mix, cand_mix) is True
+
+    def test_mix_ok_for_early_exit_extended(self):
+        """Test early exit OK for extended mix."""
+        input_mix = {"is_extended": True}
+        cand_mix = {"is_extended": True}
+        assert _mix_ok_for_early_exit(input_mix, cand_mix) is True
+
+    def test_mix_ok_for_early_exit_original_mismatch(self):
+        """Test early exit rejection for original/extended mismatch."""
+        input_mix = {"is_original": True}
+        cand_mix = {"is_extended": True}
+        # Should reject mismatch
+        assert _mix_ok_for_early_exit(input_mix, cand_mix) is False
+
+    def test_any_phrase_token_set_partial_match(self):
+        """Test phrase token set with partial token match."""
+        phrases = ["Ivory Re-fire"]
+        title = "Track (Ivory)"
+        # Should match if tokens overlap
+        result = _any_phrase_token_set_in_title(phrases, title)
+        assert isinstance(result, bool)
+
+    def test_extract_original_mix_phrases(self):
+        """Test extracting original mix phrases."""
+        from cuepoint.core.mix_parser import _extract_original_mix_phrases
+        phrases = _extract_original_mix_phrases("Track (Original Mix)")
+        assert len(phrases) > 0
+        assert any("original" in p.lower() for p in phrases)
+
+    def test_extract_extended_mix_phrases(self):
+        """Test extracting extended mix phrases."""
+        from cuepoint.core.mix_parser import _extract_extended_mix_phrases
+        phrases = _extract_extended_mix_phrases("Track (Extended Mix)")
+        assert len(phrases) > 0
+        assert any("extended" in p.lower() for p in phrases)
+
+    def test_parse_mix_flags_empty_title(self):
+        """Test parsing empty title."""
+        flags = _parse_mix_flags("")
+        assert flags["is_plain"] is True
+        assert flags["prefer_plain"] is True
+
+    def test_parse_mix_flags_none_title(self):
+        """Test parsing None title."""
+        flags = _parse_mix_flags(None)
+        assert flags["is_plain"] is True
+        assert flags["prefer_plain"] is True
+
+
+
+
+
+
+

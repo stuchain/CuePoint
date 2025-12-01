@@ -4,8 +4,8 @@ Comprehensive test script to verify the restructured codebase works correctly.
 Tests imports, entry points, and basic functionality.
 """
 
-import sys
 import os
+import sys
 
 # Add src to path
 src_path = os.path.dirname(os.path.abspath(__file__))
@@ -22,14 +22,17 @@ def test_all_imports():
     
     # Test core imports
     try:
-        from cuepoint.core.matcher import best_beatport_match, _camelot_key, _confidence_label
+        from cuepoint.core.matcher import _camelot_key, _confidence_label, best_beatport_match
         print("[OK] Core matcher imports")
     except Exception as e:
         errors.append(f"Core matcher: {e}")
         print(f"[FAIL] Core matcher: {e}")
     
     try:
-        from cuepoint.core.mix_parser import _parse_mix_flags, _extract_generic_parenthetical_phrases
+        from cuepoint.core.mix_parser import (
+            _extract_generic_parenthetical_phrases,
+            _parse_mix_flags,
+        )
         print("[OK] Core mix_parser imports")
     except Exception as e:
         errors.append(f"Core mix_parser: {e}")
@@ -43,7 +46,11 @@ def test_all_imports():
         print(f"[FAIL] Core query_generator: {e}")
     
     try:
-        from cuepoint.core.text_processing import normalize_text, sanitize_title_for_search, score_components
+        from cuepoint.core.text_processing import (
+            normalize_text,
+            sanitize_title_for_search,
+            score_components,
+        )
         print("[OK] Core text_processing imports")
     except Exception as e:
         errors.append(f"Core text_processing: {e}")
@@ -58,7 +65,7 @@ def test_all_imports():
         print(f"[FAIL] Data beatport: {e}")
     
     try:
-        from cuepoint.data.rekordbox import RBTrack, parse_rekordbox, extract_artists_from_title
+        from cuepoint.data.rekordbox import RBTrack, extract_artists_from_title, parse_rekordbox
         print("[OK] Data rekordbox imports")
     except Exception as e:
         errors.append(f"Data rekordbox: {e}")
@@ -66,19 +73,36 @@ def test_all_imports():
     
     # Test models imports
     try:
-        from cuepoint.models.config import SETTINGS, HAVE_CACHE, BASE_URL, SESSION, NEAR_KEYS, load_config_from_yaml
+        from cuepoint.models.config import (
+            BASE_URL,
+            HAVE_CACHE,
+            NEAR_KEYS,
+            SESSION,
+            SETTINGS,
+            load_config_from_yaml,
+        )
         print("[OK] Models config imports")
     except Exception as e:
         errors.append(f"Models config: {e}")
         print(f"[FAIL] Models config: {e}")
     
-    # Test services imports
+    # Test new Phase 5 architecture imports
     try:
-        from cuepoint.services.processor import run, process_playlist
-        print("[OK] Services processor imports")
+        from cuepoint.cli.cli_processor import CLIProcessor
+        from cuepoint.services.interfaces import IExportService, IProcessorService
+        from cuepoint.services.processor_service import ProcessorService
+        print("[OK] Phase 5 processor imports (ProcessorService, CLIProcessor)")
     except Exception as e:
-        errors.append(f"Services processor: {e}")
-        print(f"[FAIL] Services processor: {e}")
+        errors.append(f"Phase 5 processor: {e}")
+        print(f"[FAIL] Phase 5 processor: {e}")
+    
+    # Test legacy imports (for backward compatibility verification)
+    try:
+        from cuepoint.legacy.processor import process_playlist, run
+        print("[OK] Legacy processor imports (deprecated - kept for compatibility)")
+    except Exception as e:
+        # Legacy imports are optional - don't fail if they don't work
+        print(f"[INFO] Legacy processor not available: {e}")
     
     try:
         from cuepoint.services.output_writer import write_csv_files, write_json_file
@@ -89,21 +113,27 @@ def test_all_imports():
     
     # Test utils imports
     try:
-        from cuepoint.utils.utils import tlog, vlog, with_timestamp, startup_banner, retry_with_backoff
+        from cuepoint.utils.utils import (
+            retry_with_backoff,
+            startup_banner,
+            tlog,
+            vlog,
+            with_timestamp,
+        )
         print("[OK] Utils utils imports")
     except Exception as e:
         errors.append(f"Utils utils: {e}")
         print(f"[FAIL] Utils utils: {e}")
     
     try:
-        from cuepoint.utils.performance import performance_collector, PerformanceStats
+        from cuepoint.utils.performance import PerformanceStats, performance_collector
         print("[OK] Utils performance imports")
     except Exception as e:
         errors.append(f"Utils performance: {e}")
         print(f"[FAIL] Utils performance: {e}")
     
     try:
-        from cuepoint.utils.errors import print_error, error_file_not_found
+        from cuepoint.utils.errors import error_file_not_found, print_error
         print("[OK] Utils errors imports")
     except Exception as e:
         errors.append(f"Utils errors: {e}")
@@ -111,7 +141,7 @@ def test_all_imports():
     
     # Test UI imports (basic ones that don't require Qt)
     try:
-        from cuepoint.ui.gui_interface import TrackResult, ProgressInfo, ProcessingError, ErrorType
+        from cuepoint.ui.gui_interface import ErrorType, ProcessingError, ProgressInfo, TrackResult
         print("[OK] UI gui_interface imports")
     except Exception as e:
         errors.append(f"UI gui_interface: {e}")
@@ -182,9 +212,10 @@ def test_circular_imports():
     # Try importing modules that depend on each other
     try:
         # These should all work without circular import errors
+        from cuepoint.cli.cli_processor import CLIProcessor
         from cuepoint.core.matcher import best_beatport_match
         from cuepoint.core.query_generator import make_search_queries
-        from cuepoint.services.processor import run
+        from cuepoint.services.processor_service import ProcessorService
         from cuepoint.ui.main_window import MainWindow
         print("[OK] No circular import issues detected")
         return True
@@ -269,6 +300,26 @@ def main():
         status = "[OK]" if passed else "[FAIL]"
         print(f"{status} {test_name}")
         if not passed:
+            all_passed = False
+    
+    print("\n" + "=" * 80)
+    if all_passed:
+        print("[SUCCESS] All tests passed!")
+        return 0
+    else:
+        print("[FAILURE] Some tests failed. Please review the output above.")
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+
+
+
+
+
+
+
             all_passed = False
     
     print("\n" + "=" * 80)

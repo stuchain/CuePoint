@@ -1,3 +1,4 @@
 types-PyYAML
+types-greenlet
 types-requests
 types-tqdm

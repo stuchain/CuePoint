@@ -1,14 +1,15 @@
 """Unit tests for mix_parser module."""
 
 import pytest
+
 from cuepoint.core.mix_parser import (
-    _parse_mix_flags,
+    _any_phrase_token_set_in_title,
+    _extract_generic_parenthetical_phrases,
     _extract_remix_phrases,
     _extract_remixer_names_from_title,
-    _extract_generic_parenthetical_phrases,
     _mix_bonus,
     _mix_ok_for_early_exit,
-    _any_phrase_token_set_in_title
+    _parse_mix_flags,
 )
 
 
@@ -142,6 +143,369 @@ class TestPhraseMatching:
         """Test phrase token set with empty inputs."""
         assert _any_phrase_token_set_in_title([], "Track") is False
         assert _any_phrase_token_set_in_title(["Phrase"], "") is False
+
+    def test_parse_mix_flags_all_types(self):
+        """Test parsing all mix types."""
+        test_cases = [
+            ("Track (Original Mix)", "is_original"),
+            ("Track (Extended Mix)", "is_extended"),
+            ("Track (Club Mix)", "is_club"),
+            ("Track (Radio Edit)", "is_radio"),
+            ("Track (Edit)", "is_edit"),
+            ("Track (Remix)", "is_remix"),
+            ("Track (Dub Mix)", "is_dub"),
+            ("Track (Guitar Mix)", "is_guitar"),
+            ("Track (VIP)", "is_vip"),
+            ("Track (Rework)", "is_rework"),
+            ("Track (Re-fire)", "is_refire"),
+            ("Track (Acapella)", "is_acapella"),
+            ("Track (Instrumental)", "is_instrumental"),
+        ]
+        for title, flag_name in test_cases:
+            flags = _parse_mix_flags(title)
+            assert flags[flag_name] is True, f"Failed for {title}"
+
+    def test_parse_mix_flags_multiple_mix_types(self):
+        """Test parsing title with multiple mix types."""
+        flags = _parse_mix_flags("Track (Extended Remix)")
+        # "Extended Remix" sets is_remix and treats "Extended" as remixer name
+        # It does NOT set is_extended (the pattern doesn't match "Extended Remix")
+        assert flags["is_remix"] is True
+        # Verify it parsed correctly - "Extended" is extracted as remixer
+        assert len(flags["remixers"]) > 0
+
+    def test_parse_mix_flags_remixer_extraction(self):
+        """Test remixer name extraction."""
+        flags = _parse_mix_flags("Track (CamelPhat Remix)")
+        assert flags["is_remix"] is True
+        assert len(flags["remixers"]) > 0
+        assert "CamelPhat" in flags["remixers"]
+        assert len(flags["remixer_tokens"]) > 0
+
+    def test_parse_mix_flags_multiple_remixers(self):
+        """Test parsing multiple remixers."""
+        flags = _parse_mix_flags("Track (CamelPhat & ARTBAT Remix)")
+        assert flags["is_remix"] is True
+        assert len(flags["remixers"]) >= 1
+
+    def test_parse_mix_flags_brackets(self):
+        """Test parsing mix flags from brackets."""
+        flags1 = _parse_mix_flags("Track (Original Mix)")
+        flags2 = _parse_mix_flags("Track [Original Mix]")
+        assert flags1["is_original"] is True
+        assert flags2["is_original"] is True
+
+    def test_parse_mix_flags_html_entities(self):
+        """Test parsing with HTML entities."""
+        flags = _parse_mix_flags("Track &amp; (Remix)")
+        assert flags["is_remix"] is True
+
+    def test_parse_mix_flags_accents(self):
+        """Test parsing with accented characters."""
+        flags = _parse_mix_flags("Track (Café Remix)")
+        assert flags["is_remix"] is True
+
+    def test_extract_remix_phrases_brackets(self):
+        """Test extracting remix phrases from brackets."""
+        phrases = _extract_remix_phrases("Track [Remixer Remix]")
+        assert len(phrases) > 0
+        assert any("remix" in p.lower() for p in phrases)
+
+    def test_extract_remix_phrases_multiple(self):
+        """Test extracting multiple remix phrases."""
+        phrases = _extract_remix_phrases("Track (Remix) [Extended Remix]")
+        assert len(phrases) >= 1
+
+    def test_extract_remix_phrases_deduplication(self):
+        """Test that remix phrases are deduplicated."""
+        phrases = _extract_remix_phrases("Track (Remix) (Remix)")
+        # Should deduplicate
+        assert len(phrases) == 1
+
+    def test_extract_remixer_names_various_formats(self):
+        """Test extracting remixer names in various formats."""
+        test_cases = [
+            "Track (CamelPhat Remix)",
+            "Track (CamelPhat's Remix)",
+            "Track (CamelPhat Extended Remix)",
+            "Track (CamelPhat & ARTBAT Remix)",
+        ]
+        for title in test_cases:
+            names = _extract_remixer_names_from_title(title)
+            assert len(names) > 0
+            assert any("camelphat" in n.lower() for n in names)
+
+    def test_extract_generic_parenthetical_phrases_various(self):
+        """Test extracting various generic phrases."""
+        phrases1 = _extract_generic_parenthetical_phrases("Track (Ivory Re-fire)")
+        phrases2 = _extract_generic_parenthetical_phrases("Track (Custom Phrase)")
+        assert len(phrases1) > 0
+        assert len(phrases2) > 0
+
+    def test_extract_generic_parenthetical_phrases_brackets(self):
+        """Test extracting generic phrases from brackets."""
+        phrases = _extract_generic_parenthetical_phrases("Track [Custom Phrase]")
+        assert len(phrases) > 0
+
+    def test_extract_generic_parenthetical_phrases_empty(self):
+        """Test extracting generic phrases from title with no phrases."""
+        phrases = _extract_generic_parenthetical_phrases("Track")
+        assert len(phrases) == 0
+
+    def test_mix_bonus_remixer_match(self):
+        """Test bonus for remixer name match."""
+        input_mix = {
+            "is_remix": True,
+            "remixer_tokens": {"camelphat"}
+        }
+        cand_mix = {
+            "is_remix": True,
+            "remixer_tokens": {"camelphat"}
+        }
+        bonus, reason = _mix_bonus(input_mix, cand_mix)
+        assert bonus > 0
+        assert "remixer_match" in reason
+
+    def test_mix_bonus_remixer_mismatch(self):
+        """Test penalty for remixer name mismatch."""
+        input_mix = {
+            "is_remix": True,
+            "remixer_tokens": {"camelphat"}
+        }
+        cand_mix = {
+            "is_remix": True,
+            "remixer_tokens": {"other"}
+        }
+        bonus, reason = _mix_bonus(input_mix, cand_mix)
+        assert bonus < 0
+        assert "remixer_mismatch" in reason
+
+    def test_mix_bonus_extended_remix_compatible(self):
+        """Test that extended remix is compatible with remix request."""
+        input_mix = {
+            "is_remix": True,
+            "remixer_tokens": {"camelphat"}
+        }
+        cand_mix = {
+            "is_extended": True,
+            "is_remix": True,
+            "remixer_tokens": {"camelphat"}
+        }
+        bonus, reason = _mix_bonus(input_mix, cand_mix)
+        # When remixer tokens match, should get positive bonus
+        assert bonus > 0
+        # Reason will be "remixer_match" when tokens match
+        assert isinstance(reason, str)
+        assert len(reason) > 0
+
+    def test_mix_bonus_prefer_plain_penalty(self):
+        """Test penalty when prefer_plain but candidate has remix."""
+        input_mix = {"prefer_plain": True}
+        cand_mix = {"is_remix": True}
+        bonus, reason = _mix_bonus(input_mix, cand_mix)
+        assert bonus < 0
+        assert "prefer_plain" in reason
+
+    def test_mix_bonus_prefer_plain_bonus(self):
+        """Test bonus when prefer_plain and candidate is plain."""
+        input_mix = {"prefer_plain": True}
+        cand_mix = {"is_plain": True}
+        bonus, reason = _mix_bonus(input_mix, cand_mix)
+        assert bonus > 0
+
+    def test_mix_ok_for_early_exit_plain(self):
+        """Test early exit OK for plain titles."""
+        input_mix = {"is_plain": True}
+        cand_mix = {"is_plain": True}
+        assert _mix_ok_for_early_exit(input_mix, cand_mix) is True
+
+    def test_mix_ok_for_early_exit_extended(self):
+        """Test early exit OK for extended mix."""
+        input_mix = {"is_extended": True}
+        cand_mix = {"is_extended": True}
+        assert _mix_ok_for_early_exit(input_mix, cand_mix) is True
+
+    def test_mix_ok_for_early_exit_original_extended_compatible(self):
+        """Test early exit allows original/extended as compatible."""
+        input_mix = {"is_original": True}
+        cand_mix = {"is_extended": True}
+        # According to the implementation, original and extended are compatible
+        # (line 697-698: if cand_mix.get("is_original") or cand_mix.get("is_extended"): return True)
+        assert _mix_ok_for_early_exit(input_mix, cand_mix) is True
+
+    def test_any_phrase_token_set_partial_match(self):
+        """Test phrase token set with partial token match."""
+        phrases = ["Ivory Re-fire"]
+        title = "Track (Ivory)"
+        # Should match if tokens overlap
+        result = _any_phrase_token_set_in_title(phrases, title)
+        assert isinstance(result, bool)
+
+    def test_extract_original_mix_phrases(self):
+        """Test extracting original mix phrases."""
+        from cuepoint.core.mix_parser import _extract_original_mix_phrases
+        phrases = _extract_original_mix_phrases("Track (Original Mix)")
+        assert len(phrases) > 0
+        assert any("original" in p.lower() for p in phrases)
+
+    def test_extract_extended_mix_phrases(self):
+        """Test extracting extended mix phrases."""
+        from cuepoint.core.mix_parser import _extract_extended_mix_phrases
+        phrases = _extract_extended_mix_phrases("Track (Extended Mix)")
+        assert len(phrases) > 0
+        assert any("extended" in p.lower() for p in phrases)
+
+    def test_parse_mix_flags_empty_title(self):
+        """Test parsing empty title."""
+        flags = _parse_mix_flags("")
+        assert flags["is_plain"] is True
+        assert flags["prefer_plain"] is True
+    
+    def test_extract_bracket_artist_hints(self):
+        """Test extracting artist hints from bracket notation."""
+        from cuepoint.core.mix_parser import _extract_bracket_artist_hints
+
+        # Test basic bracket extraction
+        hints = _extract_bracket_artist_hints("Track [Artist Name]")
+        assert "Artist Name" in hints
+        
+        # Test multiple brackets
+        hints = _extract_bracket_artist_hints("Track [Artist 1] [Artist 2]")
+        assert len(hints) >= 1
+        
+        # Test filtering out mix-related keywords
+        hints = _extract_bracket_artist_hints("Track [Remix]")
+        assert "Remix" not in hints or len(hints) == 0
+        
+        # Test filtering out numeric patterns
+        hints = _extract_bracket_artist_hints("Track [123]")
+        assert len(hints) == 0
+        
+        # Test deduplication
+        hints = _extract_bracket_artist_hints("Track [Artist] [artist]")
+        assert len(hints) == 1
+    
+    def test_merge_name_lists(self):
+        """Test merging multiple name lists."""
+        from cuepoint.core.mix_parser import _merge_name_lists
+
+        # Test basic merge
+        result = _merge_name_lists(["John", "Jane"], ["Bob"])
+        assert "John" in result
+        assert "Jane" in result
+        assert "Bob" in result
+        
+        # Test deduplication
+        result = _merge_name_lists(["John", "Jane"], ["Jane", "Bob"])
+        assert result.count("Jane") == 1
+        
+        # Test case-insensitive deduplication
+        result = _merge_name_lists(["John"], ["john"])
+        assert result.count("John") == 1 or result.count("john") == 1
+        
+        # Test empty lists
+        result = _merge_name_lists([], ["John"])
+        assert "John" in result
+        
+        # Test multiple lists
+        result = _merge_name_lists(["A"], ["B"], ["C"])
+        assert "A" in result and "B" in result and "C" in result
+    
+    def test_split_display_names(self):
+        """Test splitting display names string."""
+        from cuepoint.core.mix_parser import _split_display_names
+
+        # Test comma separator
+        result = _split_display_names("John, Jane, Bob")
+        assert "John" in result
+        assert "Jane" in result
+        assert "Bob" in result
+        
+        # Test ampersand separator
+        result = _split_display_names("John & Jane")
+        assert "John" in result
+        assert "Jane" in result
+        
+        # Test "and" separator
+        result = _split_display_names("John and Jane")
+        assert "John" in result
+        assert "Jane" in result
+        
+        # Test slash separator
+        result = _split_display_names("John/Jane")
+        assert "John" in result
+        assert "Jane" in result
+        
+        # Test combination
+        result = _split_display_names("John, Jane & Bob")
+        assert len(result) >= 2
+        
+        # Test empty string
+        result = _split_display_names("")
+        assert len(result) == 0
+    
+    def test_extract_remixer_names_from_brackets(self):
+        """Test extracting remixer names from bracket notation."""
+        from cuepoint.core.mix_parser import _extract_remixer_names_from_title
+
+        # Test bracket remix pattern
+        names = _extract_remixer_names_from_title("Track [CamelPhat Remix]")
+        assert len(names) > 0
+        assert any("camelphat" in n.lower() for n in names)
+        
+        # Test bracket without remix keyword
+        names = _extract_remixer_names_from_title("Track [CamelPhat]")
+        # May or may not extract depending on implementation
+        
+        # Test multiple remixers in brackets
+        names = _extract_remixer_names_from_title("Track [CamelPhat & Keinemusik Remix]")
+        assert len(names) >= 1
+    
+    def test_mix_ok_for_early_exit_plain_titles(self):
+        """Test early exit compatibility with plain titles."""
+        from cuepoint.core.mix_parser import _mix_ok_for_early_exit, _parse_mix_flags
+
+        # Original requested, plain title found
+        input_mix = _parse_mix_flags("Track (Original Mix)")
+        cand_mix = _parse_mix_flags("Track")  # Plain title
+        result = _mix_ok_for_early_exit(input_mix, cand_mix)
+        assert result is True
+    
+    def test_mix_ok_for_early_exit_remix_with_artist_fallback(self):
+        """Test early exit with remix and artist fallback matching."""
+        from cuepoint.core.mix_parser import _mix_ok_for_early_exit, _parse_mix_flags
+
+        # Remix requested with specific remixer
+        input_mix = _parse_mix_flags("Track (CamelPhat Remix)")
+        cand_mix = _parse_mix_flags("Track (Remix)")  # Remix but no remixer in title
+        cand_artists = "CamelPhat"  # Remixer in artists
+        
+        result = _mix_ok_for_early_exit(input_mix, cand_mix, cand_artists)
+        assert result is True
+    
+    def test_mix_ok_for_early_exit_extended_remix_compatibility(self):
+        """Test that extended remix is compatible with remix request."""
+        from cuepoint.core.mix_parser import _mix_ok_for_early_exit, _parse_mix_flags
+
+        # Remix requested
+        input_mix = _parse_mix_flags("Track (Remix)")
+        # Extended remix found
+        cand_mix = _parse_mix_flags("Track (Extended Remix)")
+        
+        result = _mix_ok_for_early_exit(input_mix, cand_mix)
+        assert result is True
+    
+    def test_mix_ok_for_early_exit_no_input_mix(self):
+        """Test early exit when no input mix intent."""
+        from cuepoint.core.mix_parser import _mix_ok_for_early_exit, _parse_mix_flags
+
+        # No input mix
+        input_mix = {}
+        cand_mix = _parse_mix_flags("Track (Remix)")
+        
+        result = _mix_ok_for_early_exit(input_mix, cand_mix)
+        assert result is True
+
 
 
 

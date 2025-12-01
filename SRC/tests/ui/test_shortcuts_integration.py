@@ -7,22 +7,24 @@ Integration Test for Keyboard Shortcuts
 Tests shortcuts in a running GUI application with actual user interactions.
 """
 
-import sys
 import os
-from PySide6.QtWidgets import QApplication
+import sys
+
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QKeyEvent
 from PySide6.QtTest import QTest
+from PySide6.QtWidgets import QApplication
 
 # Add SRC to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
+from cuepoint.models.result import TrackResult
 from cuepoint.ui.main_window import MainWindow
 from cuepoint.ui.widgets.results_view import ResultsView
-from cuepoint.models.result import TrackResult
 
 
 def test_shortcuts_in_gui():
@@ -122,9 +124,9 @@ def test_shortcuts_in_gui():
         assert accessible_name is not None and len(accessible_name) > 0, "Search box should have accessible name"
         print(f"[OK] Search box accessible name: {accessible_name}")
     
-    # Test 6: Test shortcut dialog
-    print("\n[TEST] Testing KeyboardShortcutsDialog:")
-    from gui.dialogs import KeyboardShortcutsDialog
+    # Test 6: Test shortcut dialog (using legacy GUI for compatibility testing)
+    print("\n[TEST] Testing KeyboardShortcutsDialog (legacy):")
+    from cuepoint.legacy.gui.dialogs import KeyboardShortcutsDialog
     dialog = KeyboardShortcutsDialog(manager, window)
     assert dialog is not None, "Dialog should be created"
     print("[OK] KeyboardShortcutsDialog created")
@@ -133,9 +135,9 @@ def test_shortcuts_in_gui():
         assert dialog.tabs.count() > 0, "Dialog should have tabs"
         print(f"[OK] Dialog has {dialog.tabs.count()} tabs")
     
-    # Test 7: Test customization dialog
-    print("\n[TEST] Testing ShortcutCustomizationDialog:")
-    from gui.shortcut_customization_dialog import ShortcutCustomizationDialog
+    # Test 7: Test customization dialog (using legacy GUI for compatibility testing)
+    print("\n[TEST] Testing ShortcutCustomizationDialog (legacy):")
+    from cuepoint.legacy.gui.shortcut_customization_dialog import ShortcutCustomizationDialog
     custom_dialog = ShortcutCustomizationDialog(manager, window)
     assert custom_dialog is not None, "Customization dialog should be created"
     print("[OK] ShortcutCustomizationDialog created")
@@ -167,5 +169,7 @@ def test_shortcuts_in_gui():
 
 if __name__ == "__main__":
     success = test_shortcuts_in_gui()
+    sys.exit(0 if success == 0 else 1)
+
     sys.exit(0 if success == 0 else 1)
 

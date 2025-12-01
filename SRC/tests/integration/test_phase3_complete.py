@@ -13,8 +13,8 @@ Tests all Phase 3 components:
 6. GUI integration
 """
 
-import sys
 import os
+import sys
 import time
 
 # Add src to path
@@ -27,7 +27,12 @@ def test_imports():
     print("=" * 80)
     
     try:
-        from cuepoint.utils.performance import performance_collector, PerformanceStats, TrackMetrics, QueryMetrics
+        from cuepoint.utils.performance import (
+            PerformanceStats,
+            QueryMetrics,
+            TrackMetrics,
+            performance_collector,
+        )
         print("[OK] performance.py imports successful")
     except Exception as e:
         print(f"[FAIL] performance.py import failed: {e}")
@@ -55,18 +60,28 @@ def test_imports():
         return False
     
     try:
-        from cuepoint.core.matcher import best_beatport_match, _classify_query_type
+        from cuepoint.core.matcher import _classify_query_type, best_beatport_match
         print("[OK] matcher.py imports successful")
     except Exception as e:
         print(f"[FAIL] matcher.py import failed: {e}")
         return False
     
+    # Test new Phase 5 architecture
     try:
-        from cuepoint.services.processor import process_playlist
-        print("[OK] processor.py import successful")
+        from cuepoint.services.interfaces import IProcessorService
+        from cuepoint.services.processor_service import ProcessorService
+        print("[OK] Phase 5 ProcessorService import successful")
     except Exception as e:
-        print(f"[FAIL] processor.py import failed: {e}")
+        print(f"[FAIL] ProcessorService import failed: {e}")
         return False
+    
+    # Test legacy processor (for backward compatibility)
+    try:
+        from cuepoint.legacy.processor import process_playlist
+        print("[OK] Legacy processor.py import successful (deprecated - kept for compatibility)")
+    except Exception as e:
+        # Legacy is optional - don't fail if unavailable
+        print(f"[INFO] Legacy processor not available: {e}")
     
     try:
         from cuepoint.ui.widgets.performance_view import PerformanceView
@@ -91,8 +106,8 @@ def test_performance_collector():
     print("Test 2: Performance Collector")
     print("=" * 80)
     
-    from cuepoint.utils.performance import performance_collector, PerformanceStats
-    
+    from cuepoint.utils.performance import PerformanceStats, performance_collector
+
     # Reset collector
     performance_collector.reset()
     
@@ -178,8 +193,8 @@ def test_performance_report():
     print("Test 3: Performance Report Generation")
     print("=" * 80)
     
-    from cuepoint.utils.performance import performance_collector
     from cuepoint.services.output_writer import write_performance_report
+    from cuepoint.utils.performance import performance_collector
     
     stats = performance_collector.get_stats()
     if not stats:
@@ -249,7 +264,7 @@ def test_cache_tracking():
     print("=" * 80)
     
     from cuepoint.data.beatport import get_last_cache_hit
-    
+
     # Test that function exists and returns a boolean
     try:
         cache_hit = get_last_cache_hit()
@@ -299,8 +314,9 @@ def test_config_panel_checkbox():
     
     try:
         from PySide6.QtWidgets import QApplication
+
         from cuepoint.ui.widgets.config_panel import ConfigPanel
-        
+
         # Create QApplication if it doesn't exist
         app = QApplication.instance()
         if app is None:
@@ -349,8 +365,9 @@ def test_performance_view():
     
     try:
         from PySide6.QtWidgets import QApplication
+
         from cuepoint.ui.widgets.performance_view import PerformanceView
-        
+
         # Create QApplication if it doesn't exist
         app = QApplication.instance()
         if app is None:
@@ -402,7 +419,7 @@ def test_integration():
     print("=" * 80)
     
     from cuepoint.utils.performance import performance_collector
-    
+
     # Reset and start session
     performance_collector.reset()
     performance_collector.start_session()
@@ -522,6 +539,10 @@ def main():
         print(f"\n[WARNING] {total - passed} test(s) failed")
         print("Please review the failures above and fix any issues.")
         return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
 
 
 if __name__ == "__main__":
