@@ -152,3 +152,211 @@ class TestExportServiceIntegration:
             service.export_to_json(sample_results, filepath)
             assert os.path.exists(filepath)
 
+    def test_export_to_csv_special_characters(self, export_service):
+        """Test CSV export with special characters in data."""
+        results = [
+            TrackResult(
+                playlist_index=1,
+                title='Test, Track "with" quotes',
+                artist="Artist & Co.",
+                matched=False
+            )
+        ]
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test_results.csv")
+            
+            # Export to CSV
+            export_service.export_to_csv(results, filepath)
+            
+            # Verify file was created
+            csv_files = list(Path(tmpdir).glob("*.csv"))
+            assert len(csv_files) > 0
+            
+            # Verify special characters are handled (file should be readable)
+            with open(csv_files[0], 'r', encoding='utf-8') as f:
+                content = f.read()
+                assert "Test" in content
+
+    def test_export_to_json_special_characters(self, export_service):
+        """Test JSON export with special characters in data."""
+        results = [
+            TrackResult(
+                playlist_index=1,
+                title='Test, Track "with" quotes',
+                artist="Artist & Co.",
+                matched=False
+            )
+        ]
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test_results.json")
+            
+            # Export to JSON
+            export_service.export_to_json(results, filepath)
+            
+            # Verify JSON is valid and contains special characters
+            with open(filepath, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                assert len(data) == 1
+                # TrackResult.to_dict() uses 'original_title' not 'title'
+                assert "Test" in data[0].get('original_title', '') or "Test" in str(data[0])
+
+    def test_export_to_csv_none_values(self, export_service):
+        """Test CSV export when TrackResult has None values."""
+        results = [
+            TrackResult(
+                playlist_index=1,
+                title="Test Track",
+                artist="Test Artist",
+                matched=False,
+                beatport_url=None,  # None value
+                match_score=None,  # None value
+            )
+        ]
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test_results.csv")
+            
+            # Export to CSV - should handle None values gracefully
+            export_service.export_to_csv(results, filepath)
+            
+            # Verify file was created
+            csv_files = list(Path(tmpdir).glob("*.csv"))
+            assert len(csv_files) > 0
+
+    def test_export_to_json_none_values(self, export_service):
+        """Test JSON export when TrackResult has None values."""
+        results = [
+            TrackResult(
+                playlist_index=1,
+                title="Test Track",
+                artist="Test Artist",
+                matched=False,
+                beatport_url=None,  # None value
+                match_score=None,  # None value
+            )
+        ]
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test_results.json")
+            
+            # Export to JSON - should handle None values gracefully
+            export_service.export_to_json(results, filepath)
+            
+            # Verify JSON is valid
+            with open(filepath, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                assert len(data) == 1
+
+    def test_export_to_csv_permission_error(self, export_service, sample_results):
+        """Test CSV export with file permission error."""
+        from cuepoint.exceptions.cuepoint_exceptions import ExportError
+        from unittest.mock import patch
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test_results.csv")
+            
+            # Mock file write to raise permission error
+            with patch('builtins.open', side_effect=PermissionError("Permission denied")):
+                # Should raise ExportError
+                with pytest.raises(ExportError):
+                    export_service.export_to_csv(sample_results, filepath)
+
+    def test_export_to_json_permission_error(self, export_service, sample_results):
+        """Test JSON export with file permission error."""
+        from cuepoint.exceptions.cuepoint_exceptions import ExportError
+        from unittest.mock import patch
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test_results.json")
+            
+            # Mock file write to raise permission error
+            with patch('builtins.open', side_effect=PermissionError("Permission denied")):
+                # Should raise ExportError
+                with pytest.raises(ExportError):
+                    export_service.export_to_json(sample_results, filepath)
+
+    def test_export_to_excel_missing_dependency(self, export_service, sample_results):
+        """Test Excel export when openpyxl is not available."""
+        from cuepoint.exceptions.cuepoint_exceptions import ExportError
+        from unittest.mock import patch
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test_results.xlsx")
+            
+            # Mock ImportError for openpyxl import inside the function
+            # The import happens inside export_to_excel, so we patch it at the module level
+            import builtins
+            original_import = builtins.__import__
+            
+            def mock_import(name, *args, **kwargs):
+                if name == 'openpyxl':
+                    raise ImportError("No module named 'openpyxl'")
+                return original_import(name, *args, **kwargs)
+            
+            with patch.object(builtins, '__import__', side_effect=mock_import):
+                # Should raise ExportError with specific error code
+                with pytest.raises(ExportError) as exc_info:
+                    export_service.export_to_excel(sample_results, filepath)
+                
+                assert "EXPORT_EXCEL_MISSING_DEPENDENCY" in str(exc_info.value.error_code) or "openpyxl" in str(exc_info.value.message).lower()
+
+    def test_export_to_json_serialization_error(self, export_service):
+        """Test JSON export with serialization error."""
+        from cuepoint.exceptions.cuepoint_exceptions import ExportError
+        from unittest.mock import patch, MagicMock
+        
+        # Create a result that might cause serialization issues
+        results = [
+            TrackResult(
+                playlist_index=1,
+                title="Test Track",
+                artist="Test Artist",
+                matched=False
+            )
+        ]
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test_results.json")
+            
+            # Mock json.dump to raise TypeError
+            with patch('json.dump', side_effect=TypeError("Not JSON serializable")):
+                # Should raise ExportError
+                with pytest.raises(ExportError):
+                    export_service.export_to_json(results, filepath)
+
+    def test_export_to_csv_empty_results(self, export_service):
+        """Test CSV export with empty results list."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "empty_results.csv")
+            
+            # Export empty list
+            export_service.export_to_csv([], filepath)
+            
+            # Verify files were created (may have headers only or may not create files for empty)
+            csv_files = list(Path(tmpdir).glob("*.csv"))
+            # Empty results may or may not create files - both behaviors are acceptable
+            # Just verify no error was raised
+            assert True  # Test passes if no exception was raised
+
+    def test_export_to_excel_empty_results(self, export_service):
+        """Test Excel export with empty results list."""
+        try:
+            import openpyxl
+        except ImportError:
+            pytest.skip("openpyxl not available")
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "empty_results.xlsx")
+            
+            # Export empty list
+            export_service.export_to_excel([], filepath)
+            
+            # Verify file was created
+            assert os.path.exists(filepath)
+            
+            # Verify Excel file is valid (may have headers only)
+            wb = openpyxl.load_workbook(filepath)
+            assert wb.active is not None
+

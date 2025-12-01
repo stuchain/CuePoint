@@ -364,4 +364,164 @@ class TestExportService:
         service = ExportService(logging_service=mock_logging_service)
         
         assert service.logging_service is mock_logging_service
+    
+    def test_export_to_json_with_special_characters(
+        self,
+        mock_logging_service
+    ):
+        """Test JSON export with special characters in data."""
+        service = ExportService(logging_service=mock_logging_service)
+        
+        result = TrackResult(
+            playlist_index=1,
+            title="Test Track \"with\" quotes & special chars",
+            artist="Artist & Co.",
+            matched=False
+        )
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.json")
+            service.export_to_json([result], filepath)
+            
+            # Verify file was created and JSON is valid
+            assert os.path.exists(filepath)
+            with open(filepath, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                assert len(data) == 1
+                # Verify special characters are preserved
+                assert "quotes" in data[0].get("Title", "") or "quotes" in str(data[0].values())
+    
+    def test_export_to_excel_missing_openpyxl(
+        self,
+        sample_track_result,
+        mock_logging_service
+    ):
+        """Test Excel export when openpyxl is not available."""
+        service = ExportService(logging_service=mock_logging_service)
+        
+        # Mock ImportError for openpyxl
+        import builtins
+        original_import = builtins.__import__
+        
+        def mock_import(name, *args, **kwargs):
+            if name == 'openpyxl' or name.startswith('openpyxl'):
+                raise ImportError("No module named 'openpyxl'")
+            return original_import(name, *args, **kwargs)
+        
+        builtins.__import__ = mock_import
+        
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                filepath = os.path.join(tmpdir, "test.xlsx")
+                with pytest.raises(ExportError) as exc_info:
+                    service.export_to_excel([sample_track_result], filepath)
+                
+                assert exc_info.value.error_code == "EXPORT_EXCEL_MISSING_DEPENDENCY"
+                assert "openpyxl" in exc_info.value.message.lower()
+        finally:
+            builtins.__import__ = original_import
+    
+    def test_export_to_json_file_write_error(
+        self,
+        sample_track_result,
+        mock_logging_service
+    ):
+        """Test JSON export with file write error."""
+        service = ExportService(logging_service=mock_logging_service)
+        
+        # Mock open to raise IOError
+        from unittest.mock import patch, mock_open
+        with patch('builtins.open', side_effect=IOError("Disk full")):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                filepath = os.path.join(tmpdir, "test.json")
+                with pytest.raises(ExportError) as exc_info:
+                    service.export_to_json([sample_track_result], filepath)
+                
+                assert exc_info.value.error_code == "EXPORT_JSON_ERROR"
+                mock_logging_service.error.assert_called()
+    
+    def test_export_to_excel_file_write_error(
+        self,
+        sample_track_result,
+        mock_logging_service
+    ):
+        """Test Excel export with file write error."""
+        try:
+            import openpyxl
+        except ImportError:
+            pytest.skip("openpyxl not available")
+        
+        service = ExportService(logging_service=mock_logging_service)
+        
+        # Mock Workbook.save to raise exception
+        from unittest.mock import patch
+        with patch('openpyxl.Workbook') as mock_wb_class:
+            mock_wb = mock_wb_class.return_value
+            mock_ws = mock_wb.active
+            mock_ws.append = Mock()
+            mock_wb.save = Mock(side_effect=IOError("Permission denied"))
+            
+            with tempfile.TemporaryDirectory() as tmpdir:
+                filepath = os.path.join(tmpdir, "test.xlsx")
+                with pytest.raises(ExportError) as exc_info:
+                    service.export_to_excel([sample_track_result], filepath)
+                
+                assert exc_info.value.error_code == "EXPORT_EXCEL_ERROR"
+                mock_logging_service.error.assert_called()
+    
+    def test_export_to_csv_with_none_values(
+        self,
+        mock_logging_service
+    ):
+        """Test CSV export when TrackResult has None values."""
+        service = ExportService(logging_service=mock_logging_service)
+        
+        result = TrackResult(
+            playlist_index=1,
+            title="Test Track",
+            artist="Test Artist",
+            matched=False,
+            beatport_url=None,
+            beatport_title=None,
+            match_score=None
+        )
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.csv")
+            # Should handle None values gracefully
+            service.export_to_csv([result], filepath)
+            
+            # Verify export succeeded
+            output_dir = os.path.dirname(filepath) or "output"
+            csv_files = [f for f in os.listdir(output_dir) if f.endswith('.csv')]
+            assert len(csv_files) > 0
+    
+    def test_export_to_json_with_none_values(
+        self,
+        mock_logging_service
+    ):
+        """Test JSON export when TrackResult has None values."""
+        service = ExportService(logging_service=mock_logging_service)
+        
+        result = TrackResult(
+            playlist_index=1,
+            title="Test Track",
+            artist="Test Artist",
+            matched=False,
+            beatport_url=None,
+            beatport_title=None,
+            match_score=None
+        )
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.json")
+            service.export_to_json([result], filepath)
+            
+            # Verify file was created and JSON is valid
+            assert os.path.exists(filepath)
+            with open(filepath, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                assert len(data) == 1
+                # None values should be serialized as null in JSON
+                assert isinstance(data[0], dict)
 

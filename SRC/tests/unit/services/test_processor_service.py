@@ -662,4 +662,414 @@ class TestProcessorService:
             assert exc_info.value.error_type in [ErrorType.PLAYLIST_NOT_FOUND, ErrorType.XML_PARSE_ERROR]
         finally:
             Path(xml_path).unlink(missing_ok=True)
+    
+    def test_process_track_beatport_service_error(
+        self,
+        mock_beatport_service,
+        mock_logging_service,
+        mock_config_service,
+        sample_track
+    ):
+        """Test track processing when beatport service raises an error."""
+        from cuepoint.models.config import SETTINGS
+        def config_get(key, default=None):
+            return SETTINGS.get(key, default)
+        mock_config_service.get.side_effect = config_get
+        
+        mock_matcher = Mock()
+        mock_candidate = BeatportCandidate(
+            url="https://www.beatport.com/track/test/123",
+            title="Test Track",
+            artists="Test Artist",
+            key=None,
+            release_year=None,
+            bpm=None,
+            label=None,
+            genre=None,
+            release_name=None,
+            release_date=None,
+            score=95.0,
+            title_sim=95,
+            artist_sim=100,
+            query_index=1,
+            query_text="Test",
+            candidate_index=1,
+            base_score=90.0,
+            bonus_year=0,
+            bonus_key=0,
+            guard_ok=True,
+            reject_reason="",
+            elapsed_ms=100,
+            is_winner=False
+        )
+        mock_matcher.find_best_match.return_value = (mock_candidate, [], [], 1)
+        
+        # Make beatport_service.fetch_track_data raise an error
+        mock_beatport_service.fetch_track_data.side_effect = Exception("Network error")
+        
+        service = ProcessorService(
+            beatport_service=mock_beatport_service,
+            matcher_service=mock_matcher,
+            logging_service=mock_logging_service,
+            config_service=mock_config_service
+        )
+        
+        # fetch_track_data exception propagates (not caught in current implementation)
+        with pytest.raises(Exception, match="Network error"):
+            service.process_track(1, sample_track)
+    
+    def test_process_track_with_remix_in_title(
+        self,
+        mock_beatport_service,
+        mock_logging_service,
+        mock_config_service,
+    ):
+        """Test processing track with remix indicator in title."""
+        from cuepoint.models.config import SETTINGS
+        def config_get(key, default=None):
+            return SETTINGS.get(key, default)
+        mock_config_service.get.side_effect = config_get
+        
+        mock_matcher = Mock()
+        mock_matcher.find_best_match.return_value = (None, [], [], 1)
+        
+        service = ProcessorService(
+            beatport_service=mock_beatport_service,
+            matcher_service=mock_matcher,
+            logging_service=mock_logging_service,
+            config_service=mock_config_service
+        )
+        
+        track = Track(
+            title="Original Track (Remix)",
+            artist="Test Artist",
+            key=None,
+            year=None,
+            bpm=None
+        )
+        
+        result = service.process_track(1, track)
+        assert result is not None
+        # Verify mix flags were extracted
+        mock_matcher.find_best_match.assert_called_once()
+        call_kwargs = mock_matcher.find_best_match.call_args[1]
+        assert 'input_mix' in call_kwargs
+    
+    def test_process_track_score_below_threshold(
+        self,
+        mock_beatport_service,
+        mock_logging_service,
+        mock_config_service,
+        sample_track
+    ):
+        """Test track processing when match score is below threshold."""
+        from cuepoint.models.config import SETTINGS
+        def config_get(key, default=None):
+            return SETTINGS.get(key, default)
+        mock_config_service.get.side_effect = config_get
+        
+        mock_matcher = Mock()
+        # Return candidate with score below threshold
+        mock_candidate = BeatportCandidate(
+            url="https://www.beatport.com/track/test/123",
+            title="Test Track",
+            artists="Test Artist",
+            key=None,
+            release_year=None,
+            bpm=None,
+            label=None,
+            genre=None,
+            release_name=None,
+            release_date=None,
+            score=60.0,  # Below default threshold of 70
+            title_sim=60,
+            artist_sim=60,
+            query_index=1,
+            query_text="Test",
+            candidate_index=1,
+            base_score=60.0,
+            bonus_year=0,
+            bonus_key=0,
+            guard_ok=True,
+            reject_reason="",
+            elapsed_ms=100,
+            is_winner=False
+        )
+        mock_matcher.find_best_match.return_value = (mock_candidate, [], [], 1)
+        
+        service = ProcessorService(
+            beatport_service=mock_beatport_service,
+            matcher_service=mock_matcher,
+            logging_service=mock_logging_service,
+            config_service=mock_config_service
+        )
+        
+        result = service.process_track(1, sample_track)
+        # Should return unmatched result because score < threshold
+        assert result is not None
+        assert result.matched is False
+        assert result.match_score == 0.0
+    
+    def test_process_track_with_custom_min_score(
+        self,
+        mock_beatport_service,
+        mock_logging_service,
+        mock_config_service,
+        sample_track
+    ):
+        """Test track processing with custom minimum score threshold."""
+        from cuepoint.models.config import SETTINGS
+        def config_get(key, default=None):
+            return SETTINGS.get(key, default)
+        mock_config_service.get.side_effect = config_get
+        
+        mock_matcher = Mock()
+        mock_candidate = BeatportCandidate(
+            url="https://www.beatport.com/track/test/123",
+            title="Test Track",
+            artists="Test Artist",
+            key=None,
+            release_year=None,
+            bpm=None,
+            label=None,
+            genre=None,
+            release_name=None,
+            release_date=None,
+            score=65.0,  # Above custom threshold of 60
+            title_sim=65,
+            artist_sim=65,
+            query_index=1,
+            query_text="Test",
+            candidate_index=1,
+            base_score=65.0,
+            bonus_year=0,
+            bonus_key=0,
+            guard_ok=True,
+            reject_reason="",
+            elapsed_ms=100,
+            is_winner=False
+        )
+        mock_matcher.find_best_match.return_value = (mock_candidate, [], [], 1)
+        
+        service = ProcessorService(
+            beatport_service=mock_beatport_service,
+            matcher_service=mock_matcher,
+            logging_service=mock_logging_service,
+            config_service=mock_config_service
+        )
+        
+        # Process with custom settings (lower threshold)
+        custom_settings = {"MIN_ACCEPT_SCORE": 60}
+        result = service.process_track(1, sample_track, settings=custom_settings)
+        # Should match because 65 >= 60
+        assert result is not None
+        assert result.matched is True
+        assert result.match_score == 65.0
+    
+    def test_process_playlist_from_xml_auto_research(
+        self,
+        mock_beatport_service,
+        mock_logging_service,
+        mock_config_service,
+    ):
+        """Test auto-research functionality for unmatched tracks."""
+        from cuepoint.models.config import SETTINGS
+        def config_get(key, default=None):
+            return SETTINGS.get(key, default)
+        mock_config_service.get.side_effect = config_get
+        
+        mock_matcher = Mock()
+        # Create a callable that returns different values based on call count
+        call_count = [0]
+        def mock_find_best_match(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return (None, [], [], 1)  # First track: no match
+            elif call_count[0] == 2:
+                return (None, [], [], 1)  # Second track: no match initially
+            else:
+                # Second track: match on re-search
+                return (
+                    BeatportCandidate(
+                        url="https://www.beatport.com/track/test/456",
+                        title="Track 2",
+                        artists="Artist 2",
+                        key=None,
+                        release_year=None,
+                        bpm=None,
+                        label=None,
+                        genre=None,
+                        release_name=None,
+                        release_date=None,
+                        score=75.0,
+                        title_sim=75,
+                        artist_sim=75,
+                        query_index=1,
+                        query_text="Track 2 Artist 2",
+                        candidate_index=1,
+                        base_score=75.0,
+                        bonus_year=0,
+                        bonus_key=0,
+                        guard_ok=True,
+                        reject_reason="",
+                        elapsed_ms=100,
+                        is_winner=False
+                    ), [], [], 1
+                )
+        mock_matcher.find_best_match.side_effect = mock_find_best_match
+        
+        service = ProcessorService(
+            beatport_service=mock_beatport_service,
+            matcher_service=mock_matcher,
+            logging_service=mock_logging_service,
+            config_service=mock_config_service
+        )
+        
+        xml_content = """<?xml version="1.0" encoding="UTF-8"?>
+<DJ_PLAYLISTS>
+    <COLLECTION>
+        <TRACK TrackID="1" Name="Track 1" Artist="Artist 1"/>
+        <TRACK TrackID="2" Name="Track 2" Artist="Artist 2"/>
+    </COLLECTION>
+    <PLAYLISTS>
+        <NODE Name="ROOT">
+            <NODE Name="Test Playlist" Type="1">
+                <TRACK Key="1"/>
+                <TRACK Key="2"/>
+            </NODE>
+        </NODE>
+    </PLAYLISTS>
+</DJ_PLAYLISTS>"""
+        
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.xml', delete=False, encoding='utf-8') as f:
+            f.write(xml_content)
+            xml_path = f.name
+        
+        try:
+            results = service.process_playlist_from_xml(
+                xml_path, "Test Playlist", auto_research=True
+            )
+            
+            # Should have 2 results
+            assert len(results) == 2
+            # Second track should be matched after auto-research
+            assert results[1].matched is True
+            # Verify matcher was called at least 3 times (2 initial + at least 1 re-search)
+            # May be more if both tracks get re-searched
+            assert mock_matcher.find_best_match.call_count >= 3
+        finally:
+            Path(xml_path).unlink(missing_ok=True)
+    
+    def test_process_playlist_from_xml_progress_callback_exception(
+        self,
+        mock_beatport_service,
+        mock_logging_service,
+        mock_config_service,
+    ):
+        """Test that progress callback exceptions don't break processing."""
+        from cuepoint.models.config import SETTINGS
+        def config_get(key, default=None):
+            return SETTINGS.get(key, default)
+        mock_config_service.get.side_effect = config_get
+        
+        mock_matcher = Mock()
+        mock_matcher.find_best_match.return_value = (None, [], [], 1)
+        
+        service = ProcessorService(
+            beatport_service=mock_beatport_service,
+            matcher_service=mock_matcher,
+            logging_service=mock_logging_service,
+            config_service=mock_config_service
+        )
+        
+        xml_content = """<?xml version="1.0" encoding="UTF-8"?>
+<DJ_PLAYLISTS>
+    <COLLECTION>
+        <TRACK TrackID="1" Name="Track 1" Artist="Artist 1"/>
+        <TRACK TrackID="2" Name="Track 2" Artist="Artist 2"/>
+    </COLLECTION>
+    <PLAYLISTS>
+        <NODE Name="ROOT">
+            <NODE Name="Test Playlist" Type="1">
+                <TRACK Key="1"/>
+                <TRACK Key="2"/>
+            </NODE>
+        </NODE>
+    </PLAYLISTS>
+</DJ_PLAYLISTS>"""
+        
+        # Progress callback that raises exception
+        def failing_callback(progress_info):
+            raise Exception("Callback error")
+        
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.xml', delete=False, encoding='utf-8') as f:
+            f.write(xml_content)
+            xml_path = f.name
+        
+        try:
+            # Should not raise exception, should continue processing
+            results = service.process_playlist_from_xml(
+                xml_path, "Test Playlist", progress_callback=failing_callback
+            )
+            
+            # Should still process all tracks
+            assert len(results) == 2
+        finally:
+            Path(xml_path).unlink(missing_ok=True)
+    
+    def test_process_track_with_none_candidate_fields(
+        self,
+        mock_beatport_service,
+        mock_logging_service,
+        mock_config_service,
+        sample_track
+    ):
+        """Test processing track when candidate has None values in fields."""
+        from cuepoint.models.config import SETTINGS
+        def config_get(key, default=None):
+            return SETTINGS.get(key, default)
+        mock_config_service.get.side_effect = config_get
+        
+        mock_matcher = Mock()
+        mock_candidate = BeatportCandidate(
+            url="https://www.beatport.com/track/test/123",
+            title="Test Track",
+            artists="Test Artist",
+            key=None,  # None key
+            release_year=None,  # None year
+            bpm=None,  # None BPM
+            label=None,  # None label
+            genre=None,  # None genre
+            release_name=None,  # None release
+            release_date=None,  # None date
+            score=95.0,
+            title_sim=95,
+            artist_sim=100,
+            query_index=1,
+            query_text="Test",
+            candidate_index=1,
+            base_score=90.0,
+            bonus_year=0,
+            bonus_key=0,
+            guard_ok=True,
+            reject_reason="",
+            elapsed_ms=100,
+            is_winner=False
+        )
+        mock_matcher.find_best_match.return_value = (mock_candidate, [mock_candidate], [], 1)
+        
+        service = ProcessorService(
+            beatport_service=mock_beatport_service,
+            matcher_service=mock_matcher,
+            logging_service=mock_logging_service,
+            config_service=mock_config_service
+        )
+        
+        result = service.process_track(1, sample_track)
+        # Should handle None values gracefully
+        assert result is not None
+        assert result.matched is True
+        assert result.beatport_key is None
+        assert result.beatport_year is None
+        assert result.beatport_bpm is None
 

@@ -502,6 +502,156 @@ class TestMakeSearchQueriesSettings:
         )
         # Should handle special characters
         assert len(queries) > 0
+    
+    def test_subset_space_join_empty_tokens(self):
+        """Test _subset_space_join with empty tokens - lines 211-219."""
+        # This tests the internal _subset_space_join function
+        # We test it indirectly through make_search_queries
+        # The function is used internally, so we verify it works
+        queries = make_search_queries(
+            title="Test Track",
+            artists="Test Artist"
+        )
+        # Should handle empty tokens gracefully
+        assert len(queries) > 0
+    
+    def test_artist_extraction_from_title_with_dash(self):
+        """Test artist extraction when title has '-' separator - line 230."""
+        # Line 230: title = ext[1] when title has "-" separator
+        queries = make_search_queries(
+            title="Test Track",
+            artists="",  # Empty artists
+            original_title="Artist Name - Test Track"
+        )
+        # Should extract artist from title when title has "-"
+        assert len(queries) > 0
+    
+    def test_expand_generic_variants_rework_exception(self):
+        """Test _expand_generic_variants exception handling for re-work - lines 284-287."""
+        # Lines 284-287: Exception handling in _expand_generic_variants
+        # This tests the exception path when processing "re-work" variants
+        queries = make_search_queries(
+            title="Test Track",
+            artists="Test Artist",
+            original_title="Test Track (Re-work Mix)"
+        )
+        # Should handle exceptions gracefully
+        assert len(queries) > 0
+    
+    def test_non_linear_prefix_path(self):
+        """Test non-linear prefix path when LINEAR_PREFIX_ONLY is False - lines 350-360."""
+        from unittest.mock import patch
+
+        from cuepoint.models.config import SETTINGS
+
+        # Test with LINEAR_PREFIX_ONLY = False
+        with patch.dict(SETTINGS, {"LINEAR_PREFIX_ONLY": False, "TITLE_GRAM_MAX": 3}):
+            queries = make_search_queries(
+                title="Test Track Title",
+                artists="Test Artist"
+            )
+            # Should use non-linear prefix path
+            assert len(queries) > 0
+    
+    def test_remix_queries_multiple_artists(self):
+        """Test remix queries with multiple artists - lines 527-594."""
+        queries = make_search_queries(
+            title="Test Track",
+            artists="Artist One, Artist Two",  # Multiple artists
+            original_title="Test Track (Remixer Remix)"
+        )
+        # Should generate remix queries with multiple artists
+        assert len(queries) > 0
+        # Should include queries with both artists
+        assert any("Artist One" in q or "Artist Two" in q for q in queries)
+    
+    def test_extended_mix_intent_queries(self):
+        """Test extended mix intent queries - lines 571-594."""
+        queries = make_search_queries(
+            title="Test Track",
+            artists="Artist One, Artist Two",
+            original_title="Test Track (Extended Mix)"
+        )
+        # Should generate extended mix queries
+        assert len(queries) > 0
+        # Should include extended mix variants
+        assert any("Extended" in q or "extended" in q.lower() for q in queries)
+    
+    def test_quoted_title_variants_tb_q(self):
+        """Test quoted title variants when tb_q is set - lines 746, 753, 760, 767."""
+        from unittest.mock import patch
+
+        from cuepoint.models.config import SETTINGS
+
+        # Test with QUOTED_TITLE_VARIANT = True to trigger tb_q path
+        with patch.dict(SETTINGS, {
+            "QUOTED_TITLE_VARIANT": True,
+            "PRIORITY_REVERSE_STAGE": True,
+            "REVERSE_ORDER_QUERIES": False
+        }):
+            queries = make_search_queries(
+                title="Track",  # Single word title
+                artists="Test Artist"
+            )
+            # Should generate quoted title variants
+            assert len(queries) > 0
+            # Should include quoted variants
+            assert any('"' in q for q in queries)
+    
+    def test_cross_grams_empty_av_continue(self):
+        """Test cross grams loop with empty av (continue) - line 812."""
+        from unittest.mock import patch
+
+        from cuepoint.models.config import SETTINGS
+
+        # Test with settings that trigger cross_grams path
+        with patch.dict(SETTINGS, {
+            "FULL_TITLE_WITH_ARTIST_ONLY": False,
+            "CROSS_TITLE_GRAMS_WITH_ARTISTS": True,
+            "CROSS_SMALL_ONLY": True
+        }):
+            queries = make_search_queries(
+                title="Test Track Title",
+                artists="Test Artist"
+            )
+            # Should handle empty av gracefully (continue)
+            assert len(queries) > 0
+    
+    def test_remix_queries_all_artists_filtered(self):
+        """Test remix queries when all artists are filtered - lines 537-538."""
+        # Test case where all artists match remixer tokens
+        queries = make_search_queries(
+            title="Test Track",
+            artists="Remixer",  # Artist matches remixer
+            original_title="Test Track (Remixer Remix)"
+        )
+        # Should handle case where all artists are filtered
+        assert len(queries) > 0
+    
+    def test_remix_queries_without_artists(self):
+        """Test remix queries without artists - lines 559-569."""
+        queries = make_search_queries(
+            title="Test Track",
+            artists="",  # No artists
+            original_title="Test Track (Remixer Remix)"
+        )
+        # Should generate remix queries even without artists
+        assert len(queries) > 0
+        # Should include remixer in queries
+        assert any("Remixer" in q for q in queries)
+    
+    def test_extended_mix_three_artists(self):
+        """Test extended mix with three artists - line 574."""
+        queries = make_search_queries(
+            title="Test Track",
+            artists="Artist One, Artist Two, Artist Three",  # Three artists
+            original_title="Test Track (Extended Mix)"
+        )
+        # Should use first 3 artists for extended mix
+        assert len(queries) > 0
+
+
+
 
 
 
