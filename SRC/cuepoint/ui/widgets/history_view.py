@@ -15,9 +15,10 @@ import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QComboBox,
+    QDateEdit,
     QDialog,
     QFileDialog,
     QGroupBox,
@@ -40,6 +41,7 @@ from PySide6.QtWidgets import (
 from cuepoint.ui.controllers.export_controller import ExportController
 from cuepoint.ui.dialogs.export_dialog import ExportDialog
 from cuepoint.ui.widgets.candidate_dialog import CandidateDialog
+from cuepoint.utils.utils import get_output_directory
 
 try:
     from performance import performance_collector
@@ -52,6 +54,9 @@ except ImportError:
 
 class HistoryView(QWidget):
     """Widget for viewing past search results from CSV files"""
+    
+    # Signal emitted when re-run is requested
+    rerun_requested = Signal(str, str)  # xml_path, playlist_name
 
     def __init__(self, export_controller: Optional[ExportController] = None, parent=None):
         super().__init__(parent)
@@ -132,6 +137,13 @@ class HistoryView(QWidget):
         filter_layout.addWidget(QLabel("Search:"))
         filter_layout.addWidget(self.search_box)
 
+        # Match status filter
+        filter_layout.addWidget(QLabel("Status:"))
+        self.status_filter = QComboBox()
+        self.status_filter.addItems(["All", "Matched", "Unmatched"])
+        self.status_filter.currentTextChanged.connect(self._trigger_filter_debounced)
+        filter_layout.addWidget(self.status_filter)
+
         # Confidence filter
         filter_layout.addWidget(QLabel("Confidence:"))
         self.confidence_filter = QComboBox()
@@ -141,6 +153,8 @@ class HistoryView(QWidget):
 
         filter_layout.addStretch()
         results_layout.addLayout(filter_layout)
+        
+        # Date range filter (in advanced filters)
 
         # Advanced Filters Group
         advanced_filters_group = QGroupBox("Advanced Filters")
@@ -247,6 +261,13 @@ class HistoryView(QWidget):
         status_layout.addStretch()
         status_layout.addWidget(self.filter_status_label)
 
+        # Re-run button
+        self.rerun_btn = QPushButton("Re-run Processing")
+        self.rerun_btn.setToolTip("Re-run processing with the same XML file and playlist")
+        self.rerun_btn.clicked.connect(self.on_rerun_processing)
+        self.rerun_btn.setEnabled(False)  # Disabled until file is loaded
+        status_layout.addWidget(self.rerun_btn)
+
         # Export button
         self.export_btn = QPushButton("Export...")
         self.export_btn.clicked.connect(self.show_export_dialog)
@@ -344,8 +365,10 @@ class HistoryView(QWidget):
             self.current_csv_path = file_path
             self.file_path_label.setText(f"Loaded: {os.path.basename(file_path)}")
 
-            # Enable export button
+            # Enable export and re-run buttons
             self.export_btn.setEnabled(True)
+            if hasattr(self, 'rerun_btn'):
+                self.rerun_btn.setEnabled(True)
 
             # Update summary
             total = len(rows)
@@ -536,11 +559,29 @@ class HistoryView(QWidget):
                 or search_text in (r.get("beatport_artists", "") or "").lower()
             ]
 
+        # Status filter
+        if hasattr(self, 'status_filter'):
+            status = self.status_filter.currentText()
+            if status != "All":
+                if status == "Matched":
+                    filtered = [r for r in filtered if str(r.get("matched", "")).lower() in ("true", "yes", "1")]
+                elif status == "Unmatched":
+                    filtered = [r for r in filtered if str(r.get("matched", "")).lower() not in ("true", "yes", "1")]
+
         # Confidence filter
         confidence = self.confidence_filter.currentText()
         if confidence != "All":
             filtered = [
                 r for r in filtered if (r.get("confidence", "") or "").lower() == confidence.lower()
+            ]
+
+        # Date range filter
+        if hasattr(self, 'date_from') and hasattr(self, 'date_to'):
+            date_from = self.date_from.date().toPython()
+            date_to = self.date_to.date().toPython()
+            filtered = [
+                r for r in filtered
+                if self._date_in_range(r, date_from, date_to)
             ]
 
         # Year range filter
@@ -1161,50 +1202,23 @@ class HistoryView(QWidget):
         dialog.exec()
 
     def _get_output_dirs(self):
-        """Get list of output directory paths (project root/output folder)"""
-        output_dirs = []
+        """Get list of output directory paths (single location: SRC/output)
         
-        # Method 1: Try relative to current working directory
-        # When GUI runs, CWD is usually SRC/, so output/ would be SRC/output
-        # But output is actually at project root, so try going up one level
-        cwd = os.getcwd()
-        cwd_output = os.path.abspath("output")
-        if os.path.exists(cwd_output):
-            output_dirs.append(cwd_output)
-        
-        # Method 2: Try one level up from CWD (project root)
-        # If CWD is SRC/, go up to project root
-        parent_dir = os.path.dirname(cwd)
-        if parent_dir:  # Only if we can go up
-            parent_output = os.path.join(parent_dir, "output")
-            abs_parent_output = os.path.abspath(parent_output)
-            if os.path.exists(abs_parent_output) and abs_parent_output not in output_dirs:
-                output_dirs.append(abs_parent_output)
-        
-        # Method 3: Calculate from file location
-        # File is at: SRC/cuepoint/ui/widgets/history_view.py
-        # Go up 4 levels: widgets -> ui -> cuepoint -> SRC
-        current_file = os.path.abspath(__file__)
-        src_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file))))
-        
-        # Try SRC/output
-        src_output = os.path.join(src_dir, "output")
-        abs_src_output = os.path.abspath(src_output)
-        if os.path.exists(abs_src_output) and abs_src_output not in output_dirs:
-            output_dirs.append(abs_src_output)
-        
-        # Method 4: Try project root/output (one level up from SRC)
-        project_root = os.path.dirname(src_dir) if os.path.dirname(src_dir) else src_dir
-        if project_root != src_dir:  # Only if project root is different from SRC
-            project_output = os.path.join(project_root, "output")
-            abs_project_output = os.path.abspath(project_output)
-            if os.path.exists(abs_project_output) and abs_project_output not in output_dirs:
-                output_dirs.append(abs_project_output)
-
-        return output_dirs
+        Returns a list with a single output directory to ensure all files
+        are saved and found in one consistent location.
+        """
+        # Use the single, consistent output directory
+        output_dir = get_output_directory()
+        return [output_dir]
 
     def refresh_recent_files(self):
         """Refresh list of recent CSV files from output directories"""
+        # Store currently selected file path before clearing
+        current_selection = None
+        current_item = self.recent_list.currentItem()
+        if current_item:
+            current_selection = current_item.data(Qt.UserRole)
+        
         self.recent_list.clear()
 
         output_dirs = self._get_output_dirs()
@@ -1214,51 +1228,63 @@ class HistoryView(QWidget):
         # Find all CSV files from all output directories
         csv_files = []
         for output_dir in output_dirs:
+            # Create directory if it doesn't exist (same as auto-save does)
             if not os.path.exists(output_dir):
-                continue
+                try:
+                    os.makedirs(output_dir, exist_ok=True)
+                except Exception:
+                    continue
 
-            # Use glob to find files, which may bypass some caching issues
-            import glob
-
-            pattern = os.path.join(output_dir, "*.csv")
-            all_csv_files = glob.glob(pattern)
-
-            # Also try os.listdir as fallback
+            # Use os.listdir first (more reliable for newly created files)
+            # Then use glob as fallback
+            found_files = set()
+            
+            # Method 1: os.listdir (most reliable for new files)
             try:
                 dir_files = os.listdir(output_dir)
+                for filename in dir_files:
+                    if filename.endswith(".csv"):
+                        if (
+                            not filename.endswith("_candidates.csv")
+                            and not filename.endswith("_queries.csv")
+                            and not filename.endswith("_review.csv")
+                        ):
+                            file_path = os.path.join(output_dir, filename)
+                            # Use absolute path to ensure consistency
+                            file_path = os.path.abspath(file_path)
+                            # Verify file exists and is readable
+                            if os.path.exists(file_path) and os.path.isfile(file_path):
+                                found_files.add(file_path)
             except Exception:
-                dir_files = []
+                pass
 
-            # Combine both methods and use set to deduplicate
-            found_files = set()
-            for file_path in all_csv_files:
-                filename = os.path.basename(file_path)
-                if (
-                    not filename.endswith("_candidates.csv")
-                    and not filename.endswith("_queries.csv")
-                    and not filename.endswith("_review.csv")
-                ):
-                    found_files.add(file_path)
-
-            # Also check files from os.listdir
-            for filename in dir_files:
-                if filename.endswith(".csv"):
+            # Method 2: glob.glob (as fallback)
+            try:
+                import glob
+                pattern = os.path.join(output_dir, "*.csv")
+                all_csv_files = glob.glob(pattern)
+                for file_path in all_csv_files:
+                    filename = os.path.basename(file_path)
                     if (
                         not filename.endswith("_candidates.csv")
                         and not filename.endswith("_queries.csv")
                         and not filename.endswith("_review.csv")
                     ):
-                        file_path = os.path.join(output_dir, filename)
-                        found_files.add(file_path)
+                        file_path = os.path.abspath(file_path)
+                        if os.path.exists(file_path) and os.path.isfile(file_path):
+                            found_files.add(file_path)
+            except Exception:
+                pass
 
             # Add to csv_files list with modification time
             for file_path in found_files:
-                if os.path.exists(file_path):
-                    try:
+                try:
+                    # Double-check file exists and get modification time
+                    if os.path.exists(file_path) and os.path.isfile(file_path):
                         mtime = os.path.getmtime(file_path)
                         csv_files.append((file_path, mtime))
-                    except Exception:
-                        pass
+                except Exception:
+                    pass
 
         # Sort by modification time (newest first)
         csv_files.sort(key=lambda x: x[1], reverse=True)
@@ -1274,6 +1300,15 @@ class HistoryView(QWidget):
                 f"{file_path}\nFolder: {folder_name}\nModified: {dt.strftime('%Y-%m-%d %H:%M:%S')}"
             )
             self.recent_list.addItem(item)
+        
+        # Restore selection if the file still exists
+        if current_selection:
+            for i in range(self.recent_list.count()):
+                item = self.recent_list.item(i)
+                if item and item.data(Qt.UserRole) == current_selection:
+                    self.recent_list.setCurrentItem(item)
+                    self.recent_list.scrollToItem(item)
+                    break
 
     def _add_to_recent_files(self, file_path: str):
         """Add file to recent files (for quick access)"""
@@ -1580,3 +1615,77 @@ class HistoryView(QWidget):
                 f"Could not save changes to file:\n{error_msg}"
             )
             return False
+    
+    def on_rerun_processing(self):
+        """Handle re-run request - load original XML file and playlist"""
+        if not self.current_csv_path or not self.csv_rows:
+            QMessageBox.warning(
+                self,
+                "No File Loaded",
+                "Please load a CSV file first."
+            )
+            return
+        
+        # Try to get XML file path and playlist name from CSV metadata
+        # Check first row for metadata fields
+        first_row = self.csv_rows[0] if self.csv_rows else {}
+        
+        # Try various possible field names
+        xml_path = (
+            first_row.get("xml_file_path") or
+            first_row.get("source_file") or
+            first_row.get("xml_path") or
+            ""
+        )
+        
+        playlist_name = (
+            first_row.get("playlist_name") or
+            first_row.get("playlist") or
+            ""
+        )
+        
+        # If not in CSV, try to infer from filename
+        if not playlist_name and self.current_csv_path:
+            basename = os.path.basename(self.current_csv_path)
+            # Remove timestamp and extension
+            if "(" in basename:
+                playlist_name = basename[:basename.rfind("(")].strip()
+            else:
+                playlist_name = os.path.splitext(basename)[0]
+        
+        if not xml_path:
+            QMessageBox.warning(
+                self,
+                "XML File Not Found",
+                "Could not determine the original XML file path from the CSV file.\n\n"
+                "Please select the XML file manually."
+            )
+            # Allow user to browse for XML file
+            xml_path, _ = QFileDialog.getOpenFileName(
+                self,
+                "Select Original XML File",
+                "",
+                "XML Files (*.xml);;All Files (*.*)"
+            )
+            if not xml_path:
+                return
+        
+        if not os.path.exists(xml_path):
+            QMessageBox.warning(
+                self,
+                "File Not Found",
+                f"The original XML file could not be found:\n{xml_path}\n\n"
+                "Please select a different file."
+            )
+            # Allow user to browse for XML file
+            xml_path, _ = QFileDialog.getOpenFileName(
+                self,
+                "Select XML File",
+                os.path.dirname(xml_path) if xml_path else "",
+                "XML Files (*.xml);;All Files (*.*)"
+            )
+            if not xml_path or not os.path.exists(xml_path):
+                return
+        
+        # Emit signal to main window
+        self.rerun_requested.emit(xml_path, playlist_name)

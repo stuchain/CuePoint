@@ -268,19 +268,19 @@ class GUIController(QObject):
         try:
             if hasattr(self, 'current_worker') and self.current_worker:
                 if hasattr(self.current_worker, 'isRunning') and self.current_worker.isRunning():
-                    # Request cancellation
+            # Request cancellation
                     if hasattr(self.current_worker, 'cancel'):
                         try:
-                            self.current_worker.cancel()
+            self.current_worker.cancel()
                         except Exception as e:
                             print(f"Error calling worker.cancel(): {e}")
                             import traceback
                             traceback.print_exc()
 
-                    # Wait for thread to finish (with timeout)
+            # Wait for thread to finish (with timeout)
                     if hasattr(self.current_worker, 'wait'):
                         try:
-                            if not self.current_worker.wait(5000):  # 5 second timeout
+            if not self.current_worker.wait(5000):  # 5 second timeout
                                 # Don't force terminate - it can cause crashes
                                 # Instead, just log and continue - the thread will finish eventually
                                 print("Warning: Worker thread did not finish within timeout, but continuing...")
@@ -298,7 +298,7 @@ class GUIController(QObject):
                     except Exception as e:
                         print(f"Error deleting worker: {e}")
 
-                self.current_worker = None
+            self.current_worker = None
                 
         except Exception as e:
             import traceback

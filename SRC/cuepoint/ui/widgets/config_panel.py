@@ -17,9 +17,11 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QMessageBox,
     QPushButton,
     QRadioButton,
     QSpinBox,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -74,6 +76,22 @@ class ConfigPanel(QWidget):
         # Performance Presets (moved to advanced)
         preset_group = QGroupBox("Performance Preset")
         preset_layout = QVBoxLayout()
+        
+        # Preset label with help button
+        preset_label_layout = QHBoxLayout()
+        preset_label = QLabel("Performance Preset")
+        preset_help_btn = self._create_help_button(
+            "Performance Preset",
+            "Choose processing speed vs accuracy:\n\n"
+            "• Balanced: Good speed/accuracy balance (Recommended)\n"
+            "• Fast: Quick processing, may miss some matches\n"
+            "• Turbo: Very fast, lower accuracy\n"
+            "• Exhaustive: Slow but thorough search"
+        )
+        preset_label_layout.addWidget(preset_label)
+        preset_label_layout.addWidget(preset_help_btn)
+        preset_label_layout.addStretch()
+        preset_layout.addLayout(preset_label_layout)
 
         self.preset_group = QButtonGroup()
         preset_buttons_layout = QHBoxLayout()
@@ -104,17 +122,45 @@ class ConfigPanel(QWidget):
         options_group = QGroupBox("Processing Options")
         options_layout = QVBoxLayout()
 
+        # Verbose logging with help button
+        verbose_layout = QHBoxLayout()
         self.verbose_check = QCheckBox("Enable verbose logging")
         self.verbose_check.setChecked(False)
         self.verbose_check.setToolTip("Show detailed progress information during processing")
-        options_layout.addWidget(self.verbose_check)
+        verbose_help_btn = self._create_help_button(
+            "Verbose Logging",
+            "Enable detailed logging for debugging.\n\n"
+            "When enabled, the application will log:\n"
+            "• Detailed search queries\n"
+            "• Match scoring information\n"
+            "• Processing steps\n\n"
+            "Note: May slow down processing slightly."
+        )
+        verbose_layout.addWidget(self.verbose_check)
+        verbose_layout.addWidget(verbose_help_btn)
+        verbose_layout.addStretch()
+        options_layout.addLayout(verbose_layout)
 
+        # Track performance with help button
+        perf_layout = QHBoxLayout()
         self.track_performance_check = QCheckBox("Track performance statistics")
         self.track_performance_check.setChecked(False)
         self.track_performance_check.setToolTip(
             "Enable real-time performance monitoring dashboard during processing"
         )
-        options_layout.addWidget(self.track_performance_check)
+        perf_help_btn = self._create_help_button(
+            "Performance Statistics",
+            "Enable real-time performance monitoring.\n\n"
+            "When enabled, a Performance tab will appear showing:\n"
+            "• Processing speed (tracks/second)\n"
+            "• Memory usage\n"
+            "• Network request statistics\n"
+            "• Time per track breakdown"
+        )
+        perf_layout.addWidget(self.track_performance_check)
+        perf_layout.addWidget(perf_help_btn)
+        perf_layout.addStretch()
+        options_layout.addLayout(perf_layout)
 
         options_group.setLayout(options_layout)
         advanced_layout.addWidget(options_group)
@@ -197,6 +243,42 @@ class ConfigPanel(QWidget):
         self.min_score_spin.valueChanged.connect(self._on_setting_changed)
         self.max_results_spin.valueChanged.connect(self._on_setting_changed)
         self.verbose_check.stateChanged.connect(self._on_setting_changed)
+    
+    def _create_help_button(self, title: str, help_text: str) -> QToolButton:
+        """Create a help button with contextual help"""
+        help_btn = QToolButton()
+        help_btn.setText("?")
+        help_btn.setMaximumSize(20, 20)
+        help_btn.setStyleSheet(
+            """
+            QToolButton {
+                border: none;
+                background-color: transparent;
+                color: #0078d4;
+                font-weight: bold;
+                font-size: 12px;
+                border-radius: 10px;
+            }
+            QToolButton:hover {
+                background-color: rgba(0, 120, 212, 0.1);
+            }
+            QToolButton:pressed {
+                background-color: rgba(0, 120, 212, 0.2);
+            }
+            """
+        )
+        help_btn.setToolTip(f"Help: {title}\n\nClick for more information")
+        help_btn.clicked.connect(lambda: self._show_help_dialog(title, help_text))
+        return help_btn
+    
+    def _show_help_dialog(self, title: str, help_text: str):
+        """Show help dialog with contextual information"""
+        QMessageBox.information(
+            self,
+            f"Help: {title}",
+            help_text,
+            QMessageBox.Ok
+        )
 
         layout.addStretch()
 

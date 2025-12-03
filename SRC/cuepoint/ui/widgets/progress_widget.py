@@ -43,6 +43,13 @@ class ProgressWidget(QWidget):
         self.overall_progress.setMaximum(100)
         self.overall_progress.setValue(0)
         self.overall_progress.setFormat("%p% (%v/%m tracks)")
+        
+        # Percentage label (separate for better visibility)
+        progress_container = QWidget()
+        progress_layout = QHBoxLayout(progress_container)
+        progress_layout.setContentsMargins(0, 0, 0, 0)
+        progress_layout.setSpacing(10)
+        
         self.overall_progress.setStyleSheet(
             """
             QProgressBar {
@@ -58,7 +65,16 @@ class ProgressWidget(QWidget):
             }
             """
         )
-        layout.addWidget(self.overall_progress)
+        progress_layout.addWidget(self.overall_progress)
+        
+        # Percentage label next to progress bar
+        self.percentage_label = QLabel("0%")
+        self.percentage_label.setStyleSheet(
+            "font-size: 16px; font-weight: bold; color: #ffffff; min-width: 50px;"
+        )
+        progress_layout.addWidget(self.percentage_label)
+        
+        layout.addWidget(progress_container)
 
         # Current track info - improved styling
         self.current_track_label = QLabel("Ready to start...")
@@ -131,6 +147,7 @@ class ProgressWidget(QWidget):
         button_layout.addStretch()
         self.cancel_button = QPushButton("Cancel Processing")
         self.cancel_button.setMinimumWidth(150)
+        self.cancel_button.setToolTip("Cancel processing (Shortcut: Esc)")
         self.cancel_button.setStyleSheet(
             """
             QPushButton {
@@ -166,6 +183,10 @@ class ProgressWidget(QWidget):
             self.overall_progress.setMaximum(progress_info.total_tracks)
             # Set value to completed tracks
             self.overall_progress.setValue(progress_info.completed_tracks)
+            
+            # Update percentage label
+            percentage = (progress_info.completed_tracks / progress_info.total_tracks) * 100
+            self.percentage_label.setText(f"{percentage:.0f}%")
 
         # Update current track
         if progress_info.current_track:

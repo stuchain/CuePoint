@@ -128,6 +128,23 @@ class BatchProcessorWidget(QWidget):
         self.current_progress.setValue(0)
         progress_layout.addWidget(self.current_progress)
 
+        # Per-playlist progress list (scrollable)
+        per_playlist_label = QLabel("Per-Playlist Progress:")
+        progress_layout.addWidget(per_playlist_label)
+        
+        from PySide6.QtWidgets import QScrollArea
+        self.playlist_progress_scroll = QScrollArea()
+        self.playlist_progress_scroll.setWidgetResizable(True)
+        self.playlist_progress_scroll.setMaximumHeight(200)
+        self.playlist_progress_widget = QWidget()
+        self.playlist_progress_layout = QVBoxLayout(self.playlist_progress_widget)
+        self.playlist_progress_layout.setContentsMargins(0, 0, 0, 0)
+        self.playlist_progress_scroll.setWidget(self.playlist_progress_widget)
+        progress_layout.addWidget(self.playlist_progress_scroll)
+        
+        # Store per-playlist progress widgets
+        self.playlist_progress_widgets: Dict[str, Dict] = {}
+
         # Time information
         time_layout = QHBoxLayout()
         self.elapsed_label = QLabel("Elapsed: 0s")
@@ -181,17 +198,34 @@ class BatchProcessorWidget(QWidget):
             )
             return
 
-        # Confirm with user
+        # Show detailed confirmation dialog with summary
+        playlist_list = "\n".join(f"  • {name}" for name in selected)
+        estimated_time = self._estimate_time(len(selected))
+        
         reply = QMessageBox.question(
             self,
-            "Start Batch Processing",
-            f"Process {len(selected)} playlist(s)?\n\nThis may take a while.",
+            "Start Batch Processing?",
+            f"You are about to process:\n\n"
+            f"Playlists ({len(selected)}):\n{playlist_list}\n\n"
+            f"Estimated Time: {estimated_time}\n\n"
+            f"Continue?",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No,
         )
 
         if reply == QMessageBox.Yes:
             self.start_batch_processing(selected)
+    
+    def _estimate_time(self, playlist_count: int) -> str:
+        """Estimate processing time based on playlist count"""
+        # Rough estimate: ~2-5 minutes per playlist
+        min_time = playlist_count * 2
+        max_time = playlist_count * 5
+        if min_time < 60:
+            return f"~{min_time}-{max_time} minutes"
+        else:
+            hours = min_time // 60
+            return f"~{hours} hour(s) or more"
 
     def start_batch_processing(self, playlist_names: List[str]):
         """Start processing selected playlists"""
@@ -199,6 +233,35 @@ class BatchProcessorWidget(QWidget):
         self.results = {}
         self.current_playlist_index = -1  # Start at -1, will be 0 after first completion
         self.is_processing = True
+
+        # Clear previous per-playlist progress widgets
+        while self.playlist_progress_layout.count():
+            item = self.playlist_progress_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        self.playlist_progress_widgets = {}
+
+        # Create per-playlist progress widgets
+        for playlist_name in playlist_names:
+            playlist_widget = QWidget()
+            playlist_layout = QVBoxLayout(playlist_widget)
+            playlist_layout.setContentsMargins(5, 5, 5, 5)
+            
+            status_label = QLabel(f"⏳ {playlist_name} - Pending")
+            status_label.setStyleSheet("font-weight: bold;")
+            playlist_layout.addWidget(status_label)
+            
+            progress_bar = QProgressBar()
+            progress_bar.setValue(0)
+            progress_bar.setFormat("%p%")
+            playlist_layout.addWidget(progress_bar)
+            
+            self.playlist_progress_widgets[playlist_name] = {
+                'widget': playlist_widget,
+                'status_label': status_label,
+                'progress_bar': progress_bar
+            }
+            self.playlist_progress_layout.addWidget(playlist_widget)
 
         # Initialize time tracking
         self.batch_start_time = time.time()
@@ -332,6 +395,12 @@ class BatchProcessorWidget(QWidget):
 
         self.current_playlist_label.setText(f"Processing: {playlist_name}")
         self.current_progress.setValue(0)
+        
+        # Update per-playlist progress
+        if playlist_name in self.playlist_progress_widgets:
+            widget_info = self.playlist_progress_widgets[playlist_name]
+            widget_info['status_label'].setText(f"→ {playlist_name} - Processing...")
+            widget_info['status_label'].setStyleSheet("font-weight: bold; color: #0078d4;")
 
     def on_playlist_progress(self, progress_info: ProgressInfo):
         """Handle progress update for current playlist"""
@@ -342,6 +411,16 @@ class BatchProcessorWidget(QWidget):
         if progress_info.total_tracks > 0:
             self.current_progress.setMaximum(progress_info.total_tracks)
             self.current_progress.setValue(progress_info.completed_tracks)
+            
+            # Update per-playlist progress for current playlist
+            current_playlist = self.selected_playlists[self.current_playlist_index + 1] if (self.current_playlist_index + 1) < len(self.selected_playlists) else None
+            if current_playlist and current_playlist in self.playlist_progress_widgets:
+                widget_info = self.playlist_progress_widgets[current_playlist]
+                widget_info['progress_bar'].setMaximum(progress_info.total_tracks)
+                widget_info['progress_bar'].setValue(progress_info.completed_tracks)
+                widget_info['status_label'].setText(
+                    f"→ {current_playlist} - Processing... ({progress_info.completed_tracks}/{progress_info.total_tracks})"
+                )
 
         # Update time display (will also be updated by timer, but this ensures accuracy)
         self._update_time_display()
@@ -359,6 +438,18 @@ class BatchProcessorWidget(QWidget):
 
         # Store results
         self.results[playlist_name] = results
+
+        # Update per-playlist progress
+        if playlist_name in self.playlist_progress_widgets:
+            widget_info = self.playlist_progress_widgets[playlist_name]
+            matched_count = sum(1 for r in results if r.matched)
+            total_count = len(results)
+            percentage = (matched_count / total_count * 100) if total_count > 0 else 0
+            widget_info['progress_bar'].setValue(100)
+            widget_info['status_label'].setText(
+                f"✓ {playlist_name} - Complete ({matched_count}/{total_count} matched, {percentage:.0f}%)"
+            )
+            widget_info['status_label'].setStyleSheet("font-weight: bold; color: #4CAF50;")
 
         # Update overall progress (increment first, then set value)
         self.current_playlist_index += 1
@@ -422,8 +513,66 @@ class BatchProcessorWidget(QWidget):
             item = self.playlist_list.item(i)
             item.setFlags(item.flags() | Qt.ItemIsEnabled)
 
+        # Show batch summary dialog
+        self._show_batch_summary()
+        
         # Emit completion signal
         self.batch_completed.emit(self.results)
+    
+    def _show_batch_summary(self):
+        """Show batch processing summary dialog"""
+        from PySide6.QtWidgets import QDialog, QDialogButtonBox, QListWidget
+        
+        summary_dialog = QDialog(self)
+        summary_dialog.setWindowTitle("Batch Processing Complete")
+        summary_dialog.setMinimumSize(500, 400)
+        
+        layout = QVBoxLayout(summary_dialog)
+        
+        # Overall statistics
+        total_playlists = len(self.results)
+        total_tracks = sum(len(r) for r in self.results.values())
+        total_matched = sum(sum(1 for t in r if t.matched) for r in self.results.values())
+        total_unmatched = total_tracks - total_matched
+        match_rate = (total_matched / total_tracks * 100) if total_tracks > 0 else 0
+        
+        # Calculate total time
+        total_time_str = "Unknown"
+        if self.batch_start_time:
+            total_time = time.time() - self.batch_start_time
+            total_time_str = self._format_time(total_time)
+        
+        summary_text = QLabel(
+            f"<b>Summary:</b><br/>"
+            f"• Total Playlists: {total_playlists}<br/>"
+            f"• Total Tracks: {total_tracks}<br/>"
+            f"• Matched: {total_matched} ({match_rate:.0f}%)<br/>"
+            f"• Unmatched: {total_unmatched} ({100-match_rate:.0f}%)<br/>"
+            f"• Processing Time: {total_time_str}"
+        )
+        summary_text.setWordWrap(True)
+        layout.addWidget(summary_text)
+        
+        # Per-playlist breakdown
+        playlist_label = QLabel("<b>Per Playlist:</b>")
+        layout.addWidget(playlist_label)
+        
+        playlist_list = QListWidget()
+        for playlist_name, playlist_results in self.results.items():
+            matched = sum(1 for r in playlist_results if r.matched)
+            total = len(playlist_results)
+            percentage = (matched / total * 100) if total > 0 else 0
+            item_text = f"✓ {playlist_name}: {matched}/{total} ({percentage:.0f}%)"
+            playlist_list.addItem(item_text)
+        
+        layout.addWidget(playlist_list)
+        
+        # Buttons
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok)
+        button_box.accepted.connect(summary_dialog.accept)
+        layout.addWidget(button_box)
+        
+        summary_dialog.exec()
 
         # Show summary with time
         total_playlists = len(self.selected_playlists)

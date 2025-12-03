@@ -81,6 +81,7 @@ def test_processing_mode_appears_after_xml_selected(main_window, sample_xml_file
     """Test that processing mode appears after valid XML file is selected"""
     # Navigate to main interface first (from tool selection page)
     main_window.show_main_interface()
+    main_window.show()  # Show window so visibility checks work
     qapp.processEvents()
     
     # Initially hidden
@@ -99,12 +100,18 @@ def test_processing_mode_appears_after_xml_selected(main_window, sample_xml_file
         main_window.playlist_selector.combo.setEnabled(True)
     main_window.playlist_selector.load_xml_file = mock_load_xml_file
     
+    # Also mock save_recent_file to not raise exception
+    def mock_save_recent_file(file_path):
+        pass  # Do nothing
+    main_window.save_recent_file = mock_save_recent_file
+    
     # Directly call on_file_selected
     main_window.on_file_selected(sample_xml_file)
     qapp.processEvents()
     
     # Processing mode should now be visible
-    assert main_window.mode_group.isVisible()
+    # Since window is shown, isVisible should work correctly
+    assert main_window.mode_group.isVisible(), f"Mode group should be visible after file selection. Current visibility: {main_window.mode_group.isVisible()}"
 
 
 def test_processing_mode_hides_on_invalid_file(main_window):
@@ -120,6 +127,7 @@ def test_playlist_selection_appears_after_mode_selected(main_window, sample_xml_
     """Test that playlist selection appears after processing mode is selected"""
     # Navigate to main interface first
     main_window.show_main_interface()
+    main_window.show()  # Show window
     qapp.processEvents()
     
     # Mock validate_file
@@ -156,6 +164,7 @@ def test_start_button_enabled_after_playlist_selected(main_window, sample_xml_fi
     """Test that start button is enabled after playlist is selected"""
     # Navigate to main interface first
     main_window.show_main_interface()
+    main_window.show()  # Show window
     qapp.processEvents()
     
     # Mock validate_file
@@ -197,6 +206,7 @@ def test_progressive_disclosure_workflow(main_window, sample_xml_file, qapp):
     """Test the complete progressive disclosure workflow"""
     # Navigate to main interface first
     main_window.show_main_interface()
+    main_window.show()  # Show window
     qapp.processEvents()
     
     # Mock validate_file
@@ -243,6 +253,7 @@ def test_batch_mode_shows_batch_processor(main_window, sample_xml_file, qapp):
     """Test that batch mode shows batch processor instead of playlist selector"""
     # Navigate to main interface first
     main_window.show_main_interface()
+    main_window.show()  # Show window
     qapp.processEvents()
     
     # Mock validate_file
@@ -275,6 +286,7 @@ def test_invalid_file_resets_progressive_disclosure(main_window, sample_xml_file
     """Test that selecting invalid file resets progressive disclosure"""
     # Navigate to main interface first
     main_window.show_main_interface()
+    main_window.show()  # Show window
     qapp.processEvents()
     
     # Mock validate_file for valid file

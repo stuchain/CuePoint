@@ -9,9 +9,12 @@ This module contains error dialogs and confirmation dialogs for the GUI.
 
 from typing import Optional
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QDialog,
+    QDialogButtonBox,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -44,7 +47,7 @@ class ErrorDialog(QDialog):
         self.init_ui()
 
     def init_ui(self):
-        """Initialize UI components"""
+        """Initialize UI components with enhanced error display"""
         layout = QVBoxLayout(self)
         layout.setSpacing(15)
         layout.setContentsMargins(20, 20, 20, 20)
@@ -53,77 +56,204 @@ class ErrorDialog(QDialog):
         title_layout = QHBoxLayout()
         error_icon = QLabel("⚠️")
         error_icon.setStyleSheet("font-size: 24px;")
-        title_label = QLabel("Error")
-        title_label.setStyleSheet("font-size: 16px; font-weight: bold;")
+        
+        # Get user-friendly title based on error type
+        title_text = self._get_error_title()
+        title_label = QLabel(title_text)
+        title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #c62828;")
         title_layout.addWidget(error_icon)
         title_layout.addWidget(title_label)
         title_layout.addStretch()
         layout.addLayout(title_layout)
 
-        # Error message
-        message_label = QLabel(self.error.message)
-        message_label.setWordWrap(True)
-        message_label.setStyleSheet("font-size: 12px; padding: 10px;")
-        layout.addWidget(message_label)
+        # "What went wrong" section
+        what_went_wrong_group = QGroupBox("What went wrong:")
+        what_went_wrong_group.setStyleSheet("QGroupBox { font-weight: bold; margin-top: 10px; }")
+        what_layout = QVBoxLayout()
+        what_label = QLabel(self._get_what_went_wrong())
+        what_label.setWordWrap(True)
+        what_label.setStyleSheet("font-size: 12px; padding: 5px; color: #333;")
+        what_layout.addWidget(what_label)
+        what_went_wrong_group.setLayout(what_layout)
+        layout.addWidget(what_went_wrong_group)
 
-        # Error type badge (optional, for visual distinction)
-        error_type_label = QLabel(f"Type: {self.error.error_type.value.replace('_', ' ').title()}")
-        error_type_label.setStyleSheet(
-            "background-color: #ffebee; color: #c62828; "
-            "padding: 5px 10px; border-radius: 3px; font-size: 10px;"
-        )
-        layout.addWidget(error_type_label)
+        # "How to fix" section
+        how_to_fix_group = QGroupBox("How to fix:")
+        how_to_fix_group.setStyleSheet("QGroupBox { font-weight: bold; margin-top: 10px; }")
+        how_layout = QVBoxLayout()
+        how_layout.setSpacing(5)
+        
+        # Use suggestions if available, otherwise provide default fixes
+        fixes = self.error.suggestions if self.error.suggestions else self._get_default_fixes()
+        for i, fix in enumerate(fixes, 1):
+            fix_label = QLabel(f"{i}. {fix}")
+            fix_label.setWordWrap(True)
+            fix_label.setStyleSheet("font-size: 12px; padding: 5px; color: #1976d2;")
+            how_layout.addWidget(fix_label)
+        
+        how_to_fix_group.setLayout(how_layout)
+        layout.addWidget(how_to_fix_group)
 
-        # Details section (if available)
+        # Collapsible technical details section
+        self.tech_details_group = QGroupBox()
+        self.tech_details_group.setCheckable(True)
+        self.tech_details_group.setChecked(False)
+        self.tech_details_group.setTitle("Show Technical Details")
+        self.tech_details_group.setStyleSheet("QGroupBox { font-weight: bold; margin-top: 10px; }")
+        self.tech_details_group.toggled.connect(self._toggle_tech_details)
+        
+        tech_layout = QVBoxLayout()
+        
+        # Error type
+        error_type_label = QLabel(f"Error Type: {self.error.error_type.value.replace('_', ' ').title()}")
+        error_type_label.setStyleSheet("font-size: 11px; color: #666; padding: 3px;")
+        tech_layout.addWidget(error_type_label)
+        
+        # Original message
+        if self.error.message:
+            message_label = QLabel(f"Message: {self.error.message}")
+            message_label.setWordWrap(True)
+            message_label.setStyleSheet("font-size: 11px; color: #666; padding: 3px;")
+            tech_layout.addWidget(message_label)
+        
+        # Details (if available)
         if self.error.details:
-            details_label = QLabel("Details:")
-            details_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-            layout.addWidget(details_label)
-
             details_text = QTextEdit(self.error.details)
             details_text.setReadOnly(True)
             details_text.setMaximumHeight(100)
-            details_text.setStyleSheet("background-color: #f5f5f5; padding: 5px;")
-            layout.addWidget(details_text)
+            details_text.setStyleSheet("background-color: #f5f5f5; padding: 5px; font-size: 10px; font-family: monospace;")
+            tech_layout.addWidget(details_text)
+        
+        self.tech_details_group.setLayout(tech_layout)
+        layout.addWidget(self.tech_details_group)
 
-        # Suggestions section (if available)
-        if self.error.suggestions:
-            suggestions_label = QLabel("Suggestions:")
-            suggestions_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-            layout.addWidget(suggestions_label)
-
-            suggestions_container = QVBoxLayout()
-            suggestions_container.setSpacing(5)
-            for suggestion in self.error.suggestions:
-                sug_label = QLabel(f"• {suggestion}")
-                sug_label.setWordWrap(True)
-                sug_label.setStyleSheet("padding-left: 10px; color: #1976d2;")
-                suggestions_container.addWidget(sug_label)
-            layout.addLayout(suggestions_container)
+        # Documentation link (if available)
+        doc_link = self._get_documentation_link()
+        if doc_link:
+            link_layout = QHBoxLayout()
+            link_label = QLabel(f'<a href="{doc_link}">Learn More</a>')
+            link_label.setOpenExternalLinks(True)
+            link_label.setStyleSheet("color: #1976d2; padding: 5px;")
+            link_label.linkActivated.connect(lambda url: QDesktopServices.openUrl(QUrl(url)))
+            link_layout.addWidget(link_label)
+            link_layout.addStretch()
+            layout.addLayout(link_layout)
 
         # Recoverable indicator
         if self.error.recoverable:
             recoverable_label = QLabel(
-                "This error is recoverable. You can try again after fixing the issue."
+                "✓ This error is recoverable. You can try again after fixing the issue."
             )
-            recoverable_label.setStyleSheet("color: #388e3c; font-style: italic; padding: 5px;")
+            recoverable_label.setStyleSheet("color: #388e3c; font-style: italic; padding: 5px; background-color: #e8f5e9; border-radius: 3px;")
             layout.addWidget(recoverable_label)
 
-        # OK button
-        button_layout = QHBoxLayout()
-        button_layout.addStretch()
-        ok_btn = QPushButton("OK")
-        ok_btn.setMinimumWidth(100)
+        # Action buttons
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok)
+        
+        # Add action buttons based on error type
+        action_buttons = self._get_action_buttons()
+        for button_text, callback in action_buttons:
+            action_btn = button_box.addButton(button_text, QDialogButtonBox.ActionRole)
+            action_btn.clicked.connect(callback)
+        
+        ok_btn = button_box.button(QDialogButtonBox.Ok)
         ok_btn.setDefault(True)
         ok_btn.clicked.connect(self.accept)
-        button_layout.addWidget(ok_btn)
-        layout.addLayout(button_layout)
+        layout.addWidget(button_box)
 
         # Window properties
-        self.setWindowTitle("Error - CuePoint")
-        self.setMinimumWidth(500)
-        self.setMaximumWidth(700)
+        self.setWindowTitle(f"Error - {title_text}")
+        self.setMinimumWidth(550)
+        self.setMaximumWidth(750)
         self.setModal(True)
+    
+    def _get_error_title(self) -> str:
+        """Get user-friendly error title"""
+        titles = {
+            'file_not_found': 'File Not Found',
+            'playlist_not_found': 'Playlist Not Found',
+            'xml_parse_error': 'Invalid XML File',
+            'network_error': 'Network Error',
+            'processing_error': 'Processing Error',
+            'validation_error': 'Validation Error',
+        }
+        return titles.get(self.error.error_type.value, 'Error')
+    
+    def _get_what_went_wrong(self) -> str:
+        """Get user-friendly explanation of what went wrong"""
+        explanations = {
+            'file_not_found': 'The XML file you selected could not be found. It may have been moved, renamed, or deleted.',
+            'playlist_not_found': 'The playlist you selected could not be found in the XML file. It may have been removed or renamed.',
+            'xml_parse_error': 'The XML file could not be read. It may be corrupted, incomplete, or in an invalid format.',
+            'network_error': 'Could not connect to Beatport or the connection was interrupted. This may be due to network issues or Beatport being temporarily unavailable.',
+            'processing_error': 'An error occurred while processing your tracks. This may be due to invalid data or an unexpected issue.',
+            'validation_error': 'The data you provided is invalid or incomplete. Please check your input and try again.',
+        }
+        return explanations.get(self.error.error_type.value, self.error.message)
+    
+    def _get_default_fixes(self) -> list:
+        """Get default fix suggestions based on error type"""
+        fixes = {
+            'file_not_found': [
+                'Check if the file still exists at the specified location',
+                'Select a different XML file using the Browse button',
+                'Export a new XML file from Rekordbox if the file was deleted'
+            ],
+            'playlist_not_found': [
+                'Check if the playlist name is correct',
+                'Select a different playlist from the dropdown',
+                'Export a new XML file from Rekordbox to refresh playlists'
+            ],
+            'xml_parse_error': [
+                'Verify the file is a valid Rekordbox XML export',
+                'Try exporting a new XML file from Rekordbox',
+                'Check if the file is corrupted or incomplete'
+            ],
+            'network_error': [
+                'Check your internet connection',
+                'Wait a few moments and try again',
+                'Check if Beatport is accessible in your browser'
+            ],
+            'processing_error': [
+                'Check the technical details for more information',
+                'Try processing a smaller playlist',
+                'Restart the application and try again'
+            ],
+            'validation_error': [
+                'Review the input data for errors',
+                'Check the technical details for specific issues',
+                'Ensure all required fields are provided'
+            ],
+        }
+        return fixes.get(self.error.error_type.value, ['Please check the technical details and try again.'])
+    
+    def _get_documentation_link(self) -> str:
+        """Get documentation link for this error type"""
+        # Placeholder - would link to actual documentation
+        links = {
+            'file_not_found': 'https://docs.cuepoint.com/troubleshooting/file-errors',
+            'xml_parse_error': 'https://docs.cuepoint.com/troubleshooting/xml-format',
+            'network_error': 'https://docs.cuepoint.com/troubleshooting/network-issues',
+        }
+        return links.get(self.error.error_type.value, '')
+    
+    def _get_action_buttons(self) -> list:
+        """Get action buttons based on error type"""
+        actions = []
+        if self.error.error_type.value == 'file_not_found':
+            actions.append(('Select Different File', self._on_select_file))
+        return actions
+    
+    def _on_select_file(self):
+        """Handle select file action"""
+        # This would trigger file selection in parent window
+        # For now, just accept the dialog
+        self.accept()
+    
+    def _toggle_tech_details(self, checked: bool):
+        """Toggle technical details visibility"""
+        # The group box handles visibility automatically
+        pass
 
 
 def show_error_dialog(error: ProcessingError, parent=None) -> None:

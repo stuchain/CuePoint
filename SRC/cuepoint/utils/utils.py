@@ -22,6 +22,36 @@ from typing import Any, Callable, Optional, Tuple, Type, Union
 from cuepoint.models.config import HAVE_CACHE, SETTINGS
 
 
+def get_output_directory() -> str:
+    """
+    Get the single, consistent output directory for all saved files.
+    
+    Returns the absolute path to SRC/output directory, creating it if needed.
+    This ensures all files are saved in one place.
+    
+    Returns:
+        str: Absolute path to the output directory (SRC/output)
+    
+    Example:
+        >>> output_dir = get_output_directory()
+        >>> # Returns: /path/to/CuePoint/SRC/output
+    """
+    # Get the SRC directory by going up from this file
+    # File is at: SRC/cuepoint/utils/utils.py
+    # Go up 3 levels: utils -> cuepoint -> SRC
+    current_file = os.path.abspath(__file__)
+    src_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_file)))  # SRC/
+    
+    # Output directory is SRC/output
+    output_dir = os.path.join(src_dir, "output")
+    output_dir = os.path.abspath(output_dir)
+    
+    # Create directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
+    
+    return output_dir
+
+
 def vlog(idx: Union[int, str], *args: Any) -> None:
     """
     Verbose logging function

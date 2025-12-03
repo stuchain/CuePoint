@@ -85,6 +85,7 @@ class FileSelector(QWidget):
         self.drop_label = QLabel("or drag & drop XML file here")
         self.drop_label.setAlignment(Qt.AlignCenter)
         self.drop_label.setProperty("class", "caption")
+        self.drop_label.setProperty("drag_over", False)  # Track drag state
         self.drop_label.setStyleSheet(
             "padding: 12px; border: 2px dashed rgba(255, 255, 255, 0.2); border-radius: 6px;"
         )
@@ -115,23 +116,30 @@ class FileSelector(QWidget):
     def dragLeaveEvent(self, event):
         """Handle drag leave event"""
         # Reset drop area styling
+        self.drop_label.setProperty("drag_over", False)
         self.drop_label.setStyleSheet(
             "padding: 12px; border: 2px dashed rgba(255, 255, 255, 0.2); border-radius: 6px;"
         )
+        self.drop_label.setText("or drag & drop XML file here")
 
     def dropEvent(self, event: QDropEvent):
         """Handle drop event"""
         files = [url.toLocalFile() for url in event.mimeData().urls()]
         if files and files[0].lower().endswith(".xml"):
-            self.set_file(files[0])
+            file_path = files[0]
+            # Show file preview/confirmation (optional - for now just set file)
+            # In future, could show preview dialog here
+            self.set_file(file_path)
             event.acceptProposedAction()
         else:
             event.ignore()
 
         # Reset drop area styling
+        self.drop_label.setProperty("drag_over", False)
         self.drop_label.setStyleSheet(
             "padding: 12px; border: 2px dashed rgba(255, 255, 255, 0.2); border-radius: 6px;"
         )
+        self.drop_label.setText("or drag & drop XML file here")
 
     def browse_file(self):
         """Open file browser"""

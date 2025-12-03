@@ -19,6 +19,7 @@ GUIController for processing operations.
 """
 
 import os
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 
 from PySide6.QtCore import QSettings, Qt
@@ -27,9 +28,11 @@ from PySide6.QtWidgets import (
     QButtonGroup,
     QGroupBox,
     QHBoxLayout,
+    QLabel,
     QMainWindow,
     QMenu,
     QMessageBox,
+    QProgressBar,
     QPushButton,
     QRadioButton,
     QSplitter,
@@ -39,6 +42,7 @@ from PySide6.QtWidgets import (
 )
 
 from cuepoint.services.output_writer import write_csv_files
+from cuepoint.utils.utils import get_output_directory
 from cuepoint.ui.controllers.config_controller import ConfigController
 from cuepoint.ui.controllers.export_controller import ExportController
 from cuepoint.ui.controllers.main_controller import GUIController
@@ -227,6 +231,7 @@ class MainWindow(QMainWindow):
         self.start_button_layout.addStretch()
         self.start_button = QPushButton("Start Processing")
         self.start_button.setMinimumHeight(32)
+        self.start_button.setToolTip("Start processing the selected playlist (Shortcut: Enter or F5)")
         self.start_button.setStyleSheet(
             """
             QPushButton {
@@ -314,6 +319,7 @@ class MainWindow(QMainWindow):
         history_layout = QVBoxLayout(history_tab)
         history_layout.setContentsMargins(8, 8, 8, 8)
         self.history_view = HistoryView(export_controller=self.export_controller)
+        self.history_view.rerun_requested.connect(self.on_rerun_requested)
         history_layout.addWidget(self.history_view)
 
         # Add tabs (Settings tab removed - now accessible via menu)
@@ -326,6 +332,32 @@ class MainWindow(QMainWindow):
 
         # Status bar
         self.statusBar().showMessage("Ready")
+        
+        # Add status bar widgets (permanent widgets on the right)
+        # File path label
+        self.status_file_label = QLabel()
+        self.status_file_label.setStyleSheet("color: #666; padding: 0 5px;")
+        self.status_file_label.setVisible(False)
+        self.statusBar().addPermanentWidget(self.status_file_label)
+        
+        # Playlist label
+        self.status_playlist_label = QLabel()
+        self.status_playlist_label.setStyleSheet("color: #666; padding: 0 5px;")
+        self.status_playlist_label.setVisible(False)
+        self.statusBar().addPermanentWidget(self.status_playlist_label)
+        
+        # Stats label
+        self.status_stats_label = QLabel()
+        self.status_stats_label.setStyleSheet("color: #4CAF50; font-weight: bold; padding: 0 5px;")
+        self.status_stats_label.setVisible(False)
+        self.statusBar().addPermanentWidget(self.status_stats_label)
+        
+        # Progress indicator (initially hidden)
+        self.status_progress = QProgressBar()
+        self.status_progress.setMaximumWidth(200)
+        self.status_progress.setMaximumHeight(20)
+        self.status_progress.setVisible(False)
+        self.statusBar().addPermanentWidget(self.status_progress)
 
         # Enable drag and drop for the window
         self.setAcceptDrops(True)
@@ -421,9 +453,39 @@ class MainWindow(QMainWindow):
             ShortcutContext.GLOBAL,
             "Open settings",
         )
+        
+        # Enter key to start processing (only when button is enabled)
+        self.shortcut_manager.register_shortcut(
+            "enter_start",
+            "Return",
+            self._on_enter_start,
+            ShortcutContext.MAIN_WINDOW,
+            "Start processing (Enter)",
+        )
+        
+        # Escape key to cancel (only when processing)
+        self.shortcut_manager.register_shortcut(
+            "escape_cancel",
+            "Escape",
+            self._on_escape_cancel,
+            ShortcutContext.GLOBAL,
+            "Cancel processing (Esc)",
+        )
 
         # Set initial context
         self.shortcut_manager.set_context(ShortcutContext.MAIN_WINDOW)
+    
+    def _on_enter_start(self) -> None:
+        """Handle Enter key to start processing"""
+        # Only start if button is enabled and visible
+        if hasattr(self, 'start_button') and self.start_button.isEnabled() and self.start_button.isVisible():
+            self.start_processing()
+    
+    def _on_escape_cancel(self) -> None:
+        """Handle Escape key to cancel processing"""
+        # Only cancel if processing is active
+        if hasattr(self, 'controller') and self.controller.is_processing():
+            self.on_cancel_requested()
 
     def on_shortcut_conflict(self, action_id1: str, action_id2: str) -> None:
         """Handle keyboard shortcut conflicts.
@@ -447,6 +509,7 @@ class MainWindow(QMainWindow):
     def show_main_interface(self) -> None:
         """Show the main interface (existing tabs)"""
         self.setCentralWidget(self.tabs)
+        self.tabs.show()  # Ensure tabs are visible
         self.current_page = "main"
 
     def on_tool_selected(self, tool_name: str) -> None:
@@ -708,11 +771,29 @@ class MainWindow(QMainWindow):
                 self.batch_processor.set_playlists(list(self.playlist_selector.playlists.keys()))
 
                 # SHOW PROCESSING MODE SELECTION (progressive disclosure)
+                # This must happen even if save_recent_file fails
                 self.mode_group.setVisible(True)
+                
+                # Update status bar with file path
+                self._update_status_file_path(file_path)
+                
+                # Process events to ensure visibility update is applied
+                from PySide6.QtWidgets import QApplication
+                QApplication.processEvents()
 
-                # Save to recent files
-                self.save_recent_file(file_path)
+                # Save to recent files (don't let this fail hide the mode_group)
+                try:
+                    if hasattr(self, 'save_recent_file'):
+                        self.save_recent_file(file_path)
+                except Exception as save_error:
+                    # Log but don't fail - recent files is optional
+                    import traceback
+                    print(f"Warning: Could not save to recent files: {save_error}")
+                    traceback.print_exc()
             except Exception as e:
+                import traceback
+                print(f"Error in on_file_selected: {e}")
+                traceback.print_exc()
                 self.statusBar().showMessage(f"Error loading XML: {str(e)}")
                 # Hide processing mode if error
                 self.mode_group.setVisible(False)
@@ -781,6 +862,7 @@ class MainWindow(QMainWindow):
 
         Loads recent files from QSettings and populates the menu with
         up to 10 most recent files. Shows "No recent files" if empty.
+        Includes timestamps and file paths in tooltips.
         """
         self.recent_files_menu.clear()
 
@@ -792,13 +874,53 @@ class MainWindow(QMainWindow):
             action.setEnabled(False)
             self.recent_files_menu.addAction(action)
         else:
-            for file_path in recent_files[:10]:  # Show last 10
-                action = QAction(os.path.basename(file_path), self)
-                action.setData(file_path)
-                action.triggered.connect(
-                    lambda checked, path=file_path: self.on_open_recent_file(path)
-                )
+            # Filter out files that no longer exist
+            valid_files = [f for f in recent_files[:10] if os.path.exists(f)]
+            
+            # Update settings if any files were removed
+            if len(valid_files) < len(recent_files[:10]):
+                settings.setValue("recent_files", valid_files + recent_files[10:])
+            
+            if not valid_files:
+                action = QAction("No recent files", self)
+                action.setEnabled(False)
                 self.recent_files_menu.addAction(action)
+            else:
+                for file_path in valid_files:
+                    file_name = os.path.basename(file_path)
+                    # Get file modification time for display
+                    try:
+                        mtime = os.path.getmtime(file_path)
+                        from datetime import datetime
+                        dt = datetime.fromtimestamp(mtime)
+                        # Format: "Today, 2:30 PM" or "Yesterday" or "Jan 15"
+                        now = datetime.now()
+                        if dt.date() == now.date():
+                            time_str = f"Today, {dt.strftime('%I:%M %p')}"
+                        elif dt.date() == (now.date() - datetime.timedelta(days=1)).date():
+                            time_str = "Yesterday"
+                        else:
+                            time_str = dt.strftime("%b %d")
+                        
+                        # Display: "filename.xml - Today, 2:30 PM"
+                        display_text = f"{file_name} - {time_str}"
+                    except:
+                        display_text = file_name
+                    
+                    action = QAction(display_text, self)
+                    action.setData(file_path)
+                    # Tooltip with full path
+                    action.setToolTip(file_path)
+                    action.triggered.connect(
+                        lambda checked, path=file_path: self.on_open_recent_file(path)
+                    )
+                    self.recent_files_menu.addAction(action)
+                
+                # Add separator and Clear Recent Files option
+                self.recent_files_menu.addSeparator()
+                clear_action = QAction("Clear Recent Files", self)
+                clear_action.triggered.connect(self.clear_recent_files)
+                self.recent_files_menu.addAction(clear_action)
 
     def on_open_recent_file(self, file_path: str) -> None:
         """Open a file from the Recent Files menu.
@@ -827,10 +949,14 @@ class MainWindow(QMainWindow):
 
         Adds the file to the top of the recent files list and maintains
         a maximum of 10 recent files. Saves to QSettings for persistence.
+        Also updates the recent files menu.
 
         Args:
             file_path: Path to the file to save.
         """
+        if not file_path or not os.path.exists(file_path):
+            return  # Don't save invalid files
+        
         settings = QSettings("CuePoint", "CuePoint")
         recent_files = settings.value("recent_files", [])
 
@@ -844,6 +970,25 @@ class MainWindow(QMainWindow):
         # Keep only last 10
         recent_files = recent_files[:10]
         settings.setValue("recent_files", recent_files)
+        
+        # Update menu if it exists
+        if hasattr(self, 'recent_files_menu'):
+            self.update_recent_files_menu()
+    
+    def clear_recent_files(self) -> None:
+        """Clear all recent files from the list."""
+        reply = QMessageBox.question(
+            self,
+            "Clear Recent Files",
+            "Are you sure you want to clear all recent files?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            settings = QSettings("CuePoint", "CuePoint")
+            settings.setValue("recent_files", [])
+            self.update_recent_files_menu()
 
     def on_copy_selected(self) -> None:
         """Copy selected results to clipboard via Edit > Copy (Ctrl+C).
@@ -1204,14 +1349,8 @@ class MainWindow(QMainWindow):
             # Create base filename (write_csv_files will add timestamp)
             base_filename = f"{safe_playlist_name}.csv"
 
-            # Determine SRC directory
-            current_file = os.path.abspath(__file__)  # SRC/gui/main_window.py
-            src_dir = os.path.dirname(os.path.dirname(current_file))  # SRC/
-
-            # Save to output directory in SRC folder
-            output_dir = os.path.join(src_dir, "output")
-            output_dir = os.path.abspath(output_dir)  # Ensure absolute path
-            os.makedirs(output_dir, exist_ok=True)
+            # Use the single, consistent output directory
+            output_dir = get_output_directory()
 
             # Write CSV files (this will add timestamp automatically)
             output_files = write_csv_files(results, base_filename, output_dir)
@@ -1354,6 +1493,9 @@ class MainWindow(QMainWindow):
                 self.tabs.removeTab(self.performance_tab_index)
                 self.performance_tab_index = None
 
+        # Track processing start time for cancel confirmation
+        self._processing_start_time = datetime.now()
+        
         # Start processing via controller
         self.controller.start_processing(
             xml_path=xml_path,
@@ -1366,13 +1508,32 @@ class MainWindow(QMainWindow):
         """Handle cancel button click from ProgressWidget.
 
         Cancels the current processing operation with proper error handling
-        to prevent crashes. Disables cancel button immediately and re-enables
-        UI after cancellation completes.
+        to prevent crashes. Shows confirmation dialog if processing has been
+        running for more than 5 seconds. Disables cancel button immediately
+        and re-enables UI after cancellation completes.
         """
         try:
             # Prevent multiple cancel requests
             if hasattr(self, '_cancelling') and self._cancelling:
                 return
+            
+            # Check if processing has been running for a while and show confirmation
+            if hasattr(self, '_processing_start_time') and self._processing_start_time:
+                elapsed = (datetime.now() - self._processing_start_time).total_seconds()
+                if elapsed > 5:  # More than 5 seconds
+                    reply = QMessageBox.question(
+                        self,
+                        "Cancel Processing?",
+                        f"Processing is in progress:\n\n"
+                        f"Elapsed: {self.progress_widget.elapsed_label.text()}\n"
+                        f"Remaining: {self.progress_widget.remaining_label.text()}\n\n"
+                        f"Are you sure you want to cancel?\n"
+                        f"All progress will be lost.",
+                        QMessageBox.Yes | QMessageBox.No,
+                        QMessageBox.No
+                    )
+                    if reply == QMessageBox.No:
+                        return
             
             self._cancelling = True
             
@@ -1478,7 +1639,21 @@ class MainWindow(QMainWindow):
         # Update progress widget
         self.progress_widget.update_progress(progress_info)
 
-        # Update status bar
+        # Update status bar progress indicator
+        if hasattr(self, 'status_progress') and self.controller.is_processing():
+            if progress_info.total_tracks > 0:
+                percentage = (progress_info.completed_tracks / progress_info.total_tracks) * 100
+                self.status_progress.setMaximum(100)
+                self.status_progress.setValue(int(percentage))
+                self.status_progress.setVisible(True)
+                self.statusBar().showMessage(
+                    f"Processing: {progress_info.completed_tracks}/{progress_info.total_tracks} tracks"
+                )
+        else:
+            if hasattr(self, 'status_progress'):
+                self.status_progress.setVisible(False)
+
+        # Update status bar message
         if progress_info.current_track:
             title = progress_info.current_track.get("title", "Unknown")
             track_info = f"{title} ({progress_info.completed_tracks}/{progress_info.total_tracks})"
@@ -1501,6 +1676,10 @@ class MainWindow(QMainWindow):
         # Hide progress, show results
         self.progress_group.setVisible(False)
         self.results_group.setVisible(True)
+        
+        # Hide status bar progress
+        if hasattr(self, 'status_progress'):
+            self.status_progress.setVisible(False)
 
         # Switch to Main tab to show results
         self.tabs.setCurrentIndex(0)
@@ -1510,11 +1689,15 @@ class MainWindow(QMainWindow):
 
         # Disable cancel button
         self.progress_widget.set_enabled(False)
-
+        
+        # Clear processing start time
+        if hasattr(self, '_processing_start_time'):
+            self._processing_start_time = None
+        
         # Get playlist name for file naming
         playlist_name = self.playlist_selector.get_selected_playlist() or "playlist"
 
-        # Update results view with results first
+        # Update results view with results
         if results:
             # Ensure results group is visible and shown
             self.results_group.setVisible(True)
@@ -1527,15 +1710,156 @@ class MainWindow(QMainWindow):
             self.results_view.update()
             self.results_view.repaint()
 
-            # Calculate summary statistics for status bar
-            total = len(results)
-            matched = sum(1 for r in results if r.matched)
-            match_rate = (matched / total * 100) if total > 0 else 0
+            # Automatically save results to CSV so they appear in Past Searches
+            self._auto_save_results(results, playlist_name)
 
-            # Update status bar
+        # Update status bar with completion message
+        matched_count = sum(1 for r in results if r.matched)
+        total_count = len(results)
+        percentage = (matched_count / total_count * 100) if total_count > 0 else 0
+        self.statusBar().showMessage(
+            f"Processing complete: {matched_count}/{total_count} tracks matched ({percentage:.0f}%)",
+            5000
+        )
+        self._update_status_stats_from_results(results)
+    
+    def _update_status_file_path(self, file_path: str) -> None:
+        """Update file path in status bar"""
+        if not hasattr(self, 'status_file_label'):
+            return
+        
+        # Truncate path if too long
+        display_path = self._truncate_path(file_path, max_length=50)
+        self.status_file_label.setText(f"File: {display_path}")
+        self.status_file_label.setToolTip(file_path)  # Full path in tooltip
+        self.status_file_label.setVisible(True)
+    
+    def _update_status_playlist(self, playlist_name: str, track_count: int = 0) -> None:
+        """Update playlist in status bar"""
+        if not hasattr(self, 'status_playlist_label'):
+            return
+        
+        playlist_text = f"Playlist: {playlist_name}"
+        if track_count > 0:
+            playlist_text += f" ({track_count} tracks)"
+        
+        self.status_playlist_label.setText(playlist_text)
+        self.status_playlist_label.setVisible(True)
+    
+    def _update_status_stats(self, progress_info: ProgressInfo) -> None:
+        """Update statistics in status bar"""
+        if not hasattr(self, 'status_stats_label'):
+            return
+        
+        if progress_info.total_tracks > 0 and progress_info.matched_count is not None:
+            matched = progress_info.matched_count
+            total = progress_info.total_tracks
+            percentage = (matched / total * 100) if total > 0 else 0
+            self.status_stats_label.setText(f"Matched: {matched}/{total} ({percentage:.0f}%)")
+            self.status_stats_label.setVisible(True)
+        else:
+            self.status_stats_label.setVisible(False)
+    
+    def _update_status_stats_from_results(self, results: List[TrackResult]) -> None:
+        """Update statistics in status bar from results"""
+        if not hasattr(self, 'status_stats_label'):
+            return
+        
+        if results:
+            matched_count = sum(1 for r in results if r.matched)
+            total_count = len(results)
+            percentage = (matched_count / total_count * 100) if total_count > 0 else 0
+            self.status_stats_label.setText(f"Matched: {matched_count}/{total_count} ({percentage:.0f}%)")
+            self.status_stats_label.setVisible(True)
+        else:
+            self.status_stats_label.setVisible(False)
+    
+    def _truncate_path(self, file_path: str, max_length: int = 50) -> str:
+        """Truncate file path to fit in status bar"""
+        if len(file_path) <= max_length:
+            return file_path
+        
+        # Try to show beginning and end
+        if max_length < 20:
+            # Too short, just show end
+            return "..." + file_path[-(max_length - 3):]
+        
+        # Show beginning and end
+        start_len = (max_length - 3) // 2
+        end_len = max_length - 3 - start_len
+        return file_path[:start_len] + "..." + file_path[-end_len:]
+    
+    def on_rerun_requested(self, xml_path: str, playlist_name: str) -> None:
+        """Handle re-run request from history view.
+        
+        Loads the XML file and playlist, then navigates to the main tab
+        with pre-filled selections.
+        
+        Args:
+            xml_path: Path to the XML file to load
+            playlist_name: Name of the playlist to select
+        """
+        try:
+            # Switch to main interface if on tool selection page
+            if hasattr(self, 'tool_selection_page') and self.tool_selection_page.isVisible():
+                self.show_main_interface()
+            
+            # Load XML file
+            if os.path.exists(xml_path):
+                self.file_selector.set_file(xml_path)
+                self.on_file_selected(xml_path)
+                
+                # Wait a bit for XML to load, then select playlist
+                from PySide6.QtCore import QTimer
+                QTimer.singleShot(500, lambda: self._select_playlist_after_load(playlist_name))
+            else:
+                QMessageBox.warning(
+                    self,
+                    "File Not Found",
+                    f"The XML file could not be found:\n{xml_path}\n\n"
+                    "Please select a different file."
+                )
+                # Allow user to browse for XML file
+                new_path, _ = QFileDialog.getOpenFileName(
+                    self,
+                    "Select XML File",
+                    os.path.dirname(xml_path) if xml_path else "",
+                    "XML Files (*.xml);;All Files (*.*)"
+                )
+                if new_path and os.path.exists(new_path):
+                    self.file_selector.set_file(new_path)
+                    self.on_file_selected(new_path)
+                    QTimer.singleShot(500, lambda: self._select_playlist_after_load(playlist_name))
+            
+            # Navigate to main tab
+            self.tabs.setCurrentIndex(0)
+            
+            # Show message in status bar
             self.statusBar().showMessage(
-                f"Processing complete: {matched}/{total} matched ({match_rate:.1f}%)"
+                f"Re-run: Loaded {os.path.basename(xml_path)} - {playlist_name}",
+                5000
             )
+            
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                "Re-run Error",
+                f"Error loading file for re-run:\n{str(e)}"
+            )
+    
+    def _select_playlist_after_load(self, playlist_name: str) -> None:
+        """Select playlist after XML file has been loaded"""
+        try:
+            if hasattr(self, 'playlist_selector'):
+                # Try to set the selected playlist
+                self.playlist_selector.set_selected_playlist(playlist_name)
+                self.on_playlist_selected(playlist_name)
+                
+                # Focus on start button (user can review and start)
+                if hasattr(self, 'start_button'):
+                    self.start_button.setFocus()
+        except Exception as e:
+            print(f"Warning: Could not select playlist '{playlist_name}': {e}")
 
             # Automatically save results to CSV (after displaying)
             self._auto_save_results(results, playlist_name)

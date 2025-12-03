@@ -181,6 +181,19 @@ class ResultsView(QWidget):
         filter_layout.addWidget(search_label)
         filter_layout.addWidget(self.search_box)
 
+        # Match status filter
+        status_label = QLabel("Status:")
+        self.status_filter = QComboBox()
+        self.status_filter.addItems(["All", "Matched", "Unmatched", "Review Needed"])
+        self.status_filter.currentTextChanged.connect(self._trigger_filter_debounced)
+        status_label.setBuddy(self.status_filter)
+        self.status_filter.setToolTip("Filter results by match status")
+        self.status_filter.setAccessibleName("Match status filter")
+        self.status_filter.setAccessibleDescription("Select match status to filter results")
+        self.status_filter.setFocusPolicy(Qt.StrongFocus)
+        filter_layout.addWidget(status_label)
+        filter_layout.addWidget(self.status_filter)
+
         # Confidence filter
         confidence_label = QLabel("Confidence:")
         self.confidence_filter = QComboBox()
@@ -325,14 +338,14 @@ class ResultsView(QWidget):
         self.table.setHorizontalHeaderLabels(
             [
                 "Index",
-                "Title",
-                "Artist",
+                "Track Name (Search)",
+                "Artist (Search)",
                 "Matched",
-                "Beatport Title",
+                "Beatport Track",
                 "Beatport Artist",
                 "Score",
                 "Confidence",
-                "Key",
+                "Camelot Key",
                 "BPM",
                 "Year",
             ]
@@ -342,6 +355,11 @@ class ResultsView(QWidget):
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        
+        # Connect sort signal to update visual indicators
+        self.table.horizontalHeader().sectionClicked.connect(self._on_column_sorted)
+        self._current_sort_column = -1
+        self._current_sort_order = Qt.AscendingOrder
 
         # Enable context menu for viewing candidates
         self.table.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -550,10 +568,10 @@ class ResultsView(QWidget):
         self.filtered_results = self.results_controller.filtered_results.copy()
 
         # Switch to single mode UI
-        self.single_table_group.setVisible(True)
-        self.single_table_widget.setVisible(True)
-        self.batch_tabs.setVisible(False)
-        self.batch_widget.setVisible(False)
+        if hasattr(self, 'single_table_group'):
+            self.single_table_group.setVisible(True)
+        if hasattr(self, 'batch_tabs'):
+            self.batch_tabs.setVisible(False)
 
         # Update summary statistics
         self._update_summary()
@@ -572,10 +590,10 @@ class ResultsView(QWidget):
         self.batch_results = results_dict
 
         # Switch to batch mode UI
-        self.single_table_group.setVisible(False)
-        self.single_table_widget.setVisible(False)
-        self.batch_tabs.setVisible(True)
-        self.batch_widget.setVisible(True)
+        if hasattr(self, 'single_table_group'):
+            self.single_table_group.setVisible(False)
+        if hasattr(self, 'batch_tabs'):
+            self.batch_tabs.setVisible(True)
 
         # Clear existing tabs
         self.batch_tabs.clear()
@@ -737,14 +755,14 @@ class ResultsView(QWidget):
         table.setHorizontalHeaderLabels(
             [
                 "Index",
-                "Title",
-                "Artist",
+                "Track Name (Search)",
+                "Artist (Search)",
                 "Matched",
-                "Beatport Title",
+                "Beatport Track",
                 "Beatport Artist",
                 "Score",
                 "Confidence",
-                "Key",
+                "Camelot Key",
                 "BPM",
                 "Year",
             ]
@@ -980,6 +998,28 @@ class ResultsView(QWidget):
             current_width = self.table.columnWidth(col)
             self.table.setColumnWidth(col, max(current_width, 80))
 
+    def _on_column_sorted(self, column: int) -> None:
+        """Handle column sorting with visual indicators"""
+        # Get current sort order
+        sort_order = self.table.horizontalHeader().sortIndicatorOrder()
+        
+        # Update visual indicator
+        header = self.table.horizontalHeader()
+        for i in range(self.table.columnCount()):
+            header_item = header.model().headerData(i, Qt.Horizontal, Qt.DisplayRole)
+            if i == column:
+                # Show sort indicator for current column
+                if sort_order == Qt.AscendingOrder:
+                    indicator = " ↑"
+                else:
+                    indicator = " ↓"
+                # Note: QHeaderView handles sort indicators automatically
+                # We just need to ensure sorting is enabled
+            # Clear indicators for other columns is handled by Qt
+        
+        self._current_sort_column = column
+        self._current_sort_order = sort_order
+    
     def _trigger_filter_debounced(self) -> None:
         """Trigger filter with debouncing for performance.
 
@@ -1048,9 +1088,25 @@ class ResultsView(QWidget):
         if self.search_box.text():
             active_filters.append("Search")
 
+        # Check status filter
+        if self.status_filter.currentText() != "All":
+            active_filters.append(f"Status: {self.status_filter.currentText()}")
+
         # Check confidence filter
         if self.confidence_filter.currentText() != "All":
             active_filters.append(f"Confidence: {self.confidence_filter.currentText()}")
+
+        # Check score filter
+        if hasattr(self, 'score_min') and hasattr(self, 'score_max'):
+            if self.score_min.value() > 0 or self.score_max.value() < 200:
+                min_val = self.score_min.value() if self.score_min.value() > 0 else None
+                max_val = self.score_max.value() if self.score_max.value() < 200 else None
+                if min_val and max_val:
+                    active_filters.append(f"Score: {min_val}-{max_val}")
+                elif min_val:
+                    active_filters.append(f"Score: ≥{min_val}")
+                elif max_val:
+                    active_filters.append(f"Score: ≤{max_val}")
 
         if active_filters:
             self.filter_status_label.setText(f"Active filters: {', '.join(active_filters)}")
@@ -1064,6 +1120,8 @@ class ResultsView(QWidget):
 
         # Get filter values from UI
         search_text = self.search_box.text().strip() or None
+        status = self.status_filter.currentText()
+        status_val = None if status == "All" else status
         confidence = self.confidence_filter.currentText()
         confidence_val = None if confidence == "All" else confidence
         year_min_val = self.year_min.value() if self.year_min.value() > 1900 else None
@@ -1072,8 +1130,10 @@ class ResultsView(QWidget):
         bpm_max_val = self.bpm_max.value() if self.bpm_max.value() < 200 else None
         key_filter_val = self.key_filter.currentText()
         key_val = None if key_filter_val == "All" else key_filter_val
+        score_min_val = self.score_min.value() if hasattr(self, 'score_min') and self.score_min.value() > 0 else None
+        score_max_val = self.score_max.value() if hasattr(self, 'score_max') and self.score_max.value() < 200 else None
 
-        # Use controller to apply filters
+        # Use controller to apply standard filters
         filtered = self.results_controller.apply_filters(
             search_text=search_text,
             confidence=confidence_val,
@@ -1083,6 +1143,30 @@ class ResultsView(QWidget):
             bpm_max=bpm_max_val,
             key=key_val,
         )
+        
+        # Apply additional filters not supported by controller
+        if status_val:
+            if status_val == "Matched":
+                filtered = [r for r in filtered if r.matched]
+            elif status_val == "Unmatched":
+                filtered = [r for r in filtered if not r.matched]
+            elif status_val == "Review Needed":
+                # Review needed = matched but low confidence or low score
+                filtered = [
+                    r for r in filtered 
+                    if r.matched and (
+                        r.confidence == "low" or 
+                        (r.match_score is not None and r.match_score < 70)
+                    )
+                ]
+        
+        if score_min_val is not None or score_max_val is not None:
+            filtered = [
+                r for r in filtered
+                if r.match_score is not None
+                and (score_min_val is None or r.match_score >= score_min_val)
+                and (score_max_val is None or r.match_score <= score_max_val)
+            ]
 
         # Store filtered results
         self.filtered_results = filtered
