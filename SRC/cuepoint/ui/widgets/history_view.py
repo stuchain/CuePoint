@@ -713,135 +713,239 @@ class HistoryView(QWidget):
         candidate: Dict[str, Any],
     ):
         """Handle candidate selection - update the CSV row and table display"""
-        if row < 0 or row >= len(self.filtered_rows):
-            return
-
-        # Get the filtered row
-        filtered_row = self.filtered_rows[row]
-
-        # Find the corresponding row in csv_rows by matching key fields
-        csv_row = None
-        for csv_r in self.csv_rows:
-            if (
-                csv_r.get("playlist_index") == filtered_row.get("playlist_index")
-                and csv_r.get("original_title", "").strip()
-                == filtered_row.get("original_title", "").strip()
-                and csv_r.get("original_artists", "").strip()
-                == filtered_row.get("original_artists", "").strip()
-            ):
-                csv_row = csv_r
-                break
-
-        if csv_row is None:
-            return
-
-        # Update match information
-        csv_row["beatport_title"] = candidate.get(
-            "candidate_title", candidate.get("beatport_title", "")
-        )
-        csv_row["beatport_artists"] = candidate.get(
-            "candidate_artists", candidate.get("beatport_artists", "")
-        )
-        csv_row["beatport_url"] = candidate.get("beatport_url", candidate.get("candidate_url", ""))
-        csv_row["beatport_key"] = candidate.get("beatport_key", candidate.get("candidate_key", ""))
-        csv_row["beatport_key_camelot"] = candidate.get(
-            "beatport_key_camelot", candidate.get("candidate_key_camelot", "")
-        )
-        csv_row["beatport_year"] = candidate.get(
-            "beatport_year", candidate.get("candidate_year", "")
-        )
-        csv_row["beatport_bpm"] = candidate.get("beatport_bpm", candidate.get("candidate_bpm", ""))
-        csv_row["beatport_label"] = candidate.get(
-            "beatport_label", candidate.get("candidate_label", "")
-        )
-        csv_row["title_sim"] = str(candidate.get("title_sim", ""))
-        csv_row["artist_sim"] = str(candidate.get("artist_sim", ""))
-        csv_row["match_score"] = str(candidate.get("match_score", candidate.get("final_score", "")))
-
-        # Update confidence based on score
         try:
-            score = float(csv_row.get("match_score", 0))
-            if score >= 90:
-                csv_row["confidence"] = "high"
-            elif score >= 75:
-                csv_row["confidence"] = "medium"
-            else:
-                csv_row["confidence"] = "low"
-        except (ValueError, TypeError):
-            csv_row["confidence"] = ""
+            # Validate inputs
+            if row < 0:
+                QMessageBox.warning(self, "Error", "Invalid row number")
+                return
+            
+            if not candidate:
+                QMessageBox.warning(self, "Error", "No candidate data provided")
+                return
 
-        # Update candidate_index if available
-        csv_row["candidate_index"] = candidate.get("candidate_index", "")
+            if row >= len(self.filtered_rows):
+                QMessageBox.warning(self, "Error", "Row index out of bounds")
+                return
 
-        # Re-apply filters to update the display
-        self.apply_filters()
+            # Get the filtered row
+            filtered_row = self.filtered_rows[row]
 
-        # Show confirmation
-        QMessageBox.information(
-            self, "Candidate Updated", f"Updated match for:\n{original_title} - {original_artists}"
-        )
+            # Find the corresponding row in csv_rows by matching key fields
+            csv_row = None
+            for csv_r in self.csv_rows:
+                try:
+                    if (
+                        csv_r.get("playlist_index") == filtered_row.get("playlist_index")
+                        and csv_r.get("original_title", "").strip()
+                        == filtered_row.get("original_title", "").strip()
+                        and csv_r.get("original_artists", "").strip()
+                        == filtered_row.get("original_artists", "").strip()
+                    ):
+                        csv_row = csv_r
+                        break
+                except Exception as e:
+                    print(f"Error comparing rows: {e}")
+                    continue
+
+            if csv_row is None:
+                QMessageBox.warning(self, "Error", "Could not find row to update")
+                return
+
+            # Update match information (with error handling for each field)
+            try:
+                csv_row["beatport_title"] = candidate.get(
+                    "candidate_title", candidate.get("beatport_title", "")
+                )
+                csv_row["beatport_artists"] = candidate.get(
+                    "candidate_artists", candidate.get("beatport_artists", "")
+                )
+                csv_row["beatport_url"] = candidate.get("beatport_url", candidate.get("candidate_url", ""))
+                csv_row["beatport_key"] = candidate.get("beatport_key", candidate.get("candidate_key", ""))
+                csv_row["beatport_key_camelot"] = candidate.get(
+                    "beatport_key_camelot", candidate.get("candidate_key_camelot", "")
+                )
+                csv_row["beatport_year"] = candidate.get(
+                    "beatport_year", candidate.get("candidate_year", "")
+                )
+                csv_row["beatport_bpm"] = candidate.get("beatport_bpm", candidate.get("candidate_bpm", ""))
+                csv_row["beatport_label"] = candidate.get(
+                    "beatport_label", candidate.get("candidate_label", "")
+                )
+                csv_row["title_sim"] = str(candidate.get("title_sim", ""))
+                csv_row["artist_sim"] = str(candidate.get("artist_sim", ""))
+                csv_row["match_score"] = str(candidate.get("match_score", candidate.get("final_score", "")))
+            except Exception as e:
+                print(f"Error updating CSV row fields: {e}")
+                import traceback
+                traceback.print_exc()
+
+            # Update confidence based on score
+            try:
+                score = float(csv_row.get("match_score", 0))
+                if score >= 90:
+                    csv_row["confidence"] = "high"
+                elif score >= 75:
+                    csv_row["confidence"] = "medium"
+                else:
+                    csv_row["confidence"] = "low"
+            except (ValueError, TypeError):
+                csv_row["confidence"] = ""
+
+            # Update candidate_index if available
+            csv_row["candidate_index"] = candidate.get("candidate_index", "")
+
+            # SAVE CSV FILE IMMEDIATELY (with error handling)
+            if self.current_csv_path:
+                if not self._save_csv_file(self.current_csv_path):
+                    # If save failed, show error but don't crash
+                    QMessageBox.warning(
+                        self,
+                        "Save Warning",
+                        "Candidate was updated but could not be saved to file. "
+                        "Please try saving manually."
+                    )
+
+            # Re-apply filters to update the display
+            try:
+                self.apply_filters()
+            except Exception as e:
+                print(f"Error applying filters: {e}")
+                import traceback
+                traceback.print_exc()
+
+            # Update the table row to reflect changes (find the row in filtered_rows)
+            # Find the row index in filtered_rows after re-filtering
+            updated_row_index = -1
+            try:
+                for idx, filtered_row in enumerate(self.filtered_rows):
+                    if (
+                        filtered_row.get("playlist_index") == csv_row.get("playlist_index")
+                        and filtered_row.get("original_title", "").strip()
+                        == csv_row.get("original_title", "").strip()
+                        and filtered_row.get("original_artists", "").strip()
+                        == csv_row.get("original_artists", "").strip()
+                    ):
+                        updated_row_index = idx
+                        break
+
+                # Update table row if found
+                if updated_row_index >= 0:
+                    self._update_table_row(updated_row_index, csv_row)
+                    # Ensure table selection is maintained and row is visible
+                    if updated_row_index < self.table.rowCount():
+                        self.table.selectRow(updated_row_index)
+                        # Scroll to row to keep it visible
+                        item = self.table.item(updated_row_index, 0)
+                        if item:
+                            self.table.scrollToItem(item)
+            except Exception as e:
+                print(f"Error updating table row: {e}")
+                import traceback
+                traceback.print_exc()
+
+            # Show confirmation (non-blocking, stays on page)
+            QMessageBox.information(
+                self,
+                "Candidate Updated",
+                f"Updated match for:\n{original_title} - {original_artists}\n\nChanges saved to file.",
+            )
+
+        except Exception as e:
+            import traceback
+            error_msg = f"Error updating candidate: {str(e)}"
+            print(error_msg)
+            print(traceback.format_exc())
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"An error occurred while updating the candidate:\n\n{error_msg}\n\n"
+                "Please try again or report this issue."
+            )
 
     def _update_table_row(self, row: int, csv_row: dict):
         """Update a specific row in the table with new CSV data"""
-        # Find columns by header name
-        for col in range(self.table.columnCount()):
-            header = self.table.horizontalHeaderItem(col)
-            if header:
-                col_name = header.text()
-                # Map column names to CSV row keys
-                value = ""
-                if col_name == "Beatport Title":
-                    value = csv_row.get("beatport_title", "")
-                elif col_name == "Beatport Artist" or col_name == "Beatport Artists":
-                    value = csv_row.get("beatport_artists", "")
-                elif col_name == "Score":
-                    value = csv_row.get("match_score", "")
-                elif col_name == "Confidence":
-                    value = csv_row.get("confidence", "").capitalize()
-                elif col_name == "Key":
-                    value = csv_row.get("beatport_key", "")
-                elif col_name == "BPM":
-                    value = csv_row.get("beatport_bpm", "")
-                elif col_name == "Year":
-                    value = csv_row.get("beatport_year", "")
-                elif col_name == "Title Sim":
-                    value = csv_row.get("title_sim", "")
-                elif col_name == "Artist Sim":
-                    value = csv_row.get("artist_sim", "")
-                elif col_name == "Matched":
-                    # Update matched status
-                    matched = bool(
-                        csv_row.get("beatport_url", "").strip()
-                        or csv_row.get("beatport_title", "").strip()
-                    )
-                    matched_item = QTableWidgetItem("✓" if matched else "✗")
-                    matched_item.setTextAlignment(Qt.AlignCenter)
-                    if matched:
-                        matched_item.setForeground(Qt.darkGreen)
+        try:
+            # Validate row index
+            if row < 0 or row >= self.table.rowCount():
+                print(f"Invalid row index: {row}, table has {self.table.rowCount()} rows")
+                return
+
+            # Ensure we're on the main thread
+            from PySide6.QtCore import QThread
+            if QThread.currentThread() != self.thread():
+                # Schedule update on main thread
+                from PySide6.QtCore import QTimer
+                QTimer.singleShot(0, lambda: self._update_table_row(row, csv_row))
+                return
+
+            # Find columns by header name
+            for col in range(self.table.columnCount()):
+                header = self.table.horizontalHeaderItem(col)
+                if header:
+                    col_name = header.text()
+                    # Map column names to CSV row keys
+                    value = ""
+                    if col_name == "Beatport Title":
+                        value = csv_row.get("beatport_title", "")
+                    elif col_name == "Beatport Artist" or col_name == "Beatport Artists":
+                        value = csv_row.get("beatport_artists", "")
+                    elif col_name == "Score":
+                        value = csv_row.get("match_score", "")
+                    elif col_name == "Confidence":
+                        value = csv_row.get("confidence", "").capitalize()
+                    elif col_name == "Key":
+                        value = csv_row.get("beatport_key", "")
+                    elif col_name == "BPM":
+                        value = csv_row.get("beatport_bpm", "")
+                    elif col_name == "Year":
+                        value = csv_row.get("beatport_year", "")
+                    elif col_name == "Title Sim":
+                        value = csv_row.get("title_sim", "")
+                    elif col_name == "Artist Sim":
+                        value = csv_row.get("artist_sim", "")
+                    elif col_name == "URL" or col_name == "Beatport URL":
+                        value = csv_row.get("beatport_url", "")
+                    elif col_name == "Label" or col_name == "Beatport Label":
+                        value = csv_row.get("beatport_label", "")
+                    elif col_name == "Matched":
+                        # Update matched status
+                        matched = bool(
+                            csv_row.get("beatport_url", "").strip()
+                            or csv_row.get("beatport_title", "").strip()
+                        )
+                        matched_item = QTableWidgetItem("✓" if matched else "✗")
+                        matched_item.setTextAlignment(Qt.AlignCenter)
+                        if matched:
+                            matched_item.setForeground(Qt.darkGreen)
+                        else:
+                            matched_item.setForeground(Qt.darkRed)
+                        self.table.setItem(row, col, matched_item)
+                        continue
                     else:
-                        matched_item.setForeground(Qt.darkRed)
-                    self.table.setItem(row, col, matched_item)
-                    continue
-                else:
-                    # Try direct column name match (lowercase, replace spaces with underscores)
-                    key = col_name.lower().replace(" ", "_")
-                    value = csv_row.get(key, "")
+                        # Try direct column name match (lowercase, replace spaces with underscores)
+                        key = col_name.lower().replace(" ", "_")
+                        value = csv_row.get(key, "")
 
-                if value or col_name in [
-                    "Beatport Title",
-                    "Beatport Artist",
-                    "Beatport Artists",
-                    "Score",
-                    "Confidence",
-                    "Key",
-                    "BPM",
-                    "Year",
-                ]:
-                    item = QTableWidgetItem(str(value))
-                    self.table.setItem(row, col, item)
+                    # Update table item
+                    item = self.table.item(row, col)
+                    if item:
+                        item.setText(str(value))
+                    else:
+                        item = QTableWidgetItem(str(value))
+                        self.table.setItem(row, col, item)
 
-        # Update summary
-        self._update_summary()
+            # Update summary
+            try:
+                self._update_summary()
+            except Exception as e:
+                print(f"Error updating summary: {e}")
+                import traceback
+                traceback.print_exc()
+                
+        except Exception as e:
+            import traceback
+            print(f"Error in _update_table_row: {e}")
+            print(traceback.format_exc())
 
     def _update_summary(self):
         """Update summary statistics after candidate update"""
@@ -1428,3 +1532,51 @@ class HistoryView(QWidget):
         wb.save(file_path)
 
         QMessageBox.information(self, "Export Complete", f"Excel file exported to:\n{file_path}")
+
+    def _save_csv_file(self, file_path: str) -> bool:
+        """Save CSV file with current data"""
+        if not file_path or not self.csv_rows:
+            return False
+
+        try:
+            # Determine if file is compressed
+            is_compressed = file_path.endswith('.gz')
+            actual_path = file_path[:-3] if is_compressed else file_path
+
+            # Get all column names from csv_rows
+            if not self.csv_rows:
+                return False
+
+            # Get all unique keys from all rows
+            all_keys = set()
+            for row in self.csv_rows:
+                all_keys.update(row.keys())
+
+            # Sort keys for consistent column order
+            fieldnames = sorted(all_keys)
+
+            # Write CSV file
+            if is_compressed:
+                with gzip.open(file_path, 'wt', encoding='utf-8', newline='') as f:
+                    writer = csv.DictWriter(f, fieldnames=fieldnames)
+                    writer.writeheader()
+                    writer.writerows(self.csv_rows)
+            else:
+                with open(file_path, 'w', encoding='utf-8', newline='') as f:
+                    writer = csv.DictWriter(f, fieldnames=fieldnames)
+                    writer.writeheader()
+                    writer.writerows(self.csv_rows)
+
+            return True
+
+        except Exception as e:
+            import traceback
+            error_msg = f"Error saving CSV file: {str(e)}"
+            print(error_msg)
+            print(traceback.format_exc())
+            QMessageBox.critical(
+                self,
+                "Error Saving File",
+                f"Could not save changes to file:\n{error_msg}"
+            )
+            return False

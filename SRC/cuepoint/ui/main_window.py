@@ -60,6 +60,7 @@ from cuepoint.ui.widgets.playlist_selector import PlaylistSelector
 from cuepoint.ui.widgets.progress_widget import ProgressWidget
 from cuepoint.ui.widgets.results_view import ResultsView
 from cuepoint.ui.widgets.shortcut_manager import ShortcutContext, ShortcutManager
+from cuepoint.ui.widgets.tool_selection_page import ToolSelectionPage
 
 
 class MainWindow(QMainWindow):
@@ -103,6 +104,9 @@ class MainWindow(QMainWindow):
         # Create shortcut manager
         self.shortcut_manager = ShortcutManager(self)
         self.shortcut_manager.shortcut_conflict.connect(self.on_shortcut_conflict)
+        # Tool selection page state
+        self.tool_selection_page = None
+        self.current_page = "tool_selection"  # or "main"
         self.init_ui()
         self.setup_connections()
         self.setup_shortcuts()
@@ -113,7 +117,7 @@ class MainWindow(QMainWindow):
         Sets up the main window structure including:
         - Window properties (title, size, geometry)
         - Menu bar with File, Edit, View, and Help menus
-        - Tab widget with Main, Settings, and Past Searches tabs
+        - Tab widget with Main and Past Searches tabs (Settings moved to menu bar)
         - File selection and playlist selection widgets
         - Processing mode selection (single vs batch)
         - Progress widget and results view
@@ -128,15 +132,21 @@ class MainWindow(QMainWindow):
         # Create menu bar
         self.create_menu_bar()
 
+        # Create tool selection page
+        self.tool_selection_page = ToolSelectionPage()
+        self.tool_selection_page.tool_selected.connect(self.on_tool_selected)
+
         # Create tab widget
         self.tabs = QTabWidget()
-        self.setCentralWidget(self.tabs)
+        
+        # Initially show tool selection page
+        self.show_tool_selection_page()
 
         # Main tab - use splitter for resizable sections
         main_tab = QWidget()
         main_layout = QVBoxLayout(main_tab)
-        main_layout.setSpacing(10)
-        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(8)
+        main_layout.setContentsMargins(8, 8, 8, 8)
 
         # Create vertical splitter for resizable sections
         main_splitter = QSplitter(Qt.Vertical)
@@ -147,11 +157,12 @@ class MainWindow(QMainWindow):
         # Top section: Input controls (file selection, mode, playlist, buttons, progress)
         top_section_widget = QWidget()
         top_section_layout = QVBoxLayout(top_section_widget)
-        top_section_layout.setSpacing(15)
+        top_section_layout.setSpacing(8)
         top_section_layout.setContentsMargins(0, 0, 0, 0)
 
         # File selection section
         file_group = QGroupBox("File Selection")
+        file_group.setStyleSheet("QGroupBox { font-weight: bold; color: #ffffff; }")
         file_layout = QVBoxLayout()
         self.file_selector = FileSelector()
         self.file_selector.file_selected.connect(self.on_file_selected)
@@ -159,13 +170,15 @@ class MainWindow(QMainWindow):
         file_group.setLayout(file_layout)
         top_section_layout.addWidget(file_group)
 
-        # Processing mode selection
+        # Processing mode selection - HIDDEN INITIALLY (progressive disclosure)
         mode_group = QGroupBox("Processing Mode")
+        mode_group.setStyleSheet("QGroupBox { font-weight: bold; color: #ffffff; }")
         mode_layout = QHBoxLayout()
         self.mode_button_group = QButtonGroup()
 
         self.single_mode_radio = QRadioButton("Single Playlist")
-        self.single_mode_radio.setChecked(True)  # Default to single mode
+        # No default selection - user must choose
+        self.single_mode_radio.setStyleSheet("QRadioButton { color: #ffffff; }")
         self.single_mode_radio.toggled.connect(self.on_mode_changed)
         self.single_mode_radio.setToolTip("Process a single playlist at a time")
         self.single_mode_radio.setAccessibleName("Single playlist mode radio button")
@@ -175,6 +188,7 @@ class MainWindow(QMainWindow):
         mode_layout.addWidget(self.single_mode_radio)
 
         self.batch_mode_radio = QRadioButton("Multiple Playlists")
+        self.batch_mode_radio.setStyleSheet("QRadioButton { color: #ffffff; }")
         self.batch_mode_radio.toggled.connect(self.on_mode_changed)
         self.batch_mode_radio.setToolTip("Process multiple playlists in batch")
         self.batch_mode_radio.setAccessibleName("Multiple playlists mode radio button")
@@ -187,15 +201,19 @@ class MainWindow(QMainWindow):
 
         mode_layout.addStretch()
         mode_group.setLayout(mode_layout)
+        mode_group.setVisible(False)  # HIDDEN INITIALLY
+        self.mode_group = mode_group  # Store reference for progressive disclosure
         top_section_layout.addWidget(mode_group)
 
-        # Single playlist selection section (shown in single mode)
+        # Single playlist selection section - HIDDEN INITIALLY (progressive disclosure)
         self.single_playlist_group = QGroupBox("Playlist Selection")
+        self.single_playlist_group.setStyleSheet("QGroupBox { font-weight: bold; color: #ffffff; }")
         single_playlist_layout = QVBoxLayout()
         self.playlist_selector = PlaylistSelector()
         self.playlist_selector.playlist_selected.connect(self.on_playlist_selected)
         single_playlist_layout.addWidget(self.playlist_selector)
         self.single_playlist_group.setLayout(single_playlist_layout)
+        self.single_playlist_group.setVisible(False)  # HIDDEN INITIALLY
         top_section_layout.addWidget(self.single_playlist_group)
 
         # Batch processor widget (shown in batch mode)
@@ -203,12 +221,31 @@ class MainWindow(QMainWindow):
         self.batch_processor.setVisible(False)  # Hidden by default
         top_section_layout.addWidget(self.batch_processor)
 
-        # Start Processing button container (for single mode)
+        # Start Processing button container - HIDDEN INITIALLY (progressive disclosure)
         self.start_button_container = QWidget()
         self.start_button_layout = QHBoxLayout(self.start_button_container)
         self.start_button_layout.addStretch()
         self.start_button = QPushButton("Start Processing")
-        self.start_button.setMinimumHeight(40)
+        self.start_button.setMinimumHeight(32)
+        self.start_button.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #0078d4;
+                color: #ffffff;
+                font-weight: bold;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+            }
+            QPushButton:hover {
+                background-color: #106ebe;
+            }
+            QPushButton:disabled {
+                background-color: #cccccc;
+                color: #666666;
+            }
+            """
+        )
         self.start_button.clicked.connect(self.start_processing)
         self.start_button.setToolTip("Start processing the selected playlist (F5)")
         self.start_button.setAccessibleName("Start processing button")
@@ -216,13 +253,16 @@ class MainWindow(QMainWindow):
             "Click to start processing the selected playlist. Keyboard shortcut: F5"
         )
         self.start_button.setFocusPolicy(Qt.StrongFocus)
+        self.start_button.setEnabled(False)  # DISABLED INITIALLY
         self.start_button_layout.addWidget(self.start_button)
         self.start_button_layout.addStretch()
+        self.start_button_container.setVisible(False)  # HIDDEN INITIALLY
         top_section_layout.addWidget(self.start_button_container)
 
         # Progress section - ProgressWidget (Step 1.5)
         # Initially hidden until processing starts
         self.progress_group = QGroupBox("Progress")
+        self.progress_group.setStyleSheet("QGroupBox { font-weight: bold; color: #ffffff; }")
         progress_layout = QVBoxLayout()
         self.progress_widget = ProgressWidget()
         self.progress_widget.cancel_requested.connect(self.on_cancel_requested)
@@ -246,6 +286,7 @@ class MainWindow(QMainWindow):
         # Results section - ResultsView widget (Step 1.7)
         # Initially hidden until processing completes
         self.results_group = QGroupBox("Results")
+        self.results_group.setStyleSheet("QGroupBox { font-weight: bold; color: #ffffff; }")
         results_layout = QVBoxLayout()
         self.results_view = ResultsView(
             results_controller=self.results_controller,
@@ -264,23 +305,19 @@ class MainWindow(QMainWindow):
         # Add splitter to main layout
         main_layout.addWidget(main_splitter, 1)  # Give splitter stretch priority
 
-        # Settings tab
-        settings_tab = QWidget()
-        settings_layout = QVBoxLayout(settings_tab)
-        settings_layout.setContentsMargins(10, 10, 10, 10)
+        # Create config panel (but don't add to tabs - it will be in Settings dialog)
+        # Keep it accessible for getting settings during processing
         self.config_panel = ConfigPanel(config_controller=self.config_controller)
-        settings_layout.addWidget(self.config_panel)
 
         # History tab (Past Searches)
         history_tab = QWidget()
         history_layout = QVBoxLayout(history_tab)
-        history_layout.setContentsMargins(10, 10, 10, 10)
+        history_layout.setContentsMargins(8, 8, 8, 8)
         self.history_view = HistoryView(export_controller=self.export_controller)
         history_layout.addWidget(self.history_view)
 
-        # Add tabs
+        # Add tabs (Settings tab removed - now accessible via menu)
         self.tabs.addTab(main_tab, "Main")
-        self.tabs.addTab(settings_tab, "Settings")
         self.tabs.addTab(history_tab, "Past Searches")
 
         # Performance monitoring view (created but not added to tabs yet)
@@ -376,12 +413,12 @@ class MainWindow(QMainWindow):
             "Restart processing",
         )
 
-        # Settings shortcuts
+        # Settings shortcuts (now in menu bar, so GLOBAL context)
         self.shortcut_manager.register_shortcut(
             "open_settings",
             "Ctrl+,",
             self.on_open_settings,
-            ShortcutContext.SETTINGS,
+            ShortcutContext.GLOBAL,
             "Open settings",
         )
 
@@ -400,6 +437,25 @@ class MainWindow(QMainWindow):
             "Shortcut Conflict",
             f"Shortcut conflict detected between '{action_id1}' and '{action_id2}'",
         )
+
+    def show_tool_selection_page(self) -> None:
+        """Show the tool selection page"""
+        if self.tool_selection_page:
+            self.setCentralWidget(self.tool_selection_page)
+            self.current_page = "tool_selection"
+
+    def show_main_interface(self) -> None:
+        """Show the main interface (existing tabs)"""
+        self.setCentralWidget(self.tabs)
+        self.current_page = "main"
+
+    def on_tool_selected(self, tool_name: str) -> None:
+        """Handle tool selection"""
+        if tool_name == "inkey":
+            # Show the main interface (XML file selection page)
+            self.show_main_interface()
+            # Switch to Main tab
+            self.tabs.setCurrentIndex(0)
 
     def on_new_session(self) -> None:
         """Start a new session by clearing all results and resetting progress.
@@ -444,15 +500,19 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("No results to export", 2000)
 
     def on_open_settings(self) -> None:
-        """Open the Settings tab via keyboard shortcut (Ctrl+,).
+        """Open the Settings dialog via menu or keyboard shortcut (Ctrl+,).
 
-        Finds and switches to the Settings tab in the tab widget.
+        Opens a dialog window with the settings panel.
         """
-        # Find settings tab index
-        for i in range(self.tabs.count()):
-            if self.tabs.tabText(i) == "Settings":
-                self.tabs.setCurrentIndex(i)
-                break
+        from cuepoint.ui.dialogs.settings_dialog import SettingsDialog
+        from PySide6.QtWidgets import QDialog
+        
+        dialog = SettingsDialog(config_controller=self.config_controller, parent=self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            # Settings are saved automatically by ConfigPanel
+            # Update our config_panel reference to match dialog's panel
+            # (They share the same config_controller, so settings are synced)
+            self.statusBar().showMessage("Settings saved", 2000)
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         """Handle key press events for keyboard shortcuts.
@@ -474,6 +534,7 @@ class MainWindow(QMainWindow):
 
         Creates the following menus:
         - File: Open XML file, recent files, exit
+        - Settings: Open settings dialog
         - Edit: Copy, select all, clear results
         - View: Toggle progress/results visibility, fullscreen
         - Help: User guide, keyboard shortcuts, about
@@ -504,6 +565,16 @@ class MainWindow(QMainWindow):
         exit_action.setShortcut(QKeySequence.Quit)
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
+
+        # Settings Menu - ADDED AFTER FILE MENU
+        settings_menu = menubar.addMenu("&Settings")
+        
+        # Open Settings
+        settings_action = QAction("&Settings...", self)
+        settings_action.setShortcut(QKeySequence("Ctrl+,"))
+        settings_action.setToolTip("Open settings (Ctrl+,)")
+        settings_action.triggered.connect(self.on_open_settings)
+        settings_menu.addAction(settings_action)
 
         # Edit Menu
         edit_menu = menubar.addMenu("&Edit")
@@ -620,6 +691,7 @@ class MainWindow(QMainWindow):
 
         Validates the selected file, loads playlists into the playlist
         selector, updates the batch processor, and saves to recent files.
+        Shows processing mode selection after valid file is selected (progressive disclosure).
 
         Args:
             file_path: Path to the selected XML file.
@@ -635,32 +707,65 @@ class MainWindow(QMainWindow):
                 # Update batch processor with playlists
                 self.batch_processor.set_playlists(list(self.playlist_selector.playlists.keys()))
 
+                # SHOW PROCESSING MODE SELECTION (progressive disclosure)
+                self.mode_group.setVisible(True)
+
                 # Save to recent files
                 self.save_recent_file(file_path)
             except Exception as e:
                 self.statusBar().showMessage(f"Error loading XML: {str(e)}")
-                # Error dialog will be handled in later step
+                # Hide processing mode if error
+                self.mode_group.setVisible(False)
+                # Hide playlist selection
+                self.single_playlist_group.setVisible(False)
+                self.start_button_container.setVisible(False)
+                self.start_button.setEnabled(False)
         else:
             self.statusBar().showMessage(f"Invalid file: {file_path}")
             # Clear playlist selector if file is invalid
             self.playlist_selector.clear()
             self.batch_processor.set_playlists([])
+            # HIDE PROCESSING MODE (progressive disclosure)
+            self.mode_group.setVisible(False)
+            # HIDE PLAYLIST SELECTION
+            self.single_playlist_group.setVisible(False)
+            self.start_button_container.setVisible(False)
+            self.start_button.setEnabled(False)
 
     def on_mode_changed(self) -> None:
         """Handle processing mode change between single and batch modes.
 
         Shows/hides appropriate UI components based on the selected mode:
-        - Single mode: Shows playlist selector and start button
+        - Single mode: Shows playlist selector and start button (progressive disclosure)
         - Batch mode: Shows batch processor widget
         """
+        # Check if any mode is selected
         is_batch_mode = self.batch_mode_radio.isChecked()
+        is_single_mode = self.single_mode_radio.isChecked()
+        
+        # If no mode is selected, hide everything and disable start button
+        if not is_batch_mode and not is_single_mode:
+            self.single_playlist_group.setVisible(False)
+            self.start_button_container.setVisible(False)
+            self.batch_processor.setVisible(False)
+            self.start_button.setEnabled(False)
+            return
 
-        # Show/hide single playlist UI
-        self.single_playlist_group.setVisible(not is_batch_mode)
-        self.start_button_container.setVisible(not is_batch_mode)
+        # Show/hide single playlist UI (progressive disclosure)
+        self.single_playlist_group.setVisible(is_single_mode)
+        self.start_button_container.setVisible(is_single_mode)
 
         # Show/hide batch processor
         self.batch_processor.setVisible(is_batch_mode)
+
+        # ENABLE START BUTTON if mode is selected (but it will be enabled/disabled based on playlist selection)
+        if is_batch_mode:
+            # Batch mode - button enabled by batch processor
+            pass
+        else:
+            # Single mode - button will be enabled when playlist is selected
+            # (handled in on_playlist_selected)
+            self.start_button.setEnabled(False)  # Disable until playlist is selected
 
         # Update batch processor with playlists if file is already loaded
         if is_batch_mode and hasattr(self.playlist_selector, "playlists"):
@@ -1162,7 +1267,7 @@ class MainWindow(QMainWindow):
         """Handle playlist selection from PlaylistSelector widget.
 
         Updates the status bar with the selected playlist name and
-        track count.
+        track count. Enables start button when playlist is selected (progressive disclosure).
 
         Args:
             playlist_name: Name of the selected playlist.
@@ -1172,6 +1277,13 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(
                 f"Selected playlist: {playlist_name} ({track_count} tracks)"
             )
+            # ENABLE START BUTTON when playlist is selected (progressive disclosure)
+            self.start_button.setEnabled(True)
+            # Ensure start button container is visible
+            self.start_button_container.setVisible(True)
+        else:
+            # DISABLE START BUTTON if no playlist selected
+            self.start_button.setEnabled(False)
 
     def start_processing(self) -> None:
         """Start processing the selected playlist.
@@ -1253,15 +1365,106 @@ class MainWindow(QMainWindow):
     def on_cancel_requested(self) -> None:
         """Handle cancel button click from ProgressWidget.
 
-        Cancels the current processing operation, re-enables the start button,
-        and disables the cancel button.
+        Cancels the current processing operation with proper error handling
+        to prevent crashes. Disables cancel button immediately and re-enables
+        UI after cancellation completes.
         """
-        self.controller.cancel_processing()
-        self.statusBar().showMessage("Cancelling processing...")
-        # Re-enable start button
-        self.start_button.setEnabled(True)
-        # Disable cancel button
-        self.progress_widget.set_enabled(False)
+        try:
+            # Prevent multiple cancel requests
+            if hasattr(self, '_cancelling') and self._cancelling:
+                return
+            
+            self._cancelling = True
+            
+            # Disable cancel button immediately to prevent multiple clicks
+            if hasattr(self, 'progress_widget') and hasattr(self.progress_widget, 'cancel_button'):
+                self.progress_widget.cancel_button.setEnabled(False)
+                self.progress_widget.cancel_button.setText("Cancelling...")
+            
+            # Cancel processing in a safe way
+            if hasattr(self, 'controller') and hasattr(self.controller, 'is_processing'):
+                if self.controller.is_processing():
+                    try:
+                        self.controller.cancel_processing()
+                    except Exception as e:
+                        print(f"Error in controller.cancel_processing: {e}")
+                        import traceback
+                        traceback.print_exc()
+            
+            if hasattr(self, 'statusBar'):
+                self.statusBar().showMessage("Cancelling processing...")
+            
+            # Use QTimer to safely reset UI after cancellation
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(1000, self._on_cancel_complete)
+            
+        except Exception as e:
+            # Log error but don't crash
+            import traceback
+            error_msg = f"Error cancelling processing: {str(e)}"
+            print(error_msg)
+            print(traceback.format_exc())
+            try:
+                if hasattr(self, 'statusBar'):
+                    self.statusBar().showMessage(error_msg, 5000)
+            except:
+                pass
+            # Still try to reset UI
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(500, self._on_cancel_complete)
+
+    def _on_cancel_complete(self) -> None:
+        """Called after cancellation is complete - safely reset UI"""
+        try:
+            # Check if window still exists (prevent crash if window was closed)
+            if not hasattr(self, 'isVisible') or not self.isVisible():
+                return
+            
+            self._cancelling = False
+            
+            # Re-enable start button
+            if hasattr(self, 'start_button') and self.start_button:
+                try:
+                    self.start_button.setEnabled(True)
+                except RuntimeError:
+                    # Widget might have been deleted
+                    pass
+            
+            # Reset cancel button
+            if hasattr(self, 'progress_widget') and self.progress_widget:
+                try:
+                    if hasattr(self.progress_widget, 'cancel_button') and self.progress_widget.cancel_button:
+                        self.progress_widget.cancel_button.setEnabled(True)
+                        self.progress_widget.cancel_button.setText("Cancel Processing")
+                    if hasattr(self.progress_widget, 'set_enabled'):
+                        self.progress_widget.set_enabled(False)
+                except RuntimeError:
+                    # Widget might have been deleted
+                    pass
+            
+            # Hide progress section
+            if hasattr(self, 'progress_group') and self.progress_group:
+                try:
+                    self.progress_group.setVisible(False)
+                except RuntimeError:
+                    pass
+            
+            if hasattr(self, 'statusBar'):
+                try:
+                    self.statusBar().showMessage("Processing cancelled", 2000)
+                except RuntimeError:
+                    pass
+            
+        except Exception as e:
+            import traceback
+            print(f"Error in cancel complete: {e}")
+            print(traceback.format_exc())
+            # Try to at least show a message, but don't crash if window is closed
+            try:
+                if hasattr(self, 'statusBar') and hasattr(self, 'isVisible') and self.isVisible():
+                    self.statusBar().showMessage("Processing cancelled (with errors)", 3000)
+            except:
+                pass
 
     def on_progress_updated(self, progress_info: ProgressInfo) -> None:
         """Handle progress update from controller.

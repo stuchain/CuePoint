@@ -185,9 +185,79 @@ Restructure the user interface to provide a cleaner, more intuitive workflow wit
 
 ---
 
+### Step 6.8: User Experience Improvements (1-2 weeks)
+
+**Goal**: Enhance user experience with recent files, enhanced drag & drop, keyboard shortcuts, confirmation dialogs, and improved progress visualization.
+
+**Substeps**:
+- 6.8.1: Recent Files Quick Access (2-3 days)
+- 6.8.2: Enhanced Drag & Drop Experience (2-3 days)
+- 6.8.3: Comprehensive Keyboard Shortcuts (3-4 days)
+- 6.8.4: Confirmation Dialogs (2-3 days)
+- 6.8.5: Enhanced Progress Visualization (2-3 days)
+
+**See**: `08_Step_6.8_User_Experience_Improvements.md` for detailed documentation.
+
+---
+
+### Step 6.9: Information & Help Improvements (1-2 weeks)
+
+**Goal**: Enhance user understanding through contextual help, better error messages, and comprehensive status displays.
+
+**Substeps**:
+- 6.9.1: Contextual Help System (3-4 days)
+- 6.9.2: Better Error Messages (3-4 days)
+- 6.9.3: Enhanced Status Bar (2-3 days)
+
+**See**: `09_Step_6.9_Information_Help_Improvements.md` for detailed documentation.
+
+---
+
+### Step 6.10: Results & Data Improvements (2-3 weeks)
+
+**Goal**: Enhance results view, history management, and batch processing with better data visualization, filtering, and export capabilities.
+
+**Substeps**:
+- 6.10.1: Enhanced Results View (1 week)
+- 6.10.2: Enhanced History/Past Searches (1 week)
+- 6.10.3: Enhanced Batch Operations (1 week)
+
+**See**: `10_Step_6.10_Results_Data_Improvements.md` for detailed documentation.
+
+---
+
+### Step 6.11: Organization & Navigation Improvements (1-2 weeks)
+
+**Goal**: Improve application organization and navigation through breadcrumbs, collapsible sections, better tab management, and export preferences.
+
+**Substeps**:
+- 6.11.1: Breadcrumb Navigation (2-3 days)
+- 6.11.2: Collapsible Sections (2-3 days)
+- 6.11.3: Enhanced Tab Organization (2-3 days)
+- 6.11.4: Export Preferences (2-3 days)
+
+**See**: `11_Step_6.11_Organization_Navigation.md` for detailed documentation.
+
+---
+
+### Step 6.12: Advanced Features (2-3 weeks)
+
+**Goal**: Add advanced features including statistics dashboard, notifications, processing queue, and real-time updates.
+
+**Substeps**:
+- 6.12.1: Statistics Dashboard (1 week)
+- 6.12.2: System Notifications (2-3 days)
+- 6.12.3: Processing Queue (1 week)
+- 6.12.4: Real-time Updates (3-4 days)
+
+**See**: `12_Step_6.12_Advanced_Features.md` for detailed documentation.
+
+---
+
 ## Implementation Order
 
 ```
+Core Restructuring (Required):
 6.1 (Tool Selection) 
   ↓
 6.2 (XML Selection + Info) 
@@ -201,6 +271,20 @@ Restructure the user interface to provide a cleaner, more intuitive workflow wit
 6.6 (Past Searches Excel) 
   ↓
 6.7 (Crash Fixes)
+  ↓
+User Experience Enhancements (Recommended):
+6.8 (User Experience Improvements)
+  ↓
+6.9 (Information & Help)
+  ↓
+Data & Results (Recommended):
+6.10 (Results & Data Improvements)
+  ↓
+Organization (Optional):
+6.11 (Organization & Navigation)
+  ↓
+Advanced Features (Optional):
+6.12 (Advanced Features)
 ```
 
 ---
@@ -284,6 +368,27 @@ Restructure the user interface to provide a cleaner, more intuitive workflow wit
 - Focus on fixing bugs and improving UX
 - Keep code clean and well-documented
 - Test thoroughly after each step
+
+---
+
+## Related Documentation
+
+### Core Steps (Required)
+- `00_Phase_6_Overview.md` - Phase 6 overview
+- `01_Step_6.1_Tool_Selection_Page.md` - Tool selection implementation
+- `02_Step_6.2_XML_Selection_Info_Button.md` - XML selection with info button
+- `03_Step_6.3_Progressive_Disclosure.md` - Progressive disclosure implementation
+- `04_Step_6.4_Improve_Progress_Bar.md` - Progress bar improvements
+- `05_Step_6.5_Settings_Menu_Bar.md` - Settings menu bar implementation
+- `06_Step_6.6_Past_Searches_Excel_Update.md` - Past searches Excel update
+- `07_Step_6.7_Fix_Crash_Issues.md` - Crash fixes
+
+### Enhancement Steps (Recommended)
+- `08_Step_6.8_User_Experience_Improvements.md` - UX improvements (recent files, shortcuts, drag & drop, confirmations, progress)
+- `09_Step_6.9_Information_Help_Improvements.md` - Help system, error messages, status bar
+- `10_Step_6.10_Results_Data_Improvements.md` - Results view, history, batch operations
+- `11_Step_6.11_Organization_Navigation.md` - Breadcrumbs, collapsible sections, tabs, export preferences
+- `12_Step_6.12_Advanced_Features.md` - Statistics dashboard, notifications, processing queue, real-time updates
 
 ---
 
