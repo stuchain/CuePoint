@@ -1,189 +1,291 @@
-# Phase 6: UI Restructuring & Modern Design
+# Phase 6: UI Restructuring & Refactoring
 
-This folder contains the complete analytical design documentation for Phase 6: UI Restructuring & Modern Design.
+**Status**: 📝 In Progress  
+**Priority**: 🚀 P1 - HIGH PRIORITY  
+**Dependencies**: Phase 1 (GUI Foundation), Phase 5 (Code Restructuring)  
+**Estimated Duration**: 2-3 weeks
 
-## Overview
+## Goal
 
-Phase 6 focuses on completely restructuring the user interface to be modern, visually appealing (Pokemon 2D pixel art style), and "dumb easy" for non-technical users. Advanced settings and features will be available but hidden by default.
-
-## Documentation Structure
-
-### Main Documents
-
-- **[00_Phase_6_Overview.md](00_Phase_6_Overview.md)**: Complete overview of Phase 6, including goals, success criteria, design philosophy, and architecture.
-
-### Step-by-Step Implementation Guides
-
-1. **[01_Step_6.1_Design_System_Asset_Creation.md](01_Step_6.1_Design_System_Asset_Creation.md)**
-   - Create color palettes, icon sets, character sprites, and all visual assets
-   - Duration: 1 week
-
-2. **[02_Step_6.2_Implement_Theme_System.md](02_Step_6.2_Implement_Theme_System.md)**
-   - Implement flexible theming system with light/dark modes
-   - Duration: 3-4 days
-
-3. **[03_Step_6.3_Redesign_Main_Window_Simple_Mode.md](03_Step_6.3_Redesign_Main_Window_Simple_Mode.md)**
-   - Create simplified main interface for non-technical users
-   - Duration: 4-5 days
-
-4. **[04_Step_6.4_Implement_Advanced_Settings_Panel.md](04_Step_6.4_Implement_Advanced_Settings_Panel.md)**
-   - Create collapsible advanced settings panel
-   - Duration: 3-4 days
-
-5. **[05_Step_6.5_Redesign_Results_View.md](05_Step_6.5_Redesign_Results_View.md)**
-   - Redesign results display with visual indicators and card view
-   - Duration: 3-4 days
-
-6. **[06_Step_6.6_Create_Onboarding_Tutorial_System.md](06_Step_6.6_Create_Onboarding_Tutorial_System.md)**
-   - Create interactive tutorial and help system
-   - Duration: 4-5 days
-
-7. **[07_Step_6.7_Implement_Custom_Widgets_Components.md](07_Step_6.7_Implement_Custom_Widgets_Components.md)**
-   - Create custom pixel art styled widgets
-   - Duration: 5-6 days
-
-8. **[08_Step_6.8_Add_Animations_Transitions.md](08_Step_6.8_Add_Animations_Transitions.md)**
-   - Add smooth animations and transitions
-   - Duration: 3-4 days
-
-9. **[09_Step_6.9_Implement_Empty_States_Error_States.md](09_Step_6.9_Implement_Empty_States_Error_States.md)**
-   - Create engaging empty and error states
-   - Duration: 2-3 days
-
-10. **[10_Step_6.10_User_Testing_Refinement.md](10_Step_6.10_User_Testing_Refinement.md)**
-    - Conduct user testing and refine based on feedback
-    - Duration: 1 week
-
-## Implementation Order
-
-Steps should be implemented in numerical order (6.1 → 6.2 → ... → 6.10) as each step builds upon previous ones:
-
-```
-6.1 (Assets) → 6.2 (Theme) → 6.3 (Main Window) → 6.4 (Settings)
-    ↓
-6.5 (Results) → 6.6 (Tutorial) → 6.7 (Widgets) → 6.8 (Animations)
-    ↓
-6.9 (States) → 6.10 (Testing)
-```
-
-## Key Features
-
-### Design Philosophy
-- **Simplicity First**: Default view shows only essential features
-- **Progressive Disclosure**: Advanced features revealed as needed
-- **Visual Clarity**: Clear visual hierarchy and feedback
-- **Consistency**: Unified design language throughout
-- **Accessibility**: Usable by users of all technical levels
-- **Delight**: Engaging, enjoyable user experience
-
-### Visual Style
-- **Pokemon 2D Pixel Art**: Bright, vibrant colors with pixel-perfect edges
-- **Custom Icons**: 50+ pixel art icons (16x16 and 32x32)
-- **Character Sprites**: Friendly Pokemon-style characters for empty/error states
-- **Smooth Animations**: 200-300ms transitions, 60fps performance
-- **Consistent Theming**: Light and dark modes with pixel art aesthetic
-
-### User Experience
-- **Simple Mode**: Default simplified interface for non-technical users
-- **Advanced Mode**: Full feature access for power users
-- **Onboarding**: Interactive tutorial for first-time users
-- **Contextual Help**: Tooltips and help throughout UI
-- **Clear Feedback**: Visual indicators for all states and actions
+Restructure the user interface to provide a cleaner, more intuitive workflow with progressive disclosure. The UI will guide users through a step-by-step process: tool selection → file selection → processing mode → playlist selection → processing. This refactoring maintains all existing functionality while improving user experience and fixing critical bugs.
 
 ## Success Criteria
 
-- ✅ Modern pixel art visual design implemented
-- ✅ Simple mode for non-technical users
-- ✅ Advanced features hidden but accessible
-- ✅ Intuitive navigation and workflows
-- ✅ Consistent design language
-- ✅ Custom icons and graphics
-- ✅ Smooth animations
-- ✅ Onboarding system
-- ✅ All functionality preserved
-- ✅ Performance maintained
-- ✅ User testing completed
-- ✅ Accessibility standards met
-
-## Dependencies
-
-- **Phase 1**: GUI Foundation
-- **Phase 2**: User Experience
-- **Phase 5**: Code Restructuring (recommended)
-
-## Estimated Duration
-
-**Total**: 4-5 weeks
-
-- Step 6.1: 1 week
-- Step 6.2: 3-4 days
-- Step 6.3: 4-5 days
-- Step 6.4: 3-4 days
-- Step 6.5: 3-4 days
-- Step 6.6: 4-5 days
-- Step 6.7: 5-6 days
-- Step 6.8: 3-4 days
-- Step 6.9: 2-3 days
-- Step 6.10: 1 week
-
-## Code Structure
-
-After implementation, the codebase will include:
-
-```
-src/cuepoint/ui/
-├── theme/
-│   ├── theme_manager.py
-│   ├── pixel_theme.py
-│   ├── colors.py
-│   └── assets/
-│       ├── icons/
-│       ├── sprites/
-│       └── animations/
-├── widgets/
-│   ├── pixel_widgets.py
-│   ├── advanced_settings_panel.py
-│   ├── results_view_pixel.py
-│   ├── empty_state.py
-│   └── error_state.py
-├── onboarding/
-│   ├── tutorial_manager.py
-│   ├── welcome_screen.py
-│   └── tooltip_manager.py
-└── animations/
-    ├── animation_utils.py
-    └── transition_manager.py
-```
-
-## Testing
-
-Each step includes:
-- Functional testing requirements
-- Visual testing requirements
-- Integration testing requirements
-- Implementation checklists
-
-Final user testing in Step 6.10 validates the complete implementation.
-
-## Notes
-
-- All designs include complete code examples
-- All steps are fully documented with analytical designs
-- Implementation should follow the order specified
-- Each step builds upon previous steps
-- User feedback should be incorporated throughout
-
-## Next Phase
-
-After completing Phase 6, consider:
-- Additional features based on user feedback
-- Performance optimizations
-- Additional integrations
-- Platform-specific enhancements
+- [ ] Main page with tool selection (inKey button)
+- [ ] XML file selection page with info button for Rekordbox instructions
+- [ ] Progressive disclosure: processing mode appears only after XML file selection
+- [ ] Playlist selection appears only after processing mode selection
+- [ ] Improved progress bar with clean elapsed/remaining time display
+- [ ] Settings moved to menu bar (next to File menu)
+- [ ] Past searches: Excel updates when selecting candidate, stays on page
+- [ ] Cancel button crash issues fixed
+- [ ] Candidate selection crash issues fixed
+- [ ] All existing functionality preserved
 
 ---
 
-**Status**: 📝 Planned  
-**Priority**: 🚀 P1 - HIGH PRIORITY  
-**Last Updated**: 2025-12-01
+## Implementation Steps
+
+### Step 6.1: Create Main Tool Selection Page (2-3 days)
+
+**Goal**: Create a landing page where users select which tool to use.
+
+**Tasks**:
+1. Create new `ToolSelectionPage` widget
+2. Add "inKey" button (the Beatport matching tool)
+3. Implement navigation to XML file selection page
+4. Update main window to show tool selection first
+
+**Key Components**:
+- Large, prominent "inKey" button
+- Clean, centered layout
+- Smooth transition to next page
+
+**Files to Create/Modify**:
+- `SRC/cuepoint/ui/widgets/tool_selection_page.py` (NEW)
+- `SRC/cuepoint/ui/main_window.py` (MODIFY)
+
+---
+
+### Step 6.2: Enhance XML File Selection with Info Button (2-3 days)
+
+**Goal**: Add an info button next to the browse button that shows instructions for exporting XML from Rekordbox.
+
+**Tasks**:
+1. Add info button (ℹ️) next to browse button in FileSelector
+2. Create `RekordboxInstructionsDialog` with photo placeholders
+3. Implement simple, clear instructions with image support
+4. Support drag & drop (already exists, ensure it works)
+
+**Key Components**:
+- Info button with tooltip
+- Dialog window with image placeholders
+- Simple, non-technical language
+- Photo slots for user to add images later
+
+**Files to Create/Modify**:
+- `SRC/cuepoint/ui/widgets/file_selector.py` (MODIFY)
+- `SRC/cuepoint/ui/dialogs/rekordbox_instructions_dialog.py` (NEW)
+
+---
+
+### Step 6.3: Implement Progressive Disclosure (2-3 days)
+
+**Goal**: Show processing mode selection only after XML file is selected, and playlist selection only after processing mode is selected.
+
+**Tasks**:
+1. Hide processing mode selection initially
+2. Show processing mode selection only when XML file is valid
+3. Hide playlist selection initially
+4. Show playlist selection only after processing mode is selected
+5. Update UI state management
+
+**Key Components**:
+- Conditional visibility for UI sections
+- State management for workflow progression
+- Clear visual feedback for each step
+
+**Files to Modify**:
+- `SRC/cuepoint/ui/main_window.py` (MODIFY)
+- `SRC/cuepoint/ui/widgets/playlist_selector.py` (MODIFY if needed)
+
+---
+
+### Step 6.4: Improve Progress Bar Display (1-2 days)
+
+**Goal**: Make the progress bar cleaner with better elapsed/remaining time display and reliable cancel functionality.
+
+**Tasks**:
+1. Improve progress bar layout and styling
+2. Enhance time display formatting
+3. Fix cancel button to prevent crashes
+4. Add proper error handling for cancellation
+5. Ensure cancel properly stops processing
+
+**Key Components**:
+- Cleaner progress bar design
+- Better time formatting (e.g., "2m 30s remaining")
+- Robust cancel handling
+- Proper state cleanup on cancel
+
+**Files to Modify**:
+- `SRC/cuepoint/ui/widgets/progress_widget.py` (MODIFY)
+- `SRC/cuepoint/ui/main_window.py` (MODIFY - cancel handling)
+
+---
+
+### Step 6.5: Move Settings to Menu Bar (1 day)
+
+**Goal**: Move Settings from a tab to a menu item in the menu bar, next to the File menu.
+
+**Tasks**:
+1. Remove Settings tab from tab widget
+2. Add Settings menu item to menu bar (after File)
+3. Create Settings dialog window
+4. Update all references to Settings tab
+5. Ensure settings are accessible from menu
+
+**Key Components**:
+- Settings menu item in menu bar
+- Settings dialog window
+- Proper menu organization
+
+**Files to Modify**:
+- `SRC/cuepoint/ui/main_window.py` (MODIFY)
+- `SRC/cuepoint/ui/dialogs/settings_dialog.py` (CREATE or MODIFY)
+
+---
+
+### Step 6.6: Fix Past Searches Excel Update (2-3 days)
+
+**Goal**: When selecting a different candidate in past searches, update the Excel file and stay on the same page.
+
+**Tasks**:
+1. Ensure Excel file is updated when candidate is selected
+2. Keep user on the same page (don't navigate away)
+3. Refresh table display with updated data
+4. Fix any crashes during candidate selection
+5. Add proper error handling
+
+**Key Components**:
+- Excel file update on candidate selection
+- Stay on current page
+- Table refresh with updated data
+- Error handling for file operations
+
+**Files to Modify**:
+- `SRC/cuepoint/ui/widgets/history_view.py` (MODIFY)
+- `SRC/cuepoint/services/output_writer.py` (MODIFY if needed)
+
+---
+
+### Step 6.7: Fix Cancel and Candidate Selection Crashes (2-3 days)
+
+**Goal**: Fix all crash issues related to cancel button and candidate selection.
+
+**Tasks**:
+1. Investigate cancel button crash causes
+2. Add proper exception handling for cancel operations
+3. Fix thread/worker cleanup on cancel
+4. Investigate candidate selection crash causes
+5. Add proper exception handling for candidate operations
+6. Test thoroughly with various scenarios
+
+**Key Components**:
+- Robust error handling
+- Proper cleanup on cancellation
+- Thread safety
+- Exception logging
+
+**Files to Modify**:
+- `SRC/cuepoint/ui/main_window.py` (MODIFY)
+- `SRC/cuepoint/ui/controllers/main_controller.py` (MODIFY)
+- `SRC/cuepoint/ui/widgets/history_view.py` (MODIFY)
+- `SRC/cuepoint/ui/widgets/progress_widget.py` (MODIFY)
+
+---
+
+## Implementation Order
+
+```
+6.1 (Tool Selection) 
+  ↓
+6.2 (XML Selection + Info) 
+  ↓
+6.3 (Progressive Disclosure) 
+  ↓
+6.4 (Progress Bar) 
+  ↓
+6.5 (Settings Menu) 
+  ↓
+6.6 (Past Searches Excel) 
+  ↓
+6.7 (Crash Fixes)
+```
+
+---
+
+## Design Specifications
+
+### Main Tool Selection Page
+
+```
+┌─────────────────────────────────────────┐
+│                                         │
+│         CuePoint                        │
+│                                         │
+│    ┌─────────────────────────────┐     │
+│    │                             │     │
+│    │      [  inKey  ]            │     │
+│    │                             │     │
+│    │  Beatport Track Matching    │     │
+│    │                             │     │
+│    └─────────────────────────────┘     │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+### XML File Selection Page
+
+```
+┌─────────────────────────────────────────┐
+│  Rekordbox XML File Selection           │
+│                                         │
+│  ┌───────────────────────────────────┐ │
+│  │ Rekordbox XML File: [path...]    │ │
+│  │                    [Browse...] [ℹ️]│ │
+│  └───────────────────────────────────┘ │
+│                                         │
+│  or drag & drop XML file here          │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+### Progressive Disclosure Flow
+
+1. **Start**: Only tool selection visible
+2. **After tool selection**: XML file selection appears
+3. **After XML file selected**: Processing mode appears
+4. **After mode selected**: Playlist selection appears
+5. **After playlist selected**: Start Processing button enabled
+
+---
+
+## Testing Requirements
+
+### Functional Testing
+- [ ] Tool selection navigation works
+- [ ] XML file selection with info button works
+- [ ] Progressive disclosure shows/hides correctly
+- [ ] Progress bar displays correctly
+- [ ] Settings accessible from menu bar
+- [ ] Past searches Excel updates correctly
+- [ ] Cancel button works without crashes
+- [ ] Candidate selection works without crashes
+
+### Error Handling Testing
+- [ ] Cancel during processing doesn't crash
+- [ ] Invalid file selection handled gracefully
+- [ ] Candidate selection errors handled gracefully
+- [ ] Excel write errors handled gracefully
+
+### User Experience Testing
+- [ ] Workflow is intuitive
+- [ ] Each step is clear
+- [ ] Progress feedback is accurate
+- [ ] No unexpected navigation
+
+---
+
+## Notes
+
+- All changes maintain backward compatibility
+- Existing functionality is preserved
+- Focus on fixing bugs and improving UX
+- Keep code clean and well-documented
+- Test thoroughly after each step
+
+---
+
+**Next Phase**: After completing Phase 6, consider additional UI improvements based on user feedback.
 

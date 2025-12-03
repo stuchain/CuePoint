@@ -1,385 +1,153 @@
-# Phase 6: UI Restructuring & Modern Design - Overview
+# Phase 6: UI Restructuring & Refactoring - Overview
 
 **Status**: 📝 Planned  
-**Priority**: 🚀 P1 - HIGH PRIORITY (User Experience Enhancement)  
-**Dependencies**: Phase 1 (GUI Foundation), Phase 2 (User Experience), Phase 5 (Code Restructuring recommended)  
-**Estimated Duration**: 4-5 weeks
-
----
+**Priority**: 🚀 P1 - HIGH PRIORITY  
+**Dependencies**: Phase 1 (GUI Foundation), Phase 5 (Code Restructuring)  
+**Estimated Duration**: 2-3 weeks
 
 ## Goal
 
-Completely restructure the user interface to be modern, visually appealing (Pokemon 2D pixel art style), and "dumb easy" for non-technical users. Advanced settings and features will be available but hidden by default, creating a simple, intuitive experience for casual users while maintaining power-user capabilities.
+Restructure the user interface to provide a cleaner, more intuitive workflow with progressive disclosure. The UI will guide users through a step-by-step process while maintaining all existing functionality and fixing critical bugs.
 
----
+## Key Changes
 
-## Success Criteria
+### 1. Main Tool Selection Page
+- Landing page where users first see tool selection
+- Currently only "inKey" tool (Beatport track matching)
+- Clean, centered layout with prominent button
 
-- [ ] Modern, cohesive visual design (Pokemon 2D pixel art style)
-- [ ] Simplified user experience for non-technical users
-- [ ] Advanced features accessible but hidden by default
-- [ ] Intuitive navigation and workflows
-- [ ] Consistent design language throughout
-- [ ] Responsive and accessible UI
-- [ ] Custom icons and graphics
-- [ ] Smooth animations and transitions
-- [ ] User onboarding/tutorial system
-- [ ] All existing functionality preserved
-- [ ] Performance maintained
-- [ ] User testing completed
+### 2. Enhanced XML File Selection
+- Info button (ℹ️) next to browse button
+- Dialog with simple instructions for exporting XML from Rekordbox
+- Photo placeholders for user to add images later
 
----
+### 3. Progressive Disclosure
+- Processing mode appears ONLY after XML file is selected
+- Playlist selection appears ONLY after processing mode is selected
+- Start button enabled only when all prerequisites are met
 
-## Design Philosophy
+### 4. Improved Progress Bar
+- Cleaner design and layout
+- Better elapsed/remaining time display
+- Reliable cancel functionality
+- No crashes on cancellation
 
-### Core Principles
+### 5. Settings in Menu Bar
+- Moved from tab to menu bar (next to File menu)
+- Accessible via menu or keyboard shortcut (Ctrl+,)
+- Settings dialog window
 
-1. **Simplicity First**: Default view shows only essential features
-2. **Progressive Disclosure**: Advanced features revealed as needed
-3. **Visual Clarity**: Clear visual hierarchy and feedback
-4. **Consistency**: Unified design language throughout
-5. **Accessibility**: Usable by users of all technical levels
-6. **Delight**: Engaging, enjoyable user experience
+### 6. Past Searches Excel Update
+- CSV file updates immediately when candidate is selected
+- User stays on the same page
+- Table display updates automatically
 
-### Target User Experience
-
-**For Non-Technical Users**:
-- Open app → See simple, clear interface
-- Click "Select Playlist" → Choose file
-- Click "Process" → See progress
-- View results → Simple, clear table
-- Export → One-click export
-
-**For Power Users**:
-- Access advanced settings via menu or toggle
-- Full control over all features
-- Customizable workflows
-- Keyboard shortcuts
-- Batch processing
-- Advanced filtering
-
----
-
-## Visual Design: Pokemon 2D Pixel Art Style
-
-### Design Elements
-
-**Color Palette**:
-- Primary: Bright, vibrant colors (Pokemon-inspired)
-- Background: Soft, light backgrounds
-- Accent: Bold accent colors for important actions
-- Text: High contrast for readability
-- Status: Color-coded feedback (green=success, red=error, yellow=warning)
-
-**Typography**:
-- Headers: Bold, pixel-style font (optional pixel font for titles)
-- Body: Clear, readable sans-serif
-- Monospace: For technical data (BPM, keys, etc.)
-- Sizes: Clear hierarchy (large for important, small for details)
-
-**Icons & Graphics**:
-- Custom pixel art icons
-- Consistent 16x16 or 32x32 pixel icons
-- Animated icons for loading/progress
-- Character sprites for empty states
-- Decorative elements (borders, badges)
-
-**UI Components**:
-- Rounded corners with pixel-perfect edges
-- Subtle shadows and depth
-- Button states (hover, active, disabled)
-- Card-based layouts
-- Clear visual feedback
-
-**Animations**:
-- Smooth transitions (200-300ms)
-- Loading animations (pixel art spinners)
-- Progress indicators (pixel art progress bars)
-- Micro-interactions (button presses, hovers)
-
----
-
-## UI Structure: Simplified & Advanced Modes
-
-### Default Mode: "Simple Mode"
-
-**Main Window Layout**:
-```
-┌─────────────────────────────────────────┐
-│  [Logo]  CuePoint  [Settings] [Help]   │
-├─────────────────────────────────────────┤
-│                                         │
-│  ┌─────────────────────────────────┐   │
-│  │  📁 Select Playlist File       │   │
-│  │  [Browse...]                    │   │
-│  └─────────────────────────────────┘   │
-│                                         │
-│  ┌─────────────────────────────────┐   │
-│  │  ⚙️  Settings (Optional)        │   │
-│  │  [Show Advanced Settings]        │   │
-│  └─────────────────────────────────┘   │
-│                                         │
-│  [▶️  Process Playlist]                 │
-│                                         │
-│  ┌─────────────────────────────────┐   │
-│  │  📊 Results                      │   │
-│  │  [Results table appears here]    │   │
-│  └─────────────────────────────────┘   │
-│                                         │
-│  [💾 Export Results]                    │
-│                                         │
-└─────────────────────────────────────────┘
-```
-
-**Key Features**:
-- Large, clear buttons
-- Minimal options visible
-- Step-by-step workflow
-- Clear progress indicators
-- Simple language (no technical jargon)
-
-### Advanced Mode: "Power User Mode"
-
-**Access**: Toggle in settings or menu option
-
-**Features**:
-- All configuration options visible
-- Advanced filtering
-- Batch processing
-- Performance monitoring
-- Keyboard shortcuts
-- Custom workflows
-- Export options
-- Debug information
-
----
+### 7. Crash Fixes
+- Cancel button crashes fixed
+- Candidate selection crashes fixed
+- Comprehensive error handling
 
 ## Implementation Steps
 
-This phase is broken down into 10 detailed steps:
+1. **Step 6.1**: Create Main Tool Selection Page (2-3 days)
+2. **Step 6.2**: Enhance XML File Selection with Info Button (2-3 days)
+3. **Step 6.3**: Implement Progressive Disclosure (2-3 days)
+4. **Step 6.4**: Improve Progress Bar Display (1-2 days)
+5. **Step 6.5**: Move Settings to Menu Bar (1 day)
+6. **Step 6.6**: Fix Past Searches Excel Update (2-3 days)
+7. **Step 6.7**: Fix Cancel and Candidate Selection Crashes (2-3 days)
 
-1. **Step 6.1**: Design System & Asset Creation (1 week)
-2. **Step 6.2**: Implement Theme System (3-4 days)
-3. **Step 6.3**: Redesign Main Window - Simple Mode (4-5 days)
-4. **Step 6.4**: Implement Advanced Settings Panel (3-4 days)
-5. **Step 6.5**: Redesign Results View (3-4 days)
-6. **Step 6.6**: Create Onboarding & Tutorial System (4-5 days)
-7. **Step 6.7**: Implement Custom Widgets & Components (5-6 days)
-8. **Step 6.8**: Add Animations & Transitions (3-4 days)
-9. **Step 6.9**: Implement Empty States & Error States (2-3 days)
-10. **Step 6.10**: User Testing & Refinement (1 week)
-
-Each step has a dedicated document with:
-- Detailed analytical design
-- Code architecture and examples
-- Implementation checklist
-- Testing requirements
-- Dependencies and prerequisites
-
----
-
-## Design Specifications
-
-### Color Palette
-
-**Primary Colors**:
-- Primary Blue: `#4A90E2` (Pokemon blue)
-- Primary Red: `#E24A4A` (Pokemon red)
-- Primary Green: `#4AE24A` (Success)
-- Primary Yellow: `#E2E24A` (Warning)
-
-**Background Colors**:
-- Light Background: `#F5F5F5`
-- Card Background: `#FFFFFF`
-- Dark Background: `#2C2C2C` (for dark mode)
-
-**Text Colors**:
-- Primary Text: `#333333`
-- Secondary Text: `#666666`
-- Disabled Text: `#999999`
-
-### Typography
-
-**Fonts**:
-- Headers: Bold, 18-24px
-- Body: Regular, 14-16px
-- Small: Regular, 12px
-- Monospace: For technical data
-
-**Line Height**: 1.5x font size  
-**Letter Spacing**: Normal
-
-### Spacing
-
-**Grid System**: 8px base unit
-- Small: 8px
-- Medium: 16px
-- Large: 24px
-- Extra Large: 32px
-
-### Components
-
-**Buttons**:
-- Height: 40-48px
-- Padding: 16px horizontal
-- Border radius: 4px (pixel-perfect)
-- Shadow: Subtle depth
-
-**Cards**:
-- Padding: 16px
-- Border radius: 4px
-- Shadow: Subtle elevation
-- Background: White
-
----
-
-## Architecture Overview
-
-### New Components Structure
+## Workflow Flow
 
 ```
-src/cuepoint/ui/
-├── theme/
-│   ├── __init__.py
-│   ├── theme_manager.py          # Theme management system
-│   ├── pixel_theme.py            # Pixel art theme definitions
-│   └── assets/                   # Theme assets (icons, sprites)
-│       ├── icons/
-│       ├── sprites/
-│       └── backgrounds/
-├── widgets/
-│   ├── pixel_widgets.py          # Custom pixel-styled widgets
-│   ├── pixel_button.py           # Custom button widget
-│   ├── pixel_progress.py         # Custom progress bar
-│   ├── pixel_card.py             # Card container widget
-│   └── pixel_badge.py            # Status badge widget
-├── onboarding/
-│   ├── __init__.py
-│   ├── tutorial_manager.py       # Tutorial system
-│   ├── welcome_screen.py         # Welcome dialog
-│   └── tooltip_manager.py        # Contextual help
-└── animations/
-    ├── __init__.py
-    ├── transition_manager.py     # Page transitions
-    └── animation_utils.py        # Animation helpers
+1. User opens app
+   ↓
+2. Tool Selection Page (inKey button)
+   ↓
+3. XML File Selection Page (with info button)
+   ↓
+4. Processing Mode Selection (appears after XML selected)
+   ↓
+5. Playlist Selection (appears after mode selected)
+   ↓
+6. Start Processing (enabled after playlist selected)
+   ↓
+7. Progress Display (with improved time display)
+   ↓
+8. Results Display
 ```
 
-### Service Integration
+## Success Criteria
 
-The UI restructuring will integrate with existing services:
-- `ConfigService`: For theme and UI preferences
-- `GUIController`: For processing operations
-- `ExportController`: For export functionality
-- `ResultsController`: For results management
+- ✅ Main page with tool selection (inKey button)
+- ✅ XML file selection page with info button for Rekordbox instructions
+- ✅ Progressive disclosure: processing mode appears only after XML file selection
+- ✅ Playlist selection appears only after processing mode selection
+- ✅ Improved progress bar with clean elapsed/remaining time display
+- ✅ Settings moved to menu bar (next to File menu)
+- ✅ Past searches: Excel updates when selecting candidate, stays on page
+- ✅ Cancel button crash issues fixed
+- ✅ Candidate selection crash issues fixed
+- ✅ All existing functionality preserved
 
----
+## Files to Create
 
-## Accessibility Considerations
+- `SRC/cuepoint/ui/widgets/tool_selection_page.py` (NEW)
+- `SRC/cuepoint/ui/dialogs/rekordbox_instructions_dialog.py` (NEW)
+- `SRC/cuepoint/ui/dialogs/settings_dialog.py` (CREATE or MODIFY)
 
-### Requirements
-- Keyboard navigation support
-- Screen reader compatibility
-- High contrast mode
-- Font size scaling
-- Color-blind friendly
-- Focus indicators
+## Files to Modify
 
-### Implementation
-- ARIA labels
-- Keyboard shortcuts
-- Focus management
-- Color contrast ratios (WCAG AA)
-- Alternative text for icons
-
----
-
-## Performance Considerations
-
-### Optimization
-- Lazy load images/assets
-- Optimize animations (60fps)
-- Cache rendered components
-- Minimize repaints
-- Use efficient layouts
-
-### Targets
-- UI responsiveness: <100ms
-- Animation frame rate: 60fps
-- Asset loading: <2s
-- Page transitions: <300ms
-
----
-
-## Migration Strategy
-
-### Backward Compatibility
-- Preserve all functionality
-- Maintain existing workflows
-- Support old configurations
-- Gradual migration option
-
-### User Migration
-- Detect existing users
-- Offer migration wizard
-- Preserve user preferences
-- Provide rollback option
-
----
+- `SRC/cuepoint/ui/main_window.py` (MODIFY)
+- `SRC/cuepoint/ui/widgets/file_selector.py` (MODIFY)
+- `SRC/cuepoint/ui/widgets/progress_widget.py` (MODIFY)
+- `SRC/cuepoint/ui/widgets/history_view.py` (MODIFY)
+- `SRC/cuepoint/ui/controllers/main_controller.py` (MODIFY)
 
 ## Testing Requirements
 
-### UI Testing
-- Visual regression testing
-- Cross-platform testing
-- Responsive design testing
-- Accessibility testing
-- Performance testing
+### Functional Testing
+- Tool selection navigation works
+- XML file selection with info button works
+- Progressive disclosure shows/hides correctly
+- Progress bar displays correctly
+- Settings accessible from menu bar
+- Past searches Excel updates correctly
+- Cancel button works without crashes
+- Candidate selection works without crashes
 
-### User Testing
-- Usability testing
-- A/B testing
-- Feedback collection
-- Iterative refinement
+### Error Handling Testing
+- Cancel during processing doesn't crash
+- Invalid file selection handled gracefully
+- Candidate selection errors handled gracefully
+- Excel write errors handled gracefully
 
----
+### User Experience Testing
+- Workflow is intuitive
+- Each step is clear
+- Progress feedback is accurate
+- No unexpected navigation
 
-## Acceptance Criteria
+## Notes
 
-- ✅ Modern pixel art visual design implemented
-- ✅ Simple mode for non-technical users
-- ✅ Advanced features hidden but accessible
-- ✅ Intuitive navigation and workflows
-- ✅ Consistent design language
-- ✅ Custom icons and graphics
-- ✅ Smooth animations
-- ✅ Onboarding system
-- ✅ All functionality preserved
-- ✅ Performance maintained
-- ✅ User testing completed
-- ✅ Accessibility standards met
+- All changes maintain backward compatibility
+- Existing functionality is preserved
+- Focus on fixing bugs and improving UX
+- Keep code clean and well-documented
+- Test thoroughly after each step
 
----
+## Related Documentation
 
-## Important Notes
-
-1. **User-Centric**: Always prioritize user experience over technical elegance
-2. **Progressive Enhancement**: Start simple, add complexity as needed
-3. **Accessibility**: Ensure all users can use the application
-4. **Performance**: Maintain responsiveness despite visual enhancements
-5. **Feedback**: Continuously gather and incorporate user feedback
-6. **Iteration**: Be prepared to refine based on testing
-
----
-
-## Next Steps
-
-1. Review all step documents (6.1 through 6.10)
-2. Set up asset creation pipeline
-3. Begin with Step 6.1: Design System & Asset Creation
-4. Follow implementation order sequentially
-5. Test each step before proceeding
+- `README.md` - Main Phase 6 documentation
+- `01_Step_6.1_Tool_Selection_Page.md` - Tool selection implementation
+- `02_Step_6.2_XML_Selection_Info_Button.md` - XML selection with info button
+- `03_Step_6.3_Progressive_Disclosure.md` - Progressive disclosure implementation
+- `04_Step_6.4_Improve_Progress_Bar.md` - Progress bar improvements
+- `05_Step_6.5_Settings_Menu_Bar.md` - Settings menu bar implementation
+- `06_Step_6.6_Past_Searches_Excel_Update.md` - Past searches Excel update
+- `07_Step_6.7_Fix_Crash_Issues.md` - Crash fixes
 
 ---
 
-**Next Phase**: After UI restructuring, consider additional phases based on user feedback and project priorities.
+**Next Phase**: After completing Phase 6, consider additional UI improvements based on user feedback.
 
