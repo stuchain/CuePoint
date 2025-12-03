@@ -20,9 +20,7 @@ if __name__ == "__main__":
         sys.path.insert(0, src_path)
 
 from cuepoint.services.bootstrap import bootstrap_services
-from cuepoint.ui.migration.feature_flags import FeatureFlags
-from cuepoint.ui.migration.migration_manager import MigrationManager
-from cuepoint.ui.migration.migration_wizard import MigrationWizard
+from cuepoint.ui.main_window import MainWindow
 
 
 def main():
@@ -37,39 +35,8 @@ def main():
         app.setOrganizationName("CuePoint")
         app.setApplicationVersion("1.0.0")
         
-        # Check feature flags to determine which UI to use
-        feature_flags = FeatureFlags()
-        migration_manager = MigrationManager()
-        
-        # Determine which UI to use
-        use_new_ui = feature_flags.should_use_new_ui()
-        
-        if use_new_ui:
-            # Use new simplified UI
-            from cuepoint.ui.main_window_simple import SimpleMainWindow
-            
-            window = SimpleMainWindow()
-            
-            # Check if migration is needed and show wizard
-            if migration_manager.check_migration_needed():
-                wizard = MigrationWizard(window)
-                wizard.exec()
-                # Note: Wizard handles migration, user can continue or skip
-            
-        else:
-            # Use old UI
-            from cuepoint.ui.main_window import MainWindow
-            
-            window = MainWindow()
-            
-            # Mark that old UI was used (for migration detection)
-            from cuepoint.services.interfaces import IConfigService
-            from cuepoint.utils.di_container import get_container
-            
-            config_service = get_container().resolve(IConfigService)
-            config_service.set("ui.old_ui.used", True)
-            config_service.save()
-        
+        # Create and show main window
+        window = MainWindow()
         window.show()
         
         # Run event loop
@@ -98,5 +65,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
     main()
