@@ -1,6 +1,9 @@
 # CuePoint - Rekordbox → Beatport Metadata Enricher
 # Required dependencies for core functionality
 
+# GUI Framework (required for GUI application)
+PySide6>=6.5.0
+
 # HTTP requests and web scraping
 requests>=2.31.0
 aiohttp>=3.13.0
