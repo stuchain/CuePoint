@@ -26,10 +26,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from performance import PerformanceStats, performance_collector
-
-# Import performance collector
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from cuepoint.utils.performance import PerformanceStats, performance_collector
 
 
 class PerformanceView(QWidget):
@@ -270,7 +267,7 @@ class PerformanceView(QWidget):
     def _export_report(self):
         """Export performance report to file"""
         try:
-            from output_writer import write_performance_report
+            from cuepoint.services.output_writer import write_performance_report
         except ImportError:
             QMessageBox.information(
                 self, "Not Available", "Performance report export is not yet implemented."
