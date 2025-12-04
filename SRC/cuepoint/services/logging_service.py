@@ -9,10 +9,50 @@ Structured logging service with file rotation and console output.
 
 import logging
 import logging.handlers
+import sys
 from pathlib import Path
 from typing import Any, Optional
 
 from cuepoint.services.interfaces import ILoggingService
+
+# Disable error output from the logging system itself at module level
+# This prevents "--- Logging error ---" messages from appearing
+# when UnicodeEncodeError occurs (we handle it in our custom handler)
+logging.raiseExceptions = False
+
+
+class SafeUnicodeStream:
+    """Wrapper for streams that safely handles Unicode encoding errors.
+    
+    This wraps sys.stdout/sys.stderr to catch UnicodeEncodeError and
+    replace problematic characters with '?' before they reach the stream.
+    """
+    
+    def __init__(self, stream):
+        self.stream = stream
+        self.encoding = getattr(stream, 'encoding', None) or 'utf-8'
+    
+    def write(self, text):
+        """Write text, handling Unicode encoding errors."""
+        try:
+            self.stream.write(text)
+        except (UnicodeEncodeError, UnicodeError):
+            # Replace problematic characters with '?'
+            safe_text = text.encode(self.encoding, errors='replace').decode(self.encoding, errors='replace')
+            try:
+                self.stream.write(safe_text)
+            except (UnicodeEncodeError, UnicodeError):
+                # Last resort: ASCII with replacement
+                safe_text = text.encode('ascii', errors='replace').decode('ascii')
+                self.stream.write(safe_text)
+    
+    def flush(self):
+        """Flush the underlying stream."""
+        self.stream.flush()
+    
+    def __getattr__(self, name):
+        """Delegate other attributes to the underlying stream."""
+        return getattr(self.stream, name)
 
 
 class LoggingService(ILoggingService):
@@ -48,8 +88,20 @@ class LoggingService(ILoggingService):
         # Remove existing handlers to avoid duplicates
         self.logger.handlers.clear()
 
-        # Prevent propagation to root logger
+        # Prevent propagation to root logger to avoid duplicate handlers
         self.logger.propagate = False
+        
+        # Also clear root logger handlers to prevent it from trying to log
+        # This prevents the root logger from also trying to handle our messages
+        # and causing Unicode errors
+        root_logger = logging.getLogger()
+        if root_logger.handlers:
+            # Only remove StreamHandlers that write to stdout/stderr to avoid
+            # interfering with other logging setups
+            root_logger.handlers = [
+                h for h in root_logger.handlers 
+                if not isinstance(h, logging.StreamHandler) or h.stream not in (sys.stdout, sys.stderr)
+            ]
 
         # Create formatters
         file_formatter = logging.Formatter(
@@ -64,15 +116,20 @@ class LoggingService(ILoggingService):
             log_dir.mkdir(parents=True, exist_ok=True)
 
             file_handler = logging.handlers.RotatingFileHandler(
-                log_dir / "cuepoint.log", maxBytes=10 * 1024 * 1024, backupCount=5  # 10 MB
+                log_dir / "cuepoint.log", 
+                maxBytes=10 * 1024 * 1024,  # 10 MB
+                backupCount=5,
+                encoding='utf-8'  # Ensure log files use UTF-8 encoding
             )
             file_handler.setLevel(logging.DEBUG)
             file_handler.setFormatter(file_formatter)
             self.logger.addHandler(file_handler)
 
-        # Console handler
+        # Console handler with UTF-8 encoding support
         if enable_console_logging:
-            console_handler = logging.StreamHandler()
+            # Wrap stdout in a safe Unicode handler to catch encoding errors at the stream level
+            safe_stdout = SafeUnicodeStream(sys.stdout)
+            console_handler = logging.StreamHandler(safe_stdout)
             console_handler.setLevel(logging.INFO)
             console_handler.setFormatter(console_formatter)
             self.logger.addHandler(console_handler)

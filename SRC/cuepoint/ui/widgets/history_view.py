@@ -934,8 +934,12 @@ class HistoryView(QWidget):
                         value = csv_row.get("match_score", "")
                     elif col_name == "Confidence":
                         value = csv_row.get("confidence", "").capitalize()
-                    elif col_name == "Key":
+                    elif col_name == "Key" or col_name == "beatport_key":
+                        # For regular key column, use beatport_key
                         value = csv_row.get("beatport_key", "")
+                    elif col_name == "Camelot Key" or col_name == "beatport_key_camelot":
+                        # For Camelot key column, use beatport_key_camelot, fallback to beatport_key
+                        value = csv_row.get("beatport_key_camelot", csv_row.get("beatport_key", ""))
                     elif col_name == "BPM":
                         value = csv_row.get("beatport_bpm", "")
                     elif col_name == "Year":

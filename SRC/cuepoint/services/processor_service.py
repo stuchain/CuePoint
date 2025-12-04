@@ -7,7 +7,9 @@ Processor Service Implementation
 Service for processing tracks and playlists.
 """
 
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional
 
 from cuepoint.core.mix_parser import _extract_generic_parenthetical_phrases, _parse_mix_flags
@@ -416,38 +418,144 @@ class ProcessorService(IProcessorService):
         unmatched_count = 0
         total = len(tracks)
 
-        for idx, track in enumerate(tracks, 1):
-            # Check for cancellation
-            if controller and controller.is_cancelled():
-                self.logging_service.info("Processing cancelled by user")
-                break
+        # Thread-safe progress tracking for parallel mode
+        progress_lock = threading.Lock()
 
-            # Process track
-            result = self.process_track(idx, track, effective_settings)
-            results.append(result)
+        # Determine processing mode (sequential or parallel)
+        track_workers = effective_settings.get("TRACK_WORKERS", SETTINGS.get("TRACK_WORKERS", 12))
 
-            # Update statistics
-            if result.matched:
-                matched_count += 1
-            else:
-                unmatched_count += 1
+        # Prepare inputs as list of (index, track) tuples
+        inputs = [(idx, track) for idx, track in enumerate(tracks, 1)]
 
-            # Update progress callback
-            if progress_callback:
-                elapsed_time = time.perf_counter() - processing_start_time
-                progress_info = ProgressInfo(
-                    completed_tracks=idx,
-                    total_tracks=total,
-                    matched_count=matched_count,
-                    unmatched_count=unmatched_count,
-                    current_track={"title": track.title, "artists": track.artist or ""},
-                    elapsed_time=elapsed_time,
-                )
-                try:
-                    progress_callback(progress_info)
-                except Exception:
-                    # Don't let callback errors break processing
-                    pass
+        if track_workers > 1:
+            self.logging_service.info(f"Using parallel processing with {track_workers} workers")
+            # PARALLEL MODE: Process multiple tracks simultaneously
+            # Use ThreadPoolExecutor to run process_track() in parallel
+            with ThreadPoolExecutor(max_workers=track_workers) as ex:
+                # Submit all tasks
+                future_to_args = {
+                    ex.submit(
+                        self.process_track,
+                        idx,
+                        track,
+                        effective_settings,
+                    ): (idx, track)
+                    for idx, track in inputs
+                }
+
+                # Process completed tasks as they finish
+                results_dict: Dict[int, TrackResult] = {}  # Store results by index for ordering
+
+                for future in as_completed(future_to_args):
+                    # Check for cancellation before processing each result
+                    if controller and controller.is_cancelled():
+                        # Cancel remaining futures that haven't started yet
+                        for f in future_to_args.keys():
+                            if not f.done():
+                                f.cancel()
+                        # Break out of the loop, but let already-running tasks finish
+                        # This allows graceful shutdown
+                        break
+
+                    try:
+                        result = future.result()
+                        results_dict[result.playlist_index] = result
+
+                        # Thread-safe progress update
+                        with progress_lock:
+                            if result.matched:
+                                matched_count += 1
+                            else:
+                                unmatched_count += 1
+
+                            # Update progress callback (thread-safe)
+                            if progress_callback:
+                                completed = len(results_dict)
+                                elapsed_time = time.perf_counter() - processing_start_time
+                                progress_info = ProgressInfo(
+                                    completed_tracks=completed,
+                                    total_tracks=total,
+                                    matched_count=matched_count,
+                                    unmatched_count=unmatched_count,
+                                    current_track={
+                                        "title": result.title,
+                                        "artists": result.artist,
+                                    },
+                                    elapsed_time=elapsed_time,
+                                )
+                                try:
+                                    progress_callback(progress_info)
+                                except Exception:
+                                    # Don't let callback errors break processing
+                                    pass
+
+                    except Exception as e:
+                        # Handle errors from individual track processing
+                        idx, track = future_to_args[future]
+                        self.logging_service.warning(
+                            f"Error processing track {idx} '{track.title}': {e}"
+                        )
+                        # Create error result
+                        error_result = TrackResult(
+                            playlist_index=idx,
+                            title=track.title,
+                            artist=track.artist or "",
+                            matched=False,
+                            error=str(e),
+                        )
+                        results_dict[idx] = error_result
+                        with progress_lock:
+                            unmatched_count += 1
+
+                # If cancelled, wait for any remaining futures to complete or be cancelled
+                if controller and controller.is_cancelled():
+                    # Wait for all futures to finish (either complete or be cancelled)
+                    for future in future_to_args.keys():
+                        try:
+                            # Wait a short time for each future to finish
+                            future.result(timeout=0.1)
+                        except Exception:
+                            # Future was cancelled or errored, that's fine
+                            pass
+                
+                # Sort results by playlist index to maintain order
+                results = [results_dict[idx] for idx in sorted(results_dict.keys())]
+
+        else:
+            # SEQUENTIAL MODE: Process tracks one at a time
+            self.logging_service.info(f"Using sequential processing (TRACK_WORKERS={track_workers})")
+            for idx, track in inputs:
+                # Check for cancellation
+                if controller and controller.is_cancelled():
+                    self.logging_service.info("Processing cancelled by user")
+                    break
+
+                # Process track
+                result = self.process_track(idx, track, effective_settings)
+                results.append(result)
+
+                # Update statistics
+                if result.matched:
+                    matched_count += 1
+                else:
+                    unmatched_count += 1
+
+                # Update progress callback
+                if progress_callback:
+                    elapsed_time = time.perf_counter() - processing_start_time
+                    progress_info = ProgressInfo(
+                        completed_tracks=len(results),
+                        total_tracks=total,
+                        matched_count=matched_count,
+                        unmatched_count=unmatched_count,
+                        current_track={"title": track.title, "artists": track.artist or ""},
+                        elapsed_time=elapsed_time,
+                    )
+                    try:
+                        progress_callback(progress_info)
+                    except Exception:
+                        # Don't let callback errors break processing
+                        pass
 
         # Handle auto-research for unmatched tracks if requested and not cancelled
         if auto_research and not (controller and controller.is_cancelled()):
@@ -473,40 +581,110 @@ class ProcessorService(IProcessorService):
                     enhanced_settings.get("MIN_ACCEPT_SCORE", 70), 60
                 )
 
-                # Re-search unmatched tracks
+                # Prepare unmatched inputs for re-search
+                unmatched_inputs = []
                 for result in unmatched_results:
-                    if controller and controller.is_cancelled():
-                        break
-
                     idx = result.playlist_index
-                    # Find the original track
                     track: Optional[Track] = tracks[idx - 1] if idx <= len(tracks) else None
                     if track:
-                        new_result = self.process_track(idx, track, enhanced_settings)
-                        # Update the result if we found a match
-                        if new_result.matched:
-                            # Replace the unmatched result with the new matched result
-                            results[idx - 1] = new_result
-                            matched_count += 1
-                            unmatched_count -= 1
+                        unmatched_inputs.append((idx, track))
 
-                            # Update progress callback
-                            if progress_callback:
-                                elapsed_time = time.perf_counter() - processing_start_time
-                                progress_info = ProgressInfo(
-                                    completed_tracks=len(results),
-                                    total_tracks=total,
-                                    matched_count=matched_count,
-                                    unmatched_count=unmatched_count,
-                                    current_track={
-                                        "title": track.title,
-                                        "artists": track.artist or "",
-                                    },
-                                    elapsed_time=elapsed_time,
+                # Re-search unmatched tracks in parallel
+                track_workers = enhanced_settings.get("TRACK_WORKERS", SETTINGS.get("TRACK_WORKERS", 12))
+                if track_workers > 1 and len(unmatched_inputs) > 1:
+                    # Parallel re-search
+                    self.logging_service.info(
+                        f"Re-searching {len(unmatched_inputs)} unmatched tracks using parallel "
+                        f"processing with {min(track_workers, len(unmatched_inputs))} workers"
+                    )
+                    with ThreadPoolExecutor(max_workers=min(track_workers, len(unmatched_inputs))) as ex:
+                        future_to_idx = {
+                            ex.submit(
+                                self.process_track,
+                                idx,
+                                track,
+                                enhanced_settings,
+                            ): idx
+                            for idx, track in unmatched_inputs
+                        }
+
+                        for future in as_completed(future_to_idx):
+                            if controller and controller.is_cancelled():
+                                for f in future_to_idx.keys():
+                                    f.cancel()
+                                break
+
+                            try:
+                                new_result = future.result()
+                                idx = future_to_idx[future]
+                                # Update the result if we found a match
+                                if new_result.matched:
+                                    # Replace the unmatched result with the new matched result
+                                    results[idx - 1] = new_result
+                                    with progress_lock:
+                                        matched_count += 1
+                                        unmatched_count -= 1
+
+                                    # Update progress callback
+                                    if progress_callback:
+                                        elapsed_time = time.perf_counter() - processing_start_time
+                                        progress_info = ProgressInfo(
+                                            completed_tracks=len(results),
+                                            total_tracks=total,
+                                            matched_count=matched_count,
+                                            unmatched_count=unmatched_count,
+                                            current_track={
+                                                "title": new_result.title,
+                                                "artists": new_result.artist,
+                                            },
+                                            elapsed_time=elapsed_time,
+                                        )
+                                        try:
+                                            progress_callback(progress_info)
+                                        except Exception:
+                                            # Don't let callback errors break processing
+                                            pass
+                            except Exception as e:
+                                idx = future_to_idx[future]
+                                self.logging_service.warning(
+                                    f"Error in auto-research for track {idx}: {e}"
                                 )
-                                try:
-                                    progress_callback(progress_info)
-                                except Exception:
-                                    pass
+                else:
+                    # Sequential re-search
+                    for result in unmatched_results:
+                        if controller and controller.is_cancelled():
+                            break
+
+                        idx = result.playlist_index
+                        # Find the original track
+                        track: Optional[Track] = tracks[idx - 1] if idx <= len(tracks) else None
+                        if track:
+                            new_result = self.process_track(idx, track, enhanced_settings)
+                            # Update the result if we found a match
+                            if new_result.matched:
+                                # Replace the unmatched result with the new matched result
+                                results[idx - 1] = new_result
+                                matched_count += 1
+                                unmatched_count -= 1
+
+                                # Update progress callback
+                                if progress_callback:
+                                    elapsed_time = time.perf_counter() - processing_start_time
+                                    progress_info = ProgressInfo(
+                                        completed_tracks=len(results),
+                                        total_tracks=total,
+                                        matched_count=matched_count,
+                                        unmatched_count=unmatched_count,
+                                        current_track={
+                                            "title": track.title,
+                                            "artists": track.artist or "",
+                                        },
+                                        elapsed_time=elapsed_time,
+                                    )
+                                    try:
+                                        progress_callback(progress_info)
+                                    except Exception:
+                                        # Don't let callback errors break processing
+                                        pass
 
         return results

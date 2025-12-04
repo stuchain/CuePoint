@@ -261,44 +261,58 @@ class GUIController(QObject):
         """Cancel current processing operation.
 
         Requests cancellation of the current worker thread and waits for it
-        to finish (with a 5-second timeout). Forces termination if the thread
-        doesn't respond within the timeout. Includes comprehensive error handling
-        to prevent crashes.
+        to finish gracefully. The worker thread will check for cancellation
+        and exit cleanly, allowing all parallel tasks to complete or cancel.
         """
         try:
             if hasattr(self, 'current_worker') and self.current_worker:
                 if hasattr(self.current_worker, 'isRunning') and self.current_worker.isRunning():
-            # Request cancellation
+                    # Request cancellation (sets flag in ProcessingController)
                     if hasattr(self.current_worker, 'cancel'):
                         try:
-            self.current_worker.cancel()
+                            self.current_worker.cancel()
                         except Exception as e:
                             print(f"Error calling worker.cancel(): {e}")
                             import traceback
                             traceback.print_exc()
 
-            # Wait for thread to finish (with timeout)
+                    # Wait for thread to finish gracefully (with longer timeout for parallel tasks)
+                    # Parallel processing may take longer to cancel all tasks
                     if hasattr(self.current_worker, 'wait'):
                         try:
-            if not self.current_worker.wait(5000):  # 5 second timeout
-                                # Don't force terminate - it can cause crashes
-                                # Instead, just log and continue - the thread will finish eventually
+                            # Wait up to 10 seconds for graceful shutdown
+                            # This gives time for parallel ThreadPoolExecutor tasks to finish
+                            if not self.current_worker.wait(10000):  # 10 second timeout
+                                # Thread is still running after timeout
+                                # Don't force terminate - let it finish naturally
+                                # The worker will check cancellation and exit when ready
                                 print("Warning: Worker thread did not finish within timeout, but continuing...")
-                                # Mark as cancelled but don't force terminate
-                                # The worker should check cancellation flag and exit gracefully
+                                print("Thread will finish gracefully when all tasks complete.")
                         except Exception as e:
                             print(f"Error waiting for worker thread: {e}")
                             import traceback
                             traceback.print_exc()
 
-                    # Clean up worker
-                    try:
-                        if hasattr(self.current_worker, 'deleteLater'):
-                            self.current_worker.deleteLater()
-                    except Exception as e:
-                        print(f"Error deleting worker: {e}")
-
-            self.current_worker = None
+                    # Only clean up worker reference, don't delete the thread object yet
+                    # The thread will finish and Qt will clean it up automatically
+                    # We just need to clear our reference so we don't try to use it
+                    worker = self.current_worker
+                    self.current_worker = None
+                    
+                    # Schedule worker for deletion after it finishes (if it's still running)
+                    # This is safe because deleteLater() only schedules deletion, doesn't force it
+                    if hasattr(worker, 'isRunning') and worker.isRunning():
+                        # Use deleteLater() to schedule cleanup when thread finishes
+                        # This prevents the "Destroyed while thread is still running" warning
+                        try:
+                            worker.deleteLater()
+                        except Exception as e:
+                            print(f"Error scheduling worker deletion: {e}")
+                else:
+                    # Thread is not running, safe to clean up immediately
+                    self.current_worker = None
+            else:
+                self.current_worker = None
                 
         except Exception as e:
             import traceback
