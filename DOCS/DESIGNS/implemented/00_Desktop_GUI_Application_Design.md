@@ -6,7 +6,7 @@
 **Effort**: 3-4 weeks  
 **Impact**: Very High - Makes application accessible to all users
 
----
+----
 
 ## 1. Overview
 
