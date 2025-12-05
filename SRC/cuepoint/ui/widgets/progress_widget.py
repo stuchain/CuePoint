@@ -7,13 +7,14 @@ Progress Widget Module - Progress display widget
 This module contains the ProgressWidget class for displaying processing progress.
 """
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Signal, Qt
 from PySide6.QtWidgets import (
-    QGroupBox,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QProgressBar,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -24,7 +25,6 @@ from cuepoint.ui.gui_interface import ProgressInfo
 class ProgressWidget(QWidget):
     """GUI progress widget for processing display"""
 
-    # Signal emitted when cancel button is clicked
     cancel_requested = Signal()
 
     def __init__(self, parent=None):
@@ -33,246 +33,181 @@ class ProgressWidget(QWidget):
 
     def init_ui(self):
         """Initialize UI components"""
-        layout = QVBoxLayout(self)
-        layout.setSpacing(15)
-        layout.setContentsMargins(15, 15, 15, 15)
+        # Main layout
+        main_layout = QVBoxLayout(self)
+        main_layout.setSpacing(8)
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Overall progress bar - improved styling
+        # Row 1: Progress bar + percentage
+        row1 = QHBoxLayout()
+        row1.setSpacing(10)
+        
         self.overall_progress = QProgressBar()
         self.overall_progress.setMinimum(0)
         self.overall_progress.setMaximum(100)
         self.overall_progress.setValue(0)
         self.overall_progress.setFormat("%p% (%v/%m tracks)")
-        
-        # Percentage label (separate for better visibility)
-        progress_container = QWidget()
-        progress_layout = QHBoxLayout(progress_container)
-        progress_layout.setContentsMargins(0, 0, 0, 0)
-        progress_layout.setSpacing(10)
-        
-        self.overall_progress.setStyleSheet(
-            """
+        self.overall_progress.setFixedHeight(22)
+        self.overall_progress.setStyleSheet("""
             QProgressBar {
-                border: 2px solid #ccc;
-                border-radius: 5px;
+                border: 1px solid #555;
+                border-radius: 4px;
                 text-align: center;
                 font-weight: bold;
-                height: 25px;
+                font-size: 11px;
+                background-color: #333;
+                color: #fff;
             }
             QProgressBar::chunk {
-                background-color: #4A90E2;
+                background-color: #007AFF;
                 border-radius: 3px;
             }
-            """
-        )
-        progress_layout.addWidget(self.overall_progress)
+        """)
+        row1.addWidget(self.overall_progress, 1)
         
-        # Percentage label next to progress bar
         self.percentage_label = QLabel("0%")
-        self.percentage_label.setStyleSheet(
-            "font-size: 16px; font-weight: bold; color: #ffffff; min-width: 50px;"
-        )
-        progress_layout.addWidget(self.percentage_label)
+        self.percentage_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #fff;")
+        self.percentage_label.setFixedWidth(50)
+        self.percentage_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        row1.addWidget(self.percentage_label)
         
-        layout.addWidget(progress_container)
+        main_layout.addLayout(row1)
 
-        # Current track info - improved styling
+        # Row 2: Current track info
         self.current_track_label = QLabel("Ready to start...")
+        self.current_track_label.setStyleSheet("font-size: 12px; color: #ccc;")
         self.current_track_label.setWordWrap(True)
-        self.current_track_label.setStyleSheet(
-            "font-size: 14px; "
-            "color: #ffffff; "
-            "padding: 5px;"
-        )
-        layout.addWidget(self.current_track_label)
+        self.current_track_label.setFixedHeight(20)
+        main_layout.addWidget(self.current_track_label)
 
-        # Time information - improved layout
-        time_container = QWidget()
-        time_layout = QHBoxLayout(time_container)
-        time_layout.setContentsMargins(0, 0, 0, 0)
-        time_layout.setSpacing(20)
+        # Row 3: Time + Stats
+        row3 = QHBoxLayout()
+        row3.setSpacing(20)
+        
+        self.elapsed_label = QLabel("Elapsed: 0s")
+        self.elapsed_label.setStyleSheet("font-size: 11px; color: #aaa;")
+        row3.addWidget(self.elapsed_label)
+        
+        self.remaining_label = QLabel("Remaining: --")
+        self.remaining_label.setStyleSheet("font-size: 11px; color: #aaa;")
+        row3.addWidget(self.remaining_label)
+        
+        row3.addStretch()
+        
+        self.matched_label = QLabel("✓ 0")
+        self.matched_label.setStyleSheet("font-size: 11px; color: #4CAF50; font-weight: bold;")
+        self.matched_label.setToolTip("Matched tracks")
+        row3.addWidget(self.matched_label)
+        
+        self.unmatched_label = QLabel("✗ 0")
+        self.unmatched_label.setStyleSheet("font-size: 11px; color: #F44336; font-weight: bold;")
+        self.unmatched_label.setToolTip("Unmatched tracks")
+        row3.addWidget(self.unmatched_label)
+        
+        self.processing_label = QLabel("⟳ 0")
+        self.processing_label.setStyleSheet("font-size: 11px; color: #2196F3; font-weight: bold;")
+        self.processing_label.setToolTip("Processing")
+        row3.addWidget(self.processing_label)
+        
+        main_layout.addLayout(row3)
 
-        # Elapsed time
-        elapsed_container = QWidget()
-        elapsed_layout = QVBoxLayout(elapsed_container)
-        elapsed_layout.setContentsMargins(0, 0, 0, 0)
-        elapsed_layout.setSpacing(2)
-        elapsed_title = QLabel("Elapsed Time")
-        elapsed_title.setStyleSheet("font-size: 11px; color: #ffffff;")
-        self.elapsed_label = QLabel("0s")
-        self.elapsed_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #ffffff;")
-        elapsed_layout.addWidget(elapsed_title)
-        elapsed_layout.addWidget(self.elapsed_label)
-        time_layout.addWidget(elapsed_container)
-
-        # Remaining time
-        remaining_container = QWidget()
-        remaining_layout = QVBoxLayout(remaining_container)
-        remaining_layout.setContentsMargins(0, 0, 0, 0)
-        remaining_layout.setSpacing(2)
-        remaining_title = QLabel("Estimated Remaining")
-        remaining_title.setStyleSheet("font-size: 11px; color: #ffffff;")
-        self.remaining_label = QLabel("--")
-        self.remaining_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #ffffff;")
-        remaining_layout.addWidget(remaining_title)
-        remaining_layout.addWidget(self.remaining_label)
-        time_layout.addWidget(remaining_container)
-
-        time_layout.addStretch()
-        layout.addWidget(time_container)
-
-        # Statistics group - improved layout
-        stats_group = QGroupBox("Statistics")
-        stats_group.setStyleSheet("QGroupBox { font-weight: bold; color: #ffffff; }")
-        stats_layout = QHBoxLayout()
-        stats_layout.setSpacing(15)
-
-        self.matched_label = QLabel("Matched: 0")
-        self.matched_label.setStyleSheet("color: #4CAF50; font-weight: bold; font-size: 13px;")
-        self.unmatched_label = QLabel("Unmatched: 0")
-        self.unmatched_label.setStyleSheet("color: #F44336; font-weight: bold; font-size: 13px;")
-        self.processing_label = QLabel("Processing: 0")
-        self.processing_label.setStyleSheet("color: #2196F3; font-weight: bold; font-size: 13px;")
-
-        stats_layout.addWidget(self.matched_label)
-        stats_layout.addWidget(self.unmatched_label)
-        stats_layout.addWidget(self.processing_label)
-        stats_layout.addStretch()
-
-        stats_group.setLayout(stats_layout)
-        layout.addWidget(stats_group)
-
-        # Cancel button - improved styling and positioning
-        button_layout = QHBoxLayout()
-        button_layout.addStretch()
-        self.cancel_button = QPushButton("Cancel Processing")
-        self.cancel_button.setMinimumWidth(150)
-        self.cancel_button.setToolTip("Cancel processing (Shortcut: Esc)")
-        self.cancel_button.setStyleSheet(
-            """
+        # Row 4: Cancel button
+        row4 = QHBoxLayout()
+        row4.addStretch()
+        
+        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.setFixedSize(100, 28)
+        self.cancel_button.setStyleSheet("""
             QPushButton {
                 background-color: #F44336;
                 color: white;
                 border: none;
-                border-radius: 5px;
-                padding: 8px 20px;
+                border-radius: 4px;
                 font-weight: bold;
+                font-size: 11px;
             }
-            QPushButton:hover {
-                background-color: #D32F2F;
-            }
-            QPushButton:pressed {
-                background-color: #B71C1C;
-            }
-            QPushButton:disabled {
-                background-color: #ccc;
-                color: #666;
-            }
-            """
-        )
+            QPushButton:hover { background-color: #D32F2F; }
+            QPushButton:pressed { background-color: #B71C1C; }
+            QPushButton:disabled { background-color: #555; color: #888; }
+        """)
         self.cancel_button.clicked.connect(self._on_cancel_clicked)
-        button_layout.addWidget(self.cancel_button)
-        button_layout.addStretch()
-        layout.addLayout(button_layout)
+        row4.addWidget(self.cancel_button)
+        
+        row4.addStretch()
+        main_layout.addLayout(row4)
 
     def update_progress(self, progress_info: ProgressInfo):
         """Update progress from backend ProgressInfo object"""
-        # Update overall progress bar
         if progress_info.total_tracks > 0:
-            # Set maximum to total tracks for proper display
             self.overall_progress.setMaximum(progress_info.total_tracks)
-            # Set value to completed tracks
             self.overall_progress.setValue(progress_info.completed_tracks)
-            
-            # Update percentage label
             percentage = (progress_info.completed_tracks / progress_info.total_tracks) * 100
             self.percentage_label.setText(f"{percentage:.0f}%")
 
-        # Update current track
+        # Current track
         if progress_info.current_track:
             title = progress_info.current_track.get("title", "Unknown")
             artists = progress_info.current_track.get("artists", "Unknown")
-            track_text = f"Track {
-                progress_info.completed_tracks}/{
-                progress_info.total_tracks}: {title} - {artists}"
-            self.current_track_label.setText(track_text)
+            self.current_track_label.setText(f"{progress_info.completed_tracks}/{progress_info.total_tracks}: {title} - {artists}")
         else:
-            self.current_track_label.setText(
-                f"Processing track {progress_info.completed_tracks}/{progress_info.total_tracks}..."
-            )
+            self.current_track_label.setText(f"Processing track {progress_info.completed_tracks}/{progress_info.total_tracks}...")
 
-        # Update statistics
-        self.matched_label.setText(f"Matched: {progress_info.matched_count}")
-        self.unmatched_label.setText(f"Unmatched: {progress_info.unmatched_count}")
-        processing_count = progress_info.completed_tracks
-        self.processing_label.setText(f"Processing: {processing_count}")
+        # Stats
+        self.matched_label.setText(f"✓ {progress_info.matched_count}")
+        self.unmatched_label.setText(f"✗ {progress_info.unmatched_count}")
+        self.processing_label.setText(f"⟳ {progress_info.completed_tracks}")
 
-        # Update time estimates (labels are now separate from values)
+        # Time
         if progress_info.elapsed_time > 0:
-            elapsed_str = self._format_time(progress_info.elapsed_time)
-            self.elapsed_label.setText(elapsed_str)
-
-            # Calculate time remaining estimate
-            if progress_info.total_tracks > 0 and progress_info.completed_tracks > 0:
-                avg_time_per_track = progress_info.elapsed_time / progress_info.completed_tracks
-                remaining_tracks = progress_info.total_tracks - progress_info.completed_tracks
-                estimated_remaining = avg_time_per_track * remaining_tracks
-                remaining_str = self._format_time(estimated_remaining)
-                self.remaining_label.setText(remaining_str)
+            self.elapsed_label.setText(f"Elapsed: {self._format_time(progress_info.elapsed_time)}")
+            if progress_info.completed_tracks > 0:
+                avg = progress_info.elapsed_time / progress_info.completed_tracks
+                remaining = avg * (progress_info.total_tracks - progress_info.completed_tracks)
+                self.remaining_label.setText(f"Remaining: {self._format_time(remaining)}")
             else:
-                self.remaining_label.setText("--")
+                self.remaining_label.setText("Remaining: --")
         else:
-            self.elapsed_label.setText("0s")
-            self.remaining_label.setText("--")
+            self.elapsed_label.setText("Elapsed: 0s")
+            self.remaining_label.setText("Remaining: --")
 
     def _format_time(self, seconds: float) -> str:
         """Format time in human-readable format"""
         if seconds < 0:
             return "--"
-        
         if seconds < 60:
             return f"{int(seconds)}s"
         elif seconds < 3600:
-            minutes = int(seconds // 60)
-            secs = int(seconds % 60)
-            if secs == 0:
-                return f"{minutes}m"
-            return f"{minutes}m {secs}s"
+            m, s = divmod(int(seconds), 60)
+            return f"{m}m {s}s" if s else f"{m}m"
         else:
-            hours = int(seconds // 3600)
-            minutes = int((seconds % 3600) // 60)
-            if minutes == 0:
-                return f"{hours}h"
-            return f"{hours}h {minutes}m"
+            h, rem = divmod(int(seconds), 3600)
+            m = rem // 60
+            return f"{h}h {m}m" if m else f"{h}h"
 
     def reset(self):
         """Reset progress widget to initial state"""
         self.overall_progress.setValue(0)
         self.overall_progress.setMaximum(100)
         self.current_track_label.setText("Ready to start...")
-        self.matched_label.setText("Matched: 0")
-        self.unmatched_label.setText("Unmatched: 0")
-        self.processing_label.setText("Processing: 0")
-        self.elapsed_label.setText("0s")
-        self.remaining_label.setText("--")
-        # Reset cancel button
+        self.matched_label.setText("✓ 0")
+        self.unmatched_label.setText("✗ 0")
+        self.processing_label.setText("⟳ 0")
+        self.elapsed_label.setText("Elapsed: 0s")
+        self.remaining_label.setText("Remaining: --")
         self.cancel_button.setEnabled(True)
-        self.cancel_button.setText("Cancel Processing")
+        self.cancel_button.setText("Cancel")
 
     def set_enabled(self, enabled: bool):
         """Enable or disable the cancel button"""
         self.cancel_button.setEnabled(enabled)
 
     def _on_cancel_clicked(self):
-        """Handle cancel button click with error handling"""
+        """Handle cancel button click"""
         try:
-            # Emit cancel signal
             self.cancel_requested.emit()
-            # Disable button to prevent multiple clicks
             self.cancel_button.setEnabled(False)
             self.cancel_button.setText("Cancelling...")
         except Exception as e:
-            # Log error but don't crash
             import traceback
             print(f"Error in cancel button: {e}")
-            print(traceback.format_exc())
+            traceback.print_exc()

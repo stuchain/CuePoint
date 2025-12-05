@@ -25,17 +25,17 @@ class PlaylistSelector(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        """Initialize UI components"""
+        """Initialize UI components - compact, no label (box title is enough)"""
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
 
-        label = QLabel("Select Playlist:")
         self.combo = QComboBox()
         self.combo.setEnabled(False)
-        self.combo.setPlaceholderText("No XML file loaded")
+        self.combo.setPlaceholderText("Select playlist...")
         self.combo.currentTextChanged.connect(self.on_selection_changed)
+        self.combo.setStyleSheet("font-size: 11px;")
 
-        layout.addWidget(label)
         layout.addWidget(self.combo, 1)
 
     def load_xml_file(self, xml_path: str):

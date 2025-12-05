@@ -52,6 +52,7 @@ from cuepoint.ui.dialogs.export_dialog import ExportDialog
 from cuepoint.models.result import TrackResult
 from cuepoint.ui.widgets.candidate_dialog import CandidateDialog
 from cuepoint.ui.widgets.shortcut_manager import ShortcutContext, ShortcutManager
+from cuepoint.ui.widgets.styles import is_macos
 from cuepoint.utils.utils import with_timestamp
 
 try:
@@ -137,22 +138,23 @@ class ResultsView(QWidget):
         - Export buttons
         """
         layout = QVBoxLayout(self)
-        layout.setSpacing(10)
-        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setSpacing(6)
+        layout.setContentsMargins(4, 4, 4, 4)
 
         # Create vertical splitter for resizable sections
         splitter = QSplitter(Qt.Vertical)
-        splitter.setChildrenCollapsible(False)  # Prevent sections from being collapsed completely
+        splitter.setChildrenCollapsible(False)
 
         # Top section: Summary and filters
         top_widget = QWidget()
         top_layout = QVBoxLayout(top_widget)
-        top_layout.setSpacing(10)
+        top_layout.setSpacing(6)
         top_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Summary statistics group
+        # Summary statistics - inline label (no group box to save space)
         summary_group = QGroupBox("Summary Statistics")
         summary_layout = QVBoxLayout()
+        summary_layout.setContentsMargins(6, 6, 6, 6)
         self.summary_label = QLabel("No results yet")
         self.summary_label.setWordWrap(True)
         summary_layout.addWidget(self.summary_label)
@@ -313,7 +315,7 @@ class ResultsView(QWidget):
         top_layout.addWidget(filters_group)
 
         # Add top section to splitter
-        top_widget.setMaximumHeight(400)  # Set max height for top section
+        top_widget.setMaximumHeight(250 if is_macos() else 400)
         splitter.addWidget(top_widget)
 
         # Bottom section: Results table (single playlist mode)

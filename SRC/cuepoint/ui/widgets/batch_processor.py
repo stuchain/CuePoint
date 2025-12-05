@@ -475,8 +475,7 @@ class BatchProcessorWidget(QWidget):
         QMessageBox.warning(
             self,
             f"Error Processing {playlist_name}",
-            f"An error occurred while processing '{playlist_name}':\n\n{
-                error.message}\n\nContinuing with next playlist...",
+            f"An error occurred while processing '{playlist_name}':\n\n{error.message}\n\nContinuing with next playlist...",
         )
 
         # Mark as completed (with no results)

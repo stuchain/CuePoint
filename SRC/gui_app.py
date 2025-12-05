@@ -21,6 +21,7 @@ if __name__ == "__main__":
 
 from cuepoint.services.bootstrap import bootstrap_services
 from cuepoint.ui.main_window import MainWindow
+from cuepoint.ui.widgets.styles import get_stylesheet
 
 
 def main():
@@ -34,6 +35,9 @@ def main():
         app.setApplicationName("CuePoint")
         app.setOrganizationName("CuePoint")
         app.setApplicationVersion("1.0.0")
+        
+        # Apply platform-specific styling
+        app.setStyleSheet(get_stylesheet())
         
         # Create and show main window
         window = MainWindow()

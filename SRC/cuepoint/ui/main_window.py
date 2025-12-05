@@ -26,6 +26,7 @@ from PySide6.QtCore import QSettings, Qt
 from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent, QKeyEvent, QKeySequence
 from PySide6.QtWidgets import (
     QButtonGroup,
+    QFrame,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -61,9 +62,10 @@ from cuepoint.ui.widgets.file_selector import FileSelector
 from cuepoint.ui.widgets.history_view import HistoryView
 from cuepoint.ui.widgets.performance_view import PerformanceView
 from cuepoint.ui.widgets.playlist_selector import PlaylistSelector
-from cuepoint.ui.widgets.progress_widget import ProgressWidget
+# ProgressWidget no longer used - progress is inline in MainWindow
 from cuepoint.ui.widgets.results_view import ResultsView
 from cuepoint.ui.widgets.shortcut_manager import ShortcutContext, ShortcutManager
+from cuepoint.ui.widgets.styles import Layout
 from cuepoint.ui.widgets.tool_selection_page import ToolSelectionPage
 
 
@@ -128,10 +130,10 @@ class MainWindow(QMainWindow):
         - Status bar
         - Drag and drop support
         """
-        # Window properties
+        # Window properties - use platform-specific sizes
         self.setWindowTitle("CuePoint - Beatport Metadata Enricher")
-        self.setMinimumSize(800, 600)
-        self.setGeometry(100, 100, 1000, 700)
+        self.setMinimumSize(Layout.WINDOW_MIN_WIDTH, Layout.WINDOW_MIN_HEIGHT)
+        self.setGeometry(100, 100, Layout.DEFAULT_WIDTH, Layout.DEFAULT_HEIGHT)
 
         # Create menu bar
         self.create_menu_bar()
@@ -146,169 +148,216 @@ class MainWindow(QMainWindow):
         # Initially show tool selection page
         self.show_tool_selection_page()
 
-        # Main tab - use splitter for resizable sections
+        # Main tab - FULL WIDTH, EQUAL SIZE boxes at TOP
         main_tab = QWidget()
         main_layout = QVBoxLayout(main_tab)
         main_layout.setSpacing(8)
-        main_layout.setContentsMargins(8, 8, 8, 8)
+        main_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Create vertical splitter for resizable sections
-        main_splitter = QSplitter(Qt.Vertical)
-        main_splitter.setChildrenCollapsible(
-            False
-        )  # Prevent sections from being collapsed completely
+        from cuepoint.ui.widgets.styles import is_macos
 
-        # Top section: Input controls (file selection, mode, playlist, buttons, progress)
-        top_section_widget = QWidget()
-        top_section_layout = QVBoxLayout(top_section_widget)
-        top_section_layout.setSpacing(8)
-        top_section_layout.setContentsMargins(0, 0, 0, 0)
+        box_style = """
+            QGroupBox {
+                font-weight: bold;
+                font-size: 11px;
+                color: #aaa;
+                border: 1px solid #555;
+                border-radius: 6px;
+                margin: 0px;
+                padding: 22px 10px 10px 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: padding;
+                subcontrol-position: top left;
+                left: 8px;
+                top: 4px;
+                padding: 0 4px;
+            }
+        """
 
-        # File selection section
-        file_group = QGroupBox("File Selection")
-        file_group.setStyleSheet("QGroupBox { font-weight: bold; color: #ffffff; }")
-        file_layout = QVBoxLayout()
+        # === ROW 1: Three equal boxes filling full width ===
+        row1 = QHBoxLayout()
+        row1.setSpacing(10)
+
+        # BOX 1: Collection
+        self.file_box = QGroupBox("Collection")
+        self.file_box.setStyleSheet(box_style)
+        self.file_box.setFixedHeight(75)
+        file_layout = QHBoxLayout(self.file_box)
+        file_layout.setContentsMargins(0, 0, 0, 0)
         self.file_selector = FileSelector()
         self.file_selector.file_selected.connect(self.on_file_selected)
         file_layout.addWidget(self.file_selector)
-        file_group.setLayout(file_layout)
-        top_section_layout.addWidget(file_group)
+        row1.addWidget(self.file_box, 1)  # Equal stretch
 
-        # Processing mode selection - HIDDEN INITIALLY (progressive disclosure)
-        mode_group = QGroupBox("Processing Mode")
-        mode_group.setStyleSheet("QGroupBox { font-weight: bold; color: #ffffff; }")
-        mode_layout = QHBoxLayout()
+        # BOX 2: Mode
+        self.mode_box = QGroupBox("Mode")
+        self.mode_box.setStyleSheet(box_style)
+        self.mode_box.setFixedHeight(75)
+        mode_layout = QHBoxLayout(self.mode_box)
+        mode_layout.setContentsMargins(0, 0, 0, 0)
+        mode_layout.setSpacing(15)
         self.mode_button_group = QButtonGroup()
-
-        self.single_mode_radio = QRadioButton("Single Playlist")
-        # No default selection - user must choose
-        self.single_mode_radio.setStyleSheet("QRadioButton { color: #ffffff; }")
+        self.single_mode_radio = QRadioButton("Single")
+        self.single_mode_radio.setStyleSheet("color: #fff; font-size: 12px;")
         self.single_mode_radio.toggled.connect(self.on_mode_changed)
-        self.single_mode_radio.setToolTip("Process a single playlist at a time")
-        self.single_mode_radio.setAccessibleName("Single playlist mode radio button")
-        self.single_mode_radio.setAccessibleDescription("Select to process one playlist at a time")
-        self.single_mode_radio.setFocusPolicy(Qt.StrongFocus)
         self.mode_button_group.addButton(self.single_mode_radio, 0)
         mode_layout.addWidget(self.single_mode_radio)
-
-        self.batch_mode_radio = QRadioButton("Multiple Playlists")
-        self.batch_mode_radio.setStyleSheet("QRadioButton { color: #ffffff; }")
+        self.batch_mode_radio = QRadioButton("Batch")
+        self.batch_mode_radio.setStyleSheet("color: #fff; font-size: 12px;")
         self.batch_mode_radio.toggled.connect(self.on_mode_changed)
-        self.batch_mode_radio.setToolTip("Process multiple playlists in batch")
-        self.batch_mode_radio.setAccessibleName("Multiple playlists mode radio button")
-        self.batch_mode_radio.setAccessibleDescription(
-            "Select to process multiple playlists in batch"
-        )
-        self.batch_mode_radio.setFocusPolicy(Qt.StrongFocus)
         self.mode_button_group.addButton(self.batch_mode_radio, 1)
         mode_layout.addWidget(self.batch_mode_radio)
-
         mode_layout.addStretch()
-        mode_group.setLayout(mode_layout)
-        mode_group.setVisible(False)  # HIDDEN INITIALLY
-        self.mode_group = mode_group  # Store reference for progressive disclosure
-        top_section_layout.addWidget(mode_group)
+        self.mode_box.setVisible(False)
+        self.mode_group = self.mode_box
+        row1.addWidget(self.mode_box, 1)  # Equal stretch
 
-        # Single playlist selection section - HIDDEN INITIALLY (progressive disclosure)
-        self.single_playlist_group = QGroupBox("Playlist Selection")
-        self.single_playlist_group.setStyleSheet("QGroupBox { font-weight: bold; color: #ffffff; }")
-        single_playlist_layout = QVBoxLayout()
+        # BOX 3: Playlist
+        self.playlist_box = QGroupBox("Playlist")
+        self.playlist_box.setStyleSheet(box_style)
+        self.playlist_box.setFixedHeight(75)
+        playlist_layout = QHBoxLayout(self.playlist_box)
+        playlist_layout.setContentsMargins(0, 0, 0, 0)
         self.playlist_selector = PlaylistSelector()
         self.playlist_selector.playlist_selected.connect(self.on_playlist_selected)
-        single_playlist_layout.addWidget(self.playlist_selector)
-        self.single_playlist_group.setLayout(single_playlist_layout)
-        self.single_playlist_group.setVisible(False)  # HIDDEN INITIALLY
-        top_section_layout.addWidget(self.single_playlist_group)
+        playlist_layout.addWidget(self.playlist_selector)
+        self.playlist_box.setVisible(False)
+        self.single_playlist_group = self.playlist_box
+        row1.addWidget(self.playlist_box, 1)  # Equal stretch
 
-        # Batch processor widget (shown in batch mode)
+        main_layout.addLayout(row1)
+
+        # === Batch processor (shown only in batch mode) ===
         self.batch_processor = BatchProcessorWidget()
-        self.batch_processor.setVisible(False)  # Hidden by default
-        top_section_layout.addWidget(self.batch_processor)
+        self.batch_processor.setVisible(False)
+        main_layout.addWidget(self.batch_processor)
 
-        # Start Processing button container - HIDDEN INITIALLY (progressive disclosure)
+        # === ROW 3: Start button ===
         self.start_button_container = QWidget()
-        self.start_button_layout = QHBoxLayout(self.start_button_container)
-        self.start_button_layout.addStretch()
-        self.start_button = QPushButton("Start Processing")
-        self.start_button.setMinimumHeight(32)
-        self.start_button.setToolTip("Start processing the selected playlist (Shortcut: Enter or F5)")
-        self.start_button.setStyleSheet(
-            """
+        start_layout = QHBoxLayout(self.start_button_container)
+        start_layout.setContentsMargins(0, 8, 0, 8)
+        start_layout.addStretch()
+        self.start_button = QPushButton("▶ Start Processing")
+        self.start_button.setFixedSize(180, 36)
+        self.start_button.setStyleSheet("""
             QPushButton {
-                background-color: #0078d4;
-                color: #ffffff;
+                background-color: #007AFF;
+                color: white;
                 font-weight: bold;
+                font-size: 13px;
                 border: none;
-                padding: 8px 16px;
-                border-radius: 4px;
+                border-radius: 6px;
             }
-            QPushButton:hover {
-                background-color: #106ebe;
-            }
-            QPushButton:disabled {
-                background-color: #cccccc;
-                color: #666666;
-            }
-            """
-        )
+            QPushButton:hover { background-color: #0056b3; }
+            QPushButton:disabled { background-color: #555; color: #888; }
+        """)
         self.start_button.clicked.connect(self.start_processing)
-        self.start_button.setToolTip("Start processing the selected playlist (F5)")
-        self.start_button.setAccessibleName("Start processing button")
-        self.start_button.setAccessibleDescription(
-            "Click to start processing the selected playlist. Keyboard shortcut: F5"
-        )
-        self.start_button.setFocusPolicy(Qt.StrongFocus)
-        self.start_button.setEnabled(False)  # DISABLED INITIALLY
-        self.start_button_layout.addWidget(self.start_button)
-        self.start_button_layout.addStretch()
-        self.start_button_container.setVisible(False)  # HIDDEN INITIALLY
-        top_section_layout.addWidget(self.start_button_container)
+        self.start_button.setEnabled(False)
+        start_layout.addWidget(self.start_button)
+        start_layout.addStretch()
+        self.start_button_container.setVisible(False)
+        main_layout.addWidget(self.start_button_container)
+        
+        # Backward compat
+        self.start_row = self.start_button
+        self.controls_row = None
+        self._mode_label = None
+        self._sep1 = None
+        self._sep2 = None
 
-        # Progress section - ProgressWidget (Step 1.5)
-        # Initially hidden until processing starts
-        self.progress_group = QGroupBox("Progress")
-        self.progress_group.setStyleSheet("QGroupBox { font-weight: bold; color: #ffffff; }")
-        progress_layout = QVBoxLayout()
-        self.progress_widget = ProgressWidget()
-        self.progress_widget.cancel_requested.connect(self.on_cancel_requested)
-        progress_layout.addWidget(self.progress_widget)
-        self.progress_group.setLayout(progress_layout)
-        self.progress_group.setVisible(False)  # Hidden until processing starts
-        top_section_layout.addWidget(self.progress_group)
+        # === ROW 4: Progress section ===
+        self.progress_container = QWidget()
+        self.progress_container.setStyleSheet("background-color: #2a2a2a; border-radius: 8px; padding: 5px;")
+        progress_main = QVBoxLayout(self.progress_container)
+        progress_main.setContentsMargins(15, 12, 15, 12)
+        progress_main.setSpacing(10)
 
-        # Add stretch to push everything to top
-        top_section_layout.addStretch()
+        # Progress bar row
+        prog_row1 = QHBoxLayout()
+        prog_row1.setSpacing(12)
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setFixedHeight(22)
+        self.progress_bar.setFormat("%p% (%v/%m tracks)")
+        self.progress_bar.setStyleSheet("""
+            QProgressBar {
+                border: 1px solid #555;
+                border-radius: 5px;
+                text-align: center;
+                font-size: 11px;
+                font-weight: bold;
+                background: #333;
+                color: #fff;
+            }
+            QProgressBar::chunk { background: #007AFF; border-radius: 4px; }
+        """)
+        prog_row1.addWidget(self.progress_bar, 1)
+        self.progress_pct = QLabel("0%")
+        self.progress_pct.setStyleSheet("font-size: 16px; font-weight: bold; color: #fff; min-width: 50px;")
+        self.progress_pct.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        prog_row1.addWidget(self.progress_pct)
+        progress_main.addLayout(prog_row1)
 
-        # Set maximum height for top section
-        top_section_widget.setMaximumHeight(600)
-        main_splitter.addWidget(top_section_widget)
+        # Track info
+        self.progress_track = QLabel("Ready to start...")
+        self.progress_track.setStyleSheet("font-size: 12px; color: #ccc;")
+        self.progress_track.setWordWrap(True)
+        progress_main.addWidget(self.progress_track)
 
-        # Bottom section: Results
-        bottom_section_widget = QWidget()
-        bottom_section_layout = QVBoxLayout(bottom_section_widget)
-        bottom_section_layout.setContentsMargins(0, 0, 0, 0)
+        # Stats + Cancel row
+        prog_row2 = QHBoxLayout()
+        prog_row2.setSpacing(20)
+        self.progress_elapsed = QLabel("Elapsed: 0s")
+        self.progress_elapsed.setStyleSheet("font-size: 12px; color: #aaa;")
+        prog_row2.addWidget(self.progress_elapsed)
+        self.progress_remaining = QLabel("Remaining: --")
+        self.progress_remaining.setStyleSheet("font-size: 12px; color: #aaa;")
+        prog_row2.addWidget(self.progress_remaining)
+        prog_row2.addStretch()
+        self.progress_matched = QLabel("✓ Matched: 0")
+        self.progress_matched.setStyleSheet("font-size: 12px; color: #4CAF50; font-weight: bold;")
+        prog_row2.addWidget(self.progress_matched)
+        self.progress_unmatched = QLabel("✗ Unmatched: 0")
+        self.progress_unmatched.setStyleSheet("font-size: 12px; color: #F44336; font-weight: bold;")
+        prog_row2.addWidget(self.progress_unmatched)
+        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.setFixedSize(90, 28)
+        self.cancel_button.setStyleSheet("""
+            QPushButton {
+                background-color: #F44336;
+                color: white;
+                font-weight: bold;
+                font-size: 12px;
+                border: none;
+                border-radius: 5px;
+            }
+            QPushButton:hover { background-color: #D32F2F; }
+            QPushButton:disabled { background-color: #555; color: #888; }
+        """)
+        self.cancel_button.clicked.connect(self.on_cancel_requested)
+        prog_row2.addWidget(self.cancel_button)
+        progress_main.addLayout(prog_row2)
 
-        # Results section - ResultsView widget (Step 1.7)
-        # Initially hidden until processing completes
-        self.results_group = QGroupBox("Results")
-        self.results_group.setStyleSheet("QGroupBox { font-weight: bold; color: #ffffff; }")
-        results_layout = QVBoxLayout()
+        self.progress_container.setVisible(False)
+        self.progress_group = self.progress_container
+        self.progress_widget = None
+        main_layout.addWidget(self.progress_container)
+
+        # === ROW 5: Results (takes remaining space) ===
+        self.results_group = QWidget()
+        self.results_group.setStyleSheet("background-color: #2a2a2a; border-radius: 8px;")
+        results_layout = QVBoxLayout(self.results_group)
+        results_layout.setContentsMargins(10, 10, 10, 10)
         self.results_view = ResultsView(
             results_controller=self.results_controller,
             export_controller=self.export_controller,
         )
         results_layout.addWidget(self.results_view)
-        self.results_group.setLayout(results_layout)
-        self.results_group.setVisible(False)  # Hidden until processing completes
-        bottom_section_layout.addWidget(self.results_group)
-
-        main_splitter.addWidget(bottom_section_widget)
-
-        # Set initial splitter sizes (40% top, 60% bottom)
-        main_splitter.setSizes([400, 600])
-
-        # Add splitter to main layout
-        main_layout.addWidget(main_splitter, 1)  # Give splitter stretch priority
+        self.results_group.setVisible(False)
+        main_layout.addWidget(self.results_group, 1)  # Takes remaining space
+        
+        # Add stretch at end to push everything to top when results hidden
+        main_layout.addStretch()
 
         # Create config panel (but don't add to tabs - it will be in Settings dialog)
         # Keep it accessible for getting settings during processing
@@ -317,7 +366,7 @@ class MainWindow(QMainWindow):
         # History tab (Past Searches)
         history_tab = QWidget()
         history_layout = QVBoxLayout(history_tab)
-        history_layout.setContentsMargins(8, 8, 8, 8)
+        history_layout.setContentsMargins(Layout.MARGIN, Layout.MARGIN, Layout.MARGIN, Layout.MARGIN)
         self.history_view = HistoryView(export_controller=self.export_controller)
         self.history_view.rerun_requested.connect(self.on_rerun_requested)
         history_layout.addWidget(self.history_view)
@@ -535,8 +584,7 @@ class MainWindow(QMainWindow):
         if reply == QMessageBox.Yes:
             if hasattr(self, "results_view"):
                 self.results_view.clear()
-            if hasattr(self, "progress_widget"):
-                self.progress_widget.reset()
+            self._reset_progress()
             if hasattr(self, "results_group"):
                 self.results_group.setVisible(False)
             self.statusBar().showMessage("New session started", 2000)
@@ -770,9 +818,8 @@ class MainWindow(QMainWindow):
                 # Update batch processor with playlists
                 self.batch_processor.set_playlists(list(self.playlist_selector.playlists.keys()))
 
-                # SHOW PROCESSING MODE SELECTION (progressive disclosure)
-                # This must happen even if save_recent_file fails
-                self.mode_group.setVisible(True)
+                # SHOW MODE BOX (progressive disclosure)
+                self.mode_box.setVisible(True)
                 
                 # Update status bar with file path
                 self._update_status_file_path(file_path)
@@ -795,10 +842,8 @@ class MainWindow(QMainWindow):
                 print(f"Error in on_file_selected: {e}")
                 traceback.print_exc()
                 self.statusBar().showMessage(f"Error loading XML: {str(e)}")
-                # Hide processing mode if error
-                self.mode_group.setVisible(False)
-                # Hide playlist selection
-                self.single_playlist_group.setVisible(False)
+                # Hide mode/playlist on error
+                self._hide_mode_playlist_boxes()
                 self.start_button_container.setVisible(False)
                 self.start_button.setEnabled(False)
         else:
@@ -806,38 +851,36 @@ class MainWindow(QMainWindow):
             # Clear playlist selector if file is invalid
             self.playlist_selector.clear()
             self.batch_processor.set_playlists([])
-            # HIDE PROCESSING MODE (progressive disclosure)
-            self.mode_group.setVisible(False)
-            # HIDE PLAYLIST SELECTION
-            self.single_playlist_group.setVisible(False)
+            # Hide mode/playlist for invalid file
+            self._hide_mode_playlist_boxes()
             self.start_button_container.setVisible(False)
             self.start_button.setEnabled(False)
 
-    def on_mode_changed(self) -> None:
-        """Handle processing mode change between single and batch modes.
+    def _hide_mode_playlist_boxes(self):
+        """Hide mode and playlist boxes."""
+        self.mode_box.setVisible(False)
+        self.playlist_box.setVisible(False)
+        self.start_button.setVisible(False)
 
-        Shows/hides appropriate UI components based on the selected mode:
-        - Single mode: Shows playlist selector and start button (progressive disclosure)
-        - Batch mode: Shows batch processor widget
-        """
-        # Check if any mode is selected
+    def on_mode_changed(self) -> None:
+        """Handle processing mode change between single and batch modes."""
         is_batch_mode = self.batch_mode_radio.isChecked()
         is_single_mode = self.single_mode_radio.isChecked()
         
-        # If no mode is selected, hide everything and disable start button
         if not is_batch_mode and not is_single_mode:
-            self.single_playlist_group.setVisible(False)
-            self.start_button_container.setVisible(False)
+            self.playlist_box.setVisible(False)
+            self.start_button.setVisible(False)
             self.batch_processor.setVisible(False)
-            self.start_button.setEnabled(False)
             return
 
-        # Show/hide single playlist UI (progressive disclosure)
-        self.single_playlist_group.setVisible(is_single_mode)
-        self.start_button_container.setVisible(is_single_mode)
-
-        # Show/hide batch processor
-        self.batch_processor.setVisible(is_batch_mode)
+        if is_single_mode:
+            self.playlist_box.setVisible(True)
+            self.start_button.setVisible(True)
+            self.batch_processor.setVisible(False)
+        else:
+            self.playlist_box.setVisible(False)
+            self.start_button.setVisible(False)
+            self.batch_processor.setVisible(True)
 
         # ENABLE START BUTTON if mode is selected (but it will be enabled/disabled based on playlist selection)
         if is_batch_mode:
@@ -1303,7 +1346,7 @@ class MainWindow(QMainWindow):
         self.start_button.setEnabled(True)
 
         # Disable cancel button
-        self.progress_widget.set_enabled(False)
+        self.cancel_button.setEnabled(False)
 
         # Automatically save results for each playlist
         for playlist_name, results in filtered_dict.items():
@@ -1445,7 +1488,7 @@ class MainWindow(QMainWindow):
             return
 
         # Reset progress widget
-        self.progress_widget.reset()
+        self._reset_progress()
 
         # Show progress section, hide results
         self.progress_group.setVisible(True)
@@ -1455,7 +1498,7 @@ class MainWindow(QMainWindow):
         self.start_button.setEnabled(False)
 
         # Enable cancel button
-        self.progress_widget.set_enabled(True)
+        self.cancel_button.setEnabled(True)
 
         # Update status
         self.statusBar().showMessage(f"Starting processing: {playlist_name}...")
@@ -1525,8 +1568,8 @@ class MainWindow(QMainWindow):
                         self,
                         "Cancel Processing?",
                         f"Processing is in progress:\n\n"
-                        f"Elapsed: {self.progress_widget.elapsed_label.text()}\n"
-                        f"Remaining: {self.progress_widget.remaining_label.text()}\n\n"
+                        f"{self.progress_elapsed.text()}\n"
+                        f"{self.progress_remaining.text()}\n\n"
                         f"Are you sure you want to cancel?\n"
                         f"All progress will be lost.",
                         QMessageBox.Yes | QMessageBox.No,
@@ -1538,9 +1581,9 @@ class MainWindow(QMainWindow):
             self._cancelling = True
             
             # Disable cancel button immediately to prevent multiple clicks
-            if hasattr(self, 'progress_widget') and hasattr(self.progress_widget, 'cancel_button'):
-                self.progress_widget.cancel_button.setEnabled(False)
-                self.progress_widget.cancel_button.setText("Cancelling...")
+            if hasattr(self, 'cancel_button'):
+                self.cancel_button.setEnabled(False)
+                self.cancel_button.setText("Cancelling...")
             
             # Cancel processing in a safe way
             if hasattr(self, 'controller') and hasattr(self.controller, 'is_processing'):
@@ -1592,15 +1635,11 @@ class MainWindow(QMainWindow):
                     pass
             
             # Reset cancel button
-            if hasattr(self, 'progress_widget') and self.progress_widget:
+            if hasattr(self, 'cancel_button'):
                 try:
-                    if hasattr(self.progress_widget, 'cancel_button') and self.progress_widget.cancel_button:
-                        self.progress_widget.cancel_button.setEnabled(True)
-                        self.progress_widget.cancel_button.setText("Cancel Processing")
-                    if hasattr(self.progress_widget, 'set_enabled'):
-                        self.progress_widget.set_enabled(False)
+                    self.cancel_button.setEnabled(True)
+                    self.cancel_button.setText("Cancel")
                 except RuntimeError:
-                    # Widget might have been deleted
                     pass
             
             # Hide progress section
@@ -1630,15 +1669,38 @@ class MainWindow(QMainWindow):
     def on_progress_updated(self, progress_info: ProgressInfo) -> None:
         """Handle progress update from controller.
 
-        Updates the progress widget and status bar with current processing
-        information.
+        Updates the inline progress elements and status bar.
 
         Args:
             progress_info: ProgressInfo object containing progress details.
         """
-        # Update progress widget
-        self.progress_widget.update_progress(progress_info)
+        # Update inline progress elements
+        if progress_info.total_tracks > 0:
+            self.progress_bar.setMaximum(progress_info.total_tracks)
+            self.progress_bar.setValue(progress_info.completed_tracks)
+            pct = (progress_info.completed_tracks / progress_info.total_tracks) * 100
+            self.progress_pct.setText(f"{pct:.0f}%")
 
+        # Current track
+        if progress_info.current_track:
+            title = progress_info.current_track.get("title", "Unknown")
+            artists = progress_info.current_track.get("artists", "Unknown")
+            self.progress_track.setText(f"{progress_info.completed_tracks}/{progress_info.total_tracks}: {title} - {artists}")
+        else:
+            self.progress_track.setText(f"Processing track {progress_info.completed_tracks}/{progress_info.total_tracks}...")
+
+        # Stats
+        self.progress_matched.setText(f"✓ Matched: {progress_info.matched_count}")
+        self.progress_unmatched.setText(f"✗ Unmatched: {progress_info.unmatched_count}")
+
+        # Time
+        if progress_info.elapsed_time > 0:
+            self.progress_elapsed.setText(f"Elapsed: {self._format_time(progress_info.elapsed_time)}")
+            if progress_info.completed_tracks > 0:
+                avg = progress_info.elapsed_time / progress_info.completed_tracks
+                remaining = avg * (progress_info.total_tracks - progress_info.completed_tracks)
+                self.progress_remaining.setText(f"Remaining: {self._format_time(remaining)}")
+        
         # Update status bar progress indicator
         if hasattr(self, 'status_progress') and self.controller.is_processing():
             if progress_info.total_tracks > 0:
@@ -1646,9 +1708,6 @@ class MainWindow(QMainWindow):
                 self.status_progress.setMaximum(100)
                 self.status_progress.setValue(int(percentage))
                 self.status_progress.setVisible(True)
-                self.statusBar().showMessage(
-                    f"Processing: {progress_info.completed_tracks}/{progress_info.total_tracks} tracks"
-                )
         else:
             if hasattr(self, 'status_progress'):
                 self.status_progress.setVisible(False)
@@ -1658,6 +1717,31 @@ class MainWindow(QMainWindow):
             title = progress_info.current_track.get("title", "Unknown")
             track_info = f"{title} ({progress_info.completed_tracks}/{progress_info.total_tracks})"
             self.statusBar().showMessage(f"Processing: {track_info}")
+
+    def _format_time(self, seconds: float) -> str:
+        """Format seconds into human readable time."""
+        if seconds < 60:
+            return f"{int(seconds)}s"
+        elif seconds < 3600:
+            m, s = divmod(int(seconds), 60)
+            return f"{m}m {s}s" if s else f"{m}m"
+        else:
+            h, rem = divmod(int(seconds), 3600)
+            m = rem // 60
+            return f"{h}h {m}m" if m else f"{h}h"
+
+    def _reset_progress(self) -> None:
+        """Reset inline progress elements to initial state."""
+        self.progress_bar.setValue(0)
+        self.progress_bar.setMaximum(100)
+        self.progress_pct.setText("0%")
+        self.progress_track.setText("Ready to start...")
+        self.progress_elapsed.setText("Elapsed: 0s")
+        self.progress_remaining.setText("Remaining: --")
+        self.progress_matched.setText("✓ Matched: 0")
+        self.progress_unmatched.setText("✗ Unmatched: 0")
+        self.cancel_button.setEnabled(True)
+        self.cancel_button.setText("Cancel")
 
     def on_processing_complete(self, results: List[TrackResult]) -> None:
         """Handle processing completion.
@@ -1688,7 +1772,7 @@ class MainWindow(QMainWindow):
         self.start_button.setEnabled(True)
 
         # Disable cancel button
-        self.progress_widget.set_enabled(False)
+        self.cancel_button.setEnabled(False)
         
         # Clear processing start time
         if hasattr(self, '_processing_start_time'):
@@ -1882,7 +1966,7 @@ class MainWindow(QMainWindow):
         self.start_button.setEnabled(True)
 
         # Disable cancel button
-        self.progress_widget.set_enabled(False)
+        self.cancel_button.setEnabled(False)
 
         # Update status bar with error
         self.statusBar().showMessage(f"Error: {error.message}")

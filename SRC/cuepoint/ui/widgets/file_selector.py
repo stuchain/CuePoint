@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 from cuepoint.ui.dialogs.rekordbox_instructions_dialog import RekordboxInstructionsDialog
+from cuepoint.ui.widgets.styles import is_macos
 
 
 class FileSelector(QWidget):
@@ -35,61 +36,54 @@ class FileSelector(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        """Initialize UI components"""
-        layout = QVBoxLayout(self)
-        layout.setSpacing(8)
+        """Initialize UI components - compact horizontal layout"""
+        layout = QHBoxLayout(self)
+        layout.setSpacing(6)
+        layout.setContentsMargins(0, 0, 0, 0)
 
-        # File path display
-        file_layout = QHBoxLayout()
-        label = QLabel("Rekordbox XML File:")
         self.path_edit = QLineEdit()
         self.path_edit.setReadOnly(True)
         self.path_edit.setPlaceholderText("No file selected")
+        self.path_edit.setStyleSheet("font-size: 11px;")
 
         browse_btn = QPushButton("Browse...")
         browse_btn.clicked.connect(self.browse_file)
-
-        # Add info button
-        info_btn = QToolButton()
-        info_btn.setText("ℹ️")  # Info emoji
-        info_btn.setToolTip("How to export XML from Rekordbox")
-        info_btn.setStyleSheet(
-            """
-            QToolButton {
-                font-size: 16px;
+        browse_btn.setStyleSheet("""
+            QPushButton {
+                font-size: 11px;
+                padding: 3px 10px;
+                background-color: #007AFF;
+                color: white;
                 border: none;
-                border-radius: 3px;
-                padding: 5px;
-                background-color: transparent;
-                min-width: 30px;
-                max-width: 30px;
+                border-radius: 4px;
             }
-            QToolButton:hover {
-                background-color: rgba(0, 0, 0, 0.05);
+            QPushButton:hover { background-color: #0056b3; }
+        """)
+
+        # Info button
+        info_btn = QToolButton()
+        info_btn.setText("ℹ")
+        info_btn.setToolTip("How to export XML from Rekordbox")
+        info_btn.setStyleSheet("""
+            QToolButton {
+                font-size: 14px;
+                padding: 4px 8px;
+                border: 1px solid #555;
+                border-radius: 4px;
+                background-color: #333;
+                color: #aaa;
             }
-            QToolButton:pressed {
-                background-color: rgba(0, 0, 0, 0.1);
-            }
-            """
-        )
+            QToolButton:hover { background-color: #444; }
+        """)
         info_btn.clicked.connect(self.show_instructions)
 
-        file_layout.addWidget(label)
-        file_layout.addWidget(self.path_edit, 1)
-        file_layout.addWidget(browse_btn)
-        file_layout.addWidget(info_btn)  # Add info button
+        layout.addWidget(self.path_edit, 1)
+        layout.addWidget(browse_btn)
+        layout.addWidget(info_btn)
 
-        layout.addLayout(file_layout)
-
-        # Drag & drop area
-        self.drop_label = QLabel("or drag & drop XML file here")
-        self.drop_label.setAlignment(Qt.AlignCenter)
-        self.drop_label.setProperty("class", "caption")
-        self.drop_label.setProperty("drag_over", False)  # Track drag state
-        self.drop_label.setStyleSheet(
-            "padding: 12px; border: 2px dashed rgba(255, 255, 255, 0.2); border-radius: 6px;"
-        )
-        layout.addWidget(self.drop_label)
+        # Drag & drop area - hidden but still functional
+        self.drop_label = QLabel("")
+        self.drop_label.setVisible(False)
 
         # Enable drag & drop
         self.setAcceptDrops(True)
@@ -103,8 +97,9 @@ class FileSelector(QWidget):
                 if file_path.lower().endswith(".xml"):
                     event.acceptProposedAction()
                     # Visual feedback - highlight drop area
+                    drop_padding = "4px 8px" if is_macos() else "12px"
                     self.drop_label.setStyleSheet(
-                        "padding: 12px; border: 2px dashed #0A84FF; border-radius: 6px;"
+                        f"padding: {drop_padding}; border: 1px dashed #0A84FF; border-radius: 4px; font-size: 10px;"
                     )
                 else:
                     event.ignore()
@@ -117,8 +112,9 @@ class FileSelector(QWidget):
         """Handle drag leave event"""
         # Reset drop area styling
         self.drop_label.setProperty("drag_over", False)
+        drop_padding = "4px 8px" if is_macos() else "12px"
         self.drop_label.setStyleSheet(
-            "padding: 12px; border: 2px dashed rgba(255, 255, 255, 0.2); border-radius: 6px;"
+            f"padding: {drop_padding}; border: 1px dashed rgba(255, 255, 255, 0.2); border-radius: 4px; font-size: 10px;"
         )
         self.drop_label.setText("or drag & drop XML file here")
 
@@ -136,8 +132,9 @@ class FileSelector(QWidget):
 
         # Reset drop area styling
         self.drop_label.setProperty("drag_over", False)
+        drop_padding = "4px 8px" if is_macos() else "12px"
         self.drop_label.setStyleSheet(
-            "padding: 12px; border: 2px dashed rgba(255, 255, 255, 0.2); border-radius: 6px;"
+            f"padding: {drop_padding}; border: 1px dashed rgba(255, 255, 255, 0.2); border-radius: 4px; font-size: 10px;"
         )
         self.drop_label.setText("or drag & drop XML file here")
 
