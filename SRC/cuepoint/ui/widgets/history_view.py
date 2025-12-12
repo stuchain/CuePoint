@@ -39,6 +39,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from cuepoint.core.matcher import _camelot_key
 from cuepoint.ui.controllers.export_controller import ExportController
 from cuepoint.ui.dialogs.export_dialog import ExportDialog
 from cuepoint.ui.widgets.candidate_dialog import CandidateDialog
@@ -162,12 +163,19 @@ class HistoryView(QWidget):
         advanced_filters_group = QGroupBox("Advanced Filters")
         advanced_filters_group.setCheckable(True)
         advanced_filters_group.setChecked(False)  # Unchecked by default
+        # Set size policy to allow the group box to expand properly
+        advanced_filters_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
         advanced_filters_layout = QVBoxLayout()
+        advanced_filters_layout.setContentsMargins(10, 10, 10, 10)  # Add margins inside group box
+        advanced_filters_layout.setSpacing(8)  # Add spacing
 
         # Container widget for filter controls (to show/hide)
         self.advanced_filters_container = QWidget()
         container_layout = QVBoxLayout(self.advanced_filters_container)
-        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.setContentsMargins(0, 0, 0, 12)  # Add bottom margin for button
+        container_layout.setSpacing(8)  # Add spacing between filter rows
+        # Set size policy to ensure container can expand properly
+        self.advanced_filters_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
 
         # Year range filter
         year_layout = QHBoxLayout()
@@ -251,13 +259,25 @@ class HistoryView(QWidget):
         clear_button = QPushButton("Clear All Filters")
         clear_button.setToolTip("Reset all filters to default values")
         clear_button.clicked.connect(self.clear_filters)
+        # Set button size policy to prevent it from expanding
+        clear_button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         container_layout.addWidget(clear_button)
 
         # Hide container by default
         self.advanced_filters_container.setVisible(False)
 
-        # Connect checkbox to show/hide container
-        advanced_filters_group.toggled.connect(self.advanced_filters_container.setVisible)
+        # Connect checkbox to show/hide container and update layout
+        def on_advanced_filters_toggled(checked: bool):
+            self.advanced_filters_container.setVisible(checked)
+            # Force layout update to ensure button is visible
+            if checked:
+                QTimer.singleShot(10, lambda: (
+                    self.advanced_filters_container.updateGeometry(),
+                    advanced_filters_group.updateGeometry(),
+                    self.updateGeometry()
+                ))
+        
+        advanced_filters_group.toggled.connect(on_advanced_filters_toggled)
 
         advanced_filters_layout.addWidget(self.advanced_filters_container)
         advanced_filters_group.setLayout(advanced_filters_layout)
@@ -951,8 +971,14 @@ class HistoryView(QWidget):
                         # For regular key column, use beatport_key
                         value = csv_row.get("beatport_key", "")
                     elif col_name == "Camelot Key" or col_name == "beatport_key_camelot":
-                        # For Camelot key column, use beatport_key_camelot, fallback to beatport_key
-                        value = csv_row.get("beatport_key_camelot", csv_row.get("beatport_key", ""))
+                        # For Camelot key column, use beatport_key_camelot, convert from regular key if needed
+                        camelot_key = csv_row.get("beatport_key_camelot", "")
+                        if camelot_key:
+                            value = camelot_key
+                        else:
+                            # Convert regular key to Camelot if camelot key is not available
+                            regular_key = csv_row.get("beatport_key", "")
+                            value = _camelot_key(regular_key) if regular_key else ""
                     elif col_name == "BPM":
                         value = csv_row.get("beatport_bpm", "")
                     elif col_name == "Year":

@@ -1,13 +1,17 @@
-## 9. UX Polish, Accessibility & Localization (Ship v1.0)
+## Step 9: UX Polish, Accessibility and Localization (Ship v1.0)
 
-### 9.1 Visual consistency
+**Implementation Order**: This is the **ninth step** - final touches before release.
+
+### Step 9.1: Visual Consistency
+
+**9.1.1 Theme Token Model**
 - Centralize theme tokens (colors, spacing, radius).
 - Ensure:
   - consistent hover states
   - consistent control sizes
   - consistent typography
 
-### 9.1.1 Theme token model (recommended)
+**9.1.2 Theme Token Model (Recommended)**
 Define a small set of tokens (single source of truth):
 - Colors:
   - background, surface, border
@@ -21,7 +25,7 @@ Define a small set of tokens (single source of truth):
 
 Design goal: a user should *feel* consistency across all tabs and dialogs.
 
-### 9.1.2 Interaction states
+**9.1.3 Interaction States**
 For all interactive controls define:
 - default
 - hover
@@ -31,9 +35,11 @@ For all interactive controls define:
 
 Minimum acceptance criteria:
 - focus is always visible
-- hover is subtle (doesn’t “flash”)
+- hover is subtle (doesn't "flash")
 
-### 9.2 Accessibility
+### Step 9.2: Accessibility
+
+**9.2.1 Keyboard Navigation**
 - Keyboard navigation:
   - tab order correct
   - shortcuts discoverable (Help → Shortcuts)
@@ -42,7 +48,7 @@ Minimum acceptance criteria:
 - Contrast:
   - verify key text meets minimum contrast thresholds
 
-### 9.2.1 Keyboard specification
+**9.2.2 Keyboard Specification**
 - Global:
   - `Ctrl/Cmd+O`: open XML
   - `Enter`: start (when enabled)
@@ -52,7 +58,7 @@ Minimum acceptance criteria:
   - `Ctrl/Cmd+F`: focus search
   - `Ctrl/Cmd+Shift+F`: clear filters
 
-### 9.2.2 Tab order specification (high-level)
+**9.2.3 Tab Order Specification (High-Level)**
 - Main tab:
   - Collection path → Browse → Info
   - Mode radio group
@@ -62,7 +68,7 @@ Minimum acceptance criteria:
   - Results table
   - Export buttons
 
-### 9.2.3 Screen reader requirements
+**9.2.4 Screen Reader Requirements**
 - Every input has:
   - label association (buddy)
   - accessible name
@@ -71,7 +77,7 @@ Minimum acceptance criteria:
   - headers read correctly
   - selected row context is understandable
 
-### 9.2.4 Contrast + sizing
+**9.2.5 Contrast + Sizing**
 - Ensure minimum contrast for:
   - body text
   - disabled text (still readable)
@@ -79,65 +85,75 @@ Minimum acceptance criteria:
 - Minimum tap/target sizes:
   - 28px height for buttons/inputs (mac)
 
-### 9.3 Localization readiness (v1.0)
-- Don’t fully translate in v1.0 unless needed.
+### Step 9.3: Localization Readiness (v1.0)
+
+**9.3.1 Localization Strategy**
+- Don't fully translate in v1.0 unless needed.
 - Ensure UI strings are centralizable:
   - avoid hardcoding in many files
   - define a string table / translation hooks for later
 
-### 9.3.1 Localization strategy
+**9.3.2 Localization Implementation**
 - Use Qt translation system (`QTranslator`) and `.ts/.qm` files.
 - Centralize user-visible strings gradually:
   - start with top-level UI labels and dialogs
   - keep internal dev strings (debug) separate
 
-### 9.3.2 Locale-sensitive formatting
+**9.3.3 Locale-Sensitive Formatting**
 - Dates/times in UI should respect locale.
 - File naming should remain filesystem-safe (avoid colon on Windows).
 
-### 9.4 Onboarding
+### Step 9.4: Onboarding
+
+**9.4.1 Onboarding Requirements**
 - First-run:
-  - explain “Collection XML”
+  - explain "Collection XML"
   - link to export instructions
   - show a sample screenshot
 
-### 9.4.1 Onboarding screens (recommended)
-1) “Welcome to CuePoint”
-2) “Select Collection XML” + link to instructions
-3) “Choose mode” explanation (Single vs Batch)
-4) “Results & export” overview
+**9.4.2 Onboarding Screens (Recommended)**
+1) "Welcome to CuePoint"
+2) "Select Collection XML" + link to instructions
+3) "Choose mode" explanation (Single vs Batch)
+4) "Results & export" overview
 
 Persist:
-- “don’t show again” checkbox
+- "don't show again" checkbox
 
-### 9.4.2 Empty states
+**9.4.3 Empty States**
 Define clean empty states for:
 - no XML selected
 - no playlist selected
 - no results yet
 - no past searches found
 
-### 9.5 Support UX
-- “Report issue” action:
+### Step 9.5: Support UX
+
+**9.5.1 Support Actions**
+- "Report issue" action:
   - collects logs + version info
   - opens a GitHub issue template link
-- “Open Output Folder”, “Open Logs Folder”
+- "Open Output Folder", "Open Logs Folder"
 
-### 9.5.1 Support bundle UX
-- “Help → Export Support Bundle…”
+**9.5.2 Support Bundle UX**
+- "Help → Export Support Bundle…"
 - Generates a zip with diagnostics + logs (see Runtime design)
 - Optionally opens a pre-filled GitHub issue template:
   - version/build/SHA
   - OS
   - steps to reproduce
 
-### 9.6 Professional polish extras (optional but recommended)
-- “About” dialog:
+### Step 9.6: Professional Polish Extras (Optional but Recommended)
+
+**9.6.1 About Dialog**
+- "About" dialog:
   - version/build
   - links: docs, issues, privacy
+
+**9.6.2 Changelog Viewer**
 - Changelog viewer:
   - shows recent release notes (from the same notes used by updater)
+
+**9.6.3 Consistent Icons**
 - Consistent icons:
   - app icon, in-app icons, menu icons
-
-

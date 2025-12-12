@@ -37,6 +37,8 @@ from PySide6.QtWidgets import (
     QMenu,
     QMessageBox,
     QPushButton,
+    QScrollArea,
+    QSizePolicy,
     QSpinBox,
     QSplitter,
     QTableWidget,
@@ -46,11 +48,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from cuepoint.core.matcher import _camelot_key
+from cuepoint.models.result import TrackResult
 from cuepoint.services.output_writer import write_csv_files, write_excel_file, write_json_file
 from cuepoint.ui.controllers.export_controller import ExportController
 from cuepoint.ui.controllers.results_controller import ResultsController
 from cuepoint.ui.dialogs.export_dialog import ExportDialog
-from cuepoint.models.result import TrackResult
 from cuepoint.ui.widgets.candidate_dialog import CandidateDialog
 from cuepoint.ui.widgets.shortcut_manager import ShortcutContext, ShortcutManager
 from cuepoint.ui.widgets.styles import is_macos
@@ -256,12 +259,19 @@ class ResultsView(QWidget):
         advanced_filters_group = QGroupBox("Advanced Filters")
         advanced_filters_group.setCheckable(True)
         advanced_filters_group.setChecked(False)  # Unchecked by default
+        # Set size policy to allow the group box to expand properly
+        advanced_filters_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
         advanced_filters_inner_layout = QVBoxLayout()
+        advanced_filters_inner_layout.setContentsMargins(10, 10, 10, 10)  # Add margins inside group box
+        advanced_filters_inner_layout.setSpacing(8)  # Add spacing
 
         # Container widget for filter controls (to show/hide)
         self.advanced_filters_container = QWidget()
         container_layout = QVBoxLayout(self.advanced_filters_container)
-        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.setContentsMargins(0, 0, 0, 12)  # Add bottom margin for button
+        container_layout.setSpacing(8)  # Add spacing between filter rows
+        # Set size policy to ensure container can expand properly
+        self.advanced_filters_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
 
         # Year range filter
         year_layout = QHBoxLayout()
@@ -350,13 +360,26 @@ class ResultsView(QWidget):
         )
         clear_button.setFocusPolicy(Qt.StrongFocus)
         clear_button.clicked.connect(self.clear_filters)
+        # Set button size policy to prevent it from expanding
+        clear_button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         container_layout.addWidget(clear_button)
 
         # Hide container by default
         self.advanced_filters_container.setVisible(False)
 
-        # Connect checkbox to show/hide container
-        advanced_filters_group.toggled.connect(self.advanced_filters_container.setVisible)
+        # Connect checkbox to show/hide container and update layout
+        def on_advanced_filters_toggled(checked: bool):
+            self.advanced_filters_container.setVisible(checked)
+            # Force layout update to ensure button is visible
+            if checked:
+                QTimer.singleShot(10, lambda: (
+                    self.advanced_filters_container.updateGeometry(),
+                    advanced_filters_group.updateGeometry(),
+                    self.advanced_filters_widget.updateGeometry(),
+                    self.updateGeometry()
+                ))
+        
+        advanced_filters_group.toggled.connect(on_advanced_filters_toggled)
 
         advanced_filters_inner_layout.addWidget(self.advanced_filters_container)
         advanced_filters_group.setLayout(advanced_filters_inner_layout)
@@ -732,7 +755,8 @@ class ResultsView(QWidget):
         # Container widget for filter controls (to show/hide)
         advanced_filters_container = QWidget()
         container_layout = QVBoxLayout(advanced_filters_container)
-        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.setContentsMargins(0, 0, 0, 8)  # Add bottom margin for button
+        container_layout.setSpacing(8)  # Add spacing between filter rows
 
         # Year range filter
         year_layout = QHBoxLayout()
@@ -809,6 +833,7 @@ class ResultsView(QWidget):
         clear_button = QPushButton("Clear All Filters")
         clear_button.setToolTip("Reset all filters to default values")
         container_layout.addWidget(clear_button)
+        container_layout.addStretch()  # Add stretch to ensure button is visible
 
         # Hide container by default
         advanced_filters_container.setVisible(False)
@@ -1034,8 +1059,14 @@ class ResultsView(QWidget):
             )
             self.table.setItem(row, 7, confidence_item)
 
-            # Key (Camelot)
-            key_text = result.beatport_key_camelot or result.beatport_key or ""
+            # Key (Camelot) - show Camelot notation, convert from regular key if needed
+            if result.beatport_key_camelot:
+                key_text = result.beatport_key_camelot
+            elif result.beatport_key:
+                # Convert regular key to Camelot if camelot key is not available
+                key_text = _camelot_key(result.beatport_key) or ""
+            else:
+                key_text = ""
             self.table.setItem(row, 8, QTableWidgetItem(key_text))
 
             # BPM
@@ -1363,8 +1394,14 @@ class ResultsView(QWidget):
             )
             table.setItem(row, 7, confidence_item)
 
-            # Key (Camelot)
-            key_text = result.beatport_key_camelot or result.beatport_key or ""
+            # Key (Camelot) - show Camelot notation, convert from regular key if needed
+            if result.beatport_key_camelot:
+                key_text = result.beatport_key_camelot
+            elif result.beatport_key:
+                # Convert regular key to Camelot if camelot key is not available
+                key_text = _camelot_key(result.beatport_key) or ""
+            else:
+                key_text = ""
             table.setItem(row, 8, QTableWidgetItem(key_text))
 
             # BPM
