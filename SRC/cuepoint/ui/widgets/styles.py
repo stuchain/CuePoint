@@ -103,6 +103,12 @@ def get_base_stylesheet() -> str:
             margin-top: 12px;
             padding-top: 10px;
         }}
+
+        /* Subtle hover tint for box-like containers */
+        QGroupBox:hover {{
+            background-color: rgba(255, 255, 255, 0.04);
+            border-color: rgba(255, 255, 255, 0.20);
+        }}
         
         QGroupBox::title {{
             subcontrol-origin: margin;
@@ -122,6 +128,24 @@ def get_base_stylesheet() -> str:
         
         QPushButton:hover {{
             background-color: {Colors.BUTTON_HOVER};
+        }}
+
+        /* Secondary action buttons (Export etc.) */
+        QPushButton#secondaryActionButton {{
+            background-color: rgba(255, 255, 255, 0.08);
+            color: {Colors.TEXT_PRIMARY};
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 6px;
+            padding: 5px 12px;
+            font-weight: bold;
+            min-height: 24px;
+        }}
+        QPushButton#secondaryActionButton:hover {{
+            background-color: rgba(255, 255, 255, 0.14);
+            border-color: rgba(255, 255, 255, 0.28);
+        }}
+        QPushButton#secondaryActionButton:pressed {{
+            background-color: rgba(255, 255, 255, 0.18);
         }}
         
         QPushButton:pressed {{
@@ -150,7 +174,70 @@ def get_base_stylesheet() -> str:
             color: {Colors.TEXT_PRIMARY};
             border: 1px solid {Colors.BORDER};
             border-radius: 4px;
-            padding: 6px;
+            padding: 4px 10px;
+            min-height: 24px;
+        }}
+
+        /* ComboBox: rounded drop-down area + soft arrow button */
+        QComboBox::drop-down {{
+            subcontrol-origin: padding;
+            subcontrol-position: top right;
+            width: 26px;
+            border-left: 1px solid rgba(255, 255, 255, 0.10);
+            border-top-right-radius: 8px;
+            border-bottom-right-radius: 8px;
+            /* Slightly brighter so the native arrow is visible */
+            background-color: rgba(255, 255, 255, 0.12);
+        }}
+        QComboBox:hover {{
+            border-color: rgba(255, 255, 255, 0.24);
+        }}
+        QComboBox::drop-down:hover {{
+            background-color: rgba(255, 255, 255, 0.18);
+        }}
+        QComboBox::down-arrow {{
+            image: url(cuepoint/ui/assets/icons/chevron-down.svg);
+            width: 10px;
+            height: 10px;
+        }}
+
+        /* SpinBox: rounded up/down controls */
+        QAbstractSpinBox {{
+            background-color: {Colors.SURFACE};
+            color: {Colors.TEXT_PRIMARY};
+            border: 1px solid {Colors.BORDER};
+            border-radius: 8px;
+            padding: 4px 10px;
+            min-height: 24px;
+        }}
+        QAbstractSpinBox:hover {{
+            border-color: rgba(255, 255, 255, 0.24);
+        }}
+        QAbstractSpinBox::up-button, QAbstractSpinBox::down-button {{
+            subcontrol-origin: border;
+            width: 16px;
+            border-left: 1px solid rgba(255, 255, 255, 0.10);
+            /* Slightly brighter so the native arrows are visible */
+            background-color: rgba(255, 255, 255, 0.12);
+        }}
+        QAbstractSpinBox::up-button {{
+            subcontrol-position: top right;
+            border-top-right-radius: 8px;
+        }}
+        QAbstractSpinBox::down-button {{
+            subcontrol-position: bottom right;
+            border-bottom-right-radius: 8px;
+        }}
+        QAbstractSpinBox::up-button:hover, QAbstractSpinBox::down-button:hover {{
+            background-color: rgba(255, 255, 255, 0.18);
+        }}
+        QAbstractSpinBox::up-arrow, QAbstractSpinBox::down-arrow {{
+            image: url(cuepoint/ui/assets/icons/chevron-up.svg);
+            width: 9px;
+            height: 9px;
+        }}
+        QAbstractSpinBox::down-arrow {{
+            image: url(cuepoint/ui/assets/icons/chevron-down.svg);
         }}
         
         QProgressBar {{
@@ -191,6 +278,24 @@ def get_base_stylesheet() -> str:
             border-radius: 4px;
             gridline-color: {Colors.BORDER};
         }}
+
+        /* Table row colors (prevents light/white alternate rows on macOS) */
+        QTableView {{
+            background-color: {Colors.SURFACE};
+            alternate-background-color: rgba(255, 255, 255, 0.04);
+            selection-background-color: rgba(0, 122, 255, 0.35);
+            selection-color: {Colors.TEXT_PRIMARY};
+        }}
+        QTableView::item {{
+            background-color: transparent;
+        }}
+        QTableView::item:alternate {{
+            background-color: rgba(255, 255, 255, 0.04);
+        }}
+        QTableView::item:selected {{
+            background-color: rgba(0, 122, 255, 0.35);
+            color: {Colors.TEXT_PRIMARY};
+        }}
         
         QHeaderView::section {{
             background-color: {Colors.BACKGROUND};
@@ -198,6 +303,14 @@ def get_base_stylesheet() -> str:
             padding: 6px;
             border: none;
             border-bottom: 1px solid {Colors.BORDER};
+        }}
+
+        /* Table top-left corner cell (make it match header + rounded) */
+        QTableCornerButton::section {{
+            background-color: {Colors.BACKGROUND};
+            border: none;
+            border-bottom: 1px solid {Colors.BORDER};
+            border-right: 1px solid {Colors.BORDER};
         }}
         
         QScrollBar:vertical {{
@@ -214,6 +327,42 @@ def get_base_stylesheet() -> str:
         
         QScrollBar::handle:vertical:hover {{
             background-color: {Colors.TEXT_SECONDARY};
+        }}
+
+        /* Smoother scrollbars (both orientations) */
+        QScrollBar:horizontal {{
+            background-color: {Colors.BACKGROUND};
+            height: 12px;
+            border-radius: 6px;
+        }}
+        QScrollBar::handle:horizontal {{
+            background-color: {Colors.BORDER};
+            border-radius: 6px;
+            min-width: 20px;
+        }}
+        QScrollBar::handle:horizontal:hover {{
+            background-color: {Colors.TEXT_SECONDARY};
+        }}
+        QScrollBar::add-line, QScrollBar::sub-line {{
+            width: 0px;
+            height: 0px;
+        }}
+        QScrollBar::add-page, QScrollBar::sub-page {{
+            background: transparent;
+        }}
+
+        /* Bottom-right corner between scrollbars (table corner / scroll intersection) */
+        QAbstractScrollArea::corner {{
+            background-color: {Colors.BACKGROUND};
+            border-left: 1px solid {Colors.BORDER};
+            border-top: 1px solid {Colors.BORDER};
+        }}
+
+        /* Hide the size grip “square” where applicable */
+        QSizeGrip {{
+            image: none;
+            width: 0px;
+            height: 0px;
         }}
         
         QRadioButton, QCheckBox {{
@@ -292,6 +441,13 @@ def get_macos_stylesheet() -> str:
             padding: 4px 8px;
             font-size: 12px;
             min-height: 24px;
+            border-radius: 8px;
+        }
+
+        QComboBox::drop-down {
+            width: 28px;
+            border-top-right-radius: 8px;
+            border-bottom-right-radius: 8px;
         }
         
         /* Visible progress bars */

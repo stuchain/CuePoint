@@ -25,6 +25,7 @@ from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
+    QAbstractSpinBox,
     QComboBox,
     QDialog,
     QFileDialog,
@@ -127,6 +128,19 @@ class ResultsView(QWidget):
         self.init_ui()
         self.setup_shortcuts()
 
+    def _ensure_table_min_rows(self, table: QTableWidget, rows: int = 10) -> None:
+        """Ensure the table has enough visible height to show N rows (when space allows)."""
+        try:
+            header_h = table.horizontalHeader().height() or table.horizontalHeader().sizeHint().height()
+            row_h = table.verticalHeader().defaultSectionSize() or 24
+            frame = table.frameWidth() * 2
+            # Small extra padding to account for layout/frame differences across platforms
+            extra = 6
+            table.setMinimumHeight(header_h + (row_h * rows) + frame + extra)
+        except Exception:
+            # Never let sizing logic break the UI
+            return
+
     def init_ui(self) -> None:
         """Initialize all UI components and layout.
 
@@ -145,78 +159,104 @@ class ResultsView(QWidget):
         splitter = QSplitter(Qt.Vertical)
         splitter.setChildrenCollapsible(False)
 
-        # Top section: Summary and filters
+        # Top section: Summary and filters - COMPACT HORIZONTAL BOXES
         top_widget = QWidget()
-        top_layout = QVBoxLayout(top_widget)
-        top_layout.setSpacing(6)
+        top_layout = QHBoxLayout(top_widget)  # Changed to horizontal
+        top_layout.setSpacing(10)
         top_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Summary statistics - inline label (no group box to save space)
+        # Box style matching Collection/Mode/Playlist boxes
+        box_style = """
+            QGroupBox {
+                font-weight: bold;
+                font-size: 11px;
+                color: #aaa;
+                border: 1px solid #555;
+                border-radius: 6px;
+                margin: 0px;
+                padding: 22px 10px 10px 10px;
+            }
+            QGroupBox:hover {
+                background-color: rgba(255, 255, 255, 0.04);
+                border: 1px solid rgba(255, 255, 255, 0.20);
+            }
+            QGroupBox::title {
+                subcontrol-origin: padding;
+                subcontrol-position: top left;
+                left: 8px;
+                top: 4px;
+                padding: 0 4px;
+            }
+        """
+
+        # BOX 1: Summary Statistics - compact
         summary_group = QGroupBox("Summary Statistics")
-        summary_layout = QVBoxLayout()
-        summary_layout.setContentsMargins(6, 6, 6, 6)
+        summary_group.setStyleSheet(box_style)
+        summary_group.setFixedHeight(75)
+        summary_layout = QHBoxLayout(summary_group)
+        summary_layout.setContentsMargins(0, 0, 0, 0)
+        summary_layout.setSpacing(8)
         self.summary_label = QLabel("No results yet")
-        self.summary_label.setWordWrap(True)
+        self.summary_label.setWordWrap(False)  # No wrap for compact display
+        self.summary_label.setStyleSheet("font-size: 11px; color: #fff;")
         summary_layout.addWidget(self.summary_label)
-        summary_group.setLayout(summary_layout)
-        top_layout.addWidget(summary_group)
+        summary_layout.addStretch()
+        top_layout.addWidget(summary_group, 1)  # Equal stretch
 
-        # Filter controls section (in top widget)
+        # BOX 2: Filters - compact
         filters_group = QGroupBox("Filters")
-        filters_layout = QVBoxLayout()
-
-        # Basic filter controls
-        filter_layout = QHBoxLayout()
+        filters_group.setStyleSheet(box_style)
+        filters_group.setFixedHeight(75)
+        filters_layout = QHBoxLayout(filters_group)
+        filters_layout.setContentsMargins(0, 0, 0, 0)
+        filters_layout.setSpacing(8)
 
         # Search box
-        search_label = QLabel("Search:")
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Search...")
         self.search_box.textChanged.connect(self._trigger_filter_debounced)
-        search_label.setBuddy(self.search_box)  # Associate label with input
         self.search_box.setToolTip("Search for tracks by title, artist, or Beatport data (Ctrl+F)")
         self.search_box.setAccessibleName("Search input field")
         self.search_box.setAccessibleDescription(
             "Enter text to search for tracks. Keyboard shortcut: Ctrl+F"
         )
         self.search_box.setFocusPolicy(Qt.StrongFocus)
-        filter_layout.addWidget(search_label)
-        filter_layout.addWidget(self.search_box)
+        filters_layout.addWidget(self.search_box)
 
         # Match status filter
-        status_label = QLabel("Status:")
         self.status_filter = QComboBox()
         self.status_filter.addItems(["All", "Matched", "Unmatched", "Review Needed"])
         self.status_filter.currentTextChanged.connect(self._trigger_filter_debounced)
-        status_label.setBuddy(self.status_filter)
         self.status_filter.setToolTip("Filter results by match status")
         self.status_filter.setAccessibleName("Match status filter")
         self.status_filter.setAccessibleDescription("Select match status to filter results")
         self.status_filter.setFocusPolicy(Qt.StrongFocus)
-        filter_layout.addWidget(status_label)
-        filter_layout.addWidget(self.status_filter)
+        filters_layout.addWidget(self.status_filter)
 
         # Confidence filter
-        confidence_label = QLabel("Confidence:")
         self.confidence_filter = QComboBox()
         self.confidence_filter.addItems(["All", "High", "Medium", "Low"])
         self.confidence_filter.currentTextChanged.connect(self._trigger_filter_debounced)
-        confidence_label.setBuddy(self.confidence_filter)  # Associate label with input
         self.confidence_filter.setToolTip("Filter results by match confidence level")
         self.confidence_filter.setAccessibleName("Confidence filter")
         self.confidence_filter.setAccessibleDescription("Select confidence level to filter results")
         self.confidence_filter.setFocusPolicy(Qt.StrongFocus)
-        filter_layout.addWidget(confidence_label)
-        filter_layout.addWidget(self.confidence_filter)
+        filters_layout.addWidget(self.confidence_filter)
 
-        filter_layout.addStretch()
-        filters_layout.addLayout(filter_layout)
+        filters_layout.addStretch()
+        top_layout.addWidget(filters_group, 1)  # Equal stretch
 
+        # Advanced Filters - create as separate widget below (not in compact boxes)
+        # This will be added to the main layout after the top section
+        self.advanced_filters_widget = QWidget()
+        advanced_filters_layout = QVBoxLayout(self.advanced_filters_widget)
+        advanced_filters_layout.setContentsMargins(0, 0, 0, 0)
+        
         # Advanced Filters Group
         advanced_filters_group = QGroupBox("Advanced Filters")
         advanced_filters_group.setCheckable(True)
         advanced_filters_group.setChecked(False)  # Unchecked by default
-        advanced_filters_layout = QVBoxLayout()
+        advanced_filters_inner_layout = QVBoxLayout()
 
         # Container widget for filter controls (to show/hide)
         self.advanced_filters_container = QWidget()
@@ -225,8 +265,11 @@ class ResultsView(QWidget):
 
         # Year range filter
         year_layout = QHBoxLayout()
+        year_layout.setSpacing(8)
         year_layout.addWidget(QLabel("Year Range:"))
         self.year_min = QSpinBox()
+        self.year_min.setButtonSymbols(QAbstractSpinBox.PlusMinus)
+        self.year_min.setFixedWidth(110)
         self.year_min.setMinimum(1900)
         self.year_min.setMaximum(2100)
         self.year_min.setValue(1900)
@@ -237,6 +280,8 @@ class ResultsView(QWidget):
         year_layout.addWidget(self.year_min)
 
         self.year_max = QSpinBox()
+        self.year_max.setButtonSymbols(QAbstractSpinBox.PlusMinus)
+        self.year_max.setFixedWidth(110)
         self.year_max.setMinimum(1900)
         self.year_max.setMaximum(2100)
         self.year_max.setValue(2100)
@@ -249,8 +294,11 @@ class ResultsView(QWidget):
 
         # BPM range filter
         bpm_layout = QHBoxLayout()
+        bpm_layout.setSpacing(8)
         bpm_layout.addWidget(QLabel("BPM Range:"))
         self.bpm_min = QSpinBox()
+        self.bpm_min.setButtonSymbols(QAbstractSpinBox.PlusMinus)
+        self.bpm_min.setFixedWidth(110)
         self.bpm_min.setMinimum(60)
         self.bpm_min.setMaximum(200)
         self.bpm_min.setValue(60)
@@ -261,6 +309,8 @@ class ResultsView(QWidget):
         bpm_layout.addWidget(self.bpm_min)
 
         self.bpm_max = QSpinBox()
+        self.bpm_max.setButtonSymbols(QAbstractSpinBox.PlusMinus)
+        self.bpm_max.setFixedWidth(110)
         self.bpm_max.setMinimum(60)
         self.bpm_max.setMaximum(200)
         self.bpm_max.setValue(200)
@@ -273,6 +323,7 @@ class ResultsView(QWidget):
 
         # Key filter
         key_layout = QHBoxLayout()
+        key_layout.setSpacing(8)
         key_layout.addWidget(QLabel("Musical Key:"))
         self.key_filter = QComboBox()
         keys = (
@@ -284,7 +335,7 @@ class ResultsView(QWidget):
         self.key_filter.setToolTip(
             "Filter by musical key (only shows matched tracks with key data)"
         )
-        self.key_filter.setMinimumWidth(150)
+        self.key_filter.setFixedWidth(220)
         self.key_filter.currentTextChanged.connect(self._trigger_filter_debounced)
         key_layout.addWidget(self.key_filter)
         key_layout.addStretch()
@@ -307,15 +358,14 @@ class ResultsView(QWidget):
         # Connect checkbox to show/hide container
         advanced_filters_group.toggled.connect(self.advanced_filters_container.setVisible)
 
-        advanced_filters_layout.addWidget(self.advanced_filters_container)
-        advanced_filters_group.setLayout(advanced_filters_layout)
-        filters_layout.addWidget(advanced_filters_group)
+        advanced_filters_inner_layout.addWidget(self.advanced_filters_container)
+        advanced_filters_group.setLayout(advanced_filters_inner_layout)
+        advanced_filters_layout.addWidget(advanced_filters_group)
+        
+        # Hide advanced filters widget by default (can be shown if needed)
+        self.advanced_filters_widget.setVisible(False)
 
-        filters_group.setLayout(filters_layout)
-        top_layout.addWidget(filters_group)
-
-        # Add top section to splitter
-        top_widget.setMaximumHeight(250 if is_macos() else 400)
+        # Add top section to splitter (compact boxes)
         splitter.addWidget(top_widget)
 
         # Bottom section: Results table (single playlist mode)
@@ -357,6 +407,9 @@ class ResultsView(QWidget):
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        # Ensure "10 tracks visible" when possible (table remains scrollable)
+        self.table.verticalHeader().setDefaultSectionSize(26 if is_macos() else 28)
+        self._ensure_table_min_rows(self.table, 10)
         
         # Connect sort signal to update visual indicators
         self.table.horizontalHeader().sectionClicked.connect(self._on_column_sorted)
@@ -396,12 +449,17 @@ class ResultsView(QWidget):
 
         # Add splitter to main layout
         layout.addWidget(splitter, 1)  # Give splitter stretch priority
+        
+        # Add advanced filters widget (hidden by default, can be shown when needed)
+        layout.addWidget(self.advanced_filters_widget)
 
         # Export buttons (outside splitter, at bottom)
         button_layout = QHBoxLayout()
         button_layout.addStretch()
 
         self.export_btn = QPushButton("Export...")
+        self.export_btn.setObjectName("secondaryActionButton")
+        self.export_btn.setFixedHeight(30 if is_macos() else 32)
         self.export_btn.clicked.connect(self.show_export_dialog)
         self.export_btn.setToolTip("Export results to CSV, JSON, or Excel format (Ctrl+E)")
         self.export_btn.setAccessibleName("Export button")
@@ -413,6 +471,8 @@ class ResultsView(QWidget):
 
         # Legacy export buttons (for backward compatibility)
         self.export_all_btn = QPushButton("Export All CSV Files")
+        self.export_all_btn.setObjectName("secondaryActionButton")
+        self.export_all_btn.setFixedHeight(30 if is_macos() else 32)
         self.export_all_btn.clicked.connect(self.export_all_csv)
         self.export_all_btn.setToolTip("Export all CSV files (main, candidates, queries, review)")
         self.export_all_btn.setAccessibleName("Export all CSV files button")
@@ -421,6 +481,8 @@ class ResultsView(QWidget):
         button_layout.addWidget(self.export_all_btn)
 
         self.open_folder_btn = QPushButton("Open Output Folder")
+        self.open_folder_btn.setObjectName("secondaryActionButton")
+        self.open_folder_btn.setFixedHeight(30 if is_macos() else 32)
         self.open_folder_btn.clicked.connect(self.open_output_folder)
         self.open_folder_btn.setToolTip("Open the output folder in file explorer")
         self.open_folder_btn.setAccessibleName("Open output folder button")
@@ -674,8 +736,11 @@ class ResultsView(QWidget):
 
         # Year range filter
         year_layout = QHBoxLayout()
+        year_layout.setSpacing(8)
         year_layout.addWidget(QLabel("Year Range:"))
         year_min = QSpinBox()
+        year_min.setButtonSymbols(QAbstractSpinBox.PlusMinus)
+        year_min.setFixedWidth(110)
         year_min.setMinimum(1900)
         year_min.setMaximum(2100)
         year_min.setValue(1900)
@@ -685,6 +750,8 @@ class ResultsView(QWidget):
         year_layout.addWidget(year_min)
 
         year_max = QSpinBox()
+        year_max.setButtonSymbols(QAbstractSpinBox.PlusMinus)
+        year_max.setFixedWidth(110)
         year_max.setMinimum(1900)
         year_max.setMaximum(2100)
         year_max.setValue(2100)
@@ -696,8 +763,11 @@ class ResultsView(QWidget):
 
         # BPM range filter
         bpm_layout = QHBoxLayout()
+        bpm_layout.setSpacing(8)
         bpm_layout.addWidget(QLabel("BPM Range:"))
         bpm_min = QSpinBox()
+        bpm_min.setButtonSymbols(QAbstractSpinBox.PlusMinus)
+        bpm_min.setFixedWidth(110)
         bpm_min.setMinimum(60)
         bpm_min.setMaximum(200)
         bpm_min.setValue(60)
@@ -707,6 +777,8 @@ class ResultsView(QWidget):
         bpm_layout.addWidget(bpm_min)
 
         bpm_max = QSpinBox()
+        bpm_max.setButtonSymbols(QAbstractSpinBox.PlusMinus)
+        bpm_max.setFixedWidth(110)
         bpm_max.setMinimum(60)
         bpm_max.setMaximum(200)
         bpm_max.setValue(200)
@@ -718,6 +790,7 @@ class ResultsView(QWidget):
 
         # Key filter
         key_layout = QHBoxLayout()
+        key_layout.setSpacing(8)
         key_layout.addWidget(QLabel("Musical Key:"))
         key_filter = QComboBox()
         keys = (
@@ -727,7 +800,7 @@ class ResultsView(QWidget):
         )
         key_filter.addItems(keys)
         key_filter.setToolTip("Filter by musical key (only shows matched tracks with key data)")
-        key_filter.setMinimumWidth(150)
+        key_filter.setFixedWidth(220)
         key_layout.addWidget(key_filter)
         key_layout.addStretch()
         container_layout.addLayout(key_layout)
@@ -774,6 +847,8 @@ class ResultsView(QWidget):
         table.setSelectionBehavior(QTableWidget.SelectRows)
         table.setEditTriggers(QTableWidget.NoEditTriggers)
         table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        table.verticalHeader().setDefaultSectionSize(26 if is_macos() else 28)
+        self._ensure_table_min_rows(table, 10)
 
         # Enable context menu and double-click
         table.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -858,15 +933,12 @@ class ResultsView(QWidget):
         # Use controller to get summary statistics
         stats = self.results_controller.get_summary_statistics()
 
+        # Compact single-line format for the box
         summary_text = (
-            f"✅ Processing Complete!\n\n"
-            f"Total tracks: {stats['total']}\n"
-            f"Matched: {stats['matched']} ({stats['match_rate']:.1f}%)\n"
-            f"Unmatched: {stats['unmatched']}\n"
-            f"Average match score: {stats['avg_score']:.1f}\n"
-            f"Confidence breakdown: High: {stats['confidence_breakdown']['high']}, "
-            f"Medium: {stats['confidence_breakdown']['medium']}, "
-            f"Low: {stats['confidence_breakdown']['low']}"
+            f"✅ Complete! Total: {stats['total']} | "
+            f"Matched: {stats['matched']} ({stats['match_rate']:.1f}%) | "
+            f"Unmatched: {stats['unmatched']} | "
+            f"Avg Score: {stats['avg_score']:.1f}"
         )
 
         self.summary_label.setText(summary_text)
@@ -883,16 +955,13 @@ class ResultsView(QWidget):
         # Use controller to get batch summary statistics
         stats = self.results_controller.get_batch_summary_statistics(self.batch_results)
 
+        # Compact single-line format for the box
         summary_text = (
-            f"✅ Batch Processing Complete!\n\n"
-            f"Playlists processed: {stats['playlist_count']}\n"
-            f"Total tracks: {stats['total']}\n"
-            f"Matched: {stats['matched']} ({stats['match_rate']:.1f}%)\n"
-            f"Unmatched: {stats['unmatched']}\n"
-            f"Average match score: {stats['avg_score']:.1f}\n"
-            f"Confidence breakdown: High: {stats['confidence_breakdown']['high']}, "
-            f"Medium: {stats['confidence_breakdown']['medium']}, "
-            f"Low: {stats['confidence_breakdown']['low']}"
+            f"✅ Batch Complete! Playlists: {stats['playlist_count']} | "
+            f"Total: {stats['total']} | "
+            f"Matched: {stats['matched']} ({stats['match_rate']:.1f}%) | "
+            f"Unmatched: {stats['unmatched']} | "
+            f"Avg Score: {stats['avg_score']:.1f}"
         )
 
         self.summary_label.setText(summary_text)
@@ -999,6 +1068,9 @@ class ResultsView(QWidget):
         for col in range(self.table.columnCount()):
             current_width = self.table.columnWidth(col)
             self.table.setColumnWidth(col, max(current_width, 80))
+
+        # Keep table tall enough to show ~10 rows when space allows
+        self._ensure_table_min_rows(self.table, 10)
 
     def _on_column_sorted(self, column: int) -> None:
         """Handle column sorting with visual indicators"""
@@ -1317,6 +1389,9 @@ class ResultsView(QWidget):
             table.horizontalHeader().setSortIndicator(-1, Qt.AscendingOrder)
             table.sortItems(0, Qt.AscendingOrder)
             table.horizontalHeader().setSortIndicator(0, Qt.AscendingOrder)
+
+        # Keep table tall enough to show ~10 rows when space allows
+        self._ensure_table_min_rows(table, 10)
 
     def _filter_results_for_playlist(
         self, results: List[TrackResult], table: QTableWidget

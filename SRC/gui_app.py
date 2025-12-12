@@ -11,6 +11,19 @@ Run this file to launch the graphical user interface.
 import os
 import sys
 
+# If a project-local virtualenv exists, re-exec into it so `python3 gui_app.py`
+# works without manual activation and uses a consistent, ship-ready runtime.
+if __name__ == "__main__":
+    try:
+        if sys.prefix == sys.base_prefix:  # not already in a venv
+            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            venv_python = os.path.join(project_root, ".venv", "bin", "python")
+            if os.path.exists(venv_python) and os.access(venv_python, os.X_OK):
+                os.execv(venv_python, [venv_python] + sys.argv)
+    except Exception:
+        # Never block startup due to venv detection; fall back to current interpreter.
+        pass
+
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 # Add src to path if needed (for imports)

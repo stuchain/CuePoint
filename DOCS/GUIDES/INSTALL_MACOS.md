@@ -2,7 +2,40 @@
 
 ## Quick Start
 
-### Option 1: Using the Install Script (Recommended)
+### Option 1: Ship-ready install (Recommended)
+
+This avoids the common macOS warning from `urllib3` about LibreSSL by using a Python build
+linked against **OpenSSL** (recommended for a proper, distributable app environment).
+
+1. **Install Homebrew** (if needed) and prerequisites:
+   ```bash
+   brew install pyenv openssl@3 readline xz zlib
+   ```
+
+2. **Install the pinned Python** (matches `.python-version` in the repo):
+   ```bash
+   cd /path/to/CuePoint
+   pyenv install 3.11.10
+   pyenv local 3.11.10
+   ```
+
+3. **Create a project virtualenv + install dependencies**:
+   ```bash
+   cd /path/to/CuePoint
+   python -m venv .venv
+   source .venv/bin/activate
+   pip install -U pip
+   pip install -r requirements.txt
+   python -m playwright install chromium
+   ```
+
+4. **Run the app** (uses `.venv` automatically):
+   - Double-click `run_gui.command`, or:
+   ```bash
+   ./run_gui.sh
+   ```
+
+### Option 2: Using the Install Script (Legacy)
 
 1. **Make the script executable** (one-time setup):
    ```bash
@@ -14,7 +47,7 @@
    ./install_requirements.sh
    ```
 
-### Option 2: Manual Installation
+### Option 3: Manual Installation
 
 1. **Open Terminal** (Applications → Utilities → Terminal)
 
@@ -39,7 +72,7 @@ python3 --version
 
 **If not installed, choose one method:**
 
-#### Method 1: Official Python Installer (Recommended)
+#### Method 1: Official Python Installer
 1. Visit https://www.python.org/downloads/
 2. Download Python 3.x for macOS
 3. Run the installer

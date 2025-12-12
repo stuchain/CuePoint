@@ -4,9 +4,12 @@ __pycache__/
 *$py.class
 *.so
 .Python
+.venv/
+venv/
 
 # Output files
 output/
+SRC/output/
 *.csv
 
 # Cache files

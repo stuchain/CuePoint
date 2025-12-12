@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
+    QAbstractSpinBox,
     QComboBox,
     QDateEdit,
     QDialog,
@@ -30,8 +31,8 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QMessageBox,
     QPushButton,
+    QSizePolicy,
     QSpinBox,
-    QSplitter,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -70,21 +71,22 @@ class HistoryView(QWidget):
         self._filter_debounce_timer.timeout.connect(self._apply_filters_debounced)
         self.init_ui()
 
+    def _ensure_table_min_rows(self, table: QTableWidget, rows: int = 10) -> None:
+        """Ensure the table has enough visible height to show N rows (when space allows)."""
+        try:
+            header_h = table.horizontalHeader().height() or table.horizontalHeader().sizeHint().height()
+            row_h = table.verticalHeader().defaultSectionSize() or 24
+            frame = table.frameWidth() * 2
+            extra = 6
+            table.setMinimumHeight(header_h + (row_h * rows) + frame + extra)
+        except Exception:
+            return
+
     def init_ui(self):
         """Initialize UI components"""
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
         layout.setContentsMargins(10, 10, 10, 10)
-
-        # Create vertical splitter for resizable sections
-        splitter = QSplitter(Qt.Vertical)
-        splitter.setChildrenCollapsible(False)  # Prevent sections from being collapsed completely
-
-        # Top section: File selection and filters
-        top_widget = QWidget()
-        top_layout = QVBoxLayout(top_widget)
-        top_layout.setSpacing(10)
-        top_layout.setContentsMargins(0, 0, 0, 0)
 
         # File selection section
         file_group = QGroupBox("Select Past Search")
@@ -116,7 +118,7 @@ class HistoryView(QWidget):
         file_layout.addWidget(refresh_btn)
 
         file_group.setLayout(file_layout)
-        top_layout.addWidget(file_group)
+        file_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
         # Results display section (filters only, table goes in bottom section)
         results_group = QGroupBox("Search Results")
@@ -169,8 +171,11 @@ class HistoryView(QWidget):
 
         # Year range filter
         year_layout = QHBoxLayout()
+        year_layout.setSpacing(8)
         year_layout.addWidget(QLabel("Year Range:"))
         self.year_min = QSpinBox()
+        self.year_min.setButtonSymbols(QAbstractSpinBox.PlusMinus)
+        self.year_min.setFixedWidth(110)
         self.year_min.setMinimum(1900)
         self.year_min.setMaximum(2100)
         self.year_min.setValue(1900)
@@ -181,6 +186,8 @@ class HistoryView(QWidget):
         year_layout.addWidget(self.year_min)
 
         self.year_max = QSpinBox()
+        self.year_max.setButtonSymbols(QAbstractSpinBox.PlusMinus)
+        self.year_max.setFixedWidth(110)
         self.year_max.setMinimum(1900)
         self.year_max.setMaximum(2100)
         self.year_max.setValue(2100)
@@ -193,8 +200,11 @@ class HistoryView(QWidget):
 
         # BPM range filter
         bpm_layout = QHBoxLayout()
+        bpm_layout.setSpacing(8)
         bpm_layout.addWidget(QLabel("BPM Range:"))
         self.bpm_min = QSpinBox()
+        self.bpm_min.setButtonSymbols(QAbstractSpinBox.PlusMinus)
+        self.bpm_min.setFixedWidth(110)
         self.bpm_min.setMinimum(60)
         self.bpm_min.setMaximum(200)
         self.bpm_min.setValue(60)
@@ -205,6 +215,8 @@ class HistoryView(QWidget):
         bpm_layout.addWidget(self.bpm_min)
 
         self.bpm_max = QSpinBox()
+        self.bpm_max.setButtonSymbols(QAbstractSpinBox.PlusMinus)
+        self.bpm_max.setFixedWidth(110)
         self.bpm_max.setMinimum(60)
         self.bpm_max.setMaximum(200)
         self.bpm_max.setValue(200)
@@ -217,6 +229,7 @@ class HistoryView(QWidget):
 
         # Key filter
         key_layout = QHBoxLayout()
+        key_layout.setSpacing(8)
         key_layout.addWidget(QLabel("Musical Key:"))
         self.key_filter = QComboBox()
         keys = (
@@ -228,7 +241,7 @@ class HistoryView(QWidget):
         self.key_filter.setToolTip(
             "Filter by musical key (only shows matched tracks with key data)"
         )
-        self.key_filter.setMinimumWidth(150)
+        self.key_filter.setFixedWidth(220)
         self.key_filter.currentTextChanged.connect(self._trigger_filter_debounced)
         key_layout.addWidget(self.key_filter)
         key_layout.addStretch()
@@ -295,30 +308,27 @@ class HistoryView(QWidget):
         # results_layout.addWidget(self.table, 1)  # REMOVED - table goes in bottom section
 
         results_group.setLayout(results_layout)
-        top_layout.addWidget(results_group)
+        results_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
-        # Add top section to splitter
-        top_widget.setMaximumHeight(500)  # Set max height for top section
-        splitter.addWidget(top_widget)
+        # Top row container (two equal boxes)
+        top_row_widget = QWidget()
+        top_row = QHBoxLayout(top_row_widget)
+        top_row.setSpacing(10)
+        top_row.setContentsMargins(0, 0, 0, 0)
+        top_row.addWidget(file_group, 1)
+        top_row.addWidget(results_group, 1)
+        layout.addWidget(top_row_widget)
 
-        # Bottom section: Results table
-        bottom_widget = QWidget()
-        bottom_layout = QVBoxLayout(bottom_widget)
-        bottom_layout.setContentsMargins(0, 0, 0, 0)
-
+        # Results table section (big, below)
         table_group = QGroupBox("Results Table")
-        table_layout = QVBoxLayout()
+        table_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        table_layout = QVBoxLayout(table_group)
         table_layout.addWidget(self.table, 1)
-        table_group.setLayout(table_layout)
-        bottom_layout.addWidget(table_group)
+        layout.addWidget(table_group, 1)
 
-        splitter.addWidget(bottom_widget)
-
-        # Set initial splitter sizes (40% top, 60% bottom)
-        splitter.setSizes([400, 600])
-
-        # Add splitter to main layout
-        layout.addWidget(splitter, 1)  # Give splitter stretch priority
+        # Ensure table shows at least ~10 rows when possible
+        self.table.verticalHeader().setDefaultSectionSize(26)
+        self._ensure_table_min_rows(self.table, 10)
 
         # Load recent files on init
         self.refresh_recent_files()
@@ -744,6 +754,9 @@ class HistoryView(QWidget):
         for col in range(self.table.columnCount()):
             current_width = self.table.columnWidth(col)
             self.table.setColumnWidth(col, max(current_width, 80))
+
+        # Keep table tall enough to show ~10 rows when space allows
+        self._ensure_table_min_rows(self.table, 10)
 
     def _on_candidate_selected(
         self,

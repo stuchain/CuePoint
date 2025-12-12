@@ -36,6 +36,7 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QPushButton,
     QRadioButton,
+    QScrollArea,
     QSplitter,
     QTabWidget,
     QVBoxLayout,
@@ -148,9 +149,9 @@ class MainWindow(QMainWindow):
         # Initially show tool selection page
         self.show_tool_selection_page()
 
-        # Main tab - FULL WIDTH, EQUAL SIZE boxes at TOP
-        main_tab = QWidget()
-        main_layout = QVBoxLayout(main_tab)
+        # Main tab (scrollable): keeps table scrollable AND allows whole-window scroll if needed
+        main_tab_content = QWidget()
+        main_layout = QVBoxLayout(main_tab_content)
         main_layout.setSpacing(8)
         main_layout.setContentsMargins(10, 10, 10, 10)
 
@@ -165,6 +166,10 @@ class MainWindow(QMainWindow):
                 border-radius: 6px;
                 margin: 0px;
                 padding: 22px 10px 10px 10px;
+            }
+            QGroupBox:hover {
+                background-color: rgba(255, 255, 255, 0.04);
+                border: 1px solid rgba(255, 255, 255, 0.20);
             }
             QGroupBox::title {
                 subcontrol-origin: padding;
@@ -364,16 +369,29 @@ class MainWindow(QMainWindow):
         self.config_panel = ConfigPanel(config_controller=self.config_controller)
 
         # History tab (Past Searches)
-        history_tab = QWidget()
-        history_layout = QVBoxLayout(history_tab)
+        history_tab_content = QWidget()
+        history_layout = QVBoxLayout(history_tab_content)
         history_layout.setContentsMargins(Layout.MARGIN, Layout.MARGIN, Layout.MARGIN, Layout.MARGIN)
         self.history_view = HistoryView(export_controller=self.export_controller)
         self.history_view.rerun_requested.connect(self.on_rerun_requested)
         history_layout.addWidget(self.history_view)
 
+        history_scroll = QScrollArea()
+        history_scroll.setWidgetResizable(True)
+        history_scroll.setFrameShape(QFrame.NoFrame)
+        history_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        history_scroll.setWidget(history_tab_content)
+
+        # Wrap main content in a scroll area
+        main_scroll = QScrollArea()
+        main_scroll.setWidgetResizable(True)
+        main_scroll.setFrameShape(QFrame.NoFrame)
+        main_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        main_scroll.setWidget(main_tab_content)
+
         # Add tabs (Settings tab removed - now accessible via menu)
-        self.tabs.addTab(main_tab, "Main")
-        self.tabs.addTab(history_tab, "Past Searches")
+        self.tabs.addTab(main_scroll, "Main")
+        self.tabs.addTab(history_scroll, "Past Searches")
 
         # Performance monitoring view (created but not added to tabs yet)
         self.performance_view = PerformanceView()
