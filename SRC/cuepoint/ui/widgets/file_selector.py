@@ -47,6 +47,10 @@ class FileSelector(QWidget):
         self.path_edit.setStyleSheet("font-size: 11px;")
 
         browse_btn = QPushButton("Browse...")
+        browse_btn.setToolTip(
+            "Browse for Rekordbox Collection XML file.\n"
+            "Export from Rekordbox: File → Export Collection"
+        )
         browse_btn.clicked.connect(self.browse_file)
         browse_btn.setStyleSheet("""
             QPushButton {

@@ -8,6 +8,9 @@ This module contains the ExportDialog class for selecting export format and opti
 """
 
 import os
+import platform
+import subprocess
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from PySide6.QtWidgets import (
@@ -27,6 +30,7 @@ from PySide6.QtWidgets import (
 )
 
 from cuepoint.ui.controllers.export_controller import ExportController
+from cuepoint.utils.paths import AppPaths
 
 
 class ExportDialog(QDialog):
@@ -158,6 +162,15 @@ class ExportDialog(QDialog):
         options_group.setLayout(options_layout)
         layout.addWidget(options_group)
 
+        # Output location display
+        output_dir_group = QGroupBox("Output Location")
+        output_dir_layout = QVBoxLayout()
+        
+        # Default output directory display
+        self.output_dir_label = QLabel()
+        self.update_output_dir_display()
+        output_dir_layout.addWidget(self.output_dir_label)
+        
         # File path selection
         file_layout = QHBoxLayout()
         file_layout.addWidget(QLabel("Output File:"))
@@ -169,8 +182,17 @@ class ExportDialog(QDialog):
         browse_button = QPushButton("Browse...")
         browse_button.clicked.connect(self._browse_file)
         file_layout.addWidget(browse_button)
-
-        layout.addLayout(file_layout)
+        
+        output_dir_layout.addLayout(file_layout)
+        
+        # Open folder button
+        open_folder_button = QPushButton("Open Output Folder")
+        open_folder_button.setToolTip("Open the output folder in your file explorer")
+        open_folder_button.clicked.connect(self._open_output_folder)
+        output_dir_layout.addWidget(open_folder_button)
+        
+        output_dir_group.setLayout(output_dir_layout)
+        layout.addWidget(output_dir_group)
 
         # Buttons
         button_layout = QHBoxLayout()
@@ -328,6 +350,87 @@ class ExportDialog(QDialog):
                 return False
 
         return True
+
+    def update_output_dir_display(self):
+        """Update output directory display."""
+        output_dir = AppPaths.exports_dir()
+        self.output_dir_label.setText(f"Default Output: {output_dir}")
+        self.output_dir_label.setToolTip(f"Files will be saved to: {output_dir}")
+
+    def _open_output_folder(self):
+        """Open output folder in file explorer.
+        
+        Opens the default exports directory or the directory of the selected file.
+        """
+        # Get directory to open
+        if self.file_path_edit.text():
+            # Use directory of selected file
+            file_path = Path(self.file_path_edit.text())
+            if file_path.parent.exists():
+                folder_path = file_path.parent
+            else:
+                folder_path = AppPaths.exports_dir()
+        else:
+            # Use default exports directory
+            folder_path = AppPaths.exports_dir()
+        
+        # Open folder based on platform
+        try:
+            if platform.system() == "Windows":
+                subprocess.Popen(f'explorer "{folder_path}"')
+            elif platform.system() == "Darwin":
+                subprocess.Popen(["open", str(folder_path)])
+            else:
+                subprocess.Popen(["xdg-open", str(folder_path)])
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                "Cannot Open Folder",
+                f"Could not open folder:\n{str(e)}"
+            )
+
+    def show_export_complete(self, file_path: str):
+        """Show export completion message with option to open folder.
+        
+        Args:
+            file_path: Path to the exported file.
+        """
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Information)
+        msg.setWindowTitle("Export Complete")
+        msg.setText(f"Results exported successfully!")
+        msg.setInformativeText(f"File: {file_path}")
+        
+        # Add "Open Folder" button
+        open_folder_btn = msg.addButton("Open Folder", QMessageBox.ActionRole)
+        open_file_btn = msg.addButton("Open File", QMessageBox.ActionRole)
+        msg.addButton("OK", QMessageBox.AcceptRole)
+        
+        msg.exec()
+        
+        if msg.clickedButton() == open_folder_btn:
+            # Open folder containing the file
+            folder_path = Path(file_path).parent
+            try:
+                if platform.system() == "Windows":
+                    subprocess.Popen(f'explorer "{folder_path}"')
+                elif platform.system() == "Darwin":
+                    subprocess.Popen(["open", str(folder_path)])
+                else:
+                    subprocess.Popen(["xdg-open", str(folder_path)])
+            except Exception:
+                pass  # Ignore errors opening folder
+        elif msg.clickedButton() == open_file_btn:
+            # Open the file itself
+            try:
+                if platform.system() == "Windows":
+                    subprocess.Popen(f'"{file_path}"', shell=True)
+                elif platform.system() == "Darwin":
+                    subprocess.Popen(["open", file_path])
+                else:
+                    subprocess.Popen(["xdg-open", file_path])
+            except Exception:
+                pass  # Ignore errors opening file
 
     def accept(self):
         """Override accept to validate before closing"""

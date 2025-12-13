@@ -2,257 +2,179 @@
 # -*- coding: utf-8 -*-
 
 """
-Performance Metrics Collection Module
+Performance Monitoring Utility
 
-This module provides comprehensive performance monitoring for the CuePoint application,
-tracking timing, query effectiveness, cache statistics, and generating performance reports.
+Provides performance monitoring and optimization utilities.
+Implements performance requirements from Step 1.11.
 """
 
+import logging
 import time
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from collections import defaultdict
+from typing import Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 
-@dataclass
-class QueryMetrics:
-    """Metrics for a single query execution"""
+class PerformanceMonitor:
+    """Monitor performance metrics.
 
-    query_text: str
-    execution_time: float  # Seconds
-    candidates_found: int
-    cache_hit: bool
-    query_type: str  # "priority", "n_gram", "remix", "title_only", etc.
-    network_time: float = 0.0  # Time spent on network request
-    parse_time: float = 0.0  # Time spent parsing response
+    Provides performance monitoring functionality:
+    - Record operation performance
+    - Get performance statistics
+    - Context manager for timing operations
+    """
 
+    _metrics: Dict[str, List[Dict]] = defaultdict(list)
+    _enabled = True
 
-@dataclass
-class TrackMetrics:
-    """Metrics for a single track processing"""
+    @classmethod
+    def enable(cls):
+        """Enable performance monitoring."""
+        cls._enabled = True
 
-    track_id: str
-    track_title: str
-    total_time: float = 0.0  # Total processing time in seconds
-    queries: List[QueryMetrics] = field(default_factory=list)
-    total_queries: int = 0
-    total_candidates: int = 0
-    candidates_evaluated: int = 0
-    early_exit: bool = False
-    early_exit_query_index: int = 0
-    match_found: bool = False
-    match_score: float = 0.0
+    @classmethod
+    def disable(cls):
+        """Disable performance monitoring."""
+        cls._enabled = False
 
-
-@dataclass
-class FilterMetrics:
-    """Metrics for a filter operation"""
-
-    duration: float  # Filter operation time in seconds
-    initial_count: int  # Number of results before filtering
-    filtered_count: int  # Number of results after filtering
-    filters_applied: Dict[str, Any]  # Dictionary of active filters
-
-
-@dataclass
-class PerformanceStats:
-    """Aggregate performance statistics for a processing session"""
-
-    total_tracks: int = 0
-    matched_tracks: int = 0
-    unmatched_tracks: int = 0
-    total_time: float = 0.0
-    query_metrics: List[QueryMetrics] = field(default_factory=list)
-    track_metrics: List[TrackMetrics] = field(default_factory=list)
-    filter_metrics: List[FilterMetrics] = field(default_factory=list)
-    cache_stats: Dict[str, int] = field(default_factory=lambda: {"hits": 0, "misses": 0})
-    start_time: Optional[float] = None
-    end_time: Optional[float] = None
-
-    def average_time_per_track(self) -> float:
-        """Calculate average processing time per track"""
-        if self.total_tracks == 0:
-            return 0.0
-        return self.total_time / self.total_tracks
-
-    def average_time_per_query(self) -> float:
-        """Calculate average execution time per query"""
-        if not self.query_metrics:
-            return 0.0
-        return sum(q.execution_time for q in self.query_metrics) / len(self.query_metrics)
-
-    def cache_hit_rate(self) -> float:
-        """Calculate cache hit rate as percentage"""
-        total = self.cache_stats["hits"] + self.cache_stats["misses"]
-        if total == 0:
-            return 0.0
-        return (self.cache_stats["hits"] / total) * 100
-
-    def match_rate(self) -> float:
-        """Calculate match rate as percentage"""
-        if self.total_tracks == 0:
-            return 0.0
-        return (self.matched_tracks / self.total_tracks) * 100
-
-
-class PerformanceCollector:
-    """Singleton collector for performance metrics"""
-
-    _instance: Optional["PerformanceCollector"] = None
-    _stats: Optional[PerformanceStats] = None
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
-    def start_session(self) -> None:
-        """Start a new performance monitoring session.
-
-        Initializes a new PerformanceStats object and records the start time.
-        Should be called at the beginning of a processing session.
-        """
-        self._stats = PerformanceStats()
-        self._stats.start_time = time.perf_counter()
-
-    def end_session(self) -> None:
-        """End the current session.
-
-        Records the end time and calculates total session duration.
-        Should be called at the end of a processing session.
-        """
-        if self._stats:
-            self._stats.end_time = time.perf_counter()
-            if self._stats.start_time:
-                self._stats.total_time = self._stats.end_time - self._stats.start_time
-
-    def record_track_start(self, track_id: str, track_title: str) -> TrackMetrics:
-        """Record start of track processing"""
-        if not self._stats:
-            self.start_session()
-
-        assert self._stats is not None  # Type guard for mypy
-        track_metrics = TrackMetrics(track_id=track_id, track_title=track_title)
-        self._stats.track_metrics.append(track_metrics)
-        self._stats.total_tracks += 1
-        return track_metrics
-
-    def record_query(
-        self,
-        track_metrics: TrackMetrics,
-        query_text: str,
-        execution_time: float,
-        candidates_found: int,
-        cache_hit: bool,
-        query_type: str,
-        network_time: float = 0.0,
-        parse_time: float = 0.0,
-    ) -> None:
-        """Record a query execution.
-
-        Args:
-            track_metrics: The TrackMetrics object to add the query to.
-            query_text: The search query text that was executed.
-            execution_time: Total execution time in seconds.
-            candidates_found: Number of candidate tracks found.
-            cache_hit: Whether the query result came from cache.
-            query_type: Type of query (e.g., "priority", "n_gram", "remix").
-            network_time: Time spent on network request in seconds (default: 0.0).
-            parse_time: Time spent parsing response in seconds (default: 0.0).
-        """
-        query_metric = QueryMetrics(
-            query_text=query_text,
-            execution_time=execution_time,
-            candidates_found=candidates_found,
-            cache_hit=cache_hit,
-            query_type=query_type,
-            network_time=network_time,
-            parse_time=parse_time,
-        )
-        track_metrics.queries.append(query_metric)
-        track_metrics.total_queries += 1
-
-        assert self._stats is not None  # Type guard for mypy
-        self._stats.query_metrics.append(query_metric)
-
-        # Update cache stats
-        if cache_hit:
-            self._stats.cache_stats["hits"] += 1
-        else:
-            self._stats.cache_stats["misses"] += 1
-
-    def record_track_complete(
-        self,
-        track_metrics: TrackMetrics,
-        total_time: float,
-        match_found: bool,
-        match_score: float = 0.0,
-        early_exit: bool = False,
-        early_exit_query_index: int = 0,
-        candidates_evaluated: int = 0,
-    ) -> None:
-        """Record completion of track processing.
-
-        Args:
-            track_metrics: The TrackMetrics object to update.
-            total_time: Total processing time in seconds.
-            match_found: Whether a match was found for this track.
-            match_score: Confidence score of the match (default: 0.0).
-            early_exit: Whether processing stopped early (default: False).
-            early_exit_query_index: Index of query that triggered early exit (default: 0).
-            candidates_evaluated: Number of candidates evaluated (default: 0).
-        """
-        track_metrics.total_time = total_time
-        track_metrics.match_found = match_found
-        track_metrics.match_score = match_score
-        track_metrics.early_exit = early_exit
-        track_metrics.early_exit_query_index = early_exit_query_index
-        track_metrics.candidates_evaluated = candidates_evaluated
-
-        assert self._stats is not None  # Type guard for mypy
-        if match_found:
-            self._stats.matched_tracks += 1
-        else:
-            self._stats.unmatched_tracks += 1
-
-    def record_filter_operation(
-        self,
+    @classmethod
+    def record_operation(
+        cls,
+        operation: str,
         duration: float,
-        initial_count: int,
-        filtered_count: int,
-        filters_applied: Dict[str, Any],
-    ) -> None:
-        """Record a filter operation for performance tracking.
+        metadata: Optional[Dict] = None,
+        size: Optional[int] = None,
+    ):
+        """Record operation performance.
 
         Args:
-            duration: Filter operation time in seconds.
-            initial_count: Number of results before filtering.
-            filtered_count: Number of results after filtering.
-            filters_applied: Dictionary of active filters and their values.
+            operation: Operation name.
+            duration: Duration in seconds.
+            metadata: Optional metadata dictionary.
+            size: Optional size (e.g., number of items processed).
         """
-        if not self._stats:
-            self.start_session()
+        if not cls._enabled:
+            return
 
-        assert self._stats is not None  # Type guard for mypy
-        filter_metric = FilterMetrics(
-            duration=duration,
-            initial_count=initial_count,
-            filtered_count=filtered_count,
-            filters_applied=filters_applied,
-        )
-        self._stats.filter_metrics.append(filter_metric)
+        record = {
+            "duration": duration,
+            "metadata": metadata or {},
+            "size": size,
+            "timestamp": time.time(),
+        }
 
-    def get_stats(self) -> Optional[PerformanceStats]:
-        """Get current performance statistics"""
-        return self._stats
+        cls._metrics[operation].append(record)
 
-    def reset(self) -> None:
-        """Reset all statistics.
+        # Log if slow
+        if duration > 1.0:  # > 1 second
+            logger.warning(f"Slow operation: {operation} took {duration:.2f}s")
 
-        Clears all collected performance data. Useful for starting a new
-        monitoring session or testing.
+    @classmethod
+    def get_stats(cls, operation: str) -> Dict:
+        """Get performance statistics for operation.
+
+        Args:
+            operation: Operation name.
+
+        Returns:
+            Dictionary with statistics:
+            - count: Number of operations
+            - avg: Average duration
+            - min: Minimum duration
+            - max: Maximum duration
+            - p50: 50th percentile
+            - p95: 95th percentile
+            - avg_size: Average size (if available)
+            - total_size: Total size (if available)
         """
-        self._stats = None
+        if operation not in cls._metrics or not cls._metrics[operation]:
+            return {}
+
+        durations = [m["duration"] for m in cls._metrics[operation]]
+        sizes = [m.get("size", 0) for m in cls._metrics[operation] if m.get("size")]
+
+        sorted_durations = sorted(durations)
+        # Calculate median (p50) - average of two middle values for even count
+        if len(sorted_durations) % 2 == 0:
+            mid = len(sorted_durations) // 2
+            p50 = (sorted_durations[mid - 1] + sorted_durations[mid]) / 2.0
+        else:
+            p50 = sorted_durations[len(sorted_durations) // 2]
+        
+        stats = {
+            "count": len(durations),
+            "avg": sum(durations) / len(durations),
+            "min": min(durations),
+            "max": max(durations),
+            "p50": p50,
+            "p95": (
+                sorted_durations[int(len(sorted_durations) * 0.95)]
+                if len(sorted_durations) > 1
+                else durations[0]
+            ),
+        }
+
+        if sizes:
+            stats["avg_size"] = sum(sizes) / len(sizes)
+            stats["total_size"] = sum(sizes)
+
+        return stats
+
+    @classmethod
+    def get_all_stats(cls) -> Dict[str, Dict]:
+        """Get statistics for all operations.
+
+        Returns:
+            Dictionary mapping operation names to statistics.
+        """
+        return {op: cls.get_stats(op) for op in cls._metrics.keys()}
+
+    @classmethod
+    def clear(cls):
+        """Clear all metrics."""
+        cls._metrics.clear()
+
+    @classmethod
+    def context_manager(cls, operation: str):
+        """Get context manager for timing operations.
+
+        Args:
+            operation: Operation name.
+
+        Returns:
+            PerformanceContext instance.
+        """
+        return PerformanceContext(operation)
 
 
-# Global instance
-performance_collector = PerformanceCollector()
+class PerformanceContext:
+    """Context manager for performance monitoring."""
+
+    def __init__(self, operation: str):
+        """Initialize performance context.
+
+        Args:
+            operation: Operation name.
+        """
+        self.operation = operation
+        self.start_time = None
+        self.metadata = {}
+
+    def __enter__(self):
+        """Enter context manager."""
+        self.start_time = time.time()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit context manager."""
+        duration = time.time() - self.start_time
+        PerformanceMonitor.record_operation(self.operation, duration, self.metadata)
+
+    def set_metadata(self, **kwargs):
+        """Set metadata for this operation.
+
+        Args:
+            **kwargs: Metadata key-value pairs.
+        """
+        self.metadata.update(kwargs)

@@ -43,13 +43,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from cuepoint.models.result import TrackResult
 from cuepoint.services.output_writer import write_csv_files
-from cuepoint.utils.utils import get_output_directory
 from cuepoint.ui.controllers.config_controller import ConfigController
 from cuepoint.ui.controllers.export_controller import ExportController
 from cuepoint.ui.controllers.main_controller import GUIController
 from cuepoint.ui.controllers.results_controller import ResultsController
-from cuepoint.models.result import TrackResult
 from cuepoint.ui.gui_interface import ProcessingError, ProgressInfo
 from cuepoint.ui.widgets.batch_processor import BatchProcessorWidget
 from cuepoint.ui.widgets.config_panel import ConfigPanel
@@ -63,11 +62,13 @@ from cuepoint.ui.widgets.file_selector import FileSelector
 from cuepoint.ui.widgets.history_view import HistoryView
 from cuepoint.ui.widgets.performance_view import PerformanceView
 from cuepoint.ui.widgets.playlist_selector import PlaylistSelector
+
 # ProgressWidget no longer used - progress is inline in MainWindow
 from cuepoint.ui.widgets.results_view import ResultsView
 from cuepoint.ui.widgets.shortcut_manager import ShortcutContext, ShortcutManager
 from cuepoint.ui.widgets.styles import Layout
 from cuepoint.ui.widgets.tool_selection_page import ToolSelectionPage
+from cuepoint.utils.utils import get_output_directory
 
 
 class MainWindow(QMainWindow):
@@ -117,6 +118,8 @@ class MainWindow(QMainWindow):
         self.init_ui()
         self.setup_connections()
         self.setup_shortcuts()
+        # Restore state after UI is initialized
+        self.restore_state()
 
     def init_ui(self) -> None:
         """Initialize all UI components and layout.
@@ -244,6 +247,11 @@ class MainWindow(QMainWindow):
         start_layout.setContentsMargins(0, 8, 0, 8)
         start_layout.addStretch()
         self.start_button = QPushButton("▶ Start Processing")
+        self.start_button.setToolTip(
+            "Start processing the selected playlist(s).\n"
+            "Searches Beatport for each track and enriches with metadata.\n"
+            "Shortcut: Enter"
+        )
         self.start_button.setFixedSize(180, 36)
         self.start_button.setStyleSheet("""
             QPushButton {
@@ -633,8 +641,9 @@ class MainWindow(QMainWindow):
 
         Opens a dialog window with the settings panel.
         """
-        from cuepoint.ui.dialogs.settings_dialog import SettingsDialog
         from PySide6.QtWidgets import QDialog
+
+        from cuepoint.ui.dialogs.settings_dialog import SettingsDialog
         
         dialog = SettingsDialog(config_controller=self.config_controller, parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -1992,3 +2001,123 @@ class MainWindow(QMainWindow):
         # Show error dialog
         error_dialog = ErrorDialog(error, self)
         error_dialog.exec()
+
+    def closeEvent(self, event) -> None:
+        """Handle window close event.
+
+        Saves window state, geometry, and current settings before closing.
+        Implements the "Reliability Outcome" from Step 1.4 - state persistence.
+
+        Args:
+            event: Close event.
+        """
+        self.save_state()
+        super().closeEvent(event)
+
+    def save_state(self) -> None:
+        """Save window state and settings.
+
+        Saves:
+        - Window geometry and state
+        - Last XML file path
+        - Last playlist selection
+        - Last processing mode
+        - Tab selection
+        """
+        settings = QSettings("CuePoint", "CuePoint")
+
+        # Save window geometry and state
+        settings.setValue("geometry", self.saveGeometry())
+        settings.setValue("windowState", self.saveState())
+
+        # Save last XML file path
+        if hasattr(self, "file_selector"):
+            xml_path = self.file_selector.get_file_path()
+            if xml_path:
+                settings.setValue("last_xml", xml_path)
+
+        # Save last playlist selection
+        if hasattr(self, "playlist_selector"):
+            selected_playlist = self.playlist_selector.get_selected_playlist()
+            if selected_playlist:
+                settings.setValue("last_playlist", selected_playlist)
+
+        # Save last processing mode (0 = single, 1 = batch)
+        if hasattr(self, "single_mode_radio") and hasattr(self, "batch_mode_radio"):
+            if self.single_mode_radio.isChecked():
+                settings.setValue("last_mode", 0)
+            elif self.batch_mode_radio.isChecked():
+                settings.setValue("last_mode", 1)
+
+        # Save current tab
+        if hasattr(self, "tabs"):
+            settings.setValue("last_tab", self.tabs.currentIndex())
+
+        settings.sync()
+
+    def restore_state(self) -> None:
+        """Restore window state and settings.
+
+        Restores:
+        - Window geometry and state
+        - Last XML file (if exists)
+        - Last playlist selection
+        - Last processing mode
+        - Tab selection
+        """
+        settings = QSettings("CuePoint", "CuePoint")
+
+        # Restore window geometry
+        geometry = settings.value("geometry")
+        if geometry:
+            self.restoreGeometry(geometry)
+
+        # Restore window state (maximized, etc.)
+        window_state = settings.value("windowState")
+        if window_state:
+            self.restoreState(window_state)
+
+        # Restore last XML file (if exists and valid)
+        last_xml = settings.value("last_xml")
+        if last_xml and os.path.exists(last_xml):
+            try:
+                # Load XML file
+                if hasattr(self, "file_selector"):
+                    self.file_selector.set_file(last_xml)
+                    # This will trigger on_file_selected which loads playlists
+
+                    # Restore last playlist after a short delay (allow XML to load)
+                    last_playlist = settings.value("last_playlist")
+                    if last_playlist and hasattr(self, "playlist_selector"):
+                        # Use QTimer to restore playlist after XML loads
+                        from PySide6.QtCore import QTimer
+
+                        def restore_playlist():
+                            try:
+                                self.playlist_selector.set_selected_playlist(last_playlist)
+                            except Exception:
+                                pass  # Playlist may not exist anymore
+
+                        QTimer.singleShot(500, restore_playlist)
+
+            except Exception as e:
+                # Log but don't fail - state restoration is best-effort
+                print(f"Warning: Could not restore last XML: {e}")
+
+        # Restore last processing mode
+        last_mode = settings.value("last_mode", 0, type=int)
+        if hasattr(self, "single_mode_radio") and hasattr(self, "batch_mode_radio"):
+            if last_mode == 0:
+                self.single_mode_radio.setChecked(True)
+            elif last_mode == 1:
+                self.batch_mode_radio.setChecked(True)
+            # Trigger mode change to update UI
+            self.on_mode_changed()
+
+        # Restore last tab
+        if hasattr(self, "tabs"):
+            last_tab = settings.value("last_tab", 0, type=int)
+            if 0 <= last_tab < self.tabs.count():
+                self.tabs.setCurrentIndex(last_tab)
+            if 0 <= last_tab < self.tabs.count():
+                self.tabs.setCurrentIndex(last_tab)

@@ -33,6 +33,11 @@ class PlaylistSelector(QWidget):
         self.combo = QComboBox()
         self.combo.setEnabled(False)
         self.combo.setPlaceholderText("Select playlist...")
+        self.combo.setToolTip(
+            "Select playlist to process.\n"
+            "Single mode: Process one playlist.\n"
+            "Batch mode: Process multiple playlists."
+        )
         self.combo.currentTextChanged.connect(self.on_selection_changed)
         self.combo.setStyleSheet("font-size: 11px;")
 

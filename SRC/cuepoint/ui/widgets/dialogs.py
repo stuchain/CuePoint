@@ -298,9 +298,34 @@ class AboutDialog(QDialog):
         layout.addWidget(subtitle_label)
 
         # Version
-        version_label = QLabel("Version 1.0.0")
+        from cuepoint.utils.platform import get_platform_string
+        from cuepoint.version import get_build_info, get_version_display_string, is_dev_build
+        
+        version_text = get_version_display_string()
+        version_label = QLabel(version_text)
         version_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(version_label)
+        
+        # Build info (if available)
+        build_info = get_build_info()
+        if build_info.get("build_date"):
+            build_date_label = QLabel(f"Built: {build_info['build_date']}")
+            build_date_label.setAlignment(Qt.AlignCenter)
+            build_date_label.setStyleSheet("color: #999; font-size: 10px;")
+            layout.addWidget(build_date_label)
+        
+        # Dev build indicator
+        if is_dev_build():
+            dev_label = QLabel("Development Build")
+            dev_label.setAlignment(Qt.AlignCenter)
+            dev_label.setStyleSheet("color: orange; font-weight: bold; font-size: 11px;")
+            layout.addWidget(dev_label)
+        
+        # Platform info
+        platform_label = QLabel(f"Platform: {get_platform_string()}")
+        platform_label.setAlignment(Qt.AlignCenter)
+        platform_label.setStyleSheet("color: #999; font-size: 10px;")
+        layout.addWidget(platform_label)
 
         layout.addSpacing(10)
 

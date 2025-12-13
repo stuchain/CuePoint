@@ -6,6 +6,11 @@ __pycache__/
 .Python
 .venv/
 venv/
+env/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
 
 # Output files
 output/
@@ -15,6 +20,12 @@ SRC/output/
 # Cache files
 *.sqlite
 bp_cache.sqlite*
+
+# Build artifacts
+build/
+dist/
+*.spec
+*.pyc
 
 # IDE
 .vscode/
@@ -26,4 +37,30 @@ bp_cache.sqlite*
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+
+# Certificates and secrets
+*.p12
+*.pfx
+*.key
+*.pem
+secrets/
+.env
+
+# Test artifacts
+test_output/
+test_logs/
+
+# Documentation builds
+docs/_build/
+site/
 

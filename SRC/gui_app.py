@@ -35,6 +35,7 @@ if __name__ == "__main__":
 from cuepoint.services.bootstrap import bootstrap_services
 from cuepoint.ui.main_window import MainWindow
 from cuepoint.ui.widgets.styles import get_stylesheet
+from cuepoint.utils.system_check import SystemRequirements
 
 
 def main():
@@ -43,11 +44,28 @@ def main():
         # Bootstrap services (dependency injection setup)
         bootstrap_services()
         
-        # Create QApplication
+        # Create QApplication (needed for message boxes)
         app = QApplication(sys.argv)
         app.setApplicationName("CuePoint")
         app.setOrganizationName("CuePoint")
         app.setApplicationVersion("1.0.0")
+        
+        # Check system requirements
+        meets_requirements, errors = SystemRequirements.check_all()
+        if not meets_requirements:
+            error_message = (
+                "Your system does not meet the minimum requirements:\n\n"
+                + "\n".join(f"• {error}" for error in errors)
+                + "\n\nPlease upgrade your system and try again."
+            )
+            
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Critical)
+            msg.setWindowTitle("System Requirements Not Met")
+            msg.setText(error_message)
+            msg.exec()
+            
+            sys.exit(1)
         
         # Apply platform-specific styling
         app.setStyleSheet(get_stylesheet())

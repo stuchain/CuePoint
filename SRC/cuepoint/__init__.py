@@ -3,7 +3,11 @@ CuePoint - Beatport Metadata Enricher
 Main package for the CuePoint application.
 """
 
-__version__ = "1.0.0"
+from cuepoint.version import __version__
+
+__all__ = ["__version__"]
+
+
 
 
 
