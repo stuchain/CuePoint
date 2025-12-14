@@ -1,0 +1,33 @@
+name: Compliance Check
+
+on:
+  push:
+    branches: [main, ship_v1.0]
+  pull_request:
+    branches: [main, ship_v1.0]
+  schedule:
+    - cron: '0 0 * * 0'  # weekly
+
+jobs:
+  compliance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies (pinned build set)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-build.txt
+
+      - name: Validate compliance
+        run: |
+          python scripts/validate_compliance.py
+
+

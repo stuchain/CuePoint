@@ -22,8 +22,12 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements-build.txt
           pip install pyinstaller
+
+      - name: Generate third-party licenses file
+        run: |
+          python scripts/generate_licenses.py --output THIRD_PARTY_LICENSES.txt
       
       - name: Set build info
         run: python scripts/set_build_info.py

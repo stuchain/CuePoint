@@ -16,6 +16,36 @@ from typing import List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
+# Step 8.2 secure defaults: basic XML hardening limits
+_MAX_XML_FILE_SIZE_BYTES = 100 * 1024 * 1024  # 100MB (kept consistent with existing behavior)
+_MAX_XML_DEPTH = 100
+_MAX_XML_ELEMENTS = 1_000_000
+
+
+def _xml_max_depth(elem: ET.Element, current: int = 0) -> int:
+    """Compute maximum depth of an ElementTree (defensive for DoS)."""
+    if len(elem) == 0:
+        return current
+    max_depth = current
+    for child in elem:
+        max_depth = max(max_depth, _xml_max_depth(child, current + 1))
+    return max_depth
+
+
+def _contains_unsafe_doctype(file_path: Path) -> bool:
+    """Detect unsafe DTD/ENTITY constructs before parsing.
+
+    We intentionally do a small prefix scan to avoid reading huge files.
+    """
+    try:
+        with open(file_path, "rb") as f:
+            prefix = f.read(16 * 1024)  # 16KB should cover XML prolog/doctype
+        upper = prefix.upper()
+        return b"<!DOCTYPE" in upper or b"<!ENTITY" in upper
+    except Exception:
+        # If we can't read it, let normal validation path handle the error.
+        return False
+
 
 def validate_xml_file(file_path: Path) -> Tuple[bool, Optional[str]]:
     """Validate XML file exists and is parseable.
@@ -44,15 +74,35 @@ def validate_xml_file(file_path: Path) -> Tuple[bool, Optional[str]]:
         file_size = file_path.stat().st_size
         if file_size == 0:
             return False, "File is empty"
-        if file_size > 100 * 1024 * 1024:  # 100MB
-            return False, "File is too large (max 100MB)"
+        if file_size > _MAX_XML_FILE_SIZE_BYTES:
+            return False, f"File is too large (max {_MAX_XML_FILE_SIZE_BYTES // (1024 * 1024)}MB)"
     except OSError as e:
         return False, f"Error checking file size: {e}"
+
+    # Reject potentially dangerous DTD/ENTITY usage (defense-in-depth)
+    if _contains_unsafe_doctype(file_path):
+        return False, "XML contains DOCTYPE/ENTITY declarations (not allowed)"
 
     # Try to parse XML
     try:
         tree = ET.parse(file_path)
         root = tree.getroot()
+
+        # Resource limits (DoS protection)
+        try:
+            element_count = sum(1 for _ in root.iter())
+            if element_count > _MAX_XML_ELEMENTS:
+                return False, f"XML has too many elements ({element_count} > {_MAX_XML_ELEMENTS})"
+        except Exception:
+            # If counting fails, continue—parsing succeeded and other checks apply.
+            pass
+
+        try:
+            depth = _xml_max_depth(root, 0)
+            if depth > _MAX_XML_DEPTH:
+                return False, f"XML is too deeply nested ({depth} > {_MAX_XML_DEPTH})"
+        except Exception:
+            pass
 
         # Check for Rekordbox XML structure
         if root.tag != "DJ_PLAYLISTS":

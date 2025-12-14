@@ -1,0 +1,13 @@
+THIRD-PARTY LICENSES
+================================================================================
+
+This file is generated during release builds.
+
+- CI generates a full attribution file via: `python scripts/generate_licenses.py`
+- The generated file is included in packaged releases (macOS/Windows) when present.
+
+If you are reading this from source, run:
+  python scripts/generate_licenses.py --output THIRD_PARTY_LICENSES.txt
+
+================================================================================
+

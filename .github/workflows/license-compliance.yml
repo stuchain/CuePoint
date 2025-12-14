@@ -1,0 +1,44 @@
+name: License Compliance
+
+on:
+  push:
+    branches: [main, ship_v1.0]
+  pull_request:
+    branches: [main, ship_v1.0]
+  schedule:
+    - cron: '0 0 * * 0'  # weekly
+
+jobs:
+  licenses:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies (pinned build set)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-build.txt
+
+      - name: Validate license metadata (direct build deps)
+        run: |
+          python scripts/validate_licenses.py --requirements requirements-build.txt --allow-unknown
+
+      - name: Generate THIRD_PARTY_LICENSES.txt
+        run: |
+          python scripts/generate_licenses.py --output THIRD_PARTY_LICENSES.txt
+
+      - name: Upload license file artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: third-party-licenses
+          path: THIRD_PARTY_LICENSES.txt
+          retention-days: 30
+
+

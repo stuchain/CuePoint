@@ -350,5 +350,8 @@ if REQUESTS_AVAILABLE:
         adapter = TimeoutHTTPAdapter(timeout_config)
         session.mount('http://', adapter)
         session.mount('https://', adapter)
+        # Step 8.2 secure default: enforce TLS verification by default.
+        # (requests verifies by default, but we make it explicit and resistant to accidental overrides)
+        session.verify = True
         
         return session

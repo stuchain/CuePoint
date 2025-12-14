@@ -123,3 +123,4 @@ This folder contains **implementation-focused analytical documents** for Step 6:
 - Related: Step 1 (Product Requirements), Step 2 (Build System)
 - Qt Documentation: https://doc.qt.io/qt-6/qstandardpaths.html
 
+

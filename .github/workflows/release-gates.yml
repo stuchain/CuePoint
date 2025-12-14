@@ -68,6 +68,27 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
+
+      - name: Validate update appcasts (if present)
+        shell: bash
+        run: |
+          MACOS_APPCAST="updates/macos/stable/appcast.xml"
+          WINDOWS_APPCAST="updates/windows/stable/appcast.xml"
+          
+          args=()
+          if [ -f "$MACOS_APPCAST" ]; then
+            args+=(--macos "$MACOS_APPCAST")
+          fi
+          if [ -f "$WINDOWS_APPCAST" ]; then
+            args+=(--windows "$WINDOWS_APPCAST")
+          fi
+          
+          if [ ${#args[@]} -eq 0 ]; then
+            echo "No update appcasts found in repo; skipping validate_updates.py"
+            exit 0
+          fi
+          
+          python scripts/validate_updates.py "${args[@]}"
       
       - name: Run linter
         run: |

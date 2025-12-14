@@ -15,6 +15,7 @@ Implements Step 6.2 - Logging with:
 
 import logging
 import logging.handlers
+import os
 import platform
 import re
 import sys
@@ -23,6 +24,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from cuepoint.utils.paths import AppPaths
 
@@ -352,16 +354,7 @@ class SafeLogger:
         Returns:
             Sanitized message.
         """
-        sanitized = message
-        for pattern, replacement in SafeLogger.SENSITIVE_PATTERNS:
-            sanitized = re.sub(
-                pattern,
-                replacement,
-                sanitized,
-                flags=re.IGNORECASE
-            )
-        
-        return sanitized
+        return LogSanitizer.sanitize_message(message)
     
     @staticmethod
     def log_safe(logger: logging.Logger, level: int, message: str, *args, **kwargs):
@@ -375,6 +368,151 @@ class SafeLogger:
         """
         sanitized = SafeLogger.sanitize_message(str(message))
         logger.log(level, sanitized, *args, **kwargs)
+
+
+class LogSanitizer:
+    """Sanitize sensitive information from logs.
+
+    Step 8.2 hardening:
+    - Redact tokens/secrets in free-form messages
+    - Redact sensitive query parameters in URLs
+    - Sanitize user file paths (avoid leaking home directories)
+    - Sanitize structured `extra={}` dicts passed to logging
+    """
+
+    # Keys we treat as sensitive anywhere (message, query params, dict keys)
+    SENSITIVE_KEYS = {
+        "token",
+        "api_key",
+        "apikey",
+        "auth",
+        "authorization",
+        "password",
+        "secret",
+        "credential",
+        "credentials",
+        "access_token",
+        "refresh_token",
+    }
+
+    # Loose patterns to catch query-param style leaks inside free-form strings
+    # e.g. "...token=abc123&..." or "...apikey: abc..."
+    _TOKEN_PATTERNS = [
+        r"(?i)\b(token|api[_-]?key|apikey|auth|authorization|password|secret|access_token|refresh_token)\s*=\s*([^&\s]+)",
+        r"(?i)\b(token|api[_-]?key|apikey|auth|authorization|password|secret|access_token|refresh_token)\s*:\s*([^\s]+)",
+    ]
+
+    @staticmethod
+    def sanitize_url(url: str) -> str:
+        """Sanitize URL by redacting sensitive query parameters.
+
+        If parsing fails, falls back to removing everything after '?'.
+        """
+        try:
+            parsed = urlparse(url)
+            # If it doesn't look like a URL, just run message sanitization
+            if not parsed.scheme or not parsed.netloc:
+                return LogSanitizer.sanitize_message(url)
+
+            query_pairs = parse_qsl(parsed.query, keep_blank_values=True)
+            sanitized_pairs = []
+            for k, v in query_pairs:
+                if k.lower() in LogSanitizer.SENSITIVE_KEYS:
+                    # Use an unambiguous value that won't be percent-encoded into noise.
+                    sanitized_pairs.append((k, "REDACTED"))
+                else:
+                    sanitized_pairs.append((k, v))
+
+            sanitized_query = urlencode(sanitized_pairs, doseq=True)
+            return urlunparse(
+                (parsed.scheme, parsed.netloc, parsed.path, parsed.params, sanitized_query, parsed.fragment)
+            )
+        except Exception:
+            # Conservative fallback: keep base, drop query/fragment
+            base = url.split("?", 1)[0]
+            return base + "?***REDACTED***" if "?" in url else base
+
+    @staticmethod
+    def sanitize_path(path: str, max_length: int = 100) -> str:
+        """Sanitize file path by removing user-specific home directory and truncating."""
+        try:
+            # Normalize home path redaction (works across platforms)
+            home = str(Path.home())
+            sanitized = path
+            if sanitized.startswith(home):
+                sanitized = sanitized.replace(home, "~", 1)
+
+            # Also redact Windows user profile explicitly if home resolution differs
+            user_profile = os.environ.get("USERPROFILE")
+            if user_profile and sanitized.startswith(user_profile):
+                sanitized = sanitized.replace(user_profile, "~", 1)
+
+            if len(sanitized) > max_length:
+                try:
+                    basename = Path(sanitized).name
+                    return "..." + basename
+                except Exception:
+                    return "..." + sanitized[-(max_length - 3) :]
+
+            return sanitized
+        except Exception:
+            return "***REDACTED_PATH***"
+
+    @staticmethod
+    def sanitize_message(message: str) -> str:
+        """Sanitize a free-form message string.
+
+        Applies:
+        - legacy SafeLogger patterns (password/token/api-key/etc.)
+        - query-param style redaction
+        - best-effort URL query parameter redaction for embedded URLs
+        """
+        sanitized = str(message)
+
+        # Apply the legacy patterns (covers quoted key/value patterns)
+        for pattern, replacement in SafeLogger.SENSITIVE_PATTERNS:
+            sanitized = re.sub(pattern, replacement, sanitized, flags=re.IGNORECASE)
+
+        # Apply query-param style patterns
+        for pat in LogSanitizer._TOKEN_PATTERNS:
+            sanitized = re.sub(pat, lambda m: f"{m.group(1)}=***REDACTED***", sanitized)
+
+        # Best-effort: sanitize URLs inside the message
+        # (simple URL matcher; keep it conservative)
+        url_pattern = r"(https?://[^\s]+)"
+        for url_match in re.findall(url_pattern, sanitized):
+            sanitized = sanitized.replace(url_match, LogSanitizer.sanitize_url(url_match))
+
+        return sanitized
+
+    @staticmethod
+    def sanitize_dict(data: Any) -> Any:
+        """Recursively sanitize structured data for logging."""
+        if isinstance(data, dict):
+            out: dict = {}
+            for k, v in data.items():
+                key_str = str(k)
+                if key_str.lower() in LogSanitizer.SENSITIVE_KEYS or any(
+                    sk in key_str.lower() for sk in LogSanitizer.SENSITIVE_KEYS
+                ):
+                    out[key_str] = "***REDACTED***"
+                else:
+                    out[key_str] = LogSanitizer.sanitize_dict(v)
+            return out
+
+        if isinstance(data, (list, tuple)):
+            return [LogSanitizer.sanitize_dict(v) for v in data]
+
+        if isinstance(data, Path):
+            return LogSanitizer.sanitize_path(str(data))
+
+        if isinstance(data, str):
+            # If it's a URL, sanitize URL; otherwise sanitize message
+            if data.startswith("http://") or data.startswith("https://"):
+                return LogSanitizer.sanitize_url(data)
+            return LogSanitizer.sanitize_message(data)
+
+        return data
 
 
 @contextmanager

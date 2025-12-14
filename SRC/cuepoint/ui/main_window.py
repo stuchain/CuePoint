@@ -782,6 +782,12 @@ class MainWindow(QMainWindow):
         shortcuts_action.triggered.connect(self.on_show_shortcuts)
         help_menu.addAction(shortcuts_action)
 
+        # Privacy
+        privacy_action = QAction("&Privacy", self)
+        privacy_action.setToolTip("Show privacy information and controls")
+        privacy_action.triggered.connect(self.on_show_privacy)
+        help_menu.addAction(privacy_action)
+
         help_menu.addSeparator()
 
         # About
@@ -1178,6 +1184,16 @@ class MainWindow(QMainWindow):
         """
         dialog = KeyboardShortcutsDialog(self.shortcut_manager, self)
         dialog.exec()
+
+    def on_show_privacy(self) -> None:
+        """Show privacy information and data controls via Help > Privacy."""
+        try:
+            from cuepoint.ui.dialogs.privacy_dialog import PrivacyDialog
+
+            dialog = PrivacyDialog(self)
+            dialog.exec()
+        except Exception as e:
+            QMessageBox.warning(self, "Privacy", f"Could not open Privacy dialog:\n{e}")
 
     def on_show_about(self) -> None:
         """Show about dialog via Help > About CuePoint.
@@ -2011,6 +2027,14 @@ class MainWindow(QMainWindow):
         Args:
             event: Close event.
         """
+        # Step 8.4 privacy controls (best-effort, off by default)
+        try:
+            from cuepoint.services.privacy_service import PrivacyService
+
+            PrivacyService().apply_exit_policies()
+        except Exception:
+            pass
+
         self.save_state()
         super().closeEvent(event)
 

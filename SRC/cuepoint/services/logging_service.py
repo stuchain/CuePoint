@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from cuepoint.services.interfaces import ILoggingService
+from cuepoint.utils.logger import LogSanitizer
 
 # Disable error output from the logging system itself at module level
 # This prevents "--- Logging error ---" messages from appearing
@@ -190,4 +191,9 @@ class LoggingService(ILoggingService):
         """
         extra = kwargs.pop("extra", {})
         exc_info = kwargs.pop("exc_info", None)
-        self.logger.log(level, message, extra=extra, exc_info=exc_info, **kwargs)
+
+        # Step 8.2: sanitize logs by default (message + structured extra)
+        safe_message = LogSanitizer.sanitize_message(str(message))
+        safe_extra = LogSanitizer.sanitize_dict(extra)
+
+        self.logger.log(level, safe_message, extra=safe_extra, exc_info=exc_info, **kwargs)

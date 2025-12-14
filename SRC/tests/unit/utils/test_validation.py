@@ -103,6 +103,23 @@ class TestValidateXMLFile:
         finally:
             temp_path.unlink()
 
+    def test_rejects_doctype(self):
+        """DOCTYPE/ENTITY should be rejected (defense-in-depth)."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
+            f.write(
+                '<?xml version="1.0"?>\n'
+                '<!DOCTYPE DJ_PLAYLISTS [ <!ENTITY xxe "xxe"> ]>\n'
+                '<DJ_PLAYLISTS><COLLECTION></COLLECTION></DJ_PLAYLISTS>'
+            )
+            temp_path = Path(f.name)
+
+        try:
+            valid, error = validate_xml_file(temp_path)
+            assert valid is False
+            assert "DOCTYPE" in (error or "")
+        finally:
+            temp_path.unlink()
+
 
 class TestValidatePlaylistSelection:
     """Test playlist selection validation."""

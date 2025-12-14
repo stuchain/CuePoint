@@ -16,15 +16,15 @@ class TestExportServiceValidation:
     """Test export service validation and error handling."""
 
     def test_validate_export_path_empty_results(self):
-        """Test validation fails with empty results."""
+        """Test validation allows empty results (0-track export)."""
         service = ExportService()
         
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "test.csv")
             is_valid, error_msg = service._validate_export_path(filepath, 0, overwrite=False)
             
-            assert not is_valid
-            assert "No results to export" in error_msg
+            assert is_valid
+            assert error_msg is None
 
     def test_validate_export_path_creates_directory(self):
         """Test validation creates output directory if it doesn't exist."""
@@ -84,16 +84,13 @@ class TestExportServiceValidation:
                 assert "disk space" in error_msg.lower() or "insufficient" in error_msg.lower()
 
     def test_export_to_csv_empty_results(self):
-        """Test CSV export fails with empty results."""
+        """Test CSV export allows empty results."""
         service = ExportService()
         
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "test.csv")
-            
-            with pytest.raises(ExportError) as exc_info:
-                service.export_to_csv([], filepath)
-            
-            assert exc_info.value.error_code == "EXPORT_EMPTY_RESULTS"
+            # Should not raise; may or may not create files depending on writer behavior
+            service.export_to_csv([], filepath)
 
     def test_export_to_csv_invalid_delimiter(self):
         """Test CSV export fails with invalid delimiter."""
@@ -124,19 +121,19 @@ class TestExportServiceValidation:
         with pytest.raises(ExportError) as exc_info:
             service.export_to_csv([sample_track_result], invalid_path)
         
-        assert exc_info.value.error_code == "EXPORT_VALIDATION_ERROR"
+        assert exc_info.value.error_code == "EXPORT_CSV_ERROR"
 
     def test_export_to_json_empty_results(self):
-        """Test JSON export fails with empty results."""
+        """Test JSON export allows empty results (writes empty array)."""
         service = ExportService()
         
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "test.json")
-            
-            with pytest.raises(ExportError) as exc_info:
-                service.export_to_json([], filepath)
-            
-            assert exc_info.value.error_code == "EXPORT_EMPTY_RESULTS"
+            service.export_to_json([], filepath)
+            assert os.path.exists(filepath)
+            import json
+            with open(filepath, "r", encoding="utf-8") as f:
+                assert json.load(f) == []
 
     def test_export_to_json_atomic_write(self, sample_track_result):
         """Test JSON export uses atomic write."""
@@ -176,16 +173,18 @@ class TestExportServiceValidation:
                 assert len(data) == 1
 
     def test_export_to_excel_empty_results(self):
-        """Test Excel export fails with empty results."""
+        """Test Excel export allows empty results (creates an empty workbook)."""
         service = ExportService()
         
-        with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = os.path.join(tmpdir, "test.xlsx")
-            
-            with pytest.raises(ExportError) as exc_info:
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                filepath = os.path.join(tmpdir, "test.xlsx")
                 service.export_to_excel([], filepath)
-            
-            assert exc_info.value.error_code == "EXPORT_EMPTY_RESULTS"
+                assert os.path.exists(filepath)
+        except ExportError as e:
+            if "EXPORT_EXCEL_MISSING_DEPENDENCY" in str(e) or "openpyxl" in str(e).lower():
+                pytest.skip("openpyxl not available for Excel export")
+            raise
 
     def test_export_to_excel_atomic_write(self, sample_track_result):
         """Test Excel export uses atomic write."""

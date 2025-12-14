@@ -50,9 +50,6 @@ class ExportService(IExportService):
         Returns:
             Tuple of (is_valid, error_message).
         """
-        if results_count == 0:
-            return False, "No results to export"
-
         file_path = Path(filepath)
         parent_dir = file_path.parent
 
@@ -132,20 +129,15 @@ class ExportService(IExportService):
             ExportError: If export fails (file permission, disk full, etc.).
 
         """
-        # Validate inputs
-        if not results:
-            raise ExportError(
-                message="No results to export",
-                error_code="EXPORT_EMPTY_RESULTS",
-                context={"filepath": filepath},
-            )
-
         # Validate export path
         is_valid, error_msg = self._validate_export_path(filepath, len(results), overwrite)
         if not is_valid:
+            msg = f"Failed to export CSV to {filepath}: {error_msg or 'Invalid export path'}"
+            if self.logging_service:
+                self.logging_service.error(msg, extra={"filepath": filepath, "track_count": len(results)})
             raise ExportError(
-                message=error_msg or "Invalid export path",
-                error_code="EXPORT_VALIDATION_ERROR",
+                message=msg,
+                error_code="EXPORT_CSV_ERROR",
                 context={"filepath": filepath, "track_count": len(results)},
             )
 
@@ -230,20 +222,15 @@ class ExportService(IExportService):
             ExportError: If export fails (file permission, disk full, etc.).
 
         """
-        # Validate inputs
-        if not results:
-            raise ExportError(
-                message="No results to export",
-                error_code="EXPORT_EMPTY_RESULTS",
-                context={"filepath": filepath},
-            )
-
         # Validate export path
         is_valid, error_msg = self._validate_export_path(filepath, len(results), overwrite)
         if not is_valid:
+            msg = f"Failed to export JSON to {filepath}: {error_msg or 'Invalid export path'}"
+            if self.logging_service:
+                self.logging_service.error(msg, extra={"filepath": filepath, "track_count": len(results)})
             raise ExportError(
-                message=error_msg or "Invalid export path",
-                error_code="EXPORT_VALIDATION_ERROR",
+                message=msg,
+                error_code="EXPORT_JSON_ERROR",
                 context={"filepath": filepath, "track_count": len(results)},
             )
 
@@ -254,7 +241,7 @@ class ExportService(IExportService):
 
             import json
 
-            data = [result.to_dict() for result in results]
+            data = [result.to_dict() for result in results] if results else []
             
             # Atomic write: write to temp file first, then rename
             temp_file = None
@@ -263,11 +250,11 @@ class ExportService(IExportService):
                 temp_fd, temp_file = tempfile.mkstemp(
                     suffix=".tmp", dir=str(parent_dir), prefix="cuepoint_export_"
                 )
+                # Close the OS-level handle immediately (Windows otherwise keeps the file locked)
+                os.close(temp_fd)
                 
                 with open(temp_file, "w", encoding="utf-8") as f:
                     json.dump(data, f, indent=2, ensure_ascii=False)
-                
-                os.close(temp_fd)
                 
                 # Atomic rename
                 if file_path.exists() and overwrite:
@@ -315,20 +302,15 @@ class ExportService(IExportService):
             >>> results = [TrackResult(...), TrackResult(...)]
             >>> service.export_to_excel(results, "output/results.xlsx")
         """
-        # Validate inputs
-        if not results:
-            raise ExportError(
-                message="No results to export",
-                error_code="EXPORT_EMPTY_RESULTS",
-                context={"filepath": filepath},
-            )
-
         # Validate export path
         is_valid, error_msg = self._validate_export_path(filepath, len(results), overwrite)
         if not is_valid:
+            msg = f"Failed to export Excel to {filepath}: {error_msg or 'Invalid export path'}"
+            if self.logging_service:
+                self.logging_service.error(msg, extra={"filepath": filepath, "track_count": len(results)})
             raise ExportError(
-                message=error_msg or "Invalid export path",
-                error_code="EXPORT_VALIDATION_ERROR",
+                message=msg,
+                error_code="EXPORT_EXCEL_ERROR",
                 context={"filepath": filepath, "track_count": len(results)},
             )
 
@@ -368,6 +350,9 @@ class ExportService(IExportService):
                     cell.fill = header_fill
                     cell.font = header_font
                     cell.alignment = Alignment(horizontal="center")
+            else:
+                # Empty export: create a valid (empty) workbook
+                ws.append(["No results"])
 
             # Write data
             for result in results:

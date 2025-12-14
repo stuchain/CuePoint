@@ -17,6 +17,7 @@ import pytest
 from cuepoint.utils.logger import (
     CrashLogger,
     CuePointLogger,
+    LogSanitizer,
     LogLevelManager,
     SafeLogger,
     log_timing,
@@ -122,6 +123,21 @@ class TestSafeLogger:
         sanitized = SafeLogger.sanitize_message(message)
         assert "sk-1234567890" not in sanitized
         assert "***REDACTED***" in sanitized
+
+    def test_sanitize_message_url_query_token(self):
+        """Token-like query params in URLs should be redacted."""
+        message = "Fetching https://example.com/path?token=abc123&x=1"
+        sanitized = SafeLogger.sanitize_message(message)
+        assert "abc123" not in sanitized
+        assert "token=REDACTED" in sanitized
+
+    def test_sanitize_dict_redacts_sensitive_keys(self):
+        """Structured extra dicts should redact sensitive keys."""
+        data = {"token": "abc123", "nested": {"api_key": "k", "ok": "value"}}
+        sanitized = LogSanitizer.sanitize_dict(data)
+        assert sanitized["token"] == "***REDACTED***"
+        assert sanitized["nested"]["api_key"] == "***REDACTED***"
+        assert sanitized["nested"]["ok"] == "value"
 
     def test_log_safe(self):
         """Test safe logging."""

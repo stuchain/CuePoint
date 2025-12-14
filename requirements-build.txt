@@ -1,0 +1,44 @@
+# CuePoint - pinned dependencies for shipped builds
+#
+# This file is used for reproducible release builds (Step 8.2).
+# Keep `requirements.txt` flexible for development; keep this pinned for CI/release packaging.
+#
+# NOTE: Pins are currently aligned to the minimum versions declared in requirements.txt.
+# Update intentionally and run the full test suite + security scans when changing.
+
+# GUI Framework (required for GUI application)
+PySide6==6.5.0
+
+# HTTP requests and web scraping
+requests==2.31.0
+aiohttp==3.13.0
+beautifulsoup4==4.12.0
+
+# DuckDuckGo search integration
+ddgs==0.1.0
+
+# Fuzzy string matching for track/artist similarity
+rapidfuzz==3.0.0
+
+# Date parsing for release dates
+python-dateutil==2.8.0
+
+# YAML configuration file support
+pyyaml==6.0
+
+# Progress bars for better user experience
+tqdm==4.66.0
+
+# HTTP response caching (enabled by default)
+requests-cache==1.1.0
+
+# Browser automation for JavaScript-rendered content
+playwright==1.40.0
+
+# Selenium (alternative browser automation)
+selenium==4.15.0
+
+# Excel export support (for GUI export functionality)
+openpyxl==3.1.0
+
+

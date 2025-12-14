@@ -9,6 +9,7 @@ import pytest
 
 from cuepoint.ui.main_window import MainWindow
 
+
 @pytest.mark.ui
 def test_main_window_structure(qapp):
     """Test MainWindow structure without showing window."""
@@ -54,4 +55,7 @@ def test_main_window_structure(qapp):
 
     # Drag & drop
     assert window.acceptDrops()
+
+
+
 

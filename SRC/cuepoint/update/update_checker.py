@@ -16,6 +16,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
+from cuepoint.update.security import FeedIntegrityVerifier, PackageIntegrityVerifier
 from cuepoint.update.version_utils import compare_versions, is_stable_version, parse_version
 
 
@@ -115,10 +116,10 @@ class UpdateChecker:
         Raises:
             UpdateCheckError: If fetch fails
         """
-        # Validate URL
-        parsed = urlparse(url)
-        if parsed.scheme != 'https':
-            raise UpdateCheckError("Feed URL must use HTTPS")
+        # Validate URL (Step 8.3)
+        is_valid, error = FeedIntegrityVerifier.verify_feed_https(url)
+        if not is_valid:
+            raise UpdateCheckError(error or "Feed URL failed integrity checks")
         
         try:
             # Create request with User-Agent
@@ -219,6 +220,11 @@ class UpdateChecker:
             download_url = enclosure.get('url')
             if not download_url:
                 return None
+
+            # Step 8.3: enforce HTTPS for download URLs
+            is_valid, error = FeedIntegrityVerifier.verify_download_https(download_url)
+            if not is_valid:
+                return None
             
             # Get file size
             length_str = enclosure.get('length', '0')
@@ -229,6 +235,9 @@ class UpdateChecker:
             
             # Get signature
             signature = enclosure.get(f'{{{self.SPARKLE_NS}}}edSignature') or enclosure.get(f'{{{self.SPARKLE_NS}}}dsaSignature')
+            checksum = None
+            if signature and PackageIntegrityVerifier.is_sha256_hex(signature.strip().lower()):
+                checksum = signature.strip().lower()
             
             # Get release notes
             release_notes_elem = item.find('description')
@@ -259,6 +268,7 @@ class UpdateChecker:
                 "release_notes": release_notes,
                 "file_size": file_size,
                 "signature": signature,
+                "checksum": checksum,
                 "pub_date": pub_date,
             }
         

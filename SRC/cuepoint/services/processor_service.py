@@ -517,6 +517,9 @@ class ProcessorService(IProcessorService):
                         except Exception:
                             # Future was cancelled or errored, that's fine
                             pass
+                    # Match sequential-mode behavior for tests/UI
+                    if self.logging_service:
+                        self.logging_service.info("Processing cancelled by user")
                 
                 # Sort results by playlist index to maintain order
                 results = [results_dict[idx] for idx in sorted(results_dict.keys())]

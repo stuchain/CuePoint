@@ -24,7 +24,7 @@ class CacheEntry:
         expires_at: Optional datetime when the entry expires.
     """
 
-    def __init__(self, value: Any, ttl: Optional[int] = None) -> None:
+    def __init__(self, value: Any, ttl: Optional[float] = None) -> None:
         """Initialize cache entry.
 
         Args:
@@ -33,8 +33,9 @@ class CacheEntry:
         """
         self.value = value
         self.expires_at: Optional[datetime] = None
-        if ttl:
-            self.expires_at = datetime.now() + timedelta(seconds=ttl)
+        if ttl is not None:
+            # ttl=0 should expire immediately; negative ttl should be treated as already expired
+            self.expires_at = datetime.now() + timedelta(seconds=float(ttl))
 
     def is_expired(self) -> bool:
         """Check if cache entry has expired.
@@ -89,7 +90,7 @@ class CacheService(ICacheService):
 
         return entry.value
 
-    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+    def set(self, key: str, value: Any, ttl: Optional[float] = None) -> None:
         """Set value in cache with optional TTL.
 
         Stores a value in the cache. If TTL is provided, the entry will

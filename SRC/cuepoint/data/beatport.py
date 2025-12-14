@@ -35,7 +35,7 @@ from typing import Dict, List, Optional, Tuple
 import requests
 from bs4 import BeautifulSoup
 from dateutil import parser as dateparser
-from ddgs import DDGS
+from duckduckgo_search import DDGS
 
 from cuepoint.core.mix_parser import (
     _extract_remixer_names_from_title,

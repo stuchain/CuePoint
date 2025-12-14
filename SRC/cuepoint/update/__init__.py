@@ -17,6 +17,7 @@ The update system supports:
 - Update preferences management
 """
 
+from cuepoint.update.signature_verifier import SignatureVerifier, VerificationResult
 from cuepoint.update.update_checker import UpdateChecker
 from cuepoint.update.update_manager import UpdateManager
 from cuepoint.update.update_preferences import UpdatePreferences
@@ -26,6 +27,8 @@ __all__ = [
     'UpdateManager',
     'UpdateChecker',
     'UpdatePreferences',
+    'SignatureVerifier',
+    'VerificationResult',
     'compare_versions',
     'parse_version',
 ]

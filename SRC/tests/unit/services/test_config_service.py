@@ -167,12 +167,17 @@ class TestConfigService:
     
     def test_save_error_handling(self):
         """Test save error handling."""
-        import tempfile
+        import platform
         from pathlib import Path
 
-        # Create a path that will fail (read-only directory on some systems)
-        # Or use a path that can't be written to
-        service = ConfigService(config_file=Path("/invalid/path/config.yaml"))
+        # Use a reliably invalid path for the current platform
+        if platform.system() == "Windows":
+            # Invalid characters on Windows
+            bad_path = Path(r"C:\<invalid>\config.yaml")
+        else:
+            bad_path = Path("/invalid/path/config.yaml")
+
+        service = ConfigService(config_file=bad_path)
         
         # Should raise ConfigurationError on save failure
         with pytest.raises(Exception):  # May be ConfigurationError or OSError
