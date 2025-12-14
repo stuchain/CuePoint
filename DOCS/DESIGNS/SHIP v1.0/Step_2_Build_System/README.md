@@ -97,9 +97,20 @@ This folder contains **implementation-focused analytical documents** for Step 2.
 - Step 3: macOS packaging (uses build system)
 - Step 4: Windows packaging (uses build system)
 - Step 5: Auto-update (uses build artifacts)
+- Step 10: Final Configuration & Release Readiness (configures secrets and tests build system)
+
+## Important Notes
+
+**Step 2 Implementation Status**: The build system infrastructure is complete. However, **final configuration (GitHub Secrets, certificate setup, release testing) is part of Step 10**, which should be completed after Steps 3-9.
+
+**Next Steps After Step 2**:
+1. Complete Steps 3-9 (packaging, features, polish)
+2. Then proceed to Step 10 (Final Configuration & Release Readiness)
+3. Step 10 includes: GitHub Secrets setup, certificate configuration, and final testing
 
 ## References
 
 - Main document: `../02_Build_System_and_Release_Pipeline.md`
+- Final configuration: `../10_Final_Configuration_and_Release_Readiness.md`
 - Index: `../00_SHIP_V1_Index.md`
 

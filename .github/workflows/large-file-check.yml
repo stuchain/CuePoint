@@ -1,33 +1,29 @@
 name: Large File Check
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [main, 'phase_*']
+  pull_request:
+    branches: [main]
 
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       
       - name: Check for large files
         run: |
-          MAX_SIZE=52428800  # 50MB
-          LARGE_FILES=()
-          
-          # Find large files (exclude common build/test directories)
-          while IFS= read -r file; do
-            size=$(stat -c%s "$file" 2>/dev/null || echo 0)
-            if [ "$size" -gt "$MAX_SIZE" ]; then
-              LARGE_FILES+=("$file ($(numfmt --to=iec-i --suffix=B $size))")
-            fi
-          done < <(find . -type f ! -path "./.git/*" ! -path "./.venv/*" ! -path "./node_modules/*" ! -path "./dist/*" ! -path "./build/*" ! -path "./__pycache__/*" ! -path "./*.pyc")
-          
-          if [ ${#LARGE_FILES[@]} -gt 0 ]; then
-            echo "ERROR: Large files detected:"
-            printf '%s\n' "${LARGE_FILES[@]}"
-            echo ""
-            echo "Files larger than 50MB should not be committed to the repository."
-            echo "Consider using Git LFS or storing large files elsewhere."
-            exit 1
-          fi
-          
-          echo "No large files detected. ✓"
+          python scripts/check_large_files.py
+      
+      - name: Check git-tracked large files
+        run: |
+          # Check files already tracked by git
+          git ls-files -z | xargs -0 -I {} sh -c 'test -f "{}" && stat -f%z "{}" 2>/dev/null || stat -c%s "{}" 2>/dev/null || echo 0' | \
+          awk '{if ($1 > 52428800) print "Large tracked file detected"}'

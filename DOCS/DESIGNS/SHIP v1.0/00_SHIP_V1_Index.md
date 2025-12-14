@@ -42,9 +42,13 @@ These documents are structured as **ordered implementation steps** with analytic
    - Polish: visual consistency, accessibility, localization hooks
    - **Implement ninth** - final touches before release
 
+10. **Step 10: Final Configuration & Release Readiness** (`10_Final_Configuration_and_Release_Readiness.md`)
+   - Configuration: GitHub Secrets, certificates, final testing
+   - **Implement last** - after all other steps are complete
+
 ### How to Use These Docs
 
-- **For implementation**: Follow steps 1-9 in order
+- **For implementation**: Follow steps 1-10 in order
 - **For reference**: Each document contains ordered substeps (1.1, 1.2, etc.) and analytical substeps (1.1.1, 1.1.2, etc.)
 - **For planning**: Review Step 1 first to understand scope, then plan implementation sequence
 
@@ -80,6 +84,7 @@ These documents are structured as **ordered implementation steps** with analytic
 - `07_QA_Testing_and_Release_Gates.md` - Step 7: Validation
 - `08_Security_Privacy_and_Compliance.md` - Step 8: Security
 - `09_UX_Polish_Accessibility_and_Localization.md` - Step 9: Polish
+- `10_Final_Configuration_and_Release_Readiness.md` - Step 10: Final Configuration
 
 ### Glossary
 

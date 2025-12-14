@@ -2,58 +2,51 @@
 # -*- coding: utf-8 -*-
 
 """
-Process Info.plist Template with Version Info
-
-This script processes the Info.plist template, replacing placeholders
-with actual version information from version.py.
-
-Usage:
-    python scripts/process_info_plist.py
-
-This script is typically called during macOS builds to generate the
-final Info.plist for the app bundle.
+Process Info.plist template with version information
+Replaces placeholders with actual version data
 """
 
 import sys
 from pathlib import Path
 
-# Add SRC to path to import version module
-script_dir = Path(__file__).parent
-project_root = script_dir.parent
-sys.path.insert(0, str(project_root / "SRC"))
+# Add SRC to path
+sys.path.insert(0, str(Path('SRC').resolve()))
 
-from cuepoint.version import get_build_number, get_version
+try:
+    from cuepoint.version import __build_number__, __version__, get_short_commit_sha
+except ImportError:
+    print("Error: Could not import version module")
+    sys.exit(1)
 
 
-def process_info_plist_template() -> None:
-    """Process Info.plist template with version information."""
-    script_dir = Path(__file__).parent
-    project_root = script_dir.parent
-    template_path = project_root / "build" / "Info.plist.template"
-    output_path = project_root / "build" / "Info.plist"
-
+def process_info_plist():
+    """Process Info.plist template"""
+    template_path = Path("build/Info.plist.template")
+    output_path = Path("build/Info.plist")
+    
     if not template_path.exists():
-        raise FileNotFoundError(f"Template not found: {template_path}")
-
+        print(f"Error: Template not found: {template_path}")
+        sys.exit(1)
+    
     # Read template
     content = template_path.read_text()
-
-    # Get version info
-    version = get_version()
-    build_number = get_build_number() or "1"
-
+    
     # Replace placeholders
-    content = content.replace("{{VERSION}}", version)
-    content = content.replace("{{BUILD_NUMBER}}", build_number)
-
-    # Write processed file
+    content = content.replace("{{VERSION}}", __version__)
+    content = content.replace("{{BUILD_NUMBER}}", __build_number__ or "1")
+    
+    short_commit = get_short_commit_sha() or ""
+    if short_commit:
+        # Add commit info as comment (optional)
+        content = content.replace("<!-- Version Information -->", 
+                                 f"<!-- Version Information - Commit: {short_commit} -->")
+    
+    # Write output
     output_path.write_text(content)
-    print(f"Processed Info.plist: version={version}, build={build_number}")
+    print(f"Processed Info.plist: {output_path}")
+    print(f"  Version: {__version__}")
+    print(f"  Build number: {__build_number__ or '1'}")
 
 
-if __name__ == "__main__":
-    try:
-        process_info_plist_template()
-    except Exception as e:
-        print(f"Error processing Info.plist: {e}", file=sys.stderr)
-        sys.exit(1)
+if __name__ == '__main__':
+    process_info_plist()

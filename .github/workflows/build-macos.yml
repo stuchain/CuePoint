@@ -1,0 +1,97 @@
+name: Build macOS
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+      
+      - name: Set build info
+        run: python scripts/set_build_info.py
+        env:
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+      
+      - name: Process Info.plist
+        run: python scripts/process_info_plist.py
+      
+      - name: Validate version
+        run: python scripts/validate_version.py
+      
+      - name: Build with PyInstaller
+        run: |
+          python scripts/build_pyinstaller.py
+      
+      - name: Import signing certificate
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_SIGNING_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_SIGNING_CERT_PASSWORD }}
+        run: |
+          # Create keychain
+          security create-keychain -p "" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          security set-keychain-settings -t 3600 -u build.keychain
+          
+          # Import certificate
+          echo "$MACOS_CERT_P12" | base64 --decode > cert.p12
+          security import cert.p12 -k build.keychain -P "$MACOS_CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
+          
+          # Clean up certificate file
+          rm -f cert.p12
+      
+      - name: Sign app
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
+        run: |
+          bash scripts/sign_macos.sh dist/CuePoint.app
+      
+      - name: Create DMG
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION=$(python -c "import sys; sys.path.insert(0, 'SRC'); from cuepoint.version import __version__; print(__version__)")
+          bash scripts/create_dmg.sh "$VERSION"
+      
+      - name: Notarize DMG
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_NOTARYTOOL_ISSUER_ID: ${{ secrets.APPLE_NOTARYTOOL_ISSUER_ID }}
+          APPLE_NOTARYTOOL_KEY_ID: ${{ secrets.APPLE_NOTARYTOOL_KEY_ID }}
+          APPLE_NOTARYTOOL_KEY: ${{ secrets.APPLE_NOTARYTOOL_KEY }}
+        run: |
+          DMG_FILE=$(ls dist/CuePoint-v*.dmg | head -1)
+          bash scripts/notarize_macos.sh "$DMG_FILE"
+      
+      - name: Verify version embedding
+        run: python scripts/verify_version_embedding.py
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: dist/*.dmg
+          retention-days: 30
+        if: always()

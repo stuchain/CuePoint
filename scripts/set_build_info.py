@@ -112,27 +112,25 @@ def update_version_file() -> None:
     commit_sha = get_commit_sha()
     build_date = get_build_date()
 
-    # Replace placeholders
-    replacements = [
-        (
-            "__build_number__: Optional[str] = None",
-            f'__build_number__: Optional[str] = "{build_number}"',
-        ),
-        (
-            "__commit_sha__: Optional[str] = None",
-            f'__commit_sha__: Optional[str] = "{commit_sha}"' if commit_sha else "__commit_sha__: Optional[str] = None",
-        ),
-        (
-            "__build_date__: Optional[str] = None",
-            f'__build_date__: Optional[str] = "{build_date}"',
-        ),
-    ]
+    # Replace placeholders - handle both None and existing values
+    import re
 
-    for old, new in replacements:
-        if old in content:
-            content = content.replace(old, new)
-        else:
-            print(f"Warning: Could not find '{old}' in version file")
+    # Pattern to match: __build_number__: Optional[str] = "..." or = None
+    build_pattern = r'(__build_number__: Optional\[str\] = )["\']?[^"\']*["\']?'
+    commit_pattern = r'(__commit_sha__: Optional\[str\] = )["\']?[^"\']*["\']?'
+    date_pattern = r'(__build_date__: Optional\[str\] = )["\']?[^"\']*["\']?'
+    
+    # Replace build number
+    content = re.sub(build_pattern, f'__build_number__: Optional[str] = "{build_number}"', content)
+    
+    # Replace commit SHA
+    if commit_sha:
+        content = re.sub(commit_pattern, f'__commit_sha__: Optional[str] = "{commit_sha}"', content)
+    else:
+        content = re.sub(commit_pattern, '__commit_sha__: Optional[str] = None', content)
+    
+    # Replace build date
+    content = re.sub(date_pattern, f'__build_date__: Optional[str] = "{build_date}"', content)
 
     # Write updated content
     version_file.write_text(content)

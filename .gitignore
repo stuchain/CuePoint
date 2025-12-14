@@ -1,66 +1,323 @@
+# CuePoint .gitignore
+
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
 .venv/
 venv/
+ENV/
 env/
-*.egg-info/
-.pytest_cache/
-.coverage
+.env
+
+# PyInstaller
+*.manifest
+*.spec.bak
+
+# Unit test / coverage reports
 htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
 
-# Output files
-output/
-SRC/output/
-*.csv
-
-# Cache files
-*.sqlite
-bp_cache.sqlite*
-
-# Build artifacts
-build/
-dist/
-*.spec
-*.pyc
-
-# IDE
-.vscode/
+# IDEs
 .idea/
+.vscode/
 *.swp
 *.swo
 *~
-
-# OS
 .DS_Store
 Thumbs.db
-desktop.ini
+
+# Build artifacts
+dist/
+build/
+*.dmg
+*.pkg
+*.exe
+*.msi
+*.app/
+*.deb
+*.rpm
+
+# Signing certificates and keys (NEVER COMMIT)
+*.p12
+*.pfx
+*.pem
+*.key
+*.cer
+*.crt
+cert.p12
+cert.pfx
+*.mobileprovision
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
 
 # Logs
 *.log
 logs/
+*.log.*
 
 # Temporary files
 *.tmp
 *.temp
-.tmp/
+*.bak
+*.swp
+*~
 
-# Certificates and secrets
-*.p12
-*.pfx
-*.key
-*.pem
-secrets/
-.env
+# Cache directories
+.cache/
+cache/
+*.cache
 
-# Test artifacts
+# Output files (user-generated)
+output/
+SRC/output/
+*.csv
+*.json
+*.xlsx
+*.xls
+
+# Test files
 test_output/
+test_results/
 test_logs/
+
+# Playwright
+.playwright/
+playwright-report/
+test-results/
+
+# Selenium
+geckodriver.log
+chromedriver.log
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Secrets (extra safety)
+secrets/
+*.secret
+config/secrets.yaml
+config/secrets.yml
+
+# Large files (should use Git LFS if needed)
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
 
 # Documentation builds
 docs/_build/
-site/
+docs/.doctrees/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath
+*.sage.py
+
+# Spyder
+.spyderproject
+.spyproject
+
+# Rope
+.ropeproject
+
+# mkdocs
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre
+.pyre/
+
+# pytype
+.pytype/
+
+# Cython
+Cython/
+*.c
+
+# Coverage
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+htmlcov/
+.tox/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask
+instance/
+.webassets-cache
+
+# Scrapy
+.scrapy
+
+# Sphinx
+docs/_build/
+
+# PyBuilder
+target/
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pipenv
+Pipfile.lock
+
+# PEP 582
+__pypackages__/
+
+# IDEs - VSCode
+.vscode/
+*.code-workspace
+
+# IDEs - PyCharm
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# IDEs - Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# IDEs - Vim
+*.swp
+*.swo
+*~
+.vim/
+
+# IDEs - Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# macOS - Xcode
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcworkspace/contents.xcworkspacedata
+**/xcshareddata/WorkspaceSettings.xcsettings
+*.xcuserstate
+project.xcworkspace/
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# Project-specific
+collection.xml
+*.xml.backup
+test_collection.xml
+
+# Build-specific (keep templates)
+!build/*.template
+!build/*.spec
+build/Info.plist
+build/version_info.txt
+
+# CI/CD
+.github/workflows/*.yml.bak
+.github/workflows/*.yaml.bak
+
+# Cache files (project-specific)
+*.sqlite
+bp_cache.sqlite*
 

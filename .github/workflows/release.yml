@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download macOS artifact
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          workflow: build-macos.yml
+          name: macos-dmg
+          path: artifacts/macos
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          if_no_artifact_found: fail
+          commit: ${{ github.ref }}
+      
+      - name: Download Windows artifact
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          workflow: build-windows.yml
+          name: windows-installer
+          path: artifacts/windows
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          if_no_artifact_found: fail
+          commit: ${{ github.ref }}
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Generate release notes
+        run: |
+          VERSION="${{ github.ref_name }}"
+          echo "# Release $VERSION" > RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "## Changes" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "See CHANGELOG.md for details." >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "## Installation" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "### macOS" >> RELEASE_NOTES.md
+          echo "1. Download the DMG file" >> RELEASE_NOTES.md
+          echo "2. Open the DMG and drag CuePoint.app to Applications" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "### Windows" >> RELEASE_NOTES.md
+          echo "1. Download the installer" >> RELEASE_NOTES.md
+          echo "2. Run the installer and follow the prompts" >> RELEASE_NOTES.md
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/macos/*.dmg
+            artifacts/windows/*.exe
+          body_path: RELEASE_NOTES.md
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

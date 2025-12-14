@@ -1,0 +1,95 @@
+name: Build Windows
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+      
+      - name: Install NSIS
+        run: |
+          choco install nsis -y
+      
+      - name: Set build info
+        run: python scripts/set_build_info.py
+        env:
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+      
+      - name: Generate version info
+        run: python scripts/generate_version_info.py
+      
+      - name: Validate version
+        run: python scripts/validate_version.py
+      
+      - name: Build with PyInstaller
+        run: |
+          python scripts/build_pyinstaller.py
+      
+      - name: Import certificate
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          WINDOWS_CERT_PFX: ${{ secrets.WINDOWS_CERT_PFX }}
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        run: |
+          $certBytes = [System.Convert]::FromBase64String($env:WINDOWS_CERT_PFX)
+          $certPath = "cert.pfx"
+          [System.IO.File]::WriteAllBytes($certPath, $certBytes)
+          Write-Host "Certificate imported to: $certPath"
+      
+      - name: Sign executable
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          WINDOWS_CERT_PFX: ${{ secrets.WINDOWS_CERT_PFX }}
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        run: |
+          $certPath = "cert.pfx"
+          signtool sign /f $certPath /p "$env:WINDOWS_CERT_PASSWORD" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 dist/CuePoint.exe
+          signtool verify /pa /v dist/CuePoint.exe
+      
+      - name: Build installer
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          $version = python -c "import sys; sys.path.insert(0, 'SRC'); from cuepoint.version import __version__; print(__version__)"
+          makensis /DVERSION=$version scripts/installer.nsi
+      
+      - name: Sign installer
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          WINDOWS_CERT_PFX: ${{ secrets.WINDOWS_CERT_PFX }}
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        run: |
+          $certPath = "cert.pfx"
+          $installer = Get-ChildItem dist\CuePoint-v*-setup.exe | Select-Object -First 1
+          signtool sign /f $certPath /p "$env:WINDOWS_CERT_PASSWORD" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "$installer"
+          signtool verify /pa /v "$installer"
+      
+      - name: Verify version embedding
+        run: python scripts/verify_version_embedding.py
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: dist/*-setup.exe
+          retention-days: 30
+        if: always()

@@ -146,4 +146,4 @@ if __name__ == "__main__":
         sys.exit(1)
     else:
         version = get_version_from_file()
-        print(f"✓ Version validation passed: {version}")
+        print(f"[OK] Version validation passed: {version}")
