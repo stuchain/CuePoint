@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DJ_PLAYLISTS Version="1.0.0">
+    <PRODUCT Name="rekordbox" Version="6.7.0"/>
+    <COLLECTION>
+        <TRACK TrackID="1" Name="Track 1" Artist="Artist 1" BPM="128.0"/>
+    </COLLECTION>
+    <PLAYLISTS>
+        <NODE Name="ROOT">
+            <NODE Name="Empty Playlist">
+                <!-- No tracks -->
+            </NODE>
+        </NODE>
+    </PLAYLISTS>
+</DJ_PLAYLISTS>
+

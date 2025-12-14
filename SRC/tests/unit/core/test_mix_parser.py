@@ -583,6 +583,8 @@ class TestPhraseMatching:
     
     def test_extract_bracket_artist_hints_empty_token(self):
         """Test extracting bracket hints with empty token - line 291."""
+        from cuepoint.core.mix_parser import _extract_bracket_artist_hints
+
         hints = _extract_bracket_artist_hints("Track []")
         # Should skip empty tokens
         assert len(hints) == 0
@@ -596,7 +598,7 @@ class TestPhraseMatching:
         assert "John" in result
         assert "Jane" in result
         assert "Bob" in result
-        assert "" not in result
+        assert all(p.strip() for p in result.split(",")), "Merged list contains empty names"
     
     def test_mix_bonus_original_extended_mismatch(self):
         """Test mix bonus for original/extended mismatch - lines 583-587."""

@@ -211,10 +211,90 @@ def qapp():
     except ImportError:
         pytest.skip("PySide6 not available for UI tests")
 
-        app = QApplication.instance()
-        if app is None:
-            app = QApplication([])
-        yield app
-    except ImportError:
-        pytest.skip("PySide6 not available for UI tests")
+
+# ============================================================================
+# File System Fixtures (Step 7.1)
+# ============================================================================
+
+import tempfile
+from pathlib import Path
+
+
+@pytest.fixture
+def temp_dir() -> Generator[Path, None, None]:
+    """Create a temporary directory for test files."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        yield Path(tmpdir)
+
+
+@pytest.fixture
+def temp_file(temp_dir: Path) -> Generator[Path, None, None]:
+    """Create a temporary file path."""
+    file_path = temp_dir / "test_file.txt"
+    yield file_path
+    if file_path.exists():
+        file_path.unlink()
+
+
+# ============================================================================
+# XML Fixtures (Step 7.2)
+# ============================================================================
+
+@pytest.fixture
+def sample_rekordbox_xml(temp_dir: Path) -> Path:
+    """Create a sample Rekordbox XML file."""
+    xml_content = """<?xml version="1.0" encoding="UTF-8"?>
+<DJ_PLAYLISTS Version="1.0.0">
+    <PRODUCT Name="rekordbox" Version="6.7.0"/>
+    <COLLECTION>
+        <TRACK TrackID="1" Name="Test Track 1" Artist="Test Artist 1" BPM="128.0" Key="Am" Genre="House" Year="2024"/>
+        <TRACK TrackID="2" Name="Test Track 2" Artist="Test Artist 2" BPM="130.0" Key="C" Genre="Techno" Year="2023"/>
+        <TRACK TrackID="3" Name="Test Track 3" Artist="Test Artist 3" BPM="125.0" Key="Dm" Genre="Deep House" Year="2024"/>
+    </COLLECTION>
+    <PLAYLISTS>
+        <NODE Name="ROOT">
+            <NODE Name="Test Playlist">
+                <TRACK Key="1"/>
+                <TRACK Key="2"/>
+                <TRACK Key="3"/>
+            </NODE>
+        </NODE>
+    </PLAYLISTS>
+</DJ_PLAYLISTS>"""
+    
+    xml_path = temp_dir / "rekordbox.xml"
+    xml_path.write_text(xml_content, encoding="utf-8")
+    return xml_path
+
+
+# ============================================================================
+# Network Mocking Fixtures (Step 7.1)
+# ============================================================================
+
+@pytest.fixture
+def mock_beatport_response():
+    """Mock Beatport API response."""
+    return {
+        "tracks": [
+            {
+                "title": "Test Track",
+                "artist": "Test Artist",
+                "label": "Test Label",
+                "bpm": 128.0
+            }
+        ]
+    }
+
+
+@pytest.fixture
+def mock_requests_get(mock_beatport_response):
+    """Mock requests.get for network tests."""
+    from unittest.mock import patch
+    with patch('requests.get') as mock_get:
+        mock_response = Mock()
+        mock_response.json.return_value = mock_beatport_response
+        mock_response.status_code = 200
+        mock_response.text = "<html>Mock HTML</html>"
+        mock_get.return_value = mock_response
+        yield mock_get
 

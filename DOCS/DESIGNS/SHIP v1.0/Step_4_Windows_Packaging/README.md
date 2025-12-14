@@ -88,3 +88,4 @@ This folder contains **implementation-focused analytical documents** for Step 4.
 
 - Main document: `../04_Windows_Packaging_Signing.md`
 - Related: Step 2 (Build System), Step 5 (Auto-Update)
+

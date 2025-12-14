@@ -313,30 +313,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-
-
-
-
-
-
-
-            all_passed = False
-    
-    print("\n" + "=" * 80)
-    if all_passed:
-        print("[SUCCESS] All tests passed!")
-        return 0
-    else:
-        print("[FAILURE] Some tests failed. Please review the output above.")
-        return 1
-
-
-if __name__ == "__main__":
-    sys.exit(main())
-
-
-
-
-
-
-

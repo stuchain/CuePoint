@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DJ_PLAYLISTS Version="1.0.0">
+    <PRODUCT Name="rekordbox" Version="6.7.0"/>
+    <COLLECTION>
+        <TRACK TrackID="1" Name="Track 1" Artist="Artist 1" BPM="128.0" Key="Am" Genre="House" Year="2024"/>
+        <TRACK TrackID="2" Name="Track 2" Artist="Artist 2" BPM="130.0" Key="C" Genre="Techno" Year="2023"/>
+        <TRACK TrackID="3" Name="Track 3" Artist="Artist 3" BPM="125.0" Key="Dm" Genre="Deep House" Year="2024"/>
+        <TRACK TrackID="4" Name="Track 4" Artist="Artist 4" BPM="132.0" Key="F" Genre="Progressive" Year="2023"/>
+        <TRACK TrackID="5" Name="Track 5" Artist="Artist 5" BPM="128.0" Key="G" Genre="House" Year="2024"/>
+        <TRACK TrackID="6" Name="Track 6" Artist="Artist 6" BPM="135.0" Key="Am" Genre="Techno" Year="2023"/>
+        <TRACK TrackID="7" Name="Track 7" Artist="Artist 7" BPM="120.0" Key="C" Genre="Deep House" Year="2024"/>
+        <TRACK TrackID="8" Name="Track 8" Artist="Artist 8" BPM="140.0" Key="Dm" Genre="Progressive" Year="2023"/>
+        <TRACK TrackID="9" Name="Track 9" Artist="Artist 9" BPM="128.0" Key="F" Genre="House" Year="2024"/>
+        <TRACK TrackID="10" Name="Track 10" Artist="Artist 10" BPM="130.0" Key="G" Genre="Techno" Year="2023"/>
+    </COLLECTION>
+    <PLAYLISTS>
+        <NODE Name="ROOT">
+            <NODE Name="My Playlist">
+                <TRACK Key="1"/>
+                <TRACK Key="2"/>
+                <TRACK Key="3"/>
+                <TRACK Key="4"/>
+                <TRACK Key="5"/>
+                <TRACK Key="6"/>
+                <TRACK Key="7"/>
+                <TRACK Key="8"/>
+                <TRACK Key="9"/>
+                <TRACK Key="10"/>
+            </NODE>
+        </NODE>
+    </PLAYLISTS>
+</DJ_PLAYLISTS>
+

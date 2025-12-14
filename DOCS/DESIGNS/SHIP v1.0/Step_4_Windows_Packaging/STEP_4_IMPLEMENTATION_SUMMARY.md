@@ -174,3 +174,4 @@ After reviewing Step 4 documentation:
 - Main document: `../04_Windows_Packaging_Signing.md`
 - Step 3 documentation: `../Step_3_macOS_Packaging/` (for comparison)
 - SHIP v1.0 Index: `../00_SHIP_V1_Index.md`
+

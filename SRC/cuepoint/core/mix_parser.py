@@ -605,9 +605,30 @@ def _mix_bonus(input_mix: Dict[str, object], cand_mix: Dict[str, object]) -> Tup
             reason = reason or "avoid_stem_when_origext"
 
     if in_remx:
-        if c_remx:
-            itoks = input_mix.get("remixer_tokens", set())
-            ctoks = cand_mix.get("remixer_tokens", set())
+        itoks = input_mix.get("remixer_tokens", set())
+        ctoks = cand_mix.get("remixer_tokens", set())
+
+        # Treat "Extended Remix" as a first-class compatible target.
+        # Some candidates may be flagged as both extended + remix; we still want to prefer the
+        # compatibility logic rather than the plain remix path.
+        is_extended_remix = bool(c_ext) and (bool(cand_mix.get("is_remix")) or bool(ctoks))
+
+        if is_extended_remix:
+            # CRITICAL: Extended Remix IS compatible with Remix request
+            # Example: "CamelPhat Remix" request should match "CamelPhat Extended Remix"
+            if itoks and ctoks and (itoks & ctoks):
+                # Strong match: correct remixer, compatible format
+                bonus += 12
+                reason = "remix_extended_remix_compatible"
+            elif not itoks:
+                # No specific remixer requested, extended remix is acceptable
+                bonus += 2
+                reason = "remix_extended_remix_compatible"
+            else:
+                # Remixer mismatch, but still compatible format
+                bonus -= 2
+                reason = reason or "remixer_mismatch_but_compatible_format"
+        elif c_remx:
             if itoks:
                 if itoks & ctoks:
                     bonus += 12
@@ -618,28 +639,9 @@ def _mix_bonus(input_mix: Dict[str, object], cand_mix: Dict[str, object]) -> Tup
             else:
                 bonus += 3
                 reason = reason or "any_remix_ok"
-        elif c_ext:
-            # CRITICAL: Extended Remix IS compatible with Remix request
-            # Many tracks are listed as "Extended Remix" but are just longer versions of "Remix"
-            # Example: "CamelPhat Remix" request should match "CamelPhat Extended Remix"
-            itoks = input_mix.get("remixer_tokens", set())
-            ctoks = cand_mix.get("remixer_tokens", set())
-            # If remixer tokens match, treat extended remix as valid match
-            if itoks and ctoks and (itoks & ctoks):
-                bonus += 8
-                reason = "remix_extended_remix_compatible"
-            elif not itoks:
-                # No specific remixer requested, extended remix is acceptable
-                bonus += 2
-                reason = "remix_extended_remix_compatible"
-            else:
-                # Remixer mismatch, but still compatible format
-                bonus -= 2
-                reason = reason or "remixer_mismatch_but_compatible_format"
         else:
             # When remix is requested, penalize original/extended/plain mixes
             # Especially if a specific remixer is requested
-            itoks = input_mix.get("remixer_tokens", set())
             if itoks:
                 # Specific remixer requested but found original/extended - moderate-heavy penalty
                 # Large enough to prefer remixes, but not so large as to block all matches

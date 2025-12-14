@@ -122,3 +122,4 @@ This folder contains **implementation-focused analytical documents** for Step 6:
 - Main document: `../06_Runtime_Operational_Design.md`
 - Related: Step 1 (Product Requirements), Step 2 (Build System)
 - Qt Documentation: https://doc.qt.io/qt-6/qstandardpaths.html
+

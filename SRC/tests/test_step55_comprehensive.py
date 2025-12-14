@@ -7,10 +7,13 @@ This script runs all validation checks and writes results to a file.
 """
 
 import inspect
+import os
 import subprocess
 import sys
 from pathlib import Path
 from typing import get_type_hints
+
+import pytest
 
 # Import modules to check
 from cuepoint.core import matcher, mix_parser, query_generator, text_processing
@@ -86,159 +89,189 @@ def check_docstring_sections(doc, name):
     return len(sections) > 0
 
 
-print("=" * 80)
-print("Step 5.5: Type Hints & Documentation - Comprehensive Test")
-print("=" * 80)
-print()
+def _run_step55_comprehensive_checks() -> tuple[list[str], list[str], list[str]]:
+    """Run the Step 5.5 comprehensive validation checks.
 
-# Test Services
-print("Testing Services...")
-print("-" * 80)
+    Returns:
+        (results, errors, mypy_errors)
+    """
+    global results, errors
+    results = []
+    errors = []
 
-# ProcessorService
-check_type_hints(processor_service.ProcessorService.__init__, "ProcessorService.__init__")
-check_type_hints(processor_service.ProcessorService.process_track, "ProcessorService.process_track")
-check_docstring(processor_service.ProcessorService, "ProcessorService")
-check_docstring(processor_service.ProcessorService.process_track, "ProcessorService.process_track")
-doc = processor_service.ProcessorService.process_track.__doc__
-if doc:
-    check_docstring_sections(doc, "ProcessorService.process_track")
+    print("=" * 80)
+    print("Step 5.5: Type Hints & Documentation - Comprehensive Test")
+    print("=" * 80)
+    print()
 
-# BeatportService
-check_type_hints(beatport_service.BeatportService.__init__, "BeatportService.__init__")
-check_type_hints(beatport_service.BeatportService.search_tracks, "BeatportService.search_tracks")
-check_docstring(beatport_service.BeatportService, "BeatportService")
-check_docstring(beatport_service.BeatportService.search_tracks, "BeatportService.search_tracks")
-
-# CacheService
-check_type_hints(cache_service.CacheService.get, "CacheService.get")
-check_type_hints(cache_service.CacheService.set, "CacheService.set")
-check_docstring(cache_service.CacheService, "CacheService")
-
-# MatcherService
-check_type_hints(matcher_service.MatcherService.find_best_match, "MatcherService.find_best_match")
-check_docstring(matcher_service.MatcherService, "MatcherService")
-check_docstring(matcher_service.MatcherService.find_best_match, "MatcherService.find_best_match")
-doc = matcher_service.MatcherService.find_best_match.__doc__
-if doc:
-    check_docstring_sections(doc, "MatcherService.find_best_match")
-
-print()
-print("Testing Core Modules...")
-print("-" * 80)
-
-# Core functions
-check_type_hints(matcher.best_beatport_match, "best_beatport_match")
-check_docstring(matcher.best_beatport_match, "best_beatport_match")
-check_type_hints(query_generator.make_search_queries, "make_search_queries")
-check_docstring(query_generator.make_search_queries, "make_search_queries")
-check_type_hints(text_processing.normalize_text, "normalize_text")
-check_docstring(text_processing.normalize_text, "normalize_text")
-
-print()
-print("Testing Data Layer...")
-print("-" * 80)
-
-# Data functions
-check_type_hints(rekordbox.parse_rekordbox, "parse_rekordbox")
-check_docstring(rekordbox.parse_rekordbox, "parse_rekordbox")
-check_type_hints(beatport.is_track_url, "is_track_url")
-check_docstring(beatport.is_track_url, "is_track_url")
-
-print()
-print("Testing Controllers...")
-print("-" * 80)
-
-# Controllers
-check_type_hints(results_controller.ResultsController.apply_filters, "ResultsController.apply_filters")
-check_docstring(results_controller.ResultsController, "ResultsController")
-check_type_hints(export_controller.ExportController.validate_export_options, "ExportController.validate_export_options")
-check_docstring(export_controller.ExportController, "ExportController")
-
-print()
-print("Testing Module Docstrings...")
-print("-" * 80)
-
-# Module docstrings
-modules = [
-    ("processor_service", processor_service),
-    ("beatport_service", beatport_service),
-    ("cache_service", cache_service),
-    ("matcher", matcher),
-    ("rekordbox", rekordbox),
-]
-for name, module in modules:
-    check_docstring(module, f"Module {name}")
-
-print()
-print("=" * 80)
-print("Summary")
-print("=" * 80)
-print(f"✅ Passed: {len(results)}")
-print(f"❌ Failed/Warnings: {len(errors)}")
-print()
-
-if errors:
-    print("Issues Found:")
+    # Test Services
+    print("Testing Services...")
     print("-" * 80)
-    for error in errors:
-        print(f"  {error}")
+
+    # ProcessorService
+    check_type_hints(processor_service.ProcessorService.__init__, "ProcessorService.__init__")
+    check_type_hints(processor_service.ProcessorService.process_track, "ProcessorService.process_track")
+    check_docstring(processor_service.ProcessorService, "ProcessorService")
+    check_docstring(processor_service.ProcessorService.process_track, "ProcessorService.process_track")
+    doc = processor_service.ProcessorService.process_track.__doc__
+    if doc:
+        check_docstring_sections(doc, "ProcessorService.process_track")
+
+    # BeatportService
+    check_type_hints(beatport_service.BeatportService.__init__, "BeatportService.__init__")
+    check_type_hints(beatport_service.BeatportService.search_tracks, "BeatportService.search_tracks")
+    check_docstring(beatport_service.BeatportService, "BeatportService")
+    check_docstring(beatport_service.BeatportService.search_tracks, "BeatportService.search_tracks")
+
+    # CacheService
+    check_type_hints(cache_service.CacheService.get, "CacheService.get")
+    check_type_hints(cache_service.CacheService.set, "CacheService.set")
+    check_docstring(cache_service.CacheService, "CacheService")
+
+    # MatcherService
+    check_type_hints(matcher_service.MatcherService.find_best_match, "MatcherService.find_best_match")
+    check_docstring(matcher_service.MatcherService, "MatcherService")
+    check_docstring(matcher_service.MatcherService.find_best_match, "MatcherService.find_best_match")
+    doc = matcher_service.MatcherService.find_best_match.__doc__
+    if doc:
+        check_docstring_sections(doc, "MatcherService.find_best_match")
+
+    print()
+    print("Testing Core Modules...")
+    print("-" * 80)
+
+    # Core functions
+    check_type_hints(matcher.best_beatport_match, "best_beatport_match")
+    check_docstring(matcher.best_beatport_match, "best_beatport_match")
+    check_type_hints(query_generator.make_search_queries, "make_search_queries")
+    check_docstring(query_generator.make_search_queries, "make_search_queries")
+    check_type_hints(text_processing.normalize_text, "normalize_text")
+    check_docstring(text_processing.normalize_text, "normalize_text")
+
+    print()
+    print("Testing Data Layer...")
+    print("-" * 80)
+
+    # Data functions
+    check_type_hints(rekordbox.parse_rekordbox, "parse_rekordbox")
+    check_docstring(rekordbox.parse_rekordbox, "parse_rekordbox")
+    check_type_hints(beatport.is_track_url, "is_track_url")
+    check_docstring(beatport.is_track_url, "is_track_url")
+
+    print()
+    print("Testing Controllers...")
+    print("-" * 80)
+
+    # Controllers
+    check_type_hints(results_controller.ResultsController.apply_filters, "ResultsController.apply_filters")
+    check_docstring(results_controller.ResultsController, "ResultsController")
+    check_type_hints(export_controller.ExportController.validate_export_options, "ExportController.validate_export_options")
+    check_docstring(export_controller.ExportController, "ExportController")
+
+    print()
+    print("Testing Module Docstrings...")
+    print("-" * 80)
+
+    # Module docstrings
+    modules = [
+        ("processor_service", processor_service),
+        ("beatport_service", beatport_service),
+        ("cache_service", cache_service),
+        ("matcher", matcher),
+        ("rekordbox", rekordbox),
+    ]
+    for name, module in modules:
+        check_docstring(module, f"Module {name}")
+
+    print()
+    print("=" * 80)
+    print("Summary")
+    print("=" * 80)
+    print(f"✅ Passed: {len(results)}")
+    print(f"❌ Failed/Warnings: {len(errors)}")
     print()
 
-# Run mypy validation
-print("=" * 80)
-print("Running Mypy Type Checking...")
-print("=" * 80)
+    if errors:
+        print("Issues Found:")
+        print("-" * 80)
+        for error in errors:
+            print(f"  {error}")
+        print()
 
-src_dir = Path(__file__).parent
-mypy_config = src_dir.parent / "mypy.ini"
+    # Run mypy validation
+    print("=" * 80)
+    print("Running Mypy Type Checking...")
+    print("=" * 80)
 
-mypy_modules = [
-    "cuepoint/services/",
-    "cuepoint/core/",
-    "cuepoint/data/",
-    "cuepoint/ui/controllers/",
-]
+    src_dir = Path(__file__).parent
+    mypy_config = src_dir.parent / "mypy.ini"
 
-mypy_errors = []
-for module in mypy_modules:
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "mypy",
-            module,
-            "--config-file",
-            str(mypy_config),
-        ],
-        cwd=src_dir,
-        capture_output=True,
-        text=True,
-    )
-    
-    if result.returncode != 0:
-        output = result.stdout + result.stderr
-        if "error:" in output.lower():
-            mypy_errors.append(f"{module}: {output[:200]}...")
-            print(f"❌ {module}: Type errors found")
+    mypy_modules = [
+        "cuepoint/services/",
+        "cuepoint/core/",
+        "cuepoint/data/",
+        "cuepoint/ui/controllers/",
+    ]
+
+    mypy_errors: list[str] = []
+    for module in mypy_modules:
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "mypy",
+                module,
+                "--config-file",
+                str(mypy_config),
+            ],
+            cwd=src_dir,
+            capture_output=True,
+            text=True,
+        )
+
+        if result.returncode != 0:
+            output = result.stdout + result.stderr
+            if "error:" in output.lower():
+                mypy_errors.append(f"{module}: {output[:200]}...")
+                print(f"❌ {module}: Type errors found")
+            else:
+                print(f"⚠️  {module}: Warnings (but no errors)")
         else:
-            print(f"⚠️  {module}: Warnings (but no errors)")
+            print(f"✅ {module}: No type errors")
+
+    print()
+    print("=" * 80)
+    print("Final Results")
+    print("=" * 80)
+    print(f"Type Hints & Docstrings: {len(results)} checks passed, {len(errors)} issues")
+    print(f"Mypy Validation: {len(mypy_modules) - len(mypy_errors)}/{len(mypy_modules)} modules passed")
+
+    if errors or mypy_errors:
+        print()
+        print("⚠️  Some issues found. See details above.")
     else:
-        print(f"✅ {module}: No type errors")
+        print()
+        print("✅ All Step 5.5 validation checks passed!")
 
-print()
-print("=" * 80)
-print("Final Results")
-print("=" * 80)
-print(f"Type Hints & Docstrings: {len(results)} checks passed, {len(errors)} issues")
-print(f"Mypy Validation: {len(mypy_modules) - len(mypy_errors)}/{len(mypy_modules)} modules passed")
+    return results, errors, mypy_errors
 
-if errors or mypy_errors:
-    print()
-    print("⚠️  Some issues found. See details above.")
-    sys.exit(1)
-else:
-    print()
-    print("✅ All Step 5.5 validation checks passed!")
-    sys.exit(0)
+
+@pytest.mark.slow
+def test_step55_comprehensive() -> None:
+    """Optional Step 5.5 comprehensive validation.
+
+    This is intentionally skipped by default because it is slow (runs mypy) and is
+    better suited for a release gate.
+    """
+    if os.environ.get("CUEPOINT_RUN_STEP55_COMPREHENSIVE") != "1":
+        pytest.skip("Set CUEPOINT_RUN_STEP55_COMPREHENSIVE=1 to enable this check")
+
+    _, step55_errors, mypy_errors = _run_step55_comprehensive_checks()
+    assert not step55_errors, f"Step 5.5 issues found (showing up to 5): {step55_errors[:5]}"
+    assert not mypy_errors, f"Mypy issues found (showing up to 5): {mypy_errors[:5]}"
+
+
+if __name__ == "__main__":
+    _, step55_errors, mypy_errors = _run_step55_comprehensive_checks()
+    raise SystemExit(1 if (step55_errors or mypy_errors) else 0)
 
