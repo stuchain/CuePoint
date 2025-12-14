@@ -5,33 +5,150 @@
 Generate Sparkle appcast XML for macOS auto-updates
 
 Usage:
-    python scripts/generate_appcast.py --dmg <dmg_path> --version <version> --url <download_url> [--notes <notes_url>] [--output <output_path>]
+    python scripts/generate_appcast.py --dmg <dmg_path> --version <version> --url <download_url> [--notes <notes_url>] [--signature <signature>] [--ed-signature <ed_signature>] [--output <output_path>] [--append] [--description <description>]
 """
 
 import argparse
 import sys
 import xml.etree.ElementTree as ET
 from datetime import datetime
+from email.utils import formatdate
 from pathlib import Path
 
 # Add SRC to path
-sys.path.insert(0, str(Path('SRC').resolve()))
+sys.path.insert(0, str(Path(__file__).parent.parent / 'SRC').resolve())
 
 try:
     from cuepoint.version import __version__
 except ImportError:
     __version__ = "1.0.0"
 
+# Sparkle namespace
+SPARKLE_NS = "http://www.andymatuschak.org/xml-namespaces/sparkle"
 
-def generate_appcast(dmg_path, version, download_url, release_notes_url=None, signature=None):
-    """Generate Sparkle appcast XML
+
+def version_to_build_number(version: str) -> str:
+    """
+    Convert semantic version to build number.
+    
+    Args:
+        version: Version string (e.g., "1.0.0")
+        
+    Returns:
+        Build number string (e.g., "100" for 1.0.0)
+    """
+    parts = version.split('.')
+    if len(parts) >= 3:
+        major = int(parts[0])
+        minor = int(parts[1])
+        patch = int(parts[2])
+        # Build number: major * 10000 + minor * 100 + patch
+        build = major * 10000 + minor * 100 + patch
+        return str(build)
+    return "0"
+
+
+def generate_appcast_item(
+    dmg_path: Path,
+    version: str,
+    download_url: str,
+    release_notes_url: Optional[str] = None,
+    release_notes: Optional[str] = None,
+    ed_signature: Optional[str] = None,
+    dsa_signature: Optional[str] = None,
+    minimum_system_version: Optional[str] = None
+) -> ET.Element:
+    """
+    Generate a single appcast item.
     
     Args:
         dmg_path: Path to DMG file
         version: Version string (e.g., "1.0.0")
         download_url: Full URL to download DMG
         release_notes_url: Optional URL to release notes
-        signature: Optional DSA or ED25519 signature
+        release_notes: Optional release notes HTML content
+        ed_signature: Optional EdDSA signature (preferred)
+        dsa_signature: Optional DSA signature (legacy)
+        minimum_system_version: Optional minimum macOS version
+    
+    Returns:
+        XML item element
+    """
+    dmg_file = Path(dmg_path)
+    if not dmg_file.exists():
+        raise FileNotFoundError(f"DMG file not found: {dmg_path}")
+    
+    dmg_size = dmg_file.stat().st_size
+    build_number = version_to_build_number(version)
+    
+    # Create item
+    item = ET.Element('item')
+    ET.SubElement(item, 'title').text = f'Version {version}'
+    ET.SubElement(item, 'pubDate').text = formatdate()
+    
+    # Sparkle version info
+    version_elem = ET.SubElement(item, f'{{{SPARKLE_NS}}}version')
+    version_elem.text = build_number
+    
+    short_version = ET.SubElement(item, f'{{{SPARKLE_NS}}}shortVersionString')
+    short_version.text = version
+    
+    # Minimum system version
+    if minimum_system_version:
+        min_sys = ET.SubElement(item, f'{{{SPARKLE_NS}}}minimumSystemVersion')
+        min_sys.text = minimum_system_version
+    
+    # Enclosure
+    enclosure = ET.SubElement(item, 'enclosure')
+    enclosure.set('url', download_url)
+    enclosure.set(f'{{{SPARKLE_NS}}}version', build_number)
+    enclosure.set(f'{{{SPARKLE_NS}}}shortVersionString', version)
+    enclosure.set('length', str(dmg_size))
+    enclosure.set('type', 'application/octet-stream')
+    
+    # Add signature (prefer EdDSA over DSA)
+    if ed_signature:
+        enclosure.set(f'{{{SPARKLE_NS}}}edSignature', ed_signature)
+    elif dsa_signature:
+        enclosure.set(f'{{{SPARKLE_NS}}}dsaSignature', dsa_signature)
+    
+    # Release notes link
+    if release_notes_url:
+        notes_link = ET.SubElement(item, f'{{{SPARKLE_NS}}}releaseNotesLink')
+        notes_link.text = release_notes_url
+    
+    # Release notes description
+    if release_notes:
+        description = ET.SubElement(item, 'description')
+        description.text = release_notes
+    
+    return item
+
+
+def generate_appcast(
+    dmg_path: str,
+    version: str,
+    download_url: str,
+    release_notes_url: Optional[str] = None,
+    release_notes: Optional[str] = None,
+    ed_signature: Optional[str] = None,
+    dsa_signature: Optional[str] = None,
+    minimum_system_version: Optional[str] = None,
+    append_to: Optional[str] = None
+) -> str:
+    """
+    Generate Sparkle appcast XML.
+    
+    Args:
+        dmg_path: Path to DMG file
+        version: Version string (e.g., "1.0.0")
+        download_url: Full URL to download DMG
+        release_notes_url: Optional URL to release notes
+        release_notes: Optional release notes HTML content
+        ed_signature: Optional EdDSA signature (preferred)
+        dsa_signature: Optional DSA signature (legacy)
+        minimum_system_version: Optional minimum macOS version
+        append_to: Optional path to existing appcast to append to
     
     Returns:
         XML string
@@ -40,44 +157,40 @@ def generate_appcast(dmg_path, version, download_url, release_notes_url=None, si
     if not dmg_file.exists():
         raise FileNotFoundError(f"DMG file not found: {dmg_path}")
     
-    dmg_size = dmg_file.stat().st_size
-    
-    # Create RSS root
-    root = ET.Element('rss', version='2.0')
-    root.set('xmlns:sparkle', 'http://www.andymatuschak.org/xml-namespaces/sparkle')
-    
-    channel = ET.SubElement(root, 'channel')
-    ET.SubElement(channel, 'title').text = 'CuePoint Updates'
-    ET.SubElement(channel, 'link').text = 'https://github.com/StuChain/CuePoint'
-    ET.SubElement(channel, 'description').text = 'Latest CuePoint releases'
+    # Create or load existing appcast
+    if append_to and Path(append_to).exists():
+        # Load existing appcast
+        tree = ET.parse(append_to)
+        root = tree.getroot()
+        channel = root.find('channel')
+        if channel is None:
+            raise ValueError("Invalid existing appcast: missing channel")
+    else:
+        # Create new appcast
+        root = ET.Element('rss', version='2.0')
+        root.set('xmlns:sparkle', SPARKLE_NS)
+        root.set('xmlns:dc', 'http://purl.org/dc/elements/1.1/')
+        
+        channel = ET.SubElement(root, 'channel')
+        ET.SubElement(channel, 'title').text = 'CuePoint Updates'
+        ET.SubElement(channel, 'link').text = 'https://github.com/StuChain/CuePoint'
+        ET.SubElement(channel, 'description').text = 'Latest CuePoint releases'
+        ET.SubElement(channel, 'language').text = 'en'
     
     # Create item for this release
-    item = ET.SubElement(channel, 'item')
-    ET.SubElement(item, 'title').text = f'Version {version}'
-    ET.SubElement(item, 'pubDate').text = datetime.now().strftime('%a, %d %b %Y %H:%M:%S +0000')
+    item = generate_appcast_item(
+        dmg_file,
+        version,
+        download_url,
+        release_notes_url,
+        release_notes,
+        ed_signature,
+        dsa_signature,
+        minimum_system_version
+    )
     
-    # Sparkle version info
-    version_elem = ET.SubElement(item, '{http://www.andymatuschak.org/xml-namespaces/sparkle}version')
-    version_elem.text = version
-    
-    short_version = ET.SubElement(item, '{http://www.andymatuschak.org/xml-namespaces/sparkle}shortVersionString')
-    short_version.text = version
-    
-    # Enclosure
-    enclosure = ET.SubElement(item, 'enclosure')
-    enclosure.set('url', download_url)
-    enclosure.set('sparkle:version', version)
-    enclosure.set('sparkle:shortVersionString', version)
-    enclosure.set('length', str(dmg_size))
-    enclosure.set('type', 'application/octet-stream')
-    
-    if signature:
-        enclosure.set('sparkle:dsaSignature', signature)
-    
-    # Release notes link
-    if release_notes_url:
-        notes_link = ET.SubElement(item, '{http://www.andymatuschak.org/xml-namespaces/sparkle}releaseNotesLink')
-        notes_link.text = release_notes_url
+    # Insert new item at the beginning (latest first)
+    channel.insert(0, item)
     
     # Convert to string with proper formatting
     ET.indent(root, space='  ')
@@ -99,14 +212,35 @@ def main():
                        help='Download URL for DMG')
     parser.add_argument('--notes',
                        help='URL to release notes')
+    parser.add_argument('--description',
+                       help='Release notes HTML content')
     parser.add_argument('--signature',
-                       help='DSA or ED25519 signature')
+                       help='DSA signature (legacy)')
+    parser.add_argument('--ed-signature',
+                       help='EdDSA signature (preferred)')
+    parser.add_argument('--minimum-system-version',
+                       help='Minimum macOS version required')
     parser.add_argument('--output',
-                       help='Output file path (default: updates/macos/appcast.xml)')
+                       help='Output file path (default: updates/macos/stable/appcast.xml)')
+    parser.add_argument('--append',
+                       action='store_true',
+                       help='Append to existing appcast instead of creating new')
+    parser.add_argument('--channel',
+                       choices=['stable', 'beta'],
+                       default='stable',
+                       help='Update channel (default: stable)')
     
     args = parser.parse_args()
     
     version = args.version or __version__
+    
+    # Determine output path
+    if args.output:
+        output_path = Path(args.output)
+        append_to = str(output_path) if args.append and output_path.exists() else None
+    else:
+        output_path = Path(f'updates/macos/{args.channel}/appcast.xml')
+        append_to = str(output_path) if args.append and output_path.exists() else None
     
     try:
         appcast_xml = generate_appcast(
@@ -114,22 +248,26 @@ def main():
             version,
             args.url,
             args.notes,
-            args.signature
+            args.description,
+            args.ed_signature,
+            args.signature,
+            args.minimum_system_version,
+            append_to
         )
         
         # Write output
-        if args.output:
-            output_path = Path(args.output)
-        else:
-            output_path = Path('updates/macos/appcast.xml')
-        
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(appcast_xml, encoding='utf-8')
         
         print(f"Generated appcast: {output_path}")
         print(f"  Version: {version}")
+        print(f"  Channel: {args.channel}")
         print(f"  DMG: {args.dmg}")
         print(f"  URL: {args.url}")
+        if args.ed_signature:
+            print(f"  Signature: EdDSA")
+        elif args.signature:
+            print(f"  Signature: DSA")
         
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
