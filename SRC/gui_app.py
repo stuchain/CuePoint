@@ -35,12 +35,36 @@ if __name__ == "__main__":
 from cuepoint.services.bootstrap import bootstrap_services
 from cuepoint.ui.main_window import MainWindow
 from cuepoint.ui.widgets.styles import get_stylesheet
+from cuepoint.utils.logger import CuePointLogger
+from cuepoint.utils.paths import AppPaths, PathMigration
 from cuepoint.utils.system_check import SystemRequirements
 
 
 def main():
     """Main entry point for GUI application"""
     try:
+        # Initialize application paths (Step 6.1)
+        # Must be done before any file operations
+        AppPaths.initialize_all()
+        
+        # Configure logging (Step 6.2)
+        # Must be done early to capture all logs
+        CuePointLogger.configure()
+        
+        # Install crash handler (Step 6.3)
+        from cuepoint.utils.crash_handler import CrashHandler, ThreadExceptionHandler
+        crash_handler = CrashHandler()
+        ThreadExceptionHandler.install_thread_exception_handler()
+        
+        # Check for path migration (Step 6.1.4)
+        if PathMigration.detect_migration_needed():
+            # Perform migration silently (user can be notified if needed)
+            success, error = PathMigration.migrate_paths()
+            if not success:
+                # Log error but don't block startup
+                import logging
+                logging.getLogger(__name__).warning(f"Path migration failed: {error}")
+        
         # Bootstrap services (dependency injection setup)
         bootstrap_services()
         
