@@ -124,3 +124,4 @@ This folder contains **implementation-focused analytical documents** for Step 6:
 - Qt Documentation: https://doc.qt.io/qt-6/qstandardpaths.html
 
 
+

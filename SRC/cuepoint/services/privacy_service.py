@@ -72,3 +72,4 @@ class PrivacyService:
             # Never block app exit
             return
 
+

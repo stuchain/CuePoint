@@ -53,3 +53,4 @@ class SignatureVerifier:
             error="Not implemented in v1.0 (Sparkle/WinSparkle handles signature verification)",
         )
 
+

@@ -141,3 +141,4 @@ This document summarizes what is implemented in the CuePoint codebase for **SHIP
 - Some third-party packages may report “Unknown” license metadata depending on the environment; CI currently allows unknowns (still reports them).
 - Update signature verification is primarily handled by Sparkle/WinSparkle/platform signing; checksum support is available for additional integrity checks.
 
+

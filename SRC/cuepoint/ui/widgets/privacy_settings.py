@@ -63,3 +63,4 @@ class PrivacySettingsWidget(QWidget):
         self._privacy.set_clear_cache_on_exit(self.chk_clear_cache.isChecked())
         self._privacy.set_clear_logs_on_exit(self.chk_clear_logs.isChecked())
 
+
