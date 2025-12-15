@@ -10,7 +10,7 @@
 PySide6==6.5.0
 
 # HTTP requests and web scraping
-requests==2.31.0
+requests==2.32.4
 aiohttp==3.13.0
 beautifulsoup4==4.12.0
 
@@ -27,7 +27,7 @@ python-dateutil==2.8.0
 pyyaml==6.0
 
 # Progress bars for better user experience
-tqdm==4.66.0
+tqdm==4.66.3
 
 # HTTP response caching (enabled by default)
 requests-cache==1.1.0
