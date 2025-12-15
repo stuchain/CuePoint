@@ -10,7 +10,7 @@ aiohttp>=3.13.0
 beautifulsoup4>=4.12.0
 
 # DuckDuckGo search integration
-ddgs>=0.1.0
+ddgs>=9.0.0
 
 # Fuzzy string matching for track/artist similarity
 rapidfuzz>=3.0.0
