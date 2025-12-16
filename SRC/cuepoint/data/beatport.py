@@ -35,6 +35,7 @@ from typing import Dict, List, Optional, Tuple
 import requests
 from bs4 import BeautifulSoup
 from dateutil import parser as dateparser
+
 # Import DDGS with better error handling for packaged apps
 try:
     from duckduckgo_search import DDGS
@@ -66,6 +67,7 @@ from cuepoint.core.mix_parser import (
 )
 from cuepoint.models.config import BASE_URL, SESSION, SETTINGS
 from cuepoint.utils.utils import retry_with_backoff, vlog
+
 
 def beatport_search_direct(idx: int, query: str, max_results: int) -> List[str]:
     """Proxy to `cuepoint.data.beatport_search.beatport_search_direct`.
@@ -869,82 +871,83 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
         - Includes fallback mechanisms for cases with few results.
     """
     urls: List[str] = []
-    try:
-        mr = max_results if max_results and max_results > 0 else 60
-        ql = (query or "").lower()
-        # Increase max results for remix/extended queries - they often need
-        # more results to find the right track
-        # For exact quoted remix queries (like "Never Sleep Again (Keinemusik
-        # Remix)"), increase even more
-        is_exact_remix_query = (
-            query.startswith('"')
-            and query.endswith('"')
-            and ((" remix" in ql) or ("(" in ql and ")" in ql))
-        )
-        if (
-            (" remix" in ql)
-            or ("extended mix" in ql)
-            or ("re-fire" in ql)
-            or ("refire" in ql)
-            or ("rework" in ql)
-            or ("re-edit" in ql)
-            or ("(" in ql and ")" in ql)
-            or re.search(r"\bstyler\b", ql)
-        ):
-            if is_exact_remix_query:
-                mr = max(mr, 200)  # Even higher for exact quoted remix queries
-            else:
-                mr = max(mr, 150)  # Increased from 120 for better remix discovery
-
-        # Try multiple search strategies - prioritize quoted/exact matches
-        # For quoted queries, try quoted first (more specific)
-        if query.startswith('"') and query.endswith('"'):
-            # Already quoted, use as-is
-            search_queries = [
-                f"site:beatport.com/track {query}",
-                f"site:beatport.com {query}",
-            ]
+    mr = max_results if max_results and max_results > 0 else 60
+    ql = (query or "").lower()
+    # Increase max results for remix/extended queries - they often need
+    # more results to find the right track
+    # For exact quoted remix queries (like "Never Sleep Again (Keinemusik
+    # Remix)"), increase even more
+    is_exact_remix_query = (
+        query.startswith('"')
+        and query.endswith('"')
+        and ((" remix" in ql) or ("(" in ql and ")" in ql))
+    )
+    if (
+        (" remix" in ql)
+        or ("extended mix" in ql)
+        or ("re-fire" in ql)
+        or ("refire" in ql)
+        or ("rework" in ql)
+        or ("re-edit" in ql)
+        or ("(" in ql and ")" in ql)
+        or re.search(r"\bstyler\b", ql)
+    ):
+        if is_exact_remix_query:
+            mr = max(mr, 200)  # Even higher for exact quoted remix queries
         else:
-            # Not quoted - try quoted version first for better precision
-            search_queries = [
-                f'site:beatport.com/track "{query}"',  # Quoted version first (better precision)
-                f"site:beatport.com/track {query}",
-                f"site:beatport.com {query}",  # Broader search last
-            ]
+            mr = max(mr, 150)  # Increased from 120 for better remix discovery
 
-        try:
-            with DDGS() as ddgs:
-                for search_q in search_queries:
-                    try:
-                        for r in ddgs.text(search_q, region="us-en", max_results=mr):
-                            href = r.get("href") or r.get("url") or ""
-                            if "beatport.com/track/" in href:
-                                urls.append(href)
-                        # For remix queries, don't break early - we need to find specific tracks
-                        # Only break early for non-remix queries with many results
-                        if len(urls) >= 20 and (" remix" not in ql and "extended mix" not in ql):
-                            break
-                    except Exception as e:
-                        # Log error with full details for debugging
-                        import logging
-                        logger = logging.getLogger(__name__)
-                        logger.warning(f"[{idx}] DuckDuckGo search error for '{search_q}': {e!r}", exc_info=True)
-                        vlog(idx, f"[search] ddgs error for '{search_q}': {e!r}")
-                        continue
-        except ImportError as e:
-            # ddgs package not available - this is critical!
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"[{idx}] DuckDuckGo search (ddgs) not available: {e!r}", exc_info=True)
-            vlog(idx, f"[search] ddgs import error: {e!r}")
-            return []
-        except Exception as e:
-            # Other errors (network, SSL, etc.)
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"[{idx}] DuckDuckGo search failed: {e!r}", exc_info=True)
-            vlog(idx, f"[search] ddgs error: {e!r}")
-            return []
+    # Try multiple search strategies - prioritize quoted/exact matches
+    # For quoted queries, try quoted first (more specific)
+    if query.startswith('"') and query.endswith('"'):
+        # Already quoted, use as-is
+        search_queries = [
+            f"site:beatport.com/track {query}",
+            f"site:beatport.com {query}",
+        ]
+    else:
+        # Not quoted - try quoted version first for better precision
+        search_queries = [
+            f'site:beatport.com/track "{query}"',  # Quoted version first (better precision)
+            f"site:beatport.com/track {query}",
+            f"site:beatport.com {query}",  # Broader search last
+        ]
+
+    try:
+        with DDGS() as ddgs:
+            for search_q in search_queries:
+                try:
+                    for r in ddgs.text(search_q, region="us-en", max_results=mr):
+                        href = r.get("href") or r.get("url") or ""
+                        if "beatport.com/track/" in href:
+                            urls.append(href)
+                    # For remix queries, don't break early - we need to find specific tracks
+                    # Only break early for non-remix queries with many results
+                    if len(urls) >= 20 and (" remix" not in ql and "extended mix" not in ql):
+                        break
+                except Exception as e:
+                    # Log error with full details for debugging
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"[{idx}] DuckDuckGo search error for '{search_q}': {e!r}", exc_info=True)
+                    vlog(idx, f"[search] ddgs error for '{search_q}': {e!r}")
+                    continue
+    except ImportError as e:
+        # ddgs package not available - this is critical!
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"[{idx}] DuckDuckGo search (ddgs) not available: {e!r}", exc_info=True)
+        vlog(idx, f"[search] ddgs import error: {e!r}")
+        return []
+    except Exception as e:
+        # Other errors (network, SSL, etc.)
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"[{idx}] DuckDuckGo search failed: {e!r}", exc_info=True)
+        vlog(idx, f"[search] ddgs error: {e!r}")
+        return []
+    
+    # Process and deduplicate URLs
     out, seen = [], set()
     for u in urls:
         if is_track_url(u) and u not in seen:

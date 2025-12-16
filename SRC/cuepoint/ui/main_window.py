@@ -2644,8 +2644,6 @@ class MainWindow(QMainWindow):
                     # Additional validation: check if path looks like a development path
                     # that shouldn't be restored in packaged app
                     is_packaged = getattr(sys, "frozen", False)
-                    import sys
-                    is_packaged = getattr(sys, "frozen", False)
                     if is_packaged:
                         # In packaged app, only restore if file is in user-accessible location
                         # Don't restore paths from development directories
