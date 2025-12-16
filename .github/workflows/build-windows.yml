@@ -13,6 +13,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
+      - name: Debug checkout info
+        run: |
+          Write-Host "=== DEBUG: Checkout completed ==="
+          Write-Host "Working directory: $(Get-Location)"
+          Write-Host "Git ref: ${{ github.ref }}"
+          Write-Host "Git SHA: ${{ github.sha }}"
+          Write-Host "Git ref name: ${{ github.ref_name }}"
+          Write-Host "Repository: ${{ github.repository }}"
+          Write-Host "Contents of root directory:"
+          Get-ChildItem -ErrorAction SilentlyContinue | Select-Object Name, Length | Format-Table
+      
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -21,48 +32,145 @@ jobs:
       
       - name: Install dependencies
         run: |
+          Write-Host "=== DEBUG: Installing dependencies ==="
+          Write-Host "Python version:"
+          python --version
+          Write-Host "Pip version:"
+          python -m pip --version
+          Write-Host "Upgrading pip..."
           python -m pip install --upgrade pip
+          Write-Host "Installing build requirements from requirements-build.txt..."
           pip install -r requirements-build.txt
+          Write-Host "Installing PyInstaller..."
           pip install pyinstaller
+          Write-Host "Installed packages:"
+          pip list | Select-String -Pattern "pyinstaller|setuptools|wheel"
 
       - name: Generate third-party licenses file
         run: |
+          Write-Host "=== DEBUG: Generating third-party licenses ==="
+          Write-Host "Current directory: $(Get-Location)"
+          Write-Host "Running: python scripts/generate_licenses.py --output THIRD_PARTY_LICENSES.txt"
           python scripts/generate_licenses.py --output THIRD_PARTY_LICENSES.txt
+          if (Test-Path "THIRD_PARTY_LICENSES.txt") {
+              Write-Host "Licenses file created: $(Get-Item THIRD_PARTY_LICENSES.txt | Select-Object -ExpandProperty Length) bytes"
+          } else {
+              Write-Warning "Licenses file not found after generation"
+          }
       
       - name: Install NSIS
         run: |
-          choco install nsis -y
-          # Refresh PATH to include NSIS
-          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-          # Verify NSIS installation
+          Write-Host "=== DEBUG: Installing NSIS ==="
+          Write-Host "Checking if NSIS is already installed..."
           $nsisPath = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
           if (Test-Path $nsisPath) {
-            Write-Host "NSIS found at: $nsisPath"
+            Write-Host "NSIS already found at: $nsisPath"
+            $version = & $nsisPath /VERSION 2>&1
+            Write-Host "NSIS version: $version"
           } else {
-            Write-Host "NSIS not found at expected path, checking PATH..."
+            Write-Host "NSIS not found, installing via Chocolatey..."
+            choco install nsis -y
+            Write-Host "Chocolatey installation completed"
+          }
+          
+          # Refresh PATH to include NSIS
+          Write-Host "Refreshing PATH environment variable..."
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+          Write-Host "Updated PATH: $env:Path"
+          
+          # Verify NSIS installation
+          Write-Host "Verifying NSIS installation..."
+          $nsisPath = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
+          if (Test-Path $nsisPath) {
+            Write-Host "[OK] NSIS found at: $nsisPath"
+            $version = & $nsisPath /VERSION 2>&1
+            Write-Host "NSIS version: $version"
+          } else {
+            Write-Host "[WARN] NSIS not found at expected path, checking PATH..."
             $makensis = Get-Command makensis -ErrorAction SilentlyContinue
             if ($makensis) {
-              Write-Host "makensis found at: $($makensis.Path)"
+              Write-Host "[OK] makensis found in PATH at: $($makensis.Path)"
             } else {
               Write-Error "makensis not found in PATH"
+              Write-Host "Searched paths:"
+              $possiblePaths = @(
+                "${env:ProgramFiles(x86)}\NSIS\makensis.exe",
+                "${env:ProgramFiles}\NSIS\makensis.exe",
+                "C:\Program Files (x86)\NSIS\makensis.exe",
+                "C:\Program Files\NSIS\makensis.exe"
+              )
+              foreach ($path in $possiblePaths) {
+                Write-Host "  $path : $(if (Test-Path $path) { 'EXISTS' } else { 'NOT FOUND' })"
+              }
+              exit 1
             }
           }
       
       - name: Set build info
-        run: python scripts/set_build_info.py
+        run: |
+          Write-Host "=== DEBUG: Setting build info ==="
+          Write-Host "GITHUB_RUN_NUMBER: ${{ github.run_number }}"
+          Write-Host "GITHUB_RUN_ID: ${{ github.run_id }}"
+          Write-Host "Running: python scripts/set_build_info.py"
+          python scripts/set_build_info.py
+          Write-Host "Build info script completed"
         env:
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
           GITHUB_RUN_ID: ${{ github.run_id }}
       
       - name: Generate version info
-        run: python scripts/generate_version_info.py
+        run: |
+          Write-Host "=== DEBUG: Generating version info ==="
+          Write-Host "Current directory: $(Get-Location)"
+          Write-Host "Running: python scripts/generate_version_info.py"
+          python scripts/generate_version_info.py
+          if (Test-Path "build\version_info.txt") {
+              Write-Host "[OK] version_info.txt created"
+              Write-Host "File size: $(Get-Item build\version_info.txt | Select-Object -ExpandProperty Length) bytes"
+              Write-Host "First 20 lines:"
+              Get-Content build\version_info.txt -Head 20
+          } else {
+              Write-Error "version_info.txt not found after generation"
+              exit 1
+          }
       
       - name: Validate version
-        run: python scripts/validate_version.py
+        run: |
+          Write-Host "=== DEBUG: Validating version ==="
+          Write-Host "Git ref: ${{ github.ref }}"
+          Write-Host "Git ref name: ${{ github.ref_name }}"
+          Write-Host "Running: python scripts/validate_version.py"
+          python scripts/validate_version.py
+          Write-Host "Version validation completed"
       
       - name: Build with PyInstaller
         run: |
+          Write-Host "=== DEBUG: Building with PyInstaller ==="
+          Write-Host "Current directory: $(Get-Location)"
+          Write-Host "Python version:"
+          python --version
+          Write-Host "PyInstaller version:"
+          pyinstaller --version
+          Write-Host "Checking if build directory exists:"
+          if (Test-Path "build") {
+              Write-Host "  build/ exists"
+              Write-Host "  Contents:"
+              Get-ChildItem build\ -ErrorAction SilentlyContinue | Format-Table Name, Length
+          } else {
+              Write-Host "  build/ does not exist (will be created)"
+          }
+          Write-Host "Running: python scripts/build_pyinstaller.py"
           python scripts/build_pyinstaller.py
+          Write-Host "PyInstaller build completed"
+          Write-Host "Checking dist/ directory:"
+          if (Test-Path "dist") {
+              Write-Host "  dist/ exists"
+              Write-Host "  Contents:"
+              Get-ChildItem dist\ -ErrorAction SilentlyContinue | Format-Table Name, Length, LastWriteTime
+          } else {
+              Write-Error "dist/ directory not found after build"
+              exit 1
+          }
       
       - name: Import certificate
         if: startsWith(github.ref, 'refs/tags/v')
@@ -70,14 +178,33 @@ jobs:
           WINDOWS_CERT_PFX: ${{ secrets.WINDOWS_CERT_PFX }}
           WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
         run: |
-          if (-not $env:WINDOWS_CERT_PFX -or -not $env:WINDOWS_CERT_PASSWORD) {
-            Write-Host "Skipping certificate import: secrets not available"
+          Write-Host "=== DEBUG: Importing certificate ==="
+          Write-Host "Git ref: ${{ github.ref }}"
+          Write-Host "Checking for certificate secrets..."
+          $hasCert = -not [string]::IsNullOrEmpty($env:WINDOWS_CERT_PFX)
+          $hasPassword = -not [string]::IsNullOrEmpty($env:WINDOWS_CERT_PASSWORD)
+          Write-Host "  WINDOWS_CERT_PFX present: $hasCert"
+          Write-Host "  WINDOWS_CERT_PASSWORD present: $hasPassword"
+          
+          if (-not $hasCert -or -not $hasPassword) {
+            Write-Host "[SKIP] Certificate secrets not available, skipping import"
             exit 0
           }
+          
+          Write-Host "Certificate data length: $($env:WINDOWS_CERT_PFX.Length) characters"
+          Write-Host "Decoding certificate from base64..."
           $certBytes = [System.Convert]::FromBase64String($env:WINDOWS_CERT_PFX)
+          Write-Host "Certificate binary size: $($certBytes.Length) bytes"
           $certPath = "cert.pfx"
+          Write-Host "Writing certificate to: $certPath"
           [System.IO.File]::WriteAllBytes($certPath, $certBytes)
-          Write-Host "Certificate imported to: $certPath"
+          if (Test-Path $certPath) {
+              Write-Host "[OK] Certificate imported successfully"
+              Write-Host "Certificate file size: $(Get-Item $certPath | Select-Object -ExpandProperty Length) bytes"
+          } else {
+              Write-Error "Certificate file not found after write"
+              exit 1
+          }
       
       - name: Sign executable
         if: startsWith(github.ref, 'refs/tags/v')
@@ -85,36 +212,98 @@ jobs:
           WINDOWS_CERT_PFX: ${{ secrets.WINDOWS_CERT_PFX }}
           WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
         run: |
-          if (-not $env:WINDOWS_CERT_PFX -or -not $env:WINDOWS_CERT_PASSWORD) {
-            Write-Host "Skipping executable signing: secrets not available"
+          Write-Host "=== DEBUG: Signing executable ==="
+          Write-Host "Checking for certificate secrets..."
+          $hasCert = -not [string]::IsNullOrEmpty($env:WINDOWS_CERT_PFX)
+          $hasPassword = -not [string]::IsNullOrEmpty($env:WINDOWS_CERT_PASSWORD)
+          Write-Host "  WINDOWS_CERT_PFX present: $hasCert"
+          Write-Host "  WINDOWS_CERT_PASSWORD present: $hasPassword"
+          
+          if (-not $hasCert -or -not $hasPassword) {
+            Write-Host "[SKIP] Certificate secrets not available, skipping signing"
             exit 0
           }
+          
           $certPath = "cert.pfx"
-          signtool sign /f $certPath /p "$env:WINDOWS_CERT_PASSWORD" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 dist/CuePoint.exe
-          signtool verify /pa /v dist/CuePoint.exe
+          $exePath = "dist/CuePoint.exe"
+          Write-Host "Certificate path: $certPath"
+          Write-Host "Executable path: $exePath"
+          
+          if (-not (Test-Path $certPath)) {
+              Write-Error "Certificate file not found: $certPath"
+              exit 1
+          }
+          if (-not (Test-Path $exePath)) {
+              Write-Error "Executable not found: $exePath"
+              exit 1
+          }
+          
+          Write-Host "Executable size before signing: $(Get-Item $exePath | Select-Object -ExpandProperty Length) bytes"
+          Write-Host "Running signtool sign..."
+          signtool sign /f $certPath /p "$env:WINDOWS_CERT_PASSWORD" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $exePath
+          $signExitCode = $LASTEXITCODE
+          Write-Host "signtool sign exit code: $signExitCode"
+          
+          if ($signExitCode -ne 0) {
+              Write-Error "signtool sign failed with exit code $signExitCode"
+              exit 1
+          }
+          
+          Write-Host "Executable size after signing: $(Get-Item $exePath | Select-Object -ExpandProperty Length) bytes"
+          Write-Host "Running signtool verify..."
+          signtool verify /pa /v $exePath
+          $verifyExitCode = $LASTEXITCODE
+          Write-Host "signtool verify exit code: $verifyExitCode"
+          
+          if ($verifyExitCode -ne 0) {
+              Write-Error "signtool verify failed with exit code $verifyExitCode"
+              exit 1
+          }
+          
+          Write-Host "[OK] Executable signed and verified successfully"
       
       - name: Build installer
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
+          Write-Host "=== DEBUG: Building installer ==="
+          Write-Host "Git ref: ${{ github.ref }}"
+          Write-Host "Current directory: $(Get-Location)"
+          
           # Verify PyInstaller build completed successfully
+          Write-Host "Checking for PyInstaller build output..."
           $exeFound = $false
           if (Test-Path "dist\CuePoint.exe") {
-              Write-Host "Found CuePoint.exe in dist/ (onefile mode)"
+              Write-Host "[OK] Found CuePoint.exe in dist/ (onefile mode)"
+              $exeInfo = Get-Item "dist\CuePoint.exe"
+              Write-Host "  Size: $($exeInfo.Length) bytes"
+              Write-Host "  Last modified: $($exeInfo.LastWriteTime)"
               $exeFound = $true
           } elseif (Test-Path "dist\CuePoint\CuePoint.exe") {
-              Write-Host "Found CuePoint.exe in dist/CuePoint/ (onedir mode)"
+              Write-Host "[OK] Found CuePoint.exe in dist/CuePoint/ (onedir mode)"
+              $exeInfo = Get-Item "dist\CuePoint\CuePoint.exe"
+              Write-Host "  Size: $($exeInfo.Length) bytes"
+              Write-Host "  Last modified: $($exeInfo.LastWriteTime)"
               $exeFound = $true
           }
           
           if (-not $exeFound) {
               Write-Error "CuePoint.exe not found in dist/ or dist/CuePoint/"
               Write-Host "Contents of dist/:"
-              Get-ChildItem dist\ -ErrorAction SilentlyContinue | Format-Table Name, Length
+              $distContents = Get-ChildItem dist\ -ErrorAction SilentlyContinue
+              if ($distContents) {
+                  $distContents | Format-Table Name, Length, LastWriteTime, Attributes
+              } else {
+                  Write-Host "  dist/ is empty or doesn't exist"
+              }
               exit 1
           }
           
+          Write-Host "Getting version from version.py..."
           $version = python -c "import sys; sys.path.insert(0, 'SRC'); from cuepoint.version import __version__; print(__version__)"
+          Write-Host "Version: $version"
+          
           # Try to find makensis in common locations or PATH
+          Write-Host "Searching for makensis..."
           $makensis = $null
           $possiblePaths = @(
             "${env:ProgramFiles(x86)}\NSIS\makensis.exe",
@@ -123,21 +312,29 @@ jobs:
             "C:\Program Files\NSIS\makensis.exe"
           )
           foreach ($path in $possiblePaths) {
+            Write-Host "  Checking: $path"
             if (Test-Path $path) {
               $makensis = $path
-              Write-Host "Found makensis at: $path"
+              Write-Host "[OK] Found makensis at: $path"
+              $versionInfo = & $path /VERSION 2>&1
+              Write-Host "  NSIS version: $versionInfo"
               break
             }
           }
           if (-not $makensis) {
+            Write-Host "  Not found in common paths, checking PATH..."
             $makensisCmd = Get-Command makensis -ErrorAction SilentlyContinue
             if ($makensisCmd) {
               $makensis = $makensisCmd.Path
-              Write-Host "Found makensis in PATH at: $makensis"
+              Write-Host "[OK] Found makensis in PATH at: $makensis"
             }
           }
           if (-not $makensis) {
             Write-Error "makensis not found. Please ensure NSIS is installed."
+            Write-Host "Searched paths:"
+            foreach ($path in $possiblePaths) {
+              Write-Host "  $path : $(if (Test-Path $path) { 'EXISTS' } else { 'NOT FOUND' })"
+            }
             exit 1
           }
           
@@ -145,20 +342,36 @@ jobs:
           # The installer script uses relative paths (..\dist\) which work reliably
           $currentDir = Get-Location
           Write-Host "Current directory: $currentDir"
-          Write-Host "Verifying file exists: $currentDir\dist\CuePoint.exe"
+          $exePath = "$currentDir\dist\CuePoint.exe"
+          Write-Host "Verifying executable exists: $exePath"
           
-          if (-not (Test-Path "$currentDir\dist\CuePoint.exe")) {
+          if (-not (Test-Path $exePath)) {
               Write-Error "CuePoint.exe not found. Current dir: $currentDir"
-              Get-ChildItem dist\ -ErrorAction SilentlyContinue | Format-Table
+              Write-Host "Contents of dist/:"
+              Get-ChildItem dist\ -ErrorAction SilentlyContinue | Format-Table Name, Length, LastWriteTime
               exit 1
           }
+          Write-Host "[OK] Executable verified"
+          
+          # Check if installer script exists
+          $installerScript = "scripts\installer.nsi"
+          Write-Host "Checking installer script: $installerScript"
+          if (-not (Test-Path $installerScript)) {
+              Write-Error "Installer script not found: $installerScript"
+              exit 1
+          }
+          Write-Host "[OK] Installer script found"
+          Write-Host "Script size: $(Get-Item $installerScript | Select-Object -ExpandProperty Length) bytes"
           
           # Run makensis from project root
           # The installer script uses relative paths (..\dist\) relative to scripts/ directory
-          Write-Host "Running makensis with VERSION=$version"
-          $makensisResult = & $makensis /DVERSION=$version scripts/installer.nsi 2>&1
+          Write-Host "Running makensis..."
+          Write-Host "  Command: $makensis /DVERSION=$version $installerScript"
+          Write-Host "  Working directory: $currentDir"
+          $makensisResult = & $makensis /DVERSION=$version $installerScript 2>&1
           $makensisExitCode = $LASTEXITCODE
           
+          Write-Host "Makensis exit code: $makensisExitCode"
           Write-Host "Makensis output:"
           Write-Host $makensisResult
           
@@ -170,37 +383,57 @@ jobs:
           # Verify installer was created in dist/ directory
           # Makensis reported creating: "D:\a\CuePoint\CuePoint\dist\CuePoint-Setup-v1.0.0.exe"
           # Wait a moment for file system to sync (makensis might have just written the file)
+          Write-Host "Waiting for file system to sync..."
           Start-Sleep -Seconds 2
           
           # Check for installer using exact expected filename
           $expectedInstaller = "dist\CuePoint-Setup-v$version.exe"
-          Write-Host "Checking for installer at: $expectedInstaller"
+          $absInstallerPath = Join-Path $currentDir $expectedInstaller
+          Write-Host "Checking for installer..."
+          Write-Host "  Expected relative path: $expectedInstaller"
+          Write-Host "  Expected absolute path: $absInstallerPath"
           
           # Try multiple methods to find the file
           $installerFiles = @()
           
           # Method 1: Exact path
+          Write-Host "Method 1: Checking exact path..."
           if (Test-Path $expectedInstaller) {
-              $installerFiles += Get-Item $expectedInstaller
-              Write-Host "Found installer using exact path"
+              $file = Get-Item $expectedInstaller
+              $installerFiles += $file
+              Write-Host "[OK] Found installer using exact path"
+              Write-Host "  File: $($file.FullName)"
+              Write-Host "  Size: $($file.Length) bytes"
+              Write-Host "  Last modified: $($file.LastWriteTime)"
+          } else {
+              Write-Host "  Not found at relative path"
           }
           
           # Method 2: Pattern matching
+          Write-Host "Method 2: Checking pattern dist\CuePoint-Setup-v*.exe..."
           $patternFiles = Get-ChildItem "dist\CuePoint-Setup-v*.exe" -ErrorAction SilentlyContinue
           if ($patternFiles) {
               $installerFiles += $patternFiles
-              Write-Host "Found installer using pattern matching"
+              Write-Host "[OK] Found $($patternFiles.Count) file(s) using pattern matching"
+              $patternFiles | ForEach-Object { Write-Host "  - $($_.Name) ($($_.Length) bytes)" }
+          } else {
+              Write-Host "  No files found with pattern"
           }
           
           # Method 3: All exe files with "Setup" in name
+          Write-Host "Method 3: Checking all .exe files with 'Setup' in name..."
           $allSetupFiles = Get-ChildItem "dist\*.exe" -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "*Setup*" }
           if ($allSetupFiles) {
               $installerFiles += $allSetupFiles
-              Write-Host "Found installer using wildcard search"
+              Write-Host "[OK] Found $($allSetupFiles.Count) file(s) using wildcard search"
+              $allSetupFiles | ForEach-Object { Write-Host "  - $($_.Name) ($($_.Length) bytes)" }
+          } else {
+              Write-Host "  No files found with 'Setup' in name"
           }
           
           # Remove duplicates
           $installerFiles = $installerFiles | Select-Object -Unique
+          Write-Host "Total unique installer files found: $($installerFiles.Count)"
           
           if ($installerFiles.Count -eq 0) {
               Write-Error "Installer was not found. Expected: $expectedInstaller"
@@ -210,17 +443,20 @@ jobs:
               if ($allFiles) {
                   $allFiles | Format-Table Name, Length, LastWriteTime, Attributes
               } else {
-                  Write-Host "dist/ directory is empty or doesn't exist"
+                  Write-Host "  dist/ directory is empty or doesn't exist"
               }
               Write-Host "Current working directory: $(Get-Location)"
               Write-Host "Absolute path check:"
-              $absPath = Join-Path (Get-Location) $expectedInstaller
-              Write-Host "  Expected: $absPath"
-              Write-Host "  Exists: $(Test-Path $absPath)"
+              Write-Host "  Expected: $absInstallerPath"
+              Write-Host "  Exists: $(Test-Path $absInstallerPath)"
+              if (Test-Path $absInstallerPath) {
+                  Write-Host "  File info:"
+                  Get-Item $absInstallerPath | Format-List
+              }
               exit 1
           }
-          Write-Host "Installer found successfully:"
-          $installerFiles | Format-Table Name, Length, LastWriteTime
+          Write-Host "[OK] Installer found successfully:"
+          $installerFiles | Format-Table Name, Length, LastWriteTime, FullName
       
       - name: Sign installer
         if: startsWith(github.ref, 'refs/tags/v')
@@ -228,82 +464,255 @@ jobs:
           WINDOWS_CERT_PFX: ${{ secrets.WINDOWS_CERT_PFX }}
           WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
         run: |
-          if (-not $env:WINDOWS_CERT_PFX -or -not $env:WINDOWS_CERT_PASSWORD) {
-            Write-Host "Skipping installer signing: secrets not available"
+          Write-Host "=== DEBUG: Signing installer ==="
+          Write-Host "Checking for certificate secrets..."
+          $hasCert = -not [string]::IsNullOrEmpty($env:WINDOWS_CERT_PFX)
+          $hasPassword = -not [string]::IsNullOrEmpty($env:WINDOWS_CERT_PASSWORD)
+          Write-Host "  WINDOWS_CERT_PFX present: $hasCert"
+          Write-Host "  WINDOWS_CERT_PASSWORD present: $hasPassword"
+          
+          if (-not $hasCert -or -not $hasPassword) {
+            Write-Host "[SKIP] Certificate secrets not available, skipping installer signing"
             exit 0
           }
+          
           $certPath = "cert.pfx"
-          $installer = Get-ChildItem dist\CuePoint-Setup-v*-setup.exe | Select-Object -First 1
-          if (-not $installer) {
-              Write-Error "Installer not found: dist\CuePoint-Setup-v*-setup.exe"
-              Get-ChildItem dist\*-setup.exe -ErrorAction SilentlyContinue | Format-Table
+          Write-Host "Certificate path: $certPath"
+          if (-not (Test-Path $certPath)) {
+              Write-Error "Certificate file not found: $certPath"
               exit 1
           }
-          signtool sign /f $certPath /p "$env:WINDOWS_CERT_PASSWORD" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "$installer"
-          signtool verify /pa /v "$installer"
+          Write-Host "[OK] Certificate file found"
+          
+          Write-Host "Searching for installer files..."
+          Write-Host "  Pattern 1: dist\CuePoint-Setup-v*-setup.exe"
+          $installer = Get-ChildItem dist\CuePoint-Setup-v*-setup.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $installer) {
+              Write-Host "  Pattern 1: Not found, trying pattern 2..."
+              Write-Host "  Pattern 2: dist\CuePoint-Setup-v*.exe"
+              $installer = Get-ChildItem dist\CuePoint-Setup-v*.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          }
+          if (-not $installer) {
+              Write-Host "  Pattern 2: Not found, trying pattern 3..."
+              Write-Host "  Pattern 3: dist\*-setup.exe"
+              $installer = Get-ChildItem dist\*-setup.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          }
+          
+          if (-not $installer) {
+              Write-Error "Installer not found with any pattern"
+              Write-Host "All files in dist/:"
+              Get-ChildItem dist\ -ErrorAction SilentlyContinue | Format-Table Name, Length, LastWriteTime
+              exit 1
+          }
+          
+          Write-Host "[OK] Found installer: $($installer.FullName)"
+          Write-Host "  Size before signing: $($installer.Length) bytes"
+          Write-Host "  Last modified: $($installer.LastWriteTime)"
+          
+          Write-Host "Running signtool sign..."
+          signtool sign /f $certPath /p "$env:WINDOWS_CERT_PASSWORD" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "$($installer.FullName)"
+          $signExitCode = $LASTEXITCODE
+          Write-Host "signtool sign exit code: $signExitCode"
+          
+          if ($signExitCode -ne 0) {
+              Write-Error "signtool sign failed with exit code $signExitCode"
+              exit 1
+          }
+          
+          # Refresh file info after signing
+          $installer = Get-Item $installer.FullName
+          Write-Host "  Size after signing: $($installer.Length) bytes"
+          Write-Host "  Last modified: $($installer.LastWriteTime)"
+          
+          Write-Host "Running signtool verify..."
+          signtool verify /pa /v "$($installer.FullName)"
+          $verifyExitCode = $LASTEXITCODE
+          Write-Host "signtool verify exit code: $verifyExitCode"
+          
+          if ($verifyExitCode -ne 0) {
+              Write-Error "signtool verify failed with exit code $verifyExitCode"
+              exit 1
+          }
+          
+          Write-Host "[OK] Installer signed and verified successfully"
       
       - name: Verify version embedding
-        run: python scripts/verify_version_embedding.py
+        run: |
+          Write-Host "=== DEBUG: Verifying version embedding ==="
+          Write-Host "Current directory: $(Get-Location)"
+          Write-Host "Running: python scripts/verify_version_embedding.py"
+          python scripts/verify_version_embedding.py
+          $verifyExitCode = $LASTEXITCODE
+          Write-Host "Version embedding verification exit code: $verifyExitCode"
+          if ($verifyExitCode -ne 0) {
+              Write-Error "Version embedding verification failed"
+              exit 1
+          }
+          Write-Host "[OK] Version embedding verified"
       
       - name: Verify installer exists before upload
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          # Get version from environment or git tag
-          $version = "${{ env.VERSION }}"
-          if (-not $version) {
-              $version = "${{ github.ref_name }}"
-              $version = $version -replace '^v', ''
-          }
-          
-          Write-Host "Looking for installer with version: $version"
+          Write-Host "=== DEBUG: Verifying installer exists before upload ==="
+          Write-Host "Git ref: ${{ github.ref }}"
           Write-Host "Current directory: $(Get-Location)"
           
+          # Get version from environment or git tag
+          $version = "${{ env.VERSION }}"
+          Write-Host "env.VERSION: $version"
+          if (-not $version -or $version -eq "") {
+              $version = "${{ github.ref_name }}"
+              Write-Host "Using github.ref_name: $version"
+              $version = $version -replace '^v', ''
+              Write-Host "Version after removing 'v' prefix: $version"
+          }
+          
+          Write-Host "Final version: $version"
+          Write-Host "Looking for installer with version: $version"
+          
           # Try multiple patterns to find installer
+          Write-Host "Searching for installer files..."
           $installerFiles = @()
-          $installerFiles += Get-ChildItem "dist\CuePoint-Setup-v*.exe" -ErrorAction SilentlyContinue
-          $installerFiles += Get-ChildItem "dist\*-setup.exe" -ErrorAction SilentlyContinue
-          $installerFiles += Get-ChildItem "dist\*.exe" -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "*Setup*" }
+          
+          Write-Host "Pattern 1: dist\CuePoint-Setup-v*.exe"
+          $pattern1 = Get-ChildItem "dist\CuePoint-Setup-v*.exe" -ErrorAction SilentlyContinue
+          if ($pattern1) {
+              Write-Host "  Found $($pattern1.Count) file(s)"
+              $pattern1 | ForEach-Object { Write-Host "    - $($_.Name) ($($_.Length) bytes)" }
+              $installerFiles += $pattern1
+          } else {
+              Write-Host "  No files found"
+          }
+          
+          Write-Host "Pattern 2: dist\*-setup.exe"
+          $pattern2 = Get-ChildItem "dist\*-setup.exe" -ErrorAction SilentlyContinue
+          if ($pattern2) {
+              Write-Host "  Found $($pattern2.Count) file(s)"
+              $pattern2 | ForEach-Object { Write-Host "    - $($_.Name) ($($_.Length) bytes)" }
+              $installerFiles += $pattern2
+          } else {
+              Write-Host "  No files found"
+          }
+          
+          Write-Host "Pattern 3: dist\*.exe with 'Setup' in name"
+          $pattern3 = Get-ChildItem "dist\*.exe" -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "*Setup*" }
+          if ($pattern3) {
+              Write-Host "  Found $($pattern3.Count) file(s)"
+              $pattern3 | ForEach-Object { Write-Host "    - $($_.Name) ($($_.Length) bytes)" }
+              $installerFiles += $pattern3
+          } else {
+              Write-Host "  No files found"
+          }
           
           # Remove duplicates
           $installerFiles = $installerFiles | Select-Object -Unique
+          Write-Host "Total unique installer files found: $($installerFiles.Count)"
           
           if ($installerFiles.Count -eq 0) {
             Write-Error "No installer files found in dist/"
             Write-Host "All files in dist directory:"
             $allFiles = Get-ChildItem dist\ -ErrorAction SilentlyContinue
             if ($allFiles) {
-                $allFiles | Format-Table Name, Length, LastWriteTime
+                $allFiles | Format-Table Name, Length, LastWriteTime, Attributes, FullName
             } else {
-                Write-Host "dist/ directory is empty or doesn't exist"
+                Write-Host "  dist/ directory is empty or doesn't exist"
             }
             Write-Host "Checking explicit path:"
             $explicitPath = "dist\CuePoint-Setup-v$version.exe"
-            Write-Host "  Path: $explicitPath"
-            Write-Host "  Exists: $(Test-Path $explicitPath)"
+            $absExplicitPath = Join-Path (Get-Location) $explicitPath
+            Write-Host "  Relative path: $explicitPath"
+            Write-Host "  Absolute path: $absExplicitPath"
+            Write-Host "  Exists (relative): $(Test-Path $explicitPath)"
+            Write-Host "  Exists (absolute): $(Test-Path $absExplicitPath)"
             if (Test-Path $explicitPath) {
                 Write-Host "  File info:"
-                Get-Item $explicitPath | Format-List
+                Get-Item $explicitPath | Format-List *
             }
             exit 1
           }
-          Write-Host "Found $($installerFiles.Count) installer file(s):"
-          $installerFiles | Format-Table Name, Length, LastWriteTime
+          Write-Host "[OK] Found $($installerFiles.Count) installer file(s):"
+          $installerFiles | Format-Table Name, Length, LastWriteTime, FullName
       
       - name: Upload artifact
         if: startsWith(github.ref, 'refs/tags/v')
         id: upload_installer
+        run: |
+          Write-Host "=== DEBUG: Preparing artifact upload ==="
+          Write-Host "Current directory: $(Get-Location)"
+          
+          # Find installer using the actual pattern
+          Write-Host "Searching for installer files..."
+          $installerFiles = @()
+          
+          # Try the actual pattern first: CuePoint-Setup-v*.exe
+          Write-Host "Pattern 1: dist\CuePoint-Setup-v*.exe"
+          $pattern1 = Get-ChildItem dist\CuePoint-Setup-v*.exe -ErrorAction SilentlyContinue
+          if ($pattern1) {
+              Write-Host "[OK] Found $($pattern1.Count) file(s) with pattern 1:"
+              $pattern1 | ForEach-Object { Write-Host "  - $($_.FullName) ($($_.Length) bytes)" }
+              $installerFiles += $pattern1
+          }
+          
+          # Try alternative pattern: *-setup.exe (in case naming changes)
+          Write-Host "Pattern 2: dist\*-setup.exe"
+          $pattern2 = Get-ChildItem dist\*-setup.exe -ErrorAction SilentlyContinue
+          if ($pattern2) {
+              Write-Host "[OK] Found $($pattern2.Count) file(s) with pattern 2:"
+              $pattern2 | ForEach-Object { Write-Host "  - $($_.FullName) ($($_.Length) bytes)" }
+              $installerFiles += $pattern2
+          }
+          
+          # Try any .exe with "Setup" in name
+          Write-Host "Pattern 3: dist\*.exe with 'Setup' in name"
+          $pattern3 = Get-ChildItem dist\*.exe -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "*Setup*" }
+          if ($pattern3) {
+              Write-Host "[OK] Found $($pattern3.Count) file(s) with pattern 3:"
+              $pattern3 | ForEach-Object { Write-Host "  - $($_.FullName) ($($_.Length) bytes)" }
+              $installerFiles += $pattern3
+          }
+          
+          # Remove duplicates
+          $installerFiles = $installerFiles | Select-Object -Unique
+          
+          if ($installerFiles.Count -eq 0) {
+              Write-Error "No installer files found for upload"
+              Write-Host "All files in dist/:"
+              Get-ChildItem dist\ -ErrorAction SilentlyContinue | Format-Table Name, Length, LastWriteTime
+              exit 1
+          }
+          
+          Write-Host "[OK] Found $($installerFiles.Count) installer file(s) to upload:"
+          $installerFiles | Format-Table Name, Length, LastWriteTime, FullName
+          
+          # Verify the pattern matches before upload
+          Write-Host "Verifying upload pattern will match files..."
+          $verifyPattern = Get-ChildItem dist\CuePoint-Setup-v*.exe -ErrorAction SilentlyContinue
+          if ($verifyPattern) {
+              Write-Host "[OK] Pattern 'dist\CuePoint-Setup-v*.exe' matches $($verifyPattern.Count) file(s)"
+          } else {
+              Write-Error "Pattern 'dist\CuePoint-Setup-v*.exe' does not match any files!"
+              exit 1
+          }
+        continue-on-error: false
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer
-          path: dist/*-setup.exe
+          path: dist/CuePoint-Setup-v*.exe
           retention-days: 30
           if-no-files-found: error
       
       - name: Verify artifact upload
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
+          Write-Host "=== DEBUG: Verifying artifact upload ==="
+          Write-Host "Upload step outcome: ${{ steps.upload_installer.outcome }}"
+          Write-Host "Upload step conclusion: ${{ steps.upload_installer.conclusion }}"
+          
           if ("${{ steps.upload_installer.outcome }}" -ne "success") {
             Write-Error "Artifact upload failed"
+            Write-Host "Upload step details:"
+            Write-Host "  Outcome: ${{ steps.upload_installer.outcome }}"
+            Write-Host "  Conclusion: ${{ steps.upload_installer.conclusion }}"
             exit 1
           }
-          Write-Host "Artifact uploaded successfully"
+          Write-Host "[OK] Artifact uploaded successfully"
