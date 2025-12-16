@@ -24,6 +24,10 @@ def process_info_plist():
     template_path = Path("build/Info.plist.template")
     output_path = Path("build/Info.plist")
     
+    # Create build directory if it doesn't exist
+    template_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    
     if not template_path.exists():
         print(f"Error: Template not found: {template_path}")
         sys.exit(1)

@@ -63,6 +63,8 @@ def generate_version_info():
 """
     
     output_path = Path("build/version_info.txt")
+    # Create build directory if it doesn't exist
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(template)
     print(f"Generated version_info.txt: {output_path}")
     print(f"  Version: {__version__}.{build}")
