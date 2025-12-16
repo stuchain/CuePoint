@@ -84,15 +84,38 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         id: create_dmg
         run: |
+          echo "=== DEBUG: Creating DMG ==="
+          echo "Current directory: $(pwd)"
+          echo "Checking for existing DMG files..."
+          ls -la dist/*.dmg 2>/dev/null || echo "No existing DMG files found"
+          
+          echo "Checking for mounted volumes..."
+          hdiutil info | grep -A 5 "CuePoint" || echo "No CuePoint volumes mounted"
+          
+          echo "Cleaning up any existing mounts..."
+          # Unmount any existing CuePoint volumes
+          for vol in $(hdiutil info | grep -i "cuepoint" | awk '{print $1}' || true); do
+            echo "Unmounting volume: $vol"
+            hdiutil detach "$vol" -force 2>/dev/null || true
+          done
+          sleep 2
+          
           VERSION=$(python -c "import sys; sys.path.insert(0, 'SRC'); from cuepoint.version import __version__; print(__version__)")
+          echo "Version: $VERSION"
+          echo "Running: bash scripts/create_dmg.sh \"$VERSION\""
           bash scripts/create_dmg.sh "$VERSION"
+          
           # Verify DMG was created
+          echo "Verifying DMG was created..."
           DMG_FILE=$(ls dist/CuePoint-v*.dmg 2>/dev/null | head -1)
           if [ -z "$DMG_FILE" ]; then
             echo "Error: DMG file not found after creation"
+            echo "Contents of dist/:"
+            ls -la dist/ || true
             exit 1
           fi
           echo "DMG created: $DMG_FILE"
+          echo "DMG size: $(ls -lh "$DMG_FILE" | awk '{print $5}')"
           echo "dmg_file=$DMG_FILE" >> $GITHUB_OUTPUT
       
       - name: Notarize DMG
