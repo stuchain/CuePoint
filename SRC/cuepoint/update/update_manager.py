@@ -167,12 +167,22 @@ class UpdateManager:
             else:
                 self.preferences.set_last_check_result("no_update")
             
-            # Call callbacks
-            if update_info and self._on_update_available:
-                self._on_update_available(update_info)
-            
-            if self._on_check_complete:
-                self._on_check_complete(update_info is not None, None)
+            # Call callbacks on main thread using QTimer
+            # This ensures UI updates happen on the correct thread
+            try:
+                from PySide6.QtCore import QTimer
+                
+                if update_info and self._on_update_available:
+                    QTimer.singleShot(0, lambda: self._on_update_available(update_info))
+                
+                if self._on_check_complete:
+                    QTimer.singleShot(0, lambda: self._on_check_complete(update_info is not None, None))
+            except ImportError:
+                # Fallback if Qt not available (shouldn't happen in GUI app)
+                if update_info and self._on_update_available:
+                    self._on_update_available(update_info)
+                if self._on_check_complete:
+                    self._on_check_complete(update_info is not None, None)
         
         except UpdateCheckError as e:
             with self._lock:
@@ -181,11 +191,18 @@ class UpdateManager:
             self.preferences.set_last_check_timestamp()
             self.preferences.set_last_check_result("error")
             
-            if self._on_error:
-                self._on_error(str(e))
-            
-            if self._on_check_complete:
-                self._on_check_complete(False, str(e))
+            try:
+                from PySide6.QtCore import QTimer
+                
+                if self._on_error:
+                    QTimer.singleShot(0, lambda: self._on_error(str(e)))
+                if self._on_check_complete:
+                    QTimer.singleShot(0, lambda: self._on_check_complete(False, str(e)))
+            except ImportError:
+                if self._on_error:
+                    self._on_error(str(e))
+                if self._on_check_complete:
+                    self._on_check_complete(False, str(e))
         
         except Exception as e:
             with self._lock:
@@ -193,11 +210,17 @@ class UpdateManager:
             
             error_msg = f"Unexpected error during update check: {e}"
             
-            if self._on_error:
-                self._on_error(error_msg)
-            
-            if self._on_check_complete:
-                self._on_check_complete(False, error_msg)
+            try:
+                from PySide6.QtCore import QTimer
+                
+                if self._on_error:
+                    QTimer.singleShot(0, lambda: self._on_error(error_msg))
+                        QTimer.singleShot(0, lambda: self._on_check_complete(False, error_msg))
+            except ImportError:
+                if self._on_error:
+                    self._on_error(error_msg)
+                if self._on_check_complete:
+                    self._on_check_complete(False, error_msg)
     
     def get_update_info(self) -> Optional[Dict]:
         """

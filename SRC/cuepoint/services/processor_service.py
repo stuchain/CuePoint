@@ -17,8 +17,9 @@ from cuepoint.core.query_generator import make_search_queries
 from cuepoint.core.text_processing import sanitize_title_for_search
 from cuepoint.data.rekordbox import extract_artists_from_title, parse_rekordbox
 from cuepoint.models.compat import track_from_rbtrack
-from cuepoint.models.track import Track
 from cuepoint.models.config import SETTINGS
+from cuepoint.models.result import TrackResult
+from cuepoint.models.track import Track
 from cuepoint.services.interfaces import (
     IBeatportService,
     IConfigService,
@@ -26,7 +27,6 @@ from cuepoint.services.interfaces import (
     IMatcherService,
     IProcessorService,
 )
-from cuepoint.models.result import TrackResult
 from cuepoint.ui.gui_interface import (
     ErrorType,
     ProcessingController,
@@ -217,6 +217,10 @@ class ProcessorService(IProcessorService):
                     }
                 )
 
+            # Convert key to Camelot notation
+            from cuepoint.core.matcher import _camelot_key
+            camelot_key = _camelot_key(best.key) if best.key else None
+            
             return TrackResult(
                 playlist_index=idx,
                 title=track.title,
@@ -228,7 +232,7 @@ class ProcessorService(IProcessorService):
                 beatport_title=best.title,
                 beatport_artists=best.artists,
                 beatport_key=best.key,
-                beatport_key_camelot=best.key,  # TODO: convert to Camelot
+                beatport_key_camelot=camelot_key or "",
                 beatport_year=str(best.release_year) if best.release_year else None,
                 beatport_bpm=best.bpm,
                 beatport_label=best.label,

@@ -310,14 +310,52 @@ class MainWindow(QMainWindow):
         mode_layout.setSpacing(15)
         self.mode_button_group = QButtonGroup()
         self.single_mode_radio = QRadioButton("Single")
-        self.single_mode_radio.setStyleSheet("color: #fff; font-size: 12px;")
+        self.single_mode_radio.setStyleSheet("""
+            QRadioButton {
+                color: #fff;
+                font-size: 12px;
+            }
+            QRadioButton::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QRadioButton::indicator:unchecked {
+                border: 2px solid #888;
+                border-radius: 8px;
+                background-color: transparent;
+            }
+            QRadioButton::indicator:checked {
+                border: 2px solid #007AFF;
+                border-radius: 8px;
+                background-color: #007AFF;
+            }
+        """)
         self.single_mode_radio.setAccessibleName("Single mode radio button")
         self.single_mode_radio.setAccessibleDescription("Process one playlist at a time")
         self.single_mode_radio.toggled.connect(self.on_mode_changed)
         self.mode_button_group.addButton(self.single_mode_radio, 0)
         mode_layout.addWidget(self.single_mode_radio)
         self.batch_mode_radio = QRadioButton("Batch")
-        self.batch_mode_radio.setStyleSheet("color: #fff; font-size: 12px;")
+        self.batch_mode_radio.setStyleSheet("""
+            QRadioButton {
+                color: #fff;
+                font-size: 12px;
+            }
+            QRadioButton::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QRadioButton::indicator:unchecked {
+                border: 2px solid #888;
+                border-radius: 8px;
+                background-color: transparent;
+            }
+            QRadioButton::indicator:checked {
+                border: 2px solid #007AFF;
+                border-radius: 8px;
+                background-color: #007AFF;
+            }
+        """)
         self.batch_mode_radio.setAccessibleName("Batch mode radio button")
         self.batch_mode_radio.setAccessibleDescription("Process multiple playlists in sequence")
         self.batch_mode_radio.toggled.connect(self.on_mode_changed)
@@ -445,14 +483,14 @@ class MainWindow(QMainWindow):
         """)
         prog_row1.addWidget(self.progress_bar, 1)
         self.progress_pct = QLabel("0%")
-        self.progress_pct.setStyleSheet("font-size: 16px; font-weight: bold; color: #fff; min-width: 50px;")
+        self.progress_pct.setStyleSheet("font-size: 16px; font-weight: bold; color: #fff; min-width: 50px; background: transparent; padding: 0px; border: none;")
         self.progress_pct.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         prog_row1.addWidget(self.progress_pct)
         progress_main.addLayout(prog_row1)
 
         # Track info
         self.progress_track = QLabel("Ready to start...")
-        self.progress_track.setStyleSheet("font-size: 12px; color: #ccc;")
+        self.progress_track.setStyleSheet("font-size: 12px; color: #ccc; background: transparent; padding: 0px; border: none;")
         self.progress_track.setWordWrap(True)
         progress_main.addWidget(self.progress_track)
 
@@ -460,17 +498,17 @@ class MainWindow(QMainWindow):
         prog_row2 = QHBoxLayout()
         prog_row2.setSpacing(20)
         self.progress_elapsed = QLabel("Elapsed: 0s")
-        self.progress_elapsed.setStyleSheet("font-size: 12px; color: #aaa;")
+        self.progress_elapsed.setStyleSheet("font-size: 12px; color: #aaa; background: transparent; padding: 0px;")
         prog_row2.addWidget(self.progress_elapsed)
         self.progress_remaining = QLabel("Remaining: --")
-        self.progress_remaining.setStyleSheet("font-size: 12px; color: #aaa;")
+        self.progress_remaining.setStyleSheet("font-size: 12px; color: #aaa; background: transparent; padding: 0px;")
         prog_row2.addWidget(self.progress_remaining)
         prog_row2.addStretch()
         self.progress_matched = QLabel("✓ Matched: 0")
-        self.progress_matched.setStyleSheet("font-size: 12px; color: #4CAF50; font-weight: bold;")
+        self.progress_matched.setStyleSheet("font-size: 12px; color: #4CAF50; font-weight: bold; background: transparent; padding: 0px;")
         prog_row2.addWidget(self.progress_matched)
         self.progress_unmatched = QLabel("✗ Unmatched: 0")
-        self.progress_unmatched.setStyleSheet("font-size: 12px; color: #F44336; font-weight: bold;")
+        self.progress_unmatched.setStyleSheet("font-size: 12px; color: #F44336; font-weight: bold; background: transparent; padding: 0px;")
         prog_row2.addWidget(self.progress_unmatched)
         self.cancel_button = QPushButton("Cancel")
         self.cancel_button.setObjectName("dangerButton")

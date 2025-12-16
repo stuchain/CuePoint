@@ -26,6 +26,7 @@ from typing import Any, Dict, List, Optional
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QAbstractSpinBox,
+    QCheckBox,
     QComboBox,
     QDialog,
     QFileDialog,
@@ -162,9 +163,16 @@ class ResultsView(QWidget):
         splitter = QSplitter(Qt.Vertical)
         splitter.setChildrenCollapsible(False)
 
-        # Top section: Summary and filters - COMPACT HORIZONTAL BOXES
+        # Top section: Summary and filters - COMPACT HORIZONTAL BOXES + Advanced Filters below
         top_widget = QWidget()
-        top_layout = QHBoxLayout(top_widget)  # Changed to horizontal
+        # CRITICAL: No maximum height constraint - allow it to grow to show all content
+        top_widget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
+        top_main_layout = QVBoxLayout(top_widget)  # Main vertical layout
+        top_main_layout.setSpacing(15)  # Increased spacing between sections
+        top_main_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Horizontal layout for compact boxes (Summary and Filters)
+        top_layout = QHBoxLayout()
         top_layout.setSpacing(10)
         top_layout.setContentsMargins(0, 0, 0, 0)
 
@@ -183,10 +191,12 @@ class ResultsView(QWidget):
         summary_layout.addStretch()
         top_layout.addWidget(summary_group, 1)  # Equal stretch
 
-        # BOX 2: Filters - compact
+        # BOX 2: Filters - compact horizontal layout (Search, Status, Confidence only)
+        # Keep it simple and fixed height like Summary box
         filters_group = QGroupBox("Filters")
         filters_group.setObjectName("panelBox")
-        filters_group.setFixedHeight(75)
+        filters_group.setFixedHeight(75)  # Fixed height like Summary box
+        filters_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         filters_layout = QHBoxLayout(filters_group)
         filters_layout.setContentsMargins(0, 0, 0, 0)
         filters_layout.setSpacing(8)
@@ -225,29 +235,40 @@ class ResultsView(QWidget):
 
         filters_layout.addStretch()
         top_layout.addWidget(filters_group, 1)  # Equal stretch
-
-        # Advanced Filters - create as separate widget below (not in compact boxes)
-        # This will be added to the main layout after the top section
-        self.advanced_filters_widget = QWidget()
-        advanced_filters_layout = QVBoxLayout(self.advanced_filters_widget)
-        advanced_filters_layout.setContentsMargins(0, 0, 0, 0)
         
-        # Advanced Filters Group
+        # Add horizontal boxes to main top layout
+        top_main_layout.addLayout(top_layout)
+        
+        # Add significant spacing between Filters box and Advanced Filters to prevent visual overlap
+        top_main_layout.addSpacing(25)  # Increased spacing to clearly separate sections
+        
+        # Advanced Filters - SEPARATE checkable QGroupBox (like history_view.py does)
+        # This is NOT a panelBox, so it has normal QGroupBox styling with checkbox in title
         advanced_filters_group = QGroupBox("Advanced Filters")
         advanced_filters_group.setCheckable(True)
         advanced_filters_group.setChecked(False)  # Unchecked by default
-        # Set size policy to allow the group box to expand properly
+        # Use Minimum (not Expanding) to allow natural growth but prevent excessive expansion
         advanced_filters_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
-        advanced_filters_inner_layout = QVBoxLayout()
-        advanced_filters_inner_layout.setContentsMargins(10, 10, 10, 10)  # Add margins inside group box
-        advanced_filters_inner_layout.setSpacing(8)  # Add spacing
-
-        # Container widget for filter controls (to show/hide)
+        # Ensure group box has proper margins and doesn't clip content
+        advanced_filters_group.setStyleSheet("""
+            QGroupBox {
+                margin-top: 0px;
+                margin-bottom: 15px;
+                padding-bottom: 20px;
+            }
+        """)
+        advanced_filters_layout = QVBoxLayout()
+        # Adjust padding - reduce top padding, increase bottom padding for button visibility
+        advanced_filters_layout.setContentsMargins(10, 6, 10, 35)  # Less top, more bottom padding
+        advanced_filters_layout.setSpacing(10)  # Slightly increased spacing
+        
+        # Container widget for advanced filter controls (to show/hide)
         self.advanced_filters_container = QWidget()
         container_layout = QVBoxLayout(self.advanced_filters_container)
-        container_layout.setContentsMargins(0, 0, 0, 12)  # Add bottom margin for button
-        container_layout.setSpacing(8)  # Add spacing between filter rows
-        # Set size policy to ensure container can expand properly
+        # Ensure container has no margins that could cause layering issues
+        container_layout.setContentsMargins(0, 5, 0, 0)  # Small top margin, no bottom
+        container_layout.setSpacing(10)  # Consistent spacing between filter rows
+        # Use Minimum to allow natural growth based on content
         self.advanced_filters_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
 
         # Year range filter
@@ -328,7 +349,54 @@ class ResultsView(QWidget):
         key_layout.addStretch()
         container_layout.addLayout(key_layout)
 
-        # Clear filters button
+        # Don't add button to container - add it directly to group box layout instead
+        # This ensures it's on the same visual level as the container
+
+        # Hide container by default
+        self.advanced_filters_container.setVisible(False)
+        
+        # Connect checkbox to show/hide container and update layout (like history_view.py)
+        def on_advanced_filters_toggled(checked: bool):
+            self.advanced_filters_container.setVisible(checked)
+            # Button is always visible when Advanced Filters is checked (it's in group box layout)
+            clear_button.setVisible(checked)
+            # Force layout update to ensure content is visible and button is not clipped
+            if checked:
+                def _update_geometries() -> None:
+                    # Update all geometries to ensure proper sizing
+                    self.advanced_filters_container.updateGeometry()
+                    clear_button.updateGeometry()
+                    advanced_filters_group.updateGeometry()
+                    # Ensure Advanced Filters group box has enough height for all content including button
+                    if self.advanced_filters_container.isVisible():
+                        container_height = self.advanced_filters_container.sizeHint().height()
+                        button_height = clear_button.sizeHint().height()
+                        # Add space for button, spacing, and padding
+                        advanced_filters_group.setMinimumHeight(container_height + button_height + 50)
+                    top_widget.updateGeometry()
+                    self.updateGeometry()
+                    # Update splitter to allow top section to grow
+                    splitter.updateGeometry()
+                    # Force a repaint to ensure button is visible
+                    advanced_filters_group.update()
+                    self.advanced_filters_container.update()
+                    clear_button.update()
+                QTimer.singleShot(10, self, _update_geometries)
+                QTimer.singleShot(100, self, _update_geometries)  # Second update to ensure it sticks
+            else:
+                # Reset minimum height when collapsed
+                advanced_filters_group.setMinimumHeight(0)
+        
+        advanced_filters_group.toggled.connect(on_advanced_filters_toggled)
+        
+        # Add container to Advanced Filters group box
+        advanced_filters_layout.addWidget(self.advanced_filters_container)
+        
+        # Add spacing before button to separate it from filters
+        advanced_filters_layout.addSpacing(25)
+        
+        # Clear filters button - add directly to group box layout (not container)
+        # This ensures it's on the same visual surface as the Advanced Filters content
         clear_button = QPushButton("Clear All Filters")
         clear_button.setToolTip("Reset all filters to default values (Ctrl+Shift+F)")
         clear_button.setAccessibleName("Clear all filters button")
@@ -337,35 +405,43 @@ class ResultsView(QWidget):
         )
         clear_button.setFocusPolicy(Qt.StrongFocus)
         clear_button.clicked.connect(self.clear_filters)
-        # Set button size policy to prevent it from expanding
+        # Set button size policy
         clear_button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        container_layout.addWidget(clear_button)
-
-        # Hide container by default
-        self.advanced_filters_container.setVisible(False)
-
-        # Connect checkbox to show/hide container and update layout
-        def on_advanced_filters_toggled(checked: bool):
-            self.advanced_filters_container.setVisible(checked)
-            # Force layout update to ensure button is visible
-            if checked:
-                QTimer.singleShot(10, lambda: (
-                    self.advanced_filters_container.updateGeometry(),
-                    advanced_filters_group.updateGeometry(),
-                    self.advanced_filters_widget.updateGeometry(),
-                    self.updateGeometry()
-                ))
+        # Ensure button has proper height
+        clear_button.setFixedHeight(38)  # Fixed height for visibility
+        # Style button to match Advanced Filters surface - same visual plane
+        clear_button.setObjectName("secondaryActionButton")
+        # Style to ensure it appears on the same surface as Advanced Filters content
+        clear_button.setStyleSheet("""
+            QPushButton#secondaryActionButton {
+                margin: 0px;
+                padding: 10px 18px;
+                background-color: rgba(255, 255, 255, 0.08);
+                border: 1px solid rgba(255, 255, 255, 0.18);
+                border-radius: 6px;
+                color: #fff;
+                font-weight: bold;
+                font-size: 12px;
+            }
+            QPushButton#secondaryActionButton:hover {
+                background-color: rgba(255, 255, 255, 0.14);
+                border-color: rgba(255, 255, 255, 0.28);
+            }
+            QPushButton#secondaryActionButton:pressed {
+                background-color: rgba(255, 255, 255, 0.18);
+            }
+        """)
+        advanced_filters_layout.addWidget(clear_button)
         
-        advanced_filters_group.toggled.connect(on_advanced_filters_toggled)
-
-        advanced_filters_inner_layout.addWidget(self.advanced_filters_container)
-        advanced_filters_group.setLayout(advanced_filters_inner_layout)
-        advanced_filters_layout.addWidget(advanced_filters_group)
+        advanced_filters_group.setLayout(advanced_filters_layout)
         
-        # Hide advanced filters widget by default (can be shown if needed)
-        self.advanced_filters_widget.setVisible(False)
+        # Add Advanced Filters group box to top section (separate from Filters panelBox)
+        top_main_layout.addWidget(advanced_filters_group)
+        
+        # Add spacing after Advanced Filters to ensure nothing gets hidden behind it
+        top_main_layout.addSpacing(5)
 
-        # Add top section to splitter (compact boxes)
+        # Add top section to splitter (includes compact boxes + advanced filters)
         splitter.addWidget(top_widget)
 
         # Bottom section: Results table (single playlist mode)
@@ -433,7 +509,7 @@ class ResultsView(QWidget):
         single_table_widget_layout.addWidget(self.single_table_group)
         splitter.addWidget(self.single_table_widget)
 
-        # Set initial splitter sizes (30% top, 70% bottom)
+        # Set initial splitter sizes (30% top with collapsed advanced filters, 70% bottom)
         splitter.setSizes([300, 700])
 
         # Batch mode - Tab widget for multiple playlists (hidden in single mode)
@@ -447,11 +523,8 @@ class ResultsView(QWidget):
         batch_widget_layout.addWidget(self.batch_tabs)
         splitter.addWidget(self.batch_widget)
 
-        # Add splitter to main layout
+        # Add splitter to main layout (advanced filters is now part of top_widget)
         layout.addWidget(splitter, 1)  # Give splitter stretch priority
-        
-        # Add advanced filters widget (hidden by default, can be shown when needed)
-        layout.addWidget(self.advanced_filters_widget)
 
         # Export buttons (outside splitter, at bottom)
         button_layout = QHBoxLayout()
