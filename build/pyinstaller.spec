@@ -94,6 +94,11 @@ hiddenimports = [
     'urllib3.util',
     'urllib3.util.ssl_',
     'urllib3.poolmanager',
+    # CuePoint data modules (PyInstaller may not auto-detect these)
+    'cuepoint.data',
+    'cuepoint.data.beatport',
+    'cuepoint.data.beatport_search',
+    'cuepoint.data.rekordbox',
     'tqdm',
 ]
 

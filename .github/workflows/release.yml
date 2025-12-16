@@ -100,7 +100,7 @@ jobs:
           path: artifacts/macos
           github_token: ${{ secrets.GITHUB_TOKEN }}
           if_no_artifact_found: fail
-          commit: ${{ github.ref }}
+          commit: ${{ github.sha }}
           workflow_conclusion: success
           allow_forks: false
       
@@ -112,7 +112,7 @@ jobs:
           path: artifacts/windows
           github_token: ${{ secrets.GITHUB_TOKEN }}
           if_no_artifact_found: fail
-          commit: ${{ github.ref }}
+          commit: ${{ github.sha }}
           workflow_conclusion: success
           allow_forks: false
       
