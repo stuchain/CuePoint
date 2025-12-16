@@ -10,13 +10,18 @@
 
 ; Application information
 Name "CuePoint"
-OutFile "..\dist\CuePoint-Setup-v${VERSION}.exe"
+OutFile "${DISTDIR}\CuePoint-Setup-v${VERSION}.exe"
 InstallDir "$LOCALAPPDATA\CuePoint"
 RequestExecutionLevel user  ; Per-user installation (no admin required)
 
 ; Version information (will be replaced by build script)
 !ifndef VERSION
     !define VERSION "1.0.0"
+!endif
+
+; Dist directory path (passed from build script, or default to ..\dist relative to scripts/)
+!ifndef DISTDIR
+    !define DISTDIR "..\dist"
 !endif
 
 ; Convert version to four-part format for VIProductVersion
@@ -119,29 +124,13 @@ Section "Install" SecMain
     
     ; Install executable
     ; PyInstaller creates CuePoint.exe directly in dist/ (onefile mode)
-    ; or in dist/CuePoint/ (onedir mode) - handle both cases
-    ; Note: File command paths are relative to the .nsi file location (scripts/)
-    ; So we need to use ..\dist\ to go up one level to project root
+    ; File command is processed at COMPILE TIME, so file must exist when makensis runs
+    ; Paths are relative to the .nsi file location (scripts/), so use ..\dist\ to reach project root
+    ; Since we verified the file exists before running makensis, we can use it directly
     
-    ; Check for onefile mode first (CuePoint.exe in dist/)
-    ; Path is relative to scripts/ directory, so use ..\dist\
-    IfFileExists "..\dist\CuePoint.exe" 0 CheckOneDir
-    File "..\dist\CuePoint.exe"
-    Goto FilesInstalled
-    
-    CheckOneDir:
-        ; Check for onedir mode (CuePoint.exe in dist/CuePoint/)
-        IfFileExists "..\dist\CuePoint\CuePoint.exe" 0 NoFiles
-        File /r "..\dist\CuePoint\*"
-        Goto FilesInstalled
-    
-    NoFiles:
-        ; This error should not occur if build completed successfully
-        ; The File command will fail at compile time if files don't exist
-        MessageBox MB_OK|MB_ICONSTOP "Error: CuePoint.exe not found during installer compilation.$\n$\nExpected:$\n  - dist\CuePoint.exe (onefile mode)$\n  - dist\CuePoint\CuePoint.exe (onedir mode)$\n$\nPlease ensure PyInstaller build completed successfully before building installer." /SD IDOK
-        Abort
-    
-    FilesInstalled:
+    ; Install the executable (onefile mode - single exe file)
+    ; Use DISTDIR define which can be absolute path or relative path
+    File "${DISTDIR}\CuePoint.exe"
     
     ; Create Start Menu shortcuts
     ; CreateDirectory might fail if it already exists, but that's OK
