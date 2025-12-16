@@ -10,7 +10,8 @@
 
 ; Application information
 Name "CuePoint"
-OutFile "${DISTDIR}\CuePoint-Setup-v${VERSION}.exe"
+; OutFile is relative to the .nsi script location (scripts/), so use ..\dist\ to reach project root
+OutFile "..\dist\CuePoint-Setup-v${VERSION}.exe"
 InstallDir "$LOCALAPPDATA\CuePoint"
 RequestExecutionLevel user  ; Per-user installation (no admin required)
 
@@ -19,10 +20,9 @@ RequestExecutionLevel user  ; Per-user installation (no admin required)
     !define VERSION "1.0.0"
 !endif
 
-; Dist directory path (passed from build script, or default to ..\dist relative to scripts/)
-!ifndef DISTDIR
-    !define DISTDIR "..\dist"
-!endif
+; Dist directory path (relative to scripts/ directory where .nsi file is located)
+; Always use relative path since NSIS File command works best with relative paths
+!define DISTDIR "..\dist"
 
 ; Convert version to four-part format for VIProductVersion
 ; VIProductVersion requires format: "X.X.X.X" (four numbers separated by dots)

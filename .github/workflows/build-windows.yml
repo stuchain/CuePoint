@@ -142,22 +142,41 @@ jobs:
           }
           
           # NSIS File command resolves paths relative to the .nsi file's directory (scripts/)
-          # Pass the absolute path to dist directory as a define
+          # The installer script uses relative paths (..\dist\) which work reliably
           $currentDir = Get-Location
-          $distPath = Join-Path $currentDir "dist"
           Write-Host "Current directory: $currentDir"
-          Write-Host "Dist path: $distPath"
-          Write-Host "Verifying file exists: $distPath\CuePoint.exe"
+          Write-Host "Verifying file exists: $currentDir\dist\CuePoint.exe"
           
-          if (-not (Test-Path "$distPath\CuePoint.exe")) {
+          if (-not (Test-Path "$currentDir\dist\CuePoint.exe")) {
               Write-Error "CuePoint.exe not found. Current dir: $currentDir"
               Get-ChildItem dist\ -ErrorAction SilentlyContinue | Format-Table
               exit 1
           }
           
-          # Run makensis from project root, pass dist path as define
-          # Use /D to define a variable that the installer script can use
-          & $makensis /DVERSION=$version /D"DISTDIR=$distPath" scripts/installer.nsi
+          # Run makensis from project root
+          # The installer script uses relative paths (..\dist\) relative to scripts/ directory
+          Write-Host "Running makensis with VERSION=$version"
+          $makensisResult = & $makensis /DVERSION=$version scripts/installer.nsi 2>&1
+          $makensisExitCode = $LASTEXITCODE
+          
+          Write-Host "Makensis output:"
+          Write-Host $makensisResult
+          
+          if ($makensisExitCode -ne 0) {
+              Write-Error "makensis failed with exit code $makensisExitCode"
+              exit 1
+          }
+          
+          # Verify installer was created in dist/ directory
+          $installerFiles = Get-ChildItem "dist\*-setup.exe" -ErrorAction SilentlyContinue
+          if ($installerFiles.Count -eq 0) {
+              Write-Error "Installer was not created. Expected: dist\*-setup.exe"
+              Write-Host "Files in dist directory:"
+              Get-ChildItem "dist\" -ErrorAction SilentlyContinue | Format-Table Name, Length
+              exit 1
+          }
+          Write-Host "Installer created successfully:"
+          $installerFiles | Format-Table Name, Length
       
       - name: Sign installer
         if: startsWith(github.ref, 'refs/tags/v')
@@ -170,7 +189,12 @@ jobs:
             exit 0
           }
           $certPath = "cert.pfx"
-          $installer = Get-ChildItem dist\CuePoint-v*-setup.exe | Select-Object -First 1
+          $installer = Get-ChildItem dist\CuePoint-Setup-v*-setup.exe | Select-Object -First 1
+          if (-not $installer) {
+              Write-Error "Installer not found: dist\CuePoint-Setup-v*-setup.exe"
+              Get-ChildItem dist\*-setup.exe -ErrorAction SilentlyContinue | Format-Table
+              exit 1
+          }
           signtool sign /f $certPath /p "$env:WINDOWS_CERT_PASSWORD" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "$installer"
           signtool verify /pa /v "$installer"
       
