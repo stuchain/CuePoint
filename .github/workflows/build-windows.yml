@@ -248,14 +248,46 @@ jobs:
       - name: Verify installer exists before upload
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          $installerCount = (Get-ChildItem dist\*-setup.exe -ErrorAction SilentlyContinue).Count
-          if ($installerCount -eq 0) {
+          # Get version from environment or git tag
+          $version = "${{ env.VERSION }}"
+          if (-not $version) {
+              $version = "${{ github.ref_name }}"
+              $version = $version -replace '^v', ''
+          }
+          
+          Write-Host "Looking for installer with version: $version"
+          Write-Host "Current directory: $(Get-Location)"
+          
+          # Try multiple patterns to find installer
+          $installerFiles = @()
+          $installerFiles += Get-ChildItem "dist\CuePoint-Setup-v*.exe" -ErrorAction SilentlyContinue
+          $installerFiles += Get-ChildItem "dist\*-setup.exe" -ErrorAction SilentlyContinue
+          $installerFiles += Get-ChildItem "dist\*.exe" -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "*Setup*" }
+          
+          # Remove duplicates
+          $installerFiles = $installerFiles | Select-Object -Unique
+          
+          if ($installerFiles.Count -eq 0) {
             Write-Error "No installer files found in dist/"
-            Get-ChildItem dist\ -ErrorAction SilentlyContinue | Format-Table
+            Write-Host "All files in dist directory:"
+            $allFiles = Get-ChildItem dist\ -ErrorAction SilentlyContinue
+            if ($allFiles) {
+                $allFiles | Format-Table Name, Length, LastWriteTime
+            } else {
+                Write-Host "dist/ directory is empty or doesn't exist"
+            }
+            Write-Host "Checking explicit path:"
+            $explicitPath = "dist\CuePoint-Setup-v$version.exe"
+            Write-Host "  Path: $explicitPath"
+            Write-Host "  Exists: $(Test-Path $explicitPath)"
+            if (Test-Path $explicitPath) {
+                Write-Host "  File info:"
+                Get-Item $explicitPath | Format-List
+            }
             exit 1
           }
-          Write-Host "Found $installerCount installer file(s):"
-          Get-ChildItem dist\*-setup.exe | Format-Table Name, Length
+          Write-Host "Found $($installerFiles.Count) installer file(s):"
+          $installerFiles | Format-Table Name, Length, LastWriteTime
       
       - name: Upload artifact
         if: startsWith(github.ref, 'refs/tags/v')
