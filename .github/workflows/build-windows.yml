@@ -168,15 +168,59 @@ jobs:
           }
           
           # Verify installer was created in dist/ directory
-          $installerFiles = Get-ChildItem "dist\*-setup.exe" -ErrorAction SilentlyContinue
+          # Makensis reported creating: "D:\a\CuePoint\CuePoint\dist\CuePoint-Setup-v1.0.0.exe"
+          # Wait a moment for file system to sync (makensis might have just written the file)
+          Start-Sleep -Seconds 2
+          
+          # Check for installer using exact expected filename
+          $expectedInstaller = "dist\CuePoint-Setup-v$version.exe"
+          Write-Host "Checking for installer at: $expectedInstaller"
+          
+          # Try multiple methods to find the file
+          $installerFiles = @()
+          
+          # Method 1: Exact path
+          if (Test-Path $expectedInstaller) {
+              $installerFiles += Get-Item $expectedInstaller
+              Write-Host "Found installer using exact path"
+          }
+          
+          # Method 2: Pattern matching
+          $patternFiles = Get-ChildItem "dist\CuePoint-Setup-v*.exe" -ErrorAction SilentlyContinue
+          if ($patternFiles) {
+              $installerFiles += $patternFiles
+              Write-Host "Found installer using pattern matching"
+          }
+          
+          # Method 3: All exe files with "Setup" in name
+          $allSetupFiles = Get-ChildItem "dist\*.exe" -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "*Setup*" }
+          if ($allSetupFiles) {
+              $installerFiles += $allSetupFiles
+              Write-Host "Found installer using wildcard search"
+          }
+          
+          # Remove duplicates
+          $installerFiles = $installerFiles | Select-Object -Unique
+          
           if ($installerFiles.Count -eq 0) {
-              Write-Error "Installer was not created. Expected: dist\*-setup.exe"
-              Write-Host "Files in dist directory:"
-              Get-ChildItem "dist\" -ErrorAction SilentlyContinue | Format-Table Name, Length
+              Write-Error "Installer was not found. Expected: $expectedInstaller"
+              Write-Host "Makensis reported creating the file, but it's not accessible."
+              Write-Host "All files in dist directory:"
+              $allFiles = Get-ChildItem "dist\" -ErrorAction SilentlyContinue
+              if ($allFiles) {
+                  $allFiles | Format-Table Name, Length, LastWriteTime, Attributes
+              } else {
+                  Write-Host "dist/ directory is empty or doesn't exist"
+              }
+              Write-Host "Current working directory: $(Get-Location)"
+              Write-Host "Absolute path check:"
+              $absPath = Join-Path (Get-Location) $expectedInstaller
+              Write-Host "  Expected: $absPath"
+              Write-Host "  Exists: $(Test-Path $absPath)"
               exit 1
           }
-          Write-Host "Installer created successfully:"
-          $installerFiles | Format-Table Name, Length
+          Write-Host "Installer found successfully:"
+          $installerFiles | Format-Table Name, Length, LastWriteTime
       
       - name: Sign installer
         if: startsWith(github.ref, 'refs/tags/v')
