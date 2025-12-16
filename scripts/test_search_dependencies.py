@@ -84,10 +84,10 @@ def test_imports():
     try:
         from duckduckgo_search import DDGS
         with DDGS() as ddgs:
-            results = list(ddgs.text("site:beatport.com test", max_results=3))
-            print(f"✓ DuckDuckGo search works: found {len(results)} results")
-            if results:
-                print(f"  First result: {results[0].get('href', 'N/A')}")
+            search_results = list(ddgs.text("site:beatport.com test", max_results=3))
+            print(f"✓ DuckDuckGo search works: found {len(search_results)} results")
+            if search_results:
+                print(f"  First result: {search_results[0].get('href', 'N/A')}")
     except Exception as e:
         print(f"✗ DuckDuckGo search test failed: {e}")
         traceback.print_exc()
