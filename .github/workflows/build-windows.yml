@@ -633,9 +633,8 @@ jobs:
           Write-Host "[OK] Found $($installerFiles.Count) installer file(s):"
           $installerFiles | Format-Table Name, Length, LastWriteTime, FullName
       
-      - name: Upload artifact
+      - name: Prepare artifact upload
         if: startsWith(github.ref, 'refs/tags/v')
-        id: upload_installer
         run: |
           Write-Host "=== DEBUG: Preparing artifact upload ==="
           Write-Host "Current directory: $(Get-Location)"
@@ -693,7 +692,10 @@ jobs:
               Write-Error "Pattern 'dist\CuePoint-Setup-v*.exe' does not match any files!"
               exit 1
           }
-        continue-on-error: false
+      
+      - name: Upload artifact
+        if: startsWith(github.ref, 'refs/tags/v')
+        id: upload_installer
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer
