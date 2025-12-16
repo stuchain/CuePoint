@@ -51,7 +51,7 @@ def generate_version_info():
         StringStruct('FileDescription', 'CuePoint - Rekordbox Metadata Enrichment Tool'),
         StringStruct('FileVersion', '{__version__}.{build}'),
         StringStruct('InternalName', 'CuePoint'),
-        StringStruct('LegalCopyright', 'Copyright © 2024 StuChain. All rights reserved.'),
+        StringStruct('LegalCopyright', 'Copyright (C) 2024 StuChain. All rights reserved.'),
         StringStruct('OriginalFilename', 'CuePoint.exe'),
         StringStruct('ProductName', 'CuePoint'),
         StringStruct('ProductVersion', '{__version__}.{build}')
@@ -65,7 +65,8 @@ def generate_version_info():
     output_path = Path("build/version_info.txt")
     # Create build directory if it doesn't exist
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(template)
+    # Write with explicit UTF-8 encoding to handle special characters like ©
+    output_path.write_text(template, encoding='utf-8')
     print(f"Generated version_info.txt: {output_path}")
     print(f"  Version: {__version__}.{build}")
     print(f"  File version: ({major}, {minor}, {patch}, {build})")
