@@ -50,22 +50,30 @@ jobs:
           python scripts/build_pyinstaller.py
       
       - name: Import certificate
-        if: startsWith(github.ref, 'refs/tags/v') && secrets.WINDOWS_CERT_PFX != ''
+        if: startsWith(github.ref, 'refs/tags/v')
         env:
           WINDOWS_CERT_PFX: ${{ secrets.WINDOWS_CERT_PFX }}
           WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
         run: |
+          if (-not $env:WINDOWS_CERT_PFX -or -not $env:WINDOWS_CERT_PASSWORD) {
+            Write-Host "Skipping certificate import: secrets not available"
+            exit 0
+          }
           $certBytes = [System.Convert]::FromBase64String($env:WINDOWS_CERT_PFX)
           $certPath = "cert.pfx"
           [System.IO.File]::WriteAllBytes($certPath, $certBytes)
           Write-Host "Certificate imported to: $certPath"
       
       - name: Sign executable
-        if: startsWith(github.ref, 'refs/tags/v') && secrets.WINDOWS_CERT_PFX != ''
+        if: startsWith(github.ref, 'refs/tags/v')
         env:
           WINDOWS_CERT_PFX: ${{ secrets.WINDOWS_CERT_PFX }}
           WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
         run: |
+          if (-not $env:WINDOWS_CERT_PFX -or -not $env:WINDOWS_CERT_PASSWORD) {
+            Write-Host "Skipping executable signing: secrets not available"
+            exit 0
+          }
           $certPath = "cert.pfx"
           signtool sign /f $certPath /p "$env:WINDOWS_CERT_PASSWORD" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 dist/CuePoint.exe
           signtool verify /pa /v dist/CuePoint.exe
@@ -77,11 +85,15 @@ jobs:
           makensis /DVERSION=$version scripts/installer.nsi
       
       - name: Sign installer
-        if: startsWith(github.ref, 'refs/tags/v') && secrets.WINDOWS_CERT_PFX != ''
+        if: startsWith(github.ref, 'refs/tags/v')
         env:
           WINDOWS_CERT_PFX: ${{ secrets.WINDOWS_CERT_PFX }}
           WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
         run: |
+          if (-not $env:WINDOWS_CERT_PFX -or -not $env:WINDOWS_CERT_PASSWORD) {
+            Write-Host "Skipping installer signing: secrets not available"
+            exit 0
+          }
           $certPath = "cert.pfx"
           $installer = Get-ChildItem dist\CuePoint-v*-setup.exe | Select-Object -First 1
           signtool sign /f $certPath /p "$env:WINDOWS_CERT_PASSWORD" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "$installer"
