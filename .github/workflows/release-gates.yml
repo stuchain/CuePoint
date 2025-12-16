@@ -109,6 +109,16 @@ jobs:
         run: |
           python scripts/check_file_sizes.py
         continue-on-error: false
+
+      - name: Run release readiness check
+        run: |
+          python scripts/release_readiness.py
+        continue-on-error: false
+
+      - name: Check performance (if metrics available)
+        run: |
+          python scripts/check_performance.py
+        continue-on-error: true
   
   build-gates:
     name: Build Gates

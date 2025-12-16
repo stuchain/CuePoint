@@ -22,12 +22,18 @@ import os
 import platform
 import subprocess
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+
+# For update system (Step 5)
+from typing import TYPE_CHECKING, Dict, List, Optional
+
+if TYPE_CHECKING:
+    from cuepoint.update.update_manager import UpdateManager
 
 from PySide6.QtCore import QSettings, Qt, QTimer
 from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent, QKeyEvent, QKeySequence
 from PySide6.QtWidgets import (
     QButtonGroup,
+    QDialog,
     QFrame,
     QGroupBox,
     QHBoxLayout,
@@ -54,12 +60,7 @@ from cuepoint.ui.controllers.results_controller import ResultsController
 from cuepoint.ui.gui_interface import ProcessingError, ProgressInfo
 from cuepoint.ui.widgets.batch_processor import BatchProcessorWidget
 from cuepoint.ui.widgets.config_panel import ConfigPanel
-from cuepoint.ui.widgets.dialogs import (
-    AboutDialog,
-    ErrorDialog,
-    KeyboardShortcutsDialog,
-    UserGuideDialog,
-)
+from cuepoint.ui.widgets.dialogs import AboutDialog, ErrorDialog, UserGuideDialog
 from cuepoint.ui.widgets.file_selector import FileSelector
 from cuepoint.ui.widgets.history_view import HistoryView
 from cuepoint.ui.widgets.performance_view import PerformanceView
@@ -124,6 +125,84 @@ class MainWindow(QMainWindow):
         self.restore_state()
         # Step 9.4: first-run onboarding (shown asynchronously after window is visible)
         self._schedule_onboarding_if_needed()
+
+        # Step 9.2: Set up focus management for accessibility
+        self._setup_focus_management()
+
+        # Step 5: Initialize update system
+        self._setup_update_system()
+
+    def _setup_focus_management(self) -> None:
+        """Set up focus management for keyboard navigation (Step 9.2)."""
+        try:
+            from cuepoint.ui.widgets.focus_manager import FocusManager
+
+            self.focus_manager = FocusManager(self)
+
+            # Set up tab order for main window widgets
+            # This will be populated when widgets are created
+            # For now, we'll set it up after UI initialization
+            QTimer.singleShot(100, self._setup_tab_order)
+        except Exception as e:
+            # Focus management is best-effort
+            import logging
+
+            logging.warning(f"Could not set up focus management: {e}")
+
+    def _setup_tab_order(self) -> None:
+        """Set up logical tab order for keyboard navigation (Step 9.2)."""
+        try:
+            if not hasattr(self, "focus_manager"):
+                return
+
+            # Collect focusable widgets in logical order
+            tab_order = []
+
+            # File selector widgets
+            if hasattr(self, "file_selector"):
+                if hasattr(self.file_selector, "path_input"):
+                    tab_order.append(self.file_selector.path_input)
+                if hasattr(self.file_selector, "browse_button"):
+                    tab_order.append(self.file_selector.browse_button)
+
+            # Mode selection
+            if hasattr(self, "single_mode_radio"):
+                tab_order.append(self.single_mode_radio)
+            if hasattr(self, "batch_mode_radio"):
+                tab_order.append(self.batch_mode_radio)
+
+            # Playlist selector
+            if hasattr(self, "playlist_selector"):
+                if hasattr(self.playlist_selector, "combo"):
+                    tab_order.append(self.playlist_selector.combo)
+
+            # Start button
+            if hasattr(self, "start_button"):
+                tab_order.append(self.start_button)
+
+            # Results view widgets
+            if hasattr(self, "results_view"):
+                if hasattr(self.results_view, "search_input"):
+                    tab_order.append(self.results_view.search_input)
+                if hasattr(self.results_view, "status_filter"):
+                    tab_order.append(self.results_view.status_filter)
+                if hasattr(self.results_view, "table"):
+                    tab_order.append(self.results_view.table)
+
+            # Export buttons
+            if hasattr(self, "export_csv_button"):
+                tab_order.append(self.export_csv_button)
+            if hasattr(self, "export_json_button"):
+                tab_order.append(self.export_json_button)
+
+            # Set tab order
+            if tab_order and len(tab_order) > 1:
+                self.focus_manager.set_tab_order(tab_order)
+        except Exception as e:
+            # Tab order setup is best-effort
+            import logging
+
+            logging.warning(f"Could not set up tab order: {e}")
 
     def _schedule_onboarding_if_needed(self) -> None:
         """Schedule first-run onboarding dialog (non-blocking startup)."""
@@ -861,6 +940,14 @@ class MainWindow(QMainWindow):
 
         help_menu.addSeparator()
 
+        # Check for Updates (Step 5)
+        check_updates_action = QAction("Check for &Updates...", self)
+        check_updates_action.setToolTip("Check for application updates")
+        check_updates_action.triggered.connect(self.on_check_for_updates)
+        help_menu.addAction(check_updates_action)
+
+        help_menu.addSeparator()
+
         # Support actions (Step 9.5)
         log_viewer_action = QAction("&Log Viewer...", self)
         log_viewer_action.setToolTip("View application logs")
@@ -893,6 +980,12 @@ class MainWindow(QMainWindow):
         about_action = QAction("&About CuePoint", self)
         about_action.triggered.connect(self.on_show_about)
         help_menu.addAction(about_action)
+
+        # Changelog viewer (Step 9.6)
+        changelog_action = QAction("&Changelog", self)
+        changelog_action.setStatusTip("View release notes and changelog")
+        changelog_action.triggered.connect(self.on_show_changelog)
+        help_menu.addAction(changelog_action)
 
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:
         """Handle drag enter event for drag-and-drop file support.
@@ -1306,8 +1399,13 @@ class MainWindow(QMainWindow):
 
         Opens a dialog displaying all available keyboard shortcuts.
         """
-        dialog = KeyboardShortcutsDialog(self.shortcut_manager, self)
-        dialog.exec()
+        try:
+            from cuepoint.ui.dialogs.shortcuts_dialog import ShortcutsDialog
+
+            dialog = ShortcutsDialog(self.shortcut_manager, self)
+            dialog.exec()
+        except Exception as e:
+            QMessageBox.warning(self, "Shortcuts", f"Could not open shortcuts dialog:\n{e}")
 
     def on_show_privacy(self) -> None:
         """Show privacy information and data controls via Help > Privacy."""
@@ -1332,29 +1430,12 @@ class MainWindow(QMainWindow):
     def on_export_support_bundle(self) -> None:
         """Generate and export a support bundle zip (Step 9.5)."""
         try:
-            from pathlib import Path
+            from cuepoint.ui.dialogs.support_dialog import SupportBundleDialog
 
-            from PySide6.QtWidgets import QFileDialog
-
-            from cuepoint.utils.paths import AppPaths
-            from cuepoint.utils.support_bundle import SupportBundleGenerator
-
-            default_dir = str(AppPaths.exports_dir())
-            folder = QFileDialog.getExistingDirectory(
-                self, "Select folder for support bundle", default_dir
-            )
-            if not folder:
-                return
-
-            bundle_path = SupportBundleGenerator.generate_bundle(Path(folder))
-            QMessageBox.information(
-                self,
-                "Support Bundle Created",
-                f"Support bundle created:\n{bundle_path}\n\n"
-                "Attach this file when reporting issues.",
-            )
-            # Highlight the file in the OS file manager when possible.
-            self._reveal_file(bundle_path)
+            dialog = SupportBundleDialog(self)
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                # Bundle was generated successfully
+                pass
         except Exception as e:
             QMessageBox.critical(self, "Support Bundle", f"Failed to create support bundle:\n{e}")
 
@@ -1371,33 +1452,15 @@ class MainWindow(QMainWindow):
         self._open_folder(AppPaths.exports_dir())
 
     def on_report_issue(self) -> None:
-        """Open the issue reporting URL if configured.
+        """Open the issue reporting dialog (Step 9.5).
 
-        This is a best-effort UX feature. If no issue URL is configured, we show
-        guidance for exporting a support bundle and collecting logs.
+        Shows a dialog for reporting issues with pre-filled information.
         """
         try:
-            from PySide6.QtCore import QSettings, QUrl
-            from PySide6.QtGui import QDesktopServices
+            from cuepoint.ui.dialogs.report_issue_dialog import ReportIssueDialog
 
-            settings = QSettings("CuePoint", "CuePoint")
-            settings.beginGroup("Support")
-            issue_url = settings.value("issue_url", "", type=str)
-            settings.endGroup()
-
-            # Allow env override for developers
-            issue_url = os.environ.get("CUEPOINT_ISSUE_URL", issue_url)
-
-            if issue_url:
-                QDesktopServices.openUrl(QUrl(issue_url))
-                return
-
-            QMessageBox.information(
-                self,
-                "Report Issue",
-                "No issue tracker URL is configured.\n\n"
-                "Tip: Use Help → Export Support Bundle… and attach the zip when reporting issues.",
-            )
+            dialog = ReportIssueDialog(self)
+            dialog.exec()
         except Exception as e:
             QMessageBox.warning(self, "Report Issue", f"Could not open issue reporter:\n{e}")
 
@@ -1437,6 +1500,178 @@ class MainWindow(QMainWindow):
         """
         dialog = AboutDialog(self)
         dialog.exec()
+
+    def on_show_changelog(self) -> None:
+        """Show changelog viewer via Help > Changelog (Step 9.6)."""
+        try:
+            from cuepoint.ui.widgets.changelog_viewer import ChangelogViewer
+
+            dialog = ChangelogViewer(self)
+            dialog.exec()
+        except Exception as e:
+            QMessageBox.warning(self, "Changelog", f"Could not open changelog viewer:\n{e}")
+
+    def _setup_update_system(self) -> None:
+        """Set up update system (Step 5.5)."""
+        try:
+            from cuepoint.update.update_manager import UpdateManager
+            from cuepoint.update.update_ui import show_update_dialog, show_update_error_dialog
+            from cuepoint.version import get_version
+
+            current_version = get_version()
+            feed_url = "https://stuchain.github.io/CuePoint/updates"
+
+            # Create update manager
+            self.update_manager = UpdateManager(current_version, feed_url)
+
+            # Set callbacks
+            self.update_manager.set_on_update_available(self._on_update_available)
+            self.update_manager.set_on_check_complete(self._on_update_check_complete)
+            self.update_manager.set_on_error(self._on_update_error)
+
+            # Schedule startup check (after window is visible)
+            QTimer.singleShot(2000, self._check_for_updates_on_startup)
+        except Exception as e:
+            # Update system is best-effort
+            import logging
+
+            logging.warning(f"Could not set up update system: {e}")
+            self.update_manager = None
+
+    def _check_for_updates_on_startup(self) -> None:
+        """Check for updates on startup (Step 5.5)."""
+        if hasattr(self, "update_manager") and self.update_manager:
+            try:
+                # Check if should check on startup
+                from cuepoint.update.update_preferences import UpdatePreferences
+
+                if self.update_manager.preferences.get_check_frequency() == UpdatePreferences.CHECK_ON_STARTUP:
+                    self.update_manager.check_for_updates(force=False)
+            except Exception as e:
+                import logging
+
+                logging.warning(f"Startup update check failed: {e}")
+
+    def on_check_for_updates(self) -> None:
+        """Check for updates manually via Help > Check for Updates (Step 5.5)."""
+        if not hasattr(self, "update_manager") or not self.update_manager:
+            QMessageBox.information(
+                self,
+                "Check for Updates",
+                "Update system is not available.",
+            )
+            return
+
+        # Show checking message
+        self.statusBar().showMessage("Checking for updates...", 3000)
+
+        # Force check
+        if self.update_manager.check_for_updates(force=True):
+            self.statusBar().showMessage("Checking for updates...", 0)
+        else:
+            self.statusBar().showMessage("Update check already in progress", 2000)
+
+    def _on_update_available(self, update_info: Dict) -> None:
+        """Handle update available callback (Step 5.5).
+
+        Args:
+            update_info: Update information dictionary.
+        """
+        try:
+            from cuepoint.update.update_ui import show_update_dialog
+            from cuepoint.version import get_version
+
+            current_version = get_version()
+            new_version = update_info.get("version") or update_info.get("short_version", "Unknown")
+
+            # Show update dialog
+            result = show_update_dialog(
+                current_version=current_version,
+                update_info=update_info,
+                parent=self,
+                on_install=self._on_update_install,
+                on_later=self._on_update_later,
+                on_skip=self._on_update_skip,
+            )
+
+            # Update status bar
+            self.statusBar().showMessage(f"Update available: {new_version}", 5000)
+        except Exception as e:
+            import logging
+
+            logging.error(f"Error showing update dialog: {e}")
+            QMessageBox.warning(
+                self,
+                "Update Available",
+                f"An update is available, but there was an error displaying it:\n{e}",
+            )
+
+    def _on_update_check_complete(self, update_available: bool, error: Optional[str]) -> None:
+        """Handle update check complete callback (Step 5.5).
+
+        Args:
+            update_available: True if update is available.
+            error: Error message if check failed.
+        """
+        if error:
+            self.statusBar().showMessage(f"Update check failed: {error}", 5000)
+        elif update_available:
+            # Update dialog will be shown by _on_update_available
+            pass
+        else:
+            self.statusBar().showMessage("You are using the latest version", 3000)
+
+    def _on_update_error(self, error_message: str) -> None:
+        """Handle update error callback (Step 5.5).
+
+        Args:
+            error_message: Error message.
+        """
+        try:
+            from cuepoint.update.update_ui import show_update_error_dialog
+
+            show_update_error_dialog(error_message, parent=self)
+            self.statusBar().showMessage(f"Update error: {error_message}", 5000)
+        except Exception as e:
+            import logging
+
+            logging.error(f"Error showing update error dialog: {e}")
+            QMessageBox.warning(self, "Update Error", f"Error checking for updates:\n{error_message}")
+
+    def _on_update_install(self) -> None:
+        """Handle update install action (Step 5.5)."""
+        # For v1.0, we just open the download URL
+        # Framework integration (Sparkle/WinSparkle) will handle actual installation
+        if hasattr(self, "update_manager") and self.update_manager:
+            update_info = self.update_manager._update_available
+            if update_info:
+                download_url = update_info.get("enclosure", {}).get("url") if isinstance(update_info.get("enclosure"), dict) else None
+                if download_url:
+                    from PySide6.QtCore import QUrl
+                    from PySide6.QtGui import QDesktopServices
+
+                    QDesktopServices.openUrl(QUrl(download_url))
+                    self.statusBar().showMessage("Opening download page...", 3000)
+                else:
+                    QMessageBox.information(
+                        self,
+                        "Update",
+                        "Download URL not available. Please check the release page manually.",
+                    )
+
+    def _on_update_later(self) -> None:
+        """Handle update later action (Step 5.5)."""
+        self.statusBar().showMessage("Update check postponed", 2000)
+
+    def _on_update_skip(self) -> None:
+        """Handle update skip action (Step 5.5)."""
+        if hasattr(self, "update_manager") and self.update_manager:
+            update_info = self.update_manager._update_available
+            if update_info:
+                version = update_info.get("version") or update_info.get("short_version")
+                if version:
+                    self.update_manager.preferences.ignore_version(version)
+                    self.statusBar().showMessage(f"Version {version} will be skipped", 3000)
 
     def on_batch_started(self, playlist_names: List[str]) -> None:
         """Handle batch processing started signal from batch processor.
