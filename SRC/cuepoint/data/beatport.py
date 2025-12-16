@@ -869,6 +869,10 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
         - Uses multiple search strategies (quoted, unquoted, with/without
           site: prefix) to maximize results.
         - Includes fallback mechanisms for cases with few results.
+        - Known issue: ddgs package (v9.9.3) may fail with IndexError due to
+          DuckDuckGo HTML structure changes. Errors are handled gracefully and
+          the app falls back to other search methods (direct Beatport search,
+          browser automation).
     """
     urls: List[str] = []
     mr = max_results if max_results and max_results > 0 else 60
@@ -926,11 +930,38 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                     if len(urls) >= 20 and (" remix" not in ql and "extended mix" not in ql):
                         break
                 except Exception as e:
-                    # Log error with full details for debugging
+                    # Handle DDGSException specifically (known issue with ddgs package parsing)
                     import logging
                     logger = logging.getLogger(__name__)
-                    logger.warning(f"[{idx}] DuckDuckGo search error for '{search_q}': {e!r}", exc_info=True)
-                    vlog(idx, f"[search] ddgs error for '{search_q}': {e!r}")
+                    
+                    # Try to import DDGSException to check type directly
+                    try:
+                        from ddgs.exceptions import DDGSException
+                        is_ddgs_exception = isinstance(e, DDGSException)
+                    except ImportError:
+                        # Fallback: check by name or error message
+                        is_ddgs_exception = (
+                            "DDGSException" in str(type(e).__name__) or
+                            "IndexError" in str(e) or
+                            "list index out of range" in str(e)
+                        )
+                    
+                    if is_ddgs_exception:
+                        # This is a known issue with ddgs package (v9.9.3) - DuckDuckGo HTML structure changed
+                        # The package tries to parse HTML and encounters IndexError when structure differs
+                        # Log at debug level to reduce noise, but still track it
+                        # The app will fall back to other search methods (direct Beatport search, browser automation)
+                        logger.debug(
+                            f"[{idx}] DuckDuckGo search parsing error (ddgs package v9.9.3 known issue): {e!r}"
+                        )
+                        vlog(idx, f"[search] ddgs parsing error (known issue, will use fallback): {e!r}")
+                    else:
+                        # Other errors (network, timeout, etc.) - log as warning
+                        logger.warning(
+                            f"[{idx}] DuckDuckGo search error for '{search_q}': {e!r}",
+                            exc_info=True
+                        )
+                        vlog(idx, f"[search] ddgs error for '{search_q}': {e!r}")
                     continue
     except ImportError as e:
         # ddgs package not available - this is critical!
