@@ -52,7 +52,7 @@ hiddenimports = [
     'PySide6.QtNetwork',
     'requests',
     'requests_cache',
-    'beautifulsoup4',
+    'bs4',
     'rapidfuzz',
     'rapidfuzz.fuzz',
     'rapidfuzz.process',
@@ -107,6 +107,8 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=None)
 # Executable configuration
 if is_macos:
     # macOS app bundle
+    icon_path = project_root / 'build' / 'icon.icns'
+    icon_file = str(icon_path) if icon_path.exists() else None
     exe = EXE(
         pyz,
         a.scripts,
@@ -122,14 +124,14 @@ if is_macos:
         upx_exclude=[],
         runtime_tmpdir=None,
         console=False,  # No console window
-          icon=str(project_root / 'build' / 'icon.icns') if os.path.exists(project_root / 'build' / 'icon.icns') else None,
+        icon=icon_file,
     )
     
     # macOS app bundle
     app = BUNDLE(
         exe,
         name=f'{app_name}.app',
-          icon=str(project_root / 'build' / 'icon.icns') if os.path.exists(project_root / 'build' / 'icon.icns') else None,
+        icon=icon_file,
         bundle_identifier='com.stuchain.cuepoint',
         info_plist={
             'CFBundleName': app_name,
@@ -146,7 +148,10 @@ if is_macos:
     )
 else:
     # Windows executable
-    version_file = 'build/version_info.txt' if os.path.exists('build/version_info.txt') else None
+    version_file_path = project_root / 'build' / 'version_info.txt'
+    version_file = str(version_file_path) if version_file_path.exists() else None
+    icon_path = project_root / 'build' / 'icon.ico'
+    icon_file = str(icon_path) if icon_path.exists() else None
     exe = EXE(
         pyz,
         a.scripts,
@@ -162,6 +167,6 @@ else:
         upx_exclude=[],
         runtime_tmpdir=None,
         console=False,  # No console window
-        icon='build/icon.ico' if os.path.exists('build/icon.ico') else None,
+        icon=icon_file,
         version=version_file,
     )

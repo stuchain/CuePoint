@@ -105,9 +105,10 @@ jobs:
         run: python scripts/verify_version_embedding.py
       
       - name: Upload artifact
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
           name: macos-dmg
           path: dist/*.dmg
           retention-days: 30
-        if: always()
+          if-no-files-found: error
