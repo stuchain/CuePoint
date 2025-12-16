@@ -73,6 +73,7 @@ def get_version_from_git_tag() -> Optional[str]:
 
     Returns:
         Latest version string (without 'v' prefix), or None if no tags found.
+        Handles pre-release tags by extracting just the version part (e.g., v1.0.0-test -> 1.0.0).
     """
     try:
         result = subprocess.run(
@@ -84,8 +85,16 @@ def get_version_from_git_tag() -> Optional[str]:
         )
         tags = result.stdout.strip().split("\n")
         if tags and tags[0]:
+            tag = tags[0]
             # Remove 'v' prefix
-            return tags[0][1:]
+            version_part = tag[1:]
+            # Extract just the version part (X.Y.Z) from tags like "v1.0.0-test-unsigned1"
+            # Match SemVer pattern (X.Y.Z) at the start
+            match = re.match(r"^(\d+\.\d+\.\d+)", version_part)
+            if match:
+                return match.group(1)
+            # Fallback: return the whole tag without 'v' if no match
+            return version_part
         return None
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
         return None
