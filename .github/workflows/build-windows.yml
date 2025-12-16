@@ -140,6 +140,23 @@ jobs:
             Write-Error "makensis not found. Please ensure NSIS is installed."
             exit 1
           }
+          
+          # NSIS File command resolves paths relative to the .nsi file's directory (scripts/)
+          # So paths in the installer script need to be relative to scripts/ directory
+          # We're running from project root, so paths should be ..\dist\ relative to scripts/
+          # But let's verify the current directory and ensure we're in the right place
+          $currentDir = Get-Location
+          Write-Host "Current directory: $currentDir"
+          Write-Host "Verifying file exists: $currentDir\dist\CuePoint.exe"
+          
+          if (-not (Test-Path "$currentDir\dist\CuePoint.exe")) {
+              Write-Error "CuePoint.exe not found. Current dir: $currentDir"
+              Get-ChildItem dist\ -ErrorAction SilentlyContinue | Format-Table
+              exit 1
+          }
+          
+          # Run makensis from project root
+          # The installer script uses ..\dist\ paths (relative to scripts/ directory)
           & $makensis /DVERSION=$version scripts/installer.nsi
       
       - name: Sign installer

@@ -10,7 +10,7 @@
 
 ; Application information
 Name "CuePoint"
-OutFile "dist\CuePoint-Setup-v${VERSION}.exe"
+OutFile "..\dist\CuePoint-Setup-v${VERSION}.exe"
 InstallDir "$LOCALAPPDATA\CuePoint"
 RequestExecutionLevel user  ; Per-user installation (no admin required)
 
@@ -120,17 +120,19 @@ Section "Install" SecMain
     ; Install executable
     ; PyInstaller creates CuePoint.exe directly in dist/ (onefile mode)
     ; or in dist/CuePoint/ (onedir mode) - handle both cases
-    ; Note: File command is processed at compile time, so files must exist when makensis runs
+    ; Note: File command paths are relative to the .nsi file location (scripts/)
+    ; So we need to use ..\dist\ to go up one level to project root
     
     ; Check for onefile mode first (CuePoint.exe in dist/)
-    IfFileExists "dist\CuePoint.exe" 0 CheckOneDir
-    File "dist\CuePoint.exe"
+    ; Path is relative to scripts/ directory, so use ..\dist\
+    IfFileExists "..\dist\CuePoint.exe" 0 CheckOneDir
+    File "..\dist\CuePoint.exe"
     Goto FilesInstalled
     
     CheckOneDir:
         ; Check for onedir mode (CuePoint.exe in dist/CuePoint/)
-        IfFileExists "dist\CuePoint\CuePoint.exe" 0 NoFiles
-        File /r "dist\CuePoint\*"
+        IfFileExists "..\dist\CuePoint\CuePoint.exe" 0 NoFiles
+        File /r "..\dist\CuePoint\*"
         Goto FilesInstalled
     
     NoFiles:
