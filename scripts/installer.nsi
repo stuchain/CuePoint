@@ -20,9 +20,8 @@ RequestExecutionLevel user  ; Per-user installation (no admin required)
 !endif
 
 ; Convert version to four-part format for VIProductVersion
-; For VIProductVersion, we need four numbers: MAJOR.MINOR.PATCH.BUILD
-; Since we have three-part version (1.0.0), we'll append .0 for the build number
-; Simple approach: just append ".0" to the version
+; VIProductVersion requires format: "X.X.X.X" (four numbers separated by dots)
+; Simple approach: append ".0" to three-part version (e.g., "1.0.0" -> "1.0.0.0")
 !define FILE_VERSION "${VERSION}.0"
 
 VIProductVersion "${FILE_VERSION}"
@@ -31,7 +30,7 @@ VIAddVersionKey "FileDescription" "CuePoint Installer"
 VIAddVersionKey "FileVersion" "${VERSION}"
 VIAddVersionKey "ProductVersion" "${VERSION}"
 VIAddVersionKey "CompanyName" "StuChain"
-VIAddVersionKey "LegalCopyright" "Copyright © 2024 StuChain. All rights reserved."
+VIAddVersionKey "LegalCopyright" "Copyright (C) 2024 StuChain. All rights reserved."
 
 ; Compression
 SetCompressor /SOLID lzma
@@ -118,14 +117,33 @@ Section "Install" SecMain
     ; Set output directory
     SetOutPath "$INSTDIR"
     
-    ; Install files (preserve user data by not overwriting user directories)
-    File /r "dist\CuePoint\*"
+    ; Install executable
+    ; PyInstaller creates CuePoint.exe directly in dist/ (onefile mode)
+    ; or in dist/CuePoint/ (onedir mode) - handle both cases
+    IfFileExists "dist\CuePoint.exe" InstallOneFile InstallOneDir
+    
+    InstallOneFile:
+        File "dist\CuePoint.exe"
+        Goto FilesInstalled
+    
+    InstallOneDir:
+        IfFileExists "dist\CuePoint\CuePoint.exe" 0 NoFiles
+        File /r "dist\CuePoint\*"
+        Goto FilesInstalled
+    
+    NoFiles:
+        MessageBox MB_OK|MB_ICONSTOP "Error: CuePoint.exe not found.$\n$\nExpected: dist\CuePoint.exe or dist\CuePoint\CuePoint.exe$\n$\nPlease build the application first." /SD IDOK
+        Abort
+    
+    FilesInstalled:
     
     ; Create Start Menu shortcuts
+    ; CreateDirectory might fail if it already exists, but that's OK
     CreateDirectory "$SMPROGRAMS\CuePoint"
     CreateShortcut "$SMPROGRAMS\CuePoint\CuePoint.lnk" "$INSTDIR\CuePoint.exe" \
         "" "$INSTDIR\CuePoint.exe" 0 "" "" "CuePoint - Rekordbox Metadata Enrichment Tool"
-    CreateShortcut "$SMPROGRAMS\CuePoint\Uninstall CuePoint.lnk" "$INSTDIR\uninstall.exe"
+    CreateShortcut "$SMPROGRAMS\CuePoint\Uninstall CuePoint.lnk" "$INSTDIR\uninstall.exe" \
+        "" "$INSTDIR\uninstall.exe" 0 "" "" "Uninstall CuePoint"
     
     ; Create uninstaller
     WriteUninstaller "$INSTDIR\uninstall.exe"
@@ -149,10 +167,17 @@ Section "Install" SecMain
         "DisplayIcon" "$INSTDIR\CuePoint.exe"
     
     ; Calculate and store installation size
+    ; GetSize might fail if directory is empty, so use error handling
     ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
-    IntFmt $0 "0x%08X" $0
-    WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CuePoint" \
-        "EstimatedSize" $0
+    ${If} $0 > 0
+        IntFmt $0 "0x%08X" $0
+        WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CuePoint" \
+            "EstimatedSize" $0
+    ${Else}
+        ; Default size if calculation fails
+        WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CuePoint" \
+            "EstimatedSize" 0x00100000
+    ${EndIf}
     
     ; Registry flags
     WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CuePoint" \
@@ -180,17 +205,25 @@ Section "Uninstall"
     ${EndIf}
     
     ; Remove files from installation directory
+    ; Handle both onefile mode (just exe) and onedir mode (exe + _internal directory)
     Delete "$INSTDIR\CuePoint.exe"
     Delete "$INSTDIR\uninstall.exe"
-    RMDir /r "$INSTDIR\_internal"
     
-    ; Remove shortcuts
-    Delete "$SMPROGRAMS\CuePoint\CuePoint.lnk"
-    Delete "$SMPROGRAMS\CuePoint\Uninstall CuePoint.lnk"
+    ; Remove _internal directory if it exists (onedir mode)
+    IfFileExists "$INSTDIR\_internal" 0 SkipInternal
+    RMDir /r "$INSTDIR\_internal"
+    SkipInternal:
+    
+    ; Remove any other files that might exist
+    Delete "$INSTDIR\*.*"
+    
+    ; Remove shortcuts (use /REBOOTOK to handle locked files)
+    Delete /REBOOTOK "$SMPROGRAMS\CuePoint\CuePoint.lnk"
+    Delete /REBOOTOK "$SMPROGRAMS\CuePoint\Uninstall CuePoint.lnk"
     RMDir "$SMPROGRAMS\CuePoint"
     
     ; Remove desktop shortcut if it exists
-    Delete "$DESKTOP\CuePoint.lnk"
+    Delete /REBOOTOK "$DESKTOP\CuePoint.lnk"
     
     ; Remove registry entries
     DeleteRegKey HKCU "Software\CuePoint"
@@ -201,15 +234,24 @@ Section "Uninstall"
         "Do you want to delete user data and settings?$\n$\nThis includes:$\n- Configuration files$\n- Cache files$\n- Log files$\n$\nYour exported files will not be deleted." \
         IDNO skip_data
     
-    ; Remove user data directories
+    ; Remove user data directories (only if they exist)
+    IfFileExists "$APPDATA\CuePoint" 0 SkipAppData
     RMDir /r "$APPDATA\CuePoint"
+    SkipAppData:
+    
+    IfFileExists "$LOCALAPPDATA\CuePoint\Cache" 0 SkipCache
     RMDir /r "$LOCALAPPDATA\CuePoint\Cache"
+    SkipCache:
+    
+    IfFileExists "$LOCALAPPDATA\CuePoint\Logs" 0 SkipLogs
     RMDir /r "$LOCALAPPDATA\CuePoint\Logs"
+    SkipLogs:
     
     skip_data:
     
     ; Try to remove installation directory (if empty)
-    RMDir "$INSTDIR"
+    ; Use /REBOOTOK in case files are locked
+    RMDir /REBOOTOK "$INSTDIR"
     
     ; Show completion message
     MessageBox MB_OK|MB_ICONINFORMATION \
