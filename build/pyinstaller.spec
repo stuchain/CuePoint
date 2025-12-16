@@ -76,15 +76,30 @@ hiddenimports = [
     'selenium',
     'aiohttp',
     # DuckDuckGo search - ddgs package and all submodules
+    # Use collect_submodules to automatically include all ddgs submodules
+    # This is critical because ddgs uses dynamic imports for engines
+    *collect_submodules('ddgs'),
+    # Explicitly list critical modules as backup
     'ddgs',
+    'ddgs.ddgs',
+    'ddgs.engines',
+    # Explicitly include all engine modules (they're dynamically discovered)
+    'ddgs.engines.duckduckgo',
+    'ddgs.engines.duckduckgo_images',
+    'ddgs.engines.duckduckgo_news',
+    'ddgs.engines.duckduckgo_videos',
+    'ddgs.engines.bing',
+    'ddgs.engines.bing_news',
+    'ddgs.engines.google',
+    'ddgs.engines.brave',
+    'ddgs.engines.yahoo',
+    'ddgs.engines.yahoo_news',
+    'ddgs.engines.yandex',
+    'ddgs.engines.mojeek',
+    'ddgs.engines.wikipedia',
+    'ddgs.engines.annasarchive',
+    'ddgs.engines.mullvad_leta',
     'ddgs.api',
-    'ddgs.api.text',
-    'ddgs.api.images',
-    'ddgs.api.videos',
-    'ddgs.api.news',
-    'ddgs.api.maps',
-    'ddgs.api.translate',
-    'ddgs.api.suggestions',
     # Compatibility shim (must be included as a data file, not just hidden import)
     'duckduckgo_search',
     # SSL certificates for HTTPS requests (required for ddgs and requests)
