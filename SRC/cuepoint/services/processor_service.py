@@ -453,12 +453,30 @@ class ProcessorService(IProcessorService):
                         for idx, track in inputs
                     }
 
-                        # Process completed tasks as they finish
+                    # Process completed tasks as they finish
                     results_dict: Dict[int, TrackResult] = {}  # Store results by index for ordering
                     processed_futures = set()  # Track which futures we've processed
 
+                    self.logging_service.info(
+                        f"Submitted {len(future_to_args)} tasks to ThreadPoolExecutor, waiting for completion..."
+                    )
+
                     try:
-                        for future in as_completed(future_to_args):
+                        # CRITICAL: Wrap as_completed in a try-except to catch any iterator issues
+                        # In packaged apps, the iterator might fail or exit early
+                        iterator = as_completed(future_to_args)
+                        loop_iterations = 0
+                        max_iterations = len(future_to_args) * 2  # Safety limit
+                        
+                        for future in iterator:
+                            loop_iterations += 1
+                            if loop_iterations > max_iterations:
+                                self.logging_service.error(
+                                    f"as_completed loop exceeded safety limit ({max_iterations} iterations)! "
+                                    f"This should never happen. Breaking to process remaining futures."
+                                )
+                                break
+                                
                             # Check for cancellation before processing each result
                             if controller and controller.is_cancelled():
                                 # Cancel remaining futures that haven't started yet
@@ -473,6 +491,13 @@ class ProcessorService(IProcessorService):
                                 result = future.result()
                                 results_dict[result.playlist_index] = result
                                 processed_futures.add(future)
+                                
+                                # Log completion for debugging (especially important in packaged apps)
+                                self.logging_service.debug(
+                                    f"Track {result.playlist_index} completed: "
+                                    f"matched={result.matched}, "
+                                    f"total_processed={len(results_dict)}/{len(inputs)}"
+                                )
 
                                 # Thread-safe progress update
                                 with progress_lock:
@@ -482,26 +507,31 @@ class ProcessorService(IProcessorService):
                                         unmatched_count += 1
 
                                     # Update progress callback (thread-safe)
+                                    # CRITICAL: Progress callback must not block or raise exceptions
+                                    # In packaged apps, Qt signal emission from non-Qt threads can block
                                     if progress_callback:
-                                        completed = len(results_dict)
-                                        elapsed_time = time.perf_counter() - processing_start_time
-                                        progress_info = ProgressInfo(
-                                            completed_tracks=completed,
-                                            total_tracks=total,
-                                            matched_count=matched_count,
-                                            unmatched_count=unmatched_count,
-                                            current_track={
-                                                "title": result.title,
-                                                "artists": result.artist,
-                                            },
-                                            elapsed_time=elapsed_time,
-                                        )
                                         try:
+                                            completed = len(results_dict)
+                                            elapsed_time = time.perf_counter() - processing_start_time
+                                            progress_info = ProgressInfo(
+                                                completed_tracks=completed,
+                                                total_tracks=total,
+                                                matched_count=matched_count,
+                                                unmatched_count=unmatched_count,
+                                                current_track={
+                                                    "title": result.title,
+                                                    "artists": result.artist,
+                                                },
+                                                elapsed_time=elapsed_time,
+                                            )
+                                            # Call progress callback - must not block or raise
+                                            # In packaged apps, this can block if Qt signals aren't processed correctly
                                             progress_callback(progress_info)
-                                        except Exception as callback_error:
-                                            # Don't let callback errors break processing
+                                        except Exception as callback_setup_error:
+                                            # Even creating ProgressInfo or calling callback can fail
+                                            # Log but absolutely do not break processing
                                             self.logging_service.warning(
-                                                f"Progress callback error (non-fatal): {callback_error}"
+                                                f"Progress callback setup error (non-fatal, continuing): {callback_setup_error}"
                                             )
 
                             except Exception as e:
@@ -523,6 +553,19 @@ class ProcessorService(IProcessorService):
                                 results_dict[idx] = error_result
                                 with progress_lock:
                                     unmatched_count += 1
+                                    
+                        # Log loop completion
+                        self.logging_service.info(
+                            f"as_completed loop finished: {loop_iterations} iterations, "
+                            f"{len(processed_futures)} futures processed, "
+                            f"{len(results_dict)} results collected"
+                        )
+                    except StopIteration:
+                        # Iterator exhausted - this is normal, but log it
+                        self.logging_service.info(
+                            f"as_completed iterator exhausted after {loop_iterations} iterations. "
+                            f"Processed: {len(processed_futures)}/{len(future_to_args)}"
+                        )
                     except Exception as loop_error:
                         # Critical: If the loop itself fails, we must still process remaining futures
                         self.logging_service.error(
@@ -561,8 +604,13 @@ class ProcessorService(IProcessorService):
                     # This handles cases where the as_completed loop might exit early
                     remaining_futures = [f for f in future_to_args.keys() if f not in processed_futures]
                     if remaining_futures:
+                        self.logging_service.warning(
+                            f"as_completed loop exited early! Processing {len(remaining_futures)} remaining futures "
+                            f"that weren't handled in the loop. This should not happen - investigating..."
+                        )
                         self.logging_service.info(
-                            f"Processing {len(remaining_futures)} remaining futures that weren't handled in the loop"
+                            f"Processed futures: {len(processed_futures)}, Remaining: {len(remaining_futures)}, "
+                            f"Total: {len(future_to_args)}"
                         )
                         for future in remaining_futures:
                             try:
@@ -623,10 +671,15 @@ class ProcessorService(IProcessorService):
                     # Verify we have results for all tracks
                     expected_count = len(inputs)
                     actual_count = len(results_dict)
+                    self.logging_service.info(
+                        f"Parallel processing complete: {actual_count}/{expected_count} tracks processed"
+                    )
                     if actual_count < expected_count:
-                        self.logging_service.warning(
-                            f"Missing results: expected {expected_count} tracks, got {actual_count}. "
-                            f"Missing indices: {set(range(1, expected_count + 1)) - set(results_dict.keys())}"
+                        missing_indices = set(range(1, expected_count + 1)) - set(results_dict.keys())
+                        self.logging_service.error(
+                            f"CRITICAL: Missing results for {len(missing_indices)} tracks! "
+                            f"Expected {expected_count} tracks, got {actual_count}. "
+                            f"Missing indices: {missing_indices}"
                         )
                         # Create error results for missing tracks
                         for idx, track in inputs:
