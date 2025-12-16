@@ -32,6 +32,21 @@ jobs:
       - name: Install NSIS
         run: |
           choco install nsis -y
+          # Refresh PATH to include NSIS
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+          # Verify NSIS installation
+          $nsisPath = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
+          if (Test-Path $nsisPath) {
+            Write-Host "NSIS found at: $nsisPath"
+          } else {
+            Write-Host "NSIS not found at expected path, checking PATH..."
+            $makensis = Get-Command makensis -ErrorAction SilentlyContinue
+            if ($makensis) {
+              Write-Host "makensis found at: $($makensis.Path)"
+            } else {
+              Write-Error "makensis not found in PATH"
+            }
+          }
       
       - name: Set build info
         run: python scripts/set_build_info.py
@@ -82,7 +97,33 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           $version = python -c "import sys; sys.path.insert(0, 'SRC'); from cuepoint.version import __version__; print(__version__)"
-          makensis /DVERSION=$version scripts/installer.nsi
+          # Try to find makensis in common locations or PATH
+          $makensis = $null
+          $possiblePaths = @(
+            "${env:ProgramFiles(x86)}\NSIS\makensis.exe",
+            "${env:ProgramFiles}\NSIS\makensis.exe",
+            "C:\Program Files (x86)\NSIS\makensis.exe",
+            "C:\Program Files\NSIS\makensis.exe"
+          )
+          foreach ($path in $possiblePaths) {
+            if (Test-Path $path) {
+              $makensis = $path
+              Write-Host "Found makensis at: $path"
+              break
+            }
+          }
+          if (-not $makensis) {
+            $makensisCmd = Get-Command makensis -ErrorAction SilentlyContinue
+            if ($makensisCmd) {
+              $makensis = $makensisCmd.Path
+              Write-Host "Found makensis in PATH at: $makensis"
+            }
+          }
+          if (-not $makensis) {
+            Write-Error "makensis not found. Please ensure NSIS is installed."
+            exit 1
+          }
+          & $makensis /DVERSION=$version scripts/installer.nsi
       
       - name: Sign installer
         if: startsWith(github.ref, 'refs/tags/v')
