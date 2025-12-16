@@ -26,30 +26,31 @@ def get_output_directory() -> str:
     """
     Get the single, consistent output directory for all saved files.
     
-    Returns the absolute path to SRC/output directory, creating it if needed.
-    This ensures all files are saved in one place.
+    Uses AppPaths.exports_dir() which provides platform-specific locations:
+    - Windows: %USERPROFILE%\\Downloads\\CuePoint Exports
+    - macOS: ~/Downloads/CuePoint Exports
+    - Linux: ~/Downloads/CuePoint Exports
+    
+    This ensures files are saved in a user-accessible location that works
+    in both development and packaged app environments.
     
     Returns:
-        str: Absolute path to the output directory (SRC/output)
+        str: Absolute path to the exports directory
     
     Example:
         >>> output_dir = get_output_directory()
-        >>> # Returns: /path/to/CuePoint/SRC/output
+        >>> # Returns: /Users/username/Downloads/CuePoint Exports (macOS)
+        >>> # Returns: C:\\Users\\username\\Downloads\\CuePoint Exports (Windows)
     """
-    # Get the SRC directory by going up from this file
-    # File is at: SRC/cuepoint/utils/utils.py
-    # Go up 3 levels: utils -> cuepoint -> SRC
-    current_file = os.path.abspath(__file__)
-    src_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_file)))  # SRC/
+    from cuepoint.utils.paths import AppPaths
+
+    # Use AppPaths.exports_dir() which handles both dev and packaged environments
+    exports_dir = AppPaths.exports_dir()
     
-    # Output directory is SRC/output
-    output_dir = os.path.join(src_dir, "output")
-    output_dir = os.path.abspath(output_dir)
+    # Ensure directory exists
+    exports_dir.mkdir(parents=True, exist_ok=True)
     
-    # Create directory if it doesn't exist
-    os.makedirs(output_dir, exist_ok=True)
-    
-    return output_dir
+    return str(exports_dir)
 
 
 def vlog(idx: Union[int, str], *args: Any) -> None:

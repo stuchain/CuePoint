@@ -35,8 +35,8 @@ if __name__ == "__main__":
 from cuepoint.services.bootstrap import bootstrap_services
 from cuepoint.ui.main_window import MainWindow
 from cuepoint.ui.widgets.styles import get_stylesheet
-from cuepoint.utils.logger import CuePointLogger
 from cuepoint.utils.i18n import I18nManager
+from cuepoint.utils.logger import CuePointLogger
 from cuepoint.utils.paths import AppPaths, PathMigration
 from cuepoint.utils.system_check import SystemRequirements
 
@@ -71,8 +71,11 @@ def main():
         
         # Create QApplication (needed for message boxes)
         app = QApplication(sys.argv)
+        # Set organization and application name BEFORE creating any QSettings
+        # This ensures QSettings uses the correct location for all settings
+        app.setOrganizationName("StuChain")
+        app.setOrganizationDomain("stuchain.com")
         app.setApplicationName("CuePoint")
-        app.setOrganizationName("CuePoint")
         app.setApplicationVersion("1.0.0")
 
         # Step 9.3: localization readiness (English-only unless `.qm` files are present)

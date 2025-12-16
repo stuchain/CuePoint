@@ -21,9 +21,55 @@ jobs:
       
       - name: Install dependencies
         run: |
+          echo "=== DEBUG: Installing dependencies ==="
+          echo "Python version:"
+          python --version
+          echo "Pip version:"
+          python -m pip --version
+          echo "Upgrading pip..."
           python -m pip install --upgrade pip
+          
+          echo "Installing build requirements from requirements-build.txt..."
+          echo "This includes all runtime dependencies needed by the GUI app:"
+          echo "  - PySide6 (GUI framework)"
+          echo "  - requests, aiohttp (HTTP)"
+          echo "  - beautifulsoup4 (HTML parsing)"
+          echo "  - ddgs (DuckDuckGo search)"
+          echo "  - rapidfuzz (fuzzy matching)"
+          echo "  - python-dateutil (date parsing)"
+          echo "  - pyyaml (YAML config)"
+          echo "  - tqdm (progress bars)"
+          echo "  - requests-cache (HTTP caching)"
+          echo "  - playwright (browser automation)"
+          echo "  - selenium (alternative browser automation)"
+          echo "  - openpyxl (Excel export)"
+          
           pip install -r requirements-build.txt
+          
+          echo "Installing PyInstaller (build tool)..."
           pip install pyinstaller
+          
+          echo "Installing Playwright browsers (for testing, not bundled)..."
+          python -m playwright install chromium
+          
+          echo "Verifying installed packages match requirements.txt runtime dependencies..."
+          echo "Core packages:"
+          pip list | grep -E "PySide6|requests|aiohttp|beautifulsoup4|ddgs|rapidfuzz|dateutil|pyyaml|tqdm|requests-cache|playwright|selenium|openpyxl|pyinstaller"
+          
+          echo "Checking for missing dependencies..."
+          required=("PySide6" "requests" "aiohttp" "beautifulsoup4" "ddgs" "rapidfuzz" "python-dateutil" "pyyaml" "tqdm" "requests-cache" "playwright" "selenium" "openpyxl")
+          installed=$(pip list --format=json | python -c "import sys, json; packages = [p['name'].lower() for p in json.load(sys.stdin)]; print(' '.join(packages))")
+          missing=()
+          for pkg in "${required[@]}"; do
+              if ! echo "$installed" | grep -qi "^${pkg,,}$"; then
+                  missing+=("$pkg")
+              fi
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+              echo "⚠️  Warning: Missing packages: ${missing[*]}"
+          else
+              echo "✅ All required runtime dependencies are installed"
+          fi
 
       - name: Generate third-party licenses file
         run: |

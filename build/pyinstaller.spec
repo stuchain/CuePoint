@@ -41,6 +41,13 @@ datas = [
     # Step 8.5: privacy notice (if present)
     (str(project_root / 'PRIVACY_NOTICE.md'), 'docs'),
 ]
+
+# Note: Playwright browser binaries are NOT included in the bundle because:
+# 1. They are very large (100+ MB)
+# 2. They are platform-specific
+# 3. The app has fallback search methods (DuckDuckGo, direct search)
+# If Playwright is not available, the app will automatically fall back to other methods
+
 # Only include data files that exist (prevents build failures when optional artifacts aren't generated)
 datas = [(src, dst) for src, dst in datas if Path(src).exists()]
 

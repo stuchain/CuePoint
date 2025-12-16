@@ -39,12 +39,48 @@ jobs:
           python -m pip --version
           Write-Host "Upgrading pip..."
           python -m pip install --upgrade pip
+          
           Write-Host "Installing build requirements from requirements-build.txt..."
+          Write-Host "This includes all runtime dependencies needed by the GUI app:"
+          Write-Host "  - PySide6 (GUI framework)"
+          Write-Host "  - requests, aiohttp (HTTP)"
+          Write-Host "  - beautifulsoup4 (HTML parsing)"
+          Write-Host "  - ddgs (DuckDuckGo search)"
+          Write-Host "  - rapidfuzz (fuzzy matching)"
+          Write-Host "  - python-dateutil (date parsing)"
+          Write-Host "  - pyyaml (YAML config)"
+          Write-Host "  - tqdm (progress bars)"
+          Write-Host "  - requests-cache (HTTP caching)"
+          Write-Host "  - playwright (browser automation)"
+          Write-Host "  - selenium (alternative browser automation)"
+          Write-Host "  - openpyxl (Excel export)"
+          
           pip install -r requirements-build.txt
-          Write-Host "Installing PyInstaller..."
+          
+          Write-Host "Installing PyInstaller (build tool)..."
           pip install pyinstaller
-          Write-Host "Installed packages:"
-          pip list | Select-String -Pattern "pyinstaller|setuptools|wheel"
+          
+          Write-Host "Installing Playwright browsers (for testing, not bundled)..."
+          python -m playwright install chromium
+          
+          Write-Host "Verifying installed packages match requirements.txt runtime dependencies..."
+          Write-Host "Core packages:"
+          pip list | Select-String -Pattern "PySide6|requests|aiohttp|beautifulsoup4|ddgs|rapidfuzz|dateutil|pyyaml|tqdm|requests-cache|playwright|selenium|openpyxl|pyinstaller"
+          
+          Write-Host "Checking for missing dependencies..."
+          $required = @("PySide6", "requests", "aiohttp", "beautifulsoup4", "ddgs", "rapidfuzz", "python-dateutil", "pyyaml", "tqdm", "requests-cache", "playwright", "selenium", "openpyxl")
+          $installed = pip list --format=json | ConvertFrom-Json | ForEach-Object { $_.name.ToLower() }
+          $missing = @()
+          foreach ($pkg in $required) {
+              if ($installed -notcontains $pkg.ToLower()) {
+                  $missing += $pkg
+              }
+          }
+          if ($missing.Count -gt 0) {
+              Write-Warning "Missing packages: $($missing -join ', ')"
+          } else {
+              Write-Host "[OK] All required runtime dependencies are installed"
+          }
 
       - name: Generate third-party licenses file
         run: |

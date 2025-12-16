@@ -5,6 +5,9 @@
 #
 # NOTE: Pins are currently aligned to the minimum versions declared in requirements.txt.
 # Update intentionally and run the full test suite + security scans when changing.
+#
+# IMPORTANT: This file must include ALL runtime dependencies from requirements.txt
+# (excluding test dependencies) to ensure the packaged app works correctly.
 
 # GUI Framework (required for GUI application)
 PySide6==6.5.0
@@ -30,12 +33,16 @@ pyyaml==6.0
 tqdm==4.66.3
 
 # HTTP response caching (enabled by default)
+# Speeds up repeated runs by caching Beatport page responses
 requests-cache==1.1.0
 
 # Browser automation for JavaScript-rendered content
+# Playwright (recommended - faster, more modern)
+# Note: Browser binaries are installed separately via `playwright install chromium`
 playwright==1.40.0
 
 # Selenium (alternative browser automation)
+# Also need ChromeDriver or GeckoDriver in PATH (not bundled)
 selenium==4.15.0
 
 # Excel export support (for GUI export functionality)

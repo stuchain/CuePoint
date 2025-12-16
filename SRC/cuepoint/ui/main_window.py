@@ -21,6 +21,7 @@ GUIController for processing operations.
 import os
 import platform
 import subprocess
+import sys
 from datetime import datetime, timedelta
 
 # For update system (Step 5)
@@ -1957,36 +1958,26 @@ class MainWindow(QMainWindow):
                 # Refresh Past Searches tab to show the new file
                 if hasattr(self, "history_view"):
                     # Use QTimer to refresh after a delay to ensure file system has updated
-                    from datetime import datetime
-
                     from PySide6.QtCore import QTimer
-                    from PySide6.QtWidgets import QListWidgetItem
 
                     def refresh_with_file():
-                        # First do normal refresh
-                        self.history_view.refresh_recent_files()
-                        # Then manually ensure our file is in the list if it wasn't found
-                        if os.path.exists(main_file):
-                            # Check if file is already in list
-                            found = False
-                            for i in range(self.history_view.recent_list.count()):
-                                item = self.history_view.recent_list.item(i)
-                                if item and item.data(Qt.UserRole) == main_file:
-                                    found = True
-                                    break
-                            if not found:
-                                # Add it manually
-                                item = QListWidgetItem(os.path.basename(main_file))
-                                item.setData(Qt.UserRole, main_file)
-                                mtime = os.path.getmtime(main_file)
-                                dt = datetime.fromtimestamp(mtime)
-                                item.setToolTip(
-                                    f"{main_file}\nModified: {dt.strftime('%Y-%m-%d %H:%M:%S')}"
-                                )
-                                # Insert at top (newest first)
-                                self.history_view.recent_list.insertItem(0, item)
+                        try:
+                            # Refresh the history view to show the new file
+                            self.history_view.refresh_recent_files()
+                            # Also switch to Past Searches tab to show the new file
+                            if hasattr(self, "tabs"):
+                                # Find Past Searches tab index
+                                for i in range(self.tabs.count()):
+                                    if self.tabs.tabText(i) == "Past Searches":
+                                        self.tabs.setCurrentIndex(i)
+                                        break
+                        except Exception as e:
+                            # Log but don't fail - refresh is best-effort
+                            import logging
+                            logging.getLogger(__name__).warning(f"Could not refresh history view: {e}")
 
-                    QTimer.singleShot(1000, refresh_with_file)
+                    # Refresh after a short delay to ensure file system has updated
+                    QTimer.singleShot(500, refresh_with_file)
 
         except Exception as e:
             # Show error in status bar for longer
@@ -2551,12 +2542,14 @@ class MainWindow(QMainWindow):
 
         Saves:
         - Window geometry and state
-        - Last XML file path
+        - Last XML file path (only if file exists and is accessible)
         - Last playlist selection
         - Last processing mode
         - Tab selection
         """
-        settings = QSettings("CuePoint", "CuePoint")
+        # Use QSettings with organization/application name (set in gui_app.py)
+        # This ensures consistent settings location across dev and packaged app
+        settings = QSettings()
 
         # Save window geometry and state
         settings.setValue("geometry", self.saveGeometry())
@@ -2592,12 +2585,14 @@ class MainWindow(QMainWindow):
 
         Restores:
         - Window geometry and state
-        - Last XML file (if exists)
+        - Last XML file (if exists and is accessible)
         - Last playlist selection
         - Last processing mode
         - Tab selection
         """
-        settings = QSettings("CuePoint", "CuePoint")
+        # Use QSettings with organization/application name (set in gui_app.py)
+        # This ensures consistent settings location across dev and packaged app
+        settings = QSettings()
 
         # Restore window geometry
         geometry = settings.value("geometry")
@@ -2611,30 +2606,59 @@ class MainWindow(QMainWindow):
 
         # Restore last XML file (if exists and valid)
         last_xml = settings.value("last_xml")
-        if last_xml and os.path.exists(last_xml):
-            try:
-                # Load XML file
-                if hasattr(self, "file_selector"):
-                    self.file_selector.set_file(last_xml)
-                    # This will trigger on_file_selected which loads playlists
+        if last_xml:
+            # Validate that the file exists and is accessible
+            # Also check if it's from a development path that might not exist in packaged app
+            if os.path.exists(last_xml) and os.path.isfile(last_xml):
+                try:
+                    # Additional validation: check if path looks like a development path
+                    # that shouldn't be restored in packaged app
+                    is_packaged = getattr(sys, "frozen", False)
+                    import sys
+                    is_packaged = getattr(sys, "frozen", False)
+                    if is_packaged:
+                        # In packaged app, only restore if file is in user-accessible location
+                        # Don't restore paths from development directories
+                        from pathlib import Path
+                        xml_path = Path(last_xml)
+                        # Check if path is in a typical user location (not in temp or dev directories)
+                        user_home = Path.home()
+                        # Allow paths in user's home directory, Documents, Downloads, Desktop, etc.
+                        if not (str(xml_path).startswith(str(user_home)) or 
+                                "AppData" in str(xml_path) or 
+                                "Documents" in str(xml_path) or
+                                "Downloads" in str(xml_path) or
+                                "Desktop" in str(xml_path)):
+                            # Skip restoring development/test paths in packaged app
+                            last_xml = None
+                    
+                    if last_xml:
+                        # Load XML file
+                        if hasattr(self, "file_selector"):
+                            self.file_selector.set_file(last_xml)
+                            # This will trigger on_file_selected which loads playlists
 
-                    # Restore last playlist after a short delay (allow XML to load)
-                    last_playlist = settings.value("last_playlist")
-                    if last_playlist and hasattr(self, "playlist_selector"):
-                        # Use QTimer to restore playlist after XML loads
-                        from PySide6.QtCore import QTimer
+                            # Restore last playlist after a short delay (allow XML to load)
+                            last_playlist = settings.value("last_playlist")
+                            if last_playlist and hasattr(self, "playlist_selector"):
+                                # Use QTimer to restore playlist after XML loads
+                                from PySide6.QtCore import QTimer
 
-                        def restore_playlist():
-                            try:
-                                self.playlist_selector.set_selected_playlist(last_playlist)
-                            except Exception:
-                                pass  # Playlist may not exist anymore
+                                def restore_playlist():
+                                    try:
+                                        self.playlist_selector.set_selected_playlist(last_playlist)
+                                    except Exception:
+                                        pass  # Playlist may not exist anymore
 
-                        QTimer.singleShot(500, restore_playlist)
-
-            except Exception as e:
-                # Log but don't fail - state restoration is best-effort
-                print(f"Warning: Could not restore last XML: {e}")
+                                QTimer.singleShot(500, restore_playlist)
+                except Exception as e:
+                    # Log but don't fail - state restoration is best-effort
+                    import logging
+                    logging.getLogger(__name__).warning(f"Could not restore last XML: {e}")
+            else:
+                # File doesn't exist anymore, clear it from settings
+                settings.remove("last_xml")
+                settings.sync()
 
         # Restore last processing mode
         last_mode = settings.value("last_mode", 0, type=int)
