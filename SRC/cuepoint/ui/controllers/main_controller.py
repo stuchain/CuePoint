@@ -19,14 +19,9 @@ from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import QObject, QThread, Signal
 
-from cuepoint.services.interfaces import IProcessorService
 from cuepoint.models.result import TrackResult
-from cuepoint.ui.gui_interface import (
-    ErrorType,
-    ProcessingController,
-    ProcessingError,
-    ProgressInfo,
-)
+from cuepoint.services.interfaces import IProcessorService
+from cuepoint.ui.gui_interface import ErrorType, ProcessingController, ProcessingError, ProgressInfo
 from cuepoint.utils.di_container import get_container
 
 
@@ -114,10 +109,32 @@ class ProcessingWorker(QThread):
             container = get_container()
             processor_service: IProcessorService = container.resolve(IProcessorService)  # type: ignore[type-abstract]
 
-            # Create progress callback that emits signal
+            # Create progress callback that emits signal to GUI
+            # CRITICAL: This is called from ThreadPoolExecutor threads, not Qt threads
+            # In packaged apps, Qt signal emission from non-Qt threads can fail or block
+            # We use QMetaObject.invokeMethod to ensure thread-safe signal emission
             def progress_callback(progress_info: ProgressInfo):
-                """Progress callback that emits signal to GUI"""
-                self.progress_updated.emit(progress_info)
+                """Progress callback that emits signal to GUI (thread-safe)"""
+                try:
+                    # Use direct emit (should work, but may fail in packaged apps)
+                    self.progress_updated.emit(progress_info)
+                except Exception as e:
+                    # If direct emit fails (e.g., in packaged app), use QMetaObject.invokeMethod
+                    # This ensures the signal is queued on the main thread's event loop
+                    try:
+                        from PySide6.QtCore import QMetaObject, Qt
+                        QMetaObject.invokeMethod(
+                            self,
+                            "progress_updated",
+                            Qt.QueuedConnection,
+                            progress_info
+                        )
+                    except Exception as fallback_error:
+                        # If both methods fail, log but don't break processing
+                        import logging
+                        logging.getLogger(__name__).warning(
+                            f"Progress callback failed (non-fatal): {e}, fallback also failed: {fallback_error}"
+                        )
 
             # Process playlist using ProcessorService
             results = processor_service.process_playlist_from_xml(

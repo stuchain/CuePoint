@@ -430,107 +430,241 @@ class ProcessorService(IProcessorService):
 
         # Prepare inputs as list of (index, track) tuples
         inputs = [(idx, track) for idx, track in enumerate(tracks, 1)]
+        
+        # Initialize results variable (will be set by parallel or sequential processing)
+        results: List[TrackResult] = []
 
         if track_workers > 1:
-            self.logging_service.info(f"Using parallel processing with {track_workers} workers")
+            self.logging_service.info(
+                f"Using parallel processing with {track_workers} workers for {len(inputs)} tracks"
+            )
             # PARALLEL MODE: Process multiple tracks simultaneously
             # Use ThreadPoolExecutor to run process_track() in parallel
-            with ThreadPoolExecutor(max_workers=track_workers) as ex:
-                # Submit all tasks
-                future_to_args = {
+            try:
+                with ThreadPoolExecutor(max_workers=track_workers) as ex:
+                    # Submit all tasks
+                    future_to_args = {
                     ex.submit(
                         self.process_track,
                         idx,
                         track,
                         effective_settings,
                     ): (idx, track)
-                    for idx, track in inputs
-                }
+                        for idx, track in inputs
+                    }
 
-                # Process completed tasks as they finish
-                results_dict: Dict[int, TrackResult] = {}  # Store results by index for ordering
-
-                for future in as_completed(future_to_args):
-                    # Check for cancellation before processing each result
-                    if controller and controller.is_cancelled():
-                        # Cancel remaining futures that haven't started yet
-                        for f in future_to_args.keys():
-                            if not f.done():
-                                f.cancel()
-                        # Break out of the loop, but let already-running tasks finish
-                        # This allows graceful shutdown
-                        break
+                        # Process completed tasks as they finish
+                    results_dict: Dict[int, TrackResult] = {}  # Store results by index for ordering
+                    processed_futures = set()  # Track which futures we've processed
 
                     try:
-                        result = future.result()
-                        results_dict[result.playlist_index] = result
+                        for future in as_completed(future_to_args):
+                            # Check for cancellation before processing each result
+                            if controller and controller.is_cancelled():
+                                # Cancel remaining futures that haven't started yet
+                                for f in future_to_args.keys():
+                                    if not f.done():
+                                        f.cancel()
+                                # Break out of the loop, but let already-running tasks finish
+                                # This allows graceful shutdown
+                                break
 
-                        # Thread-safe progress update
-                        with progress_lock:
-                            if result.matched:
-                                matched_count += 1
-                            else:
-                                unmatched_count += 1
+                            try:
+                                result = future.result()
+                                results_dict[result.playlist_index] = result
+                                processed_futures.add(future)
 
-                            # Update progress callback (thread-safe)
-                            if progress_callback:
-                                completed = len(results_dict)
-                                elapsed_time = time.perf_counter() - processing_start_time
-                                progress_info = ProgressInfo(
-                                    completed_tracks=completed,
-                                    total_tracks=total,
-                                    matched_count=matched_count,
-                                    unmatched_count=unmatched_count,
-                                    current_track={
-                                        "title": result.title,
-                                        "artists": result.artist,
-                                    },
-                                    elapsed_time=elapsed_time,
+                                # Thread-safe progress update
+                                with progress_lock:
+                                    if result.matched:
+                                        matched_count += 1
+                                    else:
+                                        unmatched_count += 1
+
+                                    # Update progress callback (thread-safe)
+                                    if progress_callback:
+                                        completed = len(results_dict)
+                                        elapsed_time = time.perf_counter() - processing_start_time
+                                        progress_info = ProgressInfo(
+                                            completed_tracks=completed,
+                                            total_tracks=total,
+                                            matched_count=matched_count,
+                                            unmatched_count=unmatched_count,
+                                            current_track={
+                                                "title": result.title,
+                                                "artists": result.artist,
+                                            },
+                                            elapsed_time=elapsed_time,
+                                        )
+                                        try:
+                                            progress_callback(progress_info)
+                                        except Exception as callback_error:
+                                            # Don't let callback errors break processing
+                                            self.logging_service.warning(
+                                                f"Progress callback error (non-fatal): {callback_error}"
+                                            )
+
+                            except Exception as e:
+                                # Handle errors from individual track processing
+                                processed_futures.add(future)
+                                idx, track = future_to_args[future]
+                                self.logging_service.warning(
+                                    f"Error processing track {idx} '{track.title}': {e}",
+                                    exc_info=True  # Include full traceback for debugging
                                 )
+                                # Create error result
+                                error_result = TrackResult(
+                                    playlist_index=idx,
+                                    title=track.title,
+                                    artist=track.artist or "",
+                                    matched=False,
+                                    error=str(e),
+                                )
+                                results_dict[idx] = error_result
+                                with progress_lock:
+                                    unmatched_count += 1
+                    except Exception as loop_error:
+                        # Critical: If the loop itself fails, we must still process remaining futures
+                        self.logging_service.error(
+                            f"Error in parallel processing loop: {loop_error}",
+                            exc_info=True
+                        )
+                        # Process any remaining futures that weren't handled
+                        for future in future_to_args.keys():
+                            if future not in processed_futures:
                                 try:
-                                    progress_callback(progress_info)
-                                except Exception:
-                                    # Don't let callback errors break processing
-                                    pass
+                                    if future.done():
+                                        result = future.result()
+                                        results_dict[result.playlist_index] = result
+                                    else:
+                                        # Future not done yet, wait for it
+                                        result = future.result(timeout=30.0)
+                                        results_dict[result.playlist_index] = result
+                                except Exception as e:
+                                    # Handle error for this future
+                                    idx, track = future_to_args[future]
+                                    self.logging_service.warning(
+                                        f"Error processing remaining track {idx} '{track.title}': {e}"
+                                    )
+                                    error_result = TrackResult(
+                                        playlist_index=idx,
+                                        title=track.title,
+                                        artist=track.artist or "",
+                                        matched=False,
+                                        error=str(e),
+                                    )
+                                    results_dict[idx] = error_result
+                                    with progress_lock:
+                                        unmatched_count += 1
 
-                    except Exception as e:
-                        # Handle errors from individual track processing
-                        idx, track = future_to_args[future]
+                    # CRITICAL: Ensure all futures are processed before exiting
+                    # This handles cases where the as_completed loop might exit early
+                    remaining_futures = [f for f in future_to_args.keys() if f not in processed_futures]
+                    if remaining_futures:
+                        self.logging_service.info(
+                            f"Processing {len(remaining_futures)} remaining futures that weren't handled in the loop"
+                        )
+                        for future in remaining_futures:
+                            try:
+                                # Wait for future to complete (with timeout to avoid hanging)
+                                if not future.done():
+                                    # Future is still running, wait for it
+                                    result = future.result(timeout=60.0)  # 60 second timeout per future
+                                    results_dict[result.playlist_index] = result
+                                    processed_futures.add(future)
+                                    with progress_lock:
+                                        if result.matched:
+                                            matched_count += 1
+                                        else:
+                                            unmatched_count += 1
+                                else:
+                                    # Future is done, get result
+                                    result = future.result()
+                                    results_dict[result.playlist_index] = result
+                                    processed_futures.add(future)
+                                    with progress_lock:
+                                        if result.matched:
+                                            matched_count += 1
+                                        else:
+                                            unmatched_count += 1
+                            except Exception as e:
+                                # Handle error for this future
+                                processed_futures.add(future)
+                                idx, track = future_to_args[future]
+                                self.logging_service.warning(
+                                    f"Error processing remaining track {idx} '{track.title}': {e}",
+                                    exc_info=True
+                                )
+                                error_result = TrackResult(
+                                    playlist_index=idx,
+                                    title=track.title,
+                                    artist=track.artist or "",
+                                    matched=False,
+                                    error=str(e),
+                                )
+                                results_dict[idx] = error_result
+                                with progress_lock:
+                                    unmatched_count += 1
+
+                    # If cancelled, wait for any remaining futures to complete or be cancelled
+                    if controller and controller.is_cancelled():
+                        # Wait for all futures to finish (either complete or be cancelled)
+                        for future in future_to_args.keys():
+                            try:
+                                # Wait a short time for each future to finish
+                                future.result(timeout=0.1)
+                            except Exception:
+                                # Future was cancelled or errored, that's fine
+                                pass
+                        # Match sequential-mode behavior for tests/UI
+                        if self.logging_service:
+                            self.logging_service.info("Processing cancelled by user")
+                    
+                    # Verify we have results for all tracks
+                    expected_count = len(inputs)
+                    actual_count = len(results_dict)
+                    if actual_count < expected_count:
                         self.logging_service.warning(
-                            f"Error processing track {idx} '{track.title}': {e}"
+                            f"Missing results: expected {expected_count} tracks, got {actual_count}. "
+                            f"Missing indices: {set(range(1, expected_count + 1)) - set(results_dict.keys())}"
                         )
-                        # Create error result
-                        error_result = TrackResult(
-                            playlist_index=idx,
-                            title=track.title,
-                            artist=track.artist or "",
-                            matched=False,
-                            error=str(e),
-                        )
-                        results_dict[idx] = error_result
-                        with progress_lock:
-                            unmatched_count += 1
+                        # Create error results for missing tracks
+                        for idx, track in inputs:
+                            if idx not in results_dict:
+                                self.logging_service.error(
+                                    f"Creating error result for missing track {idx}: {track.title}"
+                                )
+                                error_result = TrackResult(
+                                    playlist_index=idx,
+                                    title=track.title,
+                                    artist=track.artist or "",
+                                    matched=False,
+                                    error="Track processing did not complete (possible thread/exception issue)",
+                                )
+                                results_dict[idx] = error_result
+                                with progress_lock:
+                                    unmatched_count += 1
+                    
+                    # Sort results by playlist index to maintain order
+                    results = [results_dict[idx] for idx in sorted(results_dict.keys())]
+            except Exception as parallel_error:
+                # If parallel processing fails catastrophically, fall back to sequential
+                self.logging_service.error(
+                    f"Parallel processing failed, falling back to sequential: {parallel_error}",
+                    exc_info=True
+                )
+                # Fall through to sequential processing below
+                track_workers = 1  # Force sequential mode
+                results = None  # Will be set in sequential mode
+            else:
+                # Parallel processing completed successfully, results is already set
+                pass
 
-                # If cancelled, wait for any remaining futures to complete or be cancelled
-                if controller and controller.is_cancelled():
-                    # Wait for all futures to finish (either complete or be cancelled)
-                    for future in future_to_args.keys():
-                        try:
-                            # Wait a short time for each future to finish
-                            future.result(timeout=0.1)
-                        except Exception:
-                            # Future was cancelled or errored, that's fine
-                            pass
-                    # Match sequential-mode behavior for tests/UI
-                    if self.logging_service:
-                        self.logging_service.info("Processing cancelled by user")
-                
-                # Sort results by playlist index to maintain order
-                results = [results_dict[idx] for idx in sorted(results_dict.keys())]
-
-        else:
+        # If parallel processing failed or track_workers <= 1, use sequential mode
+        if track_workers <= 1 or not results:
             # SEQUENTIAL MODE: Process tracks one at a time
             self.logging_service.info(f"Using sequential processing (TRACK_WORKERS={track_workers})")
+            results = []  # Re-initialize for sequential mode
             for idx, track in inputs:
                 # Check for cancellation
                 if controller and controller.is_cancelled():
