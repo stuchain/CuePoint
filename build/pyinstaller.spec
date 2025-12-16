@@ -40,6 +40,10 @@ datas = [
     (str(project_root / 'THIRD_PARTY_LICENSES.txt'), 'licenses'),
     # Step 8.5: privacy notice (if present)
     (str(project_root / 'PRIVACY_NOTICE.md'), 'docs'),
+    # Include duckduckgo_search compatibility shim module
+    (str(project_root / 'SRC' / 'duckduckgo_search.py'), 'SRC'),
+    # Include test script for diagnostic purposes
+    (str(project_root / 'scripts' / 'test_search_dependencies.py'), 'scripts'),
 ]
 
 # Note: Playwright browser binaries are NOT included in the bundle because:
@@ -70,7 +74,26 @@ hiddenimports = [
     'playwright',
     'selenium',
     'aiohttp',
+    # DuckDuckGo search - ddgs package and all submodules
     'ddgs',
+    'ddgs.api',
+    'ddgs.api.text',
+    'ddgs.api.images',
+    'ddgs.api.videos',
+    'ddgs.api.news',
+    'ddgs.api.maps',
+    'ddgs.api.translate',
+    'ddgs.api.suggestions',
+    # Compatibility shim (must be included as a data file, not just hidden import)
+    'duckduckgo_search',
+    # SSL certificates for HTTPS requests (required for ddgs and requests)
+    'certifi',
+    'certifi.core',
+    # urllib3 (used by requests and ddgs)
+    'urllib3',
+    'urllib3.util',
+    'urllib3.util.ssl_',
+    'urllib3.poolmanager',
     'tqdm',
 ]
 

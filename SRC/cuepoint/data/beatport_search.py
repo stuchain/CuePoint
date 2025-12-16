@@ -552,7 +552,7 @@ def beatport_search_hybrid(
     Note:
         Removes duplicates when merging results from both methods.
     """
-    from beatport import ddg_track_urls
+    from cuepoint.data.beatport import ddg_track_urls
 
     seen = set()
     urls = []

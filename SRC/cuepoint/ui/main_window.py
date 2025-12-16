@@ -235,7 +235,8 @@ class MainWindow(QMainWindow):
             dialog = OnboardingDialog(self)
             result = dialog.exec()
 
-            # Persist onboarding outcome
+            # Persist onboarding outcome - always mark as complete when dialog closes
+            # This ensures the onboarding doesn't show again even if user closes window
             if hasattr(self, "_onboarding_service"):
                 if result == QDialog.DialogCode.Accepted:
                     if dialog.dont_show_again_checked():
@@ -243,11 +244,20 @@ class MainWindow(QMainWindow):
                     else:
                         self._onboarding_service.mark_first_run_complete()
                 else:
-                    # User skipped: mark complete, and optionally never show again
-                    self._onboarding_service.dismiss_onboarding(
-                        dont_show_again=dialog.dont_show_again_checked()
-                    )
-        except Exception:
+                    # User skipped or closed dialog: mark complete
+                    # Check if "don't show again" was checked before dialog closed
+                    try:
+                        dont_show = dialog.dont_show_again_checked()
+                    except:
+                        dont_show = False
+                    self._onboarding_service.dismiss_onboarding(dont_show_again=dont_show)
+        except Exception as e:
+            # If anything goes wrong, still mark as complete to prevent infinite loop
+            try:
+                if hasattr(self, "_onboarding_service"):
+                    self._onboarding_service.mark_first_run_complete()
+            except:
+                pass
             return
 
     def init_ui(self) -> None:
@@ -2103,61 +2113,81 @@ class MainWindow(QMainWindow):
                 return
             
             # Check if processing has been running for a while and show confirmation
-            if hasattr(self, '_processing_start_time') and self._processing_start_time:
-                elapsed = (datetime.now() - self._processing_start_time).total_seconds()
-                if elapsed > 5:  # More than 5 seconds
-                    reply = QMessageBox.question(
-                        self,
-                        "Cancel Processing?",
-                        f"Processing is in progress:\n\n"
-                        f"{self.progress_elapsed.text()}\n"
-                        f"{self.progress_remaining.text()}\n\n"
-                        f"Are you sure you want to cancel?\n"
-                        f"All progress will be lost.",
-                        QMessageBox.Yes | QMessageBox.No,
-                        QMessageBox.No
-                    )
-                    if reply == QMessageBox.No:
-                        return
+            try:
+                if hasattr(self, '_processing_start_time') and self._processing_start_time:
+                    elapsed = (datetime.now() - self._processing_start_time).total_seconds()
+                    if elapsed > 5:  # More than 5 seconds
+                        reply = QMessageBox.question(
+                            self,
+                            "Cancel Processing?",
+                            f"Processing is in progress.\n\n"
+                            f"Are you sure you want to cancel?\n"
+                            f"All progress will be lost.",
+                            QMessageBox.Yes | QMessageBox.No,
+                            QMessageBox.No
+                        )
+                        if reply == QMessageBox.No:
+                            return
+            except Exception:
+                # If confirmation dialog fails, continue with cancellation anyway
+                pass
             
             self._cancelling = True
             
             # Disable cancel button immediately to prevent multiple clicks
-            if hasattr(self, 'cancel_button'):
-                self.cancel_button.setEnabled(False)
-                self.cancel_button.setText("Cancelling...")
+            try:
+                if hasattr(self, 'cancel_button') and self.cancel_button:
+                    self.cancel_button.setEnabled(False)
+                    self.cancel_button.setText("Cancelling...")
+            except Exception:
+                pass
             
             # Cancel processing in a safe way
-            if hasattr(self, 'controller') and hasattr(self.controller, 'is_processing'):
-                if self.controller.is_processing():
-                    try:
-                        self.controller.cancel_processing()
-                    except Exception as e:
-                        print(f"Error in controller.cancel_processing: {e}")
-                        import traceback
-                        traceback.print_exc()
+            try:
+                if hasattr(self, 'controller') and self.controller:
+                    if hasattr(self.controller, 'is_processing') and self.controller.is_processing():
+                        try:
+                            self.controller.cancel_processing()
+                        except Exception as e:
+                            print(f"Error in controller.cancel_processing: {e}")
+                            import traceback
+                            traceback.print_exc()
+            except Exception as e:
+                print(f"Error accessing controller: {e}")
+                import traceback
+                traceback.print_exc()
             
-            if hasattr(self, 'statusBar'):
-                self.statusBar().showMessage("Cancelling processing...")
+            try:
+                if hasattr(self, 'statusBar') and self.statusBar():
+                    self.statusBar().showMessage("Cancelling processing...")
+            except Exception:
+                pass
             
             # Use QTimer to safely reset UI after cancellation
             from PySide6.QtCore import QTimer
             QTimer.singleShot(1000, self._on_cancel_complete)
             
         except Exception as e:
-            # Log error but don't crash
+            # Log error but don't crash - ensure UI is reset
             import traceback
             error_msg = f"Error cancelling processing: {str(e)}"
             print(error_msg)
             print(traceback.format_exc())
             try:
-                if hasattr(self, 'statusBar'):
+                if hasattr(self, 'statusBar') and self.statusBar():
                     self.statusBar().showMessage(error_msg, 5000)
             except:
                 pass
             # Still try to reset UI
-            from PySide6.QtCore import QTimer
-            QTimer.singleShot(500, self._on_cancel_complete)
+            try:
+                from PySide6.QtCore import QTimer
+                QTimer.singleShot(500, self._on_cancel_complete)
+            except:
+                # Last resort: reset cancelling flag directly
+                try:
+                    self._cancelling = False
+                except:
+                    pass
 
     def _on_cancel_complete(self) -> None:
         """Called after cancellation is complete - safely reset UI"""

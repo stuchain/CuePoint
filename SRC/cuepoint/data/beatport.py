@@ -35,7 +35,29 @@ from typing import Dict, List, Optional, Tuple
 import requests
 from bs4 import BeautifulSoup
 from dateutil import parser as dateparser
-from duckduckgo_search import DDGS
+# Import DDGS with better error handling for packaged apps
+try:
+    from duckduckgo_search import DDGS
+except ImportError:
+    # Try direct import from ddgs package
+    try:
+        from ddgs import DDGS
+    except ImportError as e:
+        # Log the error for debugging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"DuckDuckGo search (ddgs) not available: {e!r}", exc_info=True)
+        # Create a stub that will raise on use
+        class DDGS:  # type: ignore
+            def __init__(self, *args, **kwargs):
+                raise ImportError(
+                    "DuckDuckGo search (ddgs package) is required but not available. "
+                    "Please ensure ddgs>=9.0.0 is installed."
+                ) from e
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                pass
 
 from cuepoint.core.mix_parser import (
     _extract_remixer_names_from_title,
@@ -890,23 +912,39 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                 f"site:beatport.com {query}",  # Broader search last
             ]
 
-        with DDGS() as ddgs:
-            for search_q in search_queries:
-                try:
-                    for r in ddgs.text(search_q, region="us-en", max_results=mr):
-                        href = r.get("href") or r.get("url") or ""
-                        if "beatport.com/track/" in href:
-                            urls.append(href)
-                    # For remix queries, don't break early - we need to find specific tracks
-                    # Only break early for non-remix queries with many results
-                    if len(urls) >= 20 and (" remix" not in ql and "extended mix" not in ql):
-                        break
-                except Exception as e:
-                    vlog(idx, f"[search] ddgs error for '{search_q}': {e!r}")
-                    continue
-    except Exception as e:
-        vlog(idx, f"[search] ddgs error: {e!r}")
-        return []
+        try:
+            with DDGS() as ddgs:
+                for search_q in search_queries:
+                    try:
+                        for r in ddgs.text(search_q, region="us-en", max_results=mr):
+                            href = r.get("href") or r.get("url") or ""
+                            if "beatport.com/track/" in href:
+                                urls.append(href)
+                        # For remix queries, don't break early - we need to find specific tracks
+                        # Only break early for non-remix queries with many results
+                        if len(urls) >= 20 and (" remix" not in ql and "extended mix" not in ql):
+                            break
+                    except Exception as e:
+                        # Log error with full details for debugging
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.warning(f"[{idx}] DuckDuckGo search error for '{search_q}': {e!r}", exc_info=True)
+                        vlog(idx, f"[search] ddgs error for '{search_q}': {e!r}")
+                        continue
+        except ImportError as e:
+            # ddgs package not available - this is critical!
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"[{idx}] DuckDuckGo search (ddgs) not available: {e!r}", exc_info=True)
+            vlog(idx, f"[search] ddgs import error: {e!r}")
+            return []
+        except Exception as e:
+            # Other errors (network, SSL, etc.)
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"[{idx}] DuckDuckGo search failed: {e!r}", exc_info=True)
+            vlog(idx, f"[search] ddgs error: {e!r}")
+            return []
     out, seen = [], set()
     for u in urls:
         if is_track_url(u) and u not in seen:
@@ -937,16 +975,25 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                 f"beatport.com {query}",
             ]
 
-            with DDGS() as ddgs:
-                for fallback_q in fallback_queries:
-                    try:
-                        for r in ddgs.text(fallback_q, region="us-en", max_results=20):
-                            href = r.get("href") or r.get("url") or ""
-                            if href and "beatport.com" in href:
-                                extra_pages.append(href)
-                    except Exception as e:
-                        vlog(idx, f"[fallback-search] error for '{fallback_q}': {e!r}")
-                        continue
+            try:
+                with DDGS() as ddgs:
+                    for fallback_q in fallback_queries:
+                        try:
+                            for r in ddgs.text(fallback_q, region="us-en", max_results=20):
+                                href = r.get("href") or r.get("url") or ""
+                                if href and "beatport.com" in href:
+                                    extra_pages.append(href)
+                        except Exception as e:
+                            import logging
+                            logger = logging.getLogger(__name__)
+                            logger.debug(f"[{idx}] Fallback search error for '{fallback_q}': {e!r}")
+                            vlog(idx, f"[fallback-search] error for '{fallback_q}': {e!r}")
+                            continue
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"[{idx}] Fallback DuckDuckGo search failed: {e!r}")
+                vlog(idx, f"[fallback-search] ddgs error: {e!r}")
 
             # Process extra pages to find track links
             for page_url in extra_pages[:6]:

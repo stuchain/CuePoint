@@ -21,6 +21,9 @@ jobs:
           # Extract tag name (remove refs/tags/ prefix)
           TAG_NAME="${TAG#refs/tags/}"
           
+          # Install jq for JSON parsing (more reliable than grep)
+          sudo apt-get update && sudo apt-get install -y jq
+          
           # Wait for both macOS and Windows build workflows to complete
           MAX_WAIT=3600  # 60 minutes max
           WAIT_INTERVAL=30  # Check every 30 seconds
@@ -33,34 +36,32 @@ jobs:
             # For tags, we need to search by ref (tag name) not head_branch
             MACOS_RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
               "https://api.github.com/repos/${REPO}/actions/workflows/build-macos.yml/runs?ref=${TAG_NAME}&per_page=1")
-            MACOS_STATUS=$(echo "$MACOS_RESPONSE" | grep -o '"conclusion":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "")
             
-            # If no conclusion, check status (running workflows have status but no conclusion)
-            if [ -z "$MACOS_STATUS" ] || [ "$MACOS_STATUS" = "null" ]; then
-              MACOS_STATUS=$(echo "$MACOS_RESPONSE" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "unknown")
-              if [ "$MACOS_STATUS" = "in_progress" ] || [ "$MACOS_STATUS" = "queued" ]; then
-                MACOS_STATUS="running"
-              fi
+            # Extract conclusion using jq (more reliable)
+            MACOS_STATUS=$(echo "$MACOS_RESPONSE" | jq -r '.workflow_runs[0].conclusion // .workflow_runs[0].status // "unknown"' 2>/dev/null || echo "unknown")
+            
+            # Normalize status values
+            if [ "$MACOS_STATUS" = "in_progress" ] || [ "$MACOS_STATUS" = "queued" ]; then
+              MACOS_STATUS="running"
             fi
             
             # Check Windows workflow using GitHub API
             WINDOWS_RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
               "https://api.github.com/repos/${REPO}/actions/workflows/build-windows.yml/runs?ref=${TAG_NAME}&per_page=1")
-            WINDOWS_STATUS=$(echo "$WINDOWS_RESPONSE" | grep -o '"conclusion":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "")
             
-            # If no conclusion, check status (running workflows have status but no conclusion)
-            if [ -z "$WINDOWS_STATUS" ] || [ "$WINDOWS_STATUS" = "null" ]; then
-              WINDOWS_STATUS=$(echo "$WINDOWS_RESPONSE" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "unknown")
-              if [ "$WINDOWS_STATUS" = "in_progress" ] || [ "$WINDOWS_STATUS" = "queued" ]; then
-                WINDOWS_STATUS="running"
-              fi
+            # Extract conclusion using jq (more reliable)
+            WINDOWS_STATUS=$(echo "$WINDOWS_RESPONSE" | jq -r '.workflow_runs[0].conclusion // .workflow_runs[0].status // "unknown"' 2>/dev/null || echo "unknown")
+            
+            # Normalize status values
+            if [ "$WINDOWS_STATUS" = "in_progress" ] || [ "$WINDOWS_STATUS" = "queued" ]; then
+              WINDOWS_STATUS="running"
             fi
             
             echo "macOS build status: ${MACOS_STATUS}"
             echo "Windows build status: ${WINDOWS_STATUS}"
             
-            # Debug: show API response if status is empty
-            if [ -z "$MACOS_STATUS" ] || [ -z "$WINDOWS_STATUS" ]; then
+            # Debug: show API response if status is unknown or empty
+            if [ "$MACOS_STATUS" = "unknown" ] || [ "$WINDOWS_STATUS" = "unknown" ] || [ -z "$MACOS_STATUS" ] || [ -z "$WINDOWS_STATUS" ]; then
               echo "Debug - macOS API response (first 500 chars):"
               echo "$MACOS_RESPONSE" | head -c 500
               echo ""
@@ -80,7 +81,7 @@ jobs:
             fi
             
             # If workflows are still running or not found, wait and retry
-            if [ "${MACOS_STATUS}" = "null" ] || [ "${WINDOWS_STATUS}" = "null" ]; then
+            if [ "${MACOS_STATUS}" = "running" ] || [ "${WINDOWS_STATUS}" = "running" ] || [ "${MACOS_STATUS}" = "null" ] || [ "${WINDOWS_STATUS}" = "null" ]; then
               echo "Workflows still running or not found, waiting..."
             fi
             

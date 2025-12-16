@@ -150,6 +150,12 @@ class OnboardingDialog(QDialog):
         self._current_screen = 0
         self._setup_ui()
 
+    def closeEvent(self, event) -> None:
+        """Handle window close event - treat as rejection (skip)."""
+        # When user closes window, treat it as skipping onboarding
+        self.reject()
+        event.accept()
+
     def _setup_ui(self) -> None:
         self.setWindowTitle(tr("onboarding.window_title", "Welcome to CuePoint"))
         self.setModal(True)

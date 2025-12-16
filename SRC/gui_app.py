@@ -24,6 +24,135 @@ if __name__ == "__main__":
         # Never block startup due to venv detection; fall back to current interpreter.
         pass
 
+# Check for command-line flags before importing Qt
+if "--test-search-dependencies" in sys.argv:
+    # Run the test script directly without starting GUI
+    import argparse
+    import io
+    import traceback
+
+    # Parse arguments to handle the flag
+    parser = argparse.ArgumentParser(description="CuePoint GUI Application")
+    parser.add_argument("--test-search-dependencies", action="store_true",
+                       help="Test search dependencies and exit")
+    args, unknown = parser.parse_known_args()
+    
+    if args.test_search_dependencies:
+        # Import and run the test script
+        try:
+            # Add scripts directory to path
+            # Handle both development and packaged environments
+            if getattr(sys, 'frozen', False):
+                # Packaged app - scripts might be in the same directory or in a scripts subdirectory
+                if hasattr(sys, '_MEIPASS'):
+                    # PyInstaller temporary directory
+                    base_path = sys._MEIPASS
+                else:
+                    base_path = os.path.dirname(sys.executable)
+            else:
+                # Development - use project root
+                base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            
+            scripts_path = os.path.join(base_path, "scripts")
+            if scripts_path not in sys.path and os.path.exists(scripts_path):
+                sys.path.insert(0, scripts_path)
+            
+            # Also try importing from the project root scripts directory
+            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            project_scripts = os.path.join(project_root, "scripts")
+            if project_scripts not in sys.path and os.path.exists(project_scripts):
+                sys.path.insert(0, project_scripts)
+            
+            # Capture output for GUI display if needed
+            output_buffer = io.StringIO()
+            
+            # Redirect stdout to capture output
+            old_stdout = sys.stdout
+            sys.stdout = output_buffer
+            
+            try:
+                # Import and run the test
+                from test_search_dependencies import test_imports
+                
+                print("Testing search dependencies...")
+                print(f"Python version: {sys.version}")
+                print(f"Frozen (packaged): {getattr(sys, 'frozen', False)}")
+                print(f"Executable: {sys.executable}")
+                print("="*60 + "\n")
+                
+                success = test_imports()
+                
+                # Get the output
+                output_text = output_buffer.getvalue()
+                
+                # Restore stdout
+                sys.stdout = old_stdout
+                
+                # Print to console if available, otherwise show message box
+                print(output_text)
+                
+                # If we're in a packaged app without console, show results in a message box
+                if getattr(sys, 'frozen', False):
+                    from PySide6.QtWidgets import (
+                        QApplication,
+                        QDialog,
+                        QMessageBox,
+                        QPushButton,
+                        QTextEdit,
+                        QVBoxLayout,
+                    )
+                    app = QApplication(sys.argv)
+                    dialog = QDialog()
+                    dialog.setWindowTitle("Search Dependencies Test Results")
+                    layout = QVBoxLayout(dialog)
+                    
+                    text_edit = QTextEdit()
+                    text_edit.setReadOnly(True)
+                    text_edit.setPlainText(output_text)
+                    layout.addWidget(text_edit)
+                    
+                    close_button = QPushButton("Close")
+                    close_button.clicked.connect(dialog.accept)
+                    layout.addWidget(close_button)
+                    
+                    dialog.exec()
+                
+                sys.exit(0 if success else 1)
+            finally:
+                # Always restore stdout
+                sys.stdout = old_stdout
+                
+        except ImportError as e:
+            error_msg = f"Error: Could not import test script: {e}\nMake sure scripts/test_search_dependencies.py exists"
+            print(error_msg, file=sys.stderr)
+            traceback.print_exc()
+            
+            # Show error in message box if in packaged app
+            if getattr(sys, 'frozen', False):
+                try:
+                    from PySide6.QtWidgets import QApplication, QMessageBox
+                    app = QApplication(sys.argv)
+                    QMessageBox.critical(None, "Test Error", error_msg)
+                except:
+                    pass
+            
+            sys.exit(1)
+        except Exception as e:
+            error_msg = f"Error running test: {e}"
+            print(error_msg, file=sys.stderr)
+            traceback.print_exc()
+            
+            # Show error in message box if in packaged app
+            if getattr(sys, 'frozen', False):
+                try:
+                    from PySide6.QtWidgets import QApplication, QMessageBox
+                    app = QApplication(sys.argv)
+                    QMessageBox.critical(None, "Test Error", error_msg)
+                except:
+                    pass
+            
+            sys.exit(1)
+
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 # Add src to path if needed (for imports)
@@ -125,6 +254,13 @@ def main():
             # Fallback to console output
             print(error_msg, file=sys.stderr)
             import traceback
+            traceback.print_exc()
+        
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
             traceback.print_exc()
         
         sys.exit(1)

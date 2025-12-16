@@ -63,9 +63,30 @@ class BeatportService(IBeatportService):
         # Perform search
         try:
             self.logging_service.info(f"Searching Beatport for: {query}")
+            
+            # Test if ddgs is available before searching
+            try:
+                from duckduckgo_search import DDGS
+
+                # Try to create a DDGS instance to verify it works
+                test_ddgs = DDGS()
+                del test_ddgs
+            except ImportError as import_err:
+                self.logging_service.warning(
+                    f"DuckDuckGo search (ddgs) not available: {import_err!r}. "
+                    "Track search may be limited. Falling back to direct search only."
+                )
+            except Exception as test_err:
+                self.logging_service.warning(
+                    f"DuckDuckGo search (ddgs) test failed: {test_err!r}. "
+                    "Track search may be limited."
+                )
+            
             urls = beatport_search_hybrid(
                 idx=0, query=query, max_results=max_results, prefer_direct=True
             )
+            
+            self.logging_service.info(f"Found {len(urls)} track URLs for query: {query}")
 
             # Cache results (1 hour TTL)
             self.cache_service.set(cache_key, urls, ttl=3600)
@@ -75,6 +96,17 @@ class BeatportService(IBeatportService):
             error_msg = f"Failed to search Beatport for '{query}': {str(e)}"
             self.logging_service.error(
                 error_msg, exc_info=e, extra={"query": query, "max_results": max_results}
+            )
+            # Log additional diagnostic info
+            import sys
+            import traceback
+            self.logging_service.debug(
+                f"Search error details:\n"
+                f"  Exception type: {type(e).__name__}\n"
+                f"  Exception args: {e.args}\n"
+                f"  Traceback: {traceback.format_exc()}\n"
+                f"  Python version: {sys.version}\n"
+                f"  Frozen: {getattr(sys, 'frozen', False)}"
             )
             raise BeatportAPIError(
                 message=error_msg,
