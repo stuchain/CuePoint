@@ -45,45 +45,33 @@ class FileSelector(QWidget):
         self.path_edit.setReadOnly(True)
         self.path_edit.setPlaceholderText("No file selected")
         self.path_edit.setStyleSheet("font-size: 11px;")
+        self.path_edit.setAccessibleName("Collection XML path")
+        self.path_edit.setAccessibleDescription("Shows the selected Rekordbox collection XML file path")
+        self.path_edit.setFocusPolicy(Qt.StrongFocus)
 
-        browse_btn = QPushButton("Browse...")
-        browse_btn.setToolTip(
+        self.browse_btn = QPushButton("Browse...")
+        self.browse_btn.setToolTip(
             "Browse for Rekordbox Collection XML file.\n"
             "Export from Rekordbox: File → Export Collection"
         )
-        browse_btn.clicked.connect(self.browse_file)
-        browse_btn.setStyleSheet("""
-            QPushButton {
-                font-size: 11px;
-                padding: 3px 10px;
-                background-color: #007AFF;
-                color: white;
-                border: none;
-                border-radius: 4px;
-            }
-            QPushButton:hover { background-color: #0056b3; }
-        """)
+        self.browse_btn.clicked.connect(self.browse_file)
+        self.browse_btn.setObjectName("secondaryActionButton")
+        self.browse_btn.setAccessibleName("Browse for XML file button")
+        self.browse_btn.setAccessibleDescription("Opens a file picker to select your Rekordbox collection XML file")
+        self.browse_btn.setFocusPolicy(Qt.StrongFocus)
 
         # Info button
-        info_btn = QToolButton()
-        info_btn.setText("ℹ")
-        info_btn.setToolTip("How to export XML from Rekordbox")
-        info_btn.setStyleSheet("""
-            QToolButton {
-                font-size: 14px;
-                padding: 4px 8px;
-                border: 1px solid #555;
-                border-radius: 4px;
-                background-color: #333;
-                color: #aaa;
-            }
-            QToolButton:hover { background-color: #444; }
-        """)
-        info_btn.clicked.connect(self.show_instructions)
+        self.info_btn = QToolButton()
+        self.info_btn.setText("ℹ")
+        self.info_btn.setToolTip("How to export XML from Rekordbox")
+        self.info_btn.setAccessibleName("Rekordbox export instructions button")
+        self.info_btn.setAccessibleDescription("Opens instructions for exporting an XML file from Rekordbox")
+        self.info_btn.setFocusPolicy(Qt.StrongFocus)
+        self.info_btn.clicked.connect(self.show_instructions)
 
         layout.addWidget(self.path_edit, 1)
-        layout.addWidget(browse_btn)
-        layout.addWidget(info_btn)
+        layout.addWidget(self.browse_btn)
+        layout.addWidget(self.info_btn)
 
         # Drag & drop area - hidden but still functional
         self.drop_label = QLabel("")

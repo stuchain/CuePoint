@@ -169,32 +169,9 @@ class ResultsView(QWidget):
         top_layout.setContentsMargins(0, 0, 0, 0)
 
         # Box style matching Collection/Mode/Playlist boxes
-        box_style = """
-            QGroupBox {
-                font-weight: bold;
-                font-size: 11px;
-                color: #aaa;
-                border: 1px solid #555;
-                border-radius: 6px;
-                margin: 0px;
-                padding: 22px 10px 10px 10px;
-            }
-            QGroupBox:hover {
-                background-color: rgba(255, 255, 255, 0.04);
-                border: 1px solid rgba(255, 255, 255, 0.20);
-            }
-            QGroupBox::title {
-                subcontrol-origin: padding;
-                subcontrol-position: top left;
-                left: 8px;
-                top: 4px;
-                padding: 0 4px;
-            }
-        """
-
         # BOX 1: Summary Statistics - compact
         summary_group = QGroupBox("Summary Statistics")
-        summary_group.setStyleSheet(box_style)
+        summary_group.setObjectName("panelBox")
         summary_group.setFixedHeight(75)
         summary_layout = QHBoxLayout(summary_group)
         summary_layout.setContentsMargins(0, 0, 0, 0)
@@ -208,7 +185,7 @@ class ResultsView(QWidget):
 
         # BOX 2: Filters - compact
         filters_group = QGroupBox("Filters")
-        filters_group.setStyleSheet(box_style)
+        filters_group.setObjectName("panelBox")
         filters_group.setFixedHeight(75)
         filters_layout = QHBoxLayout(filters_group)
         filters_layout.setContentsMargins(0, 0, 0, 0)

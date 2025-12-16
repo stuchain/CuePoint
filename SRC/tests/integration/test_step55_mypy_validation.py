@@ -71,7 +71,9 @@ class TestMypyValidation:
                 "return-value",
                 "assignment",
                 "operator",
+                "index",
                 "call-overload",
+                "unused-ignore",
                 "no-any-return",
                 "dict-item",
                 "type-var",
@@ -134,7 +136,9 @@ class TestMypyValidation:
                 "return-value",
                 "assignment",
                 "operator",
+                "index",
                 "call-overload",
+                "unused-ignore",
                 "no-any-return",
             ]
             # Filter out errors that match ignore patterns

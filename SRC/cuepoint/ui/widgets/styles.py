@@ -86,6 +86,136 @@ class Colors:
         BUTTON_HOVER = "#106ebe"
 
 
+class ThemeTokens:
+    """Theme tokens (single source of truth).
+
+    These tokens are used by the global stylesheet and any widget-level styling
+    helpers. Keep values small and consistent to avoid a fragmented UI.
+    """
+
+    # Spacing scale (px)
+    SPACING_4 = 4
+    SPACING_6 = 6
+    SPACING_8 = 8
+    SPACING_10 = 10
+    SPACING_12 = 12
+
+    # Radius scale (px)
+    RADIUS_4 = 4
+    RADIUS_6 = 6
+    RADIUS_8 = 8
+
+    # Control sizing (px) - aligns with Step 9 target sizes
+    CONTROL_HEIGHT_SM = 24
+    CONTROL_HEIGHT_MD = 28
+    CONTROL_HEIGHT_LG = 36
+
+    # Focus ring color (semi-transparent)
+    FOCUS_RING = "rgba(0, 122, 255, 0.65)" if is_macos() else "rgba(0, 120, 212, 0.65)"
+
+
+def _panel_groupbox_styles() -> str:
+    """Special group box style used for the compact 'panel' boxes in the UI.
+
+    Applied via objectName selector: QGroupBox#panelBox
+    """
+    return f"""
+        QGroupBox#panelBox {{
+            font-weight: bold;
+            font-size: 11px;
+            color: {Colors.TEXT_SECONDARY};
+            border: 1px solid {Colors.BORDER};
+            border-radius: {ThemeTokens.RADIUS_6}px;
+            margin: 0px;
+            padding: 22px 10px 10px 10px;
+        }}
+
+        QGroupBox#panelBox:hover {{
+            background-color: rgba(255, 255, 255, 0.04);
+            border-color: rgba(255, 255, 255, 0.20);
+        }}
+
+        QGroupBox#panelBox::title {{
+            subcontrol-origin: padding;
+            subcontrol-position: top left;
+            left: 8px;
+            top: 4px;
+            padding: 0 4px;
+            color: {Colors.TEXT_PRIMARY};
+        }}
+    """
+
+
+def _focus_styles() -> str:
+    """Visible focus styles for keyboard navigation (Step 9.2 prerequisite)."""
+    # Keep focus indicators visible without significantly shifting layout.
+    return f"""
+        /* Focus indicators (keyboard) */
+        QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus,
+        QComboBox:focus, QAbstractSpinBox:focus,
+        QPushButton:focus, QToolButton:focus,
+        QTableView:focus, QTableWidget:focus {{
+            border-color: {Colors.PRIMARY};
+        }}
+
+        /* Focus indicator for buttons that otherwise have no border */
+        QPushButton:focus, QToolButton:focus {{
+            border: 1px solid {ThemeTokens.FOCUS_RING};
+        }}
+    """
+
+
+def _action_button_styles() -> str:
+    """Styles for primary/danger action buttons via objectName selectors."""
+    return f"""
+        /* Primary action button (e.g., Start Processing) */
+        QPushButton#primaryActionButton {{
+            background-color: {Colors.BUTTON_PRIMARY_BG};
+            color: {Colors.BUTTON_PRIMARY_TEXT};
+            border: none;
+            border-radius: {ThemeTokens.RADIUS_6}px;
+            font-weight: bold;
+            padding: 8px 16px;
+            min-height: {ThemeTokens.CONTROL_HEIGHT_LG}px;
+        }}
+        QPushButton#primaryActionButton:hover {{
+            background-color: {Colors.BUTTON_HOVER};
+        }}
+        QPushButton#primaryActionButton:disabled {{
+            background-color: {Colors.BORDER};
+            color: {Colors.TEXT_SECONDARY};
+        }}
+
+        /* Danger/destructive action button (e.g., Cancel) */
+        QPushButton#dangerButton {{
+            background-color: {Colors.ERROR};
+            color: #ffffff;
+            border: none;
+            border-radius: {ThemeTokens.RADIUS_6}px;
+            font-weight: bold;
+            padding: 6px 14px;
+            min-height: {ThemeTokens.CONTROL_HEIGHT_MD}px;
+        }}
+        QPushButton#dangerButton:hover {{
+            background-color: #D32F2F;
+        }}
+        QPushButton#dangerButton:disabled {{
+            background-color: {Colors.BORDER};
+            color: {Colors.TEXT_SECONDARY};
+        }}
+    """
+
+
+def _card_container_styles() -> str:
+    """Reusable 'card' container style for rounded surface blocks."""
+    return f"""
+        QWidget#cardContainer {{
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: {ThemeTokens.RADIUS_8}px;
+        }}
+    """
+
+
 def get_base_stylesheet() -> str:
     """Get the base stylesheet shared across all platforms."""
     return f"""
@@ -391,6 +521,11 @@ def get_base_stylesheet() -> str:
         QMenuBar::item:selected {{
             background-color: {Colors.PRIMARY};
         }}
+
+        {_panel_groupbox_styles()}
+        {_action_button_styles()}
+        {_card_container_styles()}
+        {_focus_styles()}
     """
 
 

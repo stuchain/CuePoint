@@ -142,3 +142,8 @@ This document summarizes what is implemented in the CuePoint codebase for **SHIP
 - Update signature verification is primarily handled by Sparkle/WinSparkle/platform signing; checksum support is available for additional integrity checks.
 
 
+
+
+
+
+

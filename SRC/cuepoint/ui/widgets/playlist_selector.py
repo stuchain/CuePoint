@@ -8,6 +8,7 @@ This module contains the PlaylistSelector class for selecting playlists from XML
 """
 
 from PySide6.QtCore import Signal
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QWidget
 
 from cuepoint.data.rekordbox import parse_rekordbox
@@ -38,6 +39,9 @@ class PlaylistSelector(QWidget):
             "Single mode: Process one playlist.\n"
             "Batch mode: Process multiple playlists."
         )
+        self.combo.setAccessibleName("Playlist selector")
+        self.combo.setAccessibleDescription("Select a playlist from the loaded Rekordbox collection XML")
+        self.combo.setFocusPolicy(Qt.StrongFocus)
         self.combo.currentTextChanged.connect(self.on_selection_changed)
         self.combo.setStyleSheet("font-size: 11px;")
 

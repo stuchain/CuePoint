@@ -67,7 +67,9 @@ class HistoryView(QWidget):
         self.current_csv_path: Optional[str] = None
         self.csv_rows: List[dict] = []  # Store loaded CSV rows for updates
         self.filtered_rows: List[dict] = []  # Store filtered rows
-        self._filter_debounce_timer = QTimer()
+        # Parent the timer to this widget to avoid PySide/Qt lifetime issues on teardown
+        # (notably Windows access violations during GC in UI tests).
+        self._filter_debounce_timer = QTimer(self)
         self._filter_debounce_timer.setSingleShot(True)
         self._filter_debounce_timer.timeout.connect(self._apply_filters_debounced)
         self.init_ui()
@@ -271,11 +273,15 @@ class HistoryView(QWidget):
             self.advanced_filters_container.setVisible(checked)
             # Force layout update to ensure button is visible
             if checked:
-                QTimer.singleShot(10, lambda: (
-                    self.advanced_filters_container.updateGeometry(),
-                    advanced_filters_group.updateGeometry(),
+                # IMPORTANT: provide a QObject context so the callback is cancelled
+                # automatically if this widget is destroyed (prevents Windows/Qt
+                # access violations during teardown in UI tests).
+                def _update_geometries() -> None:
+                    self.advanced_filters_container.updateGeometry()
+                    advanced_filters_group.updateGeometry()
                     self.updateGeometry()
-                ))
+
+                QTimer.singleShot(10, self, _update_geometries)
         
         advanced_filters_group.toggled.connect(on_advanced_filters_toggled)
 
@@ -949,7 +955,10 @@ class HistoryView(QWidget):
             if QThread.currentThread() != self.thread():
                 # Schedule update on main thread
                 from PySide6.QtCore import QTimer
-                QTimer.singleShot(0, lambda: self._update_table_row(row, csv_row))
+
+                # Provide QObject context so the callback is cancelled if this
+                # widget is destroyed (prevents Windows/Qt teardown crashes).
+                QTimer.singleShot(0, self, lambda: self._update_table_row(row, csv_row))
                 return
 
             # Find columns by header name
@@ -1731,4 +1740,5 @@ class HistoryView(QWidget):
                 return
         
         # Emit signal to main window
+        self.rerun_requested.emit(xml_path, playlist_name)
         self.rerun_requested.emit(xml_path, playlist_name)

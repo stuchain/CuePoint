@@ -339,6 +339,37 @@ class AboutDialog(QDialog):
         description.setAlignment(Qt.AlignCenter)
         layout.addWidget(description)
 
+        # Quick links (Step 9.6 polish)
+        links_layout = QHBoxLayout()
+        links_layout.addStretch()
+
+        privacy_btn = QPushButton("Privacy")
+        privacy_btn.setObjectName("secondaryActionButton")
+        privacy_btn.setToolTip("Open privacy information and controls")
+        privacy_btn.clicked.connect(self._open_privacy)
+        links_layout.addWidget(privacy_btn)
+
+        logs_btn = QPushButton("Logs")
+        logs_btn.setObjectName("secondaryActionButton")
+        logs_btn.setToolTip("Open logs folder")
+        logs_btn.clicked.connect(self._open_logs_folder)
+        links_layout.addWidget(logs_btn)
+
+        exports_btn = QPushButton("Exports")
+        exports_btn.setObjectName("secondaryActionButton")
+        exports_btn.setToolTip("Open exports folder")
+        exports_btn.clicked.connect(self._open_exports_folder)
+        links_layout.addWidget(exports_btn)
+
+        report_btn = QPushButton("Report Issue")
+        report_btn.setObjectName("secondaryActionButton")
+        report_btn.setToolTip("Open issue tracker (if configured via CUEPOINT_ISSUE_URL)")
+        report_btn.clicked.connect(self._report_issue)
+        links_layout.addWidget(report_btn)
+
+        links_layout.addStretch()
+        layout.addLayout(links_layout)
+
         layout.addStretch()
 
         # Copyright
@@ -356,6 +387,79 @@ class AboutDialog(QDialog):
         ok_btn.clicked.connect(self.accept)
         button_layout.addWidget(ok_btn)
         layout.addLayout(button_layout)
+
+    def _open_privacy(self) -> None:
+        try:
+            from cuepoint.ui.dialogs.privacy_dialog import PrivacyDialog
+
+            dialog = PrivacyDialog(self)
+            dialog.exec()
+        except Exception as e:
+            from PySide6.QtWidgets import QMessageBox
+
+            QMessageBox.warning(self, "Privacy", f"Could not open Privacy dialog:\n{e}")
+
+    def _open_logs_folder(self) -> None:
+        try:
+            import platform
+            import subprocess
+
+            from cuepoint.utils.paths import AppPaths
+
+            log_dir = str(AppPaths.logs_dir())
+            if platform.system() == "Windows":
+                subprocess.Popen(f'explorer "{log_dir}"')
+            elif platform.system() == "Darwin":
+                subprocess.Popen(["open", log_dir])
+            else:
+                subprocess.Popen(["xdg-open", log_dir])
+        except Exception as e:
+            from PySide6.QtWidgets import QMessageBox
+
+            QMessageBox.warning(self, "Logs", f"Could not open logs folder:\n{e}")
+
+    def _open_exports_folder(self) -> None:
+        try:
+            import platform
+            import subprocess
+
+            from cuepoint.utils.paths import AppPaths
+
+            exports_dir = str(AppPaths.exports_dir())
+            if platform.system() == "Windows":
+                subprocess.Popen(f'explorer "{exports_dir}"')
+            elif platform.system() == "Darwin":
+                subprocess.Popen(["open", exports_dir])
+            else:
+                subprocess.Popen(["xdg-open", exports_dir])
+        except Exception as e:
+            from PySide6.QtWidgets import QMessageBox
+
+            QMessageBox.warning(self, "Exports", f"Could not open exports folder:\n{e}")
+
+    def _report_issue(self) -> None:
+        try:
+            import os
+
+            from PySide6.QtCore import QUrl
+            from PySide6.QtGui import QDesktopServices
+
+            issue_url = os.environ.get("CUEPOINT_ISSUE_URL", "")
+            if not issue_url:
+                from PySide6.QtWidgets import QMessageBox
+
+                QMessageBox.information(
+                    self,
+                    "Report Issue",
+                    "No issue tracker URL is configured.\n\n"
+                    "Set environment variable CUEPOINT_ISSUE_URL to enable this button.",
+                )
+                return
+            QDesktopServices.openUrl(QUrl(issue_url))
+        except Exception as e:
+            from PySide6.QtWidgets import QMessageBox
+
+            QMessageBox.warning(self, "Report Issue", f"Could not open issue tracker:\n{e}")
 
 
 class UserGuideDialog(QDialog):

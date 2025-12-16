@@ -2,15 +2,26 @@
 # -*- coding: utf-8 -*-
 
 """
-Test script to verify MainWindow displays correctly
+UI test + manual script to verify MainWindow displays correctly
 """
 
 import sys
+
+import pytest
 from PySide6.QtWidgets import QApplication
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
+
 from cuepoint.ui.main_window import MainWindow
+
+
+@pytest.mark.ui
+def test_main_window_constructs(qtbot):
+    """Smoke test: MainWindow can be constructed and has core UI pieces."""
+    window = MainWindow()
+    qtbot.addWidget(window)
+    assert window.windowTitle()
+    assert window.menuBar() is not None
+    assert window.statusBar() is not None
+
 
 def main():
     """Test main window display"""

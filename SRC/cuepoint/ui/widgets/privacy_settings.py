@@ -64,3 +64,8 @@ class PrivacySettingsWidget(QWidget):
         self._privacy.set_clear_logs_on_exit(self.chk_clear_logs.isChecked())
 
 
+
+
+
+
+

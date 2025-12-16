@@ -7,17 +7,18 @@ Integration tests for Step 5.3: UI Components using Controllers
 Tests that UI components properly use controllers and maintain separation of concerns.
 """
 
+from unittest.mock import MagicMock, Mock
+
 import pytest
-from unittest.mock import Mock, MagicMock
 from PySide6.QtWidgets import QApplication
 
-from cuepoint.ui.controllers.results_controller import ResultsController
-from cuepoint.ui.controllers.export_controller import ExportController
+from cuepoint.models.result import TrackResult
 from cuepoint.ui.controllers.config_controller import ConfigController
-from cuepoint.ui.widgets.results_view import ResultsView
+from cuepoint.ui.controllers.export_controller import ExportController
+from cuepoint.ui.controllers.results_controller import ResultsController
 from cuepoint.ui.dialogs.export_dialog import ExportDialog
 from cuepoint.ui.widgets.config_panel import ConfigPanel
-from cuepoint.models.result import TrackResult
+from cuepoint.ui.widgets.results_view import ResultsView
 
 
 @pytest.fixture(scope="session")
@@ -105,7 +106,8 @@ class TestResultsViewWithController:
         
         # Verify summary label was updated (indirectly tests controller usage)
         assert view.summary_label.text() != ""
-        assert "Total tracks: 2" in view.summary_label.text()
+        # Summary format is compact in v1.0 UI (Step 9 polish)
+        assert "Total: 2" in view.summary_label.text()
 
     def test_results_view_clear_filters_uses_controller(self, qapp, sample_results):
         """Test that clear_filters uses controller"""
@@ -293,4 +295,5 @@ class TestMainWindowControllerIntegration:
         assert window.results_view.results_controller == window.results_controller
         assert window.results_view.export_controller == window.export_controller
         assert window.config_panel.config_controller == window.config_controller
+
 

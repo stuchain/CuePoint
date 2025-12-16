@@ -36,6 +36,7 @@ from cuepoint.services.bootstrap import bootstrap_services
 from cuepoint.ui.main_window import MainWindow
 from cuepoint.ui.widgets.styles import get_stylesheet
 from cuepoint.utils.logger import CuePointLogger
+from cuepoint.utils.i18n import I18nManager
 from cuepoint.utils.paths import AppPaths, PathMigration
 from cuepoint.utils.system_check import SystemRequirements
 
@@ -73,6 +74,9 @@ def main():
         app.setApplicationName("CuePoint")
         app.setOrganizationName("CuePoint")
         app.setApplicationVersion("1.0.0")
+
+        # Step 9.3: localization readiness (English-only unless `.qm` files are present)
+        I18nManager.setup_translations(app)
         
         # Check system requirements
         meets_requirements, errors = SystemRequirements.check_all()

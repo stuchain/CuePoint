@@ -19,10 +19,12 @@ GUIController for processing operations.
 """
 
 import os
+import platform
+import subprocess
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 
-from PySide6.QtCore import QSettings, Qt
+from PySide6.QtCore import QSettings, Qt, QTimer
 from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent, QKeyEvent, QKeySequence
 from PySide6.QtWidgets import (
     QButtonGroup,
@@ -120,6 +122,53 @@ class MainWindow(QMainWindow):
         self.setup_shortcuts()
         # Restore state after UI is initialized
         self.restore_state()
+        # Step 9.4: first-run onboarding (shown asynchronously after window is visible)
+        self._schedule_onboarding_if_needed()
+
+    def _schedule_onboarding_if_needed(self) -> None:
+        """Schedule first-run onboarding dialog (non-blocking startup)."""
+        try:
+            # Never show onboarding during automated tests (pytest-qt processes events
+            # and a modal dialog here will hang the test run).
+            if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("CUEPOINT_DISABLE_ONBOARDING"):
+                return
+
+            from cuepoint.services.onboarding_service import OnboardingService
+
+            self._onboarding_service = OnboardingService()
+            if not self._onboarding_service.should_show_onboarding():
+                return
+
+            # Defer until the event loop is running and the window is shown.
+            QTimer.singleShot(0, self._show_onboarding_dialog)
+        except Exception:
+            # Onboarding is best-effort; never block app startup.
+            return
+
+    def _show_onboarding_dialog(self) -> None:
+        """Show onboarding dialog and persist the user's choice."""
+        try:
+            from PySide6.QtWidgets import QDialog
+
+            from cuepoint.ui.dialogs.onboarding_dialog import OnboardingDialog
+
+            dialog = OnboardingDialog(self)
+            result = dialog.exec()
+
+            # Persist onboarding outcome
+            if hasattr(self, "_onboarding_service"):
+                if result == QDialog.DialogCode.Accepted:
+                    if dialog.dont_show_again_checked():
+                        self._onboarding_service.dismiss_onboarding(dont_show_again=True)
+                    else:
+                        self._onboarding_service.mark_first_run_complete()
+                else:
+                    # User skipped: mark complete, and optionally never show again
+                    self._onboarding_service.dismiss_onboarding(
+                        dont_show_again=dialog.dont_show_again_checked()
+                    )
+        except Exception:
+            return
 
     def init_ui(self) -> None:
         """Initialize all UI components and layout.
@@ -158,38 +207,13 @@ class MainWindow(QMainWindow):
         main_layout.setSpacing(8)
         main_layout.setContentsMargins(10, 10, 10, 10)
 
-        from cuepoint.ui.widgets.styles import is_macos
-
-        box_style = """
-            QGroupBox {
-                font-weight: bold;
-                font-size: 11px;
-                color: #aaa;
-                border: 1px solid #555;
-                border-radius: 6px;
-                margin: 0px;
-                padding: 22px 10px 10px 10px;
-            }
-            QGroupBox:hover {
-                background-color: rgba(255, 255, 255, 0.04);
-                border: 1px solid rgba(255, 255, 255, 0.20);
-            }
-            QGroupBox::title {
-                subcontrol-origin: padding;
-                subcontrol-position: top left;
-                left: 8px;
-                top: 4px;
-                padding: 0 4px;
-            }
-        """
-
         # === ROW 1: Three equal boxes filling full width ===
         row1 = QHBoxLayout()
         row1.setSpacing(10)
 
         # BOX 1: Collection
         self.file_box = QGroupBox("Collection")
-        self.file_box.setStyleSheet(box_style)
+        self.file_box.setObjectName("panelBox")
         self.file_box.setFixedHeight(75)
         file_layout = QHBoxLayout(self.file_box)
         file_layout.setContentsMargins(0, 0, 0, 0)
@@ -200,7 +224,7 @@ class MainWindow(QMainWindow):
 
         # BOX 2: Mode
         self.mode_box = QGroupBox("Mode")
-        self.mode_box.setStyleSheet(box_style)
+        self.mode_box.setObjectName("panelBox")
         self.mode_box.setFixedHeight(75)
         mode_layout = QHBoxLayout(self.mode_box)
         mode_layout.setContentsMargins(0, 0, 0, 0)
@@ -208,11 +232,15 @@ class MainWindow(QMainWindow):
         self.mode_button_group = QButtonGroup()
         self.single_mode_radio = QRadioButton("Single")
         self.single_mode_radio.setStyleSheet("color: #fff; font-size: 12px;")
+        self.single_mode_radio.setAccessibleName("Single mode radio button")
+        self.single_mode_radio.setAccessibleDescription("Process one playlist at a time")
         self.single_mode_radio.toggled.connect(self.on_mode_changed)
         self.mode_button_group.addButton(self.single_mode_radio, 0)
         mode_layout.addWidget(self.single_mode_radio)
         self.batch_mode_radio = QRadioButton("Batch")
         self.batch_mode_radio.setStyleSheet("color: #fff; font-size: 12px;")
+        self.batch_mode_radio.setAccessibleName("Batch mode radio button")
+        self.batch_mode_radio.setAccessibleDescription("Process multiple playlists in sequence")
         self.batch_mode_radio.toggled.connect(self.on_mode_changed)
         self.mode_button_group.addButton(self.batch_mode_radio, 1)
         mode_layout.addWidget(self.batch_mode_radio)
@@ -223,7 +251,7 @@ class MainWindow(QMainWindow):
 
         # BOX 3: Playlist
         self.playlist_box = QGroupBox("Playlist")
-        self.playlist_box.setStyleSheet(box_style)
+        self.playlist_box.setObjectName("panelBox")
         self.playlist_box.setFixedHeight(75)
         playlist_layout = QHBoxLayout(self.playlist_box)
         playlist_layout.setContentsMargins(0, 0, 0, 0)
@@ -236,6 +264,46 @@ class MainWindow(QMainWindow):
 
         main_layout.addLayout(row1)
 
+        # === Empty state hint (Step 9.4) ===
+        self.empty_state_hint = QWidget()
+        self.empty_state_hint.setObjectName("cardContainer")
+        hint_layout = QVBoxLayout(self.empty_state_hint)
+        hint_layout.setContentsMargins(18, 16, 18, 16)
+        hint_layout.setSpacing(10)
+        hint_layout.setAlignment(Qt.AlignCenter)
+
+        hint_title = QLabel("Get started by selecting your Collection XML")
+        hint_title.setAlignment(Qt.AlignCenter)
+        hint_title.setStyleSheet("font-size: 14px; font-weight: bold;")
+        hint_layout.addWidget(hint_title)
+
+        hint_body = QLabel(
+            "Export your Rekordbox collection as XML, then select it here.\n"
+            "After loading, choose Single or Batch mode to continue."
+        )
+        hint_body.setAlignment(Qt.AlignCenter)
+        hint_body.setWordWrap(True)
+        hint_body.setStyleSheet("font-size: 12px; color: #ccc;")
+        hint_layout.addWidget(hint_body)
+
+        hint_buttons = QHBoxLayout()
+        hint_buttons.addStretch(1)
+
+        browse_hint_btn = QPushButton("Browse for XML…")
+        browse_hint_btn.setObjectName("secondaryActionButton")
+        browse_hint_btn.clicked.connect(self.on_file_open)
+        hint_buttons.addWidget(browse_hint_btn)
+
+        instructions_hint_btn = QPushButton("View instructions…")
+        instructions_hint_btn.setObjectName("secondaryActionButton")
+        instructions_hint_btn.clicked.connect(self.file_selector.show_instructions)
+        hint_buttons.addWidget(instructions_hint_btn)
+
+        hint_buttons.addStretch(1)
+        hint_layout.addLayout(hint_buttons)
+
+        main_layout.addWidget(self.empty_state_hint)
+
         # === Batch processor (shown only in batch mode) ===
         self.batch_processor = BatchProcessorWidget()
         self.batch_processor.setVisible(False)
@@ -247,24 +315,16 @@ class MainWindow(QMainWindow):
         start_layout.setContentsMargins(0, 8, 0, 8)
         start_layout.addStretch()
         self.start_button = QPushButton("▶ Start Processing")
+        self.start_button.setObjectName("primaryActionButton")
         self.start_button.setToolTip(
             "Start processing the selected playlist(s).\n"
             "Searches Beatport for each track and enriches with metadata.\n"
             "Shortcut: Enter"
         )
-        self.start_button.setFixedSize(180, 36)
-        self.start_button.setStyleSheet("""
-            QPushButton {
-                background-color: #007AFF;
-                color: white;
-                font-weight: bold;
-                font-size: 13px;
-                border: none;
-                border-radius: 6px;
-            }
-            QPushButton:hover { background-color: #0056b3; }
-            QPushButton:disabled { background-color: #555; color: #888; }
-        """)
+        self.start_button.setFixedWidth(220)
+        self.start_button.setFocusPolicy(Qt.StrongFocus)
+        self.start_button.setAccessibleName("Start processing button")
+        self.start_button.setAccessibleDescription("Start processing the selected playlist(s)")
         self.start_button.clicked.connect(self.start_processing)
         self.start_button.setEnabled(False)
         start_layout.addWidget(self.start_button)
@@ -281,7 +341,7 @@ class MainWindow(QMainWindow):
 
         # === ROW 4: Progress section ===
         self.progress_container = QWidget()
-        self.progress_container.setStyleSheet("background-color: #2a2a2a; border-radius: 8px; padding: 5px;")
+        self.progress_container.setObjectName("cardContainer")
         progress_main = QVBoxLayout(self.progress_container)
         progress_main.setContentsMargins(15, 12, 15, 12)
         progress_main.setSpacing(10)
@@ -334,19 +394,11 @@ class MainWindow(QMainWindow):
         self.progress_unmatched.setStyleSheet("font-size: 12px; color: #F44336; font-weight: bold;")
         prog_row2.addWidget(self.progress_unmatched)
         self.cancel_button = QPushButton("Cancel")
-        self.cancel_button.setFixedSize(90, 28)
-        self.cancel_button.setStyleSheet("""
-            QPushButton {
-                background-color: #F44336;
-                color: white;
-                font-weight: bold;
-                font-size: 12px;
-                border: none;
-                border-radius: 5px;
-            }
-            QPushButton:hover { background-color: #D32F2F; }
-            QPushButton:disabled { background-color: #555; color: #888; }
-        """)
+        self.cancel_button.setObjectName("dangerButton")
+        self.cancel_button.setFixedWidth(110)
+        self.cancel_button.setFocusPolicy(Qt.StrongFocus)
+        self.cancel_button.setAccessibleName("Cancel processing button")
+        self.cancel_button.setAccessibleDescription("Cancel the current processing operation")
         self.cancel_button.clicked.connect(self.on_cancel_requested)
         prog_row2.addWidget(self.cancel_button)
         progress_main.addLayout(prog_row2)
@@ -358,7 +410,7 @@ class MainWindow(QMainWindow):
 
         # === ROW 5: Results (takes remaining space) ===
         self.results_group = QWidget()
-        self.results_group.setStyleSheet("background-color: #2a2a2a; border-radius: 8px;")
+        self.results_group.setObjectName("cardContainer")
         results_layout = QVBoxLayout(self.results_group)
         results_layout.setContentsMargins(10, 10, 10, 10)
         self.results_view = ResultsView(
@@ -442,6 +494,19 @@ class MainWindow(QMainWindow):
         self.setAccessibleDescription(
             "Main application window for CuePoint Beatport Metadata Enricher"
         )
+
+        # High-level tab order (Step 9.2 spec)
+        try:
+            self.setTabOrder(self.file_selector, self.single_mode_radio)
+            self.setTabOrder(self.single_mode_radio, self.batch_mode_radio)
+            self.setTabOrder(self.batch_mode_radio, self.playlist_selector)
+            self.setTabOrder(self.playlist_selector, self.start_button)
+        except Exception:
+            # Best-effort: tab order can vary by platform/widget availability
+            pass
+
+        # Initial empty-state visibility
+        self._update_empty_state_hint()
 
     def setup_connections(self) -> None:
         """Set up signal connections between controller and UI components.
@@ -788,6 +853,40 @@ class MainWindow(QMainWindow):
         privacy_action.triggered.connect(self.on_show_privacy)
         help_menu.addAction(privacy_action)
 
+        # Onboarding tour
+        onboarding_action = QAction("&Onboarding Tour...", self)
+        onboarding_action.setToolTip("Show the first-run onboarding tour")
+        onboarding_action.triggered.connect(self.on_show_onboarding)
+        help_menu.addAction(onboarding_action)
+
+        help_menu.addSeparator()
+
+        # Support actions (Step 9.5)
+        log_viewer_action = QAction("&Log Viewer...", self)
+        log_viewer_action.setToolTip("View application logs")
+        log_viewer_action.triggered.connect(self.on_show_log_viewer)
+        help_menu.addAction(log_viewer_action)
+
+        support_bundle_action = QAction("Export &Support Bundle...", self)
+        support_bundle_action.setToolTip("Generate a support bundle zip with diagnostics and logs")
+        support_bundle_action.triggered.connect(self.on_export_support_bundle)
+        help_menu.addAction(support_bundle_action)
+
+        open_logs_action = QAction("Open &Logs Folder", self)
+        open_logs_action.setToolTip("Open the logs folder in your file manager")
+        open_logs_action.triggered.connect(self.on_open_logs_folder)
+        help_menu.addAction(open_logs_action)
+
+        open_exports_action = QAction("Open &Exports Folder", self)
+        open_exports_action.setToolTip("Open the exports folder in your file manager")
+        open_exports_action.triggered.connect(self.on_open_exports_folder)
+        help_menu.addAction(open_exports_action)
+
+        report_issue_action = QAction("&Report Issue...", self)
+        report_issue_action.setToolTip("Open the issue tracker (if configured)")
+        report_issue_action.triggered.connect(self.on_report_issue)
+        help_menu.addAction(report_issue_action)
+
         help_menu.addSeparator()
 
         # About
@@ -889,11 +988,26 @@ class MainWindow(QMainWindow):
             self.start_button_container.setVisible(False)
             self.start_button.setEnabled(False)
 
+        self._update_empty_state_hint()
+
     def _hide_mode_playlist_boxes(self):
         """Hide mode and playlist boxes."""
         self.mode_box.setVisible(False)
         self.playlist_box.setVisible(False)
         self.start_button.setVisible(False)
+        self._update_empty_state_hint()
+
+    def _update_empty_state_hint(self) -> None:
+        """Show/hide the onboarding-style empty hint based on current state."""
+        try:
+            if not hasattr(self, "empty_state_hint") or not hasattr(self, "file_selector"):
+                return
+            file_path = self.file_selector.get_file_path()
+            show = not file_path or not self.file_selector.validate_file(file_path)
+            self.empty_state_hint.setVisible(show)
+        except Exception:
+            # Never let hint logic break the UI.
+            return
 
     def on_mode_changed(self) -> None:
         """Handle processing mode change between single and batch modes."""
@@ -1177,6 +1291,16 @@ class MainWindow(QMainWindow):
         dialog = UserGuideDialog(self)
         dialog.exec()
 
+    def on_show_onboarding(self) -> None:
+        """Show the onboarding tour via Help menu."""
+        try:
+            from cuepoint.ui.dialogs.onboarding_dialog import OnboardingDialog
+
+            dialog = OnboardingDialog(self)
+            dialog.exec()
+        except Exception as e:
+            QMessageBox.warning(self, "Onboarding", f"Could not open onboarding:\n{e}")
+
     def on_show_shortcuts(self) -> None:
         """Show keyboard shortcuts dialog via Help > Keyboard Shortcuts (Ctrl+?).
 
@@ -1194,6 +1318,117 @@ class MainWindow(QMainWindow):
             dialog.exec()
         except Exception as e:
             QMessageBox.warning(self, "Privacy", f"Could not open Privacy dialog:\n{e}")
+
+    def on_show_log_viewer(self) -> None:
+        """Show the log viewer dialog."""
+        try:
+            from cuepoint.ui.widgets.log_viewer import LogViewer
+
+            dialog = LogViewer(self)
+            dialog.exec()
+        except Exception as e:
+            QMessageBox.warning(self, "Log Viewer", f"Could not open log viewer:\n{e}")
+
+    def on_export_support_bundle(self) -> None:
+        """Generate and export a support bundle zip (Step 9.5)."""
+        try:
+            from pathlib import Path
+
+            from PySide6.QtWidgets import QFileDialog
+
+            from cuepoint.utils.paths import AppPaths
+            from cuepoint.utils.support_bundle import SupportBundleGenerator
+
+            default_dir = str(AppPaths.exports_dir())
+            folder = QFileDialog.getExistingDirectory(
+                self, "Select folder for support bundle", default_dir
+            )
+            if not folder:
+                return
+
+            bundle_path = SupportBundleGenerator.generate_bundle(Path(folder))
+            QMessageBox.information(
+                self,
+                "Support Bundle Created",
+                f"Support bundle created:\n{bundle_path}\n\n"
+                "Attach this file when reporting issues.",
+            )
+            # Highlight the file in the OS file manager when possible.
+            self._reveal_file(bundle_path)
+        except Exception as e:
+            QMessageBox.critical(self, "Support Bundle", f"Failed to create support bundle:\n{e}")
+
+    def on_open_logs_folder(self) -> None:
+        """Open the logs folder in the OS file manager (Step 9.5)."""
+        from cuepoint.utils.paths import AppPaths
+
+        self._open_folder(AppPaths.logs_dir())
+
+    def on_open_exports_folder(self) -> None:
+        """Open the exports folder in the OS file manager (Step 9.5)."""
+        from cuepoint.utils.paths import AppPaths
+
+        self._open_folder(AppPaths.exports_dir())
+
+    def on_report_issue(self) -> None:
+        """Open the issue reporting URL if configured.
+
+        This is a best-effort UX feature. If no issue URL is configured, we show
+        guidance for exporting a support bundle and collecting logs.
+        """
+        try:
+            from PySide6.QtCore import QSettings, QUrl
+            from PySide6.QtGui import QDesktopServices
+
+            settings = QSettings("CuePoint", "CuePoint")
+            settings.beginGroup("Support")
+            issue_url = settings.value("issue_url", "", type=str)
+            settings.endGroup()
+
+            # Allow env override for developers
+            issue_url = os.environ.get("CUEPOINT_ISSUE_URL", issue_url)
+
+            if issue_url:
+                QDesktopServices.openUrl(QUrl(issue_url))
+                return
+
+            QMessageBox.information(
+                self,
+                "Report Issue",
+                "No issue tracker URL is configured.\n\n"
+                "Tip: Use Help → Export Support Bundle… and attach the zip when reporting issues.",
+            )
+        except Exception as e:
+            QMessageBox.warning(self, "Report Issue", f"Could not open issue reporter:\n{e}")
+
+    def _open_folder(self, folder_path) -> None:
+        """Open a folder in the OS file manager."""
+        try:
+            folder_str = str(folder_path)
+            if platform.system() == "Windows":
+                subprocess.Popen(f'explorer "{folder_str}"')
+            elif platform.system() == "Darwin":
+                subprocess.Popen(["open", folder_str])
+            else:
+                subprocess.Popen(["xdg-open", folder_str])
+        except Exception as e:
+            QMessageBox.warning(self, "Open Folder", f"Could not open folder:\n{e}")
+
+    def _reveal_file(self, file_path) -> None:
+        """Reveal a file in the OS file manager (best-effort)."""
+        try:
+            file_str = str(file_path)
+            if platform.system() == "Windows":
+                subprocess.Popen(f'explorer /select,"{file_str}"')
+            elif platform.system() == "Darwin":
+                subprocess.Popen(["open", "-R", file_str])
+            else:
+                # Linux: open the parent folder (no standard "reveal" API)
+                from pathlib import Path
+
+                subprocess.Popen(["xdg-open", str(Path(file_str).parent)])
+        except Exception:
+            return
 
     def on_show_about(self) -> None:
         """Show about dialog via Help > About CuePoint.

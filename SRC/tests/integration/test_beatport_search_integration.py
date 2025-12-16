@@ -1,6 +1,6 @@
 """Integration tests for beatport_search.py data module with real parsing logic."""
 
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -679,7 +679,8 @@ class TestBeatportSearchIntegration:
         mock_p = Mock()
         mock_p.chromium.launch.return_value = mock_browser
         
-        mock_sync_playwright = Mock()
+        # Needs MagicMock so context-manager magic methods are supported.
+        mock_sync_playwright = MagicMock()
         mock_sync_playwright.return_value.__enter__.return_value = mock_p
         
         mock_playwright_module.sync_api.sync_playwright = mock_sync_playwright

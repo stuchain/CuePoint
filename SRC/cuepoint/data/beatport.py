@@ -45,6 +45,23 @@ from cuepoint.core.mix_parser import (
 from cuepoint.models.config import BASE_URL, SESSION, SETTINGS
 from cuepoint.utils.utils import retry_with_backoff, vlog
 
+def beatport_search_direct(idx: int, query: str, max_results: int) -> List[str]:
+    """Proxy to `cuepoint.data.beatport_search.beatport_search_direct`.
+
+    This indirection keeps the symbol patchable in tests while still allowing
+    `cuepoint.data.beatport_search.beatport_search_direct` to be patched too.
+    """
+    from cuepoint.data.beatport_search import beatport_search_direct as _impl
+
+    return _impl(idx, query, max_results)
+
+
+def beatport_search_browser(idx: int, query: str, max_results: int) -> List[str]:
+    """Proxy to `cuepoint.data.beatport_search.beatport_search_browser`."""
+    from cuepoint.data.beatport_search import beatport_search_browser as _impl
+
+    return _impl(idx, query, max_results)
+
 # Cache hit tracking for performance metrics
 _last_cache_hit = False
 
@@ -147,7 +164,10 @@ def request_html(url: str) -> Optional[BeautifulSoup]:
             clen = resp.headers.get("Content-Length")
         except Exception:
             clen = None
-        enc = (resp.headers.get("Content-Encoding") or "").lower()
+        try:
+            enc = (resp.headers.get("Content-Encoding") or "").lower()
+        except Exception:
+            enc = ""
         if resp.content:
             return len(resp.content) == 0
         if clen and clen.isdigit() and int(clen) == 0:
@@ -598,11 +618,6 @@ def track_urls(
     if use_direct_search:
         # Try direct Beatport search with multiple methods
         try:
-            from cuepoint.data.beatport_search import (
-                beatport_search_browser,
-                beatport_search_direct,
-            )
-
             # Method 1: Try API/direct HTML scraping
             # Extract just the search terms if query has "site:beatport.com" prefix
             search_query = query
