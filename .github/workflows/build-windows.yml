@@ -96,6 +96,23 @@ jobs:
       - name: Build installer
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
+          # Verify PyInstaller build completed successfully
+          $exeFound = $false
+          if (Test-Path "dist\CuePoint.exe") {
+              Write-Host "Found CuePoint.exe in dist/ (onefile mode)"
+              $exeFound = $true
+          } elseif (Test-Path "dist\CuePoint\CuePoint.exe") {
+              Write-Host "Found CuePoint.exe in dist/CuePoint/ (onedir mode)"
+              $exeFound = $true
+          }
+          
+          if (-not $exeFound) {
+              Write-Error "CuePoint.exe not found in dist/ or dist/CuePoint/"
+              Write-Host "Contents of dist/:"
+              Get-ChildItem dist\ -ErrorAction SilentlyContinue | Format-Table Name, Length
+              exit 1
+          }
+          
           $version = python -c "import sys; sys.path.insert(0, 'SRC'); from cuepoint.version import __version__; print(__version__)"
           # Try to find makensis in common locations or PATH
           $makensis = $null

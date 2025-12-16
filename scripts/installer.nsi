@@ -120,19 +120,23 @@ Section "Install" SecMain
     ; Install executable
     ; PyInstaller creates CuePoint.exe directly in dist/ (onefile mode)
     ; or in dist/CuePoint/ (onedir mode) - handle both cases
-    IfFileExists "dist\CuePoint.exe" InstallOneFile InstallOneDir
+    ; Note: File command is processed at compile time, so files must exist when makensis runs
     
-    InstallOneFile:
-        File "dist\CuePoint.exe"
-        Goto FilesInstalled
+    ; Check for onefile mode first (CuePoint.exe in dist/)
+    IfFileExists "dist\CuePoint.exe" 0 CheckOneDir
+    File "dist\CuePoint.exe"
+    Goto FilesInstalled
     
-    InstallOneDir:
+    CheckOneDir:
+        ; Check for onedir mode (CuePoint.exe in dist/CuePoint/)
         IfFileExists "dist\CuePoint\CuePoint.exe" 0 NoFiles
         File /r "dist\CuePoint\*"
         Goto FilesInstalled
     
     NoFiles:
-        MessageBox MB_OK|MB_ICONSTOP "Error: CuePoint.exe not found.$\n$\nExpected: dist\CuePoint.exe or dist\CuePoint\CuePoint.exe$\n$\nPlease build the application first." /SD IDOK
+        ; This error should not occur if build completed successfully
+        ; The File command will fail at compile time if files don't exist
+        MessageBox MB_OK|MB_ICONSTOP "Error: CuePoint.exe not found during installer compilation.$\n$\nExpected:$\n  - dist\CuePoint.exe (onefile mode)$\n  - dist\CuePoint\CuePoint.exe (onedir mode)$\n$\nPlease ensure PyInstaller build completed successfully before building installer." /SD IDOK
         Abort
     
     FilesInstalled:
