@@ -7,7 +7,7 @@ Supports both macOS and Windows builds
 import sys
 import os
 from pathlib import Path
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_submodules, collect_data_files
 
 # Get project root
 # When PyInstaller runs, it changes to the directory containing the spec file
@@ -46,6 +46,15 @@ datas = [
     # Include test script for diagnostic purposes
     (str(project_root / 'scripts' / 'test_search_dependencies.py'), 'scripts'),
 ]
+
+# Collect data files from fake_useragent (browsers.json, etc.)
+# This is required for ddgs to work properly
+try:
+    fake_useragent_datas = collect_data_files('fake_useragent')
+    datas.extend(fake_useragent_datas)
+except Exception:
+    # If fake_useragent is not installed, skip (will fail at runtime if needed)
+    pass
 
 # Note: Playwright browser binaries are NOT included in the bundle because:
 # 1. They are very large (100+ MB)
@@ -117,6 +126,9 @@ hiddenimports = [
     'cuepoint.data.rekordbox',
     # Collect all cuepoint submodules to ensure nothing is missed
     *collect_submodules('cuepoint'),
+    # fake_useragent (used by ddgs for user agent strings)
+    'fake_useragent',
+    'fake_useragent.data',
     'tqdm',
 ]
 
