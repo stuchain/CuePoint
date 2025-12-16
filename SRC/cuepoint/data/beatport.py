@@ -918,9 +918,20 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
         ]
 
     try:
+        # CRITICAL: Wrap DDGS context manager with timeout protection
+        # In packaged apps, DuckDuckGo searches can timeout and hang parallel processing
+        # Use a timeout to ensure this function doesn't block indefinitely
+        import signal
+        import threading
+
+        # For Windows, signal-based timeout won't work, so we'll rely on ddgs internal timeouts
+        # and exception handling
         with DDGS() as ddgs:
             for search_q in search_queries:
                 try:
+                    # CRITICAL: If DuckDuckGo times out, this iterator will raise TimeoutException
+                    # We catch it below and continue to next query
+                    # Don't let a single timeout block all processing
                     for r in ddgs.text(search_q, region="us-en", max_results=mr):
                         href = r.get("href") or r.get("url") or ""
                         if "beatport.com/track/" in href:
@@ -934,10 +945,11 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                     import logging
                     logger = logging.getLogger(__name__)
                     
-                    # Try to import DDGSException to check type directly
+                    # Try to import DDGSException and TimeoutException to check type directly
                     try:
-                        from ddgs.exceptions import DDGSException
+                        from ddgs.exceptions import DDGSException, TimeoutException
                         is_ddgs_exception = isinstance(e, DDGSException)
+                        is_timeout = isinstance(e, TimeoutException)
                     except ImportError:
                         # Fallback: check by name or error message
                         is_ddgs_exception = (
@@ -945,8 +957,23 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                             "IndexError" in str(e) or
                             "list index out of range" in str(e)
                         )
+                        is_timeout = (
+                            "TimeoutException" in str(type(e).__name__) or
+                            "timeout" in str(e).lower() or
+                            "timed out" in str(e).lower() or
+                            "ConnectTimeout" in str(e)
+                        )
                     
-                    if is_ddgs_exception:
+                    if is_timeout:
+                        # CRITICAL: Timeout errors - these can cause parallel processing to hang
+                        # In packaged apps, DuckDuckGo searches often timeout due to network/firewall issues
+                        # Log at info level (not warning) since this is expected in some environments
+                        # Continue to next query - don't let timeout block processing
+                        logger.info(
+                            f"[{idx}] DuckDuckGo search timeout for '{search_q}' (will use fallback methods): {e!r}"
+                        )
+                        vlog(idx, f"[search] ddgs timeout (will use fallback): {e!r}")
+                    elif is_ddgs_exception:
                         # This is a known issue with ddgs package (v9.9.3) - DuckDuckGo HTML structure changed
                         # The package tries to parse HTML and encounters IndexError when structure differs
                         # Log at debug level to reduce noise, but still track it
@@ -956,7 +983,7 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                         )
                         vlog(idx, f"[search] ddgs parsing error (known issue, will use fallback): {e!r}")
                     else:
-                        # Other errors (network, timeout, etc.) - log as warning
+                        # Other errors (network, SSL, etc.) - log as warning
                         logger.warning(
                             f"[{idx}] DuckDuckGo search error for '{search_q}': {e!r}",
                             exc_info=True

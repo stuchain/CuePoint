@@ -577,12 +577,31 @@ class ProcessorService(IProcessorService):
                             if future not in processed_futures:
                                 try:
                                     if future.done():
-                                        result = future.result()
+                                        result = future.result(timeout=1.0)  # Short timeout for done futures
                                         results_dict[result.playlist_index] = result
                                     else:
-                                        # Future not done yet, wait for it
-                                        result = future.result(timeout=30.0)
+                                        # Future not done yet, wait for it with timeout
+                                        # CRITICAL: Use longer timeout to handle DuckDuckGo search timeouts
+                                        timeout_sec = effective_settings.get("PER_TRACK_TIME_BUDGET_SEC", 45) * 2
+                                        result = future.result(timeout=timeout_sec)
                                         results_dict[result.playlist_index] = result
+                                except TimeoutError as timeout_err:
+                                    # Future timed out - likely due to DuckDuckGo search hanging
+                                    idx, track = future_to_args[future]
+                                    self.logging_service.error(
+                                        f"Track {idx} '{track.title}' processing timed out in exception handler. "
+                                        f"This may be due to DuckDuckGo search timeouts in packaged app."
+                                    )
+                                    error_result = TrackResult(
+                                        playlist_index=idx,
+                                        title=track.title,
+                                        artist=track.artist or "",
+                                        matched=False,
+                                        error=f"Processing timed out (likely due to DuckDuckGo search timeouts)",
+                                    )
+                                    results_dict[idx] = error_result
+                                    with progress_lock:
+                                        unmatched_count += 1
                                 except Exception as e:
                                     # Handle error for this future
                                     idx, track = future_to_args[future]
@@ -615,9 +634,13 @@ class ProcessorService(IProcessorService):
                         for future in remaining_futures:
                             try:
                                 # Wait for future to complete (with timeout to avoid hanging)
+                                # CRITICAL: In packaged apps, DuckDuckGo timeouts can cause futures to hang
+                                # Use a reasonable timeout (90 seconds = PER_TRACK_TIME_BUDGET_SEC * 2)
                                 if not future.done():
-                                    # Future is still running, wait for it
-                                    result = future.result(timeout=60.0)  # 60 second timeout per future
+                                    # Future is still running, wait for it with timeout
+                                    # If DuckDuckGo times out, this will prevent infinite waiting
+                                    timeout_sec = effective_settings.get("PER_TRACK_TIME_BUDGET_SEC", 45) * 2
+                                    result = future.result(timeout=timeout_sec)
                                     results_dict[result.playlist_index] = result
                                     processed_futures.add(future)
                                     with progress_lock:
@@ -626,8 +649,8 @@ class ProcessorService(IProcessorService):
                                         else:
                                             unmatched_count += 1
                                 else:
-                                    # Future is done, get result
-                                    result = future.result()
+                                    # Future is done, get result (should be instant)
+                                    result = future.result(timeout=1.0)  # Short timeout for done futures
                                     results_dict[result.playlist_index] = result
                                     processed_futures.add(future)
                                     with progress_lock:
@@ -635,6 +658,24 @@ class ProcessorService(IProcessorService):
                                             matched_count += 1
                                         else:
                                             unmatched_count += 1
+                            except TimeoutError as timeout_err:
+                                # Future timed out - this can happen if DuckDuckGo searches hang
+                                processed_futures.add(future)
+                                idx, track = future_to_args[future]
+                                self.logging_service.error(
+                                    f"Track {idx} '{track.title}' processing timed out after waiting. "
+                                    f"This may be due to DuckDuckGo search timeouts in packaged app."
+                                )
+                                error_result = TrackResult(
+                                    playlist_index=idx,
+                                    title=track.title,
+                                    artist=track.artist or "",
+                                    matched=False,
+                                    error=f"Processing timed out (likely due to DuckDuckGo search timeouts)",
+                                )
+                                results_dict[idx] = error_result
+                                with progress_lock:
+                                    unmatched_count += 1
                             except Exception as e:
                                 # Handle error for this future
                                 processed_futures.add(future)
