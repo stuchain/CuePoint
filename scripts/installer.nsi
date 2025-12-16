@@ -20,18 +20,10 @@ RequestExecutionLevel user  ; Per-user installation (no admin required)
 !endif
 
 ; Convert version to four-part format for VIProductVersion
-; Parse version string (e.g., "1.0.0" -> major=1, minor=0, patch=0)
-!searchparse "${VERSION}" "" "." "" "." "" VERSION_MAJOR VERSION_MINOR VERSION_PATCH
-!if "${VERSION_PATCH}" == ""
-    !define VERSION_PATCH "0"
-!endif
-!if "${VERSION_MINOR}" == ""
-    !define VERSION_MINOR "0"
-!endif
-!if "${VERSION_MAJOR}" == ""
-    !define VERSION_MAJOR "1"
-!endif
-!define FILE_VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}.0"
+; For VIProductVersion, we need four numbers: MAJOR.MINOR.PATCH.BUILD
+; Since we have three-part version (1.0.0), we'll append .0 for the build number
+; Simple approach: just append ".0" to the version
+!define FILE_VERSION "${VERSION}.0"
 
 VIProductVersion "${FILE_VERSION}"
 VIAddVersionKey "ProductName" "CuePoint"

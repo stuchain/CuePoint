@@ -12,6 +12,58 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
+      - name: Wait for build workflows to complete
+        run: |
+          TAG="${{ github.ref }}"
+          REPO="${{ github.repository }}"
+          echo "Waiting for build workflows to complete for tag: ${TAG}"
+          
+          # Extract tag name (remove refs/tags/ prefix)
+          TAG_NAME="${TAG#refs/tags/}"
+          
+          # Wait for both macOS and Windows build workflows to complete
+          MAX_WAIT=3600  # 60 minutes max
+          WAIT_INTERVAL=30  # Check every 30 seconds
+          ELAPSED=0
+          
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            echo "Checking workflow status (elapsed: ${ELAPSED}s)..."
+            
+            # Check macOS workflow using GitHub API
+            MACOS_RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${REPO}/actions/workflows/build-macos.yml/runs?head_branch=${TAG_NAME}&per_page=1")
+            MACOS_STATUS=$(echo "$MACOS_RESPONSE" | grep -o '"conclusion":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "unknown")
+            
+            # Check Windows workflow using GitHub API
+            WINDOWS_RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${REPO}/actions/workflows/build-windows.yml/runs?head_branch=${TAG_NAME}&per_page=1")
+            WINDOWS_STATUS=$(echo "$WINDOWS_RESPONSE" | grep -o '"conclusion":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "unknown")
+            
+            echo "macOS build status: ${MACOS_STATUS}"
+            echo "Windows build status: ${WINDOWS_STATUS}"
+            
+            if [ "${MACOS_STATUS}" = "success" ] && [ "${WINDOWS_STATUS}" = "success" ]; then
+              echo "Both build workflows completed successfully!"
+              exit 0
+            fi
+            
+            if [ "${MACOS_STATUS}" = "failure" ] || [ "${WINDOWS_STATUS}" = "failure" ]; then
+              echo "One or more build workflows failed!"
+              exit 1
+            fi
+            
+            # If workflows are still running or not found, wait and retry
+            if [ "${MACOS_STATUS}" = "null" ] || [ "${WINDOWS_STATUS}" = "null" ]; then
+              echo "Workflows still running or not found, waiting..."
+            fi
+            
+            sleep $WAIT_INTERVAL
+            ELAPSED=$((ELAPSED + WAIT_INTERVAL))
+          done
+          
+          echo "Timeout waiting for build workflows to complete"
+          exit 1
+      
       - name: Download macOS artifact
         uses: dawidd6/action-download-artifact@v3
         with:
@@ -22,7 +74,7 @@ jobs:
           if_no_artifact_found: fail
           commit: ${{ github.ref }}
           workflow_conclusion: success
-          check_artifacts: true
+          allow_forks: false
       
       - name: Download Windows artifact
         uses: dawidd6/action-download-artifact@v3
@@ -34,7 +86,7 @@ jobs:
           if_no_artifact_found: fail
           commit: ${{ github.ref }}
           workflow_conclusion: success
-          check_artifacts: true
+          allow_forks: false
       
       - name: Set up Python
         uses: actions/setup-python@v5
