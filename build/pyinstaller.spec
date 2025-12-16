@@ -7,6 +7,7 @@ Supports both macOS and Windows builds
 import sys
 import os
 from pathlib import Path
+from PyInstaller.utils.hooks import collect_submodules
 
 # Get project root
 # When PyInstaller runs, it changes to the directory containing the spec file
@@ -99,6 +100,8 @@ hiddenimports = [
     'cuepoint.data.beatport',
     'cuepoint.data.beatport_search',
     'cuepoint.data.rekordbox',
+    # Collect all cuepoint submodules to ensure nothing is missed
+    *collect_submodules('cuepoint'),
     'tqdm',
 ]
 
