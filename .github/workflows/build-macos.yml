@@ -82,12 +82,21 @@ jobs:
       
       - name: Create DMG
         if: startsWith(github.ref, 'refs/tags/v')
+        id: create_dmg
         run: |
           VERSION=$(python -c "import sys; sys.path.insert(0, 'SRC'); from cuepoint.version import __version__; print(__version__)")
           bash scripts/create_dmg.sh "$VERSION"
+          # Verify DMG was created
+          DMG_FILE=$(ls dist/CuePoint-v*.dmg 2>/dev/null | head -1)
+          if [ -z "$DMG_FILE" ]; then
+            echo "Error: DMG file not found after creation"
+            exit 1
+          fi
+          echo "DMG created: $DMG_FILE"
+          echo "dmg_file=$DMG_FILE" >> $GITHUB_OUTPUT
       
       - name: Notarize DMG
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') && steps.create_dmg.outcome == 'success'
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APPLE_NOTARYTOOL_ISSUER_ID: ${{ secrets.APPLE_NOTARYTOOL_ISSUER_ID }}
@@ -103,6 +112,18 @@ jobs:
       
       - name: Verify version embedding
         run: python scripts/verify_version_embedding.py
+      
+      - name: Verify DMG exists before upload
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          DMG_COUNT=$(ls dist/*.dmg 2>/dev/null | wc -l | tr -d ' ')
+          if [ "$DMG_COUNT" -eq 0 ]; then
+            echo "Error: No DMG files found in dist/"
+            ls -la dist/ || true
+            exit 1
+          fi
+          echo "Found $DMG_COUNT DMG file(s):"
+          ls -lh dist/*.dmg
       
       - name: Upload artifact
         if: startsWith(github.ref, 'refs/tags/v')

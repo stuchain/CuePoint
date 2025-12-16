@@ -143,6 +143,18 @@ jobs:
       - name: Verify version embedding
         run: python scripts/verify_version_embedding.py
       
+      - name: Verify installer exists before upload
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          $installerCount = (Get-ChildItem dist\*-setup.exe -ErrorAction SilentlyContinue).Count
+          if ($installerCount -eq 0) {
+            Write-Error "No installer files found in dist/"
+            Get-ChildItem dist\ -ErrorAction SilentlyContinue | Format-Table
+            exit 1
+          }
+          Write-Host "Found $installerCount installer file(s):"
+          Get-ChildItem dist\*-setup.exe | Format-Table Name, Length
+      
       - name: Upload artifact
         if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
