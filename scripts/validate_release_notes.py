@@ -67,6 +67,12 @@ def validate_release_notes(notes_path):
 
 def main():
     """Main function"""
+    # Set UTF-8 encoding for Windows console compatibility
+    if sys.platform == 'win32':
+        import io
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+    
     parser = argparse.ArgumentParser(
         description='Validate release notes'
     )
@@ -79,10 +85,10 @@ def main():
     valid, warnings = validate_release_notes(args.file)
     
     if valid:
-        print(f"✓ Release notes validated: {args.file}")
+        print(f"[PASS] Release notes validated: {args.file}")
         sys.exit(0)
     else:
-        print(f"⚠ Release notes validation warnings:")
+        print(f"[WARN] Release notes validation warnings:")
         for warning in warnings:
             print(f"  - {warning}")
         # Don't exit with error - warnings are non-blocking

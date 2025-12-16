@@ -123,6 +123,12 @@ def validate_update_feed(feed_path):
 
 def main():
     """Main function"""
+    # Set UTF-8 encoding for Windows console compatibility
+    if sys.platform == 'win32':
+        import io
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+    
     parser = argparse.ArgumentParser(
         description='Validate update feeds (appcast)'
     )
@@ -140,9 +146,9 @@ def main():
         appcast_path = args.macos or 'updates/macos/appcast.xml'
         valid, message = validate_appcast(appcast_path)
         if valid:
-            print(f"✓ macOS appcast: {message}")
+            print(f"[PASS] macOS appcast: {message}")
         else:
-            print(f"✗ macOS appcast: {message}")
+            print(f"[FAIL] macOS appcast: {message}")
             errors.append(f"macOS: {message}")
     
     # Validate Windows feed
@@ -150,9 +156,9 @@ def main():
         feed_path = args.windows or 'updates/windows/appcast.json'
         valid, message = validate_update_feed(feed_path)
         if valid:
-            print(f"✓ Windows feed: {message}")
+            print(f"[PASS] Windows feed: {message}")
         else:
-            print(f"✗ Windows feed: {message}")
+            print(f"[FAIL] Windows feed: {message}")
             errors.append(f"Windows: {message}")
     
     if errors:
