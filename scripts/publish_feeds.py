@@ -83,13 +83,22 @@ def publish_feeds(
     
     # Stash any uncommitted changes (e.g., version.py updates from sync)
     # We don't want to commit these to gh-pages branch
+    # Also handle untracked files that might conflict with gh-pages branch
     returncode, stdout, _ = run_command(['git', 'status', '--porcelain'], cwd=repo_root)
     if stdout.strip():
         print("Stashing uncommitted changes before switching branches...")
-        returncode, _, stderr = run_command(['git', 'stash', 'push', '-m', 'Temporary stash for gh-pages publish'], cwd=repo_root)
+        # Use -u to include untracked files, -a to include ignored files
+        returncode, _, stderr = run_command(['git', 'stash', 'push', '-u', '-m', 'Temporary stash for gh-pages publish'], cwd=repo_root)
         if returncode != 0:
             print(f"Warning: Could not stash changes: {stderr}", file=sys.stderr)
-            # Try to continue anyway
+            # If stash fails, try to remove untracked files that would conflict
+            # Check what files would conflict
+            returncode, conflict_files, _ = run_command(['git', 'clean', '-fdn'], cwd=repo_root)
+            if conflict_files.strip():
+                print("Removing untracked files that would conflict...")
+                returncode, _, stderr = run_command(['git', 'clean', '-fd'], cwd=repo_root)
+                if returncode != 0:
+                    print(f"Warning: Could not clean untracked files: {stderr}", file=sys.stderr)
     
     # Fetch latest changes from remote (important for concurrent updates)
     print(f"Fetching latest changes from {remote}...")
@@ -105,11 +114,21 @@ def publish_feeds(
     # Checkout or create gh-pages branch
     if branch_exists_remote:
         # Branch exists remotely - checkout and merge
+        # First, ensure working directory is clean
+        # Remove any untracked files that might conflict
+        print(f"Cleaning working directory before checking out {branch}...")
+        returncode, _, _ = run_command(['git', 'clean', '-fd'], cwd=repo_root)
+        
         print(f"Branch {branch} exists remotely, checking out...")
         returncode, _, stderr = run_command(['git', 'checkout', '-B', branch, f'{remote}/{branch}'], cwd=repo_root)
         if returncode != 0:
             print(f"Error: Could not checkout branch {branch}: {stderr}", file=sys.stderr)
-            return False
+            # Try force checkout as last resort
+            print("Attempting force checkout...")
+            returncode, _, stderr = run_command(['git', 'checkout', '-f', '-B', branch, f'{remote}/{branch}'], cwd=repo_root)
+            if returncode != 0:
+                print(f"Error: Force checkout also failed: {stderr}", file=sys.stderr)
+                return False
     else:
         # Branch doesn't exist remotely - check if it exists locally
         returncode, _, _ = run_command(['git', 'checkout', branch], cwd=repo_root)
