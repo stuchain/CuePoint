@@ -411,7 +411,7 @@ Verify the license file is properly included:
 - Windows: Check `THIRD_PARTY_LICENSES.txt` is in installer
 - Verify file is readable and properly formatted
 
-### Step 10.9: Update Feed Configuration and Verification
+### Step 10.9: Update Feed Configuration and Automatic Update Installation
 
 **10.9.1 Configure Update Feed URLs**
 
@@ -453,7 +453,229 @@ If Step 5 (Auto-Update System) is implemented:
    - Verify signatures (macOS EdDSA, Windows code signing)
    - Verify release notes
 
-**10.9.3 Update Feed Checklist**
+**10.9.3 Automatic Update Download and Installation**
+
+**10.9.3.1 Implementation Requirements**
+
+The automatic update system must provide:
+
+1. **Update Detection on App Startup**:
+   - Check for updates automatically when app launches
+   - Respect user preferences (check frequency, auto-check enabled)
+   - Run check in background thread (non-blocking)
+   - Show notification only if update is available
+
+2. **Update Notification Dialog**:
+   - Display when new version is detected
+   - Show current version vs. new version
+   - Display release notes preview
+   - Show download size
+   - Provide three options:
+     - **"Download & Install"** (Yes) - Start automatic download and installation
+     - **"Remind Me Later"** (Later) - Dismiss and check again later
+     - **"Skip This Version"** - Ignore this version permanently
+
+3. **Automatic Download Process**:
+   - Download installer/DMG from GitHub Release URL
+   - Show download progress dialog with:
+     - Progress bar (percentage and bytes downloaded/total)
+     - Download speed (MB/s)
+     - Estimated time remaining
+     - Cancel button (allows user to cancel download)
+   - Handle network errors gracefully
+   - Verify download integrity (file size, checksum if available)
+   - Save downloaded file to temporary directory
+
+4. **Automatic Installation Process**:
+   - **Windows**:
+     - Launch downloaded installer executable
+     - Use silent/upgrade installation flags
+     - Close current app before installation starts
+     - Installer handles upgrade automatically
+     - New version launches after installation
+   - **macOS**:
+     - Mount downloaded DMG
+     - Copy app bundle to Applications folder (replace existing)
+     - Unmount DMG
+     - Close current app
+     - Launch new version from Applications
+
+5. **Error Handling**:
+   - Network errors: Show error message, allow retry
+   - Download failures: Show error, allow retry or manual download
+   - Installation failures: Show error, provide manual installation instructions
+   - File corruption: Re-download automatically or show error
+
+**10.9.3.2 Implementation Architecture**
+
+**Components Required**:
+
+1. **Update Downloader Module** (`SRC/cuepoint/update/update_downloader.py`):
+   - Download file from URL with progress tracking
+   - Handle network errors and retries
+   - Verify download integrity
+   - Save to temporary directory
+   - Signal progress updates to UI
+
+2. **Update Installer Module** (`SRC/cuepoint/update/update_installer.py`):
+   - Platform-specific installation logic
+   - Windows: Launch installer with upgrade flags
+   - macOS: Mount DMG, copy app, unmount
+   - Handle installation errors
+   - Close app gracefully before installation
+
+3. **Download Progress Dialog** (`SRC/cuepoint/ui/dialogs/download_progress_dialog.py`):
+   - Show download progress bar
+   - Display download speed and time remaining
+   - Provide cancel functionality
+   - Handle download completion
+
+4. **Integration with Update Manager**:
+   - Enhance `UpdateManager` to handle download/install flow
+   - Connect download progress to UI
+   - Handle user actions (install, later, skip)
+
+**10.9.3.3 User Experience Flow**
+
+1. **App Startup**:
+   - App launches normally
+   - Background thread checks for updates (if enabled)
+   - If update available, show notification dialog after 2-3 seconds
+
+2. **Update Notification**:
+   - Dialog appears: "Update Available - Version X.Y.Z is available"
+   - Shows release notes preview
+   - User clicks "Download & Install"
+
+3. **Download Process**:
+   - Download dialog appears with progress bar
+   - Shows: "Downloading update... 45% (23.5 MB / 52.1 MB) - 2.3 MB/s - 12s remaining"
+   - User can cancel if needed
+   - Download completes
+
+4. **Installation Process**:
+   - App shows: "Preparing to install update..."
+   - App closes gracefully (saves state if needed)
+   - Installer launches automatically
+   - Installation completes
+   - New version launches automatically
+
+5. **Error Scenarios**:
+   - Network error: "Download failed. Check your internet connection. [Retry] [Cancel]"
+   - Installation error: "Installation failed. Please download and install manually. [Open Download Page]"
+
+**10.9.3.4 Implementation Details**
+
+**Download Implementation**:
+```python
+# Pseudo-code structure
+class UpdateDownloader:
+    def download_update(self, url, destination, progress_callback):
+        # Use QNetworkAccessManager for download
+        # Emit progress signals
+        # Handle errors
+        # Verify file size
+        # Return download path
+```
+
+**Installation Implementation**:
+```python
+# Windows
+def install_windows_update(installer_path):
+    # Close app
+    # Launch installer with /S (silent) and /UPGRADE flags
+    # Exit current process
+
+# macOS  
+def install_macos_update(dmg_path):
+    # Close app
+    # Mount DMG
+    # Copy app bundle to /Applications
+    # Unmount DMG
+    # Launch new app
+    # Exit current process
+```
+
+**10.9.3.5 Testing Requirements**
+
+1. **Test Update Detection**:
+   - Create test release with higher version
+   - Verify app detects update on startup
+   - Verify dialog appears correctly
+
+2. **Test Download Process**:
+   - Test successful download
+   - Test download progress updates
+   - Test download cancellation
+   - Test network error handling
+   - Test download retry
+
+3. **Test Installation Process**:
+   - Test Windows silent installation
+   - Test macOS app replacement
+   - Test app closure before installation
+   - Test new version launch after installation
+   - Test installation error handling
+
+4. **Test User Preferences**:
+   - Test "Remind Me Later" (dismisses, checks again later)
+   - Test "Skip This Version" (ignores version permanently)
+   - Test auto-check on startup (enabled/disabled)
+
+5. **End-to-End Testing**:
+   - Install old version
+   - Create new release
+   - Launch old version
+   - Verify update detected
+   - Complete download and installation
+   - Verify new version launches correctly
+
+**10.9.3.6 Security Considerations**
+
+1. **Download Security**:
+   - Only download from HTTPS URLs
+   - Verify download URL matches expected domain
+   - Verify file size matches appcast
+   - Verify checksum if provided in appcast
+
+2. **Installation Security**:
+   - Verify installer signature before launching (Windows)
+   - Verify DMG signature before mounting (macOS)
+   - Only install from trusted sources
+   - Warn user before closing app for installation
+
+3. **User Consent**:
+   - Always require user confirmation before download
+   - Show clear information about what will happen
+   - Allow user to cancel at any time
+
+**10.9.3.7 Windows Icon Cache Handling**
+
+**The Problem:**
+Windows aggressively caches application icons. Even when a new executable has a new icon embedded, Windows may continue showing the old cached icon in:
+- Taskbar
+- Start Menu shortcuts
+- File Explorer
+- Alt+Tab switcher
+
+**Solutions Implemented:**
+
+1. **Installer Icon Cache Refresh**:
+   - The NSIS installer calls `SHChangeNotify` after installation
+   - This notifies Windows to refresh its icon cache
+   - Helps ensure new icon appears immediately after installation
+
+2. **Icon Embedding in Executable**:
+   - Icon is embedded directly in the `.exe` via PyInstaller
+   - Windows reads icon from executable, not external files
+   - More reliable than file-based icons
+
+3. **User Instructions (if cache persists)**:
+   - Clear icon cache manually if needed
+   - Restart Windows Explorer
+   - Restart computer (most reliable)
+
+**10.9.3.8 Update Feed Checklist**
 
 - [ ] Feed URLs configured correctly in application
 - [ ] Feed generation scripts tested
@@ -462,7 +684,20 @@ If Step 5 (Auto-Update System) is implemented:
 - [ ] Appcasts accessible via GitHub Pages
 - [ ] Feed content validated (XML, versions, URLs, signatures)
 - [ ] Update system can fetch and parse feeds
-- [ ] Update installation tested end-to-end
+- [ ] Update detection on startup implemented
+- [ ] Update notification dialog implemented
+- [ ] Download progress dialog implemented
+- [ ] Automatic download functionality implemented
+- [ ] Automatic installation functionality implemented (Windows)
+- [ ] Automatic installation functionality implemented (macOS)
+- [ ] Error handling implemented
+- [ ] User preferences respected (later, skip version)
+- [ ] Download cancellation works
+- [ ] Installation tested end-to-end
+- [ ] Security verification implemented
+- [ ] Update installation tested on both platforms
+- [ ] Icon cache refresh implemented in installer
+- [ ] Icon appears correctly after installation
 
 ### Step 10.10: Performance Validation
 

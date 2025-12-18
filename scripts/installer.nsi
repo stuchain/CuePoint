@@ -140,6 +140,11 @@ Section "Install" SecMain
     CreateShortcut "$SMPROGRAMS\CuePoint\Uninstall CuePoint.lnk" "$INSTDIR\uninstall.exe" \
         "" "$INSTDIR\uninstall.exe" 0 "" "" "Uninstall CuePoint"
     
+    ; Force Windows to refresh icon cache after installation
+    ; This helps ensure the new icon appears in taskbar/dock immediately
+    ; SHChangeNotify tells Windows to refresh its icon cache
+    System::Call 'shell32::SHChangeNotify(i 0x8000000, i 0, i 0, i 0)'
+    
     ; Create uninstaller
     WriteUninstaller "$INSTDIR\uninstall.exe"
     
