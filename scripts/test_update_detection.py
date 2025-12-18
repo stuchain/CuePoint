@@ -18,7 +18,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path("SRC").resolve()))
 
 from cuepoint.update.update_checker import UpdateChecker
-from cuepoint.update.version_utils import compare_versions, is_stable_version
+from cuepoint.update.version_utils import (
+    compare_versions,
+    extract_base_version,
+    is_stable_version,
+)
 
 
 def test_version_comparisons():
@@ -29,27 +33,50 @@ def test_version_comparisons():
     
     test_cases = [
         # (new_version, current_version, expected_result, description)
-        ("1.0.1-test-unsigned51", "1.0.0-test-unsigned51", 1, "Prerelease to prerelease (minor bump)"),
-        ("1.0.1-test-unsigned51", "1.0.0", 1, "Stable to prerelease (should compare, filter will block)"),
+        ("1.0.1-test-unsigned53", "1.0.0-test-unsigned52", 1, "Prerelease to prerelease (minor bump)"),
+        ("1.0.1-test-unsigned53", "1.0.0", 1, "Stable to prerelease (minor bump - should detect)"),
         ("1.0.1", "1.0.0", 1, "Stable to stable"),
         ("1.0.0", "1.0.1", -1, "Older version"),
         ("1.0.0", "1.0.0", 0, "Same version"),
-        ("1.0.1-test-unsigned52", "1.0.1-test-unsigned51", 1, "Prerelease to prerelease (build bump)"),
+        ("1.0.1-test-unsigned53", "1.0.1-test-unsigned52", 1, "Prerelease to prerelease (build bump)"),
+        ("1.0.1-test-unsigned53", "1.0.1", -1, "Prerelease to stable (same base - should NOT detect)"),
+        ("1.0.2-test-unsigned53", "1.0.1", 1, "Prerelease to stable (patch bump - should detect)"),
     ]
     
     all_passed = True
     for new_ver, current_ver, expected, desc in test_cases:
         try:
+            # Test base version extraction
+            base_new = extract_base_version(new_ver)
+            base_current = extract_base_version(current_ver)
+            
+            # Test full version comparison
             result = compare_versions(new_ver, current_ver)
-            passed = (result == expected) or (expected > 0 and result > 0) or (expected < 0 and result < 0)
+            
+            # Test base version comparison
+            base_result = compare_versions(base_new, base_current)
+            
+            # Determine if update should be detected based on new logic
+            # Update should be detected if:
+            # 1. Base version is newer, OR
+            # 2. Base version is same but full version is newer
+            should_detect = (base_result > 0) or (base_result == 0 and result > 0)
+            expected_detect = expected > 0
+            
+            passed = (should_detect == expected_detect)
             status = "[PASS]" if passed else "[FAIL]"
             print(f"{status} {desc}")
-            print(f"    {new_ver} vs {current_ver} = {result} (expected: {expected})")
+            print(f"    {new_ver} vs {current_ver}")
+            print(f"    Base: {base_new} vs {base_current} = {base_result}")
+            print(f"    Full: {new_ver} vs {current_ver} = {result}")
+            print(f"    Should detect: {should_detect} (expected: {expected_detect})")
             if not passed:
                 all_passed = False
         except Exception as e:
             print(f"[FAIL] {desc}")
             print(f"    Error: {e}")
+            import traceback
+            traceback.print_exc()
             all_passed = False
     
     return all_passed
@@ -62,10 +89,12 @@ def test_prerelease_filtering():
     print("=" * 60)
     
     # Simulate the filtering logic from _find_latest_update
+    # Note: New logic compares BASE versions first, then applies filtering
     scenarios = [
         # (current_version, channel, test_version, should_show, description)
         ("1.0.0", "stable", "1.0.1", True, "Stable to stable on stable channel"),
-        ("1.0.0", "stable", "1.0.1-test-unsigned51", False, "Stable to prerelease on stable channel (blocked)"),
+        ("1.0.0", "stable", "1.0.1-test-unsigned51", True, "Stable to prerelease (minor bump - allowed)"),
+        ("1.0.1", "stable", "1.0.1-test-unsigned51", False, "Stable to prerelease (same base - blocked)"),
         ("1.0.0-test-unsigned51", "stable", "1.0.1-test-unsigned51", True, "Prerelease to prerelease on stable channel (allowed)"),
         ("1.0.0", "beta", "1.0.1-test-unsigned51", True, "Stable to prerelease on beta channel (allowed)"),
     ]
@@ -73,30 +102,53 @@ def test_prerelease_filtering():
     all_passed = True
     for current, channel, test_ver, should_show, desc in scenarios:
         try:
+            base_current = extract_base_version(current)
+            base_test = extract_base_version(test_ver)
             current_is_prerelease = not is_stable_version(current)
             version_is_prerelease = not is_stable_version(test_ver)
             
-            # Apply filtering logic
-            if channel == "stable":
-                if not current_is_prerelease and version_is_prerelease:
-                    filtered = False  # Blocked
-                else:
-                    filtered = True  # Allowed
-            else:  # beta channel
-                filtered = True  # All allowed
+            # Apply NEW filtering logic (matches _find_latest_update)
+            base_comp = compare_versions(base_test, base_current)
+            
+            if base_comp > 0:
+                # Base version is newer - allow update (even if prerelease)
+                # This ensures updates are detected when version numbers increment
+                if channel == "stable":
+                    if not current_is_prerelease and version_is_prerelease:
+                        # Current is stable, candidate is prerelease
+                        # Since base version is newer, allow the update
+                        filtered = True  # Allowed
+                    else:
+                        filtered = True  # Allowed
+                else:  # beta channel
+                    filtered = True  # All allowed
+            elif base_comp == 0:
+                # Same base version
+                if channel == "stable":
+                    if not current_is_prerelease and version_is_prerelease:
+                        filtered = False  # Blocked
+                    else:
+                        filtered = True  # Allowed
+                else:  # beta channel
+                    filtered = True  # All allowed
+            else:
+                filtered = False  # Older version
             
             passed = (filtered == should_show)
             status = "[PASS]" if passed else "[FAIL]"
             print(f"{status} {desc}")
-            print(f"    Current: {current} (prerelease: {current_is_prerelease})")
-            print(f"    Test: {test_ver} (prerelease: {version_is_prerelease})")
+            print(f"    Current: {current} (base: {base_current}, prerelease: {current_is_prerelease})")
+            print(f"    Test: {test_ver} (base: {base_test}, prerelease: {version_is_prerelease})")
             print(f"    Channel: {channel}")
+            print(f"    Base comparison: {base_comp}")
             print(f"    Filtered: {filtered} (expected: {should_show})")
             if not passed:
                 all_passed = False
         except Exception as e:
             print(f"[FAIL] {desc}")
             print(f"    Error: {e}")
+            import traceback
+            traceback.print_exc()
             all_passed = False
     
     return all_passed

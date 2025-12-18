@@ -132,10 +132,21 @@ def publish_feeds(
             continue
         
         # Determine destination path (preserve directory structure)
-        dest_path = repo_root / appcast_path.name
-        if appcast_path.parent.name in ['macos', 'windows']:
-            # Preserve platform/channel structure
-            dest_path = repo_root / appcast_path.parent.parent.name / appcast_path.parent.name / appcast_path.name
+        # Expected input: updates/macos/stable/appcast.xml
+        # Output in gh-pages: updates/macos/stable/appcast.xml
+        if 'updates' in appcast_path.parts:
+            # Find the 'updates' part and preserve everything after it
+            updates_idx = appcast_path.parts.index('updates')
+            relative_parts = appcast_path.parts[updates_idx:]
+            dest_path = repo_root / Path(*relative_parts)
+        elif appcast_path.parent.name in ['macos', 'windows']:
+            # Fallback: preserve platform/channel structure
+            dest_path = repo_root / 'updates' / appcast_path.parent.name / appcast_path.name
+            if len(appcast_path.parent.parts) > 1 and appcast_path.parent.parts[-2] in ['stable', 'beta']:
+                dest_path = repo_root / 'updates' / appcast_path.parent.parts[-2] / appcast_path.parent.name / appcast_path.name
+        else:
+            # Default: just copy to root (shouldn't happen)
+            dest_path = repo_root / appcast_path.name
         
         # Create destination directory
         dest_path.parent.mkdir(parents=True, exist_ok=True)

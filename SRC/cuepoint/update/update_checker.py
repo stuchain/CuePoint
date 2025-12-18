@@ -17,7 +17,12 @@ from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
 from cuepoint.update.security import FeedIntegrityVerifier, PackageIntegrityVerifier
-from cuepoint.update.version_utils import compare_versions, is_stable_version, parse_version
+from cuepoint.update.version_utils import (
+    compare_versions,
+    extract_base_version,
+    is_stable_version,
+    parse_version,
+)
 
 
 class UpdateCheckError(Exception):
@@ -90,12 +95,32 @@ class UpdateChecker:
             self._checking = True
         
         try:
+            import logging
+            logger = logging.getLogger(__name__)
+            
             feed_url = self.get_feed_url(platform)
+            logger.info(f"Checking for updates:")
+            logger.info(f"  Feed URL: {feed_url}")
+            logger.info(f"  Current version: {self.current_version}")
+            logger.info(f"  Channel: {self.channel}")
+            logger.info(f"  Platform: {platform}")
+            
             appcast_data = self._fetch_appcast(feed_url, timeout)
+            logger.debug(f"Fetched appcast: {len(appcast_data)} bytes")
+            
             items = self._parse_appcast(appcast_data)
+            logger.info(f"Parsed {len(items)} update item(s) from appcast")
             
             # Find latest version that's newer than current
             latest_update = self._find_latest_update(items)
+            
+            if latest_update:
+                logger.info(
+                    f"Update available: {latest_update.get('short_version')} "
+                    f"(current: {self.current_version})"
+                )
+            else:
+                logger.info(f"No update available (current: {self.current_version} is latest)")
             
             return latest_update
         finally:
@@ -298,6 +323,13 @@ class UpdateChecker:
         """
         Find the latest update that's newer than current version.
         
+        Uses a two-stage comparison:
+        1. Compare base versions (X.Y.Z) - if base is newer, allow update
+        2. If base versions are equal, compare full versions (including prerelease)
+        
+        This ensures that updates are detected when base version increments,
+        even if the candidate is a prerelease and current is stable.
+        
         Args:
             items: List of update items (sorted by version, latest first)
             
@@ -307,52 +339,109 @@ class UpdateChecker:
         import logging
         logger = logging.getLogger(__name__)
         
-        # Check if current version is prerelease
+        # Extract base version and check if current is prerelease
         try:
+            base_current = extract_base_version(self.current_version)
             current_is_prerelease = not is_stable_version(self.current_version)
         except ValueError:
             logger.warning(f"Could not parse current version: {self.current_version}")
             return None
         
-        logger.debug(f"Finding latest update. Current version: {self.current_version} (prerelease: {current_is_prerelease}), Channel: {self.channel}, Items: {len(items)}")
+        logger.info(
+            f"Finding latest update. Current: {self.current_version} "
+            f"(base: {base_current}, prerelease: {current_is_prerelease}), "
+            f"Channel: {self.channel}, Items: {len(items)}"
+        )
         
         for item in items:
-            # Use short_version (semantic version) for comparison, fallback to version (build number)
-            # short_version contains the full version string like "1.0.1-test-unsigned51"
-            # version contains the build number like "202512181304"
-            version = item.get('short_version') or item.get('version', '')
+            # Use short_version (semantic version) for comparison
+            # short_version contains the full version string like "1.0.1-test-unsigned53"
+            # version (build number) like "202512181304" is NOT used for comparison
+            version = item.get('short_version', '')
             if not version:
-                logger.debug(f"Skipping item: no version found (has short_version: {item.get('short_version')}, has version: {item.get('version')})")
+                logger.debug(
+                    f"Skipping item: no short_version found "
+                    f"(has short_version: {item.get('short_version')}, "
+                    f"has version: {item.get('version')})"
+                )
+                continue
+            
+            # Skip if version looks like a build number (all digits)
+            if version.isdigit():
+                logger.debug(f"Skipping item: version '{version}' is a build number, not semantic version")
                 continue
             
             # Try to parse as semantic version, skip if invalid
             try:
+                base_candidate = extract_base_version(version)
                 version_is_prerelease = not is_stable_version(version)
             except (ValueError, AttributeError) as e:
                 logger.debug(f"Skipping item: could not parse version '{version}': {e}")
                 continue
             
-            # Filter logic:
-            # - If on stable channel and current version is stable: only show stable updates
-            # - If on stable channel but current version is prerelease: allow prerelease updates
-            # - If on beta channel: allow all updates
-            if self.channel == "stable":
-                if not current_is_prerelease and version_is_prerelease:
-                    # Current is stable, skip prerelease versions
-                    logger.debug(f"Skipping prerelease version '{version}' (current is stable)")
-                    continue
-                # Otherwise allow (both stable, or current is prerelease)
+            logger.debug(
+                f"Checking version: {version} "
+                f"(base: {base_candidate}, prerelease: {version_is_prerelease})"
+            )
             
-            # Check if version is newer
+            # STAGE 1: Compare base versions (X.Y.Z)
             try:
-                comparison = compare_versions(version, self.current_version)
-                logger.debug(f"Comparing '{version}' with '{self.current_version}': {comparison}")
-                if comparison > 0:
-                    logger.info(f"Found newer version: {version} (current: {self.current_version})")
-                    return item
+                base_comparison = compare_versions(base_candidate, base_current)
             except ValueError as e:
-                logger.debug(f"Skipping item: version comparison failed for '{version}' vs '{self.current_version}': {e}")
+                logger.warning(f"Could not compare base versions '{base_candidate}' vs '{base_current}': {e}")
                 continue
+            
+            if base_comparison > 0:
+                # Base version is newer - check if we should allow this update
+                logger.info(f"Found newer base version: {base_candidate} > {base_current}")
+                
+                # Apply channel and prerelease filtering
+                # Since base version is newer, we allow the update even if it's a prerelease
+                # This ensures updates are detected when version numbers increment
+                if self.channel == "stable":
+                    if not current_is_prerelease and version_is_prerelease:
+                        # Current is stable, candidate is prerelease
+                        # Since base version is newer, allow the update
+                        # This handles cases like: 1.0.0 (stable) → 1.0.1-test-unsigned53 (prerelease)
+                        logger.info(
+                            f"Allowing prerelease update: "
+                            f"{version} (base version {base_candidate} > {base_current})"
+                        )
+                        return item
+                
+                # Base version is newer and filtering allows it
+                logger.info(f"Found newer version: {version} (current: {self.current_version})")
+                return item
+            
+            elif base_comparison == 0:
+                # Same base version - apply prerelease rules and compare full versions
+                logger.debug(f"Same base version: {base_candidate} == {base_current}")
+                
+                # Apply channel filtering for same base version
+                if self.channel == "stable":
+                    if not current_is_prerelease and version_is_prerelease:
+                        # Current is stable, candidate is prerelease with same base - skip
+                        logger.debug(
+                            f"Skipping prerelease '{version}' "
+                            f"(current stable version {self.current_version} has same base)"
+                        )
+                        continue
+                
+                # Compare full versions (including prerelease suffix)
+                try:
+                    full_comparison = compare_versions(version, self.current_version)
+                    logger.debug(
+                        f"Full version comparison '{version}' vs '{self.current_version}': {full_comparison}"
+                    )
+                    if full_comparison > 0:
+                        logger.info(
+                            f"Found newer version with same base: {version} > {self.current_version}"
+                        )
+                        return item
+                except ValueError as e:
+                    logger.warning(f"Could not compare full versions: {e}")
+                    continue
+            # else: base_comparison < 0, candidate is older, skip
         
-        logger.debug("No newer version found")
+        logger.info("No newer version found")
         return None

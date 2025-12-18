@@ -23,7 +23,11 @@ from cuepoint.update.update_downloader import UpdateDownloader
 from cuepoint.update.update_installer import UpdateInstaller
 from cuepoint.update.update_manager import UpdateManager
 from cuepoint.update.update_preferences import UpdatePreferences
-from cuepoint.update.version_utils import compare_versions, parse_version
+from cuepoint.update.version_utils import (
+    compare_versions,
+    extract_base_version,
+    parse_version,
+)
 
 __all__ = [
     'UpdateManager',
@@ -34,5 +38,6 @@ __all__ = [
     'SignatureVerifier',
     'VerificationResult',
     'compare_versions',
+    'extract_base_version',
     'parse_version',
 ]

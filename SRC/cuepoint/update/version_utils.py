@@ -133,6 +133,33 @@ def is_stable_version(version: str) -> bool:
         return False
 
 
+def extract_base_version(version: str) -> str:
+    """
+    Extract base version (X.Y.Z) from version string, removing prerelease suffix and build metadata.
+    
+    Args:
+        version: Version string (e.g., "1.0.1-test-unsigned53" or "1.0.1" or "1.0.1+build.123")
+        
+    Returns:
+        Base version string (e.g., "1.0.1")
+        
+    Examples:
+        "1.0.1-test-unsigned53" -> "1.0.1"
+        "1.0.1" -> "1.0.1"
+        "1.0.1-beta.1" -> "1.0.1"
+        "1.0.1+build.123" -> "1.0.1"
+        "1.0.1-test-unsigned53+build.123" -> "1.0.1"
+    """
+    # Remove build metadata (everything after '+')
+    if '+' in version:
+        version = version.split('+')[0]
+    
+    # Remove prerelease suffix (everything after first '-')
+    if '-' in version:
+        return version.split('-')[0]
+    return version
+
+
 def get_version_display_string(version: str) -> str:
     """
     Get a formatted version string for display.
