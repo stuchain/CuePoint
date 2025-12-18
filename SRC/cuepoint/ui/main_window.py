@@ -1554,6 +1554,7 @@ class MainWindow(QMainWindow):
         """Set the window icon from application icon or logo."""
         from pathlib import Path
         from PySide6.QtGui import QIcon
+        from PySide6.QtWidgets import QApplication
         
         # Try to get icon from QApplication first (set in gui_app.py)
         app = QApplication.instance()

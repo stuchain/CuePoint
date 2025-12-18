@@ -105,11 +105,6 @@ class ToolSelectionPage(QWidget):
 
         layout.addLayout(tools_layout)
         layout.addStretch()
-        
-        # Footer logo (bottom)
-        footer_logo = self._load_logo(size=(150, 60))
-        if footer_logo:
-            layout.addWidget(footer_logo)
 
     def _load_logo(self, size: Optional[Tuple[int, int]] = None) -> Optional[QLabel]:
         """Load and display the logo image.

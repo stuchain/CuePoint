@@ -134,7 +134,9 @@ if "--test-search-dependencies" in sys.argv:
             
             sys.exit(1)
 
+# Import Qt widgets early (needed for icon function and main)
 from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtGui import QIcon
 
 # Add src to path if needed (for imports)
 if __name__ == "__main__":
@@ -151,14 +153,13 @@ from cuepoint.utils.paths import AppPaths, PathMigration
 from cuepoint.utils.system_check import SystemRequirements
 
 
-def _set_application_icon(app: QApplication) -> None:
+def _set_application_icon(app) -> None:
     """Set the application icon for taskbar/dock.
     
     Args:
         app: QApplication instance
     """
     from pathlib import Path
-    from PySide6.QtGui import QIcon
     
     icon_path = None
     
@@ -292,18 +293,24 @@ def main():
         # Handle startup errors gracefully
         error_msg = f"Failed to start CuePoint GUI:\n\n{str(e)}"
         
-        # Try to show error in a message box if QApplication exists
+        # Try to show error in a message box
+        # Always import here to avoid scoping issues
         try:
-            if 'app' in locals():
+            # Import fresh to avoid any scoping issues
+            from PySide6.QtWidgets import QApplication as QtApp, QMessageBox
+            
+            # Check if QApplication instance already exists
+            existing_app = QtApp.instance()
+            if existing_app:
                 QMessageBox.critical(None, "Startup Error", error_msg)
             else:
-                # If QApplication doesn't exist, print to console
-                print(error_msg, file=sys.stderr)
-                import traceback
-                traceback.print_exc()
-        except:
-            # Fallback to console output
+                # Create a temporary QApplication for the error dialog
+                temp_app = QtApp(sys.argv)
+                QMessageBox.critical(None, "Startup Error", error_msg)
+        except Exception as gui_error:
+            # Fallback to console output if GUI error display fails
             print(error_msg, file=sys.stderr)
+            print(f"Also failed to show GUI error dialog: {gui_error}", file=sys.stderr)
             import traceback
             traceback.print_exc()
         
