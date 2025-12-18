@@ -81,6 +81,25 @@ def publish_feeds(
     run_command(['git', 'config', 'user.name', git_user_name], cwd=repo_root)
     run_command(['git', 'config', 'user.email', git_user_email], cwd=repo_root)
     
+    # CRITICAL: Save generated appcast content BEFORE checking out gh-pages
+    # When we checkout gh-pages, it will overwrite our generated files with old content
+    # So we need to preserve the generated content and restore it after checkout
+    print("Saving generated appcast content before branch checkout...")
+    generated_appcast_content = {}
+    for appcast_file in appcast_files:
+        appcast_path = Path(appcast_file)
+        if not appcast_path.is_absolute():
+            appcast_path = repo_root / appcast_path
+        if appcast_path.exists():
+            generated_appcast_content[str(appcast_path)] = appcast_path.read_text(encoding='utf-8')
+            print(f"  Saved content from: {appcast_path.relative_to(repo_root)} ({len(generated_appcast_content[str(appcast_path)])} bytes)")
+        else:
+            print(f"  Warning: Generated appcast not found: {appcast_path}", file=sys.stderr)
+    
+    if not generated_appcast_content:
+        print("Error: No appcast files found to publish!", file=sys.stderr)
+        return False
+    
     # Stash any uncommitted changes (e.g., version.py updates from sync)
     # We don't want to commit these to gh-pages branch
     # Also handle untracked files that might conflict with gh-pages branch
