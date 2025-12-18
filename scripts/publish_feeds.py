@@ -143,6 +143,40 @@ def publish_feeds(
             # Remove all files in orphan branch
             run_command(['git', 'rm', '-rf', '.'], cwd=repo_root)
     
+    # Restore generated appcast content after checkout
+    # The checkout may have overwritten our generated files with old content from gh-pages
+    print("Restoring generated appcast content after branch checkout...")
+    for saved_path, saved_content in generated_appcast_content.items():
+        appcast_path = Path(saved_path)
+        # Write the saved content back (this overwrites what checkout may have put there)
+        appcast_path.parent.mkdir(parents=True, exist_ok=True)
+        appcast_path.write_text(saved_content, encoding='utf-8')
+        print(f"  Restored: {appcast_path.relative_to(repo_root)} ({len(saved_content)} bytes)")
+        
+        # Verify it was restored correctly
+        restored_content = appcast_path.read_text(encoding='utf-8')
+        if restored_content != saved_content:
+            print(f"  ERROR: Restored content doesn't match saved content!", file=sys.stderr)
+            return False
+        
+        # Also verify the version is in the restored content
+        if '1.0.1-test7' in saved_content or '1.0.1-test6' in saved_content:
+            # Check which version is actually in the content
+            import xml.etree.ElementTree as ET
+            try:
+                root = ET.fromstring(saved_content)
+                channel = root.find('channel')
+                if channel is not None:
+                    items = channel.findall('item')
+                    versions = []
+                    for item in items:
+                        short_version = item.find('.//{http://www.andymatuschak.org/xml-namespaces/sparkle}shortVersionString')
+                        if short_version is not None:
+                            versions.append(short_version.text)
+                    print(f"  Verified: Restored appcast contains versions: {', '.join(versions)}")
+            except Exception as e:
+                print(f"  Warning: Could not verify versions in restored content: {e}")
+    
     # Copy appcast files to repository
     for appcast_file in appcast_files:
         appcast_path = Path(appcast_file)
@@ -194,6 +228,40 @@ def publish_feeds(
             # Add to git
             run_command(['git', 'add', str(dest_path.relative_to(repo_root))], cwd=repo_root)
             print(f"Added to git: {dest_path.relative_to(repo_root)}")
+            
+            # Compare with what's in HEAD to see if it's actually different
+            returncode, head_content, _ = run_command(
+                ['git', 'show', f'HEAD:{dest_path.relative_to(repo_root)}'],
+                cwd=repo_root
+            )
+            if returncode == 0:
+                current_content = dest_path.read_text(encoding='utf-8')
+                if current_content == head_content:
+                    print(f"  WARNING: File content is identical to HEAD!")
+                    print(f"  This means the appcast hasn't changed.")
+                    print(f"  Possible reasons:")
+                    print(f"    1. Version already exists in gh-pages with identical content")
+                    print(f"    2. All metadata (URLs, sizes, pubDate) are identical")
+                    print(f"    3. The version was already committed in a previous run")
+                else:
+                    # Show a preview of differences
+                    import difflib
+                    diff = list(difflib.unified_diff(
+                        head_content.splitlines(keepends=True),
+                        current_content.splitlines(keepends=True),
+                        fromfile=f'HEAD:{dest_path.name}',
+                        tofile=f'current:{dest_path.name}',
+                        lineterm=''
+                    ))
+                    if diff:
+                        print(f"  File differs from HEAD ({len(diff)} diff lines)")
+                        # Show first few lines of diff
+                        for line in diff[:15]:
+                            print(f"    {line.rstrip()}")
+                        if len(diff) > 15:
+                            print(f"    ... ({len(diff) - 15} more diff lines)")
+            else:
+                print(f"  File is new (not in HEAD) - will be added")
     
     # Check if there are staged changes (files we just added)
     returncode, stdout, _ = run_command(['git', 'diff', '--cached', '--name-only'], cwd=repo_root)
@@ -232,12 +300,68 @@ def publish_feeds(
         returncode, stdout, _ = run_command(['git', 'status', '--porcelain'], cwd=repo_root)
         status_output = stdout.strip()
         if not status_output:
-            print("No changes to commit - files are already up to date")
-            print("Note: This can happen if:")
-            print("  1. The appcast content is identical to what's already in gh-pages")
-            print("  2. The version already exists with the same URLs and dates")
-            print("  3. The pubDate hasn't changed (unlikely but possible)")
-            return True
+            # Check if files actually exist and compare with HEAD
+            print("No staged changes detected. Checking file differences with HEAD...")
+            for appcast_file in appcast_files:
+                appcast_path = Path(appcast_file)
+                if not appcast_path.is_absolute():
+                    appcast_path = repo_root / appcast_path
+                
+                if appcast_path.exists():
+                    # Compare with HEAD version
+                    returncode, head_content, _ = run_command(
+                        ['git', 'show', f'HEAD:{appcast_path.relative_to(repo_root)}'],
+                        cwd=repo_root
+                    )
+                    
+                    if returncode == 0:
+                        current_content = appcast_path.read_text(encoding='utf-8')
+                        if current_content == head_content:
+                            print(f"  {appcast_path.name}: Identical to HEAD")
+                        else:
+                            print(f"  {appcast_path.name}: Different from HEAD (but not staged?)")
+                            # Try to add it
+                            run_command(['git', 'add', str(appcast_path.relative_to(repo_root))], cwd=repo_root)
+                            print(f"  Added {appcast_path.name} to staging")
+                    else:
+                        print(f"  {appcast_path.name}: Not in HEAD (new file)")
+                        # Try to add it
+                        run_command(['git', 'add', str(appcast_path.relative_to(repo_root))], cwd=repo_root)
+                        print(f"  Added {appcast_path.name} to staging")
+            
+            # Re-check staged files
+            returncode, stdout, _ = run_command(['git', 'diff', '--cached', '--name-only'], cwd=repo_root)
+            staged_files = stdout.strip()
+            
+            if not staged_files:
+                print("No changes to commit - files are already up to date")
+                print("Note: This can happen if:")
+                print("  1. The appcast content is identical to what's already in gh-pages")
+                print("  2. The version already exists with the same URLs and dates")
+                print("  3. The pubDate hasn't changed (unlikely but possible)")
+                print("\nDebug: Checking what's in the appcast files...")
+                for appcast_file in appcast_files:
+                    appcast_path = Path(appcast_file)
+                    if not appcast_path.is_absolute():
+                        appcast_path = repo_root / appcast_path
+                    if appcast_path.exists():
+                        try:
+                            content = appcast_path.read_text(encoding='utf-8')
+                            # Count versions in appcast
+                            import xml.etree.ElementTree as ET
+                            root = ET.fromstring(content)
+                            channel = root.find('channel')
+                            if channel is not None:
+                                items = channel.findall('item')
+                                versions = []
+                                for item in items:
+                                    short_version = item.find('.//{http://www.andymatuschak.org/xml-namespaces/sparkle}shortVersionString')
+                                    if short_version is not None:
+                                        versions.append(short_version.text)
+                                print(f"  {appcast_path.name} contains versions: {', '.join(versions)}")
+                        except Exception as e:
+                            print(f"  Could not parse {appcast_path.name}: {e}")
+                return True
         else:
             # There are changes but not staged - try to add them
             # Only stage appcast files, ignore others
