@@ -81,17 +81,38 @@ def publish_feeds(
     run_command(['git', 'config', 'user.name', git_user_name], cwd=repo_root)
     run_command(['git', 'config', 'user.email', git_user_email], cwd=repo_root)
     
-    # Checkout or create gh-pages branch
-    returncode, _, _ = run_command(['git', 'checkout', branch], cwd=repo_root)
+    # Fetch latest changes from remote (important for concurrent updates)
+    print(f"Fetching latest changes from {remote}...")
+    returncode, _, stderr = run_command(['git', 'fetch', remote], cwd=repo_root)
     if returncode != 0:
-        # Branch doesn't exist, create it
-        returncode, _, _ = run_command(['git', 'checkout', '--orphan', branch], cwd=repo_root)
+        print(f"Warning: Could not fetch from {remote}: {stderr}", file=sys.stderr)
+        # Continue anyway - might be a new branch
+    
+    # Check if branch exists remotely
+    returncode, _, _ = run_command(['git', 'ls-remote', '--heads', remote, branch], cwd=repo_root)
+    branch_exists_remote = (returncode == 0)
+    
+    # Checkout or create gh-pages branch
+    if branch_exists_remote:
+        # Branch exists remotely - checkout and merge
+        print(f"Branch {branch} exists remotely, checking out...")
+        returncode, _, stderr = run_command(['git', 'checkout', '-B', branch, f'{remote}/{branch}'], cwd=repo_root)
         if returncode != 0:
-            print(f"Error: Could not create branch {branch}", file=sys.stderr)
+            print(f"Error: Could not checkout branch {branch}: {stderr}", file=sys.stderr)
             return False
-        
-        # Remove all files in orphan branch
-        run_command(['git', 'rm', '-rf', '.'], cwd=repo_root)
+    else:
+        # Branch doesn't exist remotely - check if it exists locally
+        returncode, _, _ = run_command(['git', 'checkout', branch], cwd=repo_root)
+        if returncode != 0:
+            # Branch doesn't exist locally either, create it
+            print(f"Creating new branch {branch}...")
+            returncode, _, stderr = run_command(['git', 'checkout', '--orphan', branch], cwd=repo_root)
+            if returncode != 0:
+                print(f"Error: Could not create branch {branch}: {stderr}", file=sys.stderr)
+                return False
+            
+            # Remove all files in orphan branch
+            run_command(['git', 'rm', '-rf', '.'], cwd=repo_root)
     
     # Copy appcast files to repository
     for appcast_file in appcast_files:
@@ -133,6 +154,18 @@ def publish_feeds(
         return False
     
     print(f"Committed changes: {message}")
+    
+    # Pull latest changes before pushing (handle concurrent updates)
+    if branch_exists_remote:
+        print(f"Pulling latest changes from {remote}/{branch}...")
+        returncode, _, stderr = run_command(['git', 'pull', remote, branch, '--no-edit'], cwd=repo_root)
+        if returncode != 0:
+            # If pull fails, try rebase
+            print(f"Pull failed, trying rebase: {stderr}", file=sys.stderr)
+            returncode, _, stderr = run_command(['git', 'pull', '--rebase', remote, branch], cwd=repo_root)
+            if returncode != 0:
+                print(f"Warning: Could not pull/rebase from {remote}/{branch}: {stderr}", file=sys.stderr)
+                print("Attempting to push anyway (may fail if conflicts exist)...")
     
     # Push to remote (with authentication if token provided)
     push_cmd = ['git', 'push', remote, branch]
