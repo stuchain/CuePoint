@@ -54,6 +54,33 @@ def test_imports():
             print(f"✗ DDGS import failed: {e}")
             traceback.print_exc()
     
+    # Test ddgs engines (critical for track matching)
+    print("\nTesting ddgs engines (critical for track matching):")
+    engines_to_check = [
+        'ddgs.engines.duckduckgo',
+        'ddgs.engines.bing',
+        'ddgs.engines.google',
+        'ddgs.engines.brave',
+    ]
+    
+    engines_available = 0
+    engines_missing = []
+    
+    for engine in engines_to_check:
+        try:
+            __import__(engine)
+            engines_available += 1
+            print(f"✓ {engine}")
+        except ImportError as e:
+            engines_missing.append(engine)
+            print(f"✗ {engine} - {e}")
+    
+    print(f"\nEngines available: {engines_available}/{len(engines_to_check)}")
+    if engines_missing:
+        print(f"⚠️  Missing engines: {engines_missing}")
+        print("   This could cause the app to match fewer tracks!")
+        print("   Ensure pyinstaller.spec includes: *collect_submodules('ddgs')")
+    
     # Test SSL certificates
     print("\nTesting SSL certificates:")
     try:

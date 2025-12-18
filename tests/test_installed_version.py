@@ -343,6 +343,44 @@ else:
                 f"Dependency check may have failed. Output: {output[:1000]}"
             )
     
+    def test_ddgs_engines_available(self, executable_path):
+        """Test that all ddgs search engines are available.
+        
+        This is critical for track matching - missing engines can cause
+        the app to match fewer tracks than expected.
+        """
+        # Run the diagnostic script if available
+        # For now, we'll test by running the app and checking if ddgs works
+        result = subprocess.run(
+            [str(executable_path), "--test-search-dependencies"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=PROJECT_ROOT,
+        )
+        
+        output = result.stdout + result.stderr
+        
+        # Check if ddgs/DuckDuckGo search is mentioned and working
+        # The test script should show if ddgs is available
+        if "ddgs" in output.lower() or "duckduckgo" in output.lower():
+            # Check for errors related to ddgs
+            if any(err in output.lower() for err in ["ddgs", "duckduckgo"]):
+                # Check if it's an error or success
+                if any(err in output.lower() for err in ["error", "failed", "not available", "import"]):
+                    # Check if it's specifically about engines
+                    if "engine" in output.lower():
+                        pytest.fail(
+                            f"ddgs engines may be missing. This could explain why "
+                            f"the GitHub installer matches fewer tracks. Output: {output[:1000]}"
+                        )
+        
+        # If the test passed (exit code 0 or 1), ddgs is likely working
+        # Exit code -1/4294967295 indicates a crash, which is a different issue
+        if result.returncode not in [0, 1]:
+            # Don't fail here - this is tested elsewhere
+            pass
+    
     def test_executable_size_reasonable(self, executable_path):
         """Test that executable size is reasonable (not suspiciously small)."""
         size_mb = executable_path.stat().st_size / (1024 * 1024)

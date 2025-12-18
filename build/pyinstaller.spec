@@ -85,10 +85,7 @@ hiddenimports = [
     'selenium',
     'aiohttp',
     # DuckDuckGo search - ddgs package and all submodules
-    # Use collect_submodules to automatically include all ddgs submodules
-    # This is critical because ddgs uses dynamic imports for engines
-    *collect_submodules('ddgs'),
-    # Explicitly list critical modules as backup
+    # Note: collect_submodules('ddgs') causes crashes, so we explicitly list all modules
     'ddgs',
     'ddgs.ddgs',
     'ddgs.engines',
@@ -185,7 +182,7 @@ if is_macos:
         debug=False,
         bootloader_ignore_signals=False,
         strip=False,
-        upx=True,
+        upx=False,  # Disabled: UPX causes extraction errors with PySide6 DLLs
         upx_exclude=[],
         runtime_tmpdir=None,
         console=False,  # No console window
@@ -228,7 +225,7 @@ else:
         debug=False,
         bootloader_ignore_signals=False,
         strip=False,
-        upx=True,
+        upx=False,  # Disabled: UPX causes extraction errors with PySide6 DLLs (return code -3)
         upx_exclude=[],
         runtime_tmpdir=None,
         console=False,  # No console window
