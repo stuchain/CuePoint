@@ -189,10 +189,11 @@ class RekordboxInstructionsDialog(QDialog):
         # In frozen app: resources/images/rekordbox_instructions/ (in _MEIPASS)
         if getattr(sys, 'frozen', False):
             # Running as packaged app
+            # PyInstaller bundles resources to: _MEIPASS/resources/
             if hasattr(sys, '_MEIPASS'):
-                base_path = Path(sys._MEIPASS)
+                base_path = Path(sys._MEIPASS) / 'resources'
             else:
-                base_path = Path(os.path.dirname(sys.executable))
+                base_path = Path(os.path.dirname(sys.executable)) / 'resources'
         else:
             # Running as script - use SRC/cuepoint/ui/resources
             # __file__ is at SRC/cuepoint/ui/dialogs/rekordbox_instructions_dialog.py
@@ -232,11 +233,16 @@ class RekordboxInstructionsDialog(QDialog):
                 logging.getLogger(__name__).warning(f"Failed to load image {photo_path}: {e}")
                 pass
         else:
-            # Debug: Log when image file is not found (only in debug mode)
+            # Log when image file is not found (helpful for debugging)
             import logging
             logger = logging.getLogger(__name__)
-            if logger.isEnabledFor(logging.DEBUG):
-                logger.debug(f"Image not found at: {photo_path} (base_path: {base_path}, step_name: {step_name})")
+            logger.warning(
+                f"Rekordbox instruction image not found: {photo_path}\n"
+                f"  base_path: {base_path}\n"
+                f"  step_name: {step_name}\n"
+                f"  frozen: {getattr(sys, 'frozen', False)}\n"
+                f"  _MEIPASS: {getattr(sys, '_MEIPASS', 'N/A')}"
+            )
         
         # Fallback: show placeholder if image not found
         placeholder.setText(f"[Photo: {description}]")

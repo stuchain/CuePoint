@@ -48,4 +48,6 @@ selenium==4.15.0
 # Excel export support (for GUI export functionality)
 openpyxl==3.1.0
 
+# Image processing for icon generation (build-time dependency)
+Pillow>=9.0.0
 

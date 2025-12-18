@@ -31,6 +31,20 @@ def build():
     os.chdir(project_root)
     
     try:
+        # Generate icons from logo.png (must be done before PyInstaller)
+        icon_script = project_root / 'scripts' / 'generate_icons.py'
+        if icon_script.exists():
+            print("Generating application icons from logo.png...")
+            result_icons = subprocess.run(
+                [sys.executable, str(icon_script)],
+                check=False,
+                cwd=project_root,
+            )
+            if result_icons.returncode != 0:
+                print("Warning: Failed to generate icons, continuing anyway...")
+        else:
+            print("Warning: generate_icons.py not found, skipping icon generation")
+        
         # Generate version info file for Windows builds
         if sys.platform == 'win32':
             version_script = project_root / 'scripts' / 'generate_version_info.py'

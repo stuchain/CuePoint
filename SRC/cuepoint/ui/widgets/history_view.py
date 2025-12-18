@@ -383,6 +383,9 @@ class HistoryView(QWidget):
     def load_csv_file(self, file_path: str):
         """Load and display CSV file contents"""
         try:
+            # Convert to absolute path to ensure consistent path resolution
+            file_path = os.path.abspath(file_path)
+            
             if not os.path.exists(file_path):
                 QMessageBox.warning(self, "File Not Found", f"File not found: {file_path}")
                 return
@@ -396,6 +399,7 @@ class HistoryView(QWidget):
                 QMessageBox.warning(self, "Empty File", "The selected CSV file is empty")
                 return
 
+            # Store as absolute path for consistent candidate file lookup
             self.current_csv_path = file_path
             self.file_path_label.setText(f"Loaded: {os.path.basename(file_path)}")
 
@@ -1079,9 +1083,18 @@ class HistoryView(QWidget):
 
     def _get_candidates_csv_path(self, main_csv_path: str) -> Optional[str]:
         """Get the path to the candidates CSV file for a given main CSV file"""
-        # Replace main CSV filename with candidates CSV filename
-        base_path = main_csv_path.replace(".csv", "")
+        if not main_csv_path:
+            return None
+        
+        # Convert to absolute path to handle both relative and absolute paths correctly
+        main_csv_path = os.path.abspath(main_csv_path)
+        
+        # Use proper path operations instead of string replacement
+        # This handles cases where the filename might contain ".csv" in the middle
+        base_path = os.path.splitext(main_csv_path)[0]  # Remove extension
         candidates_path = f"{base_path}_candidates.csv"
+        
+        # Check if file exists (using absolute path)
         if os.path.exists(candidates_path):
             return candidates_path
         return None
@@ -1095,6 +1108,14 @@ class HistoryView(QWidget):
 
         candidates_path = self._get_candidates_csv_path(self.current_csv_path)
         if not candidates_path:
+            # Log when candidates file is not found (helpful for debugging)
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.debug(
+                f"Candidates CSV not found for track {playlist_index}:\n"
+                f"  main_csv_path: {self.current_csv_path}\n"
+                f"  expected_candidates_path: {os.path.splitext(os.path.abspath(self.current_csv_path))[0]}_candidates.csv"
+            )
             return []
 
         try:

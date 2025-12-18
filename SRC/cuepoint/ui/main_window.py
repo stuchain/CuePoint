@@ -617,10 +617,7 @@ class MainWindow(QMainWindow):
         self.status_progress.setVisible(False)
         self.statusBar().addPermanentWidget(self.status_progress)
         
-        # Logo in status bar (top right)
-        logo_label = self._load_logo_for_statusbar()
-        if logo_label:
-            self.statusBar().addPermanentWidget(logo_label)
+        # Logo in status bar removed per user request
 
         # Enable drag and drop for the window
         self.setAcceptDrops(True)
