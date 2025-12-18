@@ -438,6 +438,7 @@ class UpdateCheckDialog(QDialog):
             self.details_text.setVisible(True)
         
         # Show download button
+        self.download_button.setText("Download & Install")  # Match the button text in the image
         self.download_button.setVisible(True)
         self.download_button.setDefault(True)
         self.close_button.setDefault(False)
@@ -463,9 +464,8 @@ class UpdateCheckDialog(QDialog):
     def _on_download(self) -> None:
         """Handle download button click."""
         if self.update_info:
-            # Emit signal or call callback
+            # Accept dialog - parent will handle download via callback
             self.accept()
-            # The parent will handle the download via the update manager
 
 
 def show_update_check_dialog(

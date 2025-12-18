@@ -110,18 +110,27 @@ class DownloadProgressDialog(QDialog):
             self.downloader.error.connect(self.on_download_error)
             self.downloader.cancelled.connect(self.on_download_cancelled)
             
-            # Start download in background
+            # Start download immediately (non-blocking via signals)
             QTimer.singleShot(100, self._do_download)
             
         except Exception as e:
             self.on_download_error(f"Failed to start download: {str(e)}")
     
     def _do_download(self):
-        """Execute download (called via QTimer)."""
+        """Execute download (called via QTimer, runs in main thread but processes events)."""
         if self.downloader:
-            result = self.downloader.download(self.download_url)
-            if result:
-                self.downloaded_file = result
+            try:
+                # Download will emit signals for progress updates
+                # QEventLoop.exec() processes Qt events, so UI stays responsive
+                # The finished signal will be emitted when download completes
+                result = self.downloader.download(self.download_url)
+                # Note: finished signal will be emitted by downloader, so we don't need to handle result here
+                # But if download() returns immediately (non-blocking), we should check result
+                if result and not self.downloaded_file:
+                    self.downloaded_file = result
+                    self.on_download_finished(result)
+            except Exception as e:
+                self.on_download_error(str(e))
     
     def on_progress(self, bytes_received: int, bytes_total: int):
         """Handle progress update."""
@@ -153,7 +162,14 @@ class DownloadProgressDialog(QDialog):
     def on_download_finished(self, file_path: str):
         """Handle download completion."""
         self.downloaded_file = file_path
-        self.accept()
+        self.size_label.setText("Download complete!")
+        self.speed_label.setText("")
+        self.time_label.setText("")
+        self.progress_bar.setValue(100)
+        
+        # Close dialog after a brief moment to show completion
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(500, self.accept)
     
     def on_download_error(self, error_message: str):
         """Handle download error."""

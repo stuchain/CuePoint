@@ -1683,8 +1683,15 @@ class MainWindow(QMainWindow):
             try:
                 # Check if should check on startup
                 from cuepoint.update.update_preferences import UpdatePreferences
+                from cuepoint.update.update_ui import show_update_check_dialog
+                from cuepoint.version import get_version
 
                 if self.update_manager.preferences.get_check_frequency() == UpdatePreferences.CHECK_ON_STARTUP:
+                    # Show update check dialog on startup (same as manual check)
+                    self.update_check_dialog = show_update_check_dialog(get_version(), self)
+                    self.update_check_dialog.set_checking()
+                    
+                    # Start the check
                     self.update_manager.check_for_updates(force=False)
             except Exception as e:
                 import logging
@@ -1738,8 +1745,10 @@ class MainWindow(QMainWindow):
                 self.update_check_dialog.set_update_found(update_info)
                 # Connect download button if not already connected
                 if not hasattr(self.update_check_dialog, '_download_connected'):
+                    # Store update_info in dialog for download
+                    self.update_check_dialog.update_info = update_info
                     self.update_check_dialog.download_button.clicked.connect(
-                        lambda: self._on_update_install()
+                        lambda: self._on_update_install_from_dialog()
                     )
                     self.update_check_dialog._download_connected = True
             else:
@@ -1847,6 +1856,26 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Update", "Update information not available.")
             return
         
+        self._download_and_install_update(update_info)
+    
+    def _on_update_install_from_dialog(self) -> None:
+        """Handle update install from update check dialog."""
+        if hasattr(self, "update_check_dialog") and self.update_check_dialog:
+            update_info = self.update_check_dialog.update_info
+            if update_info:
+                self._download_and_install_update(update_info)
+            else:
+                QMessageBox.warning(self, "Update", "Update information not available.")
+        else:
+            # Fallback to update manager
+            self._on_update_install()
+    
+    def _download_and_install_update(self, update_info: Dict) -> None:
+        """Download and install update with progress dialog.
+        
+        Args:
+            update_info: Update information dictionary
+        """
         # Get download URL
         download_url = update_info.get("download_url")
         if not download_url:
@@ -1866,22 +1895,33 @@ class MainWindow(QMainWindow):
         # Show download progress dialog
         try:
             from cuepoint.ui.dialogs.download_progress_dialog import DownloadProgressDialog
-            from PySide6.QtWidgets import QDialog
+            from PySide6.QtWidgets import QDialog, QMessageBox
+            import logging
+            
+            logger = logging.getLogger(__name__)
+            logger.info(f"Starting download from: {download_url}")
             
             download_dialog = DownloadProgressDialog(download_url, parent=self)
             result = download_dialog.exec()
             
             if result == QDialog.DialogCode.Accepted and download_dialog.get_downloaded_file():
                 # Download completed, proceed with installation
-                self._install_update(download_dialog.get_downloaded_file())
+                downloaded_file = download_dialog.get_downloaded_file()
+                logger.info(f"Download completed: {downloaded_file}")
+                self._install_update(downloaded_file)
             elif download_dialog.cancelled:
+                logger.info("Download cancelled by user")
                 self.statusBar().showMessage("Download cancelled", 2000)
             else:
+                logger.warning("Download failed or was cancelled")
                 self.statusBar().showMessage("Download failed", 3000)
                 
         except Exception as e:
             import logging
-            logging.error(f"Update download failed: {e}")
+            import traceback
+            logger = logging.getLogger(__name__)
+            logger.error(f"Update download failed: {e}")
+            logger.error(traceback.format_exc())
             QMessageBox.warning(
                 self,
                 "Update Error",
