@@ -417,22 +417,34 @@ class UpdateChecker:
                 # Same base version - apply prerelease rules and compare full versions
                 logger.debug(f"Same base version: {base_candidate} == {base_current}")
                 
-                # Apply channel filtering for same base version
-                if self.channel == "stable":
-                    if not current_is_prerelease and version_is_prerelease:
-                        # Current is stable, candidate is prerelease with same base - skip
-                        logger.debug(
-                            f"Skipping prerelease '{version}' "
-                            f"(current stable version {self.current_version} has same base)"
-                        )
-                        continue
-                
                 # Compare full versions (including prerelease suffix)
                 try:
                     full_comparison = compare_versions(version, self.current_version)
                     logger.debug(
                         f"Full version comparison '{version}' vs '{self.current_version}': {full_comparison}"
                     )
+                    
+                    # Apply channel filtering for same base version
+                    if self.channel == "stable":
+                        if not current_is_prerelease and version_is_prerelease:
+                            # Current is stable, candidate is prerelease with same base
+                            # Per SemVer, prerelease < stable, so full_comparison will be < 0
+                            # But we still check if user wants to allow this (e.g., for testing)
+                            # For now, we'll allow it if the full comparison says it's newer
+                            # (though this shouldn't happen per SemVer, it handles edge cases)
+                            if full_comparison > 0:
+                                logger.info(
+                                    f"Allowing prerelease update with same base: {version} > {self.current_version}"
+                                )
+                                return item
+                            else:
+                                logger.debug(
+                                    f"Skipping prerelease '{version}' "
+                                    f"(current stable version {self.current_version} is newer per SemVer)"
+                                )
+                                continue
+                    
+                    # Both are prerelease or both are stable - use full comparison
                     if full_comparison > 0:
                         logger.info(
                             f"Found newer version with same base: {version} > {self.current_version}"

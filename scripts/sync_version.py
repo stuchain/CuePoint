@@ -70,12 +70,8 @@ def get_version_from_git_tag(tag: Optional[str] = None) -> Optional[str]:
         # Remove 'v' prefix
         version_part = tag_name[1:] if tag_name.startswith('v') else tag_name
         
-        # Extract just the SemVer part (X.Y.Z) from tags like "1.0.1-test-unsigned47"
-        match = re.match(r"^(\d+\.\d+\.\d+)", version_part)
-        if match:
-            return match.group(1)
-        
-        # Fallback: return the whole tag without 'v' if no match
+        # Return the full version including prerelease suffixes (e.g., "1.0.0-test2", "1.0.1-test-unsigned47")
+        # This preserves the complete version string from the Git tag
         return version_part
         
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError) as e:
@@ -140,15 +136,16 @@ def update_version_file(new_version: str) -> bool:
 
 
 def validate_semver(version: str) -> bool:
-    """Validate SemVer format.
+    """Validate SemVer format (including prerelease suffixes).
     
     Args:
         version: Version string to validate
         
     Returns:
-        True if valid SemVer format
+        True if valid SemVer format (with optional prerelease suffix)
     """
-    pattern = r"^\d+\.\d+\.\d+$"
+    # Match base version (X.Y.Z) with optional prerelease suffix (e.g., -test2, -beta.1)
+    pattern = r"^\d+\.\d+\.\d+(-[\w\.-]+)?$"
     return bool(re.match(pattern, version))
 
 

@@ -182,33 +182,18 @@ def generate_update_feed(
         ET.SubElement(channel, 'description').text = 'Latest CuePoint releases'
         ET.SubElement(channel, 'language').text = 'en'
     
-    # Check if this version already exists in the appcast
-    # If it exists, we'll update/replace it to ensure URLs and dates are current
+    # Remove all existing items - we only want to keep the latest version
     existing_items = channel.findall('item')
-    version_exists = False
-    existing_item_to_remove = None
+    if existing_items:
+        print(f"Removing {len(existing_items)} existing version(s) to keep only the latest...")
+        for existing_item in existing_items:
+            short_version_elem = existing_item.find(f'{{{SPARKLE_NS}}}shortVersionString')
+            if short_version_elem is not None:
+                existing_version = short_version_elem.text
+                print(f"  Removing version: {existing_version}")
+            channel.remove(existing_item)
     
-    for existing_item in existing_items:
-        short_version_elem = existing_item.find(f'{{{SPARKLE_NS}}}shortVersionString')
-        if short_version_elem is not None:
-            existing_version = short_version_elem.text
-            # Debug: show what we're comparing
-            print(f"Comparing: existing='{existing_version}' vs new='{version}' (match: {existing_version == version})")
-            if existing_version == version:
-                version_exists = True
-                existing_item_to_remove = existing_item
-                # Get existing pubDate for comparison
-                existing_pubdate = existing_item.find('pubDate')
-                existing_url = existing_item.find('enclosure')
-                if existing_pubdate is not None:
-                    print(f"Version {version} already exists in appcast with pubDate: {existing_pubdate.text}")
-                if existing_url is not None:
-                    print(f"Existing URL: {existing_url.get('url', 'N/A')}")
-                print(f"New URL will be: {download_url}")
-                print(f"Will update/replace it with new pubDate and URLs")
-                break
-    
-    # Always create a new item with current information (ensures URLs and dates are up to date)
+    # Create new item with current information
     item = generate_appcast_item(
         exe_file,
         version,
@@ -217,13 +202,9 @@ def generate_update_feed(
         release_notes
     )
     
-    if version_exists and existing_item_to_remove is not None:
-        # Remove old item and insert new one at top (ensures latest info)
-        channel.remove(existing_item_to_remove)
-        print(f"Replaced existing version {version} with updated information")
-    
-    # Insert new item at the beginning (latest first)
+    # Insert new item (will be the only one)
     channel.insert(0, item)
+    print(f"Added new version: {version} (only version in appcast)")
     
     # Convert to string with proper formatting
     ET.indent(root, space='  ')

@@ -1701,14 +1701,19 @@ class MainWindow(QMainWindow):
             )
             return
 
-        # Show checking message
-        self.statusBar().showMessage("Checking for updates...", 3000)
+        # Show update check dialog
+        from cuepoint.update.update_ui import show_update_check_dialog
+        from cuepoint.version import get_version
+        
+        self.update_check_dialog = show_update_check_dialog(get_version(), self)
+        self.update_check_dialog.set_checking()
 
         # Force check
         if self.update_manager.check_for_updates(force=True):
-            self.statusBar().showMessage("Checking for updates...", 0)
+            # Status will be updated via callbacks
+            pass
         else:
-            self.statusBar().showMessage("Update check already in progress", 2000)
+            self.update_check_dialog.set_error("Update check already in progress")
 
     def _on_update_available(self, update_info: Dict) -> None:
         """Handle update available callback (Step 5.5).
@@ -1716,34 +1721,60 @@ class MainWindow(QMainWindow):
         Args:
             update_info: Update information dictionary.
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"_on_update_available called with update_info: {update_info}")
+        
         try:
-            from cuepoint.update.update_ui import show_update_dialog
             from cuepoint.version import get_version
 
             current_version = get_version()
             new_version = update_info.get("version") or update_info.get("short_version", "Unknown")
+            
+            logger.info(f"Update available: current={current_version}, new={new_version}")
 
-            # Show update dialog
-            result = show_update_dialog(
-                current_version=current_version,
-                update_info=update_info,
-                parent=self,
-                on_install=self._on_update_install,
-                on_later=self._on_update_later,
-                on_skip=self._on_update_skip,
-            )
+            # Update the check dialog if it's open
+            if hasattr(self, "update_check_dialog") and self.update_check_dialog:
+                self.update_check_dialog.set_update_found(update_info)
+                # Connect download button if not already connected
+                if not hasattr(self.update_check_dialog, '_download_connected'):
+                    self.update_check_dialog.download_button.clicked.connect(
+                        lambda: self._on_update_install()
+                    )
+                    self.update_check_dialog._download_connected = True
+            else:
+                # Show update dialog if check dialog not open
+                from cuepoint.update.update_ui import show_update_dialog
+                
+                result = show_update_dialog(
+                    current_version=current_version,
+                    update_info=update_info,
+                    parent=self,
+                    on_install=self._on_update_install,
+                    on_later=self._on_update_later,
+                    on_skip=self._on_update_skip,
+                )
+                
+                logger.info(f"Update dialog result: {result}")
 
             # Update status bar
             self.statusBar().showMessage(f"Update available: {new_version}", 5000)
         except Exception as e:
             import logging
+            import traceback
 
-            logging.error(f"Error showing update dialog: {e}")
-            QMessageBox.warning(
-                self,
-                "Update Available",
-                f"An update is available, but there was an error displaying it:\n{e}",
-            )
+            logger.error(f"Error showing update dialog: {e}")
+            logger.error(traceback.format_exc())
+            
+            # Update check dialog if open
+            if hasattr(self, "update_check_dialog") and self.update_check_dialog:
+                self.update_check_dialog.set_error(str(e))
+            else:
+                QMessageBox.warning(
+                    self,
+                    "Update Available",
+                    f"An update is available, but there was an error displaying it:\n{e}",
+                )
 
     def _on_update_check_complete(self, update_available: bool, error: Optional[str]) -> None:
         """Handle update check complete callback (Step 5.5).
@@ -1752,13 +1783,42 @@ class MainWindow(QMainWindow):
             update_available: True if update is available.
             error: Error message if check failed.
         """
-        if error:
-            self.statusBar().showMessage(f"Update check failed: {error}", 5000)
-        elif update_available:
-            # Update dialog will be shown by _on_update_available
-            pass
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Update the check dialog if it's open
+        if hasattr(self, "update_check_dialog") and self.update_check_dialog:
+            if error:
+                logger.error(f"Update check failed: {error}")
+                self.update_check_dialog.set_error(error)
+                self.statusBar().showMessage(f"Update check failed: {error}", 5000)
+            elif update_available:
+                # Update dialog will be shown by _on_update_available
+                logger.info("Update available - dialog should be shown by _on_update_available callback")
+                # Double-check that callback was called
+                if hasattr(self, 'update_manager') and self.update_manager:
+                    update_info = self.update_manager.get_update_info()
+                    if update_info:
+                        logger.info(f"Update info available: {update_info.get('short_version')}")
+                        # Update dialog if not already updated
+                        if not self.update_check_dialog.update_info:
+                            self.update_check_dialog.set_update_found(update_info)
+                    else:
+                        logger.warning("Update available flag is True but no update_info found!")
+            else:
+                logger.info("No update available - user is on latest version")
+                self.update_check_dialog.set_no_update()
+                self.statusBar().showMessage("You are using the latest version", 3000)
         else:
-            self.statusBar().showMessage("You are using the latest version", 3000)
+            # No dialog open, use status bar
+            if error:
+                logger.error(f"Update check failed: {error}")
+                self.statusBar().showMessage(f"Update check failed: {error}", 5000)
+            elif update_available:
+                logger.info("Update available - dialog should be shown by _on_update_available callback")
+            else:
+                logger.info("No update available - user is on latest version")
+                self.statusBar().showMessage("You are using the latest version", 3000)
 
     def _on_update_error(self, error_message: str) -> None:
         """Handle update error callback (Step 5.5).
