@@ -14,6 +14,7 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 from email.utils import formatdate
 from pathlib import Path
+from typing import Optional
 
 # Add SRC to path
 _script_dir = Path(__file__).resolve().parent
