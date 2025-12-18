@@ -22,10 +22,23 @@ except ImportError:
 def generate_version_info():
     """Generate version_info.txt for Windows"""
     try:
-        version_parts = __version__.split('.')
+        # Extract base version (X.Y.Z) from version string, removing prerelease suffixes
+        # e.g., "1.0.0-test10" -> "1.0.0"
+        base_version = __version__
+        if '-' in base_version:
+            base_version = base_version.split('-')[0]
+        if '+' in base_version:
+            base_version = base_version.split('+')[0]
+        
+        # Parse base version parts
+        version_parts = base_version.split('.')
+        if len(version_parts) != 3:
+            raise ValueError(f"Version must have 3 parts (major.minor.patch), got: {base_version}")
+        
         major, minor, patch = map(int, version_parts)
-    except (ValueError, AttributeError):
-        print(f"Error: Invalid version format: {__version__}")
+    except (ValueError, AttributeError) as e:
+        print(f"Error: Invalid version format: {__version__} (base: {base_version if 'base_version' in locals() else 'N/A'})")
+        print(f"Details: {e}")
         sys.exit(1)
     
     try:

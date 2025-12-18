@@ -21,21 +21,42 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 
+def extract_base_version(version: str) -> str:
+    """Extract base version (X.Y.Z) from version string.
+    
+    Args:
+        version: Version string (may include prerelease suffix or build metadata)
+        
+    Returns:
+        Base version string (X.Y.Z)
+    """
+    # Remove build metadata (everything after +)
+    if '+' in version:
+        version = version.split('+')[0]
+    # Remove prerelease suffix (everything after -)
+    if '-' in version:
+        version = version.split('-')[0]
+    return version
+
+
 def validate_semver(version: str) -> Tuple[bool, Optional[str]]:
-    """Validate SemVer format.
+    """Validate SemVer format (including prerelease suffixes).
 
     Args:
-        version: Version string to validate.
+        version: Version string to validate (may include prerelease suffix).
 
     Returns:
         Tuple of (is_valid, error_message).
     """
+    # Extract base version for validation
+    base_version = extract_base_version(version)
+    
     pattern = r"^\d+\.\d+\.\d+$"
-    if not re.match(pattern, version):
-        return False, f"Version must be SemVer format (X.Y.Z), got: {version}"
+    if not re.match(pattern, base_version):
+        return False, f"Version must be SemVer format (X.Y.Z), got: {version} (base: {base_version})"
 
     # Check version components are reasonable
-    parts = version.split(".")
+    parts = base_version.split(".")
     major, minor, patch = map(int, parts)
 
     if major > 100:
@@ -114,6 +135,9 @@ def check_version_consistency() -> Tuple[bool, List[str]]:
         errors.append("Could not read version from version.py")
         return False, errors
 
+    # Extract base version for comparison
+    file_base_version = extract_base_version(file_version)
+
     # Validate format
     valid, error_msg = validate_semver(file_version)
     if not valid:
@@ -121,12 +145,15 @@ def check_version_consistency() -> Tuple[bool, List[str]]:
         return False, errors
 
     # Check against git tag (if exists)
+    # Compare base versions since git tag might have different prerelease suffix
     git_version = get_version_from_git_tag()
-    if git_version and git_version != file_version:
-        errors.append(
-            f"Version mismatch: version.py has {file_version}, "
-            f"latest git tag is v{git_version}"
-        )
+    if git_version:
+        git_base_version = extract_base_version(git_version)
+        if git_base_version != file_base_version:
+            errors.append(
+                f"Version mismatch: version.py has {file_version} (base: {file_base_version}), "
+                f"latest git tag is v{git_version} (base: {git_base_version})"
+            )
 
     # Check pyproject.toml if exists
     script_dir = Path(__file__).parent
