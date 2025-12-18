@@ -40,7 +40,7 @@ It should now show the appcast XML instead of 404.
 
 Once GitHub Pages is enabled and your first release is published, the update system will work automatically for all future releases..mnkl
 
-## Troubleshooting
+## Troubleshooting1
 
 **Still seeing 404?**
 - Wait 2-5 minutes (GitHub Pages needs time to build)

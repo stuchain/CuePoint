@@ -365,7 +365,8 @@ class UpdateCheckDialog(QDialog):
         
         # Connect signals
         self.close_button.clicked.connect(self.accept)
-        self.download_button.clicked.connect(self._on_download)
+        # Note: download_button is connected by parent (main_window.py) after update is found
+        # We don't connect it here to avoid conflicts
     
     def set_status(self, message: str, show_progress: bool = False) -> None:
         """Update status message.
@@ -462,7 +463,11 @@ class UpdateCheckDialog(QDialog):
         self.download_button.setVisible(False)
     
     def _on_download(self) -> None:
-        """Handle download button click."""
+        """Handle download button click.
+        
+        Note: This method is kept for backward compatibility but the actual
+        download handling is done via the connection in main_window.py
+        """
         if self.update_info:
             # Accept dialog - parent will handle download via callback
             self.accept()

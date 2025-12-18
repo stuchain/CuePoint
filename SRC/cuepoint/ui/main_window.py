@@ -1747,6 +1747,16 @@ class MainWindow(QMainWindow):
                 if not hasattr(self.update_check_dialog, '_download_connected'):
                     # Store update_info in dialog for download
                     self.update_check_dialog.update_info = update_info
+                    # Disconnect any existing handler first (including dialog's own _on_download)
+                    try:
+                        self.update_check_dialog.download_button.clicked.disconnect()
+                    except TypeError:
+                        # No connections to disconnect
+                        pass
+                    # Connect to our handler that will trigger download
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.info("Connecting download button to download handler")
                     self.update_check_dialog.download_button.clicked.connect(
                         lambda: self._on_update_install_from_dialog()
                     )
@@ -1860,13 +1870,28 @@ class MainWindow(QMainWindow):
     
     def _on_update_install_from_dialog(self) -> None:
         """Handle update install from update check dialog."""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info("Download button clicked in update check dialog")
+        
         if hasattr(self, "update_check_dialog") and self.update_check_dialog:
-            update_info = self.update_check_dialog.update_info
+            update_info = getattr(self.update_check_dialog, 'update_info', None)
             if update_info:
+                logger.info(f"Starting download from dialog, version: {update_info.get('short_version', 'unknown')}")
+                # Close the update check dialog first
+                self.update_check_dialog.accept()
+                # Start download and install
                 self._download_and_install_update(update_info)
             else:
-                QMessageBox.warning(self, "Update", "Update information not available.")
+                logger.warning("Update info not available in dialog")
+                QMessageBox.warning(
+                    self, 
+                    "Update", 
+                    "Update information not available. Please check for updates again."
+                )
         else:
+            logger.warning("Update check dialog not found, falling back to update manager")
             # Fallback to update manager
             self._on_update_install()
     
@@ -1900,6 +1925,12 @@ class MainWindow(QMainWindow):
             
             logger = logging.getLogger(__name__)
             logger.info(f"Starting download from: {download_url}")
+            
+            # Verify URL format (GitHub Releases format)
+            if "github.com" in download_url and "/releases/download/" in download_url:
+                logger.info("Download URL appears to be a GitHub Releases URL - should be publicly accessible")
+            else:
+                logger.warning(f"Download URL format: {download_url} (may not be GitHub Releases)")
             
             download_dialog = DownloadProgressDialog(download_url, parent=self)
             result = download_dialog.exec()

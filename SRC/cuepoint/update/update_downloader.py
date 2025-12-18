@@ -21,6 +21,7 @@ except ImportError:
     QT_AVAILABLE = False
     QObject = object
     Signal = None
+    QNetworkRequest = None
 
 
 class UpdateDownloader(QObject if QT_AVAILABLE else object):
@@ -76,8 +77,12 @@ class UpdateDownloader(QObject if QT_AVAILABLE else object):
             return self._download_with_requests(url, filename, progress_callback)
         
         try:
+            import logging
             import time
             from PySide6.QtCore import QTimer
+            
+            logger = logging.getLogger(__name__)
+            logger.info(f"Starting download from URL: {url}")
             
             # Reset state
             self.cancelled_flag = False
@@ -109,7 +114,11 @@ class UpdateDownloader(QObject if QT_AVAILABLE else object):
             
             # Create request
             request = QNetworkRequest(QUrl(url))
+            # GitHub Releases requires a proper User-Agent
+            # Some servers block requests without User-Agent or with generic ones
             request.setRawHeader(b"User-Agent", b"CuePoint-Updater/1.0")
+            # Accept any content type for binary downloads
+            request.setRawHeader(b"Accept", b"*/*")
             
             # Start download
             self.current_reply = self.network_manager.get(request)
@@ -196,13 +205,23 @@ class UpdateDownloader(QObject if QT_AVAILABLE else object):
             return
         
         if self.current_reply:
-            if self.current_reply.error() == QNetworkReply.NetworkError.NoError:
-                if self.download_file:
-                    self.download_file.close()
-                if self.download_path and self.download_path.exists():
-                    if hasattr(self, 'finished'):
-                        self.finished.emit(str(self.download_path))
+            error_code = self.current_reply.error()
+            if error_code == QNetworkReply.NetworkError.NoError:
+                # Check HTTP status code
+                status_code = self.current_reply.attribute(QNetworkRequest.Attribute.HttpStatusCodeAttribute)
+                if status_code and status_code >= 200 and status_code < 300:
+                    if self.download_file:
+                        self.download_file.close()
+                    if self.download_path and self.download_path.exists():
+                        if hasattr(self, 'finished'):
+                            self.finished.emit(str(self.download_path))
+                else:
+                    # HTTP error (e.g., 404, 403)
+                    error_msg = f"HTTP {status_code}: {self.current_reply.attribute(QNetworkRequest.Attribute.HttpReasonPhraseAttribute) or 'Download failed'}"
+                    if hasattr(self, 'error'):
+                        self.error.emit(error_msg)
             else:
+                # Network error
                 error_msg = self.current_reply.errorString()
                 if hasattr(self, 'error'):
                     self.error.emit(error_msg)
