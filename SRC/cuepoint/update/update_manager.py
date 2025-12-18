@@ -215,7 +215,8 @@ class UpdateManager:
                 
                 if self._on_error:
                     QTimer.singleShot(0, lambda: self._on_error(error_msg))
-                        QTimer.singleShot(0, lambda: self._on_check_complete(False, error_msg))
+                if self._on_check_complete:
+                    QTimer.singleShot(0, lambda: self._on_check_complete(False, error_msg))
             except ImportError:
                 if self._on_error:
                     self._on_error(error_msg)

@@ -920,18 +920,17 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
     try:
         # CRITICAL: Wrap DDGS context manager with timeout protection
         # In packaged apps, DuckDuckGo searches can timeout and hang parallel processing
-        # Use a timeout to ensure this function doesn't block indefinitely
-        import signal
-        import threading
-
-        # For Windows, signal-based timeout won't work, so we'll rely on ddgs internal timeouts
-        # and exception handling
+        # We need to ensure this function doesn't block indefinitely
         with DDGS() as ddgs:
             for search_q in search_queries:
                 try:
                     # CRITICAL: If DuckDuckGo times out, this iterator will raise TimeoutException
                     # We catch it below and continue to next query
                     # Don't let a single timeout block all processing
+                    # 
+                    # Note: In packaged apps, ddgs.text() may hang even if it should timeout.
+                    # We rely on the exception handling below to catch any timeouts and continue.
+                    # If this still hangs, the parallel processing timeout (90s) will catch it.
                     for r in ddgs.text(search_q, region="us-en", max_results=mr):
                         href = r.get("href") or r.get("url") or ""
                         if "beatport.com/track/" in href:

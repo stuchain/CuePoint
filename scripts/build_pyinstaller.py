@@ -31,6 +31,21 @@ def build():
     os.chdir(project_root)
     
     try:
+        # Generate version info file for Windows builds
+        if sys.platform == 'win32':
+            version_script = project_root / 'scripts' / 'generate_version_info.py'
+            if version_script.exists():
+                print("Generating version_info.txt for Windows...")
+                result_version = subprocess.run(
+                    [sys.executable, str(version_script)],
+                    check=False,
+                    cwd=project_root,
+                )
+                if result_version.returncode != 0:
+                    print("Warning: Failed to generate version_info.txt, continuing anyway...")
+            else:
+                print("Warning: generate_version_info.py not found, skipping version info generation")
+        
         # Run PyInstaller (use python -m to ensure it's found)
         cmd = [sys.executable, '-m', 'PyInstaller', '--clean', '--noconfirm', str(spec_file.relative_to(project_root))]
         result = subprocess.run(cmd, check=False, cwd=project_root)

@@ -570,20 +570,41 @@ def beatport_search_hybrid(
             return urls[:max_results]
 
         # Otherwise, supplement with DuckDuckGo
-        ddg_urls = ddg_track_urls(idx, query, max(max_results - len(urls), 20))
-        for url in ddg_urls:
-            if url not in seen:
-                seen.add(url)
-                urls.append(url)
+        # CRITICAL: In packaged apps, DuckDuckGo may timeout. If it does, we'll get an empty list
+        # and continue with just the direct search results. This is fine - direct search is more reliable.
+        try:
+            ddg_urls = ddg_track_urls(idx, query, max(max_results - len(urls), 20))
+            for url in ddg_urls:
+                if url not in seen:
+                    seen.add(url)
+                    urls.append(url)
+        except Exception as ddg_error:
+            # If DuckDuckGo fails (timeout, etc.), log but continue with direct search results
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.debug(
+                f"[{idx}] DuckDuckGo supplement search failed (using direct results only): {ddg_error!r}"
+            )
+            # Continue with just direct search results - that's fine
     else:
         # Try DuckDuckGo first, then supplement with direct search
-        ddg_urls = ddg_track_urls(idx, query, max_results)
-        for url in ddg_urls:
-            if url not in seen:
-                seen.add(url)
-                urls.append(url)
+        # CRITICAL: In packaged apps, DuckDuckGo may timeout. If it does, fall back to direct search immediately.
+        try:
+            ddg_urls = ddg_track_urls(idx, query, max_results)
+            for url in ddg_urls:
+                if url not in seen:
+                    seen.add(url)
+                    urls.append(url)
+        except Exception as ddg_error:
+            # If DuckDuckGo fails (timeout, etc.), log and fall back to direct search
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(
+                f"[{idx}] DuckDuckGo search failed (timeout?), falling back to direct search: {ddg_error!r}"
+            )
+            # Fall through to direct search below
 
-        if len(urls) < max_results * 0.5:  # If DuckDuckGo found less than 50%
+        if len(urls) < max_results * 0.5:  # If DuckDuckGo found less than 50% (or failed)
             direct_urls = beatport_search_direct(idx, query, max(max_results - len(urls), 20))
             for url in direct_urls:
                 if url not in seen:

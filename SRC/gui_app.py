@@ -88,34 +88,15 @@ if "--test-search-dependencies" in sys.argv:
                 # Restore stdout
                 sys.stdout = old_stdout
                 
-                # Print to console if available, otherwise show message box
-                print(output_text)
-                
-                # If we're in a packaged app without console, show results in a message box
+                # Print output
+                # For frozen executables (console=False), always print to stderr
+                # so it can be captured by subprocess.run() in tests
                 if getattr(sys, 'frozen', False):
-                    from PySide6.QtWidgets import (
-                        QApplication,
-                        QDialog,
-                        QMessageBox,
-                        QPushButton,
-                        QTextEdit,
-                        QVBoxLayout,
-                    )
-                    app = QApplication(sys.argv)
-                    dialog = QDialog()
-                    dialog.setWindowTitle("Search Dependencies Test Results")
-                    layout = QVBoxLayout(dialog)
-                    
-                    text_edit = QTextEdit()
-                    text_edit.setReadOnly(True)
-                    text_edit.setPlainText(output_text)
-                    layout.addWidget(text_edit)
-                    
-                    close_button = QPushButton("Close")
-                    close_button.clicked.connect(dialog.accept)
-                    layout.addWidget(close_button)
-                    
-                    dialog.exec()
+                    # In frozen mode, print to stderr so tests can capture it
+                    print(output_text, file=sys.stderr)
+                else:
+                    # In development, print to stdout
+                    print(output_text)
                 
                 sys.exit(0 if success else 1)
             finally:
