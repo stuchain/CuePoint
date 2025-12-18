@@ -44,13 +44,34 @@ These documents are structured as **ordered implementation steps** with analytic
 
 10. **Step 10: Final Configuration & Release Readiness** (`10_Final_Configuration_and_Release_Readiness.md`)
    - Configuration: GitHub Secrets, certificates, final testing
-   - **Implement last** - after all other steps are complete
+   - **Implement tenth** - after all other steps are complete
+
+11. **Step 11: Post-Launch Operations & Support** (`11_Post_Launch_Operations_and_Support.md`)
+   - Operations: error monitoring, support infrastructure, operational procedures
+   - **Implement after release** - establishes professional operations
+
+12. **Step 12: Analytics, Monitoring & Telemetry** (`12_Analytics_Monitoring_Telemetry.md`)
+   - Analytics: privacy-respecting analytics, performance monitoring
+   - **Implement after release** - can be done in parallel with Step 11
+
+13. **Step 13: User Onboarding & Documentation** (`13_User_Onboarding_Documentation.md`)
+   - Documentation: user guides, tutorials, help system
+   - **Implement after release** - improves user experience significantly
+
+14. **Step 14: Marketing & Distribution** (`14_Marketing_Distribution.md`)
+   - Marketing: website, distribution channels, community building
+   - **Implement after release** - important for growth
+
+15. **Step 15: Long-Term Maintenance & Evolution** (`15_Long_Term_Maintenance_Evolution.md`)
+   - Maintenance: technical debt, sustainability, long-term vision
+   - **Ongoing process** - ensures long-term success
 
 ### How to Use These Docs
 
-- **For implementation**: Follow steps 1-10 in order
+- **For implementation**: Follow steps 1-10 in order for initial release, then steps 11-15 for professional operations
 - **For reference**: Each document contains ordered substeps (1.1, 1.2, etc.) and analytical substeps (1.1.1, 1.1.2, etc.)
 - **For planning**: Review Step 1 first to understand scope, then plan implementation sequence
+- **For professional readiness**: Complete Steps 11-15 after initial release
 
 ### Scope (v1.0)
 
@@ -75,6 +96,7 @@ These documents are structured as **ordered implementation steps** with analytic
 
 ### Documents
 
+**Core Development (Steps 1-10)**
 - `01_Product_Requirements_and_Definition.md` - Step 1: Foundation
 - `02_Build_System_and_Release_Pipeline.md` - Step 2: Infrastructure
 - `03_macOS_Packaging_Signing_Notarization.md` - Step 3: macOS Distribution
@@ -85,6 +107,13 @@ These documents are structured as **ordered implementation steps** with analytic
 - `08_Security_Privacy_and_Compliance.md` - Step 8: Security
 - `09_UX_Polish_Accessibility_and_Localization.md` - Step 9: Polish
 - `10_Final_Configuration_and_Release_Readiness.md` - Step 10: Final Configuration
+
+**Professional Operations (Steps 11-15)**
+- `11_Post_Launch_Operations_and_Support.md` - Step 11: Operations & Support
+- `12_Analytics_Monitoring_Telemetry.md` - Step 12: Analytics & Monitoring
+- `13_User_Onboarding_Documentation.md` - Step 13: Onboarding & Documentation
+- `14_Marketing_Distribution.md` - Step 14: Marketing & Distribution
+- `15_Long_Term_Maintenance_Evolution.md` - Step 15: Long-Term Maintenance
 
 ### Glossary
 

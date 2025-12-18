@@ -154,3 +154,101 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Generate Appcast Feeds
+        run: |
+          echo "=== Generating Appcast Feeds ==="
+          VERSION="${{ github.ref_name }}"
+          REPO="${{ github.repository }}"
+          
+          # Extract version without 'v' prefix if present
+          VERSION_NUM="${VERSION#v}"
+          
+          echo "Version: $VERSION_NUM"
+          echo "Repository: $REPO"
+          
+          # Find DMG and EXE files
+          DMG_FILE=$(ls artifacts/macos/*.dmg 2>/dev/null | head -1)
+          EXE_FILE=$(ls artifacts/windows/*.exe 2>/dev/null | head -1)
+          
+          if [ -z "$DMG_FILE" ] || [ -z "$EXE_FILE" ]; then
+            echo "Warning: DMG or EXE file not found, skipping appcast generation"
+            echo "  DMG: $DMG_FILE"
+            echo "  EXE: $EXE_FILE"
+            exit 0
+          fi
+          
+          echo "DMG file: $DMG_FILE"
+          echo "EXE file: $EXE_FILE"
+          
+          # Generate download URLs
+          DMG_URL="https://github.com/$REPO/releases/download/$VERSION/$(basename $DMG_FILE)"
+          EXE_URL="https://github.com/$REPO/releases/download/$VERSION/$(basename $EXE_FILE)"
+          RELEASE_NOTES_URL="https://github.com/$REPO/releases/tag/$VERSION"
+          
+          echo "DMG URL: $DMG_URL"
+          echo "EXE URL: $EXE_URL"
+          
+          # Create updates directory structure
+          mkdir -p updates/macos/stable
+          mkdir -p updates/windows/stable
+          
+          # Generate macOS appcast
+          if [ -f "$DMG_FILE" ]; then
+            echo "Generating macOS appcast..."
+            python scripts/generate_appcast.py \
+              --dmg "$DMG_FILE" \
+              --version "$VERSION_NUM" \
+              --url "$DMG_URL" \
+              --notes "$RELEASE_NOTES_URL" \
+              --output updates/macos/stable/appcast.xml \
+              --append \
+              --channel stable
+            echo "[OK] macOS appcast generated"
+          fi
+          
+          # Generate Windows appcast
+          if [ -f "$EXE_FILE" ]; then
+            echo "Generating Windows appcast..."
+            python scripts/generate_update_feed.py \
+              --exe "$EXE_FILE" \
+              --version "$VERSION_NUM" \
+              --url "$EXE_URL" \
+              --notes "$RELEASE_NOTES_URL" \
+              --output updates/windows/stable/appcast.xml \
+              --append \
+              --channel stable
+            echo "[OK] Windows appcast generated"
+          fi
+          
+          echo "Appcast generation complete"
+      
+      - name: Validate Appcast Feeds
+        run: |
+          echo "=== Validating Appcast Feeds ==="
+          if [ -f "updates/macos/stable/appcast.xml" ] && [ -f "updates/windows/stable/appcast.xml" ]; then
+            python scripts/validate_feeds.py \
+              --macos updates/macos/stable/appcast.xml \
+              --windows updates/windows/stable/appcast.xml
+            echo "[OK] Appcast feeds validated"
+          else
+            echo "Warning: Appcast files not found, skipping validation"
+          fi
+      
+      - name: Publish Appcast Feeds to GitHub Pages
+        run: |
+          echo "=== Publishing Appcast Feeds ==="
+          
+          # Use publish_feeds.py script for reliable publishing
+          if [ -f "updates/macos/stable/appcast.xml" ] && [ -f "updates/windows/stable/appcast.xml" ]; then
+            python scripts/publish_feeds.py \
+              --appcasts updates/macos/stable/appcast.xml updates/windows/stable/appcast.xml \
+              --branch gh-pages \
+              --message "Update appcast feeds for ${{ github.ref_name }}" \
+              --github-token "${{ secrets.GITHUB_TOKEN }}"
+            echo "[OK] Appcast feeds published to gh-pages branch"
+          else
+            echo "Warning: Appcast files not found, skipping publish"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

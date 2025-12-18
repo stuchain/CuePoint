@@ -8,9 +8,11 @@ This script updates appcast files in the gh-pages branch for GitHub Pages hostin
 """
 
 import argparse
+import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Optional
 
 
 def run_command(cmd: list, cwd: Path = None) -> tuple:
@@ -41,7 +43,8 @@ def publish_feeds(
     appcast_files: list,
     branch: str = "gh-pages",
     message: str = "Update feeds",
-    remote: str = "origin"
+    remote: str = "origin",
+    github_token: Optional[str] = None
 ) -> bool:
     """
     Publish appcast files to GitHub Pages branch.
@@ -51,6 +54,7 @@ def publish_feeds(
         branch: Branch name (default: gh-pages)
         message: Commit message
         remote: Remote name (default: origin)
+        github_token: Optional GitHub token for authentication (for CI/CD)
         
     Returns:
         True if successful, False otherwise
@@ -122,14 +126,34 @@ def publish_feeds(
     
     print(f"Committed changes: {message}")
     
-    # Push to remote
-    returncode, _, stderr = run_command(
-        ['git', 'push', remote, branch],
-        cwd=repo_root
-    )
+    # Push to remote (with authentication if token provided)
+    push_cmd = ['git', 'push', remote, branch]
+    
+    # If GitHub token provided, use it for authentication
+    if github_token:
+        # Get current remote URL
+        returncode, remote_url_output, _ = run_command(['git', 'remote', 'get-url', remote], cwd=repo_root)
+        if returncode == 0:
+            remote_url = remote_url_output.strip()
+            
+            # Configure remote URL with token for HTTPS
+            if remote_url.startswith('https://github.com/') or remote_url.startswith('https://www.github.com/'):
+                # Extract repo path (e.g., owner/repo.git)
+                repo_path = remote_url.replace('https://github.com/', '').replace('https://www.github.com/', '').replace('.git', '')
+                auth_url = f'https://{github_token}@github.com/{repo_path}.git'
+                
+                # Temporarily set remote URL with token
+                run_command(['git', 'remote', 'set-url', remote, auth_url], cwd=repo_root)
+    
+    returncode, _, stderr = run_command(push_cmd, cwd=repo_root)
+    
+    # Restore original remote URL if we modified it
+    if github_token and 'remote_url' in locals():
+        run_command(['git', 'remote', 'set-url', remote, remote_url], cwd=repo_root)
+    
     if returncode != 0:
         print(f"Error: Could not push to {remote}/{branch}: {stderr}", file=sys.stderr)
-        print("Note: You may need to push manually")
+        print("Note: You may need to push manually or check authentication")
         return False
     
     print(f"Pushed to {remote}/{branch}")
@@ -162,12 +186,19 @@ def main():
         help='Remote name (default: origin)'
     )
     parser.add_argument(
+        '--github-token',
+        help='GitHub token for authentication (for CI/CD)'
+    )
+    parser.add_argument(
         '--dry-run',
         action='store_true',
         help='Show what would be done without making changes'
     )
     
     args = parser.parse_args()
+    
+    # Get token from environment if not provided (for CI/CD)
+    github_token = args.github_token or os.environ.get('GITHUB_TOKEN')
     
     if args.dry_run:
         print("Dry run mode - no changes will be made")
@@ -183,7 +214,8 @@ def main():
         args.appcasts,
         args.branch,
         args.message,
-        args.remote
+        args.remote,
+        github_token
     )
     
     return 0 if success else 1

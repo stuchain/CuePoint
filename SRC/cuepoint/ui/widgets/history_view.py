@@ -1110,25 +1110,64 @@ class HistoryView(QWidget):
         if not candidates_path:
             # Log when candidates file is not found (helpful for debugging)
             import logging
+            import sys
             logger = logging.getLogger(__name__)
+            
+            # Calculate expected path for logging
+            main_csv_abs = os.path.abspath(self.current_csv_path)
+            expected_path = f"{os.path.splitext(main_csv_abs)[0]}_candidates.csv"
+            
+            # Check if running as frozen app
+            frozen = getattr(sys, 'frozen', False)
+            meipass = getattr(sys, '_MEIPASS', '')
+            
             logger.debug(
                 f"Candidates CSV not found for track {playlist_index}:\n"
                 f"  main_csv_path: {self.current_csv_path}\n"
-                f"  expected_candidates_path: {os.path.splitext(os.path.abspath(self.current_csv_path))[0]}_candidates.csv"
+                f"  main_csv_abs: {main_csv_abs}\n"
+                f"  expected_candidates_path: {expected_path}\n"
+                f"  file_exists: {os.path.exists(expected_path)}\n"
+                f"  frozen: {frozen}\n"
+                f"  _MEIPASS: {meipass}"
             )
-            return []
+            
+            # Also check if file exists but wasn't found by _get_candidates_csv_path
+            if os.path.exists(expected_path):
+                # File exists but wasn't returned - this shouldn't happen, but try using it
+                candidates_path = expected_path
+            else:
+                return []
 
         try:
             candidates = []
+            
+            # Verify file exists before trying to open
+            if not os.path.exists(candidates_path):
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Candidates file does not exist: {candidates_path}")
+                return []
+            
             with open(candidates_path, "r", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
                 for row in reader:
                     # Match by playlist_index and original title/artists
-                    if (
-                        row.get("playlist_index") == str(playlist_index)
-                        and row.get("original_title", "").strip() == original_title.strip()
-                        and row.get("original_artists", "").strip() == original_artists.strip()
-                    ):
+                    # Use flexible matching - try both string and int comparison for playlist_index
+                    row_index = row.get("playlist_index", "").strip()
+                    row_title = row.get("original_title", "").strip()
+                    row_artists = row.get("original_artists", "").strip()
+                    
+                    # Compare playlist_index (flexible - string or int)
+                    index_matches = (
+                        row_index == str(playlist_index) or
+                        (row_index.isdigit() and int(row_index) == playlist_index)
+                    )
+                    
+                    # Compare title and artists (case-insensitive, trimmed)
+                    title_matches = row_title.lower() == original_title.strip().lower()
+                    artists_matches = row_artists.lower() == original_artists.strip().lower()
+                    
+                    if index_matches and title_matches and artists_matches:
                         # Convert CSV row to candidate dict format expected by CandidateDialog
                         candidate = {
                             "candidate_title": row.get("candidate_title", ""),
@@ -1148,13 +1187,34 @@ class HistoryView(QWidget):
                             "beatport_bpm": row.get("candidate_bpm", ""),
                             "beatport_year": row.get("candidate_year", ""),
                             "beatport_label": row.get("candidate_label", ""),
+                            "candidate_index": row.get("candidate_index", ""),
                         }
                         candidates.append(candidate)
 
             # Sort by final_score (descending) to rank them
             candidates.sort(key=lambda x: x.get("match_score", 0), reverse=True)
+            
+            # Log if no candidates found (for debugging)
+            if not candidates:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.debug(
+                    f"No candidates found in file for track:\n"
+                    f"  playlist_index: {playlist_index}\n"
+                    f"  original_title: {original_title}\n"
+                    f"  original_artists: {original_artists}\n"
+                    f"  candidates_path: {candidates_path}"
+                )
+            
             return candidates
-        except Exception:
+        except Exception as e:
+            import logging
+            import traceback
+            logger = logging.getLogger(__name__)
+            logger.error(
+                f"Error loading candidates from {candidates_path}:\n"
+                f"{str(e)}\n{traceback.format_exc()}"
+            )
             return []
 
     def _show_context_menu(self, position):
@@ -1205,17 +1265,73 @@ class HistoryView(QWidget):
         if row < 0 or row >= self.table.rowCount():
             return
 
-        # Get track information from the table
-        playlist_index_item = self.table.item(row, 0)  # Assuming first column is playlist_index
-        title_item = self.table.item(row, 1)  # Assuming second column is title
-        artist_item = self.table.item(row, 2)  # Assuming third column is artist
-
-        if not playlist_index_item or not title_item:
+        # Get track information from the table by finding columns by header name
+        # This is more robust than assuming column positions
+        playlist_index = None
+        original_title = None
+        original_artists = None
+        
+        # Find columns by header name
+        for col in range(self.table.columnCount()):
+            header = self.table.horizontalHeaderItem(col)
+            if not header:
+                continue
+            
+            header_text = header.text().lower()
+            item = self.table.item(row, col)
+            
+            if not item:
+                continue
+            
+            # Find playlist_index column
+            if playlist_index is None and ("index" in header_text or "playlist_index" in header_text):
+                try:
+                    playlist_index = int(item.text())
+                except (ValueError, TypeError):
+                    pass
+            
+            # Find original_title column
+            if original_title is None and ("original_title" in header_text or 
+                                          ("title" in header_text and "beatport" not in header_text and "original" not in header_text)):
+                original_title = item.text().strip()
+            
+            # Find original_artists column
+            if original_artists is None and ("original_artists" in header_text or 
+                                            ("artist" in header_text and "beatport" not in header_text and "original" not in header_text)):
+                original_artists = item.text().strip()
+        
+        # Fallback: if we couldn't find by header, try by position (for backwards compatibility)
+        if playlist_index is None:
+            playlist_index_item = self.table.item(row, 0)
+            if playlist_index_item:
+                try:
+                    playlist_index = int(playlist_index_item.text())
+                except (ValueError, TypeError):
+                    pass
+        
+        if original_title is None:
+            title_item = self.table.item(row, 1) if self.table.columnCount() > 1 else None
+            if title_item:
+                original_title = title_item.text().strip()
+        
+        if original_artists is None:
+            artist_item = self.table.item(row, 2) if self.table.columnCount() > 2 else None
+            if artist_item:
+                original_artists = artist_item.text().strip()
+        
+        # Validate we have required fields
+        if playlist_index is None or original_title is None:
+            QMessageBox.warning(
+                self,
+                "Error",
+                "Could not determine track information from table row.\n\n"
+                "Please ensure the CSV file has 'playlist_index' and 'original_title' columns."
+            )
             return
-
-        playlist_index = int(playlist_index_item.text())
-        original_title = title_item.text()
-        original_artists = artist_item.text() if artist_item else ""
+        
+        # Use empty string if artists not found
+        if original_artists is None:
+            original_artists = ""
 
         # Load candidates for this track
         candidates = self._load_candidates_for_track(

@@ -1766,25 +1766,107 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Update Error", f"Error checking for updates:\n{error_message}")
 
     def _on_update_install(self) -> None:
-        """Handle update install action (Step 5.5)."""
-        # For v1.0, we just open the download URL
-        # Framework integration (Sparkle/WinSparkle) will handle actual installation
-        if hasattr(self, "update_manager") and self.update_manager:
-            update_info = self.update_manager._update_available
-            if update_info:
-                download_url = update_info.get("enclosure", {}).get("url") if isinstance(update_info.get("enclosure"), dict) else None
-                if download_url:
-                    from PySide6.QtCore import QUrl
-                    from PySide6.QtGui import QDesktopServices
-
-                    QDesktopServices.openUrl(QUrl(download_url))
-                    self.statusBar().showMessage("Opening download page...", 3000)
-                else:
-                    QMessageBox.information(
+        """Handle update install action (Step 10.9.3 - Automatic download and installation)."""
+        if not hasattr(self, "update_manager") or not self.update_manager:
+            return
+        
+        update_info = self.update_manager._update_available
+        if not update_info:
+            QMessageBox.warning(self, "Update", "Update information not available.")
+            return
+        
+        # Get download URL
+        download_url = update_info.get("download_url")
+        if not download_url:
+            # Try alternative location
+            enclosure = update_info.get("enclosure", {})
+            if isinstance(enclosure, dict):
+                download_url = enclosure.get("url")
+        
+        if not download_url:
+            QMessageBox.information(
+                self,
+                "Update",
+                "Download URL not available. Please check the release page manually.",
+            )
+            return
+        
+        # Show download progress dialog
+        try:
+            from cuepoint.ui.dialogs.download_progress_dialog import DownloadProgressDialog
+            from PySide6.QtWidgets import QDialog
+            
+            download_dialog = DownloadProgressDialog(download_url, parent=self)
+            result = download_dialog.exec()
+            
+            if result == QDialog.DialogCode.Accepted and download_dialog.get_downloaded_file():
+                # Download completed, proceed with installation
+                self._install_update(download_dialog.get_downloaded_file())
+            elif download_dialog.cancelled:
+                self.statusBar().showMessage("Download cancelled", 2000)
+            else:
+                self.statusBar().showMessage("Download failed", 3000)
+                
+        except Exception as e:
+            import logging
+            logging.error(f"Update download failed: {e}")
+            QMessageBox.warning(
+                self,
+                "Update Error",
+                f"Failed to download update:\n\n{str(e)}\n\nPlease download manually from the release page.",
+            )
+    
+    def _install_update(self, installer_path: str) -> None:
+        """Install downloaded update (Step 10.9.3)."""
+        try:
+            from cuepoint.update.update_installer import UpdateInstaller
+            from PySide6.QtWidgets import QMessageBox
+            
+            installer = UpdateInstaller()
+            
+            if not installer.can_install():
+                QMessageBox.warning(
+                    self,
+                    "Installation Not Supported",
+                    "Automatic installation is not supported on this platform.\n\n"
+                    "Please install the update manually:\n" + installer_path
+                )
+                return
+            
+            # Confirm installation
+            reply = QMessageBox.question(
+                self,
+                "Install Update",
+                "The application will close and the update will be installed.\n\n"
+                "Do you want to continue?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.Yes
+            )
+            
+            if reply == QMessageBox.StandardButton.Yes:
+                # Perform installation (this will close the app)
+                success, error = installer.install(installer_path)
+                
+                if not success:
+                    QMessageBox.critical(
                         self,
-                        "Update",
-                        "Download URL not available. Please check the release page manually.",
+                        "Installation Failed",
+                        f"Failed to install update:\n\n{error}\n\n"
+                        "Please install manually:\n" + installer_path
                     )
+                # If successful, installer.install() will have closed the app
+            else:
+                self.statusBar().showMessage("Installation cancelled", 2000)
+                
+        except Exception as e:
+            import logging
+            logging.error(f"Update installation failed: {e}")
+            QMessageBox.critical(
+                self,
+                "Installation Error",
+                f"Failed to install update:\n\n{str(e)}\n\n"
+                "Please install manually:\n" + installer_path
+            )
 
     def _on_update_later(self) -> None:
         """Handle update later action (Step 5.5)."""
