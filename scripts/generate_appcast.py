@@ -16,7 +16,10 @@ from email.utils import formatdate
 from pathlib import Path
 
 # Add SRC to path
-sys.path.insert(0, str(Path(__file__).parent.parent / 'SRC').resolve())
+_script_dir = Path(__file__).resolve().parent
+_project_root = _script_dir.parent
+_src_dir = _project_root / 'SRC'
+sys.path.insert(0, str(_src_dir))
 
 try:
     from cuepoint.version import __version__

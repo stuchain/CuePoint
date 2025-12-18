@@ -180,6 +180,9 @@ class ProcessorService(IProcessorService):
             for cand in all_candidates:
                 candidates_data.append(
                     {
+                        "playlist_index": str(idx),
+                        "original_title": track.title,
+                        "original_artists": original_artists or artists_for_scoring,
                         "candidate_url": cand.url,
                         "candidate_title": cand.title,
                         "candidate_artists": cand.artists,
@@ -254,15 +257,67 @@ class ProcessorService(IProcessorService):
             # No match found
             self.logging_service.warning(f"[{idx}] No match found (duration: {dur:.0f} ms)")
 
+            # Build candidates_data list even when no match (for export and UI)
+            # This ensures candidates are saved even when no match is found
+            candidates_data = []
+            for cand in all_candidates:
+                candidates_data.append(
+                    {
+                        "playlist_index": str(idx),
+                        "original_title": track.title,
+                        "original_artists": original_artists or artists_for_scoring,
+                        "candidate_url": cand.url,
+                        "candidate_title": cand.title,
+                        "candidate_artists": cand.artists,
+                        "candidate_key": cand.key or "",
+                        "candidate_key_camelot": cand.key or "",  # TODO: convert to Camelot
+                        "candidate_year": str(cand.release_year) if cand.release_year else "",
+                        "candidate_bpm": cand.bpm or "",
+                        "candidate_label": cand.label or "",
+                        "candidate_genres": cand.genre or "",
+                        "candidate_release": cand.release_name or "",
+                        "candidate_release_date": cand.release_date or "",
+                        "final_score": cand.score,
+                        "match_score": cand.score,
+                        "title_sim": cand.title_sim,
+                        "artist_sim": cand.artist_sim,
+                        "base_score": cand.base_score,
+                        "bonus_year": cand.bonus_year,
+                        "bonus_key": cand.bonus_key,
+                        "url": cand.url,  # Also include direct fields for compatibility
+                        "title": cand.title,
+                        "artists": cand.artists,
+                        "score": cand.score,
+                    }
+                )
+
+            # Build queries_data list (for backward compatibility with export)
+            queries_data = []
+            for q_idx, q_text, cand_count, elapsed_ms in queries_audit:
+                queries_data.append(
+                    {
+                        "index": q_idx,
+                        "query": q_text,
+                        "candidates": cand_count,
+                        "elapsed_ms": elapsed_ms,
+                    }
+                )
+
             return TrackResult(
                 playlist_index=idx,
                 title=track.title,
                 artist=original_artists or artists_for_scoring,
                 matched=False,
+                best_match=None,
+                candidates=all_candidates,  # List of BeatportCandidate objects
                 match_score=0.0,
                 title_sim=0.0,
                 artist_sim=0.0,
                 confidence="low",
+                search_stop_query_index=str(last_qidx),
+                processing_time=dur / 1000.0,  # Convert ms to seconds
+                candidates_data=candidates_data,  # Dict format for export compatibility
+                queries_data=queries_data,  # Dict format for export compatibility
             )
 
     def process_playlist(
