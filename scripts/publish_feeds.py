@@ -73,6 +73,14 @@ def publish_feeds(
         print("Error: Not in a git repository", file=sys.stderr)
         return False
     
+    # Configure git user (required for commits)
+    # Use GitHub Actions bot identity if in CI, otherwise use defaults
+    git_user_name = os.environ.get('GIT_AUTHOR_NAME', 'github-actions[bot]')
+    git_user_email = os.environ.get('GIT_AUTHOR_EMAIL', 'github-actions[bot]@users.noreply.github.com')
+    
+    run_command(['git', 'config', 'user.name', git_user_name], cwd=repo_root)
+    run_command(['git', 'config', 'user.email', git_user_email], cwd=repo_root)
+    
     # Checkout or create gh-pages branch
     returncode, _, _ = run_command(['git', 'checkout', branch], cwd=repo_root)
     if returncode != 0:
