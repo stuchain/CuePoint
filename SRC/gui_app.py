@@ -151,6 +151,63 @@ from cuepoint.utils.paths import AppPaths, PathMigration
 from cuepoint.utils.system_check import SystemRequirements
 
 
+def _set_application_icon(app: QApplication) -> None:
+    """Set the application icon for taskbar/dock.
+    
+    Args:
+        app: QApplication instance
+    """
+    from pathlib import Path
+    from PySide6.QtGui import QIcon
+    
+    icon_path = None
+    
+    # Determine icon path based on platform and environment
+    if getattr(sys, 'frozen', False):
+        # Running as packaged app - PyInstaller embeds the icon in the executable
+        # The icon is set via pyinstaller.spec, so we don't need to set it here
+        # But we can try to load from assets as fallback
+        if hasattr(sys, '_MEIPASS'):
+            base_path = Path(sys._MEIPASS)
+        else:
+            import os
+            base_path = Path(os.path.dirname(sys.executable))
+        # Try platform-specific icons first
+        if sys.platform == 'win32':
+            # In packaged app, icon is embedded, but try assets as fallback
+            icon_path = base_path / 'assets' / 'icons' / 'logo.png'
+        elif sys.platform == 'darwin':
+            icon_path = base_path / 'assets' / 'icons' / 'logo.png'
+        else:
+            icon_path = base_path / 'assets' / 'icons' / 'logo.png'
+    else:
+        # Running as script - try build directory first (for development)
+        project_root = Path(__file__).resolve().parent.parent
+        if sys.platform == 'win32':
+            build_icon = project_root / 'build' / 'icon.ico'
+            if build_icon.exists():
+                icon_path = build_icon
+        elif sys.platform == 'darwin':
+            build_icon = project_root / 'build' / 'icon.icns'
+            if build_icon.exists():
+                icon_path = build_icon
+        
+        # Fallback to PNG logo if build icons don't exist
+        if icon_path is None or not icon_path.exists():
+            base_path = Path(__file__).resolve().parent / 'cuepoint' / 'ui'
+            icon_path = base_path / 'assets' / 'icons' / 'logo.png'
+    
+    # Set icon if found
+    if icon_path and icon_path.exists():
+        try:
+            icon = QIcon(str(icon_path))
+            if not icon.isNull():
+                app.setWindowIcon(icon)
+        except Exception:
+            # Icon loading failed, continue without icon
+            pass
+
+
 def main():
     """Main entry point for GUI application"""
     try:
@@ -187,6 +244,9 @@ def main():
         app.setOrganizationDomain("stuchain.com")
         app.setApplicationName("CuePoint")
         app.setApplicationVersion("1.0.0")
+        
+        # Set application icon (for taskbar/dock)
+        _set_application_icon(app)
 
         # Step 9.3: localization readiness (English-only unless `.qm` files are present)
         I18nManager.setup_translations(app)
@@ -214,6 +274,16 @@ def main():
         # Create and show main window
         window = MainWindow()
         window.show()
+        
+        # Apply dark title bar on Windows (after window is shown)
+        # Use QTimer to ensure window handle is fully initialized
+        from cuepoint.utils.platform import apply_windows_dark_title_bar, is_windows
+        if is_windows():
+            from PySide6.QtCore import QTimer
+            # Apply immediately
+            apply_windows_dark_title_bar(window)
+            # Also apply after a short delay to ensure it sticks
+            QTimer.singleShot(100, lambda: apply_windows_dark_title_bar(window))
         
         # Run event loop
         sys.exit(app.exec())

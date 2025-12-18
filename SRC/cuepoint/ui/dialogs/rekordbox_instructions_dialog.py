@@ -175,11 +175,71 @@ class RekordboxInstructionsDialog(QDialog):
 
     def _create_photo_placeholder(self, description: str) -> QLabel:
         """Create a placeholder for a photo with description"""
-        # Try to load image if it exists
-        # For now, create a placeholder
-        placeholder = QLabel(f"[Photo: {description}]")
+        from PySide6.QtGui import QPixmap
+        import sys
+        import os
+        
+        placeholder = QLabel()
         placeholder.setMinimumHeight(200)
         placeholder.setAlignment(Qt.AlignCenter)
+        placeholder.setWordWrap(True)
+        
+        # Determine the resource path
+        # In development: SRC/cuepoint/ui/resources/images/rekordbox_instructions/
+        # In frozen app: resources/images/rekordbox_instructions/ (in _MEIPASS)
+        if getattr(sys, 'frozen', False):
+            # Running as packaged app
+            if hasattr(sys, '_MEIPASS'):
+                base_path = Path(sys._MEIPASS)
+            else:
+                base_path = Path(os.path.dirname(sys.executable))
+        else:
+            # Running as script - use SRC/cuepoint/ui/resources
+            # __file__ is at SRC/cuepoint/ui/dialogs/rekordbox_instructions_dialog.py
+            # So parent.parent is SRC/cuepoint/ui/
+            # Use resolve() to get absolute path
+            base_path = Path(__file__).resolve().parent.parent / 'resources'
+        
+        # Extract step number from description (e.g., "Step 1: ..." -> "step1")
+        # Description format: "Step 1: Rekordbox main window" -> "step1"
+        import re
+        match = re.search(r'step\s*(\d+)', description.lower())
+        if match:
+            step_num = match.group(1)
+            step_name = f'step{step_num}'
+        else:
+            # Fallback: try to extract from first word
+            step_name = description.lower().split()[0] if description else 'step1'
+        photo_path = (base_path / 'images' / 'rekordbox_instructions' / f'{step_name}.png').resolve()
+        
+        # Try to load the image
+        if photo_path.exists():
+            try:
+                pixmap = QPixmap(str(photo_path))
+                if not pixmap.isNull():
+                    # Scale to fit width (600px) while maintaining aspect ratio
+                    scaled_pixmap = pixmap.scaled(
+                        600, 400, 
+                        Qt.AspectRatioMode.KeepAspectRatio, 
+                        Qt.TransformationMode.SmoothTransformation
+                    )
+                    placeholder.setPixmap(scaled_pixmap)
+                    placeholder.setStyleSheet("")
+                    return placeholder
+            except Exception as e:
+                # If loading fails, log error and fall through to placeholder
+                import logging
+                logging.getLogger(__name__).warning(f"Failed to load image {photo_path}: {e}")
+                pass
+        else:
+            # Debug: Log when image file is not found (only in debug mode)
+            import logging
+            logger = logging.getLogger(__name__)
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug(f"Image not found at: {photo_path} (base_path: {base_path}, step_name: {step_name})")
+        
+        # Fallback: show placeholder if image not found
+        placeholder.setText(f"[Photo: {description}]")
         placeholder.setStyleSheet(
             "border: 2px dashed #ccc; "
             "border-radius: 5px; "
@@ -187,14 +247,5 @@ class RekordboxInstructionsDialog(QDialog):
             "color: #999; "
             "padding: 20px;"
         )
-        placeholder.setWordWrap(True)
-
-        # TODO: When photos are added, replace this with:
-        # photo_path = Path("resources/images/rekordbox_instructions") / f"{step_name}.png"
-        # if photo_path.exists():
-        #     pixmap = QPixmap(str(photo_path))
-        #     placeholder.setPixmap(pixmap.scaled(600, 400, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-        #     placeholder.setStyleSheet("")
-
         return placeholder
 

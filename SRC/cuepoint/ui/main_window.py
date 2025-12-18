@@ -277,6 +277,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("CuePoint - Beatport Metadata Enricher")
         self.setMinimumSize(Layout.WINDOW_MIN_WIDTH, Layout.WINDOW_MIN_HEIGHT)
         self.setGeometry(100, 100, Layout.DEFAULT_WIDTH, Layout.DEFAULT_HEIGHT)
+        
+        # Set window icon (inherits from application icon, but set explicitly for compatibility)
+        self._set_window_icon()
 
         # Create menu bar
         self.create_menu_bar()
@@ -613,6 +616,11 @@ class MainWindow(QMainWindow):
         self.status_progress.setMaximumHeight(20)
         self.status_progress.setVisible(False)
         self.statusBar().addPermanentWidget(self.status_progress)
+        
+        # Logo in status bar (top right)
+        logo_label = self._load_logo_for_statusbar()
+        if logo_label:
+            self.statusBar().addPermanentWidget(logo_label)
 
         # Enable drag and drop for the window
         self.setAcceptDrops(True)
@@ -1541,6 +1549,78 @@ class MainWindow(QMainWindow):
                 subprocess.Popen(["xdg-open", str(Path(file_str).parent)])
         except Exception:
             return
+
+    def _set_window_icon(self) -> None:
+        """Set the window icon from application icon or logo."""
+        from pathlib import Path
+        from PySide6.QtGui import QIcon
+        
+        # Try to get icon from QApplication first (set in gui_app.py)
+        app = QApplication.instance()
+        if app and not app.windowIcon().isNull():
+            self.setWindowIcon(app.windowIcon())
+            return
+        
+        # Fallback: load icon directly
+        if getattr(sys, 'frozen', False):
+            if hasattr(sys, '_MEIPASS'):
+                base_path = Path(sys._MEIPASS)
+            else:
+                import os
+                base_path = Path(os.path.dirname(sys.executable))
+            icon_path = base_path / 'assets' / 'icons' / 'logo.png'
+        else:
+            base_path = Path(__file__).resolve().parent.parent
+            icon_path = base_path / 'assets' / 'icons' / 'logo.png'
+        
+        if icon_path.exists():
+            try:
+                icon = QIcon(str(icon_path))
+                if not icon.isNull():
+                    self.setWindowIcon(icon)
+            except Exception:
+                pass
+
+    def _load_logo_for_statusbar(self) -> Optional[QLabel]:
+        """Load logo for status bar (top right corner).
+        
+        Returns:
+            QLabel with logo pixmap, or None if logo not found.
+        """
+        from pathlib import Path
+        from PySide6.QtGui import QPixmap
+        
+        # Determine the logo path
+        if getattr(sys, 'frozen', False):
+            # Running as packaged app
+            if hasattr(sys, '_MEIPASS'):
+                base_path = Path(sys._MEIPASS)
+            else:
+                base_path = Path(os.path.dirname(sys.executable))
+            logo_path = base_path / 'assets' / 'icons' / 'logo.png'
+        else:
+            # Running as script - use SRC/cuepoint/ui/assets/icons
+            base_path = Path(__file__).resolve().parent.parent
+            logo_path = base_path / 'assets' / 'icons' / 'logo.png'
+        
+        if not logo_path.exists():
+            return None
+        
+        try:
+            pixmap = QPixmap(str(logo_path))
+            if pixmap.isNull():
+                return None
+            
+            # Scale to fit status bar (small size: 80px width)
+            if pixmap.width() > 80:
+                pixmap = pixmap.scaledToWidth(80, Qt.TransformationMode.SmoothTransformation)
+            
+            logo_label = QLabel()
+            logo_label.setPixmap(pixmap)
+            logo_label.setAlignment(Qt.AlignCenter)
+            return logo_label
+        except Exception:
+            return None
 
     def on_show_about(self) -> None:
         """Show about dialog via Help > About CuePoint.

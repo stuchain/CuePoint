@@ -45,6 +45,10 @@ datas = [
     (str(project_root / 'SRC' / 'duckduckgo_search.py'), 'SRC'),
     # Include test script for diagnostic purposes
     (str(project_root / 'scripts' / 'test_search_dependencies.py'), 'scripts'),
+    # Include Rekordbox instruction images (if they exist)
+    (str(project_root / 'SRC' / 'cuepoint' / 'ui' / 'resources'), 'resources'),
+    # Include UI assets (icons, logos, etc.)
+    (str(project_root / 'SRC' / 'cuepoint' / 'ui' / 'assets'), 'assets'),
 ]
 
 # Collect data files from fake_useragent (browsers.json, etc.)

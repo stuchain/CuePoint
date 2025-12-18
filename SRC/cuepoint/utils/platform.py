@@ -203,3 +203,77 @@ def get_platform_string() -> str:
     if info.is_apple_silicon:
         return f"macOS {info.os_version} (Apple Silicon)"
     return f"{info.platform.title()} {info.os_version} ({info.architecture})"
+
+
+def apply_windows_dark_title_bar(window) -> None:
+    """Apply dark mode to Windows title bar.
+    
+    This function uses Windows API to set the title bar to dark mode,
+    matching the application's dark theme.
+    
+    Args:
+        window: QMainWindow or QWidget instance to apply dark title bar to.
+    
+    Note:
+        Only works on Windows. Does nothing on other platforms.
+        Must be called after window.show() for the window handle to be available.
+    """
+    if not is_windows():
+        return
+    
+    try:
+        import ctypes
+        from ctypes import wintypes
+        
+        # Get the window's native handle
+        # For PySide6, we need to use windowHandle() after the window is shown
+        hwnd = None
+        if hasattr(window, 'windowHandle') and window.windowHandle():
+            hwnd = window.windowHandle().winId()
+        elif hasattr(window, 'winId'):
+            hwnd = window.winId()
+        
+        if hwnd is None:
+            return
+        
+        # Convert to int if needed
+        if not isinstance(hwnd, int):
+            hwnd = int(hwnd)
+        
+        # Windows API constants
+        DWMWA_USE_IMMERSIVE_DARK_MODE = 20  # Windows 11 (build 22000+)
+        
+        # Try Windows 11 API (DWMWA_USE_IMMERSIVE_DARK_MODE)
+        # This works on Windows 11 and also on Windows 10 with recent updates
+        try:
+            value = ctypes.c_int(1)  # 1 = enable dark mode
+            result = ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                wintypes.HWND(hwnd),
+                DWMWA_USE_IMMERSIVE_DARK_MODE,
+                ctypes.byref(value),
+                ctypes.sizeof(value)
+            )
+            # If successful (result == 0), we're done
+            if result == 0:
+                return
+        except (AttributeError, OSError, ValueError):
+            # API not available or failed - continue to try alternative
+            pass
+        
+        # Alternative: Try using the older constant (for Windows 10)
+        # Note: This may not work on all Windows 10 versions
+        try:
+            DWMWA_USE_DARK_MODE_BORDER = 26
+            value = ctypes.c_int(1)
+            ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                wintypes.HWND(hwnd),
+                DWMWA_USE_DARK_MODE_BORDER,
+                ctypes.byref(value),
+                ctypes.sizeof(value)
+            )
+        except (AttributeError, OSError, ValueError):
+            # API not available or failed - silently fail
+            pass
+    except Exception:
+        # Silently fail if dark mode can't be applied
+        pass

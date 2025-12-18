@@ -381,8 +381,8 @@ class ResultsView(QWidget):
                     advanced_filters_group.update()
                     self.advanced_filters_container.update()
                     clear_button.update()
-                QTimer.singleShot(10, self, _update_geometries)
-                QTimer.singleShot(100, self, _update_geometries)  # Second update to ensure it sticks
+                QTimer.singleShot(10, _update_geometries)
+                QTimer.singleShot(100, _update_geometries)  # Second update to ensure it sticks
             else:
                 # Reset minimum height when collapsed
                 advanced_filters_group.setMinimumHeight(0)

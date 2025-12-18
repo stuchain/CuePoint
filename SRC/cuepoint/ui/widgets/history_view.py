@@ -273,15 +273,13 @@ class HistoryView(QWidget):
             self.advanced_filters_container.setVisible(checked)
             # Force layout update to ensure button is visible
             if checked:
-                # IMPORTANT: provide a QObject context so the callback is cancelled
-                # automatically if this widget is destroyed (prevents Windows/Qt
-                # access violations during teardown in UI tests).
+                # Force layout update after a short delay to ensure proper sizing
                 def _update_geometries() -> None:
                     self.advanced_filters_container.updateGeometry()
                     advanced_filters_group.updateGeometry()
                     self.updateGeometry()
 
-                QTimer.singleShot(10, self, _update_geometries)
+                QTimer.singleShot(10, _update_geometries)
         
         advanced_filters_group.toggled.connect(on_advanced_filters_toggled)
 
@@ -958,7 +956,7 @@ class HistoryView(QWidget):
 
                 # Provide QObject context so the callback is cancelled if this
                 # widget is destroyed (prevents Windows/Qt teardown crashes).
-                QTimer.singleShot(0, self, lambda: self._update_table_row(row, csv_row))
+                QTimer.singleShot(0, lambda: self._update_table_row(row, csv_row))
                 return
 
             # Find columns by header name

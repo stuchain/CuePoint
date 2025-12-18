@@ -7,10 +7,12 @@ Dialogs Module - Error dialogs and confirmations
 This module contains error dialogs and confirmation dialogs for the GUI.
 """
 
-from typing import Optional
+from pathlib import Path
+import sys
+from typing import Optional, Tuple
 
 from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtGui import QDesktopServices, QPixmap
 from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
@@ -285,6 +287,11 @@ class AboutDialog(QDialog):
         layout.setSpacing(15)
         layout.setContentsMargins(20, 20, 20, 20)
 
+        # Logo
+        logo_label = self._load_logo()
+        if logo_label:
+            layout.addWidget(logo_label)
+        
         # Title
         title_label = QLabel("CuePoint")
         title_label.setStyleSheet("font-size: 24px; font-weight: bold;")
@@ -371,6 +378,11 @@ class AboutDialog(QDialog):
         layout.addLayout(links_layout)
 
         layout.addStretch()
+
+        # Footer logo (bottom)
+        footer_logo = self._load_logo(size=(120, 40))
+        if footer_logo:
+            layout.addWidget(footer_logo)
 
         # Copyright
         copyright_label = QLabel("© 2025 CuePoint")
