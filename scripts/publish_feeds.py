@@ -131,6 +131,10 @@ def publish_feeds(
             print(f"Warning: Appcast file not found: {appcast_file}", file=sys.stderr)
             continue
         
+        # Make appcast_path absolute if it's relative
+        if not appcast_path.is_absolute():
+            appcast_path = repo_root / appcast_path
+        
         # Determine destination path (preserve directory structure)
         # Expected input: updates/macos/stable/appcast.xml
         # Output in gh-pages: updates/macos/stable/appcast.xml
@@ -148,16 +152,26 @@ def publish_feeds(
             # Default: just copy to root (shouldn't happen)
             dest_path = repo_root / appcast_path.name
         
-        # Create destination directory
-        dest_path.parent.mkdir(parents=True, exist_ok=True)
+        # Normalize paths to handle any symlinks or relative path issues
+        appcast_path = appcast_path.resolve()
+        dest_path = dest_path.resolve()
         
-        # Copy file
-        import shutil
-        shutil.copy2(appcast_path, dest_path)
+        # Check if source and destination are the same file
+        if appcast_path == dest_path:
+            # Files are the same - just add to git without copying
+            print(f"File already in place: {dest_path.relative_to(repo_root)}")
+        else:
+            # Create destination directory
+            dest_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Copy file
+            import shutil
+            shutil.copy2(appcast_path, dest_path)
+            print(f"Copied: {appcast_path.relative_to(repo_root)} -> {dest_path.relative_to(repo_root)}")
         
         # Add to git
         run_command(['git', 'add', str(dest_path.relative_to(repo_root))], cwd=repo_root)
-        print(f"Added: {dest_path.relative_to(repo_root)}")
+        print(f"Added to git: {dest_path.relative_to(repo_root)}")
     
     # Check if there are changes
     returncode, stdout, _ = run_command(['git', 'status', '--porcelain'], cwd=repo_root)
