@@ -95,7 +95,11 @@ def generate_appcast_item(
     # Create item
     item = ET.Element('item')
     ET.SubElement(item, 'title').text = f'Version {version}'
-    ET.SubElement(item, 'pubDate').text = formatdate()
+    # Always use current time for pubDate to ensure it's different each time
+    from datetime import datetime
+    pub_date = formatdate()
+    ET.SubElement(item, 'pubDate').text = pub_date
+    print(f"Generated pubDate: {pub_date}")  # Debug output
     
     # Sparkle version info
     version_elem = ET.SubElement(item, f'{{{SPARKLE_NS}}}version')
@@ -186,11 +190,23 @@ def generate_update_feed(
     
     for existing_item in existing_items:
         short_version_elem = existing_item.find(f'{{{SPARKLE_NS}}}shortVersionString')
-        if short_version_elem is not None and short_version_elem.text == version:
-            version_exists = True
-            existing_item_to_remove = existing_item
-            print(f"Version {version} already exists in appcast, will update/replace it")
-            break
+        if short_version_elem is not None:
+            existing_version = short_version_elem.text
+            # Debug: show what we're comparing
+            print(f"Comparing: existing='{existing_version}' vs new='{version}' (match: {existing_version == version})")
+            if existing_version == version:
+                version_exists = True
+                existing_item_to_remove = existing_item
+                # Get existing pubDate for comparison
+                existing_pubdate = existing_item.find('pubDate')
+                existing_url = existing_item.find('enclosure')
+                if existing_pubdate is not None:
+                    print(f"Version {version} already exists in appcast with pubDate: {existing_pubdate.text}")
+                if existing_url is not None:
+                    print(f"Existing URL: {existing_url.get('url', 'N/A')}")
+                print(f"New URL will be: {download_url}")
+                print(f"Will update/replace it with new pubDate and URLs")
+                break
     
     # Always create a new item with current information (ensures URLs and dates are up to date)
     item = generate_appcast_item(

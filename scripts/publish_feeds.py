@@ -201,17 +201,31 @@ def publish_feeds(
     
     if not staged_files:
         # Check if files are untracked (new files)
+        # Only add appcast files, ignore __pycache__, artifacts, etc.
         returncode, stdout, _ = run_command(['git', 'status', '--porcelain', '--untracked-files=all'], cwd=repo_root)
         untracked = [line for line in stdout.strip().split('\n') if line.startswith('??')]
         if untracked:
-            # Add untracked files
+            # Only add appcast/feed files, ignore everything else
+            appcast_files = []
             for line in untracked:
                 file_path = line[3:].strip()  # Remove '?? ' prefix
-                run_command(['git', 'add', file_path], cwd=repo_root)
-                print(f"Added untracked file: {file_path}")
-            # Re-check staged changes
-            returncode, stdout, _ = run_command(['git', 'diff', '--cached', '--name-only'], cwd=repo_root)
-            staged_files = stdout.strip()
+                # Only add files in updates/ directory (appcast files)
+                if file_path.startswith('updates/') and (file_path.endswith('.xml') or 'appcast' in file_path.lower()):
+                    appcast_files.append(file_path)
+            
+            if appcast_files:
+                for file_path in appcast_files:
+                    run_command(['git', 'add', file_path], cwd=repo_root)
+                    print(f"Added untracked appcast file: {file_path}")
+                # Re-check staged changes
+                returncode, stdout, _ = run_command(['git', 'diff', '--cached', '--name-only'], cwd=repo_root)
+                staged_files = stdout.strip()
+            else:
+                # No appcast files to add, ignore other untracked files
+                print("Ignoring untracked files (not appcast files):")
+                for line in untracked:
+                    file_path = line[3:].strip()
+                    print(f"  - {file_path}")
     
     if not staged_files:
         # Double-check by looking at git status for any changes
@@ -226,21 +240,76 @@ def publish_feeds(
             return True
         else:
             # There are changes but not staged - try to add them
-            print(f"Found unstaged changes, staging them:")
+            # Only stage appcast files, ignore others
+            print(f"Found unstaged changes, staging appcast files:")
+            appcast_files_found = False
             for line in status_output.split('\n'):
                 if line.strip():
-                    print(f"  {line}")
                     # Extract file path (remove status prefix like ' M' or '??')
                     file_path = line[3:].strip() if len(line) > 3 else line.strip()
-                    run_command(['git', 'add', file_path], cwd=repo_root)
-            # Re-check
-            returncode, stdout, _ = run_command(['git', 'diff', '--cached', '--name-only'], cwd=repo_root)
-            staged_files = stdout.strip()
-            if not staged_files:
-                print("No changes to commit after staging")
-                return True
+                    # Only add appcast/feed files
+                    if file_path.startswith('updates/') and (file_path.endswith('.xml') or 'appcast' in file_path.lower()):
+                        print(f"  Staging: {line}")
+                        run_command(['git', 'add', file_path], cwd=repo_root)
+                        appcast_files_found = True
+                    else:
+                        print(f"  Ignoring (not appcast): {line}")
+            
+            if appcast_files_found:
+                # Re-check
+                returncode, stdout, _ = run_command(['git', 'diff', '--cached', '--name-only'], cwd=repo_root)
+                staged_files = stdout.strip()
+                if not staged_files:
+                    print("No changes to commit after staging")
+                    return True
+                else:
+                    print(f"Staged files: {staged_files}")
             else:
+                print("No appcast files found in unstaged changes")
+                return True
+    
+    # Show what will be committed (for debugging)
+    returncode, diff_output, _ = run_command(['git', 'diff', '--cached', '--stat'], cwd=repo_root)
+    if diff_output.strip():
+        print(f"Changes to be committed:")
+        print(diff_output)
+        
+        # Show actual diff content for appcast files
+        returncode, diff_content, _ = run_command(['git', 'diff', '--cached'], cwd=repo_root)
+        if diff_content.strip():
+            print(f"\nContent changes preview:")
+            # Show first 1000 chars of diff
+            preview = diff_content[:1000]
+            print(preview)
+            if len(diff_content) > 1000:
+                print(f"... ({len(diff_content) - 1000} more characters)")
+            
+            # Count lines changed
+            lines_added = diff_content.count('\n+') - diff_content.count('\n+++')
+            lines_removed = diff_content.count('\n-') - diff_content.count('\n---')
+            print(f"\nSummary: +{lines_added} lines, -{lines_removed} lines")
+        else:
+            print("WARNING: Files are staged but have no content differences!")
+    else:
+        # Check if files are actually different
+        returncode, diff_content, _ = run_command(['git', 'diff', '--cached'], cwd=repo_root)
+        if diff_content.strip():
+            print(f"Content changes (no stat available):")
+            # Show first 500 chars of diff
+            print(diff_content[:500] + ("..." if len(diff_content) > 500 else ""))
+        else:
+            print("WARNING: No content changes detected in staged files!")
+            print("This means the appcast files are identical to what's already in gh-pages.")
+            print("This can happen if:")
+            print("  1. The version already exists with identical content")
+            print("  2. The pubDate is the same (unlikely but possible)")
+            print("  3. All URLs and metadata are identical")
+            print("\nChecking staged files...")
+            returncode, staged_files, _ = run_command(['git', 'diff', '--cached', '--name-only'], cwd=repo_root)
+            if staged_files.strip():
                 print(f"Staged files: {staged_files}")
+                print("These files are staged but have no differences from HEAD.")
+                print("This likely means the content is identical.")
     
     # Commit changes
     print(f"Committing changes: {message}")
@@ -254,6 +323,22 @@ def publish_feeds(
         # Check if it's because there are no changes
         if "nothing to commit" in error_msg.lower() or "no changes" in error_msg.lower():
             print("No changes to commit - files are already up to date")
+            print("This means the appcast content is identical to what's already committed.")
+            # Show what's in the current appcast files for debugging
+            for appcast_file in appcast_files:
+                appcast_path = Path(appcast_file)
+                if not appcast_path.is_absolute():
+                    appcast_path = repo_root / appcast_path
+                if appcast_path.exists():
+                    # Show first few lines of the appcast
+                    try:
+                        content = appcast_path.read_text(encoding='utf-8')
+                        lines = content.split('\n')[:10]
+                        print(f"\nCurrent content of {appcast_path.name} (first 10 lines):")
+                        for line in lines:
+                            print(f"  {line}")
+                    except Exception as e:
+                        print(f"Could not read {appcast_path}: {e}")
             return True
         return False
     

@@ -99,7 +99,11 @@ def generate_appcast_item(
     # Create item
     item = ET.Element('item')
     ET.SubElement(item, 'title').text = f'Version {version}'
-    ET.SubElement(item, 'pubDate').text = formatdate()
+    # Always use current time for pubDate to ensure it's different each time
+    from datetime import datetime
+    pub_date = formatdate()
+    ET.SubElement(item, 'pubDate').text = pub_date
+    print(f"Generated pubDate: {pub_date}")  # Debug output
     
     # Sparkle version info
     version_elem = ET.SubElement(item, f'{{{SPARKLE_NS}}}version')
@@ -204,11 +208,23 @@ def generate_appcast(
     
     for existing_item in existing_items:
         short_version_elem = existing_item.find(f'{{{SPARKLE_NS}}}shortVersionString')
-        if short_version_elem is not None and short_version_elem.text == version:
-            version_exists = True
-            existing_item_to_remove = existing_item
-            print(f"Version {version} already exists in appcast, will update/replace it")
-            break
+        if short_version_elem is not None:
+            existing_version = short_version_elem.text
+            # Debug: show what we're comparing
+            print(f"Comparing: existing='{existing_version}' vs new='{version}' (match: {existing_version == version})")
+            if existing_version == version:
+                version_exists = True
+                existing_item_to_remove = existing_item
+                # Get existing pubDate for comparison
+                existing_pubdate = existing_item.find('pubDate')
+                existing_url = existing_item.find('enclosure')
+                if existing_pubdate is not None:
+                    print(f"Version {version} already exists in appcast with pubDate: {existing_pubdate.text}")
+                if existing_url is not None:
+                    print(f"Existing URL: {existing_url.get('url', 'N/A')}")
+                print(f"New URL will be: {download_url}")
+                print(f"Will update/replace it with new pubDate and URLs")
+                break
     
     # Always create a new item with current information (ensures URLs and dates are up to date)
     item = generate_appcast_item(
@@ -234,16 +250,33 @@ def generate_appcast(
     ET.indent(root, space='  ')
     xml_str = ET.tostring(root, encoding='utf-8', xml_declaration=True).decode('utf-8')
     
-    # Debug: Log what versions are in the appcast
+    # Debug: Compare old and new content if version existed
+    if version_exists and existing_item_to_remove is not None:
+        # We already removed the old item, but let's verify the new item is different
+        # by checking the pubDate
+        new_item_pubdate = item.find('pubDate')
+        if new_item_pubdate is not None:
+            print(f"New item pubDate: {new_item_pubdate.text}")
+            print(f"Note: Even if URLs are the same, pubDate should be different (current time)")
+    
+    # Debug: Log what versions are in the appcast and their pubDates
     try:
         items = channel.findall('item')
         versions_in_appcast = []
+        version_pubdates = {}
         for item in items:
             short_version_elem = item.find(f'{{{SPARKLE_NS}}}shortVersionString')
+            pub_date_elem = item.find('pubDate')
             if short_version_elem is not None:
-                versions_in_appcast.append(short_version_elem.text)
+                ver = short_version_elem.text
+                versions_in_appcast.append(ver)
+                if pub_date_elem is not None:
+                    version_pubdates[ver] = pub_date_elem.text
+        
         print(f"Appcast will contain {len(versions_in_appcast)} version(s): {', '.join(versions_in_appcast[:10])}")
-        if version not in versions_in_appcast:
+        if version in versions_in_appcast:
+            print(f"Version {version} is in appcast with pubDate: {version_pubdates.get(version, 'N/A')}")
+        else:
             print(f"WARNING: Version {version} not found in appcast after generation!")
     except Exception as e:
         print(f"Warning: Could not verify versions in appcast: {e}")
