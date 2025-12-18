@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from cuepoint.update.update_manager import UpdateManager
 
 from PySide6.QtCore import QSettings, Qt, QTimer
-from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent, QKeyEvent, QKeySequence
+from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent, QIcon, QKeyEvent, QKeySequence
 from PySide6.QtWidgets import (
     QButtonGroup,
     QDialog,
@@ -47,6 +47,7 @@ from PySide6.QtWidgets import (
     QRadioButton,
     QScrollArea,
     QSplitter,
+    QStyle,
     QTabWidget,
     QVBoxLayout,
     QWidget,
@@ -445,8 +446,19 @@ class MainWindow(QMainWindow):
         start_layout = QHBoxLayout(self.start_button_container)
         start_layout.setContentsMargins(0, 8, 0, 8)
         start_layout.addStretch()
-        self.start_button = QPushButton("▶ Start Processing")
+        self.start_button = QPushButton("Start Processing")
         self.start_button.setObjectName("primaryActionButton")
+        
+        # Set play icon using Qt's standard icons (better rendering than Unicode)
+        try:
+            # Use Qt's standard play icon from style
+            play_icon = self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
+            if not play_icon.isNull():
+                self.start_button.setIcon(play_icon)
+        except Exception:
+            # Fallback: if icon fails, just use text without Unicode character
+            pass
+        
         self.start_button.setToolTip(
             "Start processing the selected playlist(s).\n"
             "Searches Beatport for each track and enriches with metadata.\n"
