@@ -165,6 +165,33 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
+      - name: Fetch Existing Appcast Feeds
+        run: |
+          echo "=== Fetching Existing Appcast Feeds ==="
+          
+          # Create updates directory structure
+          mkdir -p updates/macos/stable
+          mkdir -p updates/windows/stable
+          
+          # Try to fetch existing appcast files from gh-pages branch
+          # This allows --append to work correctly
+          git fetch origin gh-pages:gh-pages 2>/dev/null || echo "gh-pages branch not found, will create new appcasts"
+          
+          # Checkout existing appcast files if they exist
+          if git show origin/gh-pages:updates/macos/stable/appcast.xml > updates/macos/stable/appcast.xml 2>/dev/null; then
+            echo "[OK] Fetched existing macOS appcast"
+          else
+            echo "[INFO] No existing macOS appcast found, will create new one"
+            rm -f updates/macos/stable/appcast.xml
+          fi
+          
+          if git show origin/gh-pages:updates/windows/stable/appcast.xml > updates/windows/stable/appcast.xml 2>/dev/null; then
+            echo "[OK] Fetched existing Windows appcast"
+          else
+            echo "[INFO] No existing Windows appcast found, will create new one"
+            rm -f updates/windows/stable/appcast.xml
+          fi
+      
       - name: Generate Appcast Feeds
         run: |
           echo "=== Generating Appcast Feeds ==="
@@ -199,11 +226,7 @@ jobs:
           echo "DMG URL: $DMG_URL"
           echo "EXE URL: $EXE_URL"
           
-          # Create updates directory structure
-          mkdir -p updates/macos/stable
-          mkdir -p updates/windows/stable
-          
-          # Generate macOS appcast
+          # Generate macOS appcast (with --append to merge with existing)
           if [ -f "$DMG_FILE" ]; then
             echo "Generating macOS appcast..."
             python scripts/generate_appcast.py \
@@ -217,7 +240,7 @@ jobs:
             echo "[OK] macOS appcast generated"
           fi
           
-          # Generate Windows appcast
+          # Generate Windows appcast (with --append to merge with existing)
           if [ -f "$EXE_FILE" ]; then
             echo "Generating Windows appcast..."
             python scripts/generate_update_feed.py \

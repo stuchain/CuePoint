@@ -178,17 +178,39 @@ def generate_update_feed(
         ET.SubElement(channel, 'description').text = 'Latest CuePoint releases'
         ET.SubElement(channel, 'language').text = 'en'
     
-    # Create item for this release
-    item = generate_appcast_item(
-        exe_file,
-        version,
-        download_url,
-        release_notes_url,
-        release_notes
-    )
+    # Check if this version already exists in the appcast
+    # This prevents duplicates when re-running the same release
+    existing_items = channel.findall('item')
+    version_exists = False
+    for existing_item in existing_items:
+        short_version_elem = existing_item.find(f'{{{SPARKLE_NS}}}shortVersionString')
+        if short_version_elem is not None and short_version_elem.text == version:
+            version_exists = True
+            print(f"Version {version} already exists in appcast, skipping duplicate")
+            break
     
-    # Insert new item at the beginning (latest first)
-    channel.insert(0, item)
+    if not version_exists:
+        # Create item for this release
+        item = generate_appcast_item(
+            exe_file,
+            version,
+            download_url,
+            release_notes_url,
+            release_notes
+        )
+        
+        # Insert new item at the beginning (latest first)
+        channel.insert(0, item)
+    else:
+        # Version exists - keep existing but ensure it's at the top
+        # Remove existing and re-insert at top to ensure latest is first
+        for existing_item in existing_items:
+            short_version_elem = existing_item.find(f'{{{SPARKLE_NS}}}shortVersionString')
+            if short_version_elem is not None and short_version_elem.text == version:
+                channel.remove(existing_item)
+                channel.insert(0, existing_item)
+                print(f"Updated position of existing version {version} to top")
+                break
     
     # Convert to string with proper formatting
     ET.indent(root, space='  ')
