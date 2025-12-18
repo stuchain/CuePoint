@@ -5,11 +5,10 @@
 Validate update feeds (appcast)
 
 Usage:
-    python scripts/validate_feeds.py [--macos <appcast.xml>] [--windows <appcast.json>]
+    python scripts/validate_feeds.py [--macos <appcast.xml>] [--windows <appcast.xml>]
 """
 
 import argparse
-import json
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -37,7 +36,13 @@ def validate_appcast(appcast_path):
             return False, "Invalid root element (expected 'rss')"
         
         # Check for Sparkle namespace
-        if 'http://www.andymatuschak.org/xml-namespaces/sparkle' not in root.attrib.values():
+        # Namespace can be declared as xmlns:sparkle or in root.attrib
+        sparkle_ns = 'http://www.andymatuschak.org/xml-namespaces/sparkle'
+        has_namespace = (
+            'xmlns:sparkle' in root.attrib and root.attrib['xmlns:sparkle'] == sparkle_ns
+        ) or sparkle_ns in root.attrib.values()
+        
+        if not has_namespace:
             return False, "Missing Sparkle namespace"
         
         # Check for channel
@@ -76,10 +81,10 @@ def validate_appcast(appcast_path):
 
 
 def validate_update_feed(feed_path):
-    """Validate Windows update feed JSON
+    """Validate Windows update feed XML (Sparkle-compatible)
     
     Args:
-        feed_path: Path to appcast.json
+        feed_path: Path to appcast.xml (Windows uses Sparkle-compatible XML)
     
     Returns:
         Tuple of (is_valid, error_message)
@@ -89,34 +94,54 @@ def validate_update_feed(feed_path):
         return False, f"Update feed not found: {feed_path}"
     
     try:
-        with open(feed_path, 'r', encoding='utf-8') as f:
-            feed = json.load(f)
+        # Windows uses Sparkle-compatible XML format (same as macOS)
+        tree = ET.parse(feed_path)
+        root = tree.getroot()
         
         # Validate structure
-        if 'version' not in feed:
-            return False, "Missing 'version' field"
+        if root.tag != 'rss':
+            return False, "Invalid root element (expected 'rss')"
         
-        if 'downloads' not in feed:
-            return False, "Missing 'downloads' field"
+        # Check for Sparkle namespace
+        sparkle_ns = 'http://www.andymatuschak.org/xml-namespaces/sparkle'
+        has_namespace = (
+            'xmlns:sparkle' in root.attrib and root.attrib['xmlns:sparkle'] == sparkle_ns
+        ) or sparkle_ns in root.attrib.values()
         
-        if not isinstance(feed['downloads'], list):
-            return False, "'downloads' must be an array"
+        if not has_namespace:
+            return False, "Missing Sparkle namespace"
         
-        if not feed['downloads']:
-            return False, "'downloads' array is empty"
+        # Check for channel
+        channel = root.find('channel')
+        if channel is None:
+            return False, "Missing 'channel' element"
         
-        # Validate each download
-        for download in feed['downloads']:
-            if 'url' not in download:
-                return False, "Missing 'url' in download"
+        # Check for items
+        items = channel.findall('item')
+        if not items:
+            return False, "No release items found"
+        
+        # Validate each item
+        for item in items:
+            # Check required fields
+            version = item.find('{http://www.andymatuschak.org/xml-namespaces/sparkle}version')
+            if version is None:
+                return False, "Missing sparkle:version in item"
             
-            if 'size' not in download:
-                return False, "Missing 'size' in download"
+            enclosure = item.find('enclosure')
+            if enclosure is None:
+                return False, "Missing enclosure in item"
+            
+            if 'url' not in enclosure.attrib:
+                return False, "Missing url in enclosure"
+            
+            if 'length' not in enclosure.attrib:
+                return False, "Missing length in enclosure"
         
         return True, "Update feed valid"
         
-    except json.JSONDecodeError as e:
-        return False, f"JSON parse error: {e}"
+    except ET.ParseError as e:
+        return False, f"XML parse error: {e}"
     except Exception as e:
         return False, f"Validation error: {e}"
 
@@ -135,7 +160,7 @@ def main():
     parser.add_argument('--macos',
                        help='Path to macOS appcast.xml (default: updates/macos/appcast.xml)')
     parser.add_argument('--windows',
-                       help='Path to Windows appcast.json (default: updates/windows/appcast.json)')
+                       help='Path to Windows appcast.xml (default: updates/windows/appcast.xml)')
     
     args = parser.parse_args()
     
@@ -153,7 +178,7 @@ def main():
     
     # Validate Windows feed
     if args.windows or not args.macos:
-        feed_path = args.windows or 'updates/windows/appcast.json'
+        feed_path = args.windows or 'updates/windows/appcast.xml'
         valid, message = validate_update_feed(feed_path)
         if valid:
             print(f"[PASS] Windows feed: {message}")
