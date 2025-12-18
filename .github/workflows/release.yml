@@ -242,7 +242,7 @@ jobs:
           # Use publish_feeds.py script for reliable publishing
           if [ -f "updates/macos/stable/appcast.xml" ] && [ -f "updates/windows/stable/appcast.xml" ]; then
             python scripts/publish_feeds.py \
-              --appcasts updates/macos/stable/appcast.xml updates/windows/stable/appcast.xml \
+              updates/macos/stable/appcast.xml updates/windows/stable/appcast.xml \
               --branch gh-pages \
               --message "Update appcast feeds for ${{ github.ref_name }}" \
               --github-token "${{ secrets.GITHUB_TOKEN }}"
