@@ -177,34 +177,83 @@ def publish_feeds(
         
         # Check if source and destination are the same file
         if appcast_path == dest_path:
-            # Files are the same - just add to git without copying
-            print(f"File already in place: {dest_path.relative_to(repo_root)}")
+            # Files are the same location - check if content changed
+            # Read both files and compare
+            try:
+                source_content = appcast_path.read_bytes()
+                if dest_path.exists():
+                    dest_content = dest_path.read_bytes()
+                    if source_content == dest_content:
+                        # Files are identical - check git status
+                        returncode, status_output, _ = run_command(
+                            ['git', 'status', '--porcelain', str(dest_path.relative_to(repo_root))],
+                            cwd=repo_root
+                        )
+                        if not status_output.strip():
+                            print(f"File unchanged: {dest_path.relative_to(repo_root)}")
+                            continue  # Skip this file - no changes
+                # Content is different or file doesn't exist - need to update
+                # Since paths are same, just add to git
+                run_command(['git', 'add', str(dest_path.relative_to(repo_root))], cwd=repo_root)
+                print(f"File updated, added to git: {dest_path.relative_to(repo_root)}")
+            except Exception as e:
+                print(f"Warning: Could not compare files: {e}", file=sys.stderr)
+                # Add anyway to be safe
+                run_command(['git', 'add', str(dest_path.relative_to(repo_root))], cwd=repo_root)
+                print(f"Added to git: {dest_path.relative_to(repo_root)}")
         else:
+            # Different paths - copy file
             # Create destination directory
             dest_path.parent.mkdir(parents=True, exist_ok=True)
             
-            # Copy file
-            import shutil
-            shutil.copy2(appcast_path, dest_path)
-            print(f"Copied: {appcast_path.relative_to(repo_root)} -> {dest_path.relative_to(repo_root)}")
-        
-        # Add to git
-        run_command(['git', 'add', str(dest_path.relative_to(repo_root))], cwd=repo_root)
-        print(f"Added to git: {dest_path.relative_to(repo_root)}")
+            # Check if destination exists and content is same
+            file_changed = True
+            if dest_path.exists():
+                try:
+                    source_content = appcast_path.read_bytes()
+                    dest_content = dest_path.read_bytes()
+                    if source_content == dest_content:
+                        file_changed = False
+                except Exception:
+                    pass  # If we can't compare, assume changed
+            
+            if file_changed:
+                # Copy file
+                import shutil
+                shutil.copy2(appcast_path, dest_path)
+                print(f"Copied: {appcast_path.relative_to(repo_root)} -> {dest_path.relative_to(repo_root)}")
+            else:
+                print(f"File unchanged, skipping copy: {dest_path.relative_to(repo_root)}")
+            
+            # Add to git (even if unchanged, in case it's not tracked)
+            returncode, _, _ = run_command(['git', 'add', str(dest_path.relative_to(repo_root))], cwd=repo_root)
+            print(f"Added to git: {dest_path.relative_to(repo_root)}")
     
     # Check if there are changes
     returncode, stdout, _ = run_command(['git', 'status', '--porcelain'], cwd=repo_root)
     if not stdout.strip():
-        print("No changes to commit")
+        print("No changes to commit - files are already up to date")
+        return True
+    
+    # Check if there are staged changes
+    returncode, stdout, _ = run_command(['git', 'diff', '--cached', '--name-only'], cwd=repo_root)
+    if not stdout.strip():
+        print("No staged changes to commit")
         return True
     
     # Commit changes
-    returncode, _, stderr = run_command(
+    print(f"Committing changes: {message}")
+    returncode, stdout, stderr = run_command(
         ['git', 'commit', '-m', message],
         cwd=repo_root
     )
     if returncode != 0:
-        print(f"Error: Could not commit changes: {stderr}", file=sys.stderr)
+        error_msg = stderr.strip() or stdout.strip() or "Unknown error"
+        print(f"Error: Could not commit changes: {error_msg}", file=sys.stderr)
+        # Check if it's because there are no changes
+        if "nothing to commit" in error_msg.lower() or "no changes" in error_msg.lower():
+            print("No changes to commit - files are already up to date")
+            return True
         return False
     
     print(f"Committed changes: {message}")

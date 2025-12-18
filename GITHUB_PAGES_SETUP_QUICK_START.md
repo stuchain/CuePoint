@@ -38,7 +38,7 @@ It should now show the appcast XML instead of 404.
 
 ## That's It!
 
-Once GitHub Pages is enabled and your first release is published, the update system will work automatically for all future releases.
+Once GitHub Pages is enabled and your first release is published, the update system will work automatically for all future releases..mnkl
 
 ## Troubleshooting
 
