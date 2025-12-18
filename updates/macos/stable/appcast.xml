@@ -1,6 +1,14 @@
 <?xml version='1.0' encoding='utf-8'?>
-<rss xmlns:ns0="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+<rss xmlns:ns0="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
   <channel>
+    <item>
+      <title>Version 1.0.1-test9</title>
+      <pubDate>Thu, 18 Dec 2025 18:22:17 -0000</pubDate>
+      <ns0:version>10001</ns0:version>
+      <ns0:shortVersionString>1.0.1-test9</ns0:shortVersionString>
+      <enclosure url="https://github.com/stuchain/CuePoint/releases/download/v1.0.1-test9/CuePoint-v1.0.1-macos-universal.dmg" ns0:version="10001" ns0:shortVersionString="1.0.1-test9" length="94316587" type="application/octet-stream" />
+      <ns0:releaseNotesLink>https://github.com/stuchain/CuePoint/releases/tag/v1.0.1-test9</ns0:releaseNotesLink>
+    </item>
     <item>
       <title>Version 1.0.0-test2</title>
       <pubDate>Thu, 18 Dec 2025 17:00:06 -0000</pubDate>
