@@ -81,6 +81,16 @@ def publish_feeds(
     run_command(['git', 'config', 'user.name', git_user_name], cwd=repo_root)
     run_command(['git', 'config', 'user.email', git_user_email], cwd=repo_root)
     
+    # Stash any uncommitted changes (e.g., version.py updates from sync)
+    # We don't want to commit these to gh-pages branch
+    returncode, stdout, _ = run_command(['git', 'status', '--porcelain'], cwd=repo_root)
+    if stdout.strip():
+        print("Stashing uncommitted changes before switching branches...")
+        returncode, _, stderr = run_command(['git', 'stash', 'push', '-m', 'Temporary stash for gh-pages publish'], cwd=repo_root)
+        if returncode != 0:
+            print(f"Warning: Could not stash changes: {stderr}", file=sys.stderr)
+            # Try to continue anyway
+    
     # Fetch latest changes from remote (important for concurrent updates)
     print(f"Fetching latest changes from {remote}...")
     returncode, _, stderr = run_command(['git', 'fetch', remote], cwd=repo_root)
