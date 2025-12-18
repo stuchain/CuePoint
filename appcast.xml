@@ -2,12 +2,12 @@
 <rss xmlns:ns0="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <item>
-      <title>Version 1.0.0-test-unsigned52</title>
-      <pubDate>Thu, 18 Dec 2025 16:08:22 -0000</pubDate>
-      <ns0:version>10000</ns0:version>
-      <ns0:shortVersionString>1.0.0-test-unsigned52</ns0:shortVersionString>
-      <enclosure url="https://github.com/stuchain/CuePoint/releases/download/v1.0.0-test-unsigned52/CuePoint-Setup-v1.0.0.exe" ns0:version="10000" ns0:shortVersionString="1.0.0-test-unsigned52" length="95441489" type="application/octet-stream" />
-      <ns0:releaseNotesLink>https://github.com/stuchain/CuePoint/releases/tag/v1.0.0-test-unsigned52</ns0:releaseNotesLink>
+      <title>Version 1.0.1-test-unsigned53</title>
+      <pubDate>Thu, 18 Dec 2025 16:15:11 -0000</pubDate>
+      <ns0:version>10001</ns0:version>
+      <ns0:shortVersionString>1.0.1-test-unsigned53</ns0:shortVersionString>
+      <enclosure url="https://github.com/stuchain/CuePoint/releases/download/v1.0.1-test-unsigned53/CuePoint-Setup-v1.0.1.exe" ns0:version="10001" ns0:shortVersionString="1.0.1-test-unsigned53" length="95440005" type="application/octet-stream" />
+      <ns0:releaseNotesLink>https://github.com/stuchain/CuePoint/releases/tag/v1.0.1-test-unsigned53</ns0:releaseNotesLink>
     </item>
     <title>CuePoint Updates</title>
     <link>https://github.com/StuChain/CuePoint</link>
