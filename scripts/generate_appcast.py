@@ -36,19 +36,30 @@ def version_to_build_number(version: str) -> str:
     Convert semantic version to build number.
     
     Args:
-        version: Version string (e.g., "1.0.0")
+        version: Version string (e.g., "1.0.0" or "1.0.0-test-unsigned42")
         
     Returns:
         Build number string (e.g., "100" for 1.0.0)
     """
-    parts = version.split('.')
+    # Strip any suffix after the version (e.g., "-test-unsigned42")
+    # Remove 'v' prefix if present
+    version = version.lstrip('v')
+    
+    # Split on '-' to remove any suffix (e.g., "1.0.0-test-unsigned42" -> "1.0.0")
+    version_base = version.split('-')[0]
+    
+    parts = version_base.split('.')
     if len(parts) >= 3:
-        major = int(parts[0])
-        minor = int(parts[1])
-        patch = int(parts[2])
-        # Build number: major * 10000 + minor * 100 + patch
-        build = major * 10000 + minor * 100 + patch
-        return str(build)
+        try:
+            major = int(parts[0])
+            minor = int(parts[1])
+            patch = int(parts[2])
+            # Build number: major * 10000 + minor * 100 + patch
+            build = major * 10000 + minor * 100 + patch
+            return str(build)
+        except (ValueError, IndexError):
+            # If parsing fails, return a default build number
+            return "0"
     return "0"
 
 
