@@ -231,15 +231,6 @@ def generate_appcast(
     ET.indent(root, space='  ')
     xml_str = ET.tostring(root, encoding='utf-8', xml_declaration=True).decode('utf-8')
     
-    # Debug: Compare old and new content if version existed
-    if version_exists and existing_item_to_remove is not None:
-        # We already removed the old item, but let's verify the new item is different
-        # by checking the pubDate
-        new_item_pubdate = item.find('pubDate')
-        if new_item_pubdate is not None:
-            print(f"New item pubDate: {new_item_pubdate.text}")
-            print(f"Note: Even if URLs are the same, pubDate should be different (current time)")
-    
     # Debug: Log what versions are in the appcast and their pubDates
     try:
         items = channel.findall('item')
