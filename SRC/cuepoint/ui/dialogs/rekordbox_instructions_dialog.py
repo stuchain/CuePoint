@@ -27,7 +27,9 @@ class RekordboxInstructionsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("How to Export XML from Rekordbox")
-        self.setMinimumSize(600, 500)
+        # Make window wider by default to prevent content cutoff
+        self.setMinimumSize(900, 600)
+        self.resize(900, 700)  # Set default size wider
         self.init_ui()
 
     def init_ui(self):
@@ -49,11 +51,14 @@ class RekordboxInstructionsDialog(QDialog):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        # Ensure content has proper margins to prevent cutoff
+        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
 
         content_widget = QWidget()
         content_layout = QVBoxLayout(content_widget)
         content_layout.setSpacing(15)
-        content_layout.setContentsMargins(10, 10, 10, 10)
+        # Increase margins to prevent content cutoff, especially on right side
+        content_layout.setContentsMargins(20, 10, 30, 10)
 
         # Introduction
         intro = QLabel(
@@ -61,7 +66,8 @@ class RekordboxInstructionsDialog(QDialog):
             "information from Rekordbox. Here's how to create one:"
         )
         intro.setWordWrap(True)
-        intro.setStyleSheet("font-size: 14px; color: #333;")
+        # Lighter gray (closer to white) for better visibility on dark background
+        intro.setStyleSheet("font-size: 14px; color: #cccccc;")
         content_layout.addWidget(intro)
 
         # Step 1
@@ -77,7 +83,8 @@ class RekordboxInstructionsDialog(QDialog):
             "Open the Rekordbox application on your computer."
         )
         step1_text.setWordWrap(True)
-        step1_text.setStyleSheet("font-size: 14px; color: #555;")
+        # Lighter gray (closer to white) for better visibility
+        step1_text.setStyleSheet("font-size: 14px; color: #cccccc;")
         content_layout.addWidget(step1_text)
 
         # Photo placeholder for Step 1
@@ -97,7 +104,8 @@ class RekordboxInstructionsDialog(QDialog):
             "Click on 'File' in the top menu bar, then select 'Export Collection'."
         )
         step2_text.setWordWrap(True)
-        step2_text.setStyleSheet("font-size: 14px; color: #555;")
+        # Lighter gray (closer to white) for better visibility
+        step2_text.setStyleSheet("font-size: 14px; color: #cccccc;")
         content_layout.addWidget(step2_text)
 
         # Photo placeholder for Step 2
@@ -119,7 +127,8 @@ class RekordboxInstructionsDialog(QDialog):
             "Remember where you saved it!"
         )
         step3_text.setWordWrap(True)
-        step3_text.setStyleSheet("font-size: 14px; color: #555;")
+        # Lighter gray (closer to white) for better visibility
+        step3_text.setStyleSheet("font-size: 14px; color: #cccccc;")
         content_layout.addWidget(step3_text)
 
         # Photo placeholder for Step 3
@@ -140,7 +149,8 @@ class RekordboxInstructionsDialog(QDialog):
             "or drag and drop the file into the file selection area."
         )
         step4_text.setWordWrap(True)
-        step4_text.setStyleSheet("font-size: 14px; color: #555;")
+        # Lighter gray (closer to white) for better visibility
+        step4_text.setStyleSheet("font-size: 14px; color: #cccccc;")
         content_layout.addWidget(step4_text)
 
         # What is XML section
@@ -160,7 +170,8 @@ class RekordboxInstructionsDialog(QDialog):
             "about them (like track names, artists, BPM, etc.)."
         )
         what_is_text.setWordWrap(True)
-        what_is_text.setStyleSheet("font-size: 14px; color: #555;")
+        # Lighter gray (closer to white) for better visibility
+        what_is_text.setStyleSheet("font-size: 14px; color: #cccccc;")
         content_layout.addWidget(what_is_text)
 
         content_layout.addStretch()
@@ -218,13 +229,16 @@ class RekordboxInstructionsDialog(QDialog):
             try:
                 pixmap = QPixmap(str(photo_path))
                 if not pixmap.isNull():
-                    # Scale to fit width (600px) while maintaining aspect ratio
+                    # Scale to fit width (800px for wider window) while maintaining aspect ratio
+                    # This ensures images are properly sized and centered
                     scaled_pixmap = pixmap.scaled(
-                        600, 400, 
+                        800, 600, 
                         Qt.AspectRatioMode.KeepAspectRatio, 
                         Qt.TransformationMode.SmoothTransformation
                     )
                     placeholder.setPixmap(scaled_pixmap)
+                    # Ensure image is centered
+                    placeholder.setAlignment(Qt.AlignCenter)
                     placeholder.setStyleSheet("")
                     return placeholder
             except Exception as e:
