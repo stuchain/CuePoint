@@ -349,8 +349,16 @@ jobs:
           }
           
           Write-Host "Getting version from version.py..."
-          $version = python -c "import sys; sys.path.insert(0, 'SRC'); from cuepoint.version import __version__; print(__version__)"
-          Write-Host "Version: $version"
+          $fullVersion = python -c "import sys; sys.path.insert(0, 'SRC'); from cuepoint.version import __version__; print(__version__)"
+          Write-Host "Full version: $fullVersion"
+          
+          # Extract base version (X.Y.Z) for NSIS - NSIS requires format X.Y.Z (no prerelease suffixes)
+          # Remove prerelease suffix (everything after -) and build metadata (everything after +)
+          $version = $fullVersion
+          if ($version -match '^([^-+]+)') {
+              $version = $matches[1]
+          }
+          Write-Host "Base version for NSIS: $version"
           
           # Try to find makensis in common locations or PATH
           Write-Host "Searching for makensis..."
@@ -430,14 +438,27 @@ jobs:
               exit 1
           }
           
-          # Verify installer was created in dist/ directory
-          # Makensis reported creating: "D:\a\CuePoint\CuePoint\dist\CuePoint-Setup-v1.0.0.exe"
-          # Wait a moment for file system to sync (makensis might have just written the file)
+          # NSIS creates installer with base version in filename
+          # Rename it to include full version (with prerelease suffix) if different
+          $baseInstallerName = "CuePoint-Setup-v$version.exe"
+          $installerName = "CuePoint-Setup-v$fullVersion.exe"
+          $baseInstallerPath = "dist\$baseInstallerName"
+          $installerPath = "dist\$installerName"
+          
           Write-Host "Waiting for file system to sync..."
           Start-Sleep -Seconds 2
           
-          # Check for installer using exact expected filename
-          $expectedInstaller = "dist\CuePoint-Setup-v$version.exe"
+          # Rename installer to include full version if different
+          if ($fullVersion -ne $version -and (Test-Path $baseInstallerPath)) {
+              Write-Host "Renaming installer to include full version..."
+              Write-Host "  From: $baseInstallerName"
+              Write-Host "  To:   $installerName"
+              Rename-Item -Path $baseInstallerPath -NewName $installerName -Force
+              Write-Host "[OK] Installer renamed successfully"
+          }
+          
+          # Check for installer using expected filename (full version)
+          $expectedInstaller = "dist\$installerName"
           $absInstallerPath = Join-Path $currentDir $expectedInstaller
           Write-Host "Checking for installer..."
           Write-Host "  Expected relative path: $expectedInstaller"
@@ -668,7 +689,7 @@ jobs:
                 Write-Host "  dist/ directory is empty or doesn't exist"
             }
             Write-Host "Checking explicit path:"
-            $explicitPath = "dist\CuePoint-Setup-v$version.exe"
+            $explicitPath = "dist\CuePoint-Setup-v$fullVersion.exe"
             $absExplicitPath = Join-Path (Get-Location) $explicitPath
             Write-Host "  Relative path: $explicitPath"
             Write-Host "  Absolute path: $absExplicitPath"

@@ -16,6 +16,8 @@ InstallDir "$LOCALAPPDATA\CuePoint"
 RequestExecutionLevel user  ; Per-user installation (no admin required)
 
 ; Version information (will be replaced by build script)
+; NOTE: VERSION should be the base version (X.Y.Z) without prerelease suffixes
+; The build script extracts the base version before passing to NSIS
 !ifndef VERSION
     !define VERSION "1.0.0"
 !endif

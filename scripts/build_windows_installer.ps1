@@ -44,7 +44,14 @@ if (-not $Version) {
     }
 }
 
-Write-Host "Building Windows installer for version $Version" -ForegroundColor Cyan
+# Extract base version (X.Y.Z) for NSIS - NSIS requires format X.Y.Z (no prerelease suffixes)
+# Remove prerelease suffix (everything after -) and build metadata (everything after +)
+$fullVersion = $Version
+if ($Version -match '^([^-+]+)') {
+    $Version = $matches[1]
+}
+
+Write-Host "Building Windows installer for version $fullVersion (base: $Version)" -ForegroundColor Cyan
 
 # Check if NSIS is available
 $makensis = "makensis"
@@ -88,28 +95,53 @@ if (-not (Test-Path $installerScript)) {
 # Build installer
 Write-Host "Building installer with NSIS..." -ForegroundColor Cyan
 $outputDir = Join-Path $projectRoot $DistDir
-$installerName = "CuePoint-Setup-v$Version.exe"
+# Use full version for installer filename (includes prerelease suffix)
+$installerName = "CuePoint-Setup-v$fullVersion.exe"
 
 Push-Location $projectRoot
 try {
+    # Use base version for NSIS (X.Y.Z format required, no prerelease suffixes)
+    # NSIS creates installer with base version in filename, we'll rename it after
+    $baseInstallerName = "CuePoint-Setup-v$Version.exe"
     $buildCmd = "& `"$makensis`" /DVERSION=$Version `"$installerScript`""
     Write-Host "Running: $buildCmd"
+    Write-Host "  Using base version for NSIS: $Version (full version: $fullVersion)"
     Invoke-Expression $buildCmd
     
     if ($LASTEXITCODE -ne 0) {
         Write-Error "NSIS build failed"
         exit 1
     }
+    
+    # NSIS creates installer with base version in filename
+    # Rename it to include full version (with prerelease suffix) if different
+    $baseInstallerPath = Join-Path $outputDir $baseInstallerName
+    if ($fullVersion -ne $Version -and (Test-Path $baseInstallerPath)) {
+        Write-Host "Renaming installer to include full version..."
+        Write-Host "  From: $baseInstallerName"
+        Write-Host "  To:   $installerName"
+        Rename-Item -Path $baseInstallerPath -NewName $installerName -Force
+        Write-Host "[OK] Installer renamed successfully"
+    }
 }
 finally {
     Pop-Location
 }
 
-# Check if installer was created
+# Check if installer was created (with full version name)
 $installerPath = Join-Path $outputDir $installerName
 if (-not (Test-Path $installerPath)) {
-    Write-Error "Installer was not created: $installerPath"
-    exit 1
+    # Also check for base version name (in case rename didn't happen)
+    $baseInstallerPath = Join-Path $outputDir $baseInstallerName
+    if (Test-Path $baseInstallerPath) {
+        Write-Host "Installer found with base version name, renaming..."
+        Rename-Item -Path $baseInstallerPath -NewName $installerName -Force
+        $installerPath = Join-Path $outputDir $installerName
+    }
+    else {
+        Write-Error "Installer was not created: $installerPath"
+        exit 1
+    }
 }
 
 Write-Host "Installer created: $installerPath" -ForegroundColor Green
