@@ -473,6 +473,71 @@ class AboutDialog(QDialog):
 
             QMessageBox.warning(self, "Report Issue", f"Could not open issue tracker:\n{e}")
 
+    def _load_logo(self, size: Optional[Tuple[int, int]] = None) -> Optional[QLabel]:
+        """Load and display the logo image.
+        
+        Args:
+            size: Optional tuple (width, height) to scale the logo.
+                  If None, uses default size (200x80) for About dialog.
+        
+        Returns:
+            QLabel with logo pixmap, or None if logo not found.
+        """
+        import os
+        
+        # Determine the logo path
+        if getattr(sys, 'frozen', False):
+            # Running as packaged app
+            if hasattr(sys, '_MEIPASS'):
+                base_path = Path(sys._MEIPASS)
+            else:
+                base_path = Path(os.path.dirname(sys.executable))
+            logo_path = base_path / 'assets' / 'icons' / 'logo.png'
+        else:
+            # Running as script - use SRC/cuepoint/ui/assets/icons
+            # This file is at SRC/cuepoint/ui/widgets/dialogs.py
+            # So parent.parent is SRC/cuepoint/ui/
+            base_path = Path(__file__).resolve().parent.parent
+            logo_path = base_path / 'assets' / 'icons' / 'logo.png'
+        
+        if not logo_path.exists():
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Logo not found at: {logo_path}")
+            return None
+        
+        try:
+            pixmap = QPixmap(str(logo_path))
+            if pixmap.isNull():
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Failed to load logo pixmap from: {logo_path}")
+                return None
+            
+            # Scale if size specified, otherwise use default for About dialog
+            if size:
+                width, height = size
+            else:
+                # Default size for About dialog (200px width, maintain aspect ratio)
+                width = 200
+                height = int(pixmap.height() * (200 / pixmap.width())) if pixmap.width() > 0 else 80
+            
+            pixmap = pixmap.scaled(
+                width, height,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation
+            )
+            
+            logo_label = QLabel()
+            logo_label.setPixmap(pixmap)
+            logo_label.setAlignment(Qt.AlignCenter)
+            return logo_label
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error loading logo: {e}", exc_info=True)
+            return None
+
 
 class UserGuideDialog(QDialog):
     """User Guide dialog"""

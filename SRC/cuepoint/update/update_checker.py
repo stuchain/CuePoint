@@ -304,15 +304,55 @@ class UpdateChecker:
         Returns:
             Latest update item or None if no update available
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Check if current version is prerelease
+        try:
+            current_is_prerelease = not is_stable_version(self.current_version)
+        except ValueError:
+            logger.warning(f"Could not parse current version: {self.current_version}")
+            return None
+        
+        logger.debug(f"Finding latest update. Current version: {self.current_version} (prerelease: {current_is_prerelease}), Channel: {self.channel}, Items: {len(items)}")
+        
         for item in items:
-            version = item['version']
-            
-            # Skip prerelease versions if on stable channel
-            if self.channel == "stable" and not is_stable_version(version):
+            # Use short_version (semantic version) for comparison, fallback to version (build number)
+            # short_version contains the full version string like "1.0.1-test-unsigned51"
+            # version contains the build number like "202512181304"
+            version = item.get('short_version') or item.get('version', '')
+            if not version:
+                logger.debug(f"Skipping item: no version found (has short_version: {item.get('short_version')}, has version: {item.get('version')})")
                 continue
             
+            # Try to parse as semantic version, skip if invalid
+            try:
+                version_is_prerelease = not is_stable_version(version)
+            except (ValueError, AttributeError) as e:
+                logger.debug(f"Skipping item: could not parse version '{version}': {e}")
+                continue
+            
+            # Filter logic:
+            # - If on stable channel and current version is stable: only show stable updates
+            # - If on stable channel but current version is prerelease: allow prerelease updates
+            # - If on beta channel: allow all updates
+            if self.channel == "stable":
+                if not current_is_prerelease and version_is_prerelease:
+                    # Current is stable, skip prerelease versions
+                    logger.debug(f"Skipping prerelease version '{version}' (current is stable)")
+                    continue
+                # Otherwise allow (both stable, or current is prerelease)
+            
             # Check if version is newer
-            if compare_versions(version, self.current_version) > 0:
-                return item
+            try:
+                comparison = compare_versions(version, self.current_version)
+                logger.debug(f"Comparing '{version}' with '{self.current_version}': {comparison}")
+                if comparison > 0:
+                    logger.info(f"Found newer version: {version} (current: {self.current_version})")
+                    return item
+            except ValueError as e:
+                logger.debug(f"Skipping item: version comparison failed for '{version}' vs '{self.current_version}': {e}")
+                continue
         
+        logger.debug("No newer version found")
         return None
