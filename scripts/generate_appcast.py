@@ -197,45 +197,56 @@ def generate_appcast(
         ET.SubElement(channel, 'language').text = 'en'
     
     # Check if this version already exists in the appcast
-    # This prevents duplicates when re-running the same release
+    # If it exists, we'll update/replace it to ensure URLs and dates are current
     existing_items = channel.findall('item')
     version_exists = False
+    existing_item_to_remove = None
+    
     for existing_item in existing_items:
         short_version_elem = existing_item.find(f'{{{SPARKLE_NS}}}shortVersionString')
         if short_version_elem is not None and short_version_elem.text == version:
             version_exists = True
-            print(f"Version {version} already exists in appcast, skipping duplicate")
+            existing_item_to_remove = existing_item
+            print(f"Version {version} already exists in appcast, will update/replace it")
             break
     
-    if not version_exists:
-        # Create item for this release
-        item = generate_appcast_item(
-            dmg_file,
-            version,
-            download_url,
-            release_notes_url,
-            release_notes,
-            ed_signature,
-            dsa_signature,
-            minimum_system_version
-        )
-        
-        # Insert new item at the beginning (latest first)
-        channel.insert(0, item)
-    else:
-        # Version exists - keep existing but ensure it's at the top
-        # Remove existing and re-insert at top to ensure latest is first
-        for existing_item in existing_items:
-            short_version_elem = existing_item.find(f'{{{SPARKLE_NS}}}shortVersionString')
-            if short_version_elem is not None and short_version_elem.text == version:
-                channel.remove(existing_item)
-                channel.insert(0, existing_item)
-                print(f"Updated position of existing version {version} to top")
-                break
+    # Always create a new item with current information (ensures URLs and dates are up to date)
+    item = generate_appcast_item(
+        dmg_file,
+        version,
+        download_url,
+        release_notes_url,
+        release_notes,
+        ed_signature,
+        dsa_signature,
+        minimum_system_version
+    )
+    
+    if version_exists and existing_item_to_remove is not None:
+        # Remove old item and insert new one at top (ensures latest info)
+        channel.remove(existing_item_to_remove)
+        print(f"Replaced existing version {version} with updated information")
+    
+    # Insert new item at the beginning (latest first)
+    channel.insert(0, item)
     
     # Convert to string with proper formatting
     ET.indent(root, space='  ')
     xml_str = ET.tostring(root, encoding='utf-8', xml_declaration=True).decode('utf-8')
+    
+    # Debug: Log what versions are in the appcast
+    try:
+        items = channel.findall('item')
+        versions_in_appcast = []
+        for item in items:
+            short_version_elem = item.find(f'{{{SPARKLE_NS}}}shortVersionString')
+            if short_version_elem is not None:
+                versions_in_appcast.append(short_version_elem.text)
+        print(f"Appcast will contain {len(versions_in_appcast)} version(s): {', '.join(versions_in_appcast[:10])}")
+        if version not in versions_in_appcast:
+            print(f"WARNING: Version {version} not found in appcast after generation!")
+    except Exception as e:
+        print(f"Warning: Could not verify versions in appcast: {e}")
     
     return xml_str
 
@@ -300,11 +311,33 @@ def main():
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(appcast_xml, encoding='utf-8')
         
-        print(f"Generated appcast: {output_path}")
-        print(f"  Version: {version}")
-        print(f"  Channel: {args.channel}")
-        print(f"  DMG: {args.dmg}")
-        print(f"  URL: {args.url}")
+        # Count items and list versions in generated appcast for debugging
+        try:
+            root = ET.fromstring(appcast_xml)
+            channel = root.find('channel')
+            if channel is not None:
+                items = channel.findall('item')
+                item_count = len(items)
+                versions = []
+                for item in items[:5]:  # Show first 5 versions
+                    short_version_elem = item.find(f'{{{SPARKLE_NS}}}shortVersionString')
+                    if short_version_elem is not None:
+                        versions.append(short_version_elem.text)
+                print(f"Generated appcast: {output_path}")
+                print(f"  Version: {version}")
+                print(f"  Channel: {args.channel}")
+                print(f"  Total versions in appcast: {item_count}")
+                if versions:
+                    print(f"  Versions (first 5): {', '.join(versions)}")
+                print(f"  DMG: {args.dmg}")
+                print(f"  URL: {args.url}")
+        except Exception as e:
+            print(f"Generated appcast: {output_path}")
+            print(f"  Version: {version}")
+            print(f"  Channel: {args.channel}")
+            print(f"  DMG: {args.dmg}")
+            print(f"  URL: {args.url}")
+            print(f"  Warning: Could not parse appcast for debugging: {e}")
         if args.ed_signature:
             print(f"  Signature: EdDSA")
         elif args.signature:

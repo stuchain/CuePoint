@@ -177,69 +177,70 @@ def publish_feeds(
         
         # Check if source and destination are the same file
         if appcast_path == dest_path:
-            # Files are the same location - check if content changed
-            # Read both files and compare
-            try:
-                source_content = appcast_path.read_bytes()
-                if dest_path.exists():
-                    dest_content = dest_path.read_bytes()
-                    if source_content == dest_content:
-                        # Files are identical - check git status
-                        returncode, status_output, _ = run_command(
-                            ['git', 'status', '--porcelain', str(dest_path.relative_to(repo_root))],
-                            cwd=repo_root
-                        )
-                        if not status_output.strip():
-                            print(f"File unchanged: {dest_path.relative_to(repo_root)}")
-                            continue  # Skip this file - no changes
-                # Content is different or file doesn't exist - need to update
-                # Since paths are same, just add to git
-                run_command(['git', 'add', str(dest_path.relative_to(repo_root))], cwd=repo_root)
-                print(f"File updated, added to git: {dest_path.relative_to(repo_root)}")
-            except Exception as e:
-                print(f"Warning: Could not compare files: {e}", file=sys.stderr)
-                # Add anyway to be safe
-                run_command(['git', 'add', str(dest_path.relative_to(repo_root))], cwd=repo_root)
-                print(f"Added to git: {dest_path.relative_to(repo_root)}")
+            # Files are the same location - always add to git
+            # Git will detect if there are actual changes
+            run_command(['git', 'add', str(dest_path.relative_to(repo_root))], cwd=repo_root)
+            print(f"File in place, added to git: {dest_path.relative_to(repo_root)}")
         else:
             # Different paths - copy file
             # Create destination directory
             dest_path.parent.mkdir(parents=True, exist_ok=True)
             
-            # Check if destination exists and content is same
-            file_changed = True
-            if dest_path.exists():
-                try:
-                    source_content = appcast_path.read_bytes()
-                    dest_content = dest_path.read_bytes()
-                    if source_content == dest_content:
-                        file_changed = False
-                except Exception:
-                    pass  # If we can't compare, assume changed
+            # Always copy (ensures file is up to date)
+            import shutil
+            shutil.copy2(appcast_path, dest_path)
+            print(f"Copied: {appcast_path.relative_to(repo_root)} -> {dest_path.relative_to(repo_root)}")
             
-            if file_changed:
-                # Copy file
-                import shutil
-                shutil.copy2(appcast_path, dest_path)
-                print(f"Copied: {appcast_path.relative_to(repo_root)} -> {dest_path.relative_to(repo_root)}")
-            else:
-                print(f"File unchanged, skipping copy: {dest_path.relative_to(repo_root)}")
-            
-            # Add to git (even if unchanged, in case it's not tracked)
-            returncode, _, _ = run_command(['git', 'add', str(dest_path.relative_to(repo_root))], cwd=repo_root)
+            # Add to git
+            run_command(['git', 'add', str(dest_path.relative_to(repo_root))], cwd=repo_root)
             print(f"Added to git: {dest_path.relative_to(repo_root)}")
     
-    # Check if there are changes
-    returncode, stdout, _ = run_command(['git', 'status', '--porcelain'], cwd=repo_root)
-    if not stdout.strip():
-        print("No changes to commit - files are already up to date")
-        return True
-    
-    # Check if there are staged changes
+    # Check if there are staged changes (files we just added)
     returncode, stdout, _ = run_command(['git', 'diff', '--cached', '--name-only'], cwd=repo_root)
-    if not stdout.strip():
-        print("No staged changes to commit")
-        return True
+    staged_files = stdout.strip()
+    
+    if not staged_files:
+        # Check if files are untracked (new files)
+        returncode, stdout, _ = run_command(['git', 'status', '--porcelain', '--untracked-files=all'], cwd=repo_root)
+        untracked = [line for line in stdout.strip().split('\n') if line.startswith('??')]
+        if untracked:
+            # Add untracked files
+            for line in untracked:
+                file_path = line[3:].strip()  # Remove '?? ' prefix
+                run_command(['git', 'add', file_path], cwd=repo_root)
+                print(f"Added untracked file: {file_path}")
+            # Re-check staged changes
+            returncode, stdout, _ = run_command(['git', 'diff', '--cached', '--name-only'], cwd=repo_root)
+            staged_files = stdout.strip()
+    
+    if not staged_files:
+        # Double-check by looking at git status for any changes
+        returncode, stdout, _ = run_command(['git', 'status', '--porcelain'], cwd=repo_root)
+        status_output = stdout.strip()
+        if not status_output:
+            print("No changes to commit - files are already up to date")
+            print("Note: This can happen if:")
+            print("  1. The appcast content is identical to what's already in gh-pages")
+            print("  2. The version already exists with the same URLs and dates")
+            print("  3. The pubDate hasn't changed (unlikely but possible)")
+            return True
+        else:
+            # There are changes but not staged - try to add them
+            print(f"Found unstaged changes, staging them:")
+            for line in status_output.split('\n'):
+                if line.strip():
+                    print(f"  {line}")
+                    # Extract file path (remove status prefix like ' M' or '??')
+                    file_path = line[3:].strip() if len(line) > 3 else line.strip()
+                    run_command(['git', 'add', file_path], cwd=repo_root)
+            # Re-check
+            returncode, stdout, _ = run_command(['git', 'diff', '--cached', '--name-only'], cwd=repo_root)
+            staged_files = stdout.strip()
+            if not staged_files:
+                print("No changes to commit after staging")
+                return True
+            else:
+                print(f"Staged files: {staged_files}")
     
     # Commit changes
     print(f"Committing changes: {message}")
