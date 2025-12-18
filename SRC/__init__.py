@@ -7,7 +7,12 @@ CuePoint - Rekordbox → Beatport Metadata Enricher
 A structured Python package for enriching Rekordbox playlists with Beatport metadata.
 """
 
-__version__ = "1.0.0"
+# Import version from cuepoint.version (single source of truth)
+try:
+    from cuepoint.version import __version__
+except ImportError:
+    # Fallback if version module not available (shouldn't happen in normal usage)
+    __version__ = "1.0.0"
 
 # Import SETTINGS from the correct location
 # Use try/except to handle cases where cuepoint package might not be available (e.g., during tests)

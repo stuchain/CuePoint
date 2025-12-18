@@ -244,7 +244,9 @@ def main():
         app.setOrganizationName("StuChain")
         app.setOrganizationDomain("stuchain.com")
         app.setApplicationName("CuePoint")
-        app.setApplicationVersion("1.0.0")
+        # Get version from version.py (single source of truth)
+        from cuepoint.version import get_version
+        app.setApplicationVersion(get_version())
         
         # Set application icon (for taskbar/dock)
         _set_application_icon(app)

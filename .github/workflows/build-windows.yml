@@ -154,6 +154,20 @@ jobs:
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
           GITHUB_RUN_ID: ${{ github.run_id }}
       
+      - name: Sync version from git tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          Write-Host "=== DEBUG: Syncing version from git tag ==="
+          Write-Host "Git ref: ${{ github.ref }}"
+          Write-Host "Git ref name: ${{ github.ref_name }}"
+          Write-Host "Running: python scripts/sync_version.py --tag ${{ github.ref_name }}"
+          python scripts/sync_version.py --tag ${{ github.ref_name }}
+          if ($LASTEXITCODE -ne 0) {
+              Write-Error "Version sync failed"
+              exit 1
+          }
+          Write-Host "[OK] Version synced successfully"
+      
       - name: Generate version info
         run: |
           Write-Host "=== DEBUG: Generating version info ==="

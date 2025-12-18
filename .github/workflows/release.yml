@@ -124,6 +124,16 @@ jobs:
         with:
           python-version: '3.11'
       
+      - name: Sync version from git tag
+        run: |
+          echo "Syncing version.py from git tag: ${{ github.ref_name }}"
+          python scripts/sync_version.py --tag ${{ github.ref_name }}
+          if [ $? -ne 0 ]; then
+            echo "Error: Version sync failed"
+            exit 1
+          fi
+          echo "[OK] Version synced successfully"
+      
       - name: Generate release notes
         run: |
           VERSION="${{ github.ref_name }}"

@@ -81,6 +81,13 @@ jobs:
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
           GITHUB_RUN_ID: ${{ github.run_id }}
       
+      - name: Sync version from git tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          echo "Syncing version.py from git tag: ${{ github.ref_name }}"
+          python scripts/sync_version.py --tag ${{ github.ref_name }}
+        continue-on-error: false
+      
       - name: Process Info.plist
         run: python scripts/process_info_plist.py
       

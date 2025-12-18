@@ -15,7 +15,7 @@ import sys
 from typing import Any, Dict, Optional
 
 # Version follows Semantic Versioning (SemVer): MAJOR.MINOR.PATCH
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 # Build identifier (set by CI or build script)
 __build_number__: Optional[str] = "202512161452"  # Will be set during build
