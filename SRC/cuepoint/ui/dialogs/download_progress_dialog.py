@@ -44,6 +44,11 @@ class DownloadProgressDialog(QDialog):
         self.downloaded_file: Optional[str] = None
         self.cancelled = False
         
+        # Get download path for display
+        import tempfile
+        from pathlib import Path
+        self.download_dir = Path(tempfile.gettempdir()) / 'CuePoint_Updates'
+        
         self.setWindowTitle("Downloading Update")
         self.setMinimumWidth(400)
         self.setModal(True)
@@ -99,7 +104,11 @@ class DownloadProgressDialog(QDialog):
     
     def start_download(self):
         """Start the download."""
+        import logging
+        logger = logging.getLogger(__name__)
+        
         try:
+            logger.info(f"Initializing downloader for URL: {self.download_url}")
             self.downloader = UpdateDownloader(self)
             
             # Connect signals
@@ -110,27 +119,45 @@ class DownloadProgressDialog(QDialog):
             self.downloader.error.connect(self.on_download_error)
             self.downloader.cancelled.connect(self.on_download_cancelled)
             
+            logger.info("Signals connected, starting download in 100ms...")
+            
             # Start download immediately (non-blocking via signals)
             QTimer.singleShot(100, self._do_download)
             
         except Exception as e:
+            logger.error(f"Failed to start download: {e}", exc_info=True)
             self.on_download_error(f"Failed to start download: {str(e)}")
     
     def _do_download(self):
         """Execute download (called via QTimer, runs in main thread but processes events)."""
-        if self.downloader:
-            try:
-                # Download will emit signals for progress updates
-                # QEventLoop.exec() processes Qt events, so UI stays responsive
-                # The finished signal will be emitted when download completes
-                result = self.downloader.download(self.download_url)
-                # Note: finished signal will be emitted by downloader, so we don't need to handle result here
-                # But if download() returns immediately (non-blocking), we should check result
-                if result and not self.downloaded_file:
-                    self.downloaded_file = result
-                    self.on_download_finished(result)
-            except Exception as e:
-                self.on_download_error(str(e))
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        if not self.downloader:
+            logger.error("Downloader is None, cannot start download")
+            self.on_download_error("Downloader not initialized")
+            return
+        
+        try:
+            logger.info(f"Starting download from: {self.download_url}")
+            logger.info(f"Download will be saved to: {self.download_dir}")
+            
+            # Download will emit signals for progress updates
+            # QEventLoop.exec() processes Qt events, so UI stays responsive
+            # The finished signal will be emitted when download completes
+            result = self.downloader.download(self.download_url)
+            
+            logger.info(f"Download method returned: {result}")
+            
+            # Note: finished signal will be emitted by downloader, so we don't need to handle result here
+            # But if download() returns immediately (non-blocking), we should check result
+            if result and not self.downloaded_file:
+                logger.info(f"Download completed synchronously, file: {result}")
+                self.downloaded_file = result
+                self.on_download_finished(result)
+        except Exception as e:
+            logger.error(f"Download exception: {e}", exc_info=True)
+            self.on_download_error(str(e))
     
     def on_progress(self, bytes_received: int, bytes_total: int):
         """Handle progress update."""
@@ -161,15 +188,23 @@ class DownloadProgressDialog(QDialog):
     
     def on_download_finished(self, file_path: str):
         """Handle download completion."""
+        import logging
+        logger = logging.getLogger(__name__)
+        
         self.downloaded_file = file_path
-        self.size_label.setText("Download complete!")
+        logger.info(f"Download finished, file saved to: {file_path}")
+        
+        # Show completion message with file location
+        from pathlib import Path
+        file_path_obj = Path(file_path)
+        self.size_label.setText(f"Download complete!\n\nSaved to:\n{file_path_obj.parent}\n\nFile: {file_path_obj.name}")
         self.speed_label.setText("")
         self.time_label.setText("")
         self.progress_bar.setValue(100)
         
         # Close dialog after a brief moment to show completion
         from PySide6.QtCore import QTimer
-        QTimer.singleShot(500, self.accept)
+        QTimer.singleShot(1500, self.accept)  # Give user time to see the file location
     
     def on_download_error(self, error_message: str):
         """Handle download error."""

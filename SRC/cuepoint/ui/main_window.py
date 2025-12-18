@@ -1742,25 +1742,55 @@ class MainWindow(QMainWindow):
 
             # Update the check dialog if it's open
             if hasattr(self, "update_check_dialog") and self.update_check_dialog:
+                logger.info("Updating check dialog with update info")
                 self.update_check_dialog.set_update_found(update_info)
+                
+                # Verify button exists and is visible
+                if not hasattr(self.update_check_dialog, 'download_button'):
+                    logger.error("Download button not found in dialog!")
+                    return
+                
+                if not self.update_check_dialog.download_button.isVisible():
+                    logger.warning("Download button is not visible!")
+                
                 # Connect download button if not already connected
                 if not hasattr(self.update_check_dialog, '_download_connected'):
                     # Store update_info in dialog for download
                     self.update_check_dialog.update_info = update_info
+                    logger.info(f"Stored update_info in dialog: {update_info.get('short_version', 'unknown')}")
+                    
                     # Disconnect any existing handler first (including dialog's own _on_download)
                     try:
                         self.update_check_dialog.download_button.clicked.disconnect()
+                        logger.info("Disconnected existing button handlers")
                     except TypeError:
                         # No connections to disconnect
+                        logger.info("No existing button handlers to disconnect")
                         pass
+                    
                     # Connect to our handler that will trigger download
-                    import logging
-                    logger = logging.getLogger(__name__)
                     logger.info("Connecting download button to download handler")
-                    self.update_check_dialog.download_button.clicked.connect(
-                        lambda: self._on_update_install_from_dialog()
-                    )
+                    
+                    # Use a proper function reference instead of lambda to avoid closure issues
+                    def on_download_clicked():
+                        logger.info("Download button clicked (from connected handler)")
+                        self._on_update_install_from_dialog()
+                    
+                    self.update_check_dialog.download_button.clicked.connect(on_download_clicked)
                     self.update_check_dialog._download_connected = True
+                    logger.info("Download button connected successfully")
+                    
+                    # Verify connection
+                    try:
+                        # Check if signal is connected
+                        receivers = self.update_check_dialog.download_button.receivers(
+                            self.update_check_dialog.download_button.clicked.signal
+                        )
+                        logger.info(f"Button signal receivers count: {receivers}")
+                    except Exception as e:
+                        logger.warning(f"Could not verify button connection: {e}")
+                else:
+                    logger.info("Download button already connected, skipping")
             else:
                 # Show update dialog if check dialog not open
                 from cuepoint.update.update_ui import show_update_dialog
@@ -1875,25 +1905,69 @@ class MainWindow(QMainWindow):
         
         logger.info("Download button clicked in update check dialog")
         
-        if hasattr(self, "update_check_dialog") and self.update_check_dialog:
-            update_info = getattr(self.update_check_dialog, 'update_info', None)
-            if update_info:
-                logger.info(f"Starting download from dialog, version: {update_info.get('short_version', 'unknown')}")
-                # Close the update check dialog first
-                self.update_check_dialog.accept()
-                # Start download and install
-                self._download_and_install_update(update_info)
-            else:
-                logger.warning("Update info not available in dialog")
-                QMessageBox.warning(
-                    self, 
-                    "Update", 
-                    "Update information not available. Please check for updates again."
-                )
-        else:
-            logger.warning("Update check dialog not found, falling back to update manager")
-            # Fallback to update manager
-            self._on_update_install()
+        # Debug: Check if dialog exists
+        if not hasattr(self, "update_check_dialog"):
+            logger.error("update_check_dialog attribute not found on MainWindow")
+            QMessageBox.warning(
+                self,
+                "Update Error",
+                "Update dialog not found. Please try checking for updates again."
+            )
+            return
+        
+        if not self.update_check_dialog:
+            logger.error("update_check_dialog is None")
+            QMessageBox.warning(
+                self,
+                "Update Error",
+                "Update dialog is not available. Please try checking for updates again."
+            )
+            return
+        
+        # Get update info
+        update_info = getattr(self.update_check_dialog, 'update_info', None)
+        logger.info(f"Update info from dialog: {update_info}")
+        
+        if not update_info:
+            logger.error("Update info is None or missing")
+            QMessageBox.warning(
+                self, 
+                "Update Error", 
+                "Update information not available in dialog.\n\n"
+                "Please check for updates again."
+            )
+            return
+        
+        # Verify download URL exists
+        download_url = update_info.get("download_url")
+        if not download_url:
+            enclosure = update_info.get("enclosure", {})
+            if isinstance(enclosure, dict):
+                download_url = enclosure.get("url")
+        
+        if not download_url:
+            logger.error("No download URL found in update_info")
+            QMessageBox.warning(
+                self,
+                "Update Error",
+                "Download URL not found in update information.\n\n"
+                "Please check for updates again or download manually from the release page."
+            )
+            return
+        
+            logger.info(f"Starting download from dialog, version: {update_info.get('short_version', 'unknown')}, URL: {download_url}")
+            
+            # Show download location
+            import tempfile
+            from pathlib import Path
+            download_dir = Path(tempfile.gettempdir()) / 'CuePoint_Updates'
+            logger.info(f"Download will be saved to: {download_dir}")
+        
+            # Close the update check dialog first
+            self.update_check_dialog.accept()
+            
+            # Start download and install
+            self._download_and_install_update(update_info)
     
     def _download_and_install_update(self, update_info: Dict) -> None:
         """Download and install update with progress dialog.
