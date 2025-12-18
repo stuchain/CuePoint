@@ -36,11 +36,31 @@ def validate_appcast(appcast_path):
             return False, "Invalid root element (expected 'rss')"
         
         # Check for Sparkle namespace
-        # Namespace can be declared as xmlns:sparkle or in root.attrib
+        # The namespace can be declared in root attributes OR we can detect it by finding
+        # Sparkle namespace elements (which only work if namespace is declared)
         sparkle_ns = 'http://www.andymatuschak.org/xml-namespaces/sparkle'
-        has_namespace = (
-            'xmlns:sparkle' in root.attrib and root.attrib['xmlns:sparkle'] == sparkle_ns
-        ) or sparkle_ns in root.attrib.values()
+        
+        # Method 1: Check if namespace is declared in root attributes
+        has_namespace = 'xmlns:sparkle' in root.attrib and root.attrib['xmlns:sparkle'] == sparkle_ns
+        
+        # Method 2: If not found in attributes, check if Sparkle namespace elements exist
+        # (This is a stronger check - if we can find namespace elements, namespace must be declared)
+        if not has_namespace:
+            # Try to find a sparkle:version element using the namespace
+            # This will only work if the namespace is properly declared
+            items = root.findall('.//item')
+            for item in items:
+                sparkle_version = item.find(f'{{{sparkle_ns}}}version')
+                if sparkle_version is not None:
+                    has_namespace = True
+                    break
+        
+        # Method 3: Check if namespace URL appears in any attribute value
+        if not has_namespace:
+            for key, value in root.attrib.items():
+                if value == sparkle_ns:
+                    has_namespace = True
+                    break
         
         if not has_namespace:
             return False, "Missing Sparkle namespace"
@@ -102,11 +122,27 @@ def validate_update_feed(feed_path):
         if root.tag != 'rss':
             return False, "Invalid root element (expected 'rss')"
         
-        # Check for Sparkle namespace
+        # Check for Sparkle namespace (same logic as macOS)
         sparkle_ns = 'http://www.andymatuschak.org/xml-namespaces/sparkle'
-        has_namespace = (
-            'xmlns:sparkle' in root.attrib and root.attrib['xmlns:sparkle'] == sparkle_ns
-        ) or sparkle_ns in root.attrib.values()
+        
+        # Method 1: Check if namespace is declared in root attributes
+        has_namespace = 'xmlns:sparkle' in root.attrib and root.attrib['xmlns:sparkle'] == sparkle_ns
+        
+        # Method 2: If not found in attributes, check if Sparkle namespace elements exist
+        if not has_namespace:
+            items = root.findall('.//item')
+            for item in items:
+                sparkle_version = item.find(f'{{{sparkle_ns}}}version')
+                if sparkle_version is not None:
+                    has_namespace = True
+                    break
+        
+        # Method 3: Check if namespace URL appears in any attribute value
+        if not has_namespace:
+            for key, value in root.attrib.items():
+                if value == sparkle_ns:
+                    has_namespace = True
+                    break
         
         if not has_namespace:
             return False, "Missing Sparkle namespace"

@@ -162,6 +162,10 @@ def generate_update_feed(
         channel = root.find('channel')
         if channel is None:
             raise ValueError("Invalid existing appcast: missing channel")
+        
+        # Ensure Sparkle namespace is declared (in case existing appcast doesn't have it)
+        if 'xmlns:sparkle' not in root.attrib:
+            root.set('xmlns:sparkle', SPARKLE_NS)
     else:
         # Create new appcast
         root = ET.Element('rss', version='2.0')
