@@ -10,13 +10,15 @@ Provides dialogs and UI elements for update notifications.
 import html
 from typing import Callable, Dict, Optional
 
-from PySide6.QtCore import Qt, Signal, QTimer
-from PySide6.QtGui import QDesktopServices, QTextDocument
+from PySide6.QtCore import Qt, Signal, QTimer, QUrl
+from PySide6.QtGui import QDesktopServices, QTextDocument, QClipboard
 from PySide6.QtWidgets import (
+    QApplication,
     QDialog,
     QDialogButtonBox,
     QGroupBox,
     QLabel,
+    QMenu,
     QProgressBar,
     QPushButton,
     QTextBrowser,
@@ -274,6 +276,7 @@ class UpdateCheckDialog(QDialog):
         super().__init__(parent)
         self.current_version = current_version
         self.update_info: Optional[Dict] = None
+        self._download_url: Optional[str] = None  # Store download URL for context menu
         
         self._setup_ui()
     
@@ -338,6 +341,9 @@ class UpdateCheckDialog(QDialog):
         self.results_label = QLabel()
         self.results_label.setWordWrap(True)
         self.results_label.setStyleSheet("font-size: 12px; padding: 5px;")
+        self.results_label.setOpenExternalLinks(False)  # We'll handle links manually for copy support
+        self.results_label.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.results_label.customContextMenuRequested.connect(self._on_results_label_context_menu)
         results_layout.addWidget(self.results_label)
         
         self.details_text = QTextBrowser()
@@ -392,7 +398,14 @@ class UpdateCheckDialog(QDialog):
         Args:
             update_info: Update information dictionary
         """
+        # Store update_info immediately to ensure it's available when button is clicked
         self.update_info = update_info
+        
+        # Log for debugging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"set_update_found called with version: {update_info.get('short_version', 'unknown')}, download_url: {update_info.get('download_url', 'none')}")
+        
         self.progress_bar.setVisible(False)
         
         new_version = update_info.get('short_version') or update_info.get('version', 'Unknown')
@@ -412,6 +425,16 @@ class UpdateCheckDialog(QDialog):
         {get_app_version_display()}<br><br>
         """
         
+        # Add release date if available
+        pub_date = update_info.get('pub_date')
+        if pub_date:
+            # Format date as YYYY-MM-DD
+            if hasattr(pub_date, 'strftime'):
+                date_str = pub_date.strftime('%Y-%m-%d')
+            else:
+                date_str = str(pub_date)[:10]  # Take first 10 chars if it's a string
+            results_html += f"<b>Released:</b> {date_str}<br><br>"
+        
         # Add file size if available
         file_size = update_info.get('file_size', 0)
         if file_size > 0:
@@ -430,6 +453,9 @@ class UpdateCheckDialog(QDialog):
         
         self.results_label.setText(results_html)
         
+        # Store download URL for context menu
+        self._download_url = download_url
+        
         # Show release notes if available
         release_notes = update_info.get('release_notes')
         if release_notes:
@@ -441,8 +467,14 @@ class UpdateCheckDialog(QDialog):
         # Show download button
         self.download_button.setText("Download & Install")  # Match the button text in the image
         self.download_button.setVisible(True)
+        self.download_button.setEnabled(True)  # Ensure button is enabled
         self.download_button.setDefault(True)
         self.close_button.setDefault(False)
+        
+        # Debug: Log button state
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Download button state - visible: {self.download_button.isVisible()}, enabled: {self.download_button.isEnabled()}, text: {self.download_button.text()}")
     
     def set_no_update(self) -> None:
         """Set status to no update available."""
@@ -471,6 +503,82 @@ class UpdateCheckDialog(QDialog):
         if self.update_info:
             # Accept dialog - parent will handle download via callback
             self.accept()
+    
+    def _on_results_label_context_menu(self, position):
+        """Handle context menu for results label (to copy links).
+        
+        Args:
+            position: Position where context menu was requested
+        """
+        # Get the HTML text
+        text = self.results_label.text()
+        
+        # Try to find links in the HTML
+        import re
+        # Find all href links in the HTML
+        link_pattern = r'<a\s+href="([^"]+)">([^<]+)</a>'
+        links = re.findall(link_pattern, text)
+        
+        if not links:
+            # No links found, show generic menu
+            menu = QMenu(self)
+            copy_all_action = menu.addAction("Copy All Text")
+            copy_all_action.triggered.connect(lambda: self._copy_text_to_clipboard(text))
+            menu.exec(self.results_label.mapToGlobal(position))
+            return
+        
+        # Create context menu
+        menu = QMenu(self)
+        
+        # Add copy options for each link
+        for url, link_text in links:
+            action = menu.addAction(f"Copy Link: {link_text}")
+            # Use a closure to capture the URL properly
+            action.triggered.connect(lambda checked, u=url: self._copy_link_to_clipboard(u))
+        
+        menu.addSeparator()
+        
+        # Add option to open link
+        for url, link_text in links:
+            open_action = menu.addAction(f"Open: {link_text}")
+            open_action.triggered.connect(lambda checked, u=url: QDesktopServices.openUrl(QUrl(u)))
+        
+        # Show menu at cursor position
+        menu.exec(self.results_label.mapToGlobal(position))
+    
+    def _copy_text_to_clipboard(self, text: str):
+        """Copy text to clipboard (strip HTML tags).
+        
+        Args:
+            text: Text to copy (may contain HTML)
+        """
+        import re
+        # Strip HTML tags
+        plain_text = re.sub(r'<[^>]+>', '', text)
+        clipboard = QApplication.clipboard()
+        clipboard.setText(plain_text)
+        
+        # Show brief feedback
+        original_text = self.status_label.text()
+        self.status_label.setText("✓ Text copied to clipboard")
+        QTimer.singleShot(2000, lambda: self.status_label.setText(original_text))
+    
+    def _copy_link_to_clipboard(self, url: str):
+        """Copy link URL to clipboard.
+        
+        Args:
+            url: URL to copy
+        """
+        clipboard = QApplication.clipboard()
+        clipboard.setText(url)
+        
+        # Show brief feedback in status
+        original_text = self.status_label.text()
+        self.status_label.setText(f"✓ Link copied to clipboard")
+        
+        # Restore original text after 2 seconds
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(2000, lambda: self.status_label.setText(original_text))
 
 
 def show_update_check_dialog(
