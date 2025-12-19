@@ -221,7 +221,16 @@ class MainWindow(QMainWindow):
                 return
 
             # Defer until the event loop is running and the window is shown.
-            QTimer.singleShot(0, self._show_onboarding_dialog)
+            # Use a small delay to ensure the main window is fully visible first
+            def show_onboarding_after_window_ready():
+                # Ensure main window is visible before showing onboarding
+                self.show()
+                self.raise_()
+                from PySide6.QtWidgets import QApplication
+                QApplication.processEvents()
+                self._show_onboarding_dialog()
+            
+            QTimer.singleShot(100, show_onboarding_after_window_ready)
         except Exception:
             # Onboarding is best-effort; never block app startup.
             return
@@ -229,12 +238,36 @@ class MainWindow(QMainWindow):
     def _show_onboarding_dialog(self) -> None:
         """Show onboarding dialog and persist the user's choice."""
         try:
-            from PySide6.QtWidgets import QDialog
+            from PySide6.QtWidgets import QDialog, QApplication
+            from PySide6.QtCore import QTimer
 
             from cuepoint.ui.dialogs.onboarding_dialog import OnboardingDialog
 
+            # Ensure main window is visible and raised before showing dialog
+            # Process events to ensure the window is actually shown
+            self.show()
+            self.raise_()
+            self.activateWindow()
+            QApplication.processEvents()
+
             dialog = OnboardingDialog(self)
             result = dialog.exec()
+
+            # Ensure main window is visible and raised after dialog closes
+            # This prevents the app from exiting if Qt thinks there are no visible windows
+            # Use processEvents to ensure the window state is updated
+            self.show()
+            self.raise_()
+            self.activateWindow()
+            QApplication.processEvents()
+            
+            # Also ensure window is visible after a short delay (in case of timing issues)
+            def ensure_window_visible():
+                self.show()
+                self.raise_()
+                self.activateWindow()
+            
+            QTimer.singleShot(100, ensure_window_visible)
 
             # Persist onboarding outcome - always mark as complete when dialog closes
             # This ensures the onboarding doesn't show again even if user closes window
@@ -252,9 +285,19 @@ class MainWindow(QMainWindow):
                     except:
                         dont_show = False
                     self._onboarding_service.dismiss_onboarding(dont_show_again=dont_show)
+            
+            # Final check - ensure main window is definitely visible
+            self.show()
+            self.raise_()
+            self.activateWindow()
+            QApplication.processEvents()
         except Exception as e:
             # If anything goes wrong, still mark as complete to prevent infinite loop
+            # And ensure main window is visible
             try:
+                self.show()
+                self.raise_()
+                self.activateWindow()
                 if hasattr(self, "_onboarding_service"):
                     self._onboarding_service.mark_first_run_complete()
             except:
@@ -1652,6 +1695,9 @@ class MainWindow(QMainWindow):
 
     def _setup_update_system(self) -> None:
         """Set up update system (Step 5.5)."""
+        import logging
+        logger = logging.getLogger(__name__)
+        
         try:
             from cuepoint.update.update_manager import UpdateManager
             from cuepoint.update.update_ui import show_update_dialog, show_update_error_dialog
@@ -1662,20 +1708,23 @@ class MainWindow(QMainWindow):
 
             # Create update manager
             self.update_manager = UpdateManager(current_version, feed_url)
+            logger.info("Update manager created successfully")
 
             # Set callbacks
             self.update_manager.set_on_update_available(self._on_update_available)
             self.update_manager.set_on_check_complete(self._on_update_check_complete)
             self.update_manager.set_on_error(self._on_update_error)
+            logger.info("Update manager callbacks set")
 
             # Schedule startup check (after window is visible)
             QTimer.singleShot(2000, self._check_for_updates_on_startup)
+            logger.info("Startup update check scheduled")
         except Exception as e:
             # Update system is best-effort
-            import logging
-
-            logging.warning(f"Could not set up update system: {e}")
-            self.update_manager = None
+            logger.error(f"Could not set up update system: {e}", exc_info=True)
+            # Don't set to None if it already exists (might be partially initialized)
+            if not hasattr(self, "update_manager"):
+                self.update_manager = None
 
     def _check_for_updates_on_startup(self) -> None:
         """Check for updates on startup (Step 5.5)."""
@@ -1705,11 +1754,28 @@ class MainWindow(QMainWindow):
 
     def on_check_for_updates(self) -> None:
         """Check for updates manually via Help > Check for Updates (Step 5.5)."""
+        # Try to set up update system if it's not available
         if not hasattr(self, "update_manager") or not self.update_manager:
-            QMessageBox.information(
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning("Update manager not available, attempting to set it up...")
+            
+            try:
+                self._setup_update_system()
+            except Exception as e:
+                logger.error(f"Failed to set up update system: {e}", exc_info=True)
+                QMessageBox.warning(
+                    self,
+                    "Check for Updates",
+                    f"Update system is not available.\n\nError: {str(e)}\n\nPlease restart the application.",
+                )
+                return
+        
+        if not hasattr(self, "update_manager") or not self.update_manager:
+            QMessageBox.warning(
                 self,
                 "Check for Updates",
-                "Update system is not available.",
+                "Update system is not available.\n\nPlease restart the application.",
             )
             return
 

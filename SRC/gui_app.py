@@ -277,6 +277,11 @@ def main():
         # Create and show main window
         window = MainWindow()
         window.show()
+        # Ensure window is raised and activated immediately
+        window.raise_()
+        window.activateWindow()
+        # Process events to ensure window is actually visible
+        QApplication.processEvents()
         
         # Apply dark title bar on Windows (after window is shown)
         # Use QTimer to ensure window handle is fully initialized

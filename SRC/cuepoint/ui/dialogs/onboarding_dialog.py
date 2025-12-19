@@ -153,11 +153,21 @@ class OnboardingDialog(QDialog):
     def closeEvent(self, event) -> None:
         """Handle window close event - treat as rejection (skip)."""
         # When user closes window, treat it as skipping onboarding
+        # Ensure parent window (main window) is visible and active before closing
+        if self.parent():
+            parent = self.parent()
+            parent.show()
+            parent.raise_()
+            parent.activateWindow()
+            # Process events to ensure parent is actually visible
+            from PySide6.QtWidgets import QApplication
+            QApplication.processEvents()
         self.reject()
         event.accept()
 
     def _setup_ui(self) -> None:
         self.setWindowTitle(tr("onboarding.window_title", "Welcome to CuePoint"))
+        # Keep modal but ensure parent stays visible
         self.setModal(True)
         self.resize(640, 520)
 
@@ -216,6 +226,14 @@ class OnboardingDialog(QDialog):
             self.screens.setCurrentIndex(self._current_screen)
             self._update_buttons()
         else:
+            # Ensure parent window is visible before accepting
+            if self.parent():
+                parent = self.parent()
+                parent.show()
+                parent.raise_()
+                parent.activateWindow()
+                from PySide6.QtWidgets import QApplication
+                QApplication.processEvents()
             self.accept()
 
     def previous_screen(self) -> None:
@@ -225,6 +243,15 @@ class OnboardingDialog(QDialog):
             self._update_buttons()
 
     def skip_onboarding(self) -> None:
+        # Ensure parent window (main window) is visible and active before closing
+        if self.parent():
+            parent = self.parent()
+            parent.show()
+            parent.raise_()
+            parent.activateWindow()
+            # Process events to ensure parent is actually visible
+            from PySide6.QtWidgets import QApplication
+            QApplication.processEvents()
         self.reject()
 
     def _update_buttons(self) -> None:
