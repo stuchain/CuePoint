@@ -167,22 +167,21 @@ if is_windows:
     python_dll_name = f'python{sys.version_info.major}{sys.version_info.minor}.dll'
     python_dll_path = python_dir / python_dll_name
     if python_dll_path.exists():
-        # Format: (dest_name, src_path, typecode)
-        # dest_name is the name in the bundle (extracts to _MEIPASS root)
-        # src_path is the full path to the source file
-        # typecode is 'BINARY' for DLLs
-        binaries.append((python_dll_name, str(python_dll_path), 'BINARY'))
+        # Format for Analysis constructor: (src_path, dest_dir)
+        # This is a 2-tuple format used when passing to Analysis()
+        # dest_dir '.' means it will be placed in the root of the bundle
+        binaries.append((str(python_dll_path), '.'))
         print(f"[PyInstaller] Including Python DLL in binaries: {python_dll_name}")
         print(f"[PyInstaller]   Source: {python_dll_path}")
-        print(f"[PyInstaller]   Destination: {python_dll_name} (in _MEIPASS root)")
+        print(f"[PyInstaller]   Destination: root ('.')")
     else:
         print(f"[PyInstaller] WARNING: Python DLL not found at {python_dll_path}")
     
     # Also include python3.dll if it exists
     python3_dll_path = python_dir / 'python3.dll'
     if python3_dll_path.exists():
-        # Format: (dest_name, src_path, typecode)
-        binaries.append(('python3.dll', str(python3_dll_path), 'BINARY'))
+        # Format for Analysis constructor: (src_path, dest_dir)
+        binaries.append((str(python3_dll_path), '.'))
         print(f"[PyInstaller] Including Python3 DLL: python3.dll")
 
 # Analysis phase

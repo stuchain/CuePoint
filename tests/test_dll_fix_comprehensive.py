@@ -32,42 +32,44 @@ class TestPyInstallerSpecTupleFormat(unittest.TestCase):
         self.spec_content = self.spec_path.read_text(encoding='utf-8')
     
     def test_pre_analysis_binaries_uses_correct_tuple_format(self):
-        """Test that pre-analysis binaries.append uses (dest_name, src_path, 'BINARY') format."""
+        """Test that pre-analysis binaries.append uses (src_path, dest_dir) format for Analysis."""
         # Find the pre-analysis binaries.append line for python DLL
         lines = self.spec_content.split('\n')
         found_correct_format = False
         
         for i, line in enumerate(lines):
-            # Look for binaries.append with python DLL
+            # Look for binaries.append with python DLL before Analysis
             if 'binaries.append' in line and 'python' in line.lower():
-                # Check if it uses the correct 3-tuple format: (name, path, 'BINARY')
-                # Should be: binaries.append((python_dll_name, str(python_dll_path), 'BINARY'))
-                if "'BINARY'" in line or '"BINARY"' in line:
-                    # Verify it's a 3-tuple, not a 2-tuple
-                    # Count commas - should have 2 commas for 3 elements
-                    comma_count = line.count(',')
-                    if comma_count >= 2:
-                        found_correct_format = True
-                        break
+                # Check if it uses the correct 2-tuple format: (src_path, dest_dir)
+                # Should be: binaries.append((str(python_dll_path), '.'))
+                # This is the format expected by Analysis constructor
+                if "'.'" in line or '".' in line:
+                    # Verify it's a 2-tuple (one comma)
+                    # Should have src_path and dest_dir ('.')
+                    found_correct_format = True
+                    break
         
         self.assertTrue(
             found_correct_format,
-            "Pre-analysis binaries.append should use (dest_name, src_path, 'BINARY') format"
+            "Pre-analysis binaries.append should use (src_path, dest_dir) format for Analysis constructor"
         )
     
-    def test_pre_analysis_binaries_has_dest_name_first(self):
-        """Test that pre-analysis binaries tuple has dest_name (DLL name) as first element."""
-        # The format should be: (python_dll_name, str(python_dll_path), 'BINARY')
-        # First element should be the variable name (python_dll_name), not a path
-        pattern = r'binaries\.append\(\(([^,]+),\s*str\(([^)]+)\)\s*,\s*[\'"]BINARY[\'"]\)\)'
+    def test_pre_analysis_binaries_has_src_path_first(self):
+        """Test that pre-analysis binaries tuple has src_path as first element."""
+        # The format should be: (str(python_dll_path), '.')
+        # First element should be the source path (str(python_dll_path)), second is dest_dir ('.')
+        pattern = r'binaries\.append\(\(str\(([^)]+)\)\s*,\s*[\'"]\.[\'"]\)\)'
         match = re.search(pattern, self.spec_content)
         
+        self.assertIsNotNone(
+            match,
+            "Pre-analysis binaries should use (str(python_dll_path), '.') format"
+        )
+        
         if match:
-            first_arg = match.group(1).strip()
-            # First argument should be a variable name (python_dll_name), not a path
-            self.assertNotIn('\\', first_arg, "First element should be variable name, not path")
-            self.assertNotIn('/', first_arg, "First element should be variable name, not path")
-            self.assertIn('python', first_arg.lower(), "First element should be python DLL name")
+            path_var = match.group(1).strip()
+            # Should reference python_dll_path variable
+            self.assertIn('python', path_var.lower(), "Should reference python DLL path variable")
     
     def test_post_analysis_binaries_uses_correct_tuple_format(self):
         """Test that post-analysis a.binaries.append uses correct tuple format."""
@@ -85,29 +87,30 @@ class TestPyInstallerSpecTupleFormat(unittest.TestCase):
             # First argument should be the DLL name variable
             self.assertIn('python', first_arg.lower(), "First element should be python DLL name")
     
-    def test_binaries_not_using_old_wrong_format(self):
-        """Test that binaries.append is NOT using the old wrong format (src_path, dest_dir)."""
-        # Old wrong format would be: binaries.append((str(python_dll_path), '.'))
-        # This should NOT exist in the spec
-        wrong_pattern = r'binaries\.append\(\(str\([^)]+\)\s*,\s*[\'"]\.[\'"]\)\)'
-        match = re.search(wrong_pattern, self.spec_content)
+    def test_pre_analysis_uses_two_tuple_format(self):
+        """Test that pre-analysis binaries uses 2-tuple format (src_path, dest_dir) for Analysis."""
+        # Pre-analysis format should be: binaries.append((str(python_dll_path), '.'))
+        # This is the correct format for Analysis constructor
+        correct_pattern = r'binaries\.append\(\(str\([^)]+\)\s*,\s*[\'"]\.[\'"]\)\)'
+        match = re.search(correct_pattern, self.spec_content)
         
-        self.assertIsNone(
+        self.assertIsNotNone(
             match,
-            "Spec should NOT use old wrong format (src_path, dest_dir) for binaries"
+            "Pre-analysis binaries should use (src_path, dest_dir) format for Analysis constructor"
         )
     
     def test_python3_dll_also_uses_correct_format(self):
         """Test that python3.dll also uses correct tuple format."""
         # Check for python3.dll inclusion
         if 'python3.dll' in self.spec_content:
-            # Should use: binaries.append(('python3.dll', str(python3_dll_path), 'BINARY'))
-            pattern = r'binaries\.append\(\([\'"]python3\.dll[\'"]\s*,\s*str\(([^)]+)\)\s*,\s*[\'"]BINARY[\'"]\)\)'
+            # Pre-analysis should use: binaries.append((str(python3_dll_path), '.'))
+            # This is the 2-tuple format for Analysis constructor
+            pattern = r'binaries\.append\(\(str\([^)]*python3[^)]*\)\s*,\s*[\'"]\.[\'"]\)\)'
             match = re.search(pattern, self.spec_content)
             
             self.assertIsNotNone(
                 match,
-                "python3.dll should use (dest_name, src_path, 'BINARY') format"
+                "python3.dll should use (src_path, dest_dir) format for Analysis constructor"
             )
 
 

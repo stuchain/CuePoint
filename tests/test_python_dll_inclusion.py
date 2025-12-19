@@ -223,29 +223,29 @@ class TestDLLInBuildOutput(unittest.TestCase):
     
     @unittest.skipIf(sys.platform != 'win32', "Windows-only test")
     def test_binaries_tuple_format_is_correct(self):
-        """Test that binaries tuple uses (dest_name, src_path, 'BINARY') format."""
+        """Test that pre-analysis binaries uses (src_path, dest_dir) format for Analysis."""
         spec_path = Path(__file__).parent.parent / "build" / "pyinstaller.spec"
         spec_content = spec_path.read_text(encoding='utf-8')
         
-        # Should use: (python_dll_name, str(python_dll_path), 'BINARY')
-        # NOT: (str(python_dll_path), '.')
+        # Pre-analysis should use: (str(python_dll_path), '.') - 2-tuple for Analysis constructor
+        # Post-analysis should use: (python_dll_name, str(python_dll_path), 'BINARY') - 3-tuple for a.binaries.append
         import re
         
-        # Check for correct format
-        correct_pattern = r'binaries\.append\(\([^,]+,\s*str\([^)]+\)\s*,\s*[\'"]BINARY[\'"]\)\)'
-        correct_match = re.search(correct_pattern, spec_content)
+        # Check for pre-analysis format (2-tuple)
+        pre_analysis_pattern = r'binaries\.append\(\(str\([^)]+\)\s*,\s*[\'"]\.[\'"]\)\)'
+        pre_analysis_match = re.search(pre_analysis_pattern, spec_content)
         
-        # Check for old wrong format (should NOT exist)
-        wrong_pattern = r'binaries\.append\(\(str\([^)]+\)\s*,\s*[\'"]\.[\'"]\)\)'
-        wrong_match = re.search(wrong_pattern, spec_content)
+        # Check for post-analysis format (3-tuple)
+        post_analysis_pattern = r'a\.binaries\.append\(\([^,]+,\s*str\([^)]+\)\s*,\s*[\'"]BINARY[\'"]\)\)'
+        post_analysis_match = re.search(post_analysis_pattern, spec_content)
         
         self.assertIsNotNone(
-            correct_match,
-            "Spec should use (dest_name, src_path, 'BINARY') format for binaries"
+            pre_analysis_match,
+            "Pre-analysis binaries should use (src_path, dest_dir) format for Analysis constructor"
         )
-        self.assertIsNone(
-            wrong_match,
-            "Spec should NOT use old wrong format (src_path, dest_dir)"
+        self.assertIsNotNone(
+            post_analysis_match,
+            "Post-analysis a.binaries.append should use (dest_name, src_path, 'BINARY') format"
         )
     
     def test_spec_file_handles_python_versions(self):
