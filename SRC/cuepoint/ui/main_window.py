@@ -2287,13 +2287,26 @@ class MainWindow(QMainWindow):
             )
             return
         
-        # Show download progress dialog
+        # Show diagnostic dialog first
         try:
+            from cuepoint.ui.dialogs.update_diagnostic_dialog import UpdateDiagnosticDialog
             from cuepoint.ui.dialogs.download_progress_dialog import DownloadProgressDialog
             from PySide6.QtWidgets import QDialog, QMessageBox
             import logging
             
             logger = logging.getLogger(__name__)
+            
+            # Show diagnostic dialog
+            diagnostic_dialog = UpdateDiagnosticDialog(update_info, parent=self)
+            diagnostic_result = diagnostic_dialog.exec()
+            
+            if diagnostic_result != QDialog.DialogCode.Accepted:
+                # User chose "Update Later"
+                logger.info("Update cancelled by user (Update Later)")
+                self.statusBar().showMessage("Update postponed", 2000)
+                return
+            
+            # User chose "Update Now" - proceed with download
             logger.info(f"Starting download from: {download_url}")
             
             # Verify URL format (GitHub Releases format)

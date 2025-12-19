@@ -113,12 +113,15 @@ class ChangelogViewer(QDialog):
         else:
             # Fallback: create default changelog
             from cuepoint.version import get_version
+            from datetime import datetime
 
             version = get_version()
+            # Use current date instead of hardcoded date
+            current_date = datetime.now().strftime("%Y-%m-%d")
             self.changelog_data = [
                 {
                     "version": version,
-                    "date": "2024-12-14",
+                    "date": current_date,
                     "content": f"<h2>Version {version}</h2><p>CuePoint {version}</p>",
                 }
             ]
