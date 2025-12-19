@@ -156,6 +156,7 @@ excludes = [
 
 # Collect Python DLLs explicitly for Windows (Python 3.13)
 # PyInstaller sometimes fails to auto-detect Python 3.13 DLLs
+# We'll add it both in the initial binaries list AND post-analysis to ensure it's included
 binaries = []
 if is_windows:
     import sys
@@ -166,8 +167,9 @@ if is_windows:
     python_dll_name = f'python{sys.version_info.major}{sys.version_info.minor}.dll'
     python_dll_path = python_dir / python_dll_name
     if python_dll_path.exists():
+        # Place in root (same directory as exe) - this is where PyInstaller expects it
         binaries.append((str(python_dll_path), '.'))
-        print(f"[PyInstaller] Including Python DLL: {python_dll_name}")
+        print(f"[PyInstaller] Including Python DLL in binaries: {python_dll_name}")
     else:
         print(f"[PyInstaller] WARNING: Python DLL not found at {python_dll_path}")
     
@@ -176,20 +178,6 @@ if is_windows:
     if python3_dll_path.exists():
         binaries.append((str(python3_dll_path), '.'))
         print(f"[PyInstaller] Including Python3 DLL: python3.dll")
-    
-    # Include critical DLLs from Python's DLLs directory
-    # These are often required by Python extensions
-    if dlls_dir.exists():
-        critical_dlls = [
-            'VCRUNTIME140.dll',
-            'VCRUNTIME140_1.dll',
-            'api-ms-win-crt-runtime-l1-1-0.dll',
-        ]
-        for dll_name in critical_dlls:
-            dll_path = dlls_dir / dll_name
-            if dll_path.exists():
-                binaries.append((str(dll_path), '.'))
-                print(f"[PyInstaller] Including DLL: {dll_name}")
 
 # Analysis phase
 a = Analysis(
@@ -207,6 +195,43 @@ a = Analysis(
     cipher=None,
     noarchive=False,
 )
+
+# Ensure Python DLL is included (post-analysis fix for Python 3.13)
+# PyInstaller sometimes doesn't auto-detect Python 3.13 DLL
+# We need to add it after Analysis but ensure it's in the right format
+if is_windows:
+    import sys
+    python_dll_name = f'python{sys.version_info.major}{sys.version_info.minor}.dll'
+    python_dir = Path(sys.executable).parent
+    
+    # Check if Python DLL is already in binaries
+    dll_found = False
+    for binary in a.binaries:
+        # Check both the name and if it contains python313.dll
+        if python_dll_name.lower() in str(binary[0]).lower() or 'python313.dll' in str(binary[0]).lower():
+            dll_found = True
+            print(f"[PyInstaller] Python DLL already found in binaries: {binary[0]} -> {binary[1]}")
+            break
+    
+    # If not found, add it explicitly
+    if not dll_found:
+        python_dll_path = python_dir / python_dll_name
+        if python_dll_path.exists():
+            # Add to binaries - format: (name_in_bundle, full_path, type)
+            # For one-file mode, place in root ('.') so it extracts to _MEIPASS root
+            a.binaries.append((python_dll_name, str(python_dll_path), 'BINARY'))
+            print(f"[PyInstaller] Added Python DLL to binaries: {python_dll_name}")
+            print(f"[PyInstaller]   Source: {python_dll_path}")
+            print(f"[PyInstaller]   Destination: root (same as exe)")
+        else:
+            print(f"[PyInstaller] ERROR: Python DLL not found at {python_dll_path}")
+            # Try alternative locations
+            for alt_dir in [python_dir / 'DLLs', python_dir]:
+                alt_path = alt_dir / python_dll_name
+                if alt_path.exists():
+                    a.binaries.append((python_dll_name, str(alt_path), 'BINARY'))
+                    print(f"[PyInstaller] Found Python DLL at alternative location: {alt_path}")
+                    break
 
 # Remove duplicates
 pyz = PYZ(a.pure, a.zipped_data, cipher=None)
@@ -259,6 +284,20 @@ else:
     version_file = str(version_file_path) if version_file_path.exists() else None
     icon_path = project_root / 'build' / 'icon.ico'
     icon_file = str(icon_path) if icon_path.exists() else None
+    
+    # Ensure Python DLL is in binaries before creating EXE
+    # Double-check it's there (post-analysis verification)
+    if is_windows:
+        import sys
+        python_dll_name = f'python{sys.version_info.major}{sys.version_info.minor}.dll'
+        dll_in_binaries = any(python_dll_name.lower() in str(b[0]).lower() for b in a.binaries)
+        if not dll_in_binaries:
+            print(f"[PyInstaller] WARNING: {python_dll_name} not found in binaries before EXE creation!")
+            print(f"[PyInstaller] Binaries count: {len(a.binaries)}")
+            print(f"[PyInstaller] First few binaries: {[b[0] for b in a.binaries[:5]]}")
+        else:
+            print(f"[PyInstaller] Verified: {python_dll_name} is in binaries list")
+    
     exe = EXE(
         pyz,
         a.scripts,
