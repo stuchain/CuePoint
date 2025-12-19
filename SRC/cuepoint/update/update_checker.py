@@ -324,11 +324,17 @@ class UpdateChecker:
         Find the latest update that's newer than current version.
         
         Uses a two-stage comparison:
-        1. Compare base versions (X.Y.Z) - if base is newer, allow update
+        1. Compare base versions (X.Y.Z) - if base is newer, check version type compatibility
         2. If base versions are equal, compare full versions (including prerelease)
         
-        This ensures that updates are detected when base version increments,
-        even if the candidate is a prerelease and current is stable.
+        Version type filtering:
+        - Test/prerelease versions (e.g., "1.0.0-test", "1.0.1-test17") can only update to 
+          other test/prerelease versions
+        - Stable versions (e.g., "1.0.0", "1.0.1") can only update to other stable versions
+        
+        This ensures that:
+        - Test versions stay in the test channel
+        - Stable versions stay in the stable channel
         
         Args:
             items: List of update items (sorted by version, latest first)
@@ -395,21 +401,26 @@ class UpdateChecker:
                 # Base version is newer - check if we should allow this update
                 logger.info(f"Found newer base version: {base_candidate} > {base_current}")
                 
-                # Apply channel and prerelease filtering
-                # Since base version is newer, we allow the update even if it's a prerelease
-                # This ensures updates are detected when version numbers increment
-                if self.channel == "stable":
-                    if not current_is_prerelease and version_is_prerelease:
-                        # Current is stable, candidate is prerelease
-                        # Since base version is newer, allow the update
-                        # This handles cases like: 1.0.0 (stable) → 1.0.1-test-unsigned53 (prerelease)
-                        logger.info(
-                            f"Allowing prerelease update: "
-                            f"{version} (base version {base_candidate} > {base_current})"
-                        )
-                        return item
+                # Apply version type filtering:
+                # - Test/prerelease versions can only update to test/prerelease versions
+                # - Stable versions can only update to stable versions
+                if current_is_prerelease and not version_is_prerelease:
+                    # Current is test/prerelease, candidate is stable - skip
+                    logger.debug(
+                        f"Skipping stable version '{version}' "
+                        f"(current is test/prerelease '{self.current_version}')"
+                    )
+                    continue
                 
-                # Base version is newer and filtering allows it
+                if not current_is_prerelease and version_is_prerelease:
+                    # Current is stable, candidate is test/prerelease - skip
+                    logger.debug(
+                        f"Skipping test/prerelease version '{version}' "
+                        f"(current is stable '{self.current_version}')"
+                    )
+                    continue
+                
+                # Both are same type (both stable or both prerelease) - allow if newer
                 logger.info(f"Found newer version: {version} (current: {self.current_version})")
                 return item
             
@@ -424,27 +435,26 @@ class UpdateChecker:
                         f"Full version comparison '{version}' vs '{self.current_version}': {full_comparison}"
                     )
                     
-                    # Apply channel filtering for same base version
-                    if self.channel == "stable":
-                        if not current_is_prerelease and version_is_prerelease:
-                            # Current is stable, candidate is prerelease with same base
-                            # Per SemVer, prerelease < stable, so full_comparison will be < 0
-                            # But we still check if user wants to allow this (e.g., for testing)
-                            # For now, we'll allow it if the full comparison says it's newer
-                            # (though this shouldn't happen per SemVer, it handles edge cases)
-                            if full_comparison > 0:
-                                logger.info(
-                                    f"Allowing prerelease update with same base: {version} > {self.current_version}"
-                                )
-                                return item
-                            else:
-                                logger.debug(
-                                    f"Skipping prerelease '{version}' "
-                                    f"(current stable version {self.current_version} is newer per SemVer)"
-                                )
-                                continue
+                    # Apply version type filtering for same base version:
+                    # - Test/prerelease versions can only update to test/prerelease versions
+                    # - Stable versions can only update to stable versions
+                    if current_is_prerelease and not version_is_prerelease:
+                        # Current is test/prerelease, candidate is stable with same base - skip
+                        logger.debug(
+                            f"Skipping stable version '{version}' with same base "
+                            f"(current is test/prerelease '{self.current_version}')"
+                        )
+                        continue
                     
-                    # Both are prerelease or both are stable - use full comparison
+                    if not current_is_prerelease and version_is_prerelease:
+                        # Current is stable, candidate is test/prerelease with same base - skip
+                        logger.debug(
+                            f"Skipping test/prerelease version '{version}' with same base "
+                            f"(current is stable '{self.current_version}')"
+                        )
+                        continue
+                    
+                    # Both are same type (both stable or both prerelease) - use full comparison
                     if full_comparison > 0:
                         logger.info(
                             f"Found newer version with same base: {version} > {self.current_version}"
