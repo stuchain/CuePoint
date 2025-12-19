@@ -1854,11 +1854,108 @@ class MainWindow(QMainWindow):
                 # Use a proper function reference instead of lambda to avoid closure issues
                 def on_download_clicked():
                     import logging
-                    from PySide6.QtWidgets import QMessageBox
+                    from PySide6.QtWidgets import QMessageBox, QDialog, QVBoxLayout, QTextEdit, QPushButton, QLabel
                     btn_logger = logging.getLogger(__name__)
                     btn_logger.info("=" * 70)
                     btn_logger.info("DOWNLOAD BUTTON CLICKED - Handler called!")
                     btn_logger.info("=" * 70)
+                    
+                    # Collect diagnostic information
+                    diagnostics = []
+                    diagnostics.append("=== DOWNLOAD BUTTON CLICK DIAGNOSTICS ===\n")
+                    
+                    # Check button state
+                    try:
+                        btn = main_window_self.update_check_dialog.download_button
+                        diagnostics.append(f"✓ Button exists: True")
+                        diagnostics.append(f"✓ Button visible: {btn.isVisible()}")
+                        diagnostics.append(f"✓ Button enabled: {btn.isEnabled()}")
+                        diagnostics.append(f"✓ Button text: {btn.text()}")
+                    except Exception as e:
+                        diagnostics.append(f"✗ Button check failed: {e}")
+                    
+                    # Check dialog state
+                    try:
+                        dialog = main_window_self.update_check_dialog
+                        diagnostics.append(f"\n✓ Dialog exists: True")
+                        diagnostics.append(f"✓ Dialog has update_info: {hasattr(dialog, 'update_info')}")
+                        if hasattr(dialog, 'update_info'):
+                            update_info = dialog.update_info
+                            if update_info:
+                                diagnostics.append(f"✓ update_info is not None")
+                                diagnostics.append(f"  - Version: {update_info.get('short_version', 'N/A')}")
+                                diagnostics.append(f"  - Download URL: {update_info.get('download_url', 'N/A')[:80]}...")
+                            else:
+                                diagnostics.append(f"✗ update_info is None")
+                    except Exception as e:
+                        diagnostics.append(f"\n✗ Dialog check failed: {e}")
+                    
+                    # Check update_manager fallback
+                    try:
+                        if hasattr(main_window_self, 'update_manager') and main_window_self.update_manager:
+                            diagnostics.append(f"\n✓ update_manager exists")
+                            diagnostics.append(f"  - Has _update_available: {hasattr(main_window_self.update_manager, '_update_available')}")
+                            if hasattr(main_window_self.update_manager, '_update_available'):
+                                fallback_info = main_window_self.update_manager._update_available
+                                if fallback_info:
+                                    diagnostics.append(f"  - _update_available is not None")
+                                    diagnostics.append(f"    Version: {fallback_info.get('short_version', 'N/A')}")
+                                else:
+                                    diagnostics.append(f"  - _update_available is None")
+                        else:
+                            diagnostics.append(f"\n✗ update_manager not available")
+                    except Exception as e:
+                        diagnostics.append(f"\n✗ update_manager check failed: {e}")
+                    
+                    # Check button connection
+                    try:
+                        btn = main_window_self.update_check_dialog.download_button
+                        diagnostics.append(f"\n✓ Button connection check:")
+                        diagnostics.append(f"  - Has _download_connected: {hasattr(main_window_self.update_check_dialog, '_download_connected')}")
+                        if hasattr(main_window_self.update_check_dialog, '_download_connected'):
+                            diagnostics.append(f"  - _download_connected value: {main_window_self.update_check_dialog._download_connected}")
+                    except Exception as e:
+                        diagnostics.append(f"\n✗ Connection check failed: {e}")
+                    
+                    diagnostics.append(f"\n=== PROCEEDING WITH DOWNLOAD ===\n")
+                    
+                    # Show diagnostic dialog
+                    diag_dialog = QDialog(main_window_self)
+                    diag_dialog.setWindowTitle("Download Button Diagnostics")
+                    diag_dialog.setMinimumWidth(600)
+                    diag_dialog.setMinimumHeight(400)
+                    
+                    layout = QVBoxLayout(diag_dialog)
+                    
+                    title = QLabel("Download Button Click Diagnostics")
+                    title.setStyleSheet("font-weight: bold; font-size: 14px;")
+                    layout.addWidget(title)
+                    
+                    text_area = QTextEdit()
+                    text_area.setReadOnly(True)
+                    text_area.setPlainText("\n".join(diagnostics))
+                    text_area.setFontFamily("Courier")
+                    layout.addWidget(text_area)
+                    
+                    button_layout = QVBoxLayout()
+                    
+                    continue_btn = QPushButton("Continue with Download")
+                    continue_btn.setDefault(True)
+                    continue_btn.clicked.connect(diag_dialog.accept)
+                    button_layout.addWidget(continue_btn)
+                    
+                    close_btn = QPushButton("Close (Cancel Download)")
+                    close_btn.clicked.connect(diag_dialog.reject)
+                    button_layout.addWidget(close_btn)
+                    
+                    layout.addLayout(button_layout)
+                    
+                    # Show dialog and wait for user
+                    result = diag_dialog.exec()
+                    
+                    if result == QDialog.DialogCode.Rejected:
+                        btn_logger.info("User cancelled download after seeing diagnostics")
+                        return
                     
                     # Show immediate visual feedback
                     try:
@@ -1874,15 +1971,38 @@ class MainWindow(QMainWindow):
                         btn_logger.error(f"Error in download handler: {e}", exc_info=True)
                         import traceback
                         btn_logger.error(traceback.format_exc())
-                        # Show visible error message (critical for user feedback)
-                        try:
-                            QMessageBox.critical(
-                                main_window_self,
-                                "Download Error",
-                                f"Failed to start download:\n\n{str(e)}\n\nPlease check the logs for details."
-                            )
-                        except Exception as msgbox_error:
-                            btn_logger.error(f"Failed to show error message: {msgbox_error}")
+                        
+                        # Show detailed error dialog
+                        error_details = [
+                            "=== DOWNLOAD ERROR ===",
+                            f"Error: {str(e)}",
+                            "",
+                            "Traceback:",
+                            traceback.format_exc()
+                        ]
+                        
+                        error_dialog = QDialog(main_window_self)
+                        error_dialog.setWindowTitle("Download Error")
+                        error_dialog.setMinimumWidth(600)
+                        error_dialog.setMinimumHeight(400)
+                        
+                        error_layout = QVBoxLayout(error_dialog)
+                        
+                        error_title = QLabel("Download Failed")
+                        error_title.setStyleSheet("font-weight: bold; font-size: 14px; color: red;")
+                        error_layout.addWidget(error_title)
+                        
+                        error_text = QTextEdit()
+                        error_text.setReadOnly(True)
+                        error_text.setPlainText("\n".join(error_details))
+                        error_text.setFontFamily("Courier")
+                        error_layout.addWidget(error_text)
+                        
+                        close_error_btn = QPushButton("Close")
+                        close_error_btn.clicked.connect(error_dialog.accept)
+                        error_layout.addWidget(close_error_btn)
+                        
+                        error_dialog.exec()
                 
                 # Ensure button is enabled and visible
                 try:
@@ -2046,6 +2166,11 @@ class MainWindow(QMainWindow):
         logger.info("=" * 60)
         logger.info("DOWNLOAD BUTTON CLICKED - Starting handler")
         logger.info("=" * 60)
+        
+        # Log build environment info for debugging
+        logger.info(f"Build environment: frozen={getattr(sys, 'frozen', False)}, "
+                   f"python={sys.version_info.major}.{sys.version_info.minor}, "
+                   f"platform={platform.system()}")
         
         # Show immediate visual feedback
         try:

@@ -365,6 +365,8 @@ class UpdateCheckDialog(QDialog):
         
         self.download_button = QPushButton("Download & Install")
         self.download_button.setVisible(False)
+        self.download_button.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.download_button.customContextMenuRequested.connect(self._on_download_button_context_menu)
         button_box.addButton(self.download_button, QDialogButtonBox.AcceptRole)
         
         layout.addWidget(button_box)
@@ -531,16 +533,21 @@ class UpdateCheckDialog(QDialog):
                     import logging
                     from PySide6.QtWidgets import QMessageBox
                     btn_logger = logging.getLogger(__name__)
-                    btn_logger.info("Fallback download button handler called")
+                    btn_logger.info("=" * 70)
+                    btn_logger.info("FALLBACK download button handler called!")
+                    btn_logger.info("=" * 70)
+                    btn_logger.info("This means the main connection failed, using fallback")
                     try:
                         parent_window._on_update_install_from_dialog()
                     except Exception as e:
                         btn_logger.error(f"Error in fallback handler: {e}", exc_info=True)
+                        import traceback
                         try:
+                            error_msg = f"Failed to start download (fallback handler):\n\n{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
                             QMessageBox.critical(
                                 parent_window,
-                                "Download Error",
-                                f"Failed to start download:\n\n{str(e)}\n\nPlease check the logs for details."
+                                "Download Error (Fallback Handler)",
+                                error_msg
                             )
                         except:
                             pass
@@ -552,6 +559,151 @@ class UpdateCheckDialog(QDialog):
                 logger.error(f"Failed to establish fallback connection: {e}", exc_info=True)
         else:
             logger.warning("Cannot establish fallback connection - parent window or handler not available")
+    
+    def _on_download_button_context_menu(self, position):
+        """Handle context menu for download button (right-click to show diagnostics).
+        
+        Args:
+            position: Position where context menu was requested
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        menu = QMenu(self)
+        
+        # Add "Show Diagnostics" option
+        diag_action = menu.addAction("Show Diagnostics (Test Connection)")
+        diag_action.triggered.connect(self._show_button_diagnostics)
+        
+        # Show menu at cursor position
+        menu.exec(self.download_button.mapToGlobal(position))
+    
+    def _show_button_diagnostics(self) -> None:
+        """Show diagnostic information about the download button state."""
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QTextEdit, QPushButton, QLabel
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        diagnostics = []
+        diagnostics.append("=== DOWNLOAD BUTTON DIAGNOSTICS ===\n")
+        
+        # Check button state
+        try:
+            diagnostics.append(f"✓ Button exists: True")
+            diagnostics.append(f"✓ Button visible: {self.download_button.isVisible()}")
+            diagnostics.append(f"✓ Button enabled: {self.download_button.isEnabled()}")
+            diagnostics.append(f"✓ Button text: {self.download_button.text()}")
+        except Exception as e:
+            diagnostics.append(f"✗ Button check failed: {e}")
+        
+        # Check connection status
+        try:
+            diagnostics.append(f"\n✓ Connection status:")
+            diagnostics.append(f"  - Has _download_connected: {hasattr(self, '_download_connected')}")
+            if hasattr(self, '_download_connected'):
+                diagnostics.append(f"  - _download_connected value: {self._download_connected}")
+            else:
+                diagnostics.append(f"  - ✗ NOT CONNECTED (this is the problem!)")
+        except Exception as e:
+            diagnostics.append(f"\n✗ Connection check failed: {e}")
+        
+        # Check update_info
+        try:
+            diagnostics.append(f"\n✓ Update info status:")
+            diagnostics.append(f"  - Has update_info: {hasattr(self, 'update_info')}")
+            if hasattr(self, 'update_info'):
+                if self.update_info:
+                    diagnostics.append(f"  - update_info is not None")
+                    diagnostics.append(f"    Version: {self.update_info.get('short_version', 'N/A')}")
+                    diagnostics.append(f"    Download URL: {self.update_info.get('download_url', 'N/A')[:80]}...")
+                else:
+                    diagnostics.append(f"  - ✗ update_info is None")
+            else:
+                diagnostics.append(f"  - ✗ update_info attribute missing")
+        except Exception as e:
+            diagnostics.append(f"\n✗ Update info check failed: {e}")
+        
+        # Check parent window
+        try:
+            parent = self.parent()
+            diagnostics.append(f"\n✓ Parent window:")
+            if parent:
+                diagnostics.append(f"  - Parent exists: True")
+                diagnostics.append(f"  - Parent type: {type(parent).__name__}")
+                diagnostics.append(f"  - Has _on_update_install_from_dialog: {hasattr(parent, '_on_update_install_from_dialog')}")
+                
+                # Check if parent has update_check_dialog reference
+                if hasattr(parent, 'update_check_dialog'):
+                    diagnostics.append(f"  - Parent has update_check_dialog: True")
+                    if parent.update_check_dialog == self:
+                        diagnostics.append(f"  - ✓ Parent references this dialog")
+                    else:
+                        diagnostics.append(f"  - ✗ Parent references different dialog")
+                else:
+                    diagnostics.append(f"  - ✗ Parent missing update_check_dialog reference")
+            else:
+                diagnostics.append(f"  - ✗ No parent window")
+        except Exception as e:
+            diagnostics.append(f"\n✗ Parent check failed: {e}")
+        
+        # Check update_manager fallback
+        try:
+            parent = self.parent()
+            if parent and hasattr(parent, 'update_manager'):
+                diagnostics.append(f"\n✓ Update manager fallback:")
+                if parent.update_manager:
+                    diagnostics.append(f"  - update_manager exists: True")
+                    diagnostics.append(f"  - Has _update_available: {hasattr(parent.update_manager, '_update_available')}")
+                    if hasattr(parent.update_manager, '_update_available'):
+                        fallback = parent.update_manager._update_available
+                        if fallback:
+                            diagnostics.append(f"  - _update_available is not None")
+                            diagnostics.append(f"    Version: {fallback.get('short_version', 'N/A')}")
+                        else:
+                            diagnostics.append(f"  - _update_available is None")
+                else:
+                    diagnostics.append(f"  - ✗ update_manager is None")
+            else:
+                diagnostics.append(f"\n✗ Cannot check update_manager (no parent)")
+        except Exception as e:
+            diagnostics.append(f"\n✗ Update manager check failed: {e}")
+        
+        diagnostics.append(f"\n=== RECOMMENDATIONS ===")
+        if not hasattr(self, '_download_connected') or not self._download_connected:
+            diagnostics.append(f"✗ Button is NOT connected!")
+            diagnostics.append(f"  → Try closing and reopening the update dialog")
+            diagnostics.append(f"  → Check if _on_update_available was called")
+        else:
+            diagnostics.append(f"✓ Button appears to be connected")
+        
+        if not hasattr(self, 'update_info') or not self.update_info:
+            diagnostics.append(f"✗ update_info is missing!")
+            diagnostics.append(f"  → This will prevent download from working")
+        
+        # Show diagnostic dialog
+        diag_dialog = QDialog(self)
+        diag_dialog.setWindowTitle("Download Button Diagnostics")
+        diag_dialog.setMinimumWidth(700)
+        diag_dialog.setMinimumHeight(500)
+        
+        layout = QVBoxLayout(diag_dialog)
+        
+        title = QLabel("Download Button Connection Diagnostics")
+        title.setStyleSheet("font-weight: bold; font-size: 14px;")
+        layout.addWidget(title)
+        
+        text_area = QTextEdit()
+        text_area.setReadOnly(True)
+        text_area.setPlainText("\n".join(diagnostics))
+        text_area.setFontFamily("Courier")
+        text_area.setFontPointSize(9)
+        layout.addWidget(text_area)
+        
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(diag_dialog.accept)
+        layout.addWidget(close_btn)
+        
+        diag_dialog.exec()
     
     def _on_download(self) -> None:
         """Handle download button click.
