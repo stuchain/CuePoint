@@ -39,7 +39,14 @@ class UpdateInstaller:
         Returns:
             Tuple of (success: bool, error_message: Optional[str])
         """
-        installer_path = Path(installer_path)
+        # Handle None or empty paths
+        if not installer_path:
+            return False, "Installer path is empty or None"
+        
+        try:
+            installer_path = Path(installer_path)
+        except (TypeError, ValueError) as e:
+            return False, f"Invalid installer path: {e}"
         
         if not installer_path.exists():
             return False, f"Installer file not found: {installer_path}"
@@ -126,39 +133,53 @@ class UpdateInstaller:
                 # 3. Wait for installer to complete
                 # 4. Ask if user wants to reopen
                 # 5. Launch app if yes
-                launcher_cmd = [
-                    'powershell.exe',
-                    '-ExecutionPolicy', 'Bypass',  # Allow script execution
-                    '-NoProfile',  # Don't load profile (faster)
-                    '-File',
-                    str(launcher_ps1.resolve()),  # Use absolute path
-                    '-InstallerPath', str(installer_path.resolve()),  # Use absolute path
-                    '-AppPath', str(app_path.resolve()) if app_path and app_path.exists() else '',
-                ]
+                # Build PowerShell command with properly quoted paths
+                installer_path_str = str(installer_path.resolve())
+                launcher_path_str = str(launcher_ps1.resolve())
+                app_path_str = str(app_path.resolve()) if app_path and app_path.exists() else ''
                 
-                logger.info(f"Launching PowerShell launcher: {' '.join(launcher_cmd)}")
-                
-                # Launch launcher (detached, so it continues after app closes)
-                try:
-                    process = subprocess.Popen(
-                        launcher_cmd,
-                        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
-                        close_fds=True,
-                        cwd=str(launcher_ps1.parent)
-                    )
-                    logger.info(f"Launcher process started with PID: {process.pid}")
-                    
-                    # Verify process started
-                    time.sleep(0.2)
-                    if process.poll() is not None:
-                        return_code = process.returncode
-                        logger.warning(f"Launcher exited immediately with code {return_code}, falling back to direct installer launch")
-                        launcher_ps1 = None  # Fall through to direct launch
-                except Exception as launch_error:
-                    error_msg = f"Failed to launch PowerShell script: {str(launch_error)}"
-                    logger.error(error_msg, exc_info=True)
-                    # Fall through to direct installer launch
-                    launcher_ps1 = None
+                # Verify paths are valid
+                if not installer_path_str or installer_path_str == "":
+                    logger.error("Installer path is empty, cannot launch")
+                    launcher_ps1 = None  # Fall through to direct launch
+                else:
+                    try:
+                        launcher_cmd = [
+                            'powershell.exe',
+                            '-ExecutionPolicy', 'Bypass',  # Allow script execution
+                            '-NoProfile',  # Don't load profile (faster)
+                            '-File',
+                            launcher_path_str,
+                            '-InstallerPath', installer_path_str,
+                        ]
+                        
+                        # Only add AppPath if it's valid and not empty
+                        if app_path_str and app_path_str.strip():
+                            launcher_cmd.extend(['-AppPath', app_path_str])
+                        
+                        logger.info(f"PowerShell command: {' '.join(launcher_cmd)}")
+                        
+                        # Launch launcher (detached, so it continues after app closes)
+                        # Use list form - subprocess will handle quoting automatically
+                        process = subprocess.Popen(
+                            launcher_cmd,
+                            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
+                            close_fds=True,
+                            cwd=str(launcher_ps1.parent)
+                        )
+                        logger.info(f"Launcher process started with PID: {process.pid}")
+                        
+                        # Verify process started
+                        time.sleep(0.2)
+                        if process.poll() is not None:
+                            return_code = process.returncode
+                            logger.warning(f"Launcher exited immediately with code {return_code}, falling back to direct installer launch")
+                            launcher_ps1 = None  # Fall through to direct launch
+                    except Exception as launch_error:
+                        error_msg = f"Failed to launch PowerShell script: {str(launch_error)}"
+                        logger.error(error_msg, exc_info=True)
+                        # Fall through to direct installer launch
+                        launcher_ps1 = None
             
             # Fallback: Launch installer directly (visible, no /S)
             if not launcher_ps1 or not launcher_ps1.exists():
@@ -168,31 +189,37 @@ class UpdateInstaller:
                 logger.info(f"Installer absolute path: {installer_path.resolve()}")
                 logger.info(f"Installer exists: {installer_path.exists()}")
                 
-                # Launch installer directly using Windows 'start' command
-                # This ensures the installer window appears properly
-                # The installer will detect if app is running and show a message
+                # Launch installer directly
+                # Use subprocess.Popen with shell=True for proper path handling
                 try:
-                    # Use 'start' command to launch installer in a new window
-                    # The installer will handle detecting if app is running
-                    start_cmd = [
-                        'cmd.exe',
-                        '/c',
-                        'start',
-                        '""',  # Empty window title
-                        str(installer_path.resolve())  # Use absolute path
-                    ]
+                    installer_path_str = str(installer_path.resolve())
+                    logger.info(f"Installer path string: {installer_path_str}")
                     
-                    logger.info(f"Launching installer with: {' '.join(start_cmd)}")
+                    # Verify path is valid
+                    if not installer_path_str or installer_path_str == "":
+                        error_msg = "Installer path is empty"
+                        logger.error(error_msg)
+                        return False, error_msg
                     
+                    # Launch installer directly - Windows will handle the window
+                    # The installer will detect if app is running and show a message
                     process = subprocess.Popen(
-                        start_cmd,
+                        installer_path_str,  # Direct path - Windows handles it
+                        shell=True,  # Use shell for proper path resolution
                         creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
                         close_fds=True
                     )
-                    logger.info(f"Installer launch command executed, PID: {process.pid}")
+                    logger.info(f"Installer process started with PID: {process.pid}")
                     
-                    # Give it a moment to start
-                    time.sleep(0.5)
+                    # Verify process started
+                    time.sleep(0.3)
+                    if process.poll() is not None:
+                        return_code = process.returncode
+                        error_msg = f"Installer exited immediately with code {return_code}"
+                        logger.error(error_msg)
+                        return False, error_msg
+                    
+                    logger.info("Installer launched successfully")
                     
                 except Exception as launch_error:
                     error_msg = f"Failed to launch installer: {str(launch_error)}"
