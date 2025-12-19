@@ -2357,10 +2357,25 @@ class MainWindow(QMainWindow):
             )
             
             if reply == QMessageBox.StandardButton.Yes:
+                # Show message that app will close and installer will launch
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info("User confirmed installation, preparing to launch installer...")
+                
+                # Show brief message (non-blocking)
+                try:
+                    self.statusBar().showMessage("Launching installer...", 2000)
+                    # Process events to show the message
+                    from PySide6.QtWidgets import QApplication
+                    QApplication.processEvents()
+                except:
+                    pass
+                
                 # Perform installation (this will close the app)
                 success, error = installer.install(installer_path)
                 
                 if not success:
+                    # If we get here, installation failed before app closed
                     QMessageBox.critical(
                         self,
                         "Installation Failed",

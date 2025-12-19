@@ -82,10 +82,29 @@ Function .onInit
         ; Check if app is running
         FindWindow $R1 "" "CuePoint"
         ${If} $R1 != 0
-            MessageBox MB_OK|MB_ICONEXCLAMATION \
-                "CuePoint is currently running.$\n$\nPlease close CuePoint before upgrading.$\n$\nThe installer will now exit." \
-                /SD IDOK
+            ; App is running - ask user to close it and wait
+            MessageBox MB_OKCANCEL|MB_ICONEXCLAMATION \
+                "CuePoint is currently running.$\n$\nPlease close CuePoint and click OK to continue with the installation.$\n$\nClick Cancel to exit the installer." \
+                IDOK wait_for_close
             Abort
+            
+            wait_for_close:
+            ; Wait for app to close (check every second, max 60 seconds)
+            StrCpy $R2 0
+            ${Do}
+                Sleep 1000
+                IntOp $R2 $R2 + 1
+                FindWindow $R1 "" "CuePoint"
+                ${If} $R1 == 0
+                    ${Break}  ; App closed, continue
+                ${EndIf}
+                ${If} $R2 >= 60
+                    MessageBox MB_OK|MB_ICONSTOP \
+                        "CuePoint is still running after 60 seconds.$\n$\nPlease close CuePoint manually and run the installer again." \
+                        /SD IDOK
+                    Abort
+                ${EndIf}
+            ${Loop}
         ${EndIf}
         
         ; Prompt user about upgrade
@@ -115,10 +134,29 @@ Section "Install" SecMain
     ; Check if app is running (double-check)
     FindWindow $R0 "" "CuePoint"
     ${If} $R0 != 0
-        MessageBox MB_OK|MB_ICONEXCLAMATION \
-            "CuePoint is currently running.$\n$\nPlease close CuePoint before installing.$\n$\nThe installer will now exit." \
-            /SD IDOK
+        ; App is running - wait for it to close
+        MessageBox MB_OKCANCEL|MB_ICONEXCLAMATION \
+            "CuePoint is currently running.$\n$\nPlease close CuePoint and click OK to continue.$\n$\nClick Cancel to exit." \
+            IDOK wait_for_close_install
         Abort
+        
+        wait_for_close_install:
+        ; Wait for app to close (check every second, max 60 seconds)
+        StrCpy $R2 0
+        ${Do}
+            Sleep 1000
+            IntOp $R2 $R2 + 1
+            FindWindow $R0 "" "CuePoint"
+            ${If} $R0 == 0
+                ${Break}  ; App closed, continue
+            ${EndIf}
+            ${If} $R2 >= 60
+                MessageBox MB_OK|MB_ICONSTOP \
+                    "CuePoint is still running after 60 seconds.$\n$\nPlease close CuePoint manually and run the installer again." \
+                    /SD IDOK
+                Abort
+            ${EndIf}
+        ${Loop}
     ${EndIf}
     
     ; Set output directory

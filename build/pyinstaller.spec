@@ -52,6 +52,7 @@ datas = [
     # Include update launcher scripts (for visible installation and reopen dialog)
     (str(project_root / 'SRC' / 'cuepoint' / 'update' / 'update_launcher.py'), 'update'),
     (str(project_root / 'SRC' / 'cuepoint' / 'update' / 'update_launcher.bat'), 'update'),
+    (str(project_root / 'SRC' / 'cuepoint' / 'update' / 'update_launcher.ps1'), 'update'),
 ]
 
 # Collect data files from fake_useragent (browsers.json, etc.)

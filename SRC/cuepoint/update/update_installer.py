@@ -55,7 +55,7 @@ class UpdateInstaller:
         """
         Install Windows update.
         
-        Launches a batch script that waits for app to close, then shows
+        Launches a PowerShell script that closes the app, then shows
         installer window, waits for completion, and offers to reopen app.
         
         Args:
@@ -64,10 +64,19 @@ class UpdateInstaller:
         Returns:
             Tuple of (success: bool, error_message: Optional[str])
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        
         try:
-            # Get path to update launcher batch script
-            current_file = Path(__file__)
-            launcher_bat = current_file.parent / 'update_launcher.bat'
+            logger.info(f"Starting Windows installation from: {installer_path}")
+            logger.info(f"Installer exists: {installer_path.exists()}")
+            logger.info(f"Frozen app: {getattr(sys, 'frozen', False)}")
+            
+            # Verify installer exists
+            if not installer_path.exists():
+                error_msg = f"Installer file not found: {installer_path}"
+                logger.error(error_msg)
+                return False, error_msg
             
             # Get installed app path for reopening
             app_path = None
@@ -84,83 +93,127 @@ class UpdateInstaller:
                 # Fallback to default location
                 app_path = Path(os.path.expandvars(r"%LOCALAPPDATA%\CuePoint\CuePoint.exe"))
             
+            # Get path to PowerShell launcher script
+            current_file = Path(__file__)
+            launcher_ps1 = current_file.parent / 'update_launcher.ps1'
+            
             # Check if we're in a frozen (packaged) app
             if getattr(sys, 'frozen', False):
-                # In packaged app, launcher might be in the bundle
                 if hasattr(sys, '_MEIPASS'):
                     # PyInstaller temporary directory
                     base_path = Path(sys._MEIPASS)
-                    # Try to find launcher in update subdirectory (where we bundle it)
-                    bundled_launcher = base_path / 'update' / 'update_launcher.bat'
+                    bundled_launcher = base_path / 'update' / 'update_launcher.ps1'
                     if bundled_launcher.exists():
                         # Extract to temp directory so it can be executed
                         temp_dir = Path(tempfile.gettempdir()) / 'CuePoint_Update'
                         temp_dir.mkdir(exist_ok=True)
-                        temp_launcher = temp_dir / 'update_launcher.bat'
-                        # Copy batch file to temp location
+                        temp_launcher = temp_dir / 'update_launcher.ps1'
                         shutil.copy2(bundled_launcher, temp_launcher)
-                        launcher_bat = temp_launcher
+                        launcher_ps1 = temp_launcher
                     else:
-                        # Try other locations
-                        launcher_bat = base_path / 'update_launcher.bat'
-                        if not launcher_bat.exists():
-                            launcher_bat = None
+                        launcher_ps1 = None
                 else:
-                    # Not in _MEIPASS, try executable directory
-                    launcher_bat = Path(sys.executable).parent / 'update_launcher.bat'
+                    launcher_ps1 = Path(sys.executable).parent / 'update_launcher.ps1'
             
             # If launcher script exists, use it
-            if launcher_bat and launcher_bat.exists():
-                # Launch the batch script that will:
-                # 1. Wait for this app to close
+            if launcher_ps1 and launcher_ps1.exists():
+                logger.info(f"Using PowerShell launcher: {launcher_ps1}")
+                logger.info(f"Launcher absolute path: {launcher_ps1.resolve()}")
+                
+                # Launch PowerShell script that will:
+                # 1. Close this app
                 # 2. Launch installer (visible, no /S)
                 # 3. Wait for installer to complete
                 # 4. Ask if user wants to reopen
                 # 5. Launch app if yes
                 launcher_cmd = [
-                    'cmd.exe',
-                    '/c',
-                    str(launcher_bat),
-                    str(installer_path),
-                    str(app_path) if app_path else '',
+                    'powershell.exe',
+                    '-ExecutionPolicy', 'Bypass',  # Allow script execution
+                    '-NoProfile',  # Don't load profile (faster)
+                    '-File',
+                    str(launcher_ps1.resolve()),  # Use absolute path
+                    '-InstallerPath', str(installer_path.resolve()),  # Use absolute path
+                    '-AppPath', str(app_path.resolve()) if app_path and app_path.exists() else '',
                 ]
+                
+                logger.info(f"Launching PowerShell launcher: {' '.join(launcher_cmd)}")
                 
                 # Launch launcher (detached, so it continues after app closes)
-                subprocess.Popen(
-                    launcher_cmd,
-                    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
-                    close_fds=True,
-                    cwd=str(launcher_bat.parent)
-                )
+                try:
+                    process = subprocess.Popen(
+                        launcher_cmd,
+                        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
+                        close_fds=True,
+                        cwd=str(launcher_ps1.parent)
+                    )
+                    logger.info(f"Launcher process started with PID: {process.pid}")
+                    
+                    # Verify process started
+                    time.sleep(0.2)
+                    if process.poll() is not None:
+                        return_code = process.returncode
+                        logger.warning(f"Launcher exited immediately with code {return_code}, falling back to direct installer launch")
+                        launcher_ps1 = None  # Fall through to direct launch
+                except Exception as launch_error:
+                    error_msg = f"Failed to launch PowerShell script: {str(launch_error)}"
+                    logger.error(error_msg, exc_info=True)
+                    # Fall through to direct installer launch
+                    launcher_ps1 = None
+            
+            # Fallback: Launch installer directly (visible, no /S)
+            if not launcher_ps1 or not launcher_ps1.exists():
+                logger.warning(f"Launcher script not found, launching installer directly")
+                logger.info("Note: Installer will detect if app is running")
+                logger.info(f"Installer path: {installer_path}")
+                logger.info(f"Installer absolute path: {installer_path.resolve()}")
+                logger.info(f"Installer exists: {installer_path.exists()}")
                 
-                # Give launcher a moment to start
-                time.sleep(0.3)
-                
-                # Close current application
-                # The launcher will wait for this process to close, then launch installer
-                sys.exit(0)
-                return True, None
-            else:
-                # Fallback: Launch installer directly (visible, no /S)
-                # This shows the installer window but won't wait or show reopen dialog
-                installer_cmd = [
-                    str(installer_path),
-                    '/UPGRADE',  # Upgrade mode (no /S = visible installer window)
-                ]
-                
-                subprocess.Popen(
-                    installer_cmd,
-                    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
-                    close_fds=True
-                )
-                
-                # Give installer a moment to start
-                time.sleep(1)
-                sys.exit(0)
-                return True, None
+                # Launch installer directly using Windows 'start' command
+                # This ensures the installer window appears properly
+                # The installer will detect if app is running and show a message
+                try:
+                    # Use 'start' command to launch installer in a new window
+                    # The installer will handle detecting if app is running
+                    start_cmd = [
+                        'cmd.exe',
+                        '/c',
+                        'start',
+                        '""',  # Empty window title
+                        str(installer_path.resolve())  # Use absolute path
+                    ]
+                    
+                    logger.info(f"Launching installer with: {' '.join(start_cmd)}")
+                    
+                    process = subprocess.Popen(
+                        start_cmd,
+                        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
+                        close_fds=True
+                    )
+                    logger.info(f"Installer launch command executed, PID: {process.pid}")
+                    
+                    # Give it a moment to start
+                    time.sleep(0.5)
+                    
+                except Exception as launch_error:
+                    error_msg = f"Failed to launch installer: {str(launch_error)}"
+                    logger.error(error_msg, exc_info=True)
+                    return False, error_msg
+            
+            # Give launcher/installer a moment to start
+            logger.info("Waiting 0.5 seconds before closing app...")
+            time.sleep(0.5)
+            
+            # Close current application
+            # The launcher will close this app, then launch the installer
+            logger.info("Closing application - launcher/installer should proceed now")
+            sys.exit(0)
+            
+            return True, None
             
         except Exception as e:
-            return False, f"Installation failed: {str(e)}"
+            error_msg = f"Installation failed: {str(e)}"
+            logger.error(error_msg, exc_info=True)
+            return False, error_msg
     
     def _install_macos(self, dmg_path: Path) -> tuple[bool, Optional[str]]:
         """
