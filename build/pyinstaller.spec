@@ -154,11 +154,48 @@ excludes = [
     'pytest_xdist',
 ]
 
+# Collect Python DLLs explicitly for Windows (Python 3.13)
+# PyInstaller sometimes fails to auto-detect Python 3.13 DLLs
+binaries = []
+if is_windows:
+    import sys
+    python_dir = Path(sys.executable).parent
+    dlls_dir = python_dir / 'DLLs'
+    
+    # Include python313.dll (or python3XX.dll for current version)
+    python_dll_name = f'python{sys.version_info.major}{sys.version_info.minor}.dll'
+    python_dll_path = python_dir / python_dll_name
+    if python_dll_path.exists():
+        binaries.append((str(python_dll_path), '.'))
+        print(f"[PyInstaller] Including Python DLL: {python_dll_name}")
+    else:
+        print(f"[PyInstaller] WARNING: Python DLL not found at {python_dll_path}")
+    
+    # Also include python3.dll if it exists
+    python3_dll_path = python_dir / 'python3.dll'
+    if python3_dll_path.exists():
+        binaries.append((str(python3_dll_path), '.'))
+        print(f"[PyInstaller] Including Python3 DLL: python3.dll")
+    
+    # Include critical DLLs from Python's DLLs directory
+    # These are often required by Python extensions
+    if dlls_dir.exists():
+        critical_dlls = [
+            'VCRUNTIME140.dll',
+            'VCRUNTIME140_1.dll',
+            'api-ms-win-crt-runtime-l1-1-0.dll',
+        ]
+        for dll_name in critical_dlls:
+            dll_path = dlls_dir / dll_name
+            if dll_path.exists():
+                binaries.append((str(dll_path), '.'))
+                print(f"[PyInstaller] Including DLL: {dll_name}")
+
 # Analysis phase
 a = Analysis(
     [str(project_root / 'SRC' / 'gui_app.py')],  # Main entry point
     pathex=[str(project_root / 'SRC')],
-    binaries=[],
+    binaries=binaries,
     datas=[(str(project_root / src), dst) for src, dst in datas] if datas else [],
     hiddenimports=hiddenimports,
     hookspath=[],
