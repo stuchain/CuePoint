@@ -472,9 +472,13 @@ class UpdateCheckDialog(QDialog):
         self.close_button.setDefault(False)
         
         # Debug: Log button state
-        import logging
-        logger = logging.getLogger(__name__)
         logger.info(f"Download button state - visible: {self.download_button.isVisible()}, enabled: {self.download_button.isEnabled()}, text: {self.download_button.text()}")
+        
+        # Fallback: Ensure button is connected even if main_window connection failed
+        # This is a safety mechanism for frozen/packaged builds
+        if not hasattr(self, '_download_connected') or not self._download_connected:
+            logger.warning("Button not connected yet, attempting fallback connection...")
+            self._ensure_button_connected()
     
     def set_no_update(self) -> None:
         """Set status to no update available."""
@@ -493,6 +497,61 @@ class UpdateCheckDialog(QDialog):
         self.set_status(f"✗ Error: {error_message}", show_progress=False)
         self.results_group.setVisible(False)
         self.download_button.setVisible(False)
+    
+    def _ensure_button_connected(self) -> None:
+        """Ensure download button is connected to handler (fallback mechanism).
+        
+        This is a safety mechanism that tries to connect the button to the parent
+        window's download handler if it hasn't been connected yet. This helps
+        ensure the button works even in frozen/packaged builds where the main
+        connection might fail silently.
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Check if already connected
+        if hasattr(self, '_download_connected') and self._download_connected:
+            logger.info("Button already connected, skipping fallback connection")
+            return
+        
+        # Try to connect to parent window's handler
+        parent = self.parent()
+        if parent and hasattr(parent, '_on_update_install_from_dialog'):
+            logger.info("Attempting fallback connection to parent window handler")
+            try:
+                # Disconnect any existing handlers
+                try:
+                    self.download_button.clicked.disconnect()
+                except (TypeError, RuntimeError):
+                    pass  # No existing connections
+                
+                # Connect to parent's handler
+                parent_window = parent
+                def fallback_handler():
+                    import logging
+                    from PySide6.QtWidgets import QMessageBox
+                    btn_logger = logging.getLogger(__name__)
+                    btn_logger.info("Fallback download button handler called")
+                    try:
+                        parent_window._on_update_install_from_dialog()
+                    except Exception as e:
+                        btn_logger.error(f"Error in fallback handler: {e}", exc_info=True)
+                        try:
+                            QMessageBox.critical(
+                                parent_window,
+                                "Download Error",
+                                f"Failed to start download:\n\n{str(e)}\n\nPlease check the logs for details."
+                            )
+                        except:
+                            pass
+                
+                self.download_button.clicked.connect(fallback_handler)
+                self._download_connected = True
+                logger.info("Fallback button connection successful")
+            except Exception as e:
+                logger.error(f"Failed to establish fallback connection: {e}", exc_info=True)
+        else:
+            logger.warning("Cannot establish fallback connection - parent window or handler not available")
     
     def _on_download(self) -> None:
         """Handle download button click.

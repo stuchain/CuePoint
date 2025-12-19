@@ -1824,84 +1824,113 @@ class MainWindow(QMainWindow):
                 if not self.update_check_dialog.download_button.isVisible():
                     logger.warning("Download button is not visible!")
                 
-                # Connect download button if not already connected
-                if not hasattr(self.update_check_dialog, '_download_connected'):
-                    # Store update_info in dialog for download
-                    self.update_check_dialog.update_info = update_info
-                    logger.info(f"Stored update_info in dialog: {update_info.get('short_version', 'unknown')}")
+                # Always ensure button is connected (even if already connected, reconnect to be safe)
+                # Store update_info in dialog for download FIRST (before connection)
+                self.update_check_dialog.update_info = update_info
+                logger.info(f"Stored update_info in dialog: {update_info.get('short_version', 'unknown')}")
+                
+                # Also store in update_manager as fallback
+                if hasattr(self, 'update_manager') and self.update_manager:
+                    self.update_manager._update_available = update_info
+                    logger.info("Stored update_info in update_manager as fallback")
+                
+                # Disconnect any existing handler first (including dialog's own _on_download)
+                try:
+                    self.update_check_dialog.download_button.clicked.disconnect()
+                    logger.info("Disconnected existing button handlers")
+                except TypeError:
+                    # No connections to disconnect
+                    logger.info("No existing button handlers to disconnect")
+                    pass
+                except Exception as e:
+                    logger.warning(f"Error disconnecting button: {e}, continuing anyway")
+                
+                # Connect to our handler that will trigger download
+                logger.info("Connecting download button to download handler")
+                
+                # Store reference to self for the closure
+                main_window_self = self
+                
+                # Use a proper function reference instead of lambda to avoid closure issues
+                def on_download_clicked():
+                    import logging
+                    from PySide6.QtWidgets import QMessageBox
+                    btn_logger = logging.getLogger(__name__)
+                    btn_logger.info("=" * 70)
+                    btn_logger.info("DOWNLOAD BUTTON CLICKED - Handler called!")
+                    btn_logger.info("=" * 70)
                     
-                    # Disconnect any existing handler first (including dialog's own _on_download)
+                    # Show immediate visual feedback
                     try:
-                        self.update_check_dialog.download_button.clicked.disconnect()
-                        logger.info("Disconnected existing button handlers")
-                    except TypeError:
-                        # No connections to disconnect
-                        logger.info("No existing button handlers to disconnect")
+                        main_window_self.statusBar().showMessage("Starting download...", 3000)
+                    except:
                         pass
                     
-                    # Connect to our handler that will trigger download
-                    logger.info("Connecting download button to download handler")
-                    
-                    # Store reference to self for the closure
-                    main_window_self = self
-                    
-                    # Use a proper function reference instead of lambda to avoid closure issues
-                    def on_download_clicked():
-                        import logging
-                        btn_logger = logging.getLogger(__name__)
-                        btn_logger.info("=" * 70)
-                        btn_logger.info("DOWNLOAD BUTTON CLICKED - Handler called!")
-                        btn_logger.info("=" * 70)
-                        
-                        # Show immediate visual feedback
+                    try:
+                        btn_logger.info("Calling _on_update_install_from_dialog...")
+                        main_window_self._on_update_install_from_dialog()
+                        btn_logger.info("_on_update_install_from_dialog completed")
+                    except Exception as e:
+                        btn_logger.error(f"Error in download handler: {e}", exc_info=True)
+                        import traceback
+                        btn_logger.error(traceback.format_exc())
+                        # Show visible error message (critical for user feedback)
                         try:
-                            main_window_self.statusBar().showMessage("Starting download...", 3000)
-                        except:
-                            pass
-                        
-                        try:
-                            btn_logger.info("Calling _on_update_install_from_dialog...")
-                            main_window_self._on_update_install_from_dialog()
-                            btn_logger.info("_on_update_install_from_dialog completed")
-                        except Exception as e:
-                            btn_logger.error(f"Error in download handler: {e}", exc_info=True)
-                            import traceback
-                            btn_logger.error(traceback.format_exc())
                             QMessageBox.critical(
                                 main_window_self,
                                 "Download Error",
                                 f"Failed to start download:\n\n{str(e)}\n\nPlease check the logs for details."
                             )
-                    
-                    # Ensure button is enabled
+                        except Exception as msgbox_error:
+                            btn_logger.error(f"Failed to show error message: {msgbox_error}")
+                
+                # Ensure button is enabled and visible
+                try:
                     self.update_check_dialog.download_button.setEnabled(True)
-                    
-                    # Connect the button
+                    self.update_check_dialog.download_button.setVisible(True)
+                except Exception as e:
+                    logger.error(f"Failed to enable/show button: {e}")
+                
+                # Connect the button with error handling
+                try:
                     self.update_check_dialog.download_button.clicked.connect(on_download_clicked)
                     self.update_check_dialog._download_connected = True
                     logger.info("Download button connected successfully")
-                    
-                    # Verify button state
-                    logger.info(f"Button state after connection:")
-                    logger.info(f"  - Text: {self.update_check_dialog.download_button.text()}")
-                    logger.info(f"  - Visible: {self.update_check_dialog.download_button.isVisible()}")
-                    logger.info(f"  - Enabled: {self.update_check_dialog.download_button.isEnabled()}")
-                    logger.info(f"  - Default: {self.update_check_dialog.download_button.isDefault()}")
-                    
-                    # Test connection by checking receivers (PySide6 way)
+                except Exception as e:
+                    logger.error(f"CRITICAL: Failed to connect download button: {e}", exc_info=True)
+                    # Show visible error to user
                     try:
-                        from PySide6.QtCore import QObject
-                        # Get signal index
-                        signal_index = self.update_check_dialog.download_button.metaObject().indexOfSignal("clicked()")
-                        if signal_index >= 0:
-                            logger.info(f"Button signal found at index: {signal_index}")
-                            # Check if we can get receiver count (PySide6 doesn't expose this easily, but we can try)
-                            logger.info("Button connection verified - signal exists")
-                    except Exception as e:
-                        logger.warning(f"Could not verify button connection details: {e}")
-                        logger.info("Button connection should still work despite verification warning")
-                else:
-                    logger.info("Download button already connected, skipping")
+                        from PySide6.QtWidgets import QMessageBox
+                        QMessageBox.critical(
+                            self,
+                            "Update Error",
+                            f"Failed to connect download button.\n\n"
+                            f"Error: {str(e)}\n\n"
+                            f"Please try checking for updates again or download manually."
+                        )
+                    except:
+                        pass
+                    return  # Don't continue if connection failed
+                
+                # Verify button state
+                logger.info(f"Button state after connection:")
+                logger.info(f"  - Text: {self.update_check_dialog.download_button.text()}")
+                logger.info(f"  - Visible: {self.update_check_dialog.download_button.isVisible()}")
+                logger.info(f"  - Enabled: {self.update_check_dialog.download_button.isEnabled()}")
+                logger.info(f"  - Default: {self.update_check_dialog.download_button.isDefault()}")
+                
+                # Test connection by checking receivers (PySide6 way)
+                try:
+                    from PySide6.QtCore import QObject
+                    # Get signal index
+                    signal_index = self.update_check_dialog.download_button.metaObject().indexOfSignal("clicked()")
+                    if signal_index >= 0:
+                        logger.info(f"Button signal found at index: {signal_index}")
+                        # Check if we can get receiver count (PySide6 doesn't expose this easily, but we can try)
+                        logger.info("Button connection verified - signal exists")
+                except Exception as e:
+                    logger.warning(f"Could not verify button connection details: {e}")
+                    logger.info("Button connection should still work despite verification warning")
             else:
                 # Show update dialog if check dialog not open
                 from cuepoint.update.update_ui import show_update_dialog
