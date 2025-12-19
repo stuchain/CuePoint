@@ -232,8 +232,10 @@ class TestDLLInBuildOutput(unittest.TestCase):
         import re
         
         # Check for pre-analysis format (2-tuple)
-        pre_analysis_pattern = r'binaries\.append\(\(str\([^)]+\)\s*,\s*[\'"]\.[\'"]\)\)'
-        pre_analysis_match = re.search(pre_analysis_pattern, spec_content)
+        # Can be: binaries.append((str(python_dll_path), '.')) OR binaries.append((src_path_str, dest_dir))
+        pre_analysis_pattern1 = r'binaries\.append\(\(str\([^)]+\)\s*,\s*[\'"]\.[\'"]\)\)'
+        pre_analysis_pattern2 = r'binaries\.append\(\([^,]+_str\s*,\s*[^)]+\)\)'
+        pre_analysis_match = re.search(pre_analysis_pattern1, spec_content) or re.search(pre_analysis_pattern2, spec_content)
         
         # Check for post-analysis format (3-tuple)
         post_analysis_pattern = r'a\.binaries\.append\(\([^,]+,\s*str\([^)]+\)\s*,\s*[\'"]BINARY[\'"]\)\)'

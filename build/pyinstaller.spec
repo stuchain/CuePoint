@@ -170,9 +170,12 @@ if is_windows:
         # Format for Analysis constructor: (src_path, dest_dir)
         # This is a 2-tuple format used when passing to Analysis()
         # dest_dir '.' means it will be placed in the root of the bundle
-        binaries.append((str(python_dll_path), '.'))
+        # CRITICAL: Must be a 2-tuple (src_path, dest_dir), NOT a 3-tuple
+        src_path_str = str(python_dll_path)
+        dest_dir = '.'
+        binaries.append((src_path_str, dest_dir))
         print(f"[PyInstaller] Including Python DLL in binaries: {python_dll_name}")
-        print(f"[PyInstaller]   Source: {python_dll_path}")
+        print(f"[PyInstaller]   Source: {src_path_str}")
         print(f"[PyInstaller]   Destination: root ('.')")
     else:
         print(f"[PyInstaller] WARNING: Python DLL not found at {python_dll_path}")
@@ -181,7 +184,10 @@ if is_windows:
     python3_dll_path = python_dir / 'python3.dll'
     if python3_dll_path.exists():
         # Format for Analysis constructor: (src_path, dest_dir)
-        binaries.append((str(python3_dll_path), '.'))
+        # CRITICAL: Must be a 2-tuple (src_path, dest_dir), NOT a 3-tuple
+        python3_src_path_str = str(python3_dll_path)
+        python3_dest_dir = '.'
+        binaries.append((python3_src_path_str, python3_dest_dir))
         print(f"[PyInstaller] Including Python3 DLL: python3.dll")
 
 # Analysis phase

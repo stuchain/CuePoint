@@ -34,40 +34,34 @@ class TestPyInstallerSpecTupleFormat(unittest.TestCase):
     def test_pre_analysis_binaries_uses_correct_tuple_format(self):
         """Test that pre-analysis binaries.append uses (src_path, dest_dir) format for Analysis."""
         # Find the pre-analysis binaries.append line for python DLL
-        lines = self.spec_content.split('\n')
-        found_correct_format = False
-        
-        for i, line in enumerate(lines):
-            # Look for binaries.append with python DLL before Analysis
-            if 'binaries.append' in line and 'python' in line.lower():
-                # Check if it uses the correct 2-tuple format: (src_path, dest_dir)
-                # Should be: binaries.append((str(python_dll_path), '.'))
-                # This is the format expected by Analysis constructor
-                if "'.'" in line or '".' in line:
-                    # Verify it's a 2-tuple (one comma)
-                    # Should have src_path and dest_dir ('.')
-                    found_correct_format = True
-                    break
+        # Should use 2-tuple format: (src_path, dest_dir)
+        # Can be: binaries.append((str(python_dll_path), '.')) OR binaries.append((src_path_str, dest_dir))
+        pattern1 = r'binaries\.append\(\(str\([^)]+\)\s*,\s*[\'"]\.[\'"]\)\)'
+        pattern2 = r'binaries\.append\(\([^,]+_str\s*,\s*[^)]+\)\)'
+        match1 = re.search(pattern1, self.spec_content)
+        match2 = re.search(pattern2, self.spec_content)
         
         self.assertTrue(
-            found_correct_format,
+            match1 is not None or match2 is not None,
             "Pre-analysis binaries.append should use (src_path, dest_dir) format for Analysis constructor"
         )
     
     def test_pre_analysis_binaries_has_src_path_first(self):
         """Test that pre-analysis binaries tuple has src_path as first element."""
-        # The format should be: (str(python_dll_path), '.')
-        # First element should be the source path (str(python_dll_path)), second is dest_dir ('.')
-        pattern = r'binaries\.append\(\(str\(([^)]+)\)\s*,\s*[\'"]\.[\'"]\)\)'
-        match = re.search(pattern, self.spec_content)
+        # The format should be: (src_path, dest_dir) where src_path is a string
+        # Can be: (str(python_dll_path), '.') OR (src_path_str, dest_dir)
+        pattern1 = r'binaries\.append\(\(str\(([^)]+)\)\s*,\s*[\'"]\.[\'"]\)\)'
+        pattern2 = r'binaries\.append\(\(([^,]+_str)\s*,\s*([^)]+)\)\)'
+        match1 = re.search(pattern1, self.spec_content)
+        match2 = re.search(pattern2, self.spec_content)
         
-        self.assertIsNotNone(
-            match,
-            "Pre-analysis binaries should use (str(python_dll_path), '.') format"
+        self.assertTrue(
+            match1 is not None or match2 is not None,
+            "Pre-analysis binaries should use (src_path, dest_dir) format"
         )
         
-        if match:
-            path_var = match.group(1).strip()
+        if match1:
+            path_var = match1.group(1).strip()
             # Should reference python_dll_path variable
             self.assertIn('python', path_var.lower(), "Should reference python DLL path variable")
     
@@ -89,13 +83,15 @@ class TestPyInstallerSpecTupleFormat(unittest.TestCase):
     
     def test_pre_analysis_uses_two_tuple_format(self):
         """Test that pre-analysis binaries uses 2-tuple format (src_path, dest_dir) for Analysis."""
-        # Pre-analysis format should be: binaries.append((str(python_dll_path), '.'))
-        # This is the correct format for Analysis constructor
-        correct_pattern = r'binaries\.append\(\(str\([^)]+\)\s*,\s*[\'"]\.[\'"]\)\)'
-        match = re.search(correct_pattern, self.spec_content)
+        # Pre-analysis format should be: binaries.append((src_path, dest_dir))
+        # Can be: binaries.append((str(python_dll_path), '.')) OR binaries.append((src_path_str, dest_dir))
+        pattern1 = r'binaries\.append\(\(str\([^)]+\)\s*,\s*[\'"]\.[\'"]\)\)'
+        pattern2 = r'binaries\.append\(\([^,]+_str\s*,\s*[^)]+\)\)'
+        match1 = re.search(pattern1, self.spec_content)
+        match2 = re.search(pattern2, self.spec_content)
         
-        self.assertIsNotNone(
-            match,
+        self.assertTrue(
+            match1 is not None or match2 is not None,
             "Pre-analysis binaries should use (src_path, dest_dir) format for Analysis constructor"
         )
     
@@ -103,13 +99,15 @@ class TestPyInstallerSpecTupleFormat(unittest.TestCase):
         """Test that python3.dll also uses correct tuple format."""
         # Check for python3.dll inclusion
         if 'python3.dll' in self.spec_content:
-            # Pre-analysis should use: binaries.append((str(python3_dll_path), '.'))
-            # This is the 2-tuple format for Analysis constructor
-            pattern = r'binaries\.append\(\(str\([^)]*python3[^)]*\)\s*,\s*[\'"]\.[\'"]\)\)'
-            match = re.search(pattern, self.spec_content)
+            # Pre-analysis should use: binaries.append((src_path, dest_dir))
+            # Can be: binaries.append((str(python3_dll_path), '.')) OR binaries.append((python3_src_path_str, python3_dest_dir))
+            pattern1 = r'binaries\.append\(\(str\([^)]*python3[^)]*\)\s*,\s*[\'"]\.[\'"]\)\)'
+            pattern2 = r'binaries\.append\(\([^,]*python3[^,]*_str\s*,\s*[^)]+\)\)'
+            match1 = re.search(pattern1, self.spec_content)
+            match2 = re.search(pattern2, self.spec_content)
             
-            self.assertIsNotNone(
-                match,
+            self.assertTrue(
+                match1 is not None or match2 is not None,
                 "python3.dll should use (src_path, dest_dir) format for Analysis constructor"
             )
 
