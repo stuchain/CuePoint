@@ -41,7 +41,8 @@ requests-cache==1.1.0
 # Browser automation for JavaScript-rendered content
 # Playwright (recommended - faster, more modern)
 # Note: Browser binaries are installed separately via `playwright install chromium`
-playwright==1.40.0
+# Updated to 1.48.0 for Python 3.13 compatibility (1.40.0 uses greenlet 3.0.1 which doesn't build with Python 3.13)
+playwright==1.48.0
 
 # Selenium (alternative browser automation)
 # Also need ChromeDriver or GeckoDriver in PATH (not bundled)
