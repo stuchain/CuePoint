@@ -49,6 +49,9 @@ datas = [
     (str(project_root / 'SRC' / 'cuepoint' / 'ui' / 'resources'), 'resources'),
     # Include UI assets (icons, logos, etc.)
     (str(project_root / 'SRC' / 'cuepoint' / 'ui' / 'assets'), 'assets'),
+    # Include update launcher scripts (for visible installation and reopen dialog)
+    (str(project_root / 'SRC' / 'cuepoint' / 'update' / 'update_launcher.py'), 'update'),
+    (str(project_root / 'SRC' / 'cuepoint' / 'update' / 'update_launcher.bat'), 'update'),
 ]
 
 # Collect data files from fake_useragent (browsers.json, etc.)
