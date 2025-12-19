@@ -10,7 +10,8 @@
 # (excluding test dependencies) to ensure the packaged app works correctly.
 
 # GUI Framework (required for GUI application)
-PySide6==6.5.0
+# Updated to 6.8.3 for Python 3.13 compatibility (6.5.0 only supports up to Python 3.12)
+PySide6==6.8.3
 
 # HTTP requests and web scraping
 requests==2.32.4
