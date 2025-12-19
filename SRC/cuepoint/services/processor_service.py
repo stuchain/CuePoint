@@ -245,7 +245,7 @@ class ProcessorService(IProcessorService):
                 match_score=best.score,
                 title_sim=float(best.title_sim),
                 artist_sim=float(best.artist_sim),
-                confidence="high" if best.score >= 95 else "med" if best.score >= 85 else "low",
+                confidence="high" if best.score >= 95 else "medium" if best.score >= 85 else "low",
                 search_query_index=str(best.query_index),
                 search_stop_query_index=str(last_qidx),
                 candidate_index=str(best.candidate_index),

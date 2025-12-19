@@ -291,7 +291,7 @@ def _confidence_label(score: float) -> str:
 
     Confidence levels:
     - "high": Score >= 95 (excellent match, very confident)
-    - "med": Score >= 85 (good match, moderately confident)
+    - "medium": Score >= 85 (good match, moderately confident)
     - "low": Score < 85 (questionable match, low confidence)
 
     Args:
@@ -300,7 +300,7 @@ def _confidence_label(score: float) -> str:
     Returns:
         Confidence label string
     """
-    return "high" if score >= 95 else "med" if score >= 85 else "low"
+    return "high" if score >= 95 else "medium" if score >= 85 else "low"
 
 
 def _classify_query_type(query: str, query_index: int) -> str:

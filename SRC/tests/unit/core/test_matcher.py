@@ -133,8 +133,8 @@ class TestMatcherHelpers:
     
     def test_confidence_label_medium(self):
         """Test confidence label for medium scores."""
-        assert _confidence_label(85) == "med"
-        assert _confidence_label(94) == "med"
+        assert _confidence_label(85) == "medium"
+        assert _confidence_label(94) == "medium"
     
     def test_confidence_label_low(self):
         """Test confidence label for low scores."""
@@ -289,10 +289,10 @@ class TestMatcherHelpers:
     
     def test_confidence_label_boundary_values(self):
         """Test confidence label at boundary values."""
-        assert _confidence_label(94.9) == "med"
+        assert _confidence_label(94.9) == "medium"
         assert _confidence_label(95.0) == "high"
         assert _confidence_label(84.9) == "low"
-        assert _confidence_label(85.0) == "med"
+        assert _confidence_label(85.0) == "medium"
 
 
 class TestBestBeatportMatch:
