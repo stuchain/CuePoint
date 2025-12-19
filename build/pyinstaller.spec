@@ -167,16 +167,22 @@ if is_windows:
     python_dll_name = f'python{sys.version_info.major}{sys.version_info.minor}.dll'
     python_dll_path = python_dir / python_dll_name
     if python_dll_path.exists():
-        # Place in root (same directory as exe) - this is where PyInstaller expects it
-        binaries.append((str(python_dll_path), '.'))
+        # Format: (dest_name, src_path, typecode)
+        # dest_name is the name in the bundle (extracts to _MEIPASS root)
+        # src_path is the full path to the source file
+        # typecode is 'BINARY' for DLLs
+        binaries.append((python_dll_name, str(python_dll_path), 'BINARY'))
         print(f"[PyInstaller] Including Python DLL in binaries: {python_dll_name}")
+        print(f"[PyInstaller]   Source: {python_dll_path}")
+        print(f"[PyInstaller]   Destination: {python_dll_name} (in _MEIPASS root)")
     else:
         print(f"[PyInstaller] WARNING: Python DLL not found at {python_dll_path}")
     
     # Also include python3.dll if it exists
     python3_dll_path = python_dir / 'python3.dll'
     if python3_dll_path.exists():
-        binaries.append((str(python3_dll_path), '.'))
+        # Format: (dest_name, src_path, typecode)
+        binaries.append(('python3.dll', str(python3_dll_path), 'BINARY'))
         print(f"[PyInstaller] Including Python3 DLL: python3.dll")
 
 # Analysis phase
@@ -219,10 +225,13 @@ if is_windows:
         if python_dll_path.exists():
             # Add to binaries - format: (name_in_bundle, full_path, type)
             # For one-file mode, place in root ('.') so it extracts to _MEIPASS root
+            # CRITICAL: The name must match exactly what PyInstaller expects
+            # Use the exact DLL name (python313.dll) as the bundle name
             a.binaries.append((python_dll_name, str(python_dll_path), 'BINARY'))
             print(f"[PyInstaller] Added Python DLL to binaries: {python_dll_name}")
             print(f"[PyInstaller]   Source: {python_dll_path}")
-            print(f"[PyInstaller]   Destination: root (same as exe)")
+            print(f"[PyInstaller]   Destination: root (extracts to _MEIPASS root)")
+            print(f"[PyInstaller]   Bundle name: {python_dll_name}")
         else:
             print(f"[PyInstaller] ERROR: Python DLL not found at {python_dll_path}")
             # Try alternative locations

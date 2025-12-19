@@ -58,7 +58,10 @@ jobs:
           pip install -r requirements-build.txt
           
           Write-Host "Installing PyInstaller (build tool)..."
-          pip install pyinstaller
+          # Use latest PyInstaller for Python 3.13 compatibility
+          pip install --upgrade pyinstaller
+          Write-Host "PyInstaller version:"
+          pyinstaller --version
           
           Write-Host "Installing Playwright browsers (for testing, not bundled)..."
           python -m playwright install chromium

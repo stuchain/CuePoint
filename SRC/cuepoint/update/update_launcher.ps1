@@ -3,10 +3,10 @@
 # waits for installation to complete, and optionally reopens the app.
 
 param(
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string]$InstallerPath,
     
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [string]$AppPath = ""
 )
 
@@ -53,7 +53,8 @@ if ($cuepointProcess) {
     
     Write-Host "CuePoint has been closed."
     Write-Host ""
-} else {
+}
+else {
     Write-Host "CuePoint is not running."
     Write-Host ""
 }
@@ -76,7 +77,8 @@ Write-Host ""
 Write-Host "========================================"
 if ($installerExitCode -eq 0) {
     Write-Host "Installation completed successfully!"
-} else {
+}
+else {
     Write-Host "Installation completed with exit code: $installerExitCode"
     Write-Host "The installation may not have completed successfully."
 }
@@ -94,13 +96,26 @@ if (Test-Path $AppPath) {
     if ($response -eq "Y" -or $response -eq "y") {
         Write-Host ""
         Write-Host "Launching CuePoint..."
-        Start-Process -FilePath $AppPath
+        
+        # Get the directory containing the executable (important for PyInstaller apps)
+        $AppDirectory = Split-Path -Parent $AppPath
+        
+        # Small delay to ensure installer has fully completed and files are ready
+        Start-Sleep -Seconds 1
+        
+        # Launch with working directory set to app directory
+        # This ensures PyInstaller can find the DLL and other resources
+        # Use -NoNewWindow to ensure proper environment inheritance
+        Start-Process -FilePath $AppPath -WorkingDirectory $AppDirectory -NoNewWindow
+        
         Write-Host "CuePoint launched!"
-    } else {
+    }
+    else {
         Write-Host ""
         Write-Host "CuePoint will not be reopened. You can launch it manually when ready."
     }
-} else {
+}
+else {
     Write-Host ""
     Write-Host "Could not find CuePoint at: $AppPath"
     Write-Host "Please launch it manually."
