@@ -523,8 +523,10 @@ class UpdateCheckDialog(QDialog):
             # No links found, show generic menu
             menu = QMenu(self)
             copy_all_action = menu.addAction("Copy All Text")
-            # Qt's triggered signal emits a 'checked' argument (bool), so we need to accept it
-            copy_all_action.triggered.connect(lambda checked: self._copy_text_to_clipboard(text))
+            # Use a helper function to avoid closure issues
+            def copy_all_handler(checked):
+                self._copy_text_to_clipboard(text)
+            copy_all_action.triggered.connect(copy_all_handler)
             menu.exec(self.results_label.mapToGlobal(position))
             return
         
@@ -534,15 +536,24 @@ class UpdateCheckDialog(QDialog):
         # Add copy options for each link
         for url, link_text in links:
             action = menu.addAction(f"Copy Link: {link_text}")
-            # Use a closure to capture the URL properly
-            action.triggered.connect(lambda checked, u=url: self._copy_link_to_clipboard(u))
+            # Use a helper function to properly capture the URL and avoid closure issues
+            def make_copy_handler(u):
+                def handler(checked):
+                    self._copy_link_to_clipboard(u)
+                return handler
+            action.triggered.connect(make_copy_handler(url))
         
         menu.addSeparator()
         
         # Add option to open link
         for url, link_text in links:
             open_action = menu.addAction(f"Open: {link_text}")
-            open_action.triggered.connect(lambda checked, u=url: QDesktopServices.openUrl(QUrl(u)))
+            # Use a helper function to properly capture the URL and avoid closure issues
+            def make_open_handler(u):
+                def handler(checked):
+                    QDesktopServices.openUrl(QUrl(u))
+                return handler
+            open_action.triggered.connect(make_open_handler(url))
         
         # Show menu at cursor position
         menu.exec(self.results_label.mapToGlobal(position))
