@@ -523,7 +523,8 @@ class UpdateCheckDialog(QDialog):
             # No links found, show generic menu
             menu = QMenu(self)
             copy_all_action = menu.addAction("Copy All Text")
-            copy_all_action.triggered.connect(lambda: self._copy_text_to_clipboard(text))
+            # Qt's triggered signal emits a 'checked' argument (bool), so we need to accept it
+            copy_all_action.triggered.connect(lambda checked: self._copy_text_to_clipboard(text))
             menu.exec(self.results_label.mapToGlobal(position))
             return
         
