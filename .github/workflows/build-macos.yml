@@ -63,7 +63,7 @@ jobs:
           fi
           echo "Parsed version: $VERSION_NUM"
           # Compare version using Python (packaging is usually available, but use simple comparison as fallback)
-          if ! python -c "
+          python << EOF
 import sys
 v = '$VERSION_NUM'.split('.')
 major, minor, patch = int(v[0]), int(v[1]), int(v[2])
@@ -72,7 +72,8 @@ if (major, minor, patch) < required:
     print(f'Error: PyInstaller {major}.{minor}.{patch} is too old. Need >= 6.10.0 for Python 3.13 support.')
     sys.exit(1)
 print(f'✅ PyInstaller version {major}.{minor}.{patch} meets requirement (>= 6.10.0)')
-"; then
+EOF
+          if [ $? -ne 0 ]; then
             echo "Error: PyInstaller version must be >= 6.10.0 for Python 3.13 support"
             exit 1
           fi
