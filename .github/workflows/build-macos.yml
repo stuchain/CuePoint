@@ -63,16 +63,14 @@ jobs:
           fi
           echo "Parsed version: $VERSION_NUM"
           # Compare version using Python (packaging is usually available, but use simple comparison as fallback)
-          cat > /tmp/check_pyinstaller.py << 'PYEOF'
-import sys
-v = sys.argv[1].split('.')
-major, minor, patch = int(v[0]), int(v[1]), int(v[2])
-required = (6, 10, 0)
-if (major, minor, patch) < required:
-    print(f'Error: PyInstaller {major}.{minor}.{patch} is too old. Need >= 6.10.0 for Python 3.13 support.')
-    sys.exit(1)
-print(f'✅ PyInstaller version {major}.{minor}.{patch} meets requirement (>= 6.10.0)')
-PYEOF
+          echo "import sys" > /tmp/check_pyinstaller.py
+          echo "v = sys.argv[1].split('.')" >> /tmp/check_pyinstaller.py
+          echo "major, minor, patch = int(v[0]), int(v[1]), int(v[2])" >> /tmp/check_pyinstaller.py
+          echo "required = (6, 10, 0)" >> /tmp/check_pyinstaller.py
+          echo "if (major, minor, patch) < required:" >> /tmp/check_pyinstaller.py
+          echo "    print(f'Error: PyInstaller {major}.{minor}.{patch} is too old. Need >= 6.10.0 for Python 3.13 support.')" >> /tmp/check_pyinstaller.py
+          echo "    sys.exit(1)" >> /tmp/check_pyinstaller.py
+          echo "print(f'✅ PyInstaller version {major}.{minor}.{patch} meets requirement (>= 6.10.0)')" >> /tmp/check_pyinstaller.py
           python /tmp/check_pyinstaller.py "$VERSION_NUM" || {
             echo "Error: PyInstaller version must be >= 6.10.0 for Python 3.13 support"
             exit 1
