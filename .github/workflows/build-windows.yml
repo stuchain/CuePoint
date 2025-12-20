@@ -210,6 +210,39 @@ jobs:
           python scripts/validate_version.py
           Write-Host "Version validation completed"
       
+      - name: Verify Python DLL exists
+        run: |
+          Write-Host "=== DEBUG: Verifying Python DLL ==="
+          $pythonVersion = python --version
+          Write-Host "Python version: $pythonVersion"
+          $pythonExe = python -c "import sys; print(sys.executable)"
+          Write-Host "Python executable: $pythonExe"
+          $pythonDir = Split-Path -Parent $pythonExe
+          Write-Host "Python directory: $pythonDir"
+          $pythonDllName = python -c "import sys; print(f'python{sys.version_info.major}{sys.version_info.minor}.dll')"
+          Write-Host "Python DLL name: $pythonDllName"
+          $pythonDllPath = Join-Path $pythonDir $pythonDllName
+          Write-Host "Python DLL path: $pythonDllPath"
+          if (Test-Path $pythonDllPath) {
+              Write-Host "[OK] Python DLL found at: $pythonDllPath"
+              $dllInfo = Get-Item $pythonDllPath
+              Write-Host "  Size: $($dllInfo.Length) bytes"
+              Write-Host "  Last modified: $($dllInfo.LastWriteTime)"
+          } else {
+              Write-Error "Python DLL NOT FOUND at: $pythonDllPath"
+              Write-Host "Checking alternative locations..."
+              $altPaths = @(
+                  (Join-Path $pythonDir "DLLs\$pythonDllName"),
+                  (Join-Path $pythonDir "python3.dll")
+              )
+              foreach ($altPath in $altPaths) {
+                  if (Test-Path $altPath) {
+                      Write-Host "  Found at alternative location: $altPath"
+                  }
+              }
+              exit 1
+          }
+      
       - name: Build with PyInstaller
         run: |
           Write-Host "=== DEBUG: Building with PyInstaller ==="
@@ -226,6 +259,16 @@ jobs:
           } else {
               Write-Host "  build/ does not exist (will be created)"
           }
+          Write-Host "Checking spec file for DLL inclusion:"
+          $specFile = "build\pyinstaller.spec"
+          if (Test-Path $specFile) {
+              $specContent = Get-Content $specFile -Raw
+              if ($specContent -match "python313\.dll|python_dll_name") {
+                  Write-Host "  [OK] Spec file includes Python DLL collection code"
+              } else {
+                  Write-Host "  [WARNING] Spec file may not include DLL collection"
+              }
+          }
           Write-Host "Running: python scripts/build_pyinstaller.py"
           python scripts/build_pyinstaller.py
           Write-Host "PyInstaller build completed"
@@ -237,6 +280,18 @@ jobs:
           } else {
               Write-Error "dist/ directory not found after build"
               exit 1
+          }
+          Write-Host "=== Verifying DLL inclusion in built executable ==="
+          $exePath = "dist\CuePoint.exe"
+          if (Test-Path $exePath) {
+              Write-Host "Checking if python313.dll is in the executable bundle..."
+              # Note: We can't easily check inside the exe without extracting it
+              # But we can verify the build logs showed DLL inclusion
+              Write-Host "  [INFO] DLL inclusion should be verified in build logs above"
+              Write-Host "  [INFO] Look for messages like: '[PyInstaller] Including Python DLL'"
+              Write-Host "  [INFO] Or: '[PyInstaller] Verified: python313.dll is in binaries list'"
+          } else {
+              Write-Host "  [WARNING] CuePoint.exe not found in dist/"
           }
       
       - name: Import certificate

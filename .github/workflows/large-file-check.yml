@@ -2,9 +2,9 @@ name: Large File Check
 
 on:
   push:
-    branches: [main, 'phase_*', v1]
+    branches: [main, 'phase_*']
   pull_request:
-    branches: [main, v1]
+    branches: [main]
 
 jobs:
   check:

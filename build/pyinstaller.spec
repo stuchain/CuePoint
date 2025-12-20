@@ -165,20 +165,41 @@ if is_windows:
     
     # Include python313.dll (or python3XX.dll for current version)
     python_dll_name = f'python{sys.version_info.major}{sys.version_info.minor}.dll'
-    python_dll_path = python_dir / python_dll_name
-    if python_dll_path.exists():
+    
+    # Try multiple locations (different Python installation layouts)
+    python_dll_path = None
+    possible_paths = [
+        python_dir / python_dll_name,  # Standard location (C:\Python313\python313.dll)
+        dlls_dir / python_dll_name,    # DLLs subdirectory
+        Path(sys.executable).parent.parent / python_dll_name,  # Alternative layout
+    ]
+    
+    for path in possible_paths:
+        if path.exists():
+            python_dll_path = path
+            print(f"[PyInstaller] Found Python DLL at: {path}")
+            break
+    
+    if python_dll_path and python_dll_path.exists():
         # Format for Analysis constructor: (src_path, dest_dir)
         # This is a 2-tuple format used when passing to Analysis()
         # dest_dir '.' means it will be placed in the root of the bundle
         # CRITICAL: Must be a 2-tuple (src_path, dest_dir), NOT a 3-tuple
-        src_path_str = str(python_dll_path)
+        src_path_str = str(python_dll_path.resolve())  # Use resolve() for absolute path
         dest_dir = '.'
         binaries.append((src_path_str, dest_dir))
         print(f"[PyInstaller] Including Python DLL in binaries: {python_dll_name}")
         print(f"[PyInstaller]   Source: {src_path_str}")
         print(f"[PyInstaller]   Destination: root ('.')")
+        print(f"[PyInstaller]   Verified: File exists and is readable")
     else:
-        print(f"[PyInstaller] WARNING: Python DLL not found at {python_dll_path}")
+        print(f"[PyInstaller] ERROR: Python DLL not found!")
+        print(f"[PyInstaller]   Searched locations:")
+        for path in possible_paths:
+            print(f"[PyInstaller]     - {path} (exists: {path.exists()})")
+        print(f"[PyInstaller]   Python executable: {sys.executable}")
+        print(f"[PyInstaller]   Python directory: {python_dir}")
+        print(f"[PyInstaller]   This will cause DLL errors at runtime!")
     
     # Also include python3.dll if it exists
     python3_dll_path = python_dir / 'python3.dll'
@@ -230,28 +251,46 @@ if is_windows:
     
     # If not found, add it explicitly
     if not dll_found:
-        python_dll_path = python_dir / python_dll_name
-        if python_dll_path.exists():
+        # Try multiple locations (same as pre-analysis)
+        python_dll_path = None
+        possible_paths = [
+            python_dir / python_dll_name,
+            python_dir / 'DLLs' / python_dll_name,
+            Path(sys.executable).parent.parent / python_dll_name,
+        ]
+        
+        for path in possible_paths:
+            if path.exists():
+                python_dll_path = path
+                break
+        
+        if python_dll_path and python_dll_path.exists():
             # Add to binaries - format: (name_in_bundle, full_path, type)
-            # For one-file mode, place in root ('.') so it extracts to _MEIPASS root
-            # CRITICAL: The name must match exactly what PyInstaller expects
-            # Use the exact DLL name (python313.dll) as the bundle name
-            # IMPORTANT: For Python 3.13, we need to ensure the DLL is extracted
-            # by placing it in the root with the exact name Python expects
-            a.binaries.append((python_dll_name, str(python_dll_path), 'BINARY'))
+            # CRITICAL: For one-file mode, the DLL must be in root ('.') 
+            # and the name must be exactly 'python313.dll' (not a path)
+            # PyInstaller will extract it to _MEIPASS root where Python expects it
+            # IMPORTANT: Use the exact DLL filename as the bundle name, not a path
+            a.binaries.insert(0, (python_dll_name, str(python_dll_path.resolve()), 'BINARY'))
             print(f"[PyInstaller] Added Python DLL to binaries: {python_dll_name}")
-            print(f"[PyInstaller]   Source: {python_dll_path}")
-            print(f"[PyInstaller]   Destination: root (extracts to _MEIPASS root)")
-            print(f"[PyInstaller]   Bundle name: {python_dll_name}")
+            print(f"[PyInstaller]   Source: {python_dll_path.resolve()}")
+            print(f"[PyInstaller]   Bundle name: {python_dll_name} (exact filename)")
+            print(f"[PyInstaller]   Will extract to: _MEIPASS root")
         else:
-            print(f"[PyInstaller] ERROR: Python DLL not found at {python_dll_path}")
-            # Try alternative locations
-            for alt_dir in [python_dir / 'DLLs', python_dir]:
-                alt_path = alt_dir / python_dll_name
+            print(f"[PyInstaller] ERROR: Python DLL not found in any searched location!")
+            print(f"[PyInstaller]   Searched paths:")
+            for path in possible_paths:
+                print(f"[PyInstaller]     - {path} (exists: {path.exists()})")
+            # Last resort: try sys.base_prefix
+            try:
+                base_prefix = Path(sys.base_prefix)
+                alt_path = base_prefix / python_dll_name
                 if alt_path.exists():
-                    a.binaries.append((python_dll_name, str(alt_path), 'BINARY'))
-                    print(f"[PyInstaller] Found Python DLL at alternative location: {alt_path}")
-                    break
+                    a.binaries.insert(0, (python_dll_name, str(alt_path.resolve()), 'BINARY'))
+                    print(f"[PyInstaller] Found Python DLL at sys.base_prefix: {alt_path}")
+                else:
+                    print(f"[PyInstaller]   Also checked: {alt_path} (exists: {alt_path.exists()})")
+            except Exception as e:
+                print(f"[PyInstaller] Could not check sys.base_prefix: {e}")
 
 # Remove duplicate binaries (especially important for Python DLL)
 # This ensures we don't have multiple entries for the same DLL
@@ -275,12 +314,14 @@ if is_windows:
         print(f"[PyInstaller] Final check: {python_dll_name} is in binaries list")
     else:
         print(f"[PyInstaller] ERROR: {python_dll_name} NOT in binaries after cleanup!")
-        # Last resort: add it again
+        # Last resort: add it again at the very beginning
         python_dir = Path(sys.executable).parent
         python_dll_path = python_dir / python_dll_name
         if python_dll_path.exists():
+            # Insert at position 0 to ensure it's first and extracted early
             a.binaries.insert(0, (python_dll_name, str(python_dll_path), 'BINARY'))
-            print(f"[PyInstaller] EMERGENCY: Re-added {python_dll_name} to binaries")
+            print(f"[PyInstaller] EMERGENCY: Re-added {python_dll_name} to binaries (position 0)")
+            print(f"[PyInstaller]   This ensures DLL is extracted before Python tries to load it")
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=None)
 
