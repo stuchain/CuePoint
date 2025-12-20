@@ -7,8 +7,8 @@ Dialogs Module - Error dialogs and confirmations
 This module contains error dialogs and confirmation dialogs for the GUI.
 """
 
-from pathlib import Path
 import sys
+from pathlib import Path
 from typing import Optional, Tuple
 
 from PySide6.QtCore import Qt, QUrl
@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
     QTextBrowser,
     QTextEdit,
     QVBoxLayout,
+    QWidget,
 )
 
 from cuepoint.ui.gui_interface import ProcessingError
@@ -280,10 +281,40 @@ class AboutDialog(QDialog):
     def init_ui(self):
         """Initialize UI components"""
         self.setWindowTitle("About CuePoint")
-        self.setMinimumSize(500, 400)
+        self.setMinimumSize(600, 500)
         self.setModal(True)
 
         layout = QVBoxLayout(self)
+        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        # Tab widget for About and Changelog
+        tab_widget = QTabWidget(self)
+        
+        # About tab
+        about_tab = self._create_about_tab()
+        tab_widget.addTab(about_tab, "About")
+        
+        # Changelog tab
+        changelog_tab = self._create_changelog_tab()
+        tab_widget.addTab(changelog_tab, "Changelog")
+        
+        layout.addWidget(tab_widget)
+
+        # OK button
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        ok_btn = QPushButton("OK")
+        ok_btn.setMinimumWidth(100)
+        ok_btn.setDefault(True)
+        ok_btn.clicked.connect(self.accept)
+        button_layout.addWidget(ok_btn)
+        layout.addLayout(button_layout)
+
+    def _create_about_tab(self) -> QWidget:
+        """Create the About tab content."""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
         layout.setSpacing(15)
         layout.setContentsMargins(20, 20, 20, 20)
 
@@ -297,12 +328,6 @@ class AboutDialog(QDialog):
         title_label.setStyleSheet("font-size: 24px; font-weight: bold;")
         title_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(title_label)
-
-        # Subtitle
-        subtitle_label = QLabel("Beatport Metadata Enricher")
-        subtitle_label.setStyleSheet("font-size: 14px; color: #666;")
-        subtitle_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(subtitle_label)
 
         # Version
         from cuepoint.utils.platform import get_platform_string
@@ -336,14 +361,17 @@ class AboutDialog(QDialog):
 
         layout.addSpacing(10)
 
-        # Description
+        # Description - Updated text
         description = QLabel(
-            "CuePoint automatically matches tracks from your Rekordbox playlists "
-            "to Beatport, enriching your collection with accurate metadata including "
-            "keys, BPM, labels, genres, release information, and more."
+            "CuePoint is a home for tools for your DJ library.\n\n"
+            "inKey automatically matches tracks from your Rekordbox playlists to Beatport, "
+            "enriching your collection with accurate metadata including keys, BPM, labels, "
+            "genres, release information, and more.\n\n"
+            "Other apps coming soon inside CuePoint."
         )
         description.setWordWrap(True)
         description.setAlignment(Qt.AlignCenter)
+        description.setStyleSheet("padding: 10px;")
         layout.addWidget(description)
 
         # Quick links (Step 9.6 polish)
@@ -390,15 +418,49 @@ class AboutDialog(QDialog):
         copyright_label.setStyleSheet("color: #999; font-size: 10px;")
         layout.addWidget(copyright_label)
 
-        # OK button
-        button_layout = QHBoxLayout()
-        button_layout.addStretch()
-        ok_btn = QPushButton("OK")
-        ok_btn.setMinimumWidth(100)
-        ok_btn.setDefault(True)
-        ok_btn.clicked.connect(self.accept)
-        button_layout.addWidget(ok_btn)
-        layout.addLayout(button_layout)
+        return tab
+
+    def _create_changelog_tab(self) -> QWidget:
+        """Create the Changelog tab content."""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setSpacing(10)
+        layout.setContentsMargins(10, 10, 10, 10)
+
+        # Load and display changelog
+        try:
+            from cuepoint.ui.widgets.changelog_viewer import ChangelogViewer
+
+            # Create a changelog viewer instance to load the data
+            changelog_viewer = ChangelogViewer(self)
+            
+            # Create content browser
+            content_browser = QTextBrowser()
+            content_browser.setOpenExternalLinks(True)
+            content_browser.setReadOnly(True)
+            
+            # Display changelog content
+            if changelog_viewer.changelog_data:
+                # Display first version
+                entry = changelog_viewer.changelog_data[0]
+                html = f"""
+                <h2>Version {entry['version']}</h2>
+                <p><i>Released: {entry['date']}</i></p>
+                <hr>
+                {entry['content']}
+                """
+                content_browser.setHtml(html)
+            else:
+                content_browser.setHtml("<p>No changelog available.</p>")
+            
+            layout.addWidget(content_browser)
+        except Exception as e:
+            # Fallback if changelog viewer fails
+            error_label = QLabel(f"Could not load changelog: {e}")
+            error_label.setWordWrap(True)
+            layout.addWidget(error_label)
+
+        return tab
 
     def _open_privacy(self) -> None:
         try:
@@ -484,7 +546,7 @@ class AboutDialog(QDialog):
             QLabel with logo pixmap, or None if logo not found.
         """
         import os
-        
+
         # Determine the logo path
         if getattr(sys, 'frozen', False):
             # Running as packaged app
