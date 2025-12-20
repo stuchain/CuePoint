@@ -280,7 +280,7 @@ class AboutDialog(QDialog):
     def init_ui(self):
         """Initialize UI components"""
         self.setWindowTitle("About CuePoint")
-        self.setMinimumSize(500, 400)
+        self.setMinimumSize(600, 700)
         self.setModal(True)
 
         layout = QVBoxLayout(self)
@@ -338,13 +338,39 @@ class AboutDialog(QDialog):
 
         # Description
         description = QLabel(
-            "CuePoint automatically matches tracks from your Rekordbox playlists "
-            "to Beatport, enriching your collection with accurate metadata including "
-            "keys, BPM, labels, genres, release information, and more."
+            "CuePoint is a home for tools for your DJ library. "
+            "inKey automatically matches the playlists from Rekordbox to Beatport, "
+            "and other apps coming soon inside CuePoint."
         )
         description.setWordWrap(True)
         description.setAlignment(Qt.AlignCenter)
         layout.addWidget(description)
+
+        layout.addSpacing(15)
+
+        # Changelog section
+        changelog_group = QGroupBox("Changelog")
+        changelog_layout = QVBoxLayout()
+        changelog_group.setLayout(changelog_layout)
+
+        # Changelog content
+        changelog_browser = QTextBrowser()
+        changelog_browser.setMaximumHeight(200)
+        changelog_browser.setOpenExternalLinks(True)
+        changelog_browser.setReadOnly(True)
+        
+        # Load and display changelog
+        self._load_changelog_preview(changelog_browser)
+        
+        changelog_layout.addWidget(changelog_browser)
+        
+        # View full changelog button
+        view_full_btn = QPushButton("View Full Changelog...")
+        view_full_btn.setObjectName("secondaryActionButton")
+        view_full_btn.clicked.connect(self._show_full_changelog)
+        changelog_layout.addWidget(view_full_btn)
+        
+        layout.addWidget(changelog_group)
 
         # Quick links (Step 9.6 polish)
         links_layout = QHBoxLayout()
@@ -472,6 +498,44 @@ class AboutDialog(QDialog):
             from PySide6.QtWidgets import QMessageBox
 
             QMessageBox.warning(self, "Report Issue", f"Could not open issue tracker:\n{e}")
+
+    def _load_changelog_preview(self, browser: QTextBrowser) -> None:
+        """Load and display changelog preview in the browser.
+        
+        Args:
+            browser: QTextBrowser widget to display changelog in.
+        """
+        try:
+            from cuepoint.ui.widgets.changelog_viewer import ChangelogViewer
+            
+            # Create a temporary changelog viewer to load data
+            changelog_viewer = ChangelogViewer(self)
+            if changelog_viewer.changelog_data:
+                # Display the latest version
+                latest_entry = changelog_viewer.changelog_data[0]
+                html = f"""
+                <h3>Version {latest_entry['version']}</h3>
+                <p><i>Released: {latest_entry['date']}</i></p>
+                <hr>
+                {latest_entry['content']}
+                """
+                browser.setHtml(html)
+            else:
+                browser.setPlainText("No changelog available.")
+        except Exception as e:
+            browser.setPlainText(f"Changelog could not be loaded: {e}")
+
+    def _show_full_changelog(self) -> None:
+        """Show the full changelog viewer dialog."""
+        try:
+            from cuepoint.ui.widgets.changelog_viewer import ChangelogViewer
+            
+            dialog = ChangelogViewer(self)
+            dialog.exec()
+        except Exception as e:
+            from PySide6.QtWidgets import QMessageBox
+            
+            QMessageBox.warning(self, "Changelog", f"Could not open changelog viewer:\n{e}")
 
     def _load_logo(self, size: Optional[Tuple[int, int]] = None) -> Optional[QLabel]:
         """Load and display the logo image.

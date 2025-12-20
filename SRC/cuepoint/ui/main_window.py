@@ -1057,44 +1057,44 @@ class MainWindow(QMainWindow):
 
         help_menu.addSeparator()
 
-        # Support actions (Step 9.5)
+        # Support submenu - group all support-related actions
+        support_menu = help_menu.addMenu("&Support")
+        
         log_viewer_action = QAction("&Log Viewer...", self)
         log_viewer_action.setToolTip("View application logs")
         log_viewer_action.triggered.connect(self.on_show_log_viewer)
-        help_menu.addAction(log_viewer_action)
+        support_menu.addAction(log_viewer_action)
 
         support_bundle_action = QAction("Export &Support Bundle...", self)
         support_bundle_action.setToolTip("Generate a support bundle zip with diagnostics and logs")
         support_bundle_action.triggered.connect(self.on_export_support_bundle)
-        help_menu.addAction(support_bundle_action)
+        support_menu.addAction(support_bundle_action)
+
+        support_menu.addSeparator()
 
         open_logs_action = QAction("Open &Logs Folder", self)
         open_logs_action.setToolTip("Open the logs folder in your file manager")
         open_logs_action.triggered.connect(self.on_open_logs_folder)
-        help_menu.addAction(open_logs_action)
+        support_menu.addAction(open_logs_action)
 
         open_exports_action = QAction("Open &Exports Folder", self)
         open_exports_action.setToolTip("Open the exports folder in your file manager")
         open_exports_action.triggered.connect(self.on_open_exports_folder)
-        help_menu.addAction(open_exports_action)
+        support_menu.addAction(open_exports_action)
+
+        support_menu.addSeparator()
 
         report_issue_action = QAction("&Report Issue...", self)
         report_issue_action.setToolTip("Open the issue tracker (if configured)")
         report_issue_action.triggered.connect(self.on_report_issue)
-        help_menu.addAction(report_issue_action)
+        support_menu.addAction(report_issue_action)
 
         help_menu.addSeparator()
 
-        # About
+        # About (includes changelog)
         about_action = QAction("&About CuePoint", self)
         about_action.triggered.connect(self.on_show_about)
         help_menu.addAction(about_action)
-
-        # Changelog viewer (Step 9.6)
-        changelog_action = QAction("&Changelog", self)
-        changelog_action.setStatusTip("View release notes and changelog")
-        changelog_action.triggered.connect(self.on_show_changelog)
-        help_menu.addAction(changelog_action)
 
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:
         """Handle drag enter event for drag-and-drop file support.
