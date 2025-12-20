@@ -162,6 +162,16 @@ Section "Install" SecMain
     ; Set output directory
     SetOutPath "$INSTDIR"
     
+    ; CRITICAL: Delete old executable BEFORE installing new one
+    ; This prevents file locking issues that can corrupt PyInstaller's internal archive
+    ; PyInstaller one-file executables are archives - if overwritten while locked, DLLs won't extract
+    ; Delete with /REBOOTOK flag to handle locked files (will delete on reboot if needed)
+    Delete /REBOOTOK "$INSTDIR\CuePoint.exe"
+    
+    ; Small delay to ensure Windows releases file locks
+    ; This is critical for PyInstaller executables which have internal archives
+    Sleep 500
+    
     ; Install executable
     ; PyInstaller creates CuePoint.exe directly in dist/ (onefile mode)
     ; File command is processed at COMPILE TIME, so file must exist when makensis runs
@@ -170,7 +180,8 @@ Section "Install" SecMain
     
     ; Install the executable (onefile mode - single exe file)
     ; Use DISTDIR define which can be absolute path or relative path
-    File "${DISTDIR}\CuePoint.exe"
+    ; Use /oname= to explicitly set output name (ensures clean replacement)
+    File /oname="$INSTDIR\CuePoint.exe" "${DISTDIR}\CuePoint.exe"
     
     ; Create Start Menu shortcuts
     ; CreateDirectory might fail if it already exists, but that's OK
