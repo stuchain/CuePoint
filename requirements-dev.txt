@@ -24,4 +24,4 @@ pre-commit>=3.0.0
 radon>=6.0.0  # For complexity metrics (5.7.18)
 
 # Build tools
-pyinstaller>=5.0.0  # For building executables
+pyinstaller>=6.10.0  # For building executables (6.10.0+ required for Python 3.13 support, released Aug 2024)

@@ -6,19 +6,41 @@ This checklist ensures all recent changes are tested before releasing to GitHub.
 
 ## ✅ Automated Tests (Run These First)
 
-### 1. Comprehensive Pre-Release Test
+### 1. Comprehensive Release Readiness Test (NEW - CRITICAL)
 ```bash
-python scripts/test_pre_release.py
+python tests/run_release_readiness_tests.py
 ```
-**Expected**: All 25 tests should pass
+**Expected**: All tests should pass
+**Tests**: PyInstaller configuration, DLL fix, update system, version, workflows
 
-### 2. Update Detection Test
+### 2. DLL Fix Tests (CRITICAL for Python 3.13)
+```bash
+python tests/run_dll_fix_tests.py
+```
+**Expected**: All tests should pass
+**Tests**: DLL inclusion in spec, tuple formats, post-analysis checks
+
+### 3. Build and Executable Test
+```bash
+python scripts/test_build_and_executable.py
+```
+**Expected**: All tests should pass
+**Tests**: PyInstaller version, spec file configuration, executable validation
+
+### 4. Update Installer Tests
+```bash
+python tests/run_update_installer_tests.py
+```
+**Expected**: All tests should pass
+**Tests**: Update installation flow, error handling, platform-specific logic
+
+### 5. Update Detection Test
 ```bash
 python scripts/test_update_detection.py
 ```
 **Expected**: All update detection scenarios should pass
 
-### 3. Version Validation
+### 6. Version Validation
 ```bash
 python scripts/validate_version.py
 ```
@@ -120,7 +142,12 @@ Verify these files have version sync steps:
 
 Before creating release tag, ensure:
 
-- [ ] All automated tests pass
+- [ ] **All automated tests pass** (run `python tests/run_release_readiness_tests.py`)
+- [ ] **DLL fix tests pass** (run `python tests/run_dll_fix_tests.py`)
+- [ ] **Build test passes** (run `python scripts/test_build_and_executable.py`)
+- [ ] **Application builds successfully** (run `python scripts/build_pyinstaller.py`)
+- [ ] **Executable runs without DLL errors** (critical - test manually)
+- [ ] **Update flow works** (test update installation and launch)
 - [ ] All manual UI tests pass
 - [ ] Version is correct in `version.py`
 - [ ] No hardcoded versions in code
@@ -128,6 +155,19 @@ Before creating release tag, ensure:
 - [ ] About dialog works
 - [ ] Rekordbox dialog displays correctly
 - [ ] All scripts are committed to repository
+
+### Critical: DLL Error Check
+
+**MUST VERIFY**: After building and installing update, launch the app and verify:
+- ✅ No "Failed to load Python DLL" error
+- ✅ App launches successfully
+- ✅ All features work correctly
+
+If DLL error occurs, check:
+1. PyInstaller version (must be >= 6.10.0)
+2. Build logs for DLL inclusion messages
+3. Spec file configuration
+4. Rebuild application
 
 ## 🚀 Ready to Release?
 

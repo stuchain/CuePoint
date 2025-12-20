@@ -58,10 +58,24 @@ jobs:
           pip install -r requirements-build.txt
           
           Write-Host "Installing PyInstaller (build tool)..."
-          # Use latest PyInstaller for Python 3.13 compatibility
+          # Use latest PyInstaller for Python 3.13 compatibility (6.10.0+ required)
           pip install --upgrade pyinstaller
           Write-Host "PyInstaller version:"
           pyinstaller --version
+          
+          # Verify PyInstaller version is >= 6.10.0 (required for Python 3.13 support)
+          $pyinstallerVersion = (pyinstaller --version).Trim()
+          Write-Host "Checking PyInstaller version: $pyinstallerVersion"
+          $versionParts = $pyinstallerVersion -split '\.'
+          $major = [int]$versionParts[0]
+          $minor = [int]$versionParts[1]
+          $patch = [int]$versionParts[2]
+          
+          if ($major -lt 6 -or ($major -eq 6 -and $minor -lt 10)) {
+              Write-Error "PyInstaller version must be >= 6.10.0 for Python 3.13 support. Found: $pyinstallerVersion"
+              exit 1
+          }
+          Write-Host "[OK] PyInstaller version check passed (>= 6.10.0)"
           
           Write-Host "Installing Playwright browsers (for testing, not bundled)..."
           python -m playwright install chromium

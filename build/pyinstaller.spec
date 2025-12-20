@@ -191,13 +191,17 @@ if is_windows:
         print(f"[PyInstaller] Including Python3 DLL: python3.dll")
 
 # Analysis phase
+# Include custom hooks directory for Python 3.13 DLL fix
+hooks_dir = project_root / 'build'
+hookspath = [str(hooks_dir)] if hooks_dir.exists() else []
+
 a = Analysis(
     [str(project_root / 'SRC' / 'gui_app.py')],  # Main entry point
     pathex=[str(project_root / 'SRC')],
     binaries=binaries,
     datas=[(str(project_root / src), dst) for src, dst in datas] if datas else [],
     hiddenimports=hiddenimports,
-    hookspath=[],
+    hookspath=hookspath,
     hooksconfig={},
     runtime_hooks=[],
     excludes=excludes,
@@ -232,6 +236,8 @@ if is_windows:
             # For one-file mode, place in root ('.') so it extracts to _MEIPASS root
             # CRITICAL: The name must match exactly what PyInstaller expects
             # Use the exact DLL name (python313.dll) as the bundle name
+            # IMPORTANT: For Python 3.13, we need to ensure the DLL is extracted
+            # by placing it in the root with the exact name Python expects
             a.binaries.append((python_dll_name, str(python_dll_path), 'BINARY'))
             print(f"[PyInstaller] Added Python DLL to binaries: {python_dll_name}")
             print(f"[PyInstaller]   Source: {python_dll_path}")
@@ -247,7 +253,35 @@ if is_windows:
                     print(f"[PyInstaller] Found Python DLL at alternative location: {alt_path}")
                     break
 
-# Remove duplicates
+# Remove duplicate binaries (especially important for Python DLL)
+# This ensures we don't have multiple entries for the same DLL
+seen_binaries = {}
+unique_binaries = []
+for binary in a.binaries:
+    binary_name = binary[0].lower() if isinstance(binary[0], str) else str(binary[0]).lower()
+    if binary_name not in seen_binaries:
+        seen_binaries[binary_name] = True
+        unique_binaries.append(binary)
+    else:
+        # If duplicate found, keep the first one (usually the correct one)
+        print(f"[PyInstaller] Removing duplicate binary: {binary[0]}")
+a.binaries = unique_binaries
+
+# Final verification: ensure Python DLL is in binaries
+if is_windows:
+    python_dll_name = f'python{sys.version_info.major}{sys.version_info.minor}.dll'
+    final_check = any(python_dll_name.lower() in str(b[0]).lower() for b in a.binaries)
+    if final_check:
+        print(f"[PyInstaller] Final check: {python_dll_name} is in binaries list")
+    else:
+        print(f"[PyInstaller] ERROR: {python_dll_name} NOT in binaries after cleanup!")
+        # Last resort: add it again
+        python_dir = Path(sys.executable).parent
+        python_dll_path = python_dir / python_dll_name
+        if python_dll_path.exists():
+            a.binaries.insert(0, (python_dll_name, str(python_dll_path), 'BINARY'))
+            print(f"[PyInstaller] EMERGENCY: Re-added {python_dll_name} to binaries")
+
 pyz = PYZ(a.pure, a.zipped_data, cipher=None)
 
 # Executable configuration
