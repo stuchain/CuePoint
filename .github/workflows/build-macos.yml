@@ -63,20 +63,21 @@ jobs:
           fi
           echo "Parsed version: $VERSION_NUM"
           # Compare version using Python (packaging is usually available, but use simple comparison as fallback)
-          python << EOF
+          cat > /tmp/check_pyinstaller.py << 'PYEOF'
 import sys
-v = '$VERSION_NUM'.split('.')
+v = sys.argv[1].split('.')
 major, minor, patch = int(v[0]), int(v[1]), int(v[2])
 required = (6, 10, 0)
 if (major, minor, patch) < required:
     print(f'Error: PyInstaller {major}.{minor}.{patch} is too old. Need >= 6.10.0 for Python 3.13 support.')
     sys.exit(1)
 print(f'✅ PyInstaller version {major}.{minor}.{patch} meets requirement (>= 6.10.0)')
-EOF
-          if [ $? -ne 0 ]; then
+PYEOF
+          python /tmp/check_pyinstaller.py "$VERSION_NUM" || {
             echo "Error: PyInstaller version must be >= 6.10.0 for Python 3.13 support"
             exit 1
-          fi
+          }
+          rm -f /tmp/check_pyinstaller.py
           
           echo "Installing Playwright browsers (for testing, not bundled)..."
           python -m playwright install chromium
