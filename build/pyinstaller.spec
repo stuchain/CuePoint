@@ -184,7 +184,11 @@ if is_windows:
         print(f"[PyInstaller]   Base Python: {python_dir}")
     else:
         # Not in venv - use current Python installation
-        python_dir = Path(sys.executable).parent
+        # Try base_prefix first if available
+        if hasattr(sys, 'base_prefix'):
+            python_dir = Path(sys.base_prefix)
+        else:
+            python_dir = Path(sys.executable).parent
     
     dlls_dir = python_dir / 'DLLs'
     
