@@ -2,9 +2,9 @@ name: License Compliance
 
 on:
   push:
-    branches: [main, ship_v1.0]
+    branches: [main, ship_v1.0, v1]
   pull_request:
-    branches: [main, ship_v1.0]
+    branches: [main, ship_v1.0, v1]
   schedule:
     - cron: '0 0 * * 0'  # weekly
 
