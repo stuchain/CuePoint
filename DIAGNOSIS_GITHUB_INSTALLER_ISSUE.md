@@ -4,7 +4,7 @@
 - **GitHub installer**: Matches 5 out of 10 tracks
 - **Local build**: Matches all 10 tracks
 
-## Root Cause Analysis
+## Root Cause Analysis  
 
 The difference suggests that the GitHub installer is missing some dependencies or search engines that are present in your local build. The most likely causes are:
 
