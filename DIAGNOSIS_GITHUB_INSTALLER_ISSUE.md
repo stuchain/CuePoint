@@ -4,7 +4,7 @@
 - **GitHub installer**: Matches 5 out of 10 tracks
 - **Local build**: Matches all 10 tracks
 
-## Root Cause Analysis
+## Root Cause Analysis 
 
 The difference suggests that the GitHub installer is missing some dependencies or search engines that are present in your local build. The most likely causes are:
 
@@ -15,7 +15,7 @@ The app uses multiple DuckDuckGo search engines (`ddgs.engines.*`) for track mat
 - Find fewer candidate tracks
 - Match fewer tracks overall
 
-**Check**: Run the diagnostic script on the GitHub installer:
+**Check**: Run the diagnostric script on the GitHub installer:
 ```bash
 # In the installed app, run:
 CuePoint.exe --test-search-dependencies
