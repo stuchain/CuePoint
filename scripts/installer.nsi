@@ -180,8 +180,9 @@ Section "Install" SecMain
     
     ; Install the executable (onefile mode - single exe file)
     ; Use DISTDIR define which can be absolute path or relative path
-    ; Use /oname= to explicitly set output name (ensures clean replacement)
-    File /oname="$INSTDIR\CuePoint.exe" "${DISTDIR}\CuePoint.exe"
+    ; SetOutPath already set the output directory, so File will install to $INSTDIR\CuePoint.exe
+    ; The Delete command above ensures clean replacement without file locking issues
+    File "${DISTDIR}\CuePoint.exe"
     
     ; Create Start Menu shortcuts
     ; CreateDirectory might fail if it already exists, but that's OK
