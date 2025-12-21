@@ -95,6 +95,22 @@ class CrashHandler(QObject):
             self._crash_dialog_shown = True
             self._show_crash_dialog(exception, traceback_str, crash_log, crash_report_path)
         
+        # Report to GitHub Issues (Step 11.2)
+        try:
+            from cuepoint.utils.error_reporter import report_error
+            report_error(
+                error_type=exc_type.__name__,
+                error_message=str(exc_value),
+                traceback=traceback_str,
+                additional_info={
+                    'crash_report': True,
+                    'crash_log': str(crash_log),
+                    'crash_report_path': str(crash_report_path)
+                }
+            )
+        except Exception as e:
+            logger.warning(f"Failed to report error to GitHub: {e}")
+        
         # Emit signal
         self.crash_occurred.emit(exception, traceback_str)
     
@@ -172,6 +188,23 @@ class ThreadExceptionHandler:
             crash_report = CrashReport.generate_report(exception, traceback_str)
             crash_report_path = crash_log.with_suffix('.json')
             CrashReport.save_report(crash_report, crash_report_path)
+            
+            # Report to GitHub Issues (Step 11.2)
+            try:
+                from cuepoint.utils.error_reporter import report_error
+                report_error(
+                    error_type=exc_type.__name__,
+                    error_message=str(exc_value),
+                    traceback=traceback_str,
+                    additional_info={
+                        'crash_report': True,
+                        'thread_name': threading.current_thread().name,
+                        'crash_log': str(crash_log),
+                        'crash_report_path': str(crash_report_path)
+                    }
+                )
+            except Exception as e:
+                logger.warning(f"Failed to report thread error to GitHub: {e}")
             
             # Show error dialog (on main thread)
             from PySide6.QtWidgets import QApplication

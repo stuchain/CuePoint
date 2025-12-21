@@ -1,0 +1,16 @@
+# Auto-label issues based on template
+# This configuration is used by GitHub Actions labeler to automatically label issues
+
+bug:
+  - '**/ISSUE_TEMPLATE/bug_report.yml'
+  - '**/ISSUE_TEMPLATE/error_report.yml'
+
+feature:
+  - '**/ISSUE_TEMPLATE/feature_request.yml'
+
+question:
+  - '**/ISSUE_TEMPLATE/support_question.yml'
+
+security:
+  - '**/ISSUE_TEMPLATE/security_vulnerability.yml'
+

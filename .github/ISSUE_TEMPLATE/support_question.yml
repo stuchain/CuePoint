@@ -1,0 +1,51 @@
+name: Support Question
+description: Ask a question or get help
+title: "[Question] "
+labels: ["question", "support"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for asking! For quick questions, consider using [GitHub Discussions](https://github.com/stuchain/CuePoint/discussions) instead.
+  
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: What do you need help with?
+      placeholder: I'm trying to...
+    validations:
+      required: true
+  
+  - type: textarea
+    id: what_you_tried
+    attributes:
+      label: What You've Tried
+      description: What have you already tried to solve this?
+      placeholder: I tried...
+  
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - macOS
+        - Windows
+        - Linux
+    validations:
+      required: true
+  
+  - type: input
+    id: version
+    attributes:
+      label: CuePoint Version
+      placeholder: e.g., 1.0.0
+    validations:
+      required: true
+  
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context
+      description: Any other context about your question
+

@@ -54,24 +54,24 @@ These documents are structured as **ordered implementation steps** with analytic
    - Analytics: privacy-respecting analytics, performance monitoring
    - **Implement after release** - can be done in parallel with Step 11
 
-13. **Step 13: User Onboarding & Documentation** (`13_User_Onboarding_Documentation.md`)
-   - Documentation: user guides, tutorials, help system
-   - **Implement after release** - improves user experience significantly
-
-14. **Step 14: Marketing & Distribution** (`14_Marketing_Distribution.md`)
-   - Marketing: website, distribution channels, community building
-   - **Implement after release** - important for growth
-
-15. **Step 15: Long-Term Maintenance & Evolution** (`15_Long_Term_Maintenance_Evolution.md`)
+13. **Step 13: Long-Term Maintenance & Evolution** (`13_Long_Term_Maintenance_Evolution.md`)
    - Maintenance: technical debt, sustainability, long-term vision
    - **Ongoing process** - ensures long-term success
 
+14. **Step 14: User Onboarding & Documentation** (`14_User_Onboarding_Documentation.md`) (Optional)
+   - Documentation: user guides, tutorials, help system
+   - **Implement after release** - improves user experience significantly
+
+15. **Step 15: Marketing & Distribution** (`15_Marketing_Distribution.md`) (Optional)
+   - Marketing: website, distribution channels, community building
+   - **Implement after release** - important for growth
+
 ### How to Use These Docs
 
-- **For implementation**: Follow steps 1-10 in order for initial release, then steps 11-15 for professional operations
+- **For implementation**: Follow steps 1-10 in order for initial release, then steps 11-13 for professional operations (steps 14-15 are optional)
 - **For reference**: Each document contains ordered substeps (1.1, 1.2, etc.) and analytical substeps (1.1.1, 1.1.2, etc.)
 - **For planning**: Review Step 1 first to understand scope, then plan implementation sequence
-- **For professional readiness**: Complete Steps 11-15 after initial release
+- **For professional readiness**: Complete Steps 11-13 after initial release (Steps 14-15 are optional)
 
 ### Scope (v1.0)
 
@@ -108,12 +108,14 @@ These documents are structured as **ordered implementation steps** with analytic
 - `09_UX_Polish_Accessibility_and_Localization.md` - Step 9: Polish
 - `10_Final_Configuration_and_Release_Readiness.md` - Step 10: Final Configuration
 
-**Professional Operations (Steps 11-15)**
+**Professional Operations (Steps 11-13)**
 - `11_Post_Launch_Operations_and_Support.md` - Step 11: Operations & Support
 - `12_Analytics_Monitoring_Telemetry.md` - Step 12: Analytics & Monitoring
-- `13_User_Onboarding_Documentation.md` - Step 13: Onboarding & Documentation
-- `14_Marketing_Distribution.md` - Step 14: Marketing & Distribution
-- `15_Long_Term_Maintenance_Evolution.md` - Step 15: Long-Term Maintenance
+- `13_Long_Term_Maintenance_Evolution.md` - Step 13: Long-Term Maintenance
+
+**Optional Steps (14-15)**
+- `14_User_Onboarding_Documentation.md` - Step 14: Onboarding & Documentation (Optional)
+- `15_Marketing_Distribution.md` - Step 15: Marketing & Distribution (Optional)
 
 ### Glossary
 

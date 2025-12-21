@@ -248,6 +248,22 @@ def main():
         from cuepoint.version import get_version
         app.setApplicationVersion(get_version())
         
+        # Initialize error reporter (Step 11.2)
+        try:
+            from cuepoint.utils.error_reporter import init_error_reporter
+            from cuepoint.utils.error_reporting_prefs import ErrorReportingPrefs
+            
+            prefs = ErrorReportingPrefs()
+            if prefs.is_enabled() and prefs.has_user_consented():
+                # Get GitHub repo from environment or use default
+                github_repo = os.getenv("CUEPOINT_GITHUB_REPO", "stuchain/CuePoint")
+                github_token = os.getenv("GITHUB_TOKEN")  # Optional, can be None for public repos
+                init_error_reporter(github_repo, github_token, enabled=True)
+        except Exception as e:
+            # Don't block startup if error reporter fails to initialize
+            import logging
+            logging.getLogger(__name__).warning(f"Failed to initialize error reporter: {e}")
+        
         # Set application icon (for taskbar/dock)
         _set_application_icon(app)
 

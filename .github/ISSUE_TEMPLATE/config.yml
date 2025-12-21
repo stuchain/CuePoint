@@ -1,0 +1,9 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Support Question
+    url: https://github.com/stuchain/CuePoint/discussions
+    about: Ask a question or get help
+  - name: Feature Request
+    url: https://github.com/stuchain/CuePoint/issues/new?template=feature_request.yml
+    about: Suggest a new feature
+

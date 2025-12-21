@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
 
 from cuepoint.utils.i18n import tr
 from cuepoint.utils.support_bundle import SupportBundleGenerator
+from cuepoint.utils.error_reporter import report_error
 from cuepoint.version import get_version
 
 
@@ -87,6 +88,22 @@ class ReportIssueDialog(QDialog):
             ]
         )
         layout.addWidget(self.issue_type)
+        
+        # Feedback category (for Step 11.8)
+        category_label = QLabel(tr("feedback.category", "Category:"))
+        layout.addWidget(category_label)
+        
+        self.category_combo = QComboBox()
+        self.category_combo.addItems(
+            [
+                tr("feedback.category.bug", "Bug Report"),
+                tr("feedback.category.feature", "Feature Request"),
+                tr("feedback.category.general", "General Feedback"),
+                tr("feedback.category.usability", "Usability Issue"),
+                tr("feedback.category.performance", "Performance Issue"),
+            ]
+        )
+        layout.addWidget(self.category_combo)
 
         # Title
         title_label = QLabel(tr("issue.report.title_label", "Title:"))
@@ -114,6 +131,11 @@ class ReportIssueDialog(QDialog):
         self.include_bundle_checkbox = QCheckBox(tr("issue.report.include_bundle", "Generate and attach support bundle"))
         self.include_bundle_checkbox.setChecked(True)
         layout.addWidget(self.include_bundle_checkbox)
+        
+        # Status label for feedback submission (Step 11.8)
+        self.status_label = QLabel("")
+        self.status_label.setWordWrap(True)
+        layout.addWidget(self.status_label)
 
         layout.addStretch()
 
@@ -125,6 +147,11 @@ class ReportIssueDialog(QDialog):
         button_layout.addWidget(cancel_button)
 
         button_layout.addStretch()
+
+        # Add submit feedback button (Step 11.8)
+        self.submit_feedback_button = QPushButton(tr("feedback.submit", "Submit Feedback"))
+        self.submit_feedback_button.clicked.connect(self.submit_feedback)
+        button_layout.addWidget(self.submit_feedback_button)
 
         self.report_button = QPushButton(tr("issue.report.open_github", "Open GitHub Issue"))
         self.report_button.setDefault(True)
@@ -230,3 +257,61 @@ class ReportIssueDialog(QDialog):
             msg.exec()
 
         self.accept()
+    
+    def submit_feedback(self):
+        """Submit feedback to GitHub Issues (Step 11.8)."""
+        feedback_text = self.description_input.toPlainText().strip()
+        category = self.category_combo.currentText()
+        
+        # Validate feedback
+        if not feedback_text:
+            QMessageBox.warning(self, tr("feedback.invalid", "Invalid Feedback"), 
+                              tr("feedback.enter_feedback", "Please enter your feedback."))
+            return
+        
+        if len(feedback_text) < 10:
+            QMessageBox.warning(self, tr("feedback.invalid", "Invalid Feedback"), 
+                              tr("feedback.more_details", "Please provide more details (at least 10 characters)."))
+            return
+        
+        # Show progress
+        self.status_label.setText(tr("feedback.submitting", "Submitting feedback..."))
+        self.submit_feedback_button.setEnabled(False)
+        
+        try:
+            # Create GitHub issue using error reporter pattern
+            issue_number = report_error(
+                error_type="Feedback",
+                error_message=f"{category}: {feedback_text[:200]}",
+                traceback=None,
+                additional_info={
+                    "feedback_category": category,
+                    "feedback_text": feedback_text,
+                    "feedback_type": "user_feedback",
+                    "issue_type": self.issue_type.currentText(),
+                    "title": self.title_input.text() or "User Feedback",
+                }
+            )
+            
+            if issue_number:
+                QMessageBox.information(
+                    self,
+                    tr("feedback.submitted", "Feedback Submitted"),
+                    tr("feedback.thank_you", "Thank you for your feedback! It has been submitted as issue #{issue_number}.").format(issue_number=issue_number)
+                )
+                self.accept()
+            else:
+                QMessageBox.warning(
+                    self,
+                    tr("feedback.failed", "Submission Failed"),
+                    tr("feedback.failed_message", "Could not submit feedback. Please try again later or submit via GitHub Issues.")
+                )
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                tr("feedback.error", "Error"),
+                tr("feedback.error_message", "An error occurred while submitting feedback: {error}").format(error=str(e))
+            )
+        finally:
+            self.status_label.setText("")
+            self.submit_feedback_button.setEnabled(True)

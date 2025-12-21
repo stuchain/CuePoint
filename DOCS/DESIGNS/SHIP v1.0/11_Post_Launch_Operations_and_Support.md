@@ -730,4 +730,4 @@ After completing Step 11, proceed to:
 - **Step 12**: Analytics, Monitoring & Telemetry (if not done in 11.3)
 - **Step 13**: User Onboarding & Documentation
 - **Step 14**: Marketing & Distribution
-- **Step 15**: Long-term Maintenance & Evolution
+- **Step 13**: Long-term Maintenance & Evolution

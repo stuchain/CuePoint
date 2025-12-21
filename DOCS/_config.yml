@@ -1,0 +1,24 @@
+title: CuePoint Documentation
+description: Documentation for CuePoint - Rekordbox to Beatport Metadata Enricher
+theme: minima
+
+# Navigation
+navigation:
+  - title: Getting Started
+    url: /getting-started/
+  - title: User Guide
+    url: /user-guide/
+  - title: FAQ
+    url: /faq/
+
+# GitHub Pages settings
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+
+# Exclude files
+exclude:
+  - README.md
+  - Gemfile
+  - Gemfile.lock
+
