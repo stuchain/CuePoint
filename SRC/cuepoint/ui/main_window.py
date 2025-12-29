@@ -1708,22 +1708,35 @@ class MainWindow(QMainWindow):
             current_version = get_version()
             feed_url = "https://stuchain.github.io/CuePoint/updates"
 
-            # Create update manager
-            self.update_manager = UpdateManager(current_version, feed_url)
-            logger.info("Update manager created successfully")
+            # Create update manager with error handling
+            try:
+                self.update_manager = UpdateManager(current_version, feed_url)
+                logger.info("Update manager created successfully")
+            except Exception as create_error:
+                logger.error(f"Failed to create update manager: {create_error}", exc_info=True)
+                self.update_manager = None
+                return  # Can't continue without update manager
 
-            # Set callbacks
-            self.update_manager.set_on_update_available(self._on_update_available)
-            self.update_manager.set_on_check_complete(self._on_update_check_complete)
-            self.update_manager.set_on_error(self._on_update_error)
-            logger.info("Update manager callbacks set")
+            # Set callbacks with error handling
+            try:
+                self.update_manager.set_on_update_available(self._on_update_available)
+                self.update_manager.set_on_check_complete(self._on_update_check_complete)
+                self.update_manager.set_on_error(self._on_update_error)
+                logger.info("Update manager callbacks set")
+            except Exception as callback_error:
+                logger.error(f"Failed to set update manager callbacks: {callback_error}", exc_info=True)
+                # Continue anyway - update manager exists but callbacks may not work
 
             # Schedule startup check (after window is visible and fully initialized)
             # Use a longer delay for packaged apps to ensure everything is ready
             # Packaged apps may need more time for Qt initialization
-            delay_ms = 5000  # 5 seconds - gives time for window to be fully ready
-            QTimer.singleShot(delay_ms, self._check_for_updates_on_startup)
-            logger.info(f"Startup update check scheduled (delay: {delay_ms}ms)")
+            try:
+                delay_ms = 5000  # 5 seconds - gives time for window to be fully ready
+                QTimer.singleShot(delay_ms, self._check_for_updates_on_startup)
+                logger.info(f"Startup update check scheduled (delay: {delay_ms}ms)")
+            except Exception as schedule_error:
+                logger.error(f"Failed to schedule startup update check: {schedule_error}", exc_info=True)
+                # Continue anyway - app can still work without startup check
         except Exception as e:
             # Update system is best-effort
             logger.error(f"Could not set up update system: {e}", exc_info=True)
@@ -1887,7 +1900,9 @@ class MainWindow(QMainWindow):
         except Exception:
             # Thread check failed - continue anyway (UpdateManager should have handled threading)
             logger.debug("Thread check failed, continuing anyway (non-critical)")
-            
+        
+        # We're on the main thread now - safe to access Qt widgets
+        try:
             from cuepoint.version import get_version
 
             current_version = get_version()

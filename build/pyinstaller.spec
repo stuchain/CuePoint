@@ -55,6 +55,19 @@ datas = [
     (str(project_root / 'SRC' / 'cuepoint' / 'update' / 'update_launcher.ps1'), 'update'),
 ]
 
+# For macOS: explicitly include icon.icns in Resources folder
+if is_macos:
+    icon_path = project_root / 'build' / 'icon.icns'
+    if icon_path.exists():
+        # Add icon to datas so it's copied to Resources folder
+        # PyInstaller will place it in Contents/Resources/ when icon= is specified,
+        # but we also add it explicitly to ensure it's there
+        datas.append((str(icon_path), '.'))  # '.' means root of bundle, but PyInstaller will put it in Resources
+        print(f"[PyInstaller] Including icon.icns in app bundle: {icon_path}")
+    else:
+        print(f"[PyInstaller] WARNING: icon.icns not found at {icon_path}")
+        print(f"[PyInstaller]   Run 'python scripts/generate_icons.py' before building")
+
 # Collect data files from fake_useragent (browsers.json, etc.)
 # This is required for ddgs to work properly
 try:
@@ -69,6 +82,21 @@ except Exception:
 # 2. They are platform-specific
 # 3. The app has fallback search methods (DuckDuckGo, direct search)
 # If Playwright is not available, the app will automatically fall back to other methods
+
+# For macOS: explicitly include icon.icns in Resources folder
+# Note: When icon= is specified in BUNDLE, PyInstaller should copy it automatically,
+# but we add it explicitly to ensure it's in the bundle
+if is_macos:
+    icon_path = project_root / 'build' / 'icon.icns'
+    if icon_path.exists():
+        # PyInstaller will place files in Contents/Resources/ when building app bundle
+        # We add it with '.' as destination, but PyInstaller will handle the Resources folder
+        datas.append((str(icon_path), '.'))
+        print(f"[PyInstaller] Including icon.icns in app bundle: {icon_path}")
+    else:
+        print(f"[PyInstaller] WARNING: icon.icns not found at {icon_path}")
+        print(f"[PyInstaller]   Run 'python scripts/generate_icons.py' before building")
+        print(f"[PyInstaller]   The app will build but may show a generic icon")
 
 # Only include data files that exist (prevents build failures when optional artifacts aren't generated)
 datas = [(src, dst) for src, dst in datas if Path(src).exists()]

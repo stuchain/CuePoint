@@ -2262,6 +2262,10 @@ class ResultsView(QWidget):
         # Update only the affected row instead of repopulating entire table
         # This is much faster and keeps UI responsive
         self._update_table_row_for_result(result)
+        
+        # Process events to keep UI responsive during update
+        from PySide6.QtWidgets import QApplication
+        QApplication.processEvents()
 
         # Update summary (this is fast)
         self._update_summary()
@@ -2269,7 +2273,6 @@ class ResultsView(QWidget):
         # Show non-blocking status message instead of blocking QMessageBox
         # This keeps the UI responsive
         try:
-            from PySide6.QtWidgets import QApplication
             app = QApplication.instance()
             if app:
                 # Use status bar or a non-blocking notification if available

@@ -906,41 +906,22 @@ class HistoryView(QWidget):
             # Update candidate_index if available
             csv_row["candidate_index"] = candidate.get("candidate_index", "")
 
-            # SAVE CSV FILE IMMEDIATELY (with error handling)
-            if self.current_csv_path:
-                if not self._save_csv_file(self.current_csv_path):
-                    # If save failed, show error but don't crash
-                    QMessageBox.warning(
-                        self,
-                        "Save Warning",
-                        "Candidate was updated but could not be saved to file. "
-                        "Please try saving manually."
-                    )
-
-            # Re-apply filters to update the display
-            try:
-                self.apply_filters()
-            except Exception as e:
-                print(f"Error applying filters: {e}")
-                import traceback
-                traceback.print_exc()
-
-            # Update the table row to reflect changes (find the row in filtered_rows)
-            # Find the row index in filtered_rows after re-filtering
+            # Update the table row FIRST (before saving) to keep UI responsive
+            # Find the row index in filtered_rows BEFORE re-filtering
             updated_row_index = -1
             try:
                 for idx, filtered_row in enumerate(self.filtered_rows):
                     if (
                         filtered_row.get("playlist_index") == csv_row.get("playlist_index")
                         and filtered_row.get("original_title", "").strip()
-                        == csv_row.get("original_title", "").strip()
+                        == filtered_row.get("original_title", "").strip()
                         and filtered_row.get("original_artists", "").strip()
-                        == csv_row.get("original_artists", "").strip()
+                        == filtered_row.get("original_artists", "").strip()
                     ):
                         updated_row_index = idx
                         break
 
-                # Update table row if found
+                # Update table row if found (this is fast)
                 if updated_row_index >= 0:
                     self._update_table_row(updated_row_index, csv_row)
                     # Ensure table selection is maintained and row is visible
@@ -950,17 +931,50 @@ class HistoryView(QWidget):
                         item = self.table.item(updated_row_index, 0)
                         if item:
                             self.table.scrollToItem(item)
+                    
+                    # Process events to keep UI responsive
+                    from PySide6.QtWidgets import QApplication
+                    QApplication.processEvents()
             except Exception as e:
                 print(f"Error updating table row: {e}")
                 import traceback
                 traceback.print_exc()
 
-            # Show confirmation (non-blocking, stays on page)
-            QMessageBox.information(
-                self,
-                "Candidate Updated",
-                f"Updated match for:\n{original_title} - {original_artists}\n\nChanges saved to file.",
-            )
+            # SAVE CSV FILE (do this after UI update to keep UI responsive)
+            # Use QTimer to defer the save operation slightly, allowing UI to update first
+            if self.current_csv_path:
+                from PySide6.QtCore import QTimer
+                def save_csv_async():
+                    try:
+                        if not self._save_csv_file(self.current_csv_path):
+                            # If save failed, show error but don't crash
+                            QMessageBox.warning(
+                                self,
+                                "Save Warning",
+                                "Candidate was updated but could not be saved to file. "
+                                "Please try saving manually."
+                            )
+                    except Exception as save_error:
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.error(f"Error saving CSV: {save_error}", exc_info=True)
+                
+                # Defer save by 100ms to allow UI to update first
+                QTimer.singleShot(100, save_csv_async)
+
+            # Show confirmation via status message (non-blocking)
+            # Don't use QMessageBox as it blocks the UI
+            try:
+                from PySide6.QtWidgets import QApplication
+                app = QApplication.instance()
+                if app:
+                    # Use a non-blocking status message if available
+                    # For now, just log it - the table update is visible feedback
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.info(f"Candidate updated: {original_title} - {original_artists}")
+            except Exception:
+                pass
 
         except Exception as e:
             import traceback
