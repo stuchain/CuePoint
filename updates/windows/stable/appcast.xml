@@ -2,12 +2,12 @@
 <rss xmlns:ns0="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
   <channel>
     <item>
-      <title>Version 1.0.2-t14</title>
-      <pubDate>Mon, 29 Dec 2025 10:18:51 -0000</pubDate>
-      <ns0:version>10002</ns0:version>
-      <ns0:shortVersionString>1.0.2-t14</ns0:shortVersionString>
-      <enclosure url="https://github.com/stuchain/CuePoint/releases/download/v1.0.2-t14/CuePoint-Setup-v1.0.2-t14.exe" ns0:version="10002" ns0:shortVersionString="1.0.2-t14" length="112079072" type="application/octet-stream" />
-      <ns0:releaseNotesLink>https://github.com/stuchain/CuePoint/releases/tag/v1.0.2-t14</ns0:releaseNotesLink>
+      <title>Version 1.0.3-t14</title>
+      <pubDate>Mon, 29 Dec 2025 10:26:04 -0000</pubDate>
+      <ns0:version>10003</ns0:version>
+      <ns0:shortVersionString>1.0.3-t14</ns0:shortVersionString>
+      <enclosure url="https://github.com/stuchain/CuePoint/releases/download/v1.0.3-t14/CuePoint-Setup-v1.0.3-t14.exe" ns0:version="10003" ns0:shortVersionString="1.0.3-t14" length="112075090" type="application/octet-stream" />
+      <ns0:releaseNotesLink>https://github.com/stuchain/CuePoint/releases/tag/v1.0.3-t14</ns0:releaseNotesLink>
     </item>
     <title>CuePoint Updates</title>
     <link>https://github.com/StuChain/CuePoint</link>
