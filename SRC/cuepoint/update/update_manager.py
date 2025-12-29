@@ -231,39 +231,80 @@ class UpdateManager:
                 logger.error(traceback.format_exc())
         
         except UpdateCheckError as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Update check failed: {e}")
+            
             with self._lock:
                 self._checking = False
             
             self.preferences.set_last_check_timestamp()
             self.preferences.set_last_check_result("error")
             
+            error_msg = str(e)
             try:
-                from PySide6.QtCore import QTimer
+                from PySide6.QtCore import QTimer, QApplication
                 
-                if self._on_error:
-                    QTimer.singleShot(0, lambda: self._on_error(str(e)))
-                if self._on_check_complete:
-                    QTimer.singleShot(0, lambda: self._on_check_complete(False, str(e)))
+                app = QApplication.instance()
+                if app is None:
+                    logger.warning("QApplication instance not found, using direct callback")
+                    if self._on_error:
+                        self._on_error(error_msg)
+                    if self._on_check_complete:
+                        self._on_check_complete(False, error_msg)
+                else:
+                    # Use QTimer to ensure callback runs on main thread
+                    if self._on_error:
+                        callback_ref = self._on_error
+                        QTimer.singleShot(0, lambda msg=error_msg: self._safe_call_callback(
+                            callback_ref, msg, callback_name="error"
+                        ))
+                    if self._on_check_complete:
+                        callback_ref = self._on_check_complete
+                        QTimer.singleShot(0, lambda msg=error_msg: self._safe_call_callback(
+                            callback_ref, False, msg, callback_name="check_complete"
+                        ))
             except ImportError:
+                logger.warning("PySide6 not available, using direct callback")
                 if self._on_error:
-                    self._on_error(str(e))
+                    self._on_error(error_msg)
                 if self._on_check_complete:
-                    self._on_check_complete(False, str(e))
+                    self._on_check_complete(False, error_msg)
         
         except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Unexpected error during update check: {e}", exc_info=True)
+            
             with self._lock:
                 self._checking = False
             
             error_msg = f"Unexpected error during update check: {e}"
             
             try:
-                from PySide6.QtCore import QTimer
+                from PySide6.QtCore import QTimer, QApplication
                 
-                if self._on_error:
-                    QTimer.singleShot(0, lambda: self._on_error(error_msg))
-                if self._on_check_complete:
-                    QTimer.singleShot(0, lambda: self._on_check_complete(False, error_msg))
+                app = QApplication.instance()
+                if app is None:
+                    logger.warning("QApplication instance not found, using direct callback")
+                    if self._on_error:
+                        self._on_error(error_msg)
+                    if self._on_check_complete:
+                        self._on_check_complete(False, error_msg)
+                else:
+                    # Use QTimer to ensure callback runs on main thread
+                    if self._on_error:
+                        callback_ref = self._on_error
+                        QTimer.singleShot(0, lambda msg=error_msg: self._safe_call_callback(
+                            callback_ref, msg, callback_name="error"
+                        ))
+                    if self._on_check_complete:
+                        callback_ref = self._on_check_complete
+                        QTimer.singleShot(0, lambda msg=error_msg: self._safe_call_callback(
+                            callback_ref, False, msg, callback_name="check_complete"
+                        ))
             except ImportError:
+                logger.warning("PySide6 not available, using direct callback")
                 if self._on_error:
                     self._on_error(error_msg)
                 if self._on_check_complete:

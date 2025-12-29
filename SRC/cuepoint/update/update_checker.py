@@ -65,7 +65,7 @@ class UpdateChecker:
         """
         return f"{self.feed_url}/{platform}/{self.channel}/appcast.xml"
     
-    def check_for_updates(self, platform: str, timeout: int = 10) -> Optional[Dict]:
+    def check_for_updates(self, platform: str, timeout: int = 30) -> Optional[Dict]:
         """
         Check for available updates.
         
@@ -167,12 +167,25 @@ class UpdateChecker:
                 return response.read()
         
         except urllib.error.URLError as e:
-            raise UpdateCheckError(f"Network error: {e.reason}")
+            import logging
+            logger = logging.getLogger(__name__)
+            error_msg = str(e.reason) if hasattr(e, 'reason') else str(e)
+            logger.error(f"Network error fetching appcast from {url}: {error_msg}")
+            raise UpdateCheckError(f"Network error: {error_msg}")
         except urllib.error.HTTPError as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"HTTP error {e.code} fetching appcast from {url}: {e.reason}")
             raise UpdateCheckError(f"HTTP error {e.code}: {e.reason}")
         except ssl.SSLError as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"SSL error fetching appcast from {url}: {e}")
             raise UpdateCheckError(f"SSL error: {e}")
         except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Unexpected error fetching appcast from {url}: {e}", exc_info=True)
             raise UpdateCheckError(f"Unexpected error: {e}")
     
     def _parse_appcast(self, appcast_data: bytes) -> List[Dict]:
