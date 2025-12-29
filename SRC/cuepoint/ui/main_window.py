@@ -1730,7 +1730,14 @@ class MainWindow(QMainWindow):
 
     def _check_for_updates_on_startup(self) -> None:
         """Check for updates on startup (Step 5.5)."""
-        if hasattr(self, "update_manager") and self.update_manager:
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        try:
+            if not hasattr(self, "update_manager") or not self.update_manager:
+                logger.debug("Update manager not available for startup check")
+                return
+            
             try:
                 # Check if should check on startup
                 from cuepoint.update.update_preferences import UpdatePreferences
@@ -1739,20 +1746,27 @@ class MainWindow(QMainWindow):
 
                 if self.update_manager.preferences.get_check_frequency() == UpdatePreferences.CHECK_ON_STARTUP:
                     # Show update check dialog on startup (same as manual check)
-                    self.update_check_dialog = show_update_check_dialog(get_version(), self)
-                    self.update_check_dialog.set_checking()
-                    
-                    # Start the check - use force=True to ensure check runs on startup
-                    # (force=False would check _should_check() which returns False for CHECK_ON_STARTUP)
-                    if self.update_manager.check_for_updates(force=True):
-                        # Status will be updated via callbacks
-                        pass
-                    else:
-                        self.update_check_dialog.set_error("Update check already in progress")
+                    try:
+                        self.update_check_dialog = show_update_check_dialog(get_version(), self)
+                        self.update_check_dialog.set_checking()
+                        
+                        # Start the check - use force=True to ensure check runs on startup
+                        # (force=False would check _should_check() which returns False for CHECK_ON_STARTUP)
+                        if self.update_manager.check_for_updates(force=True):
+                            # Status will be updated via callbacks
+                            logger.debug("Startup update check initiated")
+                        else:
+                            if hasattr(self, "update_check_dialog") and self.update_check_dialog:
+                                self.update_check_dialog.set_error("Update check already in progress")
+                    except Exception as dialog_error:
+                        logger.error(f"Error showing update check dialog: {dialog_error}", exc_info=True)
+                        # Don't crash the app if dialog fails
             except Exception as e:
-                import logging
-
-                logging.warning(f"Startup update check failed: {e}")
+                logger.warning(f"Startup update check failed: {e}", exc_info=True)
+                # Don't crash the app if update check fails
+        except Exception as fatal_error:
+            # Catch-all to prevent any update-related code from crashing the app
+            logger.error(f"Fatal error in startup update check: {fatal_error}", exc_info=True)
 
     def on_check_for_updates(self) -> None:
         """Check for updates manually via Help > Check for Updates (Step 5.5)."""
@@ -1805,15 +1819,30 @@ class MainWindow(QMainWindow):
         logger = logging.getLogger(__name__)
         logger.info(f"_on_update_available called with update_info: {update_info}")
         
+        # Note: Thread safety is handled by UpdateManager using QTimer.singleShot
+        # This method should already be called on the main thread, but we add
+        # a safety check that won't crash if it fails
         try:
-            # Ensure we're on the main thread (safety check)
             from PySide6.QtCore import QThread, QApplication, QTimer
             app = QApplication.instance()
-            if app and QThread.currentThread() != app.thread():
-                logger.error("_on_update_available called from non-main thread! This should not happen.")
-                # Try to marshal to main thread
-                QTimer.singleShot(0, lambda: self._on_update_available(update_info))
-                return
+            if app is not None:
+                current_thread = QThread.currentThread()
+                main_thread = app.thread()
+                if current_thread != main_thread:
+                    logger.warning("_on_update_available called from non-main thread, marshaling to main thread")
+                    # Capture update_info in a way that won't cause issues
+                    update_info_copy = update_info.copy() if isinstance(update_info, dict) else update_info
+                    # Use a function reference instead of lambda to avoid closure issues
+                    def marshal_callback():
+                        try:
+                            self._on_update_available(update_info_copy)
+                        except Exception as marshal_error:
+                            logger.error(f"Error in marshaled callback: {marshal_error}", exc_info=True)
+                    QTimer.singleShot(0, marshal_callback)
+                    return
+        except Exception:
+            # Thread check failed - continue anyway (UpdateManager should have handled threading)
+            logger.debug("Thread check failed, continuing anyway (non-critical)")
             
             from cuepoint.version import get_version
 
@@ -1932,21 +1961,36 @@ class MainWindow(QMainWindow):
                                 logger.info(f"  - Text: {self.update_check_dialog.download_button.text()}")
                                 logger.info(f"  - Visible: {self.update_check_dialog.download_button.isVisible()}")
                                 logger.info(f"  - Enabled: {self.update_check_dialog.download_button.isEnabled()}")
-                logger.info(f"  - Default: {self.update_check_dialog.download_button.isDefault()}")
-                
-                # Test connection by checking receivers (PySide6 way)
-                try:
-                    from PySide6.QtCore import QObject
+                                logger.info(f"  - Default: {self.update_check_dialog.download_button.isDefault()}")
+                                
+                                # Test connection by checking receivers (PySide6 way)
+                                try:
+                                    from PySide6.QtCore import QObject
 
-                    # Get signal index
-                    signal_index = self.update_check_dialog.download_button.metaObject().indexOfSignal("clicked()")
-                    if signal_index >= 0:
-                        logger.info(f"Button signal found at index: {signal_index}")
-                        # Check if we can get receiver count (PySide6 doesn't expose this easily, but we can try)
-                        logger.info("Button connection verified - signal exists")
-                except Exception as e:
-                    logger.warning(f"Could not verify button connection details: {e}")
-                    logger.info("Button connection should still work despite verification warning")
+                                    # Get signal index
+                                    signal_index = self.update_check_dialog.download_button.metaObject().indexOfSignal("clicked()")
+                                    if signal_index >= 0:
+                                        logger.info(f"Button signal found at index: {signal_index}")
+                                        # Check if we can get receiver count (PySide6 doesn't expose this easily, but we can try)
+                                        logger.info("Button connection verified - signal exists")
+                                except Exception as e:
+                                    logger.warning(f"Could not verify button connection details: {e}")
+                                    logger.info("Button connection should still work despite verification warning")
+                            except Exception as connect_error:
+                                logger.error(f"CRITICAL: Failed to connect download button: {connect_error}", exc_info=True)
+                                # Show visible error to user
+                                try:
+                                    from PySide6.QtWidgets import QMessageBox
+                                    QMessageBox.critical(
+                                        self,
+                                        "Update Error",
+                                        f"Failed to connect download button.\n\n"
+                                        f"Error: {str(connect_error)}\n\n"
+                                        f"Please try checking for updates again or download manually."
+                                    )
+                                except:
+                                    pass
+                                dialog_exists = False
             else:
                 # Show update dialog if check dialog not open
                 from cuepoint.update.update_ui import show_update_dialog
@@ -1963,23 +2007,42 @@ class MainWindow(QMainWindow):
                 logger.info(f"Update dialog result: {result}")
 
             # Update status bar
-            self.statusBar().showMessage(f"Update available: {new_version}", 5000)
+            try:
+                self.statusBar().showMessage(f"Update available: {new_version}", 5000)
+            except Exception as status_error:
+                logger.warning(f"Could not update status bar: {status_error}")
         except Exception as e:
             import logging
             import traceback
 
-            logger.error(f"Error showing update dialog: {e}")
+            logger.error(f"Error in _on_update_available: {e}")
             logger.error(traceback.format_exc())
             
-            # Update check dialog if open
-            if hasattr(self, "update_check_dialog") and self.update_check_dialog:
-                self.update_check_dialog.set_error(str(e))
-            else:
+            # Try to update check dialog if open (safely)
+            try:
+                if hasattr(self, "update_check_dialog") and self.update_check_dialog is not None:
+                    try:
+                        # Verify dialog is still valid
+                        _ = self.update_check_dialog.windowTitle()
+                        self.update_check_dialog.set_error(str(e))
+                    except (RuntimeError, AttributeError):
+                        # Dialog was destroyed, ignore
+                        pass
+            except Exception as dialog_error:
+                logger.warning(f"Could not update dialog: {dialog_error}")
+            
+            # Try to show error message (but don't crash if it fails)
+            try:
+                from PySide6.QtWidgets import QMessageBox
                 QMessageBox.warning(
                     self,
                     "Update Available",
                     f"An update is available, but there was an error displaying it:\n{e}",
                 )
+            except Exception as msg_error:
+                logger.error(f"Could not show error message: {msg_error}")
+                # Last resort: just log it
+                logger.error("Update is available but UI could not be updated. Check logs for details.")
 
     def _on_update_check_complete(self, update_available: bool, error: Optional[str]) -> None:
         """Handle update check complete callback (Step 5.5).
