@@ -706,42 +706,70 @@ class HistoryView(QWidget):
         # Get column names from first row
         columns = list(rows[0].keys())
 
-        # Set up table
+        # Set up table (column count and labels will be set after reordering)
         self.table.setSortingEnabled(False)
-        self.table.setColumnCount(len(columns))
-        self.table.setHorizontalHeaderLabels(columns)
         self.table.setRowCount(len(rows))
 
-        # Populate rows
-        # Find index column and calculate padding
+        # Reorder columns to match requested order
+        # Priority order: Index, Original Title, Original Artists, Beatport Title, Beatport Artists, Key, Camelot Key, Release Year, then rest
+        priority_columns = [
+            "playlist_index",
+            "original_title",
+            "original_artists",
+            "beatport_title",
+            "beatport_artists",
+            "beatport_key",
+            "beatport_key_camelot",
+            "beatport_year",
+        ]
+        
+        # Build ordered column list
+        ordered_columns = []
+        used_columns = set()
+        
+        # Add priority columns in order (if they exist)
+        for priority_col in priority_columns:
+            # Find matching column (case-insensitive, handle variations)
+            for col in columns:
+                col_lower = col.lower().replace(" ", "_")
+                if col_lower == priority_col.lower() or priority_col.lower() in col_lower:
+                    if col not in used_columns:
+                        ordered_columns.append(col)
+                        used_columns.add(col)
+                        break
+        
+        # Add remaining columns
+        for col in columns:
+            if col not in used_columns:
+                ordered_columns.append(col)
+        
+        # Update columns list
+        columns = ordered_columns
+        
+        # Find index column
         index_col = -1
         for col_idx, col_name in enumerate(columns):
             if "index" in col_name.lower() or "playlist_index" in col_name.lower():
                 index_col = col_idx
                 break
 
-        # Calculate padding for index column if found
-        padding = 1
-        if index_col >= 0:
-            max_index = 0
-            for row_data in rows:
-                try:
-                    idx_val = int(row_data.get(columns[index_col], 0) or 0)
-                    max_index = max(max_index, idx_val)
-                except (ValueError, TypeError):
-                    pass
-            padding = len(str(max_index)) if max_index > 0 else 1
+        # Set up table with reordered columns
+        self.table.setColumnCount(len(columns))
+        self.table.setHorizontalHeaderLabels(columns)
 
+        # Populate rows
         for row_idx, row_data in enumerate(rows):
             for col_idx, col_name in enumerate(columns):
                 value = row_data.get(col_name, "")
-                # Pad index column with zeros for proper sorting
+                # Index column - display as number, sort numerically
                 if col_idx == index_col:
                     try:
+                        # Convert to integer for proper numeric sorting
                         numeric_value = int(value) if value else 0
-                        index_str = str(numeric_value).zfill(padding)
-                        item = QTableWidgetItem(index_str)
-                        item.setData(Qt.EditRole, numeric_value)
+                        # Create item with numeric value as data (Qt uses EditRole for sorting by default)
+                        item = QTableWidgetItem()
+                        item.setData(Qt.EditRole, numeric_value)  # Store as integer for numeric sorting
+                        item.setText(str(numeric_value))  # Display as string
                         item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                     except (ValueError, TypeError):
                         item = QTableWidgetItem(str(value))
@@ -752,26 +780,28 @@ class HistoryView(QWidget):
         # Re-enable sorting
         self.table.setSortingEnabled(True)
 
-        # Find the index column
+        # Find the index column (use the reordered columns list)
         index_col = -1
-        for col in range(self.table.columnCount()):
-            header = self.table.horizontalHeaderItem(col)
-            if header:
-                header_text = header.text().lower()
-                if "index" in header_text or "playlist_index" in header_text:
-                    index_col = col
-                    break
+        for col_idx, col_name in enumerate(columns):
+            if "index" in col_name.lower() or "playlist_index" in col_name.lower():
+                index_col = col_idx
+                break
 
         # Always default to Index column in ascending order
         # Only restore user's sort if they sorted by a different column
         if index_col >= 0:
             if sort_column >= 0 and sort_column != index_col and sort_order is not None:
                 # User sorted by a different column, restore that
-                self.table.sortItems(sort_column, sort_order)
+                # But first, we need to map the old column index to the new column order
+                # For simplicity, just sort by index column
+                self.table.horizontalHeader().setSortIndicator(-1, Qt.AscendingOrder)
+                self.table.sortItems(index_col, Qt.AscendingOrder)
+                self.table.horizontalHeader().setSortIndicator(index_col, Qt.AscendingOrder)
             else:
-                # Default: sort by Index column in ascending order
+                # Default: sort by Index column in ascending order (numeric sort)
                 # Clear any previous sort indicator first
                 self.table.horizontalHeader().setSortIndicator(-1, Qt.AscendingOrder)
+                # Force numeric sort by sorting the index column
                 self.table.sortItems(index_col, Qt.AscendingOrder)
                 self.table.horizontalHeader().setSortIndicator(index_col, Qt.AscendingOrder)
 

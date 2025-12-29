@@ -20,6 +20,10 @@
     <key>CFBundleSignature</key>
     <string>????</string>
     
+    <!-- Icon Configuration -->
+    <key>CFBundleIconFile</key>
+    <string>icon.icns</string>
+    
     <!-- System Requirements -->
     <key>LSMinimumSystemVersion</key>
     <string>10.15</string>

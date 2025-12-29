@@ -462,20 +462,21 @@ class ResultsView(QWidget):
 
         # Create table with key columns
         self.table = QTableWidget()
-        self.table.setColumnCount(11)
+        self.table.setColumnCount(12)
         self.table.setHorizontalHeaderLabels(
             [
                 "Index",
-                "Track Name (Search)",
-                "Artist (Search)",
+                "Original Title",
+                "Original Artists",
+                "Beatport Title",
+                "Beatport Artists",
+                "Key",
+                "Camelot Key",
+                "Release Year",
                 "Matched",
-                "Beatport Track",
-                "Beatport Artist",
                 "Score",
                 "Confidence",
-                "Camelot Key",
                 "BPM",
-                "Year",
             ]
         )
         self.table.setSortingEnabled(True)
@@ -901,20 +902,21 @@ class ResultsView(QWidget):
 
         # Create table for this playlist
         table = QTableWidget()
-        table.setColumnCount(11)
+        table.setColumnCount(12)
         table.setHorizontalHeaderLabels(
             [
                 "Index",
-                "Track Name (Search)",
-                "Artist (Search)",
+                "Original Title",
+                "Original Artists",
+                "Beatport Title",
+                "Beatport Artists",
+                "Key",
+                "Camelot Key",
+                "Release Year",
                 "Matched",
-                "Beatport Track",
-                "Beatport Artist",
                 "Score",
                 "Confidence",
-                "Camelot Key",
                 "BPM",
-                "Year",
             ]
         )
         table.setSortingEnabled(True)
@@ -1059,25 +1061,40 @@ class ResultsView(QWidget):
         self.table.setSortingEnabled(False)
         self.table.setRowCount(len(filtered))
 
-        # Calculate padding for index column (once, before loop)
-        max_index = max((r.playlist_index for r in filtered), default=1) if filtered else 1
-        padding = len(str(max_index))
-
         for row, result in enumerate(filtered):
-            # Index (pad with zeros for proper string sorting: 001, 002, ..., 099, 100)
-            index_str = str(result.playlist_index).zfill(padding)
-            index_item = QTableWidgetItem(index_str)
+            # Index - display as number, sort numerically (1, 2, 3, ..., 10, 11, 12)
+            index_item = QTableWidgetItem(str(result.playlist_index))
             index_item.setData(
                 Qt.EditRole, result.playlist_index
-            )  # Store numeric value for sorting
+            )  # Store numeric value for proper numeric sorting
             index_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.table.setItem(row, 0, index_item)
 
-            # Title
+            # Original Title
             self.table.setItem(row, 1, QTableWidgetItem(result.title))
 
-            # Artist
+            # Original Artists
             self.table.setItem(row, 2, QTableWidgetItem(result.artist or ""))
+
+            # Beatport Title
+            beatport_title = result.beatport_title or ""
+            self.table.setItem(row, 3, QTableWidgetItem(beatport_title))
+
+            # Beatport Artists
+            beatport_artists = result.beatport_artists or ""
+            self.table.setItem(row, 4, QTableWidgetItem(beatport_artists))
+
+            # Key (regular key)
+            key_text = result.beatport_key or ""
+            self.table.setItem(row, 5, QTableWidgetItem(key_text))
+
+            # Camelot Key
+            camelot_key_text = result.beatport_key_camelot or ""
+            self.table.setItem(row, 6, QTableWidgetItem(camelot_key_text))
+
+            # Release Year
+            year_text = result.beatport_year or ""
+            self.table.setItem(row, 7, QTableWidgetItem(year_text))
 
             # Matched status
             matched_item = QTableWidgetItem("✓" if result.matched else "✗")
@@ -1086,46 +1103,24 @@ class ResultsView(QWidget):
                 matched_item.setForeground(Qt.darkGreen)
             else:
                 matched_item.setForeground(Qt.darkRed)
-            self.table.setItem(row, 3, matched_item)
-
-            # Beatport Title
-            beatport_title = result.beatport_title or ""
-            self.table.setItem(row, 4, QTableWidgetItem(beatport_title))
-
-            # Beatport Artist (NEW COLUMN)
-            beatport_artists = result.beatport_artists or ""
-            self.table.setItem(row, 5, QTableWidgetItem(beatport_artists))
+            self.table.setItem(row, 8, matched_item)
 
             # Score
             score_text = f"{result.match_score:.1f}" if result.match_score is not None else "N/A"
             score_item = QTableWidgetItem(score_text)
             score_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.table.setItem(row, 6, score_item)
+            self.table.setItem(row, 9, score_item)
 
             # Confidence
             confidence_text = result.confidence or ""
             confidence_item = QTableWidgetItem(
                 confidence_text.capitalize() if confidence_text else ""
             )
-            self.table.setItem(row, 7, confidence_item)
-
-            # Key (Camelot) - show Camelot notation, convert from regular key if needed
-            if result.beatport_key_camelot:
-                key_text = result.beatport_key_camelot
-            elif result.beatport_key:
-                # Convert regular key to Camelot if camelot key is not available
-                key_text = _camelot_key(result.beatport_key) or ""
-            else:
-                key_text = ""
-            self.table.setItem(row, 8, QTableWidgetItem(key_text))
+            self.table.setItem(row, 10, confidence_item)
 
             # BPM
             bpm_text = result.beatport_bpm or ""
-            self.table.setItem(row, 9, QTableWidgetItem(bpm_text))
-
-            # Year
-            year_text = result.beatport_year or ""
-            self.table.setItem(row, 10, QTableWidgetItem(year_text))
+            self.table.setItem(row, 11, QTableWidgetItem(bpm_text))
 
         # Re-enable sorting
         self.table.setSortingEnabled(True)
@@ -1152,6 +1147,98 @@ class ResultsView(QWidget):
 
         # Keep table tall enough to show ~10 rows when space allows
         self._ensure_table_min_rows(self.table, 10)
+    
+    def _update_table_row_for_result(self, result: TrackResult) -> None:
+        """Update a single row in the table for a specific result.
+        
+        This is much faster than repopulating the entire table and keeps
+        the UI responsive. Finds the row by playlist_index and updates
+        only the cells that may have changed.
+        
+        Args:
+            result: TrackResult to update in the table
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        try:
+            # Find the row index for this result in the filtered results
+            filtered = self._filter_results()
+            row_index = None
+            for idx, r in enumerate(filtered):
+                if r.playlist_index == result.playlist_index:
+                    row_index = idx
+                    break
+            
+            if row_index is None:
+                # Result not in filtered view (maybe filtered out), just refresh
+                logger.debug(f"Result {result.playlist_index} not in filtered view, skipping row update")
+                return
+            
+            # Update only the cells that may have changed
+            # Original Title (column 1) - usually doesn't change, but update for consistency
+            self.table.setItem(row_index, 1, QTableWidgetItem(result.title))
+            
+            # Original Artists (column 2) - usually doesn't change, but update for consistency
+            self.table.setItem(row_index, 2, QTableWidgetItem(result.artist or ""))
+            
+            # Beatport Title (column 3)
+            beatport_title = result.beatport_title or ""
+            self.table.setItem(row_index, 3, QTableWidgetItem(beatport_title))
+            
+            # Beatport Artists (column 4)
+            beatport_artists = result.beatport_artists or ""
+            self.table.setItem(row_index, 4, QTableWidgetItem(beatport_artists))
+            
+            # Key (column 5)
+            key_text = result.beatport_key or ""
+            self.table.setItem(row_index, 5, QTableWidgetItem(key_text))
+            
+            # Camelot Key (column 6)
+            camelot_key_text = result.beatport_key_camelot or ""
+            self.table.setItem(row_index, 6, QTableWidgetItem(camelot_key_text))
+            
+            # Release Year (column 7)
+            year_text = result.beatport_year or ""
+            self.table.setItem(row_index, 7, QTableWidgetItem(year_text))
+            
+            # Matched status (column 8)
+            matched_item = QTableWidgetItem("✓" if result.matched else "✗")
+            matched_item.setTextAlignment(Qt.AlignCenter)
+            if result.matched:
+                matched_item.setForeground(Qt.darkGreen)
+            else:
+                matched_item.setForeground(Qt.darkRed)
+            self.table.setItem(row_index, 8, matched_item)
+            
+            # Score (column 9)
+            score_text = f"{result.match_score:.1f}" if result.match_score is not None else "N/A"
+            score_item = QTableWidgetItem(score_text)
+            score_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            self.table.setItem(row_index, 9, score_item)
+            
+            # Confidence (column 10)
+            confidence_text = result.confidence or ""
+            confidence_item = QTableWidgetItem(
+                confidence_text.capitalize() if confidence_text else ""
+            )
+            self.table.setItem(row_index, 10, confidence_item)
+            
+            # BPM (column 11)
+            bpm_text = result.beatport_bpm or ""
+            self.table.setItem(row_index, 11, QTableWidgetItem(bpm_text))
+            
+            # Process events to keep UI responsive
+            from PySide6.QtWidgets import QApplication
+            QApplication.processEvents()
+            
+        except Exception as e:
+            logger.error(f"Error updating table row for result: {e}", exc_info=True)
+            # Fallback: repopulate entire table if row update fails
+            try:
+                self._populate_table()
+            except Exception as fallback_error:
+                logger.error(f"Error in fallback _populate_table: {fallback_error}", exc_info=True)
 
     def _on_column_sorted(self, column: int) -> None:
         """Handle column sorting with visual indicators"""
@@ -1394,25 +1481,40 @@ class ResultsView(QWidget):
         table.setSortingEnabled(False)
         table.setRowCount(len(filtered))
 
-        # Calculate padding for index column (once, before loop)
-        max_index = max((r.playlist_index for r in filtered), default=1) if filtered else 1
-        padding = len(str(max_index))
-
         for row, result in enumerate(filtered):
-            # Index (pad with zeros for proper string sorting: 001, 002, ..., 099, 100)
-            index_str = str(result.playlist_index).zfill(padding)
-            index_item = QTableWidgetItem(index_str)
+            # Index - display as number, sort numerically (1, 2, 3, ..., 10, 11, 12)
+            index_item = QTableWidgetItem(str(result.playlist_index))
             index_item.setData(
                 Qt.EditRole, result.playlist_index
-            )  # Store numeric value for sorting
+            )  # Store numeric value for proper numeric sorting
             index_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             table.setItem(row, 0, index_item)
 
-            # Title
+            # Original Title
             table.setItem(row, 1, QTableWidgetItem(result.title))
 
-            # Artist
+            # Original Artists
             table.setItem(row, 2, QTableWidgetItem(result.artist or ""))
+
+            # Beatport Title
+            beatport_title = result.beatport_title or ""
+            table.setItem(row, 3, QTableWidgetItem(beatport_title))
+
+            # Beatport Artists
+            beatport_artists = result.beatport_artists or ""
+            table.setItem(row, 4, QTableWidgetItem(beatport_artists))
+
+            # Key (regular key)
+            key_text = result.beatport_key or ""
+            table.setItem(row, 5, QTableWidgetItem(key_text))
+
+            # Camelot Key
+            camelot_key_text = result.beatport_key_camelot or ""
+            table.setItem(row, 6, QTableWidgetItem(camelot_key_text))
+
+            # Release Year
+            year_text = result.beatport_year or ""
+            table.setItem(row, 7, QTableWidgetItem(year_text))
 
             # Matched status
             matched_item = QTableWidgetItem("✓" if result.matched else "✗")
@@ -1421,46 +1523,24 @@ class ResultsView(QWidget):
                 matched_item.setForeground(Qt.darkGreen)
             else:
                 matched_item.setForeground(Qt.darkRed)
-            table.setItem(row, 3, matched_item)
-
-            # Beatport Title
-            beatport_title = result.beatport_title or ""
-            table.setItem(row, 4, QTableWidgetItem(beatport_title))
-
-            # Beatport Artist
-            beatport_artists = result.beatport_artists or ""
-            table.setItem(row, 5, QTableWidgetItem(beatport_artists))
+            table.setItem(row, 8, matched_item)
 
             # Score
             score_text = f"{result.match_score:.1f}" if result.match_score is not None else "N/A"
             score_item = QTableWidgetItem(score_text)
             score_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            table.setItem(row, 6, score_item)
+            table.setItem(row, 9, score_item)
 
             # Confidence
             confidence_text = result.confidence or ""
             confidence_item = QTableWidgetItem(
                 confidence_text.capitalize() if confidence_text else ""
             )
-            table.setItem(row, 7, confidence_item)
-
-            # Key (Camelot) - show Camelot notation, convert from regular key if needed
-            if result.beatport_key_camelot:
-                key_text = result.beatport_key_camelot
-            elif result.beatport_key:
-                # Convert regular key to Camelot if camelot key is not available
-                key_text = _camelot_key(result.beatport_key) or ""
-            else:
-                key_text = ""
-            table.setItem(row, 8, QTableWidgetItem(key_text))
+            table.setItem(row, 10, confidence_item)
 
             # BPM
             bpm_text = str(result.beatport_bpm) if result.beatport_bpm else ""
-            table.setItem(row, 9, QTableWidgetItem(bpm_text))
-
-            # Year
-            year_text = result.beatport_year or ""
-            table.setItem(row, 10, QTableWidgetItem(year_text))
+            table.setItem(row, 11, QTableWidgetItem(bpm_text))
 
         # Re-enable sorting
         table.setSortingEnabled(True)
@@ -2179,15 +2259,26 @@ class ResultsView(QWidget):
         # Emit signal
         self.result_updated.emit(playlist_index, result)
 
-        # Refresh table display
-        self._populate_table()
+        # Update only the affected row instead of repopulating entire table
+        # This is much faster and keeps UI responsive
+        self._update_table_row_for_result(result)
 
-        # Update summary
+        # Update summary (this is fast)
         self._update_summary()
 
-        QMessageBox.information(
-            self, "Candidate Selected", f"Updated match for:\n{result.title} - {result.artist}"
-        )
+        # Show non-blocking status message instead of blocking QMessageBox
+        # This keeps the UI responsive
+        try:
+            from PySide6.QtWidgets import QApplication
+            app = QApplication.instance()
+            if app:
+                # Use status bar or a non-blocking notification if available
+                # For now, just log it - user can see the table updated
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f"Candidate selected: {result.title} - {result.artist}")
+        except Exception:
+            pass
 
     def clear_filters(self) -> None:
         """Clear all filters to default values.

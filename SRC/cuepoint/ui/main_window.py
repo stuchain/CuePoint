@@ -1718,9 +1718,12 @@ class MainWindow(QMainWindow):
             self.update_manager.set_on_error(self._on_update_error)
             logger.info("Update manager callbacks set")
 
-            # Schedule startup check (after window is visible)
-            QTimer.singleShot(2000, self._check_for_updates_on_startup)
-            logger.info("Startup update check scheduled")
+            # Schedule startup check (after window is visible and fully initialized)
+            # Use a longer delay for packaged apps to ensure everything is ready
+            # Packaged apps may need more time for Qt initialization
+            delay_ms = 5000  # 5 seconds - gives time for window to be fully ready
+            QTimer.singleShot(delay_ms, self._check_for_updates_on_startup)
+            logger.info(f"Startup update check scheduled (delay: {delay_ms}ms)")
         except Exception as e:
             # Update system is best-effort
             logger.error(f"Could not set up update system: {e}", exc_info=True)
@@ -1746,9 +1749,19 @@ class MainWindow(QMainWindow):
 
                 if self.update_manager.preferences.get_check_frequency() == UpdatePreferences.CHECK_ON_STARTUP:
                     # Show update check dialog on startup (same as manual check)
+                    # First, ensure the main window is fully visible and ready
                     try:
-                        self.update_check_dialog = show_update_check_dialog(get_version(), self)
-                        self.update_check_dialog.set_checking()
+                        # Verify window is ready
+                        if not self.isVisible():
+                            logger.warning("Main window not visible yet, skipping startup update check")
+                            return
+                        
+                        # Small additional delay to ensure Qt event loop has processed
+                        from PySide6.QtCore import QTimer as QTimer2
+                        QTimer2.singleShot(500, lambda: self._do_startup_update_check())
+                    except Exception as dialog_error:
+                        logger.error(f"Error scheduling startup update check dialog: {dialog_error}", exc_info=True)
+                        # Don't crash the app if dialog fails
                         
                         # Start the check - use force=True to ensure check runs on startup
                         # (force=False would check _should_check() which returns False for CHECK_ON_STARTUP)
@@ -1767,6 +1780,36 @@ class MainWindow(QMainWindow):
         except Exception as fatal_error:
             # Catch-all to prevent any update-related code from crashing the app
             logger.error(f"Fatal error in startup update check: {fatal_error}", exc_info=True)
+    
+    def _do_startup_update_check(self) -> None:
+        """Actually perform the startup update check (called after delay)."""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        try:
+            if not hasattr(self, "update_manager") or not self.update_manager:
+                logger.debug("Update manager not available")
+                return
+            
+            from cuepoint.update.update_ui import show_update_check_dialog
+            from cuepoint.version import get_version
+            
+            # Show update check dialog on startup
+            try:
+                self.update_check_dialog = show_update_check_dialog(get_version(), self)
+                self.update_check_dialog.set_checking()
+                
+                # Start the check - use force=True to ensure check runs on startup
+                if self.update_manager.check_for_updates(force=True):
+                    logger.debug("Startup update check initiated")
+                else:
+                    if hasattr(self, "update_check_dialog") and self.update_check_dialog:
+                        self.update_check_dialog.set_error("Update check already in progress")
+            except Exception as dialog_error:
+                logger.error(f"Error showing update check dialog: {dialog_error}", exc_info=True)
+                # Don't crash the app if dialog fails
+        except Exception as e:
+            logger.error(f"Error in _do_startup_update_check: {e}", exc_info=True)
 
     def on_check_for_updates(self) -> None:
         """Check for updates manually via Help > Check for Updates (Step 5.5)."""
@@ -1823,7 +1866,8 @@ class MainWindow(QMainWindow):
         # This method should already be called on the main thread, but we add
         # a safety check that won't crash if it fails
         try:
-            from PySide6.QtCore import QThread, QApplication, QTimer
+            from PySide6.QtCore import QThread, QTimer
+            from PySide6.QtWidgets import QApplication
             app = QApplication.instance()
             if app is not None:
                 current_thread = QThread.currentThread()
@@ -2006,9 +2050,17 @@ class MainWindow(QMainWindow):
                 
                 logger.info(f"Update dialog result: {result}")
 
-            # Update status bar
+            # Update status bar (only if we're on main thread)
             try:
-                self.statusBar().showMessage(f"Update available: {new_version}", 5000)
+                from PySide6.QtCore import QThread
+                from PySide6.QtWidgets import QApplication
+                app = QApplication.instance()
+                if app and QThread.currentThread() == app.thread():
+                    self.statusBar().showMessage(f"Update available: {new_version}", 5000)
+                else:
+                    # Not on main thread - marshal to main thread
+                    from PySide6.QtCore import QTimer
+                    QTimer.singleShot(0, lambda: self.statusBar().showMessage(f"Update available: {new_version}", 5000))
             except Exception as status_error:
                 logger.warning(f"Could not update status bar: {status_error}")
         except Exception as e:

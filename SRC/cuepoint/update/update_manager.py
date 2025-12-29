@@ -65,6 +65,62 @@ class UpdateManager:
         self._on_check_complete: Optional[Callable[[bool, Optional[str]], None]] = None
         self._on_error: Optional[Callable[[str], None]] = None
     
+    def _ensure_receiver_created(self) -> None:
+        """Ensure callback receiver is created on main thread."""
+        try:
+            from PySide6.QtCore import QObject, Signal
+            from PySide6.QtWidgets import QApplication
+            
+            app = QApplication.instance()
+            if app is None:
+                return  # No Qt app, can't create receiver
+            
+            # Check if receiver already exists
+            if hasattr(app, '_callback_receiver'):
+                return
+            
+            # Create receiver on main thread (this method is called on main thread)
+            class CallbackReceiver(QObject):
+                # Signals for marshaling callbacks from background thread
+                update_available_signal = Signal(object)  # Signal takes a dict
+                check_complete_signal = Signal(bool, object)  # Signal takes (bool, error)
+                
+                def __init__(self, on_update_available, on_check_complete):
+                    super().__init__()
+                    self._on_update_available = on_update_available
+                    self._on_check_complete = on_check_complete
+                    
+                    # Connect signals to callbacks
+                    self.update_available_signal.connect(self._handle_update_available)
+                    self.check_complete_signal.connect(self._handle_check_complete)
+                
+                def _handle_update_available(self, update_info):
+                    """Handle update available callback on main thread."""
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    try:
+                        if self._on_update_available:
+                            self._on_update_available(update_info)
+                    except Exception as e:
+                        logger.error(f"Error in update_available callback: {e}", exc_info=True)
+                
+                def _handle_check_complete(self, has_update, error):
+                    """Handle check complete callback on main thread."""
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    try:
+                        if self._on_check_complete:
+                            self._on_check_complete(has_update, error)
+                    except Exception as e:
+                        logger.error(f"Error in check_complete callback: {e}", exc_info=True)
+            
+            # Create receiver with callbacks (will be updated when callbacks are set)
+            receiver = CallbackReceiver(self._on_update_available, self._on_check_complete)
+            app._callback_receiver = receiver
+        except (ImportError, Exception):
+            # Qt not available or error creating receiver - will use fallback
+            pass
+    
     def set_on_update_available(self, callback: Callable[[Dict], None]) -> None:
         """
         Set callback for when update is available.
@@ -73,6 +129,16 @@ class UpdateManager:
             callback: Function called with update info dict when update found
         """
         self._on_update_available = callback
+        # Update receiver if it exists, or create it
+        self._ensure_receiver_created()
+        # Update receiver callbacks
+        try:
+            from PySide6.QtWidgets import QApplication
+            app = QApplication.instance()
+            if app and hasattr(app, '_callback_receiver'):
+                app._callback_receiver._on_update_available = callback
+        except (ImportError, Exception):
+            pass
     
     def set_on_check_complete(self, callback: Callable[[bool, Optional[str]], None]) -> None:
         """
@@ -82,6 +148,16 @@ class UpdateManager:
             callback: Function called with (update_available: bool, error: Optional[str])
         """
         self._on_check_complete = callback
+        # Update receiver if it exists, or create it
+        self._ensure_receiver_created()
+        # Update receiver callbacks
+        try:
+            from PySide6.QtWidgets import QApplication
+            app = QApplication.instance()
+            if app and hasattr(app, '_callback_receiver'):
+                app._callback_receiver._on_check_complete = callback
+        except (ImportError, Exception):
+            pass
     
     def set_on_error(self, callback: Callable[[str], None]) -> None:
         """
@@ -177,10 +253,13 @@ class UpdateManager:
             else:
                 self.preferences.set_last_check_result("no_update")
             
-            # Call callbacks on main thread using QTimer
-            # This ensures UI updates happen on the correct thread
+            # Call callbacks on main thread
+            # CRITICAL: We're in a regular threading.Thread, not a QThread,
+            # so we can't use QTimer.singleShot(). Instead, we use Qt signals
+            # which are thread-safe and automatically marshal to the main thread.
             try:
-                from PySide6.QtCore import QTimer, QApplication
+                from PySide6.QtCore import QObject, Signal
+                from PySide6.QtWidgets import QApplication
                 
                 # Get QApplication instance to ensure we're in Qt context
                 app = QApplication.instance()
@@ -198,24 +277,37 @@ class UpdateManager:
                         except Exception as e:
                             logger.error(f"Error calling check complete callback: {e}")
                 else:
-                    # Use QTimer to schedule on main thread
+                    # Use receiver that was created on main thread (in set_on_update_available/set_on_check_complete)
+                    if not hasattr(app, '_callback_receiver'):
+                        # Receiver not created yet - this shouldn't happen if callbacks were set properly
+                        # Fallback: try direct call (may fail if not on main thread)
+                        logger.warning("Callback receiver not found, using direct call (may cause threading issues)")
+                        if update_info and self._on_update_available:
+                            try:
+                                self._on_update_available(update_info)
+                            except Exception as e:
+                                logger.error(f"Error in direct callback: {e}")
+                        if self._on_check_complete:
+                            try:
+                                self._on_check_complete(update_info is not None, None)
+                            except Exception as e:
+                                logger.error(f"Error in direct check_complete callback: {e}")
+                        return
+                    
+                    receiver = app._callback_receiver
+                    
                     # Capture update_info in closure to avoid reference issues
                     update_info_copy = update_info.copy() if update_info else None
                     
                     if update_info_copy and self._on_update_available:
                         logger.info(f"Scheduling update available callback on main thread (version: {update_info_copy.get('short_version')})")
-                        # Store callback reference to avoid closure issues
-                        callback_ref = self._on_update_available
-                        QTimer.singleShot(0, lambda info=update_info_copy: self._safe_call_callback(
-                            callback_ref, info, callback_name="update_available"
-                        ))
+                        # Emit signal from background thread - Qt will automatically marshal to main thread
+                        receiver.update_available_signal.emit(update_info_copy)
                     
                     if self._on_check_complete:
                         has_update = update_info is not None
-                        callback_ref = self._on_check_complete
-                        QTimer.singleShot(0, lambda has_upd=has_update: self._safe_call_callback(
-                            callback_ref, has_upd, None, callback_name="check_complete"
-                        ))
+                        # Emit signal from background thread - Qt will automatically marshal to main thread
+                        receiver.check_complete_signal.emit(has_update, None)
             except ImportError:
                 # Fallback if Qt not available (shouldn't happen in GUI app)
                 # This can happen in non-GUI contexts or unusual packaging environments.

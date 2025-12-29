@@ -362,6 +362,7 @@ if is_macos:
             'CFBundlePackageType': 'APPL',
             'CFBundleExecutable': app_name,
             'CFBundleIdentifier': 'com.stuchain.cuepoint',
+            'CFBundleIconFile': 'icon.icns',  # Icon file name (must be in Resources folder)
             'LSMinimumSystemVersion': '10.15',
             'NSHighResolutionCapable': True,
             'NSHumanReadableCopyright': 'Copyright © 2024 StuChain. All rights reserved.',

@@ -273,108 +273,159 @@ class UpdateCheckDialog(QDialog):
             current_version: Current application version
             parent: Parent widget
         """
-        super().__init__(parent)
-        self.current_version = current_version
-        self.update_info: Optional[Dict] = None
-        self._download_url: Optional[str] = None  # Store download URL for context menu
+        import logging
+        logger = logging.getLogger(__name__)
         
-        self._setup_ui()
+        try:
+            # Validate parent before passing to super()
+            if parent is not None:
+                try:
+                    # Quick validation that parent is a valid QWidget
+                    if not hasattr(parent, 'windowTitle'):
+                        logger.warning("Parent does not have windowTitle, using None")
+                        parent = None
+                except (RuntimeError, AttributeError):
+                    logger.warning("Parent widget validation failed, using None")
+                    parent = None
+            
+            super().__init__(parent)
+            self.current_version = current_version
+            self.update_info: Optional[Dict] = None
+            self._download_url: Optional[str] = None  # Store download URL for context menu
+            
+            self._setup_ui()
+        except Exception as e:
+            logger.error(f"Error in UpdateCheckDialog.__init__: {e}", exc_info=True)
+            # Try to complete initialization even if _setup_ui fails
+            try:
+                super().__init__(parent)
+                self.current_version = current_version
+                self.update_info = None
+                self._download_url = None
+            except:
+                raise
     
     def _setup_ui(self) -> None:
         """Setup dialog UI."""
-        self.setWindowTitle("Check for Updates")
-        self.setMinimumWidth(600)
-        self.setMinimumHeight(400)
-        self.setModal(False)  # Non-modal so it doesn't block
+        import logging
+        logger = logging.getLogger(__name__)
         
-        layout = QVBoxLayout(self)
-        layout.setSpacing(15)
-        layout.setContentsMargins(20, 20, 20, 20)
-        
-        # Title
-        title = QLabel("Checking for Updates")
-        title_font = title.font()
-        title_font.setPointSize(16)
-        title_font.setBold(True)
-        title.setFont(title_font)
-        layout.addWidget(title)
-        
-        # Current version section
-        current_group = QGroupBox("Current Version")
-        current_layout = QVBoxLayout()
-        from cuepoint.version import get_version_display_string, get_build_info
-        
-        current_version_label = QLabel(f"Version: {get_version_display_string()}")
-        current_version_label.setStyleSheet("font-size: 12px;")
-        current_layout.addWidget(current_version_label)
-        
-        build_info = get_build_info()
-        if build_info.get("build_date"):
-            build_date_label = QLabel(f"Built: {build_info['build_date']}")
-            build_date_label.setStyleSheet("font-size: 11px; color: #666;")
-            current_layout.addWidget(build_date_label)
-        
-        current_group.setLayout(current_layout)
-        layout.addWidget(current_group)
-        
-        # Status section
-        status_group = QGroupBox("Status")
-        status_layout = QVBoxLayout()
-        
-        self.status_label = QLabel("Initializing update check...")
-        self.status_label.setWordWrap(True)
-        self.status_label.setStyleSheet("font-size: 12px; padding: 5px;")
-        status_layout.addWidget(self.status_label)
-        
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setRange(0, 0)  # Indeterminate progress
-        self.progress_bar.setVisible(False)
-        status_layout.addWidget(self.progress_bar)
-        
-        status_group.setLayout(status_layout)
-        layout.addWidget(status_group)
-        
-        # Results section (initially hidden)
-        self.results_group = QGroupBox("Update Information")
-        results_layout = QVBoxLayout()
-        
-        self.results_label = QLabel()
-        self.results_label.setWordWrap(True)
-        self.results_label.setStyleSheet("font-size: 12px; padding: 5px;")
-        self.results_label.setOpenExternalLinks(False)  # We'll handle links manually for copy support
-        self.results_label.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.results_label.customContextMenuRequested.connect(self._on_results_label_context_menu)
-        results_layout.addWidget(self.results_label)
-        
-        self.details_text = QTextBrowser()
-        self.details_text.setMaximumHeight(150)
-        self.details_text.setReadOnly(True)
-        self.details_text.setVisible(False)
-        results_layout.addWidget(self.details_text)
-        
-        self.results_group.setLayout(results_layout)
-        self.results_group.setVisible(False)
-        layout.addWidget(self.results_group)
-        
-        # Buttons
-        button_box = QDialogButtonBox(Qt.Horizontal, self)
-        
-        self.close_button = QPushButton("Close")
-        self.close_button.setDefault(True)
-        button_box.addButton(self.close_button, QDialogButtonBox.AcceptRole)
-        
-        self.download_button = QPushButton("Download & Install")
-        self.download_button.setVisible(False)
-        self.download_button.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.download_button.customContextMenuRequested.connect(self._on_download_button_context_menu)
-        button_box.addButton(self.download_button, QDialogButtonBox.AcceptRole)
-        
-        layout.addWidget(button_box)
-        
-        # Connect signals
-        self.close_button.clicked.connect(self.accept)
-        # Note: download_button is connected by parent (main_window.py) after update is found
-        # We don't connect it here to avoid conflicts
+        try:
+            self.setWindowTitle("Check for Updates")
+            self.setMinimumWidth(600)
+            self.setMinimumHeight(400)
+            self.setModal(False)  # Non-modal so it doesn't block
+            
+            layout = QVBoxLayout(self)
+            layout.setSpacing(15)
+            layout.setContentsMargins(20, 20, 20, 20)
+            
+            # Title
+            title = QLabel("Checking for Updates")
+            title_font = title.font()
+            title_font.setPointSize(16)
+            title_font.setBold(True)
+            title.setFont(title_font)
+            layout.addWidget(title)
+            
+            # Current version section
+            current_group = QGroupBox("Current Version")
+            current_layout = QVBoxLayout()
+            
+            try:
+                from cuepoint.version import get_version_display_string, get_build_info
+                
+                current_version_label = QLabel(f"Version: {get_version_display_string()}")
+                current_version_label.setStyleSheet("font-size: 12px;")
+                current_layout.addWidget(current_version_label)
+                
+                build_info = get_build_info()
+                if build_info and build_info.get("build_date"):
+                    build_date_label = QLabel(f"Built: {build_info['build_date']}")
+                    build_date_label.setStyleSheet("font-size: 11px; color: #666;")
+                    current_layout.addWidget(build_date_label)
+            except Exception as version_error:
+                logger.warning(f"Could not get version info: {version_error}")
+                # Fallback: use current_version parameter
+                current_version_label = QLabel(f"Version: {self.current_version}")
+                current_version_label.setStyleSheet("font-size: 12px;")
+                current_layout.addWidget(current_version_label)
+            
+            current_group.setLayout(current_layout)
+            layout.addWidget(current_group)
+            
+            # Status section
+            status_group = QGroupBox("Status")
+            status_layout = QVBoxLayout()
+            
+            self.status_label = QLabel("Initializing update check...")
+            self.status_label.setWordWrap(True)
+            self.status_label.setStyleSheet("font-size: 12px; padding: 5px;")
+            status_layout.addWidget(self.status_label)
+            
+            self.progress_bar = QProgressBar()
+            self.progress_bar.setRange(0, 0)  # Indeterminate progress
+            self.progress_bar.setVisible(False)
+            status_layout.addWidget(self.progress_bar)
+            
+            status_group.setLayout(status_layout)
+            layout.addWidget(status_group)
+            
+            # Results section (initially hidden)
+            self.results_group = QGroupBox("Update Information")
+            results_layout = QVBoxLayout()
+            
+            self.results_label = QLabel()
+            self.results_label.setWordWrap(True)
+            self.results_label.setStyleSheet("font-size: 12px; padding: 5px;")
+            self.results_label.setOpenExternalLinks(False)  # We'll handle links manually for copy support
+            self.results_label.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+            self.results_label.customContextMenuRequested.connect(self._on_results_label_context_menu)
+            results_layout.addWidget(self.results_label)
+            
+            self.details_text = QTextBrowser()
+            self.details_text.setMaximumHeight(150)
+            self.details_text.setReadOnly(True)
+            self.details_text.setVisible(False)
+            results_layout.addWidget(self.details_text)
+            
+            self.results_group.setLayout(results_layout)
+            self.results_group.setVisible(False)
+            layout.addWidget(self.results_group)
+            
+            # Buttons
+            button_box = QDialogButtonBox(Qt.Horizontal, self)
+            
+            self.close_button = QPushButton("Close")
+            self.close_button.setDefault(True)
+            button_box.addButton(self.close_button, QDialogButtonBox.AcceptRole)
+            
+            self.download_button = QPushButton("Download & Install")
+            self.download_button.setVisible(False)
+            self.download_button.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+            self.download_button.customContextMenuRequested.connect(self._on_download_button_context_menu)
+            button_box.addButton(self.download_button, QDialogButtonBox.AcceptRole)
+            
+            layout.addWidget(button_box)
+            
+            # Connect signals
+            self.close_button.clicked.connect(self.accept)
+            # Note: download_button is connected by parent (main_window.py) after update is found
+            # We don't connect it here to avoid conflicts
+        except Exception as ui_error:
+            logger.error(f"Error in _setup_ui: {ui_error}", exc_info=True)
+            # Try to create minimal UI as fallback
+            try:
+                layout = QVBoxLayout(self)
+                error_label = QLabel(f"Error setting up update dialog: {str(ui_error)}")
+                error_label.setWordWrap(True)
+                layout.addWidget(error_label)
+                close_btn = QPushButton("Close")
+                close_btn.clicked.connect(self.close)
+                layout.addWidget(close_btn)
+            except Exception as fallback_error:
+                logger.error(f"Could not even create fallback UI: {fallback_error}", exc_info=True)
+                raise
     
     def set_status(self, message: str, show_progress: bool = False) -> None:
         """Update status message.
@@ -818,6 +869,63 @@ def show_update_check_dialog(
     Returns:
         UpdateCheckDialog instance (caller can update it)
     """
-    dialog = UpdateCheckDialog(current_version, parent)
-    dialog.show()  # Show non-modal
-    return dialog
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Validate parent if provided
+        if parent is not None:
+            try:
+                # Try to access a property to verify parent is valid
+                _ = parent.windowTitle()
+            except (RuntimeError, AttributeError):
+                logger.warning("Parent widget is invalid, creating dialog without parent")
+                parent = None
+        
+        # Create dialog with error handling
+        try:
+            dialog = UpdateCheckDialog(current_version, parent)
+        except Exception as create_error:
+            logger.error(f"Error creating UpdateCheckDialog: {create_error}", exc_info=True)
+            # Try creating without parent as fallback
+            try:
+                dialog = UpdateCheckDialog(current_version, None)
+            except Exception as fallback_error:
+                logger.error(f"Error creating UpdateCheckDialog even without parent: {fallback_error}", exc_info=True)
+                raise
+        
+        # Show dialog with error handling
+        try:
+            dialog.show()  # Show non-modal
+        except Exception as show_error:
+            logger.error(f"Error showing update check dialog: {show_error}", exc_info=True)
+            # Dialog was created but couldn't be shown - return it anyway
+            # The caller can try to show it later
+        
+        return dialog
+    except Exception as e:
+        logger.error(f"Fatal error in show_update_check_dialog: {e}", exc_info=True)
+        # Last resort: create a minimal dialog
+        try:
+            from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton
+            minimal_dialog = QDialog(parent)
+            minimal_dialog.setWindowTitle("Check for Updates")
+            layout = QVBoxLayout(minimal_dialog)
+            layout.addWidget(QLabel("Update check dialog could not be created."))
+            layout.addWidget(QLabel(f"Error: {str(e)}"))
+            btn = QPushButton("Close")
+            btn.clicked.connect(minimal_dialog.close)
+            layout.addWidget(btn)
+            minimal_dialog.show()
+            # Return a minimal wrapper that has the expected interface
+            class MinimalUpdateDialog:
+                def __init__(self, dialog):
+                    self._dialog = dialog
+                def set_checking(self): pass
+                def set_error(self, msg): pass
+                def set_update_found(self, info): pass
+                def set_no_update(self): pass
+            return MinimalUpdateDialog(minimal_dialog)
+        except Exception as minimal_error:
+            logger.error(f"Could not even create minimal dialog: {minimal_error}", exc_info=True)
+            raise
