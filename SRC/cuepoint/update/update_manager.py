@@ -218,7 +218,9 @@ class UpdateManager:
                         ))
             except ImportError:
                 # Fallback if Qt not available (shouldn't happen in GUI app)
-                logger.warning("PySide6 not available, using direct callback")
+                # This can happen in non-GUI contexts or unusual packaging environments.
+                # Don't spam users with a warning; fall back quietly.
+                logger.debug("PySide6 not available, using direct callback")
                 if update_info and self._on_update_available:
                     self._on_update_available(update_info)
                 if self._on_check_complete:

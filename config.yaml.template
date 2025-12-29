@@ -74,14 +74,30 @@ search:
   # Timeout for browser automation operations in seconds (default: 30)
   browser_timeout_sec: 30
 
+# DuckDuckGo (DDGS) Settings (legacy flat keys)
+# If DDG is blocked/slow on your network, set DDG_ENABLED: false to avoid timeouts.
+DDG_ENABLED: true
+DDG_TIMEOUT_SEC: 6
+DDG_PREFLIGHT_TIMEOUT_SEC: 1.5
+# DDG_REGION: us-en
+# DDG_PROXY: http://127.0.0.1:8888
+# DDG_VERIFY_SSL: true
+
 # Logging Settings
 # Control verbosity of output
 logging:
-  # Enable verbose logging (detailed progress information) (default: false)
-  verbose: false
+  # Enable verbose logging (detailed progress information) (default: true)
+  verbose: true
   
-  # Enable trace-level logging (shows every candidate evaluated) (default: false)
-  trace: false
+  # Enable trace-level logging (shows every candidate evaluated) (default: true)
+  trace: true
+
+# Debugging tip:
+# If you're seeing many lines like "q1 -> 0 candidates", temporarily set:
+#   logging.verbose: true
+#   logging.trace: true
+# CuePoint will then print which search strategies ran (direct search / browser / DDG),
+# their counts, and any exceptions (e.g., VPN/firewall blocking DuckDuckGo).
 
 # Determinism Settings
 # Control random seed for reproducible results

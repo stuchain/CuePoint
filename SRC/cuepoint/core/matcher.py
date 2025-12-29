@@ -923,9 +923,30 @@ def best_beatport_match(
             query_type=query_type,
         )
 
-        print(
-            f"[{idx}]   q{i} -> {len(urls)} candidates (raw={len(urls_all)}, MR={mr})", flush=True
-        )
+        # Candidate count logging:
+        # - Keep the concise summary always (existing behavior).
+        # - When VERBOSE/TRACE is enabled, also print the actual query text so it's
+        #   clear why some query variants return 0 candidates.
+        print(f"[{idx}]   q{i} -> {len(urls)} candidates (raw={len(urls_all)}, MR={mr})", flush=True)
+        if SETTINGS.get("TRACE") or SETTINGS.get("VERBOSE"):
+            try:
+                # Shorten for readability in console; full query is stored in queries_audit/queries_data.
+                q_disp = q if len(q) <= 200 else (q[:197] + "...")
+                print(f"[{idx}]     query: {q_disp}", flush=True)
+            except Exception:
+                # Never let diagnostics break processing
+                pass
+
+        # If we ended up with 0 candidates but had raw results, it usually means
+        # downstream filtering/deduplication/capping removed them. Print a hint in TRACE mode.
+        if (SETTINGS.get("TRACE") and len(urls) == 0 and len(urls_all) > 0):
+            try:
+                print(
+                    f"[{idx}]     note: raw results existed but 0 remained after cap/filter/dedupe",
+                    flush=True,
+                )
+            except Exception:
+                pass
 
         cand_index_map = {u: j for j, u in enumerate(urls, start=1)}
 

@@ -28,6 +28,8 @@ Example:
 import json
 import random
 import re
+import socket
+import ssl
 import time
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
@@ -77,14 +79,38 @@ def beatport_search_direct(idx: int, query: str, max_results: int) -> List[str]:
     """
     from cuepoint.data.beatport_search import beatport_search_direct as _impl
 
-    return _impl(idx, query, max_results)
+    # This wrapper exists so tests can patch this symbol. Also harden runtime:
+    # direct search can fail due to network blocks/captchas/HTML changes; treat that
+    # as a soft failure so other strategies (browser/DDG) can proceed.
+    try:
+        return _impl(idx, query, max_results)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"[{idx}] Direct Beatport search failed for query={query!r}: {e!r}", exc_info=True)
+        vlog(idx, f"[search] direct search exception: {e!r}")
+        return []
 
 
 def beatport_search_browser(idx: int, query: str, max_results: int) -> List[str]:
-    """Proxy to `cuepoint.data.beatport_search.beatport_search_browser`."""
-    from cuepoint.data.beatport_search import beatport_search_browser as _impl
+    """Proxy to `cuepoint.data.beatport_search.beatport_search_browser` (hardened)."""
+    try:
+        from cuepoint.data.beatport_search import beatport_search_browser as _impl
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(f"[{idx}] Browser automation not available: {e!r}")
+        vlog(idx, f"[search] browser automation not available: {e!r}")
+        return []
 
-    return _impl(idx, query, max_results)
+    try:
+        return _impl(idx, query, max_results)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"[{idx}] Browser automation failed for query={query!r}: {e!r}", exc_info=True)
+        vlog(idx, f"[search] browser automation exception: {e!r}")
+        return []
 
 # Cache hit tracking for performance metrics
 _last_cache_hit = False
@@ -609,6 +635,13 @@ def track_urls(
     Returns:
         List of Beatport track URLs
     """
+    diag_enabled = bool(SETTINGS.get("TRACE") or SETTINGS.get("VERBOSE"))
+    diag_steps: list[str] = []
+    def _diag(msg: str) -> None:
+        if diag_enabled:
+            diag_steps.append(msg)
+            vlog(idx, msg)
+
     # Check if we should use direct search
     if use_direct_search is None:
         # Auto-detect: use direct search for remix queries OR original mix queries (more reliable)
@@ -639,6 +672,18 @@ def track_urls(
             has_remix_keywords or has_original_mix
         )
 
+    # Global override: prefer direct Beatport search for ALL queries (not just remixes).
+    # This is the most reliable mode on networks where DuckDuckGo is blocked/slow.
+    if SETTINGS.get("PREFER_DIRECT_SEARCH", False):
+        _diag("[search] PREFER_DIRECT_SEARCH=true -> using direct search")
+        use_direct_search = True
+
+    # If DuckDuckGo is disabled (manually or automatically), force direct search so we
+    # still have a viable URL discovery path.
+    if not SETTINGS.get("DDG_ENABLED", True):
+        _diag("[search] DDG_ENABLED=false -> forcing direct search")
+        use_direct_search = True
+
     if use_direct_search:
         # Try direct Beatport search with multiple methods
         try:
@@ -659,6 +704,7 @@ def track_urls(
                     search_query = search_query.replace('"""', "").replace('"', "").replace("'", "")
 
             direct_urls = beatport_search_direct(idx, search_query, max_results)
+            _diag(f"[search] direct search -> {len(direct_urls)} urls (max_results={max_results})")
             # Clean query for remix detection - use search_query (already cleaned)
             # instead of original query
             clean_query_for_check = search_query.strip('"').strip("'").strip()
@@ -689,6 +735,7 @@ def track_urls(
                     )
                     browser_urls = beatport_search_browser(idx, search_query, max_results)
                     if browser_urls:
+                        _diag(f"[search] browser automation -> {len(browser_urls)} urls")
                         # Merge results (browser automation finds more, prepend its results)
                         seen = set(direct_urls)
                         merged = []
@@ -747,6 +794,7 @@ def track_urls(
                     browser_query = search_query if "search_query" in locals() else query
                     browser_urls = beatport_search_browser(idx, browser_query, max_results)
                     if browser_urls:
+                        _diag(f"[search] browser automation -> {len(browser_urls)} urls")
                         vlog(
                             idx,
                             f"[search] Browser automation found {len(browser_urls)} URLs",
@@ -773,12 +821,42 @@ def track_urls(
             # If both fail, fall through to DuckDuckGo
         except ImportError:
             # beatport_search module not available, fall through to DuckDuckGo
+            _diag("[search] direct search ImportError -> falling back to DDG")
             pass
         except Exception as e:
+            _diag(f"[search] direct search failed: {e!r} -> falling back to DDG")
             vlog(idx, f"[search] direct search failed: {e!r}, falling back to DuckDuckGo")
 
     # Fall back to DuckDuckGo
     ddg_urls = ddg_track_urls(idx, query, max_results)
+    _diag(f"[search] ddg_track_urls -> {len(ddg_urls)} urls (max_results={max_results})")
+
+    # If DDG returns nothing for a non-direct-search query, try direct search/browser as a fallback.
+    # This preserves DDG usage when it works, but prevents the "0 candidates everywhere" outcome
+    # on networks where DuckDuckGo is blocked/slow.
+    if not ddg_urls and not use_direct_search:
+        try:
+            # Reuse the same cleaning as direct search (strip site: prefix and quotes).
+            fallback_query = query
+            if "site:beatport.com" in query.lower():
+                parts = query.split("site:beatport.com", 1)
+                if len(parts) > 1:
+                    fallback_query = parts[1].strip()
+                    if fallback_query.startswith("/track"):
+                        fallback_query = fallback_query[6:].strip()
+                    fallback_query = fallback_query.strip().strip('"').strip("'")
+                    fallback_query = fallback_query.replace('"""', "").replace('"', "").replace("'", "")
+            direct_fallback = beatport_search_direct(idx, fallback_query, max_results)
+            _diag(f"[search] ddg empty -> direct fallback -> {len(direct_fallback)} urls")
+            if direct_fallback:
+                return direct_fallback[:max_results]
+            if SETTINGS.get("USE_BROWSER_AUTOMATION", False):
+                browser_fallback = beatport_search_browser(idx, fallback_query, max_results)
+                _diag(f"[search] ddg empty -> browser fallback -> {len(browser_fallback)} urls")
+                if browser_fallback:
+                    return browser_fallback[:max_results]
+        except Exception as e:
+            _diag(f"[search] ddg empty -> fallback failed: {e!r}")
 
     # CRITICAL: If DuckDuckGo finds many results (50+) but we're looking for a specific track,
     # try browser automation to find the exact track. This fixes cases like:
@@ -808,8 +886,8 @@ def track_urls(
             f"for better accuracy",
         )
         try:
-            from cuepoint.data.beatport_search import beatport_search_browser
-
+            # IMPORTANT: don't import into the local function scope here (it would shadow
+            # the top-level wrapper and can cause UnboundLocalError earlier in this function).
             browser_urls = beatport_search_browser(idx, query, max_results)
             if browser_urls:
                 # Merge browser results with DDG results
@@ -844,6 +922,17 @@ def track_urls(
         except Exception as e:
             vlog(idx, f"[search] Browser fallback failed: {e!r}")
 
+    if diag_enabled and not ddg_urls:
+        # High-signal summary for the "everything returned 0" case.
+        vlog(
+            idx,
+            "[search] 0 candidates summary: "
+            f"use_direct_search={use_direct_search}, "
+            f"DDG_ENABLED={SETTINGS.get('DDG_ENABLED', True)}, "
+            f"PREFER_DIRECT_SEARCH={SETTINGS.get('PREFER_DIRECT_SEARCH', False)}, "
+            f"USE_BROWSER_AUTOMATION={SETTINGS.get('USE_BROWSER_AUTOMATION', False)}",
+        )
+
     return ddg_urls
 
 
@@ -874,6 +963,51 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
           the app falls back to other search methods (direct Beatport search,
           browser automation).
     """
+    # Allow users to disable DDG entirely.
+    if not SETTINGS.get("DDG_ENABLED", True):
+        vlog(idx, "[search] DuckDuckGo disabled - skipping DDG and using fallbacks")
+        return []
+
+    # Fast preflight: if we can't even establish a quick TCP connection to DuckDuckGo,
+    # don't wait for ddgs/httpx timeouts. This avoids long stalls on networks where DDG
+    # is blocked by VPN/firewall/DNS.
+    try:
+        preflight_timeout = float(SETTINGS.get("DDG_PREFLIGHT_TIMEOUT_SEC", 1.5))
+    except Exception:
+        preflight_timeout = 1.5
+    try:
+        # DNS + TCP + TLS handshake (fast). If any step fails, skip DDG immediately.
+        raw_sock = socket.create_connection(("duckduckgo.com", 443), timeout=preflight_timeout)
+        try:
+            ctx = ssl.create_default_context()
+            tls_sock = ctx.wrap_socket(raw_sock, server_hostname="duckduckgo.com")
+            try:
+                tls_sock.settimeout(preflight_timeout)
+                # Force handshake now (some platforms defer it).
+                tls_sock.do_handshake()
+            finally:
+                try:
+                    tls_sock.close()
+                except Exception:
+                    pass
+        finally:
+            try:
+                raw_sock.close()
+            except Exception:
+                pass
+    except Exception as e:
+        # Don't auto-disable DDG globally; just skip DDG for this call.
+        # This keeps behavior stable across runs and avoids noisy warnings.
+        # If user wants to disable DDG entirely, they can set DDG_ENABLED=false.
+        if SETTINGS.get("TRACE") or SETTINGS.get("VERBOSE"):
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.debug(
+                "DuckDuckGo preflight failed (network/DNS/TCP/TLS). Skipping DDG for this query. "
+                f"Reason: {e!r}"
+            )
+        return []
+
     urls: List[str] = []
     mr = max_results if max_results and max_results > 0 else 60
     ql = (query or "").lower()
@@ -917,11 +1051,17 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
             f"site:beatport.com {query}",  # Broader search last
         ]
 
+    ddg_timeout = SETTINGS.get("DDG_TIMEOUT_SEC", 12)
+    ddg_region = SETTINGS.get("DDG_REGION", "us-en")
+    ddg_proxy = SETTINGS.get("DDG_PROXY", None)
+    ddg_verify = SETTINGS.get("DDG_VERIFY_SSL", True)
+    timed_out = False
+
     try:
         # CRITICAL: Wrap DDGS context manager with timeout protection
         # In packaged apps, DuckDuckGo searches can timeout and hang parallel processing
         # We need to ensure this function doesn't block indefinitely
-        with DDGS() as ddgs:
+        with DDGS(proxy=ddg_proxy, timeout=ddg_timeout, verify=ddg_verify) as ddgs:
             for search_q in search_queries:
                 try:
                     # CRITICAL: If DuckDuckGo times out, this iterator will raise TimeoutException
@@ -931,7 +1071,7 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                     # Note: In packaged apps, ddgs.text() may hang even if it should timeout.
                     # We rely on the exception handling below to catch any timeouts and continue.
                     # If this still hangs, the parallel processing timeout (90s) will catch it.
-                    for r in ddgs.text(search_q, region="us-en", max_results=mr):
+                    for r in ddgs.text(search_q, region=ddg_region, max_results=mr):
                         href = r.get("href") or r.get("url") or ""
                         if "beatport.com/track/" in href:
                             urls.append(href)
@@ -968,10 +1108,16 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                         # In packaged apps, DuckDuckGo searches often timeout due to network/firewall issues
                         # Log at info level (not warning) since this is expected in some environments
                         # Continue to next query - don't let timeout block processing
+                        timed_out = True
                         logger.info(
                             f"[{idx}] DuckDuckGo search timeout for '{search_q}' (will use fallback methods): {e!r}"
                         )
                         vlog(idx, f"[search] ddgs timeout (will use fallback): {e!r}")
+                        # If the timeout looks like a TLS handshake/connect timeout, continuing to
+                        # retry DDG is usually wasted time. Break early for this query.
+                        emsg = str(e).lower()
+                        if "handshake operation timed out" in emsg or "connecttimeout" in emsg:
+                            break
                     elif is_ddgs_exception:
                         # This is a known issue with ddgs package (v9.9.3) - DuckDuckGo HTML structure changed
                         # The package tries to parse HTML and encounters IndexError when structure differs
@@ -1011,7 +1157,9 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
             seen.add(u)
             out.append(u)
 
-    # Enhanced fallback: when we don't find the expected track, try broader searches
+    # Enhanced fallback: when we don't find the expected track, try broader searches.
+    # IMPORTANT: If DDG is timing out (especially TLS handshake/connect), don't re-enter DDGS()
+    # again here — let other strategies handle it.
     try:
         LOW_TRACK_THRESHOLD = 4
         ql = (query or "").lower().strip()
@@ -1025,7 +1173,7 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                 needs_fallback = True
 
         # More aggressive fallback for specific cases
-        if needs_fallback and (" " in ql):
+        if needs_fallback and (" " in ql) and (not timed_out) and SETTINGS.get("DDG_ENABLED", True):
             extra_pages: list[str] = []
 
             # Try broader searches
@@ -1036,10 +1184,10 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
             ]
 
             try:
-                with DDGS() as ddgs:
+                with DDGS(proxy=ddg_proxy, timeout=ddg_timeout, verify=ddg_verify) as ddgs:
                     for fallback_q in fallback_queries:
                         try:
-                            for r in ddgs.text(fallback_q, region="us-en", max_results=20):
+                            for r in ddgs.text(fallback_q, region=ddg_region, max_results=20):
                                 href = r.get("href") or r.get("url") or ""
                                 if href and "beatport.com" in href:
                                     extra_pages.append(href)

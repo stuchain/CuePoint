@@ -10,47 +10,44 @@
 # (excluding test dependencies) to ensure the packaged app works correctly.
 
 # GUI Framework (required for GUI application)
-# Updated to 6.8.3 for Python 3.13 compatibility (6.5.0 only supports up to Python 3.12)
-PySide6==6.8.3
+PySide6==6.10.1
 
 # HTTP requests and web scraping
-requests==2.32.4
-aiohttp==3.13.0
-beautifulsoup4==4.12.0
+requests==2.32.5
+aiohttp==3.13.2
+beautifulsoup4==4.14.3
 
 # DuckDuckGo search integration
-ddgs==9.9.1
+ddgs==9.0.0
 
 # Fuzzy string matching for track/artist similarity
-rapidfuzz==3.0.0
+rapidfuzz==3.14.3
 
 # Date parsing for release dates
-python-dateutil==2.8.0
+python-dateutil==2.9.0.post0
 
 # YAML configuration file support
-# Updated to 6.0.2 for Python 3.13 compatibility (6.0 has build issues with Python 3.13)
-pyyaml==6.0.2
+pyyaml==6.0.3
 
 # Progress bars for better user experience
-tqdm==4.66.3
+tqdm==4.67.1
 
 # HTTP response caching (enabled by default)
 # Speeds up repeated runs by caching Beatport page responses
-requests-cache==1.1.0
+requests-cache==1.2.1
 
 # Browser automation for JavaScript-rendered content
 # Playwright (recommended - faster, more modern)
 # Note: Browser binaries are installed separately via `playwright install chromium`
-# Updated to 1.48.0 for Python 3.13 compatibility (1.40.0 uses greenlet 3.0.1 which doesn't build with Python 3.13)
-playwright==1.48.0
+playwright==1.57.0
 
 # Selenium (alternative browser automation)
 # Also need ChromeDriver or GeckoDriver in PATH (not bundled)
-selenium==4.15.0
+selenium==4.39.0
 
 # Excel export support (for GUI export functionality)
-openpyxl==3.1.0
+openpyxl==3.1.5
 
-# Image processing for icon generation (build-time dependency)
-Pillow>=9.0.0
+# Build tool (PyInstaller for packaging)
+pyinstaller==6.17.0
 

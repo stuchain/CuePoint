@@ -13,10 +13,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Set up Python
+      - name: Set up Python (pinned)
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: '3.13.7'
           cache: 'pip'
       
       - name: Install dependencies
@@ -46,36 +46,8 @@ jobs:
           
           pip install -r requirements-build.txt
           
-          echo "Installing PyInstaller (build tool)..."
-          # Use latest PyInstaller for Python 3.13 compatibility (6.10.0+ required)
-          pip install --upgrade pyinstaller
-          echo "PyInstaller version:"
+          echo "PyInstaller version (pinned from requirements-build.txt):"
           pyinstaller --version
-          
-          # Verify PyInstaller version is >= 6.10.0 (required for Python 3.13 support)
-          PYINSTALLER_VERSION=$(pyinstaller --version 2>&1 | head -n1 | tr -d ' ')
-          echo "Checking PyInstaller version: $PYINSTALLER_VERSION"
-          # Extract version number (e.g., "6.10.0" from "6.10.0" or "6.10.0.dev0")
-          VERSION_NUM=$(echo "$PYINSTALLER_VERSION" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n1)
-          if [ -z "$VERSION_NUM" ]; then
-            echo "Error: Could not parse PyInstaller version from: $PYINSTALLER_VERSION"
-            exit 1
-          fi
-          echo "Parsed version: $VERSION_NUM"
-          # Compare version using Python (packaging is usually available, but use simple comparison as fallback)
-          echo "import sys" > /tmp/check_pyinstaller.py
-          echo "v = sys.argv[1].split('.')" >> /tmp/check_pyinstaller.py
-          echo "major, minor, patch = int(v[0]), int(v[1]), int(v[2])" >> /tmp/check_pyinstaller.py
-          echo "required = (6, 10, 0)" >> /tmp/check_pyinstaller.py
-          echo "if (major, minor, patch) < required:" >> /tmp/check_pyinstaller.py
-          echo "    print(f'Error: PyInstaller {major}.{minor}.{patch} is too old. Need >= 6.10.0 for Python 3.13 support.')" >> /tmp/check_pyinstaller.py
-          echo "    sys.exit(1)" >> /tmp/check_pyinstaller.py
-          echo "print(f'✅ PyInstaller version {major}.{minor}.{patch} meets requirement (>= 6.10.0)')" >> /tmp/check_pyinstaller.py
-          python /tmp/check_pyinstaller.py "$VERSION_NUM" || {
-            echo "Error: PyInstaller version must be >= 6.10.0 for Python 3.13 support"
-            exit 1
-          }
-          rm -f /tmp/check_pyinstaller.py
           
           echo "Installing Playwright browsers (for testing, not bundled)..."
           python -m playwright install chromium

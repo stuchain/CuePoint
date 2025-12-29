@@ -83,8 +83,8 @@ SETTINGS = {
     # ========================================================================
     # LOGGING SETTINGS
     # ========================================================================
-    "VERBOSE": False,  # Enable verbose logging (detailed progress information)
-    "TRACE": False,  # Enable trace-level logging (shows every candidate evaluated)
+    "VERBOSE": True,  # Enable verbose logging (detailed progress information)
+    "TRACE": True,  # Enable trace-level logging (shows every candidate evaluated)
     # ========================================================================
     # NETWORK & CACHING SETTINGS
     # ========================================================================
@@ -112,6 +112,18 @@ SETTINGS = {
     # Enabled by default for maximum reliability (was False)
     "BROWSER_TIMEOUT_SEC": 30,  # Timeout for browser automation operations in seconds
     # How long to wait for page to load in browser
+    # ========================================================================
+    # DUCKDUCKGO (DDGS) SETTINGS
+    # ========================================================================
+    # DuckDuckGo search is used to discover Beatport URLs. On some networks
+    # (VPN/corporate firewall), DuckDuckGo can be blocked or very slow, causing
+    # TLS handshake/connect timeouts. These settings allow tuning or disabling.
+    "DDG_ENABLED": True,  # If False, skip DDG entirely and rely on direct search/browser
+    "DDG_TIMEOUT_SEC": 6,  # ddgs "overall" timeout in seconds (lower = fail fast on blocked networks)
+    "DDG_PREFLIGHT_TIMEOUT_SEC": 1.5,  # quick TCP preflight timeout to avoid long DDG hangs when blocked
+    "DDG_REGION": "us-en",  # ddgs region string
+    "DDG_PROXY": None,  # Optional proxy URL for ddgs (otherwise ddgs uses env var DDGS_PROXY)
+    "DDG_VERIFY_SSL": True,  # bool or path to PEM file for ddgs verify
     # ========================================================================
     # EARLY EXIT SETTINGS (Performance Optimization)
     # ========================================================================

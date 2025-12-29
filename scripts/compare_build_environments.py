@@ -63,8 +63,8 @@ def print_build_info():
     print("-" * 70)
     print("1. Python Version:")
     print(f"   - Current: {info['python_version_info'].major}.{info['python_version_info'].minor}")
-    print("   - GitHub Actions: 3.11")
-    print("   - Local (from your build): 3.13")
+    print("   - GitHub Actions (pinned): 3.13.7")
+    print("   - Local (recommended): 3.13.7")
     print("   → This could affect PyInstaller behavior")
     
     print("\n2. Build Type:")
