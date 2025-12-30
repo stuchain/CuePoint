@@ -16,53 +16,88 @@ from cuepoint.update.update_checker import UpdateChecker, UpdateCheckError
 from cuepoint.update.update_preferences import UpdatePreferences
 from cuepoint.update.version_utils import compare_versions
 
-# Define CallbackReceiver class at module level to avoid issues with Signal definitions
-# This ensures Qt signals are properly registered
-try:
-    from PySide6.QtCore import QObject, Signal
-    from PySide6.QtWidgets import QApplication
+# Lazy definition of CallbackReceiver to avoid Qt initialization issues in packaged apps
+# We'll define it when needed, after Qt is confirmed to be initialized
+_CallbackReceiverClass = None
+QT_AVAILABLE = False
+
+def _get_callback_receiver_class():
+    """Get or create the CallbackReceiver class, ensuring Qt is initialized first."""
+    global _CallbackReceiverClass, QT_AVAILABLE
     
-    class CallbackReceiver(QObject):
-        """QObject for marshaling callbacks from background threads to main thread."""
-        # Signals for marshaling callbacks from background thread
-        update_available_signal = Signal(object)  # Signal takes a dict
-        check_complete_signal = Signal(bool, object)  # Signal takes (bool, error)
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    if _CallbackReceiverClass is not None:
+        logger.debug("CallbackReceiver class already created, returning cached class")
+        return _CallbackReceiverClass
+    
+    logger.info("Creating CallbackReceiver class (lazy initialization)...")
+    try:
+        logger.debug("  - Importing Qt modules...")
+        from PySide6.QtCore import QObject, Signal
+        from PySide6.QtWidgets import QApplication
+        logger.debug("  ✓ Qt modules imported")
         
-        def __init__(self, on_update_available, on_check_complete):
-            super().__init__()
-            self._on_update_available = on_update_available
-            self._on_check_complete = on_check_complete
+        # Verify Qt is initialized before defining Signal classes
+        logger.debug("  - Checking QApplication instance...")
+        app = QApplication.instance()
+        if app is None:
+            # Qt not initialized yet - return None
+            logger.warning("  ✗ QApplication instance not found, cannot create CallbackReceiver")
+            return None
+        logger.info(f"  ✓ QApplication instance found: {app}")
+        
+        logger.debug("  - Defining CallbackReceiver class with Signal definitions...")
+        class CallbackReceiver(QObject):
+            """QObject for marshaling callbacks from background threads to main thread."""
+            # Signals for marshaling callbacks from background thread
+            update_available_signal = Signal(object)  # Signal takes a dict
+            check_complete_signal = Signal(bool, object)  # Signal takes (bool, error)
             
-            # Connect signals to callbacks
-            self.update_available_signal.connect(self._handle_update_available)
-            self.check_complete_signal.connect(self._handle_check_complete)
+            def __init__(self, on_update_available, on_check_complete):
+                super().__init__()
+                self._on_update_available = on_update_available
+                self._on_check_complete = on_check_complete
+                
+                # Connect signals to callbacks
+                self.update_available_signal.connect(self._handle_update_available)
+                self.check_complete_signal.connect(self._handle_check_complete)
+            
+            def _handle_update_available(self, update_info):
+                """Handle update available callback on main thread."""
+                import logging
+                logger = logging.getLogger(__name__)
+                try:
+                    if self._on_update_available:
+                        self._on_update_available(update_info)
+                except Exception as e:
+                    logger.error(f"Error in update_available callback: {e}", exc_info=True)
+            
+            def _handle_check_complete(self, has_update, error):
+                """Handle check complete callback on main thread."""
+                import logging
+                logger = logging.getLogger(__name__)
+                try:
+                    if self._on_check_complete:
+                        self._on_check_complete(has_update, error)
+                except Exception as e:
+                    logger.error(f"Error in check_complete callback: {e}", exc_info=True)
         
-        def _handle_update_available(self, update_info):
-            """Handle update available callback on main thread."""
-            import logging
-            logger = logging.getLogger(__name__)
-            try:
-                if self._on_update_available:
-                    self._on_update_available(update_info)
-            except Exception as e:
-                logger.error(f"Error in update_available callback: {e}", exc_info=True)
-        
-        def _handle_check_complete(self, has_update, error):
-            """Handle check complete callback on main thread."""
-            import logging
-            logger = logging.getLogger(__name__)
-            try:
-                if self._on_check_complete:
-                    self._on_check_complete(has_update, error)
-            except Exception as e:
-                logger.error(f"Error in check_complete callback: {e}", exc_info=True)
-    
-    QT_AVAILABLE = True
-except ImportError:
-    # Qt not available - define a dummy class
-    class CallbackReceiver:
-        pass
-    QT_AVAILABLE = False
+        _CallbackReceiverClass = CallbackReceiver
+        QT_AVAILABLE = True
+        logger.info("  ✓ CallbackReceiver class created successfully")
+        return _CallbackReceiverClass
+    except ImportError as import_error:
+        # Qt not available
+        logger.warning(f"  ✗ Qt modules not available: {import_error}")
+        QT_AVAILABLE = False
+        return None
+    except Exception as e:
+        # Any other error - log and return None
+        logger.error(f"  ✗ Could not create CallbackReceiver class: {e}", exc_info=True)
+        QT_AVAILABLE = False
+        return None
 
 
 class UpdateManager:
@@ -115,29 +150,43 @@ class UpdateManager:
     
     def _ensure_receiver_created(self) -> None:
         """Ensure callback receiver is created on main thread."""
-        if not QT_AVAILABLE:
-            return  # Qt not available, can't create receiver
+        import logging
+        logger = logging.getLogger(__name__)
         
+        logger.debug("_ensure_receiver_created: Starting...")
         try:
             from PySide6.QtWidgets import QApplication
             
+            logger.debug("  - Getting QApplication instance...")
             app = QApplication.instance()
             if app is None:
+                logger.warning("  ✗ QApplication instance not found, cannot create receiver")
                 return  # No Qt app, can't create receiver
+            logger.debug(f"  ✓ QApplication instance found: {app}")
+            
+            # Get CallbackReceiver class (lazy initialization)
+            logger.debug("  - Getting CallbackReceiver class...")
+            CallbackReceiverClass = _get_callback_receiver_class()
+            if CallbackReceiverClass is None:
+                logger.warning("  ✗ CallbackReceiver class not available, cannot create receiver")
+                return  # Can't create receiver class
+            logger.debug(f"  ✓ CallbackReceiver class obtained: {CallbackReceiverClass}")
             
             # Check if receiver already exists
+            logger.debug("  - Checking if receiver already exists...")
             if hasattr(app, '_callback_receiver'):
+                logger.debug("  ✓ CallbackReceiver already exists, skipping creation")
                 return
+            logger.debug("  - No existing receiver found, creating new one...")
             
             # Create receiver on main thread (this method is called on main thread)
-            # Use the module-level CallbackReceiver class
-            receiver = CallbackReceiver(self._on_update_available, self._on_check_complete)
+            logger.info("  - Creating CallbackReceiver instance...")
+            receiver = CallbackReceiverClass(self._on_update_available, self._on_check_complete)
             app._callback_receiver = receiver
+            logger.info(f"  ✓ CallbackReceiver created and attached to QApplication: {receiver}")
         except Exception as e:
             # Error creating receiver - log but don't crash
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.warning(f"Could not create callback receiver: {e}", exc_info=True)
+            logger.error(f"  ✗ Could not create callback receiver: {e}", exc_info=True)
     
     def set_on_update_available(self, callback: Callable[[Dict], None]) -> None:
         """

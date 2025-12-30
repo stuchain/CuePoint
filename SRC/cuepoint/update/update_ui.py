@@ -276,33 +276,51 @@ class UpdateCheckDialog(QDialog):
         import logging
         logger = logging.getLogger(__name__)
         
+        logger.info("UpdateCheckDialog.__init__ - Starting initialization...")
+        logger.info(f"  - Current version: {current_version}")
+        logger.info(f"  - Parent: {parent} (type: {type(parent) if parent else None})")
+        
         try:
             # Validate parent before passing to super()
+            logger.debug("  - Validating parent widget...")
             if parent is not None:
                 try:
                     # Quick validation that parent is a valid QWidget
                     if not hasattr(parent, 'windowTitle'):
-                        logger.warning("Parent does not have windowTitle, using None")
+                        logger.warning("  ✗ Parent does not have windowTitle, using None")
                         parent = None
-                except (RuntimeError, AttributeError):
-                    logger.warning("Parent widget validation failed, using None")
+                    else:
+                        logger.debug(f"  ✓ Parent has windowTitle: '{parent.windowTitle()}'")
+                except (RuntimeError, AttributeError) as parent_error:
+                    logger.warning(f"  ✗ Parent widget validation failed: {parent_error}, using None")
                     parent = None
+            else:
+                logger.debug("  - No parent provided")
             
+            logger.debug("  - Calling super().__init__(parent)...")
             super().__init__(parent)
+            logger.debug("  ✓ super().__init__() completed")
+            
             self.current_version = current_version
             self.update_info: Optional[Dict] = None
             self._download_url: Optional[str] = None  # Store download URL for context menu
+            logger.debug("  ✓ Instance variables initialized")
             
+            logger.debug("  - Calling _setup_ui()...")
             self._setup_ui()
+            logger.info("  ✓ UpdateCheckDialog initialization completed successfully")
         except Exception as e:
-            logger.error(f"Error in UpdateCheckDialog.__init__: {e}", exc_info=True)
+            logger.error(f"  ✗ Error in UpdateCheckDialog.__init__: {e}", exc_info=True)
             # Try to complete initialization even if _setup_ui fails
+            logger.info("  - Attempting fallback initialization...")
             try:
                 super().__init__(parent)
                 self.current_version = current_version
                 self.update_info = None
                 self._download_url = None
-            except:
+                logger.info("  ✓ Fallback initialization completed")
+            except Exception as fallback_error:
+                logger.error(f"  ✗ Fallback initialization also failed: {fallback_error}", exc_info=True)
                 raise
     
     def _setup_ui(self) -> None:
@@ -872,39 +890,68 @@ def show_update_check_dialog(
     import logging
     logger = logging.getLogger(__name__)
     
+    logger.info("=" * 60)
+    logger.info("SHOW UPDATE CHECK DIALOG - Starting dialog creation")
+    logger.info("=" * 60)
+    logger.info(f"  - Current version: {current_version}")
+    logger.info(f"  - Parent: {parent} (type: {type(parent) if parent else None})")
+    
     try:
         # Validate parent if provided
+        logger.info("Step 1: Validating parent widget...")
         if parent is not None:
             try:
                 # Try to access a property to verify parent is valid
-                _ = parent.windowTitle()
-            except (RuntimeError, AttributeError):
-                logger.warning("Parent widget is invalid, creating dialog without parent")
+                parent_title = parent.windowTitle()
+                logger.info(f"  ✓ Parent is valid (windowTitle: '{parent_title}')")
+                logger.info(f"  - Parent visible: {parent.isVisible()}")
+                logger.info(f"  - Parent geometry: {parent.geometry()}")
+            except (RuntimeError, AttributeError) as parent_error:
+                logger.warning(f"  ✗ Parent widget is invalid: {parent_error}, creating dialog without parent")
                 parent = None
+        else:
+            logger.info("  - No parent provided, creating dialog without parent")
         
         # Create dialog with error handling
+        logger.info("Step 2: Creating UpdateCheckDialog instance...")
         try:
             dialog = UpdateCheckDialog(current_version, parent)
+            logger.info(f"  ✓ UpdateCheckDialog created successfully: {dialog}")
+            logger.info(f"  - Dialog type: {type(dialog)}")
+            logger.info(f"  - Dialog windowTitle: {dialog.windowTitle()}")
         except Exception as create_error:
-            logger.error(f"Error creating UpdateCheckDialog: {create_error}", exc_info=True)
+            logger.error(f"  ✗ Error creating UpdateCheckDialog: {create_error}", exc_info=True)
             # Try creating without parent as fallback
+            logger.info("  - Attempting fallback: creating dialog without parent...")
             try:
                 dialog = UpdateCheckDialog(current_version, None)
+                logger.info(f"  ✓ Fallback dialog created successfully: {dialog}")
             except Exception as fallback_error:
-                logger.error(f"Error creating UpdateCheckDialog even without parent: {fallback_error}", exc_info=True)
+                logger.error(f"  ✗ Error creating UpdateCheckDialog even without parent: {fallback_error}", exc_info=True)
                 raise
         
         # Show dialog with error handling
+        logger.info("Step 3: Showing dialog...")
         try:
             dialog.show()  # Show non-modal
+            logger.info(f"  ✓ Dialog shown successfully")
+            logger.info(f"  - Dialog visible: {dialog.isVisible()}")
+            logger.info(f"  - Dialog modal: {dialog.isModal()}")
+            logger.info(f"  - Dialog geometry: {dialog.geometry()}")
         except Exception as show_error:
-            logger.error(f"Error showing update check dialog: {show_error}", exc_info=True)
+            logger.error(f"  ✗ Error showing update check dialog: {show_error}", exc_info=True)
             # Dialog was created but couldn't be shown - return it anyway
             # The caller can try to show it later
         
+        logger.info("=" * 60)
+        logger.info("SHOW UPDATE CHECK DIALOG - Completed successfully")
+        logger.info("=" * 60)
         return dialog
     except Exception as e:
-        logger.error(f"Fatal error in show_update_check_dialog: {e}", exc_info=True)
+        logger.error("=" * 60)
+        logger.error(f"SHOW UPDATE CHECK DIALOG - Fatal error: {e}", exc_info=True)
+        logger.error("=" * 60)
+        raise
         # Last resort: create a minimal dialog
         try:
             from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton

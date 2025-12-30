@@ -1698,48 +1698,121 @@ class MainWindow(QMainWindow):
     def _setup_update_system(self) -> None:
         """Set up update system (Step 5.5)."""
         import logging
+        import sys
         logger = logging.getLogger(__name__)
         
+        logger.info("=" * 60)
+        logger.info("UPDATE SYSTEM SETUP - Starting initialization")
+        logger.info("=" * 60)
+        
+        # For packaged apps, be extra defensive - if anything fails, disable update system
+        is_frozen = getattr(sys, 'frozen', False)
+        logger.info(f"Environment: frozen={is_frozen}, executable={sys.executable}")
+        
         try:
+            # First, verify Qt is fully initialized before proceeding
+            logger.info("Step 1: Verifying Qt initialization...")
+            from PySide6.QtWidgets import QApplication
+            from PySide6.QtCore import QTimer  # Import QTimer unconditionally (already imported at top, but ensure it's available)
+            app = QApplication.instance()
+            if app is None:
+                logger.warning("QApplication not initialized, skipping update system setup")
+                self.update_manager = None
+                return
+            logger.info(f"✓ QApplication instance found: {app}")
+            
+            # For frozen apps, add extra validation
+            if is_frozen:
+                logger.info("Step 2: Running Qt validation for frozen app...")
+                # Verify we can import Qt modules and create objects
+                try:
+                    from PySide6.QtCore import QObject, Signal
+                    # Test creating a simple QObject to verify Qt is working
+                    test_obj = QObject()
+                    del test_obj
+                    logger.info("✓ Qt validation passed for frozen app")
+                except Exception as qt_error:
+                    logger.error(f"✗ Qt validation failed in frozen app: {qt_error}", exc_info=True)
+                    self.update_manager = None
+                    return  # Don't proceed if Qt isn't working
+            else:
+                logger.info("Step 2: Skipping Qt validation (not frozen)")
+            
+            logger.info("Step 3: Importing update system modules...")
             from cuepoint.update.update_manager import UpdateManager
             from cuepoint.update.update_ui import show_update_dialog, show_update_error_dialog
             from cuepoint.version import get_version
+            logger.info("✓ Update system modules imported")
 
             current_version = get_version()
             feed_url = "https://stuchain.github.io/CuePoint/updates"
+            logger.info(f"Step 4: Creating UpdateManager (version={current_version}, feed={feed_url})...")
 
             # Create update manager with error handling
             try:
                 self.update_manager = UpdateManager(current_version, feed_url)
-                logger.info("Update manager created successfully")
+                logger.info("✓ Update manager created successfully")
             except Exception as create_error:
-                logger.error(f"Failed to create update manager: {create_error}", exc_info=True)
+                logger.error(f"✗ Failed to create update manager: {create_error}", exc_info=True)
                 self.update_manager = None
+                if is_frozen:
+                    # In frozen apps, if update manager creation fails, disable entirely
+                    logger.warning("Update system disabled in packaged app due to initialization failure")
                 return  # Can't continue without update manager
 
+            logger.info("Step 5: Setting up callbacks...")
             # Set callbacks with error handling
             try:
+                logger.info("  - Setting on_update_available callback...")
                 self.update_manager.set_on_update_available(self._on_update_available)
+                logger.info("  ✓ on_update_available callback set")
+                
+                logger.info("  - Setting on_check_complete callback...")
                 self.update_manager.set_on_check_complete(self._on_update_check_complete)
+                logger.info("  ✓ on_check_complete callback set")
+                
+                logger.info("  - Setting on_error callback...")
                 self.update_manager.set_on_error(self._on_update_error)
-                logger.info("Update manager callbacks set")
+                logger.info("  ✓ on_error callback set")
+                
+                logger.info("✓ All update manager callbacks set successfully")
             except Exception as callback_error:
-                logger.error(f"Failed to set update manager callbacks: {callback_error}", exc_info=True)
-                # Continue anyway - update manager exists but callbacks may not work
+                logger.error(f"✗ Failed to set update manager callbacks: {callback_error}", exc_info=True)
+                if is_frozen:
+                    # In frozen apps, if callbacks fail, disable update system entirely
+                    logger.warning("Update system disabled in packaged app due to callback failure")
+                    self.update_manager = None
+                    return
+                # Continue anyway for non-frozen apps - update manager exists but callbacks may not work
 
             # Schedule startup check (after window is visible and fully initialized)
             # Use a longer delay for packaged apps to ensure everything is ready
             # Packaged apps may need more time for Qt initialization
+            logger.info("Step 6: Scheduling startup update check...")
             try:
-                delay_ms = 5000  # 5 seconds - gives time for window to be fully ready
+                # Longer delay for frozen apps to ensure Qt is fully ready
+                delay_ms = 10000 if is_frozen else 5000  # 10 seconds for frozen, 5 for dev
                 QTimer.singleShot(delay_ms, self._check_for_updates_on_startup)
-                logger.info(f"Startup update check scheduled (delay: {delay_ms}ms)")
+                logger.info(f"✓ Startup update check scheduled (delay: {delay_ms}ms, frozen={is_frozen})")
             except Exception as schedule_error:
-                logger.error(f"Failed to schedule startup update check: {schedule_error}", exc_info=True)
-                # Continue anyway - app can still work without startup check
+                logger.error(f"✗ Failed to schedule startup update check: {schedule_error}", exc_info=True)
+                if is_frozen:
+                    # In frozen apps, if scheduling fails, disable update system
+                    logger.warning("Update system disabled in packaged app due to scheduling failure")
+                    self.update_manager = None
+                # Continue anyway for non-frozen apps - app can still work without startup check
+            
+            logger.info("=" * 60)
+            logger.info("UPDATE SYSTEM SETUP - Completed successfully")
+            logger.info("=" * 60)
         except Exception as e:
             # Update system is best-effort
-            logger.error(f"Could not set up update system: {e}", exc_info=True)
+            logger.error("=" * 60)
+            logger.error(f"UPDATE SYSTEM SETUP - Failed with exception: {e}", exc_info=True)
+            logger.error("=" * 60)
+            if is_frozen:
+                # In frozen apps, any exception means disable update system entirely
+                logger.warning("Update system disabled in packaged app due to exception")
             # Don't set to None if it already exists (might be partially initialized)
             if not hasattr(self, "update_manager"):
                 self.update_manager = None
@@ -1749,80 +1822,141 @@ class MainWindow(QMainWindow):
         import logging
         logger = logging.getLogger(__name__)
         
+        logger.info("=" * 60)
+        logger.info("STARTUP UPDATE CHECK - Beginning check process")
+        logger.info("=" * 60)
+        
         try:
+            logger.info("Step 1: Verifying update manager availability...")
             if not hasattr(self, "update_manager") or not self.update_manager:
-                logger.debug("Update manager not available for startup check")
+                logger.warning("✗ Update manager not available for startup check")
                 return
+            logger.info("✓ Update manager is available")
             
             try:
                 # Check if should check on startup
+                logger.info("Step 2: Checking update preferences...")
                 from cuepoint.update.update_preferences import UpdatePreferences
                 from cuepoint.update.update_ui import show_update_check_dialog
                 from cuepoint.version import get_version
 
-                if self.update_manager.preferences.get_check_frequency() == UpdatePreferences.CHECK_ON_STARTUP:
+                check_frequency = self.update_manager.preferences.get_check_frequency()
+                logger.info(f"  - Check frequency: {check_frequency}")
+                logger.info(f"  - CHECK_ON_STARTUP constant: {UpdatePreferences.CHECK_ON_STARTUP}")
+
+                if check_frequency == UpdatePreferences.CHECK_ON_STARTUP:
+                    logger.info("✓ Update check on startup is enabled")
                     # Show update check dialog on startup (same as manual check)
                     # First, ensure the main window is fully visible and ready
                     try:
+                        logger.info("Step 3: Verifying main window state...")
                         # Verify window is ready
-                        if not self.isVisible():
-                            logger.warning("Main window not visible yet, skipping startup update check")
+                        is_visible = self.isVisible()
+                        logger.info(f"  - Window visible: {is_visible}")
+                        logger.info(f"  - Window geometry: {self.geometry()}")
+                        logger.info(f"  - Window isMinimized: {self.isMinimized()}")
+                        logger.info(f"  - Window isMaximized: {self.isMaximized()}")
+                        
+                        if not is_visible:
+                            logger.warning("✗ Main window not visible yet, skipping startup update check")
                             return
                         
+                        logger.info("✓ Main window is visible and ready")
+                        logger.info("Step 4: Scheduling dialog creation (500ms delay)...")
                         # Small additional delay to ensure Qt event loop has processed
                         from PySide6.QtCore import QTimer as QTimer2
                         QTimer2.singleShot(500, lambda: self._do_startup_update_check())
+                        logger.info("✓ Dialog creation scheduled")
                     except Exception as dialog_error:
-                        logger.error(f"Error scheduling startup update check dialog: {dialog_error}", exc_info=True)
+                        logger.error(f"✗ Error scheduling startup update check dialog: {dialog_error}", exc_info=True)
                         # Don't crash the app if dialog fails
                         
                         # Start the check - use force=True to ensure check runs on startup
                         # (force=False would check _should_check() which returns False for CHECK_ON_STARTUP)
+                        logger.info("Step 5: Starting update check (force=True)...")
                         if self.update_manager.check_for_updates(force=True):
                             # Status will be updated via callbacks
-                            logger.debug("Startup update check initiated")
+                            logger.info("✓ Startup update check initiated")
                         else:
+                            logger.warning("✗ Update check already in progress or failed to start")
                             if hasattr(self, "update_check_dialog") and self.update_check_dialog:
                                 self.update_check_dialog.set_error("Update check already in progress")
-                    except Exception as dialog_error:
-                        logger.error(f"Error showing update check dialog: {dialog_error}", exc_info=True)
-                        # Don't crash the app if dialog fails
-            except Exception as e:
-                logger.warning(f"Startup update check failed: {e}", exc_info=True)
-                # Don't crash the app if update check fails
+                else:
+                    logger.info(f"✗ Update check on startup is disabled (frequency={check_frequency})")
+                    return
+                    
+            except Exception as dialog_error:
+                logger.error(f"✗ Error showing update check dialog: {dialog_error}", exc_info=True)
+                # Don't crash the app if dialog fails
+        except Exception as e:
+            logger.warning(f"✗ Startup update check failed: {e}", exc_info=True)
+            # Don't crash the app if update check fails
         except Exception as fatal_error:
             # Catch-all to prevent any update-related code from crashing the app
-            logger.error(f"Fatal error in startup update check: {fatal_error}", exc_info=True)
+            logger.error(f"✗ Fatal error in startup update check: {fatal_error}", exc_info=True)
+        
+        logger.info("=" * 60)
+        logger.info("STARTUP UPDATE CHECK - Process completed")
+        logger.info("=" * 60)
     
     def _do_startup_update_check(self) -> None:
         """Actually perform the startup update check (called after delay)."""
         import logging
         logger = logging.getLogger(__name__)
         
+        logger.info("=" * 60)
+        logger.info("DO STARTUP UPDATE CHECK - Creating dialog and starting check")
+        logger.info("=" * 60)
+        
         try:
+            logger.info("Step 1: Verifying update manager...")
             if not hasattr(self, "update_manager") or not self.update_manager:
-                logger.debug("Update manager not available")
+                logger.warning("✗ Update manager not available")
                 return
+            logger.info("✓ Update manager is available")
             
+            logger.info("Step 2: Importing modules...")
             from cuepoint.update.update_ui import show_update_check_dialog
             from cuepoint.version import get_version
+            logger.info("✓ Modules imported")
             
             # Show update check dialog on startup
+            logger.info("Step 3: Creating update check dialog...")
             try:
-                self.update_check_dialog = show_update_check_dialog(get_version(), self)
+                current_version = get_version()
+                logger.info(f"  - Current version: {current_version}")
+                logger.info(f"  - Parent widget: {self} (type: {type(self)})")
+                logger.info(f"  - Parent visible: {self.isVisible()}")
+                logger.info(f"  - Parent windowTitle: {self.windowTitle()}")
+                
+                self.update_check_dialog = show_update_check_dialog(current_version, self)
+                logger.info(f"✓ Update check dialog created: {self.update_check_dialog}")
+                logger.info(f"  - Dialog type: {type(self.update_check_dialog)}")
+                logger.info(f"  - Dialog visible: {self.update_check_dialog.isVisible()}")
+                logger.info(f"  - Dialog modal: {self.update_check_dialog.isModal()}")
+                
+                logger.info("Step 4: Setting dialog to 'checking' state...")
                 self.update_check_dialog.set_checking()
+                logger.info("✓ Dialog set to checking state")
                 
                 # Start the check - use force=True to ensure check runs on startup
-                if self.update_manager.check_for_updates(force=True):
-                    logger.debug("Startup update check initiated")
+                logger.info("Step 5: Starting update check (force=True)...")
+                check_started = self.update_manager.check_for_updates(force=True)
+                if check_started:
+                    logger.info("✓ Startup update check initiated successfully")
                 else:
+                    logger.warning("✗ Update check failed to start or already in progress")
                     if hasattr(self, "update_check_dialog") and self.update_check_dialog:
                         self.update_check_dialog.set_error("Update check already in progress")
             except Exception as dialog_error:
-                logger.error(f"Error showing update check dialog: {dialog_error}", exc_info=True)
+                logger.error(f"✗ Error showing update check dialog: {dialog_error}", exc_info=True)
                 # Don't crash the app if dialog fails
         except Exception as e:
-            logger.error(f"Error in _do_startup_update_check: {e}", exc_info=True)
+            logger.error(f"✗ Error in _do_startup_update_check: {e}", exc_info=True)
+        
+        logger.info("=" * 60)
+        logger.info("DO STARTUP UPDATE CHECK - Completed")
+        logger.info("=" * 60)
 
     def on_check_for_updates(self) -> None:
         """Check for updates manually via Help > Check for Updates (Step 5.5)."""
@@ -1873,7 +2007,15 @@ class MainWindow(QMainWindow):
         """
         import logging
         logger = logging.getLogger(__name__)
-        logger.info(f"_on_update_available called with update_info: {update_info}")
+        
+        logger.info("=" * 60)
+        logger.info("ON UPDATE AVAILABLE - Update found, processing callback")
+        logger.info("=" * 60)
+        logger.info(f"  - Update info: {update_info}")
+        if update_info:
+            logger.info(f"  - Version: {update_info.get('short_version', 'N/A')}")
+            logger.info(f"  - Download URL: {update_info.get('download_url', 'N/A')}")
+            logger.info(f"  - File size: {update_info.get('file_size', 'N/A')}")
         
         # Note: Thread safety is handled by UpdateManager using QTimer.singleShot
         # This method should already be called on the main thread, but we add
