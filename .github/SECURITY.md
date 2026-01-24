@@ -67,7 +67,7 @@ We thank security researchers who responsibly disclose vulnerabilities. Contribu
 
 ## Resources
 
-- [Security Response Process](../DOCS/SECURITY/Security_Response_Process.md)
+- [Security Response Process](../DOCS/SECURITY/security-response-process.md)
 - [Dependabot Configuration](.github/dependabot.yml)
 - [Code of Conduct](CODE_OF_CONDUCT.md)
 

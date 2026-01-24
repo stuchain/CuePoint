@@ -66,8 +66,8 @@ class TestConfigurationFiles:
     def test_coding_standards_doc_exists(self):
         """Test that coding standards documentation exists."""
         root = Path(__file__).parent.parent.parent.parent
-        doc = root / "DOCS" / "development" / "coding_standards.md"
-        assert doc.exists(), "coding_standards.md not found"
+        doc = root / "DOCS" / "DEVELOPMENT" / "coding-standards.md"
+        assert doc.exists(), "coding-standards.md not found"
 
 
 class TestQualityToolsInstalled:

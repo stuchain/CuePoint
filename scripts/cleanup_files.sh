@@ -92,7 +92,7 @@ echo "  - README.md"
 echo "  - requirements*.txt"
 echo "  - run_gui.bat, run_gui.sh, run_gui.command"
 echo "  - install_requirements.sh"
-echo "  - INSTALL_MACOS.md, FIX_PYSIDE6_MACOS.md"
+echo "  - install-macos.md, fix-pyside6-macos.md"
 echo "  - All SRC/, DOCS/, config/ directories"
 echo ""
 

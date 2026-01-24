@@ -22,9 +22,9 @@ if not exist "scripts" mkdir "scripts"
 REM Move documentation files to DOCS/GUIDES/
 echo Moving documentation files...
 if exist "CLEANUP_PLAN.md" move "CLEANUP_PLAN.md" "DOCS\GUIDES\" >nul
-if exist "FIX_PYSIDE6_MACOS.md" move "FIX_PYSIDE6_MACOS.md" "DOCS\GUIDES\" >nul
-if exist "INSTALL_MACOS.md" move "INSTALL_MACOS.md" "DOCS\GUIDES\" >nul
-if exist "HOW_TO_SEE_SHORTCUTS.md" move "HOW_TO_SEE_SHORTCUTS.md" "DOCS\GUIDES\" >nul
+if exist "fix-pyside6-macos.md" move "fix-pyside6-macos.md" "DOCS\GUIDES\" >nul
+if exist "install-macos.md" move "install-macos.md" "DOCS\GUIDES\" >nul
+if exist "how-to-see-shortcuts.md" move "how-to-see-shortcuts.md" "DOCS\GUIDES\" >nul
 if exist "ORGANIZE_FILES.md" move "ORGANIZE_FILES.md" "DOCS\GUIDES\" >nul
 if exist "ROOT_FILES_ORGANIZATION.md" move "ROOT_FILES_ORGANIZATION.md" "DOCS\GUIDES\" >nul
 

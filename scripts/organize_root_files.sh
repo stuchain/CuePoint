@@ -22,9 +22,9 @@ mkdir -p "scripts"
 # Move documentation files to DOCS/GUIDES/
 echo "Moving documentation files..."
 [ -f "CLEANUP_PLAN.md" ] && mv "CLEANUP_PLAN.md" "DOCS/GUIDES/"
-[ -f "FIX_PYSIDE6_MACOS.md" ] && mv "FIX_PYSIDE6_MACOS.md" "DOCS/GUIDES/"
-[ -f "INSTALL_MACOS.md" ] && mv "INSTALL_MACOS.md" "DOCS/GUIDES/"
-[ -f "HOW_TO_SEE_SHORTCUTS.md" ] && mv "HOW_TO_SEE_SHORTCUTS.md" "DOCS/GUIDES/"
+[ -f "fix-pyside6-macos.md" ] && mv "fix-pyside6-macos.md" "DOCS/GUIDES/"
+[ -f "install-macos.md" ] && mv "install-macos.md" "DOCS/GUIDES/"
+[ -f "how-to-see-shortcuts.md" ] && mv "how-to-see-shortcuts.md" "DOCS/GUIDES/"
 [ -f "ORGANIZE_FILES.md" ] && mv "ORGANIZE_FILES.md" "DOCS/GUIDES/"
 [ -f "ROOT_FILES_ORGANIZATION.md" ] && mv "ROOT_FILES_ORGANIZATION.md" "DOCS/GUIDES/"
 

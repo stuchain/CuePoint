@@ -36,7 +36,7 @@ REM Move development guidelines
 echo Moving development guidelines...
 if exist "ERROR_HANDLING_GUIDELINES.md" move "ERROR_HANDLING_GUIDELINES.md" "DEVELOPMENT\guidelines\" >nul
 if exist "TESTING_GUIDELINES.md" move "TESTING_GUIDELINES.md" "DEVELOPMENT\guidelines\" >nul
-if exist "development\coding_standards.md" move "development\coding_standards.md" "DEVELOPMENT\guidelines\" >nul
+if exist "DEVELOPMENT\coding-standards.md" move "DEVELOPMENT\coding-standards.md" "DEVELOPMENT\guidelines\" >nul
 
 REM Move architecture docs
 echo Moving architecture documentation...
