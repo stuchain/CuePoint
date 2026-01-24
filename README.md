@@ -4,7 +4,7 @@
   <p>
     <a href="DOCS/how-to-run.md">How to run</a>
     •
-    <a href="TECHNICAL_ANALYSIS.md">Technical analysis</a>
+    <a href=".github/TECHNICAL_ANALYSIS.md">Technical analysis</a>
   </p>
   <p>
     <img alt="platforms" src="https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-222"/>
@@ -22,17 +22,14 @@
 <table width="100%">
   <tr>
     <td width="33%">
-      <p><img src="DOCS/images/icons/metadata.png" alt="Metadata" width="28"/></p>
       <h3>Clean metadata</h3>
       <p>Key, BPM, label, genre, release date-kept consistent and reviewable.</p>
     </td>
     <td width="33%">
-      <p><img src="DOCS/images/icons/audit.png" alt="Audit" width="28"/></p>
       <h3>Auditable matches</h3>
       <p>Every query and candidate is logged so decisions are traceable.</p>
     </td>
     <td width="33%">
-      <p><img src="DOCS/images/icons/scale.png" alt="Scale" width="28"/></p>
       <h3>Built for scale</h3>
       <p>Handles large libraries with parallel search and time budgets.</p>
     </td>
@@ -89,6 +86,9 @@
 <p align="center">
   <img src="DOCS/images/ui-playlist.png" alt="Playlist detail" width="92%"/>
 </p>
+<p align="center">
+  <img src="DOCS/images/ui-candidates.png" alt="Playlist candidates" width="92%"/>
+</p>
 
 <h2>Quick demo</h2>
 <p>
@@ -104,8 +104,6 @@
 
 <h2>Before / After</h2>
 <p>
-  <img src="DOCS/images/diagrams/before.png" alt="Before" width="49%"/>
-  <img src="DOCS/images/diagrams/after.png" alt="After" width="49%"/>
 </p>
 <table width="100%">
   <tr>
@@ -163,7 +161,7 @@ flowchart LR
 <h2>Technical analysis</h2>
 <p>
   Deeper technical details, pipeline notes, and constraints live in
-  <a href="TECHNICAL_ANALYSIS.md">TECHNICAL_ANALYSIS.md</a>.
+  <a href=".github/TECHNICAL_ANALYSIS.md">.github/TECHNICAL_ANALYSIS.md</a>.
 </p>
 
 <h2>Inputs</h2>
