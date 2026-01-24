@@ -4,7 +4,7 @@
   <p>
     <a href="DOCS/how-to-run.md">How to run</a>
     •
-    <a href="technical-analysis.md">Technical analysis</a>
+    <a href="TECHNICAL_ANALYSIS.md">Technical analysis</a>
   </p>
   <p>
     <img alt="platforms" src="https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-222"/>
@@ -13,7 +13,7 @@
     <img alt="build" src="https://img.shields.io/badge/build-release%20ready-2ea44f"/>
   </p>
   <p>
-    <img src="DOCS/images/logo.png" alt="CuePoint hero" width="92%"/>
+    <img src="DOCS/images/logo.png" alt="CuePoint hero" width="28%"/>
   </p>
 </div>
 
@@ -80,13 +80,13 @@
 </ul>
 
 <h2>UI</h2>
-<p>
+<p align="center">
   <img src="DOCS/images/ui-main.png" alt="Main window" width="92%"/>
 </p>
-<p>
+<p align="center">
   <img src="DOCS/images/ui-review.png" alt="Match review" width="92%"/>
 </p>
-<p>
+<p align="center">
   <img src="DOCS/images/ui-playlist.png" alt="Playlist detail" width="92%"/>
 </p>
 
@@ -144,14 +144,26 @@ flowchart LR
   QueryGen --> Search[Beatport_Search]
   Search --> Parse[Candidate_Parsing]
   Parse --> Scoring[Scoring_and_Guards]
-  Scoring --> Outputs[Outputs]
-  Outputs --> Review[Review_Flow]
+  Scoring --> Decision[Match_Decision]
+  Decision --> MainCSV[Main_CSV]
+  Decision --> CandidatesCSV[Candidates_CSV]
+  Decision --> QueriesCSV[Queries_CSV]
+  Decision --> ReviewCSV[Review_CSV]
+
+  subgraph Search_Strategy
+    Direct[Direct_Search]
+    DDG[DuckDuckGo]
+    Browser[Browser_Automation]
+  end
+  Search --> Direct
+  Search --> DDG
+  Search --> Browser
 ```
 
 <h2>Technical analysis</h2>
 <p>
   Deeper technical details, pipeline notes, and constraints live in
-  <a href="technical-analysis.md">technical-analysis.md</a>.
+  <a href="TECHNICAL_ANALYSIS.md">TECHNICAL_ANALYSIS.md</a>.
 </p>
 
 <h2>Inputs</h2>
