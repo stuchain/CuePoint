@@ -2,13 +2,13 @@
 
 Thanks for helping improve CuePoint.
 
-## The short version
+## HOW TO CONTRIBUTE
 
 - **Bugs**: Use the [Bug Report template](https://github.com/stuchain/CuePoint/issues/new?template=bug_report.yml).
 - **Features**: Use the [Feature Request template](https://github.com/stuchain/CuePoint/issues/new?template=feature_request.yml).
 - **Code**: Fork, branch, make changes, and open a PR.
 
-## Dev setup (minimal)
+## Dev setup
 
 ```bash
 python -m venv .venv
@@ -20,5 +20,4 @@ pytest
 ## Notes
 
 - Keep changes focused and include tests when practical.
-- If you are unsure, open a draft PR or ask in [Discussions](https://github.com/stuchain/CuePoint/discussions).
 

@@ -1624,7 +1624,8 @@ class MainWindow(QMainWindow):
                 base_path = Path(os.path.dirname(sys.executable))
             icon_path = base_path / 'assets' / 'icons' / 'logo.png'
         else:
-            base_path = Path(__file__).resolve().parent.parent
+            # Running as script - use SRC/cuepoint/ui/assets/icons
+            base_path = Path(__file__).resolve().parent
             icon_path = base_path / 'assets' / 'icons' / 'logo.png'
         
         if icon_path.exists():
@@ -1655,7 +1656,7 @@ class MainWindow(QMainWindow):
             logo_path = base_path / 'assets' / 'icons' / 'logo.png'
         else:
             # Running as script - use SRC/cuepoint/ui/assets/icons
-            base_path = Path(__file__).resolve().parent.parent
+            base_path = Path(__file__).resolve().parent
             logo_path = base_path / 'assets' / 'icons' / 'logo.png'
         
         if not logo_path.exists():

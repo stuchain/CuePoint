@@ -85,6 +85,40 @@ else {
 Write-Host "========================================"
 Write-Host ""
 
+# Helper: wait for file to exist and stabilize (size stops changing)
+function Wait-ForStableFile {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [int]$MinSizeMB = 10,
+        [int]$TimeoutSec = 20
+    )
+    $minBytes = $MinSizeMB * 1024 * 1024
+    $elapsed = 0
+    $lastSize = -1
+    $stableCount = 0
+    while ($elapsed -lt $TimeoutSec) {
+        if (Test-Path $Path) {
+            $size = (Get-Item $Path).Length
+            if ($size -ge $minBytes) {
+                if ($size -eq $lastSize) {
+                    $stableCount += 1
+                }
+                else {
+                    $stableCount = 0
+                    $lastSize = $size
+                }
+                if ($stableCount -ge 2) {
+                    return $true
+                }
+            }
+        }
+        Start-Sleep -Seconds 1
+        $elapsed += 1
+    }
+    return $false
+}
+
 # Step 3: Ask if user wants to reopen
 if (-not $AppPath) {
     # Try to find app in default location
@@ -100,8 +134,16 @@ if (Test-Path $AppPath) {
         # Get the directory containing the executable (important for PyInstaller apps)
         $AppDirectory = Split-Path -Parent $AppPath
         
-        # Small delay to ensure installer has fully completed and files are ready
-        Start-Sleep -Seconds 1
+        # Wait for the installed exe to be present and stable on disk
+        $ready = Wait-ForStableFile -Path $AppPath -MinSizeMB 10 -TimeoutSec 20
+        if (-not $ready) {
+            Write-Host "Warning: CuePoint.exe did not appear stable on disk yet."
+            Write-Host "Skipping auto-relaunch. Please start CuePoint manually."
+            Write-Host ""
+            Write-Host "Update launcher will close in 5 seconds..."
+            Start-Sleep -Seconds 5
+            exit 0
+        }
         
         # Launch with working directory set to app directory
         # This ensures PyInstaller can find the DLL and other resources

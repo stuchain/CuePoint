@@ -4,7 +4,7 @@
   <p>
     <a href="DOCS/how-to-run.md">How to run</a>
     •
-    <a href="DOCS/technical-analysis.md">Technical analysis</a>
+    <a href="technical-analysis.md">Technical analysis</a>
   </p>
   <p>
     <img alt="platforms" src="https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-222"/>
@@ -13,7 +13,7 @@
     <img alt="build" src="https://img.shields.io/badge/build-release%20ready-2ea44f"/>
   </p>
   <p>
-    <img src="DOCS/images/banners/hero.png" alt="CuePoint hero" width="92%"/>
+    <img src="DOCS/images/logo.png" alt="CuePoint hero" width="92%"/>
   </p>
 </div>
 
@@ -24,7 +24,7 @@
     <td width="33%">
       <p><img src="DOCS/images/icons/metadata.png" alt="Metadata" width="28"/></p>
       <h3>Clean metadata</h3>
-      <p>Key, BPM, label, genre, release date—kept consistent and reviewable.</p>
+      <p>Key, BPM, label, genre, release date-kept consistent and reviewable.</p>
     </td>
     <td width="33%">
       <p><img src="DOCS/images/icons/audit.png" alt="Audit" width="28"/></p>
@@ -39,7 +39,7 @@
   </tr>
 </table>
 
-<h2>What this is</h2>
+<h2>What is Cuepoint</h2>
 <p>
   DJs use an app called Rekordbox to import downloaded songs, sort them into playlists, and export them to
   USBs for performance. To play reliably, each track needs metadata like musical key, label, and release date.
@@ -81,9 +81,13 @@
 
 <h2>UI</h2>
 <p>
-  <img src="DOCS/images/ui-main.png" alt="Main window" width="49%"/>
-  <img src="DOCS/images/ui-review.png" alt="Match review" width="49%"/>
-  <img src="DOCS/images/ui-playlist.png" alt="Playlist detail" width="49%"/>
+  <img src="DOCS/images/ui-main.png" alt="Main window" width="92%"/>
+</p>
+<p>
+  <img src="DOCS/images/ui-review.png" alt="Match review" width="92%"/>
+</p>
+<p>
+  <img src="DOCS/images/ui-playlist.png" alt="Playlist detail" width="92%"/>
 </p>
 
 <h2>Quick demo</h2>
@@ -135,17 +139,19 @@
 
 ```mermaid
 flowchart LR
-  RekordboxXML[Rekordbox_XML] --> QueryGen[Query_Generation]
+  RekordboxXML[Rekordbox_XML] --> Parser[Input_Parsing]
+  Parser --> QueryGen[Query_Generation]
   QueryGen --> Search[Beatport_Search]
-  Search --> Scoring[Scoring_and_Guards]
-  Scoring --> Outputs[CSV_Outputs]
+  Search --> Parse[Candidate_Parsing]
+  Parse --> Scoring[Scoring_and_Guards]
+  Scoring --> Outputs[Outputs]
   Outputs --> Review[Review_Flow]
 ```
 
 <h2>Technical analysis</h2>
 <p>
   Deeper technical details, pipeline notes, and constraints live in
-  <code>DOCS/technical-analysis.md</code>.
+  <a href="technical-analysis.md">technical-analysis.md</a>.
 </p>
 
 <h2>Inputs</h2>

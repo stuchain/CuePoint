@@ -16,6 +16,18 @@ Primary orchestration happens in `SRC/cuepoint/services/processor_service.py`, w
 3. Calls the matcher to search and score.
 4. Builds `TrackResult` objects for export.
 
+```mermaid
+flowchart LR
+  GUI[GUI] --> Processor[ProcessorService]
+  CLI[CLI] --> Processor
+  Processor --> QueryGen[Query_Generation]
+  Processor --> Matcher[MatcherService]
+  Processor --> Outputs[Output_Writer]
+  Matcher --> Beatport[BeatportService]
+  Beatport --> Search[Beatport_Search]
+  Beatport --> Parse[Track_Parsing]
+```
+
 ## Data flow (end-to-end)
 
 1. **Input parsing**: Rekordbox XML is parsed into track models.
@@ -29,6 +41,17 @@ The README diagram reflects this flow:
 
 ```
 Rekordbox XML -> Query Generation -> Beatport Search -> Scoring/Guards -> Outputs -> Review
+```
+
+```mermaid
+flowchart LR
+  RekordboxXML[Rekordbox_XML] --> Parser[Input_Parsing]
+  Parser --> QueryGen[Query_Generation]
+  QueryGen --> Search[Beatport_Search]
+  Search --> Parse[Candidate_Parsing]
+  Parse --> Scoring[Scoring_and_Guards]
+  Scoring --> Outputs[Outputs]
+  Outputs --> Review[Review_Flow]
 ```
 
 ## Input parsing
