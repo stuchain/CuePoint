@@ -38,6 +38,9 @@ from cuepoint.data.beatport import is_track_url, request_html
 from cuepoint.models.config import BASE_URL, SESSION, SETTINGS
 from cuepoint.utils.utils import vlog
 
+_PLAYWRIGHT_USABLE = True
+_PLAYWRIGHT_ERROR_LOGGED = False
+
 
 def _extract_track_ids_from_next_data(
     data: Any, seen: set, urls: List[str], max_results: int
@@ -410,57 +413,71 @@ def beatport_search_browser(idx: int, query: str, max_results: int = 50) -> List
         Browser runs in headless mode. Waits for track links to appear
         before extracting URLs.
     """
+    global _PLAYWRIGHT_ERROR_LOGGED, _PLAYWRIGHT_USABLE
     urls: List[str] = []
 
     # Try Playwright first (faster, more modern)
-    try:
-        from playwright.sync_api import sync_playwright
+    if _PLAYWRIGHT_USABLE:
+        try:
+            from playwright.sync_api import sync_playwright
 
-        vlog(idx, f"[beatport-browser] Using Playwright to search: {query}")
+            vlog(idx, f"[beatport-browser] Using Playwright to search: {query}")
 
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            page = browser.new_page()
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                page = browser.new_page()
 
-            # Navigate to search page
-            # Remove all quote marks (single, double, triple) from query for URL encoding
-            clean_query = query.strip('"').strip("'").strip()
-            # Remove any remaining quote marks in the middle
-            clean_query = clean_query.replace('"""', "").replace('"', "").replace("'", "")
-            encoded_query = quote_plus(clean_query)
-            search_url = f"{BASE_URL}/search?q={encoded_query}"
+                # Navigate to search page
+                # Remove all quote marks (single, double, triple) from query for URL encoding
+                clean_query = query.strip('"').strip("'").strip()
+                # Remove any remaining quote marks in the middle
+                clean_query = clean_query.replace('"""', "").replace('"', "").replace("'", "")
+                encoded_query = quote_plus(clean_query)
+                search_url = f"{BASE_URL}/search?q={encoded_query}"
 
-            page.goto(search_url, wait_until="networkidle", timeout=30000)
+                page.goto(search_url, wait_until="networkidle", timeout=30000)
 
-            # Wait for track links to appear
-            try:
-                page.wait_for_selector('a[href^="/track/"]', timeout=10000)
-            except Exception:
-                pass  # Links might already be there
+                # Wait for track links to appear
+                try:
+                    page.wait_for_selector('a[href^="/track/"]', timeout=10000)
+                except Exception:
+                    pass  # Links might already be there
 
-            # Extract all track links
-            seen = set()
-            for link in page.query_selector_all('a[href^="/track/"]'):
-                href = link.get_attribute("href")
-                if href:
-                    full_url = f"{BASE_URL}{href}" if href.startswith("/track/") else href
-                    if is_track_url(full_url) and full_url not in seen:
-                        seen.add(full_url)
-                        urls.append(full_url)
-                        if len(urls) >= max_results:
-                            break
+                # Extract all track links
+                seen = set()
+                for link in page.query_selector_all('a[href^="/track/"]'):
+                    href = link.get_attribute("href")
+                    if href:
+                        full_url = f"{BASE_URL}{href}" if href.startswith("/track/") else href
+                        if is_track_url(full_url) and full_url not in seen:
+                            seen.add(full_url)
+                            urls.append(full_url)
+                            if len(urls) >= max_results:
+                                break
 
-            browser.close()
+                browser.close()
 
-            if urls:
-                vlog(idx, f"[beatport-browser] Found {len(urls)} tracks via Playwright")
-                return urls[:max_results]
+                if urls:
+                    vlog(idx, f"[beatport-browser] Found {len(urls)} tracks via Playwright")
+                    return urls[:max_results]
 
-    except ImportError:
-        # Playwright not available, try Selenium
-        pass
-    except Exception as e:
-        vlog(idx, f"[beatport-browser] Playwright error: {e!r}, trying Selenium")
+        except ImportError:
+            # Playwright not available, try Selenium
+            _PLAYWRIGHT_USABLE = False
+        except Exception as e:
+            error_text = str(e)
+            missing_browser = "executable doesn't exist" in error_text.lower()
+            if missing_browser:
+                _PLAYWRIGHT_USABLE = False
+                if not _PLAYWRIGHT_ERROR_LOGGED:
+                    _PLAYWRIGHT_ERROR_LOGGED = True
+                    vlog(
+                        idx,
+                        "[beatport-browser] Playwright browsers not installed; "
+                        "run `playwright install chromium` (or `playwright install`) "
+                        "to enable Playwright.",
+                    )
+            vlog(idx, f"[beatport-browser] Playwright error: {e!r}, trying Selenium")
 
     # Fallback to Selenium
     try:
@@ -473,10 +490,18 @@ def beatport_search_browser(idx: int, query: str, max_results: int = 50) -> List
         vlog(idx, f"[beatport-browser] Using Selenium to search: {query}")
 
         options = Options()
-        options.add_argument("--headless")
+        options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--use-gl=swiftshader")
+        options.add_argument("--disable-software-rasterizer")
+        options.add_argument("--disable-gpu-compositing")
+        options.add_argument("--disable-features=VizDisplayCompositor,UseSkiaRenderer")
+        options.add_argument("--in-process-gpu")
+        options.add_argument("--log-level=3")
+        options.add_experimental_option("excludeSwitches", ["enable-logging"])
         options.add_argument(f'user-agent={SETTINGS.get("USER_AGENT", "Mozilla/5.0")}')
 
         driver = webdriver.Chrome(options=options)

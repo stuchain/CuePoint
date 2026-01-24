@@ -1264,7 +1264,7 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
             vlog(idx, f"[url-construction] error: {e!r}")
 
     if SETTINGS["TRACE"]:
-        from utils import tlog
+        from cuepoint.utils.utils import tlog
 
         for i, u in enumerate(out, 1):
             tlog(idx, f"[cand {i}] {u}")
