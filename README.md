@@ -1,5 +1,7 @@
 <div align="center">
-  <h1>CuePoint</h1>
+  <h1>  <p>
+    <img src="DOCS/images/logo.png" alt="CuePoint hero" width="28%"/>
+  </p></h1>
   <p><strong>Accurate music metadata for Rekordbox libraries, sourced from Beatport.</strong></p>
   <p>
     <a href="DOCS/how-to-run.md">How to run</a>
@@ -12,9 +14,7 @@
     <img alt="release" src="https://img.shields.io/github/v/release/stuchain/CuePoint?display_name=tag"/>
     <img alt="build" src="https://img.shields.io/badge/build-release%20ready-2ea44f"/>
   </p>
-  <p>
-    <img src="DOCS/images/logo.png" alt="CuePoint hero" width="28%"/>
-  </p>
+
 </div>
 
 <hr/>
