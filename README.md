@@ -104,7 +104,7 @@
 
 <h2>Quick demo</h2>
 <p>
-  <img src="DOCS/images/gifs/demo.gif" alt="CuePoint demo" width="88%"/>
+  <img src="DOCS/images/gifs/gif.gif" alt="CuePoint demo" width="88%"/>
 </p>
 
 <h2>What you get</h2>
