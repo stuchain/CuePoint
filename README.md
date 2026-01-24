@@ -91,15 +91,15 @@
 </p>
 <p align="center"><em>Track candidates</em></p>
 <p align="center">
-  <img src="DOCS/images/ui-candidates.png" alt="Track candidates" width="60%"/>
+  <img src="DOCS/images/ui-candidates.png" alt="Track candidates" width="70%"/>
 </p>
 <p align="center"><em>Automatic check for an available update</em></p>
 <p align="center">
-  <img src="DOCS/images/ui-update1.png" alt="Update" width="92%"/>
+  <img src="DOCS/images/ui-update1.png" alt="Update" width="70%"/>
 </p>
 <p align="center"><em>Download update</em></p>
 <p align="center">
-  <img src="DOCS/images/ui-update2.png" alt="Download Update" width="50%"/>
+  <img src="DOCS/images/ui-update2.png" alt="Download Update" width="70%"/>
 </p>
 
 <h2>Quick demo</h2>
