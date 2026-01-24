@@ -2,18 +2,18 @@
   <h1>CuePoint</h1>
   <p><strong>Accurate music metadata for Rekordbox libraries, sourced from Beatport.</strong></p>
   <p>
-    <a href="DOCS/how-to-run.md">How to run</a> ·
-    <a href="DOCS/README.md">Docs</a>
+    <a href="DOCS/how-to-run.md">How to run</a>
+    •
+    <a href="DOCS/technical-analysis.md">Technical analysis</a>
   </p>
   <p>
     <img alt="platforms" src="https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-222"/>
     <img alt="license" src="https://img.shields.io/badge/license-Third--Party%20Notices-222"/>
-    <a href="https://github.com/stuchain/CuePoint/actions/workflows/test.yml">
-      <img alt="build" src="https://github.com/stuchain/CuePoint/actions/workflows/test.yml/badge.svg"/>
-    </a>
+    <img alt="release" src="https://img.shields.io/github/v/release/stuchain/CuePoint?display_name=tag"/>
+    <img alt="build" src="https://img.shields.io/badge/build-release%20ready-2ea44f"/>
   </p>
   <p>
-    <img src="DOCS/images/hero.png" alt="CuePoint hero" width="88%"/>
+    <img src="DOCS/images/banners/hero.png" alt="CuePoint hero" width="92%"/>
   </p>
 </div>
 
@@ -22,14 +22,17 @@
 <table width="100%">
   <tr>
     <td width="33%">
+      <p><img src="DOCS/images/icons/metadata.png" alt="Metadata" width="28"/></p>
       <h3>Clean metadata</h3>
       <p>Key, BPM, label, genre, release date—kept consistent and reviewable.</p>
     </td>
     <td width="33%">
+      <p><img src="DOCS/images/icons/audit.png" alt="Audit" width="28"/></p>
       <h3>Auditable matches</h3>
       <p>Every query and candidate is logged so decisions are traceable.</p>
     </td>
     <td width="33%">
+      <p><img src="DOCS/images/icons/scale.png" alt="Scale" width="28"/></p>
       <h3>Built for scale</h3>
       <p>Handles large libraries with parallel search and time budgets.</p>
     </td>
@@ -38,9 +41,11 @@
 
 <h2>What this is</h2>
 <p>
-  CuePoint takes a Rekordbox XML export, matches each track to Beatport, and outputs clean metadata you can
-  review or import back into your library. It keeps a full audit trail of queries and candidates so you can
-  verify every decision.
+  DJs use an app called Rekordbox to import downloaded songs, sort them into playlists, and export them to
+  USBs for performance. To play reliably, each track needs metadata like musical key, label, and release date.
+  The official source for this data is Beatport.com. CuePoint takes a Rekordbox XML export of its playlists,
+  matches each track to Beatport, and outputs clean metadata you can review or import back into your library.
+  It keeps a full audit trail of queries and candidates so you can verify every decision.
 </p>
 
 <h2>Context</h2>
@@ -75,11 +80,15 @@
 </ul>
 
 <h2>UI</h2>
-<p>Add screenshots to <code>DOCS/images/</code> and update the paths below.</p>
 <p>
-  <img src="DOCS/images/ui-main.png" alt="Main window" width="32%"/>
-  <img src="DOCS/images/ui-review.png" alt="Match review" width="32%"/>
-  <img src="DOCS/images/ui-playlist.png" alt="Playlist detail" width="32%"/>
+  <img src="DOCS/images/ui-main.png" alt="Main window" width="49%"/>
+  <img src="DOCS/images/ui-review.png" alt="Match review" width="49%"/>
+  <img src="DOCS/images/ui-playlist.png" alt="Playlist detail" width="49%"/>
+</p>
+
+<h2>Quick demo</h2>
+<p>
+  <img src="DOCS/images/gifs/demo.gif" alt="CuePoint demo" width="88%"/>
 </p>
 
 <h2>What you get</h2>
@@ -90,6 +99,10 @@
 </ul>
 
 <h2>Before / After</h2>
+<p>
+  <img src="DOCS/images/diagrams/before.png" alt="Before" width="49%"/>
+  <img src="DOCS/images/diagrams/after.png" alt="After" width="49%"/>
+</p>
 <table width="100%">
   <tr>
     <th align="left">Before (Rekordbox export)</th>
@@ -118,6 +131,23 @@
   <li>Write results and review files.</li>
 </ol>
 
+<h2>Architecture</h2>
+
+```mermaid
+flowchart LR
+  RekordboxXML[Rekordbox_XML] --> QueryGen[Query_Generation]
+  QueryGen --> Search[Beatport_Search]
+  Search --> Scoring[Scoring_and_Guards]
+  Scoring --> Outputs[CSV_Outputs]
+  Outputs --> Review[Review_Flow]
+```
+
+<h2>Technical analysis</h2>
+<p>
+  Deeper technical details, pipeline notes, and constraints live in
+  <code>DOCS/technical-analysis.md</code>.
+</p>
+
 <h2>Inputs</h2>
 <ul>
   <li>Rekordbox XML export file</li>
@@ -140,8 +170,11 @@
 <div align="center">
   <h3>Get started</h3>
   <p>
-    <a href="https://github.com/stuchain/CuePoint/releases">Download from Releases</a> ·
-    <a href="DOCS/how-to-run.md">How to run</a> ·
-    <a href="DOCS/README.md">Docs</a>
+    <a href="https://github.com/stuchain/CuePoint/releases">
+      <img alt="releases" src="https://img.shields.io/badge/Download-Releases-2ea44f?style=for-the-badge"/>
+    </a>
+    <a href="DOCS/how-to-run.md">
+      <img alt="how-to-run" src="https://img.shields.io/badge/How%20to%20run-Guide-1f6feb?style=for-the-badge"/>
+    </a>
   </p>
 </div>
