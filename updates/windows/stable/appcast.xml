@@ -2,12 +2,12 @@
 <rss xmlns:ns0="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
   <channel>
     <item>
-      <title>Version 1.0.5-O5</title>
-      <pubDate>Sat, 24 Jan 2026 18:16:10 -0000</pubDate>
-      <ns0:version>10005</ns0:version>
-      <ns0:shortVersionString>1.0.5-O5</ns0:shortVersionString>
-      <enclosure url="https://github.com/stuchain/CuePoint/releases/download/v1.0.5-O5/CuePoint-Setup-v1.0.5-O5.exe" ns0:version="10005" ns0:shortVersionString="1.0.5-O5" length="112044028" type="application/octet-stream" />
-      <ns0:releaseNotesLink>https://github.com/stuchain/CuePoint/releases/tag/v1.0.5-O5</ns0:releaseNotesLink>
+      <title>Version 1.0.0-O10.1</title>
+      <pubDate>Sun, 25 Jan 2026 10:54:45 -0000</pubDate>
+      <ns0:version>10000</ns0:version>
+      <ns0:shortVersionString>1.0.0-O10.1</ns0:shortVersionString>
+      <enclosure url="https://github.com/stuchain/CuePoint/releases/download/v1.0.0-O10.1/CuePoint-Setup-v1.0.0-O10.1.exe" ns0:version="10000" ns0:shortVersionString="1.0.0-O10.1" length="112045597" type="application/octet-stream" />
+      <ns0:releaseNotesLink>https://github.com/stuchain/CuePoint/releases/tag/v1.0.0-O10.1</ns0:releaseNotesLink>
     </item>
     <title>CuePoint Updates</title>
     <link>https://github.com/StuChain/CuePoint</link>
