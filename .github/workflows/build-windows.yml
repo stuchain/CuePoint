@@ -404,7 +404,9 @@ jobs:
           }
           
           Write-Host "Getting version from version.py..."
-          $fullVersion = python -c "import sys; sys.path.insert(0, 'SRC'); from cuepoint.version import __version__; print(__version__)"
+          $env:PYTHONIOENCODING = "utf-8"
+          $env:PYTHONUTF8 = "1"
+          $fullVersion = python -c "import sys; sys.path.insert(0, 'SRC'); from cuepoint.version import __version__; sys.stdout.write(__version__)"
           Write-Host "Full version: $fullVersion"
           
           # Extract base version (X.Y.Z) for NSIS - NSIS requires format X.Y.Z (no prerelease suffixes)
