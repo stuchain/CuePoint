@@ -8,7 +8,36 @@ Checks that version information is correctly embedded in built artifacts
 
 import subprocess
 import sys
+import io
 from pathlib import Path
+
+def configure_output_encoding() -> None:
+    """Ensure stdout/stderr can handle Unicode output."""
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name, None)
+        if stream is None:
+            continue
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            try:
+                wrapped = io.TextIOWrapper(
+                    stream.buffer,
+                    encoding="utf-8",
+                    errors="replace",
+                    line_buffering=True,
+                )
+                setattr(sys, stream_name, wrapped)
+            except (AttributeError, ValueError):
+                continue
+
+
+def safe_display(value) -> str:
+    text = "" if value is None else str(value)
+    return text.encode("ascii", "backslashreplace").decode("ascii")
+
+
+configure_output_encoding()
 
 # Add SRC to path
 sys.path.insert(0, str(Path('SRC').resolve()))
@@ -33,6 +62,8 @@ def verify_macos_version(app_path):
             ['plutil', '-p', str(plist_path)],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=10
         )
         if result.returncode == 0:
@@ -40,15 +71,15 @@ def verify_macos_version(app_path):
             if __version__ in plist_content:
                 return True, "Version verified in Info.plist"
             else:
-                return False, f"Version {__version__} not found in Info.plist"
+                return False, f"Version {safe_display(__version__)} not found in Info.plist"
     except (FileNotFoundError, subprocess.TimeoutExpired):
         # Fallback to reading file directly
         try:
-            content = plist_path.read_text()
+            content = plist_path.read_text(encoding="utf-8")
             if __version__ in content:
                 return True, "Version verified in Info.plist"
             else:
-                return False, f"Version {__version__} not found in Info.plist"
+                return False, f"Version {safe_display(__version__)} not found in Info.plist"
         except Exception as e:
             return False, f"Error reading Info.plist: {e}"
     
@@ -69,12 +100,14 @@ def verify_windows_version(exe_path):
             ['powershell', '-Command', ps_cmd],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=10
         )
         if result.returncode == 0 and __version__ in result.stdout:
             return True, "Version verified in executable"
         else:
-            return False, f"Version {__version__} not found in executable metadata"
+            return False, f"Version {safe_display(__version__)} not found in executable metadata"
     except (FileNotFoundError, subprocess.TimeoutExpired):
         # Fallback: just check file exists
         return True, "Executable exists (version verification skipped - requires Windows)"
@@ -114,10 +147,10 @@ def main():
     if errors:
         print("\nVersion embedding verification failed:")
         for error in errors:
-            print(f"  ✗ {error}")
+            print(f"  [FAIL] {safe_display(error)}")
         sys.exit(1)
     
-    print(f"\n[OK] Version embedding verified: {__version__}")
+    print(f"\n[OK] Version embedding verified: {safe_display(__version__)}")
 
 
 if __name__ == '__main__':
