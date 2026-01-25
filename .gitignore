@@ -50,6 +50,7 @@ coverage.xml
 .mypy_cache/
 .dmypy.json
 dmypy.json
+THIRD_PARTY_LICENSES.txt
 
 # IDEs
 .idea/
