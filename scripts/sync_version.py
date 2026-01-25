@@ -157,6 +157,10 @@ def configure_output_encoding() -> None:
                 continue
 
 
+def safe_display(value: str) -> str:
+    return value.encode("ascii", "backslashreplace").decode("ascii")
+
+
 def validate_semver(version: str) -> bool:
     """Validate SemVer format (including prerelease suffixes).
     
@@ -201,7 +205,7 @@ def main():
         sys.exit(1)
     
     if not validate_semver(git_version):
-        print(f"Error: Invalid SemVer format from git tag: {git_version}")
+        print(f"Error: Invalid SemVer format from git tag: {safe_display(git_version)}")
         sys.exit(1)
     
     # Get version from file
@@ -211,12 +215,12 @@ def main():
         sys.exit(1)
     
     if not validate_semver(file_version):
-        print(f"Error: Invalid SemVer format in version.py: {file_version}")
+        print(f"Error: Invalid SemVer format in version.py: {safe_display(file_version)}")
         sys.exit(1)
     
     # Check if they match
     if git_version == file_version:
-        print(f"[OK] Versions match: {file_version}")
+        print(f"[OK] Versions match: {safe_display(file_version)}")
         if args.validate_only:
             sys.exit(0)
         if not args.force:
@@ -226,14 +230,14 @@ def main():
     # Show what will happen
     if args.validate_only:
         print(f"Version mismatch:")
-        print(f"  version.py: {file_version}")
-        print(f"  git tag:    {git_version}")
+        print(f"  version.py: {safe_display(file_version)}")
+        print(f"  git tag:    {safe_display(git_version)}")
         sys.exit(1)
     
     # Update version.py
     print(f"Updating version.py:")
-    print(f"  From: {file_version}")
-    print(f"  To:   {git_version}")
+    print(f"  From: {safe_display(file_version)}")
+    print(f"  To:   {safe_display(git_version)}")
     
     if update_version_file(git_version):
         print(f"[OK] Version synced successfully")

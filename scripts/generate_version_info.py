@@ -7,7 +7,35 @@ Creates version info file for Windows executable metadata
 """
 
 import sys
+import io
 from pathlib import Path
+
+def configure_output_encoding() -> None:
+    """Ensure stdout/stderr can handle Unicode output."""
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name, None)
+        if stream is None:
+            continue
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            try:
+                wrapped = io.TextIOWrapper(
+                    stream.buffer,
+                    encoding="utf-8",
+                    errors="replace",
+                    line_buffering=True,
+                )
+                setattr(sys, stream_name, wrapped)
+            except (AttributeError, ValueError):
+                continue
+
+
+configure_output_encoding()
+
+# Fall back to ASCII-safe text for logs if needed.
+def safe_display(value: str) -> str:
+    return value.encode("ascii", "backslashreplace").decode("ascii")
 
 # Add SRC to path
 sys.path.insert(0, str(Path('SRC').resolve()))
@@ -37,7 +65,11 @@ def generate_version_info():
         
         major, minor, patch = map(int, version_parts)
     except (ValueError, AttributeError) as e:
-        print(f"Error: Invalid version format: {__version__} (base: {base_version if 'base_version' in locals() else 'N/A'})")
+        base_display = base_version if 'base_version' in locals() else 'N/A'
+        print(
+            "Error: Invalid version format: "
+            f"{safe_display(__version__)} (base: {safe_display(str(base_display))})"
+        )
         print(f"Details: {e}")
         sys.exit(1)
     
@@ -81,7 +113,7 @@ def generate_version_info():
     # Write with explicit UTF-8 encoding to handle special characters like ©
     output_path.write_text(template, encoding='utf-8')
     print(f"Generated version_info.txt: {output_path}")
-    print(f"  Version: {__version__}.{build}")
+    print(f"  Version: {safe_display(__version__)}.{build}")
     print(f"  File version: ({major}, {minor}, {patch}, {build})")
 
 
