@@ -79,7 +79,7 @@
 <h2>UI</h2>
 <h3>Quick demo</h3>
 <p align="center">
-  <img src="DOCS/images/gifs/gif.gif" alt="CuePoint demo" width="100%"/>
+  <img src="DOCS/images/gifs/gif1.gif" alt="CuePoint demo" width="100%"/>
 </p>
 
 <h2>What you get</h2>
