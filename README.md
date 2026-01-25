@@ -77,32 +77,7 @@
 </ul>
 
 <h2>UI</h2>
-<p align="center"><em>Main window</em></p>
-<p align="center">
-  <img src="DOCS/images/ui-main.png" alt="Main window" width="70%"/>
-</p>
-<p align="center"><em>Match review</em></p>
-<p align="center">
-  <img src="DOCS/images/ui-review.png" alt="Match review" width="70%"/>
-</p>
-<p align="center"><em>Playlist detail</em></p>
-<p align="center">
-  <img src="DOCS/images/ui-playlist.png" alt="Playlist detail" width="70%"/>
-</p>
-<p align="center"><em>Track candidates</em></p>
-<p align="center">
-  <img src="DOCS/images/ui-candidates.png" alt="Track candidates" width="70%"/>
-</p>
-<p align="center"><em>Automatic check for an available update</em></p>
-<p align="center">
-  <img src="DOCS/images/ui-update1.png" alt="Update" width="70%"/>
-</p>
-<p align="center"><em>Download update</em></p>
-<p align="center">
-  <img src="DOCS/images/ui-update2.png" alt="Download Update" width="70%"/>
-</p>
-
-<h2>Quick demo</h2>
+<h3>Quick demo</h3>
 <p align="center">
   <img src="DOCS/images/gifs/gif.gif" alt="CuePoint demo" width="100%"/>
 </p>
