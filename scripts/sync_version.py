@@ -24,6 +24,7 @@ import argparse
 import re
 import subprocess
 import sys
+import io
 from pathlib import Path
 from typing import Optional
 
@@ -93,7 +94,7 @@ def get_version_from_file() -> Optional[str]:
         print(f"Error: Version file not found: {version_file}")
         return None
     
-    content = version_file.read_text()
+    content = version_file.read_text(encoding="utf-8")
     match = re.search(r'__version__\s*=\s*["\']([^"\']+)["\']', content)
     if match:
         return match.group(1)
@@ -118,7 +119,7 @@ def update_version_file(new_version: str) -> bool:
         return False
     
     # Read current content
-    content = version_file.read_text()
+    content = version_file.read_text(encoding="utf-8")
     
     # Replace version
     pattern = r'(__version__\s*=\s*["\'])([^"\']+)(["\'])'
@@ -130,9 +131,30 @@ def update_version_file(new_version: str) -> bool:
         return False
     
     # Write updated content
-    version_file.write_text(new_content)
+    version_file.write_text(new_content, encoding="utf-8")
     print(f"Updated {version_file} with version {new_version}")
     return True
+
+
+def configure_output_encoding() -> None:
+    """Ensure stdout/stderr can handle Unicode in tags."""
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name, None)
+        if stream is None:
+            continue
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            try:
+                wrapped = io.TextIOWrapper(
+                    stream.buffer,
+                    encoding="utf-8",
+                    errors="replace",
+                    line_buffering=True,
+                )
+                setattr(sys, stream_name, wrapped)
+            except (AttributeError, ValueError):
+                continue
 
 
 def validate_semver(version: str) -> bool:
@@ -150,6 +172,7 @@ def validate_semver(version: str) -> bool:
 
 
 def main():
+    configure_output_encoding()
     parser = argparse.ArgumentParser(
         description="Sync version from git tag to version.py"
     )
