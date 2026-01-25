@@ -746,7 +746,7 @@ jobs:
                 Write-Host "  dist/ directory is empty or doesn't exist"
             }
             Write-Host "Checking explicit path:"
-            $explicitPath = "dist\CuePoint-Setup-v$fullVersion.exe"
+            $explicitPath = "dist\CuePoint-Setup-v$version.exe"
             $absExplicitPath = Join-Path (Get-Location) $explicitPath
             Write-Host "  Relative path: $explicitPath"
             Write-Host "  Absolute path: $absExplicitPath"

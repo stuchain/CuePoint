@@ -58,10 +58,10 @@ jobs:
           
           echo "Checking for missing dependencies..."
           required=("PySide6" "requests" "aiohttp" "beautifulsoup4" "ddgs" "rapidfuzz" "python-dateutil" "pyyaml" "tqdm" "requests-cache" "playwright" "selenium" "openpyxl")
-          installed=$(pip list --format=json | python -c "import sys, json; packages = [p['name'].lower() for p in json.load(sys.stdin)]; print(' '.join(packages))")
+          installed=$(pip list --format=json | python -c "import sys, json; print('\n'.join(p['name'].lower() for p in json.load(sys.stdin)))")
           missing=()
           for pkg in "${required[@]}"; do
-              if ! echo "$installed" | grep -qi "^${pkg,,}$"; then
+              if ! printf "%s\n" "$installed" | grep -qx "${pkg,,}"; then
                   missing+=("$pkg")
               fi
           done

@@ -1,10 +1,6 @@
 name: Release Gates
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -92,17 +88,17 @@ jobs:
       
       - name: Run linter
         run: |
-          ruff check SRC/ || echo "Linting issues found"
+          ruff check SRC/
         continue-on-error: false
       
       - name: Run type checker
         run: |
-          mypy SRC/cuepoint || echo "Type checking issues found"
+          mypy SRC/cuepoint
         continue-on-error: false
       
       - name: Check code formatting
         run: |
-          ruff format --check SRC/ || echo "Formatting issues found"
+          ruff format --check SRC/
         continue-on-error: false
       
       - name: Check file sizes

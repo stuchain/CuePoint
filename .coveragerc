@@ -1,5 +1,5 @@
 [run]
-source = src/cuepoint
+source = SRC/cuepoint
 omit = 
     */tests/*
     */__pycache__/*
