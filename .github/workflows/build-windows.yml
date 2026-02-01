@@ -30,32 +30,23 @@ jobs:
           python-version: '3.13.7'
           cache: 'pip'
       
-      - name: Install dependencies
+      - name: Install dependencies (release: with hash checking per 2.8)
         run: |
           Write-Host "=== DEBUG: Installing dependencies ==="
-          Write-Host "Python version:"
           python --version
-          Write-Host "Pip version:"
-          python -m pip --version
-          Write-Host "Upgrading pip..."
           python -m pip install --upgrade pip
           
-          Write-Host "Installing build requirements from requirements-build.txt..."
-          Write-Host "This includes all runtime dependencies needed by the GUI app:"
-          Write-Host "  - PySide6 (GUI framework)"
-          Write-Host "  - requests, aiohttp (HTTP)"
-          Write-Host "  - beautifulsoup4 (HTML parsing)"
-          Write-Host "  - ddgs (DuckDuckGo search)"
-          Write-Host "  - rapidfuzz (fuzzy matching)"
-          Write-Host "  - python-dateutil (date parsing)"
-          Write-Host "  - pyyaml (YAML config)"
-          Write-Host "  - tqdm (progress bars)"
-          Write-Host "  - requests-cache (HTTP caching)"
-          Write-Host "  - playwright (browser automation)"
-          Write-Host "  - selenium (alternative browser automation)"
-          Write-Host "  - openpyxl (Excel export)"
+          if ("${{ github.ref }}" -like "refs/tags/v*") {
+            Write-Host "Release build: using pip --require-hashes (2.8)"
+            pip install hashin
+            python scripts/generate_requirements_hashes.py
+            pip install -r requirements-build-hashed.txt --require-hashes
+          } else {
+            Write-Host "Non-release build: installing from requirements-build.txt"
+            pip install -r requirements-build.txt
+          }
           
-          pip install -r requirements-build.txt
+          Write-Host "Installing build requirements (runtime deps for GUI app)..."
           
           Write-Host "PyInstaller version (pinned from requirements-build.txt):"
           pyinstaller --version
@@ -663,6 +654,13 @@ jobs:
           }
           
           Write-Host "[OK] Installer signed and verified successfully"
+      
+      - name: Generate build metadata
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          python scripts/generate_build_metadata.py --output dist/build_info.json
+        env:
+          GITHUB_RUN_ID: ${{ github.run_id }}
       
       - name: Verify version embedding
         run: |

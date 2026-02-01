@@ -15,6 +15,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
+      - name: Set up Python (release gates)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      
+      - name: Verify version sync
+        run: python scripts/sync_version.py --validate-only --tag ${{ github.ref_name }}
+      
+      - name: Validate version
+        run: python scripts/validate_version.py
+      
+      - name: Validate changelog
+        run: python scripts/validate_changelog.py
+      
       - name: Wait for build workflows to complete
         run: |
           TAG="${{ github.ref }}"
@@ -122,7 +136,41 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.13'
+      
+      - name: Generate SBOM
+        run: |
+          mkdir -p dist
+          python scripts/generate_sbom.py --output dist/sbom.spdx.json
+      
+      - name: Generate checksums
+        run: |
+          python scripts/generate_checksums.py \
+            --artifacts $(ls artifacts/macos/*.dmg artifacts/windows/*.exe 2>/dev/null) \
+            --output SHA256SUMS \
+            --algorithms sha256
+      
+      - name: Sign checksum file (optional, design 2.17)
+        id: sign_checksums
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          if [ -z "$GPG_PRIVATE_KEY" ]; then
+            echo "No GPG_PRIVATE_KEY secret; skipping checksum signing."
+            exit 0
+          fi
+          echo "Importing GPG key..."
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          echo "Signing SHA256SUMS..."
+          if [ -n "$GPG_PASSPHRASE" ]; then
+            python scripts/sign_checksums.py SHA256SUMS --passphrase
+          else
+            python scripts/sign_checksums.py SHA256SUMS
+          fi
+          if [ -f SHA256SUMS.asc ]; then
+            echo "Signed: SHA256SUMS.asc"
+          fi
       
       - name: Sync version from git tag
         run: |
@@ -134,24 +182,11 @@ jobs:
           fi
           echo "[OK] Version synced successfully"
       
-      - name: Generate release notes
-        run: |
-          VERSION="${{ github.ref_name }}"
-          echo "# Release $VERSION" > RELEASE_NOTES.md
-          echo "" >> RELEASE_NOTES.md
-          echo "## Changes" >> RELEASE_NOTES.md
-          echo "" >> RELEASE_NOTES.md
-          echo "See CHANGELOG.md for details." >> RELEASE_NOTES.md
-          echo "" >> RELEASE_NOTES.md
-          echo "## Installation" >> RELEASE_NOTES.md
-          echo "" >> RELEASE_NOTES.md
-          echo "### macOS" >> RELEASE_NOTES.md
-          echo "1. Download the DMG file" >> RELEASE_NOTES.md
-          echo "2. Open the DMG and drag CuePoint.app to Applications" >> RELEASE_NOTES.md
-          echo "" >> RELEASE_NOTES.md
-          echo "### Windows" >> RELEASE_NOTES.md
-          echo "1. Download the installer" >> RELEASE_NOTES.md
-          echo "2. Run the installer and follow the prompts" >> RELEASE_NOTES.md
+      - name: Generate release notes (from PRs, design 2.18)
+        run: python scripts/generate_release_notes.py --tag ${{ github.ref_name }} --output RELEASE_NOTES.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
       
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -159,9 +194,17 @@ jobs:
           files: |
             artifacts/macos/*.dmg
             artifacts/windows/*.exe
+            dist/sbom.spdx.json
+            SHA256SUMS
           body_path: RELEASE_NOTES.md
           draft: false
           prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Upload checksum signature (if GPG signed)
+        if: hashFiles('SHA256SUMS.asc') != ''
+        run: gh release upload ${{ github.ref_name }} SHA256SUMS.asc --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       

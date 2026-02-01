@@ -31,6 +31,9 @@ ENV/
 env/
 .env
 
+# Generated hashed requirements (2.8; generated in CI)
+requirements-build-hashed.txt
+
 # PyInstaller
 *.manifest
 *.spec.bak
