@@ -18,6 +18,24 @@ from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
 # ============================================================================
+# Reliability State Machine (Design 5.24, 5.25)
+# ============================================================================
+
+
+class ReliabilityState:
+    """Processing reliability states for UX (Design 5.24, 5.25)."""
+
+    IDLE = "idle"
+    PREFLIGHT = "preflight"
+    RUNNING = "running"
+    RETRYING = "retrying"
+    PAUSED = "paused"
+    RESUMING = "resuming"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+# ============================================================================
 # Progress Reporting
 # ============================================================================
 
@@ -28,6 +46,7 @@ class ProgressInfo:
     Progress information for GUI updates.
 
     This is passed to progress callbacks to update GUI progress bars and status.
+    Design 5.12, 5.40: status_message can show "Retrying...", "Paused", etc.
     """
 
     completed_tracks: int
@@ -36,6 +55,8 @@ class ProgressInfo:
     unmatched_count: int
     current_track: Dict[str, str] = field(default_factory=dict)  # {'title': str, 'artists': str}
     elapsed_time: float = 0.0
+    status_message: Optional[str] = None  # e.g. "Retrying...", "Saving progress..."
+    reliability_state: Optional[str] = None  # Design 5.24: idle, running, retrying, paused, etc.
 
     def __post_init__(self):
         """Calculate percentage if not provided"""
@@ -136,30 +157,60 @@ class TrackResult:
 
 class ProcessingController:
     """
-    Thread-safe controller for processing operations with cancellation support.
+    Thread-safe controller for processing operations with cancellation and pause support.
 
-    This allows GUI to cancel long-running operations safely.
+    Design 5.12, 5.25: Supports cancel, pause, and resume for reliability UX.
     """
 
     def __init__(self):
-        """Initialize controller with cancellation state"""
+        """Initialize controller with cancellation and pause state."""
         self._cancelled = False
+        self._paused = False
         self._lock = threading.Lock()
+        self._pause_event = threading.Event()
+        self._pause_event.set()  # Not paused initially
 
     def cancel(self):
-        """Request cancellation of processing operation"""
+        """Request cancellation of processing operation."""
         with self._lock:
             self._cancelled = True
 
     def is_cancelled(self) -> bool:
-        """Check if cancellation was requested (thread-safe)"""
+        """Check if cancellation was requested (thread-safe)."""
         with self._lock:
             return self._cancelled
 
+    def request_pause(self):
+        """Request pause (Design 5.12, 5.25). Processor will block until resume()."""
+        with self._lock:
+            self._paused = True
+            self._pause_event.clear()
+
+    def resume(self):
+        """Resume from pause (Design 5.12, 5.25)."""
+        with self._lock:
+            self._paused = False
+            self._pause_event.set()
+
+    def is_paused(self) -> bool:
+        """Check if pause was requested (thread-safe)."""
+        with self._lock:
+            return self._paused
+
+    def wait_if_paused(self) -> None:
+        """Block until not paused (or cancelled). Call from processor loop."""
+        while True:
+            with self._lock:
+                if not self._paused or self._cancelled:
+                    return
+            self._pause_event.wait(timeout=0.5)
+
     def reset(self):
-        """Reset cancellation state (for new operation)"""
+        """Reset cancellation and pause state (for new operation)."""
         with self._lock:
             self._cancelled = False
+            self._paused = False
+            self._pause_event.set()
 
 
 # ============================================================================
@@ -176,6 +227,7 @@ class ErrorType(Enum):
     NETWORK_ERROR = "network_error"
     PROCESSING_ERROR = "processing_error"
     VALIDATION_ERROR = "validation_error"
+    CIRCUIT_OPEN = "circuit_open"  # Design 5.38: circuit breaker tripped
 
 
 @dataclass

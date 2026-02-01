@@ -144,13 +144,17 @@ class ProgressWidget(QWidget):
             percentage = (progress_info.completed_tracks / progress_info.total_tracks) * 100
             self.percentage_label.setText(f"{percentage:.0f}%")
 
-        # Current track
+        # Current track (Design 5.12, 5.40: show status_message when set, e.g. "Retrying...")
+        status_msg = getattr(progress_info, "status_message", None)
         if progress_info.current_track:
             title = progress_info.current_track.get("title", "Unknown")
             artists = progress_info.current_track.get("artists", "Unknown")
-            self.current_track_label.setText(f"{progress_info.completed_tracks}/{progress_info.total_tracks}: {title} - {artists}")
+            line = f"{progress_info.completed_tracks}/{progress_info.total_tracks}: {title} - {artists}"
         else:
-            self.current_track_label.setText(f"Processing track {progress_info.completed_tracks}/{progress_info.total_tracks}...")
+            line = f"Processing track {progress_info.completed_tracks}/{progress_info.total_tracks}..."
+        if status_msg:
+            line = f"{status_msg} | {line}"
+        self.current_track_label.setText(line)
 
         # Stats
         self.matched_label.setText(f"✓ {progress_info.matched_count}")

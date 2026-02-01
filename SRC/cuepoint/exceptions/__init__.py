@@ -9,7 +9,12 @@ from cuepoint.exceptions.cuepoint_exceptions import (
     CuePointException,
     ExportError,
     ProcessingError,
+    ReliabilityError,
     ValidationError,
+    R001_NETWORK_TIMEOUT,
+    R002_DISK_FULL,
+    R003_OUTPUT_UNWRITABLE,
+    R004_CHECKPOINT_INVALID,
 )
 
 __all__ = [
@@ -20,4 +25,9 @@ __all__ = [
     "ConfigurationError",
     "ExportError",
     "CacheError",
+    "ReliabilityError",
+    "R001_NETWORK_TIMEOUT",
+    "R002_DISK_FULL",
+    "R003_OUTPUT_UNWRITABLE",
+    "R004_CHECKPOINT_INVALID",
 ]

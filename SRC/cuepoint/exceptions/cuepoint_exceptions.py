@@ -78,6 +78,19 @@ class CacheError(CuePointException):
     pass
 
 
+class ReliabilityError(CuePointException):
+    """Error during reliability/recovery operations (Design 5.18)."""
+
+    pass
+
+
+# Reliability error codes (Design 5.18)
+R001_NETWORK_TIMEOUT = "R001"
+R002_DISK_FULL = "R002"
+R003_OUTPUT_UNWRITABLE = "R003"
+R004_CHECKPOINT_INVALID = "R004"
+
+
 
 
 

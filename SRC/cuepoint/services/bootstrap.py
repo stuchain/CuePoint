@@ -47,11 +47,12 @@ def bootstrap_services() -> None:
     matcher_service = MatcherService()
     container.register_singleton(IMatcherService, matcher_service)
 
-    # Register Beatport service (depends on cache and logging)
+    # Register Beatport service (depends on cache, logging, config for Design 5.1 retry)
     def create_beatport_service() -> IBeatportService:
         return BeatportService(
             cache_service=container.resolve(ICacheService),
             logging_service=container.resolve(ILoggingService),
+            config_service=container.resolve(IConfigService),
         )
 
     container.register_factory(IBeatportService, create_beatport_service)

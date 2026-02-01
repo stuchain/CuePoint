@@ -11,6 +11,7 @@ import os
 import shutil
 import threading
 import time
+import uuid
 from datetime import datetime
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -30,6 +31,12 @@ from cuepoint.data.rekordbox import (
 from cuepoint.models.compat import track_from_rbtrack
 from cuepoint.models.config import SETTINGS
 from cuepoint.models.preflight import PreflightIssue, PreflightResult
+from cuepoint.services.checkpoint_service import (
+    CheckpointData,
+    CheckpointService,
+    compute_xml_hash,
+)
+from cuepoint.services.output_writer import append_rows_to_main_csv, write_csv_files
 from cuepoint.utils.paths import AppPaths, StorageInvariants
 from cuepoint.models.result import TrackResult
 from cuepoint.models.track import Track
@@ -46,6 +53,7 @@ from cuepoint.ui.gui_interface import (
     ProcessingError,
     ProgressCallback,
     ProgressInfo,
+    ReliabilityState,
 )
 
 
@@ -692,6 +700,10 @@ class ProcessorService(IProcessorService):
         progress_callback: Optional[ProgressCallback] = None,
         controller: Optional[ProcessingController] = None,
         auto_research: bool = False,
+        checkpoint_service: Optional[CheckpointService] = None,
+        output_dir: Optional[str] = None,
+        base_filename: Optional[str] = None,
+        resume_checkpoint: Optional[CheckpointData] = None,
     ) -> List[TrackResult]:
         """Process playlist from XML file with GUI-friendly interface.
 
@@ -838,6 +850,49 @@ class ProcessorService(IProcessorService):
                 recoverable=True,
             )
 
+        # Design 5.9, 5.62: Resume from checkpoint if provided
+        start_index = 1
+        existing_output_paths: Dict[str, str] = {}
+        if resume_checkpoint and checkpoint_service:
+            if not checkpoint_service.can_resume(resume_checkpoint, xml_path):
+                self.logging_service.warning(
+                    "[reliability] Checkpoint invalid or XML changed; starting fresh"
+                )
+                resume_checkpoint = None
+            else:
+                start_index = resume_checkpoint.last_track_index + 1
+                existing_output_paths = dict(resume_checkpoint.output_paths or {})
+                self.logging_service.info(
+                    "[reliability] resume_started run_id=%s from index %s",
+                    resume_checkpoint.run_id,
+                    start_index,
+                )
+
+        # Design 5.8: Checkpoint run_id and file_timestamp for incremental save (non-resume only)
+        run_id = ""
+        file_timestamp = ""
+        checkpoint_output_paths: Dict[str, str] = {}
+        checkpoint_every = 50
+        if (
+            not resume_checkpoint
+            and checkpoint_service
+            and output_dir
+            and base_filename
+        ):
+            resume_enabled = self.config_service.get("reliability.resume_enabled", True)
+            if resume_enabled:
+                checkpoint_every = int(
+                    self.config_service.get("reliability.checkpoint_every", 50)
+                )
+                run_id = uuid.uuid4().hex[:12]
+                file_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                self.logging_service.info(
+                    "[reliability] Checkpointing enabled run_id=%s every %s tracks",
+                    run_id,
+                    checkpoint_every,
+                )
+        last_checkpoint_count = 0
+
         # Process tracks
         results: List[TrackResult] = []
         matched_count = 0
@@ -850,9 +905,10 @@ class ProcessorService(IProcessorService):
         # Determine processing mode (sequential or parallel)
         track_workers = effective_settings.get("TRACK_WORKERS", SETTINGS.get("TRACK_WORKERS", 12))
 
-        # Prepare inputs as list of (index, track) tuples
-        inputs = [(idx, track) for idx, track in enumerate(tracks, 1)]
-        
+        # Prepare inputs as list of (index, track) tuples (Design 5.9: skip already-processed when resuming)
+        all_inputs = [(idx, track) for idx, track in enumerate(tracks, 1)]
+        inputs = [(idx, track) for idx, track in all_inputs if idx >= start_index]
+
         # Initialize results variable (will be set by parallel or sequential processing)
         results: List[TrackResult] = []
 
@@ -945,16 +1001,74 @@ class ProcessorService(IProcessorService):
                                                     "artists": result.artist,
                                                 },
                                                 elapsed_time=elapsed_time,
+                                                reliability_state=ReliabilityState.RUNNING,
                                             )
-                                            # Call progress callback - must not block or raise
-                                            # In packaged apps, this can block if Qt signals aren't processed correctly
                                             progress_callback(progress_info)
                                         except Exception as callback_setup_error:
-                                            # Even creating ProgressInfo or calling callback can fail
-                                            # Log but absolutely do not break processing
                                             self.logging_service.warning(
                                                 f"Progress callback setup error (non-fatal, continuing): {callback_setup_error}"
                                             )
+
+                                    # Design 5.8: Parallel checkpointing - save every N completions (contiguous)
+                                    if (
+                                        run_id
+                                        and checkpoint_service
+                                        and output_dir
+                                        and base_filename
+                                        and len(results_dict) % checkpoint_every == 0
+                                        and len(results_dict) > 0
+                                    ):
+                                        sorted_indices = sorted(results_dict.keys())
+                                        max_idx = max(sorted_indices) if sorted_indices else 0
+                                        K = 0
+                                        for i in range(1, max_idx + 1):
+                                            if i not in results_dict:
+                                                break
+                                            K = i
+                                        if K > last_checkpoint_count:
+                                            try:
+                                                if last_checkpoint_count == 0:
+                                                    ordered = [results_dict[i] for i in range(1, K + 1)]
+                                                    out_paths = write_csv_files(
+                                                        ordered,
+                                                        base_filename,
+                                                        output_dir,
+                                                        file_timestamp=file_timestamp,
+                                                    )
+                                                    checkpoint_output_paths.update(out_paths)
+                                                else:
+                                                    batch = [
+                                                        results_dict[i]
+                                                        for i in range(last_checkpoint_count + 1, K + 1)
+                                                    ]
+                                                    if batch and checkpoint_output_paths.get("main"):
+                                                        append_rows_to_main_csv(
+                                                            batch,
+                                                            checkpoint_output_paths["main"],
+                                                            delimiter=",",
+                                                            include_metadata=True,
+                                                        )
+                                                xml_hash = compute_xml_hash(xml_path)
+                                                last_track_id = f"trk_{K:06d}"
+                                                checkpoint_service.save(
+                                                    run_id=run_id,
+                                                    playlist=playlist_name,
+                                                    xml_path=xml_path,
+                                                    xml_hash=xml_hash,
+                                                    last_track_index=K,
+                                                    last_track_id=last_track_id,
+                                                    output_paths=checkpoint_output_paths,
+                                                )
+                                                last_checkpoint_count = K
+                                                self.logging_service.info(
+                                                    "[reliability] Parallel checkpoint saved at index %s",
+                                                    K,
+                                                )
+                                            except Exception as ckpt_err:
+                                                self.logging_service.warning(
+                                                    "[reliability] Parallel checkpoint save failed: %s",
+                                                    ckpt_err,
+                                                )
 
                             except Exception as e:
                                 # Handle errors from individual track processing
@@ -1182,6 +1296,26 @@ class ProcessorService(IProcessorService):
             self.logging_service.info(f"Using sequential processing (TRACK_WORKERS={track_workers})")
             results = []  # Re-initialize for sequential mode
             for idx, track in inputs:
+                # Design 5.12, 5.25: Pause/resume support
+                if controller and controller.is_paused():
+                    if progress_callback:
+                        elapsed_time = time.perf_counter() - processing_start_time
+                        try:
+                            progress_callback(
+                                ProgressInfo(
+                                    completed_tracks=len(results),
+                                    total_tracks=total,
+                                    matched_count=matched_count,
+                                    unmatched_count=unmatched_count,
+                                    current_track={"title": track.title, "artists": track.artist or ""},
+                                    elapsed_time=elapsed_time,
+                                    status_message="Paused",
+                                    reliability_state=ReliabilityState.PAUSED,
+                                )
+                            )
+                        except Exception:
+                            pass
+                    controller.wait_if_paused()
                 # Check for cancellation
                 if controller and controller.is_cancelled():
                     self.logging_service.info("Processing cancelled by user")
@@ -1197,7 +1331,7 @@ class ProcessorService(IProcessorService):
                 else:
                     unmatched_count += 1
 
-                # Update progress callback
+                # Update progress callback (Design 5.24: reliability_state)
                 if progress_callback:
                     elapsed_time = time.perf_counter() - processing_start_time
                     progress_info = ProgressInfo(
@@ -1207,12 +1341,57 @@ class ProcessorService(IProcessorService):
                         unmatched_count=unmatched_count,
                         current_track={"title": track.title, "artists": track.artist or ""},
                         elapsed_time=elapsed_time,
+                        reliability_state=ReliabilityState.RUNNING,
                     )
                     try:
                         progress_callback(progress_info)
                     except Exception:
                         # Don't let callback errors break processing
                         pass
+
+                # Design 5.8: Save checkpoint every N tracks (sequential mode, first write or append)
+                if (
+                    run_id
+                    and checkpoint_service
+                    and output_dir
+                    and base_filename
+                    and len(results) % checkpoint_every == 0
+                    and len(results) > 0
+                ):
+                    try:
+                        if last_checkpoint_count == 0:
+                            out_paths = write_csv_files(
+                                results,
+                                base_filename,
+                                output_dir,
+                                file_timestamp=file_timestamp,
+                            )
+                            checkpoint_output_paths.update(out_paths)
+                        else:
+                            batch = results[last_checkpoint_count:len(results)]
+                            if batch and checkpoint_output_paths.get("main"):
+                                append_rows_to_main_csv(
+                                    batch,
+                                    checkpoint_output_paths["main"],
+                                    delimiter=",",
+                                    include_metadata=True,
+                                )
+                        xml_hash = compute_xml_hash(xml_path)
+                        last_track_id = f"trk_{idx:06d}"
+                        checkpoint_service.save(
+                            run_id=run_id,
+                            playlist=playlist_name,
+                            xml_path=xml_path,
+                            xml_hash=xml_hash,
+                            last_track_index=idx,
+                            last_track_id=last_track_id,
+                            output_paths=checkpoint_output_paths,
+                        )
+                        last_checkpoint_count = len(results)
+                    except Exception as ckpt_err:
+                        self.logging_service.warning(
+                            "[reliability] Checkpoint save failed: %s", ckpt_err
+                        )
 
         # Handle auto-research for unmatched tracks if requested and not cancelled
         if auto_research and not (controller and controller.is_cancelled()):
@@ -1343,5 +1522,17 @@ class ProcessorService(IProcessorService):
                                     except Exception:
                                         # Don't let callback errors break processing
                                         pass
+
+        # Design 5.47, 5.49: On resume append new results to existing output; discard checkpoint on success
+        if checkpoint_service:
+            if resume_checkpoint and existing_output_paths.get("main") and results:
+                append_rows_to_main_csv(
+                    results,
+                    existing_output_paths["main"],
+                    delimiter=",",
+                    include_metadata=True,
+                )
+                self.logging_service.info("[reliability] Appended %s rows to checkpoint output", len(results))
+            checkpoint_service.discard()
 
         return results

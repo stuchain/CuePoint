@@ -22,11 +22,14 @@ Example:
     ...     print(f"{track.title} by {track.artists}")
 """
 
+import logging
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+
+_logger = logging.getLogger(__name__)
 
 from cuepoint.models.compat import track_from_rbtrack
 from cuepoint.models.playlist import Playlist
@@ -128,14 +131,24 @@ def parse_rekordbox(xml_path: str) -> Dict[str, Playlist]:
     tracks_by_id: Dict[str, RBTrack] = {}
     playlist_data: Dict[str, List[str]] = {}  # Temporary: playlist name -> track IDs
 
+    # Design 5.15, 5.44: Skip malformed track entries, log and continue (audit trail)
     collection = root.find(".//COLLECTION")
     if collection is not None:
         for t in collection.findall("TRACK"):
-            tid = t.get("TrackID") or t.get("ID") or t.get("Key") or ""
-            title = t.get("Name") or t.get("Title") or ""
-            artists = t.get("Artist") or t.get("Artists") or ""
-            if tid and title:
-                tracks_by_id[tid] = RBTrack(track_id=tid, title=title, artists=artists)
+            tid = (t.get("TrackID") or t.get("ID") or t.get("Key") or "").strip()
+            title = (t.get("Name") or t.get("Title") or "").strip()
+            artists = (t.get("Artist") or t.get("Artists") or "").strip()
+            if not tid:
+                _logger.debug("[reliability] Skipping TRACK with missing TrackID in %s", xml_path)
+                continue
+            if not title:
+                _logger.debug(
+                    "[reliability] Skipping TRACK id=%s (missing title) in %s",
+                    tid,
+                    xml_path,
+                )
+                continue
+            tracks_by_id[tid] = RBTrack(track_id=tid, title=title, artists=artists)
 
     # Parse playlist definitions (playlist name -> list of track IDs)
     playlists_root = root.find(".//PLAYLISTS")

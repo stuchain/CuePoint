@@ -113,6 +113,13 @@ def main():
     ap.add_argument("--no-preflight", action="store_true", help="Skip preflight validation (advanced)")
     ap.add_argument("--preflight-only", action="store_true", help="Run preflight only and exit")
     ap.add_argument("--dry-run", action="store_true", help="Alias for --preflight-only")
+    # Design 5.47, 5.90, 5.153: Resume and reliability
+    ap.add_argument("--resume", action="store_true", help="Resume from last checkpoint if available")
+    ap.add_argument("--no-resume", action="store_true", help="Do not resume; start fresh (ignore checkpoint)")
+    ap.add_argument("--checkpoint-every", type=int, default=None, metavar="N",
+                    help="Save checkpoint every N tracks (default: from config)")
+    ap.add_argument("--max-retries", type=int, default=None, metavar="N",
+                    help="Max network retries per request (default: from config)")
 
     args = ap.parse_args()
     if args.dry_run:
@@ -268,6 +275,13 @@ def main():
         run_summary_write_value = False
     if not run_summary_json_path and bool(run_summary_write_value):
         run_summary_json_path = config_service.get("run_summary.json_path", "") or None
+
+    # Design 5.153: Apply reliability CLI overrides
+    if args.checkpoint_every is not None and args.checkpoint_every > 0:
+        config_service.set("reliability.checkpoint_every", args.checkpoint_every)
+    if args.max_retries is not None and args.max_retries >= 0:
+        config_service.set("reliability.max_retries", args.max_retries)
+        config_service.set("beatport.max_retries", args.max_retries)
     
     # Execute the main processing pipeline using CLIProcessor
     # This will:
@@ -276,6 +290,8 @@ def main():
     # 3. For each track, generate search queries and find best Beatport matches
     # 4. Write results to CSV files in the output/ directory
     # 5. Optionally re-search unmatched tracks if --auto-research is enabled
+    # Design 5.47: --resume wins over --no-resume when both given
+    resume = args.resume and not args.no_resume
     cli_processor.process_playlist(
         xml_path=args.xml,
         playlist_name=args.playlist,
@@ -286,6 +302,7 @@ def main():
         preflight_report_path=args.preflight_report,
         run_summary_json_path=run_summary_json_path,
         preflight_enabled=preflight_enabled,
+        resume=resume,
     )
 
 

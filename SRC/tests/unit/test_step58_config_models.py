@@ -17,6 +17,7 @@ from cuepoint.models.config_models import (
     MatchingConfig,
     ProductConfig,
     ProcessingConfig,
+    ReliabilityConfig,
     RunSummaryConfig,
     UIConfig,
 )
@@ -130,6 +131,19 @@ class TestMatchingConfig:
         assert config.artist_weight == 0.45
 
 
+class TestReliabilityConfig:
+    """Test ReliabilityConfig model (Design 5.50, 5.91)."""
+
+    def test_default_values(self):
+        """Test that ReliabilityConfig has correct default values."""
+        config = ReliabilityConfig()
+        assert config.max_retries == 3
+        assert config.timeout_connect == 5
+        assert config.timeout_read == 30
+        assert config.checkpoint_every == 50
+        assert config.resume_enabled is True
+
+
 class TestAppConfig:
     """Test AppConfig model."""
 
@@ -161,6 +175,7 @@ class TestAppConfig:
         assert "product" in data
         assert "run_summary" in data
         assert "matching" in data
+        assert "reliability" in data
 
         assert data["beatport"]["timeout"] == 30
         assert data["cache"]["enabled"] is True
@@ -216,11 +231,14 @@ class TestAppConfig:
         original.beatport.timeout = 60
         original.cache.enabled = False
         original.processing.max_concurrent = 10
+        original.reliability.checkpoint_every = 25
 
         data = original.to_dict()
+        assert "reliability" in data
         restored = AppConfig.from_dict(data)
 
         assert restored.beatport.timeout == 60
         assert restored.cache.enabled is False
         assert restored.processing.max_concurrent == 10
+        assert restored.reliability.checkpoint_every == 25
 

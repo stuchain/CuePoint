@@ -15,7 +15,7 @@ This architecture ensures the GUI remains responsive during long-running
 processing operations by moving all processing to a separate thread.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from PySide6.QtCore import QObject, QThread, Signal
 
@@ -23,6 +23,9 @@ from cuepoint.models.result import TrackResult
 from cuepoint.services.interfaces import IProcessorService
 from cuepoint.ui.gui_interface import ErrorType, ProcessingController, ProcessingError, ProgressInfo
 from cuepoint.utils.di_container import get_container
+
+if TYPE_CHECKING:
+    from cuepoint.services.checkpoint_service import CheckpointData, CheckpointService
 
 
 class ProcessingWorker(QThread):
@@ -72,6 +75,8 @@ class ProcessingWorker(QThread):
         playlist_name: str,
         settings: Optional[Dict[str, Any]] = None,
         auto_research: bool = False,
+        checkpoint_service: Optional["CheckpointService"] = None,
+        resume_checkpoint: Optional["CheckpointData"] = None,
         parent: Optional[QObject] = None,
     ):
         """
@@ -82,6 +87,8 @@ class ProcessingWorker(QThread):
             playlist_name: Name of playlist to process
             settings: Optional settings override
             auto_research: If True, auto-research unmatched tracks
+            checkpoint_service: Optional checkpoint service for resume (Design 5.47)
+            resume_checkpoint: Optional checkpoint to resume from
             parent: Parent QObject
         """
         super().__init__(parent)
@@ -89,6 +96,8 @@ class ProcessingWorker(QThread):
         self.playlist_name = playlist_name
         self.settings = settings
         self.auto_research = auto_research
+        self.checkpoint_service = checkpoint_service
+        self.resume_checkpoint = resume_checkpoint
 
         # Create ProcessingController for cancellation support
         self.controller = ProcessingController()
@@ -136,7 +145,7 @@ class ProcessingWorker(QThread):
                             f"Progress callback failed (non-fatal): {e}, fallback also failed: {fallback_error}"
                         )
 
-            # Process playlist using ProcessorService
+            # Process playlist using ProcessorService (Design 5.47: optional resume)
             results = processor_service.process_playlist_from_xml(
                 xml_path=self.xml_path,
                 playlist_name=self.playlist_name,
@@ -144,16 +153,29 @@ class ProcessingWorker(QThread):
                 progress_callback=progress_callback,
                 controller=self.controller,
                 auto_research=self.auto_research,
+                checkpoint_service=self.checkpoint_service,
+                resume_checkpoint=self.resume_checkpoint,
             )
 
             # Emit completion signal with results
             self.processing_complete.emit(results)
 
         except ProcessingError as e:
-            # Emit structured error
             self.error_occurred.emit(e)
         except Exception as e:
-            # Convert unexpected exceptions to ProcessingError
+            # Design 5.38: circuit open -> ProcessingError with CIRCUIT_OPEN for Retry UX
+            from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError
+            if isinstance(e, BeatportAPIError) and getattr(e, "error_code", None) == "CIRCUIT_OPEN":
+                error = ProcessingError(
+                    error_type=ErrorType.CIRCUIT_OPEN,
+                    message="Paused due to repeated failures.",
+                    details="The network circuit breaker tripped after 5 consecutive failures. Wait 30s or click Retry now.",
+                    suggestions=["Click Retry now to try again", "Wait 30 seconds and start again"],
+                    recoverable=True,
+                )
+                self.error_occurred.emit(error)
+                return
+            # Convert other exceptions to ProcessingError
             error = ProcessingError(
                 error_type=ErrorType.PROCESSING_ERROR,
                 message=f"Unexpected error during processing: {str(e)}",
@@ -174,6 +196,18 @@ class ProcessingWorker(QThread):
         cause process_playlist() to stop processing gracefully.
         """
         self.controller.cancel()
+
+    def request_pause(self) -> None:
+        """Request pause (Design 5.12, 5.25). Processor blocks until resume()."""
+        self.controller.request_pause()
+
+    def resume(self) -> None:
+        """Resume from pause (Design 5.12, 5.25)."""
+        self.controller.resume()
+
+    def is_paused(self) -> bool:
+        """Return whether processing is paused."""
+        return self.controller.is_paused()
 
 
 class GUIController(QObject):
@@ -240,6 +274,8 @@ class GUIController(QObject):
         playlist_name: str,
         settings: Optional[Dict[str, Any]] = None,
         auto_research: bool = False,
+        checkpoint_service: Optional["CheckpointService"] = None,
+        resume_checkpoint: Optional["CheckpointData"] = None,
     ) -> None:
         """Start processing a playlist in background thread.
 
@@ -257,12 +293,14 @@ class GUIController(QObject):
         if self.current_worker and self.current_worker.isRunning():
             self.cancel_processing()
 
-        # Create new worker thread
+        # Create new worker thread (Design 5.47: pass checkpoint for resume)
         self.current_worker = ProcessingWorker(
             xml_path=xml_path,
             playlist_name=playlist_name,
             settings=settings,
             auto_research=auto_research,
+            checkpoint_service=checkpoint_service,
+            resume_checkpoint=resume_checkpoint,
             parent=self,
         )
 
@@ -273,6 +311,20 @@ class GUIController(QObject):
 
         # Start worker thread
         self.current_worker.start()
+
+    def request_pause(self) -> None:
+        """Request pause (Design 5.12, 5.40)."""
+        if self.current_worker and self.current_worker.isRunning():
+            self.current_worker.request_pause()
+
+    def resume_processing(self) -> None:
+        """Resume from pause (Design 5.12, 5.40)."""
+        if self.current_worker:
+            self.current_worker.resume()
+
+    def is_processing_paused(self) -> bool:
+        """Return whether current processing is paused."""
+        return bool(self.current_worker and self.current_worker.is_paused())
 
     def cancel_processing(self) -> None:
         """Cancel current processing operation.

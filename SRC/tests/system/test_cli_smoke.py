@@ -77,6 +77,37 @@ def test_cli_missing_xml_returns_error() -> None:
 
 
 @pytest.mark.system
+def test_cli_resume_and_reliability_flags(tmp_path: Path) -> None:
+    """Design 5.53, 5.153: CLI --resume, --no-resume, --checkpoint-every, --max-retries parse and run."""
+    small_xml = fixtures_dir() / "small.xml"
+    if not small_xml.exists():
+        pytest.skip("fixtures/rekordbox/small.xml not found")
+    project_root = tests_dir().parent.parent
+    out_dir = tmp_path / "output"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    # Run with --no-resume and reliability flags (should run normally)
+    cmd = [
+        sys.executable,
+        str(project_root / "SRC" / "main.py"),
+        "--xml", str(small_xml),
+        "--playlist", "My Playlist",
+        "--output-dir", str(out_dir),
+        "--out", "reliability_test",
+        "--no-resume",
+        "--checkpoint-every", "25",
+        "--max-retries", "2",
+    ]
+    result = subprocess.run(
+        cmd,
+        cwd=str(project_root),
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert result.returncode == 0, f"CLI failed: {result.stderr or result.stdout}"
+
+
+@pytest.mark.system
 def test_cli_missing_playlist_returns_error() -> None:
     """CLI without required --playlist returns non-zero. Design 3.111."""
     project_root = Path(__file__).resolve().parent.parent.parent

@@ -185,7 +185,6 @@ def get_last_cache_hit() -> bool:
     return _last_cache_hit
 
 
-@retry_with_backoff(max_retries=3, backoff_base=1.0, backoff_max=30.0, jitter=True)
 def request_html(url: str) -> Optional[BeautifulSoup]:
     """Fetch a URL robustly, handling empty gzipped/brotli responses.
 

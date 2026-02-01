@@ -36,25 +36,21 @@ def write_csv_files(
     output_dir: str = "output",
     delimiter: str = ",",
     include_metadata: bool = True,
+    file_timestamp: Optional[str] = None,
 ) -> Dict[str, str]:
     """
     Write CSV files with custom delimiter.
 
     Args:
         results: List of TrackResult objects
-        base_filename: Base filename (timestamp will be added)
+        base_filename: Base filename (timestamp will be added unless file_timestamp provided)
         output_dir: Output directory (default: "output")
         delimiter: CSV delimiter character (default: ",")
         include_metadata: Include metadata columns
+        file_timestamp: Optional fixed timestamp for filenames (Design 5.8 checkpointing)
 
     Returns:
-        Dictionary mapping file type to file path:
-        {
-            'main': 'output/filename_20250127_123456.csv',
-            'candidates': 'output/filename_candidates_20250127_123456.csv',
-            'queries': 'output/filename_queries_20250127_123456.csv',
-            'review': 'output/filename_review_20250127_123456.csv' (if needed)
-        }
+        Dictionary mapping file type to file path.
 
     Raises:
         ValueError: If invalid delimiter provided
@@ -69,8 +65,14 @@ def write_csv_files(
 
     output_files = {}
 
-    # Add timestamp to base filename
-    timestamped_filename = with_timestamp(base_filename)
+    # Add timestamp to base filename (fixed for checkpoint resume if file_timestamp provided)
+    if file_timestamp:
+        base_no_ext = base_filename
+        if base_no_ext.endswith((".csv", ".tsv", ".psv")):
+            base_no_ext = os.path.splitext(base_no_ext)[0]
+        timestamped_filename = f"{base_no_ext}_{file_timestamp}"
+    else:
+        timestamped_filename = with_timestamp(base_filename)
 
     # Determine file extension based on delimiter
     ext_map = {",": ".csv", ";": ".csv", "\t": ".tsv", "|": ".psv"}
@@ -161,43 +163,14 @@ def write_main_csv(
 
         filepath = os.path.join(output_dir, base_filename)
         filepath = os.path.abspath(filepath)  # Ensure absolute path
+        # Design 5.10: Atomic write - write to .tmp then rename
+        tmp_path = filepath + ".tmp"
 
-        # Define CSV columns
-        fieldnames = [
-            "playlist_index",
-            "original_title",
-            "original_artists",
-            "beatport_title",
-            "beatport_artists",
-            "beatport_key",
-            "beatport_key_camelot",
-            "beatport_year",
-            "beatport_bpm",
-            "beatport_url",
-            "title_sim",
-            "artist_sim",
-            "match_score",
-            "confidence",
-            "search_query_index",
-            "search_stop_query_index",
-            "candidate_index",
-        ]
-
-        # Add metadata columns if requested
-        if include_metadata:
-            fieldnames.extend(
-                [
-                    "beatport_label",
-                    "beatport_genres",
-                    "beatport_release",
-                    "beatport_release_date",
-                    "beatport_track_id",
-                ]
-            )
+        fieldnames = _main_csv_fieldnames(include_metadata)
 
         # Write file and ensure it's fully closed before returning
         try:
-            with open(filepath, "w", newline="", encoding="utf-8") as f:
+            with open(tmp_path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter=delimiter)
                 writer.writeheader()
                 for result in results:
@@ -209,7 +182,18 @@ def write_main_csv(
                 f.flush()
                 os.fsync(f.fileno())
 
-            # File should be closed now (context manager)
+            # Atomic rename (Design 5.10, 5.32)
+            if os.path.exists(tmp_path):
+                file_size = os.path.getsize(tmp_path)
+                if file_size > 0:
+                    os.replace(tmp_path, filepath)
+                else:
+                    try:
+                        os.unlink(tmp_path)
+                    except OSError:
+                        pass
+                    return None
+
             # Verify file actually exists and has content
             if not os.path.exists(filepath):
                 return None
@@ -242,6 +226,69 @@ def write_main_csv(
             raise OSError(f"Failed to write CSV file: {e}")
     except Exception as e:
         raise RuntimeError(f"CSV export failed: {e}") from e
+
+
+def _main_csv_fieldnames(include_metadata: bool) -> List[str]:
+    """Fieldnames for main CSV (shared by write_main_csv and append_rows_to_main_csv)."""
+    fieldnames = [
+        "playlist_index",
+        "original_title",
+        "original_artists",
+        "beatport_title",
+        "beatport_artists",
+        "beatport_key",
+        "beatport_key_camelot",
+        "beatport_year",
+        "beatport_bpm",
+        "beatport_url",
+        "title_sim",
+        "artist_sim",
+        "match_score",
+        "confidence",
+        "search_query_index",
+        "search_stop_query_index",
+        "candidate_index",
+    ]
+    if include_metadata:
+        fieldnames.extend(
+            [
+                "beatport_label",
+                "beatport_genres",
+                "beatport_release",
+                "beatport_release_date",
+                "beatport_track_id",
+            ]
+        )
+    return fieldnames
+
+
+def append_rows_to_main_csv(
+    results: List[TrackResult],
+    filepath: str,
+    delimiter: str = ",",
+    include_metadata: bool = True,
+) -> Optional[str]:
+    """Append result rows to an existing main CSV (Design 5.75, resume). No header written."""
+    if not results:
+        return None
+    if delimiter not in [",", ";", "\t", "|"]:
+        raise ValueError(f"Invalid delimiter: {delimiter}. Must be one of: , ; \\t |")
+    path = os.path.abspath(filepath)
+    if not os.path.exists(path):
+        return None
+    fieldnames = _main_csv_fieldnames(include_metadata)
+    try:
+        with open(path, "a", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter=delimiter)
+            for result in results:
+                row_dict = result.to_dict()
+                filtered_row = {k: row_dict.get(k, "") for k in fieldnames}
+                writer.writerow(filtered_row)
+            f.flush()
+            os.fsync(f.fileno())
+        return path
+    except OSError:
+        return None
 
 
 def write_candidates_csv(

@@ -59,7 +59,7 @@ from cuepoint.ui.controllers.config_controller import ConfigController
 from cuepoint.ui.controllers.export_controller import ExportController
 from cuepoint.ui.controllers.main_controller import GUIController
 from cuepoint.ui.controllers.results_controller import ResultsController
-from cuepoint.ui.gui_interface import ProcessingError, ProgressInfo
+from cuepoint.ui.gui_interface import ErrorType, ProcessingError, ProgressInfo, ReliabilityState
 from cuepoint.ui.widgets.batch_processor import BatchProcessorWidget
 from cuepoint.ui.widgets.config_panel import ConfigPanel
 from cuepoint.ui.widgets.dialogs import AboutDialog, ErrorDialog, UserGuideDialog
@@ -597,6 +597,15 @@ class MainWindow(QMainWindow):
         self.progress_unmatched = QLabel("✗ Unmatched: 0")
         self.progress_unmatched.setStyleSheet("font-size: 12px; color: #F44336; font-weight: bold; background: transparent; padding: 0px;")
         prog_row2.addWidget(self.progress_unmatched)
+        # Design 5.12, 5.40: Pause / Resume button
+        self.pause_button = QPushButton("Pause")
+        self.pause_button.setFixedWidth(90)
+        self.pause_button.setFocusPolicy(Qt.StrongFocus)
+        self.pause_button.setAccessibleName("Pause processing button")
+        self.pause_button.setAccessibleDescription("Pause the current processing; click Resume to continue")
+        self.pause_button.clicked.connect(self.on_pause_resume_clicked)
+        self.pause_button.setEnabled(False)
+        prog_row2.addWidget(self.pause_button)
         self.cancel_button = QPushButton("Cancel")
         self.cancel_button.setObjectName("dangerButton")
         self.cancel_button.setFixedWidth(110)
@@ -2828,8 +2837,10 @@ class MainWindow(QMainWindow):
         # Re-enable start button
         self.start_button.setEnabled(True)
 
-        # Disable cancel button
+        # Disable cancel and pause buttons
         self.cancel_button.setEnabled(False)
+        if hasattr(self, "pause_button") and self.pause_button:
+            self.pause_button.setEnabled(False)
 
         # Automatically save results for each playlist
         for playlist_name, results in filtered_dict.items():
@@ -2992,8 +3003,10 @@ class MainWindow(QMainWindow):
         # Disable start button during processing
         self.start_button.setEnabled(False)
 
-        # Enable cancel button
+        # Enable cancel and pause buttons (Design 5.12)
         self.cancel_button.setEnabled(True)
+        self.pause_button.setEnabled(True)
+        self.pause_button.setText("Pause")
 
         # Update status
         self.statusBar().showMessage(f"Starting processing: {playlist_name}...")
@@ -3029,13 +3042,45 @@ class MainWindow(QMainWindow):
 
         # Track processing start time for cancel confirmation
         self._processing_start_time = datetime.now()
-        
+
+        # Design 5.47, 5.48: Check for incomplete run and offer resume (Resume / Discard)
+        checkpoint_service = None
+        resume_checkpoint = None
+        try:
+            from cuepoint.services.checkpoint_service import (
+                CheckpointService,
+                get_checkpoint_dir,
+            )
+            checkpoint_service = CheckpointService(checkpoint_dir=get_checkpoint_dir())
+            resume_checkpoint = checkpoint_service.validate_and_load(xml_path)
+            if resume_checkpoint and resume_checkpoint.playlist == playlist_name:
+                from PySide6.QtWidgets import QMessageBox
+                reply = QMessageBox.question(
+                    self,
+                    "Resume previous run?",
+                    "We found an incomplete run. Resume?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.Yes,
+                )
+                if reply != QMessageBox.StandardButton.Yes:
+                    checkpoint_service.discard()
+                    resume_checkpoint = None
+                    checkpoint_service = None
+            else:
+                resume_checkpoint = None
+                checkpoint_service = None
+        except Exception:
+            checkpoint_service = None
+            resume_checkpoint = None
+
         # Start processing via controller
         self.controller.start_processing(
             xml_path=xml_path,
             playlist_name=playlist_name,
             settings=settings,
             auto_research=auto_research,
+            checkpoint_service=checkpoint_service,
+            resume_checkpoint=resume_checkpoint,
         )
 
     def _run_preflight_checks(
@@ -3114,6 +3159,8 @@ class MainWindow(QMainWindow):
                 if hasattr(self, 'cancel_button') and self.cancel_button:
                     self.cancel_button.setEnabled(False)
                     self.cancel_button.setText("Cancelling...")
+                if hasattr(self, 'pause_button') and self.pause_button:
+                    self.pause_button.setEnabled(False)
             except Exception:
                 pass
             
@@ -3228,13 +3275,23 @@ class MainWindow(QMainWindow):
             pct = (progress_info.completed_tracks / progress_info.total_tracks) * 100
             self.progress_pct.setText(f"{pct:.0f}%")
 
-        # Current track
+        # Current track (Design 5.12, 5.40: show status_message e.g. "Paused", "Retrying...")
+        status_msg = getattr(progress_info, "status_message", None)
+        rel_state = getattr(progress_info, "reliability_state", None)
         if progress_info.current_track:
             title = progress_info.current_track.get("title", "Unknown")
             artists = progress_info.current_track.get("artists", "Unknown")
-            self.progress_track.setText(f"{progress_info.completed_tracks}/{progress_info.total_tracks}: {title} - {artists}")
+            line = f"{progress_info.completed_tracks}/{progress_info.total_tracks}: {title} - {artists}"
         else:
-            self.progress_track.setText(f"Processing track {progress_info.completed_tracks}/{progress_info.total_tracks}...")
+            line = f"Processing track {progress_info.completed_tracks}/{progress_info.total_tracks}..."
+        if status_msg:
+            line = f"{status_msg} | {line}"
+        self.progress_track.setText(line)
+        # Pause/Resume button: show "Resume" when paused (Design 5.12)
+        if rel_state == ReliabilityState.PAUSED:
+            self.pause_button.setText("Resume")
+        else:
+            self.pause_button.setText("Pause")
 
         # Stats
         self.progress_matched.setText(f"✓ Matched: {progress_info.matched_count}")
@@ -3289,6 +3346,21 @@ class MainWindow(QMainWindow):
         self.progress_unmatched.setText("✗ Unmatched: 0")
         self.cancel_button.setEnabled(True)
         self.cancel_button.setText("Cancel")
+        self.pause_button.setEnabled(False)
+        self.pause_button.setText("Pause")
+        self.pause_button.setEnabled(False)
+        self.pause_button.setText("Pause")
+
+    def on_pause_resume_clicked(self) -> None:
+        """Design 5.12, 5.40: Pause or Resume processing."""
+        if not hasattr(self, "controller") or not self.controller.is_processing():
+            return
+        if self.controller.is_processing_paused():
+            self.controller.resume_processing()
+            self.pause_button.setText("Pause")
+        else:
+            self.controller.request_pause()
+            self.pause_button.setText("Resume")
 
     def on_processing_complete(self, results: List[TrackResult]) -> None:
         """Handle processing completion.
@@ -3318,8 +3390,10 @@ class MainWindow(QMainWindow):
         # Re-enable start button
         self.start_button.setEnabled(True)
 
-        # Disable cancel button
+        # Disable cancel and pause buttons
         self.cancel_button.setEnabled(False)
+        if hasattr(self, "pause_button") and self.pause_button:
+            self.pause_button.setEnabled(False)
         
         # Capture processing duration for summary
         processing_start_time = getattr(self, "_processing_start_time", None)
@@ -3562,13 +3636,34 @@ class MainWindow(QMainWindow):
         # Re-enable start button
         self.start_button.setEnabled(True)
 
-        # Disable cancel button
+        # Disable cancel and pause buttons
         self.cancel_button.setEnabled(False)
+        if hasattr(self, "pause_button") and self.pause_button:
+            self.pause_button.setEnabled(False)
 
         # Update status bar with error
         self.statusBar().showMessage(f"Error: {error.message}")
 
-        # Show error dialog
+        # Design 5.38, 5.40: Circuit open -> Retry now / Close (manual retry)
+        if error.error_type == ErrorType.CIRCUIT_OPEN:
+            from cuepoint.services.circuit_breaker import get_network_circuit_breaker
+            msg = QMessageBox(self)
+            msg.setIcon(QMessageBox.Icon.Warning)
+            msg.setWindowTitle("Network Paused")
+            msg.setText("Paused due to repeated failures.")
+            msg.setInformativeText(
+                "The circuit breaker tripped after 5 consecutive network failures. "
+                "Wait 30 seconds or click Retry now to try again."
+            )
+            retry_btn = msg.addButton("Retry now", QMessageBox.ButtonRole.AcceptRole)
+            msg.addButton("Close", QMessageBox.ButtonRole.RejectRole)
+            msg.exec()
+            if msg.clickedButton() == retry_btn:
+                get_network_circuit_breaker().allow_retry()
+                self.start_processing()
+            return
+
+        # Show standard error dialog
         error_dialog = ErrorDialog(error, self)
         error_dialog.exec()
 

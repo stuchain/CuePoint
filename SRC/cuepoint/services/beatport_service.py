@@ -12,29 +12,33 @@ from typing import Any, Dict, List, Optional
 from cuepoint.data.beatport import parse_track_page
 from cuepoint.data.beatport_search import beatport_search_hybrid
 from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError
-from cuepoint.services.interfaces import IBeatportService, ICacheService, ILoggingService
+from cuepoint.services.circuit_breaker import CircuitOpenError, get_network_circuit_breaker
+from cuepoint.services.interfaces import IBeatportService, ICacheService, IConfigService, ILoggingService
+from cuepoint.services.reliability_retry import run_with_retry
 
 
 class BeatportService(IBeatportService):
     """Service for searching and fetching data from Beatport.
 
-    This service provides access to Beatport's search and track data,
-    with built-in caching to reduce API calls and improve performance.
-
-    Attributes:
-        cache_service: Service for caching search results and track data.
-        logging_service: Service for logging operations.
+    Design 5.1: Retry/backoff is centralized via reliability_retry and config.
     """
 
-    def __init__(self, cache_service: ICacheService, logging_service: ILoggingService) -> None:
+    def __init__(
+        self,
+        cache_service: ICacheService,
+        logging_service: ILoggingService,
+        config_service: Optional[IConfigService] = None,
+    ) -> None:
         """Initialize Beatport service.
 
         Args:
             cache_service: Service for caching operations.
             logging_service: Service for logging operations.
+            config_service: Optional config for reliability.max_retries (Design 5.1).
         """
         self.cache_service = cache_service
         self.logging_service = logging_service
+        self.config_service = config_service
 
     def search_tracks(self, query: str, max_results: int = 50) -> List[str]:
         """Search for tracks on Beatport and return URLs.
@@ -82,9 +86,15 @@ class BeatportService(IBeatportService):
                     "Track search may be limited."
                 )
             
-            urls = beatport_search_hybrid(
-                idx=0, query=query, max_results=max_results, prefer_direct=True
-            )
+            def _search() -> List[str]:
+                return run_with_retry(
+                    lambda: beatport_search_hybrid(
+                        idx=0, query=query, max_results=max_results, prefer_direct=True
+                    ),
+                    config_service=self.config_service,
+                )
+
+            urls = get_network_circuit_breaker().call(_search)
             
             self.logging_service.info(f"Found {len(urls)} track URLs for query: {query}")
 
@@ -92,6 +102,15 @@ class BeatportService(IBeatportService):
             self.cache_service.set(cache_key, urls, ttl=3600)
 
             return urls  # type: ignore[no-any-return]
+        except CircuitOpenError as e:
+            self.logging_service.warning(
+                "[reliability] Circuit open (Design 5.38): %s", e.message
+            )
+            raise BeatportAPIError(
+                message=e.message,
+                error_code="CIRCUIT_OPEN",
+                context={"query": query, "max_results": max_results},
+            ) from e
         except Exception as e:
             error_msg = f"Failed to search Beatport for '{query}': {str(e)}"
             self.logging_service.error(
@@ -142,10 +161,16 @@ class BeatportService(IBeatportService):
         if cached:
             return cached
 
-        # Fetch from API
+        # Fetch from API (Design 5.1 retry, Design 5.38 circuit breaker)
         try:
-            title, artists, key, year, bpm, label, genres, rel_name, rel_date = parse_track_page(
-                url
+            def _fetch():
+                return run_with_retry(
+                    lambda: parse_track_page(url),
+                    config_service=self.config_service,
+                )
+
+            title, artists, key, year, bpm, label, genres, rel_name, rel_date = (
+                get_network_circuit_breaker().call(_fetch)
             )
 
             track_data = {
@@ -165,6 +190,12 @@ class BeatportService(IBeatportService):
             self.cache_service.set(cache_key, track_data, ttl=86400)
 
             return track_data  # type: ignore[no-any-return]
+        except CircuitOpenError as e:
+            self.logging_service.warning(
+                "[reliability] Circuit open (Design 5.38): %s", e.message
+            )
+            # Return None so processing continues; next search will still hit circuit
+            return None
         except Exception as e:
             error_msg = f"Error fetching track data from {url}: {str(e)}"
             self.logging_service.error(

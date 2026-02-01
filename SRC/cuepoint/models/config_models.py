@@ -122,6 +122,17 @@ class MatchingConfig:
 
 
 @dataclass
+class ReliabilityConfig:
+    """Reliability and resilience configuration (Design 5.50, 5.91)."""
+
+    max_retries: int = 3
+    timeout_connect: int = 5
+    timeout_read: int = 30
+    checkpoint_every: int = 50
+    resume_enabled: bool = True
+
+
+@dataclass
 class AppConfig:
     """Main application configuration.
 
@@ -138,6 +149,7 @@ class AppConfig:
     product: ProductConfig = field(default_factory=ProductConfig)
     run_summary: RunSummaryConfig = field(default_factory=RunSummaryConfig)
     matching: MatchingConfig = field(default_factory=MatchingConfig)
+    reliability: ReliabilityConfig = field(default_factory=ReliabilityConfig)
 
     @classmethod
     def default(cls) -> "AppConfig":
@@ -225,6 +237,13 @@ class AppConfig:
                 "early_exit_min_queries": self.matching.early_exit_min_queries,
                 "title_weight": self.matching.title_weight,
                 "artist_weight": self.matching.artist_weight,
+            },
+            "reliability": {
+                "max_retries": self.reliability.max_retries,
+                "timeout_connect": self.reliability.timeout_connect,
+                "timeout_read": self.reliability.timeout_read,
+                "checkpoint_every": self.reliability.checkpoint_every,
+                "resume_enabled": self.reliability.resume_enabled,
             },
         }
 
@@ -358,6 +377,16 @@ class AppConfig:
                 early_exit_min_queries=matching_data.get("early_exit_min_queries", config.matching.early_exit_min_queries),
                 title_weight=matching_data.get("title_weight", config.matching.title_weight),
                 artist_weight=matching_data.get("artist_weight", config.matching.artist_weight),
+            )
+
+        if "reliability" in data:
+            rel_data = data["reliability"]
+            config.reliability = ReliabilityConfig(
+                max_retries=rel_data.get("max_retries", config.reliability.max_retries),
+                timeout_connect=rel_data.get("timeout_connect", config.reliability.timeout_connect),
+                timeout_read=rel_data.get("timeout_read", config.reliability.timeout_read),
+                checkpoint_every=rel_data.get("checkpoint_every", config.reliability.checkpoint_every),
+                resume_enabled=rel_data.get("resume_enabled", config.reliability.resume_enabled),
             )
 
         return config

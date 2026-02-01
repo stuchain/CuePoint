@@ -223,6 +223,42 @@ class ConfigPanel(QWidget):
         results_layout.addStretch()
         advanced_layout.addLayout(results_layout)
 
+        # Design 5.26: Reliability (retry, timeout, checkpoint, resume)
+        reliability_group = QGroupBox("Reliability & Recovery")
+        reliability_layout = QVBoxLayout()
+        # Checkpoint every N tracks
+        ckpt_layout = QHBoxLayout()
+        ckpt_label = QLabel("Checkpoint every (tracks):")
+        ckpt_label.setToolTip("Save progress every N tracks for resume after crash")
+        self.checkpoint_every_spin = QSpinBox()
+        self.checkpoint_every_spin.setMinimum(10)
+        self.checkpoint_every_spin.setMaximum(500)
+        self.checkpoint_every_spin.setValue(50)
+        self.checkpoint_every_spin.setToolTip("Lower = more frequent saves, slightly slower")
+        ckpt_layout.addWidget(ckpt_label)
+        ckpt_layout.addWidget(self.checkpoint_every_spin)
+        ckpt_layout.addStretch()
+        reliability_layout.addLayout(ckpt_layout)
+        # Max retries
+        retry_layout = QHBoxLayout()
+        retry_label = QLabel("Max network retries:")
+        retry_label.setToolTip("Number of retries per request on transient errors")
+        self.max_retries_spin = QSpinBox()
+        self.max_retries_spin.setMinimum(0)
+        self.max_retries_spin.setMaximum(10)
+        self.max_retries_spin.setValue(3)
+        retry_layout.addWidget(retry_label)
+        retry_layout.addWidget(self.max_retries_spin)
+        retry_layout.addStretch()
+        reliability_layout.addLayout(retry_layout)
+        # Resume enabled
+        self.resume_enabled_check = QCheckBox("Enable resume from checkpoint")
+        self.resume_enabled_check.setChecked(True)
+        self.resume_enabled_check.setToolTip("Offer to resume after crash or interruption")
+        reliability_layout.addWidget(self.resume_enabled_check)
+        reliability_group.setLayout(reliability_layout)
+        advanced_layout.addWidget(reliability_group)
+
         self.advanced_group.setLayout(advanced_layout)
         self.advanced_group.setVisible(False)  # Hidden by default
         layout.addWidget(self.advanced_group)
@@ -243,6 +279,9 @@ class ConfigPanel(QWidget):
         self.min_score_spin.valueChanged.connect(self._on_setting_changed)
         self.max_results_spin.valueChanged.connect(self._on_setting_changed)
         self.verbose_check.stateChanged.connect(self._on_setting_changed)
+        self.checkpoint_every_spin.valueChanged.connect(self._on_reliability_changed)
+        self.max_retries_spin.valueChanged.connect(self._on_reliability_changed)
+        self.resume_enabled_check.stateChanged.connect(self._on_reliability_changed)
     
     def _create_help_button(self, title: str, help_text: str) -> QToolButton:
         """Create a help button with contextual help"""
@@ -292,6 +331,22 @@ class ConfigPanel(QWidget):
 
         # Also set verbose from defaults
         self.verbose_check.setChecked(SETTINGS.get("VERBOSE", False))
+
+        # Design 5.26: Load reliability from config service or defaults
+        try:
+            cs = getattr(self.config_controller, "config_service", None)
+            if cs is not None:
+                self.checkpoint_every_spin.setValue(int(cs.get("reliability.checkpoint_every", 50)))
+                self.max_retries_spin.setValue(int(cs.get("reliability.max_retries", 3)))
+                self.resume_enabled_check.setChecked(bool(cs.get("reliability.resume_enabled", True)))
+            else:
+                self.checkpoint_every_spin.setValue(50)
+                self.max_retries_spin.setValue(3)
+                self.resume_enabled_check.setChecked(True)
+        except Exception:
+            self.checkpoint_every_spin.setValue(50)
+            self.max_retries_spin.setValue(3)
+            self.resume_enabled_check.setChecked(True)
 
     def get_settings(self) -> Dict[str, Any]:
         """
@@ -385,6 +440,23 @@ class ConfigPanel(QWidget):
         settings = self.get_settings()
         self.settings_changed.emit(settings)
 
+    def _on_reliability_changed(self):
+        """Persist reliability settings to config service (Design 5.26)."""
+        try:
+            cs = getattr(self.config_controller, "config_service", None)
+            if cs is not None:
+                cs.set("reliability.checkpoint_every", self.checkpoint_every_spin.value())
+                cs.set("reliability.max_retries", self.max_retries_spin.value())
+                cs.set("beatport.max_retries", self.max_retries_spin.value())
+                cs.set("reliability.resume_enabled", self.resume_enabled_check.isChecked())
+                try:
+                    cs.save()
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        self._on_setting_changed()
+
     def _toggle_advanced_settings(self):
         """Toggle visibility of advanced settings"""
         is_visible = self.advanced_group.isVisible()
@@ -414,5 +486,10 @@ class ConfigPanel(QWidget):
 
         # Reset to actual default values from config.py
         self.load_defaults()
+        # Reset reliability to defaults
+        self.checkpoint_every_spin.setValue(50)
+        self.max_retries_spin.setValue(3)
+        self.resume_enabled_check.setChecked(True)
+        self._on_reliability_changed()
 
         self._on_setting_changed()

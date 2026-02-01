@@ -21,6 +21,10 @@ from cuepoint.exceptions.cuepoint_exceptions import ProcessingError
 from cuepoint.ui.gui_interface import ErrorType
 from cuepoint.models.result import TrackResult
 from cuepoint.models.run_summary import RunSummary
+from cuepoint.services.checkpoint_service import (
+    CheckpointService,
+    get_checkpoint_dir,
+)
 from cuepoint.services.interfaces import (
     IConfigService,
     IExportService,
@@ -77,6 +81,7 @@ class CLIProcessor:
         preflight_report_path: Optional[str] = None,
         run_summary_json_path: Optional[str] = None,
         preflight_enabled: bool = True,
+        resume: bool = False,
     ) -> None:
         """Process playlist and generate output files.
 
@@ -144,6 +149,23 @@ class CLIProcessor:
         # Create progress callback
         progress_callback = self._create_progress_callback()
 
+        # Design 5.47, 5.62: Checkpoint service and optional resume
+        checkpoint_service: Optional[CheckpointService] = None
+        resume_checkpoint = None
+        try:
+            checkpoint_dir = get_checkpoint_dir()
+            checkpoint_service = CheckpointService(checkpoint_dir=checkpoint_dir)
+            if resume:
+                resume_checkpoint = checkpoint_service.validate_and_load(xml_path)
+                if resume_checkpoint:
+                    self.logging_service.info(
+                        "[reliability] Resuming from checkpoint (last index %s)",
+                        resume_checkpoint.last_track_index,
+                    )
+        except Exception:
+            checkpoint_service = None
+            resume_checkpoint = None
+
         # Process playlist
         try:
             results = self.processor_service.process_playlist_from_xml(
@@ -153,6 +175,10 @@ class CLIProcessor:
                 progress_callback=progress_callback,
                 controller=self.controller,
                 auto_research=auto_research,
+                checkpoint_service=checkpoint_service,
+                output_dir=resolved_output_dir,
+                base_filename=out_csv_base,
+                resume_checkpoint=resume_checkpoint,
             )
         except Exception as e:
             self._handle_processing_error(e, xml_path, playlist_name)
@@ -166,8 +192,11 @@ class CLIProcessor:
         # Calculate processing duration
         processing_duration = __import__("time").perf_counter() - processing_start_time
 
-        # Write output files
-        output_files = self._write_output_files(results, out_csv_base, resolved_output_dir)
+        # Write output files (Design 5.49: skip when resumed - processor already appended)
+        if resume_checkpoint and resume_checkpoint.output_paths:
+            output_files = dict(resume_checkpoint.output_paths)
+        else:
+            output_files = self._write_output_files(results, out_csv_base, resolved_output_dir)
 
         # Display summary
         self._display_summary(results, output_files, processing_duration, playlist_name, xml_path)
