@@ -14,7 +14,8 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PySide6.QtCore import QSettings
+from PySide6.QtCore import QSettings, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -29,6 +30,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from cuepoint.utils.paths import AppPaths
 from cuepoint.utils.privacy import DataDeletionManager, PrivacyAuditor
 
 
@@ -84,20 +86,23 @@ class PrivacyDialog(QDialog):
         prefs_layout.addWidget(self.clear_logs_on_exit)
         layout.addWidget(prefs_group)
 
-        # Data management buttons
+        # Data management buttons (Design 4.39: Clear Cache, Clear Logs, Open Data Folder)
         manage_group = QGroupBox("Data management")
         manage_layout = QHBoxLayout(manage_group)
         self.btn_clear_cache = QPushButton("Clear cache now")
         self.btn_clear_logs = QPushButton("Clear logs now")
         self.btn_clear_all = QPushButton("Clear all app data")
+        self.btn_open_data_folder = QPushButton("Open Data Folder…")
         manage_layout.addWidget(self.btn_clear_cache)
         manage_layout.addWidget(self.btn_clear_logs)
         manage_layout.addWidget(self.btn_clear_all)
+        manage_layout.addWidget(self.btn_open_data_folder)
         layout.addWidget(manage_group)
 
         self.btn_clear_cache.clicked.connect(self._on_clear_cache)
         self.btn_clear_logs.clicked.connect(self._on_clear_logs)
         self.btn_clear_all.clicked.connect(self._on_clear_all)
+        self.btn_open_data_folder.clicked.connect(self._on_open_data_folder)
 
         # Dialog buttons
         button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
@@ -106,15 +111,21 @@ class PrivacyDialog(QDialog):
         layout.addWidget(button_box)
 
     def _on_view_privacy_notice(self) -> None:
-        """Open PRIVACY_NOTICE.md in a simple viewer."""
+        """Open privacy notice in a simple viewer (Design 4.4, 4.118)."""
         from pathlib import Path
 
         try:
+            # SRC/cuepoint/ui/dialogs/privacy_dialog.py -> project root is parents[4]
             repo_root = Path(__file__).resolve().parents[4]
-            notice_path = repo_root / "PRIVACY_NOTICE.md"
-            text = notice_path.read_text(encoding="utf-8", errors="replace")
+            for candidate in ("PRIVACY_NOTICE.md", "DOCS/POLICY/privacy-notice.md"):
+                notice_path = repo_root / candidate
+                if notice_path.exists():
+                    text = notice_path.read_text(encoding="utf-8", errors="replace")
+                    break
+            else:
+                text = "Privacy notice could not be loaded. See DOCS/POLICY/privacy-notice.md in the project."
         except Exception:
-            text = "PRIVACY_NOTICE.md could not be loaded."
+            text = "Privacy notice could not be loaded."
 
         dlg = QDialog(self)
         dlg.setWindowTitle("Privacy Notice")
@@ -186,6 +197,18 @@ class PrivacyDialog(QDialog):
         ) == QMessageBox.Yes:
             DataDeletionManager.clear_logs()
             QMessageBox.information(self, "Logs cleared", "Logs were cleared.")
+
+    def _on_open_data_folder(self) -> None:
+        """Open app data folder in system file manager (Design 4.39)."""
+        data_dir = AppPaths.config_dir()
+        data_dir.mkdir(parents=True, exist_ok=True)
+        path = str(data_dir.resolve())
+        if not QDesktopServices.openUrl(QUrl.fromLocalFile(path)):
+            QMessageBox.information(
+                self,
+                "Open Data Folder",
+                f"The app data folder is:\n\n{path}\n\nOpen it manually in your file manager.",
+            )
 
     def _on_clear_all(self) -> None:
         if QMessageBox.warning(

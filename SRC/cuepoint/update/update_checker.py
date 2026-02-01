@@ -434,9 +434,15 @@ class UpdateChecker:
                     continue
                 
                 # Both are same type (both stable or both prerelease) - allow if newer
+                # Design 4.9, 4.57: require checksum for update (fail closed)
+                if not item.get("checksum"):
+                    logger.warning(
+                        f"Skipping item: no checksum for version {version} (update verification required)"
+                    )
+                    continue
                 logger.info(f"Found newer version: {version} (current: {self.current_version})")
                 return item
-            
+
             elif base_comparison == 0:
                 # Same base version - apply prerelease rules and compare full versions
                 logger.debug(f"Same base version: {base_candidate} == {base_current}")
@@ -469,6 +475,12 @@ class UpdateChecker:
                     
                     # Both are same type (both stable or both prerelease) - use full comparison
                     if full_comparison > 0:
+                        # Design 4.9, 4.57: require checksum for update (fail closed)
+                        if not item.get("checksum"):
+                            logger.warning(
+                                f"Skipping item: no checksum for version {version} (update verification required)"
+                            )
+                            continue
                         logger.info(
                             f"Found newer version with same base: {version} > {self.current_version}"
                         )

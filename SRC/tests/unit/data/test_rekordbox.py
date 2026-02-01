@@ -4,10 +4,12 @@ import os
 import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
 from cuepoint.data.rekordbox import (
+    MAX_XML_SIZE_BYTES,
     RBTrack,
     extract_artists_from_title,
     is_readable,
@@ -108,7 +110,21 @@ class TestExtractArtistsFromTitle:
 
 class TestParseRekordbox:
     """Test Rekordbox XML parsing."""
-    
+
+    def test_parse_rekordbox_rejects_oversized_xml(self) -> None:
+        """Design 4.70: XML file size cap; refuse to parse oversized file."""
+        xml_content = '<?xml version="1.0"?><DJ_PLAYLISTS Version="1.0.0"><COLLECTION/><PLAYLISTS><NODE Name="ROOT"/></PLAYLISTS></DJ_PLAYLISTS>'
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
+            f.write(xml_content)
+            f.flush()
+            xml_path = f.name
+        try:
+            with patch("os.path.getsize", return_value=MAX_XML_SIZE_BYTES + 1):
+                with pytest.raises(ValueError, match="XML file too large"):
+                    parse_rekordbox(xml_path)
+        finally:
+            os.unlink(xml_path)
+
     def create_sample_xml(self, tracks=None, playlists=None):
         """Create a sample Rekordbox XML file."""
         root = ET.Element("DJ_PLAYLISTS")

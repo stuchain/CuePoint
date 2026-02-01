@@ -146,6 +146,35 @@ class TestSafeLogger:
         # Should not raise exception
 
 
+class TestLogSanitizerPathRedaction:
+    """Log path redaction (Design 4.79). Logs must not contain raw user paths."""
+
+    def test_sanitize_path_redacts_home_directory(self):
+        """Path under home dir is redacted to ~ (no C:\\Users\\ or /home/ in output)."""
+        home = Path.home()
+        path_under_home = str(home / "Music" / "rekordbox.xml")
+        sanitized = LogSanitizer.sanitize_path(path_under_home)
+        assert "~" in sanitized or "REDACTED" in sanitized
+        # Must not contain raw home path (Design 4.79)
+        assert str(home) not in sanitized
+        assert "Music" in sanitized or "rekordbox" in sanitized or "REDACTED" in sanitized
+
+    def test_sanitize_path_windows_user_profile_redacted(self):
+        """Windows USERPROFILE-style path is redacted."""
+        with patch.dict("os.environ", {"USERPROFILE": "C:\\Users\\Jane"}, clear=False):
+            sanitized = LogSanitizer.sanitize_path("C:\\Users\\Jane\\Documents\\file.xml")
+            assert "Jane" not in sanitized or "~" in sanitized or "REDACTED" in sanitized
+
+    def test_sanitize_path_unix_home_redacted(self):
+        """Unix path under home is redacted."""
+        home = Path.home()
+        if str(home).startswith("/"):
+            path_under_home = f"{home}/Documents/file.xml"
+            sanitized = LogSanitizer.sanitize_path(path_under_home)
+            assert "~" in sanitized or "REDACTED" in sanitized
+            assert path_under_home not in sanitized or "REDACTED" in sanitized
+
+
 class TestLogTiming:
     """Test log_timing context manager."""
 

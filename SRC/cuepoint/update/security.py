@@ -2,12 +2,13 @@
 # -*- coding: utf-8 -*-
 
 """
-Update security utilities (Step 8.3).
+Update security utilities (Step 8.3, Design 4).
 
 This module provides:
 - HTTPS enforcement for update feeds and download URLs
 - SHA-256 checksum verification helpers (for frameworks or custom download flows)
 - File size verification helpers
+- Security error codes (Design 4.23)
 """
 
 from __future__ import annotations
@@ -16,6 +17,20 @@ import hashlib
 from pathlib import Path
 from typing import Optional, Tuple
 from urllib.parse import urlparse
+
+# Security error codes (Design 4.23)
+SEC_S001_SIGNATURE_INVALID = "S001"
+SEC_S002_CHECKSUM_MISMATCH = "S002"
+SEC_S003_APPCAST_INVALID = "S003"
+SEC_S010_LOG_REDACTION_FAILURE = "S010"
+
+
+class SecurityError(Exception):
+    """Raised when update verification or security checks fail (Design 4.124)."""
+
+    def __init__(self, message: str, code: Optional[str] = None):
+        super().__init__(message)
+        self.code = code
 
 
 class FeedIntegrityVerifier:

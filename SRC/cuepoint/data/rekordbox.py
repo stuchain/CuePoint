@@ -33,6 +33,9 @@ from cuepoint.models.playlist import Playlist
 from cuepoint.models.track import Track
 from cuepoint.utils.errors import error_xml_parsing
 
+# Design 4.70: Cap XML file size to mitigate DoS (entity expansion, huge files)
+MAX_XML_SIZE_BYTES = 100 * 1024 * 1024  # 100 MiB
+
 
 @dataclass
 class RBTrack:
@@ -82,6 +85,14 @@ def parse_rekordbox(xml_path: str) -> Dict[str, Playlist]:
 
     if not os.path.exists(xml_path):
         raise FileNotFoundError(f"XML file not found: {xml_path}")
+
+    # Design 4.70: Limit XML file size (safe parsing)
+    size = os.path.getsize(xml_path)
+    if size > MAX_XML_SIZE_BYTES:
+        raise ValueError(
+            f"XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). "
+            "Refusing to parse to prevent resource exhaustion."
+        )
 
     try:
         tree = ET.parse(xml_path)

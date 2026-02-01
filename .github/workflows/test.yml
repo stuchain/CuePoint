@@ -33,6 +33,16 @@ jobs:
           pylint SRC/ --disable=all --enable=errors || true
           mypy SRC/ --ignore-missing-imports || true
 
+      - name: Security – dependency audit (Design 4.82, 4.133)
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt -r requirements-dev.txt || true
+
+      - name: Security – static analysis (Design 4.133)
+        run: |
+          pip install bandit
+          bandit -r SRC -ll -x SRC/tests || true
+
       - name: Run tests (unit, integration, system)
         run: |
           python scripts/run_tests.py --all --coverage --no-slow

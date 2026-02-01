@@ -78,4 +78,41 @@ class TestUpdateCheckerIntegration:
         parsed = checker._parse_item(item)  # intentionally test the security gate
         assert parsed is None
 
+    def test_find_latest_update_skips_item_without_checksum(self):
+        """Design 4.27, 4.109: Appcast missing checksum fails update (no item offered)."""
+        checker = UpdateChecker("https://example.com/updates", "1.0.0", "stable")
+        # Item with valid version but no checksum (signature not SHA256 hex)
+        items = [
+            {
+                "short_version": "1.0.1",
+                "version": "1.0.1",
+                "download_url": "https://example.com/CuePoint-1.0.1.exe",
+                "file_size": 1000,
+                "checksum": None,  # missing
+                "release_notes": "",
+                "pub_date": None,
+            }
+        ]
+        result = checker._find_latest_update(items)
+        assert result is None
+
+    def test_find_latest_update_accepts_item_with_checksum(self):
+        """Item with valid checksum is offered."""
+        checker = UpdateChecker("https://example.com/updates", "1.0.0", "stable")
+        items = [
+            {
+                "short_version": "1.0.1",
+                "version": "1.0.1",
+                "download_url": "https://example.com/CuePoint-1.0.1.exe",
+                "file_size": 1000,
+                "checksum": "a" * 64,  # valid SHA256 hex length
+                "release_notes": "",
+                "pub_date": None,
+            }
+        ]
+        result = checker._find_latest_update(items)
+        assert result is not None
+        assert result.get("short_version") == "1.0.1"
+        assert result.get("checksum") == "a" * 64
+
 

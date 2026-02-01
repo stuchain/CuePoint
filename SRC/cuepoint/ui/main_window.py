@@ -2515,9 +2515,32 @@ class MainWindow(QMainWindow):
             result = download_dialog.exec()
             
             if result == QDialog.DialogCode.Accepted and download_dialog.get_downloaded_file():
-                # Download completed, proceed with installation
+                # Download completed; verify checksum before install (Design 4.9, 4.36)
                 downloaded_file = download_dialog.get_downloaded_file()
                 logger.info(f"Download completed: {downloaded_file}")
+                expected_checksum = update_info.get("checksum")
+                if expected_checksum:
+                    from pathlib import Path
+                    from cuepoint.update.security import PackageIntegrityVerifier
+                    ok, err = PackageIntegrityVerifier.verify_checksum(
+                        Path(downloaded_file), expected_checksum
+                    )
+                    if not ok:
+                        logger.error(f"Update checksum verification failed: {err}")
+                        QMessageBox.critical(
+                            self,
+                            "Update Verification Failed",
+                            f"Checksum verification failed. The update will not be installed.\n\n{err or 'S002: Checksum mismatch'}\n\nPlease download the latest release manually from the release page.",
+                        )
+                        return
+                else:
+                    logger.warning("Update has no checksum; refusing to install (fail closed)")
+                    QMessageBox.critical(
+                        self,
+                        "Update Verification Failed",
+                        "This update does not include a checksum. For security, installation is blocked.\n\nPlease download the latest release manually from the release page.",
+                    )
+                    return
                 self._install_update(downloaded_file)
             elif download_dialog.cancelled:
                 logger.info("Download cancelled by user")

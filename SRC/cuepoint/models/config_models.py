@@ -97,6 +97,9 @@ class ProductConfig:
     last_output_dir: str = ""
     default_playlist: str = ""
     redact_paths_in_logs: bool = True
+    # Design 4.48, 4.115: Secure defaults (enforced in update code)
+    verify_updates: bool = True
+    enforce_https: bool = True
 
 
 @dataclass
@@ -209,6 +212,8 @@ class AppConfig:
                 "last_output_dir": self.product.last_output_dir,
                 "default_playlist": self.product.default_playlist,
                 "redact_paths_in_logs": self.product.redact_paths_in_logs,
+                "verify_updates": self.product.verify_updates,
+                "enforce_https": self.product.enforce_https,
             },
             "run_summary": {
                 "write_json": self.run_summary.write_json,
@@ -329,6 +334,12 @@ class AppConfig:
                 ),
                 redact_paths_in_logs=product_data.get(
                     "redact_paths_in_logs", config.product.redact_paths_in_logs
+                ),
+                verify_updates=product_data.get(
+                    "verify_updates", config.product.verify_updates
+                ),
+                enforce_https=product_data.get(
+                    "enforce_https", config.product.enforce_https
                 ),
             )
 
