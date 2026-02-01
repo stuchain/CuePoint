@@ -38,6 +38,9 @@ class ConfigService(IConfigService):
             config_dir = Path.home() / ".cuepoint"
             config_dir.mkdir(parents=True, exist_ok=True)
             config_file = config_dir / "config.yaml"
+        else:
+            config_file = Path(config_file)
+            config_file.parent.mkdir(parents=True, exist_ok=True)
 
         self.config_file = config_file
         self._legacy_settings: Dict[str, Any] = settings.copy() if settings else SETTINGS.copy()

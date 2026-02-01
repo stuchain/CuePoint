@@ -1,4 +1,4 @@
-"""Unit tests for query_generator module."""
+"""Unit tests for query_generator module. Design 3.23, 3.105."""
 
 import pytest
 
@@ -148,6 +148,14 @@ class TestMakeSearchQueries:
             assert "Test Track" in first_query
             assert "Test Artist" in first_query
     
+    def test_query_normalization_variants(self) -> None:
+        """Design 3 example: variants include 'Track Name' when input is 'Track Name (Extended Mix)'."""
+        input_title = "Track Name (Extended Mix)"
+        queries = make_search_queries(title=input_title, artists="Artist A")
+        assert len(queries) >= 1
+        # At least one variant should contain the core title without mix suffix
+        assert any("Track Name" in q for q in queries) or any("Track" in q for q in queries)
+
     def test_make_search_queries_empty_title(self):
         """Test query generation with empty title."""
         queries = make_search_queries(

@@ -1,6 +1,8 @@
-"""Unit tests for text_processing module."""
+"""Unit tests for text_processing module. Design 3.103, 3.15, 3.16."""
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from cuepoint.core.text_processing import (
     _artist_token_overlap,
@@ -43,6 +45,22 @@ class TestNormalizeText:
         """Test normalization with empty string."""
         assert normalize_text("") == ""
         assert normalize_text(None) == ""
+
+    @pytest.mark.unit
+    @given(st.text(alphabet=st.characters(blacklist_categories=("Cs",)), max_size=200))
+    def test_normalization_idempotent(self, s: str) -> None:
+        """Property: normalize(normalize(s)) == normalize(s). Design 3.16."""
+        result = normalize_text(s)
+        assert normalize_text(result) == result
+
+    def test_query_normalization_track_name_extended_mix(self) -> None:
+        """Design example: 'Track Name (Extended Mix)' normalizes to include 'Track Name'."""
+        input_title = "Track Name (Extended Mix)"
+        normalized = normalize_text(input_title)
+        assert "track" in normalized
+        assert "name" in normalized
+        assert "extended" not in normalized
+        assert "mix" not in normalized
     
     def test_strip_accents(self):
         """Test accent stripping."""
