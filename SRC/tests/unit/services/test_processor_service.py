@@ -282,7 +282,7 @@ class TestProcessorService:
             service.process_playlist_from_xml("nonexistent.xml", "Test Playlist")
         
         assert exc_info.value.error_type == ErrorType.FILE_NOT_FOUND
-        assert "not found" in exc_info.value.message.lower()
+        assert "xml file not found" in (exc_info.value.details or "").lower()
 
     def test_process_playlist_from_xml_playlist_not_found(
         self,
@@ -328,7 +328,7 @@ class TestProcessorService:
                 service.process_playlist_from_xml(xml_path, "Nonexistent Playlist")
             
             assert exc_info.value.error_type == ErrorType.PLAYLIST_NOT_FOUND
-            assert "not found" in exc_info.value.message.lower()
+            assert "Playlist not found" in (exc_info.value.details or "")
         finally:
             Path(xml_path).unlink(missing_ok=True)
 
@@ -487,7 +487,7 @@ class TestProcessorService:
                 service.process_playlist_from_xml(xml_path, "Empty Playlist")
             
             assert exc_info.value.error_type == ErrorType.VALIDATION_ERROR
-            assert "empty" in exc_info.value.message.lower()
+            assert "Playlist is empty" in (exc_info.value.details or "")
         finally:
             Path(xml_path).unlink(missing_ok=True)
     
@@ -523,6 +523,146 @@ class TestProcessorService:
                 service.process_playlist_from_xml(xml_path, "Test Playlist")
             
             assert exc_info.value.error_type == ErrorType.XML_PARSE_ERROR
+        finally:
+            Path(xml_path).unlink(missing_ok=True)
+
+    def test_run_preflight_missing_xml(
+        self,
+        mock_beatport_service,
+        mock_logging_service,
+        mock_config_service,
+    ):
+        """Test preflight error for missing XML."""
+        service = ProcessorService(
+            beatport_service=mock_beatport_service,
+            matcher_service=Mock(),
+            logging_service=mock_logging_service,
+            config_service=mock_config_service,
+        )
+
+        result = service.run_preflight("missing.xml", "Test Playlist")
+        assert result.can_proceed is False
+        assert any(issue.code == "P001" for issue in result.errors)
+
+    def test_run_preflight_playlist_not_found(
+        self,
+        mock_beatport_service,
+        mock_logging_service,
+        mock_config_service,
+    ):
+        """Test preflight error for missing playlist."""
+        xml_content = """<?xml version="1.0" encoding="UTF-8"?>
+<DJ_PLAYLISTS>
+    <COLLECTION>
+        <TRACK TrackID="1" Name="Track 1" Artist="Artist 1"/>
+    </COLLECTION>
+    <PLAYLISTS>
+        <NODE Name="ROOT">
+            <NODE Name="Other Playlist" Type="1">
+                <TRACK Key="1"/>
+            </NODE>
+        </NODE>
+    </PLAYLISTS>
+</DJ_PLAYLISTS>"""
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False, encoding="utf-8") as f:
+            f.write(xml_content)
+            xml_path = f.name
+
+        try:
+            service = ProcessorService(
+                beatport_service=mock_beatport_service,
+                matcher_service=Mock(),
+                logging_service=mock_logging_service,
+                config_service=mock_config_service,
+            )
+            result = service.run_preflight(xml_path, "Missing Playlist")
+            assert result.can_proceed is False
+            assert any(issue.code == "P010" for issue in result.errors)
+        finally:
+            Path(xml_path).unlink(missing_ok=True)
+
+    def test_run_preflight_output_not_dir(
+        self,
+        mock_beatport_service,
+        mock_logging_service,
+        mock_config_service,
+    ):
+        """Test preflight output directory validation."""
+        xml_content = """<?xml version="1.0" encoding="UTF-8"?>
+<DJ_PLAYLISTS>
+    <COLLECTION>
+        <TRACK TrackID="1" Name="Track 1" Artist="Artist 1"/>
+    </COLLECTION>
+    <PLAYLISTS>
+        <NODE Name="ROOT">
+            <NODE Name="Test Playlist" Type="1">
+                <TRACK Key="1"/>
+            </NODE>
+        </NODE>
+    </PLAYLISTS>
+</DJ_PLAYLISTS>"""
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False, encoding="utf-8") as f:
+            f.write(xml_content)
+            xml_path = f.name
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, encoding="utf-8") as out:
+            out_path = out.name
+
+        try:
+            service = ProcessorService(
+                beatport_service=mock_beatport_service,
+                matcher_service=Mock(),
+                logging_service=mock_logging_service,
+                config_service=mock_config_service,
+            )
+            result = service.run_preflight(xml_path, "Test Playlist", output_dir=out_path)
+            assert result.can_proceed is False
+            assert any(issue.code == "P021" for issue in result.errors)
+        finally:
+            Path(xml_path).unlink(missing_ok=True)
+            Path(out_path).unlink(missing_ok=True)
+
+    def test_run_preflight_invalid_config(
+        self,
+        mock_beatport_service,
+        mock_logging_service,
+        mock_config_service,
+    ):
+        """Test preflight config validation."""
+        xml_content = """<?xml version="1.0" encoding="UTF-8"?>
+<DJ_PLAYLISTS>
+    <COLLECTION>
+        <TRACK TrackID="1" Name="Track 1" Artist="Artist 1"/>
+    </COLLECTION>
+    <PLAYLISTS>
+        <NODE Name="ROOT">
+            <NODE Name="Test Playlist" Type="1">
+                <TRACK Key="1"/>
+            </NODE>
+        </NODE>
+    </PLAYLISTS>
+</DJ_PLAYLISTS>"""
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False, encoding="utf-8") as f:
+            f.write(xml_content)
+            xml_path = f.name
+
+        try:
+            service = ProcessorService(
+                beatport_service=mock_beatport_service,
+                matcher_service=Mock(),
+                logging_service=mock_logging_service,
+                config_service=mock_config_service,
+            )
+            result = service.run_preflight(
+                xml_path,
+                "Test Playlist",
+                settings={"TRACK_WORKERS": 0, "CANDIDATE_WORKERS": 1, "PER_TRACK_TIME_BUDGET_SEC": 1},
+            )
+            assert result.can_proceed is False
+            assert any(issue.code == "P030" for issue in result.errors)
         finally:
             Path(xml_path).unlink(missing_ok=True)
     

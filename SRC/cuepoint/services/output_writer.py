@@ -21,7 +21,7 @@ from cuepoint.utils.utils import with_timestamp
 
 # Try to import openpyxl for Excel export
 try:
-    from openpyxl import Workbook
+    import openpyxl
     from openpyxl.styles import Alignment, Font, PatternFill
     from openpyxl.utils import get_column_letter
 
@@ -722,7 +722,7 @@ def write_excel_file(results: List[TrackResult], file_path: str, playlist_name: 
     os.makedirs(os.path.dirname(file_path) if os.path.dirname(file_path) else ".", exist_ok=True)
 
     # Create workbook
-    wb = Workbook()
+    wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = playlist_name[:31] if playlist_name else "Results"  # Excel sheet name limit
 
@@ -815,7 +815,15 @@ def write_excel_file(results: List[TrackResult], file_path: str, playlist_name: 
         ws.column_dimensions[column_letter].width = min(max_length + 2, 50)
 
     # Save workbook
-    wb.save(file_path)
+    try:
+        wb.save(file_path)
+    except Exception as e:
+        raise OSError(f"Failed to write Excel file: {e}") from e
+    finally:
+        try:
+            wb.close()
+        except Exception:
+            pass
 
     return file_path
 

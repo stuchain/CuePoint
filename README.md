@@ -157,6 +157,14 @@ flowchart LR
   <li>Playlist name (must match the XML playlist name exactly)</li>
 </ul>
 
+<h2>Support policy</h2>
+<ul>
+  <li><strong>Supported OS</strong>: Windows 10+ (x64), macOS 12+ (Intel/Apple Silicon)</li>
+  <li><strong>Rekordbox export</strong>: XML export format from recent Rekordbox versions</li>
+  <li><strong>File size guidance</strong>: XML exports &lt;= 100MB recommended (larger files can be slower)</li>
+</ul>
+<p>See <a href="DOCS/user-guide/support-policy.md">DOCS/user-guide/support-policy.md</a> for update cadence and end-of-life policy.</p>
+
 <h2>Project layout</h2>
 <ul>
   <li><code>SRC/cuepoint</code>: application code</li>

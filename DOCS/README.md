@@ -6,8 +6,11 @@ Start here. These links cover setup, usage, and release checks.
 
 - `getting-started/quick-start.md`
 - `getting-started/installation.md`
+- `user-guide/getting-started.md`
 - `user-guide/workflows.md`
 - `user-guide/troubleshooting.md`
+- `user-guide/glossary.md`
+- `user-guide/support-policy.md`
 - `RELEASE/release-readiness-test-plan.md`
 - `release-checklist.md`
 - `DEVELOPMENT/coding-standards.md`

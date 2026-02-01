@@ -26,6 +26,7 @@ Example:
 """
 
 import json
+import logging
 import random
 import re
 import socket
@@ -69,6 +70,8 @@ from cuepoint.core.mix_parser import (
 )
 from cuepoint.models.config import BASE_URL, SESSION, SETTINGS
 from cuepoint.utils.utils import retry_with_backoff, vlog
+
+logger = logging.getLogger(__name__)
 
 
 def beatport_search_direct(idx: int, query: str, max_results: int) -> List[str]:
@@ -971,42 +974,41 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
     # Fast preflight: if we can't even establish a quick TCP connection to DuckDuckGo,
     # don't wait for ddgs/httpx timeouts. This avoids long stalls on networks where DDG
     # is blocked by VPN/firewall/DNS.
-    try:
-        preflight_timeout = float(SETTINGS.get("DDG_PREFLIGHT_TIMEOUT_SEC", 1.5))
-    except Exception:
-        preflight_timeout = 1.5
-    try:
-        # DNS + TCP + TLS handshake (fast). If any step fails, skip DDG immediately.
-        raw_sock = socket.create_connection(("duckduckgo.com", 443), timeout=preflight_timeout)
+    if SETTINGS.get("DDG_PREFLIGHT_ENABLED", True):
         try:
-            ctx = ssl.create_default_context()
-            tls_sock = ctx.wrap_socket(raw_sock, server_hostname="duckduckgo.com")
+            preflight_timeout = float(SETTINGS.get("DDG_PREFLIGHT_TIMEOUT_SEC", 1.5))
+        except Exception:
+            preflight_timeout = 1.5
+        try:
+            # DNS + TCP + TLS handshake (fast). If any step fails, skip DDG immediately.
+            raw_sock = socket.create_connection(("duckduckgo.com", 443), timeout=preflight_timeout)
             try:
-                tls_sock.settimeout(preflight_timeout)
-                # Force handshake now (some platforms defer it).
-                tls_sock.do_handshake()
+                ctx = ssl.create_default_context()
+                tls_sock = ctx.wrap_socket(raw_sock, server_hostname="duckduckgo.com")
+                try:
+                    tls_sock.settimeout(preflight_timeout)
+                    # Force handshake now (some platforms defer it).
+                    tls_sock.do_handshake()
+                finally:
+                    try:
+                        tls_sock.close()
+                    except Exception:
+                        pass
             finally:
                 try:
-                    tls_sock.close()
+                    raw_sock.close()
                 except Exception:
                     pass
-        finally:
-            try:
-                raw_sock.close()
-            except Exception:
-                pass
-    except Exception as e:
-        # Don't auto-disable DDG globally; just skip DDG for this call.
-        # This keeps behavior stable across runs and avoids noisy warnings.
-        # If user wants to disable DDG entirely, they can set DDG_ENABLED=false.
-        if SETTINGS.get("TRACE") or SETTINGS.get("VERBOSE"):
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.debug(
-                "DuckDuckGo preflight failed (network/DNS/TCP/TLS). Skipping DDG for this query. "
-                f"Reason: {e!r}"
-            )
-        return []
+        except Exception as e:
+            # Don't auto-disable DDG globally; just skip DDG for this call.
+            # This keeps behavior stable across runs and avoids noisy warnings.
+            # If user wants to disable DDG entirely, they can set DDG_ENABLED=false.
+            if SETTINGS.get("TRACE") or SETTINGS.get("VERBOSE"):
+                logger.debug(
+                    "DuckDuckGo preflight failed (network/DNS/TCP/TLS). Skipping DDG for this query. "
+                    f"Reason: {e!r}"
+                )
+            return []
 
     urls: List[str] = []
     mr = max_results if max_results and max_results > 0 else 60
@@ -1081,8 +1083,6 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                         break
                 except Exception as e:
                     # Handle DDGSException specifically (known issue with ddgs package parsing)
-                    import logging
-                    logger = logging.getLogger(__name__)
                     
                     # Try to import DDGSException and TimeoutException to check type directly
                     try:
@@ -1137,15 +1137,11 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                     continue
     except ImportError as e:
         # ddgs package not available - this is critical!
-        import logging
-        logger = logging.getLogger(__name__)
         logger.error(f"[{idx}] DuckDuckGo search (ddgs) not available: {e!r}", exc_info=True)
         vlog(idx, f"[search] ddgs import error: {e!r}")
         return []
     except Exception as e:
         # Other errors (network, SSL, etc.)
-        import logging
-        logger = logging.getLogger(__name__)
         logger.error(f"[{idx}] DuckDuckGo search failed: {e!r}", exc_info=True)
         vlog(idx, f"[search] ddgs error: {e!r}")
         return []
@@ -1192,14 +1188,10 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                                 if href and "beatport.com" in href:
                                     extra_pages.append(href)
                         except Exception as e:
-                            import logging
-                            logger = logging.getLogger(__name__)
                             logger.debug(f"[{idx}] Fallback search error for '{fallback_q}': {e!r}")
                             vlog(idx, f"[fallback-search] error for '{fallback_q}': {e!r}")
                             continue
             except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
                 logger.warning(f"[{idx}] Fallback DuckDuckGo search failed: {e!r}")
                 vlog(idx, f"[fallback-search] ddgs error: {e!r}")
 

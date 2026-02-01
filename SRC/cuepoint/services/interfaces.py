@@ -11,6 +11,7 @@ These interfaces enable dependency injection and testability.
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from cuepoint.models.preflight import PreflightResult
 from cuepoint.models.result import TrackResult
 from cuepoint.models.track import Track
 from cuepoint.ui.gui_interface import ProcessingController, ProgressCallback
@@ -213,6 +214,18 @@ class IBeatportService(ABC):
 
 class IProcessorService(ABC):
     """Interface for track processing service."""
+
+    @abstractmethod
+    def run_preflight(
+        self,
+        xml_path: str,
+        playlist_name: str,
+        output_dir: Optional[str] = None,
+        settings: Optional[Dict[str, Any]] = None,
+        force: bool = False,
+    ) -> PreflightResult:
+        """Run preflight validation for a run request."""
+        pass
 
     @abstractmethod
     def process_track(

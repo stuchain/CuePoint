@@ -293,18 +293,15 @@ class GUIController(QObject):
                             import traceback
                             traceback.print_exc()
 
-                    # Wait for thread to finish gracefully (with longer timeout for parallel tasks)
-                    # Parallel processing may take longer to cancel all tasks
+                    # Wait for thread to finish gracefully
                     if hasattr(self.current_worker, 'wait'):
                         try:
-                            # Wait up to 10 seconds for graceful shutdown
-                            # This gives time for parallel ThreadPoolExecutor tasks to finish
-                            if not self.current_worker.wait(10000):  # 10 second timeout
-                                # Thread is still running after timeout
-                                # Don't force terminate - let it finish naturally
-                                # The worker will check cancellation and exit when ready
-                                print("Warning: Worker thread did not finish within timeout, but continuing...")
-                                print("Thread will finish gracefully when all tasks complete.")
+                            # Wait up to 5 seconds for graceful shutdown
+                            if not self.current_worker.wait(5000):
+                                # Thread is still running after timeout; terminate and wait again
+                                if hasattr(self.current_worker, 'terminate'):
+                                    self.current_worker.terminate()
+                                self.current_worker.wait(5000)
                         except Exception as e:
                             print(f"Error waiting for worker thread: {e}")
                             import traceback

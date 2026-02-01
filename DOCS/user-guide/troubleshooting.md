@@ -14,6 +14,43 @@ Common issues and solutions.
 - Ensure file isn't too large (> 100MB)
 - Try exporting XML from Rekordbox again
 
+### Preflight Errors
+
+**Problem**: Preflight checks block the run.
+
+**Solutions**:
+- **XML file not found**: reselect the XML export file and confirm the path
+- **XML unreadable**: check file permissions and ensure the file isn't locked
+- **Playlist not found**: choose a playlist name that exists in the XML
+- **Playlist empty**: export a playlist that contains tracks
+- **Output not writable**: pick a writable folder (Downloads/CuePoint Exports by default)
+- **Config invalid**: reset to defaults in Settings and retry
+
+**Common Error Codes**:
+
+| Code | Meaning | Fix |
+| --- | --- | --- |
+| P001 | XML file not found | Reselect the XML file |
+| P002 | XML path is a directory | Select the XML file, not a folder |
+| P003 | XML unreadable | Check permissions and file lock |
+| P004 | XML empty or extension mismatch | Re-export from Rekordbox |
+| P005 | XML parse error / invalid root | Re-export from Rekordbox |
+| P006 | Path too long | Move file to a shorter path |
+| P010 | Playlist not found | Select a valid playlist |
+| P011 | Playlist empty | Pick a playlist with tracks |
+| P012 | Playlist name duplicated/invalid | Rename playlist in Rekordbox |
+| P020 | Output folder not found | Choose/create a valid folder |
+| P021 | Output not writable | Choose a writable folder |
+| P022 | Insufficient free space | Free disk space or change output folder |
+| P023 | Output path too long | Use a shorter output path |
+| P024 | Output in install path | Choose a user-owned folder |
+| P030 | Concurrency invalid | Reset settings to defaults |
+| P031 | Timeout invalid | Reset settings to defaults |
+| P032 | Retry invalid | Reset settings to defaults |
+| P033 | Cache TTL invalid | Reset settings to defaults |
+| P034 | Output format invalid | Reset export format to CSV |
+| P040 | Preflight unknown error | Try again or re-export XML |
+
 ### Import Takes Too Long
 
 **Problem**: Import process is slow.

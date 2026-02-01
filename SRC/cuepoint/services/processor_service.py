@@ -7,17 +7,30 @@ Processor Service Implementation
 Service for processing tracks and playlists.
 """
 
+import os
+import shutil
 import threading
 import time
+from datetime import datetime
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional
 
 from cuepoint.core.mix_parser import _extract_generic_parenthetical_phrases, _parse_mix_flags
 from cuepoint.core.query_generator import make_search_queries
 from cuepoint.core.text_processing import sanitize_title_for_search
-from cuepoint.data.rekordbox import extract_artists_from_title, parse_rekordbox
+from cuepoint.data.rekordbox import (
+    extract_artists_from_title,
+    inspect_rekordbox_xml,
+    is_readable,
+    is_writable,
+    parse_rekordbox,
+    read_playlist_index,
+)
 from cuepoint.models.compat import track_from_rbtrack
 from cuepoint.models.config import SETTINGS
+from cuepoint.models.preflight import PreflightIssue, PreflightResult
+from cuepoint.utils.paths import AppPaths, StorageInvariants
 from cuepoint.models.result import TrackResult
 from cuepoint.models.track import Track
 from cuepoint.services.interfaces import (
@@ -350,6 +363,327 @@ class ProcessorService(IProcessorService):
 
         return results
 
+    def run_preflight(
+        self,
+        xml_path: str,
+        playlist_name: str,
+        output_dir: Optional[str] = None,
+        settings: Optional[Dict[str, Any]] = None,
+        force: bool = False,
+    ) -> PreflightResult:
+        """Run preflight validation for a run request."""
+        errors: List[PreflightIssue] = []
+        warnings: List[PreflightIssue] = []
+        checks: Dict[str, Any] = {"preflight_enabled": True}
+
+        preflight_enabled = self.config_service.get("product.preflight_enabled", True)
+        if preflight_enabled is None:
+            preflight_enabled = True
+        warnings_only = self.config_service.get("product.preflight_warnings_only", False)
+        if warnings_only is None:
+            warnings_only = False
+        preflight_enabled = bool(preflight_enabled)
+        warnings_only = bool(warnings_only)
+        if not preflight_enabled and not force:
+            return PreflightResult(
+                errors=[],
+                warnings=[PreflightIssue(code="P090", message="Preflight disabled in settings.")],
+                checks={"preflight_enabled": False},
+                warnings_only=warnings_only,
+                generated_at=datetime.now(),
+            )
+
+        xml_path_value = (xml_path or "").strip()
+        if not xml_path_value:
+            errors.append(PreflightIssue(code="P001", message="XML file path is required."))
+            return PreflightResult(errors=errors, warnings=warnings, checks=checks, warnings_only=warnings_only)
+
+        xml_path_obj = Path(xml_path_value)
+        checks["xml_path_length"] = len(str(xml_path_obj))
+
+        if not xml_path_obj.exists():
+            errors.append(
+                PreflightIssue(code="P001", message="XML file not found.")
+            )
+        elif not xml_path_obj.is_file():
+            errors.append(
+                PreflightIssue(code="P002", message="XML path points to a directory.")
+            )
+        checks["xml_exists"] = xml_path_obj.exists()
+        checks["xml_is_file"] = xml_path_obj.is_file()
+
+        max_path_len = 260 if os.name == "nt" else 4096
+        if len(str(xml_path_obj)) > max_path_len:
+            errors.append(
+                PreflightIssue(
+                    code="P006",
+                    message="XML path exceeds OS path length limits.",
+                )
+            )
+
+        if xml_path_obj.exists() and xml_path_obj.is_file():
+            if xml_path_obj.suffix.lower() != ".xml":
+                warnings.append(
+                    PreflightIssue(code="P004", message="XML file extension is not .xml.")
+                )
+            try:
+                if xml_path_obj.stat().st_size == 0:
+                    errors.append(
+                        PreflightIssue(code="P004", message="XML file is empty.")
+                    )
+                elif xml_path_obj.stat().st_size > 100 * 1024 * 1024:
+                    warnings.append(
+                        PreflightIssue(
+                            code="P004",
+                            message="XML file is large (> 100MB). Processing may be slower.",
+                        )
+                    )
+                checks["xml_size_bytes"] = xml_path_obj.stat().st_size
+            except OSError:
+                errors.append(
+                    PreflightIssue(code="P003", message="XML file cannot be accessed.")
+                )
+
+            if not is_readable(xml_path_obj):
+                errors.append(
+                    PreflightIssue(code="P003", message="XML file is not readable.")
+                )
+            checks["xml_readable"] = is_readable(xml_path_obj)
+
+        # Config validation (legacy settings + structured config)
+        effective_settings = (
+            settings
+            if settings is not None
+            else {key: self.config_service.get(key, SETTINGS.get(key)) for key in SETTINGS.keys()}
+        )
+
+        def _safe_int(value: Any, fallback: int) -> int:
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                return fallback
+
+        track_workers = _safe_int(
+            effective_settings.get("TRACK_WORKERS", SETTINGS.get("TRACK_WORKERS", 1)),
+            SETTINGS.get("TRACK_WORKERS", 1),
+        )
+        candidate_workers = _safe_int(
+            effective_settings.get("CANDIDATE_WORKERS", SETTINGS.get("CANDIDATE_WORKERS", 1)),
+            SETTINGS.get("CANDIDATE_WORKERS", 1),
+        )
+        per_track_timeout = _safe_int(
+            effective_settings.get("PER_TRACK_TIME_BUDGET_SEC", SETTINGS.get("PER_TRACK_TIME_BUDGET_SEC", 1)),
+            SETTINGS.get("PER_TRACK_TIME_BUDGET_SEC", 1),
+        )
+
+        if track_workers < 1:
+            errors.append(
+                PreflightIssue(code="P030", message="Concurrency must be >= 1.")
+            )
+        if candidate_workers < 1:
+            errors.append(
+                PreflightIssue(code="P030", message="Candidate workers must be >= 1.")
+            )
+        if per_track_timeout < 1:
+            errors.append(
+                PreflightIssue(code="P031", message="Timeout must be >= 1 second.")
+            )
+
+        max_retries = self.config_service.get("beatport.max_retries", 0)
+        if isinstance(max_retries, (int, float)) and max_retries < 0:
+            errors.append(
+                PreflightIssue(code="P032", message="Retry count must be >= 0.")
+            )
+
+        cache_ttl_default = self.config_service.get("cache.ttl_default", 0)
+        cache_ttl_search = self.config_service.get("cache.ttl_search", 0)
+        cache_ttl_track = self.config_service.get("cache.ttl_track", 0)
+        if any(isinstance(val, (int, float)) and val < 0 for val in [cache_ttl_default, cache_ttl_search, cache_ttl_track]):
+            errors.append(
+                PreflightIssue(code="P033", message="Cache TTL values must be >= 0.")
+            )
+
+        export_format = self.config_service.get("export.default_format", "csv")
+        valid_formats = {"csv", "json", "excel", "xlsx"}
+        if isinstance(export_format, str) and export_format.lower() not in valid_formats:
+            errors.append(
+                PreflightIssue(code="P034", message="Output format selection is invalid.")
+            )
+
+        config_errors = self.config_service.validate()
+        if isinstance(config_errors, list):
+            for err in config_errors:
+                errors.append(PreflightIssue(code="CONFIG_INVALID", message=err))
+
+        # Playlist validation (only if XML is accessible)
+        if xml_path_obj.exists() and xml_path_obj.is_file() and is_readable(xml_path_obj):
+            try:
+                playlist_index, duplicates = read_playlist_index(xml_path_value)
+                inspection = inspect_rekordbox_xml(xml_path_value)
+                checks["xml_root_tag"] = inspection.get("root_tag")
+                checks["xml_has_playlists"] = inspection.get("has_playlists")
+                checks["xml_has_tracks"] = inspection.get("has_tracks")
+                checks["tracks_missing_title"] = inspection.get("tracks_missing_title")
+                checks["tracks_missing_artist"] = inspection.get("tracks_missing_artist")
+
+                root_tag = str(inspection.get("root_tag") or "")
+                if not root_tag:
+                    errors.append(
+                        PreflightIssue(code="P005", message="XML root element is missing.")
+                    )
+                elif root_tag.upper() not in {"DJ_PLAYLISTS"}:
+                    errors.append(
+                        PreflightIssue(code="P005", message="XML root element is not a Rekordbox export.")
+                    )
+
+                if not inspection.get("has_playlists"):
+                    errors.append(
+                        PreflightIssue(code="P005", message="XML has no playlist nodes.")
+                    )
+                if not inspection.get("has_tracks"):
+                    warnings.append(
+                        PreflightIssue(code="P005", message="XML has no track nodes.")
+                    )
+
+                invalid_playlist_names = []
+                for name in inspection.get("playlist_names", []):
+                    if not name:
+                        continue
+                    if any(ch in name for ch in '<>:"/\\|?*'):
+                        invalid_playlist_names.append(name)
+                if invalid_playlist_names:
+                    warnings.append(
+                        PreflightIssue(
+                            code="P012",
+                            message="Playlist names contain invalid characters.",
+                        )
+                    )
+                if inspection.get("playlist_empty_names"):
+                    warnings.append(
+                        PreflightIssue(
+                            code="P012",
+                            message="Some playlists have empty names.",
+                        )
+                    )
+
+                if inspection.get("tracks_missing_title"):
+                    warnings.append(
+                        PreflightIssue(code="P005", message="Some tracks are missing titles.")
+                    )
+                if inspection.get("tracks_missing_artist"):
+                    warnings.append(
+                        PreflightIssue(code="P005", message="Some tracks are missing artists.")
+                    )
+
+                if duplicates:
+                    warnings.append(
+                        PreflightIssue(
+                            code="P012",
+                            message=f"Duplicate playlist names detected: {', '.join(sorted(duplicates))}.",
+                        )
+                    )
+                if playlist_name:
+                    if playlist_name not in playlist_index:
+                        errors.append(
+                            PreflightIssue(
+                                code="P010", message="Playlist not found in XML."
+                            )
+                        )
+                    elif playlist_index.get(playlist_name, 0) == 0:
+                        errors.append(
+                            PreflightIssue(code="P011", message="Playlist is empty.")
+                        )
+                else:
+                    errors.append(
+                        PreflightIssue(code="P010", message="Playlist name is required.")
+                    )
+            except Exception:
+                errors.append(
+                    PreflightIssue(code="P005", message="XML file could not be parsed.")
+                )
+
+        # Output directory validation (optional)
+        if output_dir:
+            output_path = Path(output_dir)
+            checks["output_path_length"] = len(str(output_path))
+            if len(str(output_path)) > max_path_len:
+                errors.append(
+                    PreflightIssue(code="P023", message="Output path exceeds OS path length limits.")
+                )
+            if output_path.exists() and not output_path.is_dir():
+                errors.append(
+                    PreflightIssue(code="P021", message="Output path is not a directory.")
+                )
+            elif not output_path.exists():
+                parent_dir = output_path.parent
+                if parent_dir.exists() and is_writable(parent_dir):
+                    warnings.append(
+                        PreflightIssue(
+                            code="P020",
+                            message="Output folder does not exist and will be created.",
+                        )
+                    )
+                else:
+                    errors.append(
+                        PreflightIssue(
+                            code="P020",
+                            message="Output folder does not exist and cannot be created.",
+                        )
+                    )
+            elif not is_writable(output_path):
+                errors.append(
+                    PreflightIssue(code="P021", message="Output folder is not writable.")
+                )
+            else:
+                try:
+                    disk = shutil.disk_usage(output_path)
+                    checks["output_free_bytes"] = disk.free
+                    if disk.free < 100 * 1024 * 1024:
+                        errors.append(
+                            PreflightIssue(
+                                code="P022",
+                                message="Output folder has insufficient free space.",
+                            )
+                        )
+                except Exception:
+                    warnings.append(
+                        PreflightIssue(
+                            code="P022",
+                            message="Unable to determine available free space.",
+                        )
+                    )
+
+            if StorageInvariants.is_restricted_location(output_path):
+                errors.append(
+                    PreflightIssue(
+                        code="P024",
+                        message="Output folder cannot be inside the app install path.",
+                    )
+                )
+
+        try:
+            cache_dir = AppPaths.cache_dir()
+            if not is_writable(cache_dir):
+                errors.append(
+                    PreflightIssue(code="P033", message="Cache directory is not writable.")
+                )
+        except Exception:
+            warnings.append(
+                PreflightIssue(code="P033", message="Cache directory could not be validated.")
+            )
+
+        if warnings_only and errors:
+            warnings.extend(errors)
+            errors = []
+
+        return PreflightResult(
+            errors=errors,
+            warnings=warnings,
+            checks=checks,
+            warnings_only=warnings_only,
+            generated_at=datetime.now(),
+        )
+
     def process_playlist_from_xml(
         self,
         xml_path: str,
@@ -390,6 +724,39 @@ class ProcessorService(IProcessorService):
             if settings is not None
             else {key: self.config_service.get(key, SETTINGS.get(key)) for key in SETTINGS.keys()}
         )
+
+        # Preflight validation (file/playlist/config checks)
+        preflight = self.run_preflight(
+            xml_path=xml_path,
+            playlist_name=playlist_name,
+            output_dir=None,
+            settings=effective_settings,
+        )
+        if preflight.warnings:
+            for warning in preflight.warning_messages():
+                self.logging_service.warning(f"Preflight warning: {warning}")
+        if not preflight.can_proceed:
+            error_messages = preflight.error_messages()
+            error_codes = {issue.code for issue in preflight.errors}
+            error_type = ErrorType.VALIDATION_ERROR
+            if "P001" in error_codes:
+                error_type = ErrorType.FILE_NOT_FOUND
+            elif "P010" in error_codes:
+                error_type = ErrorType.PLAYLIST_NOT_FOUND
+            elif "P005" in error_codes:
+                error_type = ErrorType.XML_PARSE_ERROR
+
+            raise ProcessingError(
+                error_type=error_type,
+                message="Preflight checks failed.",
+                details="; ".join(error_messages),
+                suggestions=[
+                    "Fix the listed preflight issues and retry",
+                    "Re-export the Rekordbox XML if parsing fails",
+                    "Verify file permissions and playlist selection",
+                ],
+                recoverable=True,
+            )
 
         # Parse Rekordbox XML file to extract playlists with tracks
         try:

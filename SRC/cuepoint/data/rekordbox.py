@@ -25,6 +25,7 @@ Example:
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from cuepoint.models.compat import track_from_rbtrack
@@ -197,3 +198,109 @@ def extract_artists_from_title(title: str) -> Optional[Tuple[str, str]]:
     rest = re.sub(r"\([^)]*\)|\[[^\]]*\]", " ", rest)
     rest = re.sub(r"\s{2,}", " ", rest).strip()
     return (artists, rest) if (artists and rest) else None
+
+
+def read_playlist_index(xml_path: str) -> Tuple[Dict[str, int], List[str]]:
+    """Return a mapping of playlist names to track counts, plus duplicates.
+
+    This is a lightweight helper for preflight validation. It only reads
+    playlist nodes and track references, without expanding full track data.
+
+    Returns:
+        (playlist_counts, duplicate_names)
+    """
+    tree = ET.parse(xml_path)
+    root = tree.getroot()
+
+    playlist_counts: Dict[str, int] = {}
+    duplicate_names: List[str] = []
+
+    playlists_root = root.find(".//PLAYLISTS")
+    if playlists_root is None:
+        return playlist_counts, duplicate_names
+
+    for node in playlists_root.findall(".//NODE"):
+        typ = (node.get("Type") or node.get("type") or "").strip()
+        if typ != "1":
+            continue
+        name = node.get("Name") or node.get("name") or "Unnamed Playlist"
+        track_count = len(node.findall("./TRACK"))
+        if name in playlist_counts and name not in duplicate_names:
+            duplicate_names.append(name)
+        playlist_counts[name] = track_count
+
+    return playlist_counts, duplicate_names
+
+
+def inspect_rekordbox_xml(xml_path: str) -> Dict[str, object]:
+    """Inspect XML structure for preflight integrity checks."""
+    tree = ET.parse(xml_path)
+    root = tree.getroot()
+    root_tag = root.tag if root is not None else ""
+
+    playlists_root = root.find(".//PLAYLISTS")
+    has_playlists = playlists_root is not None
+    playlist_nodes = playlists_root.findall(".//NODE") if playlists_root is not None else []
+
+    playlist_names: List[str] = []
+    playlist_name_duplicates: List[str] = []
+    playlist_name_empty: List[str] = []
+    playlist_track_counts: Dict[str, int] = {}
+
+    for node in playlist_nodes:
+        typ = (node.get("Type") or node.get("type") or "").strip()
+        if typ != "1":
+            continue
+        name = node.get("Name") or node.get("name") or ""
+        if not name.strip():
+            playlist_name_empty.append(name)
+        if name in playlist_names and name not in playlist_name_duplicates:
+            playlist_name_duplicates.append(name)
+        playlist_names.append(name)
+        playlist_track_counts[name] = len(node.findall("./TRACK"))
+
+    collection = root.find(".//COLLECTION")
+    track_nodes = collection.findall("TRACK") if collection is not None else []
+    has_tracks = len(track_nodes) > 0
+    tracks_missing_title = 0
+    tracks_missing_artist = 0
+    for track in track_nodes:
+        title = track.get("Name") or track.get("Title") or ""
+        artist = track.get("Artist") or track.get("Artists") or ""
+        if not title.strip():
+            tracks_missing_title += 1
+        if not artist.strip():
+            tracks_missing_artist += 1
+
+    return {
+        "root_tag": root_tag,
+        "has_playlists": has_playlists,
+        "has_tracks": has_tracks,
+        "playlist_names": playlist_names,
+        "playlist_duplicates": playlist_name_duplicates,
+        "playlist_empty_names": playlist_name_empty,
+        "playlist_track_counts": playlist_track_counts,
+        "tracks_missing_title": tracks_missing_title,
+        "tracks_missing_artist": tracks_missing_artist,
+    }
+
+
+def is_readable(path: Path) -> bool:
+    """Return True if a file can be read."""
+    try:
+        with path.open("rb"):
+            return True
+    except OSError:
+        return False
+
+
+def is_writable(path: Path) -> bool:
+    """Return True if a directory can be written to."""
+    try:
+        test_file = path / ".cuepoint_write_test"
+        with test_file.open("w", encoding="utf-8") as handle:
+            handle.write("ok")
+        test_file.unlink()
+        return True
+    except OSError:
+        return False

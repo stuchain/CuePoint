@@ -16,7 +16,8 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -140,6 +141,32 @@ class ResultsScreen(_OnboardingScreen):
             ),
             parent=parent,
         )
+        layout = self.layout()
+        if layout:
+            button_row = QHBoxLayout()
+            button_row.addStretch(1)
+
+            self.workflow_button = QPushButton(
+                tr("onboarding.results.workflow", "View workflow guide")
+            )
+            self.workflow_button.setObjectName("secondaryActionButton")
+            self.workflow_button.clicked.connect(self._open_workflow_guide)
+            button_row.addWidget(self.workflow_button)
+
+            button_row.addStretch(1)
+            layout.addLayout(button_row)
+
+    def _open_workflow_guide(self) -> None:
+        from pathlib import Path
+
+        repo_root = Path(__file__).resolve().parents[4]
+        guide_path = repo_root / "DOCS" / "user-guide" / "workflows.md"
+        if guide_path.exists():
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(guide_path)))
+        else:
+            QDesktopServices.openUrl(
+                QUrl("https://github.com/stuchain/CuePoint/blob/main/DOCS/user-guide/workflows.md")
+            )
 
 
 class OnboardingDialog(QDialog):
@@ -213,6 +240,9 @@ class OnboardingDialog(QDialog):
         footer_layout.addLayout(nav)
 
         self.dont_show_checkbox = QCheckBox(tr("onboarding.dont_show", "Don't show this again"))
+        self.dont_show_checkbox.setCheckable(True)
+        self.dont_show_checkbox.setEnabled(True)
+        self.dont_show_checkbox.setFocusPolicy(Qt.StrongFocus)
         self.dont_show_checkbox.setChecked(False)
         footer_layout.addWidget(self.dont_show_checkbox)
 

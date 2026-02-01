@@ -85,6 +85,29 @@ class UIConfig:
 
 
 @dataclass
+class ProductConfig:
+    """Product configuration."""
+
+    onboarding_seen: bool = False
+    onboarding_dismissed: bool = False
+    onboarding_version: Optional[str] = None
+    preflight_enabled: bool = True
+    preflight_warnings_only: bool = False
+    last_xml_path: str = ""
+    last_output_dir: str = ""
+    default_playlist: str = ""
+    redact_paths_in_logs: bool = True
+
+
+@dataclass
+class RunSummaryConfig:
+    """Run summary configuration."""
+
+    write_json: bool = False
+    json_path: str = ""
+
+
+@dataclass
 class MatchingConfig:
     """Matching and scoring configuration."""
 
@@ -109,6 +132,8 @@ class AppConfig:
     export: ExportConfig = field(default_factory=ExportConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     ui: UIConfig = field(default_factory=UIConfig)
+    product: ProductConfig = field(default_factory=ProductConfig)
+    run_summary: RunSummaryConfig = field(default_factory=RunSummaryConfig)
     matching: MatchingConfig = field(default_factory=MatchingConfig)
 
     @classmethod
@@ -173,6 +198,21 @@ class AppConfig:
                 "window_width": self.ui.window_width,
                 "window_height": self.ui.window_height,
                 "remember_window_size": self.ui.remember_window_size,
+            },
+            "product": {
+                "onboarding_seen": self.product.onboarding_seen,
+                "onboarding_dismissed": self.product.onboarding_dismissed,
+                "onboarding_version": self.product.onboarding_version,
+                "preflight_enabled": self.product.preflight_enabled,
+                "preflight_warnings_only": self.product.preflight_warnings_only,
+                "last_xml_path": self.product.last_xml_path,
+                "last_output_dir": self.product.last_output_dir,
+                "default_playlist": self.product.default_playlist,
+                "redact_paths_in_logs": self.product.redact_paths_in_logs,
+            },
+            "run_summary": {
+                "write_json": self.run_summary.write_json,
+                "json_path": self.run_summary.json_path,
             },
             "matching": {
                 "min_accept_score": self.matching.min_accept_score,
@@ -262,6 +302,41 @@ class AppConfig:
                 window_width=ui_data.get("window_width", config.ui.window_width),
                 window_height=ui_data.get("window_height", config.ui.window_height),
                 remember_window_size=ui_data.get("remember_window_size", config.ui.remember_window_size),
+            )
+
+        if "product" in data:
+            product_data = data["product"]
+            config.product = ProductConfig(
+                onboarding_seen=product_data.get("onboarding_seen", config.product.onboarding_seen),
+                onboarding_dismissed=product_data.get(
+                    "onboarding_dismissed", config.product.onboarding_dismissed
+                ),
+                onboarding_version=product_data.get(
+                    "onboarding_version", config.product.onboarding_version
+                ),
+                preflight_enabled=product_data.get(
+                    "preflight_enabled", config.product.preflight_enabled
+                ),
+                preflight_warnings_only=product_data.get(
+                    "preflight_warnings_only", config.product.preflight_warnings_only
+                ),
+                last_xml_path=product_data.get("last_xml_path", config.product.last_xml_path),
+                last_output_dir=product_data.get(
+                    "last_output_dir", config.product.last_output_dir
+                ),
+                default_playlist=product_data.get(
+                    "default_playlist", config.product.default_playlist
+                ),
+                redact_paths_in_logs=product_data.get(
+                    "redact_paths_in_logs", config.product.redact_paths_in_logs
+                ),
+            )
+
+        if "run_summary" in data:
+            run_summary_data = data["run_summary"]
+            config.run_summary = RunSummaryConfig(
+                write_json=run_summary_data.get("write_json", config.run_summary.write_json),
+                json_path=run_summary_data.get("json_path", config.run_summary.json_path),
             )
 
         if "matching" in data:

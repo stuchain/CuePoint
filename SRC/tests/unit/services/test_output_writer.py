@@ -699,8 +699,9 @@ class TestWriteExcelFileEdgeCases:
         # Verify Excel file created (may have only headers)
         try:
             import openpyxl
-            wb = openpyxl.load_workbook(result)
+            wb = openpyxl.load_workbook(result, read_only=True)
             assert wb.active is not None
+            wb.close()
         except ImportError:
             pytest.skip("openpyxl not available")
     
@@ -1199,10 +1200,11 @@ class TestWriteCsvFilesEdgeCases:
         
         # Verify Excel file can be opened and has data
         from openpyxl import load_workbook
-        wb = load_workbook(result)
+        wb = load_workbook(result, read_only=True)
         ws = wb.active
         assert ws.title == "Test Playlist"
         assert ws.max_row >= 2  # Header + at least one data row
+        wb.close()
     
     @pytest.mark.skipif(
         not hasattr(__import__('cuepoint.services.output_writer', fromlist=['OPENPYXL_AVAILABLE']), 'OPENPYXL_AVAILABLE') or
@@ -1217,8 +1219,9 @@ class TestWriteCsvFilesEdgeCases:
         
         # Should truncate to 31 characters
         from openpyxl import load_workbook
-        wb = load_workbook(result)
+        wb = load_workbook(result, read_only=True)
         assert len(wb.active.title) <= 31
+        wb.close()
     
     def test_write_performance_report(self, temp_output_dir):
         """Test write_performance_report function - lines 835-917."""

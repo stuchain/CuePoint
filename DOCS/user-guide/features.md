@@ -47,6 +47,14 @@ Intelligent matching algorithm that:
 - Export logs
 - System diagnostics
 - Error reporting
+- Export preflight reports (JSON)
+
+## Supported Environments and Limits
+
+- **Supported OS**: Windows 10+ (x64), macOS 12+ (Intel/Apple Silicon)
+- **Rekordbox export**: XML export format from recent Rekordbox versions
+- **File size guidance**: XML exports <= 100MB recommended (larger files can be slower)
+- **Support policy**: See `DOCS/user-guide/support-policy.md` for update cadence and EOL policy
 
 ## Keyboard Shortcuts
 

@@ -119,6 +119,7 @@ SETTINGS = {
     # (VPN/corporate firewall), DuckDuckGo can be blocked or very slow, causing
     # TLS handshake/connect timeouts. These settings allow tuning or disabling.
     "DDG_ENABLED": True,  # If False, skip DDG entirely and rely on direct search/browser
+    "DDG_PREFLIGHT_ENABLED": True,  # Fast TCP/TLS preflight before DDG requests
     "DDG_TIMEOUT_SEC": 6,  # ddgs "overall" timeout in seconds (lower = fail fast on blocked networks)
     "DDG_PREFLIGHT_TIMEOUT_SEC": 1.5,  # quick TCP preflight timeout to avoid long DDG hangs when blocked
     "DDG_REGION": "us-en",  # ddgs region string

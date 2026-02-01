@@ -20,6 +20,7 @@ from cuepoint.core.text_processing import _artist_token_overlap
 from cuepoint.exceptions.cuepoint_exceptions import ProcessingError
 from cuepoint.ui.gui_interface import ErrorType
 from cuepoint.models.result import TrackResult
+from cuepoint.models.run_summary import RunSummary
 from cuepoint.services.interfaces import (
     IConfigService,
     IExportService,
@@ -37,7 +38,7 @@ from cuepoint.utils.errors import (
     error_playlist_not_found,
     print_error,
 )
-from cuepoint.utils.utils import with_timestamp
+from cuepoint.utils.utils import get_output_directory, with_timestamp
 
 
 class CLIProcessor:
@@ -71,6 +72,11 @@ class CLIProcessor:
         playlist_name: str,
         out_csv_base: str,
         auto_research: bool = False,
+        output_dir: Optional[str] = None,
+        preflight_only: bool = False,
+        preflight_report_path: Optional[str] = None,
+        run_summary_json_path: Optional[str] = None,
+        preflight_enabled: bool = True,
     ) -> None:
         """Process playlist and generate output files.
 
@@ -90,6 +96,50 @@ class CLIProcessor:
         """
         # Track processing start time for summary statistics
         processing_start_time = __import__("time").perf_counter()
+
+        resolved_output_dir = output_dir or get_output_directory()
+        try:
+            self.config_service.set("product.last_xml_path", xml_path)
+            self.config_service.set("product.default_playlist", playlist_name)
+            self.config_service.set("product.last_output_dir", resolved_output_dir)
+            self.config_service.save()
+        except Exception:
+            pass
+
+        # Run preflight validation (includes output directory checks)
+        if preflight_enabled or preflight_only:
+            preflight = self.processor_service.run_preflight(
+                xml_path=xml_path,
+                playlist_name=playlist_name,
+                output_dir=resolved_output_dir,
+                settings=self._get_settings_dict(),
+                force=preflight_only,
+            )
+            if preflight.warnings:
+                for warning in preflight.warning_messages():
+                    self.logging_service.warning(f"Preflight warning: {warning}")
+            if preflight_report_path:
+                try:
+                    import json
+                    with open(preflight_report_path, "w", encoding="utf-8") as handle:
+                        json.dump(preflight.to_report(), handle, indent=2)
+                except Exception as e:
+                    self.logging_service.warning(f"Could not write preflight report: {e}")
+            if preflight_only:
+                if preflight.can_proceed:
+                    self.logging_service.info("Preflight passed.")
+                    return
+                message_lines = ["Preflight checks failed:"]
+                for error in preflight.error_messages():
+                    message_lines.append(f"- {error}")
+                print_error("\n".join(message_lines), exit_code=1)
+                return
+            if not preflight.can_proceed:
+                message_lines = ["Preflight checks failed:"]
+                for error in preflight.error_messages():
+                    message_lines.append(f"- {error}")
+                print_error("\n".join(message_lines), exit_code=1)
+                return
 
         # Create progress callback
         progress_callback = self._create_progress_callback()
@@ -117,10 +167,28 @@ class CLIProcessor:
         processing_duration = __import__("time").perf_counter() - processing_start_time
 
         # Write output files
-        output_files = self._write_output_files(results, out_csv_base)
+        output_files = self._write_output_files(results, out_csv_base, resolved_output_dir)
 
         # Display summary
-        self._display_summary(results, output_files, processing_duration)
+        self._display_summary(results, output_files, processing_duration, playlist_name, xml_path)
+        if run_summary_json_path:
+            try:
+                import json
+                redact_paths_value = self.config_service.get("product.redact_paths_in_logs", True)
+                if redact_paths_value is None:
+                    redact_paths_value = True
+                summary = RunSummary.from_results(
+                    results=results,
+                    playlist=playlist_name,
+                    duration_sec=processing_duration,
+                    output_paths=[path for path in output_files.values() if path],
+                    input_xml_path=xml_path,
+                    redact_paths=bool(redact_paths_value),
+                )
+                with open(run_summary_json_path, "w", encoding="utf-8") as handle:
+                    json.dump(summary.to_dict(), handle, indent=2)
+            except Exception as e:
+                self.logging_service.warning(f"Could not write run summary JSON: {e}")
 
         # Handle unmatched tracks
         if not auto_research:
@@ -216,6 +284,7 @@ class CLIProcessor:
         self,
         results: List[TrackResult],
         out_csv_base: str,
+        output_dir: str,
     ) -> Dict[str, str]:
         """Write output files using output_writer functions.
 
@@ -230,7 +299,6 @@ class CLIProcessor:
         base_filename = with_timestamp(out_csv_base)
 
         # Ensure output directory exists
-        output_dir = "output"
         os.makedirs(output_dir, exist_ok=True)
 
         # Write CSV files using output_writer module
@@ -328,6 +396,8 @@ class CLIProcessor:
         results: List[TrackResult],
         output_files: Dict[str, str],
         processing_duration: float,
+        playlist_name: str,
+        xml_path: str,
     ) -> None:
         """Display processing summary statistics.
 
@@ -336,46 +406,23 @@ class CLIProcessor:
             output_files: Dictionary of output file paths
             processing_duration: Processing duration in seconds
         """
-        total = len(results)
-        matched = sum(1 for r in results if r.matched)
-        unmatched = total - matched
+        output_paths = [path for path in output_files.values() if path]
+        redact_paths_value = self.config_service.get("product.redact_paths_in_logs", True)
+        if redact_paths_value is None:
+            redact_paths_value = True
+        summary = RunSummary.from_results(
+            results=results,
+            playlist=playlist_name,
+            duration_sec=processing_duration,
+            output_paths=output_paths,
+            input_xml_path=xml_path,
+            redact_paths=bool(redact_paths_value),
+        )
 
-        # Collect all candidates and queries for summary
-        # Use candidates_data/queries_data if available (export format), otherwise use candidates/queries
-        all_candidates: List[Any] = []
-        all_queries: List[Any] = []
-        for result in results:
-            # For candidates: prefer candidates_data (export format), fallback to candidates (objects)
-            if result.candidates_data:
-                all_candidates.extend(result.candidates_data)
-            elif result.candidates:
-                all_candidates.extend(result.candidates)
-            # For queries: use queries_data (export format)
-            if result.queries_data:
-                all_queries.extend(result.queries_data)
-
-        # Display summary
-        self.logging_service.info(f"\nDone. Wrote {total} rows -> {output_files.get('main', 'N/A')}")
-        self.logging_service.info(f"Matched: {matched}, Unmatched: {unmatched}")
-        self.logging_service.info(f"Processing time: {processing_duration:.2f} seconds")
-
-        if output_files.get("candidates"):
-            self.logging_service.info(
-                f"Candidates: {len(all_candidates)} rows -> {output_files['candidates']}"
-            )
-
-        if output_files.get("queries"):
-            self.logging_service.info(
-                f"Queries: {len(all_queries)} rows -> {output_files['queries']}"
-            )
-
-        if output_files.get("review"):
-            review_count = len(
-                [r for r in results if r.playlist_index in self._get_review_indices(results)]
-            )
-            self.logging_service.info(
-                f"Review list: {review_count} rows -> {output_files['review']}"
-            )
+        self.logging_service.info("\nRun Summary")
+        self.logging_service.info("-" * 20)
+        for line in summary.to_lines():
+            self.logging_service.info(line)
 
     def _handle_unmatched_tracks(self, results: List[TrackResult]) -> None:
         """Handle unmatched tracks (display and prompt for re-search).

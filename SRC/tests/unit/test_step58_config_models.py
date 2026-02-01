@@ -15,7 +15,9 @@ from cuepoint.models.config_models import (
     ExportConfig,
     LoggingConfig,
     MatchingConfig,
+    ProductConfig,
     ProcessingConfig,
+    RunSummaryConfig,
     UIConfig,
 )
 
@@ -140,6 +142,8 @@ class TestAppConfig:
         assert isinstance(config.export, ExportConfig)
         assert isinstance(config.logging, LoggingConfig)
         assert isinstance(config.ui, UIConfig)
+        assert isinstance(config.product, ProductConfig)
+        assert isinstance(config.run_summary, RunSummaryConfig)
         assert isinstance(config.matching, MatchingConfig)
 
     def test_to_dict(self):
@@ -154,6 +158,8 @@ class TestAppConfig:
         assert "export" in data
         assert "logging" in data
         assert "ui" in data
+        assert "product" in data
+        assert "run_summary" in data
         assert "matching" in data
 
         assert data["beatport"]["timeout"] == 30

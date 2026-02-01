@@ -19,6 +19,13 @@ from cuepoint.services.processor_service import ProcessorService
 class TestProcessorServiceIntegration:
     """Integration tests for ProcessorService using real service instances."""
     
+    @pytest.fixture(autouse=True)
+    def _mock_track_urls(self):
+        """Prevent network/browser access during integration tests."""
+        with patch("cuepoint.core.matcher.track_urls") as mock_track_urls:
+            mock_track_urls.return_value = []
+            yield
+
     @pytest.fixture
     def real_logging_service(self):
         """Create a real logging service."""
@@ -69,26 +76,23 @@ class TestProcessorServiceIntegration:
         sample_track
     ):
         """Test process_track with real services but mocked network calls."""
-        # Mock the BeatportService.search_tracks method to avoid actual API calls
-        with patch.object(processor_service.beatport_service, 'search_tracks') as mock_search:
-            mock_search.return_value = []  # No results from search
-            
-            # Process track
-            result = processor_service.process_track(1, sample_track)
-            
-            # Verify result structure
-            assert result is not None
-            assert isinstance(result, TrackResult)
-            assert result.title == sample_track.title
-            assert result.artist == sample_track.artist
-            # With mocked empty search, should not match (unless matcher finds something else)
-            # The important thing is that the service executed and returned a valid result
-            assert isinstance(result.matched, bool)
-            
-            # Verify search was called (real code executed)
-            # Note: search_tracks may be called multiple times for different queries
-            # Just verify it was called at least once
-            assert mock_search.call_count >= 0  # May be 0 if no queries executed
+        # Mock Beatport search helpers to avoid network or browser automation
+        with patch("cuepoint.core.matcher.track_urls") as mock_track_urls:
+            mock_track_urls.return_value = []
+            with patch("cuepoint.services.beatport_service.beatport_search_hybrid") as mock_hybrid:
+                mock_hybrid.return_value = []  # No results from search
+                with patch.object(processor_service.beatport_service, "search_tracks") as mock_search:
+                    mock_search.return_value = []
+
+                    # Process track
+                    result = processor_service.process_track(1, sample_track)
+
+                    # Verify result structure
+                    assert result is not None
+                    assert isinstance(result, TrackResult)
+                    assert result.title == sample_track.title
+                    assert result.artist == sample_track.artist
+                    assert isinstance(result.matched, bool)
     
     def test_process_track_integration_with_match(
         self,
@@ -96,31 +100,32 @@ class TestProcessorServiceIntegration:
         sample_track
     ):
         """Test process_track with a successful match scenario."""
-        # Mock search to return a URL
-        with patch('cuepoint.services.beatport_service.beatport_search_hybrid') as mock_search:
-            mock_search.return_value = ["https://www.beatport.com/track/test/123"]
-            
-            # Mock parse_track_page to return track data
-            with patch('cuepoint.services.beatport_service.parse_track_page') as mock_parse:
-                mock_parse.return_value = (
-                    "Test Track",
-                    "Test Artist",
-                    "C Major",
-                    2023,
-                    128.0,
-                    "Test Label",
-                    "House",
-                    "Test Release",
-                    "2023-01-15"
-                )
-                
-                # Process track
-                result = processor_service.process_track(1, sample_track)
-                
-                # Verify result
-                assert result is not None
-                assert isinstance(result, TrackResult)
-                # May or may not match depending on scoring, but structure should be correct
+        with patch("cuepoint.core.matcher.track_urls") as mock_track_urls:
+            mock_track_urls.return_value = []
+            # Mock search to return a URL
+            with patch("cuepoint.services.beatport_service.beatport_search_hybrid") as mock_search:
+                mock_search.return_value = ["https://www.beatport.com/track/test/123"]
+
+                # Mock parse_track_page to return track data
+                with patch("cuepoint.services.beatport_service.parse_track_page") as mock_parse:
+                    mock_parse.return_value = (
+                        "Test Track",
+                        "Test Artist",
+                        "C Major",
+                        2023,
+                        128.0,
+                        "Test Label",
+                        "House",
+                        "Test Release",
+                        "2023-01-15",
+                    )
+
+                    # Process track
+                    result = processor_service.process_track(1, sample_track)
+
+                    # Verify result
+                    assert result is not None
+                    assert isinstance(result, TrackResult)
     
     def test_process_playlist_integration(
         self,
@@ -131,19 +136,21 @@ class TestProcessorServiceIntegration:
             Track(title="Track 1", artist="Artist 1"),
             Track(title="Track 2", artist="Artist 2"),
         ]
-        
+
         # Mock network calls
-        with patch('cuepoint.services.beatport_service.beatport_search_hybrid') as mock_search:
-            mock_search.return_value = []
-            
-            # Process playlist
-            results = processor_service.process_playlist(tracks)
-            
-            # Verify results
-            assert len(results) == 2
-            assert all(isinstance(r, TrackResult) for r in results)
-            assert results[0].title == "Track 1"
-            assert results[1].title == "Track 2"
+        with patch("cuepoint.core.matcher.track_urls") as mock_track_urls:
+            mock_track_urls.return_value = []
+            with patch("cuepoint.services.beatport_service.beatport_search_hybrid") as mock_search:
+                mock_search.return_value = []
+
+                # Process playlist
+                results = processor_service.process_playlist(tracks)
+
+                # Verify results
+                assert len(results) == 2
+                assert all(isinstance(r, TrackResult) for r in results)
+                assert results[0].title == "Track 1"
+                assert results[1].title == "Track 2"
     
     def test_process_playlist_from_xml_integration(
         self,
@@ -173,18 +180,47 @@ class TestProcessorServiceIntegration:
         
         try:
             # Mock network calls
-            with patch('cuepoint.services.beatport_service.beatport_search_hybrid') as mock_search:
-                mock_search.return_value = []
-                
-                # Process playlist from XML
-                results = processor_service.process_playlist_from_xml(
-                    xml_path,
-                    "Test Playlist"
-                )
-                
-                # Verify results
-                assert len(results) == 2
-                assert all(isinstance(r, TrackResult) for r in results)
+            with patch("cuepoint.core.matcher.track_urls") as mock_track_urls:
+                mock_track_urls.return_value = []
+                with patch("cuepoint.services.beatport_service.beatport_search_hybrid") as mock_search:
+                    mock_search.return_value = []
+
+                    # Process playlist from XML
+                    results = processor_service.process_playlist_from_xml(
+                        xml_path,
+                        "Test Playlist"
+                    )
+
+                    # Verify results
+                    assert len(results) == 2
+                    assert all(isinstance(r, TrackResult) for r in results)
+        finally:
+            Path(xml_path).unlink(missing_ok=True)
+
+    def test_run_preflight_integration(self, processor_service):
+        """Test preflight validation with real services."""
+        xml_content = """<?xml version="1.0" encoding="UTF-8"?>
+<DJ_PLAYLISTS>
+    <COLLECTION>
+        <TRACK TrackID="1" Name="Test Track" Artist="Test Artist"/>
+    </COLLECTION>
+    <PLAYLISTS>
+        <NODE Name="ROOT">
+            <NODE Name="Test Playlist" Type="1">
+                <TRACK Key="1"/>
+            </NODE>
+        </NODE>
+    </PLAYLISTS>
+</DJ_PLAYLISTS>"""
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False, encoding="utf-8") as f:
+            f.write(xml_content)
+            xml_path = f.name
+
+        try:
+            result = processor_service.run_preflight(xml_path, "Test Playlist")
+            assert result.can_proceed is True
+            assert result.errors == []
         finally:
             Path(xml_path).unlink(missing_ok=True)
     
@@ -388,7 +424,7 @@ class TestProcessorServiceIntegration:
             
             # Verify error type
             assert exc_info.value.error_type == ErrorType.VALIDATION_ERROR
-            assert "empty" in exc_info.value.message.lower()
+            assert "Playlist is empty" in (exc_info.value.details or "")
         finally:
             Path(xml_path).unlink(missing_ok=True)
 
@@ -408,7 +444,7 @@ class TestProcessorServiceIntegration:
         
         # Verify error type
         assert exc_info.value.error_type == ErrorType.FILE_NOT_FOUND
-        assert "not found" in exc_info.value.message.lower()
+        assert "XML file not found" in (exc_info.value.details or "")
 
     def test_process_playlist_from_xml_malformed_xml(
         self,

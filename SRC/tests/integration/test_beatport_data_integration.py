@@ -17,6 +17,12 @@ from cuepoint.data.beatport import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _disable_ddg_preflight():
+    with patch.dict("cuepoint.data.beatport.SETTINGS", {"DDG_PREFLIGHT_ENABLED": False}):
+        yield
+
+
 class TestBeatportDataIntegration:
     """Integration tests for beatport data module."""
     
@@ -2102,27 +2108,17 @@ class TestBeatportDataIntegration:
         mock_ddgs.text.return_value = [mock_result]
         mock_ddgs_class.return_value.__enter__.return_value = mock_ddgs
         
-        # Mock tlog to verify it's called (tlog is imported from utils module within beatport)
-        # The import happens inside the function, so we need to patch it at the function level
-        with patch('builtins.__import__') as mock_import, \
-             patch.dict('cuepoint.models.config.SETTINGS', {'TRACE': True}):
-            # Mock the import to return a mock tlog function
-            def import_side_effect(name, *args, **kwargs):
-                if name == 'utils':
-                    mock_utils = Mock()
-                    mock_utils.tlog = Mock()
-                    return mock_utils
-                return __import__(name, *args, **kwargs)
-            mock_import.side_effect = import_side_effect
-            
+        # Mock tlog to verify it's called when TRACE is enabled
+        with patch("cuepoint.utils.utils.tlog") as mock_tlog, patch.dict(
+            "cuepoint.models.config.SETTINGS",
+            {"TRACE": True, "DDG_PREFLIGHT_ENABLED": False},
+        ):
             urls = ddg_track_urls(1, "Test Track", max_results=10)
-            
-            # Should call tlog when TRACE is enabled
+
+            # Should call tlog when TRACE is enabled and URLs are returned
             assert isinstance(urls, list)
-            # The import should be called when TRACE is True
             if urls:
-                # Check if utils was imported (which happens when TRACE is True)
-                assert any('utils' in str(call) for call in mock_import.call_args_list)
+                assert mock_tlog.called
     
     @patch('cuepoint.data.beatport.DDGS')
     def test_ddg_track_urls_exact_remix_query_max_200(self, mock_ddgs_class):

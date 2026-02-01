@@ -17,6 +17,7 @@ from typing import List, Dict, Any
 import pytest
 
 from cuepoint.cli.cli_processor import CLIProcessor
+from cuepoint.models.preflight import PreflightResult
 from cuepoint.models.result import TrackResult
 from cuepoint.models.beatport_candidate import BeatportCandidate
 from cuepoint.ui.gui_interface import ProgressInfo, ProcessingError, ErrorType
@@ -34,12 +35,14 @@ class TestCLIProcessor:
     @pytest.fixture
     def mock_services(self):
         """Create mock services."""
-        return {
+        services = {
             "processor_service": Mock(spec=IProcessorService),
             "export_service": Mock(spec=IExportService),
             "config_service": Mock(spec=IConfigService),
             "logging_service": Mock(spec=ILoggingService),
         }
+        services["processor_service"].run_preflight.return_value = PreflightResult()
+        return services
 
     @pytest.fixture
     def cli_processor(self, mock_services):
@@ -239,7 +242,7 @@ class TestCLIProcessor:
         original_dir = os.getcwd()
         try:
             os.chdir(tmp_path)
-            output_files = cli_processor._write_output_files(sample_results, "test_output")
+            output_files = cli_processor._write_output_files(sample_results, "test_output", str(tmp_path))
         finally:
             os.chdir(original_dir)
 
@@ -264,7 +267,7 @@ class TestCLIProcessor:
             "review": "output/review.csv",
         }
 
-        cli_processor._display_summary(sample_results, output_files, 10.5)
+        cli_processor._display_summary(sample_results, output_files, 10.5, "Test Playlist", "test.xml")
 
         # Verify logging service was called
         assert mock_services["logging_service"].info.called
@@ -273,7 +276,7 @@ class TestCLIProcessor:
         log_calls = [str(call) for call in mock_services["logging_service"].info.call_args_list]
         log_text = " ".join(log_calls)
 
-        assert "Done" in log_text or any("Done" in str(call) for call in log_calls)
+        assert "Run Summary" in log_text or any("Run Summary" in str(call) for call in log_calls)
         assert "Matched" in log_text or any("Matched" in str(call) for call in log_calls)
 
     def test_handle_unmatched_tracks(self, cli_processor, sample_results, mock_services):

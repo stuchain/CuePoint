@@ -36,8 +36,9 @@ def test_onboarding_dialog_dont_show_again_checkbox(qtbot):
     dialog = OnboardingDialog()
     qtbot.addWidget(dialog)
     dialog.show()
+    qtbot.waitExposed(dialog)
 
     assert dialog.dont_show_again_checked() is False
-    qtbot.mouseClick(dialog.dont_show_checkbox, Qt.LeftButton)
+    dialog.dont_show_checkbox.click()
     assert dialog.dont_show_again_checked() is True
 

@@ -17,6 +17,7 @@ from unittest.mock import Mock, patch, MagicMock
 import pytest
 
 from cuepoint.cli.cli_processor import CLIProcessor
+from cuepoint.models.preflight import PreflightResult
 from cuepoint.models.result import TrackResult
 from cuepoint.models.track import Track
 from cuepoint.services.bootstrap import bootstrap_services
@@ -51,6 +52,7 @@ class TestCLIMigration:
             config_service=config_service,
             logging_service=logging_service,
         )
+        processor_service.run_preflight = MagicMock(return_value=PreflightResult())
 
         assert cli_processor.processor_service is processor_service
         assert cli_processor.export_service is export_service
@@ -70,6 +72,7 @@ class TestCLIMigration:
             config_service=config_service,
             logging_service=logging_service,
         )
+        processor_service.run_preflight = MagicMock(return_value=PreflightResult())
 
         assert cli_processor is not None
         assert cli_processor.controller is not None
@@ -85,7 +88,7 @@ class TestCLIMigration:
     </COLLECTION>
     <PLAYLISTS>
         <NODE Name="ROOT">
-            <NODE Name="Test Playlist">
+            <NODE Name="Test Playlist" Type="1">
                 <TRACK Key="1"/>
             </NODE>
         </NODE>
@@ -108,6 +111,7 @@ class TestCLIMigration:
             config_service=config_service,
             logging_service=logging_service,
         )
+        processor_service.run_preflight = MagicMock(return_value=PreflightResult())
 
         # Mock processor service to return sample results
         sample_results = [
@@ -192,6 +196,7 @@ class TestCLIMigration:
             config_service=config_service,
             logging_service=logging_service,
         )
+        processor_service.run_preflight = MagicMock(return_value=PreflightResult())
 
         # Set some configuration values
         config_service.set("MAX_SEARCH_RESULTS", 50)
@@ -240,6 +245,7 @@ class TestCLIMigration:
             config_service=config_service,
             logging_service=logging_service,
         )
+        processor_service.run_preflight = MagicMock(return_value=PreflightResult())
 
         # Create test XML
         xml_path = tmp_path / "test.xml"
@@ -295,6 +301,7 @@ class TestCLIMigration:
             config_service=config_service,
             logging_service=logging_service,
         )
+        processor_service.run_preflight = MagicMock(return_value=PreflightResult())
 
         # Create test XML
         xml_path = tmp_path / "test.xml"

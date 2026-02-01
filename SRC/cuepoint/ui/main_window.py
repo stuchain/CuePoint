@@ -25,7 +25,7 @@ import sys
 from datetime import datetime, timedelta
 
 # For update system (Step 5)
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:
     from cuepoint.update.update_manager import UpdateManager
@@ -117,6 +117,15 @@ class MainWindow(QMainWindow):
         # Create shortcut manager
         self.shortcut_manager = ShortcutManager(self)
         self.shortcut_manager.shortcut_conflict.connect(self.on_shortcut_conflict)
+        self._config_service = None
+        try:
+            from cuepoint.services.interfaces import IConfigService
+            from cuepoint.utils.di_container import get_container
+
+            container = get_container()
+            self._config_service = container.resolve(IConfigService)  # type: ignore[type-abstract]
+        except Exception:
+            self._config_service = None
         # Tool selection page state
         self.tool_selection_page = None
         self.current_page = "tool_selection"  # or "main"
@@ -214,9 +223,18 @@ class MainWindow(QMainWindow):
             if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("CUEPOINT_DISABLE_ONBOARDING"):
                 return
 
+            from cuepoint.services.interfaces import IConfigService
             from cuepoint.services.onboarding_service import OnboardingService
+            from cuepoint.utils.di_container import get_container
 
-            self._onboarding_service = OnboardingService()
+            config_service = None
+            try:
+                container = get_container()
+                config_service = container.resolve(IConfigService)  # type: ignore[type-abstract]
+            except Exception:
+                config_service = None
+
+            self._onboarding_service = OnboardingService(config_service=config_service)
             if not self._onboarding_service.should_show_onboarding():
                 return
 
@@ -1157,6 +1175,13 @@ class MainWindow(QMainWindow):
                 
                 # Update status bar with file path
                 self._update_status_file_path(file_path)
+
+                if self._config_service:
+                    try:
+                        self._config_service.set("product.last_xml_path", file_path)
+                        self._config_service.save()
+                    except Exception:
+                        pass
                 
                 # Process events to ensure visibility update is applied
                 from PySide6.QtWidgets import QApplication
@@ -2802,7 +2827,7 @@ class MainWindow(QMainWindow):
             f"{total} total tracks, {matched}/{total} matched ({match_rate:.1f}%)"
         )
 
-    def _auto_save_results(self, results: List[TrackResult], playlist_name: str) -> None:
+    def _auto_save_results(self, results: List[TrackResult], playlist_name: str) -> Optional[Dict[str, str]]:
         """Automatically save results to CSV file after processing.
 
         Creates a sanitized filename from the playlist name and saves
@@ -2814,7 +2839,7 @@ class MainWindow(QMainWindow):
             playlist_name: Name of the playlist for file naming.
         """
         if not results:
-            return
+            return None
 
         try:
             # Sanitize playlist name for filename (remove invalid characters)
@@ -2829,6 +2854,12 @@ class MainWindow(QMainWindow):
 
             # Use the single, consistent output directory
             output_dir = get_output_directory()
+            if self._config_service:
+                try:
+                    self._config_service.set("product.last_output_dir", output_dir)
+                    self._config_service.save()
+                except Exception:
+                    pass
 
             # Write CSV files (this will add timestamp automatically)
             output_files = write_csv_files(results, base_filename, output_dir)
@@ -2862,6 +2893,7 @@ class MainWindow(QMainWindow):
                     # Refresh after a short delay to ensure file system has updated
                     QTimer.singleShot(500, refresh_with_file)
 
+            return output_files
         except Exception as e:
             # Show error in status bar for longer
             import traceback
@@ -2869,6 +2901,7 @@ class MainWindow(QMainWindow):
             error_msg = f"Warning: Could not auto-save results: {str(e)}"
             self.statusBar().showMessage(error_msg, 10000)
             print(f"Auto-save error: {traceback.format_exc()}")
+            return None
 
     def on_playlist_selected(self, playlist_name: str) -> None:
         """Handle playlist selection from PlaylistSelector widget.
@@ -2884,6 +2917,12 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(
                 f"Selected playlist: {playlist_name} ({track_count} tracks)"
             )
+            if self._config_service:
+                try:
+                    self._config_service.set("product.default_playlist", playlist_name)
+                    self._config_service.save()
+                except Exception:
+                    pass
             # ENABLE START BUTTON when playlist is selected (progressive disclosure)
             self.start_button.setEnabled(True)
             # Ensure start button container is visible
@@ -2912,6 +2951,14 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("Please select a playlist")
             return
 
+        # Get settings from config panel
+        settings = self.config_panel.get_settings()
+        auto_research = self.config_panel.get_auto_research()
+
+        # Preflight validation (show dialog if issues found)
+        if not self._run_preflight_checks(xml_path, playlist_name, settings):
+            return
+
         # Reset progress widget
         self._reset_progress()
 
@@ -2927,10 +2974,6 @@ class MainWindow(QMainWindow):
 
         # Update status
         self.statusBar().showMessage(f"Starting processing: {playlist_name}...")
-
-        # Get settings from config panel
-        settings = self.config_panel.get_settings()
-        auto_research = self.config_panel.get_auto_research()
 
         # Handle performance monitoring tab
         track_performance = settings.get("track_performance", False)
@@ -2971,6 +3014,42 @@ class MainWindow(QMainWindow):
             settings=settings,
             auto_research=auto_research,
         )
+
+    def _run_preflight_checks(
+        self, xml_path: str, playlist_name: str, settings: Dict[str, Any]
+    ) -> bool:
+        """Run preflight checks and show dialog if needed."""
+        try:
+            from cuepoint.services.interfaces import IProcessorService
+            from cuepoint.ui.dialogs.preflight_dialog import PreflightDialog
+            from cuepoint.utils.di_container import get_container
+
+            output_dir = get_output_directory()
+            container = get_container()
+            processor_service: IProcessorService = container.resolve(IProcessorService)  # type: ignore[type-abstract]
+            if self._config_service:
+                preflight_enabled = self._config_service.get("product.preflight_enabled", True)
+                if preflight_enabled is None:
+                    preflight_enabled = True
+                preflight_enabled = bool(preflight_enabled)
+                if not preflight_enabled:
+                    return True
+            preflight = processor_service.run_preflight(
+                xml_path=xml_path,
+                playlist_name=playlist_name,
+                output_dir=output_dir,
+                settings=settings,
+            )
+        except Exception as e:
+            self.statusBar().showMessage(f"Preflight failed to run: {e}")
+            return False
+
+        if not preflight.errors and not preflight.warnings:
+            return True
+
+        dialog = PreflightDialog(preflight=preflight, parent=self)
+        result = dialog.exec()
+        return result == QDialog.DialogCode.Accepted
 
     def on_cancel_requested(self) -> None:
         """Handle cancel button click from ProgressWidget.
@@ -3219,8 +3298,14 @@ class MainWindow(QMainWindow):
         # Disable cancel button
         self.cancel_button.setEnabled(False)
         
+        # Capture processing duration for summary
+        processing_start_time = getattr(self, "_processing_start_time", None)
+        processing_end_time = datetime.now()
+        duration_sec = 0.0
+        if processing_start_time:
+            duration_sec = (processing_end_time - processing_start_time).total_seconds()
         # Clear processing start time
-        if hasattr(self, '_processing_start_time'):
+        if hasattr(self, "_processing_start_time"):
             self._processing_start_time = None
         
         # Get playlist name for file naming
@@ -3240,7 +3325,51 @@ class MainWindow(QMainWindow):
             self.results_view.repaint()
 
             # Automatically save results to CSV so they appear in Past Searches
-            self._auto_save_results(results, playlist_name)
+            output_files = self._auto_save_results(results, playlist_name)
+
+            # Show run summary dialog
+            try:
+                from cuepoint.models.run_summary import RunSummary
+                from cuepoint.ui.dialogs.run_summary_dialog import RunSummaryDialog
+
+                output_paths = list(output_files.values()) if output_files else []
+                input_xml_path = self.file_selector.get_file_path()
+                redact_paths = True
+                if self._config_service:
+                    redact_paths_value = self._config_service.get("product.redact_paths_in_logs", True)
+                    if redact_paths_value is None:
+                        redact_paths_value = True
+                    redact_paths = bool(redact_paths_value)
+                summary = RunSummary.from_results(
+                    results=results,
+                    playlist=playlist_name,
+                    duration_sec=duration_sec,
+                    output_paths=output_paths,
+                    input_xml_path=input_xml_path,
+                    start_time=processing_start_time,
+                    end_time=processing_end_time,
+                    redact_paths=redact_paths,
+                )
+                dialog = RunSummaryDialog(summary, self)
+                dialog.exec()
+
+                if self._config_service and bool(
+                    self._config_service.get("run_summary.write_json", False)
+                ):
+                    json_path = self._config_service.get("run_summary.json_path", "")
+                    if not json_path:
+                        json_path = os.path.join(
+                            get_output_directory(), f"run_summary_{summary.run_id}.json"
+                        )
+                    try:
+                        import json
+                        with open(json_path, "w", encoding="utf-8") as handle:
+                            json.dump(summary.to_dict(), handle, indent=2)
+                    except Exception:
+                        pass
+            except Exception:
+                # Summary dialog is best-effort
+                pass
 
         # Update status bar with completion message
         matched_count = sum(1 for r in results if r.matched)

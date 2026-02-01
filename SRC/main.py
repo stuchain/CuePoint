@@ -82,6 +82,9 @@ def main():
     ap.add_argument("--xml", required=True, help="Path to Rekordbox XML export file")
     ap.add_argument("--playlist", required=True, help="Playlist name in the XML file")
     ap.add_argument("--out", default="beatport_enriched.csv", help="Output CSV base name (timestamp auto-appended)")
+    ap.add_argument("--output-dir", default=None, help="Output directory path")
+    ap.add_argument("--run-summary-json", default=None, help="Write run summary JSON to this path")
+    ap.add_argument("--preflight-report", default=None, help="Write preflight report JSON to this path")
 
     # Performance presets - these optimize for speed vs accuracy tradeoffs
     ap.add_argument("--fast", action="store_true", help="Faster defaults (safe) - reduces search results and time budgets")
@@ -107,8 +110,13 @@ def main():
                     help="Ultra-aggressive preset: goes beyond defaults for maximum match discovery (slower but finds more tracks)")
     ap.add_argument("--auto-research", action="store_true",
                     help="Automatically re-search unmatched tracks without prompting - useful for batch processing")
+    ap.add_argument("--no-preflight", action="store_true", help="Skip preflight validation (advanced)")
+    ap.add_argument("--preflight-only", action="store_true", help="Run preflight only and exit")
+    ap.add_argument("--dry-run", action="store_true", help="Alias for --preflight-only")
 
     args = ap.parse_args()
+    if args.dry_run:
+        args.preflight_only = True
 
     # Load configuration from YAML file if specified
     # YAML settings are loaded first, then CLI presets override them
@@ -249,6 +257,17 @@ def main():
 
     # Display startup banner with configuration fingerprint
     startup_banner(sys.argv[0], args)
+
+    preflight_enabled_value = config_service.get("product.preflight_enabled", True)
+    if preflight_enabled_value is None:
+        preflight_enabled_value = True
+    preflight_enabled = not args.no_preflight and bool(preflight_enabled_value)
+    run_summary_json_path = args.run_summary_json
+    run_summary_write_value = config_service.get("run_summary.write_json", False)
+    if run_summary_write_value is None:
+        run_summary_write_value = False
+    if not run_summary_json_path and bool(run_summary_write_value):
+        run_summary_json_path = config_service.get("run_summary.json_path", "") or None
     
     # Execute the main processing pipeline using CLIProcessor
     # This will:
@@ -262,6 +281,11 @@ def main():
         playlist_name=args.playlist,
         out_csv_base=args.out,
         auto_research=args.auto_research,
+        output_dir=args.output_dir,
+        preflight_only=args.preflight_only,
+        preflight_report_path=args.preflight_report,
+        run_summary_json_path=run_summary_json_path,
+        preflight_enabled=preflight_enabled,
     )
 
 

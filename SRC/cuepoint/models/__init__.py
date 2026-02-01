@@ -18,11 +18,15 @@ from cuepoint.models.config_models import (
     ExportConfig,
     LoggingConfig,
     MatchingConfig,
+    ProductConfig,
     ProcessingConfig,
+    RunSummaryConfig,
     UIConfig,
 )
 from cuepoint.models.playlist import Playlist
+from cuepoint.models.preflight import PreflightIssue, PreflightResult
 from cuepoint.models.result import TrackResult
+from cuepoint.models.run_summary import RunSummary
 from cuepoint.models.track import Track
 
 __all__ = [
@@ -31,6 +35,9 @@ __all__ = [
     "BeatportCandidate",
     "Playlist",
     "TrackResult",
+    "RunSummary",
+    "PreflightIssue",
+    "PreflightResult",
     # Configuration models
     "AppConfig",
     "BeatportConfig",
@@ -38,6 +45,8 @@ __all__ = [
     "ExportConfig",
     "LoggingConfig",
     "MatchingConfig",
+    "ProductConfig",
+    "RunSummaryConfig",
     "ProcessingConfig",
     "UIConfig",
     # Compatibility helpers

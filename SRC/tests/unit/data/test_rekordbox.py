@@ -3,10 +3,18 @@
 import os
 import tempfile
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 import pytest
 
-from cuepoint.data.rekordbox import RBTrack, extract_artists_from_title, parse_rekordbox
+from cuepoint.data.rekordbox import (
+    RBTrack,
+    extract_artists_from_title,
+    is_readable,
+    is_writable,
+    parse_rekordbox,
+    read_playlist_index,
+)
 
 
 class TestRBTrack:
@@ -163,6 +171,86 @@ class TestParseRekordbox:
             assert any(track.title == "Track 2" for track in playlist.tracks)
         finally:
             os.unlink(xml_path)
+
+    def test_read_playlist_index_and_duplicates(self):
+        """Test lightweight playlist index parsing."""
+        xml_content = self.create_sample_xml(
+            tracks=[
+                ("1", "Track 1", "Artist 1"),
+                ("2", "Track 2", "Artist 2"),
+            ],
+            playlists={
+                "Playlist A": ["1"],
+                "Playlist B": ["2"],
+            },
+        )
+
+        # Inject a duplicate playlist name manually
+        root = ET.fromstring(xml_content)
+        playlists_elem = root.find(".//PLAYLISTS")
+        root_node = playlists_elem.find("./NODE") if playlists_elem is not None else None
+        if root_node is not None:
+            duplicate_node = ET.SubElement(root_node, "NODE")
+            duplicate_node.set("Type", "1")
+            duplicate_node.set("Name", "Playlist A")
+            track_elem = ET.SubElement(duplicate_node, "TRACK")
+            track_elem.set("Key", "2")
+        xml_content = ET.tostring(root, encoding="unicode")
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
+            f.write(xml_content)
+            f.flush()
+            xml_path = f.name
+
+        try:
+            playlist_counts, duplicates = read_playlist_index(xml_path)
+            assert "Playlist A" in playlist_counts
+            assert "Playlist B" in playlist_counts
+            assert "Playlist A" in duplicates
+        finally:
+            os.unlink(xml_path)
+
+
+class TestRekordboxValidationHelpers:
+    """Test Rekordbox helper utilities."""
+
+    def create_sample_xml(self, tracks=None, playlists=None):
+        """Create a sample Rekordbox XML file."""
+        root = ET.Element("DJ_PLAYLISTS")
+        root.set("Version", "1.0.0")
+
+        collection = ET.SubElement(root, "COLLECTION")
+        if tracks:
+            for track_id, title, artists in tracks:
+                track_elem = ET.SubElement(collection, "TRACK")
+                track_elem.set("TrackID", track_id)
+                # The parser looks for Name and Artist as attributes (t.get("Name"))
+                track_elem.set("Name", title)
+                track_elem.set("Artist", artists)
+
+        playlists_elem = ET.SubElement(root, "PLAYLISTS")
+        node_elem = ET.SubElement(playlists_elem, "NODE")
+        node_elem.set("Type", "1")
+        node_elem.set("Name", "ROOT")
+
+        if playlists:
+            for playlist_name, track_ids in playlists.items():
+                playlist_node = ET.SubElement(node_elem, "NODE")
+                playlist_node.set("Type", "1")
+                playlist_node.set("Name", playlist_name)
+                for track_id in track_ids:
+                    track_elem = ET.SubElement(playlist_node, "TRACK")
+                    track_elem.set("Key", track_id)
+
+        return ET.tostring(root, encoding="unicode")
+
+    def test_is_readable_and_writable(self, tmp_path: Path):
+        """Test readable and writable checks."""
+        test_file = tmp_path / "sample.xml"
+        test_file.write_text("<DJ_PLAYLISTS></DJ_PLAYLISTS>", encoding="utf-8")
+
+        assert is_readable(test_file) is True
+        assert is_writable(tmp_path) is True
     
     def test_parse_rekordbox_file_not_found(self):
         """Test parsing with nonexistent file."""
