@@ -41,7 +41,11 @@ from cuepoint.services.interfaces import (
     IMatcherService,
     IProcessorService,
 )
-from cuepoint.services.output_writer import append_rows_to_main_csv, write_csv_files
+from cuepoint.services.output_writer import (
+    append_rows_to_main_csv,
+    load_processed_track_keys,
+    write_csv_files,
+)
 from cuepoint.ui.gui_interface import (
     ErrorType,
     ProcessingController,
@@ -52,6 +56,77 @@ from cuepoint.ui.gui_interface import (
 )
 from cuepoint.utils.network import NetworkState
 from cuepoint.utils.paths import AppPaths, StorageInvariants
+from cuepoint.utils.run_performance_collector import (
+    STAGE_PARSE_XML,
+    STAGE_SEARCH_CANDIDATES,
+    STAGE_WRITE_OUTPUTS,
+    RunPerformanceCollector,
+)
+
+
+def _throttled_progress_callback(
+    callback: ProgressCallback,
+    throttle_ms: int = 200,
+    eta_every_n: int = 50,
+) -> ProgressCallback:
+    """Wrap progress callback to throttle updates (Design 6.25: 5/sec = 200ms)."""
+
+    last_call = [0.0]
+    last_eta_update = [0]
+
+    def wrapped(info: ProgressInfo) -> None:
+        now = time.perf_counter()
+        elapsed_since = (now - last_call[0]) * 1000
+        if elapsed_since >= throttle_ms or info.completed_tracks >= info.total_tracks:
+            last_call[0] = now
+            if info.completed_tracks > 0 and info.total_tracks > 0:
+                if info.completed_tracks - last_eta_update[0] >= eta_every_n:
+                    last_eta_update[0] = info.completed_tracks
+                    avg = info.elapsed_time / info.completed_tracks
+                    info.eta_seconds = avg * (info.total_tracks - info.completed_tracks)
+            callback(info)
+
+    return wrapped
+
+
+def _guardrail_progress_callback(
+    callback: ProgressCallback,
+    controller: Optional[ProcessingController],
+    runtime_max_sec: float,
+    memory_max_mb: float,
+    logging_service: ILoggingService,
+) -> ProgressCallback:
+    """Wrap callback to enforce performance guardrails (Design 6.35, 6.167)."""
+
+    def wrapped(info: ProgressInfo) -> None:
+        if controller and controller.is_cancelled():
+            callback(info)
+            return
+        if runtime_max_sec > 0 and info.elapsed_time >= runtime_max_sec:
+            logging_service.warning(
+                "[perf] P001: Runtime budget exceeded (%.0fs >= %.0fs). Stopping run.",
+                info.elapsed_time,
+                runtime_max_sec,
+            )
+            if controller:
+                controller.cancel()
+        if memory_max_mb > 0:
+            try:
+                import psutil
+                mb = psutil.Process().memory_info().rss / (1024 * 1024)
+                if mb >= memory_max_mb:
+                    logging_service.warning(
+                        "[perf] P002: Memory budget exceeded (%.0f MB >= %.0f MB). Stopping run.",
+                        mb,
+                        memory_max_mb,
+                    )
+                    if controller:
+                        controller.cancel()
+            except Exception:
+                pass
+        callback(info)
+
+    return wrapped
 
 
 class ProcessorService(IProcessorService):
@@ -515,6 +590,21 @@ class ProcessorService(IProcessorService):
                 PreflightIssue(code="P034", message="Output format selection is invalid.")
             )
 
+        # Design 6.46: Performance config validation
+        try:
+            perf_max_workers = self.config_service.get("performance.max_workers", 8)
+            if isinstance(perf_max_workers, (int, float)) and perf_max_workers < 1:
+                errors.append(
+                    PreflightIssue(code="P030", message="Performance max_workers must be >= 1.")
+                )
+            perf_cache_mb = self.config_service.get("performance.cache_max_mb", 500)
+            if isinstance(perf_cache_mb, (int, float)) and perf_cache_mb < 100:
+                errors.append(
+                    PreflightIssue(code="P033", message="Performance cache_max_mb must be >= 100.")
+                )
+        except Exception:
+            pass
+
         config_errors = self.config_service.validate()
         if isinstance(config_errors, list):
             for err in config_errors:
@@ -718,6 +808,8 @@ class ProcessorService(IProcessorService):
         output_dir: Optional[str] = None,
         base_filename: Optional[str] = None,
         resume_checkpoint: Optional[CheckpointData] = None,
+        performance_collector: Optional[RunPerformanceCollector] = None,
+        incremental_previous_csv: Optional[str] = None,
     ) -> List[TrackResult]:
         """Process playlist from XML file with GUI-friendly interface.
 
@@ -750,6 +842,35 @@ class ProcessorService(IProcessorService):
             if settings is not None
             else {key: self.config_service.get(key, SETTINGS.get(key)) for key in SETTINGS.keys()}
         )
+
+        # Design 6.25: Throttle progress updates to avoid UI stutter (default 200ms)
+        throttle_ms = 200
+        eta_every_n = 50
+        runtime_max_minutes = 120
+        memory_max_mb = 2048
+        try:
+            throttle_ms = int(self.config_service.get("performance.progress_throttle_ms", 200))
+            eta_every_n = int(self.config_service.get("performance.eta_update_every_tracks", 50))
+            runtime_max_minutes = int(self.config_service.get("performance.runtime_max_minutes", 120))
+            memory_max_mb = 2048  # Design 6.167: 2GB hard limit
+        except (TypeError, ValueError):
+            pass
+        if progress_callback:
+            if throttle_ms > 0:
+                progress_callback = _throttled_progress_callback(
+                    progress_callback, throttle_ms=throttle_ms, eta_every_n=eta_every_n
+                )
+            runtime_max_sec = runtime_max_minutes * 60 if runtime_max_minutes > 0 else 0
+            progress_callback = _guardrail_progress_callback(
+                progress_callback,
+                controller,
+                runtime_max_sec,
+                memory_max_mb,
+                self.logging_service,
+            )
+
+        # Design 6.74: Performance collector for stage timings and metrics
+        collector = performance_collector
 
         # Preflight validation (file/playlist/config checks)
         preflight = self.run_preflight(
@@ -784,7 +905,10 @@ class ProcessorService(IProcessorService):
                 recoverable=True,
             )
 
-        # Parse Rekordbox XML file to extract playlists with tracks
+        # Parse Rekordbox XML file to extract playlists with tracks (Design 6.50: stage timer)
+        if collector:
+            collector.start_run()
+            collector.start_stage(STAGE_PARSE_XML)
         try:
             playlists = parse_rekordbox(xml_path)
         except FileNotFoundError:
@@ -828,6 +952,11 @@ class ProcessorService(IProcessorService):
                     ],
                     recoverable=False,
                 )
+
+        if collector:
+            collector.end_stage(STAGE_PARSE_XML, items_processed=len(playlists))
+            collector.start_stage(STAGE_SEARCH_CANDIDATES)
+            collector.sample_memory()
 
         # Validate that requested playlist exists in the XML
         if playlist_name not in playlists:
@@ -907,21 +1036,52 @@ class ProcessorService(IProcessorService):
                 )
         last_checkpoint_count = 0
 
-        # Process tracks
-        results: List[TrackResult] = []
-        matched_count = 0
-        unmatched_count = 0
-        total = len(tracks)
-
-        # Thread-safe progress tracking for parallel mode
-        progress_lock = threading.Lock()
-
-        # Determine processing mode (sequential or parallel)
-        track_workers = effective_settings.get("TRACK_WORKERS", SETTINGS.get("TRACK_WORKERS", 12))
-
         # Prepare inputs as list of (index, track) tuples (Design 5.9: skip already-processed when resuming)
         all_inputs = [(idx, track) for idx, track in enumerate(tracks, 1)]
         inputs = [(idx, track) for idx, track in all_inputs if idx >= start_index]
+
+        # Design 6: Incremental processing - filter to only tracks not in previous run
+        if incremental_previous_csv and inputs:
+            previous_keys = load_processed_track_keys(incremental_previous_csv)
+            if previous_keys:
+                original_count = len(inputs)
+                inputs = [
+                    (idx, track)
+                    for idx, track in inputs
+                    if (idx, track.title or "", track.artist or "") not in previous_keys
+                ]
+                skipped = original_count - len(inputs)
+                self.logging_service.info(
+                    "[perf] Incremental mode: skipping %s already-processed tracks, processing %s new",
+                    skipped,
+                    len(inputs),
+                )
+                if not inputs:
+                    self.logging_service.info(
+                        "[perf] All tracks already processed, nothing to do"
+                    )
+                    return []
+
+        # Design 6.22: Compute track_workers (capped by performance.max_workers)
+        def _safe_int(val: Any, fallback: int) -> int:
+            try:
+                return int(val)
+            except (TypeError, ValueError):
+                return fallback
+
+        track_workers = _safe_int(
+            effective_settings.get("TRACK_WORKERS", SETTINGS.get("TRACK_WORKERS", 1)),
+            SETTINGS.get("TRACK_WORKERS", 1),
+        )
+        perf_max_workers = self.config_service.get("performance.max_workers", 8)
+        if isinstance(perf_max_workers, (int, float)) and perf_max_workers >= 1:
+            track_workers = min(track_workers, int(perf_max_workers))
+
+        # Shared state for progress updates (parallel and sequential)
+        total = len(inputs)
+        matched_count = 0
+        unmatched_count = 0
+        progress_lock = threading.Lock()
 
         # Initialize results variable (will be set by parallel or sequential processing)
         results: List[TrackResult] = []
@@ -1061,6 +1221,7 @@ class ProcessorService(IProcessorService):
                                                             checkpoint_output_paths["main"],
                                                             delimiter=",",
                                                             include_metadata=True,
+                                                            fsync=False,  # Design 6.30: avoid frequent fsync
                                                         )
                                                 xml_hash = compute_xml_hash(xml_path)
                                                 last_track_id = f"trk_{K:06d}"
@@ -1389,6 +1550,7 @@ class ProcessorService(IProcessorService):
                                     checkpoint_output_paths["main"],
                                     delimiter=",",
                                     include_metadata=True,
+                                    fsync=False,  # Design 6.30: avoid frequent fsync
                                 )
                         xml_hash = compute_xml_hash(xml_path)
                         last_track_id = f"trk_{idx:06d}"
@@ -1537,6 +1699,21 @@ class ProcessorService(IProcessorService):
                                         # Don't let callback errors break processing
                                         pass
 
+        # Design 6: Incremental processing - append new results to previous CSV
+        if incremental_previous_csv and results:
+            append_rows_to_main_csv(
+                results,
+                incremental_previous_csv,
+                delimiter=",",
+                include_metadata=True,
+                fsync=True,
+            )
+            self.logging_service.info(
+                "[perf] Appended %s new results to %s",
+                len(results),
+                incremental_previous_csv,
+            )
+
         # Design 5.47, 5.49: On resume append new results to existing output; discard checkpoint on success
         if checkpoint_service:
             if resume_checkpoint and existing_output_paths.get("main") and results:
@@ -1548,5 +1725,18 @@ class ProcessorService(IProcessorService):
                 )
                 self.logging_service.info("[reliability] Appended %s rows to checkpoint output", len(results))
             checkpoint_service.discard()
+
+        # Design 6.74: End performance collector and log report
+        if collector:
+            collector.end_stage(STAGE_SEARCH_CANDIDATES, items_processed=len(results))
+            collector.set_tracks_processed(len(results))
+            collector.set_matched_count(sum(1 for r in results if r.matched))
+            collector.sample_memory()
+            collector.end_run()
+            report = collector.get_report()
+            self.logging_service.info(
+                f"[perf] run={report.run_id} tracks={report.tracks_processed} "
+                f"duration={report.duration_sec:.1f}s memory_mb={report.memory_mb_peak:.1f} stages={report.stages}"
+            )
 
         return results

@@ -1,0 +1,14 @@
+{
+  "1k": {
+    "dataset": "1k",
+    "tracks": 1000,
+    "duration_sec": 0.71,
+    "memory_mb_peak": 0.0,
+    "target_sec": 300,
+    "passed": true,
+    "stages": {
+      "parse_xml": 7.626499998877989,
+      "search_candidates": 687.6967000007426
+    }
+  }
+}

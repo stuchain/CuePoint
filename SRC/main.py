@@ -113,8 +113,18 @@ def main():
     ap.add_argument("--no-preflight", action="store_true", help="Skip preflight validation (advanced)")
     ap.add_argument("--preflight-only", action="store_true", help="Run preflight only and exit")
     ap.add_argument("--dry-run", action="store_true", help="Alias for --preflight-only")
+    # Design 6.63, 6.142: Performance CLI flags
+    ap.add_argument("--max-workers", type=int, default=None, metavar="N",
+                    help="Max parallel track workers (overrides performance.max_workers)")
+    ap.add_argument("--max-queries-per-track", type=int, default=None, metavar="N",
+                    help="Max queries per track (overrides performance.max_queries_per_track)")
+    ap.add_argument("--benchmark", action="store_true",
+                    help="Benchmark mode: collect and save performance metrics to output dir")
     # Design 5.47, 5.90, 5.153: Resume and reliability
     ap.add_argument("--resume", action="store_true", help="Resume from last checkpoint if available")
+    # Design 6: Incremental processing - only process new tracks
+    ap.add_argument("--incremental", type=str, default=None, metavar="CSV_PATH",
+                    help="Incremental mode: path to previous run's main CSV; only process tracks not already in it")
     ap.add_argument("--no-resume", action="store_true", help="Do not resume; start fresh (ignore checkpoint)")
     ap.add_argument("--checkpoint-every", type=int, default=None, metavar="N",
                     help="Save checkpoint every N tracks (default: from config)")
@@ -282,6 +292,12 @@ def main():
     if args.max_retries is not None and args.max_retries >= 0:
         config_service.set("reliability.max_retries", args.max_retries)
         config_service.set("beatport.max_retries", args.max_retries)
+
+    # Design 6.63: Apply performance CLI overrides
+    if args.max_workers is not None and args.max_workers >= 1:
+        config_service.set("performance.max_workers", args.max_workers)
+    if args.max_queries_per_track is not None and args.max_queries_per_track >= 1:
+        config_service.set("performance.max_queries_per_track", args.max_queries_per_track)
     
     # Execute the main processing pipeline using CLIProcessor
     # This will:
@@ -303,6 +319,8 @@ def main():
         run_summary_json_path=run_summary_json_path,
         preflight_enabled=preflight_enabled,
         resume=resume,
+        incremental_previous_csv=args.incremental,
+        benchmark_mode=args.benchmark,
     )
 
 

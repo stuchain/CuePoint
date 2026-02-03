@@ -6,6 +6,9 @@ Output Writer Module - CSV file writing functions
 
 This module handles all CSV file writing, separating I/O from business logic.
 All functions take TrackResult objects as input and write CSV files.
+
+Design 6.30, 6.31: Disk I/O optimization - buffered writes, batched writes,
+precompute row strings, avoid frequent fsync.
 """
 
 import csv
@@ -18,6 +21,42 @@ from typing import Any, Dict, List, Optional, Set
 
 from cuepoint.models.result import TrackResult
 from cuepoint.utils.utils import with_timestamp
+
+# Design 6.30: Buffer size for large outputs (1MB)
+WRITE_BUFFER_SIZE = 1024 * 1024
+# Design 6.31: Batch size for precomputed rows
+WRITE_BATCH_THRESHOLD = 50
+
+
+def load_processed_track_keys(csv_path: str) -> Set[tuple]:
+    """Load set of (playlist_index, title, artist) from previous run CSV.
+
+    Design 6: Incremental processing - identify already-processed tracks.
+
+    Args:
+        csv_path: Path to main results CSV from previous run.
+
+    Returns:
+        Set of (playlist_index, original_title, original_artists) tuples.
+    """
+    keys: Set[tuple] = set()
+    path = os.path.abspath(csv_path)
+    if not os.path.exists(path) or not os.path.isfile(path):
+        return keys
+    try:
+        with open(path, "r", newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                idx = row.get("playlist_index", "")
+                title = row.get("original_title", "")
+                artist = row.get("original_artists", "")
+                try:
+                    keys.add((int(idx) if idx else 0, title or "", artist or ""))
+                except ValueError:
+                    pass
+    except (OSError, csv.Error):
+        pass
+    return keys
 
 # Try to import openpyxl for Excel export
 try:
@@ -168,16 +207,24 @@ def write_main_csv(
 
         fieldnames = _main_csv_fieldnames(include_metadata)
 
+        # Design 6.31: Precompute all rows for batched write
+        all_rows = []
+        for result in results:
+            row_dict = result.to_dict()
+            filtered_row = {k: row_dict.get(k, "") for k in fieldnames}
+            all_rows.append(filtered_row)
+
+        # Design 6.30: Use larger buffer for large outputs
+        buffer_size = WRITE_BUFFER_SIZE if len(results) >= WRITE_BATCH_THRESHOLD else -1
+
         # Write file and ensure it's fully closed before returning
         try:
-            with open(tmp_path, "w", newline="", encoding="utf-8") as f:
+            with open(
+                tmp_path, "w", newline="", encoding="utf-8", buffering=buffer_size
+            ) as f:
                 writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter=delimiter)
                 writer.writeheader()
-                for result in results:
-                    row_dict = result.to_dict()
-                    # Filter to only include requested columns
-                    filtered_row = {k: row_dict.get(k, "") for k in fieldnames}
-                    writer.writerow(filtered_row)
+                writer.writerows(all_rows)
                 # Force flush to ensure file is written to disk
                 f.flush()
                 os.fsync(f.fileno())
@@ -267,8 +314,12 @@ def append_rows_to_main_csv(
     filepath: str,
     delimiter: str = ",",
     include_metadata: bool = True,
+    fsync: bool = True,
 ) -> Optional[str]:
-    """Append result rows to an existing main CSV (Design 5.75, resume). No header written."""
+    """Append result rows to an existing main CSV (Design 5.75, resume). No header written.
+
+    Design 6.30: fsync=False for checkpoint appends to avoid frequent fsync.
+    """
     if not results:
         return None
     if delimiter not in [",", ";", "\t", "|"]:
@@ -277,15 +328,21 @@ def append_rows_to_main_csv(
     if not os.path.exists(path):
         return None
     fieldnames = _main_csv_fieldnames(include_metadata)
+    buffer_size = WRITE_BUFFER_SIZE if len(results) >= WRITE_BATCH_THRESHOLD else -1
     try:
-        with open(path, "a", newline="", encoding="utf-8") as f:
+        with open(
+            path, "a", newline="", encoding="utf-8", buffering=buffer_size
+        ) as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter=delimiter)
+            all_rows = []
             for result in results:
                 row_dict = result.to_dict()
                 filtered_row = {k: row_dict.get(k, "") for k in fieldnames}
-                writer.writerow(filtered_row)
+                all_rows.append(filtered_row)
+            writer.writerows(all_rows)
             f.flush()
-            os.fsync(f.fileno())
+            if fsync:
+                os.fsync(f.fileno())
         return path
     except OSError:
         return None

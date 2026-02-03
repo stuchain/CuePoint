@@ -307,6 +307,8 @@ project.xcworkspace/
 .Trash-*
 
 # Project-specific
+# Benchmarks: keep baseline for CI regression (Design 6.53)
+!benchmarks/baseline.json
 collection.xml
 *.xml.backup
 test_collection.xml

@@ -18,13 +18,9 @@ from tqdm import tqdm
 
 from cuepoint.core.text_processing import _artist_token_overlap
 from cuepoint.exceptions.cuepoint_exceptions import ProcessingError
-from cuepoint.ui.gui_interface import ErrorType
 from cuepoint.models.result import TrackResult
 from cuepoint.models.run_summary import RunSummary
-from cuepoint.services.checkpoint_service import (
-    CheckpointService,
-    get_checkpoint_dir,
-)
+from cuepoint.services.checkpoint_service import CheckpointService, get_checkpoint_dir
 from cuepoint.services.interfaces import (
     IConfigService,
     IExportService,
@@ -36,12 +32,8 @@ from cuepoint.services.output_writer import (
     write_review_candidates_csv,
     write_review_queries_csv,
 )
-from cuepoint.ui.gui_interface import ProgressInfo, ProcessingController
-from cuepoint.utils.errors import (
-    error_file_not_found,
-    error_playlist_not_found,
-    print_error,
-)
+from cuepoint.ui.gui_interface import ErrorType, ProcessingController, ProgressInfo
+from cuepoint.utils.errors import error_file_not_found, error_playlist_not_found, print_error
 from cuepoint.utils.utils import get_output_directory, with_timestamp
 
 
@@ -82,6 +74,8 @@ class CLIProcessor:
         run_summary_json_path: Optional[str] = None,
         preflight_enabled: bool = True,
         resume: bool = False,
+        incremental_previous_csv: Optional[str] = None,
+        benchmark_mode: bool = False,
     ) -> None:
         """Process playlist and generate output files.
 
@@ -149,6 +143,12 @@ class CLIProcessor:
         # Create progress callback
         progress_callback = self._create_progress_callback()
 
+        # Design 6.65: Performance collector for benchmark mode
+        performance_collector = None
+        if benchmark_mode:
+            from cuepoint.utils.run_performance_collector import RunPerformanceCollector
+            performance_collector = RunPerformanceCollector()
+
         # Design 5.47, 5.62: Checkpoint service and optional resume
         checkpoint_service: Optional[CheckpointService] = None
         resume_checkpoint = None
@@ -179,6 +179,8 @@ class CLIProcessor:
                 output_dir=resolved_output_dir,
                 base_filename=out_csv_base,
                 resume_checkpoint=resume_checkpoint,
+                incremental_previous_csv=incremental_previous_csv,
+                performance_collector=performance_collector,
             )
         except Exception as e:
             self._handle_processing_error(e, xml_path, playlist_name)
@@ -192,9 +194,22 @@ class CLIProcessor:
         # Calculate processing duration
         processing_duration = __import__("time").perf_counter() - processing_start_time
 
+        # Design 6.65: Save performance report when benchmark mode enabled
+        if benchmark_mode and performance_collector:
+            try:
+                from pathlib import Path
+                report_path = Path(resolved_output_dir) / "performance_report.json"
+                performance_collector.export_json(report_path)
+                self.logging_service.info("[perf] Report saved to %s", report_path)
+            except Exception as e:
+                self.logging_service.warning("[perf] Could not save report: %s", e)
+
         # Write output files (Design 5.49: skip when resumed - processor already appended)
+        # Design 6: skip when incremental - processor already appended to previous CSV
         if resume_checkpoint and resume_checkpoint.output_paths:
             output_files = dict(resume_checkpoint.output_paths)
+        elif incremental_previous_csv:
+            output_files = {"main": incremental_previous_csv}
         else:
             output_files = self._write_output_files(results, out_csv_base, resolved_output_dir)
 

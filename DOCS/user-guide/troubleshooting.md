@@ -51,6 +51,8 @@ Common issues and solutions.
 | P034 | Output format invalid | Reset export format to CSV |
 | P040 | Preflight unknown error | Try again or re-export XML |
 | P050 | Network unavailable | Connect to the internet to search Beatport |
+| P001 (perf) | Runtime budget exceeded | Run stopped after 2 hours; split into smaller batches |
+| P002 (perf) | Memory budget exceeded | Lower concurrency or process fewer tracks |
 
 ### Import Takes Too Long
 

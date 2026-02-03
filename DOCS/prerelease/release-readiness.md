@@ -93,19 +93,19 @@
 - [ ] Ensure all writes happen outside install directories (standard paths).
 - [ ] Add log rotation and separate crash logs.
  
- ## 6) Performance and Scalability
- 
- - [ ] Add performance benchmarks for large libraries (10k+ tracks).
- - [ ] Document expected throughput and memory profile in the user guide.
- - [ ] Expose concurrency and time-budget controls in configuration.
- - [ ] Add caching size limits and eviction strategy documentation.
-- [ ] Add a progress model with ETA estimation and per-stage timings.
-- [ ] Measure and cap per-track processing time to avoid stalls.
-- [ ] Add profiling for the matching/scoring pipeline and hot paths.
-- [ ] Add adaptive concurrency based on system resources.
-- [ ] Add disk I/O optimization for large outputs (buffered writes).
-- [ ] Add an option for incremental processing (only new tracks).
-- [ ] Add metrics for cache hit rate and search success rate.
+## 6) Performance and Scalability
+
+- [x] Add performance benchmarks for large libraries (10k+ tracks).
+- [x] Document expected throughput and memory profile in the user guide.
+- [x] Expose concurrency and time-budget controls in configuration.
+- [x] Add caching size limits and eviction strategy documentation.
+- [x] Add a progress model with ETA estimation and per-stage timings.
+- [x] Measure and cap per-track processing time to avoid stalls.
+- [x] Add profiling for the matching/scoring pipeline and hot paths.
+- [x] Add adaptive concurrency based on system resources.
+- [x] Add disk I/O optimization for large outputs (buffered writes).
+- [x] Add an option for incremental processing (only new tracks).
+- [x] Add metrics for cache hit rate and search success rate.
  
  ## 7) Observability and Supportability
  

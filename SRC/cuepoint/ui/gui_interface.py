@@ -55,6 +55,7 @@ class ProgressInfo:
     unmatched_count: int
     current_track: Dict[str, str] = field(default_factory=dict)  # {'title': str, 'artists': str}
     elapsed_time: float = 0.0
+    eta_seconds: Optional[float] = None  # Design 6.36: ETA based on avg time per track
     status_message: Optional[str] = None  # e.g. "Retrying...", "Saving progress..."
     reliability_state: Optional[str] = None  # Design 5.24: idle, running, retrying, paused, etc.
 

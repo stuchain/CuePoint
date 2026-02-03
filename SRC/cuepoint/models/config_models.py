@@ -134,6 +134,18 @@ class ReliabilityConfig:
 
 
 @dataclass
+class PerformanceConfig:
+    """Performance and scalability configuration (Design 6.45, 6.165)."""
+
+    max_workers: int = 8
+    max_queries_per_track: int = 6
+    cache_max_mb: int = 500
+    runtime_max_minutes: int = 120
+    progress_throttle_ms: int = 200
+    eta_update_every_tracks: int = 50
+
+
+@dataclass
 class AppConfig:
     """Main application configuration.
 
@@ -151,6 +163,7 @@ class AppConfig:
     run_summary: RunSummaryConfig = field(default_factory=RunSummaryConfig)
     matching: MatchingConfig = field(default_factory=MatchingConfig)
     reliability: ReliabilityConfig = field(default_factory=ReliabilityConfig)
+    performance: PerformanceConfig = field(default_factory=PerformanceConfig)
 
     @classmethod
     def default(cls) -> "AppConfig":
@@ -246,6 +259,14 @@ class AppConfig:
                 "timeout_read": self.reliability.timeout_read,
                 "checkpoint_every": self.reliability.checkpoint_every,
                 "resume_enabled": self.reliability.resume_enabled,
+            },
+            "performance": {
+                "max_workers": self.performance.max_workers,
+                "max_queries_per_track": self.performance.max_queries_per_track,
+                "cache_max_mb": self.performance.cache_max_mb,
+                "runtime_max_minutes": self.performance.runtime_max_minutes,
+                "progress_throttle_ms": self.performance.progress_throttle_ms,
+                "eta_update_every_tracks": self.performance.eta_update_every_tracks,
             },
         }
 
@@ -392,6 +413,25 @@ class AppConfig:
                 timeout_read=rel_data.get("timeout_read", config.reliability.timeout_read),
                 checkpoint_every=rel_data.get("checkpoint_every", config.reliability.checkpoint_every),
                 resume_enabled=rel_data.get("resume_enabled", config.reliability.resume_enabled),
+            )
+
+        if "performance" in data:
+            perf_data = data["performance"]
+            config.performance = PerformanceConfig(
+                max_workers=perf_data.get("max_workers", config.performance.max_workers),
+                max_queries_per_track=perf_data.get(
+                    "max_queries_per_track", config.performance.max_queries_per_track
+                ),
+                cache_max_mb=perf_data.get("cache_max_mb", config.performance.cache_max_mb),
+                runtime_max_minutes=perf_data.get(
+                    "runtime_max_minutes", config.performance.runtime_max_minutes
+                ),
+                progress_throttle_ms=perf_data.get(
+                    "progress_throttle_ms", config.performance.progress_throttle_ms
+                ),
+                eta_update_every_tracks=perf_data.get(
+                    "eta_update_every_tracks", config.performance.eta_update_every_tracks
+                ),
             )
 
         return config

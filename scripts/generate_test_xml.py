@@ -45,7 +45,7 @@ def generate_xml(num_tracks: int, playlist_name: str = "Generated Playlist") -> 
     </COLLECTION>
     <PLAYLISTS>
         <NODE Name="ROOT">
-            <NODE Name="{playlist_name}">
+            <NODE Name="{playlist_name}" Type="1">
 {keys_block}
             </NODE>
         </NODE>
@@ -56,8 +56,10 @@ def generate_xml(num_tracks: int, playlist_name: str = "Generated Playlist") -> 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate synthetic Rekordbox XML fixtures (3.7).")
+    parser.add_argument("--small", action="store_true", help="Generate benchmark_1k.xml (1k tracks)")
     parser.add_argument("--medium", action="store_true", help="Generate medium.xml (500 tracks)")
     parser.add_argument("--large", action="store_true", help="Generate large.xml (10k tracks)")
+    parser.add_argument("--benchmark", action="store_true", help="Generate all benchmark fixtures (1k, 5k, 10k)")
     parser.add_argument(
         "--output-dir",
         type=Path,
@@ -70,6 +72,10 @@ def main() -> None:
     out_dir = args.output_dir or (root / "SRC" / "tests" / "fixtures" / "rekordbox")
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    if args.small:
+        path = out_dir / "benchmark_1k.xml"
+        path.write_text(generate_xml(1000, "Benchmark 1k"), encoding="utf-8")
+        print(f"Generated {path} (1000 tracks)")
     if args.medium:
         path = out_dir / "medium.xml"
         path.write_text(generate_xml(500, "Medium Playlist"), encoding="utf-8")
@@ -78,8 +84,15 @@ def main() -> None:
         path = out_dir / "large.xml"
         path.write_text(generate_xml(10_000, "Large Playlist"), encoding="utf-8")
         print(f"Generated {path} (10000 tracks)")
-    if not args.medium and not args.large:
-        # Default: generate both
+    if args.benchmark:
+        (out_dir / "benchmark_1k.xml").write_text(generate_xml(1000, "Benchmark 1k"), encoding="utf-8")
+        print(f"Generated {out_dir / 'benchmark_1k.xml'} (1000 tracks)")
+        (out_dir / "benchmark_5k.xml").write_text(generate_xml(5000, "Benchmark 5k"), encoding="utf-8")
+        print(f"Generated {out_dir / 'benchmark_5k.xml'} (5000 tracks)")
+        (out_dir / "benchmark_10k.xml").write_text(generate_xml(10_000, "Benchmark 10k"), encoding="utf-8")
+        print(f"Generated {out_dir / 'benchmark_10k.xml'} (10000 tracks)")
+    if not args.small and not args.medium and not args.large and not args.benchmark:
+        # Default: generate medium and large
         (out_dir / "medium.xml").write_text(generate_xml(500, "Medium Playlist"), encoding="utf-8")
         print(f"Generated {out_dir / 'medium.xml'} (500 tracks)")
         (out_dir / "large.xml").write_text(generate_xml(10_000, "Large Playlist"), encoding="utf-8")

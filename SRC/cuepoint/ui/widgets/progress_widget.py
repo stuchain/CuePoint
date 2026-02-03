@@ -7,7 +7,7 @@ Progress Widget Module - Progress display widget
 This module contains the ProgressWidget class for displaying processing progress.
 """
 
-from PySide6.QtCore import Signal, Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -161,15 +161,18 @@ class ProgressWidget(QWidget):
         self.unmatched_label.setText(f"✗ {progress_info.unmatched_count}")
         self.processing_label.setText(f"⟳ {progress_info.completed_tracks}")
 
-        # Time
+        # Time (Design 6.36, 6.37: use eta_seconds when provided, else compute from avg)
         if progress_info.elapsed_time > 0:
             self.elapsed_label.setText(f"Elapsed: {self._format_time(progress_info.elapsed_time)}")
-            if progress_info.completed_tracks > 0:
+            eta = getattr(progress_info, "eta_seconds", None)
+            if eta is not None and eta >= 0:
+                self.remaining_label.setText(f"Remaining: {self._format_time(eta)}")
+            elif progress_info.completed_tracks > 0:
                 avg = progress_info.elapsed_time / progress_info.completed_tracks
                 remaining = avg * (progress_info.total_tracks - progress_info.completed_tracks)
                 self.remaining_label.setText(f"Remaining: {self._format_time(remaining)}")
             else:
-                self.remaining_label.setText("Remaining: --")
+                self.remaining_label.setText("Remaining: Estimating...")
         else:
             self.elapsed_label.setText("Elapsed: 0s")
             self.remaining_label.setText("Remaining: --")
