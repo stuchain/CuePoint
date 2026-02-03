@@ -21,12 +21,14 @@ from PySide6.QtWidgets import (
     QLabel,
     QListWidget,
     QListWidgetItem,
+    QMessageBox,
     QPushButton,
     QVBoxLayout,
     QWidget,
 )
 
 from cuepoint.models.run_summary import RunSummary
+from cuepoint.services.integrity_service import verify_outputs
 from cuepoint.ui.strings import SuccessCopy
 
 
@@ -112,6 +114,14 @@ class RunSummaryDialog(QDialog):
         open_folder.setAccessibleName(SuccessCopy.OPEN_OUTPUT_FOLDER)
         button_row.addWidget(open_folder)
 
+        # Design 9: Verify outputs button
+        verify_btn = QPushButton("Verify outputs")
+        verify_btn.setObjectName("secondaryActionButton")
+        verify_btn.clicked.connect(self._verify_outputs)
+        verify_btn.setAccessibleName("Verify outputs")
+        verify_btn.setToolTip("Verify output files (schema, checksums)")
+        button_row.addWidget(verify_btn)
+
         copy_summary = QPushButton(SuccessCopy.COPY_SUMMARY)
         copy_summary.setObjectName("secondaryActionButton")
         copy_summary.clicked.connect(self._copy_summary)
@@ -137,3 +147,21 @@ class RunSummaryDialog(QDialog):
     def _copy_summary(self) -> None:
         text = "\n".join(self._summary.to_lines())
         QApplication.clipboard().setText(text)
+
+    def _verify_outputs(self) -> None:
+        """Design 9: Verify output files (schema, checksums)."""
+        if not self._summary.output_paths:
+            QMessageBox.information(self, "Verify Outputs", "No output paths to verify.")
+            return
+        first_path = Path(self._summary.output_paths[0])
+        output_dir = str(first_path.parent)
+        ok, errors = verify_outputs(output_dir, checksums=True, schema=True)
+        if ok:
+            QMessageBox.information(
+                self,
+                "Verify Outputs",
+                "Outputs verified: OK\n\nChecksums: OK\nSchema: OK",
+            )
+        else:
+            msg = "Verification failed:\n\n" + "\n".join(errors)
+            QMessageBox.warning(self, "Verify Outputs", msg)

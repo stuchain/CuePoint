@@ -30,9 +30,9 @@ def get_output_directory(preferred_dir: Optional[str] = None) -> str:
     and valid, uses it; otherwise falls back to AppPaths.exports_dir().
 
     Uses AppPaths.exports_dir() which provides platform-specific locations:
-    - Windows: %USERPROFILE%\\Downloads\\CuePoint Exports
-    - macOS: ~/Downloads/CuePoint Exports
-    - Linux: ~/Downloads/CuePoint Exports
+    - Windows: %USERPROFILE%\\Documents\\CuePoint_Output
+    - macOS: ~/Documents/CuePoint_Output
+    - Linux: ~/Documents/CuePoint_Output
 
     This ensures files are saved in a user-accessible location that works
     in both development and packaged app environments.
@@ -46,15 +46,20 @@ def get_output_directory(preferred_dir: Optional[str] = None) -> str:
 
     Example:
         >>> output_dir = get_output_directory()
-        >>> # Returns: /Users/username/Downloads/CuePoint Exports (macOS)
+        >>> # Returns: /Users/username/Documents/CuePoint_Output (macOS)
         >>> output_dir = get_output_directory("/path/to/last/export")
         >>> # Returns preferred dir if valid, else default
     """
-    from cuepoint.utils.paths import AppPaths
+    from pathlib import Path
 
-    # Step 8: Use last-used output dir when valid
+    from cuepoint.utils.paths import AppPaths, StorageInvariants
+
+    # Step 8: Use last-used output dir when valid and not restricted (avoids P024)
     if preferred_dir and os.path.isdir(preferred_dir):
-        return os.path.abspath(preferred_dir)
+        path = Path(preferred_dir).resolve()
+        if not StorageInvariants.is_restricted_location(path):
+            return os.path.abspath(preferred_dir)
+        # Fall through to default if path is inside app install or Program Files
 
     # Use AppPaths.exports_dir() which handles both dev and packaged environments
     exports_dir = AppPaths.exports_dir()

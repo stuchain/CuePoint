@@ -78,9 +78,9 @@ def main():
     # Set up command-line argument parser with all available options
     ap = argparse.ArgumentParser(description="Enrich Rekordbox playlist with Beatport metadata (Accuracy + Logs + Candidates)")
     
-    # Required arguments
-    ap.add_argument("--xml", required=True, help="Path to Rekordbox XML export file")
-    ap.add_argument("--playlist", required=True, help="Playlist name in the XML file")
+    # Required arguments (optional when --verify-outputs)
+    ap.add_argument("--xml", required=False, help="Path to Rekordbox XML export file")
+    ap.add_argument("--playlist", required=False, help="Playlist name in the XML file")
     ap.add_argument("--out", default="beatport_enriched.csv", help="Output CSV base name (timestamp auto-appended)")
     ap.add_argument("--output-dir", default=None, help="Output directory path")
     ap.add_argument("--run-summary-json", default=None, help="Write run summary JSON to this path")
@@ -121,6 +121,16 @@ def main():
                     help="Max queries per track (overrides performance.max_queries_per_track)")
     ap.add_argument("--benchmark", action="store_true",
                     help="Benchmark mode: collect and save performance metrics to output dir")
+    # Design 9: Data integrity - verify outputs
+    ap.add_argument("--verify-outputs", action="store_true",
+                    help="Verify output files (schema, checksums) in output directory; requires --output-dir")
+    ap.add_argument("--no-checksums", action="store_true",
+                    help="Skip writing checksums when exporting (use with normal run)")
+    ap.add_argument("--no-audit-log", action="store_true",
+                    help="Skip writing audit log when exporting (use with normal run)")
+    ap.add_argument("--review-only", action="store_true",
+                    help="Export only low-confidence tracks (review mode) - no main CSV")
+
     # Design 5.47, 5.90, 5.153: Resume and reliability
     ap.add_argument("--resume", action="store_true", help="Resume from last checkpoint if available")
     # Design 6: Incremental processing - only process new tracks
@@ -135,6 +145,30 @@ def main():
     args = ap.parse_args()
     if args.dry_run:
         args.preflight_only = True
+
+    # Design 9: Verify outputs mode - run verification and exit (no xml/playlist needed)
+    if args.verify_outputs:
+        from cuepoint.services.integrity_service import verify_outputs
+        output_dir = args.output_dir or "output"
+        output_dir = os.path.abspath(output_dir)
+        if not os.path.isdir(output_dir):
+            print_error(f"Output directory not found: {output_dir}\nUse --output-dir to specify output directory.")
+        else:
+            ok, errors = verify_outputs(output_dir, checksums=True, schema=True)
+            if ok:
+                print("Verify outputs: OK")
+                print("Checksums: OK")
+                print("Schema: OK")
+                print("Re-import: OK")
+            else:
+                for err in errors:
+                    print(f"Error: {err}")
+                sys.exit(1)
+        return
+
+    # Require xml and playlist for normal processing
+    if not args.xml or not args.playlist:
+        ap.error("--xml and --playlist are required for processing (or use --verify-outputs to verify existing outputs)")
 
     # Load configuration from YAML file if specified
     # YAML settings are loaded first, then CLI presets override them
@@ -276,6 +310,14 @@ def main():
         config_service.set("VERBOSE", bool(args.verbose))
         config_service.set("TRACE", bool(args.trace))
     config_service.set("SEED", int(args.seed))
+
+    # Design 9: Integrity options
+    if args.no_checksums:
+        config_service.set("integrity.checksums", False)
+    if args.no_audit_log:
+        config_service.set("integrity.audit_log", False)
+    if args.review_only:
+        config_service.set("integrity.review_only", True)
 
     # Design 7.53: Set run ID for observability
     from cuepoint.utils.run_context import set_run_id

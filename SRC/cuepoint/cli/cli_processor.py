@@ -34,6 +34,7 @@ from cuepoint.services.output_writer import (
 )
 from cuepoint.ui.gui_interface import ErrorType, ProcessingController, ProgressInfo
 from cuepoint.utils.errors import error_file_not_found, error_playlist_not_found, print_error
+from cuepoint.utils.run_context import get_current_run_id
 from cuepoint.utils.utils import get_output_directory, with_timestamp
 
 
@@ -346,11 +347,21 @@ class CLIProcessor:
         os.makedirs(output_dir, exist_ok=True)
 
         # Write CSV files using output_writer module
-        # This function writes main, candidates, queries, and review files
+        # Design 9: Pass run_id and integrity options
+        run_id = get_current_run_id()
+        checksums = self.config_service.get("integrity.checksums", True)
+        audit_log = self.config_service.get("integrity.audit_log", True)
+        backups = self.config_service.get("integrity.backups", False)
+        review_only = self.config_service.get("integrity.review_only", False)
         output_files = write_csv_files(
             results=results,
             base_filename=base_filename,
             output_dir=output_dir,
+            run_id=run_id,
+            checksums=bool(checksums) if checksums is not None else True,
+            audit_log=bool(audit_log) if audit_log is not None else True,
+            backups=bool(backups) if backups is not None else False,
+            review_only=bool(review_only) if review_only is not None else False,
         )
 
         # Get review indices for review-specific files

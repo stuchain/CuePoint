@@ -123,6 +123,17 @@ class MatchingConfig:
 
 
 @dataclass
+class IntegrityConfig:
+    """Data integrity and auditability configuration (Design 9)."""
+
+    schema_version: int = 1
+    checksums: bool = True
+    audit_log: bool = True
+    backups: bool = False
+    review_only: bool = False
+
+
+@dataclass
 class ReliabilityConfig:
     """Reliability and resilience configuration (Design 5.50, 5.91)."""
 
@@ -163,6 +174,7 @@ class AppConfig:
     run_summary: RunSummaryConfig = field(default_factory=RunSummaryConfig)
     matching: MatchingConfig = field(default_factory=MatchingConfig)
     reliability: ReliabilityConfig = field(default_factory=ReliabilityConfig)
+    integrity: IntegrityConfig = field(default_factory=IntegrityConfig)
     performance: PerformanceConfig = field(default_factory=PerformanceConfig)
 
     @classmethod
@@ -259,6 +271,13 @@ class AppConfig:
                 "timeout_read": self.reliability.timeout_read,
                 "checkpoint_every": self.reliability.checkpoint_every,
                 "resume_enabled": self.reliability.resume_enabled,
+            },
+            "integrity": {
+                "schema_version": self.integrity.schema_version,
+                "checksums": self.integrity.checksums,
+                "audit_log": self.integrity.audit_log,
+                "backups": self.integrity.backups,
+                "review_only": self.integrity.review_only,
             },
             "performance": {
                 "max_workers": self.performance.max_workers,
@@ -413,6 +432,16 @@ class AppConfig:
                 timeout_read=rel_data.get("timeout_read", config.reliability.timeout_read),
                 checkpoint_every=rel_data.get("checkpoint_every", config.reliability.checkpoint_every),
                 resume_enabled=rel_data.get("resume_enabled", config.reliability.resume_enabled),
+            )
+
+        if "integrity" in data:
+            int_data = data["integrity"]
+            config.integrity = IntegrityConfig(
+                schema_version=int_data.get("schema_version", config.integrity.schema_version),
+                checksums=int_data.get("checksums", config.integrity.checksums),
+                audit_log=int_data.get("audit_log", config.integrity.audit_log),
+                backups=int_data.get("backups", config.integrity.backups),
+                review_only=int_data.get("review_only", config.integrity.review_only),
             )
 
         if "performance" in data:

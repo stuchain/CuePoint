@@ -23,7 +23,7 @@ Common issues and solutions.
 - **XML unreadable**: check file permissions and ensure the file isn't locked
 - **Playlist not found**: choose a playlist name that exists in the XML
 - **Playlist empty**: export a playlist that contains tracks
-- **Output not writable**: pick a writable folder (Downloads/CuePoint Exports by default)
+- **Output not writable**: pick a writable folder (Documents/CuePoint_Output by default)
 - **Config invalid**: reset to defaults in Settings and retry
 
 **Common Error Codes**:

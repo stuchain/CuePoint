@@ -64,6 +64,7 @@ from cuepoint.ui.strings import EmptyState, ExportCopy, TooltipCopy
 from cuepoint.ui.widgets.candidate_dialog import CandidateDialog
 from cuepoint.ui.widgets.shortcut_manager import ShortcutContext, ShortcutManager
 from cuepoint.ui.widgets.styles import is_macos
+from cuepoint.utils.run_context import get_current_run_id
 from cuepoint.utils.utils import with_timestamp
 
 try:
@@ -1960,6 +1961,7 @@ class ResultsView(QWidget):
                     output_dir,
                     delimiter=options.get("delimiter", ","),
                     include_metadata=options.get("include_metadata", True),
+                    run_id=get_current_run_id(),
                 )
                 self.output_files = output_files
 
@@ -2020,7 +2022,12 @@ class ResultsView(QWidget):
 
         try:
             timestamped_filename = with_timestamp(base_filename)
-            output_files = write_csv_files(self.results, timestamped_filename, output_dir)
+            output_files = write_csv_files(
+                self.results,
+                timestamped_filename,
+                output_dir,
+                run_id=get_current_run_id(),
+            )
 
             self.output_files = output_files
 

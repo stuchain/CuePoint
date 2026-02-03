@@ -15,6 +15,7 @@ import pytest
 
 from cuepoint.models.result import TrackResult
 from cuepoint.services.output_writer import (
+    read_csv_skip_comments,
     write_candidates_csv,
     write_csv_files,
     write_excel_file,
@@ -87,10 +88,9 @@ class TestWriteCsvFiles:
         )
         
         assert "main" in result
-        # Verify delimiter was used
-        with open(result["main"], 'r', encoding='utf-8') as f:
-            first_line = f.readline()
-            assert ";" in first_line
+        # Verify delimiter was used (header row uses ;)
+        _, rows = read_csv_skip_comments(result["main"], delimiter=";")
+        assert len(rows) == 2  # Parsed correctly with ; delimiter
 
     def test_write_csv_files_invalid_delimiter(self, sample_track_results, temp_output_dir):
         """Test writing CSV files with invalid delimiter."""
@@ -133,13 +133,11 @@ class TestWriteMainCsv:
         assert result is not None
         assert os.path.exists(result)
         
-        # Verify file contains expected data
-        with open(result, 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            rows = list(reader)
-            assert len(rows) == 2
-            assert rows[0]["original_title"] == "Test Track 1"
-            assert rows[1]["original_title"] == "Test Track 2"
+        # Verify file contains expected data (Design 9: skip comment headers)
+        _, rows = read_csv_skip_comments(result)
+        assert len(rows) == 2
+        assert rows[0]["original_title"] == "Test Track 1"
+        assert rows[1]["original_title"] == "Test Track 2"
 
     def test_write_main_csv_with_metadata(self, sample_track_results, temp_output_dir):
         """Test writing main CSV with metadata columns."""
@@ -151,11 +149,10 @@ class TestWriteMainCsv:
             include_metadata=True
         )
         
-        with open(result, 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            header = reader.fieldnames
-            assert "match_score" in header
-            assert "title_sim" in header
+        fieldnames, rows = read_csv_skip_comments(result)
+        assert fieldnames
+        assert "match_score" in fieldnames
+        assert "title_sim" in fieldnames
 
     def test_write_main_csv_without_metadata(self, sample_track_results, temp_output_dir):
         """Test writing main CSV without metadata columns."""
@@ -167,12 +164,10 @@ class TestWriteMainCsv:
             include_metadata=False
         )
         
-        with open(result, 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            header = reader.fieldnames
-            # Should still have basic columns
-            assert "original_title" in header
-            assert "original_artists" in header
+        fieldnames, rows = read_csv_skip_comments(result)
+        # Should still have basic columns
+        assert "original_title" in fieldnames
+        assert "original_artists" in fieldnames
 
 
 @pytest.mark.unit
@@ -295,12 +290,10 @@ class TestWriteMainCsvEdgeCases:
         assert os.path.exists(result)
         
         # Verify None values are handled (written as empty strings)
-        with open(result, 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            rows = list(reader)
-            assert len(rows) == 1
-            # None values should be empty strings in CSV
-            assert rows[0]["beatport_url"] == "" or rows[0]["beatport_url"] is None
+        _, rows = read_csv_skip_comments(result)
+        assert len(rows) == 1
+        # None values should be empty strings in CSV
+        assert rows[0]["beatport_url"] == "" or rows[0]["beatport_url"] is None
     
     def test_write_main_csv_special_characters(self, temp_output_dir):
         """Test writing main CSV with special characters in data."""
@@ -316,11 +309,9 @@ class TestWriteMainCsvEdgeCases:
         assert result is not None
         
         # Verify special characters are handled correctly
-        with open(result, 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            rows = list(reader)
-            assert len(rows) == 1
-            assert "quotes" in rows[0]["original_title"] or "quotes" in str(rows[0].values())
+        _, rows = read_csv_skip_comments(result)
+        assert len(rows) == 1
+        assert "quotes" in rows[0]["original_title"] or "quotes" in str(rows[0].values())
     
     def test_write_main_csv_tab_delimiter(self, sample_track_results, temp_output_dir):
         """Test writing main CSV with tab delimiter."""
@@ -333,9 +324,10 @@ class TestWriteMainCsvEdgeCases:
         assert result is not None
         
         with open(result, 'r', encoding='utf-8') as f:
-            first_line = f.readline()
-            # Verify tab delimiter used
-            assert '\t' in first_line
+            for line in f:
+                if not line.strip().startswith('#'):
+                    assert '\t' in line
+                    break
     
     def test_write_main_csv_pipe_delimiter(self, sample_track_results, temp_output_dir):
         """Test writing main CSV with pipe delimiter."""
@@ -348,9 +340,10 @@ class TestWriteMainCsvEdgeCases:
         assert result is not None
         
         with open(result, 'r', encoding='utf-8') as f:
-            first_line = f.readline()
-            # Verify pipe delimiter used
-            assert '|' in first_line
+            for line in f:
+                if not line.strip().startswith('#'):
+                    assert '|' in line
+                    break
     
     def test_write_main_csv_file_write_error(self, sample_track_results, temp_output_dir):
         """Test writing main CSV with file write error."""

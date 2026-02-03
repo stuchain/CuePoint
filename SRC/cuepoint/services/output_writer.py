@@ -9,6 +9,7 @@ All functions take TrackResult objects as input and write CSV files.
 
 Design 6.30, 6.31: Disk I/O optimization - buffered writes, batched writes,
 precompute row strings, avoid frequent fsync.
+Design 9: Data integrity - schema versioning, run_id, checksums, audit log, backups.
 """
 
 import csv
@@ -20,12 +21,33 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Set
 
 from cuepoint.models.result import TrackResult
+from cuepoint.services.integrity_service import (
+    SCHEMA_VERSION,
+    compute_sha256,
+    create_backup,
+    generate_diff_report,
+    generate_run_id,
+    get_csv_header_lines,
+    write_audit_log,
+    write_checksum_file,
+    write_summary_report,
+)
 from cuepoint.utils.utils import with_timestamp
 
 # Design 6.30: Buffer size for large outputs (1MB)
 WRITE_BUFFER_SIZE = 1024 * 1024
 # Design 6.31: Batch size for precomputed rows
 WRITE_BATCH_THRESHOLD = 50
+
+
+def read_csv_skip_comments(filepath: str, delimiter: str = ",") -> tuple:
+    """Read CSV file, skipping # comment lines (Design 9 headers). Returns (fieldnames, rows)."""
+    with open(filepath, "r", newline="", encoding="utf-8") as f:
+        lines = [line for line in f if not line.strip().startswith("#")]
+    if not lines:
+        return [], []
+    reader = csv.DictReader(lines, delimiter=delimiter)
+    return list(reader.fieldnames or []), list(reader)
 
 
 def load_processed_track_keys(csv_path: str) -> Set[tuple]:
@@ -44,9 +66,8 @@ def load_processed_track_keys(csv_path: str) -> Set[tuple]:
     if not os.path.exists(path) or not os.path.isfile(path):
         return keys
     try:
-        with open(path, "r", newline="", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
+        _, rows = read_csv_skip_comments(path)
+        for row in rows:
                 idx = row.get("playlist_index", "")
                 title = row.get("original_title", "")
                 artist = row.get("original_artists", "")
@@ -76,9 +97,19 @@ def write_csv_files(
     delimiter: str = ",",
     include_metadata: bool = True,
     file_timestamp: Optional[str] = None,
+    run_id: Optional[str] = None,
+    run_status: str = "complete",
+    checksums: bool = True,
+    audit_log: bool = True,
+    backups: bool = False,
+    summary_report: bool = True,
+    diff_report: bool = True,
+    review_only: bool = False,
 ) -> Dict[str, str]:
     """
     Write CSV files with custom delimiter.
+
+    Design 9: Adds schema_version, run_id headers, optional checksums, audit log, backups.
 
     Args:
         results: List of TrackResult objects
@@ -87,6 +118,14 @@ def write_csv_files(
         delimiter: CSV delimiter character (default: ",")
         include_metadata: Include metadata columns
         file_timestamp: Optional fixed timestamp for filenames (Design 5.8 checkpointing)
+        run_id: Optional run ID for traceability (Design 9.15)
+        run_status: complete or partial (Design 9.49)
+        checksums: Write SHA256 checksum files (Design 9.18)
+        audit_log: Write audit.jsonl with match rationale (Design 9.22)
+        backups: Create .bak backup before overwrite (Design 9.17)
+        summary_report: Write summary report with confidence distribution (Design 9)
+        diff_report: Write diff report comparing input vs output (Design 9)
+        review_only: Export only low-confidence tracks (review mode) (Design 9)
 
     Returns:
         Dictionary mapping file type to file path.
@@ -101,6 +140,9 @@ def write_csv_files(
     # Ensure output_dir is absolute
     output_dir = os.path.abspath(output_dir)
     os.makedirs(output_dir, exist_ok=True)
+
+    # Design 9: Generate or use run_id for traceability
+    effective_run_id = run_id or generate_run_id()
 
     output_files = {}
 
@@ -122,16 +164,48 @@ def write_csv_files(
         timestamped_filename = os.path.splitext(timestamped_filename)[0]
     timestamped_filename = timestamped_filename + extension
 
-    # Write main results CSV
+    # Design 9: Create backup before overwrite if requested
+    base_path = os.path.join(output_dir, timestamped_filename)
+    if backups and os.path.exists(base_path):
+        create_backup(base_path)
+
+    # Design 9: Review-only mode - export only low-confidence tracks
+    if review_only:
+        review_indices = _get_review_indices(results)
+        if review_indices:
+            review_path = write_review_csv(
+                results,
+                review_indices,
+                timestamped_filename,
+                output_dir,
+                delimiter=delimiter,
+                include_metadata=include_metadata,
+            )
+            if review_path:
+                output_files["review"] = review_path
+        if summary_report and results:
+            base_no_ext = os.path.splitext(timestamped_filename)[0]
+            summary_path = os.path.join(output_dir, f"{base_no_ext}_summary.json")
+            write_summary_report(results, summary_path, effective_run_id, output_files)
+            output_files["summary"] = summary_path
+        return output_files
+
+    # Write main results CSV (with schema headers)
     main_path = write_main_csv(
         results,
         timestamped_filename,
         output_dir,
         delimiter=delimiter,
         include_metadata=include_metadata,
+        run_id=effective_run_id,
+        run_status=run_status,
     )
     if main_path:
         output_files["main"] = main_path
+        # Design 9: Write checksum for main output
+        if checksums and results:
+            checksum = compute_sha256(main_path)
+            write_checksum_file(main_path, checksum)
 
     # Write candidates CSV (with same delimiter)
     candidates_path = write_candidates_csv(
@@ -158,6 +232,30 @@ def write_csv_files(
         )
         if review_path:
             output_files["review"] = review_path
+
+    # Design 9: Write audit log with match rationale per track
+    if audit_log and results:
+        base_no_ext = os.path.splitext(timestamped_filename)[0]
+        audit_path = os.path.join(output_dir, f"{base_no_ext}_audit.jsonl")
+        audit_file = write_audit_log(
+            results, audit_path, effective_run_id, run_status=run_status
+        )
+        if audit_file:
+            output_files["audit"] = audit_file
+
+    # Design 9: Summary report with confidence distribution and unmatched handling
+    if summary_report and results:
+        base_no_ext = os.path.splitext(timestamped_filename)[0]
+        summary_path = os.path.join(output_dir, f"{base_no_ext}_summary.json")
+        write_summary_report(results, summary_path, effective_run_id, output_files)
+        output_files["summary"] = summary_path
+
+    # Design 9: Diff report comparing input vs output metadata
+    if diff_report and results:
+        base_no_ext = os.path.splitext(timestamped_filename)[0]
+        diff_path = os.path.join(output_dir, f"{base_no_ext}_diff.json")
+        generate_diff_report(results, diff_path, effective_run_id)
+        output_files["diff"] = diff_path
 
     return output_files
 
@@ -202,6 +300,10 @@ def preview_csv_output_paths(
         paths["review"] = os.path.join(
             output_dir, timestamped.replace(extension, f"_review{extension}")
         )
+    # Design 9: Audit log path
+    paths["audit"] = os.path.join(
+        output_dir, timestamped.replace(extension, "").rstrip(".") + "_audit.jsonl"
+    )
     return paths
 
 
@@ -211,9 +313,13 @@ def write_main_csv(
     output_dir: str = "output",
     delimiter: str = ",",
     include_metadata: bool = True,
+    run_id: Optional[str] = None,
+    run_status: str = "complete",
 ) -> Optional[str]:
     """
     Write main results CSV file (one row per track) with custom delimiter.
+
+    Design 9: Adds schema_version, run_id, run_status header lines.
 
     Args:
         results: List of TrackResult objects
@@ -221,6 +327,8 @@ def write_main_csv(
         output_dir: Output directory
         delimiter: CSV delimiter character (default: ",")
         include_metadata: Include metadata columns
+        run_id: Run ID for traceability (Design 9.15)
+        run_status: complete or partial (Design 9.49)
 
     Returns:
         Path to written file, or None if no results
@@ -250,6 +358,10 @@ def write_main_csv(
 
         fieldnames = _main_csv_fieldnames(include_metadata)
 
+        # Design 9: Schema headers (must be first lines)
+        effective_run_id = run_id or generate_run_id()
+        header_lines = get_csv_header_lines(SCHEMA_VERSION, effective_run_id, run_status)
+
         # Design 6.31: Precompute all rows for batched write
         all_rows = []
         for result in results:
@@ -265,6 +377,9 @@ def write_main_csv(
             with open(
                 tmp_path, "w", newline="", encoding="utf-8", buffering=buffer_size
             ) as f:
+                # Design 9: Write schema header lines first
+                for line in header_lines:
+                    f.write(line + "\n")
                 writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter=delimiter)
                 writer.writeheader()
                 writer.writerows(all_rows)

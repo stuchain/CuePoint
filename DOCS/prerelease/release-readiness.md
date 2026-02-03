@@ -146,18 +146,18 @@
  
  ## 9) Data Integrity and Auditability
  
- - [ ] Add schema validation for output CSV files.
- - [ ] Add a summary report with match confidence distribution.
- - [ ] Add explicit “unmatched” handling with recommended actions.
- - [ ] Provide export format versioning in output files.
-- [ ] Add a unique run ID and timestamp to outputs for traceability.
-- [ ] Add a checksum for key output files to detect corruption.
-- [ ] Add a full audit log with match rationale per track.
-- [ ] Add a diff report comparing input vs output metadata.
-- [ ] Add a validation that output CSVs can be re-imported safely.
-- [ ] Add a “review mode” export with only low-confidence matches.
-- [ ] Add data lineage notes (query used, candidate chosen).
-- [ ] Add optional backups of previous exports (.bak with timestamps).
+ - [x] Add schema validation for output CSV files.
+ - [x] Add a summary report with match confidence distribution.
+ - [x] Add explicit “unmatched” handling with recommended actions.
+ - [x] Provide export format versioning in output files.
+- [x] Add a unique run ID and timestamp to outputs for traceability.
+- [x] Add a checksum for key output files to detect corruption.
+- [x] Add a full audit log with match rationale per track.
+- [x] Add a diff report comparing input vs output metadata.
+- [x] Add a validation that output CSVs can be re-imported safely.
+- [x] Add a “review mode” export with only low-confidence matches.
+- [x] Add data lineage notes (query used, candidate chosen).
+- [x] Add optional backups of previous exports (.bak with timestamps).
  
  ## 10) Documentation and Developer Experience
  

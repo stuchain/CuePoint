@@ -1216,6 +1216,8 @@ class ProcessorService(IProcessorService):
                                                         base_filename,
                                                         output_dir,
                                                         file_timestamp=file_timestamp,
+                                                        run_id=run_id,
+                                                        run_status="partial",
                                                     )
                                                     checkpoint_output_paths.update(out_paths)
                                                 else:
@@ -1548,6 +1550,8 @@ class ProcessorService(IProcessorService):
                                 base_filename,
                                 output_dir,
                                 file_timestamp=file_timestamp,
+                                run_id=run_id,
+                                run_status="partial",
                             )
                             checkpoint_output_paths.update(out_paths)
                         else:

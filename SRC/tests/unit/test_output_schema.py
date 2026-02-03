@@ -11,8 +11,7 @@ from pathlib import Path
 import pytest
 
 from cuepoint.models.result import TrackResult
-from cuepoint.services.output_writer import write_main_csv, write_csv_files
-
+from cuepoint.services.output_writer import read_csv_skip_comments, write_csv_files, write_main_csv
 
 # Expected main CSV schema (must match output_writer.write_main_csv)
 MAIN_CSV_HEADERS_BASE = [
@@ -64,9 +63,8 @@ def test_main_csv_headers_and_order(tmp_path: Path) -> None:
     )
     path = tmp_path / out_file
     assert path.exists()
-    with open(path, newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        assert reader.fieldnames == MAIN_CSV_HEADERS_WITH_METADATA
+    fieldnames, _ = read_csv_skip_comments(str(path))
+    assert fieldnames == MAIN_CSV_HEADERS_WITH_METADATA
 
 
 @pytest.mark.unit
@@ -87,9 +85,8 @@ def test_main_csv_headers_without_metadata(tmp_path: Path) -> None:
         include_metadata=False,
     )
     path = tmp_path / "no_meta.csv"
-    with open(path, newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        assert reader.fieldnames == MAIN_CSV_HEADERS_BASE
+    fieldnames, _ = read_csv_skip_comments(str(path))
+    assert fieldnames == MAIN_CSV_HEADERS_BASE
 
 
 @pytest.mark.unit
@@ -128,10 +125,10 @@ def test_main_csv_commas_quoted(tmp_path: Path) -> None:
         raw = f.read()
     # CSV writer should quote fields with commas
     assert '"Track, Part 1"' in raw or "Track, Part 1" in raw
-    # Verify we can round-trip
-    with open(path, newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        row = next(reader)
+    # Verify we can round-trip (Design 9: skip comment headers)
+    _, rows = read_csv_skip_comments(str(path))
+    assert rows
+    row = rows[0]
     assert "Part 1" in row["original_title"]
     assert "Other" in row["original_artists"]
 
@@ -152,8 +149,6 @@ def test_write_csv_files_main_schema(tmp_path: Path) -> None:
     assert "main" in out
     main_path = Path(out["main"])
     assert main_path.exists()
-    with open(main_path, newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        assert reader.fieldnames == MAIN_CSV_HEADERS_WITH_METADATA
-        rows = list(reader)
+    fieldnames, rows = read_csv_skip_comments(str(main_path))
+    assert fieldnames == MAIN_CSV_HEADERS_WITH_METADATA
     assert len(rows) == 3

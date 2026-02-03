@@ -12,7 +12,7 @@ import pytest
 
 from cuepoint.data.rekordbox import parse_rekordbox
 from cuepoint.models.result import TrackResult
-from cuepoint.services.output_writer import write_csv_files
+from cuepoint.services.output_writer import read_csv_skip_comments, write_csv_files
 
 
 def _tests_dir() -> Path:
@@ -58,10 +58,7 @@ def test_pipeline_small_xml_to_csv(tmp_path: Path) -> None:
     main_path = Path(out["main"])
     assert main_path.exists()
 
-    with open(main_path, newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        headers = reader.fieldnames
-        rows = list(reader)
+    headers, rows = read_csv_skip_comments(str(main_path))
 
     assert len(rows) == 10
     required = [

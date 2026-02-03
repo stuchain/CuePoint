@@ -132,15 +132,19 @@ class AppPaths:
     def exports_dir() -> Path:
         """Get default exports directory.
 
-        Uses Downloads folder on first run, user can change in settings.
+        Uses Documents folder so it works for any user who clones the repo.
+        Platform-specific (current user's Documents):
+        - Windows: C:\\Users\\<username>\\Documents\\CuePoint_Output
+        - macOS: ~/Documents/CuePoint_Output
+        - Linux: ~/Documents/CuePoint_Output
 
         Returns:
             Path to exports directory.
         """
-        downloads = Path(
-            QStandardPaths.writableLocation(QStandardPaths.DownloadLocation)
+        documents = Path(
+            QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation)
         )
-        exports = downloads / "CuePoint Exports"
+        exports = documents / "CuePoint_Output"
         return AppPaths._ensure_dir(exports)
 
     @staticmethod

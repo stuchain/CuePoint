@@ -90,7 +90,22 @@ class TestStep8OutputDirectory:
         """Falls back to default when preferred invalid."""
         out = get_output_directory("/nonexistent/path/12345")
         assert os.path.isdir(out)
-        assert "CuePoint" in out or "cuepoint" in out.lower() or "Downloads" in out
+        assert "CuePoint" in out or "cuepoint" in out.lower() or "Documents" in out
+
+    def test_get_output_directory_preferred_restricted_falls_back(self):
+        """Falls back to default when preferred dir is inside app install (P024)."""
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch(
+                "cuepoint.utils.paths.StorageInvariants"
+            ) as mock_inv:
+                mock_inv.is_restricted_location.return_value = True
+                out = get_output_directory(tmp)
+            # Should return default, not the restricted path
+            assert out != os.path.abspath(tmp)
+            assert os.path.isdir(out)
+            assert "CuePoint" in out or "cuepoint" in out.lower()
 
 
 class TestStep8Contrast:

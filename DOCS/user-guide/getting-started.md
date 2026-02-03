@@ -22,8 +22,8 @@ Errors must be fixed. Warnings can be bypassed with **Proceed Anyway**.
 ## Outputs
 
 Outputs are saved to the default exports folder:
-- Windows: `Downloads/CuePoint Exports`
-- macOS: `Downloads/CuePoint Exports`
+- Windows: `Documents/CuePoint_Output`
+- macOS: `Documents/CuePoint_Output`
 
 Use the run summary to open the output folder or copy the summary.
 
