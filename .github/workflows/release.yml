@@ -138,6 +138,15 @@ jobs:
         with:
           python-version: '3.13'
       
+      - name: Generate THIRD_PARTY_LICENSES.txt for release
+        run: |
+          pip install -r requirements-build.txt -q
+          python scripts/generate_licenses.py --output THIRD_PARTY_LICENSES.txt
+          if [ ! -f THIRD_PARTY_LICENSES.txt ]; then
+            echo "ERROR: License bundle generation failed"
+            exit 1
+          fi
+
       - name: Generate SBOM
         run: |
           mkdir -p dist
@@ -195,6 +204,7 @@ jobs:
             artifacts/macos/*.dmg
             artifacts/windows/*.exe
             dist/sbom.spdx.json
+            THIRD_PARTY_LICENSES.txt
             SHA256SUMS
           body_path: RELEASE_NOTES.md
           draft: false

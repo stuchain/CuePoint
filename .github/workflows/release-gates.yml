@@ -74,6 +74,19 @@ jobs:
       - name: Generate SBOM (release gate R003)
         run: python scripts/generate_sbom.py --output build/sbom.spdx.json
 
+      - name: License bundle (release gate R004, Step 11)
+        run: |
+          pip install -r requirements-build.txt -q
+          python scripts/generate_licenses.py --output THIRD_PARTY_LICENSES.txt
+          if [ ! -f THIRD_PARTY_LICENSES.txt ]; then
+            echo "ERROR: License bundle generation failed"
+            exit 1
+          fi
+          if ! grep -q "Package:" THIRD_PARTY_LICENSES.txt; then
+            echo "ERROR: License bundle appears empty"
+            exit 1
+          fi
+
       - name: Validate appcast (if present)
         shell: bash
         run: |

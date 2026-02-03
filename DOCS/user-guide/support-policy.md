@@ -2,6 +2,16 @@
 
 This page defines supported environments, support windows, and end-of-life (EOL) expectations.
 
+## Response Time Expectations (SLA)
+
+| Priority | Description | Response Target |
+| --- | --- | --- |
+| **P0** | Crash, data loss, security vulnerability | 24 hours |
+| **P1** | Major functionality broken, no workaround | 48 hours |
+| **P2** | Minor issue, workaround exists | 5 business days |
+
+For detailed triage and escalation procedures, see [Support SLA](../POLICY/support-sla.md) and the [Support SLA Playbook](../prerelease/support-sla-playbook.md).
+
 ## Supported Platforms
 
 - **Windows**: Windows 10+ (x64)

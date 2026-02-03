@@ -41,6 +41,10 @@ datas = [
     (str(project_root / 'THIRD_PARTY_LICENSES.txt'), 'licenses'),
     # Step 8.5: privacy notice (if present)
     (str(project_root / 'PRIVACY_NOTICE.md'), 'docs'),
+    # Step 11: terms of use and policy docs (if present)
+    (str(project_root / 'DOCS' / 'POLICY' / 'terms-of-use.md'), 'docs'),
+    (str(project_root / 'DOCS' / 'POLICY' / 'support-sla.md'), 'docs'),
+    (str(project_root / 'DOCS' / 'POLICY' / 'data-processing-notice.md'), 'docs'),
     # Include duckduckgo_search compatibility shim module
     (str(project_root / 'SRC' / 'duckduckgo_search.py'), 'SRC'),
     # Include test script for diagnostic purposes

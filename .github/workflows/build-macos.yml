@@ -62,9 +62,17 @@ jobs:
               echo "✅ All required runtime dependencies are installed"
           fi
 
-      - name: Generate third-party licenses file
+      - name: Generate third-party licenses file (Step 11)
         run: |
           python scripts/generate_licenses.py --output THIRD_PARTY_LICENSES.txt
+          if [ ! -f THIRD_PARTY_LICENSES.txt ]; then
+            echo "ERROR: License bundle generation failed - THIRD_PARTY_LICENSES.txt not created"
+            exit 1
+          fi
+          if ! grep -q "Package:" THIRD_PARTY_LICENSES.txt; then
+            echo "ERROR: License bundle appears empty or invalid"
+            exit 1
+          fi
       
       - name: Set build info
         run: python scripts/set_build_info.py

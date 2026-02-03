@@ -376,7 +376,7 @@ class AboutDialog(QDialog):
         description.setStyleSheet("padding: 10px;")
         layout.addWidget(description)
 
-        # Quick links (Step 9.6 polish)
+        # Quick links (Step 9.6 polish, Step 11: legal/policy links)
         links_layout = QHBoxLayout()
         links_layout.addStretch()
 
@@ -385,6 +385,24 @@ class AboutDialog(QDialog):
         privacy_btn.setToolTip("Open privacy information and controls")
         privacy_btn.clicked.connect(self._open_privacy)
         links_layout.addWidget(privacy_btn)
+
+        terms_btn = QPushButton("Terms")
+        terms_btn.setObjectName("secondaryActionButton")
+        terms_btn.setToolTip("View terms of use")
+        terms_btn.clicked.connect(self._open_terms)
+        links_layout.addWidget(terms_btn)
+
+        support_btn = QPushButton("Support")
+        support_btn.setObjectName("secondaryActionButton")
+        support_btn.setToolTip("View support policy and SLA")
+        support_btn.clicked.connect(self._open_support_policy)
+        links_layout.addWidget(support_btn)
+
+        licenses_btn = QPushButton("Licenses")
+        licenses_btn.setObjectName("secondaryActionButton")
+        licenses_btn.setToolTip("View third-party licenses")
+        licenses_btn.clicked.connect(self._open_licenses)
+        links_layout.addWidget(licenses_btn)
 
         logs_btn = QPushButton("Logs")
         logs_btn.setObjectName("secondaryActionButton")
@@ -474,6 +492,48 @@ class AboutDialog(QDialog):
             from PySide6.QtWidgets import QMessageBox
 
             QMessageBox.warning(self, "Privacy", f"Could not open Privacy dialog:\n{e}")
+
+    def _open_terms(self) -> None:
+        """Open terms of use in a viewer (Step 11)."""
+        from cuepoint.utils.policy_docs import find_terms_of_use, load_policy_text
+
+        path = find_terms_of_use()
+        text = load_policy_text(path, "Terms of use could not be loaded. See DOCS/POLICY/terms-of-use.md")
+        self._show_policy_viewer("Terms of Use", text)
+
+    def _open_support_policy(self) -> None:
+        """Open support policy in a viewer (Step 11)."""
+        from cuepoint.utils.policy_docs import find_support_policy, load_policy_text
+
+        path = find_support_policy()
+        text = load_policy_text(
+            path,
+            "Support policy could not be loaded. See DOCS/POLICY/support-sla.md",
+        )
+        self._show_policy_viewer("Support Policy", text)
+
+    def _open_licenses(self) -> None:
+        """Open third-party licenses in a viewer (Step 11)."""
+        from cuepoint.utils.policy_docs import find_third_party_licenses, load_policy_text
+
+        path = find_third_party_licenses()
+        text = load_policy_text(path, "Third-party licenses could not be loaded. See THIRD_PARTY_LICENSES.txt")
+        self._show_policy_viewer("Third-Party Licenses", text)
+
+    def _show_policy_viewer(self, title: str, text: str) -> None:
+        """Show a simple policy document viewer dialog."""
+        dlg = QDialog(self)
+        dlg.setWindowTitle(title)
+        dlg.setMinimumSize(700, 520)
+        v = QVBoxLayout(dlg)
+        view = QTextEdit()
+        view.setReadOnly(True)
+        view.setPlainText(text)
+        v.addWidget(view)
+        bb = QDialogButtonBox(QDialogButtonBox.Ok)
+        bb.accepted.connect(dlg.accept)
+        v.addWidget(bb)
+        dlg.exec()
 
     def _open_logs_folder(self) -> None:
         try:

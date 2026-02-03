@@ -1082,6 +1082,24 @@ class MainWindow(QMainWindow):
         privacy_action.triggered.connect(self.on_show_privacy)
         help_menu.addAction(privacy_action)
 
+        # Terms of Use (Step 11)
+        terms_action = QAction("Terms of &Use", self)
+        terms_action.setToolTip("View terms of use")
+        terms_action.triggered.connect(self.on_show_terms)
+        help_menu.addAction(terms_action)
+
+        # Third-Party Licenses (Step 11)
+        licenses_action = QAction("Third-Party &Licenses", self)
+        licenses_action.setToolTip("View third-party license notices")
+        licenses_action.triggered.connect(self.on_show_licenses)
+        help_menu.addAction(licenses_action)
+
+        # Support Policy (Step 11)
+        support_policy_action = QAction("Support &Policy", self)
+        support_policy_action.setToolTip("View support SLA and response expectations")
+        support_policy_action.triggered.connect(self.on_show_support_policy)
+        help_menu.addAction(support_policy_action)
+
         # Onboarding tour
         onboarding_action = QAction("&Onboarding Tour...", self)
         onboarding_action.setToolTip("Show the first-run onboarding tour")
@@ -1578,6 +1596,81 @@ class MainWindow(QMainWindow):
             dialog.exec()
         except Exception as e:
             QMessageBox.warning(self, "Privacy", f"Could not open Privacy dialog:\n{e}")
+
+    def on_show_terms(self) -> None:
+        """Show terms of use via Help > Terms of Use (Step 11)."""
+        try:
+            from PySide6.QtWidgets import QDialog, QDialogButtonBox, QTextEdit, QVBoxLayout
+
+            from cuepoint.utils.policy_docs import find_terms_of_use, load_policy_text
+
+            path = find_terms_of_use()
+            text = load_policy_text(path, "Terms of use could not be loaded. See DOCS/POLICY/terms-of-use.md")
+            dlg = QDialog(self)
+            dlg.setWindowTitle("Terms of Use")
+            dlg.setMinimumSize(700, 520)
+            v = QVBoxLayout(dlg)
+            view = QTextEdit()
+            view.setReadOnly(True)
+            view.setPlainText(text)
+            v.addWidget(view)
+            bb = QDialogButtonBox(QDialogButtonBox.Ok)
+            bb.accepted.connect(dlg.accept)
+            v.addWidget(bb)
+            dlg.exec()
+        except Exception as e:
+            QMessageBox.warning(self, "Terms of Use", f"Could not open terms:\n{e}")
+
+    def on_show_licenses(self) -> None:
+        """Show third-party licenses via Help > Third-Party Licenses (Step 11)."""
+        try:
+            from PySide6.QtWidgets import QDialog, QDialogButtonBox, QTextEdit, QVBoxLayout
+
+            from cuepoint.utils.policy_docs import find_third_party_licenses, load_policy_text
+
+            path = find_third_party_licenses()
+            text = load_policy_text(path, "Third-party licenses could not be loaded. See THIRD_PARTY_LICENSES.txt")
+            dlg = QDialog(self)
+            dlg.setWindowTitle("Third-Party Licenses")
+            dlg.setMinimumSize(700, 520)
+            v = QVBoxLayout(dlg)
+            view = QTextEdit()
+            view.setReadOnly(True)
+            view.setPlainText(text)
+            v.addWidget(view)
+            bb = QDialogButtonBox(QDialogButtonBox.Ok)
+            bb.accepted.connect(dlg.accept)
+            v.addWidget(bb)
+            dlg.exec()
+        except Exception as e:
+            QMessageBox.warning(self, "Third-Party Licenses", f"Could not open licenses:\n{e}")
+
+    def on_show_support_policy(self) -> None:
+        """Show support policy via Help > Support Policy (Step 11)."""
+        try:
+            from PySide6.QtWidgets import QDialog, QDialogButtonBox, QTextEdit, QVBoxLayout
+
+            from cuepoint.utils.policy_docs import find_support_policy, load_policy_text
+
+            path = find_support_policy()
+            text = load_policy_text(
+                path,
+                "Support policy could not be loaded. See DOCS/POLICY/support-sla.md",
+            )
+            dlg = QDialog(self)
+            dlg.setWindowTitle("Support Policy")
+            dlg.setMinimumSize(700, 520)
+            v = QVBoxLayout(dlg)
+            view = QTextEdit()
+            view.setReadOnly(True)
+            view.setPlainText(text)
+            v.addWidget(view)
+            bb = QDialogButtonBox(QDialogButtonBox.Ok)
+            bb.accepted.connect(dlg.accept)
+            v.addWidget(bb)
+            dlg.exec()
+        except Exception as e:
+            QMessageBox.warning(self, "Support Policy", f"Could not open support policy:\n{e}")
 
     def _on_show_diagnostics_panel(self) -> None:
         """Show diagnostics panel (Design 7.132): log path, run ID, health checks."""

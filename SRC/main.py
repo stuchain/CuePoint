@@ -46,6 +46,19 @@ from cuepoint.utils.errors import (
 from cuepoint.utils.utils import startup_banner
 
 
+def _safe_print_utf8(text: str) -> None:
+    """Print UTF-8 text safely on Windows (avoids cp1252 encoding errors)."""
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except (AttributeError, OSError):
+        pass
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        sys.stdout.buffer.write(text.encode("utf-8", errors="replace"))
+        sys.stdout.buffer.write(b"\n")
+
+
 def main():
     """
     Main CLI entry point
@@ -137,6 +150,9 @@ def main():
     ap.add_argument("--incremental", type=str, default=None, metavar="CSV_PATH",
                     help="Incremental mode: path to previous run's main CSV; only process tracks not already in it")
     ap.add_argument("--no-resume", action="store_true", help="Do not resume; start fresh (ignore checkpoint)")
+    # Step 11: Legal/policy flags
+    ap.add_argument("--show-privacy", action="store_true", help="Print privacy notice and exit")
+    ap.add_argument("--show-terms", action="store_true", help="Print terms of use and exit")
     ap.add_argument("--checkpoint-every", type=int, default=None, metavar="N",
                     help="Save checkpoint every N tracks (default: from config)")
     ap.add_argument("--max-retries", type=int, default=None, metavar="N",
@@ -145,6 +161,20 @@ def main():
     args = ap.parse_args()
     if args.dry_run:
         args.preflight_only = True
+
+    # Step 11: Legal/policy CLI flags - show and exit
+    if args.show_privacy:
+        from cuepoint.utils.policy_docs import find_privacy_notice, load_policy_text
+        path = find_privacy_notice()
+        text = load_policy_text(path, "Privacy notice could not be loaded.")
+        _safe_print_utf8(text)
+        return
+    if args.show_terms:
+        from cuepoint.utils.policy_docs import find_terms_of_use, load_policy_text
+        path = find_terms_of_use()
+        text = load_policy_text(path, "Terms of use could not be loaded.")
+        _safe_print_utf8(text)
+        return
 
     # Design 9: Verify outputs mode - run verification and exit (no xml/playlist needed)
     if args.verify_outputs:

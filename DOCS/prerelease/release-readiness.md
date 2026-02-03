@@ -177,16 +177,16 @@
  
  ## 11) Business and Legal Readiness
  
- - [ ] Confirm third-party license notices are complete and up to date.
- - [ ] Ensure compliance docs match actual behavior (privacy, telemetry).
- - [ ] Document trademark/brand usage guidance for release assets.
-- [ ] Add an SLA/expectations section for support response time.
-- [ ] Add a policy for deprecations and breaking changes.
-- [ ] Add a terms of use and acceptable use policy (if applicable).
-- [ ] Add a data processing notice if any data is stored or transmitted.
-- [ ] Add a policy for community contributions and code of conduct.
-- [ ] Add an export control review if distributing internationally.
- 
+ - [x] Confirm third-party license notices are complete and up to date.
+ - [x] Ensure compliance docs match actual behavior (privacy, telemetry).
+ - [x] Document trademark/brand usage guidance for release assets.
+- [x] Add an SLA/expectations section for support response time.
+- [x] Add a policy for deprecations and breaking changes.
+- [x] Add a terms of use and acceptable use policy (if applicable).
+- [x] Add a data processing notice if any data is stored or transmitted.
+- [x] Add a policy for community contributions and code of conduct.
+- [x] Add an export control review if distributing internationally.
+
  ## 12) Future-Proofing
  
  - [ ] Create a plan for handling Beatport site changes (parsing or access).

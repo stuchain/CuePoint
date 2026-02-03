@@ -33,6 +33,15 @@ jobs:
       - name: Generate THIRD_PARTY_LICENSES.txt
         run: |
           python scripts/generate_licenses.py --output THIRD_PARTY_LICENSES.txt
+          if [ ! -f THIRD_PARTY_LICENSES.txt ]; then
+            echo "ERROR: License bundle generation failed - THIRD_PARTY_LICENSES.txt not created"
+            exit 1
+          fi
+          # Verify file has content (at least key dependencies)
+          if ! grep -q "Package:" THIRD_PARTY_LICENSES.txt; then
+            echo "ERROR: License bundle appears empty or invalid"
+            exit 1
+          fi
 
       - name: Upload license file artifact
         uses: actions/upload-artifact@v4

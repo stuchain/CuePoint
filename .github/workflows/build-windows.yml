@@ -73,17 +73,20 @@ jobs:
               Write-Host "[OK] All required runtime dependencies are installed"
           }
 
-      - name: Generate third-party licenses file
+      - name: Generate third-party licenses file (Step 11)
         run: |
-          Write-Host "=== DEBUG: Generating third-party licenses ==="
-          Write-Host "Current directory: $(Get-Location)"
-          Write-Host "Running: python scripts/generate_licenses.py --output THIRD_PARTY_LICENSES.txt"
+          Write-Host "=== Generating third-party licenses (Step 11) ==="
           python scripts/generate_licenses.py --output THIRD_PARTY_LICENSES.txt
-          if (Test-Path "THIRD_PARTY_LICENSES.txt") {
-              Write-Host "Licenses file created: $(Get-Item THIRD_PARTY_LICENSES.txt | Select-Object -ExpandProperty Length) bytes"
-          } else {
-              Write-Warning "Licenses file not found after generation"
+          if (-not (Test-Path "THIRD_PARTY_LICENSES.txt")) {
+              Write-Error "License bundle generation failed - THIRD_PARTY_LICENSES.txt not created"
+              exit 1
           }
+          $content = Get-Content "THIRD_PARTY_LICENSES.txt" -Raw
+          if (-not $content -match "Package:") {
+              Write-Error "License bundle appears empty or invalid"
+              exit 1
+          }
+          Write-Host "Licenses file created: $(Get-Item THIRD_PARTY_LICENSES.txt | Select-Object -ExpandProperty Length) bytes"
       
       - name: Install NSIS
         run: |
