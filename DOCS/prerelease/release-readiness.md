@@ -161,19 +161,19 @@
  
  ## 10) Documentation and Developer Experience
  
- - [ ] Maintain a single “start here” doc for contributors.
- - [ ] Add a short architecture overview diagram to docs.
- - [ ] Document how to add new match rules and scoring heuristics.
- - [ ] Document how to update Beatport parsing logic safely.
- - [ ] Provide environment setup scripts for repeatable dev onboarding.
-- [ ] Add a "common errors" troubleshooting section with fixes.
-- [ ] Add a changelog policy and semantic versioning guidance.
-- [ ] Add a testing strategy doc that explains what tests to add and when.
-- [ ] Add a dev sandbox guide for running against sample data.
-- [ ] Add “how to debug a mismatch” step-by-step guide.
-- [ ] Add a contributor checklist for PR quality gates.
-- [ ] Add a versioning policy for output schemas.
-- [ ] Add a docs portal structure and ownership for ongoing maintenance.
+ - [x] Maintain a single “start here” doc for contributors.
+ - [x] Add a short architecture overview diagram to docs.
+ - [x] Document how to add new match rules and scoring heuristics.
+ - [x] Document how to update Beatport parsing logic safely.
+ - [x] Provide environment setup scripts for repeatable dev onboarding.
+- [x] Add a "common errors" troubleshooting section with fixes.
+- [x] Add a changelog policy and semantic versioning guidance.
+- [x] Add a testing strategy doc that explains what tests to add and when.
+- [x] Add a dev sandbox guide for running against sample data.
+- [x] Add “how to debug a mismatch” step-by-step guide.
+- [x] Add a contributor checklist for PR quality gates.
+- [x] Add a versioning policy for output schemas.
+- [x] Add a docs portal structure and ownership for ongoing maintenance.
  
  ## 11) Business and Legal Readiness
  

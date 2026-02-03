@@ -14,7 +14,7 @@
     </COLLECTION>
     <PLAYLISTS>
         <NODE Name="ROOT">
-            <NODE Name="Test Playlist">
+            <NODE Name="Test Playlist" Type="1">
                 <TRACK Key="1"/>
             </NODE>
         </NODE>

@@ -1,0 +1,27 @@
+# Design 10.6, 10.30: Doc link checker - fail CI on broken links
+name: Docs Check
+
+on:
+  push:
+    branches: ['main', 'prerelease']
+    paths: ['DOCS/**', '.github/workflows/docs-check.yml']
+  pull_request:
+    branches: ['main', 'prerelease']
+    paths: ['DOCS/**', '.github/**']
+
+jobs:
+  link-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lychee link check
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: 'DOCS/ .github/ --no-progress'
+          fail: true
+          # Exclude anchors and mailto to reduce false positives
+          exclude-mail: false
+          exclude-file: ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

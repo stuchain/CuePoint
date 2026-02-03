@@ -33,6 +33,5 @@ CuePoint is a professional tool for enriching Rekordbox XML files with Beatport 
 
 ## Contributing
 
-- [Contributing Guide](https://github.com/stuchain/CuePoint/blob/main/CONTRIBUTING.md)
-- [Code of Conduct](https://github.com/stuchain/CuePoint/blob/main/CODE_OF_CONDUCT.md)
+- [Contributing Guide](https://github.com/stuchain/CuePoint/blob/main/.github/CONTRIBUTING.md)
 

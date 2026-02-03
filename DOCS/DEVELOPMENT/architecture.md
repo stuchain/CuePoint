@@ -1,0 +1,72 @@
+# Architecture Overview
+
+Design 10.25. High-level pipeline and core services.
+
+## Pipeline Flow
+
+```
+Input (Rekordbox XML) → Parse → Query Generation → Search → Match/Score → Output (CSV/JSON/Excel)
+```
+
+1. **Parse**: Load XML, extract playlists and tracks (`SRC/cuepoint/data/rekordbox.py`)
+2. **Query Generation**: Build search queries from title/artist (`SRC/cuepoint/core/query_generator.py`)
+3. **Search**: Find Beatport track URLs via DuckDuckGo, direct search, or browser (`SRC/cuepoint/data/beatport.py`)
+4. **Match/Score**: Fetch candidate pages, score with fuzzy matching, apply guards (`SRC/cuepoint/core/matcher.py`)
+5. **Output**: Write CSV/JSON/Excel with enriched metadata (`SRC/cuepoint/services/output_writer.py`)
+
+## Core Services
+
+| Service | Location | Role |
+| --- | --- | --- |
+| ProcessorService | `services/processor_service.py` | Orchestrates per-track processing |
+| MatcherService | `services/matcher_service.py` | Wraps `core/matcher.py` |
+| BeatportService | `services/beatport_service.py` | Fetches and parses Beatport pages |
+| ConfigService | `services/config_service.py` | Configuration and presets |
+| OutputWriter | `services/output_writer.py` | Export to CSV/JSON/Excel |
+
+## Key Modules
+
+| Module | Purpose |
+| --- | --- |
+| `core/matcher.py` | Matching and scoring logic |
+| `core/query_generator.py` | Search query generation |
+| `core/text_processing.py` | Normalization, similarity scoring |
+| `core/mix_parser.py` | Remix/extended/original mix parsing |
+| `data/beatport.py` | Beatport search and page parsing |
+| `data/rekordbox.py` | Rekordbox XML parsing |
+
+## Architecture Diagram (ASCII)
+
+```
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│ Rekordbox XML   │────▶│ Rekordbox Parser │────▶│ Track List      │
+└─────────────────┘     └──────────────────┘     └────────┬────────┘
+                                                           │
+                                                           ▼
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│ Beatport URLs   │◀────│ Query Generator   │◀────│ Per-Track Loop  │
+└────────┬────────┘     └──────────────────┘     └─────────────────┘
+         │
+         ▼
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│ parse_track_page │────▶│ BeatportCandidate │────▶│ Matcher (score) │
+└─────────────────┘     └──────────────────┘     └────────┬────────┘
+                                                           │
+                                                           ▼
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│ CSV / JSON      │◀────│ Output Writer     │◀────│ TrackResult     │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
+```
+
+## Code Reading Guide
+
+1. Start at `SRC/main.py` (CLI) or `SRC/gui_app.py` (GUI)
+2. Follow `CLIProcessor` or GUI controller into `ProcessorService`
+3. Trace `ProcessorService.process_track()` → `MatcherService.find_best_match()` → `core/matcher.best_beatport_match()`
+4. For Beatport data flow: `beatport_service.fetch_track_data()` → `data/beatport.parse_track_page()`
+
+## Related Docs
+
+- [Match Rules & Scoring](match-rules-and-scoring.md)
+- [Beatport Parsing](beatport-parsing.md)
+- [Project README](https://github.com/stuchain/CuePoint/blob/main/README.md)
