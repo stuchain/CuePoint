@@ -79,8 +79,8 @@
  
  ## 5) Reliability and Resilience
  
- - [ ] Add retry/backoff policy documentation for external search.
- - [ ] Add a “network offline” or “limited connectivity” UX fallback.
+ - [x] Add retry/backoff policy documentation for external search.
+ - [x] Add a “network offline” or “limited connectivity” UX fallback.
  - [ ] Add defensive limits for large XML files (timeouts, memory usage).
  - [ ] Add a crash-safe output writer (atomic writes or temp file swap).
  - [ ] Add a fail-safe for malformed XML or missing fields.
@@ -89,7 +89,7 @@
 - [ ] Add circuit breaker behavior for repeated search failures.
 - [ ] Add configurable per-run timeouts and fail-fast options.
 - [ ] Add resumable processing per playlist or per track batch.
-- [ ] Add self-healing behavior for stale caches.
+- [x] Add self-healing behavior for stale caches.
 - [ ] Ensure all writes happen outside install directories (standard paths).
 - [ ] Add log rotation and separate crash logs.
  

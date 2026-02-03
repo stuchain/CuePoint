@@ -665,6 +665,52 @@ class TestProcessorService:
             assert any(issue.code == "P030" for issue in result.errors)
         finally:
             Path(xml_path).unlink(missing_ok=True)
+
+    def test_run_preflight_network_offline(
+        self,
+        mock_beatport_service,
+        mock_logging_service,
+        mock_config_service,
+    ):
+        """Test preflight blocks when network is offline (Design 5.2)."""
+        xml_content = """<?xml version="1.0" encoding="UTF-8"?>
+<DJ_PLAYLISTS>
+    <COLLECTION>
+        <TRACK TrackID="1" Name="Track 1" Artist="Artist 1"/>
+    </COLLECTION>
+    <PLAYLISTS>
+        <NODE Name="ROOT">
+            <NODE Name="Test Playlist" Type="1">
+                <TRACK Key="1"/>
+            </NODE>
+        </NODE>
+    </PLAYLISTS>
+</DJ_PLAYLISTS>"""
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False, encoding="utf-8") as f:
+            f.write(xml_content)
+            xml_path = f.name
+
+        try:
+            def config_get(key, default=None):
+                if key == "product.preflight_network_check":
+                    return True
+                return default
+            mock_config_service.get.side_effect = config_get
+            mock_config_service.validate.return_value = []
+            service = ProcessorService(
+                beatport_service=mock_beatport_service,
+                matcher_service=Mock(),
+                logging_service=mock_logging_service,
+                config_service=mock_config_service,
+            )
+            with patch("cuepoint.services.processor_service.NetworkState") as mock_net:
+                mock_net.is_online.return_value = False
+                result = service.run_preflight(xml_path, "Test Playlist")
+            assert result.can_proceed is False
+            assert any(issue.code == "P050" for issue in result.errors)
+        finally:
+            Path(xml_path).unlink(missing_ok=True)
     
     def test_process_track_matcher_service_error(
         self,

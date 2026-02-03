@@ -230,6 +230,37 @@ class CacheInvalidation:
                 logger.warning(f"Error removing expired cache entries: {e}")
     
     @staticmethod
+    def invalidate_url(url: str) -> bool:
+        """Invalidate cache entry for a specific URL (Design 5.11 self-healing for stale caches).
+
+        When Beatport HTML structure changes, cached responses may parse to empty data.
+        Call this to remove the stale entry so the next request fetches fresh data.
+
+        Args:
+            url: Exact URL to invalidate.
+
+        Returns:
+            True if an entry was invalidated.
+        """
+        if HTTPCacheManager._session is None:
+            return False
+        cache = HTTPCacheManager._session.cache
+        try:
+            if hasattr(cache, 'responses'):
+                for key in list(cache.responses.keys()):
+                    key_str = str(key)
+                    if url in key_str or key_str == url:
+                        try:
+                            cache.delete(key)
+                            logger.debug("[reliability] invalidated stale cache for %s", url[:80])
+                            return True
+                        except Exception:
+                            pass
+        except Exception as e:
+            logger.warning("Error invalidating cache for URL: %s", e)
+        return False
+
+    @staticmethod
     def clear_by_url_pattern(pattern: str) -> int:
         """Clear cache entries matching URL pattern.
         

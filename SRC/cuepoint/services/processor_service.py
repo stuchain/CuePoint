@@ -12,9 +12,9 @@ import shutil
 import threading
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional
 
 from cuepoint.core.mix_parser import _extract_generic_parenthetical_phrases, _parse_mix_flags
@@ -31,15 +31,9 @@ from cuepoint.data.rekordbox import (
 from cuepoint.models.compat import track_from_rbtrack
 from cuepoint.models.config import SETTINGS
 from cuepoint.models.preflight import PreflightIssue, PreflightResult
-from cuepoint.services.checkpoint_service import (
-    CheckpointData,
-    CheckpointService,
-    compute_xml_hash,
-)
-from cuepoint.services.output_writer import append_rows_to_main_csv, write_csv_files
-from cuepoint.utils.paths import AppPaths, StorageInvariants
 from cuepoint.models.result import TrackResult
 from cuepoint.models.track import Track
+from cuepoint.services.checkpoint_service import CheckpointData, CheckpointService, compute_xml_hash
 from cuepoint.services.interfaces import (
     IBeatportService,
     IConfigService,
@@ -47,6 +41,7 @@ from cuepoint.services.interfaces import (
     IMatcherService,
     IProcessorService,
 )
+from cuepoint.services.output_writer import append_rows_to_main_csv, write_csv_files
 from cuepoint.ui.gui_interface import (
     ErrorType,
     ProcessingController,
@@ -55,6 +50,8 @@ from cuepoint.ui.gui_interface import (
     ProgressInfo,
     ReliabilityState,
 )
+from cuepoint.utils.network import NetworkState
+from cuepoint.utils.paths import AppPaths, StorageInvariants
 
 
 class ProcessorService(IProcessorService):
@@ -522,6 +519,23 @@ class ProcessorService(IProcessorService):
         if isinstance(config_errors, list):
             for err in config_errors:
                 errors.append(PreflightIssue(code="CONFIG_INVALID", message=err))
+
+        # Design 5.2: Network preflight - block if offline (reliability UX fallback)
+        preflight_network = self.config_service.get("product.preflight_network_check", True)
+        if preflight_network is None:
+            preflight_network = True
+        if preflight_network and not errors:
+            try:
+                if not NetworkState.is_online():
+                    errors.append(
+                        PreflightIssue(
+                            code="P050",
+                            message="Network unavailable. Connect to the internet to search Beatport.",
+                        )
+                    )
+                checks["network_online"] = NetworkState.is_online()
+            except Exception:
+                checks["network_online"] = None  # Check skipped on error
 
         # Playlist validation (only if XML is accessible)
         if xml_path_obj.exists() and xml_path_obj.is_file() and is_readable(xml_path_obj):

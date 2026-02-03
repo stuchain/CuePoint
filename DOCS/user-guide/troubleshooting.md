@@ -50,6 +50,7 @@ Common issues and solutions.
 | P033 | Cache TTL invalid | Reset settings to defaults |
 | P034 | Output format invalid | Reset export format to CSV |
 | P040 | Preflight unknown error | Try again or re-export XML |
+| P050 | Network unavailable | Connect to the internet to search Beatport |
 
 ### Import Takes Too Long
 
@@ -60,6 +61,41 @@ Common issues and solutions.
 - Check available disk space
 - Close other applications
 - Wait for import to complete
+
+## Network and Reliability
+
+### Retry and Backoff Policy (External Search)
+
+CuePoint uses automatic retries with exponential backoff when searching Beatport or fetching track data. This helps recover from transient network issues.
+
+**Policy**:
+- **Max retries**: 3 attempts (configurable in Settings > Advanced > Reliability)
+- **Backoff**: Delay doubles each retry (0.5s, 1s, 2s...) with random jitter
+- **Retried errors**: Timeouts, connection errors, 5xx server errors, rate limits (429)
+- **Not retried**: 404 (not found), invalid responses
+
+**Timeouts**:
+- Connect: 5 seconds
+- Read: 30 seconds
+- Per-track budget: 60 seconds (configurable)
+
+### Circuit Breaker
+
+After 5 consecutive network failures, processing pauses for 30 seconds. A dialog appears: "Paused due to repeated failures." Click **Retry now** to resume, or wait for the automatic recovery period.
+
+### Network Offline / Limited Connectivity
+
+If you start processing with no internet connection:
+- **Preflight** will warn or block: "Network unavailable - connect to the internet to search Beatport"
+- During processing, status may show "Retrying..." or "Limited connectivity" while the app retries
+- Ensure your network is stable before starting long runs
+
+### Resume After Interruption
+
+If the app crashes or is closed during processing:
+- On next launch, you may see "Resume previous run?"
+- Checkpoints are saved every 50 tracks (configurable)
+- Output files are never left partially corrupted (atomic writes)
 
 ## Processing Issues
 

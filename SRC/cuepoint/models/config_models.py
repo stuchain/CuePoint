@@ -93,6 +93,7 @@ class ProductConfig:
     onboarding_version: Optional[str] = None
     preflight_enabled: bool = True
     preflight_warnings_only: bool = False
+    preflight_network_check: bool = True  # Design 5.2: Block if offline
     last_xml_path: str = ""
     last_output_dir: str = ""
     default_playlist: str = ""
@@ -220,6 +221,7 @@ class AppConfig:
                 "onboarding_version": self.product.onboarding_version,
                 "preflight_enabled": self.product.preflight_enabled,
                 "preflight_warnings_only": self.product.preflight_warnings_only,
+                "preflight_network_check": self.product.preflight_network_check,
                 "last_xml_path": self.product.last_xml_path,
                 "last_output_dir": self.product.last_output_dir,
                 "default_playlist": self.product.default_playlist,
@@ -343,6 +345,9 @@ class AppConfig:
                 ),
                 preflight_warnings_only=product_data.get(
                     "preflight_warnings_only", config.product.preflight_warnings_only
+                ),
+                preflight_network_check=product_data.get(
+                    "preflight_network_check", config.product.preflight_network_check
                 ),
                 last_xml_path=product_data.get("last_xml_path", config.product.last_xml_path),
                 last_output_dir=product_data.get(

@@ -69,6 +69,7 @@ from cuepoint.core.mix_parser import (
     _split_display_names,
 )
 from cuepoint.models.config import BASE_URL, SESSION, SETTINGS
+from cuepoint.utils.http_cache import CacheInvalidation
 from cuepoint.utils.utils import retry_with_backoff, vlog
 
 logger = logging.getLogger(__name__)
@@ -479,46 +480,72 @@ def parse_track_page(
     Note:
         This function uses retry logic with exponential backoff. If parsing fails
         after all retries, returns empty/default values rather than raising exceptions.
+        Design 5.11: Self-healing for stale cache - if empty result from cache, invalidate and retry once.
     """
-    soup = request_html(url)
-    if soup is None:
-        return "", "", None, None, None, None, None, None, None
+    for _stale_retry in range(2):
+        soup = request_html(url)
+        if soup is None:
+            return "", "", None, None, None, None, None, None, None
 
-    info = {}
-    info.update(_parse_structured_json_ld(soup))
-    if not info.get("title") or not info.get("artists"):
-        info.update(_parse_next_data(soup))
+        info = {}
+        info.update(_parse_structured_json_ld(soup))
+        if not info.get("title") or not info.get("artists"):
+            info.update(_parse_next_data(soup))
 
-    title = info.get("title") or ""
-    if not title:
-        title_el = soup.select_one("h1, h2")
-        if title_el:
-            txt = title_el.get_text(" ", strip=True)
-            if txt and len(txt) > 2 and txt.lower() not in {"track", "title"}:
-                title = txt
+        title = info.get("title") or ""
+        if not title:
+            title_el = soup.select_one("h1, h2")
+            if title_el:
+                txt = title_el.get_text(" ", strip=True)
+                if txt and len(txt) > 2 and txt.lower() not in {"track", "title"}:
+                    title = txt
 
-    artists = info.get("artists") or ""
-    if not artists:
-        header = soup.select_one("h1, h2")
-        header = header.parent if header else None
-        for _ in range(3):
-            if header and header.find("a", href=re.compile(r"^/artist/")):
-                break
-            header = header.parent if header else None
-        if header:
-            chips = header.select('a[href^="/artist/"]')[:8]
-            names = [c.get_text(strip=True) for c in chips if c.get_text(strip=True)]
-            if names:
-                artists = ", ".join(dict.fromkeys(names))
+        artists = info.get("artists") or ""
         if not artists:
-            byline = soup.find(string=re.compile(r"^\s*Artists?\s*:\s*$", re.I))
-            if byline and byline.parent:
-                artists = re.sub(
-                    r"Artists?:\s*", "", byline.parent.get_text(" ", strip=True), flags=re.I
-                )
+            header = soup.select_one("h1, h2")
+            header = header.parent if header else None
+            for _ in range(3):
+                if header and header.find("a", href=re.compile(r"^/artist/")):
+                    break
+                header = header.parent if header else None
+            if header:
+                chips = header.select('a[href^="/artist/"]')[:8]
+                names = [c.get_text(strip=True) for c in chips if c.get_text(strip=True)]
+                if names:
+                    artists = ", ".join(dict.fromkeys(names))
+            if not artists:
+                byline = soup.find(string=re.compile(r"^\s*Artists?\s*:\s*$", re.I))
+                if byline and byline.parent:
+                    artists = re.sub(
+                        r"Artists?:\s*", "", byline.parent.get_text(" ", strip=True), flags=re.I
+                    )
 
-    remixers = info.get("remixers") or ""
-    if not remixers:
+        remixers = info.get("remixers") or ""
+        if not remixers:
+
+            def val_after_label(label_regex: str) -> Optional[str]:
+                lbls = soup.find_all(string=re.compile(label_regex, re.I))
+                for lab in lbls:
+                    try:
+                        val = lab.find_parent().find_next_sibling()
+                        if val:
+                            text = val.get_text(" ", strip=True)
+                            if text:
+                                return text
+                    except Exception:
+                        continue
+                return None
+
+            remixers = val_after_label(r"^\s*Remixers?\s*$") or ""
+
+        title_remixers = _extract_remixer_names_from_title(title)
+        if title_remixers:
+            remixers = ", ".join([remixers, ", ".join(title_remixers)]).strip(", ")
+
+        if remixers:
+            a_list = _split_display_names(artists)
+            r_list = _split_display_names(remixers)
+            artists = _merge_name_lists(a_list, r_list) if a_list or r_list else (artists or remixers)
 
         def val_after_label(label_regex: str) -> Optional[str]:
             lbls = soup.find_all(string=re.compile(label_regex, re.I))
@@ -533,86 +560,69 @@ def parse_track_page(
                     continue
             return None
 
-        remixers = val_after_label(r"^\s*Remixers?\s*$") or ""
+        key = info.get("key") or val_after_label(r"^\s*Key\s*$")
+        bpm = info.get("bpm") or val_after_label(r"^\s*BPM\s*$")
+        if bpm:
+            bpm = re.sub(r"[^\d.]+", "", bpm) or bpm
 
-    title_remixers = _extract_remixer_names_from_title(title)
-    if title_remixers:
-        remixers = ", ".join([remixers, ", ".join(title_remixers)]).strip(", ")
-
-    if remixers:
-        a_list = _split_display_names(artists)
-        r_list = _split_display_names(remixers)
-        artists = _merge_name_lists(a_list, r_list) if a_list or r_list else (artists or remixers)
-
-    def val_after_label(label_regex: str) -> Optional[str]:
-        lbls = soup.find_all(string=re.compile(label_regex, re.I))
-        for lab in lbls:
-            try:
-                val = lab.find_parent().find_next_sibling()
-                if val:
-                    text = val.get_text(" ", strip=True)
-                    if text:
-                        return text
-            except Exception:
-                continue
-        return None
-
-    key = info.get("key") or val_after_label(r"^\s*Key\s*$")
-    bpm = info.get("bpm") or val_after_label(r"^\s*BPM\s*$")
-    if bpm:
-        bpm = re.sub(r"[^\d.]+", "", bpm) or bpm
-
-    label = info.get("label")
-    if label is None:
-        for labx in soup.select('a[href^="/label/"]'):
-            label = labx.get_text(strip=True)
-            if label:
-                break
+        label = info.get("label")
         if label is None:
-            label = val_after_label(r"^\s*Label\s*$")
+            for labx in soup.select('a[href^="/label/"]'):
+                label = labx.get_text(strip=True)
+                if label:
+                    break
+            if label is None:
+                label = val_after_label(r"^\s*Label\s*$")
 
-    genres = info.get("genres")
-    if genres is None:
-        genre_links = soup.select('a[href^="/genre/"]')
-        if genre_links:
-            genres = ", ".join(
-                dict.fromkeys(
-                    [g.get_text(strip=True) for g in genre_links if g.get_text(strip=True)]
+        genres = info.get("genres")
+        if genres is None:
+            genre_links = soup.select('a[href^="/genre/"]')
+            if genre_links:
+                genres = ", ".join(
+                    dict.fromkeys(
+                        [g.get_text(strip=True) for g in genre_links if g.get_text(strip=True)]
+                    )
                 )
-            )
-        else:
-            genres = val_after_label(r"^\s*Genres?\s*$")
+            else:
+                genres = val_after_label(r"^\s*Genres?\s*$")
 
-    rel_name = info.get("release_name")
-    if rel_name is None:
-        rel_link = soup.select_one('a[href^="/release/"]')
-        if rel_link:
-            rel_name = rel_link.get_text(strip=True)
-        if not rel_name:
-            rel_name = val_after_label(r"^\s*Release\s*$")
+        rel_name = info.get("release_name")
+        if rel_name is None:
+            rel_link = soup.select_one('a[href^="/release/"]')
+            if rel_link:
+                rel_name = rel_link.get_text(strip=True)
+            if not rel_name:
+                rel_name = val_after_label(r"^\s*Release\s*$")
 
-    date_str = info.get("release_date") or val_after_label(r"(Release Date|Released)")
-    rel_date_iso = None
-    year = None
-    if date_str:
-        try:
-            dt = dateparser.parse(date_str, fuzzy=True)
-            rel_date_iso = dt.date().isoformat() if dt else None
-            year = dt.year if dt else None
-        except Exception:
-            year = None
-    if year is None:
-        meta = soup.find("meta", {"property": "music:release_date"})
-        if meta and meta.get("content"):
+        date_str = info.get("release_date") or val_after_label(r"(Release Date|Released)")
+        rel_date_iso = None
+        year = None
+        if date_str:
             try:
-                ydt = dateparser.parse(meta["content"])
-                year = ydt.year
-                if not rel_date_iso:
-                    rel_date_iso = ydt.date().isoformat()
+                dt = dateparser.parse(date_str, fuzzy=True)
+                rel_date_iso = dt.date().isoformat() if dt else None
+                year = dt.year if dt else None
             except Exception:
-                pass
+                year = None
+        if year is None:
+            meta = soup.find("meta", {"property": "music:release_date"})
+            if meta and meta.get("content"):
+                try:
+                    ydt = dateparser.parse(meta["content"])
+                    year = ydt.year
+                    if not rel_date_iso:
+                        rel_date_iso = ydt.date().isoformat()
+                except Exception:
+                    pass
 
-    return title or "", artists or "", key, year, bpm, label, genres, rel_name, rel_date_iso
+        result = (title or "", artists or "", key, year, bpm, label, genres, rel_name, rel_date_iso)
+        # Design 5.11: Self-healing for stale cache - empty result from cache may indicate Beatport HTML change
+        if (not result[0] and not result[1]) and get_last_cache_hit() and _stale_retry == 0:
+            if CacheInvalidation.invalidate_url(url):
+                continue  # Retry fetch (cache miss will return fresh data)
+        return result
+
+    return "", "", None, None, None, None, None, None, None
 
 
 def track_urls(
