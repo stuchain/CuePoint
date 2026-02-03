@@ -60,6 +60,7 @@ from cuepoint.ui.controllers.export_controller import ExportController
 from cuepoint.ui.controllers.main_controller import GUIController
 from cuepoint.ui.controllers.results_controller import ResultsController
 from cuepoint.ui.gui_interface import ErrorType, ProcessingError, ProgressInfo, ReliabilityState
+from cuepoint.ui.strings import EmptyState
 from cuepoint.ui.widgets.batch_processor import BatchProcessorWidget
 from cuepoint.ui.widgets.config_panel import ConfigPanel
 from cuepoint.ui.widgets.dialogs import AboutDialog, ErrorDialog, UserGuideDialog
@@ -465,15 +466,12 @@ class MainWindow(QMainWindow):
         hint_layout.setSpacing(10)
         hint_layout.setAlignment(Qt.AlignCenter)
 
-        hint_title = QLabel("Get started by selecting your Collection XML")
+        hint_title = QLabel(EmptyState.GET_STARTED_TITLE)
         hint_title.setAlignment(Qt.AlignCenter)
         hint_title.setStyleSheet("font-size: 14px; font-weight: bold;")
         hint_layout.addWidget(hint_title)
 
-        hint_body = QLabel(
-            "Export your Rekordbox collection as XML, then select it here.\n"
-            "After loading, choose Single or Batch mode to continue."
-        )
+        hint_body = QLabel(EmptyState.GET_STARTED_BODY)
         hint_body.setAlignment(Qt.AlignCenter)
         hint_body.setWordWrap(True)
         hint_body.setStyleSheet("font-size: 12px; color: #ccc;")
@@ -482,12 +480,13 @@ class MainWindow(QMainWindow):
         hint_buttons = QHBoxLayout()
         hint_buttons.addStretch(1)
 
-        browse_hint_btn = QPushButton("Browse for XML…")
+        browse_hint_btn = QPushButton(EmptyState.BROWSE_FOR_XML)
         browse_hint_btn.setObjectName("secondaryActionButton")
         browse_hint_btn.clicked.connect(self.on_file_open)
+        browse_hint_btn.setAccessibleName(EmptyState.NO_XML_ACTION)
         hint_buttons.addWidget(browse_hint_btn)
 
-        instructions_hint_btn = QPushButton("View instructions…")
+        instructions_hint_btn = QPushButton(EmptyState.VIEW_INSTRUCTIONS)
         instructions_hint_btn.setObjectName("secondaryActionButton")
         instructions_hint_btn.clicked.connect(self.file_selector.show_instructions)
         hint_buttons.addWidget(instructions_hint_btn)
@@ -530,7 +529,7 @@ class MainWindow(QMainWindow):
         self.start_button.setAccessibleName("Start processing button")
         self.start_button.setAccessibleDescription("Start processing the selected playlist(s)")
         self.start_button.clicked.connect(self.start_processing)
-        self.start_button.setEnabled(False)
+        self._set_start_enabled(False)
         start_layout.addWidget(self.start_button)
         start_layout.addStretch()
         self.start_button_container.setVisible(False)
@@ -842,6 +841,13 @@ class MainWindow(QMainWindow):
         if hasattr(self, 'controller') and self.controller.is_processing():
             self.on_cancel_requested()
 
+    def _set_start_enabled(self, enabled: bool) -> None:
+        """Enable/disable Start button and menu action (Step 8: keyboard accessibility)."""
+        if hasattr(self, "start_button"):
+            self.start_button.setEnabled(enabled)
+        if hasattr(self, "start_action"):
+            self.start_action.setEnabled(enabled)
+
     def on_shortcut_conflict(self, action_id1: str, action_id2: str) -> None:
         """Handle keyboard shortcut conflicts.
 
@@ -962,12 +968,20 @@ class MainWindow(QMainWindow):
         # File Menu
         file_menu = menubar.addMenu("&File")
 
-        # Open XML File
+        # Open XML File (Step 8: shortcuts in menus - Design 8.14)
         open_action = QAction("&Open XML File...", self)
         open_action.setShortcut(QKeySequence.Open)
         open_action.setToolTip("Open XML file (Ctrl+O)")
         open_action.triggered.connect(self.on_file_open)
         file_menu.addAction(open_action)
+
+        # Start Processing (Step 8: keyboard-accessible - Design 8.61)
+        self.start_action = QAction("&Start Processing", self)
+        self.start_action.setShortcut(QKeySequence("F5"))
+        self.start_action.setToolTip("Start processing (F5)")
+        self.start_action.triggered.connect(self._on_enter_start)
+        self.start_action.setEnabled(False)
+        file_menu.addAction(self.start_action)
 
         file_menu.addSeparator()
 
@@ -1218,7 +1232,7 @@ class MainWindow(QMainWindow):
                 # Hide mode/playlist on error
                 self._hide_mode_playlist_boxes()
                 self.start_button_container.setVisible(False)
-                self.start_button.setEnabled(False)
+                self._set_start_enabled(False)
         else:
             self.statusBar().showMessage(f"Invalid file: {file_path}")
             # Clear playlist selector if file is invalid
@@ -1227,7 +1241,7 @@ class MainWindow(QMainWindow):
             # Hide mode/playlist for invalid file
             self._hide_mode_playlist_boxes()
             self.start_button_container.setVisible(False)
-            self.start_button.setEnabled(False)
+            self._set_start_enabled(False)
 
         self._update_empty_state_hint()
 
@@ -1277,7 +1291,7 @@ class MainWindow(QMainWindow):
         else:
             # Single mode - button will be enabled when playlist is selected
             # (handled in on_playlist_selected)
-            self.start_button.setEnabled(False)  # Disable until playlist is selected
+            self._set_start_enabled(False)  # Disable until playlist is selected
 
         # Update batch processor with playlists if file is already loaded
         if is_batch_mode and hasattr(self.playlist_selector, "playlists"):
@@ -2854,7 +2868,7 @@ class MainWindow(QMainWindow):
         self.results_group.setVisible(True)
 
         # Re-enable start button
-        self.start_button.setEnabled(True)
+        self._set_start_enabled(True)
 
         # Disable cancel and pause buttons
         self.cancel_button.setEnabled(False)
@@ -2905,8 +2919,11 @@ class MainWindow(QMainWindow):
             # Create base filename (write_csv_files will add timestamp)
             base_filename = f"{safe_playlist_name}.csv"
 
-            # Use the single, consistent output directory
-            output_dir = get_output_directory()
+            # Use the single, consistent output directory (Step 8: autosave last-used)
+            last_out = ""
+            if self._config_service:
+                last_out = self._config_service.get("product.last_output_dir", "") or ""
+            output_dir = get_output_directory(last_out if last_out else None)
             if self._config_service:
                 try:
                     self._config_service.set("product.last_output_dir", output_dir)
@@ -2977,12 +2994,12 @@ class MainWindow(QMainWindow):
                 except Exception:
                     pass
             # ENABLE START BUTTON when playlist is selected (progressive disclosure)
-            self.start_button.setEnabled(True)
+            self._set_start_enabled(True)
             # Ensure start button container is visible
             self.start_button_container.setVisible(True)
         else:
             # DISABLE START BUTTON if no playlist selected
-            self.start_button.setEnabled(False)
+            self._set_start_enabled(False)
 
     def start_processing(self) -> None:
         """Start processing the selected playlist.
@@ -3020,7 +3037,7 @@ class MainWindow(QMainWindow):
         self.results_group.setVisible(False)
 
         # Disable start button during processing
-        self.start_button.setEnabled(False)
+        self._set_start_enabled(False)
 
         # Enable cancel and pause buttons (Design 5.12)
         self.cancel_button.setEnabled(True)
@@ -3108,7 +3125,10 @@ class MainWindow(QMainWindow):
             from cuepoint.ui.dialogs.preflight_dialog import PreflightDialog
             from cuepoint.utils.di_container import get_container
 
-            output_dir = get_output_directory()
+            last_out = ""
+            if self._config_service:
+                last_out = self._config_service.get("product.last_output_dir", "") or ""
+            output_dir = get_output_directory(last_out if last_out else None)
             container = get_container()
             processor_service: IProcessorService = container.resolve(IProcessorService)  # type: ignore[type-abstract]
             if self._config_service:
@@ -3239,7 +3259,7 @@ class MainWindow(QMainWindow):
             # Re-enable start button
             if hasattr(self, 'start_button') and self.start_button:
                 try:
-                    self.start_button.setEnabled(True)
+                    self._set_start_enabled(True)
                 except RuntimeError:
                     # Widget might have been deleted
                     pass
@@ -3332,6 +3352,14 @@ class MainWindow(QMainWindow):
             if hasattr(self, 'status_progress'):
                 self.status_progress.setVisible(False)
 
+        # Step 8: Process events so Cancel button stays responsive (Design 8.4)
+        if progress_info.completed_tracks % 5 == 0 or progress_info.completed_tracks <= 1:
+            try:
+                from PySide6.QtWidgets import QApplication
+                QApplication.processEvents()
+            except Exception:
+                pass
+
         # Update status bar message
         if progress_info.current_track:
             title = progress_info.current_track.get("title", "Unknown")
@@ -3404,7 +3432,7 @@ class MainWindow(QMainWindow):
         self.tabs.setCurrentIndex(0)
 
         # Re-enable start button
-        self.start_button.setEnabled(True)
+        self._set_start_enabled(True)
 
         # Disable cancel and pause buttons
         self.cancel_button.setEnabled(False)
@@ -3471,8 +3499,12 @@ class MainWindow(QMainWindow):
                 ):
                     json_path = self._config_service.get("run_summary.json_path", "")
                     if not json_path:
+                        last_out = ""
+                        if self._config_service:
+                            last_out = self._config_service.get("product.last_output_dir", "") or ""
                         json_path = os.path.join(
-                            get_output_directory(), f"run_summary_{summary.run_id}.json"
+                            get_output_directory(last_out if last_out else None),
+                            f"run_summary_{summary.run_id}.json",
                         )
                     try:
                         import json
@@ -3650,7 +3682,7 @@ class MainWindow(QMainWindow):
         self.progress_group.setVisible(False)
 
         # Re-enable start button
-        self.start_button.setEnabled(True)
+        self._set_start_enabled(True)
 
         # Disable cancel and pause buttons
         self.cancel_button.setEnabled(False)
@@ -3782,19 +3814,12 @@ class MainWindow(QMainWindow):
                     is_packaged = getattr(sys, "frozen", False)
                     if is_packaged:
                         # In packaged app, only restore if file is in user-accessible location
-                        # Don't restore paths from development directories
+                        # Don't restore paths from development directories (Step 8 fix)
                         from pathlib import Path
                         xml_path = Path(last_xml)
-                        # Check if path is in a typical user location (not in temp or dev directories)
                         user_home = Path.home()
-                        # Allow paths in user's home directory, Documents, Downloads, Desktop, etc.
-                        if not (str(xml_path).startswith(str(user_home)) or 
-                                "AppData" in str(xml_path) or 
-                                "Documents" in str(xml_path) or
-                                "Downloads" in str(xml_path) or
-                                "Desktop" in str(xml_path)):
-                            # Skip restoring development/test paths in packaged app
-                            last_xml = None
+                        if not str(xml_path.resolve()).startswith(str(user_home.resolve())):
+                            last_xml = None  # Skip dev/test paths outside user home
                     
                     if last_xml:
                         # Load XML file
@@ -3838,14 +3863,4 @@ class MainWindow(QMainWindow):
         if hasattr(self, "tabs"):
             last_tab = settings.value("last_tab", 0, type=int)
             if 0 <= last_tab < self.tabs.count():
-                self.tabs.setCurrentIndex(last_tab)
-            if 0 <= last_tab < self.tabs.count():
-                self.tabs.setCurrentIndex(last_tab)
-        # Restore last tab
-        if hasattr(self, "tabs"):
-            last_tab = settings.value("last_tab", 0, type=int)
-            if 0 <= last_tab < self.tabs.count():
-                self.tabs.setCurrentIndex(last_tab)
-            if 0 <= last_tab < self.tabs.count():
-                self.tabs.setCurrentIndex(last_tab)
                 self.tabs.setCurrentIndex(last_tab)

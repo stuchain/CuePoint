@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 from cuepoint.ui.dialogs.rekordbox_instructions_dialog import RekordboxInstructionsDialog
+from cuepoint.ui.strings import ButtonCopy, EmptyState, TooltipCopy
 from cuepoint.ui.widgets.styles import is_macos
 
 
@@ -43,17 +44,14 @@ class FileSelector(QWidget):
 
         self.path_edit = QLineEdit()
         self.path_edit.setReadOnly(True)
-        self.path_edit.setPlaceholderText("No file selected")
+        self.path_edit.setPlaceholderText(EmptyState.NO_XML_TITLE)
         self.path_edit.setStyleSheet("font-size: 11px;")
         self.path_edit.setAccessibleName("Collection XML path")
         self.path_edit.setAccessibleDescription("Shows the selected Rekordbox collection XML file path")
         self.path_edit.setFocusPolicy(Qt.StrongFocus)
 
-        self.browse_btn = QPushButton("Browse...")
-        self.browse_btn.setToolTip(
-            "Browse for Rekordbox Collection XML file.\n"
-            "Export from Rekordbox: File → Export Collection"
-        )
+        self.browse_btn = QPushButton(ButtonCopy.BROWSE)
+        self.browse_btn.setToolTip(TooltipCopy.XML_PATH)
         self.browse_btn.clicked.connect(self.browse_file)
         self.browse_btn.setObjectName("secondaryActionButton")
         self.browse_btn.setAccessibleName("Browse for XML file button")
@@ -63,7 +61,7 @@ class FileSelector(QWidget):
         # Info button
         self.info_btn = QToolButton()
         self.info_btn.setText("ℹ")
-        self.info_btn.setToolTip("How to export XML from Rekordbox")
+        self.info_btn.setToolTip(EmptyState.VIEW_INSTRUCTIONS)
         self.info_btn.setAccessibleName("Rekordbox export instructions button")
         self.info_btn.setAccessibleDescription("Opens instructions for exporting an XML file from Rekordbox")
         self.info_btn.setFocusPolicy(Qt.StrongFocus)
@@ -72,6 +70,10 @@ class FileSelector(QWidget):
         layout.addWidget(self.path_edit, 1)
         layout.addWidget(self.browse_btn)
         layout.addWidget(self.info_btn)
+
+        # Step 8: Aliases for focus manager tab order (main_window expects path_input, browse_button)
+        self.path_input = self.path_edit
+        self.browse_button = self.browse_btn
 
         # Drag & drop area - hidden but still functional
         self.drop_label = QLabel("")

@@ -134,9 +134,10 @@ if "--test-search-dependencies" in sys.argv:
             
             sys.exit(1)
 
+from PySide6.QtGui import QIcon
+
 # Import Qt widgets early (needed for icon function and main)
 from PySide6.QtWidgets import QApplication, QMessageBox
-from PySide6.QtGui import QIcon
 
 # Add src to path if needed (for imports)
 if __name__ == "__main__":
@@ -237,6 +238,16 @@ def main():
         # Bootstrap services (dependency injection setup)
         bootstrap_services()
         
+        # Step 8: High-DPI scaling (Design 8.129) - enable before QApplication
+        try:
+            from PySide6.QtCore import Qt
+
+            # Qt 6 uses high-DPI scaling by default; ensure pixmaps scale on mixed-DPI displays
+            if hasattr(Qt, "AA_UseHighDpiPixmaps"):
+                QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
+        except Exception:
+            pass
+
         # Create QApplication (needed for message boxes)
         app = QApplication(sys.argv)
         # Set organization and application name BEFORE creating any QSettings
@@ -304,6 +315,7 @@ def main():
         from cuepoint.utils.platform import apply_windows_dark_title_bar, is_windows
         if is_windows():
             from PySide6.QtCore import QTimer
+
             # Apply immediately
             apply_windows_dark_title_bar(window)
             # Also apply after a short delay to ensure it sticks
@@ -320,8 +332,9 @@ def main():
         # Always import here to avoid scoping issues
         try:
             # Import fresh to avoid any scoping issues
-            from PySide6.QtWidgets import QApplication as QtApp, QMessageBox
-            
+            from PySide6.QtWidgets import QApplication as QtApp
+            from PySide6.QtWidgets import QMessageBox
+
             # Check if QApplication instance already exists
             existing_app = QtApp.instance()
             if existing_app:
@@ -338,6 +351,10 @@ def main():
             traceback.print_exc()
         
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
 
 
 if __name__ == "__main__":

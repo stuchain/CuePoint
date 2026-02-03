@@ -7,12 +7,12 @@ Playlist Selector Module - Playlist dropdown widget
 This module contains the PlaylistSelector class for selecting playlists from XML.
 """
 
-from PySide6.QtCore import Signal
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QWidget
 
 from cuepoint.data.rekordbox import parse_rekordbox
 from cuepoint.models.playlist import Playlist
+from cuepoint.ui.strings import EmptyState, TooltipCopy
 
 
 class PlaylistSelector(QWidget):
@@ -33,12 +33,8 @@ class PlaylistSelector(QWidget):
 
         self.combo = QComboBox()
         self.combo.setEnabled(False)
-        self.combo.setPlaceholderText("Select playlist...")
-        self.combo.setToolTip(
-            "Select playlist to process.\n"
-            "Single mode: Process one playlist.\n"
-            "Batch mode: Process multiple playlists."
-        )
+        self.combo.setPlaceholderText(EmptyState.NO_PLAYLIST_TITLE)
+        self.combo.setToolTip(TooltipCopy.PLAYLIST)
         self.combo.setAccessibleName("Playlist selector")
         self.combo.setAccessibleDescription("Select a playlist from the loaded Rekordbox collection XML")
         self.combo.setFocusPolicy(Qt.StrongFocus)
@@ -58,21 +54,21 @@ class PlaylistSelector(QWidget):
                 playlist_names = sorted(self.playlists.keys())
                 self.combo.addItems(playlist_names)
                 self.combo.setEnabled(True)
-                self.combo.setPlaceholderText("")
+                self.combo.setPlaceholderText("")  # Has selection
             else:
                 self.combo.setEnabled(False)
-                self.combo.setPlaceholderText("No playlists found in XML")
+                self.combo.setPlaceholderText(EmptyState.NO_PLAYLISTS_IN_XML)
 
         except FileNotFoundError:
             self.combo.clear()
             self.combo.setEnabled(False)
-            self.combo.setPlaceholderText("XML file not found")
+            self.combo.setPlaceholderText(EmptyState.XML_NOT_FOUND)
             raise
         except Exception:
             # Error handling will be done by parent
             self.combo.clear()
             self.combo.setEnabled(False)
-            self.combo.setPlaceholderText("Error loading XML")
+            self.combo.setPlaceholderText(EmptyState.ERROR_LOADING_XML)
             raise
 
     def on_selection_changed(self, playlist_name: str):
@@ -84,6 +80,14 @@ class PlaylistSelector(QWidget):
         """Get currently selected playlist"""
         return self.combo.currentText()
 
+    def set_selected_playlist(self, playlist_name: str) -> None:
+        """Set the selected playlist by name (Step 8 - autosave restore)."""
+        if not playlist_name or playlist_name not in self.playlists:
+            return
+        idx = self.combo.findText(playlist_name)
+        if idx >= 0:
+            self.combo.setCurrentIndex(idx)
+
     def get_playlist_track_count(self, playlist_name: str) -> int:
         """Get track count for playlist"""
         if playlist_name in self.playlists:
@@ -94,5 +98,5 @@ class PlaylistSelector(QWidget):
         """Clear playlist selection"""
         self.combo.clear()
         self.combo.setEnabled(False)
-        self.combo.setPlaceholderText("No XML file loaded")
+        self.combo.setPlaceholderText(EmptyState.NO_XML_LOADED)
         self.playlists = {}

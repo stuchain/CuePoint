@@ -128,21 +128,21 @@
  
  ## 8) UX and Accessibility
  
- - [ ] Validate UI layouts across common display scaling settings.
- - [ ] Provide consistent, actionable error messages in the GUI.
- - [ ] Add accessibility checks (contrast, keyboard navigation, focus order).
- - [ ] Ensure progress indicators and cancellation are responsive.
- - [ ] Make “Review” workflow clearer with guided next steps.
-- [ ] Add clear success criteria at the end of a run (what to do next).
-- [ ] Add an autosave of last-used input and output paths.
-- [ ] Add contextual help tooltips for advanced settings.
-- [ ] Add a “preview outputs” step before writing files.
-- [ ] Add undo/rollback guidance for applying changes to Rekordbox.
-- [ ] Add language/localization readiness (strings externalized).
-- [ ] Add consistent keyboard shortcuts and menu labels.
-- [ ] Add theme tokens for consistent colors, spacing, and typography.
-- [ ] Add defined interaction states (hover, focus, disabled) for controls.
-- [ ] Add clear empty states (no XML, no playlist, no results).
+ - [x] Validate UI layouts across common display scaling settings.
+ - [x] Provide consistent, actionable error messages in the GUI.
+ - [x] Add accessibility checks (contrast, keyboard navigation, focus order).
+ - [x] Ensure progress indicators and cancellation are responsive.
+ - [x] Make “Review” workflow clearer with guided next steps.
+- [x] Add clear success criteria at the end of a run (what to do next).
+- [x] Add an autosave of last-used input and output paths.
+- [x] Add contextual help tooltips for advanced settings.
+- [x] Add a “preview outputs” step before writing files.
+- [x] Add undo/rollback guidance for applying changes to Rekordbox.
+- [x] Add language/localization readiness (strings externalized).
+- [x] Add consistent keyboard shortcuts and menu labels.
+- [x] Add theme tokens for consistent colors, spacing, and typography.
+- [x] Add defined interaction states (hover, focus, disabled) for controls.
+- [x] Add clear empty states (no XML, no playlist, no results).
  
  ## 9) Data Integrity and Auditability
  

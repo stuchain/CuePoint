@@ -15,6 +15,7 @@ from typing import Optional
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
+    QApplication,
     QDialog,
     QHBoxLayout,
     QLabel,
@@ -23,10 +24,10 @@ from PySide6.QtWidgets import (
     QPushButton,
     QVBoxLayout,
     QWidget,
-    QApplication,
 )
 
 from cuepoint.models.run_summary import RunSummary
+from cuepoint.ui.strings import SuccessCopy
 
 
 class RunSummaryDialog(QDialog):
@@ -40,13 +41,13 @@ class RunSummaryDialog(QDialog):
     def _setup_ui(self) -> None:
         self.setWindowTitle("Run Summary")
         self.setModal(True)
-        self.resize(520, 420)
+        self.resize(520, 480)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 16)
         layout.setSpacing(10)
 
-        title = QLabel("Run summary")
+        title = QLabel(SuccessCopy.RUN_SUMMARY_TITLE)
         title.setStyleSheet("font-size: 18px; font-weight: bold;")
         layout.addWidget(title)
 
@@ -78,28 +79,48 @@ class RunSummaryDialog(QDialog):
                 QListWidgetItem(path, outputs_list)
             layout.addWidget(outputs_list)
 
-        next_steps = QLabel(
-            "Next steps: review low-confidence matches and export outputs if needed."
-        )
-        next_steps.setWordWrap(True)
-        next_steps.setStyleSheet("color: #ccc;")
-        layout.addWidget(next_steps)
+        # Step 8: Clear success criteria and what to do next (Design 8.74-8.75)
+        what_next = QLabel(SuccessCopy.WHAT_TO_DO_NEXT)
+        what_next.setStyleSheet("font-weight: bold; font-size: 13px; margin-top: 8px;")
+        layout.addWidget(what_next)
+
+        step1 = QLabel(SuccessCopy.STEP_REVIEW)
+        step1.setWordWrap(True)
+        step1.setStyleSheet("color: #ccc; font-size: 12px; margin-left: 8px;")
+        layout.addWidget(step1)
+
+        step2 = QLabel(SuccessCopy.STEP_EXPORT)
+        step2.setWordWrap(True)
+        step2.setStyleSheet("color: #ccc; font-size: 12px; margin-left: 8px;")
+        layout.addWidget(step2)
+
+        step3 = QLabel(SuccessCopy.STEP_REKORDBOX)
+        step3.setWordWrap(True)
+        step3.setStyleSheet("color: #ccc; font-size: 12px; margin-left: 8px;")
+        layout.addWidget(step3)
+
+        step4 = QLabel(SuccessCopy.STEP_UNDO_GUIDANCE)
+        step4.setWordWrap(True)
+        step4.setStyleSheet("color: #888; font-size: 11px; margin-left: 8px; font-style: italic;")
+        layout.addWidget(step4)
 
         layout.addStretch(1)
 
         button_row = QHBoxLayout()
-        open_folder = QPushButton("Open output folder")
+        open_folder = QPushButton(SuccessCopy.OPEN_OUTPUT_FOLDER)
         open_folder.clicked.connect(self._open_output_folder)
+        open_folder.setAccessibleName(SuccessCopy.OPEN_OUTPUT_FOLDER)
         button_row.addWidget(open_folder)
 
-        copy_summary = QPushButton("Copy summary")
+        copy_summary = QPushButton(SuccessCopy.COPY_SUMMARY)
         copy_summary.setObjectName("secondaryActionButton")
         copy_summary.clicked.connect(self._copy_summary)
+        copy_summary.setAccessibleName(SuccessCopy.COPY_SUMMARY)
         button_row.addWidget(copy_summary)
 
         button_row.addStretch(1)
 
-        close_button = QPushButton("Close")
+        close_button = QPushButton(SuccessCopy.CLOSE)
         close_button.setDefault(True)
         close_button.clicked.connect(self.accept)
         button_row.addWidget(close_button)

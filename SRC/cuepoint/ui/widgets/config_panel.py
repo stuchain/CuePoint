@@ -224,38 +224,60 @@ class ConfigPanel(QWidget):
         advanced_layout.addLayout(results_layout)
 
         # Design 5.26: Reliability (retry, timeout, checkpoint, resume)
+        # Step 8: Contextual help tooltips for all advanced settings (Design 8.8)
         reliability_group = QGroupBox("Reliability & Recovery")
         reliability_layout = QVBoxLayout()
-        # Checkpoint every N tracks
         ckpt_layout = QHBoxLayout()
         ckpt_label = QLabel("Checkpoint every (tracks):")
         ckpt_label.setToolTip("Save progress every N tracks for resume after crash")
+        ckpt_help = self._create_help_button(
+            "Checkpoint",
+            "Save progress every N tracks so you can resume after a crash or interruption.\n\n"
+            "Lower values = more frequent saves, slightly slower.\n"
+            "Higher values = fewer saves, faster processing.",
+        )
         self.checkpoint_every_spin = QSpinBox()
         self.checkpoint_every_spin.setMinimum(10)
         self.checkpoint_every_spin.setMaximum(500)
         self.checkpoint_every_spin.setValue(50)
         self.checkpoint_every_spin.setToolTip("Lower = more frequent saves, slightly slower")
         ckpt_layout.addWidget(ckpt_label)
+        ckpt_layout.addWidget(ckpt_help)
         ckpt_layout.addWidget(self.checkpoint_every_spin)
         ckpt_layout.addStretch()
         reliability_layout.addLayout(ckpt_layout)
-        # Max retries
         retry_layout = QHBoxLayout()
         retry_label = QLabel("Max network retries:")
         retry_label.setToolTip("Number of retries per request on transient errors")
+        retry_help = self._create_help_button(
+            "Network Retries",
+            "Number of times to retry each network request if it fails.\n\n"
+            "Useful when Beatport is slow or temporarily unavailable.\n"
+            "Higher = more resilient but slower on persistent failures.",
+        )
         self.max_retries_spin = QSpinBox()
         self.max_retries_spin.setMinimum(0)
         self.max_retries_spin.setMaximum(10)
         self.max_retries_spin.setValue(3)
         retry_layout.addWidget(retry_label)
+        retry_layout.addWidget(retry_help)
         retry_layout.addWidget(self.max_retries_spin)
         retry_layout.addStretch()
         reliability_layout.addLayout(retry_layout)
-        # Resume enabled
+        resume_layout = QHBoxLayout()
         self.resume_enabled_check = QCheckBox("Enable resume from checkpoint")
         self.resume_enabled_check.setChecked(True)
         self.resume_enabled_check.setToolTip("Offer to resume after crash or interruption")
-        reliability_layout.addWidget(self.resume_enabled_check)
+        resume_help = self._create_help_button(
+            "Resume from Checkpoint",
+            "When enabled, CuePoint will offer to resume from the last checkpoint if processing was interrupted.\n\n"
+            "Checkpoints are saved every N tracks (see above).\n"
+            "Disable if you prefer to always start fresh.",
+        )
+        resume_layout.addWidget(self.resume_enabled_check)
+        resume_layout.addWidget(resume_help)
+        resume_layout.addStretch()
+        reliability_layout.addLayout(resume_layout)
         reliability_group.setLayout(reliability_layout)
         advanced_layout.addWidget(reliability_group)
 
@@ -318,8 +340,6 @@ class ConfigPanel(QWidget):
             help_text,
             QMessageBox.Ok
         )
-
-        layout.addStretch()
 
     def load_defaults(self):
         """Load default settings from config.py SETTINGS"""

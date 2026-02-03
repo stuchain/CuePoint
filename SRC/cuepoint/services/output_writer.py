@@ -162,6 +162,49 @@ def write_csv_files(
     return output_files
 
 
+def preview_csv_output_paths(
+    base_filename: str,
+    output_dir: str = "output",
+    delimiter: str = ",",
+    results: Optional[List[TrackResult]] = None,
+    file_timestamp: Optional[str] = None,
+) -> Dict[str, str]:
+    """
+    Preview output file paths without writing (Step 8 - Design 8.9).
+
+    Returns the same structure as write_csv_files but with paths only.
+    Used for "preview outputs" step before writing.
+    """
+    output_dir = os.path.abspath(output_dir)
+    ext_map = {",": ".csv", ";": ".csv", "\t": ".tsv", "|": ".psv"}
+    extension = ext_map.get(delimiter, ".csv")
+
+    if file_timestamp:
+        base_no_ext = base_filename
+        if base_no_ext.endswith((".csv", ".tsv", ".psv")):
+            base_no_ext = os.path.splitext(base_no_ext)[0]
+        timestamped = f"{base_no_ext}_{file_timestamp}"
+    else:
+        timestamped = with_timestamp(base_filename)
+    if timestamped.endswith((".csv", ".tsv", ".psv")):
+        timestamped = os.path.splitext(timestamped)[0]
+    timestamped = timestamped + extension
+
+    paths = {}
+    paths["main"] = os.path.join(output_dir, timestamped)
+    paths["candidates"] = os.path.join(
+        output_dir, timestamped.replace(extension, f"_candidates{extension}")
+    )
+    paths["queries"] = os.path.join(
+        output_dir, timestamped.replace(extension, f"_queries{extension}")
+    )
+    if results and _get_review_indices(results):
+        paths["review"] = os.path.join(
+            output_dir, timestamped.replace(extension, f"_review{extension}")
+        )
+    return paths
+
+
 def write_main_csv(
     results: List[TrackResult],
     base_filename: str,

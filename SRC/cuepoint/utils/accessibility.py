@@ -2,9 +2,10 @@
 # -*- coding: utf-8 -*-
 
 """
-Accessibility Utilities (Step 9.2)
+Accessibility Utilities (Step 8, 9.2)
 
 Contrast validation, size validation, and WCAG compliance checking.
+Design 8.17-8.18: WCAG AA minimum contrast, automated color checks.
 """
 
 import colorsys
@@ -108,15 +109,17 @@ def check_contrast(
 
 
 class ContrastValidator:
-    """Validates contrast for all color combinations."""
+    """Validates contrast for all color combinations (Step 8 WCAG AA)."""
 
-    def __init__(self, theme_tokens):
+    def __init__(self, color_tokens):
         """Initialize contrast validator.
 
         Args:
-            theme_tokens: Theme tokens object (ColorTokens).
+            color_tokens: ColorTokens instance (from theme_tokens) or object
+                with text_primary, background, surface, text_secondary,
+                text_disabled, focus_ring attributes.
         """
-        self.theme = theme_tokens
+        self.colors = color_tokens
         self.violations: List[Dict] = []
 
     def validate_all(self) -> List[Dict]:
@@ -126,11 +129,12 @@ class ContrastValidator:
             List of contrast violations (empty if all pass).
         """
         violations = []
+        c = self.colors
 
         # Text on background
         meets, ratio = check_contrast(
-            self.theme.colors.text_primary,
-            self.theme.colors.background,
+            c.text_primary,
+            c.background,
             "AA",
             "normal",
         )
@@ -140,15 +144,15 @@ class ContrastValidator:
                     "type": "text_primary_on_background",
                     "ratio": ratio,
                     "required": 4.5,
-                    "foreground": self.theme.colors.text_primary,
-                    "background": self.theme.colors.background,
+                    "foreground": c.text_primary,
+                    "background": c.background,
                 }
             )
 
         # Text on surface
         meets, ratio = check_contrast(
-            self.theme.colors.text_primary,
-            self.theme.colors.surface,
+            c.text_primary,
+            c.surface,
             "AA",
             "normal",
         )
@@ -158,15 +162,15 @@ class ContrastValidator:
                     "type": "text_primary_on_surface",
                     "ratio": ratio,
                     "required": 4.5,
-                    "foreground": self.theme.colors.text_primary,
-                    "background": self.theme.colors.surface,
+                    "foreground": c.text_primary,
+                    "background": c.surface,
                 }
             )
 
         # Secondary text
         meets, ratio = check_contrast(
-            self.theme.colors.text_secondary,
-            self.theme.colors.background,
+            c.text_secondary,
+            c.background,
             "AA",
             "normal",
         )
@@ -176,15 +180,15 @@ class ContrastValidator:
                     "type": "text_secondary_on_background",
                     "ratio": ratio,
                     "required": 4.5,
-                    "foreground": self.theme.colors.text_secondary,
-                    "background": self.theme.colors.background,
+                    "foreground": c.text_secondary,
+                    "background": c.background,
                 }
             )
 
         # Disabled text (must still be readable)
         meets, ratio = check_contrast(
-            self.theme.colors.text_disabled,
-            self.theme.colors.background,
+            c.text_disabled,
+            c.background,
             "AA",
             "normal",
         )
@@ -198,12 +202,13 @@ class ContrastValidator:
                 }
             )
 
-        # Focus ring
+        # Focus ring (UI components need 3:1 per WCAG)
+        focus_color = c.focus_ring if c.focus_ring.startswith("#") else c.primary
         meets, ratio = check_contrast(
-            self.theme.colors.focus_ring,
-            self.theme.colors.background,
+            focus_color,
+            c.background,
             "AA",
-            "normal",
+            "large",  # UI components need 3:1
         )
         if not meets:
             violations.append(

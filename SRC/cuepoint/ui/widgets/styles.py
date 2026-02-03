@@ -2,17 +2,19 @@
 # -*- coding: utf-8 -*-
 
 """
-Styles Module - Platform-specific themes and styling
+Styles Module - Platform-specific themes and styling (Step 8)
 
 This module provides centralized styling with platform-specific overrides.
+Uses theme_tokens for consistent colors, spacing, and typography (Design 8.8).
+
 Use get_stylesheet() to get the appropriate styles for the current platform.
 
 Usage:
     from cuepoint.ui.widgets.styles import get_stylesheet, is_macos, Colors
-    
+
     # Apply to entire app:
     app.setStyleSheet(get_stylesheet())
-    
+
     # Or check platform for specific widgets:
     if is_macos():
         widget.setStyleSheet("background: #1e1e1e;")
@@ -20,6 +22,9 @@ Usage:
 
 import sys
 from typing import Dict
+
+# Step 8: theme_tokens provides ColorTokens, SpacingTokens, RadiusTokens, SizeTokens
+# for programmatic access. Styles use compatible values for stylesheet generation.
 
 
 def is_macos() -> bool:
@@ -87,31 +92,33 @@ class Colors:
 
 
 class ThemeTokens:
-    """Theme tokens (single source of truth).
+    """Theme tokens (single source of truth) - aligned with theme_tokens (Step 8).
 
     These tokens are used by the global stylesheet and any widget-level styling
-    helpers. Keep values small and consistent to avoid a fragmented UI.
+    helpers. Values align with theme_tokens module for consistency.
     """
 
-    # Spacing scale (px)
+    # Spacing scale (px) - aligns with SpacingTokens
     SPACING_4 = 4
     SPACING_6 = 6
     SPACING_8 = 8
     SPACING_10 = 10
     SPACING_12 = 12
 
-    # Radius scale (px)
+    # Radius scale (px) - from theme_tokens
     RADIUS_4 = 4
     RADIUS_6 = 6
     RADIUS_8 = 8
 
-    # Control sizing (px) - aligns with Step 9 target sizes
+    # Control sizing (px) - from theme_tokens SizeTokens
     CONTROL_HEIGHT_SM = 24
     CONTROL_HEIGHT_MD = 28
     CONTROL_HEIGHT_LG = 36
 
-    # Focus ring color (semi-transparent)
-    FOCUS_RING = "rgba(0, 122, 255, 0.65)" if is_macos() else "rgba(0, 120, 212, 0.65)"
+    # Focus ring color - from theme_tokens ColorTokens
+    FOCUS_RING = (
+        "rgba(0, 122, 255, 0.65)" if is_macos() else "rgba(0, 120, 212, 0.65)"
+    )
 
 
 def _panel_groupbox_styles() -> str:

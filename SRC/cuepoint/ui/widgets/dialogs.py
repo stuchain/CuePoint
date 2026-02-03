@@ -31,7 +31,9 @@ from PySide6.QtWidgets import (
 )
 
 from cuepoint.ui.gui_interface import ProcessingError
+from cuepoint.ui.strings import ErrorCopy
 from cuepoint.ui.widgets.shortcut_manager import ShortcutContext, ShortcutManager
+from cuepoint.ui.widgets.styles import Colors
 
 
 class ErrorDialog(QDialog):
@@ -60,10 +62,10 @@ class ErrorDialog(QDialog):
         error_icon = QLabel("⚠️")
         error_icon.setStyleSheet("font-size: 24px;")
         
-        # Get user-friendly title based on error type
+        # Get user-friendly title based on error type (Step 8: dark theme)
         title_text = self._get_error_title()
         title_label = QLabel(title_text)
-        title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #c62828;")
+        title_label.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {Colors.ERROR};")
         title_layout.addWidget(error_icon)
         title_layout.addWidget(title_label)
         title_layout.addStretch()
@@ -75,7 +77,7 @@ class ErrorDialog(QDialog):
         what_layout = QVBoxLayout()
         what_label = QLabel(self._get_what_went_wrong())
         what_label.setWordWrap(True)
-        what_label.setStyleSheet("font-size: 12px; padding: 5px; color: #333;")
+        what_label.setStyleSheet(f"font-size: 12px; padding: 5px; color: {Colors.TEXT_PRIMARY};")
         what_layout.addWidget(what_label)
         what_went_wrong_group.setLayout(what_layout)
         layout.addWidget(what_went_wrong_group)
@@ -91,7 +93,7 @@ class ErrorDialog(QDialog):
         for i, fix in enumerate(fixes, 1):
             fix_label = QLabel(f"{i}. {fix}")
             fix_label.setWordWrap(True)
-            fix_label.setStyleSheet("font-size: 12px; padding: 5px; color: #1976d2;")
+            fix_label.setStyleSheet(f"font-size: 12px; padding: 5px; color: {Colors.PRIMARY};")
             how_layout.addWidget(fix_label)
         
         how_to_fix_group.setLayout(how_layout)
@@ -109,14 +111,14 @@ class ErrorDialog(QDialog):
         
         # Error type
         error_type_label = QLabel(f"Error Type: {self.error.error_type.value.replace('_', ' ').title()}")
-        error_type_label.setStyleSheet("font-size: 11px; color: #666; padding: 3px;")
+        error_type_label.setStyleSheet(f"font-size: 11px; color: {Colors.TEXT_SECONDARY}; padding: 3px;")
         tech_layout.addWidget(error_type_label)
         
         # Original message
         if self.error.message:
             message_label = QLabel(f"Message: {self.error.message}")
             message_label.setWordWrap(True)
-            message_label.setStyleSheet("font-size: 11px; color: #666; padding: 3px;")
+            message_label.setStyleSheet(f"font-size: 11px; color: {Colors.TEXT_SECONDARY}; padding: 3px;")
             tech_layout.addWidget(message_label)
         
         # Details (if available)
@@ -124,7 +126,7 @@ class ErrorDialog(QDialog):
             details_text = QTextEdit(self.error.details)
             details_text.setReadOnly(True)
             details_text.setMaximumHeight(100)
-            details_text.setStyleSheet("background-color: #f5f5f5; padding: 5px; font-size: 10px; font-family: monospace;")
+            details_text.setStyleSheet(f"background-color: {Colors.SURFACE}; color: {Colors.TEXT_PRIMARY}; padding: 5px; font-size: 10px; font-family: monospace;")
             tech_layout.addWidget(details_text)
         
         self.tech_details_group.setLayout(tech_layout)
@@ -136,7 +138,7 @@ class ErrorDialog(QDialog):
             link_layout = QHBoxLayout()
             link_label = QLabel(f'<a href="{doc_link}">Learn More</a>')
             link_label.setOpenExternalLinks(True)
-            link_label.setStyleSheet("color: #1976d2; padding: 5px;")
+            link_label.setStyleSheet(f"color: {Colors.PRIMARY}; padding: 5px;")
             link_label.linkActivated.connect(lambda url: QDesktopServices.openUrl(QUrl(url)))
             link_layout.addWidget(link_label)
             link_layout.addStretch()
@@ -147,7 +149,7 @@ class ErrorDialog(QDialog):
             recoverable_label = QLabel(
                 "✓ This error is recoverable. You can try again after fixing the issue."
             )
-            recoverable_label.setStyleSheet("color: #388e3c; font-style: italic; padding: 5px; background-color: #e8f5e9; border-radius: 3px;")
+            recoverable_label.setStyleSheet(f"color: {Colors.SUCCESS}; font-style: italic; padding: 5px; background-color: rgba(76, 175, 80, 0.2); border-radius: 3px;")
             layout.addWidget(recoverable_label)
 
         # Action buttons
@@ -183,34 +185,34 @@ class ErrorDialog(QDialog):
         return titles.get(self.error.error_type.value, 'Error')
     
     def _get_what_went_wrong(self) -> str:
-        """Get user-friendly explanation of what went wrong"""
+        """Get user-friendly explanation (Step 8: use ErrorCopy)."""
         explanations = {
-            'file_not_found': 'The XML file you selected could not be found. It may have been moved, renamed, or deleted.',
-            'playlist_not_found': 'The playlist you selected could not be found in the XML file. It may have been removed or renamed.',
-            'xml_parse_error': 'The XML file could not be read. It may be corrupted, incomplete, or in an invalid format.',
-            'network_error': 'Could not connect to Beatport or the connection was interrupted. This may be due to network issues or Beatport being temporarily unavailable.',
-            'processing_error': 'An error occurred while processing your tracks. This may be due to invalid data or an unexpected issue.',
-            'validation_error': 'The data you provided is invalid or incomplete. Please check your input and try again.',
+            'file_not_found': ErrorCopy.FILE_NOT_FOUND,
+            'playlist_not_found': ErrorCopy.PLAYLIST_MISSING,
+            'xml_parse_error': ErrorCopy.XML_UNREADABLE,
+            'network_error': 'Could not connect to Beatport or the connection was interrupted.',
+            'processing_error': 'An error occurred while processing your tracks.',
+            'validation_error': 'The data you provided is invalid or incomplete.',
         }
         return explanations.get(self.error.error_type.value, self.error.message)
     
     def _get_default_fixes(self) -> list:
-        """Get default fix suggestions based on error type"""
+        """Get default fix suggestions (Step 8: use ErrorCopy)."""
         fixes = {
             'file_not_found': [
                 'Check if the file still exists at the specified location',
-                'Select a different XML file using the Browse button',
-                'Export a new XML file from Rekordbox if the file was deleted'
+                ErrorCopy.CHOOSE_ANOTHER_FILE,
+                'Export a new XML file from Rekordbox if the file was deleted',
             ],
             'playlist_not_found': [
                 'Check if the playlist name is correct',
                 'Select a different playlist from the dropdown',
-                'Export a new XML file from Rekordbox to refresh playlists'
+                'Export a new XML file from Rekordbox to refresh playlists',
             ],
             'xml_parse_error': [
                 'Verify the file is a valid Rekordbox XML export',
                 'Try exporting a new XML file from Rekordbox',
-                'Check if the file is corrupted or incomplete'
+                'Check if the file is corrupted or incomplete',
             ],
             'network_error': [
                 'Check your internet connection',

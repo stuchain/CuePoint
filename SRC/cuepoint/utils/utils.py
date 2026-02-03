@@ -22,34 +22,46 @@ from typing import Any, Callable, Optional, Tuple, Type, Union
 from cuepoint.models.config import HAVE_CACHE, SETTINGS
 
 
-def get_output_directory() -> str:
+def get_output_directory(preferred_dir: Optional[str] = None) -> str:
     """
     Get the single, consistent output directory for all saved files.
-    
+
+    Step 8: Autosave of last-used output path. When preferred_dir is provided
+    and valid, uses it; otherwise falls back to AppPaths.exports_dir().
+
     Uses AppPaths.exports_dir() which provides platform-specific locations:
     - Windows: %USERPROFILE%\\Downloads\\CuePoint Exports
     - macOS: ~/Downloads/CuePoint Exports
     - Linux: ~/Downloads/CuePoint Exports
-    
+
     This ensures files are saved in a user-accessible location that works
     in both development and packaged app environments.
-    
+
+    Args:
+        preferred_dir: Optional last-used output directory from config.
+            Used when valid (exists and is directory).
+
     Returns:
         str: Absolute path to the exports directory
-    
+
     Example:
         >>> output_dir = get_output_directory()
         >>> # Returns: /Users/username/Downloads/CuePoint Exports (macOS)
-        >>> # Returns: C:\\Users\\username\\Downloads\\CuePoint Exports (Windows)
+        >>> output_dir = get_output_directory("/path/to/last/export")
+        >>> # Returns preferred dir if valid, else default
     """
     from cuepoint.utils.paths import AppPaths
 
+    # Step 8: Use last-used output dir when valid
+    if preferred_dir and os.path.isdir(preferred_dir):
+        return os.path.abspath(preferred_dir)
+
     # Use AppPaths.exports_dir() which handles both dev and packaged environments
     exports_dir = AppPaths.exports_dir()
-    
+
     # Ensure directory exists
     exports_dir.mkdir(parents=True, exist_ok=True)
-    
+
     return str(exports_dir)
 
 

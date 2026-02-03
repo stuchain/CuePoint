@@ -51,10 +51,16 @@ from PySide6.QtWidgets import (
 
 from cuepoint.core.matcher import _camelot_key
 from cuepoint.models.result import TrackResult
-from cuepoint.services.output_writer import write_csv_files, write_excel_file, write_json_file
+from cuepoint.services.output_writer import (
+    preview_csv_output_paths,
+    write_csv_files,
+    write_excel_file,
+    write_json_file,
+)
 from cuepoint.ui.controllers.export_controller import ExportController
 from cuepoint.ui.controllers.results_controller import ResultsController
 from cuepoint.ui.dialogs.export_dialog import ExportDialog
+from cuepoint.ui.strings import EmptyState, ExportCopy, TooltipCopy
 from cuepoint.ui.widgets.candidate_dialog import CandidateDialog
 from cuepoint.ui.widgets.shortcut_manager import ShortcutContext, ShortcutManager
 from cuepoint.ui.widgets.styles import is_macos
@@ -184,7 +190,7 @@ class ResultsView(QWidget):
         summary_layout = QHBoxLayout(summary_group)
         summary_layout.setContentsMargins(0, 0, 0, 0)
         summary_layout.setSpacing(8)
-        self.summary_label = QLabel("No results yet")
+        self.summary_label = QLabel(EmptyState.NO_RESULTS_TITLE)
         self.summary_label.setWordWrap(False)  # No wrap for compact display
         self.summary_label.setStyleSheet("font-size: 11px; color: #fff;")
         summary_layout.addWidget(self.summary_label)
@@ -203,7 +209,7 @@ class ResultsView(QWidget):
 
         # Search box
         self.search_box = QLineEdit()
-        self.search_box.setPlaceholderText("Search...")
+        self.search_box.setPlaceholderText(TooltipCopy.SEARCH_RESULTS)
         self.search_box.textChanged.connect(self._trigger_filter_debounced)
         self.search_box.setToolTip("Search for tracks by title, artist, or Beatport data (Ctrl+F)")
         self.search_box.setAccessibleName("Search input field")
@@ -1004,7 +1010,7 @@ class ResultsView(QWidget):
         Uses ResultsController to calculate statistics.
         """
         if not self.results:
-            self.summary_label.setText("No results yet")
+            self.summary_label.setText(EmptyState.NO_RESULTS_TITLE)
             return
 
         # Use controller to get summary statistics
@@ -1026,7 +1032,7 @@ class ResultsView(QWidget):
         Uses ResultsController to calculate aggregate statistics.
         """
         if not self.batch_results:
-            self.summary_label.setText("No results yet")
+            self.summary_label.setText(EmptyState.NO_RESULTS_TITLE)
             return
 
         # Use controller to get batch summary statistics
@@ -1994,12 +2000,26 @@ class ResultsView(QWidget):
         if not output_dir:
             return
 
-        try:
-            # Generate filename from playlist name
-            base_filename = f"{self.playlist_name.replace(' ', '_')}.csv"
-            timestamped_filename = with_timestamp(base_filename)
+        # Step 8: Preview outputs before writing (Design 8.9)
+        base_filename = f"{self.playlist_name.replace(' ', '_')}.csv"
+        preview_paths = preview_csv_output_paths(
+            base_filename, output_dir, ",", results=self.results
+        )
+        detail_lines = [ExportCopy.PREVIEW_MESSAGE]
+        for k, p in preview_paths.items():
+            detail_lines.append(f"  • {os.path.basename(p)}")
+        reply = QMessageBox.question(
+            self,
+            ExportCopy.PREVIEW_TITLE,
+            "\n".join(detail_lines),
+            QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Ok,
+        )
+        if reply != QMessageBox.StandardButton.Ok:
+            return
 
-            # Write all CSV files
+        try:
+            timestamped_filename = with_timestamp(base_filename)
             output_files = write_csv_files(self.results, timestamped_filename, output_dir)
 
             self.output_files = output_files
@@ -2315,7 +2335,7 @@ class ResultsView(QWidget):
         self.filtered_results = []
         self.output_files = {}
         self.table.setRowCount(0)
-        self.summary_label.setText("No results yet")
+        self.summary_label.setText(EmptyState.NO_RESULTS_TITLE)
         self.search_box.clear()
         self.confidence_filter.setCurrentIndex(0)  # Reset to "All"
         self.result_count_label.setText("0 results")
