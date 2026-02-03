@@ -17,6 +17,7 @@ CuePoint is a professional tool for enriching Rekordbox XML files with Beatport 
 
 ## Release
 
+- [Roadmap](roadmap.md) — Major features and source expansion (Step 12)
 - [Release Readiness Test Plan](RELEASE/release-readiness-test-plan.md)
 - [Release Checklist](release-checklist.md)
 

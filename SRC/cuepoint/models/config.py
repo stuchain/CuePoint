@@ -543,4 +543,10 @@ def load_config_from_yaml(yaml_path: str) -> dict:
                         f"got {type(value).__name__} ({value})"
                     )
 
+    # Step 12: Warn on deprecated config keys
+    from cuepoint.utils.deprecation import warn_deprecated_config
+
+    for key in settings_dict:
+        warn_deprecated_config(key)
+
     return settings_dict

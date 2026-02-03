@@ -5,12 +5,12 @@
 Beatport Service Implementation
 
 Service for searching and fetching data from Beatport.
+Uses provider abstraction (Step 12) - configurable via providers.active.
 """
 
 from typing import Any, Dict, List, Optional
 
-from cuepoint.data.beatport import parse_track_page
-from cuepoint.data.beatport_search import beatport_search_hybrid
+from cuepoint.data.providers import get_active_provider
 from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError
 from cuepoint.services.circuit_breaker import CircuitOpenError, get_network_circuit_breaker
 from cuepoint.services.interfaces import (
@@ -91,11 +91,13 @@ class BeatportService(IBeatportService):
                     "Track search may be limited."
                 )
             
+            provider = get_active_provider(
+                self.config_service.get("providers.active") if self.config_service else None
+            )
+
             def _search() -> List[str]:
                 return run_with_retry(
-                    lambda: beatport_search_hybrid(
-                        idx=0, query=query, max_results=max_results, prefer_direct=True
-                    ),
+                    lambda: provider.search(idx=0, query=query, max_results=max_results),
                     config_service=self.config_service,
                 )
 
@@ -173,28 +175,19 @@ class BeatportService(IBeatportService):
 
         # Fetch from API (Design 5.1 retry, Design 5.38 circuit breaker)
         try:
+            provider = get_active_provider(
+                self.config_service.get("providers.active") if self.config_service else None
+            )
+
             def _fetch():
                 return run_with_retry(
-                    lambda: parse_track_page(url),
+                    lambda: provider.parse(url),
                     config_service=self.config_service,
                 )
 
-            title, artists, key, year, bpm, label, genres, rel_name, rel_date = (
-                get_network_circuit_breaker().call(_fetch)
-            )
-
-            track_data = {
-                "url": url,
-                "title": title,
-                "artists": artists,
-                "key": key,
-                "year": year,
-                "bpm": bpm,
-                "label": label,
-                "genres": genres,
-                "release_name": rel_name,
-                "release_date": rel_date,
-            }
+            track_data = get_network_circuit_breaker().call(_fetch)
+            if track_data is None:
+                return None
 
             # Cache result (24 hours TTL)
             self.cache_service.set(cache_key, track_data, ttl=86400)
@@ -213,11 +206,6 @@ class BeatportService(IBeatportService):
             except ImportError:
                 pass
             error_msg = f"Error fetching track data from {url}: {str(e)}"
-            self.logging_service.error(
-                error_msg, exc_info=e, extra={"url": url, "cache_key": cache_key}
-            )
-            # Return None instead of raising - allows processing to continue with other tracks
-            return None
             self.logging_service.error(
                 error_msg, exc_info=e, extra={"url": url, "cache_key": cache_key}
             )

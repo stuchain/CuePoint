@@ -59,6 +59,25 @@ def _safe_print_utf8(text: str) -> None:
         sys.stdout.buffer.write(b"\n")
 
 
+def _run_migrate(args) -> int:
+    """Run schema migration (Step 12: Future-Proofing)."""
+    from cuepoint.services.schema_migration import run_migrate
+
+    directory = args.directory
+    result = run_migrate(
+        from_version=args.from_version,
+        to_version=args.to_version,
+        file_path=args.file,
+        directory=directory,
+    )
+    if result.errors:
+        for err in result.errors:
+            print(f"Error: {err}")
+        return 1
+    print(f"Migrated: {result.files_migrated} file(s)")
+    return 0
+
+
 def main():
     """
     Main CLI entry point
@@ -70,6 +89,16 @@ def main():
     4. Shows startup banner with configuration fingerprint
     5. Uses CLIProcessor (Phase 5 architecture) to execute the main processing logic
     """
+    # Step 12: Migrate subcommand - handle before full bootstrap
+    if len(sys.argv) > 1 and sys.argv[1] == "migrate":
+        migrate_parser = argparse.ArgumentParser(prog="cuepoint migrate")
+        migrate_parser.add_argument("--from", dest="from_version", type=int, required=True, metavar="V")
+        migrate_parser.add_argument("--to", dest="to_version", type=int, required=True, metavar="V")
+        migrate_parser.add_argument("--file", default=None, help="CSV file to migrate")
+        migrate_parser.add_argument("--directory", "--output-dir", dest="directory", default=None, help="Directory with CSVs")
+        migrate_args = migrate_parser.parse_args(sys.argv[2:])
+        sys.exit(_run_migrate(migrate_args))
+
     # Bootstrap services (dependency injection setup)
     bootstrap_services()
     
@@ -150,6 +179,8 @@ def main():
     ap.add_argument("--incremental", type=str, default=None, metavar="CSV_PATH",
                     help="Incremental mode: path to previous run's main CSV; only process tracks not already in it")
     ap.add_argument("--no-resume", action="store_true", help="Do not resume; start fresh (ignore checkpoint)")
+    # Step 12: Provider selection (Future-Proofing)
+    ap.add_argument("--provider", default=None, help="Search provider (e.g., beatport). Default: beatport")
     # Step 11: Legal/policy flags
     ap.add_argument("--show-privacy", action="store_true", help="Print privacy notice and exit")
     ap.add_argument("--show-terms", action="store_true", help="Print terms of use and exit")
@@ -348,6 +379,10 @@ def main():
         config_service.set("integrity.audit_log", False)
     if args.review_only:
         config_service.set("integrity.review_only", True)
+
+    # Step 12: Apply provider selection
+    if args.provider:
+        config_service.set("providers.active", args.provider)
 
     # Design 7.53: Set run ID for observability
     from cuepoint.utils.run_context import set_run_id

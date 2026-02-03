@@ -189,17 +189,17 @@
 
  ## 12) Future-Proofing
  
- - [ ] Create a plan for handling Beatport site changes (parsing or access).
- - [ ] Add fallback search providers or a pluggable search interface.
- - [ ] Add a compatibility matrix for Rekordbox XML versions.
- - [ ] Create a migration plan for any schema or output changes.
- - [ ] Track a roadmap for major features (e.g., source expansion).
-- [ ] Add an abstraction layer for search providers to reduce coupling.
-- [ ] Add an internal API surface (stable interfaces) for future plugins.
-- [ ] Add a deprecation schedule for config keys and CLI flags.
-- [ ] Add a data migration tool for future output format changes.
-- [ ] Add automated compatibility tests against sample Beatport changes.
-- [ ] Add a strategy for alternative metadata sources or caching.
+ - [x] Create a plan for handling Beatport site changes (parsing or access).
+ - [x] Add fallback search providers or a pluggable search interface.
+ - [x] Add a compatibility matrix for Rekordbox XML versions.
+ - [x] Create a migration plan for any schema or output changes.
+ - [x] Track a roadmap for major features (e.g., source expansion).
+- [x] Add an abstraction layer for search providers to reduce coupling.
+- [x] Add an internal API surface (stable interfaces) for future plugins.
+- [x] Add a deprecation schedule for config keys and CLI flags.
+- [x] Add a data migration tool for future output format changes.
+- [x] Add automated compatibility tests against sample Beatport changes.
+- [x] Add a strategy for alternative metadata sources or caching.
  
  ## 13) Post-Launch Operations and Support
  
