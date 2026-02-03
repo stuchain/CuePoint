@@ -28,9 +28,9 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from cuepoint.utils.error_reporter import report_error
 from cuepoint.utils.i18n import tr
 from cuepoint.utils.support_bundle import SupportBundleGenerator
-from cuepoint.utils.error_reporter import report_error
 from cuepoint.version import get_version
 
 
@@ -221,7 +221,9 @@ class ReportIssueDialog(QDialog):
 
                 output_dir = AppPaths.exports_dir()
                 output_dir.mkdir(parents=True, exist_ok=True)
-                bundle_path = SupportBundleGenerator.generate_bundle(output_dir, sanitize=True)
+                bundle_path = SupportBundleGenerator.generate_bundle(
+                    output_dir, include_logs=True, include_config=True, sanitize=True
+                )
 
                 description += tr(
                     "issue.report.bundle_note",

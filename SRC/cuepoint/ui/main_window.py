@@ -1084,9 +1084,14 @@ class MainWindow(QMainWindow):
 
         help_menu.addSeparator()
 
-        # Support & Diagnostics submenu (Step 9.5)
+        # Support & Diagnostics submenu (Step 9.5, Design 7.132)
         diagnostics_menu = help_menu.addMenu("Support & &Diagnostics")
-        
+
+        diagnostics_panel_action = QAction("&Diagnostics Panel...", self)
+        diagnostics_panel_action.setToolTip("Show log path, run ID, and service health")
+        diagnostics_panel_action.triggered.connect(self._on_show_diagnostics_panel)
+        diagnostics_menu.addAction(diagnostics_panel_action)
+
         log_viewer_action = QAction("&Log Viewer...", self)
         log_viewer_action.setToolTip("View application logs")
         log_viewer_action.triggered.connect(self.on_show_log_viewer)
@@ -1560,6 +1565,16 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.warning(self, "Privacy", f"Could not open Privacy dialog:\n{e}")
 
+    def _on_show_diagnostics_panel(self) -> None:
+        """Show diagnostics panel (Design 7.132): log path, run ID, health checks."""
+        try:
+            from cuepoint.ui.dialogs.diagnostics_panel_dialog import DiagnosticsPanelDialog
+
+            dialog = DiagnosticsPanelDialog(self)
+            dialog.exec()
+        except Exception as e:
+            QMessageBox.warning(self, "Diagnostics", f"Could not open diagnostics panel:\n{e}")
+
     def on_show_log_viewer(self) -> None:
         """Show the log viewer dialog."""
         try:
@@ -1747,8 +1762,10 @@ class MainWindow(QMainWindow):
         try:
             # First, verify Qt is fully initialized before proceeding
             logger.info("Step 1: Verifying Qt initialization...")
+            from PySide6.QtCore import (
+                QTimer,  # Import QTimer unconditionally (already imported at top, but ensure it's available)
+            )
             from PySide6.QtWidgets import QApplication
-            from PySide6.QtCore import QTimer  # Import QTimer unconditionally (already imported at top, but ensure it's available)
             app = QApplication.instance()
             if app is None:
                 logger.warning("QApplication not initialized, skipping update system setup")
@@ -1762,6 +1779,7 @@ class MainWindow(QMainWindow):
                 # Verify we can import Qt modules and create objects
                 try:
                     from PySide6.QtCore import QObject, Signal
+
                     # Test creating a simple QObject to verify Qt is working
                     test_obj = QObject()
                     del test_obj
@@ -2530,6 +2548,7 @@ class MainWindow(QMainWindow):
                 expected_checksum = update_info.get("checksum")
                 if expected_checksum:
                     from pathlib import Path
+
                     from cuepoint.update.security import PackageIntegrityVerifier
                     ok, err = PackageIntegrityVerifier.verify_checksum(
                         Path(downloaded_file), expected_checksum
@@ -3047,10 +3066,7 @@ class MainWindow(QMainWindow):
         checkpoint_service = None
         resume_checkpoint = None
         try:
-            from cuepoint.services.checkpoint_service import (
-                CheckpointService,
-                get_checkpoint_dir,
-            )
+            from cuepoint.services.checkpoint_service import CheckpointService, get_checkpoint_dir
             checkpoint_service = CheckpointService(checkpoint_dir=get_checkpoint_dir())
             resume_checkpoint = checkpoint_service.validate_and_load(xml_path)
             if resume_checkpoint and resume_checkpoint.playlist == playlist_name:
@@ -3831,4 +3847,5 @@ class MainWindow(QMainWindow):
             if 0 <= last_tab < self.tabs.count():
                 self.tabs.setCurrentIndex(last_tab)
             if 0 <= last_tab < self.tabs.count():
+                self.tabs.setCurrentIndex(last_tab)
                 self.tabs.setCurrentIndex(last_tab)

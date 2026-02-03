@@ -49,6 +49,21 @@ def is_dev_build() -> bool:
     return not getattr(sys, "frozen", False)
 
 
+class RunContextFilter(logging.Filter):
+    """Inject run_id, version, os into log records (Design 7.20)."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            from cuepoint.utils.run_context import get_current_run_id
+
+            record.run_id = get_current_run_id() or "-"
+        except ImportError:
+            record.run_id = "-"
+        record.version = get_build_info().get("version", "unknown")
+        record.os = f"{platform.system()} {platform.release()}".strip() or "unknown"
+        return True
+
+
 class CuePointLogger:
     """Centralized logging configuration for CuePoint.
     
@@ -95,9 +110,10 @@ class CuePointLogger:
         # Clear existing handlers
         root_logger.handlers.clear()
         
-        # Create formatters
+        # Create formatters (Design 7.20: run_id, version, os in logs)
         file_formatter = logging.Formatter(
-            '%(asctime)s [%(levelname)-8s] %(name)s: %(message)s',
+            '%(asctime)s [%(levelname)-8s] %(name)s: %(message)s '
+            'run_id=%(run_id)s version=%(version)s os=%(os)s',
             datefmt='%Y-%m-%d %H:%M:%S'
         )
         
@@ -111,6 +127,7 @@ class CuePointLogger:
             file_formatter,
             level
         )
+        file_handler.addFilter(RunContextFilter())
         root_logger.addHandler(file_handler)
         
         # Console handler (dev builds only)

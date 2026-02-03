@@ -73,3 +73,21 @@ def bootstrap_services() -> None:
         return ExportService(logging_service=container.resolve(ILoggingService))
 
     container.register_factory(IExportService, create_export_service)
+
+    # Design 7: Opt-in alerting for repeated failures
+    try:
+        if config_service.get("observability.alert_on_repeated_failures", False):
+            import logging
+
+            from cuepoint.utils.alerting import register_alert_hook
+            _logger = logging.getLogger(__name__)
+
+            def _log_alert(service: str, count: int, detail: str) -> None:
+                _logger.warning(
+                    "[observability] Repeated failures: %s (%d) - %s",
+                    service, count, detail or "",
+                )
+            register_alert_hook(_log_alert)
+    except Exception:
+        pass
+        pass

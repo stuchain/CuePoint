@@ -27,7 +27,22 @@ This page defines supported environments, support windows, and end-of-life (EOL)
 
 - The latest major release and the previous minor release are supported.
 
-## End-of-Life (EOL) Policy
+## Support Diagnostics (Design 7)
 
-- Deprecations are announced at least **90 days** in advance.
-- EOL releases may continue to run but will not receive updates.
+When reporting issues, include a **support bundle** for faster resolution:
+
+1. **Help > Support & Diagnostics > Export Support Bundle** – Creates a ZIP with:
+   - `diagnostics.json` – App version, OS, config summary
+   - `logs/` – Application logs
+   - `crashes/` – Crash logs (if any)
+   - `config.yaml` – Sanitized configuration
+
+2. **Report Issue** – Opens GitHub with pre-filled version/OS; optionally generates a bundle to attach.
+
+3. **CLI**: Run ID and log path are printed at start and end. Use `--debug` for extra detail when reproducing.
+
+## Log Locations
+
+- **Logs**: `~/.cuepoint/logs/cuepoint.log` (CLI) or app data `Logs/` (GUI)
+- **Crash logs**: `Logs/crashes/crash-YYYYMMDD-HHMMSS.log`
+- **Retention**: 5 log files (5MB each), 10 crash files

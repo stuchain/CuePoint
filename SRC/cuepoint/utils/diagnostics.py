@@ -45,15 +45,32 @@ class DiagnosticCollector:
 
     @staticmethod
     def collect_all() -> Dict[str, Any]:
-        """Collect all diagnostic information.
+        """Collect all diagnostic information (Design 7.24, 7.69).
 
         Returns:
             Dictionary with all diagnostic information.
         """
+        app_info = DiagnosticCollector.collect_app_info()
+        system_info = DiagnosticCollector.collect_system_info()
+
+        # Design 7.24: Top-level schema with version, os, run_id
+        run_id = None
+        try:
+            from cuepoint.utils.run_context import get_current_run_id
+            run_id = get_current_run_id()
+        except ImportError:
+            pass
+
+        os_str = f"{platform.system()} {platform.release()}".strip() or "unknown"
+
         return {
+            "version": app_info.get("version", "unknown"),
+            "os": os_str,
+            "python": sys.version.split()[0],
+            "run_id": run_id,
             "timestamp": datetime.now().isoformat(),
-            "application": DiagnosticCollector.collect_app_info(),
-            "system": DiagnosticCollector.collect_system_info(),
+            "application": app_info,
+            "system": system_info,
             "configuration": DiagnosticCollector.collect_config_info(),
             "storage": DiagnosticCollector.collect_storage_info(),
             "logs": DiagnosticCollector.collect_log_info(),

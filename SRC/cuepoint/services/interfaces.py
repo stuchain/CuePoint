@@ -18,30 +18,51 @@ from cuepoint.ui.gui_interface import ProcessingController, ProgressCallback
 
 
 class ILoggingService(ABC):
-    """Interface for logging service."""
+    """Interface for logging service.
+
+    Supports standard logging format: info("msg %s", arg) for %-style interpolation.
+    """
 
     @abstractmethod
-    def debug(self, message: str, **kwargs: Any) -> None:
-        """Log debug message."""
+    def debug(self, message: str, *args: Any, **kwargs: Any) -> None:
+        """Log debug message.
+
+        Args:
+            message: Message (may contain %s, %d placeholders).
+            *args: Format args for message interpolation.
+            **kwargs: extra, exc_info, etc.
+        """
         pass
 
     @abstractmethod
-    def info(self, message: str, **kwargs: Any) -> None:
-        """Log info message."""
+    def info(self, message: str, *args: Any, **kwargs: Any) -> None:
+        """Log info message.
+
+        Args:
+            message: Message (may contain %s, %d placeholders).
+            *args: Format args for message interpolation.
+            **kwargs: extra, exc_info, etc.
+        """
         pass
 
     @abstractmethod
-    def warning(self, message: str, **kwargs: Any) -> None:
-        """Log warning message."""
+    def warning(self, message: str, *args: Any, **kwargs: Any) -> None:
+        """Log warning message.
+
+        Args:
+            message: Message (may contain %s, %d placeholders).
+            *args: Format args for message interpolation.
+            **kwargs: extra, exc_info, etc.
+        """
         pass
 
     @abstractmethod
-    def error(self, message: str, exc_info=None, **kwargs: Any) -> None:
+    def error(self, message: str, exc_info=None, *args: Any, **kwargs: Any) -> None:
         """Log error message."""
         pass
 
     @abstractmethod
-    def critical(self, message: str, **kwargs: Any) -> None:
+    def critical(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log critical message."""
         pass
 

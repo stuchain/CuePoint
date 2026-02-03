@@ -56,6 +56,7 @@ from cuepoint.ui.gui_interface import (
 )
 from cuepoint.utils.network import NetworkState
 from cuepoint.utils.paths import AppPaths, StorageInvariants
+from cuepoint.utils.run_context import set_run_id
 from cuepoint.utils.run_performance_collector import (
     STAGE_PARSE_XML,
     STAGE_SEARCH_CANDIDATES,
@@ -1011,8 +1012,16 @@ class ProcessorService(IProcessorService):
                     start_index,
                 )
 
+        # Design 7.52: Set run_id for observability (diagnostics, support bundle, logs)
+        run_id = (
+            resume_checkpoint.run_id
+            if resume_checkpoint
+            else uuid.uuid4().hex[:12]
+        )
+        set_run_id(run_id)
+        self.logging_service.info("[run] run_started run_id=%s", run_id)
+
         # Design 5.8: Checkpoint run_id and file_timestamp for incremental save (non-resume only)
-        run_id = ""
         file_timestamp = ""
         checkpoint_output_paths: Dict[str, str] = {}
         checkpoint_every = 50
@@ -1027,7 +1036,6 @@ class ProcessorService(IProcessorService):
                 checkpoint_every = int(
                     self.config_service.get("reliability.checkpoint_every", 50)
                 )
-                run_id = uuid.uuid4().hex[:12]
                 file_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 self.logging_service.info(
                     "[reliability] Checkpointing enabled run_id=%s every %s tracks",
@@ -1739,4 +1747,10 @@ class ProcessorService(IProcessorService):
                 f"duration={report.duration_sec:.1f}s memory_mb={report.memory_mb_peak:.1f} stages={report.stages}"
             )
 
+        # Design 7.50: Log run_completed for observability
+        self.logging_service.info(
+            "[run] run_completed run_id=%s tracks=%s",
+            run_id,
+            len(results),
+        )
         return results

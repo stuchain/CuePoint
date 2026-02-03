@@ -13,7 +13,12 @@ from cuepoint.data.beatport import parse_track_page
 from cuepoint.data.beatport_search import beatport_search_hybrid
 from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError
 from cuepoint.services.circuit_breaker import CircuitOpenError, get_network_circuit_breaker
-from cuepoint.services.interfaces import IBeatportService, ICacheService, IConfigService, ILoggingService
+from cuepoint.services.interfaces import (
+    IBeatportService,
+    ICacheService,
+    IConfigService,
+    ILoggingService,
+)
 from cuepoint.services.reliability_retry import run_with_retry
 
 
@@ -112,6 +117,11 @@ class BeatportService(IBeatportService):
                 context={"query": query, "max_results": max_results},
             ) from e
         except Exception as e:
+            try:
+                from cuepoint.utils.alerting import record_failure
+                record_failure("beatport_search", str(e))
+            except ImportError:
+                pass
             error_msg = f"Failed to search Beatport for '{query}': {str(e)}"
             self.logging_service.error(
                 error_msg, exc_info=e, extra={"query": query, "max_results": max_results}
@@ -197,7 +207,17 @@ class BeatportService(IBeatportService):
             # Return None so processing continues; next search will still hit circuit
             return None
         except Exception as e:
+            try:
+                from cuepoint.utils.alerting import record_failure
+                record_failure("beatport_fetch", str(e))
+            except ImportError:
+                pass
             error_msg = f"Error fetching track data from {url}: {str(e)}"
+            self.logging_service.error(
+                error_msg, exc_info=e, extra={"url": url, "cache_key": cache_key}
+            )
+            # Return None instead of raising - allows processing to continue with other tracks
+            return None
             self.logging_service.error(
                 error_msg, exc_info=e, extra={"url": url, "cache_key": cache_key}
             )

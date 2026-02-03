@@ -92,9 +92,10 @@ def main():
     ap.add_argument("--exhaustive", action="store_true",
                     help="Explode query variants (grams×artists), raise DDG per-query cap, extend time budget")
 
-    # Logging options
+    # Logging options (Design 7.148)
     ap.add_argument("--verbose", action="store_true", help="Verbose logs - shows detailed progress information")
     ap.add_argument("--trace", action="store_true", help="Very detailed per-candidate logs - shows every candidate evaluated")
+    ap.add_argument("--debug", action="store_true", help="Debug mode: extra detail for support (sets verbose + trace)")
 
     # Determinism control
     ap.add_argument("--seed", type=int, default=0, help="Random seed for determinism (default 0) - ensures reproducible results")
@@ -267,13 +268,31 @@ def main():
         # ---- Scoring (more lenient) ----
         config_service.set("MIN_ACCEPT_SCORE", 65)
 
-    # Apply logging and determinism settings from command line
-    config_service.set("VERBOSE", bool(args.verbose))
-    config_service.set("TRACE", bool(args.trace))
+    # Apply logging and determinism settings from command line (Design 7.148)
+    if args.debug:
+        config_service.set("VERBOSE", True)
+        config_service.set("TRACE", True)
+    else:
+        config_service.set("VERBOSE", bool(args.verbose))
+        config_service.set("TRACE", bool(args.trace))
     config_service.set("SEED", int(args.seed))
+
+    # Design 7.53: Set run ID for observability
+    from cuepoint.utils.run_context import set_run_id
+    run_id = set_run_id()
 
     # Display startup banner with configuration fingerprint
     startup_banner(sys.argv[0], args)
+
+    # Design 7.53, 7.54: Print run ID and log path at start
+    log_path = None
+    try:
+        log_svc = container.resolve(ILoggingService)
+        if hasattr(log_svc, "get_log_path"):
+            log_path = log_svc.get_log_path()
+    except Exception:
+        pass
+    print(f"Run ID: {run_id}")
 
     preflight_enabled_value = config_service.get("product.preflight_enabled", True)
     if preflight_enabled_value is None:
@@ -308,20 +327,25 @@ def main():
     # 5. Optionally re-search unmatched tracks if --auto-research is enabled
     # Design 5.47: --resume wins over --no-resume when both given
     resume = args.resume and not args.no_resume
-    cli_processor.process_playlist(
-        xml_path=args.xml,
-        playlist_name=args.playlist,
-        out_csv_base=args.out,
-        auto_research=args.auto_research,
-        output_dir=args.output_dir,
-        preflight_only=args.preflight_only,
-        preflight_report_path=args.preflight_report,
-        run_summary_json_path=run_summary_json_path,
-        preflight_enabled=preflight_enabled,
-        resume=resume,
-        incremental_previous_csv=args.incremental,
-        benchmark_mode=args.benchmark,
-    )
+    try:
+        cli_processor.process_playlist(
+            xml_path=args.xml,
+            playlist_name=args.playlist,
+            out_csv_base=args.out,
+            auto_research=args.auto_research,
+            output_dir=args.output_dir,
+            preflight_only=args.preflight_only,
+            preflight_report_path=args.preflight_report,
+            run_summary_json_path=run_summary_json_path,
+            preflight_enabled=preflight_enabled,
+            resume=resume,
+            incremental_previous_csv=args.incremental,
+            benchmark_mode=args.benchmark,
+        )
+    finally:
+        # Design 7.53, 7.54: Print log path at end
+        if log_path:
+            print(f"Logs: {log_path}")
 
 
 if __name__ == "__main__":

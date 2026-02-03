@@ -109,22 +109,22 @@
  
  ## 7) Observability and Supportability
  
- - [ ] Ensure logs are clean, structured, and redact sensitive data.
- - [ ] Add a “Collect Diagnostics” feature that bundles logs and settings.
- - [ ] Add a `--debug` mode with extra detail for support.
-- [ ] Add crash reporting with explicit user consent and clear data scope.
-- [ ] Allow automatic error reporting to be opt-in and configurable.
- - [ ] Define log retention and rotation for long-running users.
- - [ ] Provide a user-facing error code or error category list.
-- [ ] Add a support bundle that includes anonymized config and run stats.
-- [ ] Add a “report issue” link in-app that pre-fills environment details.
-- [ ] Add runtime health checks for key services (search, parsing, caching).
-- [ ] Add a local status page or diagnostics panel in the GUI.
-- [ ] Add per-run trace IDs that link logs to outputs.
-- [ ] Add alerting hooks for repeated failures (opt-in).
-- [ ] Add a support SLA playbook for triage and escalation.
-- [ ] Add a crash report bundle with last log lines and diagnostics JSON.
-- [ ] Add a consistent logging format with version/OS metadata.
+ - [x] Ensure logs are clean, structured, and redact sensitive data.
+ - [x] Add a “Collect Diagnostics” feature that bundles logs and settings.
+ - [x] Add a `--debug` mode with extra detail for support.
+- [x] Add crash reporting with explicit user consent and clear data scope.
+- [x] Allow automatic error reporting to be opt-in and configurable.
+ - [x] Define log retention and rotation for long-running users.
+ - [x] Provide a user-facing error code or error category list.
+- [x] Add a support bundle that includes anonymized config and run stats.
+- [x] Add a “report issue” link in-app that pre-fills environment details.
+- [x] Add runtime health checks for key services (search, parsing, caching).
+- [x] Add a local status page or diagnostics panel in the GUI.
+- [x] Add per-run trace IDs that link logs to outputs.
+- [x] Add alerting hooks for repeated failures (opt-in).
+- [x] Add a support SLA playbook for triage and escalation.
+- [x] Add a crash report bundle with last log lines and diagnostics JSON.
+- [x] Add a consistent logging format with version/OS metadata.
  
  ## 8) UX and Accessibility
  

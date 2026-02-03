@@ -53,6 +53,9 @@ Common issues and solutions.
 | P050 | Network unavailable | Connect to the internet to search Beatport |
 | P001 (perf) | Runtime budget exceeded | Run stopped after 2 hours; split into smaller batches |
 | P002 (perf) | Memory budget exceeded | Lower concurrency or process fewer tracks |
+| O001 | Crash captured | Crash log saved; use Help > Export Support Bundle |
+| O002 | Support bundle creation failed | Check disk space; open logs folder manually |
+| O003 | Redaction failure | Logs may contain paths; sanitize before sharing |
 
 ### Import Takes Too Long
 

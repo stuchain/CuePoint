@@ -5,6 +5,7 @@
 Logging Service Implementation
 
 Structured logging service with file rotation and console output.
+Design 7.1, 7.15: 5MB max, 5 backup files.
 """
 
 import logging
@@ -14,7 +15,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from cuepoint.services.interfaces import ILoggingService
-from cuepoint.utils.logger import LogSanitizer
+from cuepoint.utils.logger import LogSanitizer, RunContextFilter
 
 # Disable error output from the logging system itself at module level
 # This prevents "--- Logging error ---" messages from appearing
@@ -104,9 +105,10 @@ class LoggingService(ILoggingService):
                 if not isinstance(h, logging.StreamHandler) or h.stream not in (sys.stdout, sys.stderr)
             ]
 
-        # Create formatters
+        # Create formatters (Design 7.20: run_id, version, os in logs)
         file_formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s - %(pathname)s:%(lineno)d"
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s "
+            "run_id=%(run_id)s version=%(version)s os=%(os)s - %(pathname)s:%(lineno)d"
         )
         console_formatter = logging.Formatter("%(levelname)s - %(message)s")
 
@@ -117,13 +119,14 @@ class LoggingService(ILoggingService):
             log_dir.mkdir(parents=True, exist_ok=True)
 
             file_handler = logging.handlers.RotatingFileHandler(
-                log_dir / "cuepoint.log", 
-                maxBytes=10 * 1024 * 1024,  # 10 MB
+                log_dir / "cuepoint.log",
+                maxBytes=5 * 1024 * 1024,  # Design 7.15: 5 MB
                 backupCount=5,
                 encoding='utf-8'  # Ensure log files use UTF-8 encoding
             )
             file_handler.setLevel(logging.DEBUG)
             file_handler.setFormatter(file_formatter)
+            file_handler.addFilter(RunContextFilter())
             self.logger.addHandler(file_handler)
 
         # Console handler with UTF-8 encoding support
@@ -135,59 +138,65 @@ class LoggingService(ILoggingService):
             console_handler.setFormatter(console_formatter)
             self.logger.addHandler(console_handler)
 
-    def debug(self, message: str, **kwargs: Any) -> None:
+    def debug(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log debug message.
 
         Args:
-            message: Debug message to log.
-            **kwargs: Additional arguments passed to logger.
+            message: Debug message (may contain %s, %d placeholders).
+            *args: Format args for message interpolation.
+            **kwargs: extra, exc_info, etc.
         """
-        self._log(logging.DEBUG, message, **kwargs)
+        self._log(logging.DEBUG, message, *args, **kwargs)
 
-    def info(self, message: str, **kwargs: Any) -> None:
+    def info(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log info message.
 
         Args:
-            message: Info message to log.
-            **kwargs: Additional arguments passed to logger.
+            message: Info message (may contain %s, %d placeholders).
+            *args: Format args for message interpolation.
+            **kwargs: extra, exc_info, etc.
         """
-        self._log(logging.INFO, message, **kwargs)
+        self._log(logging.INFO, message, *args, **kwargs)
 
-    def warning(self, message: str, **kwargs: Any) -> None:
+    def warning(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log warning message.
 
         Args:
-            message: Warning message to log.
-            **kwargs: Additional arguments passed to logger.
+            message: Warning message (may contain %s, %d placeholders).
+            *args: Format args for message interpolation.
+            **kwargs: extra, exc_info, etc.
         """
-        self._log(logging.WARNING, message, **kwargs)
+        self._log(logging.WARNING, message, *args, **kwargs)
 
-    def error(self, message: str, exc_info=None, **kwargs: Any) -> None:
+    def error(self, message: str, exc_info=None, *args: Any, **kwargs: Any) -> None:
         """Log error message.
 
         Args:
             message: Error message to log.
             exc_info: Exception info tuple or exception instance.
+            *args: Format args for message interpolation.
             **kwargs: Additional arguments passed to logger.
         """
-        self._log(logging.ERROR, message, exc_info=exc_info, **kwargs)
+        self._log(logging.ERROR, message, *args, exc_info=exc_info, **kwargs)
 
-    def critical(self, message: str, **kwargs: Any) -> None:
+    def critical(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log critical message.
 
         Args:
-            message: Critical message to log.
-            **kwargs: Additional arguments passed to logger.
+            message: Critical message (may contain %s, %d placeholders).
+            *args: Format args for message interpolation.
+            **kwargs: extra, exc_info, etc.
         """
-        self._log(logging.CRITICAL, message, **kwargs)
+        self._log(logging.CRITICAL, message, *args, **kwargs)
 
-    def _log(self, level: int, message: str, **kwargs: Any) -> None:
+    def _log(self, level: int, message: str, *args: Any, **kwargs: Any) -> None:
         """Internal logging method.
 
         Args:
             level: Logging level.
-            message: Message to log.
-            **kwargs: Additional arguments including 'extra' for structured data.
+            message: Message to log (may contain %s, %d placeholders).
+            *args: Format args for message interpolation.
+            **kwargs: extra, exc_info, etc.
         """
         extra = kwargs.pop("extra", {})
         exc_info = kwargs.pop("exc_info", None)
@@ -196,4 +205,15 @@ class LoggingService(ILoggingService):
         safe_message = LogSanitizer.sanitize_message(str(message))
         safe_extra = LogSanitizer.sanitize_dict(extra)
 
-        self.logger.log(level, safe_message, extra=safe_extra, exc_info=exc_info, **kwargs)
+        self.logger.log(level, safe_message, *args, extra=safe_extra, exc_info=exc_info, **kwargs)
+
+    def get_log_path(self) -> Optional[Path]:
+        """Get path to current log file (Design 7.53).
+
+        Returns:
+            Path to cuepoint.log, or None if file logging disabled.
+        """
+        for handler in self.logger.handlers:
+            if isinstance(handler, logging.handlers.RotatingFileHandler):
+                return Path(handler.baseFilename)
+        return None

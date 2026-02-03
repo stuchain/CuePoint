@@ -4,10 +4,11 @@
 """Unit tests for LoggingService."""
 
 import logging
-import pytest
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
 from tempfile import TemporaryDirectory
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 
 from cuepoint.services.logging_service import LoggingService
 
@@ -75,6 +76,12 @@ class TestLoggingService:
         service.info("Test info message")
         service.info("Test with extra", extra={"key": "value"})
 
+    def test_info_with_format_args(self):
+        """Test info with %s format args (processor-style calls)."""
+        service = LoggingService(enable_file_logging=False)
+        service.info("[run] run_started run_id=%s", "abc123")
+        service.info("[reliability] checkpoint_saved run_id=%s index=%s", "run1", 42)
+
     def test_warning(self):
         """Test warning logging."""
         service = LoggingService(enable_file_logging=False)
@@ -131,7 +138,7 @@ class TestLoggingService:
             assert len(file_handlers) > 0
             
             handler = file_handlers[0]
-            assert handler.maxBytes == 10 * 1024 * 1024  # 10 MB
+            assert handler.maxBytes == 5 * 1024 * 1024  # Design 7.15: 5 MB
             assert handler.backupCount == 5
             
             # Close handlers to allow cleanup on Windows
@@ -147,4 +154,5 @@ class TestLoggingService:
         assert service1.logger is not service2.logger
         assert service1.logger.name == "logger1"
         assert service2.logger.name == "logger2"
+
 
