@@ -32,7 +32,7 @@ jobs:
           python-version: '3.13.7'
           cache: 'pip'
       
-      - name: Install dependencies (release: with hash checking per 2.8)
+      - name: "Install dependencies (release: with hash checking per 2.8)"
         run: |
           Write-Host "=== DEBUG: Installing dependencies ==="
           python --version

@@ -128,18 +128,19 @@ class TestBeatportService:
         cache = CacheService()
         logging = LoggingService()
         service = BeatportService(cache, logging)
-        
-        with patch('cuepoint.services.beatport_service.beatport_search_hybrid') as mock_search:
-            mock_search.return_value = ["url1", "url2"]
-            
+
+        mock_provider = Mock()
+        mock_provider.search = Mock(return_value=["url1", "url2"])
+
+        with patch('cuepoint.services.beatport_service.get_active_provider', return_value=mock_provider):
             # First call should call search
             results1 = service.search_tracks("test query")
-            assert mock_search.call_count == 1
+            assert mock_provider.search.call_count == 1
             assert results1 == ["url1", "url2"]
-            
+
             # Second call should use cache
             results2 = service.search_tracks("test query")
-            assert mock_search.call_count == 1  # Not called again
+            assert mock_provider.search.call_count == 1  # Not called again
             assert results2 == ["url1", "url2"]
 
 

@@ -35,9 +35,10 @@ class TestBeatportServiceErrorHandling:
         logging_service = LoggingService(enable_file_logging=False, enable_console_logging=False)
         service = BeatportService(cache_service, logging_service)
 
-        with patch("cuepoint.services.beatport_service.beatport_search_hybrid") as mock_search:
-            mock_search.side_effect = Exception("Network error")
+        mock_provider = MagicMock()
+        mock_provider.search.side_effect = Exception("Network error")
 
+        with patch("cuepoint.services.beatport_service.get_active_provider", return_value=mock_provider):
             with pytest.raises(BeatportAPIError) as exc_info:
                 service.search_tracks("test query")
 
@@ -51,9 +52,10 @@ class TestBeatportServiceErrorHandling:
         logging_service = LoggingService(enable_file_logging=False, enable_console_logging=False)
         service = BeatportService(cache_service, logging_service)
 
-        with patch("cuepoint.services.beatport_service.parse_track_page") as mock_parse:
-            mock_parse.side_effect = Exception("Parse error")
+        mock_provider = MagicMock()
+        mock_provider.parse.side_effect = Exception("Parse error")
 
+        with patch("cuepoint.services.beatport_service.get_active_provider", return_value=mock_provider):
             result = service.fetch_track_data("https://www.beatport.com/track/test")
 
             assert result is None
@@ -180,9 +182,10 @@ class TestErrorLogging:
         cache_service = CacheService()
         service = BeatportService(cache_service, mock_logging)
 
-        with patch("cuepoint.services.beatport_service.beatport_search_hybrid") as mock_search:
-            mock_search.side_effect = Exception("Test error")
+        mock_provider = MagicMock()
+        mock_provider.search.side_effect = Exception("Test error")
 
+        with patch("cuepoint.services.beatport_service.get_active_provider", return_value=mock_provider):
             with pytest.raises(BeatportAPIError):
                 service.search_tracks("test")
 
@@ -222,9 +225,10 @@ class TestErrorContext:
         logging_service = LoggingService(enable_file_logging=False, enable_console_logging=False)
         service = BeatportService(cache_service, logging_service)
 
-        with patch("cuepoint.services.beatport_service.beatport_search_hybrid") as mock_search:
-            mock_search.side_effect = Exception("Test error")
+        mock_provider = MagicMock()
+        mock_provider.search.side_effect = Exception("Test error")
 
+        with patch("cuepoint.services.beatport_service.get_active_provider", return_value=mock_provider):
             with pytest.raises(BeatportAPIError) as exc_info:
                 service.search_tracks("test query", max_results=10)
 

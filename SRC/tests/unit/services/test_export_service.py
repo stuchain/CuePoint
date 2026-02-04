@@ -454,7 +454,7 @@ class TestExportService:
         service = ExportService(logging_service=mock_logging_service)
         
         # Mock Workbook.save to raise exception
-        from unittest.mock import patch
+        from unittest.mock import patch, Mock
         with patch('openpyxl.Workbook') as mock_wb_class:
             mock_wb = mock_wb_class.return_value
             mock_ws = mock_wb.active

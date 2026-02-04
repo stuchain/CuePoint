@@ -165,23 +165,17 @@ class TestConfigService:
         # Verify file was created
         assert (tmp_path / "test_config.yaml").exists()
     
-    def test_save_error_handling(self):
+    def test_save_error_handling(self, tmp_path):
         """Test save error handling."""
-        import platform
-        from pathlib import Path
+        from unittest.mock import patch
 
-        # Use a reliably invalid path for the current platform
-        if platform.system() == "Windows":
-            # Invalid characters on Windows
-            bad_path = Path(r"C:\<invalid>\config.yaml")
-        else:
-            bad_path = Path("/invalid/path/config.yaml")
+        # Use a valid temp path so init succeeds, then mock open to fail on save
+        config_file = tmp_path / "config.yaml"
+        service = ConfigService(config_file=config_file)
 
-        service = ConfigService(config_file=bad_path)
-        
-        # Should raise ConfigurationError on save failure
-        with pytest.raises(Exception):  # May be ConfigurationError or OSError
-            service.save()
+        with patch("builtins.open", side_effect=OSError(30, "Read-only file system")):
+            with pytest.raises(Exception):  # ConfigurationError (wraps OSError)
+                service.save()
     
     def test_validate_config(self):
         """Test configuration validation."""

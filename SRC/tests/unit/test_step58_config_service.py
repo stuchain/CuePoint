@@ -8,6 +8,7 @@ Unit tests for Step 5.8 ConfigService.
 import os
 import tempfile
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -370,23 +371,13 @@ class TestConfigServiceErrorHandling:
     def test_save_permission_error(self):
         """Test save() raises ConfigurationError on permission error."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            # Create read-only directory (on Unix)
-            config_file = Path(tmpdir) / "readonly" / "config.yaml"
-            config_file.parent.mkdir()
-
-            # On Windows, we can't easily create read-only directories
-            # So we'll test with a file that can't be written
-            if os.name == "nt":
-                # On Windows, try to write to a non-existent path in a non-existent drive
-                config_file = Path("Z:/nonexistent/config.yaml")
-            else:
-                # On Unix, make directory read-only
-                config_file.parent.chmod(0o444)
-
+            config_file = Path(tmpdir) / "config.yaml"
             service = ConfigService(config_file=config_file)
 
-            with pytest.raises(ConfigurationError) as exc_info:
-                service.save()
+            # Mock open to simulate permission error (works on all platforms)
+            with patch("builtins.open", side_effect=PermissionError("Permission denied")):
+                with pytest.raises(ConfigurationError) as exc_info:
+                    service.save()
 
             assert "Failed to save configuration" in str(exc_info.value)
             assert exc_info.value.error_code == "CONFIG_SAVE_ERROR"

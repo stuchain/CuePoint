@@ -141,9 +141,9 @@ class TestProcessorServiceProcessPlaylistFromXML:
                 playlist_name="Test Playlist",
             )
 
-        # Verify
+        # Verify (message is "Preflight checks failed.", details contain P001)
         assert exc_info.value.error_type == ErrorType.FILE_NOT_FOUND
-        assert "XML file not found" in exc_info.value.message
+        assert "XML file not found" in exc_info.value.details or "P001" in exc_info.value.details
 
     def test_process_playlist_from_xml_playlist_not_found(
         self,
@@ -193,9 +193,9 @@ class TestProcessorServiceProcessPlaylistFromXML:
                     playlist_name="Nonexistent Playlist",
                 )
 
-            # Verify
+            # Verify (message is "Preflight checks failed.", details contain P010)
             assert exc_info.value.error_type == ErrorType.PLAYLIST_NOT_FOUND
-            assert "not found in XML file" in exc_info.value.message
+            assert "not found in XML" in exc_info.value.details or "P010" in exc_info.value.details
 
         finally:
             os.unlink(xml_path)
@@ -247,9 +247,9 @@ class TestProcessorServiceProcessPlaylistFromXML:
                     playlist_name="Empty Playlist",
                 )
 
-            # Verify
+            # Verify (message is "Preflight checks failed.", details contain P011)
             assert exc_info.value.error_type == ErrorType.VALIDATION_ERROR
-            assert "empty" in exc_info.value.message.lower()
+            assert "empty" in exc_info.value.details.lower() or "P011" in exc_info.value.details
 
         finally:
             os.unlink(xml_path)
@@ -355,6 +355,9 @@ class TestProcessorServiceProcessPlaylistFromXML:
             from cuepoint.models.config import SETTINGS
 
             def config_get(key, default=None):
+                # Force sequential mode so cancellation is checked between tracks
+                if key == "TRACK_WORKERS" or key == "performance.max_workers":
+                    return 1
                 return SETTINGS.get(key, default)
 
             mock_config_service.get.side_effect = config_get
