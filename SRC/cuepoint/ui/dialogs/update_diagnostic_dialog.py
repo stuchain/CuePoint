@@ -38,8 +38,10 @@ class UpdateDiagnosticDialog(QDialog):
         
         Args:
             update_info: Update information dictionary
-            parent: Parent widget
+            parent: Parent widget (None on macOS to avoid dialog crash)
         """
+        if sys.platform == "darwin":
+            parent = None  # Avoid macOS parent-related crashes
         super().__init__(parent)
         self.update_info = update_info
         self._setup_ui()

@@ -180,8 +180,10 @@ class UpdateManager:
             logger.debug("  - No existing receiver found, creating new one...")
             
             # Create receiver on main thread (this method is called on main thread)
+            # Parent to app so it lives for app lifetime (critical for signal delivery on macOS)
             logger.info("  - Creating CallbackReceiver instance...")
             receiver = CallbackReceiverClass(self._on_update_available, self._on_check_complete)
+            receiver.setParent(app)
             app._callback_receiver = receiver
             logger.info(f"  ✓ CallbackReceiver created and attached to QApplication: {receiver}")
         except Exception as e:

@@ -37,7 +37,9 @@ class TestI18nManager:
         assert result is False  # Always returns False in v1.0
 
     def test_get_current_language(self):
-        """Test getting current language (always 'en' in v1.0)."""
+        """Test getting current language (defaults to 'en' in v1.0)."""
+        # Reset singleton state - test_set_language may have set 'es'
+        I18nManager.instance()._language_code = "en"
         language = I18nManager.get_current_language()
         assert language == "en"
 

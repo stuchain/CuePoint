@@ -26,6 +26,11 @@ class BeatportService(IBeatportService):
     """Service for searching and fetching data from Beatport.
 
     Design 5.1: Retry/backoff is centralized via reliability_retry and config.
+
+    Attributes:
+        cache_service: Service for caching operations.
+        logging_service: Service for logging operations.
+        config_service: Optional config for reliability.max_retries (Design 5.1).
     """
 
     def __init__(

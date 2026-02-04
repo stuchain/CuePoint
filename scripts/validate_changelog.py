@@ -4,7 +4,7 @@
 """
 Validate Changelog for Release Gate
 
-Ensures DOCS/RELEASE/changelog.md has an entry for the current version
+Ensures DOCS/RELEASE/CHANGELOG.md has an entry for the current version
 or a non-empty [Unreleased] section. Used by CI to block releases when
 changelog is missing or incomplete.
 
@@ -157,7 +157,7 @@ def main() -> None:
         "--changelog",
         type=Path,
         default=None,
-        help="Path to changelog (default: DOCS/RELEASE/changelog.md)",
+        help="Path to changelog (default: DOCS/RELEASE/CHANGELOG.md)",
     )
     parser.add_argument(
         "--no-require-version",
@@ -168,7 +168,7 @@ def main() -> None:
 
     script_dir = Path(__file__).resolve().parent
     project_root = script_dir.parent
-    changelog_path = args.changelog or (project_root / "DOCS" / "RELEASE" / "changelog.md")
+    changelog_path = args.changelog or (project_root / "DOCS" / "RELEASE" / "CHANGELOG.md")
 
     version = args.version or get_version_from_file()
     if not version:

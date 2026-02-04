@@ -227,16 +227,19 @@ class TestExportService:
         mock_logging_service
     ):
         """Test JSON export error handling."""
+        from unittest.mock import patch
+
         service = ExportService(logging_service=mock_logging_service)
-        
-        # Try to export to invalid path
-        invalid_path = "C:\\<invalid>\\test.json"
-        with pytest.raises(ExportError) as exc_info:
-            service.export_to_json([sample_track_result], invalid_path)
-        
-        # Verify error details after context manager exits
-        assert exc_info.value.error_code == "EXPORT_JSON_ERROR"
-        mock_logging_service.error.assert_called()
+
+        # Mock open to raise IOError (works on all platforms)
+        with patch("builtins.open", side_effect=IOError("Permission denied")):
+            with pytest.raises(ExportError) as exc_info:
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    filepath = os.path.join(tmpdir, "test.json")
+                    service.export_to_json([sample_track_result], filepath)
+
+            assert exc_info.value.error_code == "EXPORT_JSON_ERROR"
+            mock_logging_service.error.assert_called()
 
     def test_export_to_excel_with_logging(
         self,

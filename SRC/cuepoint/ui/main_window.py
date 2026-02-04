@@ -2043,10 +2043,11 @@ class MainWindow(QMainWindow):
                             return
                         
                         logger.info("✓ Main window is visible and ready")
-                        logger.info("Step 4: Scheduling dialog creation (500ms delay)...")
-                        # Small additional delay to ensure Qt event loop has processed
+                        # On macOS, use longer delay - windowing system needs more time
+                        delay_ms = 1200 if sys.platform == "darwin" else 500
+                        logger.info(f"Step 4: Scheduling dialog creation ({delay_ms}ms delay)...")
                         from PySide6.QtCore import QTimer as QTimer2
-                        QTimer2.singleShot(500, lambda: self._do_startup_update_check())
+                        QTimer2.singleShot(delay_ms, lambda: self._do_startup_update_check())
                         logger.info("✓ Dialog creation scheduled")
                     except Exception as dialog_error:
                         logger.error(f"✗ Error scheduling startup update check dialog: {dialog_error}", exc_info=True)
@@ -2090,6 +2091,15 @@ class MainWindow(QMainWindow):
         logger.info("=" * 60)
         
         try:
+            # Safety: Verify MainWindow is still valid (not destroyed)
+            try:
+                if not self.isVisible() or not self.windowHandle():
+                    logger.warning("Main window no longer valid, skipping update check")
+                    return
+            except (RuntimeError, AttributeError):
+                logger.warning("Main window destroyed, skipping update check")
+                return
+
             logger.info("Step 1: Verifying update manager...")
             if not hasattr(self, "update_manager") or not self.update_manager:
                 logger.warning("✗ Update manager not available")
@@ -2647,8 +2657,9 @@ class MainWindow(QMainWindow):
             
             logger = logging.getLogger(__name__)
             
-            # Show diagnostic dialog
-            diagnostic_dialog = UpdateDiagnosticDialog(update_info, parent=self)
+            # Show diagnostic dialog (parent=None on macOS to avoid crash)
+            diag_parent = None if sys.platform == "darwin" else self
+            diagnostic_dialog = UpdateDiagnosticDialog(update_info, parent=diag_parent)
             diagnostic_result = diagnostic_dialog.exec()
             
             if diagnostic_result != QDialog.DialogCode.Accepted:

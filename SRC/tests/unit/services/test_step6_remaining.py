@@ -85,7 +85,8 @@ class TestWriteMainCsvBatched:
         assert out is not None
         with open(out, encoding="utf-8") as f:
             lines = f.readlines()
-        assert len(lines) == 101  # header + 100 rows
+        # 3 metadata lines (# schema_version, # run_id, # run_status) + header + 100 rows
+        assert len(lines) == 104
 
 
 class TestIncrementalProcessing:

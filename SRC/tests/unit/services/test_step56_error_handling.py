@@ -97,8 +97,16 @@ class TestExportServiceErrorHandling:
         logging_service = LoggingService(enable_file_logging=False, enable_console_logging=False)
         service = ExportService(logging_service=logging_service)
 
-        # Mock the import to fail
-        with patch("builtins.__import__", side_effect=ImportError("No module named 'openpyxl'")):
+        # Mock import to raise only for openpyxl (not for other modules)
+        import builtins
+        original_import = builtins.__import__
+
+        def mock_import(name, *args, **kwargs):
+            if name == "openpyxl":
+                raise ImportError("No module named 'openpyxl'")
+            return original_import(name, *args, **kwargs)
+
+        with patch("builtins.__import__", side_effect=mock_import):
             with pytest.raises(ExportError) as exc_info:
                 service.export_to_excel([], "test.xlsx")
 

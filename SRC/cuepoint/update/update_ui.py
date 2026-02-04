@@ -8,6 +8,7 @@ Provides dialogs and UI elements for update notifications.
 """
 
 import html
+import sys
 from typing import Callable, Dict, Optional
 
 from PySide6.QtCore import Qt, Signal, QTimer, QUrl
@@ -224,6 +225,8 @@ def show_update_dialog(
     Returns:
         Dialog result code
     """
+    if sys.platform == "darwin":
+        parent = None  # Avoid macOS parent-related crashes
     dialog = UpdateAvailableDialog(current_version, update_info, parent)
     
     if on_install:
@@ -250,6 +253,8 @@ def show_update_error_dialog(
     Returns:
         Dialog result code
     """
+    if sys.platform == "darwin":
+        parent = None  # Avoid macOS parent-related crashes
     dialog = UpdateErrorDialog(error_message, parent)
     return dialog.exec()
 
@@ -281,9 +286,13 @@ class UpdateCheckDialog(QDialog):
         logger.info(f"  - Parent: {parent} (type: {type(parent) if parent else None})")
         
         try:
+            # On macOS, avoid using parent to prevent crashes (Qt/macOS parent-child issues)
+            if sys.platform == "darwin":
+                logger.debug("  - macOS: Using parent=None to avoid dialog crash")
+                parent = None
             # Validate parent before passing to super()
-            logger.debug("  - Validating parent widget...")
-            if parent is not None:
+            elif parent is not None:
+                logger.debug("  - Validating parent widget...")
                 try:
                     # Quick validation that parent is a valid QWidget
                     if not hasattr(parent, 'windowTitle'):
@@ -333,7 +342,12 @@ class UpdateCheckDialog(QDialog):
             self.setMinimumWidth(600)
             self.setMinimumHeight(400)
             self.setModal(False)  # Non-modal so it doesn't block
-            
+            # On macOS, use Window flag for proper top-level window (avoids parent-related crashes)
+            if sys.platform == "darwin":
+                self.setWindowFlags(
+                    self.windowFlags() | Qt.WindowType.Window
+                )
+
             layout = QVBoxLayout(self)
             layout.setSpacing(15)
             layout.setContentsMargins(20, 20, 20, 20)
@@ -897,9 +911,12 @@ def show_update_check_dialog(
     logger.info(f"  - Parent: {parent} (type: {type(parent) if parent else None})")
     
     try:
-        # Validate parent if provided
-        logger.info("Step 1: Validating parent widget...")
-        if parent is not None:
+        # On macOS, never use parent - known to cause crashes when update dialog pops up
+        if sys.platform == "darwin":
+            logger.info("Step 1: macOS - Using parent=None to prevent dialog crash")
+            parent = None
+        elif parent is not None:
+            logger.info("Step 1: Validating parent widget...")
             try:
                 # Try to access a property to verify parent is valid
                 parent_title = parent.windowTitle()
@@ -933,7 +950,16 @@ def show_update_check_dialog(
         # Show dialog with error handling
         logger.info("Step 3: Showing dialog...")
         try:
+            # On macOS, flush events before show to ensure windowing system is ready
+            if sys.platform == "darwin":
+                app = QApplication.instance()
+                if app:
+                    app.processEvents()
             dialog.show()  # Show non-modal
+            if sys.platform == "darwin":
+                app = QApplication.instance()
+                if app:
+                    app.processEvents()
             logger.info(f"  ✓ Dialog shown successfully")
             logger.info(f"  - Dialog visible: {dialog.isVisible()}")
             logger.info(f"  - Dialog modal: {dialog.isModal()}")

@@ -232,13 +232,13 @@ class TestEnhancedExport(unittest.TestCase):
         self.assertIn("main", result)
         self.assertTrue(os.path.exists(result["main"]))
         
-        # Verify CSV content
+        # Verify CSV content (skip # comment lines - Design 9 schema headers)
         with open(result["main"], 'r', encoding='utf-8', newline='') as f:
-            reader = csv.DictReader(f)
-            rows = list(reader)
-        
+            lines = [line for line in f if not line.strip().startswith("#")]
+        reader = csv.DictReader(lines)
+        rows = list(reader)
+
         self.assertGreaterEqual(len(rows), 1)  # At least one track
-        # Check that we can read the data
         if rows:
             self.assertIn("playlist_index", rows[0])
     
@@ -254,10 +254,10 @@ class TestEnhancedExport(unittest.TestCase):
         
         with open(result["main"], 'r', encoding='utf-8', newline='') as f:
             content = f.read()
-        
-        # Verify comma delimiter
-        lines = content.split('\n')
-        if lines[0]:
+
+        # Skip # comment lines, find header row
+        lines = [l for l in content.split('\n') if l and not l.strip().startswith("#")]
+        if lines:
             self.assertGreater(len(lines[0].split(',')), 5)
     
     def test_csv_export_custom_delimiter_semicolon(self):
@@ -272,10 +272,10 @@ class TestEnhancedExport(unittest.TestCase):
         
         with open(result["main"], 'r', encoding='utf-8', newline='') as f:
             content = f.read()
-        
-        # Verify semicolon delimiter
-        lines = content.split('\n')
-        if lines[0]:
+
+        # Skip # comment lines, find header row
+        lines = [l for l in content.split('\n') if l and not l.strip().startswith("#")]
+        if lines:
             self.assertGreater(len(lines[0].split(';')), 5)
     
     def test_csv_export_custom_delimiter_tab(self):
@@ -325,9 +325,10 @@ class TestEnhancedExport(unittest.TestCase):
         )
         
         with open(result["main"], 'r', encoding='utf-8', newline='') as f:
-            reader = csv.reader(f)
-            header = next(reader)
-        
+            lines = [line for line in f if not line.strip().startswith("#")]
+        reader = csv.reader(lines)
+        header = next(reader)
+
         # Check metadata columns are present
         self.assertIn("beatport_label", header)
         self.assertIn("beatport_genres", header)

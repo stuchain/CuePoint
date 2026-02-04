@@ -112,16 +112,22 @@ class TestExportServiceValidation:
 
     def test_export_to_csv_validation_error(self, sample_track_result):
         """Test CSV export fails with validation error."""
+        from unittest.mock import patch
+
         service = ExportService()
-        
-        # Use a path that can't be created (on Windows, this might be a drive letter)
-        # Or use a path with invalid characters
-        invalid_path = "C:/<>:\"|?*invalid.csv"  # Invalid characters
-        
-        with pytest.raises(ExportError) as exc_info:
-            service.export_to_csv([sample_track_result], invalid_path)
-        
-        assert exc_info.value.error_code == "EXPORT_CSV_ERROR"
+
+        # Use path where parent doesn't exist; mock mkdir to raise (works on all platforms)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "readonly_subdir", "test.csv")
+
+            def mock_mkdir(self, *args, **kwargs):
+                raise OSError(13, "Permission denied")
+
+            with patch("pathlib.Path.mkdir", mock_mkdir):
+                with pytest.raises(ExportError) as exc_info:
+                    service.export_to_csv([sample_track_result], filepath)
+
+                assert exc_info.value.error_code == "EXPORT_CSV_ERROR"
 
     def test_export_to_json_empty_results(self):
         """Test JSON export allows empty results (writes empty array)."""

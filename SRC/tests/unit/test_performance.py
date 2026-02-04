@@ -190,7 +190,7 @@ def test_retry_decorator():
     print("Test 4: Retry Decorator")
     print("=" * 80)
     
-    from utils import retry_with_backoff
+    from cuepoint.utils.utils import retry_with_backoff
     
     # Try to import requests exceptions, fallback to generic Exception
     try:

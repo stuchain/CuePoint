@@ -30,10 +30,12 @@ class TestVersionModule:
         version = get_version()
         assert isinstance(version, str)
         assert len(version) > 0
-        # Should be SemVer format
+        # Should be SemVer-like (x.y.z or x.y.z-prerelease)
         parts = version.split(".")
-        assert len(parts) == 3
-        assert all(part.isdigit() for part in parts)
+        assert len(parts) >= 3
+        assert parts[0].isdigit()
+        assert parts[1].isdigit()
+        # parts[2] may be "z" or "z-prerelease"
 
     def test_get_version_string(self):
         """Test get_version_string returns version with optional build number."""
@@ -95,11 +97,11 @@ class TestVersionModule:
         assert display_str.startswith("Version")
 
     def test_version_format(self):
-        """Test version follows SemVer format."""
+        """Test version follows SemVer format (allows pre-release suffix)."""
         version = get_version()
-        # SemVer: X.Y.Z where X, Y, Z are digits
         import re
-        pattern = r"^\d+\.\d+\.\d+$"
+        # SemVer: X.Y.Z or X.Y.Z-prerelease
+        pattern = r"^\d+\.\d+\.\d+(-[a-zA-Z0-9.]+)?$"
         assert re.match(pattern, version), f"Version {version} does not match SemVer format"
 
     @patch("cuepoint.version.__build_number__", "123")
@@ -120,13 +122,7 @@ class TestVersionModule:
     @patch("cuepoint.version.__commit_sha__", None)
     def test_dev_build_detection(self):
         """Test dev build detection when build info not set."""
-        # Reload module to get patched values
-        import importlib
-
         import cuepoint.version as version_module
-        importlib.reload(version_module)
-        
-        is_dev = version_module.is_dev_build()
-        assert is_dev is True
+
         is_dev = version_module.is_dev_build()
         assert is_dev is True
