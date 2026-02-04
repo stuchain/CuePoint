@@ -7,6 +7,10 @@ body:
     attributes:
       value: |
         Thanks for reporting a bug! Please fill out the form below.
+        
+        **For crashes or complex issues:** Attach a support bundle for faster resolution.
+        - GUI: Help → Support & Diagnostics → Export Support Bundle
+        - CLI: `cuepoint --export-support-bundle`
   
   - type: textarea
     id: description
@@ -71,6 +75,20 @@ body:
     validations:
       required: true
   
+  - type: input
+    id: run_id
+    attributes:
+      label: Run ID (if applicable)
+      description: Run ID from logs or CLI output (helps link logs to your report)
+      placeholder: e.g., abc123-def456
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Paste relevant log output or attach support bundle
+      placeholder: |
+        If you have a support bundle, attach it. Otherwise paste relevant log lines (especially ERROR/CRITICAL).
+        Log location: Help → Open Logs Folder (GUI) or see "Logs:" at end of CLI run.
   - type: textarea
     id: additional_context
     attributes:

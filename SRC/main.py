@@ -184,6 +184,13 @@ def main():
     # Step 11: Legal/policy flags
     ap.add_argument("--show-privacy", action="store_true", help="Print privacy notice and exit")
     ap.add_argument("--show-terms", action="store_true", help="Print terms of use and exit")
+    # Design 13.182: Support bundle export (Step 13)
+    ap.add_argument(
+        "--export-support-bundle",
+        dest="export_support_bundle",
+        action="store_true",
+        help="Generate support bundle (diagnostics, logs, config) and exit",
+    )
     ap.add_argument("--checkpoint-every", type=int, default=None, metavar="N",
                     help="Save checkpoint every N tracks (default: from config)")
     ap.add_argument("--max-retries", type=int, default=None, metavar="N",
@@ -192,6 +199,25 @@ def main():
     args = ap.parse_args()
     if args.dry_run:
         args.preflight_only = True
+
+    # Design 13.182: --export-support-bundle - generate support bundle and exit
+    if getattr(args, "export_support_bundle", False):
+        from pathlib import Path
+
+        from cuepoint.utils.paths import AppPaths
+        from cuepoint.utils.support_bundle import SupportBundleGenerator
+
+        output_dir = AppPaths.exports_dir()
+        output_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            bundle_path = SupportBundleGenerator.generate_bundle(
+                output_dir, include_logs=True, include_config=True, sanitize=True
+            )
+            _safe_print_utf8(f"Support bundle created: {bundle_path}")
+            _safe_print_utf8(f"Location: {bundle_path.parent}")
+            return
+        except Exception as e:
+            print_error(f"Failed to create support bundle: {e}", exit_code=1)
 
     # Step 11: Legal/policy CLI flags - show and exit
     if args.show_privacy:

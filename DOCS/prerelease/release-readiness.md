@@ -203,14 +203,14 @@
  
  ## 13) Post-Launch Operations and Support
  
- - [ ] Define support channels (issues, discussions, email).
- - [ ] Add issue templates for bugs, feature requests, and security.
- - [ ] Document a triage workflow and priority classifications.
- - [ ] Create runbooks for release, rollback, and incident response.
- - [ ] Define a release cadence (major/minor/patch/hotfix).
- - [ ] Add a feedback collection flow (in-app feedback, surveys).
- - [ ] Track KPIs: crash rate, support volume, retention, adoption.
- - [ ] Add backup and disaster recovery procedures for artifacts.
+ - [x] Define support channels (issues, discussions, email).
+ - [x] Add issue templates for bugs, feature requests, and security.
+ - [x] Document a triage workflow and priority classifications.
+ - [x] Create runbooks for release, rollback, and incident response.
+ - [x] Define a release cadence (major/minor/patch/hotfix).
+ - [x] Add a feedback collection flow (in-app feedback, surveys).
+ - [x] Track KPIs: crash rate, support volume, retention, adoption.
+ - [x] Add backup and disaster recovery procedures for artifacts.
  
  ## 14) Analytics, Monitoring, and Telemetry (Opt-in)
  
