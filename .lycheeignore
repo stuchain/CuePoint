@@ -1,0 +1,15 @@
+# Lychee link checker - exclude URLs that 404 or are not yet available
+# https://lychee.cli.rs/recipes/excluding-links
+
+# GitHub Discussions (may not be enabled for repo)
+https://github.com/stuchain/CuePoint/discussions
+
+# GitHub Pages (may not be published yet)
+https://stuchain.github.io/CuePoint/
+
+# Microsoft docs (page moved or removed)
+https://docs.microsoft.com/en-us/windows/win32/win_cert/code-signing
+
+# GitHub blob links (may 404 when default branch differs; use relative links instead)
+https://github.com/stuchain/CuePoint/blob/main/
+https://github.com/StuChain/CuePoint/blob/main/

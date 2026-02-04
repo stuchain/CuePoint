@@ -1,6 +1,9 @@
 name: Release Gates
 
 on:
+  push:
+    branches:
+      - prerelease
   workflow_dispatch:
 
 jobs:

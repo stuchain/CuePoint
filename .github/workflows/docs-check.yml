@@ -18,10 +18,7 @@ jobs:
       - name: Lychee link check
         uses: lycheeverse/lychee-action@v2
         with:
-          args: 'DOCS/ .github/ --no-progress'
+          args: 'DOCS/ .github/ --no-progress --exclude-mail --root-dir .'
           fail: true
-          # Exclude anchors and mailto to reduce false positives
-          exclude-mail: false
-          exclude-file: ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
