@@ -4,10 +4,10 @@ name: Docs Check
 on:
   push:
     branches: ['main', 'prerelease']
-    paths: ['DOCS/**', '.github/workflows/docs-check.yml']
+    paths: ['DOCS/**', '.github/**', '.lycheeignore']
   pull_request:
     branches: ['main', 'prerelease']
-    paths: ['DOCS/**', '.github/**']
+    paths: ['DOCS/**', '.github/**', '.lycheeignore']
 
 jobs:
   link-check:

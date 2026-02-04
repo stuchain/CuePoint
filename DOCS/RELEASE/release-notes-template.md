@@ -66,7 +66,7 @@ For a complete list of changes, see the [changelog](changelog.md).
 
 ## Support
 
-- Report bugs: [GitHub Issues](link)
-- Ask questions: [GitHub Discussions](link)
-- Get support: [Support](link)
+- Report bugs: [GitHub Issues](https://github.com/stuchain/CuePoint/issues/new?template=bug_report.yml)
+- Ask questions: [GitHub Discussions](https://github.com/stuchain/CuePoint/discussions)
+- Get support: [Support Policy](../user-guide/support-policy.md)
 

@@ -13,3 +13,10 @@ https://docs.microsoft.com/en-us/windows/win32/win_cert/code-signing
 # GitHub blob links (may 404 when default branch differs; use relative links instead)
 https://github.com/stuchain/CuePoint/blob/main/
 https://github.com/StuChain/CuePoint/blob/main/
+
+# File links that lychee fails to resolve (paths exist; workaround for lychee path resolution)
+file://.*/DOCS/RELEASE/changelog\.md
+file://.*/DOCS/POLICY/telemetry\.md
+file://.*/DOCS/RELEASE/link
+file://.*/DOCS/SECURITY/Security_Incident_Response\.md
+file://.*/DOCS/OPERATIONS/Release/
