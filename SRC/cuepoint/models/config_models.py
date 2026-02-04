@@ -157,6 +157,15 @@ class PerformanceConfig:
 
 
 @dataclass
+class TelemetryConfig:
+    """Analytics, monitoring, and telemetry configuration (Step 14)."""
+
+    enabled: bool = False  # Opt-in only, default OFF
+    endpoint: Optional[str] = None  # HTTPS endpoint for events (None = local only)
+    sample_rate: float = 1.0  # 0.0-1.0, fraction of events to send (1.0 = all)
+
+
+@dataclass
 class AppConfig:
     """Main application configuration.
 
@@ -176,6 +185,7 @@ class AppConfig:
     reliability: ReliabilityConfig = field(default_factory=ReliabilityConfig)
     integrity: IntegrityConfig = field(default_factory=IntegrityConfig)
     performance: PerformanceConfig = field(default_factory=PerformanceConfig)
+    telemetry: TelemetryConfig = field(default_factory=TelemetryConfig)
 
     @classmethod
     def default(cls) -> "AppConfig":
@@ -286,6 +296,11 @@ class AppConfig:
                 "runtime_max_minutes": self.performance.runtime_max_minutes,
                 "progress_throttle_ms": self.performance.progress_throttle_ms,
                 "eta_update_every_tracks": self.performance.eta_update_every_tracks,
+            },
+            "telemetry": {
+                "enabled": self.telemetry.enabled,
+                "endpoint": self.telemetry.endpoint,
+                "sample_rate": self.telemetry.sample_rate,
             },
         }
 
@@ -461,6 +476,14 @@ class AppConfig:
                 eta_update_every_tracks=perf_data.get(
                     "eta_update_every_tracks", config.performance.eta_update_every_tracks
                 ),
+            )
+
+        if "telemetry" in data:
+            tel_data = data["telemetry"]
+            config.telemetry = TelemetryConfig(
+                enabled=tel_data.get("enabled", config.telemetry.enabled),
+                endpoint=tel_data.get("endpoint", config.telemetry.endpoint),
+                sample_rate=float(tel_data.get("sample_rate", config.telemetry.sample_rate)),
             )
 
         return config

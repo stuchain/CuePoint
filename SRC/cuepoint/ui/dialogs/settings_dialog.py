@@ -34,8 +34,10 @@ class SettingsDialog(QDialog):
         self.config_panel = ConfigPanel(config_controller=self.config_controller)
         layout.addWidget(self.config_panel)
 
-        # Step 8.4: Add privacy settings (clear cache/logs on exit)
-        self.privacy_settings = PrivacySettingsWidget(self)
+        # Step 8.4, Step 14: Add privacy settings (clear cache/logs, telemetry opt-in)
+        self.privacy_settings = PrivacySettingsWidget(
+            self, config_controller=self.config_controller
+        )
         self.privacy_settings.open_privacy_dialog_requested.connect(self._open_privacy_dialog)
         layout.addWidget(self.privacy_settings)
 

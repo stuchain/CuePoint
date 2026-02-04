@@ -184,6 +184,9 @@ def main():
     # Step 11: Legal/policy flags
     ap.add_argument("--show-privacy", action="store_true", help="Print privacy notice and exit")
     ap.add_argument("--show-terms", action="store_true", help="Print terms of use and exit")
+    # Step 14: Telemetry opt-in/out
+    ap.add_argument("--telemetry-enable", action="store_true", help="Enable opt-in telemetry")
+    ap.add_argument("--telemetry-disable", action="store_true", help="Disable telemetry and delete local data")
     # Design 13.182: Support bundle export (Step 13)
     ap.add_argument(
         "--export-support-bundle",
@@ -232,6 +235,28 @@ def main():
         text = load_policy_text(path, "Terms of use could not be loaded.")
         _safe_print_utf8(text)
         return
+
+    # Step 14: Telemetry-only mode (enable/disable without processing)
+    telemetry_enable = getattr(args, "telemetry_enable", False)
+    telemetry_disable = getattr(args, "telemetry_disable", False)
+    if (telemetry_enable or telemetry_disable) and (not args.xml or not args.playlist):
+        if telemetry_disable:
+            config_service.set("telemetry.enabled", False)
+            try:
+                from cuepoint.services.interfaces import ITelemetryService
+                if container.is_registered(ITelemetryService):
+                    telemetry = container.resolve(ITelemetryService)
+                    telemetry.delete_local_data()
+            except Exception:
+                pass
+            config_service.save()
+            _safe_print_utf8("Telemetry disabled. Local telemetry data deleted.")
+            return
+        if telemetry_enable:
+            config_service.set("telemetry.enabled", True)
+            config_service.save()
+            _safe_print_utf8("Telemetry enabled. Anonymous usage data will be collected when you run processing.")
+            return
 
     # Design 9: Verify outputs mode - run verification and exit (no xml/playlist needed)
     if args.verify_outputs:
@@ -410,9 +435,31 @@ def main():
     if args.provider:
         config_service.set("providers.active", args.provider)
 
+    # Step 14: Apply telemetry flags when processing
+    if getattr(args, "telemetry_enable", False):
+        config_service.set("telemetry.enabled", True)
+        config_service.save()
+    if getattr(args, "telemetry_disable", False):
+        config_service.set("telemetry.enabled", False)
+        config_service.save()
+        try:
+            from cuepoint.services.interfaces import ITelemetryService
+            if container.is_registered(ITelemetryService):
+                telemetry = container.resolve(ITelemetryService)
+                telemetry.delete_local_data()
+        except Exception:
+            pass
+
     # Design 7.53: Set run ID for observability
     from cuepoint.utils.run_context import set_run_id
     run_id = set_run_id()
+
+    # Step 14: Track app_start (CLI processing)
+    try:
+        from cuepoint.utils.telemetry_helper import get_telemetry
+        get_telemetry().track("app_start", {"channel": "cli"})
+    except Exception:
+        pass
 
     # Display startup banner with configuration fingerprint
     startup_banner(sys.argv[0], args)

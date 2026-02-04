@@ -97,6 +97,21 @@ class CLIProcessor:
         # Track processing start time for summary statistics
         processing_start_time = __import__("time").perf_counter()
 
+        # Step 14: run_start telemetry
+        try:
+            from cuepoint.utils.run_context import get_current_run_id
+            from cuepoint.utils.telemetry_helper import get_telemetry
+            telemetry = get_telemetry()
+            telemetry.track(
+                "run_start",
+                {
+                    "run_id": get_current_run_id() or "",
+                    "track_count": 0,  # Will be updated; we don't have count yet
+                },
+            )
+        except Exception:
+            pass
+
         resolved_output_dir = output_dir or get_output_directory()
         try:
             self.config_service.set("product.last_xml_path", xml_path)
@@ -184,6 +199,22 @@ class CLIProcessor:
                 performance_collector=performance_collector,
             )
         except Exception as e:
+            # Step 14: run_error telemetry
+            try:
+                from cuepoint.utils.run_context import get_current_run_id
+                from cuepoint.utils.telemetry_helper import get_telemetry
+                telemetry = get_telemetry()
+                telemetry.track(
+                    "run_error",
+                    {
+                        "run_id": get_current_run_id() or "",
+                        "error_code": getattr(e, "error_code", "UNKNOWN"),
+                        "stage": "processing",
+                    },
+                )
+                telemetry.flush()
+            except Exception:
+                pass
             self._handle_processing_error(e, xml_path, playlist_name)
             return
         finally:
@@ -213,6 +244,30 @@ class CLIProcessor:
             output_files = {"main": incremental_previous_csv}
         else:
             output_files = self._write_output_files(results, out_csv_base, resolved_output_dir)
+
+        # Step 14: run_complete telemetry
+        try:
+            from cuepoint.utils.run_context import get_current_run_id
+            from cuepoint.utils.telemetry_helper import get_telemetry
+            total = len(results)
+            matched = sum(1 for r in results if r.matched)
+            match_rate = matched / total if total else 0.0
+            telemetry = get_telemetry()
+            telemetry.track(
+                "run_complete",
+                {
+                    "run_id": get_current_run_id() or "",
+                    "duration_ms": int(processing_duration * 1000),
+                    "tracks": total,
+                    "match_rate": round(match_rate, 2),
+                    "tracks_matched": matched,
+                    "tracks_unmatched": total - matched,
+                },
+            )
+            telemetry.track("export_complete", {"output_count": len(output_files)})
+            telemetry.flush()
+        except Exception:
+            pass
 
         # Display summary
         self._display_summary(results, output_files, processing_duration, playlist_name, xml_path)

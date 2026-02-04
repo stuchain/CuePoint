@@ -1124,6 +1124,11 @@ class MainWindow(QMainWindow):
         diagnostics_panel_action.triggered.connect(self._on_show_diagnostics_panel)
         diagnostics_menu.addAction(diagnostics_panel_action)
 
+        analytics_dashboard_action = QAction("&Analytics Dashboard...", self)
+        analytics_dashboard_action.setToolTip("View usage trends (run success rate, match rate)")
+        analytics_dashboard_action.triggered.connect(self._on_show_analytics_dashboard)
+        diagnostics_menu.addAction(analytics_dashboard_action)
+
         log_viewer_action = QAction("&Log Viewer...", self)
         log_viewer_action.setToolTip("View application logs")
         log_viewer_action.triggered.connect(self.on_show_log_viewer)
@@ -1671,6 +1676,22 @@ class MainWindow(QMainWindow):
             dlg.exec()
         except Exception as e:
             QMessageBox.warning(self, "Support Policy", f"Could not open support policy:\n{e}")
+
+    def _on_show_analytics_dashboard(self) -> None:
+        """Show analytics dashboard (Step 14) via Help > Support & Diagnostics."""
+        try:
+            from cuepoint.ui.dialogs.telemetry_dashboard_dialog import TelemetryDashboardDialog
+
+            dialog = TelemetryDashboardDialog(self)
+            dialog.exec()
+        except Exception as e:
+            from PySide6.QtWidgets import QMessageBox
+
+            QMessageBox.warning(
+                self,
+                "Analytics Dashboard",
+                f"Could not open analytics dashboard:\n{e}",
+            )
 
     def _on_show_diagnostics_panel(self) -> None:
         """Show diagnostics panel (Design 7.132): log path, run ID, health checks."""
@@ -3172,6 +3193,17 @@ class MainWindow(QMainWindow):
         # Track processing start time for cancel confirmation
         self._processing_start_time = datetime.now()
 
+        # Step 14: run_start telemetry
+        try:
+            from cuepoint.utils.run_context import get_current_run_id
+            from cuepoint.utils.telemetry_helper import get_telemetry
+            get_telemetry().track(
+                "run_start",
+                {"run_id": get_current_run_id() or "", "track_count": 0},
+            )
+        except Exception:
+            pass
+
         # Design 5.47, 5.48: Check for incomplete run and offer resume (Resume / Discard)
         checkpoint_service = None
         resume_checkpoint = None
@@ -3561,6 +3593,30 @@ class MainWindow(QMainWindow):
             # Automatically save results to CSV so they appear in Past Searches
             output_files = self._auto_save_results(results, playlist_name)
 
+            # Step 14: run_complete and export_complete telemetry
+            try:
+                from cuepoint.utils.run_context import get_current_run_id
+                from cuepoint.utils.telemetry_helper import get_telemetry
+                total = len(results)
+                matched = sum(1 for r in results if r.matched)
+                match_rate = matched / total if total else 0.0
+                telemetry = get_telemetry()
+                telemetry.track(
+                    "run_complete",
+                    {
+                        "run_id": get_current_run_id() or "",
+                        "duration_ms": int(duration_sec * 1000),
+                        "tracks": total,
+                        "match_rate": round(match_rate, 2),
+                        "tracks_matched": matched,
+                        "tracks_unmatched": total - matched,
+                    },
+                )
+                telemetry.track("export_complete", {"output_count": len(output_files) if output_files else 0})
+                telemetry.flush()
+            except Exception:
+                pass
+
             # Show run summary dialog
             try:
                 from cuepoint.models.run_summary import RunSummary
@@ -3771,6 +3827,22 @@ class MainWindow(QMainWindow):
         Args:
             error: ProcessingError object containing error information.
         """
+        # Step 14: run_error telemetry
+        try:
+            from cuepoint.utils.run_context import get_current_run_id
+            from cuepoint.utils.telemetry_helper import get_telemetry
+            get_telemetry().track(
+                "run_error",
+                {
+                    "run_id": get_current_run_id() or "",
+                    "error_code": getattr(error, "error_code", str(getattr(error, "error_type", "UNKNOWN"))),
+                    "stage": "processing",
+                },
+            )
+            get_telemetry().flush()
+        except Exception:
+            pass
+
         # Hide progress section
         self.progress_group.setVisible(False)
 

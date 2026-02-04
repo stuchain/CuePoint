@@ -304,6 +304,12 @@ def main():
         # Create and show main window
         window = MainWindow()
         window.show()
+        # Step 14: app_start telemetry (GUI)
+        try:
+            from cuepoint.utils.telemetry_helper import get_telemetry
+            get_telemetry().track("app_start", {"channel": "gui"})
+        except Exception:
+            pass
         # Ensure window is raised and activated immediately
         window.raise_()
         window.activateWindow()

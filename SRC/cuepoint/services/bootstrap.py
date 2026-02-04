@@ -20,10 +20,12 @@ from cuepoint.services.interfaces import (
     ILoggingService,
     IMatcherService,
     IProcessorService,
+    ITelemetryService,
 )
 from cuepoint.services.logging_service import LoggingService
 from cuepoint.services.matcher_service import MatcherService
 from cuepoint.services.processor_service import ProcessorService
+from cuepoint.services.telemetry_service import TelemetryService
 from cuepoint.utils.di_container import get_container
 
 
@@ -73,6 +75,15 @@ def bootstrap_services() -> None:
         return ExportService(logging_service=container.resolve(ILoggingService))
 
     container.register_factory(IExportService, create_export_service)
+
+    # Step 14: Telemetry service (opt-in analytics)
+    def create_telemetry_service() -> ITelemetryService:
+        return TelemetryService(
+            config_service=container.resolve(IConfigService),
+            logging_service=container.resolve(ILoggingService),
+        )
+
+    container.register_factory(ITelemetryService, create_telemetry_service)
 
     # Design 7: Opt-in alerting for repeated failures
     try:

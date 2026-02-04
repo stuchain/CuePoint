@@ -295,6 +295,7 @@ class ConfigService(IConfigService):
             "CUEPOINT_LOGGING_VERBOSE": ("logging.verbose", lambda x: x.lower() in ("true", "1", "yes")),
             "CUEPOINT_MATCHING_MIN_ACCEPT_SCORE": ("matching.min_accept_score", float),
             "CUEPOINT_MATCHING_EARLY_EXIT_SCORE": ("matching.early_exit_score", float),
+            "CUEPOINT_TELEMETRY_ENABLED": ("telemetry.enabled", lambda x: x.lower() in ("true", "1", "yes")),
         }
 
         for env_var, (config_key, type_converter) in env_mappings.items():
@@ -388,6 +389,12 @@ class ConfigService(IConfigService):
             errors.append("matching.title_weight must be between 0.0 and 1.0")
         if not 0.0 <= self.config.matching.artist_weight <= 1.0:
             errors.append("matching.artist_weight must be between 0.0 and 1.0")
+
+        # Validate telemetry config (Step 14)
+        if not 0.0 <= self.config.telemetry.sample_rate <= 1.0:
+            errors.append("telemetry.sample_rate must be between 0.0 and 1.0")
+        if self.config.telemetry.endpoint and not self.config.telemetry.endpoint.startswith("https://"):
+            errors.append("telemetry.endpoint must use HTTPS")
 
         # Validate export config
         valid_formats = ["csv", "json", "excel", "xlsx"]

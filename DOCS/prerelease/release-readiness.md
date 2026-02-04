@@ -212,15 +212,15 @@
  - [x] Track KPIs: crash rate, support volume, retention, adoption.
  - [x] Add backup and disaster recovery procedures for artifacts.
  
- ## 14) Analytics, Monitoring, and Telemetry (Opt-in)
- 
- - [ ] Define analytics goals and privacy principles up front.
- - [ ] Track feature usage with anonymized, opt-in events.
- - [ ] Track performance telemetry (startup time, tracks/sec).
- - [ ] Track error rates and crash trends by release.
- - [ ] Add a privacy settings UI with opt-in/out controls.
- - [ ] Add data retention policies and deletion requests.
- - [ ] Add a simple analytics dashboard for trend review.
+## 14) Analytics, Monitoring, and Telemetry (Opt-in)
+
+- [x] Define analytics goals and privacy principles up front.
+- [x] Track feature usage with anonymized, opt-in events.
+- [x] Track performance telemetry (startup time, tracks/sec).
+- [x] Track error rates and crash trends by release.
+- [x] Add a privacy settings UI with opt-in/out controls.
+- [x] Add data retention policies and deletion requests.
+- [x] Add a simple analytics dashboard for trend review.
  
  ## 15) Long-Term Maintenance and Evolution
  

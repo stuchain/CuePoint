@@ -233,6 +233,25 @@ class IBeatportService(ABC):
         pass
 
 
+class ITelemetryService(ABC):
+    """Interface for opt-in telemetry (Step 14)."""
+
+    @abstractmethod
+    def track(self, event_name: str, properties: Optional[Dict[str, Any]] = None) -> None:
+        """Track a telemetry event. No-op if disabled."""
+        pass
+
+    @abstractmethod
+    def flush(self) -> None:
+        """Flush queued events."""
+        pass
+
+    @abstractmethod
+    def delete_local_data(self) -> None:
+        """Delete local telemetry data (on opt-out)."""
+        pass
+
+
 class IProcessorService(ABC):
     """Interface for track processing service."""
 
