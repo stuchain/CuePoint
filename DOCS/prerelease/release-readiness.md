@@ -224,11 +224,11 @@
  
  ## 15) Long-Term Maintenance and Evolution
  
- - [ ] Define a dependency update cadence and security patch SLA.
- - [ ] Add a tech-debt review cycle (quarterly).
- - [ ] Create a compatibility test suite for new OS versions.
- - [ ] Add a maintenance roadmap for refactors and upgrades.
- - [ ] Establish a policy for sunsetting features and data formats.
+ - [x] Define a dependency update cadence and security patch SLA.
+ - [x] Add a tech-debt review cycle (quarterly).
+ - [x] Create a compatibility test suite for new OS versions.
+ - [x] Add a maintenance roadmap for refactors and upgrades.
+ - [x] Establish a policy for sunsetting features and data formats.
  
  ## How to Use This Document
  

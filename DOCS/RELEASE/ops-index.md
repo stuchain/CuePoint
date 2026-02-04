@@ -32,6 +32,14 @@ This index links to all operational documentation for CuePoint post-launch suppo
 | [Backup & Disaster Recovery](backup-disaster-recovery.md) | Backup procedures |
 | [Known Issues](known-issues.md) | Current known issues and workarounds |
 
+## Maintenance (Step 15)
+
+| Document | Purpose |
+| --- | --- |
+| [Maintenance Policy](maintenance-policy.md) | Dependency cadence, security SLA, tech-debt reviews |
+| [Compatibility Matrix](compatibility-matrix.md) | OS, Python, Rekordbox version support |
+| [Maintenance Roadmap](maintenance-roadmap.md) | Refactors, upgrades, tech-debt backlog |
+
 ## Release
 
 | Document | Purpose |

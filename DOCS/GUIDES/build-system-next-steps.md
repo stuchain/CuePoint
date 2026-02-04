@@ -34,6 +34,10 @@ All components from Step 2 (Build System) have been implemented and tested:
 - ✅ `.github/workflows/build-windows.yml` - Windows build, signing, and installer
 - ✅ `.github/workflows/release.yml` - Release publishing workflow
 
+## Reproducible Builds
+
+For deterministic builds, checksum verification, and build provenance, see [Reproducible Builds](reproducible-builds.md).
+
 ## ✅ Testing Results
 
 All scripts have been tested locally:

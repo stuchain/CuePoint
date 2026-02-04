@@ -1,0 +1,45 @@
+name: Maintenance Task
+description: Tech debt, refactor, dependency update, or maintenance work (Step 15)
+title: "[Maintenance] "
+labels: ["maintenance", "tech-debt"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for maintenance tasks: tech debt, refactors, dependency updates, or compatibility work.
+        See [Maintenance Policy](https://github.com/stuchain/CuePoint/blob/main/DOCS/RELEASE/maintenance-policy.md).
+
+  - type: textarea
+    id: task
+    attributes:
+      label: Task
+      description: What maintenance work is needed?
+      placeholder: e.g., Refactor XML parser to reduce coupling
+    validations:
+      required: true
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impact
+      description: How does this affect the project?
+      options:
+        - "P0 - Blocking stability or security"
+        - "P1 - High impact, moderate effort"
+        - "P2 - Backlog, evaluated quarterly"
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Module, files, or rationale
+      placeholder: e.g., SRC/cuepoint/parsers/xml_parser.py - high complexity
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: How do we know this is done?
+      placeholder: e.g., Tests pass, no regressions, docs updated

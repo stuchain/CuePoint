@@ -89,6 +89,20 @@ def main():
     4. Shows startup banner with configuration fingerprint
     5. Uses CLIProcessor (Phase 5 architecture) to execute the main processing logic
     """
+    # Step 15: Maintenance report - handle before full bootstrap
+    if len(sys.argv) > 1 and sys.argv[1] == "--maintenance-report":
+        import subprocess
+        src_path = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(src_path)
+        script = os.path.join(project_root, "scripts", "maintenance_report.py")
+        # Pass through remaining args (e.g. --skip-audit, --json)
+        script_args = [sys.executable, script] + sys.argv[2:]
+        result = subprocess.run(
+            script_args,
+            cwd=project_root,
+        )
+        sys.exit(result.returncode)
+
     # Step 12: Migrate subcommand - handle before full bootstrap
     if len(sys.argv) > 1 and sys.argv[1] == "migrate":
         migrate_parser = argparse.ArgumentParser(prog="cuepoint migrate")
@@ -193,6 +207,12 @@ def main():
         dest="export_support_bundle",
         action="store_true",
         help="Generate support bundle (diagnostics, logs, config) and exit",
+    )
+    # Step 15: Maintenance report
+    ap.add_argument(
+        "--maintenance-report",
+        action="store_true",
+        help="Generate maintenance report (dependencies, audit status) and exit",
     )
     ap.add_argument("--checkpoint-every", type=int, default=None, metavar="N",
                     help="Save checkpoint every N tracks (default: from config)")

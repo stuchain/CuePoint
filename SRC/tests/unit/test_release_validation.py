@@ -236,3 +236,88 @@ class TestValidateVersion:
 
         assert extract_base_version("1.0.0") == "1.0.0"
         assert extract_base_version("1.0.1-test") == "1.0.1"
+
+
+class TestVerifyInstaller:
+    """Tests for verify_installer (Design 2.38: checksum and signature verification)."""
+
+    def test_sha256_file(self):
+        import verify_installer as m
+        sha256_file = m.sha256_file
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".bin") as f:
+            f.write(b"hello world")
+            path = Path(f.name)
+        try:
+            digest = sha256_file(path)
+            assert len(digest) == 64
+            assert all(c in "0123456789abcdef" for c in digest)
+        finally:
+            path.unlink(missing_ok=True)
+
+    def test_verify_checksum_match(self):
+        import verify_installer as m
+        sha256_file = m.sha256_file
+        verify_checksum = m.verify_checksum
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".bin") as f:
+            f.write(b"test content")
+            path = Path(f.name)
+        try:
+            expected = sha256_file(path)
+            ok, msg = verify_checksum(path, expected)
+            assert ok is True, msg
+        finally:
+            path.unlink(missing_ok=True)
+
+    def test_verify_checksum_mismatch(self):
+        import verify_installer as m
+        verify_checksum = m.verify_checksum
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".bin") as f:
+            f.write(b"test")
+            path = Path(f.name)
+        try:
+            ok, msg = verify_checksum(path, "0" * 64)
+            assert ok is False
+            assert "mismatch" in msg
+        finally:
+            path.unlink(missing_ok=True)
+
+    def test_parse_checksums_file_gnu_format(self):
+        import verify_installer as m
+        parse_checksums_file = m.parse_checksums_file
+
+        # SHA256 hashes are 64 hex chars
+        h1 = "a" * 64
+        h2 = "b" * 64
+        content = f"SHA256 (foo.dmg) = {h1}\nSHA256 (bar.exe) = {h2}\n"
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+            f.write(content)
+            path = Path(f.name)
+        try:
+            pairs = parse_checksums_file(path)
+            assert len(pairs) == 2
+            assert ("foo.dmg", h1) in pairs
+            assert ("bar.exe", h2) in pairs
+        finally:
+            path.unlink(missing_ok=True)
+
+    def test_parse_checksums_file_bsd_format(self):
+        import verify_installer as m
+        parse_checksums_file = m.parse_checksums_file
+
+        # SHA256 hashes are 64 hex chars
+        h1 = "a" * 64
+        h2 = "b" * 64
+        content = f"{h1}  foo.dmg\n{h2}  bar.exe\n"
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+            f.write(content)
+            path = Path(f.name)
+        try:
+            pairs = parse_checksums_file(path)
+            assert len(pairs) == 2
+            assert ("foo.dmg", h1) in pairs
+            assert ("bar.exe", h2) in pairs
+        finally:
+            path.unlink(missing_ok=True)

@@ -6,4 +6,7 @@ contact_links:
   - name: Feature Request
     url: https://github.com/stuchain/CuePoint/issues/new?template=feature_request.yml
     about: Suggest a new feature
+  - name: Maintenance Task
+    url: https://github.com/stuchain/CuePoint/issues/new?template=maintenance_task.yml
+    about: Tech debt, refactor, or maintenance work (Step 15)
 

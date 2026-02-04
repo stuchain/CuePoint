@@ -49,6 +49,7 @@ For contributors: setup, architecture, extending the codebase.
 | --- | --- |
 | [Release Checklist](release-checklist.md) | Pre-release checks |
 | [Release Readiness Test Plan](RELEASE/release-readiness-test-plan.md) | Validation steps |
+| [Reproducible Builds](GUIDES/reproducible-builds.md) | Deterministic builds, checksums, verification |
 | [Changelog](RELEASE/changelog.md) | Version history |
 | [Changelog Policy](POLICY/changelog-policy.md) | How to update changelog |
 | [Output Schema Versioning](POLICY/output-schema-versioning.md) | CSV/export format versioning |

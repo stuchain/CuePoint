@@ -194,6 +194,13 @@ jobs:
       - name: Verify version embedding
         run: python scripts/verify_version_embedding.py
       
+      - name: Verify installer (checksums and signatures, Design 2.38)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          python scripts/generate_checksums.py --output dist/SHA256SUMS.txt --algorithms sha256
+          python scripts/verify_installer.py --dir dist/ --checksums dist/SHA256SUMS.txt
+          python scripts/validate_signatures.py --dir dist/
+
       - name: Verify DMG exists before upload
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
