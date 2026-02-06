@@ -239,7 +239,7 @@ class TestBeatportSearchIntegration:
         assert isinstance(urls, list)
     
     @patch('cuepoint.data.beatport_search.beatport_search_direct')
-    @patch('beatport.ddg_track_urls')
+    @patch('cuepoint.data.beatport.ddg_track_urls')
     def test_beatport_search_hybrid_combines_results(self, mock_track_urls, mock_direct):
         """Test hybrid search combining direct and DuckDuckGo results."""
         # Mock direct search returning URLs
@@ -262,7 +262,7 @@ class TestBeatportSearchIntegration:
         assert len(urls) == len(set(urls))
     
     @patch('cuepoint.data.beatport_search.beatport_search_direct')
-    @patch('beatport.ddg_track_urls')
+    @patch('cuepoint.data.beatport.ddg_track_urls')
     def test_beatport_search_hybrid_empty_results(self, mock_track_urls, mock_direct):
         """Test hybrid search with empty results."""
         # Mock both returning empty lists
@@ -276,7 +276,7 @@ class TestBeatportSearchIntegration:
         assert len(urls) == 0
     
     @patch('cuepoint.data.beatport_search.beatport_search_direct')
-    @patch('beatport.ddg_track_urls')
+    @patch('cuepoint.data.beatport.ddg_track_urls')
     def test_beatport_search_hybrid_max_results(self, mock_track_urls, mock_direct):
         """Test hybrid search respects max_results."""
         # Mock returning many URLs
@@ -624,7 +624,7 @@ class TestBeatportSearchIntegration:
         assert isinstance(urls, list)
     
     @patch('cuepoint.data.beatport_search.beatport_search_direct')
-    @patch('beatport.ddg_track_urls')
+    @patch('cuepoint.data.beatport.ddg_track_urls')
     def test_beatport_search_hybrid_prefer_ddg(self, mock_track_urls, mock_direct):
         """Test hybrid search with prefer_direct=False."""
         # Mock DuckDuckGo returning URLs
@@ -644,7 +644,7 @@ class TestBeatportSearchIntegration:
         assert len(urls) > 0
     
     @patch('cuepoint.data.beatport_search.beatport_search_direct')
-    @patch('beatport.ddg_track_urls')
+    @patch('cuepoint.data.beatport.ddg_track_urls')
     def test_beatport_search_hybrid_ddg_supplement(self, mock_track_urls, mock_direct):
         """Test hybrid search supplementing DuckDuckGo when results are low."""
         # Mock DuckDuckGo returning few results

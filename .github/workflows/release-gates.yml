@@ -33,15 +33,18 @@ jobs:
         run: |
           pytest SRC/tests/unit/ -v --cov=SRC/cuepoint --cov-report=xml
         env:
-          # Linux: use offscreen platform so Qt/pytest-qt works without display/EGL
-          QT_QPA_PLATFORM: offscreen
+          # Linux: offscreen platform for Qt without display/EGL. Windows: omit to avoid
+          # hangs (offscreen has limitations on Windows - see pytest-qt troubleshooting).
+          QT_QPA_PLATFORM: ${{ matrix.os == 'ubuntu-latest' && 'offscreen' || '' }}
+          CUEPOINT_SKIP_UPDATE_CHECK: "1"
         continue-on-error: false
       
       - name: Run integration tests
         run: |
           pytest SRC/tests/integration/ -v
         env:
-          QT_QPA_PLATFORM: offscreen
+          QT_QPA_PLATFORM: ${{ matrix.os == 'ubuntu-latest' && 'offscreen' || '' }}
+          CUEPOINT_SKIP_UPDATE_CHECK: "1"
         continue-on-error: false
       
       - name: Upload coverage

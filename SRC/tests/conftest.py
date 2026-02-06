@@ -3,6 +3,11 @@
 import os
 import sys
 
+# Disable update system during tests - avoids timers and network calls that can hang
+# on Windows (Design: test stability). PYTEST_CURRENT_TEST is set by pytest, but
+# this ensures coverage even when running tests via other entry points.
+os.environ.setdefault("CUEPOINT_SKIP_UPDATE_CHECK", "1")
+
 # Add src directory to Python path before any cuepoint imports
 # This ensures pytest can find the cuepoint module
 _test_dir = os.path.dirname(os.path.abspath(__file__))
