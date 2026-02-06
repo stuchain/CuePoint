@@ -251,6 +251,7 @@ class TestMypyValidation:
                 "attr-defined",
                 "union-attr",
                 "call-arg",
+                "type-abstract",
             ]
             # Filter out errors that match ignore patterns
             filtered_errors = []

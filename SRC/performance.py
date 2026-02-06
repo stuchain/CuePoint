@@ -10,5 +10,5 @@ The actual implementation lives in `cuepoint.utils.performance`.
 
 from __future__ import annotations
 
-from cuepoint.utils.performance import performance_collector
+from cuepoint.utils.performance import performance_collector  # noqa: F401
 
