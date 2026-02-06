@@ -216,7 +216,7 @@ class TestBeatportDataIntegration:
         assert candidate.release_year is None
         assert candidate.bpm is None
     
-    @patch('cuepoint.data.beatport.SESSION.get')
+    @patch('requests.Session.get')
     def test_request_html_empty_body_retry(self, mock_get):
         """Test request_html retrying with identity encoding on empty body."""
         from bs4 import BeautifulSoup
@@ -245,7 +245,7 @@ class TestBeatportDataIntegration:
         assert result is not None
         assert isinstance(result, BeautifulSoup)
     
-    @patch('cuepoint.data.beatport.SESSION.get')
+    @patch('requests.Session.get')
     def test_request_html_cache_buster_retry(self, mock_get):
         """Test request_html using cache buster on second empty body."""
         from bs4 import BeautifulSoup
@@ -280,7 +280,7 @@ class TestBeatportDataIntegration:
         assert result is not None
         assert isinstance(result, BeautifulSoup)
     
-    @patch('cuepoint.data.beatport.SESSION.get')
+    @patch('requests.Session.get')
     def test_request_html_cache_hit_detection(self, mock_get):
         """Test request_html detecting cache hits."""
         from bs4 import BeautifulSoup
@@ -300,7 +300,7 @@ class TestBeatportDataIntegration:
         assert result is not None
         assert get_last_cache_hit() is True
     
-    @patch('cuepoint.data.beatport.SESSION.get')
+    @patch('requests.Session.get')
     def test_request_html_retry_on_failure(self, mock_get):
         """Test request_html retrying on failed status code."""
         from bs4 import BeautifulSoup
@@ -325,7 +325,7 @@ class TestBeatportDataIntegration:
         # Should retry and succeed
         assert result is not None
     
-    @patch('cuepoint.data.beatport.SESSION.get')
+    @patch('requests.Session.get')
     def test_request_html_exception_handling(self, mock_get):
         """Test request_html handling exceptions."""
         from requests import RequestException
@@ -577,7 +577,7 @@ class TestBeatportDataIntegration:
         # Should extract artists from HTML links
         assert isinstance(artists, str)
     
-    @patch('cuepoint.data.beatport.SESSION.get')
+    @patch('requests.Session.get')
     def test_request_html_empty_body_status_codes(self, mock_get):
         """Test request_html handling 204 and 304 status codes."""
         # Mock response with 204 (No Content)
@@ -595,7 +595,7 @@ class TestBeatportDataIntegration:
         # Should handle 204 as empty body
         assert result is None
     
-    @patch('cuepoint.data.beatport.SESSION.get')
+    @patch('requests.Session.get')
     def test_request_html_content_length_zero(self, mock_get):
         """Test request_html handling Content-Length: 0."""
         # Mock response with Content-Length: 0
@@ -613,7 +613,7 @@ class TestBeatportDataIntegration:
         # Should detect empty body from Content-Length
         assert result is None
     
-    @patch('cuepoint.data.beatport.SESSION.get')
+    @patch('requests.Session.get')
     def test_request_html_beautifulsoup_exception(self, mock_get):
         """Test request_html handling BeautifulSoup parsing exception."""
         # Mock response that will cause BeautifulSoup to fail
@@ -966,7 +966,7 @@ class TestBeatportDataIntegration:
         # Should merge remixers from title
         assert isinstance(result, tuple)
     
-    @patch('cuepoint.data.beatport.SESSION.get')
+    @patch('requests.Session.get')
     def test_request_html_headers_exception(self, mock_get):
         """Test request_html handling exception when accessing headers."""
         from bs4 import BeautifulSoup
@@ -996,7 +996,7 @@ class TestBeatportDataIntegration:
         assert result is not None
         assert isinstance(result, BeautifulSoup)
     
-    @patch('cuepoint.data.beatport.SESSION.get')
+    @patch('requests.Session.get')
     def test_request_html_from_cache_attribute(self, mock_get):
         """Test request_html detecting cache via _from_cache attribute."""
         from bs4 import BeautifulSoup
@@ -1018,7 +1018,7 @@ class TestBeatportDataIntegration:
         assert result is not None
         assert get_last_cache_hit() is True
     
-    @patch('cuepoint.data.beatport.SESSION.get')
+    @patch('requests.Session.get')
     def test_request_html_compressed_encoding(self, mock_get):
         """Test request_html handling compressed encodings (gzip, br, deflate)."""
         # Mock response with compressed encoding
@@ -1603,7 +1603,7 @@ class TestBeatportDataIntegration:
         # Should try URL construction when results are very low
         assert isinstance(urls, list)
     
-    @patch('cuepoint.data.beatport.SESSION.get')
+    @patch('requests.Session.get')
     def test_request_html_304_status(self, mock_get):
         """Test request_html handling 304 status code."""
         # Mock response with 304 (Not Modified)
@@ -1621,7 +1621,7 @@ class TestBeatportDataIntegration:
         # Should handle 304 as empty body
         assert result is None
     
-    @patch('cuepoint.data.beatport.SESSION.get')
+    @patch('requests.Session.get')
     def test_request_html_deflate_encoding(self, mock_get):
         """Test request_html handling deflate encoding."""
         # Mock response with deflate encoding
@@ -1660,7 +1660,7 @@ class TestBeatportDataIntegration:
         # Should handle exceptions in val_after_label gracefully
         assert isinstance(result, tuple)
     
-    @patch('cuepoint.data.beatport.SESSION.get')
+    @patch('requests.Session.get')
     def test_request_html_resp_none(self, mock_get):
         """Test request_html handling None response."""
         # Mock get returning None
@@ -1671,7 +1671,7 @@ class TestBeatportDataIntegration:
         # Should handle None response gracefully
         assert result is None
     
-    @patch('cuepoint.data.beatport.SESSION.get')
+    @patch('requests.Session.get')
     def test_request_html_headers_get_exception(self, mock_get):
         """Test request_html handling exception when getting headers."""
         # Mock response that raises exception on headers.get
@@ -1861,7 +1861,7 @@ class TestBeatportDataIntegration:
         # Should handle broader search exceptions gracefully
         assert isinstance(urls, list)
     
-    @patch('cuepoint.data.beatport.SESSION.get')
+    @patch('requests.Session.get')
     def test_request_html_br_encoding(self, mock_get):
         """Test request_html handling br (Brotli) encoding."""
         # Mock response with br encoding
@@ -1879,7 +1879,7 @@ class TestBeatportDataIntegration:
         # Should detect br encoding as empty body
         assert result is None
     
-    @patch('cuepoint.data.beatport.SESSION.get')
+    @patch('requests.Session.get')
     def test_request_html_resp_false(self, mock_get):
         """Test request_html handling False response."""
         # Mock get returning False-like response
