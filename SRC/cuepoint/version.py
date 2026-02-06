@@ -18,11 +18,9 @@ from typing import Any, Dict, Optional
 __version__ = "1.0.1-test21"
 
 # Build identifier (set by CI or build script)
-__build_number__: Optional[str] = "202512161452"  # Will be set during build
-__commit_sha__: Optional[str] = (
-    "e5b0565c160cb1b72d0f111c5ac7aa077e30ca58"  # Will be set during build
-)
-__build_date__: Optional[str] = "2025-12-16T14:52:41.687705"  # Will be set during build
+__build_number__: Optional[str] = "202602061840"  # Will be set during build
+__commit_sha__: Optional[str] = "e069c0a9d30f125488e8ca2ba7240e73eb124b62"  # Will be set during build
+__build_date__: Optional[str] = "2026-02-06T18:40:43.547654"  # Will be set during build
 
 
 def get_version() -> str:

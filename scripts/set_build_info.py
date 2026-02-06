@@ -112,22 +112,37 @@ def update_version_file() -> None:
     commit_sha = get_commit_sha()
     build_date = get_build_date()
 
-    # Replace placeholders - handle both None and existing values
+    # Replace placeholders - handle both single-line and multi-line formats
     import re
 
-    # Pattern to match: __build_number__: Optional[str] = "..." or = None
-    build_pattern = r'(__build_number__: Optional\[str\] = )["\']?[^"\']*["\']?'
-    commit_pattern = r'(__commit_sha__: Optional\[str\] = )["\']?[^"\']*["\']?'
-    date_pattern = r'(__build_date__: Optional\[str\] = )["\']?[^"\']*["\']?'
+    # Pattern to match: __build_number__: Optional[str] = "..." or = None (single-line only)
+    build_pattern = r'(__build_number__: Optional\[str\] = )["\']?[^"\'\n]*["\']?'
+    date_pattern = r'(__build_date__: Optional\[str\] = )["\']?[^"\'\n]*["\']?'
+    
+    # Commit SHA: match ENTIRE assignment (single-line OR multi-line) to avoid partial replacement
+    # Multi-line: __commit_sha__: Optional[str] = (\n    "..."  # comment\n)
+    # Single-line: __commit_sha__: Optional[str] = "..."  # comment
+    commit_pattern = re.compile(
+        r'__commit_sha__: Optional\[str\] = '
+        r'(?:\(\s*["\']?[^"\']*["\']?[^)]*\)'  # multi-line: ( "..." ... )
+        r'|["\']?[^"\'\n]*["\']?[^\n]*)',  # single-line: "..." or value
+        re.DOTALL,
+    )
     
     # Replace build number
     content = re.sub(build_pattern, f'__build_number__: Optional[str] = "{build_number}"', content)
     
-    # Replace commit SHA
+    # Replace commit SHA (full line replacement)
     if commit_sha:
-        content = re.sub(commit_pattern, f'__commit_sha__: Optional[str] = "{commit_sha}"', content)
+        content = commit_pattern.sub(
+            f'__commit_sha__: Optional[str] = "{commit_sha}"  # Will be set during build',
+            content,
+        )
     else:
-        content = re.sub(commit_pattern, '__commit_sha__: Optional[str] = None', content)
+        content = commit_pattern.sub(
+            '__commit_sha__: Optional[str] = None  # Will be set during build',
+            content,
+        )
     
     # Replace build date
     content = re.sub(date_pattern, f'__build_date__: Optional[str] = "{build_date}"', content)
