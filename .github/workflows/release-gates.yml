@@ -38,6 +38,7 @@ jobs:
       - name: Run unit tests
         run: |
           pytest SRC/tests/unit/ -v --cov=SRC/cuepoint --cov-report=xml
+        timeout-minutes: 10
         env:
           # Linux: offscreen platform for Qt without display/EGL. Windows: omit to avoid
           # hangs (offscreen has limitations on Windows - see pytest-qt troubleshooting).
@@ -47,8 +48,9 @@ jobs:
       
       - name: Run integration tests
         run: |
-          pytest SRC/tests/integration/ -v
+          pytest SRC/tests/integration/ -v --timeout=120
         env:
+          # Linux: offscreen for headless. Windows/macOS: omit (offscreen can hang on Windows).
           QT_QPA_PLATFORM: ${{ matrix.os == 'ubuntu-latest' && 'offscreen' || '' }}
           CUEPOINT_SKIP_UPDATE_CHECK: "1"
         continue-on-error: false
@@ -93,6 +95,7 @@ jobs:
 
       - name: Validate deterministic build (pip --require-hashes, Design 2.8)
         run: |
+          pip install "pip<26"
           pip install pip-tools
           python scripts/generate_requirements_hashes.py
           pip install -r requirements-build-hashed.txt --require-hashes

@@ -37,6 +37,17 @@ from cuepoint.services.interfaces import (
 from cuepoint.utils.di_container import DIContainer, reset_container
 
 
+def pytest_sessionfinish(session, exitstatus):
+    """Quit QApplication on session end to prevent hang on Windows (event loop keeps process alive)."""
+    try:
+        from PySide6.QtWidgets import QApplication
+        app = QApplication.instance()
+        if app is not None:
+            app.quit()
+    except ImportError:
+        pass
+
+
 @pytest.fixture(scope="function")
 def di_container() -> Generator[DIContainer, None, None]:
     """Create a fresh DI container for each test."""
@@ -213,6 +224,9 @@ def qapp():
         if app is None:
             app = QApplication([])
         yield app
+        # Quit on teardown to prevent hang on Windows
+        if app is not None:
+            app.quit()
     except ImportError:
         pytest.skip("PySide6 not available for UI tests")
 
