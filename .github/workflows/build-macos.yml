@@ -29,7 +29,7 @@ jobs:
           
           if [ "${{ startsWith(github.ref, 'refs/tags/v') }}" = "true" ]; then
             echo "Release build: using pip --require-hashes (2.8)"
-            pip install hashin
+            pip install pip-tools
             python scripts/generate_requirements_hashes.py
             pip install -r requirements-build-hashed.txt --require-hashes
           else

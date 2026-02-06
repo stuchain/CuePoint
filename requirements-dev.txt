@@ -32,3 +32,4 @@ radon==6.0.1  # For complexity metrics (5.7.18)
 
 # Build tools
 pyinstaller==6.17.0  # For building executables (Python 3.13-compatible)
+pip-tools  # For generate_requirements_hashes.py (Design 2.8, pip --require-hashes)

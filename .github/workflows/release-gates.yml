@@ -24,6 +24,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       
+      - name: Install Qt dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libxcb-xinerama0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xfixes0
+      
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
@@ -87,7 +93,7 @@ jobs:
 
       - name: Validate deterministic build (pip --require-hashes, Design 2.8)
         run: |
-          pip install hashin
+          pip install pip-tools
           python scripts/generate_requirements_hashes.py
           pip install -r requirements-build-hashed.txt --require-hashes
           echo "Deterministic install verified: pip --require-hashes succeeded"

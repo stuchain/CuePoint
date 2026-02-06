@@ -5,19 +5,18 @@
 Generate requirements file with hashes for pip --require-hashes.
 
 Design: 02 Release Engineering (2.8). Use in release builds for deterministic
-dependency installation. Copies requirements-build.txt and runs hashin to add
---hash=sha256:... to each line, then you install with:
+dependency installation. Uses pip-compile to resolve all transitive dependencies
+and add --hash=sha256:... for each package, then you install with:
   pip install -r requirements-build-hashed.txt --require-hashes
 
-Requires: pip install hashin
+Requires: pip install pip-tools
 
 Usage:
-    pip install hashin
+    pip install pip-tools
     python scripts/generate_requirements_hashes.py [--output path]
 """
 
 import argparse
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -55,25 +54,36 @@ def main() -> None:
         print(f"Error: Input not found: {src}", file=sys.stderr)
         sys.exit(1)
 
-    shutil.copy(src, dst)
     try:
         subprocess.run(
-            [sys.executable, "-m", "hashin", "-r", str(dst), "--update-all"],
+            [
+                sys.executable,
+                "-m",
+                "piptools",
+                "compile",
+                str(src),
+                "--generate-hashes",
+                "--allow-unsafe",
+                "--output-file",
+                str(dst),
+                "--resolver",
+                "backtracking",
+            ],
             check=True,
             cwd=root,
-            timeout=300,
+            timeout=600,
         )
     except FileNotFoundError:
         print(
-            "Error: hashin not found. Install with: pip install hashin",
+            "Error: pip-tools not found. Install with: pip install pip-tools",
             file=sys.stderr,
         )
         sys.exit(1)
     except subprocess.CalledProcessError as e:
-        print(f"Error: hashin failed: {e}", file=sys.stderr)
+        print(f"Error: pip-compile failed: {e}", file=sys.stderr)
         sys.exit(1)
     except subprocess.TimeoutExpired:
-        print("Error: hashin timed out", file=sys.stderr)
+        print("Error: pip-compile timed out", file=sys.stderr)
         sys.exit(1)
 
     print(f"Generated {dst}. Install with: pip install -r {dst} --require-hashes")
