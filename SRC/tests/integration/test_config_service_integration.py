@@ -189,8 +189,8 @@ class TestConfigServiceIntegration:
 
     def test_config_load_from_nonexistent_file(self):
         """Test loading configuration from non-existent file (use defaults)."""
-        # Create service with non-existent file path
-        nonexistent_file = Path("/nonexistent/path/config.yaml")
+        # Use a path under temp dir so parent can be created (macOS /nonexistent is read-only)
+        nonexistent_file = Path(tempfile.gettempdir()) / "cuepoint_test_nonexistent" / "config.yaml"
         
         # Should not raise error, should use defaults
         service = ConfigService(config_file=nonexistent_file)

@@ -9,7 +9,7 @@ Implements the "Transparency Principle" from the UX philosophy.
 """
 
 import time
-from typing import Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 
 class ProgressTracker:
@@ -43,7 +43,7 @@ class ProgressTracker:
 
     def update(
         self, current: int, track_name: str = "", force_update: bool = False
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """Update progress and return progress information.
 
         Args:
@@ -108,7 +108,7 @@ class ProgressTracker:
 
         return progress_info
 
-    def _get_progress_info(self, elapsed: float, track_name: str) -> Dict[str, any]:
+    def _get_progress_info(self, elapsed: float, track_name: str) -> Dict[str, Any]:
         """Get progress info without triggering callback (for throttled updates).
 
         Args:
@@ -151,7 +151,7 @@ class ProgressTracker:
             message += f"\nCurrent: {info['track_name']}"
         return message
 
-    def get_current_info(self) -> Dict[str, any]:
+    def get_current_info(self) -> Dict[str, Any]:
         """Get current progress information.
 
         Returns:
@@ -160,7 +160,7 @@ class ProgressTracker:
         elapsed = time.perf_counter() - self.start_time
         return self._get_progress_info(elapsed, self.current_track_name)
 
-    def increment(self, track_name: str = "") -> Dict[str, any]:
+    def increment(self, track_name: str = "") -> Dict[str, Any]:
         """Increment progress by 1 and return progress info.
 
         Args:
@@ -171,7 +171,7 @@ class ProgressTracker:
         """
         return self.update(self.current + 1, track_name)
 
-    def finish(self) -> Dict[str, any]:
+    def finish(self) -> Dict[str, Any]:
         """Mark progress as complete and return final info.
 
         Returns:

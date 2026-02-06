@@ -18,7 +18,9 @@ from typing import Optional, Tuple
 def _get_base_path() -> Path:
     """Get base path for bundled resources (source or frozen)."""
     if getattr(sys, "frozen", False):
-        return Path(sys._MEIPASS)
+        # PyInstaller sets _MEIPASS; use getattr for mypy (attr-defined)
+        meipass = getattr(sys, "_MEIPASS", ".")
+        return Path(meipass)
     # From source: SRC/cuepoint/utils/policy_docs.py -> project root
     return Path(__file__).resolve().parents[3]
 

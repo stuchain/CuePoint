@@ -53,6 +53,13 @@ class ExportService(IExportService):
         file_path = Path(filepath)
         parent_dir = file_path.parent
 
+        # Reject if filename contains invalid characters (prevents hang on Windows with <> etc.)
+        # Only check the filename, not the path - ":" is valid in "C:\" drive letters
+        invalid_chars = '<>:"|?*'
+        filename = file_path.name
+        if any(c in filename for c in invalid_chars):
+            return False, f"Path contains invalid characters: {filepath}"
+
         # Check parent directory exists or can be created
         if not parent_dir.exists():
             try:

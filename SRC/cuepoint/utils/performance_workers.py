@@ -14,7 +14,7 @@ Implements Step 6.6 - Performance with:
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 
 from PySide6.QtCore import QObject, QThread, Signal
 
@@ -235,7 +235,7 @@ class PerformanceBudgetMonitor:
     Implements Step 6.6.2.2 - Performance Monitoring.
     """
     
-    _violations = []
+    _violations: list[Dict[str, Any]] = []
     
     @staticmethod
     def check_budget(operation_name: str, duration_ms: float, budget: Optional[PerformanceBudget] = None) -> Tuple[bool, str]:

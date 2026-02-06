@@ -7,6 +7,8 @@ Test script to verify PlaylistSelector integration in MainWindow
 
 import sys
 import os
+
+import pytest
 from PySide6.QtWidgets import QApplication
 import sys
 import os
@@ -68,16 +70,12 @@ def test_integration():
         print("  3. Playlist dropdown should populate")
         print("  4. Select a playlist to see track count")
         
-        return True
-        
     except AssertionError as e:
-        print(f"\n[FAIL] {e}")
-        return False
+        pytest.fail(str(e))
     except Exception as e:
-        print(f"\n[ERROR] {e}")
         import traceback
         traceback.print_exc()
-        return False
+        pytest.fail(str(e))
 
 if __name__ == "__main__":
     success = test_integration()

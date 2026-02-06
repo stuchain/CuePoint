@@ -243,11 +243,16 @@ def apply_windows_dark_title_bar(window) -> None:
         # Windows API constants
         DWMWA_USE_IMMERSIVE_DARK_MODE = 20  # Windows 11 (build 22000+)
         
+        # Use getattr for ctypes.windll - not present on non-Windows (mypy)
+        windll = getattr(ctypes, "windll", None)
+        if windll is None:
+            return
+
         # Try Windows 11 API (DWMWA_USE_IMMERSIVE_DARK_MODE)
         # This works on Windows 11 and also on Windows 10 with recent updates
         try:
             value = ctypes.c_int(1)  # 1 = enable dark mode
-            result = ctypes.windll.dwmapi.DwmSetWindowAttribute(
+            result = windll.dwmapi.DwmSetWindowAttribute(
                 wintypes.HWND(hwnd),
                 DWMWA_USE_IMMERSIVE_DARK_MODE,
                 ctypes.byref(value),
@@ -259,13 +264,13 @@ def apply_windows_dark_title_bar(window) -> None:
         except (AttributeError, OSError, ValueError):
             # API not available or failed - continue to try alternative
             pass
-        
+
         # Alternative: Try using the older constant (for Windows 10)
         # Note: This may not work on all Windows 10 versions
         try:
             DWMWA_USE_DARK_MODE_BORDER = 26
             value = ctypes.c_int(1)
-            ctypes.windll.dwmapi.DwmSetWindowAttribute(
+            windll.dwmapi.DwmSetWindowAttribute(
                 wintypes.HWND(hwnd),
                 DWMWA_USE_DARK_MODE_BORDER,
                 ctypes.byref(value),

@@ -11,7 +11,7 @@ to `duckduckgo_search.DDGS`. This module bridges that gap by re-exporting DDGS.
 from __future__ import annotations
 
 try:
-    from ddgs import DDGS  # type: ignore
+    from ddgs import DDGS
 except Exception as e:  # pragma: no cover
     # Provide a minimal stub so imports don't crash in environments without ddgs.
     class DDGS:  # type: ignore

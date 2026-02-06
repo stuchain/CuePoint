@@ -11,7 +11,7 @@ Implements performance requirements from Step 1.11.
 import logging
 import time
 from collections import defaultdict
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -158,8 +158,8 @@ class PerformanceContext:
             operation: Operation name.
         """
         self.operation = operation
-        self.start_time = None
-        self.metadata = {}
+        self.start_time: Optional[float] = None
+        self.metadata: Dict[str, Any] = {}
 
     def __enter__(self):
         """Enter context manager."""
@@ -168,6 +168,7 @@ class PerformanceContext:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Exit context manager."""
+        assert self.start_time is not None  # Set in __enter__
         duration = time.time() - self.start_time
         PerformanceMonitor.record_operation(self.operation, duration, self.metadata)
 
@@ -292,7 +293,7 @@ class PerformanceCollector:
         """Record start of track processing"""
         if not self._stats:
             self.start_session()
-        
+        assert self._stats is not None
         track_metrics = TrackMetrics(track_id=track_id, track_title=track_title)
         self._stats.track_metrics.append(track_metrics)
         self._stats.total_tracks += 1
@@ -314,6 +315,7 @@ class PerformanceCollector:
         )
         track_metrics.queries.append(query_metric)
         track_metrics.total_queries += 1
+        assert self._stats is not None
         self._stats.query_metrics.append(query_metric)
         
         # Update cache stats
@@ -334,6 +336,7 @@ class PerformanceCollector:
         track_metrics.early_exit_query_index = early_exit_query_index
         track_metrics.candidates_evaluated = candidates_evaluated
         
+        assert self._stats is not None
         if match_found:
             self._stats.matched_tracks += 1
         else:
@@ -344,7 +347,7 @@ class PerformanceCollector:
         """Record a filter operation for performance tracking"""
         if not self._stats:
             self.start_session()
-        
+        assert self._stats is not None
         filter_metric = FilterMetrics(
             duration=duration,
             initial_count=initial_count,

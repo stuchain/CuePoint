@@ -552,9 +552,9 @@ def generate_diff_report(
     Returns:
         Path to written diff report.
     """
-    diffs = []
+    diffs: List[Dict[str, Any]] = []
     for r in results:
-        entry = {
+        entry: Dict[str, Any] = {
             "playlist_index": r.playlist_index,
             "input": {"title": r.title, "artist": r.artist or ""},
             "output": {},

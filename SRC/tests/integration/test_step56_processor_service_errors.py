@@ -48,10 +48,10 @@ class TestProcessorServiceErrorHandling:
                 xml_path="/nonexistent/file.xml", playlist_name="Test Playlist"
             )
 
-        # Note: ProcessingError uses ErrorType enum, check the message
-        assert "not found" in str(exc_info.value).lower() or "FILE_NOT_FOUND" in str(
-            exc_info.value
-        )
+        # ProcessingError.__str__ returns message; details has the actual info (e.g. "P001: XML file not found.")
+        err = exc_info.value
+        combined = f"{err.message} {err.details or ''}".lower()
+        assert "not found" in combined or err.error_type.name == "FILE_NOT_FOUND"
 
     def test_process_playlist_from_xml_playlist_not_found(self):
         """Test that PLAYLIST_NOT_FOUND error is raised for missing playlist."""
@@ -80,10 +80,10 @@ class TestProcessorServiceErrorHandling:
                     xml_path=xml_path, playlist_name="Nonexistent Playlist"
                 )
 
-            # Check that error mentions playlist not found
-            assert "not found" in str(exc_info.value).lower() or "PLAYLIST_NOT_FOUND" in str(
-                exc_info.value
-            )
+            # Check that error mentions playlist not found (details has "P010: Playlist not found in XML.")
+            err = exc_info.value
+            combined = f"{err.message} {err.details or ''}".lower()
+            assert "not found" in combined or err.error_type.name == "PLAYLIST_NOT_FOUND"
         finally:
             Path(xml_path).unlink()
 
@@ -113,10 +113,10 @@ class TestProcessorServiceErrorHandling:
                     xml_path=xml_path, playlist_name="Empty Playlist"
                 )
 
-            # Check that error mentions empty playlist
-            assert "empty" in str(exc_info.value).lower() or "VALIDATION_ERROR" in str(
-                exc_info.value
-            )
+            # Check that error mentions empty playlist (details has "P011: Playlist is empty.")
+            err = exc_info.value
+            combined = f"{err.message} {err.details or ''}".lower()
+            assert "empty" in combined or err.error_type.name == "VALIDATION_ERROR"
         finally:
             Path(xml_path).unlink()
 
@@ -136,6 +136,8 @@ class TestProcessorServiceErrorHandling:
             )
 
         # Verify ProcessingError is raised with correct error type
-        assert exc_info.value.error_type == ErrorType.FILE_NOT_FOUND
-        assert "not found" in str(exc_info.value).lower()
+        err = exc_info.value
+        assert err.error_type == ErrorType.FILE_NOT_FOUND
+        combined = f"{err.message} {err.details or ''}".lower()
+        assert "not found" in combined
 

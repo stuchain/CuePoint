@@ -12,9 +12,18 @@ import logging
 import shutil
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict, List, TypedDict
 
 from cuepoint.utils.paths import AppPaths
+
+
+class _CacheFileInfo(TypedDict):
+    """Type for cache file metadata in prune_cache."""
+
+    path: Path
+    size: int
+    age: timedelta
+    mtime: float
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +139,7 @@ class CacheManager:
         max_age = timedelta(days=max_age_days)
 
         # Get all cache files with metadata
-        files = []
+        files: List[_CacheFileInfo] = []
         try:
             for file in cache_dir.rglob("*"):
                 if file.is_file():
@@ -180,7 +189,7 @@ class CacheManager:
         return removed_count, removed_size
 
     @staticmethod
-    def get_cache_info() -> Dict[str, any]:
+    def get_cache_info() -> Dict[str, Any]:
         """Get cache information for diagnostics.
 
         Returns:

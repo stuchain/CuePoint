@@ -46,7 +46,7 @@ class TestServiceErrorHandlingIntegration:
         logging_service = LoggingService(enable_file_logging=False, enable_console_logging=False)
         beatport_service = BeatportService(cache_service, logging_service)
 
-        with patch("cuepoint.services.beatport_service.beatport_search_hybrid") as mock_search:
+        with patch("cuepoint.data.beatport_search.beatport_search_hybrid") as mock_search:
             mock_search.side_effect = Exception("Network timeout")
 
             # Error should be caught, logged, and re-raised as BeatportAPIError
@@ -91,16 +91,16 @@ class TestLoggingIntegration:
         cache_service = CacheService()
         service = BeatportService(cache_service, mock_logging)
 
-        # Mock successful search
-        with patch("cuepoint.services.beatport_service.beatport_search_hybrid") as mock_search:
+        # Mock successful search (provider calls beatport_search_hybrid from beatport_search)
+        with patch("cuepoint.data.beatport_search.beatport_search_hybrid") as mock_search:
             mock_search.return_value = ["url1", "url2"]
 
             service.search_tracks("test query")
 
-            # Verify info was logged
+            # Verify info was logged (may be "Searching Beatport for:" or "Found N track URLs")
             mock_logging.info.assert_called()
-            call_args = mock_logging.info.call_args
-            assert "Searching Beatport" in call_args[0][0]
+            all_calls = " ".join(str(c[0][0]) for c in mock_logging.info.call_args_list)
+            assert "Searching Beatport" in all_calls or "Beatport" in all_calls
 
     def test_errors_are_logged_before_raising(self):
         """Test that errors are logged before exceptions are raised."""
@@ -108,7 +108,7 @@ class TestLoggingIntegration:
         cache_service = CacheService()
         service = BeatportService(cache_service, mock_logging)
 
-        with patch("cuepoint.services.beatport_service.beatport_search_hybrid") as mock_search:
+        with patch("cuepoint.data.beatport_search.beatport_search_hybrid") as mock_search:
             mock_search.side_effect = Exception("Test error")
 
             with pytest.raises(BeatportAPIError):

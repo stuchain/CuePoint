@@ -73,7 +73,7 @@ class AppPaths:
             Path to configuration directory.
         """
         path = Path(
-            QStandardPaths.writableLocation(QStandardPaths.AppConfigLocation)
+            QStandardPaths.writableLocation(QStandardPaths.AppConfigLocation)  # type: ignore[attr-defined]
         ) / "CuePoint"
         return AppPaths._ensure_dir(path)
 
@@ -99,7 +99,7 @@ class AppPaths:
             Path to data directory.
         """
         path = Path(
-            QStandardPaths.writableLocation(QStandardPaths.AppLocalDataLocation)
+            QStandardPaths.writableLocation(QStandardPaths.AppLocalDataLocation)  # type: ignore[attr-defined]
         ) / "CuePoint"
         return AppPaths._ensure_dir(path)
 
@@ -115,7 +115,7 @@ class AppPaths:
         Returns:
             Path to cache directory.
         """
-        path = Path(QStandardPaths.writableLocation(QStandardPaths.CacheLocation)) / "CuePoint"
+        path = Path(QStandardPaths.writableLocation(QStandardPaths.CacheLocation)) / "CuePoint"  # type: ignore[attr-defined]
         return AppPaths._ensure_dir(path)
 
     @staticmethod
@@ -142,7 +142,7 @@ class AppPaths:
             Path to exports directory.
         """
         documents = Path(
-            QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation)
+            QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation)  # type: ignore[attr-defined]
         )
         exports = documents / "CuePoint_Output"
         return AppPaths._ensure_dir(exports)
@@ -264,7 +264,7 @@ class AppPaths:
         Returns:
             Dictionary mapping path names to accessibility status.
         """
-        results = {}
+        results: Dict[str, bool] = {}
         paths = AppPaths.get_all_paths()
 
         for name, path_str in paths.items():
@@ -620,7 +620,7 @@ class PathDiagnostics:
         Returns:
             Dictionary with path information.
         """
-        diagnostics = {
+        diagnostics: Dict[str, Any] = {
             "paths": AppPaths.get_all_paths(),
             "validation": AppPaths.validate_paths(),
             "platform": {

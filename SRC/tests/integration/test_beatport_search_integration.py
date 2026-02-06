@@ -1,5 +1,6 @@
 """Integration tests for beatport_search.py data module with real parsing logic."""
 
+import sys
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -661,39 +662,40 @@ class TestBeatportSearchIntegration:
         # Should supplement with direct search when DDG results < 50%
         assert isinstance(urls, list)
     
-    @patch('builtins.__import__')
-    def test_beatport_search_browser_playwright_success(self, mock_import):
+    def test_beatport_search_browser_playwright_success(self):
         """Test browser search with Playwright success."""
-        # Mock Playwright import
-        mock_playwright_module = Mock()
+        # Build mock structure: sync_playwright() -> context manager -> p.chromium.launch() -> browser
         mock_page = Mock()
         mock_link1 = Mock()
         mock_link1.get_attribute.return_value = "/track/test-track/123456"
         mock_link2 = Mock()
         mock_link2.get_attribute.return_value = "/track/another-track/123457"
         mock_page.query_selector_all.return_value = [mock_link1, mock_link2]
-        
+
         mock_browser = Mock()
         mock_browser.new_page.return_value = mock_page
-        
+
         mock_p = Mock()
         mock_p.chromium.launch.return_value = mock_browser
-        
-        # Needs MagicMock so context-manager magic methods are supported.
+
         mock_sync_playwright = MagicMock()
         mock_sync_playwright.return_value.__enter__.return_value = mock_p
-        
-        mock_playwright_module.sync_api.sync_playwright = mock_sync_playwright
-        
-        def import_side_effect(name, *args, **kwargs):
-            if name == 'playwright.sync_api':
-                return mock_playwright_module.sync_api
-            return __import__(name, *args, **kwargs)
-        
-        mock_import.side_effect = import_side_effect
-        
-        urls = beatport_search_browser(1, "Test Track", max_results=10)
-        
+        mock_sync_playwright.return_value.__exit__.return_value = None
+
+        # Inject fake playwright.sync_api so "from playwright.sync_api import sync_playwright" works
+        fake_playwright = MagicMock()
+        fake_sync_api = MagicMock()
+        fake_sync_api.sync_playwright = mock_sync_playwright
+        fake_playwright.sync_api = fake_sync_api
+        with patch.dict(
+            sys.modules,
+            {"playwright": fake_playwright, "playwright.sync_api": fake_sync_api},
+        ):
+            with patch(
+                "cuepoint.data.beatport_search._PLAYWRIGHT_USABLE", True
+            ):
+                urls = beatport_search_browser(1, "Test Track", max_results=10)
+
         # Should return URLs from Playwright
         assert isinstance(urls, list)
         mock_browser.close.assert_called_once()

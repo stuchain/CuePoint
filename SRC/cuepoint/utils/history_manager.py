@@ -11,9 +11,17 @@ Implements data retention from Step 1.9.
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List, TypedDict
 
 from cuepoint.utils.paths import AppPaths
+
+
+class _HistoryFileInfo(TypedDict):
+    """Type for history file metadata."""
+
+    path: Path
+    mtime: datetime
+    size: int
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +55,7 @@ class HistoryManager:
         exports_dir = AppPaths.exports_dir()
         cutoff_date = datetime.now() - timedelta(days=max_days)
 
-        files = []
+        files: List[_HistoryFileInfo] = []
         try:
             for file in exports_dir.glob("*.csv"):
                 try:
@@ -73,7 +81,7 @@ class HistoryManager:
             return []
 
     @staticmethod
-    def get_history_info() -> Dict[str, any]:
+    def get_history_info() -> Dict[str, Any]:
         """Get history information.
 
         Returns:

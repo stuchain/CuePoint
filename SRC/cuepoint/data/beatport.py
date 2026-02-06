@@ -33,7 +33,7 @@ import socket
 import ssl
 import time
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 from bs4 import BeautifulSoup
@@ -309,7 +309,7 @@ def _parse_structured_json_ld(soup: BeautifulSoup) -> Dict[str, str]:
         - release_name: Release/album name
         - release_date: Release date string
     """
-    out = {}
+    out: Dict[str, Any] = {}
     for tag in soup.find_all("script", {"type": "application/ld+json"}):
         try:
             data = json.loads(tag.string or "")
@@ -372,7 +372,7 @@ def _parse_next_data(soup: BeautifulSoup) -> Dict[str, str]:
         - release_name: Release/album name
         - release_date: Release date string
     """
-    out = {}
+    out: Dict[str, str] = {}
     try:
         tag = soup.find("script", id="__NEXT_DATA__")
         if not tag or not tag.string:

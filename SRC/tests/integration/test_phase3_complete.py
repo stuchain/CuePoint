@@ -17,6 +17,8 @@ import os
 import sys
 import time
 
+import pytest
+
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
 
@@ -35,36 +37,31 @@ def test_imports():
         )
         print("[OK] performance.py imports successful")
     except Exception as e:
-        print(f"[FAIL] performance.py import failed: {e}")
-        return False
+        pytest.fail(f"performance.py import failed: {e}")
     
     try:
         from cuepoint.utils.utils import retry_with_backoff
         print("[OK] utils.py retry_with_backoff import successful")
     except Exception as e:
-        print(f"[FAIL] utils.py retry_with_backoff import failed: {e}")
-        return False
+        pytest.fail(f"utils.py retry_with_backoff import failed: {e}")
     
     try:
         from cuepoint.services.output_writer import write_performance_report
         print("[OK] output_writer.py write_performance_report import successful")
     except Exception as e:
-        print(f"[FAIL] output_writer.py write_performance_report import failed: {e}")
-        return False
+        pytest.fail(f"output_writer.py write_performance_report import failed: {e}")
     
     try:
         from cuepoint.data.beatport import get_last_cache_hit
         print("[OK] beatport.py get_last_cache_hit import successful")
     except Exception as e:
-        print(f"[FAIL] beatport.py get_last_cache_hit import failed: {e}")
-        return False
+        pytest.fail(f"beatport.py get_last_cache_hit import failed: {e}")
     
     try:
         from cuepoint.core.matcher import _classify_query_type, best_beatport_match
         print("[OK] matcher.py imports successful")
     except Exception as e:
-        print(f"[FAIL] matcher.py import failed: {e}")
-        return False
+        pytest.fail(f"matcher.py import failed: {e}")
     
     # Test new Phase 5 architecture
     try:
@@ -72,8 +69,7 @@ def test_imports():
         from cuepoint.services.processor_service import ProcessorService
         print("[OK] Phase 5 ProcessorService import successful")
     except Exception as e:
-        print(f"[FAIL] ProcessorService import failed: {e}")
-        return False
+        pytest.fail(f"ProcessorService import failed: {e}")
     
     # Test legacy processor (for backward compatibility)
     try:
@@ -87,17 +83,13 @@ def test_imports():
         from cuepoint.ui.widgets.performance_view import PerformanceView
         print("[OK] gui/performance_view.py import successful")
     except Exception as e:
-        print(f"[FAIL] gui/performance_view.py import failed: {e}")
-        return False
+        pytest.fail(f"gui/performance_view.py import failed: {e}")
     
     try:
         from cuepoint.ui.widgets.config_panel import ConfigPanel
         print("[OK] gui/config_panel.py import successful")
     except Exception as e:
-        print(f"[FAIL] gui/config_panel.py import failed: {e}")
-        return False
-    
-    return True
+        pytest.fail(f"gui/config_panel.py import failed: {e}")
 
 
 def test_performance_collector():
@@ -114,16 +106,12 @@ def test_performance_collector():
     # Start session
     performance_collector.start_session()
     stats = performance_collector.get_stats()
-    if not stats:
-        print("[FAIL] Stats not created after start_session()")
-        return False
+    assert stats is not None, "Stats not created after start_session()"
     print("[OK] Session started")
     
     # Record a track
     track_metrics = performance_collector.record_track_start("track_1", "Test Track")
-    if track_metrics is None:
-        print("[FAIL] Track metrics not created")
-        return False
+    assert track_metrics is not None, "Track metrics not created"
     print("[OK] Track started")
     
     # Record queries
@@ -156,35 +144,15 @@ def test_performance_collector():
     
     # Verify stats
     stats = performance_collector.get_stats()
-    if stats:
-        if stats.total_tracks == 1:
-            print("[OK] Total tracks correct")
-        else:
-            print(f"[FAIL] Expected 1 track, got {stats.total_tracks}")
-            return False
-        
-        if stats.matched_tracks == 1:
-            print("[OK] Matched tracks correct")
-        else:
-            print(f"[FAIL] Expected 1 matched track, got {stats.matched_tracks}")
-            return False
-        
-        if len(stats.query_metrics) == 3:
-            print("[OK] Query metrics count correct")
-        else:
-            print(f"[FAIL] Expected 3 queries, got {len(stats.query_metrics)}")
-            return False
-        
-        if stats.cache_stats["hits"] == 1 and stats.cache_stats["misses"] == 2:
-            print("[OK] Cache stats correct")
-        else:
-            print(f"[FAIL] Cache stats incorrect: {stats.cache_stats}")
-            return False
-        
-        return True
-    else:
-        print("[FAIL] Stats not available after end_session()")
-        return False
+    assert stats is not None, "Stats not available after end_session()"
+    assert stats.total_tracks == 1, f"Expected 1 track, got {stats.total_tracks}"
+    print("[OK] Total tracks correct")
+    assert stats.matched_tracks == 1, f"Expected 1 matched track, got {stats.matched_tracks}"
+    print("[OK] Matched tracks correct")
+    assert len(stats.query_metrics) == 3, f"Expected 3 queries, got {len(stats.query_metrics)}"
+    print("[OK] Query metrics count correct")
+    assert stats.cache_stats["hits"] == 1 and stats.cache_stats["misses"] == 2, f"Cache stats incorrect: {stats.cache_stats}"
+    print("[OK] Cache stats correct")
 
 
 def test_performance_report():
@@ -197,28 +165,17 @@ def test_performance_report():
     from cuepoint.utils.performance import performance_collector
     
     stats = performance_collector.get_stats()
-    if not stats:
-        print("[FAIL] No stats available for report")
-        return False
-    
+    assert stats is not None, "No stats available for report"
     try:
         report_path = write_performance_report(stats, "test_phase3", "output")
-        if os.path.exists(report_path):
-            file_size = os.path.getsize(report_path)
-            if file_size > 0:
-                print(f"[OK] Report generated: {report_path} ({file_size} bytes)")
-                return True
-            else:
-                print("[FAIL] Report file is empty")
-                return False
-        else:
-            print("[FAIL] Report file not created")
-            return False
+        assert os.path.exists(report_path), "Report file not created"
+        file_size = os.path.getsize(report_path)
+        assert file_size > 0, "Report file is empty"
+        print(f"[OK] Report generated: {report_path} ({file_size} bytes)")
     except Exception as e:
-        print(f"[FAIL] Report generation failed: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        pytest.fail(f"Report generation failed: {e}")
 
 
 def test_retry_decorator():
@@ -246,15 +203,10 @@ def test_retry_decorator():
     
     try:
         result = test_function()
-        if result == "Success" and call_count[0] == 3:
-            print(f"[OK] Retry decorator works (called {call_count[0]} times)")
-            return True
-        else:
-            print(f"[FAIL] Unexpected result: {result}, calls: {call_count[0]}")
-            return False
+        assert result == "Success" and call_count[0] == 3, f"Unexpected result: {result}, calls: {call_count[0]}"
+        print(f"[OK] Retry decorator works (called {call_count[0]} times)")
     except Exception as e:
-        print(f"[FAIL] Retry decorator failed: {e}")
-        return False
+        pytest.fail(f"Retry decorator failed: {e}")
 
 
 def test_cache_tracking():
@@ -268,15 +220,10 @@ def test_cache_tracking():
     # Test that function exists and returns a boolean
     try:
         cache_hit = get_last_cache_hit()
-        if isinstance(cache_hit, bool):
-            print(f"[OK] get_last_cache_hit() returns boolean: {cache_hit}")
-            return True
-        else:
-            print(f"[FAIL] get_last_cache_hit() returned {type(cache_hit)}, expected bool")
-            return False
+        assert isinstance(cache_hit, bool), f"get_last_cache_hit() returned {type(cache_hit)}, expected bool"
+        print(f"[OK] get_last_cache_hit() returns boolean: {cache_hit}")
     except Exception as e:
-        print(f"[FAIL] get_last_cache_hit() failed: {e}")
-        return False
+        pytest.fail(f"get_last_cache_hit() failed: {e}")
 
 
 def test_query_classification():
@@ -294,16 +241,10 @@ def test_query_classification():
         ("n gram query", 3, "n_gram"),
     ]
     
-    all_passed = True
     for query, index, expected in test_cases:
         result = _classify_query_type(query, index)
-        if result == expected:
-            print(f"[OK] Query '{query}' (index {index}) classified as '{result}'")
-        else:
-            print(f"[FAIL] Query '{query}' (index {index}) classified as '{result}', expected '{expected}'")
-            all_passed = False
-    
-    return all_passed
+        assert result == expected, f"Query '{query}' (index {index}) classified as '{result}', expected '{expected}'"
+        print(f"[OK] Query '{query}' (index {index}) classified as '{result}'")
 
 
 def test_config_panel_checkbox():
@@ -325,36 +266,24 @@ def test_config_panel_checkbox():
         panel = ConfigPanel()
         
         # Check if checkbox exists
-        if hasattr(panel, 'track_performance_check'):
-            print("[OK] track_performance_check checkbox exists")
-        else:
-            print("[FAIL] track_performance_check checkbox not found")
-            return False
+        assert hasattr(panel, 'track_performance_check'), "track_performance_check checkbox not found"
+        print("[OK] track_performance_check checkbox exists")
         
         # Test setting checkbox
         panel.track_performance_check.setChecked(True)
         settings = panel.get_settings()
-        if settings.get("track_performance") == True:
-            print("[OK] Checkbox state is read correctly when checked")
-        else:
-            print(f"[FAIL] Checkbox state not read correctly: {settings.get('track_performance')}")
-            return False
+        assert settings.get("track_performance") is True, f"Checkbox state not read correctly: {settings.get('track_performance')}"
+        print("[OK] Checkbox state is read correctly when checked")
         
         # Test unsetting checkbox
         panel.track_performance_check.setChecked(False)
         settings = panel.get_settings()
-        if settings.get("track_performance") == False:
-            print("[OK] Checkbox state is read correctly when unchecked")
-        else:
-            print(f"[FAIL] Checkbox state not read correctly: {settings.get('track_performance')}")
-            return False
-        
-        return True
+        assert settings.get("track_performance") is False, f"Checkbox state not read correctly: {settings.get('track_performance')}"
+        print("[OK] Checkbox state is read correctly when unchecked")
     except Exception as e:
-        print(f"[FAIL] Config panel test failed: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        pytest.fail(f"Config panel test failed: {e}")
 
 
 def test_performance_view():
@@ -376,40 +305,25 @@ def test_performance_view():
         view = PerformanceView()
         
         # Check if widget was created
-        if view is not None:
-            print("[OK] PerformanceView widget created")
-        else:
-            print("[FAIL] PerformanceView widget creation failed")
-            return False
+        assert view is not None, "PerformanceView widget creation failed"
+        print("[OK] PerformanceView widget created")
         
         # Check if timer exists
-        if hasattr(view, 'update_timer'):
-            print("[OK] Update timer exists")
-        else:
-            print("[FAIL] Update timer not found")
-            return False
+        assert hasattr(view, 'update_timer'), "Update timer not found"
+        print("[OK] Update timer exists")
         
         # Test start/stop monitoring
         view.start_monitoring()
-        if view.update_timer.isActive():
-            print("[OK] Monitoring started successfully")
-        else:
-            print("[FAIL] Monitoring timer not active")
-            return False
+        assert view.update_timer.isActive(), "Monitoring timer not active"
+        print("[OK] Monitoring started successfully")
         
         view.stop_monitoring()
-        if not view.update_timer.isActive():
-            print("[OK] Monitoring stopped successfully")
-        else:
-            print("[FAIL] Monitoring timer still active after stop")
-            return False
-        
-        return True
+        assert not view.update_timer.isActive(), "Monitoring timer still active after stop"
+        print("[OK] Monitoring stopped successfully")
     except Exception as e:
-        print(f"[FAIL] Performance view test failed: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        pytest.fail(f"Performance view test failed: {e}")
 
 
 def test_integration():
@@ -457,39 +371,18 @@ def test_integration():
     
     # Verify integration
     stats = performance_collector.get_stats()
-    if stats:
-        if stats.total_tracks == 3:
-            print("[OK] Integration: Total tracks correct")
-        else:
-            print(f"[FAIL] Integration: Expected 3 tracks, got {stats.total_tracks}")
-            return False
-        
-        if stats.matched_tracks == 1:  # Tracks 2 matched
-            print("[OK] Integration: Matched tracks correct")
-        else:
-            print(f"[FAIL] Integration: Expected 1 matched track, got {stats.matched_tracks}")
-            return False
-        
-        if len(stats.query_metrics) == 9:  # 3 tracks * 3 queries
-            print("[OK] Integration: Total queries correct")
-        else:
-            print(f"[FAIL] Integration: Expected 9 queries, got {len(stats.query_metrics)}")
-            return False
-        
-        if stats.total_time > 0:
-            print("[OK] Integration: Total time recorded")
-        else:
-            print("[FAIL] Integration: Total time not recorded")
-            return False
-        
-        print(f"[OK] Integration: Match rate = {stats.match_rate():.1f}%")
-        print(f"[OK] Integration: Cache hit rate = {stats.cache_hit_rate():.1f}%")
-        print(f"[OK] Integration: Avg time per track = {stats.average_time_per_track():.3f}s")
-        
-        return True
-    else:
-        print("[FAIL] Integration: Stats not available")
-        return False
+    assert stats is not None, "Integration: Stats not available"
+    assert stats.total_tracks == 3, f"Integration: Expected 3 tracks, got {stats.total_tracks}"
+    print("[OK] Integration: Total tracks correct")
+    assert stats.matched_tracks == 1, f"Integration: Expected 1 matched track, got {stats.matched_tracks}"
+    print("[OK] Integration: Matched tracks correct")
+    assert len(stats.query_metrics) == 9, f"Integration: Expected 9 queries, got {len(stats.query_metrics)}"
+    print("[OK] Integration: Total queries correct")
+    assert stats.total_time > 0, "Integration: Total time not recorded"
+    print("[OK] Integration: Total time recorded")
+    print(f"[OK] Integration: Match rate = {stats.match_rate():.1f}%")
+    print(f"[OK] Integration: Cache hit rate = {stats.cache_hit_rate():.1f}%")
+    print(f"[OK] Integration: Avg time per track = {stats.average_time_per_track():.3f}s")
 
 
 def main():
