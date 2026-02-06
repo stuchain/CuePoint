@@ -56,7 +56,9 @@ class TestDeprecationCliFlag:
         """Deprecated CLI flag emits DeprecationWarning."""
         register_deprecated_cli_flag("--old-flag", "--new-flag", "v1.3.0")
         try:
-            with pytest.warns(DeprecationWarning, match="--old-flag.*deprecated.*--new-flag"):
+            with pytest.warns(
+                DeprecationWarning, match="--old-flag.*deprecated.*--new-flag"
+            ):
                 warn_deprecated_cli_flag("--old-flag")
         finally:
             pass

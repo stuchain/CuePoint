@@ -40,9 +40,9 @@ class TestBeatportCandidate:
             guard_ok=True,
             reject_reason="",
             elapsed_ms=100,
-            is_winner=False
+            is_winner=False,
         )
-        
+
         assert candidate.url == "https://www.beatport.com/track/test/123"
         assert candidate.title == "Test Track"
         assert candidate.artists == "Test Artist"
@@ -73,9 +73,9 @@ class TestBeatportCandidate:
             guard_ok=False,
             reject_reason="Low score",
             elapsed_ms=50,
-            is_winner=False
+            is_winner=False,
         )
-        
+
         assert candidate.key is None
         assert candidate.release_year is None
         assert candidate.guard_ok is False
@@ -100,7 +100,9 @@ class TestIsTrackUrl:
     def test_is_track_url_edge_cases(self):
         """Test edge cases for URL validation."""
         # URL with query parameters
-        assert is_track_url("https://www.beatport.com/track/title/123?ref=search") is True
+        assert (
+            is_track_url("https://www.beatport.com/track/title/123?ref=search") is True
+        )
         # URL with fragment
         assert is_track_url("https://www.beatport.com/track/title/123#section") is True
 
@@ -121,7 +123,7 @@ class TestGetLastCacheHit:
 class TestRequestHtml:
     """Test request_html function."""
 
-    @patch('cuepoint.data.beatport.retry_with_backoff')
+    @patch("cuepoint.data.beatport.retry_with_backoff")
     def test_request_html_success(self, mock_retry):
         """Test successful HTML request."""
         mock_response = Mock()
@@ -129,24 +131,24 @@ class TestRequestHtml:
         mock_response.status_code = 200
         mock_response.headers = {}
         mock_retry.return_value = mock_response
-        
+
         from cuepoint.data.beatport import request_html
-        
+
         result = request_html("https://www.beatport.com/track/test/123")
-        
+
         # request_html may return None if response is empty or invalid
         # Just verify it doesn't crash
         assert result is None or isinstance(result, BeautifulSoup)
 
-    @patch('cuepoint.data.beatport.retry_with_backoff')
+    @patch("cuepoint.data.beatport.retry_with_backoff")
     def test_request_html_failure(self, mock_retry):
         """Test failed HTML request."""
         mock_retry.side_effect = Exception("Network error")
-        
+
         from cuepoint.data.beatport import request_html
-        
+
         result = request_html("https://www.beatport.com/track/invalid/123")
-        
+
         assert result is None
 
 
@@ -154,7 +156,7 @@ class TestRequestHtml:
 class TestParseTrackPage:
     """Test parse_track_page function."""
 
-    @patch('cuepoint.data.beatport.request_html')
+    @patch("cuepoint.data.beatport.request_html")
     def test_parse_track_page_success(self, mock_request):
         """Test successful track page parsing."""
         # Create mock HTML with structured data
@@ -173,47 +175,49 @@ class TestParseTrackPage:
             <body>Test</body>
         </html>
         """
-        mock_soup = BeautifulSoup(html_content, 'html.parser')
+        mock_soup = BeautifulSoup(html_content, "html.parser")
         mock_request.return_value = mock_soup
-        
+
         from cuepoint.data.beatport import parse_track_page
-        
+
         result = parse_track_page("https://www.beatport.com/track/test/123")
-        
+
         # parse_track_page returns a tuple, not a dict
         assert result is not None
         assert isinstance(result, tuple)
-        assert len(result) == 9  # (title, artists, key, year, bpm, label, genres, release_name, release_date)
+        assert (
+            len(result) == 9
+        )  # (title, artists, key, year, bpm, label, genres, release_name, release_date)
 
-    @patch('cuepoint.data.beatport.request_html')
+    @patch("cuepoint.data.beatport.request_html")
     def test_parse_track_page_no_html(self, mock_request):
         """Test parsing when HTML request fails."""
         mock_request.return_value = None
-        
+
         from cuepoint.data.beatport import parse_track_page
-        
+
         result = parse_track_page("https://www.beatport.com/track/invalid/123")
-        
+
         # Returns tuple with empty/default values
         assert result is not None
         assert isinstance(result, tuple)
         assert result[0] == ""  # Empty title
         assert result[1] == ""  # Empty artists
 
-    @patch('cuepoint.data.beatport.request_html')
+    @patch("cuepoint.data.beatport.request_html")
     def test_parse_track_page_empty_html(self, mock_request):
         """Test parsing empty HTML."""
-        mock_soup = BeautifulSoup("<html></html>", 'html.parser')
+        mock_soup = BeautifulSoup("<html></html>", "html.parser")
         mock_request.return_value = mock_soup
-        
+
         from cuepoint.data.beatport import parse_track_page
-        
+
         result = parse_track_page("https://www.beatport.com/track/test/123")
-        
+
         # Returns tuple, may have empty values
         assert result is not None
         assert isinstance(result, tuple)
-    
+
     def test_is_track_url_various_formats(self):
         """Test is_track_url with various URL formats."""
         # Standard format
@@ -223,10 +227,12 @@ class TestParseTrackPage:
         # HTTP instead of HTTPS
         assert is_track_url("http://www.beatport.com/track/title/123456") is True
         # With path segments
-        assert is_track_url("https://www.beatport.com/track/title-artist/123456") is True
+        assert (
+            is_track_url("https://www.beatport.com/track/title-artist/123456") is True
+        )
         # With numbers in title
         assert is_track_url("https://www.beatport.com/track/title-2023/123456") is True
-    
+
     def test_is_track_url_non_track_urls(self):
         """Test is_track_url rejects non-track URLs."""
         # Artist URL
@@ -240,8 +246,8 @@ class TestParseTrackPage:
         # Invalid format
         assert is_track_url("https://www.beatport.com/track/") is False
         assert is_track_url("https://www.beatport.com/track/title") is False
-    
-    @patch('cuepoint.data.beatport.retry_with_backoff')
+
+    @patch("cuepoint.data.beatport.retry_with_backoff")
     def test_request_html_cache_detection(self, mock_retry):
         """Test that request_html detects cache hits."""
         mock_response = Mock()
@@ -250,16 +256,16 @@ class TestParseTrackPage:
         mock_response.headers = {}
         mock_response.from_cache = True
         mock_retry.return_value = mock_response
-        
+
         from cuepoint.data.beatport import get_last_cache_hit, request_html
-        
+
         request_html("https://www.beatport.com/track/test/123")
-        
+
         # Check cache hit status
         cache_hit = get_last_cache_hit()
         assert isinstance(cache_hit, bool)
-    
-    @patch('cuepoint.data.beatport.retry_with_backoff')
+
+    @patch("cuepoint.data.beatport.retry_with_backoff")
     def test_request_html_empty_response_handling(self, mock_retry):
         """Test request_html handles empty responses."""
         mock_response = Mock()
@@ -268,15 +274,15 @@ class TestParseTrackPage:
         mock_response.headers = {"Content-Encoding": "gzip", "Content-Length": "0"}
         mock_response.content = b""
         mock_retry.return_value = mock_response
-        
+
         from cuepoint.data.beatport import request_html
-        
+
         result = request_html("https://www.beatport.com/track/test/123")
-        
+
         # Should handle empty response gracefully
         assert result is None or isinstance(result, BeautifulSoup)
-    
-    @patch('cuepoint.data.beatport.request_html')
+
+    @patch("cuepoint.data.beatport.request_html")
     def test_parse_track_page_with_json_ld(self, mock_request):
         """Test parsing track page with JSON-LD structured data."""
         html_content = """
@@ -301,18 +307,18 @@ class TestParseTrackPage:
             <body>Test</body>
         </html>
         """
-        mock_soup = BeautifulSoup(html_content, 'html.parser')
+        mock_soup = BeautifulSoup(html_content, "html.parser")
         mock_request.return_value = mock_soup
-        
+
         from cuepoint.data.beatport import parse_track_page
-        
+
         result = parse_track_page("https://www.beatport.com/track/test/123")
-        
+
         assert result is not None
         assert isinstance(result, tuple)
         assert len(result) == 9
-    
-    @patch('cuepoint.data.beatport.request_html')
+
+    @patch("cuepoint.data.beatport.request_html")
     def test_parse_track_page_with_next_data(self, mock_request):
         """Test parsing track page with Next.js __NEXT_DATA__."""
         html_content = """
@@ -336,17 +342,17 @@ class TestParseTrackPage:
             <body>Test</body>
         </html>
         """
-        mock_soup = BeautifulSoup(html_content, 'html.parser')
+        mock_soup = BeautifulSoup(html_content, "html.parser")
         mock_request.return_value = mock_soup
-        
+
         from cuepoint.data.beatport import parse_track_page
-        
+
         result = parse_track_page("https://www.beatport.com/track/test/123")
-        
+
         assert result is not None
         assert isinstance(result, tuple)
         assert len(result) == 9
-    
+
     def test_beatport_candidate_all_fields(self):
         """Test BeatportCandidate with all fields populated."""
         candidate = BeatportCandidate(
@@ -372,14 +378,14 @@ class TestParseTrackPage:
             guard_ok=True,
             reject_reason="",
             elapsed_ms=100,
-            is_winner=True
+            is_winner=True,
         )
-        
+
         assert candidate.is_winner is True
         assert candidate.score == 95.5
         assert candidate.bonus_year == 2
         assert candidate.bonus_key == 2
-    
+
     def test_beatport_candidate_rejected(self):
         """Test BeatportCandidate that was rejected by guards."""
         candidate = BeatportCandidate(
@@ -405,10 +411,9 @@ class TestParseTrackPage:
             guard_ok=False,
             reject_reason="Subset match",
             elapsed_ms=50,
-            is_winner=False
+            is_winner=False,
         )
-        
+
         assert candidate.guard_ok is False
         assert candidate.reject_reason == "Subset match"
         assert candidate.is_winner is False
-

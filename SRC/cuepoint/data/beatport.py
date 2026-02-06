@@ -50,20 +50,27 @@ except ImportError:
     except ImportError as import_err:
         # Log the error for debugging
         import logging
+
         logger = logging.getLogger(__name__)
-        logger.error(f"DuckDuckGo search (ddgs) not available: {import_err!r}", exc_info=True)
+        logger.error(
+            f"DuckDuckGo search (ddgs) not available: {import_err!r}", exc_info=True
+        )
         # Create a stub that will raise on use
         _import_err = import_err
+
         class DDGS:  # type: ignore
             def __init__(self, *args, **kwargs):
                 raise ImportError(
                     "DuckDuckGo search (ddgs package) is required but not available. "
                     "Please ensure ddgs>=9.0.0 is installed."
                 ) from _import_err
+
             def __enter__(self):
                 return self
+
             def __exit__(self, *args):
                 pass
+
 
 from cuepoint.core.mix_parser import (
     _extract_remixer_names_from_title,
@@ -92,8 +99,12 @@ def beatport_search_direct(idx: int, query: str, max_results: int) -> List[str]:
         return _impl(idx, query, max_results)
     except Exception as e:
         import logging
+
         logger = logging.getLogger(__name__)
-        logger.warning(f"[{idx}] Direct Beatport search failed for query={query!r}: {e!r}", exc_info=True)
+        logger.warning(
+            f"[{idx}] Direct Beatport search failed for query={query!r}: {e!r}",
+            exc_info=True,
+        )
         vlog(idx, f"[search] direct search exception: {e!r}")
         return []
 
@@ -104,6 +115,7 @@ def beatport_search_browser(idx: int, query: str, max_results: int) -> List[str]
         from cuepoint.data.beatport_search import beatport_search_browser as _impl
     except Exception as e:
         import logging
+
         logger = logging.getLogger(__name__)
         logger.debug(f"[{idx}] Browser automation not available: {e!r}")
         vlog(idx, f"[search] browser automation not available: {e!r}")
@@ -113,10 +125,15 @@ def beatport_search_browser(idx: int, query: str, max_results: int) -> List[str]
         return _impl(idx, query, max_results)
     except Exception as e:
         import logging
+
         logger = logging.getLogger(__name__)
-        logger.warning(f"[{idx}] Browser automation failed for query={query!r}: {e!r}", exc_info=True)
+        logger.warning(
+            f"[{idx}] Browser automation failed for query={query!r}: {e!r}",
+            exc_info=True,
+        )
         vlog(idx, f"[search] browser automation exception: {e!r}")
         return []
+
 
 # Cache hit tracking for performance metrics
 _last_cache_hit = False
@@ -231,7 +248,9 @@ def request_html(url: str) -> Optional[BeautifulSoup]:
             return True
         return False
 
-    def _get(u: str, headers: Optional[Dict[str, str]] = None) -> Optional[requests.Response]:
+    def _get(
+        u: str, headers: Optional[Dict[str, str]] = None
+    ) -> Optional[requests.Response]:
         global _last_cache_hit
         try:
             resp = SESSION.get(u, timeout=to, allow_redirects=True, headers=headers)
@@ -326,20 +345,28 @@ def _parse_structured_json_ld(soup: BeautifulSoup) -> Dict[str, str]:
                         out["artists"] = by["name"]
                     elif isinstance(by, list):
                         out["artists"] = ", ".join(
-                            [x.get("name") for x in by if isinstance(x, dict) and x.get("name")]
+                            [
+                                x.get("name")
+                                for x in by
+                                if isinstance(x, dict) and x.get("name")
+                            ]
                         )
                     for k in ("contributor", "creator"):
                         v = d.get(k)
                         if isinstance(v, list):
                             rem = [
-                                x.get("name") for x in v if isinstance(x, dict) and x.get("name")
+                                x.get("name")
+                                for x in v
+                                if isinstance(x, dict) and x.get("name")
                             ]
                             if rem:
                                 out["remixers"] = ", ".join(rem)
                     if d.get("inAlbum"):
                         alb = d.get("inAlbum")
                         if isinstance(alb, dict):
-                            out["release_name"] = alb.get("name") or out.get("release_name")
+                            out["release_name"] = alb.get("name") or out.get(
+                                "release_name"
+                            )
                     if d.get("datePublished"):
                         out["release_date"] = d.get("datePublished")
 
@@ -431,7 +458,15 @@ def _parse_next_data(soup: BeautifulSoup) -> Dict[str, str]:
                     and node["release"].get("title")
                 ):
                     out["release_name"] = node["release"]["title"]
-                for k in ("track", "data", "props", "pageProps", "results", "item", "items"):
+                for k in (
+                    "track",
+                    "data",
+                    "props",
+                    "pageProps",
+                    "results",
+                    "item",
+                    "items",
+                ):
                     v = node.get(k)
                     if v is not None:
                         dig(v)
@@ -512,14 +547,19 @@ def parse_track_page(
                 header = header.parent if header else None
             if header:
                 chips = header.select('a[href^="/artist/"]')[:8]
-                names = [c.get_text(strip=True) for c in chips if c.get_text(strip=True)]
+                names = [
+                    c.get_text(strip=True) for c in chips if c.get_text(strip=True)
+                ]
                 if names:
                     artists = ", ".join(dict.fromkeys(names))
             if not artists:
                 byline = soup.find(string=re.compile(r"^\s*Artists?\s*:\s*$", re.I))
                 if byline and byline.parent:
                     artists = re.sub(
-                        r"Artists?:\s*", "", byline.parent.get_text(" ", strip=True), flags=re.I
+                        r"Artists?:\s*",
+                        "",
+                        byline.parent.get_text(" ", strip=True),
+                        flags=re.I,
                     )
 
         remixers = info.get("remixers") or ""
@@ -547,7 +587,11 @@ def parse_track_page(
         if remixers:
             a_list = _split_display_names(artists)
             r_list = _split_display_names(remixers)
-            artists = _merge_name_lists(a_list, r_list) if a_list or r_list else (artists or remixers)
+            artists = (
+                _merge_name_lists(a_list, r_list)
+                if a_list or r_list
+                else (artists or remixers)
+            )
 
         def val_after_label(label_regex: str) -> Optional[str]:
             lbls = soup.find_all(string=re.compile(label_regex, re.I))
@@ -582,7 +626,11 @@ def parse_track_page(
             if genre_links:
                 genres = ", ".join(
                     dict.fromkeys(
-                        [g.get_text(strip=True) for g in genre_links if g.get_text(strip=True)]
+                        [
+                            g.get_text(strip=True)
+                            for g in genre_links
+                            if g.get_text(strip=True)
+                        ]
                     )
                 )
             else:
@@ -596,7 +644,9 @@ def parse_track_page(
             if not rel_name:
                 rel_name = val_after_label(r"^\s*Release\s*$")
 
-        date_str = info.get("release_date") or val_after_label(r"(Release Date|Released)")
+        date_str = info.get("release_date") or val_after_label(
+            r"(Release Date|Released)"
+        )
         rel_date_iso = None
         year = None
         if date_str:
@@ -617,9 +667,23 @@ def parse_track_page(
                 except Exception:
                     pass
 
-        result = (title or "", artists or "", key, year, bpm, label, genres, rel_name, rel_date_iso)
+        result = (
+            title or "",
+            artists or "",
+            key,
+            year,
+            bpm,
+            label,
+            genres,
+            rel_name,
+            rel_date_iso,
+        )
         # Design 5.11: Self-healing for stale cache - empty result from cache may indicate Beatport HTML change
-        if (not result[0] and not result[1]) and get_last_cache_hit() and _stale_retry == 0:
+        if (
+            (not result[0] and not result[1])
+            and get_last_cache_hit()
+            and _stale_retry == 0
+        ):
             if CacheInvalidation.invalidate_url(url):
                 continue  # Retry fetch (cache miss will return fresh data)
         return result
@@ -657,6 +721,7 @@ def track_urls(
 
     diag_enabled = bool(SETTINGS.get("TRACE") or SETTINGS.get("VERBOSE"))
     diag_steps: list[str] = []
+
     def _diag(msg: str) -> None:
         if diag_enabled:
             diag_steps.append(msg)
@@ -678,14 +743,20 @@ def track_urls(
 
         # Clean query for detection - remove quotes but preserve parentheses
         # (they indicate remix info)
-        clean_query_for_detection = search_terms_for_detection.strip('"').strip("'").strip()
+        clean_query_for_detection = (
+            search_terms_for_detection.strip('"').strip("'").strip()
+        )
         # Remove quote marks but preserve parentheses
         clean_query_for_detection = (
-            clean_query_for_detection.replace('"""', "").replace('"', "").replace("'", "")
+            clean_query_for_detection.replace('"""', "")
+            .replace('"', "")
+            .replace("'", "")
         )
         ql = (clean_query_for_detection or "").lower()
         has_remix_keywords = (
-            (" remix" in ql) or ("extended mix" in ql) or (ql.count("(") > 0 and ql.count(")") > 0)
+            (" remix" in ql)
+            or ("extended mix" in ql)
+            or (ql.count("(") > 0 and ql.count(")") > 0)
         )
         has_original_mix = "original mix" in ql
         use_direct_search = SETTINGS.get("USE_DIRECT_SEARCH_FOR_REMIXES", True) and (
@@ -721,15 +792,23 @@ def track_urls(
                     search_query = search_query.strip()
                     # Remove quotes for search (but preserve for browser search)
                     search_query = search_query.strip('"').strip("'").strip()
-                    search_query = search_query.replace('"""', "").replace('"', "").replace("'", "")
+                    search_query = (
+                        search_query.replace('"""', "")
+                        .replace('"', "")
+                        .replace("'", "")
+                    )
 
             direct_urls = beatport_search_direct(idx, search_query, max_results)
-            _diag(f"[search] direct search -> {len(direct_urls)} urls (max_results={max_results})")
+            _diag(
+                f"[search] direct search -> {len(direct_urls)} urls (max_results={max_results})"
+            )
             # Clean query for remix detection - use search_query (already cleaned)
             # instead of original query
             clean_query_for_check = search_query.strip('"').strip("'").strip()
             clean_query_for_check = (
-                clean_query_for_check.replace('"""', "").replace('"', "").replace("'", "")
+                clean_query_for_check.replace('"""', "")
+                .replace('"', "")
+                .replace("'", "")
             )
             ql = (clean_query_for_check or "").lower()
             is_remix_query = (
@@ -753,9 +832,13 @@ def track_urls(
                         f"[search] Direct search found {len(direct_urls)} URLs for "
                         f"remix query, trying browser automation",
                     )
-                    browser_urls = beatport_search_browser(idx, search_query, max_results)
+                    browser_urls = beatport_search_browser(
+                        idx, search_query, max_results
+                    )
                     if browser_urls:
-                        _diag(f"[search] browser automation -> {len(browser_urls)} urls")
+                        _diag(
+                            f"[search] browser automation -> {len(browser_urls)} urls"
+                        )
                         # Merge results (browser automation finds more, prepend its results)
                         seen = set(direct_urls)
                         merged = []
@@ -797,7 +880,10 @@ def track_urls(
                 should_try_browser = False
                 if direct_urls is None or len(direct_urls) == 0:
                     should_try_browser = True
-                    vlog(idx, "[search] Direct search found 0 URLs, trying browser automation")
+                    vlog(
+                        idx,
+                        "[search] Direct search found 0 URLs, trying browser automation",
+                    )
                 elif is_remix_query and len(direct_urls) < 10:
                     # For remix queries, if we found <10 results, browser might
                     # find more
@@ -811,10 +897,16 @@ def track_urls(
                 if should_try_browser:
                     # Use the cleaned search_query (without site: prefix) for
                     # browser automation
-                    browser_query = search_query if "search_query" in locals() else query
-                    browser_urls = beatport_search_browser(idx, browser_query, max_results)
+                    browser_query = (
+                        search_query if "search_query" in locals() else query
+                    )
+                    browser_urls = beatport_search_browser(
+                        idx, browser_query, max_results
+                    )
                     if browser_urls:
-                        _diag(f"[search] browser automation -> {len(browser_urls)} urls")
+                        _diag(
+                            f"[search] browser automation -> {len(browser_urls)} urls"
+                        )
                         vlog(
                             idx,
                             f"[search] Browser automation found {len(browser_urls)} URLs",
@@ -845,11 +937,15 @@ def track_urls(
             pass
         except Exception as e:
             _diag(f"[search] direct search failed: {e!r} -> falling back to DDG")
-            vlog(idx, f"[search] direct search failed: {e!r}, falling back to DuckDuckGo")
+            vlog(
+                idx, f"[search] direct search failed: {e!r}, falling back to DuckDuckGo"
+            )
 
     # Fall back to DuckDuckGo
     ddg_urls = ddg_track_urls(idx, query, max_results)
-    _diag(f"[search] ddg_track_urls -> {len(ddg_urls)} urls (max_results={max_results})")
+    _diag(
+        f"[search] ddg_track_urls -> {len(ddg_urls)} urls (max_results={max_results})"
+    )
 
     # If DDG returns nothing for a non-direct-search query, try direct search/browser as a fallback.
     # This preserves DDG usage when it works, but prevents the "0 candidates everywhere" outcome
@@ -865,14 +961,24 @@ def track_urls(
                     if fallback_query.startswith("/track"):
                         fallback_query = fallback_query[6:].strip()
                     fallback_query = fallback_query.strip().strip('"').strip("'")
-                    fallback_query = fallback_query.replace('"""', "").replace('"', "").replace("'", "")
+                    fallback_query = (
+                        fallback_query.replace('"""', "")
+                        .replace('"', "")
+                        .replace("'", "")
+                    )
             direct_fallback = beatport_search_direct(idx, fallback_query, max_results)
-            _diag(f"[search] ddg empty -> direct fallback -> {len(direct_fallback)} urls")
+            _diag(
+                f"[search] ddg empty -> direct fallback -> {len(direct_fallback)} urls"
+            )
             if direct_fallback:
                 return direct_fallback[:max_results]
             if SETTINGS.get("USE_BROWSER_AUTOMATION", False):
-                browser_fallback = beatport_search_browser(idx, fallback_query, max_results)
-                _diag(f"[search] ddg empty -> browser fallback -> {len(browser_fallback)} urls")
+                browser_fallback = beatport_search_browser(
+                    idx, fallback_query, max_results
+                )
+                _diag(
+                    f"[search] ddg empty -> browser fallback -> {len(browser_fallback)} urls"
+                )
                 if browser_fallback:
                     return browser_fallback[:max_results]
         except Exception as e:
@@ -998,7 +1104,9 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
             preflight_timeout = 1.5
         try:
             # DNS + TCP + TLS handshake (fast). If any step fails, skip DDG immediately.
-            raw_sock = socket.create_connection(("duckduckgo.com", 443), timeout=preflight_timeout)
+            raw_sock = socket.create_connection(
+                ("duckduckgo.com", 443), timeout=preflight_timeout
+            )
             try:
                 ctx = ssl.create_default_context()
                 tls_sock = ctx.wrap_socket(raw_sock, server_hostname="duckduckgo.com")
@@ -1086,7 +1194,7 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                     # CRITICAL: If DuckDuckGo times out, this iterator will raise TimeoutException
                     # We catch it below and continue to next query
                     # Don't let a single timeout block all processing
-                    # 
+                    #
                     # Note: In packaged apps, ddgs.text() may hang even if it should timeout.
                     # We rely on the exception handling below to catch any timeouts and continue.
                     # If this still hangs, the parallel processing timeout (90s) will catch it.
@@ -1096,30 +1204,33 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                             urls.append(href)
                     # For remix queries, don't break early - we need to find specific tracks
                     # Only break early for non-remix queries with many results
-                    if len(urls) >= 20 and (" remix" not in ql and "extended mix" not in ql):
+                    if len(urls) >= 20 and (
+                        " remix" not in ql and "extended mix" not in ql
+                    ):
                         break
                 except Exception as e:
                     # Handle DDGSException specifically (known issue with ddgs package parsing)
-                    
+
                     # Try to import DDGSException and TimeoutException to check type directly
                     try:
                         from ddgs.exceptions import DDGSException, TimeoutException
+
                         is_ddgs_exception = isinstance(e, DDGSException)
                         is_timeout = isinstance(e, TimeoutException)
                     except ImportError:
                         # Fallback: check by name or error message
                         is_ddgs_exception = (
-                            "DDGSException" in str(type(e).__name__) or
-                            "IndexError" in str(e) or
-                            "list index out of range" in str(e)
+                            "DDGSException" in str(type(e).__name__)
+                            or "IndexError" in str(e)
+                            or "list index out of range" in str(e)
                         )
                         is_timeout = (
-                            "TimeoutException" in str(type(e).__name__) or
-                            "timeout" in str(e).lower() or
-                            "timed out" in str(e).lower() or
-                            "ConnectTimeout" in str(e)
+                            "TimeoutException" in str(type(e).__name__)
+                            or "timeout" in str(e).lower()
+                            or "timed out" in str(e).lower()
+                            or "ConnectTimeout" in str(e)
                         )
-                    
+
                     if is_timeout:
                         # CRITICAL: Timeout errors - these can cause parallel processing to hang
                         # In packaged apps, DuckDuckGo searches often timeout due to network/firewall issues
@@ -1133,7 +1244,10 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                         # If the timeout looks like a TLS handshake/connect timeout, continuing to
                         # retry DDG is usually wasted time. Break early for this query.
                         emsg = str(e).lower()
-                        if "handshake operation timed out" in emsg or "connecttimeout" in emsg:
+                        if (
+                            "handshake operation timed out" in emsg
+                            or "connecttimeout" in emsg
+                        ):
                             break
                     elif is_ddgs_exception:
                         # This is a known issue with ddgs package (v9.9.3) - DuckDuckGo HTML structure changed
@@ -1143,18 +1257,23 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                         logger.debug(
                             f"[{idx}] DuckDuckGo search parsing error (ddgs package v9.9.3 known issue): {e!r}"
                         )
-                        vlog(idx, f"[search] ddgs parsing error (known issue, will use fallback): {e!r}")
+                        vlog(
+                            idx,
+                            f"[search] ddgs parsing error (known issue, will use fallback): {e!r}",
+                        )
                     else:
                         # Other errors (network, SSL, etc.) - log as warning
                         logger.warning(
                             f"[{idx}] DuckDuckGo search error for '{search_q}': {e!r}",
-                            exc_info=True
+                            exc_info=True,
                         )
                         vlog(idx, f"[search] ddgs error for '{search_q}': {e!r}")
                     continue
     except ImportError as e:
         # ddgs package not available - this is critical!
-        logger.error(f"[{idx}] DuckDuckGo search (ddgs) not available: {e!r}", exc_info=True)
+        logger.error(
+            f"[{idx}] DuckDuckGo search (ddgs) not available: {e!r}", exc_info=True
+        )
         vlog(idx, f"[search] ddgs import error: {e!r}")
         return []
     except Exception as e:
@@ -1162,7 +1281,7 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
         logger.error(f"[{idx}] DuckDuckGo search failed: {e!r}", exc_info=True)
         vlog(idx, f"[search] ddgs error: {e!r}")
         return []
-    
+
     # Process and deduplicate URLs
     out, seen = [], set()
     for u in urls:
@@ -1186,7 +1305,12 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                 needs_fallback = True
 
         # More aggressive fallback for specific cases
-        if needs_fallback and (" " in ql) and (not timed_out) and SETTINGS.get("DDG_ENABLED", True):
+        if (
+            needs_fallback
+            and (" " in ql)
+            and (not timed_out)
+            and SETTINGS.get("DDG_ENABLED", True)
+        ):
             extra_pages: list[str] = []
 
             # Try broader searches
@@ -1197,16 +1321,25 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
             ]
 
             try:
-                with DDGS(proxy=ddg_proxy, timeout=ddg_timeout, verify=ddg_verify) as ddgs:
+                with DDGS(
+                    proxy=ddg_proxy, timeout=ddg_timeout, verify=ddg_verify
+                ) as ddgs:
                     for fallback_q in fallback_queries:
                         try:
-                            for r in ddgs.text(fallback_q, region=ddg_region, max_results=20):
+                            for r in ddgs.text(
+                                fallback_q, region=ddg_region, max_results=20
+                            ):
                                 href = r.get("href") or r.get("url") or ""
                                 if href and "beatport.com" in href:
                                     extra_pages.append(href)
                         except Exception as e:
-                            logger.debug(f"[{idx}] Fallback search error for '{fallback_q}': {e!r}")
-                            vlog(idx, f"[fallback-search] error for '{fallback_q}': {e!r}")
+                            logger.debug(
+                                f"[{idx}] Fallback search error for '{fallback_q}': {e!r}"
+                            )
+                            vlog(
+                                idx,
+                                f"[fallback-search] error for '{fallback_q}': {e!r}",
+                            )
                             continue
             except Exception as e:
                 logger.warning(f"[{idx}] Fallback DuckDuckGo search failed: {e!r}")
@@ -1248,7 +1381,9 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
             parts = ql.split()
             if len(parts) >= 2:
                 # Try common URL patterns
-                track_name = "-".join(parts[:-1])  # Everything except last part (artist)
+                track_name = "-".join(
+                    parts[:-1]
+                )  # Everything except last part (artist)
                 artist_name = parts[-1]  # Last part (artist)
 
                 # Broader searches
@@ -1263,7 +1398,11 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                         try:
                             for r in ddgs.text(broad_q, region="us-en", max_results=10):
                                 href = r.get("href") or r.get("url") or ""
-                                if href and "beatport.com/track/" in href and href not in seen:
+                                if (
+                                    href
+                                    and "beatport.com/track/" in href
+                                    and href not in seen
+                                ):
                                     seen.add(href)
                                     out.append(href)
                         except Exception as e:

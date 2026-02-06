@@ -41,4 +41,3 @@ def test_onboarding_dialog_dont_show_again_checkbox(qtbot):
     assert dialog.dont_show_again_checked() is False
     dialog.dont_show_checkbox.click()
     assert dialog.dont_show_again_checked() is True
-

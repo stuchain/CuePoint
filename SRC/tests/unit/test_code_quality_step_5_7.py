@@ -52,7 +52,9 @@ class TestConfigurationFiles:
         root = Path(__file__).parent.parent.parent.parent
         pyproject = root / "pyproject.toml"
         content = pyproject.read_text()
-        assert "[tool.black]" in content, "Black configuration not found in pyproject.toml"
+        assert "[tool.black]" in content, (
+            "Black configuration not found in pyproject.toml"
+        )
         assert "line-length = 100" in content, "Black line-length not configured"
 
     def test_pyproject_toml_has_isort_config(self):
@@ -60,7 +62,9 @@ class TestConfigurationFiles:
         root = Path(__file__).parent.parent.parent.parent
         pyproject = root / "pyproject.toml"
         content = pyproject.read_text()
-        assert "[tool.isort]" in content, "isort configuration not found in pyproject.toml"
+        assert "[tool.isort]" in content, (
+            "isort configuration not found in pyproject.toml"
+        )
         assert 'profile = "black"' in content, "isort profile not configured"
 
     def test_coding_standards_doc_exists(self):
@@ -145,7 +149,9 @@ class TestCodeFormatting:
         # Black returns 0 if code is already formatted, 1 if changes needed
         # We accept both, but log if changes are needed
         if result.returncode != 0:
-            print(f"Black check found formatting issues:\n{result.stdout}\n{result.stderr}")
+            print(
+                f"Black check found formatting issues:\n{result.stdout}\n{result.stderr}"
+            )
         # We'll allow this to pass but note that formatting may be needed
         assert True, "Black check completed"
 
@@ -193,12 +199,12 @@ class TestLinting:
         # We check that it ran successfully (didn't crash)
         # On Windows, UnicodeEncodeError is a known issue with Pylint output,
         # not a code problem, so we accept it if pylint at least started
-        
+
         # Check stderr and stdout for Unicode encoding errors
         stderr_text = result.stderr or ""
         stdout_text = result.stdout or ""
         combined_output = stderr_text + stdout_text
-        
+
         # Check for Windows Unicode encoding issues
         has_unicode_error = (
             "UnicodeEncodeError" in stderr_text
@@ -208,7 +214,7 @@ class TestLinting:
             or "codec can't encode" in combined_output
             or "character maps to" in combined_output
         )
-        
+
         # Check if Pylint at least started processing (indicated by output or specific patterns)
         pylint_started = (
             "pylint" in combined_output.lower()
@@ -216,21 +222,25 @@ class TestLinting:
             or "module" in combined_output.lower()
             or len(combined_output) > 100  # Any substantial output means it ran
         )
-        
+
         # On Windows, if Pylint crashes with a non-zero exit code but produced output,
         # it likely ran but hit encoding issues - this is acceptable
         if has_unicode_error or (result.returncode != 0 and pylint_started):
             # This is a Windows encoding issue, not a code problem
             # Pylint ran but had encoding issues with output - this is acceptable
             # The test passes because Pylint was able to start and process files
-            assert True, "Pylint ran (Windows encoding issue in output, not a code problem)"
+            assert True, (
+                "Pylint ran (Windows encoding issue in output, not a code problem)"
+            )
         elif result.returncode in [0, 4, 8, 16, 24, 28, 32]:
             # Normal Pylint exit codes (success or warnings)
             assert True, "Pylint ran successfully"
         elif pylint_started:
             # Pylint started and produced output, which means it ran
             # Even if it crashed later due to encoding, it successfully processed files
-            assert True, "Pylint ran and processed files (may have encoding issues on Windows)"
+            assert True, (
+                "Pylint ran and processed files (may have encoding issues on Windows)"
+            )
         else:
             # Pylint didn't run at all - this would be a real problem
             assert False, (
@@ -400,14 +410,18 @@ class TestVSCodeSettings:
         """Test that VS Code settings file exists (optional for dev workflow)."""
         settings = self.root_path / ".vscode" / "settings.json"
         if not settings.exists():
-            pytest.skip(".vscode/settings.json not found (optional, create for IDE integration)")
+            pytest.skip(
+                ".vscode/settings.json not found (optional, create for IDE integration)"
+            )
 
     def test_vscode_settings_has_black_config(self):
         """Test that VS Code settings has black formatter configured."""
         settings = self.root_path / ".vscode" / "settings.json"
         if settings.exists():
             content = settings.read_text()
-            assert "black" in content.lower(), "Black formatter not configured in VS Code settings"
+            assert "black" in content.lower(), (
+                "Black formatter not configured in VS Code settings"
+            )
 
 
 class TestMakefileTargetsExecution:
@@ -424,7 +438,9 @@ class TestMakefileTargetsExecution:
         if makefile.exists():
             # Just verify the target exists, don't actually run make (requires make to be installed)
             content = makefile.read_text()
-            assert "check-format:" in content, "check-format target not found in Makefile"
+            assert "check-format:" in content, (
+                "check-format target not found in Makefile"
+            )
 
 
 class TestPreCommitInstallation:
@@ -456,4 +472,3 @@ class TestPreCommitInstallation:
                 # Pre-commit might not be installed, that's okay
                 pass
         assert True, "Pre-commit config validation check completed"
-

@@ -57,9 +57,15 @@ except ImportError:
     aiohttp = None
 
 from cuepoint.core.matcher import _camelot_key, _confidence_label, best_beatport_match
-from cuepoint.core.mix_parser import _extract_generic_parenthetical_phrases, _parse_mix_flags
+from cuepoint.core.mix_parser import (
+    _extract_generic_parenthetical_phrases,
+    _parse_mix_flags,
+)
 from cuepoint.core.query_generator import make_search_queries
-from cuepoint.core.text_processing import _artist_token_overlap, sanitize_title_for_search
+from cuepoint.core.text_processing import (
+    _artist_token_overlap,
+    sanitize_title_for_search,
+)
 from cuepoint.data.rekordbox import extract_artists_from_title, parse_rekordbox
 from cuepoint.models.track import Track
 from cuepoint.models.config import HAVE_CACHE, SETTINGS
@@ -76,7 +82,11 @@ from cuepoint.ui.gui_interface import (
     ProgressCallback,
     ProgressInfo,
 )
-from cuepoint.utils.errors import error_file_not_found, error_playlist_not_found, print_error
+from cuepoint.utils.errors import (
+    error_file_not_found,
+    error_playlist_not_found,
+    print_error,
+)
 from cuepoint.utils.logger_helper import get_logger
 from cuepoint.utils.utils import with_timestamp
 
@@ -147,12 +157,16 @@ def generate_summary_report(
     high_conf = sum(1 for r in rows if r.get("confidence") == "high")
     med_conf = sum(1 for r in rows if r.get("confidence") == "medium")
     low_conf = sum(
-        1 for r in rows if r.get("confidence") == "low" or not (r.get("beatport_url") or "").strip()
+        1
+        for r in rows
+        if r.get("confidence") == "low" or not (r.get("beatport_url") or "").strip()
     )
 
     # Calculate average scores (only for matched tracks)
     matched_scores = [
-        float(r.get("match_score", "0") or 0) for r in rows if (r.get("beatport_url") or "").strip()
+        float(r.get("match_score", "0") or 0)
+        for r in rows
+        if (r.get("beatport_url") or "").strip()
     ]
     avg_score = sum(matched_scores) / len(matched_scores) if matched_scores else 0
 
@@ -168,13 +182,19 @@ def generate_summary_report(
         for r in rows
         if (r.get("beatport_url") or "").strip()
     ]
-    _ = sum(matched_artist_sims) / len(matched_artist_sims) if matched_artist_sims else 0
+    _ = (
+        sum(matched_artist_sims) / len(matched_artist_sims)
+        if matched_artist_sims
+        else 0
+    )
 
     # Performance statistics
     total_queries = len(all_queries)
     avg_queries_per_track = total_queries / total_tracks if total_tracks > 0 else 0
     total_candidates = len(all_candidates)
-    avg_candidates_per_track = total_candidates / total_tracks if total_tracks > 0 else 0
+    avg_candidates_per_track = (
+        total_candidates / total_tracks if total_tracks > 0 else 0
+    )
 
     # Early exit statistics (queries that caused early stop)
     early_exits = sum(1 for q in all_queries if q.get("is_stop") == "Y")
@@ -184,7 +204,9 @@ def generate_summary_report(
     genre_counts: Dict[str, int] = {}
     for r in rows:
         if (r.get("beatport_url") or "").strip() and r.get("beatport_genres"):
-            genres = [g.strip() for g in r.get("beatport_genres", "").split(",") if g.strip()]
+            genres = [
+                g.strip() for g in r.get("beatport_genres", "").split(",") if g.strip()
+            ]
             for genre in genres:
                 genre_counts[genre] = genre_counts.get(genre, 0) + 1
 
@@ -208,7 +230,9 @@ def generate_summary_report(
     lines.append("| " + "Match Results:" + " " * 63 + "|")
     matched_padding = 78 - 24 - len(str(matched)) - len(f"{match_rate:.1f}")
     lines.append(
-        "| " + f"  [OK] Matched: {matched} ({match_rate:.1f}%){' ' * matched_padding}" + "|"
+        "| "
+        + f"  [OK] Matched: {matched} ({match_rate:.1f}%){' ' * matched_padding}"
+        + "|"
     )
     unmatched_padding = 78 - 29 - len(str(unmatched)) - len(f"{100 - match_rate:.1f}")
     lines.append(
@@ -248,24 +272,38 @@ def generate_summary_report(
     )
     avg_score_str = f"{avg_score:.1f}"
     avg_score_padding = 78 - 22 - len(avg_score_str)
-    lines.append("| " + f"  Average Score: {avg_score_str}{' ' * avg_score_padding}" + "|")
+    lines.append(
+        "| " + f"  Average Score: {avg_score_str}{' ' * avg_score_padding}" + "|"
+    )
     lines.append("+" + "=" * 78 + "+")
     lines.append("| " + "Performance:" + " " * 66 + "|")
     total_queries_str = str(total_queries)
     total_queries_padding = 78 - 24 - len(total_queries_str)
-    lines.append("| " + f"  Total Queries: {total_queries_str}{' ' * total_queries_padding}" + "|")
+    lines.append(
+        "| "
+        + f"  Total Queries: {total_queries_str}{' ' * total_queries_padding}"
+        + "|"
+    )
     avg_queries_str = f"{avg_queries_per_track:.1f}"
     avg_queries_padding = 78 - 28 - len(avg_queries_str)
-    lines.append("| " + f"  Avg Queries/Track: {avg_queries_str}{' ' * avg_queries_padding}" + "|")
+    lines.append(
+        "| "
+        + f"  Avg Queries/Track: {avg_queries_str}{' ' * avg_queries_padding}"
+        + "|"
+    )
     total_candidates_str = f"{total_candidates:,}"
     total_candidates_padding = 78 - 26 - len(total_candidates_str)
     lines.append(
-        "| " + f"  Total Candidates: {total_candidates_str}{' ' * total_candidates_padding}" + "|"
+        "| "
+        + f"  Total Candidates: {total_candidates_str}{' ' * total_candidates_padding}"
+        + "|"
     )
     avg_candidates_str = f"{avg_candidates_per_track:.1f}"
     avg_candidates_padding = 78 - 32 - len(avg_candidates_str)
     lines.append(
-        "| " + f"  Avg Candidates/Track: {avg_candidates_str}{' ' * avg_candidates_padding}" + "|"
+        "| "
+        + f"  Avg Candidates/Track: {avg_candidates_str}{' ' * avg_candidates_padding}"
+        + "|"
     )
     early_exit_str = f"{early_exit_rate:.1f}"
     early_exit_padding = 78 - 38 - len(str(early_exits)) - len(early_exit_str)
@@ -366,20 +404,26 @@ def process_track(
         # Fallback for terminals that can't handle Unicode (Windows console)
         safe_title = clean_title_for_log.encode("ascii", "ignore").decode("ascii")
         safe_artists = (
-            (original_artists or artists_for_scoring).encode("ascii", "ignore").decode("ascii")
+            (original_artists or artists_for_scoring)
+            .encode("ascii", "ignore")
+            .decode("ascii")
         )
         _logger.info(f"[{idx}] Searching Beatport for: {safe_title} - {safe_artists}")
 
     # Inform user if artists were inferred from title
     if extracted and title_only_search:
-        _logger.info(f"[{idx}]   (artists inferred from title for scoring; search is title-only)")
+        _logger.info(
+            f"[{idx}]   (artists inferred from title for scoring; search is title-only)"
+        )
 
     # Generate search queries based on title and artist information
     # Query generator creates multiple query variants to maximize match probability
     # It handles remix detection, artist combinations, title N-grams, etc.
     queries = make_search_queries(
         title_for_search,  # Clean title for search
-        ("" if title_only_search else artists_for_scoring),  # Artists (empty if title-only)
+        (
+            "" if title_only_search else artists_for_scoring
+        ),  # Artists (empty if title-only)
         original_title=track.title,  # Original title (for mix/remix detection)
     )
 
@@ -412,7 +456,9 @@ def process_track(
         idx,  # Track index for logging
         title_for_search,  # Clean title for matching
         artists_for_scoring,  # Artists for matching
-        (title_only_search and not extracted),  # True if truly title-only (no artists at all)
+        (
+            title_only_search and not extracted
+        ),  # True if truly title-only (no artists at all)
         queries,  # List of search queries to execute
         input_year=None,  # Optional: year from Rekordbox (currently not used)
         input_key=None,  # Optional: key from Rekordbox (currently not used)
@@ -443,7 +489,8 @@ def process_track(
                 "candidate_year": c.release_year or "",
                 "candidate_bpm": c.bpm or "",
                 "candidate_label": c.label or "",
-                "candidate_genres": c.genre or "",  # Note: new model uses "genre" instead of "genres"
+                "candidate_genres": c.genre
+                or "",  # Note: new model uses "genre" instead of "genres"
                 "candidate_release": c.release_name or "",
                 "candidate_release_date": c.release_date or "",
                 "title_sim": str(c.title_sim),
@@ -469,7 +516,9 @@ def process_track(
         # Mark if this query found the winning match
         is_winner = "Y" if (best and qidx == best.query_index) else "N"
         # Record which candidate from this query was the winner (if any)
-        winner_cand_idx = str(best.candidate_index) if (best and qidx == best.query_index) else ""
+        winner_cand_idx = (
+            str(best.candidate_index) if (best and qidx == best.query_index) else ""
+        )
         # Mark if this query caused early exit (stop searching)
         is_stop = "Y" if qidx == stop_qidx else "N"
         queries_rows.append(
@@ -525,7 +574,8 @@ def process_track(
             "beatport_year": best.release_year or "",
             "beatport_bpm": best.bpm or "",
             "beatport_label": best.label or "",
-            "beatport_genres": best.genre or "",  # Note: new model uses "genre" instead of "genres"
+            "beatport_genres": best.genre
+            or "",  # Note: new model uses "genre" instead of "genres"
             "beatport_release": best.release_name or "",
             "beatport_release_date": best.release_date or "",
             "beatport_track_id": beatport_track_id,
@@ -603,7 +653,10 @@ def process_track_with_callback(
     # Check for cancellation before starting
     if controller and controller.is_cancelled():
         return TrackResult(
-            playlist_index=idx, title=track.title, artist=track.artist or "", matched=False
+            playlist_index=idx,
+            title=track.title,
+            artist=track.artist or "",
+            matched=False,
         )
 
     # Use provided settings or fall back to global SETTINGS
@@ -637,12 +690,16 @@ def process_track_with_callback(
     except UnicodeEncodeError:
         safe_title = title_for_search.encode("ascii", "ignore").decode("ascii")
         safe_artists = (
-            (original_artists or artists_for_scoring).encode("ascii", "ignore").decode("ascii")
+            (original_artists or artists_for_scoring)
+            .encode("ascii", "ignore")
+            .decode("ascii")
         )
         _logger.info(f"[{idx}] Searching Beatport for: {safe_title} - {safe_artists}")
 
     if extracted and title_only_search:
-        _logger.info(f"[{idx}]   (artists inferred from title for scoring; search is title-only)")
+        _logger.info(
+            f"[{idx}]   (artists inferred from title for scoring; search is title-only)"
+        )
 
     # 3. Generate queries
     queries = make_search_queries(
@@ -666,7 +723,10 @@ def process_track_with_callback(
     # 5. Check cancellation again before expensive operation
     if controller and controller.is_cancelled():
         return TrackResult(
-            playlist_index=idx, title=track.title, artist=track.artist or "", matched=False
+            playlist_index=idx,
+            title=track.title,
+            artist=track.artist or "",
+            matched=False,
         )
 
     # 6. Execute matching (use effective_settings for MIN_ACCEPT_SCORE)
@@ -707,7 +767,8 @@ def process_track_with_callback(
                 "candidate_year": str(c.release_year) if c.release_year else "",
                 "candidate_bpm": c.bpm or "",
                 "candidate_label": c.label or "",
-                "candidate_genres": c.genre or "",  # Note: new model uses "genre" instead of "genres"
+                "candidate_genres": c.genre
+                or "",  # Note: new model uses "genre" instead of "genres"
                 "candidate_release": c.release_name or "",
                 "candidate_release_date": c.release_date or "",
                 "title_sim": str(c.title_sim),
@@ -730,7 +791,9 @@ def process_track_with_callback(
     queries_rows: List[Dict[str, Any]] = []
     for qidx, qtext, num_cands, q_ms in queries_audit:
         is_winner = "Y" if (best and qidx == best.query_index) else "N"
-        winner_cand_idx = str(best.candidate_index) if (best and qidx == best.query_index) else ""
+        winner_cand_idx = (
+            str(best.candidate_index) if (best and qidx == best.query_index) else ""
+        )
         is_stop = "Y" if qidx == stop_qidx else "N"
         queries_rows.append(
             {
@@ -870,7 +933,10 @@ def process_playlist(
     random.seed(effective_settings.get("SEED", SETTINGS.get("SEED", 0)))
 
     # Enable HTTP response caching if available and enabled
-    if effective_settings.get("ENABLE_CACHE", SETTINGS.get("ENABLE_CACHE", True)) and HAVE_CACHE:
+    if (
+        effective_settings.get("ENABLE_CACHE", SETTINGS.get("ENABLE_CACHE", True))
+        and HAVE_CACHE
+    ):
         import requests_cache
 
         requests_cache.install_cache("bp_cache", expire_after=60 * 60 * 24)
@@ -886,7 +952,8 @@ def process_playlist(
             suggestions=[
                 "Check that the file path is correct",
                 "Verify the file exists and is readable",
-                "Ensure the file path uses forward slashes (/) or escaped " "backslashes (\\)",
+                "Ensure the file path uses forward slashes (/) or escaped "
+                "backslashes (\\)",
             ],
             recoverable=False,
         )
@@ -974,7 +1041,9 @@ def process_playlist(
     progress_lock = threading.Lock()
 
     # Determine processing mode (sequential or parallel)
-    track_workers = effective_settings.get("TRACK_WORKERS", SETTINGS.get("TRACK_WORKERS", 12))
+    track_workers = effective_settings.get(
+        "TRACK_WORKERS", SETTINGS.get("TRACK_WORKERS", 12)
+    )
 
     if track_workers > 1:
         _logger.info(f"Using parallel processing with {track_workers} workers")
@@ -1044,7 +1113,10 @@ def process_playlist(
                     idx, track = future_to_args[future]
                     # Create error result
                     error_result = TrackResult(
-                        playlist_index=idx, title=track.title, artist=track.artist or "", matched=False
+                        playlist_index=idx,
+                        title=track.title,
+                        artist=track.artist or "",
+                        matched=False,
                     )
                     results_dict[idx] = error_result
                     unmatched_count += 1
@@ -1270,7 +1342,9 @@ def run(
 
         # Update postfix with current stats
         current_track_title = (
-            progress_info.current_track.get("title", "") if progress_info.current_track else ""
+            progress_info.current_track.get("title", "")
+            if progress_info.current_track
+            else ""
         )
         if len(current_track_title) > 30:
             current_track_title = current_track_title[:30] + "..."
@@ -1298,7 +1372,9 @@ def run(
     except ProcessingError as e:
         # Convert ProcessingError to CLI-friendly error messages
         if e.error_type == ErrorType.FILE_NOT_FOUND:
-            print_error(error_file_not_found(xml_path, "XML", "Check the --xml file path"))
+            print_error(
+                error_file_not_found(xml_path, "XML", "Check the --xml file path")
+            )
         elif e.error_type == ErrorType.PLAYLIST_NOT_FOUND:
             print_error(error_playlist_not_found(playlist_name, []))
         elif e.error_type == ErrorType.XML_PARSE_ERROR:
@@ -1370,21 +1446,37 @@ def run(
         if review_cands_path:
             output_files["review_candidates"] = review_cands_path
             review_cands_count = len(
-                [c for r in results if r.playlist_index in review_indices for c in r.candidates]
+                [
+                    c
+                    for r in results
+                    if r.playlist_index in review_indices
+                    for c in r.candidates
+                ]
             )
-            _logger.info(f"Review candidates: {review_cands_count} rows -> {review_cands_path}")
+            _logger.info(
+                f"Review candidates: {review_cands_count} rows -> {review_cands_path}"
+            )
         if review_queries_path:
             output_files["review_queries"] = review_queries_path
             review_queries_count = len(
-                [q for r in results if r.playlist_index in review_indices for q in r.queries]
+                [
+                    q
+                    for r in results
+                    if r.playlist_index in review_indices
+                    for q in r.queries
+                ]
             )
-            _logger.info(f"Review queries: {review_queries_count} rows -> {review_queries_path}")
+            _logger.info(
+                f"Review queries: {review_queries_count} rows -> {review_queries_path}"
+            )
 
     # Log file output messages
     if output_files.get("main"):
         _logger.info(f"\nDone. Wrote {len(rows)} rows -> {output_files['main']}")
     if output_files.get("candidates"):
-        _logger.info(f"Candidates: {len(all_candidates)} rows -> {output_files['candidates']}")
+        _logger.info(
+            f"Candidates: {len(all_candidates)} rows -> {output_files['candidates']}"
+        )
     if output_files.get("queries"):
         _logger.info(f"Queries: {len(all_queries)} rows -> {output_files['queries']}")
     if output_files.get("review"):
@@ -1404,13 +1496,17 @@ def run(
         for result in unmatched_results:
             artists_str = result.artist or "(no artists)"
             try:
-                _logger.warning(f"  [{result.playlist_index}] {result.title} - {artists_str}")
+                _logger.warning(
+                    f"  [{result.playlist_index}] {result.title} - {artists_str}"
+                )
                 print(f"  [{result.playlist_index}] {result.title} - {artists_str}")
             except UnicodeEncodeError:
                 # Unicode-safe fallback
                 safe_title = result.title.encode("ascii", "ignore").decode("ascii")
                 safe_artists = artists_str.encode("ascii", "ignore").decode("ascii")
-                _logger.warning(f"  [{result.playlist_index}] {safe_title} - {safe_artists}")
+                _logger.warning(
+                    f"  [{result.playlist_index}] {safe_title} - {safe_artists}"
+                )
                 print(f"  [{result.playlist_index}] {safe_title} - {safe_artists}")
 
         _logger.warning(f"\n{'=' * 80}")
@@ -1420,7 +1516,9 @@ def run(
             # Interactive mode: prompt user for confirmation
             try:
                 response = (
-                    input("Search again for these tracks with enhanced settings? (y/n): ")
+                    input(
+                        "Search again for these tracks with enhanced settings? (y/n): "
+                    )
                     .strip()
                     .lower()
                 )
@@ -1434,7 +1532,9 @@ def run(
             # Non-interactive mode (piped input, script, etc.): skip prompt
             _logger.info("Non-interactive mode: Skipping re-search prompt.")
             print("Non-interactive mode: Skipping re-search prompt.")
-            print("(To enable re-search, use --auto-research flag or run in interactive terminal)")
+            print(
+                "(To enable re-search, use --auto-research flag or run in interactive terminal)"
+            )
             _logger.info(
                 "(To enable re-search, use --auto-research flag or run in interactive terminal)"
             )
@@ -1611,7 +1711,10 @@ def run(
 
 
 def process_track_async(
-    idx: int, track: Track, settings: Optional[Dict[str, Any]] = None, max_concurrent: int = 10
+    idx: int,
+    track: Track,
+    settings: Optional[Dict[str, Any]] = None,
+    max_concurrent: int = 10,
 ) -> TrackResult:
     """
     Process track using async I/O.
@@ -1671,7 +1774,12 @@ def process_track_async(
         async def run_async_matching():
             async with aiohttp.ClientSession() as session:
                 # Run async matching
-                best, candlog, queries_audit, stop_qidx = await async_best_beatport_match(
+                (
+                    best,
+                    candlog,
+                    queries_audit,
+                    stop_qidx,
+                ) = await async_best_beatport_match(
                     session=session,
                     idx=idx,
                     track_title=title_for_search,
@@ -1686,7 +1794,9 @@ def process_track_async(
                 )
                 return best, candlog, queries_audit, stop_qidx
 
-        best, candlog, queries_audit, stop_qidx = loop.run_until_complete(run_async_matching())
+        best, candlog, queries_audit, stop_qidx = loop.run_until_complete(
+            run_async_matching()
+        )
 
         # Convert to TrackResult (same logic as sync version)
         _ = (time.perf_counter() - t0) * 1000
@@ -1710,7 +1820,8 @@ def process_track_async(
                     "candidate_year": str(c.release_year) if c.release_year else "",
                     "candidate_bpm": c.bpm or "",
                     "candidate_label": c.label or "",
-                    "candidate_genres": c.genre or "",  # Note: new model uses "genre" instead of "genres"
+                    "candidate_genres": c.genre
+                    or "",  # Note: new model uses "genre" instead of "genres"
                     "candidate_release": c.release_name or "",
                     "candidate_release_date": c.release_date or "",
                     "title_sim": str(c.title_sim),
@@ -1834,7 +1945,8 @@ def _convert_async_match_to_track_result(
                 "candidate_year": str(c.release_year) if c.release_year else "",
                 "candidate_bpm": c.bpm or "",
                 "candidate_label": c.label or "",
-                "candidate_genres": c.genre or "",  # Note: new model uses "genre" instead of "genres"
+                "candidate_genres": c.genre
+                or "",  # Note: new model uses "genre" instead of "genres"
                 "candidate_release": c.release_name or "",
                 "candidate_release_date": c.release_date or "",
                 "title_sim": str(c.title_sim),
@@ -1857,7 +1969,9 @@ def _convert_async_match_to_track_result(
     queries_rows: List[Dict[str, str]] = []
     for qidx, qtext, num_cands, q_ms in queries_audit:
         is_winner = "Y" if (best and qidx == best.query_index) else "N"
-        winner_cand_idx = str(best.candidate_index) if (best and qidx == best.query_index) else ""
+        winner_cand_idx = (
+            str(best.candidate_index) if (best and qidx == best.query_index) else ""
+        )
         is_stop = "Y" if qidx == stop_qidx else "N"
         queries_rows.append(
             {
@@ -1949,7 +2063,9 @@ def process_playlist_async(
     """
     if not ASYNC_AVAILABLE or not ASYNC_MATCHER_AVAILABLE:
         # Fallback to sync version if async not available
-        return process_playlist(xml_path, playlist_name, settings, progress_callback, controller)
+        return process_playlist(
+            xml_path, playlist_name, settings, progress_callback, controller
+        )
 
     # Start performance session
     if PERFORMANCE_AVAILABLE and performance_collector:
@@ -1975,7 +2091,8 @@ def process_playlist_async(
             suggestions=[
                 "Check that the file path is correct",
                 "Verify the file exists and is readable",
-                "Ensure the file path uses forward slashes (/) or escaped " "backslashes (\\)",
+                "Ensure the file path uses forward slashes (/) or escaped "
+                "backslashes (\\)",
             ],
             recoverable=False,
         )
@@ -2087,7 +2204,9 @@ def process_playlist_async(
                                 # Extract artists, clean title (same logic as sync version)
                                 # Note: Track uses 'artist' (singular), RBTrack used 'artists' (plural)
                                 original_artists = track_obj.artist or ""
-                                title_for_search = sanitize_title_for_search(track_obj.title)
+                                title_for_search = sanitize_title_for_search(
+                                    track_obj.title
+                                )
                                 artists_for_scoring = original_artists
 
                                 title_only_search = False
@@ -2112,30 +2231,42 @@ def process_playlist_async(
 
                                 # Extract mix/remix information
                                 input_mix_flags = _parse_mix_flags(track_obj.title)
-                                input_generic_phrases = _extract_generic_parenthetical_phrases(
-                                    track_obj.title
+                                input_generic_phrases = (
+                                    _extract_generic_parenthetical_phrases(
+                                        track_obj.title
+                                    )
                                 )
 
                                 # Run async matching
-                                best, candlog, queries_audit, stop_qidx = (
-                                    await async_best_beatport_match(
-                                        session=session,
-                                        idx=track_idx,
-                                        track_title=title_for_search,
-                                        track_artists_for_scoring=artists_for_scoring,
-                                        title_only_mode=(title_only_search and not extracted),
-                                        queries=queries,
-                                        input_year=None,
-                                        input_key=None,
-                                        input_mix=input_mix_flags,
-                                        input_generic_phrases=input_generic_phrases,
-                                        max_concurrent=max_concurrent_requests,
-                                    )
+                                (
+                                    best,
+                                    candlog,
+                                    queries_audit,
+                                    stop_qidx,
+                                ) = await async_best_beatport_match(
+                                    session=session,
+                                    idx=track_idx,
+                                    track_title=title_for_search,
+                                    track_artists_for_scoring=artists_for_scoring,
+                                    title_only_mode=(
+                                        title_only_search and not extracted
+                                    ),
+                                    queries=queries,
+                                    input_year=None,
+                                    input_key=None,
+                                    input_mix=input_mix_flags,
+                                    input_generic_phrases=input_generic_phrases,
+                                    max_concurrent=max_concurrent_requests,
                                 )
 
                                 # Convert to TrackResult (reuse logic from process_track_async)
                                 return _convert_async_match_to_track_result(
-                                    track_idx, track_obj, best, candlog, queries_audit, stop_qidx
+                                    track_idx,
+                                    track_obj,
+                                    best,
+                                    candlog,
+                                    queries_audit,
+                                    stop_qidx,
                                 )
 
                             return process_single_track
@@ -2163,7 +2294,10 @@ def process_playlist_async(
                     # Create error result for failed track
                     idx, rb = batch[j]
                     error_result = TrackResult(
-                        playlist_index=idx, title=track.title, artist=track.artist or "", matched=False
+                        playlist_index=idx,
+                        title=track.title,
+                        artist=track.artist or "",
+                        matched=False,
                     )
                     results.append(error_result)
                     unmatched_count += 1
@@ -2182,7 +2316,10 @@ def process_playlist_async(
                             total_tracks=total_tracks,
                             matched_count=matched_count,
                             unmatched_count=unmatched_count,
-                            current_track={"title": result.title, "artists": result.artist},
+                            current_track={
+                                "title": result.title,
+                                "artists": result.artist,
+                            },
                             elapsed_time=elapsed_time,
                         )
                         try:

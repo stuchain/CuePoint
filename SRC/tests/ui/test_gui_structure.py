@@ -55,7 +55,3 @@ def test_main_window_structure(qapp):
 
     # Drag & drop
     assert window.acceptDrops()
-
-
-
-

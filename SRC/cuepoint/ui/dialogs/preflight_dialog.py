@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 
 from cuepoint.models.preflight import PreflightResult
 
+
 class PreflightDialog(QDialog):
     """Dialog that displays preflight errors and warnings."""
 
@@ -105,6 +106,7 @@ class PreflightDialog(QDialog):
     def _format_details(self) -> str:
         try:
             import json
+
             return json.dumps(self._preflight.to_report(), indent=2)
         except Exception:
             return "Details unavailable."
@@ -120,6 +122,7 @@ class PreflightDialog(QDialog):
             return
         try:
             import json
+
             with open(path, "w", encoding="utf-8") as handle:
                 json.dump(self._preflight.to_report(), handle, indent=2)
         except Exception:

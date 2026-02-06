@@ -181,7 +181,9 @@ def startup_banner(script_path: str, args_namespace: argparse.Namespace) -> None
     # Generate fingerprint from script path, Python version, settings, and arguments
     data = f"{script_path}|{sys.version}|{SETTINGS}|{args_namespace}"
     short = hashlib.sha1(data.encode("utf-8")).hexdigest()[:8]
-    print(f"> Rekordbox->Beatport Enricher  |  {os.path.abspath(script_path)}", flush=True)
+    print(
+        f"> Rekordbox->Beatport Enricher  |  {os.path.abspath(script_path)}", flush=True
+    )
     print(
         f"  Python: {sys.version.split()[0]}  |  Seed: {SETTINGS['SEED']}  |  Fingerprint: {short}",
         flush=True,
@@ -235,7 +237,13 @@ def retry_with_backoff(
                 Timeout,
             )
 
-            exceptions = (RequestException, Timeout, ConnectionError, HTTPError, SSLError)
+            exceptions = (
+                RequestException,
+                Timeout,
+                ConnectionError,
+                HTTPError,
+                SSLError,
+            )
         except ImportError:
             exceptions = (Exception,)
 

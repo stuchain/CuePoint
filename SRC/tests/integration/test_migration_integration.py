@@ -10,5 +10,3 @@ import pytest
 
 def test_placeholder_migration_integration() -> None:
     pytest.skip("Migration integration tests not implemented yet")
-
- 

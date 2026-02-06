@@ -38,7 +38,9 @@ class SettingsDialog(QDialog):
         self.privacy_settings = PrivacySettingsWidget(
             self, config_controller=self.config_controller
         )
-        self.privacy_settings.open_privacy_dialog_requested.connect(self._open_privacy_dialog)
+        self.privacy_settings.open_privacy_dialog_requested.connect(
+            self._open_privacy_dialog
+        )
         layout.addWidget(self.privacy_settings)
 
         # Add button box
@@ -47,11 +49,11 @@ class SettingsDialog(QDialog):
         )
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
-        
+
         # Apply button
         apply_button = button_box.button(QDialogButtonBox.Apply)
         apply_button.clicked.connect(self.apply_settings)
-        
+
         layout.addWidget(button_box)
 
     def _open_privacy_dialog(self) -> None:
@@ -72,4 +74,3 @@ class SettingsDialog(QDialog):
     def get_auto_research(self):
         """Get auto research setting from config panel"""
         return self.config_panel.get_auto_research()
-

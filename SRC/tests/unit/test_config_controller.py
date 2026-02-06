@@ -81,7 +81,7 @@ def test_validate_settings_valid(controller):
         "TRACK_WORKERS": 10,
         "PER_TRACK_TIME_BUDGET_SEC": 50,
         "MIN_ACCEPT_SCORE": 75.0,
-        "MAX_SEARCH_RESULTS": 60
+        "MAX_SEARCH_RESULTS": 60,
     }
     is_valid, error = controller.validate_settings(settings)
     assert is_valid is True
@@ -94,7 +94,7 @@ def test_validate_settings_invalid_workers(controller):
         "TRACK_WORKERS": 25,  # Too high
         "PER_TRACK_TIME_BUDGET_SEC": 50,
         "MIN_ACCEPT_SCORE": 75.0,
-        "MAX_SEARCH_RESULTS": 60
+        "MAX_SEARCH_RESULTS": 60,
     }
     is_valid, error = controller.validate_settings(settings)
     assert is_valid is False
@@ -107,7 +107,7 @@ def test_validate_settings_invalid_time_budget(controller):
         "TRACK_WORKERS": 10,
         "PER_TRACK_TIME_BUDGET_SEC": 5,  # Too low
         "MIN_ACCEPT_SCORE": 75.0,
-        "MAX_SEARCH_RESULTS": 60
+        "MAX_SEARCH_RESULTS": 60,
     }
     is_valid, error = controller.validate_settings(settings)
     assert is_valid is False
@@ -136,7 +136,7 @@ def test_apply_preset_to_settings(controller):
         "PER_TRACK_TIME_BUDGET_SEC": 30,
         "MIN_ACCEPT_SCORE": 80.0,
         "MAX_SEARCH_RESULTS": 50,
-        "OTHER_SETTING": "value"  # Should be preserved
+        "OTHER_SETTING": "value",  # Should be preserved
     }
     updated = controller.apply_preset_to_settings("fast", current)
     assert updated["TRACK_WORKERS"] == 8  # From preset
@@ -157,31 +157,3 @@ def test_set_config_value(controller_with_service, mock_config_service):
     controller_with_service.set_config_value("test_key", "test_value")
     mock_config_service.set.assert_called_once_with("test_key", "test_value")
     mock_config_service.save.assert_called_once()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

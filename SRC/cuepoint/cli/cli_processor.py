@@ -32,7 +32,11 @@ from cuepoint.services.output_writer import (
     write_review_queries_csv,
 )
 from cuepoint.ui.gui_interface import ErrorType, ProcessingController, ProgressInfo
-from cuepoint.utils.errors import error_file_not_found, error_playlist_not_found, print_error
+from cuepoint.utils.errors import (
+    error_file_not_found,
+    error_playlist_not_found,
+    print_error,
+)
 from cuepoint.utils.run_context import get_current_run_id
 from cuepoint.utils.utils import get_output_directory, with_timestamp
 
@@ -100,6 +104,7 @@ class CLIProcessor:
         try:
             from cuepoint.utils.run_context import get_current_run_id
             from cuepoint.utils.telemetry_helper import get_telemetry
+
             telemetry = get_telemetry()
             telemetry.track(
                 "run_start",
@@ -135,10 +140,13 @@ class CLIProcessor:
             if preflight_report_path:
                 try:
                     import json
+
                     with open(preflight_report_path, "w", encoding="utf-8") as handle:
                         json.dump(preflight.to_report(), handle, indent=2)
                 except Exception as e:
-                    self.logging_service.warning(f"Could not write preflight report: {e}")
+                    self.logging_service.warning(
+                        f"Could not write preflight report: {e}"
+                    )
             if preflight_only:
                 if preflight.can_proceed:
                     self.logging_service.info("Preflight passed.")
@@ -162,6 +170,7 @@ class CLIProcessor:
         performance_collector = None
         if benchmark_mode:
             from cuepoint.utils.run_performance_collector import RunPerformanceCollector
+
             performance_collector = RunPerformanceCollector()
 
         # Design 5.47, 5.62: Checkpoint service and optional resume
@@ -202,6 +211,7 @@ class CLIProcessor:
             try:
                 from cuepoint.utils.run_context import get_current_run_id
                 from cuepoint.utils.telemetry_helper import get_telemetry
+
                 telemetry = get_telemetry()
                 telemetry.track(
                     "run_error",
@@ -229,6 +239,7 @@ class CLIProcessor:
         if benchmark_mode and performance_collector:
             try:
                 from pathlib import Path
+
                 report_path = Path(resolved_output_dir) / "performance_report.json"
                 performance_collector.export_json(report_path)
                 self.logging_service.info("[perf] Report saved to %s", report_path)
@@ -242,12 +253,15 @@ class CLIProcessor:
         elif incremental_previous_csv:
             output_files = {"main": incremental_previous_csv}
         else:
-            output_files = self._write_output_files(results, out_csv_base, resolved_output_dir)
+            output_files = self._write_output_files(
+                results, out_csv_base, resolved_output_dir
+            )
 
         # Step 14: run_complete telemetry
         try:
             from cuepoint.utils.run_context import get_current_run_id
             from cuepoint.utils.telemetry_helper import get_telemetry
+
             total = len(results)
             matched = sum(1 for r in results if r.matched)
             match_rate = matched / total if total else 0.0
@@ -269,11 +283,16 @@ class CLIProcessor:
             pass
 
         # Display summary
-        self._display_summary(results, output_files, processing_duration, playlist_name, xml_path)
+        self._display_summary(
+            results, output_files, processing_duration, playlist_name, xml_path
+        )
         if run_summary_json_path:
             try:
                 import json
-                redact_paths_value = self.config_service.get("product.redact_paths_in_logs", True)
+
+                redact_paths_value = self.config_service.get(
+                    "product.redact_paths_in_logs", True
+                )
                 if redact_paths_value is None:
                     redact_paths_value = True
                 summary = RunSummary.from_results(
@@ -299,6 +318,7 @@ class CLIProcessor:
         Returns:
             Callable that updates tqdm progress bar
         """
+
         def callback(progress_info: ProgressInfo) -> None:
             """Update progress bar with current progress information."""
             if self._pbar is None:
@@ -516,7 +536,9 @@ class CLIProcessor:
             processing_duration: Processing duration in seconds
         """
         output_paths = [path for path in output_files.values() if path]
-        redact_paths_value = self.config_service.get("product.redact_paths_in_logs", True)
+        redact_paths_value = self.config_service.get(
+            "product.redact_paths_in_logs", True
+        )
         if redact_paths_value is None:
             redact_paths_value = True
         summary = RunSummary.from_results(
@@ -545,7 +567,9 @@ class CLIProcessor:
 
         # Display list of unmatched tracks
         self.logging_service.warning(f"\n{'=' * 80}")
-        self.logging_service.warning(f"Found {len(unmatched_results)} unmatched track(s):")
+        self.logging_service.warning(
+            f"Found {len(unmatched_results)} unmatched track(s):"
+        )
         self.logging_service.warning(f"{'=' * 80}")
 
         print(f"\n{'=' * 80}")
@@ -576,12 +600,16 @@ class CLIProcessor:
             # Interactive mode: prompt user for confirmation
             try:
                 response = (
-                    input("Search again for these tracks with enhanced settings? (y/n): ")
+                    input(
+                        "Search again for these tracks with enhanced settings? (y/n): "
+                    )
                     .strip()
                     .lower()
                 )
                 if response == "y":
-                    self.logging_service.info("Re-searching unmatched tracks with enhanced settings...")
+                    self.logging_service.info(
+                        "Re-searching unmatched tracks with enhanced settings..."
+                    )
                     # Note: Auto-research would be handled by ProcessorService
                     # This is just for display/prompt purposes
                     print("Re-searching unmatched tracks...")
@@ -612,7 +640,9 @@ class CLIProcessor:
         """
         if isinstance(error, ProcessingError):
             if error.error_type == ErrorType.FILE_NOT_FOUND:
-                print_error(error_file_not_found(xml_path, "XML", "Check the --xml file path"))
+                print_error(
+                    error_file_not_found(xml_path, "XML", "Check the --xml file path")
+                )
             elif error.error_type == ErrorType.PLAYLIST_NOT_FOUND:
                 print_error(error_playlist_not_found(playlist_name, []))
             elif error.error_type == ErrorType.XML_PARSE_ERROR:
@@ -633,4 +663,3 @@ class CLIProcessor:
                     error_xml_parsing(xml_path, error, None),
                     exit_code=None,
                 )
-

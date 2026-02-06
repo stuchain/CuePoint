@@ -149,4 +149,3 @@ class TestStep52FullIntegration:
         assert processor2 is not None
         assert hasattr(processor1, "process_playlist_from_xml")
         assert hasattr(processor2, "process_playlist_from_xml")
-

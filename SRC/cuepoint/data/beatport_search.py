@@ -92,7 +92,9 @@ def _extract_track_ids_from_next_data(
                                             slug = track.get("slug")
                                             # Also check for slug in various formats
                                             if not slug:
-                                                slug = track.get("name") or track.get("title")
+                                                slug = track.get("name") or track.get(
+                                                    "title"
+                                                )
                                                 # Try to extract slug from URL if present
                                                 track_url = (
                                                     track.get("url")
@@ -108,7 +110,10 @@ def _extract_track_ids_from_next_data(
 
                                             if track_id and slug:
                                                 url = f"{BASE_URL}/track/{slug}/{track_id}"
-                                                if is_track_url(url) and url not in seen:
+                                                if (
+                                                    is_track_url(url)
+                                                    and url not in seen
+                                                ):
                                                     seen.add(url)
                                                     urls.append(url)
                                                     if len(urls) >= max_results:
@@ -126,7 +131,8 @@ def _extract_track_ids_from_next_data(
                                                     track_url = track[url_field]
                                                     if (
                                                         isinstance(track_url, str)
-                                                        and "beatport.com/track/" in track_url
+                                                        and "beatport.com/track/"
+                                                        in track_url
                                                     ):
                                                         if (
                                                             is_track_url(track_url)
@@ -138,7 +144,9 @@ def _extract_track_ids_from_next_data(
                                                                 return
 
                         # Also check queryKey and queryHash for direct data
-                        query_data = state.get("data") if isinstance(state, dict) else None
+                        query_data = (
+                            state.get("data") if isinstance(state, dict) else None
+                        )
                         if isinstance(query_data, list):
                             for item in query_data:
                                 if isinstance(item, dict):
@@ -185,7 +193,15 @@ def _extract_track_ids_from_next_data(
                             return
 
             # Also check for direct URL fields
-            for key in ["url", "href", "link", "canonical_url", "web_url", "trackUrl", "slug"]:
+            for key in [
+                "url",
+                "href",
+                "link",
+                "canonical_url",
+                "web_url",
+                "trackUrl",
+                "slug",
+            ]:
                 if key in obj:
                     val = obj[key]
                     if isinstance(val, str):
@@ -257,7 +273,10 @@ def beatport_search_via_api(idx: int, query: str, max_results: int = 50) -> List
                     seen = set()
                     _extract_track_ids_from_next_data(data, seen, urls, max_results)
                     if urls:
-                        vlog(idx, f"[beatport-api] Found {len(urls)} tracks via API: {endpoint}")
+                        vlog(
+                            idx,
+                            f"[beatport-api] Found {len(urls)} tracks via API: {endpoint}",
+                        )
                         return urls[:max_results]
                 except json.JSONDecodeError:
                     continue
@@ -348,7 +367,9 @@ def beatport_search_direct(idx: int, query: str, max_results: int = 50) -> List[
                             break
 
                 # Also look for relative paths like "/track/title/123"
-                relative_matches = re.findall(r'("?/track/[^"\s]+/\d+)"?', script.string)
+                relative_matches = re.findall(
+                    r'("?/track/[^"\s]+/\d+)"?', script.string
+                )
                 for match in relative_matches:
                     clean_match = match.strip("\"'")
                     if clean_match.startswith("/track/"):
@@ -431,7 +452,9 @@ def beatport_search_browser(idx: int, query: str, max_results: int = 50) -> List
                 # Remove all quote marks (single, double, triple) from query for URL encoding
                 clean_query = query.strip('"').strip("'").strip()
                 # Remove any remaining quote marks in the middle
-                clean_query = clean_query.replace('"""', "").replace('"', "").replace("'", "")
+                clean_query = (
+                    clean_query.replace('"""', "").replace('"', "").replace("'", "")
+                )
                 encoded_query = quote_plus(clean_query)
                 search_url = f"{BASE_URL}/search?q={encoded_query}"
 
@@ -448,7 +471,9 @@ def beatport_search_browser(idx: int, query: str, max_results: int = 50) -> List
                 for link in page.query_selector_all('a[href^="/track/"]'):
                     href = link.get_attribute("href")
                     if href:
-                        full_url = f"{BASE_URL}{href}" if href.startswith("/track/") else href
+                        full_url = (
+                            f"{BASE_URL}{href}" if href.startswith("/track/") else href
+                        )
                         if is_track_url(full_url) and full_url not in seen:
                             seen.add(full_url)
                             urls.append(full_url)
@@ -458,7 +483,10 @@ def beatport_search_browser(idx: int, query: str, max_results: int = 50) -> List
                 browser.close()
 
                 if urls:
-                    vlog(idx, f"[beatport-browser] Found {len(urls)} tracks via Playwright")
+                    vlog(
+                        idx,
+                        f"[beatport-browser] Found {len(urls)} tracks via Playwright",
+                    )
                     return urls[:max_results]
 
         except ImportError:
@@ -502,7 +530,7 @@ def beatport_search_browser(idx: int, query: str, max_results: int = 50) -> List
         options.add_argument("--in-process-gpu")
         options.add_argument("--log-level=3")
         options.add_experimental_option("excludeSwitches", ["enable-logging"])
-        options.add_argument(f'user-agent={SETTINGS.get("USER_AGENT", "Mozilla/5.0")}')
+        options.add_argument(f"user-agent={SETTINGS.get('USER_AGENT', 'Mozilla/5.0')}")
 
         driver = webdriver.Chrome(options=options)
 
@@ -510,7 +538,9 @@ def beatport_search_browser(idx: int, query: str, max_results: int = 50) -> List
             # Remove all quote marks (single, double, triple) from query for URL encoding
             clean_query = query.strip('"').strip("'").strip()
             # Remove any remaining quote marks in the middle
-            clean_query = clean_query.replace('"""', "").replace('"', "").replace("'", "")
+            clean_query = (
+                clean_query.replace('"""', "").replace('"', "").replace("'", "")
+            )
             encoded_query = quote_plus(clean_query)
             search_url = f"{BASE_URL}/search?q={encoded_query}"
 
@@ -519,7 +549,9 @@ def beatport_search_browser(idx: int, query: str, max_results: int = 50) -> List
             # Wait for track links
             try:
                 WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, 'a[href^="/track/"]'))
+                    EC.presence_of_element_located(
+                        (By.CSS_SELECTOR, 'a[href^="/track/"]')
+                    )
                 )
             except Exception:
                 pass
@@ -606,6 +638,7 @@ def beatport_search_hybrid(
         except Exception as ddg_error:
             # If DuckDuckGo fails (timeout, etc.), log but continue with direct search results
             import logging
+
             logger = logging.getLogger(__name__)
             logger.debug(
                 f"[{idx}] DuckDuckGo supplement search failed (using direct results only): {ddg_error!r}"
@@ -623,14 +656,19 @@ def beatport_search_hybrid(
         except Exception as ddg_error:
             # If DuckDuckGo fails (timeout, etc.), log and fall back to direct search
             import logging
+
             logger = logging.getLogger(__name__)
             logger.info(
                 f"[{idx}] DuckDuckGo search failed (timeout?), falling back to direct search: {ddg_error!r}"
             )
             # Fall through to direct search below
 
-        if len(urls) < max_results * 0.5:  # If DuckDuckGo found less than 50% (or failed)
-            direct_urls = beatport_search_direct(idx, query, max(max_results - len(urls), 20))
+        if (
+            len(urls) < max_results * 0.5
+        ):  # If DuckDuckGo found less than 50% (or failed)
+            direct_urls = beatport_search_direct(
+                idx, query, max(max_results - len(urls), 20)
+            )
             for url in direct_urls:
                 if url not in seen:
                     seen.add(url)

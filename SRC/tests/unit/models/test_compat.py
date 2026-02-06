@@ -509,4 +509,3 @@ class TestTrackResultToOld:
         assert converted_back.matched == original.matched
         assert converted_back.beatport_url == original.beatport_url
         assert converted_back.match_score == original.match_score
-

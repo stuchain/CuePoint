@@ -40,27 +40,57 @@ class TestStep8Strings:
 
     def test_empty_state_strings(self):
         """Empty state copy is externalized."""
-        assert "XML" in EmptyState.NO_XML_TITLE or "Rekordbox" in EmptyState.NO_XML_TITLE
+        assert (
+            "XML" in EmptyState.NO_XML_TITLE or "Rekordbox" in EmptyState.NO_XML_TITLE
+        )
         assert "playlist" in EmptyState.NO_PLAYLIST_TITLE.lower()
-        assert EmptyState.NO_XML_ACTION == "Browse" or "Browse" in EmptyState.NO_XML_ACTION
-        assert "Browse" in EmptyState.BROWSE_FOR_XML or "XML" in EmptyState.BROWSE_FOR_XML
+        assert (
+            EmptyState.NO_XML_ACTION == "Browse" or "Browse" in EmptyState.NO_XML_ACTION
+        )
+        assert (
+            "Browse" in EmptyState.BROWSE_FOR_XML or "XML" in EmptyState.BROWSE_FOR_XML
+        )
 
     def test_error_copy_actionable(self):
         """Error messages are actionable (Design 8.21)."""
-        assert "re-export" in ErrorCopy.XML_UNREADABLE.lower() or "Rekordbox" in ErrorCopy.XML_UNREADABLE
-        assert "permissions" in ErrorCopy.OUTPUT_UNWRITABLE.lower() or "folder" in ErrorCopy.OUTPUT_UNWRITABLE.lower()
+        assert (
+            "re-export" in ErrorCopy.XML_UNREADABLE.lower()
+            or "Rekordbox" in ErrorCopy.XML_UNREADABLE
+        )
+        assert (
+            "permissions" in ErrorCopy.OUTPUT_UNWRITABLE.lower()
+            or "folder" in ErrorCopy.OUTPUT_UNWRITABLE.lower()
+        )
 
     def test_success_copy_next_steps(self):
         """Success copy includes what to do next (Design 8.74-8.75)."""
-        assert "Review" in SuccessCopy.STEP_REVIEW or "review" in SuccessCopy.STEP_REVIEW.lower()
-        assert "Export" in SuccessCopy.STEP_EXPORT or "export" in SuccessCopy.STEP_EXPORT.lower()
-        assert "Rekordbox" in SuccessCopy.STEP_REKORDBOX or "Import" in SuccessCopy.STEP_REKORDBOX
-        assert "undo" in SuccessCopy.STEP_UNDO_GUIDANCE.lower() or "backup" in SuccessCopy.STEP_UNDO_GUIDANCE.lower()
+        assert (
+            "Review" in SuccessCopy.STEP_REVIEW
+            or "review" in SuccessCopy.STEP_REVIEW.lower()
+        )
+        assert (
+            "Export" in SuccessCopy.STEP_EXPORT
+            or "export" in SuccessCopy.STEP_EXPORT.lower()
+        )
+        assert (
+            "Rekordbox" in SuccessCopy.STEP_REKORDBOX
+            or "Import" in SuccessCopy.STEP_REKORDBOX
+        )
+        assert (
+            "undo" in SuccessCopy.STEP_UNDO_GUIDANCE.lower()
+            or "backup" in SuccessCopy.STEP_UNDO_GUIDANCE.lower()
+        )
 
     def test_export_preview_strings(self):
         """Export preview strings (Design 8.9)."""
-        assert "Preview" in ExportCopy.PREVIEW_TITLE or "preview" in ExportCopy.PREVIEW_TITLE.lower()
-        assert "files" in ExportCopy.PREVIEW_MESSAGE.lower() or "created" in ExportCopy.PREVIEW_MESSAGE.lower()
+        assert (
+            "Preview" in ExportCopy.PREVIEW_TITLE
+            or "preview" in ExportCopy.PREVIEW_TITLE.lower()
+        )
+        assert (
+            "files" in ExportCopy.PREVIEW_MESSAGE.lower()
+            or "created" in ExportCopy.PREVIEW_MESSAGE.lower()
+        )
 
     def test_button_copy(self):
         """Button labels (Design 8.199)."""
@@ -95,9 +125,7 @@ class TestStep8OutputDirectory:
         from unittest.mock import patch
 
         with tempfile.TemporaryDirectory() as tmp:
-            with patch(
-                "cuepoint.utils.paths.StorageInvariants"
-            ) as mock_inv:
+            with patch("cuepoint.utils.paths.StorageInvariants") as mock_inv:
                 mock_inv.is_restricted_location.return_value = True
                 out = get_output_directory(tmp)
             # Should return default, not the restricted path
@@ -144,7 +172,9 @@ class TestStep8Contrast:
         # Our theme should pass - white text on dark background
         assert isinstance(violations, list)
         # text_primary #ffffff on background #1e1e1e should pass
-        meets, _ = check_contrast(colors.text_primary, colors.background, "AA", "normal")
+        meets, _ = check_contrast(
+            colors.text_primary, colors.background, "AA", "normal"
+        )
         assert meets is True
 
 
@@ -201,7 +231,9 @@ class TestStep8PreviewOutputs:
                     candidates=[],
                 )
             ]
-            preview = preview_csv_output_paths("playlist.csv", tmp, ",", results=results)
+            preview = preview_csv_output_paths(
+                "playlist.csv", tmp, ",", results=results
+            )
             written = write_csv_files(results, "playlist.csv", tmp)
             assert "main" in preview and "main" in written
             assert tmp in preview["main"]
@@ -245,5 +277,11 @@ class TestStep8DisplayScaling:
 
     def test_error_copy_file_not_found(self):
         """ErrorCopy.FILE_NOT_FOUND exists for consistent errors."""
-        assert "file" in ErrorCopy.FILE_NOT_FOUND.lower() or "XML" in ErrorCopy.FILE_NOT_FOUND
-        assert "file" in ErrorCopy.FILE_NOT_FOUND.lower() or "XML" in ErrorCopy.FILE_NOT_FOUND
+        assert (
+            "file" in ErrorCopy.FILE_NOT_FOUND.lower()
+            or "XML" in ErrorCopy.FILE_NOT_FOUND
+        )
+        assert (
+            "file" in ErrorCopy.FILE_NOT_FOUND.lower()
+            or "XML" in ErrorCopy.FILE_NOT_FOUND
+        )

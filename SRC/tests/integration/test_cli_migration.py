@@ -362,7 +362,7 @@ class TestCLIMigration:
         )
 
         # Mock processor to raise file not found error
-        
+
         error = ProcessingError(
             message="File not found",
             error_type=ErrorType.FILE_NOT_FOUND,
@@ -397,7 +397,7 @@ class TestCLIMigration:
         )
 
         # Mock processor to raise playlist not found error
-        
+
         error = ProcessingError(
             message="Playlist not found",
             error_type=ErrorType.PLAYLIST_NOT_FOUND,
@@ -509,4 +509,3 @@ class TestCLIMigration:
 
         # Track 3: low score -> needs review
         assert 3 in review_indices
-

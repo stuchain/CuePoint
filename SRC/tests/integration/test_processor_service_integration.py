@@ -18,7 +18,7 @@ from cuepoint.services.processor_service import ProcessorService
 
 class TestProcessorServiceIntegration:
     """Integration tests for ProcessorService using real service instances."""
-    
+
     @pytest.fixture(autouse=True)
     def _mock_track_urls(self):
         """Prevent network/browser access during integration tests."""
@@ -30,50 +30,47 @@ class TestProcessorServiceIntegration:
     def real_logging_service(self):
         """Create a real logging service."""
         return LoggingService()
-    
+
     @pytest.fixture
     def real_config_service(self):
         """Create a real config service."""
         return ConfigService()
-    
+
     @pytest.fixture
     def real_cache_service(self):
         """Create a real cache service."""
         return CacheService()
-    
+
     @pytest.fixture
     def real_beatport_service(self, real_cache_service, real_logging_service):
         """Create a real beatport service."""
         return BeatportService(
-            cache_service=real_cache_service,
-            logging_service=real_logging_service
+            cache_service=real_cache_service, logging_service=real_logging_service
         )
-    
+
     @pytest.fixture
     def real_matcher_service(self):
         """Create a real matcher service."""
         return MatcherService()  # Stateless service, no dependencies
-    
+
     @pytest.fixture
     def processor_service(
         self,
         real_beatport_service,
         real_matcher_service,
         real_logging_service,
-        real_config_service
+        real_config_service,
     ):
         """Create a real processor service."""
         return ProcessorService(
             beatport_service=real_beatport_service,
             matcher_service=real_matcher_service,
             logging_service=real_logging_service,
-            config_service=real_config_service
+            config_service=real_config_service,
         )
-    
+
     def test_process_track_integration_with_mocked_search(
-        self,
-        processor_service,
-        sample_track
+        self, processor_service, sample_track
     ):
         """Test process_track with real services but mocked network calls."""
         # _mock_track_urls fixture patches track_urls to return [], avoiding network
@@ -86,11 +83,9 @@ class TestProcessorServiceIntegration:
         assert result.title == sample_track.title
         assert result.artist == sample_track.artist
         assert isinstance(result.matched, bool)
-    
+
     def test_process_track_integration_with_match(
-        self,
-        processor_service,
-        sample_track
+        self, processor_service, sample_track
     ):
         """Test process_track with a successful match scenario."""
         # Matcher uses track_urls and parse_track_page from cuepoint.data.beatport
@@ -115,11 +110,8 @@ class TestProcessorServiceIntegration:
                 # Verify result
                 assert result is not None
                 assert isinstance(result, TrackResult)
-    
-    def test_process_playlist_integration(
-        self,
-        processor_service
-    ):
+
+    def test_process_playlist_integration(self, processor_service):
         """Test process_playlist with real services."""
         tracks = [
             Track(title="Track 1", artist="Artist 1"),
@@ -135,11 +127,8 @@ class TestProcessorServiceIntegration:
         assert all(isinstance(r, TrackResult) for r in results)
         assert results[0].title == "Track 1"
         assert results[1].title == "Track 2"
-    
-    def test_process_playlist_from_xml_integration(
-        self,
-        processor_service
-    ):
+
+    def test_process_playlist_from_xml_integration(self, processor_service):
         """Test process_playlist_from_xml with real services."""
         # Create test XML
         xml_content = """<?xml version="1.0" encoding="UTF-8"?>
@@ -157,17 +146,18 @@ class TestProcessorServiceIntegration:
         </NODE>
     </PLAYLISTS>
 </DJ_PLAYLISTS>"""
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.xml', delete=False, encoding='utf-8') as f:
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".xml", delete=False, encoding="utf-8"
+        ) as f:
             f.write(xml_content)
             xml_path = f.name
-        
+
         try:
             # _mock_track_urls fixture already patches track_urls to return []
             # Process playlist from XML
             results = processor_service.process_playlist_from_xml(
-                xml_path,
-                "Test Playlist"
+                xml_path, "Test Playlist"
             )
 
             # Verify results
@@ -192,7 +182,9 @@ class TestProcessorServiceIntegration:
     </PLAYLISTS>
 </DJ_PLAYLISTS>"""
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False, encoding="utf-8") as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".xml", delete=False, encoding="utf-8"
+        ) as f:
             f.write(xml_content)
             xml_path = f.name
 
@@ -202,29 +194,24 @@ class TestProcessorServiceIntegration:
             assert result.errors == []
         finally:
             Path(xml_path).unlink(missing_ok=True)
-    
-    def test_process_track_with_custom_settings(
-        self,
-        processor_service,
-        sample_track
-    ):
+
+    def test_process_track_with_custom_settings(self, processor_service, sample_track):
         """Test process_track with custom settings override."""
         custom_settings = {
             "MIN_ACCEPT_SCORE": 90,  # Higher threshold
-            "MAX_SEARCH_RESULTS": 20
+            "MAX_SEARCH_RESULTS": 20,
         }
 
         # _mock_track_urls fixture already patches track_urls to return []
         # Process with custom settings
-        result = processor_service.process_track(1, sample_track, settings=custom_settings)
+        result = processor_service.process_track(
+            1, sample_track, settings=custom_settings
+        )
 
         # Verify result
         assert result is not None
-    
-    def test_process_track_artist_extraction(
-        self,
-        processor_service
-    ):
+
+    def test_process_track_artist_extraction(self, processor_service):
         """Test process_track with title that contains artist format (Artist - Title)."""
         # Track with title in "Artist - Title" format
         # Note: Track model validation requires non-empty artist, so we provide a valid artist
@@ -234,16 +221,18 @@ class TestProcessorServiceIntegration:
             artist="Test Artist",  # Valid artist (matches title format)
             key=None,
             year=None,
-            bpm=None
+            bpm=None,
         )
-        
+
         # Mock network calls to avoid actual API calls
-        with patch.object(processor_service.beatport_service, 'search_tracks') as mock_search:
+        with patch.object(
+            processor_service.beatport_service, "search_tracks"
+        ) as mock_search:
             mock_search.return_value = []
-            
+
             # Process track
             result = processor_service.process_track(1, track)
-            
+
             # Verify result - should process successfully
             assert result is not None
             assert isinstance(result, TrackResult)
@@ -251,10 +240,7 @@ class TestProcessorServiceIntegration:
             assert result.artist is not None
             assert len(result.artist.strip()) > 0
 
-    def test_process_track_empty_artist_extract_from_title(
-        self,
-        processor_service
-    ):
+    def test_process_track_empty_artist_extract_from_title(self, processor_service):
         """Test process_track with artist that can be extracted from title format."""
         # Note: Track model requires non-empty artist, but processor can extract
         # artist from title when title is in "Artist - Title" format
@@ -264,16 +250,18 @@ class TestProcessorServiceIntegration:
             artist="Test Artist",  # Valid artist (matches title format)
             key=None,
             year=None,
-            bpm=None
+            bpm=None,
         )
-        
+
         # Mock network calls
-        with patch.object(processor_service.beatport_service, 'search_tracks') as mock_search:
+        with patch.object(
+            processor_service.beatport_service, "search_tracks"
+        ) as mock_search:
             mock_search.return_value = []
-            
+
             # Process track
             result = processor_service.process_track(1, track)
-            
+
             # Verify result - should process successfully
             assert result is not None
             assert isinstance(result, TrackResult)
@@ -281,73 +269,64 @@ class TestProcessorServiceIntegration:
             assert result.artist is not None
             assert len(result.artist.strip()) > 0
 
-    def test_process_track_with_remix_in_title(
-        self,
-        processor_service
-    ):
+    def test_process_track_with_remix_in_title(self, processor_service):
         """Test process_track with remix in title."""
         track = Track(
             title="Test Track (Remixer Remix)",
             artist="Test Artist",
             key=None,
             year=None,
-            bpm=None
+            bpm=None,
         )
-        
+
         # Mock network calls
-        with patch.object(processor_service.beatport_service, 'search_tracks') as mock_search:
+        with patch.object(
+            processor_service.beatport_service, "search_tracks"
+        ) as mock_search:
             mock_search.return_value = []
-            
+
             # Process track
             result = processor_service.process_track(1, track)
-            
+
             # Verify result
             assert result is not None
             assert isinstance(result, TrackResult)
             assert result.title == track.title
 
-    def test_process_track_no_matches(
-        self,
-        processor_service,
-        sample_track
-    ):
+    def test_process_track_no_matches(self, processor_service, sample_track):
         """Test process_track when no matches are found."""
         # Mock search to return empty results
-        with patch.object(processor_service.beatport_service, 'search_tracks') as mock_search:
+        with patch.object(
+            processor_service.beatport_service, "search_tracks"
+        ) as mock_search:
             mock_search.return_value = []
-            
+
             # Process track
             result = processor_service.process_track(1, sample_track)
-            
+
             # Verify result - should indicate no match
             assert result is not None
             assert isinstance(result, TrackResult)
             assert result.matched is False
             assert result.match_score == 0.0
 
-    def test_process_track_network_error(
-        self,
-        processor_service,
-        sample_track
-    ):
+    def test_process_track_network_error(self, processor_service, sample_track):
         """Test process_track with network error (mock BeatportService)."""
         # Mock search to raise network error
-        with patch.object(processor_service.beatport_service, 'search_tracks') as mock_search:
+        with patch.object(
+            processor_service.beatport_service, "search_tracks"
+        ) as mock_search:
             mock_search.side_effect = Exception("Network error")
-            
+
             # Process track - should handle error gracefully
             result = processor_service.process_track(1, sample_track)
-            
+
             # Verify result - should still return a result (unmatched)
             assert result is not None
             assert isinstance(result, TrackResult)
             # May be unmatched due to error, but should not crash
 
-    def test_process_track_parsing_error(
-        self,
-        processor_service,
-        sample_track
-    ):
+    def test_process_track_parsing_error(self, processor_service, sample_track):
         """Test process_track with parsing error (mock parse_track_page)."""
         # Matcher uses track_urls and parse_track_page from cuepoint.data.beatport
         with patch("cuepoint.core.matcher.track_urls") as mock_track_urls:
@@ -362,13 +341,10 @@ class TestProcessorServiceIntegration:
                 assert result is not None
                 assert isinstance(result, TrackResult)
 
-    def test_process_playlist_from_xml_empty_playlist(
-        self,
-        processor_service
-    ):
+    def test_process_playlist_from_xml_empty_playlist(self, processor_service):
         """Test process_playlist_from_xml with empty playlist - should raise ProcessingError."""
         from cuepoint.ui.gui_interface import ErrorType, ProcessingError
-        
+
         # Create test XML with empty playlist
         xml_content = """<?xml version="1.0" encoding="UTF-8"?>
 <DJ_PLAYLISTS>
@@ -382,50 +358,42 @@ class TestProcessorServiceIntegration:
         </NODE>
     </PLAYLISTS>
 </DJ_PLAYLISTS>"""
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.xml', delete=False, encoding='utf-8') as f:
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".xml", delete=False, encoding="utf-8"
+        ) as f:
             f.write(xml_content)
             xml_path = f.name
-        
+
         try:
             # Process playlist from XML - should raise ProcessingError for empty playlist
             with pytest.raises(ProcessingError) as exc_info:
-                processor_service.process_playlist_from_xml(
-                    xml_path,
-                    "Empty Playlist"
-                )
-            
+                processor_service.process_playlist_from_xml(xml_path, "Empty Playlist")
+
             # Verify error type
             assert exc_info.value.error_type == ErrorType.VALIDATION_ERROR
             assert "Playlist is empty" in (exc_info.value.details or "")
         finally:
             Path(xml_path).unlink(missing_ok=True)
 
-    def test_process_playlist_from_xml_file_not_found(
-        self,
-        processor_service
-    ):
+    def test_process_playlist_from_xml_file_not_found(self, processor_service):
         """Test process_playlist_from_xml with file not found."""
         from cuepoint.ui.gui_interface import ErrorType, ProcessingError
-        
+
         # Try to process non-existent file
         with pytest.raises(ProcessingError) as exc_info:
             processor_service.process_playlist_from_xml(
-                "/nonexistent/path/file.xml",
-                "Test Playlist"
+                "/nonexistent/path/file.xml", "Test Playlist"
             )
-        
+
         # Verify error type
         assert exc_info.value.error_type == ErrorType.FILE_NOT_FOUND
         assert "XML file not found" in (exc_info.value.details or "")
 
-    def test_process_playlist_from_xml_malformed_xml(
-        self,
-        processor_service
-    ):
+    def test_process_playlist_from_xml_malformed_xml(self, processor_service):
         """Test process_playlist_from_xml with malformed XML."""
         from cuepoint.ui.gui_interface import ProcessingError
-        
+
         # Create malformed XML
         xml_content = """<?xml version="1.0" encoding="UTF-8"?>
 <DJ_PLAYLISTS>
@@ -433,28 +401,24 @@ class TestProcessorServiceIntegration:
         <TRACK TrackID="1" Name="Test Track 1" Artist="Test Artist 1"
     </COLLECTION>
 </DJ_PLAYLISTS>"""
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.xml', delete=False, encoding='utf-8') as f:
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".xml", delete=False, encoding="utf-8"
+        ) as f:
             f.write(xml_content)
             xml_path = f.name
-        
+
         try:
             # Process playlist from XML - should raise ProcessingError
             with pytest.raises(ProcessingError):
-                processor_service.process_playlist_from_xml(
-                    xml_path,
-                    "Test Playlist"
-                )
+                processor_service.process_playlist_from_xml(xml_path, "Test Playlist")
         finally:
             Path(xml_path).unlink(missing_ok=True)
 
-    def test_process_playlist_from_xml_progress_callback(
-        self,
-        processor_service
-    ):
+    def test_process_playlist_from_xml_progress_callback(self, processor_service):
         """Test process_playlist_from_xml with progress callback."""
         from cuepoint.ui.gui_interface import ProgressInfo
-        
+
         # Create test XML
         xml_content = """<?xml version="1.0" encoding="UTF-8"?>
 <DJ_PLAYLISTS>
@@ -471,11 +435,13 @@ class TestProcessorServiceIntegration:
         </NODE>
     </PLAYLISTS>
 </DJ_PLAYLISTS>"""
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.xml', delete=False, encoding='utf-8') as f:
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".xml", delete=False, encoding="utf-8"
+        ) as f:
             f.write(xml_content)
             xml_path = f.name
-        
+
         try:
             # Track progress calls
             progress_calls = []
@@ -486,9 +452,7 @@ class TestProcessorServiceIntegration:
             # _mock_track_urls fixture already patches track_urls to return []
             # Process playlist from XML with progress callback
             processor_service.process_playlist_from_xml(
-                xml_path,
-                "Test Playlist",
-                progress_callback=progress_callback
+                xml_path, "Test Playlist", progress_callback=progress_callback
             )
 
             # Verify progress callback was called
@@ -502,24 +466,18 @@ class TestProcessorServiceIntegration:
         finally:
             Path(xml_path).unlink(missing_ok=True)
 
-    def test_process_playlist_empty(
-        self,
-        processor_service
-    ):
+    def test_process_playlist_empty(self, processor_service):
         """Test process_playlist with empty playlist."""
         tracks = []
-        
+
         # Process empty playlist
         results = processor_service.process_playlist(tracks)
-        
+
         # Verify results
         assert isinstance(results, list)
         assert len(results) == 0
 
-    def test_process_playlist_with_none_tracks(
-        self,
-        processor_service
-    ):
+    def test_process_playlist_with_none_tracks(self, processor_service):
         """Test process_playlist with None tracks (should handle gracefully)."""
         # Note: This test verifies that the service handles edge cases
         # In practice, Track objects should not be None, but we test error handling
@@ -535,4 +493,3 @@ class TestProcessorServiceIntegration:
         # Verify results
         assert len(results) == 2
         assert all(isinstance(r, TrackResult) for r in results)
-

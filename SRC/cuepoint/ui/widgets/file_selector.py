@@ -21,7 +21,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from cuepoint.ui.dialogs.rekordbox_instructions_dialog import RekordboxInstructionsDialog
+from cuepoint.ui.dialogs.rekordbox_instructions_dialog import (
+    RekordboxInstructionsDialog,
+)
 from cuepoint.ui.strings import ButtonCopy, EmptyState, TooltipCopy
 from cuepoint.ui.widgets.styles import is_macos
 
@@ -46,7 +48,9 @@ class FileSelector(QWidget):
         self.path_edit.setPlaceholderText(EmptyState.NO_XML_TITLE)
         self.path_edit.setStyleSheet("font-size: 11px;")
         self.path_edit.setAccessibleName("Collection XML path")
-        self.path_edit.setAccessibleDescription("Shows the selected Rekordbox collection XML file path")
+        self.path_edit.setAccessibleDescription(
+            "Shows the selected Rekordbox collection XML file path"
+        )
         self.path_edit.setFocusPolicy(Qt.StrongFocus)
 
         self.browse_btn = QPushButton(ButtonCopy.BROWSE)
@@ -54,7 +58,9 @@ class FileSelector(QWidget):
         self.browse_btn.clicked.connect(self.browse_file)
         self.browse_btn.setObjectName("secondaryActionButton")
         self.browse_btn.setAccessibleName("Browse for XML file button")
-        self.browse_btn.setAccessibleDescription("Opens a file picker to select your Rekordbox collection XML file")
+        self.browse_btn.setAccessibleDescription(
+            "Opens a file picker to select your Rekordbox collection XML file"
+        )
         self.browse_btn.setFocusPolicy(Qt.StrongFocus)
 
         # Info button
@@ -62,7 +68,9 @@ class FileSelector(QWidget):
         self.info_btn.setText("ℹ")
         self.info_btn.setToolTip(EmptyState.VIEW_INSTRUCTIONS)
         self.info_btn.setAccessibleName("Rekordbox export instructions button")
-        self.info_btn.setAccessibleDescription("Opens instructions for exporting an XML file from Rekordbox")
+        self.info_btn.setAccessibleDescription(
+            "Opens instructions for exporting an XML file from Rekordbox"
+        )
         self.info_btn.setFocusPolicy(Qt.StrongFocus)
         self.info_btn.clicked.connect(self.show_instructions)
 

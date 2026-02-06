@@ -20,16 +20,16 @@ from cuepoint.services.processor_service import ProcessorService
 def processor_service():
     """Create ProcessorService for benchmarking."""
     from unittest.mock import Mock
-    
+
     # Create mock services for benchmarking
     beatport_service = Mock()
     matcher_service = Mock()
     logging_service = Mock()
     config_service = Mock()
-    
+
     # Configure mocks for fast execution
     matcher_service.find_best_match.return_value = (None, [], [], 1)
-    
+
     return ProcessorService(
         beatport_service=beatport_service,
         matcher_service=matcher_service,
@@ -64,7 +64,9 @@ class TestPerformanceBenchmarks:
         duration = time.perf_counter() - start
 
         avg_time = duration / len(tracks)
-        print(f"\n[Benchmark] 10 tracks: {duration:.3f}s total, {avg_time:.3f}s per track")
+        print(
+            f"\n[Benchmark] 10 tracks: {duration:.3f}s total, {avg_time:.3f}s per track"
+        )
         assert len(results) == len(tracks)
 
     def test_benchmark_playlist_50(self, processor_service):
@@ -76,25 +78,33 @@ class TestPerformanceBenchmarks:
         duration = time.perf_counter() - start
 
         avg_time = duration / len(tracks)
-        print(f"\n[Benchmark] 50 tracks: {duration:.3f}s total, {avg_time:.3f}s per track")
+        print(
+            f"\n[Benchmark] 50 tracks: {duration:.3f}s total, {avg_time:.3f}s per track"
+        )
         assert len(results) == len(tracks)
 
     def test_benchmark_playlist_100(self, processor_service):
         """Benchmark playlist processing (100 tracks)."""
-        tracks = [Track(title=f"Track {i}", artist=f"Artist {i}") for i in range(1, 101)]
+        tracks = [
+            Track(title=f"Track {i}", artist=f"Artist {i}") for i in range(1, 101)
+        ]
 
         start = time.perf_counter()
         results = processor_service.process_playlist(tracks)
         duration = time.perf_counter() - start
 
         avg_time = duration / len(tracks)
-        print(f"\n[Benchmark] 100 tracks: {duration:.3f}s total, {avg_time:.3f}s per track")
+        print(
+            f"\n[Benchmark] 100 tracks: {duration:.3f}s total, {avg_time:.3f}s per track"
+        )
         assert len(results) == len(tracks)
 
     def test_benchmark_export_csv(self, processor_service):
         """Benchmark CSV export."""
         # Generate results first
-        tracks = [Track(title=f"Track {i}", artist=f"Artist {i}") for i in range(1, 101)]
+        tracks = [
+            Track(title=f"Track {i}", artist=f"Artist {i}") for i in range(1, 101)
+        ]
         results = processor_service.process_playlist(tracks)
 
         from cuepoint.services.output_writer import write_main_csv
@@ -111,7 +121,9 @@ class TestPerformanceBenchmarks:
     def test_benchmark_export_json(self, processor_service):
         """Benchmark JSON export."""
         # Generate results first
-        tracks = [Track(title=f"Track {i}", artist=f"Artist {i}") for i in range(1, 101)]
+        tracks = [
+            Track(title=f"Track {i}", artist=f"Artist {i}") for i in range(1, 101)
+        ]
         results = processor_service.process_playlist(tracks)
 
         import json
@@ -163,10 +175,9 @@ class TestPerformanceComparison:
         playlist_10_duration = time.perf_counter() - start
 
         # Check against targets (allow 10% margin)
-        assert (
-            single_duration < targets["single_track"] * 1.1
-        ), f"Single track regression: {single_duration:.3f}s > {targets['single_track'] * 1.1:.3f}s"
-        assert (
-            playlist_10_duration < targets["playlist_10"] * 1.1
-        ), f"Playlist 10 regression: {playlist_10_duration:.3f}s > {targets['playlist_10'] * 1.1:.3f}s"
-
+        assert single_duration < targets["single_track"] * 1.1, (
+            f"Single track regression: {single_duration:.3f}s > {targets['single_track'] * 1.1:.3f}s"
+        )
+        assert playlist_10_duration < targets["playlist_10"] * 1.1, (
+            f"Playlist 10 regression: {playlist_10_duration:.3f}s > {targets['playlist_10'] * 1.1:.3f}s"
+        )

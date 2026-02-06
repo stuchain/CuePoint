@@ -230,14 +230,20 @@ def run_all_benchmarks(
     # Playlist processing (different sizes)
     for count in [10, 50, 100]:
         print(f"\n2. Benchmarking playlist processing ({count} tracks)...")
-        duration, _ = benchmark_process_playlist(service, track_count=count, profile=profile)
+        duration, _ = benchmark_process_playlist(
+            service, track_count=count, profile=profile
+        )
         results[f"process_playlist_{count}"] = duration
         avg_time = duration / count
-        print(f"   {count} tracks: {duration:.3f} seconds (avg: {avg_time:.3f}s per track)")
+        print(
+            f"   {count} tracks: {duration:.3f} seconds (avg: {avg_time:.3f}s per track)"
+        )
 
     # Export benchmarks (need results first)
     print("\n3. Generating test results for export benchmarks...")
-    _, export_results = benchmark_process_playlist(service, track_count=100, profile=False)
+    _, export_results = benchmark_process_playlist(
+        service, track_count=100, profile=False
+    )
 
     # CSV export
     print("\n4. Benchmarking CSV export (100 results)...")
@@ -271,4 +277,3 @@ if __name__ == "__main__":
     # Run benchmarks
     results = run_all_benchmarks(service, profile=False)
     print("\nBenchmarks complete!")
-

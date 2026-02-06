@@ -242,9 +242,13 @@ class TestProcessorRunIdPropagation:
         from cuepoint.services.processor_service import ProcessorService
 
         with patch("cuepoint.services.processor_service.set_run_id") as mock_set_run_id:
-            with patch("cuepoint.services.processor_service.parse_rekordbox") as mock_parse:
+            with patch(
+                "cuepoint.services.processor_service.parse_rekordbox"
+            ) as mock_parse:
                 mock_parse.return_value = {
-                    "Test": Playlist(name="Test", tracks=[Track(title="A", artist="B", track_id="1")])
+                    "Test": Playlist(
+                        name="Test", tracks=[Track(title="A", artist="B", track_id="1")]
+                    )
                 }
                 with patch(
                     "cuepoint.services.processor_service.ProcessorService.run_preflight"

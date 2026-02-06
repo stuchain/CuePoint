@@ -263,4 +263,3 @@ class TestTrackStringRepresentationEdgeCases:
         repr_str = repr(track)
         assert "Track" in repr_str
         assert "Title" in repr_str
-

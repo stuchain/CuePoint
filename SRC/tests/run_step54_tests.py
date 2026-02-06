@@ -11,16 +11,19 @@ from pathlib import Path
 src_dir = Path(__file__).parent
 sys.path.insert(0, str(src_dir))
 
+
 def main():
     """Run tests with coverage."""
     print("=" * 80)
     print("Running Step 5.4 Comprehensive Testing")
     print("=" * 80)
     print()
-    
+
     # Run tests with coverage
     cmd = [
-        sys.executable, "-m", "pytest",
+        sys.executable,
+        "-m",
+        "pytest",
         "--cov=cuepoint",
         "--cov-report=term-missing",
         "--cov-report=html",
@@ -31,12 +34,12 @@ def main():
         "tests/unit/data/test_beatport.py",
         "tests/unit/services/test_output_writer.py",
     ]
-    
+
     print(f"Running: {' '.join(cmd)}")
     print()
-    
+
     result = subprocess.run(cmd, cwd=src_dir)
-    
+
     print()
     print("=" * 80)
     if result.returncode == 0:
@@ -45,9 +48,9 @@ def main():
     else:
         print("❌ Some tests failed or coverage below 80%")
     print("=" * 80)
-    
+
     return result.returncode
+
 
 if __name__ == "__main__":
     sys.exit(main())
-

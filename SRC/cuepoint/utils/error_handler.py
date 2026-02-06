@@ -59,7 +59,9 @@ class ErrorHandler:
         # Add error type to context
         error_context["error_type"] = type(error).__name__
 
-        self.logging_service.error(f"Error: {str(error)}", exc_info=error, extra=error_context)
+        self.logging_service.error(
+            f"Error: {str(error)}", exc_info=error, extra=error_context
+        )
 
         # Notify callbacks
         for callback in self.error_callbacks:
@@ -177,16 +179,16 @@ class ErrorHandler:
 
         # Build comprehensive error message
         comprehensive_message = error_info["message"]
-        
+
         # Add "What happened" section
         comprehensive_message += "\n\nWhat happened:"
         comprehensive_message += f"\n• {error_type.__name__}: {str(error)}"
-        
+
         # Add "What you can do" section
         comprehensive_message += "\n\nWhat you can do:"
         for suggestion in error_info["suggestions"]:
             comprehensive_message += f"\n• {suggestion}"
-        
+
         # Add log location
         comprehensive_message += f"\n\nLogs location: {AppPaths.logs_dir()}"
         comprehensive_message += "\n(Check logs for detailed technical information)"
@@ -217,26 +219,3 @@ class ErrorHandler:
         except Exception as e:
             self.handle_error(e, context, show_user=False)
             return default_return
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

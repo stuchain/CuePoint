@@ -47,7 +47,9 @@ def main():
     # Generate comparison report
     print("\n3. Generating performance comparison report...")
     report_path = Path("reports/performance_comparison.json")
-    report = generate_performance_report(current=current_metrics, output_path=report_path)
+    report = generate_performance_report(
+        current=current_metrics, output_path=report_path
+    )
 
     # Check targets
     print("\n4. Checking performance targets...")
@@ -72,4 +74,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

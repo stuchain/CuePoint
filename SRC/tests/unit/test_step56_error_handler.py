@@ -188,7 +188,9 @@ class TestErrorHandler:
         def successful_function() -> str:
             return "success"
 
-        result = handler.handle_and_recover(successful_function, default_return="default")
+        result = handler.handle_and_recover(
+            successful_function, default_return="default"
+        )
 
         assert result == "success"
         # Should not have logged any errors
@@ -238,4 +240,3 @@ class TestErrorHandler:
 
         # Should not have called warning (user notification)
         mock_logging.warning.assert_not_called()
-

@@ -29,7 +29,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from cuepoint.ui.dialogs.rekordbox_instructions_dialog import RekordboxInstructionsDialog
+from cuepoint.ui.dialogs.rekordbox_instructions_dialog import (
+    RekordboxInstructionsDialog,
+)
 from cuepoint.utils.i18n import tr
 
 
@@ -165,7 +167,9 @@ class ResultsScreen(_OnboardingScreen):
             QDesktopServices.openUrl(QUrl.fromLocalFile(str(guide_path)))
         else:
             QDesktopServices.openUrl(
-                QUrl("https://github.com/stuchain/CuePoint/blob/main/DOCS/user-guide/workflows.md")
+                QUrl(
+                    "https://github.com/stuchain/CuePoint/blob/main/DOCS/user-guide/workflows.md"
+                )
             )
 
 
@@ -188,6 +192,7 @@ class OnboardingDialog(QDialog):
             parent.activateWindow()
             # Process events to ensure parent is actually visible
             from PySide6.QtWidgets import QApplication
+
             QApplication.processEvents()
         self.reject()
         event.accept()
@@ -239,7 +244,9 @@ class OnboardingDialog(QDialog):
 
         footer_layout.addLayout(nav)
 
-        self.dont_show_checkbox = QCheckBox(tr("onboarding.dont_show", "Don't show this again"))
+        self.dont_show_checkbox = QCheckBox(
+            tr("onboarding.dont_show", "Don't show this again")
+        )
         self.dont_show_checkbox.setCheckable(True)
         self.dont_show_checkbox.setEnabled(True)
         self.dont_show_checkbox.setFocusPolicy(Qt.StrongFocus)
@@ -263,6 +270,7 @@ class OnboardingDialog(QDialog):
                 parent.raise_()
                 parent.activateWindow()
                 from PySide6.QtWidgets import QApplication
+
                 QApplication.processEvents()
             self.accept()
 
@@ -281,6 +289,7 @@ class OnboardingDialog(QDialog):
             parent.activateWindow()
             # Process events to ensure parent is actually visible
             from PySide6.QtWidgets import QApplication
+
             QApplication.processEvents()
         self.reject()
 
@@ -298,4 +307,3 @@ class OnboardingDialog(QDialog):
 
     def dont_show_again_checked(self) -> bool:
         return self.dont_show_checkbox.isChecked()
-

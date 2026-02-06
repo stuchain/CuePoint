@@ -45,7 +45,7 @@ def sample_results():
             beatport_bpm="128",
             beatport_key="C Major",
             match_score=95.0,
-            confidence="high"
+            confidence="high",
         ),
         TrackResult(
             playlist_index=2,
@@ -58,7 +58,7 @@ def sample_results():
             beatport_bpm="130",
             beatport_key="D Major",
             match_score=80.0,
-            confidence="medium"
+            confidence="medium",
         ),
     ]
 
@@ -70,10 +70,10 @@ class TestResultsViewWithController:
         """Test that ResultsView uses ResultsController"""
         controller = ResultsController()
         view = ResultsView(results_controller=controller)
-        
+
         # Set results through view
         view.set_results(sample_results, "Test Playlist")
-        
+
         # Verify controller has results
         assert len(controller.all_results) == 2
         assert len(controller.filtered_results) == 2
@@ -83,13 +83,13 @@ class TestResultsViewWithController:
         controller = ResultsController()
         view = ResultsView(results_controller=controller)
         view.set_results(sample_results, "Test Playlist")
-        
+
         # Set up filter widgets
         view.search_box.setText("Track 1")
-        
+
         # Apply filters
         filtered = view._filter_results()
-        
+
         # Verify controller was used
         assert len(filtered) == 1
         assert filtered[0].title == "Test Track 1"
@@ -100,10 +100,10 @@ class TestResultsViewWithController:
         controller = ResultsController()
         view = ResultsView(results_controller=controller)
         view.set_results(sample_results, "Test Playlist")
-        
+
         # Update summary
         view._update_summary()
-        
+
         # Verify summary label was updated (indirectly tests controller usage)
         assert view.summary_label.text() != ""
         # Summary format is compact in v1.0 UI (Step 9 polish)
@@ -114,15 +114,15 @@ class TestResultsViewWithController:
         controller = ResultsController()
         view = ResultsView(results_controller=controller)
         view.set_results(sample_results, "Test Playlist")
-        
+
         # Apply filter
         view.search_box.setText("Track 1")
         view._filter_results()
         assert len(controller.filtered_results) == 1
-        
+
         # Clear filters
         view.clear_filters()
-        
+
         # Verify controller filters cleared
         assert len(controller.filtered_results) == 2
 
@@ -134,7 +134,7 @@ class TestExportDialogWithController:
         """Test that ExportDialog uses ExportController"""
         controller = ExportController()
         dialog = ExportDialog(export_controller=controller)
-        
+
         # Verify controller is set
         assert dialog.export_controller == controller
 
@@ -157,14 +157,14 @@ class TestExportDialogWithController:
         """Test that file extension logic uses controller"""
         controller = ExportController()
         dialog = ExportDialog(export_controller=controller)
-        
+
         # Set CSV format
         dialog.csv_radio.setChecked(True)
         dialog.delimiter_combo.setCurrentText(",")
-        
+
         # Get extension
         ext = dialog._get_format_extension()
-        
+
         # Should use controller logic
         assert ext == "csv"
 
@@ -176,7 +176,7 @@ class TestConfigPanelWithController:
         """Test that ConfigPanel uses ConfigController"""
         controller = ConfigController()
         panel = ConfigPanel(config_controller=controller)
-        
+
         # Verify controller is set
         assert panel.config_controller == controller
 
@@ -184,28 +184,30 @@ class TestConfigPanelWithController:
         """Test that preset change uses controller"""
         controller = ConfigController()
         panel = ConfigPanel(config_controller=controller)
-        
+
         # Show advanced settings to ensure widgets are visible
         if not panel.advanced_group.isVisible():
             panel._toggle_advanced_settings()
-        
+
         # Find turbo preset button by objectName
         turbo_button = None
         for button in panel.preset_group.buttons():
             if button.objectName() == "preset_turbo":
                 turbo_button = button
                 break
-        
+
         # If found, trigger preset change
         if turbo_button:
             # Set the button as checked first
             turbo_button.setChecked(True)
             # Trigger preset change
             panel._on_preset_changed(turbo_button)
-            
+
             # Verify controller values were used
             # Turbo preset should have TRACK_WORKERS = 16
-            assert panel.track_workers_spin.value() == 16, f"Expected 16, got {panel.track_workers_spin.value()}"
+            assert panel.track_workers_spin.value() == 16, (
+                f"Expected 16, got {panel.track_workers_spin.value()}"
+            )
         else:
             # If button not found, test by directly calling with preset name
             # This tests the controller logic even if button finding fails
@@ -216,10 +218,10 @@ class TestConfigPanelWithController:
         """Test that get_settings uses controller"""
         controller = ConfigController()
         panel = ConfigPanel(config_controller=controller)
-        
+
         # Get settings
         settings = panel.get_settings()
-        
+
         # Verify settings structure
         assert "TRACK_WORKERS" in settings
         assert "PER_TRACK_TIME_BUDGET_SEC" in settings
@@ -234,13 +236,13 @@ class TestControllerSeparation:
         """Test that ResultsController works independently of UI"""
         controller = ResultsController()
         controller.set_results(sample_results)
-        
+
         # Apply filters
         filtered = controller.apply_filters(search_text="Track 1")
-        
+
         # Get statistics
         stats = controller.get_summary_statistics()
-        
+
         # Verify controller works without UI
         assert len(filtered) == 1
         assert stats["total"] == 2
@@ -248,11 +250,11 @@ class TestControllerSeparation:
     def test_export_controller_independent(self):
         """Test that ExportController works independently of UI"""
         controller = ExportController()
-        
+
         # Validate options
         options = {"format": "csv", "file_path": "/tmp/test.csv", "delimiter": ","}
         is_valid, error = controller.validate_export_options(options)
-        
+
         # Verify controller works without UI
         assert is_valid is True
         assert error is None
@@ -260,10 +262,10 @@ class TestControllerSeparation:
     def test_config_controller_independent(self):
         """Test that ConfigController works independently of UI"""
         controller = ConfigController()
-        
+
         # Get preset values
         values = controller.get_preset_values("fast")
-        
+
         # Verify controller works without UI
         assert values["TRACK_WORKERS"] == 8
         assert values["PER_TRACK_TIME_BUDGET_SEC"] == 30
@@ -275,13 +277,13 @@ class TestMainWindowControllerIntegration:
     def test_main_window_creates_controllers(self, qapp):
         """Test that MainWindow creates controllers"""
         from cuepoint.ui.main_window import MainWindow
-        
+
         window = MainWindow()
-        
+
         # Verify controllers are created
-        assert hasattr(window, 'results_controller')
-        assert hasattr(window, 'export_controller')
-        assert hasattr(window, 'config_controller')
+        assert hasattr(window, "results_controller")
+        assert hasattr(window, "export_controller")
+        assert hasattr(window, "config_controller")
         assert isinstance(window.results_controller, ResultsController)
         assert isinstance(window.export_controller, ExportController)
         assert isinstance(window.config_controller, ConfigController)
@@ -289,12 +291,10 @@ class TestMainWindowControllerIntegration:
     def test_main_window_passes_controllers_to_widgets(self, qapp):
         """Test that MainWindow passes controllers to widgets"""
         from cuepoint.ui.main_window import MainWindow
-        
+
         window = MainWindow()
-        
+
         # Verify widgets have controllers
         assert window.results_view.results_controller == window.results_controller
         assert window.results_view.export_controller == window.export_controller
         assert window.config_panel.config_controller == window.config_controller
-
-

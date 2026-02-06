@@ -20,7 +20,9 @@ class ExportController:
         """Initialize export controller."""
         pass
 
-    def validate_export_options(self, options: Dict[str, Any]) -> tuple[bool, Optional[str]]:
+    def validate_export_options(
+        self, options: Dict[str, Any]
+    ) -> tuple[bool, Optional[str]]:
         """
         Validate export options.
 
@@ -51,7 +53,10 @@ class ExportController:
         if format_type == "csv":
             delimiter = options.get("delimiter", ",")
             if delimiter not in [",", ";", "\t", "|"]:
-                return False, f"Invalid delimiter: {delimiter}. Must be one of: , ; \\t |"
+                return (
+                    False,
+                    f"Invalid delimiter: {delimiter}. Must be one of: , ; \\t |",
+                )
 
         return True, None
 
@@ -77,7 +82,9 @@ class ExportController:
         else:
             return all_results
 
-    def get_export_file_extension(self, format_type: str, options: Dict[str, Any]) -> str:
+    def get_export_file_extension(
+        self, format_type: str, options: Dict[str, Any]
+    ) -> str:
         """
         Get file extension for export format.
 
@@ -162,7 +169,9 @@ class ExportController:
         # Try to find SRC directory
         current_file = os.path.abspath(__file__)
         # Navigate from controllers/export_controller.py to SRC/
-        src_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file))))
+        src_dir = os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.dirname(current_file)))
+        )
         output_dir = os.path.join(src_dir, "output")
         return os.path.abspath(output_dir)
 

@@ -43,36 +43,36 @@ def is_linux() -> bool:
 
 class Colors:
     """Color palette - override per platform as needed."""
-    
+
     # Base colors (shared)
     SUCCESS = "#4CAF50"
     ERROR = "#F44336"
     WARNING = "#FF9800"
     INFO = "#2196F3"
-    
+
     # Platform-specific colors
     if is_macos():
         # macOS-specific colors (native feel)
-        PRIMARY = "#007AFF"          # macOS blue
-        SECONDARY = "#5856D6"        # macOS purple
-        BACKGROUND = "#1e1e1e"       # Dark background
-        SURFACE = "#2d2d2d"          # Slightly lighter surface
+        PRIMARY = "#007AFF"  # macOS blue
+        SECONDARY = "#5856D6"  # macOS purple
+        BACKGROUND = "#1e1e1e"  # Dark background
+        SURFACE = "#2d2d2d"  # Slightly lighter surface
         TEXT_PRIMARY = "#ffffff"
-        TEXT_SECONDARY = "#8e8e93"   # macOS secondary text
+        TEXT_SECONDARY = "#8e8e93"  # macOS secondary text
         BORDER = "#3d3d3d"
-        ACCENT = "#30D158"           # macOS green accent
-        
+        ACCENT = "#30D158"  # macOS green accent
+
         # Group box styling
         GROUP_HEADER = "#ffffff"
-        
+
         # Button colors
         BUTTON_PRIMARY_BG = "#007AFF"
         BUTTON_PRIMARY_TEXT = "#ffffff"
         BUTTON_HOVER = "#0056b3"
-        
+
     else:
         # Windows/Linux colors
-        PRIMARY = "#0078d4"          # Windows blue
+        PRIMARY = "#0078d4"  # Windows blue
         SECONDARY = "#6b69d6"
         BACKGROUND = "#1e1e1e"
         SURFACE = "#252526"
@@ -80,10 +80,10 @@ class Colors:
         TEXT_SECONDARY = "#888888"
         BORDER = "#3c3c3c"
         ACCENT = "#4CAF50"
-        
+
         # Group box styling
         GROUP_HEADER = "#ffffff"
-        
+
         # Button colors
         BUTTON_PRIMARY_BG = "#0078d4"
         BUTTON_PRIMARY_TEXT = "#ffffff"
@@ -115,9 +115,7 @@ class ThemeTokens:
     CONTROL_HEIGHT_LG = 36
 
     # Focus ring color - from theme_tokens ColorTokens
-    FOCUS_RING = (
-        "rgba(0, 122, 255, 0.65)" if is_macos() else "rgba(0, 120, 212, 0.65)"
-    )
+    FOCUS_RING = "rgba(0, 122, 255, 0.65)" if is_macos() else "rgba(0, 120, 212, 0.65)"
 
 
 def _panel_groupbox_styles() -> str:
@@ -710,16 +708,16 @@ def get_windows_stylesheet() -> str:
 def get_stylesheet() -> str:
     """
     Get the complete stylesheet for the current platform.
-    
+
     Returns:
         str: Combined stylesheet with base + platform-specific styles.
-    
+
     Usage:
         app = QApplication(sys.argv)
         app.setStyleSheet(get_stylesheet())
     """
     base = get_base_stylesheet()
-    
+
     if is_macos():
         return base + get_macos_stylesheet()
     elif is_windows():
@@ -731,7 +729,7 @@ def get_stylesheet() -> str:
 # Layout constants for platform-specific sizing
 class Layout:
     """Platform-specific layout constants."""
-    
+
     if is_macos():
         # macOS layout - readable but efficient
         MARGIN = 6
@@ -757,18 +755,20 @@ class Layout:
 
 
 # Convenience function for widget-level styling
-def style_for_platform(macos_style: str = "", windows_style: str = "", default_style: str = "") -> str:
+def style_for_platform(
+    macos_style: str = "", windows_style: str = "", default_style: str = ""
+) -> str:
     """
     Return platform-specific style string.
-    
+
     Args:
         macos_style: Style to apply on macOS
-        windows_style: Style to apply on Windows  
+        windows_style: Style to apply on Windows
         default_style: Style to apply on other platforms (or if platform style not provided)
-    
+
     Returns:
         The appropriate style string for the current platform
-    
+
     Example:
         button.setStyleSheet(style_for_platform(
             macos_style="background: #007AFF; border-radius: 8px;",

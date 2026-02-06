@@ -95,7 +95,11 @@ class TrackResult:
             raise ValueError("Title similarity must be between 0.0 and 100.0")
         if self.artist_sim is not None and not 0.0 <= self.artist_sim <= 100.0:
             raise ValueError("Artist similarity must be between 0.0 and 100.0")
-        if self.confidence is not None and self.confidence not in ("high", "medium", "low"):
+        if self.confidence is not None and self.confidence not in (
+            "high",
+            "medium",
+            "low",
+        ):
             raise ValueError('Confidence must be "high", "medium", or "low"')
 
         # If best_match is provided, ensure it's in candidates
@@ -126,7 +130,9 @@ class TrackResult:
             "beatport_url": self.beatport_url or "",
             "title_sim": str(self.title_sim) if self.title_sim is not None else "0",
             "artist_sim": str(self.artist_sim) if self.artist_sim is not None else "0",
-            "match_score": f"{self.match_score:.1f}" if self.match_score is not None else "0.0",
+            "match_score": f"{self.match_score:.1f}"
+            if self.match_score is not None
+            else "0.0",
             "confidence": self.confidence or "low",
             "search_query_index": self.search_query_index or "0",
             "search_stop_query_index": self.search_stop_query_index or "0",
@@ -231,4 +237,3 @@ class TrackResult:
             f"title={self.title!r}, matched={self.matched}, "
             f"match_score={self.match_score})"
         )
-

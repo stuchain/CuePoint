@@ -75,12 +75,20 @@ class ConfigController:
         """
         # Validate TRACK_WORKERS
         track_workers = settings.get("TRACK_WORKERS", 12)
-        if not isinstance(track_workers, int) or track_workers < 1 or track_workers > 20:
+        if (
+            not isinstance(track_workers, int)
+            or track_workers < 1
+            or track_workers > 20
+        ):
             return False, "TRACK_WORKERS must be an integer between 1 and 20"
 
         # Validate PER_TRACK_TIME_BUDGET_SEC
         time_budget = settings.get("PER_TRACK_TIME_BUDGET_SEC", 45)
-        if not isinstance(time_budget, (int, float)) or time_budget < 10 or time_budget > 300:
+        if (
+            not isinstance(time_budget, (int, float))
+            or time_budget < 10
+            or time_budget > 300
+        ):
             return False, "PER_TRACK_TIME_BUDGET_SEC must be between 10 and 300 seconds"
 
         # Validate MIN_ACCEPT_SCORE
@@ -170,26 +178,3 @@ class ConfigController:
         if self.config_service:
             self.config_service.set(key, value)
             self.config_service.save()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -8,4 +8,3 @@ including the CLIProcessor class that orchestrates CLI processing workflows.
 from cuepoint.cli.cli_processor import CLIProcessor
 
 __all__ = ["CLIProcessor"]
-

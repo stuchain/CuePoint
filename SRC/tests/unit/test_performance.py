@@ -16,7 +16,7 @@ import os
 import time
 
 # Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
 
 from cuepoint.utils.performance import performance_collector
 from cuepoint.services.output_writer import write_performance_report
@@ -27,18 +27,20 @@ def test_performance_collector():
     print("=" * 80)
     print("Test 1: Performance Collector Basic Functionality")
     print("=" * 80)
-    
+
     # Reset collector
     performance_collector.reset()
-    
+
     # Start session
     performance_collector.start_session()
     print("[OK] Session started")
-    
+
     # Record a track
-    track_metrics = performance_collector.record_track_start("track_1", "Test Track - Test Artist")
+    track_metrics = performance_collector.record_track_start(
+        "track_1", "Test Track - Test Artist"
+    )
     print("[OK] Track started")
-    
+
     # Record some queries
     for i, query in enumerate(["priority query", "remix query", "n_gram query"], 1):
         time.sleep(0.1)  # Simulate query execution
@@ -48,10 +50,10 @@ def test_performance_collector():
             execution_time=0.1 + i * 0.05,
             candidates_found=10 + i * 5,
             cache_hit=(i == 2),  # Second query is cached
-            query_type="priority" if i == 1 else "remix" if i == 2 else "n_gram"
+            query_type="priority" if i == 1 else "remix" if i == 2 else "n_gram",
         )
         print(f"[OK] Query {i} recorded")
-    
+
     # Complete track
     performance_collector.record_track_complete(
         track_metrics=track_metrics,
@@ -60,14 +62,14 @@ def test_performance_collector():
         match_score=95.5,
         early_exit=False,
         early_exit_query_index=0,
-        candidates_evaluated=25
+        candidates_evaluated=25,
     )
     print("[OK] Track completed")
-    
+
     # End session
     performance_collector.end_session()
     print("[OK] Session ended")
-    
+
     # Get stats
     stats = performance_collector.get_stats()
     assert stats is not None, "Failed to retrieve stats"
@@ -88,7 +90,7 @@ def test_performance_report():
     print("\n" + "=" * 80)
     print("Test 2: Performance Report Generation")
     print("=" * 80)
-    
+
     stats = performance_collector.get_stats()
     assert stats is not None, "No stats available for report generation"
 
@@ -101,7 +103,7 @@ def test_performance_report():
     print(f"[OK] Report file exists ({os.path.getsize(report_path)} bytes)")
 
     # Read and display first few lines
-    with open(report_path, 'r', encoding='utf-8') as f:
+    with open(report_path, "r", encoding="utf-8") as f:
         lines = f.readlines()[:10]
         print("\nFirst 10 lines of report:")
         for line in lines:
@@ -113,18 +115,17 @@ def test_multiple_tracks():
     print("\n" + "=" * 80)
     print("Test 3: Multiple Tracks Processing")
     print("=" * 80)
-    
+
     # Reset and start new session
     performance_collector.reset()
     performance_collector.start_session()
-    
+
     # Process 5 tracks
     for track_idx in range(1, 6):
         track_metrics = performance_collector.record_track_start(
-            f"track_{track_idx}",
-            f"Track {track_idx} - Artist {track_idx}"
+            f"track_{track_idx}", f"Track {track_idx} - Artist {track_idx}"
         )
-        
+
         # Simulate queries
         num_queries = 3 + track_idx  # Varying number of queries
         for q_idx in range(1, num_queries + 1):
@@ -135,9 +136,9 @@ def test_multiple_tracks():
                 execution_time=0.1 + q_idx * 0.02,
                 candidates_found=5 + q_idx * 2,
                 cache_hit=(q_idx % 2 == 0),
-                query_type="priority" if q_idx == 1 else "n_gram"
+                query_type="priority" if q_idx == 1 else "n_gram",
             )
-        
+
         # Complete track
         match_found = track_idx % 2 == 0  # Every other track matches
         performance_collector.record_track_complete(
@@ -147,10 +148,10 @@ def test_multiple_tracks():
             match_score=90.0 if match_found else 0.0,
             early_exit=(track_idx == 3),
             early_exit_query_index=2 if track_idx == 3 else 0,
-            candidates_evaluated=10 + track_idx * 2
+            candidates_evaluated=10 + track_idx * 2,
         )
         print(f"[OK] Track {track_idx} processed")
-    
+
     performance_collector.end_session()
 
     stats = performance_collector.get_stats()
@@ -169,25 +170,32 @@ def test_retry_decorator():
     print("\n" + "=" * 80)
     print("Test 4: Retry Decorator")
     print("=" * 80)
-    
+
     from cuepoint.utils.utils import retry_with_backoff
-    
+
     # Try to import requests exceptions, fallback to generic Exception
     try:
         from requests.exceptions import RequestException
+
         exception_type = RequestException
     except ImportError:
         exception_type = Exception
-    
+
     call_count = [0]
-    
-    @retry_with_backoff(max_retries=3, backoff_base=0.1, backoff_max=1.0, jitter=False, exceptions=(exception_type,))
+
+    @retry_with_backoff(
+        max_retries=3,
+        backoff_base=0.1,
+        backoff_max=1.0,
+        jitter=False,
+        exceptions=(exception_type,),
+    )
     def test_function():
         call_count[0] += 1
         if call_count[0] < 3:
             raise exception_type("Simulated network error")
         return "Success"
-    
+
     result = test_function()
     assert result == "Success", f"Unexpected result: {result}"
     assert call_count[0] == 3, f"Expected 3 calls, got {call_count[0]}"
@@ -199,28 +207,28 @@ def main():
     print("\n" + "=" * 80)
     print("Phase 3 Performance Monitoring - Test Suite")
     print("=" * 80)
-    
+
     results = []
-    
+
     # Run tests
     results.append(("Basic Collector", test_performance_collector()))
     results.append(("Report Generation", test_performance_report()))
     results.append(("Multiple Tracks", test_multiple_tracks()))
     results.append(("Retry Decorator", test_retry_decorator()))
-    
+
     # Summary
     print("\n" + "=" * 80)
     print("Test Summary")
     print("=" * 80)
     passed = sum(1 for _, result in results if result)
     total = len(results)
-    
+
     for test_name, result in results:
         status = "[PASS]" if result else "[FAIL]"
         print(f"{status}: {test_name}")
-    
+
     print(f"\nTotal: {passed}/{total} tests passed")
-    
+
     if passed == total:
         print("\n[SUCCESS] All tests passed!")
         return 0
@@ -231,4 +239,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-

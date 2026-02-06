@@ -63,6 +63,7 @@ class TestTelemetryServiceOptIn:
 
     def test_track_persists_when_enabled(self):
         config = MagicMock()
+
         def _get(k, d=None):
             if k == "telemetry.enabled":
                 return True
@@ -71,6 +72,7 @@ class TestTelemetryServiceOptIn:
             if k == "telemetry.endpoint":
                 return None
             return d
+
         config.get.side_effect = _get
         with tempfile.TemporaryDirectory() as tmp:
             svc = TelemetryService(config, data_dir=Path(tmp))
@@ -93,6 +95,7 @@ class TestTelemetryServiceDeleteLocalData:
 
     def test_delete_local_data_removes_file(self):
         config = MagicMock()
+
         def _get(k, d=None):
             if k == "telemetry.enabled":
                 return True
@@ -101,6 +104,7 @@ class TestTelemetryServiceDeleteLocalData:
             if k == "telemetry.endpoint":
                 return None  # No endpoint -> persist to file
             return d
+
         config.get.side_effect = _get
         with tempfile.TemporaryDirectory() as tmp:
             svc = TelemetryService(config, data_dir=Path(tmp))
@@ -116,6 +120,7 @@ class TestTelemetryServiceFlush:
 
     def test_flush_clears_queue(self):
         config = MagicMock()
+
         def _get(k, d=None):
             if k == "telemetry.enabled":
                 return True
@@ -124,13 +129,18 @@ class TestTelemetryServiceFlush:
             if k == "telemetry.endpoint":
                 return "https://example.com/events"
             return d
+
         config.get.side_effect = _get
         with tempfile.TemporaryDirectory() as tmp:
             svc = TelemetryService(config, data_dir=Path(tmp))
-            with patch("urllib.request.urlopen", side_effect=Exception("network error")):
+            with patch(
+                "urllib.request.urlopen", side_effect=Exception("network error")
+            ):
                 svc.track("run_complete", {"duration_ms": 100})
             assert len(svc._queue) > 0
-            with patch("urllib.request.urlopen", side_effect=Exception("network error")):
+            with patch(
+                "urllib.request.urlopen", side_effect=Exception("network error")
+            ):
                 svc.flush()
             assert len(svc._queue) == 0
 
@@ -140,6 +150,7 @@ class TestTelemetryServiceEventSchema:
 
     def test_event_has_required_fields(self):
         config = MagicMock()
+
         def _get(k, d=None):
             if k == "telemetry.enabled":
                 return True
@@ -148,6 +159,7 @@ class TestTelemetryServiceEventSchema:
             if k == "telemetry.endpoint":
                 return None
             return d
+
         config.get.side_effect = _get
         with tempfile.TemporaryDirectory() as tmp:
             svc = TelemetryService(config, data_dir=Path(tmp))

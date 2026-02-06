@@ -63,11 +63,11 @@ def check_docstring_sections(doc, name):
     """Check if docstring has required sections."""
     if not doc:
         return False
-    
+
     has_args = "Args:" in doc or "Parameters:" in doc
     has_returns = "Returns:" in doc
     has_example = "Example:" in doc or "Examples:" in doc
-    
+
     sections = []
     if has_args:
         sections.append("Args")
@@ -75,12 +75,12 @@ def check_docstring_sections(doc, name):
         sections.append("Returns")
     if has_example:
         sections.append("Example")
-    
+
     if sections:
         results.append(f"✅ {name}: Docstring has sections: {', '.join(sections)}")
     else:
         errors.append(f"⚠️  {name}: Docstring missing sections (Args/Returns/Example)")
-    
+
     return len(sections) > 0
 
 
@@ -104,19 +104,33 @@ def _run_step55_comprehensive_checks() -> tuple[list[str], list[str], list[str]]
     print("-" * 80)
 
     # ProcessorService
-    check_type_hints(processor_service.ProcessorService.__init__, "ProcessorService.__init__")
-    check_type_hints(processor_service.ProcessorService.process_track, "ProcessorService.process_track")
+    check_type_hints(
+        processor_service.ProcessorService.__init__, "ProcessorService.__init__"
+    )
+    check_type_hints(
+        processor_service.ProcessorService.process_track,
+        "ProcessorService.process_track",
+    )
     check_docstring(processor_service.ProcessorService, "ProcessorService")
-    check_docstring(processor_service.ProcessorService.process_track, "ProcessorService.process_track")
+    check_docstring(
+        processor_service.ProcessorService.process_track,
+        "ProcessorService.process_track",
+    )
     doc = processor_service.ProcessorService.process_track.__doc__
     if doc:
         check_docstring_sections(doc, "ProcessorService.process_track")
 
     # BeatportService
-    check_type_hints(beatport_service.BeatportService.__init__, "BeatportService.__init__")
-    check_type_hints(beatport_service.BeatportService.search_tracks, "BeatportService.search_tracks")
+    check_type_hints(
+        beatport_service.BeatportService.__init__, "BeatportService.__init__"
+    )
+    check_type_hints(
+        beatport_service.BeatportService.search_tracks, "BeatportService.search_tracks"
+    )
     check_docstring(beatport_service.BeatportService, "BeatportService")
-    check_docstring(beatport_service.BeatportService.search_tracks, "BeatportService.search_tracks")
+    check_docstring(
+        beatport_service.BeatportService.search_tracks, "BeatportService.search_tracks"
+    )
 
     # CacheService
     check_type_hints(cache_service.CacheService.get, "CacheService.get")
@@ -124,9 +138,13 @@ def _run_step55_comprehensive_checks() -> tuple[list[str], list[str], list[str]]
     check_docstring(cache_service.CacheService, "CacheService")
 
     # MatcherService
-    check_type_hints(matcher_service.MatcherService.find_best_match, "MatcherService.find_best_match")
+    check_type_hints(
+        matcher_service.MatcherService.find_best_match, "MatcherService.find_best_match"
+    )
     check_docstring(matcher_service.MatcherService, "MatcherService")
-    check_docstring(matcher_service.MatcherService.find_best_match, "MatcherService.find_best_match")
+    check_docstring(
+        matcher_service.MatcherService.find_best_match, "MatcherService.find_best_match"
+    )
     doc = matcher_service.MatcherService.find_best_match.__doc__
     if doc:
         check_docstring_sections(doc, "MatcherService.find_best_match")
@@ -158,9 +176,15 @@ def _run_step55_comprehensive_checks() -> tuple[list[str], list[str], list[str]]
     print("-" * 80)
 
     # Controllers
-    check_type_hints(results_controller.ResultsController.apply_filters, "ResultsController.apply_filters")
+    check_type_hints(
+        results_controller.ResultsController.apply_filters,
+        "ResultsController.apply_filters",
+    )
     check_docstring(results_controller.ResultsController, "ResultsController")
-    check_type_hints(export_controller.ExportController.validate_export_options, "ExportController.validate_export_options")
+    check_type_hints(
+        export_controller.ExportController.validate_export_options,
+        "ExportController.validate_export_options",
+    )
     check_docstring(export_controller.ExportController, "ExportController")
 
     print()
@@ -238,8 +262,12 @@ def _run_step55_comprehensive_checks() -> tuple[list[str], list[str], list[str]]
     print("=" * 80)
     print("Final Results")
     print("=" * 80)
-    print(f"Type Hints & Docstrings: {len(results)} checks passed, {len(errors)} issues")
-    print(f"Mypy Validation: {len(mypy_modules) - len(mypy_errors)}/{len(mypy_modules)} modules passed")
+    print(
+        f"Type Hints & Docstrings: {len(results)} checks passed, {len(errors)} issues"
+    )
+    print(
+        f"Mypy Validation: {len(mypy_modules) - len(mypy_errors)}/{len(mypy_modules)} modules passed"
+    )
 
     if errors or mypy_errors:
         print()
@@ -262,11 +290,12 @@ def test_step55_comprehensive() -> None:
         pytest.skip("Set CUEPOINT_RUN_STEP55_COMPREHENSIVE=1 to enable this check")
 
     _, step55_errors, mypy_errors = _run_step55_comprehensive_checks()
-    assert not step55_errors, f"Step 5.5 issues found (showing up to 5): {step55_errors[:5]}"
+    assert not step55_errors, (
+        f"Step 5.5 issues found (showing up to 5): {step55_errors[:5]}"
+    )
     assert not mypy_errors, f"Mypy issues found (showing up to 5): {mypy_errors[:5]}"
 
 
 if __name__ == "__main__":
     _, step55_errors, mypy_errors = _run_step55_comprehensive_checks()
     raise SystemExit(1 if (step55_errors or mypy_errors) else 0)
-

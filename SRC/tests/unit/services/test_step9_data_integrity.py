@@ -49,7 +49,9 @@ def sample_results():
             beatport_artists="Test Artist",
             match_score=95.0,
             confidence="high",
-            queries_data=[{"index": 0, "query": "Test Song Test Artist", "candidates": 5}],
+            queries_data=[
+                {"index": 0, "query": "Test Song Test Artist", "candidates": 5}
+            ],
             candidates_data=[],
         ),
         TrackResult(
@@ -188,6 +190,7 @@ class TestAuditLog:
         lines = path.read_text(encoding="utf-8").strip().split("\n")
         assert len(lines) >= 2  # Header + entries
         import json
+
         first = json.loads(lines[0])
         assert first.get("run_id") == "run123"
         assert first.get("schema_version") == SCHEMA_VERSION
@@ -229,7 +232,9 @@ class TestBackup:
 class TestSummaryReport:
     """Test summary report with confidence distribution and unmatched handling (Design 9)."""
 
-    def test_write_summary_report_confidence_distribution(self, sample_results, tmp_path):
+    def test_write_summary_report_confidence_distribution(
+        self, sample_results, tmp_path
+    ):
         """Summary report includes confidence distribution (high, medium, low)."""
         path = tmp_path / "summary.json"
         output_files = {"main": str(tmp_path / "main.csv")}
@@ -333,7 +338,9 @@ class TestDiffReport:
         generate_diff_report(results, str(path), "run1")
         data = json.loads(path.read_text(encoding="utf-8"))
         changes = data["diffs"][0]["changes"]
-        assert any("Title:" in c and "Original" in c and "Corrected" in c for c in changes)
+        assert any(
+            "Title:" in c and "Original" in c and "Corrected" in c for c in changes
+        )
 
 
 class TestVerifyOutputs:
@@ -385,7 +392,9 @@ class TestWriteCsvWithIntegrity:
 
     def test_write_csv_skips_checksum_when_disabled(self, sample_results, tmp_path):
         """No checksum when checksums=False."""
-        out = write_csv_files(sample_results, "playlist", str(tmp_path), checksums=False)
+        out = write_csv_files(
+            sample_results, "playlist", str(tmp_path), checksums=False
+        )
         main_path = out.get("main")
         assert main_path
         assert not os.path.exists(main_path + ".sha256")
@@ -418,7 +427,9 @@ class TestWriteCsvWithIntegrity:
         finally:
             clear_run_id()
 
-    def test_write_csv_review_only_summary_has_unmatched(self, sample_results, tmp_path):
+    def test_write_csv_review_only_summary_has_unmatched(
+        self, sample_results, tmp_path
+    ):
         """Review-only summary report contains unmatched tracks with actions."""
         out = write_csv_files(
             sample_results,

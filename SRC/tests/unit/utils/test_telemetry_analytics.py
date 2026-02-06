@@ -5,8 +5,6 @@
 Unit tests for telemetry analytics (Step 14 dashboard).
 """
 
-
-
 from cuepoint.utils.telemetry_analytics import (
     compute_metrics,
     get_dashboard_metrics,

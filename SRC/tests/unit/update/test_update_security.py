@@ -14,17 +14,23 @@ from cuepoint.update.update_checker import UpdateChecker
 @pytest.mark.unit
 class TestFeedIntegrityVerifier:
     def test_verify_feed_https_rejects_http(self):
-        ok, err = FeedIntegrityVerifier.verify_feed_https("http://example.com/appcast.xml")
+        ok, err = FeedIntegrityVerifier.verify_feed_https(
+            "http://example.com/appcast.xml"
+        )
         assert ok is False
         assert "HTTPS" in (err or "")
 
     def test_verify_feed_https_accepts_https(self):
-        ok, err = FeedIntegrityVerifier.verify_feed_https("https://example.com/appcast.xml")
+        ok, err = FeedIntegrityVerifier.verify_feed_https(
+            "https://example.com/appcast.xml"
+        )
         assert ok is True
         assert err is None
 
     def test_verify_download_https_rejects_http(self):
-        ok, err = FeedIntegrityVerifier.verify_download_https("http://example.com/CuePoint.exe")
+        ok, err = FeedIntegrityVerifier.verify_download_https(
+            "http://example.com/CuePoint.exe"
+        )
         assert ok is False
         assert "HTTPS" in (err or "")
 
@@ -114,5 +120,3 @@ class TestUpdateCheckerIntegration:
         assert result is not None
         assert result.get("short_version") == "1.0.1"
         assert result.get("checksum") == "a" * 64
-
-

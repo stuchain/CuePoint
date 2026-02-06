@@ -7,7 +7,6 @@ Comprehensive edge case tests for BeatportCandidate model.
 Tests all boundary conditions, error handling, and edge cases.
 """
 
-
 from cuepoint.models.beatport_candidate import BeatportCandidate
 
 
@@ -595,4 +594,3 @@ class TestBeatportCandidateValidationEdgeCases:
         )
         assert candidate.title_sim == 0
         assert candidate.artist_sim == 0
-

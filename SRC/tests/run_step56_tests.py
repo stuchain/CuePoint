@@ -9,12 +9,12 @@ from pathlib import Path
 
 if __name__ == "__main__":
     src_dir = Path(__file__).parent
-    
+
     print("=" * 80)
     print("Step 5.6: Error Handling & Logging - Test Suite")
     print("=" * 80)
     print()
-    
+
     # Test files to run
     test_files = [
         # Exception hierarchy tests
@@ -29,9 +29,9 @@ if __name__ == "__main__":
         "tests/integration/test_step56_error_handling_integration.py",
         "tests/integration/test_step56_processor_service_errors.py",
     ]
-    
+
     results = []
-    
+
     for test_file in test_files:
         print(f"\n{'=' * 80}")
         print(f"Running: {test_file}")
@@ -42,13 +42,13 @@ if __name__ == "__main__":
             capture_output=True,
             text=True,
         )
-        
+
         print(result.stdout)
         if result.stderr:
             print("STDERR:", result.stderr)
-        
+
         results.append((test_file, result.returncode == 0))
-    
+
     # Summary
     print("\n" + "=" * 80)
     print("Test Summary")
@@ -56,13 +56,12 @@ if __name__ == "__main__":
     for test_file, passed in results:
         status = "PASSED" if passed else "FAILED"
         print(f"{status}: {test_file}")
-    
+
     all_passed = all(passed for _, passed in results)
-    
+
     if all_passed:
         print("\nAll Step 5.6 tests passed!")
         sys.exit(0)
     else:
         print("\nSome tests failed. See output above.")
         sys.exit(1)
-

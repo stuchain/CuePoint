@@ -23,7 +23,7 @@ def test_file_selector_has_info_button(file_selector):
     # Check that info button exists by looking for tooltip
     info_button = None
     for child in file_selector.findChildren(type(file_selector)):
-        if hasattr(child, 'toolTip') and 'Rekordbox' in child.toolTip():
+        if hasattr(child, "toolTip") and "Rekordbox" in child.toolTip():
             info_button = child
             break
     assert info_button is not None, "Info button with Rekordbox tooltip should exist"
@@ -33,15 +33,15 @@ def test_file_selector_info_button_has_tooltip(file_selector):
     """Test that info button has correct tooltip"""
     # Find info button
     for child in file_selector.findChildren(type(file_selector)):
-        if hasattr(child, 'toolTip') and 'Rekordbox' in child.toolTip():
-            assert 'Rekordbox' in child.toolTip()
+        if hasattr(child, "toolTip") and "Rekordbox" in child.toolTip():
+            assert "Rekordbox" in child.toolTip()
             break
 
 
 def test_file_selector_show_instructions_method(file_selector):
     """Test that show_instructions method exists and can be called"""
     # Method should exist
-    assert hasattr(file_selector, 'show_instructions')
+    assert hasattr(file_selector, "show_instructions")
     assert callable(file_selector.show_instructions)
 
 
@@ -51,16 +51,15 @@ def test_file_selector_info_button_opens_dialog(file_selector, qapp, qtbot):
     # Find info button
     info_button = None
     for child in file_selector.findChildren(type(file_selector)):
-        if hasattr(child, 'toolTip') and 'Rekordbox' in child.toolTip():
+        if hasattr(child, "toolTip") and "Rekordbox" in child.toolTip():
             info_button = child
             break
-    
+
     if info_button:
         # Click the button
         QTest.mouseClick(info_button, Qt.LeftButton)
         qapp.processEvents()
-        
+
         # Dialog should be created (we can't easily verify it's shown in headless test)
         # But we can verify the method was called
         assert True  # Placeholder - will verify dialog opens in manual test
-

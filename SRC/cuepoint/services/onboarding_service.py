@@ -89,7 +89,9 @@ class OnboardingService:
             return False
         return True
 
-    def mark_first_run_complete(self, *, onboarding_version: Optional[str] = None) -> None:
+    def mark_first_run_complete(
+        self, *, onboarding_version: Optional[str] = None
+    ) -> None:
         """Mark onboarding as completed (does not set dismissed)."""
         self._set_state(
             first_run_complete=True,
@@ -123,7 +125,9 @@ class OnboardingService:
                 onboarding_dismissed=self._settings.value(
                     self.KEY_ONBOARDING_DISMISSED, False, type=bool
                 ),
-                onboarding_version=self._settings.value(self.KEY_ONBOARDING_VERSION, None, type=str),
+                onboarding_version=self._settings.value(
+                    self.KEY_ONBOARDING_VERSION, None, type=str
+                ),
             )
         finally:
             self._end()
@@ -132,18 +136,30 @@ class OnboardingService:
         if not self._config_service:
             return None
         return OnboardingState(
-            first_run_complete=bool(self._config_service.get("product.onboarding_seen", False)),
-            onboarding_dismissed=bool(self._config_service.get("product.onboarding_dismissed", False)),
-            onboarding_version=self._config_service.get("product.onboarding_version", None),
+            first_run_complete=bool(
+                self._config_service.get("product.onboarding_seen", False)
+            ),
+            onboarding_dismissed=bool(
+                self._config_service.get("product.onboarding_dismissed", False)
+            ),
+            onboarding_version=self._config_service.get(
+                "product.onboarding_version", None
+            ),
         )
 
     def _set_state_in_config(self, state: OnboardingState) -> None:
         if not self._config_service:
             return
         try:
-            self._config_service.set("product.onboarding_seen", state.first_run_complete)
-            self._config_service.set("product.onboarding_dismissed", state.onboarding_dismissed)
-            self._config_service.set("product.onboarding_version", state.onboarding_version)
+            self._config_service.set(
+                "product.onboarding_seen", state.first_run_complete
+            )
+            self._config_service.set(
+                "product.onboarding_dismissed", state.onboarding_dismissed
+            )
+            self._config_service.set(
+                "product.onboarding_version", state.onboarding_version
+            )
             self._config_service.save()
         except Exception:
             # Config persistence is best-effort; fall back to QSettings.

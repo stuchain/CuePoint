@@ -55,11 +55,13 @@ except ImportError:
 
 class HistoryView(QWidget):
     """Widget for viewing past search results from CSV files"""
-    
+
     # Signal emitted when re-run is requested
     rerun_requested = Signal(str, str)  # xml_path, playlist_name
 
-    def __init__(self, export_controller: Optional[ExportController] = None, parent=None):
+    def __init__(
+        self, export_controller: Optional[ExportController] = None, parent=None
+    ):
         super().__init__(parent)
         # Use provided controller or create a new one
         self.export_controller = export_controller or ExportController()
@@ -76,7 +78,10 @@ class HistoryView(QWidget):
     def _ensure_table_min_rows(self, table: QTableWidget, rows: int = 10) -> None:
         """Ensure the table has enough visible height to show N rows (when space allows)."""
         try:
-            header_h = table.horizontalHeader().height() or table.horizontalHeader().sizeHint().height()
+            header_h = (
+                table.horizontalHeader().height()
+                or table.horizontalHeader().sizeHint().height()
+            )
             row_h = table.verticalHeader().defaultSectionSize() or 24
             frame = table.frameWidth() * 2
             extra = 6
@@ -152,12 +157,14 @@ class HistoryView(QWidget):
         filter_layout.addWidget(QLabel("Confidence:"))
         self.confidence_filter = QComboBox()
         self.confidence_filter.addItems(["All", "High", "Medium", "Low"])
-        self.confidence_filter.currentTextChanged.connect(self._trigger_filter_debounced)
+        self.confidence_filter.currentTextChanged.connect(
+            self._trigger_filter_debounced
+        )
         filter_layout.addWidget(self.confidence_filter)
 
         filter_layout.addStretch()
         results_layout.addLayout(filter_layout)
-        
+
         # Date range filter (in advanced filters)
 
         # Advanced Filters Group
@@ -167,7 +174,9 @@ class HistoryView(QWidget):
         # Set size policy to allow the group box to expand properly
         advanced_filters_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
         advanced_filters_layout = QVBoxLayout()
-        advanced_filters_layout.setContentsMargins(10, 10, 10, 10)  # Add margins inside group box
+        advanced_filters_layout.setContentsMargins(
+            10, 10, 10, 10
+        )  # Add margins inside group box
         advanced_filters_layout.setSpacing(8)  # Add spacing
 
         # Container widget for filter controls (to show/hide)
@@ -176,7 +185,9 @@ class HistoryView(QWidget):
         container_layout.setContentsMargins(0, 0, 0, 12)  # Add bottom margin for button
         container_layout.setSpacing(8)  # Add spacing between filter rows
         # Set size policy to ensure container can expand properly
-        self.advanced_filters_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
+        self.advanced_filters_container.setSizePolicy(
+            QSizePolicy.Preferred, QSizePolicy.Minimum
+        )
 
         # Year range filter
         year_layout = QHBoxLayout()
@@ -279,7 +290,7 @@ class HistoryView(QWidget):
                     self.updateGeometry()
 
                 QTimer.singleShot(10, _update_geometries)
-        
+
         advanced_filters_group.toggled.connect(on_advanced_filters_toggled)
 
         advanced_filters_layout.addWidget(self.advanced_filters_container)
@@ -299,7 +310,9 @@ class HistoryView(QWidget):
 
         # Re-run button
         self.rerun_btn = QPushButton("Re-run Processing")
-        self.rerun_btn.setToolTip("Re-run processing with the same XML file and playlist")
+        self.rerun_btn.setToolTip(
+            "Re-run processing with the same XML file and playlist"
+        )
         self.rerun_btn.clicked.connect(self.on_rerun_processing)
         self.rerun_btn.setEnabled(False)  # Disabled until file is loaded
         status_layout.addWidget(self.rerun_btn)
@@ -375,7 +388,9 @@ class HistoryView(QWidget):
         if file_path and os.path.exists(file_path):
             self.load_csv_file(file_path)
         else:
-            QMessageBox.warning(self, "File Not Found", f"The file no longer exists:\n{file_path}")
+            QMessageBox.warning(
+                self, "File Not Found", f"The file no longer exists:\n{file_path}"
+            )
             # Refresh the list to remove missing files
             self.refresh_recent_files()
 
@@ -384,9 +399,11 @@ class HistoryView(QWidget):
         try:
             # Convert to absolute path to ensure consistent path resolution
             file_path = os.path.abspath(file_path)
-            
+
             if not os.path.exists(file_path):
-                QMessageBox.warning(self, "File Not Found", f"File not found: {file_path}")
+                QMessageBox.warning(
+                    self, "File Not Found", f"File not found: {file_path}"
+                )
                 return
 
             # Read CSV file
@@ -395,7 +412,9 @@ class HistoryView(QWidget):
                 rows = list(reader)
 
             if not rows:
-                QMessageBox.warning(self, "Empty File", "The selected CSV file is empty")
+                QMessageBox.warning(
+                    self, "Empty File", "The selected CSV file is empty"
+                )
                 return
 
             # Store as absolute path for consistent candidate file lookup
@@ -404,7 +423,7 @@ class HistoryView(QWidget):
 
             # Enable export and re-run buttons
             self.export_btn.setEnabled(True)
-            if hasattr(self, 'rerun_btn'):
+            if hasattr(self, "rerun_btn"):
                 self.rerun_btn.setEnabled(True)
 
             # Update summary
@@ -413,7 +432,8 @@ class HistoryView(QWidget):
             matched = sum(
                 1
                 for row in rows
-                if row.get("beatport_url", "").strip() or row.get("beatport_title", "").strip()
+                if row.get("beatport_url", "").strip()
+                or row.get("beatport_title", "").strip()
             )
             match_rate = (matched / total * 100) if total > 0 else 0
 
@@ -432,7 +452,9 @@ class HistoryView(QWidget):
                         # Try to parse the timestamp (dd-mm-yy HH-MM) - new format with dashes (no
                         # colons)
                         dt = datetime.strptime(timestamp_str, "%d-%m-%y %H-%M")
-                        timestamp_info = f"\nSearch Date: {dt.strftime('%d/%m/%y %H:%M')}"
+                        timestamp_info = (
+                            f"\nSearch Date: {dt.strftime('%d/%m/%y %H:%M')}"
+                        )
             except BaseException:
                 # Fallback: try old format with slashes
                 try:
@@ -446,7 +468,9 @@ class HistoryView(QWidget):
                             timestamp_str = basename[start_idx + 1 : end_idx]
                             # Try to parse the timestamp (dd/mm/yy HH:MM)
                             dt = datetime.strptime(timestamp_str, "%d/%m/%y %H:%M")
-                            timestamp_info = f"\nSearch Date: {dt.strftime('%d/%m/%y %H:%M')}"
+                            timestamp_info = (
+                                f"\nSearch Date: {dt.strftime('%d/%m/%y %H:%M')}"
+                            )
                 except BaseException:
                     # Fallback to old formats
                     try:
@@ -455,10 +479,18 @@ class HistoryView(QWidget):
                         if "(" in basename and ")" in basename:
                             start_idx = basename.rfind("(")
                             end_idx = basename.rfind(")")
-                            if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+                            if (
+                                start_idx != -1
+                                and end_idx != -1
+                                and end_idx > start_idx
+                            ):
                                 timestamp_str = basename[start_idx + 1 : end_idx]
-                                dt = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
-                                timestamp_info = f"\nSearch Date: {dt.strftime('%d/%m/%y %H:%M')}"
+                                dt = datetime.strptime(
+                                    timestamp_str, "%Y-%m-%d %H:%M:%S"
+                                )
+                                timestamp_info = (
+                                    f"\nSearch Date: {dt.strftime('%d/%m/%y %H:%M')}"
+                                )
                     except BaseException:
                         # Fallback to very old format: playlist_20250127_123456.csv
                         try:
@@ -471,9 +503,7 @@ class HistoryView(QWidget):
                                     dt = datetime.strptime(
                                         f"{date_str}_{time_str}", "%Y%m%d_%H%M%S"
                                     )
-                                    timestamp_info = (
-                                        f"\nSearch Date: {dt.strftime('%d/%m/%y %H:%M')}"
-                                    )
+                                    timestamp_info = f"\nSearch Date: {dt.strftime('%d/%m/%y %H:%M')}"
                         except BaseException:
                             pass
 
@@ -496,7 +526,9 @@ class HistoryView(QWidget):
             self._add_to_recent_files(file_path)
 
         except Exception as e:
-            QMessageBox.critical(self, "Error Loading File", f"Error loading CSV file:\n{str(e)}")
+            QMessageBox.critical(
+                self, "Error Loading File", f"Error loading CSV file:\n{str(e)}"
+            )
 
     def _trigger_filter_debounced(self):
         """Trigger filter with debouncing for performance"""
@@ -507,7 +539,9 @@ class HistoryView(QWidget):
         """Apply filters after debounce delay"""
         self.apply_filters()
 
-    def _year_in_range(self, row: dict, min_year: Optional[int], max_year: Optional[int]) -> bool:
+    def _year_in_range(
+        self, row: dict, min_year: Optional[int], max_year: Optional[int]
+    ) -> bool:
         """Check if row year is in range"""
         year_str = row.get("beatport_year", "").strip()
         if not year_str:
@@ -523,7 +557,9 @@ class HistoryView(QWidget):
         except (ValueError, TypeError):
             return False
 
-    def _bpm_in_range(self, row: dict, min_bpm: Optional[int], max_bpm: Optional[int]) -> bool:
+    def _bpm_in_range(
+        self, row: dict, min_bpm: Optional[int], max_bpm: Optional[int]
+    ) -> bool:
         """Check if row BPM is in range"""
         bpm_str = row.get("beatport_bpm", "").strip()
         if not bpm_str:
@@ -573,7 +609,9 @@ class HistoryView(QWidget):
             active_filters.append(f"Confidence: {self.confidence_filter.currentText()}")
 
         if active_filters:
-            self.filter_status_label.setText(f"Active filters: {', '.join(active_filters)}")
+            self.filter_status_label.setText(
+                f"Active filters: {', '.join(active_filters)}"
+            )
         else:
             self.filter_status_label.setText("No filters active")
 
@@ -597,28 +635,37 @@ class HistoryView(QWidget):
             ]
 
         # Status filter
-        if hasattr(self, 'status_filter'):
+        if hasattr(self, "status_filter"):
             status = self.status_filter.currentText()
             if status != "All":
                 if status == "Matched":
-                    filtered = [r for r in filtered if str(r.get("matched", "")).lower() in ("true", "yes", "1")]
+                    filtered = [
+                        r
+                        for r in filtered
+                        if str(r.get("matched", "")).lower() in ("true", "yes", "1")
+                    ]
                 elif status == "Unmatched":
-                    filtered = [r for r in filtered if str(r.get("matched", "")).lower() not in ("true", "yes", "1")]
+                    filtered = [
+                        r
+                        for r in filtered
+                        if str(r.get("matched", "")).lower() not in ("true", "yes", "1")
+                    ]
 
         # Confidence filter
         confidence = self.confidence_filter.currentText()
         if confidence != "All":
             filtered = [
-                r for r in filtered if (r.get("confidence", "") or "").lower() == confidence.lower()
+                r
+                for r in filtered
+                if (r.get("confidence", "") or "").lower() == confidence.lower()
             ]
 
         # Date range filter
-        if hasattr(self, 'date_from') and hasattr(self, 'date_to'):
+        if hasattr(self, "date_from") and hasattr(self, "date_to"):
             date_from = self.date_from.date().toPython()
             date_to = self.date_to.date().toPython()
             filtered = [
-                r for r in filtered
-                if self._date_in_range(r, date_from, date_to)
+                r for r in filtered if self._date_in_range(r, date_from, date_to)
             ]
 
         # Year range filter
@@ -626,20 +673,28 @@ class HistoryView(QWidget):
         year_max_val = self.year_max.value() if self.year_max.value() < 2100 else None
 
         if year_min_val or year_max_val:
-            filtered = [r for r in filtered if self._year_in_range(r, year_min_val, year_max_val)]
+            filtered = [
+                r
+                for r in filtered
+                if self._year_in_range(r, year_min_val, year_max_val)
+            ]
 
         # BPM range filter
         bpm_min_val = self.bpm_min.value() if self.bpm_min.value() > 60 else None
         bpm_max_val = self.bpm_max.value() if self.bpm_max.value() < 200 else None
 
         if bpm_min_val or bpm_max_val:
-            filtered = [r for r in filtered if self._bpm_in_range(r, bpm_min_val, bpm_max_val)]
+            filtered = [
+                r for r in filtered if self._bpm_in_range(r, bpm_min_val, bpm_max_val)
+            ]
 
         # Key filter
         key_filter_val = self.key_filter.currentText()
         if key_filter_val != "All":
             filtered = [
-                r for r in filtered if (r.get("beatport_key", "") or "").strip() == key_filter_val
+                r
+                for r in filtered
+                if (r.get("beatport_key", "") or "").strip() == key_filter_val
             ]
 
         self.filtered_rows = filtered
@@ -721,30 +776,33 @@ class HistoryView(QWidget):
             "beatport_key_camelot",
             "beatport_year",
         ]
-        
+
         # Build ordered column list
         ordered_columns = []
         used_columns = set()
-        
+
         # Add priority columns in order (if they exist)
         for priority_col in priority_columns:
             # Find matching column (case-insensitive, handle variations)
             for col in columns:
                 col_lower = col.lower().replace(" ", "_")
-                if col_lower == priority_col.lower() or priority_col.lower() in col_lower:
+                if (
+                    col_lower == priority_col.lower()
+                    or priority_col.lower() in col_lower
+                ):
                     if col not in used_columns:
                         ordered_columns.append(col)
                         used_columns.add(col)
                         break
-        
+
         # Add remaining columns
         for col in columns:
             if col not in used_columns:
                 ordered_columns.append(col)
-        
+
         # Update columns list
         columns = ordered_columns
-        
+
         # Find index column
         index_col = -1
         for col_idx, col_name in enumerate(columns):
@@ -767,7 +825,9 @@ class HistoryView(QWidget):
                         numeric_value = int(value) if value else 0
                         # Create item with numeric value as data (Qt uses EditRole for sorting by default)
                         item = QTableWidgetItem()
-                        item.setData(Qt.EditRole, numeric_value)  # Store as integer for numeric sorting
+                        item.setData(
+                            Qt.EditRole, numeric_value
+                        )  # Store as integer for numeric sorting
                         item.setText(str(numeric_value))  # Display as string
                         item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                     except (ValueError, TypeError):
@@ -795,14 +855,18 @@ class HistoryView(QWidget):
                 # For simplicity, just sort by index column
                 self.table.horizontalHeader().setSortIndicator(-1, Qt.AscendingOrder)
                 self.table.sortItems(index_col, Qt.AscendingOrder)
-                self.table.horizontalHeader().setSortIndicator(index_col, Qt.AscendingOrder)
+                self.table.horizontalHeader().setSortIndicator(
+                    index_col, Qt.AscendingOrder
+                )
             else:
                 # Default: sort by Index column in ascending order (numeric sort)
                 # Clear any previous sort indicator first
                 self.table.horizontalHeader().setSortIndicator(-1, Qt.AscendingOrder)
                 # Force numeric sort by sorting the index column
                 self.table.sortItems(index_col, Qt.AscendingOrder)
-                self.table.horizontalHeader().setSortIndicator(index_col, Qt.AscendingOrder)
+                self.table.horizontalHeader().setSortIndicator(
+                    index_col, Qt.AscendingOrder
+                )
 
         # Resize columns to content
         self.table.resizeColumnsToContents()
@@ -829,7 +893,7 @@ class HistoryView(QWidget):
             if row < 0:
                 QMessageBox.warning(self, "Error", "Invalid row number")
                 return
-            
+
             if not candidate:
                 QMessageBox.warning(self, "Error", "No candidate data provided")
                 return
@@ -846,7 +910,8 @@ class HistoryView(QWidget):
             for csv_r in self.csv_rows:
                 try:
                     if (
-                        csv_r.get("playlist_index") == filtered_row.get("playlist_index")
+                        csv_r.get("playlist_index")
+                        == filtered_row.get("playlist_index")
                         and csv_r.get("original_title", "").strip()
                         == filtered_row.get("original_title", "").strip()
                         and csv_r.get("original_artists", "").strip()
@@ -870,24 +935,33 @@ class HistoryView(QWidget):
                 csv_row["beatport_artists"] = candidate.get(
                     "candidate_artists", candidate.get("beatport_artists", "")
                 )
-                csv_row["beatport_url"] = candidate.get("beatport_url", candidate.get("candidate_url", ""))
-                csv_row["beatport_key"] = candidate.get("beatport_key", candidate.get("candidate_key", ""))
+                csv_row["beatport_url"] = candidate.get(
+                    "beatport_url", candidate.get("candidate_url", "")
+                )
+                csv_row["beatport_key"] = candidate.get(
+                    "beatport_key", candidate.get("candidate_key", "")
+                )
                 csv_row["beatport_key_camelot"] = candidate.get(
                     "beatport_key_camelot", candidate.get("candidate_key_camelot", "")
                 )
                 csv_row["beatport_year"] = candidate.get(
                     "beatport_year", candidate.get("candidate_year", "")
                 )
-                csv_row["beatport_bpm"] = candidate.get("beatport_bpm", candidate.get("candidate_bpm", ""))
+                csv_row["beatport_bpm"] = candidate.get(
+                    "beatport_bpm", candidate.get("candidate_bpm", "")
+                )
                 csv_row["beatport_label"] = candidate.get(
                     "beatport_label", candidate.get("candidate_label", "")
                 )
                 csv_row["title_sim"] = str(candidate.get("title_sim", ""))
                 csv_row["artist_sim"] = str(candidate.get("artist_sim", ""))
-                csv_row["match_score"] = str(candidate.get("match_score", candidate.get("final_score", "")))
+                csv_row["match_score"] = str(
+                    candidate.get("match_score", candidate.get("final_score", ""))
+                )
             except Exception as e:
                 print(f"Error updating CSV row fields: {e}")
                 import traceback
+
                 traceback.print_exc()
 
             # Update confidence based on score
@@ -911,7 +985,8 @@ class HistoryView(QWidget):
             try:
                 for idx, filtered_row in enumerate(self.filtered_rows):
                     if (
-                        filtered_row.get("playlist_index") == csv_row.get("playlist_index")
+                        filtered_row.get("playlist_index")
+                        == csv_row.get("playlist_index")
                         and filtered_row.get("original_title", "").strip()
                         == filtered_row.get("original_title", "").strip()
                         and filtered_row.get("original_artists", "").strip()
@@ -930,19 +1005,22 @@ class HistoryView(QWidget):
                         item = self.table.item(updated_row_index, 0)
                         if item:
                             self.table.scrollToItem(item)
-                    
+
                     # Process events to keep UI responsive
                     from PySide6.QtWidgets import QApplication
+
                     QApplication.processEvents()
             except Exception as e:
                 print(f"Error updating table row: {e}")
                 import traceback
+
                 traceback.print_exc()
 
             # SAVE CSV FILE (do this after UI update to keep UI responsive)
             # Use QTimer to defer the save operation slightly, allowing UI to update first
             if self.current_csv_path:
                 from PySide6.QtCore import QTimer
+
                 def save_csv_async():
                     try:
                         if not self._save_csv_file(self.current_csv_path):
@@ -951,13 +1029,14 @@ class HistoryView(QWidget):
                                 self,
                                 "Save Warning",
                                 "Candidate was updated but could not be saved to file. "
-                                "Please try saving manually."
+                                "Please try saving manually.",
                             )
                     except Exception as save_error:
                         import logging
+
                         logger = logging.getLogger(__name__)
                         logger.error(f"Error saving CSV: {save_error}", exc_info=True)
-                
+
                 # Defer save by 100ms to allow UI to update first
                 QTimer.singleShot(100, save_csv_async)
 
@@ -965,18 +1044,23 @@ class HistoryView(QWidget):
             # Don't use QMessageBox as it blocks the UI
             try:
                 from PySide6.QtWidgets import QApplication
+
                 app = QApplication.instance()
                 if app:
                     # Use a non-blocking status message if available
                     # For now, just log it - the table update is visible feedback
                     import logging
+
                     logger = logging.getLogger(__name__)
-                    logger.info(f"Candidate updated: {original_title} - {original_artists}")
+                    logger.info(
+                        f"Candidate updated: {original_title} - {original_artists}"
+                    )
             except Exception:
                 pass
 
         except Exception as e:
             import traceback
+
             error_msg = f"Error updating candidate: {str(e)}"
             print(error_msg)
             print(traceback.format_exc())
@@ -984,7 +1068,7 @@ class HistoryView(QWidget):
                 self,
                 "Error",
                 f"An error occurred while updating the candidate:\n\n{error_msg}\n\n"
-                "Please try again or report this issue."
+                "Please try again or report this issue.",
             )
 
     def _update_table_row(self, row: int, csv_row: dict):
@@ -992,11 +1076,14 @@ class HistoryView(QWidget):
         try:
             # Validate row index
             if row < 0 or row >= self.table.rowCount():
-                print(f"Invalid row index: {row}, table has {self.table.rowCount()} rows")
+                print(
+                    f"Invalid row index: {row}, table has {self.table.rowCount()} rows"
+                )
                 return
 
             # Ensure we're on the main thread
             from PySide6.QtCore import QThread
+
             if QThread.currentThread() != self.thread():
                 # Schedule update on main thread
                 from PySide6.QtCore import QTimer
@@ -1015,7 +1102,9 @@ class HistoryView(QWidget):
                     value = ""
                     if col_name == "Beatport Title":
                         value = csv_row.get("beatport_title", "")
-                    elif col_name == "Beatport Artist" or col_name == "Beatport Artists":
+                    elif (
+                        col_name == "Beatport Artist" or col_name == "Beatport Artists"
+                    ):
                         value = csv_row.get("beatport_artists", "")
                     elif col_name == "Score":
                         value = csv_row.get("match_score", "")
@@ -1024,7 +1113,9 @@ class HistoryView(QWidget):
                     elif col_name == "Key" or col_name == "beatport_key":
                         # For regular key column, use beatport_key
                         value = csv_row.get("beatport_key", "")
-                    elif col_name == "Camelot Key" or col_name == "beatport_key_camelot":
+                    elif (
+                        col_name == "Camelot Key" or col_name == "beatport_key_camelot"
+                    ):
                         # For Camelot key column, use beatport_key_camelot, convert from regular key if needed
                         camelot_key = csv_row.get("beatport_key_camelot", "")
                         if camelot_key:
@@ -1078,10 +1169,12 @@ class HistoryView(QWidget):
             except Exception as e:
                 print(f"Error updating summary: {e}")
                 import traceback
+
                 traceback.print_exc()
-                
+
         except Exception as e:
             import traceback
+
             print(f"Error in _update_table_row: {e}")
             print(traceback.format_exc())
 
@@ -1094,7 +1187,8 @@ class HistoryView(QWidget):
         matched = sum(
             1
             for row in self.csv_rows
-            if row.get("beatport_url", "").strip() or row.get("beatport_title", "").strip()
+            if row.get("beatport_url", "").strip()
+            or row.get("beatport_title", "").strip()
         )
         match_rate = (matched / total * 100) if total > 0 else 0
 
@@ -1109,12 +1203,16 @@ class HistoryView(QWidget):
                     if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
                         timestamp_str = basename[start_idx + 1 : end_idx]
                         dt = datetime.strptime(timestamp_str, "%d-%m-%y %H-%M")
-                        timestamp_info = f"\nSearch Date: {dt.strftime('%d/%m/%y %H:%M')}"
+                        timestamp_info = (
+                            f"\nSearch Date: {dt.strftime('%d/%m/%y %H:%M')}"
+                        )
             except BaseException:
                 pass
 
         file_basename = (
-            os.path.basename(self.current_csv_path) if self.current_csv_path else "No file"
+            os.path.basename(self.current_csv_path)
+            if self.current_csv_path
+            else "No file"
         )
         summary_text = (
             f"File: {file_basename}\n"
@@ -1128,15 +1226,15 @@ class HistoryView(QWidget):
         """Get the path to the candidates CSV file for a given main CSV file"""
         if not main_csv_path:
             return None
-        
+
         # Convert to absolute path to handle both relative and absolute paths correctly
         main_csv_path = os.path.abspath(main_csv_path)
-        
+
         # Use proper path operations instead of string replacement
         # This handles cases where the filename might contain ".csv" in the middle
         base_path = os.path.splitext(main_csv_path)[0]  # Remove extension
         candidates_path = f"{base_path}_candidates.csv"
-        
+
         # Check if file exists (using absolute path)
         if os.path.exists(candidates_path):
             return candidates_path
@@ -1154,16 +1252,17 @@ class HistoryView(QWidget):
             # Log when candidates file is not found (helpful for debugging)
             import logging
             import sys
+
             logger = logging.getLogger(__name__)
-            
+
             # Calculate expected path for logging
             main_csv_abs = os.path.abspath(self.current_csv_path)
             expected_path = f"{os.path.splitext(main_csv_abs)[0]}_candidates.csv"
-            
+
             # Check if running as frozen app
-            frozen = getattr(sys, 'frozen', False)
-            meipass = getattr(sys, '_MEIPASS', '')
-            
+            frozen = getattr(sys, "frozen", False)
+            meipass = getattr(sys, "_MEIPASS", "")
+
             logger.debug(
                 f"Candidates CSV not found for track {playlist_index}:\n"
                 f"  main_csv_path: {self.current_csv_path}\n"
@@ -1173,7 +1272,7 @@ class HistoryView(QWidget):
                 f"  frozen: {frozen}\n"
                 f"  _MEIPASS: {meipass}"
             )
-            
+
             # Also check if file exists but wasn't found by _get_candidates_csv_path
             if os.path.exists(expected_path):
                 # File exists but wasn't returned - this shouldn't happen, but try using it
@@ -1183,14 +1282,15 @@ class HistoryView(QWidget):
 
         try:
             candidates = []
-            
+
             # Verify file exists before trying to open
             if not os.path.exists(candidates_path):
                 import logging
+
                 logger = logging.getLogger(__name__)
                 logger.warning(f"Candidates file does not exist: {candidates_path}")
                 return []
-            
+
             with open(candidates_path, "r", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
                 for row in reader:
@@ -1199,17 +1299,18 @@ class HistoryView(QWidget):
                     row_index = row.get("playlist_index", "").strip()
                     row_title = row.get("original_title", "").strip()
                     row_artists = row.get("original_artists", "").strip()
-                    
+
                     # Compare playlist_index (flexible - string or int)
-                    index_matches = (
-                        row_index == str(playlist_index) or
-                        (row_index.isdigit() and int(row_index) == playlist_index)
+                    index_matches = row_index == str(playlist_index) or (
+                        row_index.isdigit() and int(row_index) == playlist_index
                     )
-                    
+
                     # Compare title and artists (case-insensitive, trimmed)
                     title_matches = row_title.lower() == original_title.strip().lower()
-                    artists_matches = row_artists.lower() == original_artists.strip().lower()
-                    
+                    artists_matches = (
+                        row_artists.lower() == original_artists.strip().lower()
+                    )
+
                     if index_matches and title_matches and artists_matches:
                         # Convert CSV row to candidate dict format expected by CandidateDialog
                         candidate = {
@@ -1217,16 +1318,24 @@ class HistoryView(QWidget):
                             "candidate_artists": row.get("candidate_artists", ""),
                             "beatport_url": row.get("candidate_url", ""),
                             "match_score": (
-                                float(row.get("final_score", 0)) if row.get("final_score") else 0.0
+                                float(row.get("final_score", 0))
+                                if row.get("final_score")
+                                else 0.0
                             ),
                             "title_sim": (
-                                float(row.get("title_sim", 0)) if row.get("title_sim") else 0.0
+                                float(row.get("title_sim", 0))
+                                if row.get("title_sim")
+                                else 0.0
                             ),
                             "artist_sim": (
-                                float(row.get("artist_sim", 0)) if row.get("artist_sim") else 0.0
+                                float(row.get("artist_sim", 0))
+                                if row.get("artist_sim")
+                                else 0.0
                             ),
                             "beatport_key": row.get("candidate_key", ""),
-                            "beatport_key_camelot": row.get("candidate_key_camelot", ""),
+                            "beatport_key_camelot": row.get(
+                                "candidate_key_camelot", ""
+                            ),
                             "beatport_bpm": row.get("candidate_bpm", ""),
                             "beatport_year": row.get("candidate_year", ""),
                             "beatport_label": row.get("candidate_label", ""),
@@ -1236,10 +1345,11 @@ class HistoryView(QWidget):
 
             # Sort by final_score (descending) to rank them
             candidates.sort(key=lambda x: x.get("match_score", 0), reverse=True)
-            
+
             # Log if no candidates found (for debugging)
             if not candidates:
                 import logging
+
                 logger = logging.getLogger(__name__)
                 logger.debug(
                     f"No candidates found in file for track:\n"
@@ -1248,11 +1358,12 @@ class HistoryView(QWidget):
                     f"  original_artists: {original_artists}\n"
                     f"  candidates_path: {candidates_path}"
                 )
-            
+
             return candidates
         except Exception as e:
             import logging
             import traceback
+
             logger = logging.getLogger(__name__)
             logger.error(
                 f"Error loading candidates from {candidates_path}:\n"
@@ -1277,7 +1388,9 @@ class HistoryView(QWidget):
             try:
                 playlist_index = int(playlist_index_item.text())
                 title_item = self.table.item(row, 1)
-                artist_item = self.table.item(row, 2) if self.table.columnCount() > 2 else None
+                artist_item = (
+                    self.table.item(row, 2) if self.table.columnCount() > 2 else None
+                )
 
                 if title_item:
                     original_title = title_item.text()
@@ -1291,7 +1404,9 @@ class HistoryView(QWidget):
                     if candidates:
                         view_action = menu.addAction("View Candidates...")
                         view_action.triggered.connect(
-                            lambda: self._on_row_double_clicked(self.table.indexFromItem(item))
+                            lambda: self._on_row_double_clicked(
+                                self.table.indexFromItem(item)
+                            )
                         )
                     else:
                         no_candidates_action = menu.addAction("No candidates available")
@@ -1313,36 +1428,50 @@ class HistoryView(QWidget):
         playlist_index = None
         original_title = None
         original_artists = None
-        
+
         # Find columns by header name
         for col in range(self.table.columnCount()):
             header = self.table.horizontalHeaderItem(col)
             if not header:
                 continue
-            
+
             header_text = header.text().lower()
             item = self.table.item(row, col)
-            
+
             if not item:
                 continue
-            
+
             # Find playlist_index column
-            if playlist_index is None and ("index" in header_text or "playlist_index" in header_text):
+            if playlist_index is None and (
+                "index" in header_text or "playlist_index" in header_text
+            ):
                 try:
                     playlist_index = int(item.text())
                 except (ValueError, TypeError):
                     pass
-            
+
             # Find original_title column
-            if original_title is None and ("original_title" in header_text or 
-                                          ("title" in header_text and "beatport" not in header_text and "original" not in header_text)):
+            if original_title is None and (
+                "original_title" in header_text
+                or (
+                    "title" in header_text
+                    and "beatport" not in header_text
+                    and "original" not in header_text
+                )
+            ):
                 original_title = item.text().strip()
-            
+
             # Find original_artists column
-            if original_artists is None and ("original_artists" in header_text or 
-                                            ("artist" in header_text and "beatport" not in header_text and "original" not in header_text)):
+            if original_artists is None and (
+                "original_artists" in header_text
+                or (
+                    "artist" in header_text
+                    and "beatport" not in header_text
+                    and "original" not in header_text
+                )
+            ):
                 original_artists = item.text().strip()
-        
+
         # Fallback: if we couldn't find by header, try by position (for backwards compatibility)
         if playlist_index is None:
             playlist_index_item = self.table.item(row, 0)
@@ -1351,27 +1480,31 @@ class HistoryView(QWidget):
                     playlist_index = int(playlist_index_item.text())
                 except (ValueError, TypeError):
                     pass
-        
+
         if original_title is None:
-            title_item = self.table.item(row, 1) if self.table.columnCount() > 1 else None
+            title_item = (
+                self.table.item(row, 1) if self.table.columnCount() > 1 else None
+            )
             if title_item:
                 original_title = title_item.text().strip()
-        
+
         if original_artists is None:
-            artist_item = self.table.item(row, 2) if self.table.columnCount() > 2 else None
+            artist_item = (
+                self.table.item(row, 2) if self.table.columnCount() > 2 else None
+            )
             if artist_item:
                 original_artists = artist_item.text().strip()
-        
+
         # Validate we have required fields
         if playlist_index is None or original_title is None:
             QMessageBox.warning(
                 self,
                 "Error",
                 "Could not determine track information from table row.\n\n"
-                "Please ensure the CSV file has 'playlist_index' and 'original_title' columns."
+                "Please ensure the CSV file has 'playlist_index' and 'original_title' columns.",
             )
             return
-        
+
         # Use empty string if artists not found
         if original_artists is None:
             original_artists = ""
@@ -1433,7 +1566,7 @@ class HistoryView(QWidget):
 
     def _get_output_dirs(self):
         """Get list of output directory paths (single location: SRC/output)
-        
+
         Returns a list with a single output directory to ensure all files
         are saved and found in one consistent location.
         """
@@ -1448,7 +1581,7 @@ class HistoryView(QWidget):
         current_item = self.recent_list.currentItem()
         if current_item:
             current_selection = current_item.data(Qt.UserRole)
-        
+
         self.recent_list.clear()
 
         output_dirs = self._get_output_dirs()
@@ -1468,7 +1601,7 @@ class HistoryView(QWidget):
             # Use os.listdir first (more reliable for newly created files)
             # Then use glob as fallback
             found_files = set()
-            
+
             # Method 1: os.listdir (most reliable for new files)
             try:
                 dir_files = os.listdir(output_dir)
@@ -1491,6 +1624,7 @@ class HistoryView(QWidget):
             # Method 2: glob.glob (as fallback)
             try:
                 import glob
+
                 pattern = os.path.join(output_dir, "*.csv")
                 all_csv_files = glob.glob(pattern)
                 for file_path in all_csv_files:
@@ -1530,7 +1664,7 @@ class HistoryView(QWidget):
                 f"{file_path}\nFolder: {folder_name}\nModified: {dt.strftime('%Y-%m-%d %H:%M:%S')}"
             )
             self.recent_list.addItem(item)
-        
+
         # Restore selection if the file still exists
         if current_selection:
             for i in range(self.recent_list.count()):
@@ -1558,7 +1692,9 @@ class HistoryView(QWidget):
         """Show export dialog and handle export for CSV row data"""
         if not self.csv_rows:
             QMessageBox.warning(
-                self, "No Results", "No results to export. Please load a CSV file first."
+                self,
+                "No Results",
+                "No results to export. Please load a CSV file first.",
             )
             return
 
@@ -1571,17 +1707,23 @@ class HistoryView(QWidget):
         file_path = options.get("file_path")
 
         if not file_path:
-            QMessageBox.warning(self, "No File Selected", "Please select a file location")
+            QMessageBox.warning(
+                self, "No File Selected", "Please select a file location"
+            )
             return
 
         # Get rows to export
         rows_to_export = (
-            self.filtered_rows if options.get("export_filtered", False) else self.csv_rows
+            self.filtered_rows
+            if options.get("export_filtered", False)
+            else self.csv_rows
         )
 
         if not rows_to_export:
             QMessageBox.warning(
-                self, "No Results", "No results to export (filter may have excluded all results)"
+                self,
+                "No Results",
+                "No results to export (filter may have excluded all results)",
             )
             return
 
@@ -1596,7 +1738,9 @@ class HistoryView(QWidget):
                 self._export_to_csv(rows_to_export, file_path, options)
 
         except Exception as e:
-            QMessageBox.critical(self, "Export Error", f"Error exporting file:\n{str(e)}")
+            QMessageBox.critical(
+                self, "Export Error", f"Error exporting file:\n{str(e)}"
+            )
 
     def _export_to_csv(self, rows: List[dict], file_path: str, options: Dict[str, Any]):
         """Export CSV row dictionaries to CSV file"""
@@ -1645,9 +1789,13 @@ class HistoryView(QWidget):
             writer.writeheader()
             writer.writerows(rows)
 
-        QMessageBox.information(self, "Export Complete", f"CSV file exported to:\n{file_path}")
+        QMessageBox.information(
+            self, "Export Complete", f"CSV file exported to:\n{file_path}"
+        )
 
-    def _export_to_json(self, rows: List[dict], file_path: str, options: Dict[str, Any]):
+    def _export_to_json(
+        self, rows: List[dict], file_path: str, options: Dict[str, Any]
+    ):
         """Export CSV row dictionaries to JSON file"""
         include_metadata = options.get("include_metadata", True)
         include_processing_info = options.get("include_processing_info", False)
@@ -1662,7 +1810,8 @@ class HistoryView(QWidget):
             "matched_tracks": sum(
                 1
                 for r in rows
-                if r.get("beatport_url", "").strip() or r.get("beatport_title", "").strip()
+                if r.get("beatport_url", "").strip()
+                or r.get("beatport_title", "").strip()
             ),
             "tracks": [],
         }
@@ -1692,7 +1841,11 @@ class HistoryView(QWidget):
                     "beatport_release",
                     "beatport_release_date",
                 ]
-                track_data = {k: v for k, v in track_data.items() if k.lower() not in metadata_keys}
+                track_data = {
+                    k: v
+                    for k, v in track_data.items()
+                    if k.lower() not in metadata_keys
+                }
 
             json_data["tracks"].append(track_data)
 
@@ -1719,9 +1872,13 @@ class HistoryView(QWidget):
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(json_str)
 
-        QMessageBox.information(self, "Export Complete", f"JSON file exported to:\n{file_path}")
+        QMessageBox.information(
+            self, "Export Complete", f"JSON file exported to:\n{file_path}"
+        )
 
-    def _export_to_excel(self, rows: List[dict], file_path: str, options: Dict[str, Any]):
+    def _export_to_excel(
+        self, rows: List[dict], file_path: str, options: Dict[str, Any]
+    ):
         """Export CSV row dictionaries to Excel file"""
         try:
             from openpyxl import Workbook
@@ -1766,7 +1923,9 @@ class HistoryView(QWidget):
         ws.title = "Search Results"
 
         # Write headers
-        header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+        header_fill = PatternFill(
+            start_color="366092", end_color="366092", fill_type="solid"
+        )
         header_font = Font(bold=True, color="FFFFFF")
 
         for col_idx, col_name in enumerate(columns, 1):
@@ -1788,15 +1947,17 @@ class HistoryView(QWidget):
                 cell_value = ws.cell(row=row_idx, column=col_idx).value
                 if cell_value:
                     max_length = max(max_length, len(str(cell_value)))
-            ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = min(
-                max_length + 2, 50
-            )
+            ws.column_dimensions[
+                ws.cell(row=1, column=col_idx).column_letter
+            ].width = min(max_length + 2, 50)
 
         # Save file
         os.makedirs(os.path.dirname(file_path) or ".", exist_ok=True)
         wb.save(file_path)
 
-        QMessageBox.information(self, "Export Complete", f"Excel file exported to:\n{file_path}")
+        QMessageBox.information(
+            self, "Export Complete", f"Excel file exported to:\n{file_path}"
+        )
 
     def _save_csv_file(self, file_path: str) -> bool:
         """Save CSV file with current data"""
@@ -1805,7 +1966,7 @@ class HistoryView(QWidget):
 
         try:
             # Determine if file is compressed
-            is_compressed = file_path.endswith('.gz')
+            is_compressed = file_path.endswith(".gz")
 
             # Get all column names from csv_rows
             if not self.csv_rows:
@@ -1821,12 +1982,12 @@ class HistoryView(QWidget):
 
             # Write CSV file
             if is_compressed:
-                with gzip.open(file_path, 'wt', encoding='utf-8', newline='') as f:
+                with gzip.open(file_path, "wt", encoding="utf-8", newline="") as f:
                     writer = csv.DictWriter(f, fieldnames=fieldnames)
                     writer.writeheader()
                     writer.writerows(self.csv_rows)
             else:
-                with open(file_path, 'w', encoding='utf-8', newline='') as f:
+                with open(file_path, "w", encoding="utf-8", newline="") as f:
                     writer = csv.DictWriter(f, fieldnames=fieldnames)
                     writer.writeheader()
                     writer.writerows(self.csv_rows)
@@ -1835,87 +1996,82 @@ class HistoryView(QWidget):
 
         except Exception as e:
             import traceback
+
             error_msg = f"Error saving CSV file: {str(e)}"
             print(error_msg)
             print(traceback.format_exc())
             QMessageBox.critical(
                 self,
                 "Error Saving File",
-                f"Could not save changes to file:\n{error_msg}"
+                f"Could not save changes to file:\n{error_msg}",
             )
             return False
-    
+
     def on_rerun_processing(self):
         """Handle re-run request - load original XML file and playlist"""
         if not self.current_csv_path or not self.csv_rows:
-            QMessageBox.warning(
-                self,
-                "No File Loaded",
-                "Please load a CSV file first."
-            )
+            QMessageBox.warning(self, "No File Loaded", "Please load a CSV file first.")
             return
-        
+
         # Try to get XML file path and playlist name from CSV metadata
         # Check first row for metadata fields
         first_row = self.csv_rows[0] if self.csv_rows else {}
-        
+
         # Try various possible field names
         xml_path = (
-            first_row.get("xml_file_path") or
-            first_row.get("source_file") or
-            first_row.get("xml_path") or
-            ""
+            first_row.get("xml_file_path")
+            or first_row.get("source_file")
+            or first_row.get("xml_path")
+            or ""
         )
-        
+
         playlist_name = (
-            first_row.get("playlist_name") or
-            first_row.get("playlist") or
-            ""
+            first_row.get("playlist_name") or first_row.get("playlist") or ""
         )
-        
+
         # If not in CSV, try to infer from filename
         if not playlist_name and self.current_csv_path:
             basename = os.path.basename(self.current_csv_path)
             # Remove timestamp and extension
             if "(" in basename:
-                playlist_name = basename[:basename.rfind("(")].strip()
+                playlist_name = basename[: basename.rfind("(")].strip()
             else:
                 playlist_name = os.path.splitext(basename)[0]
-        
+
         if not xml_path:
             QMessageBox.warning(
                 self,
                 "XML File Not Found",
                 "Could not determine the original XML file path from the CSV file.\n\n"
-                "Please select the XML file manually."
+                "Please select the XML file manually.",
             )
             # Allow user to browse for XML file
             xml_path, _ = QFileDialog.getOpenFileName(
                 self,
                 "Select Original XML File",
                 "",
-                "XML Files (*.xml);;All Files (*.*)"
+                "XML Files (*.xml);;All Files (*.*)",
             )
             if not xml_path:
                 return
-        
+
         if not os.path.exists(xml_path):
             QMessageBox.warning(
                 self,
                 "File Not Found",
                 f"The original XML file could not be found:\n{xml_path}\n\n"
-                "Please select a different file."
+                "Please select a different file.",
             )
             # Allow user to browse for XML file
             xml_path, _ = QFileDialog.getOpenFileName(
                 self,
                 "Select XML File",
                 os.path.dirname(xml_path) if xml_path else "",
-                "XML Files (*.xml);;All Files (*.*)"
+                "XML Files (*.xml);;All Files (*.*)",
             )
             if not xml_path or not os.path.exists(xml_path):
                 return
-        
+
         # Emit signal to main window
         self.rerun_requested.emit(xml_path, playlist_name)
         self.rerun_requested.emit(xml_path, playlist_name)

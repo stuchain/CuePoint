@@ -21,14 +21,10 @@ from cuepoint.data.rekordbox import (
 
 class TestRBTrack:
     """Test RBTrack dataclass."""
-    
+
     def test_rbtrack_creation(self):
         """Test creating RBTrack."""
-        track = RBTrack(
-            track_id="123",
-            title="Test Track",
-            artists="Test Artist"
-        )
+        track = RBTrack(track_id="123", title="Test Track", artists="Test Artist")
         assert track.track_id == "123"
         assert track.title == "Test Track"
         assert track.artists == "Test Artist"
@@ -36,7 +32,7 @@ class TestRBTrack:
 
 class TestExtractArtistsFromTitle:
     """Test artist extraction from title."""
-    
+
     def test_extract_artists_basic(self):
         """Test basic artist extraction."""
         result = extract_artists_from_title("Artist - Title")
@@ -44,7 +40,7 @@ class TestExtractArtistsFromTitle:
         artists, title = result
         assert "Artist" in artists
         assert title == "Title"
-    
+
     def test_extract_artists_no_dash(self):
         """Test extraction when no dash separator."""
         result = extract_artists_from_title("Title Only")
@@ -129,7 +125,7 @@ class TestParseRekordbox:
         """Create a sample Rekordbox XML file."""
         root = ET.Element("DJ_PLAYLISTS")
         root.set("Version", "1.0.0")
-        
+
         collection = ET.SubElement(root, "COLLECTION")
         if tracks:
             for track_id, title, artists in tracks:
@@ -138,12 +134,12 @@ class TestParseRekordbox:
                 # The parser looks for Name and Artist as attributes (t.get("Name"))
                 track_elem.set("Name", title)
                 track_elem.set("Artist", artists)
-        
+
         playlists_elem = ET.SubElement(root, "PLAYLISTS")
         node_elem = ET.SubElement(playlists_elem, "NODE")
         node_elem.set("Type", "1")
         node_elem.set("Name", "ROOT")
-        
+
         if playlists:
             for playlist_name, track_ids in playlists.items():
                 playlist_node = ET.SubElement(node_elem, "NODE")
@@ -152,9 +148,9 @@ class TestParseRekordbox:
                 for track_id in track_ids:
                     track_elem = ET.SubElement(playlist_node, "TRACK")
                     track_elem.set("Key", track_id)
-        
-        return ET.tostring(root, encoding='unicode')
-    
+
+        return ET.tostring(root, encoding="unicode")
+
     def test_parse_rekordbox_basic(self):
         """Test basic Rekordbox parsing."""
         xml_content = self.create_sample_xml(
@@ -162,24 +158,22 @@ class TestParseRekordbox:
                 ("1", "Track 1", "Artist 1"),
                 ("2", "Track 2", "Artist 2"),
             ],
-            playlists={
-                "Playlist 1": ["1", "2"]
-            }
+            playlists={"Playlist 1": ["1", "2"]},
         )
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.xml', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
             f.write(xml_content)
             f.flush()
             xml_path = f.name
-        
+
         try:
             playlists_dict = parse_rekordbox(xml_path)
-            
+
             # Verify playlists (returns Dict[str, Playlist])
             # Should have at least "Playlist 1" (and possibly "ROOT")
             assert len(playlists_dict) >= 1
             assert "Playlist 1" in playlists_dict
-            
+
             playlist = playlists_dict["Playlist 1"]
             assert playlist.get_track_count() == 2
             # Verify tracks in playlist
@@ -204,7 +198,9 @@ class TestParseRekordbox:
         # Inject a duplicate playlist name manually
         root = ET.fromstring(xml_content)
         playlists_elem = root.find(".//PLAYLISTS")
-        root_node = playlists_elem.find("./NODE") if playlists_elem is not None else None
+        root_node = (
+            playlists_elem.find("./NODE") if playlists_elem is not None else None
+        )
         if root_node is not None:
             duplicate_node = ET.SubElement(root_node, "NODE")
             duplicate_node.set("Type", "1")
@@ -267,21 +263,21 @@ class TestRekordboxValidationHelpers:
 
         assert is_readable(test_file) is True
         assert is_writable(tmp_path) is True
-    
+
     def test_parse_rekordbox_file_not_found(self):
         """Test parsing with nonexistent file."""
         with pytest.raises(FileNotFoundError):
             parse_rekordbox("nonexistent.xml")
-    
+
     def test_parse_rekordbox_empty_collection(self):
         """Test parsing with empty collection."""
         xml_content = self.create_sample_xml(tracks=[], playlists={})
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.xml', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
             f.write(xml_content)
             f.flush()
             xml_path = f.name
-        
+
         try:
             playlists_dict = parse_rekordbox(xml_path)
             # Empty collection should still have ROOT playlist
@@ -300,17 +296,17 @@ class TestRekordboxValidationHelpers:
             playlists={
                 "Playlist 1": ["1", "2"],
                 "Playlist 2": ["2", "3"],
-            }
+            },
         )
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.xml', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
             f.write(xml_content)
             f.flush()
             xml_path = f.name
-        
+
         try:
             playlists_dict = parse_rekordbox(xml_path)
-            
+
             assert "Playlist 1" in playlists_dict
             assert "Playlist 2" in playlists_dict
             assert playlists_dict["Playlist 1"].get_track_count() == 2
@@ -326,17 +322,17 @@ class TestRekordboxValidationHelpers:
             ],
             playlists={
                 "Empty Playlist": [],
-            }
+            },
         )
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.xml', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
             f.write(xml_content)
             f.flush()
             xml_path = f.name
-        
+
         try:
             playlists_dict = parse_rekordbox(xml_path)
-            
+
             assert "Empty Playlist" in playlists_dict
             assert playlists_dict["Empty Playlist"].get_track_count() == 0
         finally:
@@ -350,19 +346,19 @@ class TestRekordboxValidationHelpers:
         # Missing TrackID, should not be added to tracks_by_id
         track_elem.set("Name", "Track Without ID")
         track_elem.set("Artist", "Artist")
-        
+
         playlists_elem = ET.SubElement(root, "PLAYLISTS")
         node_elem = ET.SubElement(playlists_elem, "NODE")
         node_elem.set("Type", "1")
         node_elem.set("Name", "ROOT")
-        
-        xml_content = ET.tostring(root, encoding='unicode')
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.xml', delete=False) as f:
+
+        xml_content = ET.tostring(root, encoding="unicode")
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
             f.write(xml_content)
             f.flush()
             xml_path = f.name
-        
+
         try:
             playlists_dict = parse_rekordbox(xml_path)
             # Track without ID should not be included
@@ -378,7 +374,7 @@ class TestRekordboxValidationHelpers:
         track_elem.set("ID", "1")  # Alternative to TrackID
         track_elem.set("Title", "Track 1")  # Alternative to Name
         track_elem.set("Artists", "Artist 1")  # Alternative to Artist
-        
+
         playlists_elem = ET.SubElement(root, "PLAYLISTS")
         node_elem = ET.SubElement(playlists_elem, "NODE")
         node_elem.set("Type", "1")
@@ -388,17 +384,17 @@ class TestRekordboxValidationHelpers:
         playlist_node.set("Name", "Test Playlist")
         track_ref = ET.SubElement(playlist_node, "TRACK")
         track_ref.set("TrackID", "1")  # Alternative to Key
-        
-        xml_content = ET.tostring(root, encoding='unicode')
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.xml', delete=False) as f:
+
+        xml_content = ET.tostring(root, encoding="unicode")
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
             f.write(xml_content)
             f.flush()
             xml_path = f.name
-        
+
         try:
             playlists_dict = parse_rekordbox(xml_path)
-            
+
             assert "Test Playlist" in playlists_dict
             playlist = playlists_dict["Test Playlist"]
             assert playlist.get_track_count() == 1
@@ -409,12 +405,12 @@ class TestRekordboxValidationHelpers:
     def test_parse_rekordbox_invalid_xml(self):
         """Test parsing with invalid XML."""
         invalid_xml = "<DJ_PLAYLISTS><COLLECTION><TRACK></COLLECTION>"
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.xml', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
             f.write(invalid_xml)
             f.flush()
             xml_path = f.name
-        
+
         try:
             with pytest.raises(ET.ParseError):
                 parse_rekordbox(xml_path)
@@ -428,14 +424,14 @@ class TestRekordboxValidationHelpers:
         node_elem = ET.SubElement(playlists_elem, "NODE")
         node_elem.set("Type", "1")
         node_elem.set("Name", "ROOT")
-        
-        xml_content = ET.tostring(root, encoding='unicode')
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.xml', delete=False) as f:
+
+        xml_content = ET.tostring(root, encoding="unicode")
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
             f.write(xml_content)
             f.flush()
             xml_path = f.name
-        
+
         try:
             playlists_dict = parse_rekordbox(xml_path)
             # Should handle missing collection gracefully
@@ -451,14 +447,14 @@ class TestRekordboxValidationHelpers:
         track_elem.set("TrackID", "1")
         track_elem.set("Name", "Track 1")
         track_elem.set("Artist", "Artist 1")
-        
-        xml_content = ET.tostring(root, encoding='unicode')
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.xml', delete=False) as f:
+
+        xml_content = ET.tostring(root, encoding="unicode")
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
             f.write(xml_content)
             f.flush()
             xml_path = f.name
-        
+
         try:
             playlists_dict = parse_rekordbox(xml_path)
             # Should handle missing playlists gracefully
@@ -474,17 +470,17 @@ class TestRekordboxValidationHelpers:
             ],
             playlists={
                 "Playlist": ["1", "999"],  # Track 999 doesn't exist
-            }
+            },
         )
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.xml', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
             f.write(xml_content)
             f.flush()
             xml_path = f.name
-        
+
         try:
             playlists_dict = parse_rekordbox(xml_path)
-            
+
             assert "Playlist" in playlists_dict
             # Should only include track 1, not 999
             assert playlists_dict["Playlist"].get_track_count() == 1

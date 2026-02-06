@@ -37,6 +37,7 @@ def pytest_sessionfinish(session, exitstatus):
     """Quit QApplication on session end to prevent hang on Windows (event loop keeps process alive)."""
     try:
         from PySide6.QtWidgets import QApplication
+
         app = QApplication.instance()
         if app is not None:
             app.quit()
@@ -49,6 +50,7 @@ def di_container() -> Generator[DIContainer, None, None]:
     """Create a fresh DI container for each test."""
     reset_container()
     from cuepoint.utils.di_container import get_container
+
     container = get_container()
     yield container
     reset_container()
@@ -100,20 +102,14 @@ def mock_matcher_service() -> Mock:
 @pytest.fixture
 def sample_track() -> Track:
     """Create a sample Track for testing."""
-    return Track(
-        track_id="12345",
-        title="Test Track",
-        artist="Test Artist"
-    )
+    return Track(track_id="12345", title="Test Track", artist="Test Artist")
 
 
 @pytest.fixture
 def sample_track_with_remix() -> Track:
     """Create a sample track with remix in title."""
     return Track(
-        track_id="12346",
-        title="Test Track (Remixer Remix)",
-        artist="Test Artist"
+        track_id="12346", title="Test Track (Remixer Remix)", artist="Test Artist"
     )
 
 
@@ -143,7 +139,7 @@ def sample_beatport_candidate() -> BeatportCandidate:
         guard_ok=True,
         reject_reason="",
         elapsed_ms=100,
-        is_winner=False
+        is_winner=False,
     )
 
 
@@ -159,7 +155,7 @@ def sample_beatport_data() -> dict:
         "label": "Test Label",
         "genres": "House",
         "release_name": "Test Release",
-        "release_date": "2023-01-01"
+        "release_date": "2023-01-01",
     }
 
 
@@ -186,7 +182,7 @@ def sample_track_result() -> TrackResult:
         match_score=95.0,
         title_sim=95.0,
         artist_sim=100.0,
-        confidence="high"
+        confidence="high",
     )
 
 
@@ -194,10 +190,7 @@ def sample_track_result() -> TrackResult:
 def sample_track_result_unmatched() -> TrackResult:
     """Create a sample unmatched TrackResult for testing."""
     return TrackResult(
-        playlist_index=0,
-        title="Unknown Track",
-        artist="Unknown Artist",
-        matched=False
+        playlist_index=0, title="Unknown Track", artist="Unknown Artist", matched=False
     )
 
 
@@ -216,6 +209,7 @@ def qapp():
     """Create QApplication for UI tests."""
     try:
         from PySide6.QtWidgets import QApplication
+
         app = QApplication.instance()
         if app is None:
             app = QApplication([])
@@ -255,6 +249,7 @@ def temp_file(temp_dir: Path) -> Generator[Path, None, None]:
 # XML Fixtures (Step 7.2)
 # ============================================================================
 
+
 @pytest.fixture
 def sample_rekordbox_xml(temp_dir: Path) -> Path:
     """Create a sample Rekordbox XML file."""
@@ -276,7 +271,7 @@ def sample_rekordbox_xml(temp_dir: Path) -> Path:
         </NODE>
     </PLAYLISTS>
 </DJ_PLAYLISTS>"""
-    
+
     xml_path = temp_dir / "rekordbox.xml"
     xml_path.write_text(xml_content, encoding="utf-8")
     return xml_path
@@ -285,6 +280,7 @@ def sample_rekordbox_xml(temp_dir: Path) -> Path:
 # ============================================================================
 # Network Mocking Fixtures (Step 7.1)
 # ============================================================================
+
 
 @pytest.fixture
 def mock_beatport_response():
@@ -295,7 +291,7 @@ def mock_beatport_response():
                 "title": "Test Track",
                 "artist": "Test Artist",
                 "label": "Test Label",
-                "bpm": 128.0
+                "bpm": 128.0,
             }
         ]
     }
@@ -305,11 +301,11 @@ def mock_beatport_response():
 def mock_requests_get(mock_beatport_response):
     """Mock requests.get for network tests."""
     from unittest.mock import patch
-    with patch('requests.get') as mock_get:
+
+    with patch("requests.get") as mock_get:
         mock_response = Mock()
         mock_response.json.return_value = mock_beatport_response
         mock_response.status_code = 200
         mock_response.text = "<html>Mock HTML</html>"
         mock_get.return_value = mock_response
         yield mock_get
-

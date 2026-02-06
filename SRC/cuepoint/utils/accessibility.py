@@ -35,6 +35,7 @@ def get_luminance(r: int, g: int, b: int) -> float:
     Returns:
         Relative luminance value (0.0-1.0).
     """
+
     def to_linear(c):
         c = c / 255.0
         if c <= 0.03928:

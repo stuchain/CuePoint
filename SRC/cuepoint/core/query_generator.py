@@ -103,7 +103,9 @@ def _artist_tokens(a: str) -> List[str]:
     """
     # Split on common artist separators
     parts = re.split(
-        r"\s*(?:,|&|/| x | vs | with | feat\.?| ft\.?| featuring )\s*", a, flags=re.IGNORECASE
+        r"\s*(?:,|&|/| x | vs | with | feat\.?| ft\.?| featuring )\s*",
+        a,
+        flags=re.IGNORECASE,
     )
     tokens = [re.sub(r"\s{2,}", " ", p).strip() for p in parts if p and p.strip()]
     # Deduplicate while preserving order
@@ -116,7 +118,9 @@ def _artist_tokens(a: str) -> List[str]:
     return unique
 
 
-def _title_prefixes(tokens: List[str], k_min: int = 2, k_max: Optional[int] = None) -> List[str]:
+def _title_prefixes(
+    tokens: List[str], k_min: int = 2, k_max: Optional[int] = None
+) -> List[str]:
     """
     Generate left-anchored prefixes from title tokens
 
@@ -192,7 +196,9 @@ def make_search_queries(
 
     def _artist_tokens_local(a: str) -> List[str]:
         parts = re.split(
-            r"\s*(?:,|&|/| x | vs | with | feat\.?| ft\.?| featuring )\s*", a, flags=re.IGNORECASE
+            r"\s*(?:,|&|/| x | vs | with | feat\.?| ft\.?| featuring )\s*",
+            a,
+            flags=re.IGNORECASE,
         )
         toks = [re.sub(r"\s{2,}", " ", p).strip() for p in parts if p and p.strip()]
         seen, unique = set(), []
@@ -264,7 +270,9 @@ def make_search_queries(
 
         # Only add original if it's already clean (no prefixes)
         # Check if original has prefixes like [3], [F], etc.
-        has_prefixes = bool(re.search(r"^\[[\d\-\s]+\]|\([A-Za-z]\)", original_title.strip()))
+        has_prefixes = bool(
+            re.search(r"^\[[\d\-\s]+\]|\([A-Za-z]\)", original_title.strip())
+        )
         if not has_prefixes and original_title != t_clean:
             title_variations.append(original_title)
 
@@ -322,7 +330,11 @@ def make_search_queries(
         for var in title_variations:
             if var and var.strip():
                 title_bases.extend(
-                    [f"{var.strip()} ({ph})" for ph in origmix_ph if ph.lower() != "original mix"]
+                    [
+                        f"{var.strip()} ({ph})"
+                        for ph in origmix_ph
+                        if ph.lower() != "original mix"
+                    ]
                 )
     elif t_clean:
         title_bases = [t_clean]
@@ -333,7 +345,11 @@ def make_search_queries(
     if SETTINGS.get("LINEAR_PREFIX_ONLY", False):
         uni = (
             [words_all[0]]
-            if (words_all and SETTINGS.get("TITLE_GRAM_MAX", 3) >= 1 and words_all[0] not in STOP)
+            if (
+                words_all
+                and SETTINGS.get("TITLE_GRAM_MAX", 3) >= 1
+                and words_all[0] not in STOP
+            )
             else []
         )
         bi = (
@@ -439,7 +455,9 @@ def make_search_queries(
 
     # Extract remixers and base title
     remixers_from_title = (
-        _extract_remixer_names_from_title(original_title or "") if original_title else []
+        _extract_remixer_names_from_title(original_title or "")
+        if original_title
+        else []
     )
 
     # PRIORITY STAGE -0.5: Use exact original title format for remixes (highest priority)
@@ -451,7 +469,9 @@ def make_search_queries(
         exact_title = original_title.strip()
         # Remove only numeric/bracket prefixes like [3], [8-9], (F) at the start
         exact_title = re.sub(r"^\[[\d\-\s]+\]\s*", "", exact_title, flags=re.IGNORECASE)
-        exact_title = re.sub(r"^\s*\([A-Za-z]\)\s*", "", exact_title, flags=re.IGNORECASE)
+        exact_title = re.sub(
+            r"^\s*\([A-Za-z]\)\s*", "", exact_title, flags=re.IGNORECASE
+        )
         exact_title = exact_title.strip()
 
         if exact_title and len(exact_title.split()) >= 2:
@@ -489,11 +509,17 @@ def make_search_queries(
         )
         # Strategy 3: Remove any parenthetical that looks like a remix/extended indication
         base = re.sub(
-            r"\s*\([^)]*(?:remix|extended|rework|refire|re-fire|edit)[^)]*\)", "", base, flags=re.I
+            r"\s*\([^)]*(?:remix|extended|rework|refire|re-fire|edit)[^)]*\)",
+            "",
+            base,
+            flags=re.I,
         )
         # Strategy 4: Remove standalone remix/extended keywords at the end
         base = re.sub(
-            r"\s+\b(remix|extended\s+mix|original\s+mix|edit|version)\b\s*$", "", base, flags=re.I
+            r"\s+\b(remix|extended\s+mix|original\s+mix|edit|version)\b\s*$",
+            "",
+            base,
+            flags=re.I,
         )
 
         # Clean and sanitize
@@ -523,13 +549,19 @@ def make_search_queries(
         mix_flags_check = _parse_mix_flags(original_title)
         has_extended_intent = bool(mix_flags_check.get("is_extended"))
 
-    if len(toks) >= 2 and (remixers_from_title or has_extended_intent) and base_title_no_remix:
+    if (
+        len(toks) >= 2
+        and (remixers_from_title or has_extended_intent)
+        and base_title_no_remix
+    ):
         if remixers_from_title:
             # Remix queries: combine all artists with remixer
             # CRITICAL: Filter out remixers from artist tokens to avoid duplication
             # (e.g., if "CamelPhat" is both an artist and remixer, only include it once)
             toks_for_remix = []
-            remixer_tokens_lower_remix = {r.lower().strip() for r in remixers_from_title if r}
+            remixer_tokens_lower_remix = {
+                r.lower().strip() for r in remixers_from_title if r
+            }
             for tok in toks:
                 if tok.lower().strip() not in remixer_tokens_lower_remix:
                     toks_for_remix.append(tok)
@@ -541,7 +573,9 @@ def make_search_queries(
                 if r and r.strip():
                     # Use filtered artists to avoid duplication
                     all_artists = (
-                        " ".join(toks_for_remix[:2]) if toks_for_remix else " ".join(toks[:2])
+                        " ".join(toks_for_remix[:2])
+                        if toks_for_remix
+                        else " ".join(toks[:2])
                     )
                     if all_artists:  # Only add if we have artists
                         _add(f"{base_title_no_remix} {all_artists} {r}")
@@ -554,8 +588,12 @@ def make_search_queries(
                         if len(base_title_no_remix.split()) >= 1:
                             _add(f'"{base_title_no_remix}" {all_artists} {r}')
                             _add(f'{all_artists} "{base_title_no_remix}" {r}')
-                            _add(f'"{base_title_no_remix}" {all_artists} {r} extended remix')
-                            _add(f'"{base_title_no_remix}" {all_artists} {r} extended mix')
+                            _add(
+                                f'"{base_title_no_remix}" {all_artists} {r} extended remix'
+                            )
+                            _add(
+                                f'"{base_title_no_remix}" {all_artists} {r} extended mix'
+                            )
                     # Also try with just the remixer (no artists) if artists were filtered
                     _add(f"{base_title_no_remix} {r}")
                     _add(f"{base_title_no_remix} {r} remix")
@@ -571,7 +609,9 @@ def make_search_queries(
         if has_extended_intent and len(toks) >= 2:
             # Extended mix queries: combine ALL artists together for better matching
             # Example: "Batonga Bontan AMEME Don Bello Ni Extended Mix"
-            all_artists_full = " ".join(toks[:3]) if len(toks) >= 3 else " ".join(toks[:2])
+            all_artists_full = (
+                " ".join(toks[:3]) if len(toks) >= 3 else " ".join(toks[:2])
+            )
             # Try with all artists first (most specific)
             _add(f"{base_title_no_remix} {all_artists_full}")
             _add(f"{all_artists_full} {base_title_no_remix}")
@@ -644,7 +684,9 @@ def make_search_queries(
     # Beatport sometimes lists as "Title OriginalArtist (Remixer Remix)"
     # Use quoted queries for better precision on remix searches
     if toks and remixers_from_title and base_title_no_remix:
-        for a in toks[:2]:  # Use first 2 artists (for multi-artist tracks like "HOSH, CamelPhat")
+        for a in toks[
+            :2
+        ]:  # Use first 2 artists (for multi-artist tracks like "HOSH, CamelPhat")
             if a and a.strip():
                 for r in remixers_from_title:
                     if r and r.strip():
@@ -735,7 +777,10 @@ def make_search_queries(
         single_word_title = len(tb_tokens) == 1
         tb_q = (
             f'"{tb}"'
-            if (SETTINGS.get("QUOTED_TITLE_VARIANT", False) and (has_parens or single_word_title))
+            if (
+                SETTINGS.get("QUOTED_TITLE_VARIANT", False)
+                and (has_parens or single_word_title)
+            )
             else None
         )
 
@@ -770,7 +815,12 @@ def make_search_queries(
     for tb in title_bases:
         for av in a_variants:
             if av:
-                for q in (f"{tb} {av}", f"{tb} {_Q(av)}", f"{_Q(tb)} {av}", f"{_Q(tb)} {_Q(av)}"):
+                for q in (
+                    f"{tb} {av}",
+                    f"{tb} {_Q(av)}",
+                    f"{_Q(tb)} {av}",
+                    f"{_Q(tb)} {_Q(av)}",
+                ):
                     _add(q)
                 allow_rev = SETTINGS.get("REVERSE_ORDER_QUERIES", False)
                 if (not allow_rev) and SETTINGS.get("REVERSE_REMIX_HINTS", True):
@@ -788,7 +838,9 @@ def make_search_queries(
                     ):
                         _add(q)
             else:
-                if (not a_in) or (not SETTINGS.get("FULL_TITLE_WITH_ARTIST_ONLY", False)):
+                if (not a_in) or (
+                    not SETTINGS.get("FULL_TITLE_WITH_ARTIST_ONLY", False)
+                ):
                     for q in (tb, _Q(tb)):
                         _add(q)
 
@@ -801,7 +853,9 @@ def make_search_queries(
         if SETTINGS.get("CROSS_TITLE_GRAMS_WITH_ARTISTS", True):
             if SETTINGS.get("CROSS_SMALL_ONLY", True):
                 uni_small = [w for w in words_all if w not in STOP]
-                bi_small = [" ".join(words_all[i : i + 2]) for i in range(len(words_all) - 1)]
+                bi_small = [
+                    " ".join(words_all[i : i + 2]) for i in range(len(words_all) - 1)
+                ]
                 cross_grams = _dedup(uni_small + bi_small)
             else:
                 cross_grams = grams_all
@@ -810,7 +864,12 @@ def make_search_queries(
                 for av in a_variants:
                     if not av:
                         continue
-                    for q in (f"{g} {av}", f"{_Q(g)} {av}", f"{g} {_Q(av)}", f"{_Q(g)} {_Q(av)}"):
+                    for q in (
+                        f"{g} {av}",
+                        f"{_Q(g)} {av}",
+                        f"{g} {_Q(av)}",
+                        f"{_Q(g)} {_Q(av)}",
+                    ):
                         _add(q)
                     if SETTINGS.get("REVERSE_ORDER_QUERIES", False):
                         for q in (
@@ -824,7 +883,12 @@ def make_search_queries(
             sw_tokens = _ordered_unique([t for t in single_word_artist_tokens if t])
             for g in cross_grams:
                 for sw in sw_tokens:
-                    for q in (f"{g} {sw}", f"{_Q(g)} {sw}", f"{sw} {g}", f"{sw} {_Q(g)}"):
+                    for q in (
+                        f"{g} {sw}",
+                        f"{_Q(g)} {sw}",
+                        f"{sw} {g}",
+                        f"{sw} {_Q(g)}",
+                    ):
                         _add(q)
 
     # Apply cap if configured

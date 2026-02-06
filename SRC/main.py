@@ -81,7 +81,7 @@ def _run_migrate(args) -> int:
 def main():
     """
     Main CLI entry point
-    
+
     This function:
     1. Bootstraps services (dependency injection setup)
     2. Sets up argument parser with all available options
@@ -92,6 +92,7 @@ def main():
     # Step 15: Maintenance report - handle before full bootstrap
     if len(sys.argv) > 1 and sys.argv[1] == "--maintenance-report":
         import subprocess
+
         src_path = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(src_path)
         script = os.path.join(project_root, "scripts", "maintenance_report.py")
@@ -106,23 +107,33 @@ def main():
     # Step 12: Migrate subcommand - handle before full bootstrap
     if len(sys.argv) > 1 and sys.argv[1] == "migrate":
         migrate_parser = argparse.ArgumentParser(prog="cuepoint migrate")
-        migrate_parser.add_argument("--from", dest="from_version", type=int, required=True, metavar="V")
-        migrate_parser.add_argument("--to", dest="to_version", type=int, required=True, metavar="V")
+        migrate_parser.add_argument(
+            "--from", dest="from_version", type=int, required=True, metavar="V"
+        )
+        migrate_parser.add_argument(
+            "--to", dest="to_version", type=int, required=True, metavar="V"
+        )
         migrate_parser.add_argument("--file", default=None, help="CSV file to migrate")
-        migrate_parser.add_argument("--directory", "--output-dir", dest="directory", default=None, help="Directory with CSVs")
+        migrate_parser.add_argument(
+            "--directory",
+            "--output-dir",
+            dest="directory",
+            default=None,
+            help="Directory with CSVs",
+        )
         migrate_args = migrate_parser.parse_args(sys.argv[2:])
         sys.exit(_run_migrate(migrate_args))
 
     # Bootstrap services (dependency injection setup)
     bootstrap_services()
-    
+
     # Get services from DI container
     container = get_container()
     processor_service = container.resolve(IProcessorService)
     export_service = container.resolve(IExportService)
     config_service = container.resolve(IConfigService)
     logging_service = container.resolve(ILoggingService)
-    
+
     # Create CLI processor
     cli_processor = CLIProcessor(
         processor_service=processor_service,
@@ -130,77 +141,186 @@ def main():
         config_service=config_service,
         logging_service=logging_service,
     )
-    
+
     # Set up command-line argument parser with all available options
-    ap = argparse.ArgumentParser(description="Enrich Rekordbox playlist with Beatport metadata (Accuracy + Logs + Candidates)")
-    
+    ap = argparse.ArgumentParser(
+        description="Enrich Rekordbox playlist with Beatport metadata (Accuracy + Logs + Candidates)"
+    )
+
     # Required arguments (optional when --verify-outputs)
     ap.add_argument("--xml", required=False, help="Path to Rekordbox XML export file")
     ap.add_argument("--playlist", required=False, help="Playlist name in the XML file")
-    ap.add_argument("--out", default="beatport_enriched.csv", help="Output CSV base name (timestamp auto-appended)")
+    ap.add_argument(
+        "--out",
+        default="beatport_enriched.csv",
+        help="Output CSV base name (timestamp auto-appended)",
+    )
     ap.add_argument("--output-dir", default=None, help="Output directory path")
-    ap.add_argument("--run-summary-json", default=None, help="Write run summary JSON to this path")
-    ap.add_argument("--preflight-report", default=None, help="Write preflight report JSON to this path")
+    ap.add_argument(
+        "--run-summary-json", default=None, help="Write run summary JSON to this path"
+    )
+    ap.add_argument(
+        "--preflight-report",
+        default=None,
+        help="Write preflight report JSON to this path",
+    )
 
     # Performance presets - these optimize for speed vs accuracy tradeoffs
-    ap.add_argument("--fast", action="store_true", help="Faster defaults (safe) - reduces search results and time budgets")
-    ap.add_argument("--turbo", action="store_true", help="Maximum speed (be gentle) - aggressive speed optimizations")
-    ap.add_argument("--exhaustive", action="store_true",
-                    help="Explode query variants (grams×artists), raise DDG per-query cap, extend time budget")
+    ap.add_argument(
+        "--fast",
+        action="store_true",
+        help="Faster defaults (safe) - reduces search results and time budgets",
+    )
+    ap.add_argument(
+        "--turbo",
+        action="store_true",
+        help="Maximum speed (be gentle) - aggressive speed optimizations",
+    )
+    ap.add_argument(
+        "--exhaustive",
+        action="store_true",
+        help="Explode query variants (grams×artists), raise DDG per-query cap, extend time budget",
+    )
 
     # Logging options (Design 7.148)
-    ap.add_argument("--verbose", action="store_true", help="Verbose logs - shows detailed progress information")
-    ap.add_argument("--trace", action="store_true", help="Very detailed per-candidate logs - shows every candidate evaluated")
-    ap.add_argument("--debug", action="store_true", help="Debug mode: extra detail for support (sets verbose + trace)")
+    ap.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Verbose logs - shows detailed progress information",
+    )
+    ap.add_argument(
+        "--trace",
+        action="store_true",
+        help="Very detailed per-candidate logs - shows every candidate evaluated",
+    )
+    ap.add_argument(
+        "--debug",
+        action="store_true",
+        help="Debug mode: extra detail for support (sets verbose + trace)",
+    )
 
     # Determinism control
-    ap.add_argument("--seed", type=int, default=0, help="Random seed for determinism (default 0) - ensures reproducible results")
+    ap.add_argument(
+        "--seed",
+        type=int,
+        default=0,
+        help="Random seed for determinism (default 0) - ensures reproducible results",
+    )
 
     # Configuration file
-    ap.add_argument("--config", type=str, default=None,
-                    help="Path to YAML configuration file - settings in file are merged with defaults, CLI flags override file settings")
+    ap.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="Path to YAML configuration file - settings in file are merged with defaults, CLI flags override file settings",
+    )
 
     # Advanced query options
-    ap.add_argument("--all-queries", action="store_true",
-                help="Run EVERY query variation: disable time budget, wait for all candidates, allow tri-gram crosses")
-    ap.add_argument("--myargs", action="store_true",
-                    help="Ultra-aggressive preset: goes beyond defaults for maximum match discovery (slower but finds more tracks)")
-    ap.add_argument("--auto-research", action="store_true",
-                    help="Automatically re-search unmatched tracks without prompting - useful for batch processing")
-    ap.add_argument("--no-preflight", action="store_true", help="Skip preflight validation (advanced)")
-    ap.add_argument("--preflight-only", action="store_true", help="Run preflight only and exit")
+    ap.add_argument(
+        "--all-queries",
+        action="store_true",
+        help="Run EVERY query variation: disable time budget, wait for all candidates, allow tri-gram crosses",
+    )
+    ap.add_argument(
+        "--myargs",
+        action="store_true",
+        help="Ultra-aggressive preset: goes beyond defaults for maximum match discovery (slower but finds more tracks)",
+    )
+    ap.add_argument(
+        "--auto-research",
+        action="store_true",
+        help="Automatically re-search unmatched tracks without prompting - useful for batch processing",
+    )
+    ap.add_argument(
+        "--no-preflight",
+        action="store_true",
+        help="Skip preflight validation (advanced)",
+    )
+    ap.add_argument(
+        "--preflight-only", action="store_true", help="Run preflight only and exit"
+    )
     ap.add_argument("--dry-run", action="store_true", help="Alias for --preflight-only")
     # Design 6.63, 6.142: Performance CLI flags
-    ap.add_argument("--max-workers", type=int, default=None, metavar="N",
-                    help="Max parallel track workers (overrides performance.max_workers)")
-    ap.add_argument("--max-queries-per-track", type=int, default=None, metavar="N",
-                    help="Max queries per track (overrides performance.max_queries_per_track)")
-    ap.add_argument("--benchmark", action="store_true",
-                    help="Benchmark mode: collect and save performance metrics to output dir")
+    ap.add_argument(
+        "--max-workers",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Max parallel track workers (overrides performance.max_workers)",
+    )
+    ap.add_argument(
+        "--max-queries-per-track",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Max queries per track (overrides performance.max_queries_per_track)",
+    )
+    ap.add_argument(
+        "--benchmark",
+        action="store_true",
+        help="Benchmark mode: collect and save performance metrics to output dir",
+    )
     # Design 9: Data integrity - verify outputs
-    ap.add_argument("--verify-outputs", action="store_true",
-                    help="Verify output files (schema, checksums) in output directory; requires --output-dir")
-    ap.add_argument("--no-checksums", action="store_true",
-                    help="Skip writing checksums when exporting (use with normal run)")
-    ap.add_argument("--no-audit-log", action="store_true",
-                    help="Skip writing audit log when exporting (use with normal run)")
-    ap.add_argument("--review-only", action="store_true",
-                    help="Export only low-confidence tracks (review mode) - no main CSV")
+    ap.add_argument(
+        "--verify-outputs",
+        action="store_true",
+        help="Verify output files (schema, checksums) in output directory; requires --output-dir",
+    )
+    ap.add_argument(
+        "--no-checksums",
+        action="store_true",
+        help="Skip writing checksums when exporting (use with normal run)",
+    )
+    ap.add_argument(
+        "--no-audit-log",
+        action="store_true",
+        help="Skip writing audit log when exporting (use with normal run)",
+    )
+    ap.add_argument(
+        "--review-only",
+        action="store_true",
+        help="Export only low-confidence tracks (review mode) - no main CSV",
+    )
 
     # Design 5.47, 5.90, 5.153: Resume and reliability
-    ap.add_argument("--resume", action="store_true", help="Resume from last checkpoint if available")
+    ap.add_argument(
+        "--resume", action="store_true", help="Resume from last checkpoint if available"
+    )
     # Design 6: Incremental processing - only process new tracks
-    ap.add_argument("--incremental", type=str, default=None, metavar="CSV_PATH",
-                    help="Incremental mode: path to previous run's main CSV; only process tracks not already in it")
-    ap.add_argument("--no-resume", action="store_true", help="Do not resume; start fresh (ignore checkpoint)")
+    ap.add_argument(
+        "--incremental",
+        type=str,
+        default=None,
+        metavar="CSV_PATH",
+        help="Incremental mode: path to previous run's main CSV; only process tracks not already in it",
+    )
+    ap.add_argument(
+        "--no-resume",
+        action="store_true",
+        help="Do not resume; start fresh (ignore checkpoint)",
+    )
     # Step 12: Provider selection (Future-Proofing)
-    ap.add_argument("--provider", default=None, help="Search provider (e.g., beatport). Default: beatport")
+    ap.add_argument(
+        "--provider",
+        default=None,
+        help="Search provider (e.g., beatport). Default: beatport",
+    )
     # Step 11: Legal/policy flags
-    ap.add_argument("--show-privacy", action="store_true", help="Print privacy notice and exit")
-    ap.add_argument("--show-terms", action="store_true", help="Print terms of use and exit")
+    ap.add_argument(
+        "--show-privacy", action="store_true", help="Print privacy notice and exit"
+    )
+    ap.add_argument(
+        "--show-terms", action="store_true", help="Print terms of use and exit"
+    )
     # Step 14: Telemetry opt-in/out
-    ap.add_argument("--telemetry-enable", action="store_true", help="Enable opt-in telemetry")
-    ap.add_argument("--telemetry-disable", action="store_true", help="Disable telemetry and delete local data")
+    ap.add_argument(
+        "--telemetry-enable", action="store_true", help="Enable opt-in telemetry"
+    )
+    ap.add_argument(
+        "--telemetry-disable",
+        action="store_true",
+        help="Disable telemetry and delete local data",
+    )
     # Design 13.182: Support bundle export (Step 13)
     ap.add_argument(
         "--export-support-bundle",
@@ -214,10 +334,20 @@ def main():
         action="store_true",
         help="Generate maintenance report (dependencies, audit status) and exit",
     )
-    ap.add_argument("--checkpoint-every", type=int, default=None, metavar="N",
-                    help="Save checkpoint every N tracks (default: from config)")
-    ap.add_argument("--max-retries", type=int, default=None, metavar="N",
-                    help="Max network retries per request (default: from config)")
+    ap.add_argument(
+        "--checkpoint-every",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Save checkpoint every N tracks (default: from config)",
+    )
+    ap.add_argument(
+        "--max-retries",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Max network retries per request (default: from config)",
+    )
 
     args = ap.parse_args()
     if args.dry_run:
@@ -225,7 +355,6 @@ def main():
 
     # Design 13.182: --export-support-bundle - generate support bundle and exit
     if getattr(args, "export_support_bundle", False):
-
         from cuepoint.utils.paths import AppPaths
         from cuepoint.utils.support_bundle import SupportBundleGenerator
 
@@ -244,12 +373,14 @@ def main():
     # Step 11: Legal/policy CLI flags - show and exit
     if args.show_privacy:
         from cuepoint.utils.policy_docs import find_privacy_notice, load_policy_text
+
         path = find_privacy_notice()
         text = load_policy_text(path, "Privacy notice could not be loaded.")
         _safe_print_utf8(text)
         return
     if args.show_terms:
         from cuepoint.utils.policy_docs import find_terms_of_use, load_policy_text
+
         path = find_terms_of_use()
         text = load_policy_text(path, "Terms of use could not be loaded.")
         _safe_print_utf8(text)
@@ -263,6 +394,7 @@ def main():
             config_service.set("telemetry.enabled", False)
             try:
                 from cuepoint.services.interfaces import ITelemetryService
+
                 if container.is_registered(ITelemetryService):
                     telemetry = container.resolve(ITelemetryService)
                     telemetry.delete_local_data()
@@ -274,16 +406,21 @@ def main():
         if telemetry_enable:
             config_service.set("telemetry.enabled", True)
             config_service.save()
-            _safe_print_utf8("Telemetry enabled. Anonymous usage data will be collected when you run processing.")
+            _safe_print_utf8(
+                "Telemetry enabled. Anonymous usage data will be collected when you run processing."
+            )
             return
 
     # Design 9: Verify outputs mode - run verification and exit (no xml/playlist needed)
     if args.verify_outputs:
         from cuepoint.services.integrity_service import verify_outputs
+
         output_dir = args.output_dir or "output"
         output_dir = os.path.abspath(output_dir)
         if not os.path.isdir(output_dir):
-            print_error(f"Output directory not found: {output_dir}\nUse --output-dir to specify output directory.")
+            print_error(
+                f"Output directory not found: {output_dir}\nUse --output-dir to specify output directory."
+            )
         else:
             ok, errors = verify_outputs(output_dir, checksums=True, schema=True)
             if ok:
@@ -299,7 +436,9 @@ def main():
 
     # Require xml and playlist for normal processing
     if not args.xml or not args.playlist:
-        ap.error("--xml and --playlist are required for processing (or use --verify-outputs to verify existing outputs)")
+        ap.error(
+            "--xml and --playlist are required for processing (or use --verify-outputs to verify existing outputs)"
+        )
 
     # Load configuration from YAML file if specified
     # YAML settings are loaded first, then CLI presets override them
@@ -308,26 +447,36 @@ def main():
             # Use legacy load_config_from_yaml for backward compatibility
             # Then update ConfigService with those values
             from cuepoint.models.config import load_config_from_yaml
-            
+
             yaml_settings = load_config_from_yaml(args.config)
             # Update ConfigService with YAML settings
             for key, value in yaml_settings.items():
                 config_service.set(key, value)
             print(f"Loaded configuration from: {args.config}")
         except FileNotFoundError:
-            print_error(error_file_not_found(args.config, "Configuration", "Check the --config file path"))
+            print_error(
+                error_file_not_found(
+                    args.config, "Configuration", "Check the --config file path"
+                )
+            )
         except ImportError as e:
             if "yaml" in str(e).lower() or "pyyaml" in str(e).lower():
-                print_error(error_missing_dependency("pyyaml", "pip install pyyaml>=6.0"))
+                print_error(
+                    error_missing_dependency("pyyaml", "pip install pyyaml>=6.0")
+                )
             else:
-                print_error(error_missing_dependency(str(e).split()[-1] if e.args else "unknown"))
+                print_error(
+                    error_missing_dependency(
+                        str(e).split()[-1] if e.args else "unknown"
+                    )
+                )
         except ValueError as e:
             # Extract key information from ValueError if possible
             error_msg = str(e)
             invalid_key = None
             expected_type = None
             actual_value = None
-            
+
             # Try to parse ValueError message for key details
             if "Setting" in error_msg and "expects" in error_msg:
                 parts = error_msg.split("Setting ")[1].split(" expects ")
@@ -338,9 +487,15 @@ def main():
                         expected_type = type_parts[0].strip()
                         value_parts = type_parts[1].split(" (")
                         if len(value_parts) >= 1:
-                            actual_value = value_parts[0].strip() if value_parts else None
-            
-            print_error(error_config_invalid(args.config, e, invalid_key, expected_type, actual_value))
+                            actual_value = (
+                                value_parts[0].strip() if value_parts else None
+                            )
+
+            print_error(
+                error_config_invalid(
+                    args.config, e, invalid_key, expected_type, actual_value
+                )
+            )
         except Exception as e:
             print_error(error_config_invalid(args.config, e))
 
@@ -354,7 +509,7 @@ def main():
         config_service.set("TRACK_WORKERS", 4)
         config_service.set("PER_TRACK_TIME_BUDGET_SEC", 15)
         config_service.set("ENABLE_CACHE", True)
-    
+
     # Apply --turbo preset: maximum speed with minimal accuracy tradeoffs
     # - Very few search results (12)
     # - Maximum parallelism (12 candidate workers, 8 track workers)
@@ -365,7 +520,7 @@ def main():
         config_service.set("TRACK_WORKERS", 8)
         config_service.set("PER_TRACK_TIME_BUDGET_SEC", 10)
         config_service.set("ENABLE_CACHE", True)
-    
+
     # Apply --exhaustive preset: maximum accuracy with more queries and time
     # - Many search results (100)
     # - High parallelism (16 candidate workers, 8+ track workers)
@@ -382,7 +537,7 @@ def main():
         config_service.set("CROSS_TITLE_GRAMS_WITH_ARTISTS", True)
         config_service.set("CROSS_SMALL_ONLY", True)
         config_service.set("REVERSE_ORDER_QUERIES", False)
-    
+
     # Apply --all-queries preset: run every possible query variation
     # - No time budget limit (None)
     # - All query generation features enabled
@@ -463,6 +618,7 @@ def main():
         config_service.save()
         try:
             from cuepoint.services.interfaces import ITelemetryService
+
             if container.is_registered(ITelemetryService):
                 telemetry = container.resolve(ITelemetryService)
                 telemetry.delete_local_data()
@@ -471,11 +627,13 @@ def main():
 
     # Design 7.53: Set run ID for observability
     from cuepoint.utils.run_context import set_run_id
+
     run_id = set_run_id()
 
     # Step 14: Track app_start (CLI processing)
     try:
         from cuepoint.utils.telemetry_helper import get_telemetry
+
         get_telemetry().track("app_start", {"channel": "cli"})
     except Exception:
         pass
@@ -515,8 +673,10 @@ def main():
     if args.max_workers is not None and args.max_workers >= 1:
         config_service.set("performance.max_workers", args.max_workers)
     if args.max_queries_per_track is not None and args.max_queries_per_track >= 1:
-        config_service.set("performance.max_queries_per_track", args.max_queries_per_track)
-    
+        config_service.set(
+            "performance.max_queries_per_track", args.max_queries_per_track
+        )
+
     # Execute the main processing pipeline using CLIProcessor
     # This will:
     # 1. Parse the Rekordbox XML file

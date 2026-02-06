@@ -30,14 +30,14 @@ from cuepoint.update.version_utils import (
 )
 
 __all__ = [
-    'UpdateManager',
-    'UpdateChecker',
-    'UpdateDownloader',
-    'UpdateInstaller',
-    'UpdatePreferences',
-    'SignatureVerifier',
-    'VerificationResult',
-    'compare_versions',
-    'extract_base_version',
-    'parse_version',
+    "UpdateManager",
+    "UpdateChecker",
+    "UpdateDownloader",
+    "UpdateInstaller",
+    "UpdatePreferences",
+    "SignatureVerifier",
+    "VerificationResult",
+    "compare_versions",
+    "extract_base_version",
+    "parse_version",
 ]

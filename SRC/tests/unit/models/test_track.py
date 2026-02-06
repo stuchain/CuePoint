@@ -197,4 +197,3 @@ class TestTrackStringRepresentation:
         assert "Test Artist" in repr_str
         assert "128.0" in repr_str
         assert "2020" in repr_str
-

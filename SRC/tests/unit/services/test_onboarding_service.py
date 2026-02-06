@@ -55,4 +55,3 @@ def test_onboarding_uses_config_service_when_available(tmp_path):
     config_service.set.assert_any_call("product.onboarding_dismissed", False)
     config_service.set.assert_any_call("product.onboarding_version", "1.2.3")
     config_service.save.assert_called_once()
-

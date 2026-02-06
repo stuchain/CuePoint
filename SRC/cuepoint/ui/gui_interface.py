@@ -53,11 +53,15 @@ class ProgressInfo:
     total_tracks: int
     matched_count: int
     unmatched_count: int
-    current_track: Dict[str, str] = field(default_factory=dict)  # {'title': str, 'artists': str}
+    current_track: Dict[str, str] = field(
+        default_factory=dict
+    )  # {'title': str, 'artists': str}
     elapsed_time: float = 0.0
     eta_seconds: Optional[float] = None  # Design 6.36: ETA based on avg time per track
     status_message: Optional[str] = None  # e.g. "Retrying...", "Saving progress..."
-    reliability_state: Optional[str] = None  # Design 5.24: idle, running, retrying, paused, etc.
+    reliability_state: Optional[str] = (
+        None  # Design 5.24: idle, running, retrying, paused, etc.
+    )
 
     def __post_init__(self):
         """Calculate percentage if not provided"""
@@ -143,7 +147,9 @@ class TrackResult:
             "beatport_url": self.beatport_url or "",
             "title_sim": str(self.title_sim) if self.title_sim is not None else "0",
             "artist_sim": str(self.artist_sim) if self.artist_sim is not None else "0",
-            "match_score": f"{self.match_score:.1f}" if self.match_score is not None else "0.0",
+            "match_score": f"{self.match_score:.1f}"
+            if self.match_score is not None
+            else "0.0",
             "confidence": self.confidence or "low",
             "search_query_index": self.search_query_index or "0",
             "search_stop_query_index": self.search_stop_query_index or "0",

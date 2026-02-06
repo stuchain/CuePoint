@@ -14,7 +14,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional
 
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QCheckBox, QGroupBox, QHBoxLayout, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QGroupBox,
+    QHBoxLayout,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from cuepoint.services.privacy_service import PrivacyService
 
@@ -46,7 +53,9 @@ class PrivacySettingsWidget(QWidget):
         group_layout = QVBoxLayout(group)
 
         # Step 14: Telemetry opt-in (Design 14.14, 14.110)
-        self.chk_telemetry = QCheckBox("Help improve CuePoint by sharing anonymous usage data")
+        self.chk_telemetry = QCheckBox(
+            "Help improve CuePoint by sharing anonymous usage data"
+        )
         self.chk_telemetry.setToolTip(
             "When enabled, sends anonymized usage events (app start, run stats, error rates). "
             "No personal data, file paths, or playlist names are collected."
@@ -62,7 +71,9 @@ class PrivacySettingsWidget(QWidget):
         row = QHBoxLayout()
         row.addStretch()
         self.btn_manage = QPushButton("Manage data…")
-        self.btn_manage.setToolTip("Open the Privacy dialog for data deletion controls and disclosures")
+        self.btn_manage.setToolTip(
+            "Open the Privacy dialog for data deletion controls and disclosures"
+        )
         row.addWidget(self.btn_manage)
         group_layout.addLayout(row)
 
@@ -78,7 +89,9 @@ class PrivacySettingsWidget(QWidget):
         self.chk_clear_cache.setChecked(bool(prefs.clear_cache_on_exit))
         self.chk_clear_logs.setChecked(bool(prefs.clear_logs_on_exit))
         if self._config_controller:
-            enabled = self._config_controller.get_config_value("telemetry.enabled", False)
+            enabled = self._config_controller.get_config_value(
+                "telemetry.enabled", False
+            )
             self.chk_telemetry.setChecked(bool(enabled))
 
     def _on_telemetry_changed(self, checked: bool) -> None:
@@ -87,6 +100,7 @@ class PrivacySettingsWidget(QWidget):
             if not checked:
                 try:
                     from cuepoint.utils.telemetry_helper import get_telemetry
+
                     telemetry = get_telemetry()
                     telemetry.delete_local_data()
                 except Exception:
@@ -95,10 +109,3 @@ class PrivacySettingsWidget(QWidget):
     def _on_changed(self) -> None:
         self._privacy.set_clear_cache_on_exit(self.chk_clear_cache.isChecked())
         self._privacy.set_clear_logs_on_exit(self.chk_clear_logs.isChecked())
-
-
-
-
-
-
-

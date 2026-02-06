@@ -230,7 +230,9 @@ class AppConfig:
             },
             "export": {
                 "default_format": self.export.default_format,
-                "default_directory": str(self.export.default_directory) if self.export.default_directory else None,
+                "default_directory": str(self.export.default_directory)
+                if self.export.default_directory
+                else None,
                 "include_candidates": self.export.include_candidates,
             },
             "logging": {
@@ -321,10 +323,18 @@ class AppConfig:
             config.beatport = BeatportConfig(
                 base_url=beatport_data.get("base_url", config.beatport.base_url),
                 timeout=beatport_data.get("timeout", config.beatport.timeout),
-                max_retries=beatport_data.get("max_retries", config.beatport.max_retries),
-                rate_limit_delay=beatport_data.get("rate_limit_delay", config.beatport.rate_limit_delay),
-                connect_timeout=beatport_data.get("connect_timeout", config.beatport.connect_timeout),
-                read_timeout=beatport_data.get("read_timeout", config.beatport.read_timeout),
+                max_retries=beatport_data.get(
+                    "max_retries", config.beatport.max_retries
+                ),
+                rate_limit_delay=beatport_data.get(
+                    "rate_limit_delay", config.beatport.rate_limit_delay
+                ),
+                connect_timeout=beatport_data.get(
+                    "connect_timeout", config.beatport.connect_timeout
+                ),
+                read_timeout=beatport_data.get(
+                    "read_timeout", config.beatport.read_timeout
+                ),
             )
 
         if "cache" in data:
@@ -340,25 +350,44 @@ class AppConfig:
         if "processing" in data:
             processing_data = data["processing"]
             config.processing = ProcessingConfig(
-                max_concurrent=processing_data.get("max_concurrent", config.processing.max_concurrent),
-                timeout_per_track=processing_data.get("timeout_per_track", config.processing.timeout_per_track),
-                min_confidence=processing_data.get("min_confidence", config.processing.min_confidence),
-                max_candidates=processing_data.get("max_candidates", config.processing.max_candidates),
-                track_workers=processing_data.get("track_workers", config.processing.track_workers),
-                candidate_workers=processing_data.get("candidate_workers", config.processing.candidate_workers),
-                per_track_time_budget_sec=processing_data.get(
-                    "per_track_time_budget_sec", config.processing.per_track_time_budget_sec
+                max_concurrent=processing_data.get(
+                    "max_concurrent", config.processing.max_concurrent
                 ),
-                max_search_results=processing_data.get("max_search_results", config.processing.max_search_results),
+                timeout_per_track=processing_data.get(
+                    "timeout_per_track", config.processing.timeout_per_track
+                ),
+                min_confidence=processing_data.get(
+                    "min_confidence", config.processing.min_confidence
+                ),
+                max_candidates=processing_data.get(
+                    "max_candidates", config.processing.max_candidates
+                ),
+                track_workers=processing_data.get(
+                    "track_workers", config.processing.track_workers
+                ),
+                candidate_workers=processing_data.get(
+                    "candidate_workers", config.processing.candidate_workers
+                ),
+                per_track_time_budget_sec=processing_data.get(
+                    "per_track_time_budget_sec",
+                    config.processing.per_track_time_budget_sec,
+                ),
+                max_search_results=processing_data.get(
+                    "max_search_results", config.processing.max_search_results
+                ),
             )
 
         if "export" in data:
             export_data = data["export"]
             default_dir = export_data.get("default_directory")
             config.export = ExportConfig(
-                default_format=export_data.get("default_format", config.export.default_format),
+                default_format=export_data.get(
+                    "default_format", config.export.default_format
+                ),
                 default_directory=Path(default_dir) if default_dir else None,
-                include_candidates=export_data.get("include_candidates", config.export.include_candidates),
+                include_candidates=export_data.get(
+                    "include_candidates", config.export.include_candidates
+                ),
             )
 
         if "logging" in data:
@@ -366,11 +395,19 @@ class AppConfig:
             log_dir = logging_data.get("log_dir")
             config.logging = LoggingConfig(
                 level=logging_data.get("level", config.logging.level),
-                file_enabled=logging_data.get("file_enabled", config.logging.file_enabled),
-                console_enabled=logging_data.get("console_enabled", config.logging.console_enabled),
+                file_enabled=logging_data.get(
+                    "file_enabled", config.logging.file_enabled
+                ),
+                console_enabled=logging_data.get(
+                    "console_enabled", config.logging.console_enabled
+                ),
                 log_dir=Path(log_dir) if log_dir else None,
-                max_file_size=logging_data.get("max_file_size", config.logging.max_file_size),
-                backup_count=logging_data.get("backup_count", config.logging.backup_count),
+                max_file_size=logging_data.get(
+                    "max_file_size", config.logging.max_file_size
+                ),
+                backup_count=logging_data.get(
+                    "backup_count", config.logging.backup_count
+                ),
                 verbose=logging_data.get("verbose", config.logging.verbose),
                 trace=logging_data.get("trace", config.logging.trace),
             )
@@ -382,13 +419,17 @@ class AppConfig:
                 font_size=ui_data.get("font_size", config.ui.font_size),
                 window_width=ui_data.get("window_width", config.ui.window_width),
                 window_height=ui_data.get("window_height", config.ui.window_height),
-                remember_window_size=ui_data.get("remember_window_size", config.ui.remember_window_size),
+                remember_window_size=ui_data.get(
+                    "remember_window_size", config.ui.remember_window_size
+                ),
             )
 
         if "product" in data:
             product_data = data["product"]
             config.product = ProductConfig(
-                onboarding_seen=product_data.get("onboarding_seen", config.product.onboarding_seen),
+                onboarding_seen=product_data.get(
+                    "onboarding_seen", config.product.onboarding_seen
+                ),
                 onboarding_dismissed=product_data.get(
                     "onboarding_dismissed", config.product.onboarding_dismissed
                 ),
@@ -404,7 +445,9 @@ class AppConfig:
                 preflight_network_check=product_data.get(
                     "preflight_network_check", config.product.preflight_network_check
                 ),
-                last_xml_path=product_data.get("last_xml_path", config.product.last_xml_path),
+                last_xml_path=product_data.get(
+                    "last_xml_path", config.product.last_xml_path
+                ),
                 last_output_dir=product_data.get(
                     "last_output_dir", config.product.last_output_dir
                 ),
@@ -425,34 +468,58 @@ class AppConfig:
         if "run_summary" in data:
             run_summary_data = data["run_summary"]
             config.run_summary = RunSummaryConfig(
-                write_json=run_summary_data.get("write_json", config.run_summary.write_json),
-                json_path=run_summary_data.get("json_path", config.run_summary.json_path),
+                write_json=run_summary_data.get(
+                    "write_json", config.run_summary.write_json
+                ),
+                json_path=run_summary_data.get(
+                    "json_path", config.run_summary.json_path
+                ),
             )
 
         if "matching" in data:
             matching_data = data["matching"]
             config.matching = MatchingConfig(
-                min_accept_score=matching_data.get("min_accept_score", config.matching.min_accept_score),
-                early_exit_score=matching_data.get("early_exit_score", config.matching.early_exit_score),
-                early_exit_min_queries=matching_data.get("early_exit_min_queries", config.matching.early_exit_min_queries),
-                title_weight=matching_data.get("title_weight", config.matching.title_weight),
-                artist_weight=matching_data.get("artist_weight", config.matching.artist_weight),
+                min_accept_score=matching_data.get(
+                    "min_accept_score", config.matching.min_accept_score
+                ),
+                early_exit_score=matching_data.get(
+                    "early_exit_score", config.matching.early_exit_score
+                ),
+                early_exit_min_queries=matching_data.get(
+                    "early_exit_min_queries", config.matching.early_exit_min_queries
+                ),
+                title_weight=matching_data.get(
+                    "title_weight", config.matching.title_weight
+                ),
+                artist_weight=matching_data.get(
+                    "artist_weight", config.matching.artist_weight
+                ),
             )
 
         if "reliability" in data:
             rel_data = data["reliability"]
             config.reliability = ReliabilityConfig(
                 max_retries=rel_data.get("max_retries", config.reliability.max_retries),
-                timeout_connect=rel_data.get("timeout_connect", config.reliability.timeout_connect),
-                timeout_read=rel_data.get("timeout_read", config.reliability.timeout_read),
-                checkpoint_every=rel_data.get("checkpoint_every", config.reliability.checkpoint_every),
-                resume_enabled=rel_data.get("resume_enabled", config.reliability.resume_enabled),
+                timeout_connect=rel_data.get(
+                    "timeout_connect", config.reliability.timeout_connect
+                ),
+                timeout_read=rel_data.get(
+                    "timeout_read", config.reliability.timeout_read
+                ),
+                checkpoint_every=rel_data.get(
+                    "checkpoint_every", config.reliability.checkpoint_every
+                ),
+                resume_enabled=rel_data.get(
+                    "resume_enabled", config.reliability.resume_enabled
+                ),
             )
 
         if "integrity" in data:
             int_data = data["integrity"]
             config.integrity = IntegrityConfig(
-                schema_version=int_data.get("schema_version", config.integrity.schema_version),
+                schema_version=int_data.get(
+                    "schema_version", config.integrity.schema_version
+                ),
                 checksums=int_data.get("checksums", config.integrity.checksums),
                 audit_log=int_data.get("audit_log", config.integrity.audit_log),
                 backups=int_data.get("backups", config.integrity.backups),
@@ -462,11 +529,15 @@ class AppConfig:
         if "performance" in data:
             perf_data = data["performance"]
             config.performance = PerformanceConfig(
-                max_workers=perf_data.get("max_workers", config.performance.max_workers),
+                max_workers=perf_data.get(
+                    "max_workers", config.performance.max_workers
+                ),
                 max_queries_per_track=perf_data.get(
                     "max_queries_per_track", config.performance.max_queries_per_track
                 ),
-                cache_max_mb=perf_data.get("cache_max_mb", config.performance.cache_max_mb),
+                cache_max_mb=perf_data.get(
+                    "cache_max_mb", config.performance.cache_max_mb
+                ),
                 runtime_max_minutes=perf_data.get(
                     "runtime_max_minutes", config.performance.runtime_max_minutes
                 ),
@@ -474,7 +545,8 @@ class AppConfig:
                     "progress_throttle_ms", config.performance.progress_throttle_ms
                 ),
                 eta_update_every_tracks=perf_data.get(
-                    "eta_update_every_tracks", config.performance.eta_update_every_tracks
+                    "eta_update_every_tracks",
+                    config.performance.eta_update_every_tracks,
                 ),
             )
 
@@ -483,8 +555,9 @@ class AppConfig:
             config.telemetry = TelemetryConfig(
                 enabled=tel_data.get("enabled", config.telemetry.enabled),
                 endpoint=tel_data.get("endpoint", config.telemetry.endpoint),
-                sample_rate=float(tel_data.get("sample_rate", config.telemetry.sample_rate)),
+                sample_rate=float(
+                    tel_data.get("sample_rate", config.telemetry.sample_rate)
+                ),
             )
 
         return config
-

@@ -44,7 +44,9 @@ def _strip_accents(s: str) -> str:
     if not s:
         return ""
     # Unicode normalization: decompose characters, then filter out combining marks (accents)
-    return "".join(ch for ch in unicodedata.normalize("NFKD", s) if not unicodedata.combining(ch))
+    return "".join(
+        ch for ch in unicodedata.normalize("NFKD", s) if not unicodedata.combining(ch)
+    )
 
 
 def normalize_text(s: str) -> str:
@@ -99,7 +101,9 @@ def normalize_text(s: str) -> str:
         flags=re.I,
     )
     s = re.sub(
-        r"(?i)(original\s*mix|extended\s*mix|radio\s*edit|club\s*mix|edit|vip|version)$", " ", s
+        r"(?i)(original\s*mix|extended\s*mix|radio\s*edit|club\s*mix|edit|vip|version)$",
+        " ",
+        s,
     )
     s = re.sub(r"(?i)(originalmix|extendedmix|radioedit|clubmix)$", " ", s)
     return s
@@ -163,7 +167,10 @@ def sanitize_title_for_search(title: str) -> str:
         flags=re.I,
     )
     t = re.sub(
-        r"\b(original mix|extended mix|radio edit|club mix|edit|vip|version)\b", " ", t, flags=re.I
+        r"\b(original mix|extended mix|radio edit|club mix|edit|vip|version)\b",
+        " ",
+        t,
+        flags=re.I,
     )
 
     # Remove numeric prefixes like [2-3], [3], etc.
@@ -201,7 +208,11 @@ def split_artists(artist_str: str) -> List[str]:
     """
     if not artist_str:
         return []
-    s = artist_str.replace(" feat. ", ", ").replace(" ft. ", ", ").replace(" featuring ", ", ")
+    s = (
+        artist_str.replace(" feat. ", ", ")
+        .replace(" ft. ", ", ")
+        .replace(" featuring ", ", ")
+    )
     parts = re.split(r",|&|/| x | vs | with ", s, flags=re.IGNORECASE)
     return [normalize_text(p) for p in parts if normalize_text(p)]
 

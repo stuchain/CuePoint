@@ -238,7 +238,9 @@ class TestCLIProcessor:
         original_dir = os.getcwd()
         try:
             os.chdir(tmp_path)
-            output_files = cli_processor._write_output_files(sample_results, "test_output", str(tmp_path))
+            output_files = cli_processor._write_output_files(
+                sample_results, "test_output", str(tmp_path)
+            )
         finally:
             os.chdir(original_dir)
 
@@ -263,19 +265,29 @@ class TestCLIProcessor:
             "review": "output/review.csv",
         }
 
-        cli_processor._display_summary(sample_results, output_files, 10.5, "Test Playlist", "test.xml")
+        cli_processor._display_summary(
+            sample_results, output_files, 10.5, "Test Playlist", "test.xml"
+        )
 
         # Verify logging service was called
         assert mock_services["logging_service"].info.called
 
         # Check that summary messages were logged
-        log_calls = [str(call) for call in mock_services["logging_service"].info.call_args_list]
+        log_calls = [
+            str(call) for call in mock_services["logging_service"].info.call_args_list
+        ]
         log_text = " ".join(log_calls)
 
-        assert "Run Summary" in log_text or any("Run Summary" in str(call) for call in log_calls)
-        assert "Matched" in log_text or any("Matched" in str(call) for call in log_calls)
+        assert "Run Summary" in log_text or any(
+            "Run Summary" in str(call) for call in log_calls
+        )
+        assert "Matched" in log_text or any(
+            "Matched" in str(call) for call in log_calls
+        )
 
-    def test_handle_unmatched_tracks(self, cli_processor, sample_results, mock_services):
+    def test_handle_unmatched_tracks(
+        self, cli_processor, sample_results, mock_services
+    ):
         """Test unmatched tracks handling."""
         # Mock stdin.isatty to simulate interactive mode
         with patch("sys.stdin.isatty", return_value=True):
@@ -297,9 +309,7 @@ class TestCLIProcessor:
         assert mock_services["logging_service"].warning.called
         assert mock_services["logging_service"].info.called
 
-    def test_handle_processing_error_file_not_found(
-        self, cli_processor, mock_services
-    ):
+    def test_handle_processing_error_file_not_found(self, cli_processor, mock_services):
         """Test error handling for file not found."""
         error = ProcessingError(
             message="File not found",
@@ -358,9 +368,9 @@ class TestCLIProcessor:
     ):
         """Test successful playlist processing."""
         # Setup mocks
-        mock_services["processor_service"].process_playlist_from_xml.return_value = (
-            sample_results
-        )
+        mock_services[
+            "processor_service"
+        ].process_playlist_from_xml.return_value = sample_results
         mock_write_csv.return_value = {
             "main": str(tmp_path / "main.csv"),
             "candidates": str(tmp_path / "candidates.csv"),
@@ -387,7 +397,9 @@ class TestCLIProcessor:
             os.chdir(original_dir)
 
         # Verify processor service was called
-        mock_services["processor_service"].process_playlist_from_xml.assert_called_once()
+        mock_services[
+            "processor_service"
+        ].process_playlist_from_xml.assert_called_once()
 
         # Verify export was called
         mock_write_csv.assert_called_once()
@@ -424,9 +436,9 @@ class TestCLIProcessor:
     ):
         """Test playlist processing with auto-research enabled."""
         # Setup mocks
-        mock_services["processor_service"].process_playlist_from_xml.return_value = (
-            sample_results
-        )
+        mock_services[
+            "processor_service"
+        ].process_playlist_from_xml.return_value = sample_results
 
         with patch("cuepoint.cli.cli_processor.write_csv_files") as mock_write_csv:
             mock_write_csv.return_value = {"main": "output/main.csv"}
@@ -448,7 +460,9 @@ class TestCLIProcessor:
                 os.chdir(original_dir)
 
             # Verify processor service was called with auto_research=True
-            call_args = mock_services["processor_service"].process_playlist_from_xml.call_args
+            call_args = mock_services[
+                "processor_service"
+            ].process_playlist_from_xml.call_args
             assert call_args.kwargs.get("auto_research") is True
 
             # Verify unmatched tracks handler was not called (auto-research skips prompt)
@@ -490,4 +504,3 @@ class TestCLIProcessor:
 
         # Should not crash
         assert cli_processor._pbar is not None
-

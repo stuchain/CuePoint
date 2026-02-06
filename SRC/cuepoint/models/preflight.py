@@ -43,9 +43,16 @@ class PreflightResult:
 
     def to_report(self) -> Dict[str, Any]:
         return {
-            "generated_at": self.generated_at.isoformat() if self.generated_at else None,
+            "generated_at": self.generated_at.isoformat()
+            if self.generated_at
+            else None,
             "warnings_only": self.warnings_only,
             "checks": self.checks,
-            "errors": [{"code": issue.code, "message": issue.message} for issue in self.errors],
-            "warnings": [{"code": issue.code, "message": issue.message} for issue in self.warnings],
+            "errors": [
+                {"code": issue.code, "message": issue.message} for issue in self.errors
+            ],
+            "warnings": [
+                {"code": issue.code, "message": issue.message}
+                for issue in self.warnings
+            ],
         }

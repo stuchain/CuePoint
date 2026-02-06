@@ -138,7 +138,9 @@ class DIContainer:
                     if param.default != inspect.Parameter.empty:
                         params[param_name] = param.default
                     else:
-                        raise ValueError(f"Cannot resolve dependency {param_name} for {cls}")
+                        raise ValueError(
+                            f"Cannot resolve dependency {param_name} for {cls}"
+                        )
 
         return cls(**params)
 

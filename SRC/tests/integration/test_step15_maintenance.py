@@ -36,7 +36,9 @@ def test_maintenance_report_script_runs() -> None:
         timeout=30,
     )
     assert result.returncode in (0, 1), f"Unexpected exit: {result.stderr}"
-    assert "Maintenance Report" in result.stdout or "maintenance_report" in result.stdout
+    assert (
+        "Maintenance Report" in result.stdout or "maintenance_report" in result.stdout
+    )
     assert "Python" in result.stdout
     assert "Platform" in result.stdout or "platform" in result.stdout.lower()
 
@@ -81,7 +83,9 @@ def test_maintenance_report_cli_flag() -> None:
         timeout=30,
     )
     assert result.returncode in (0, 1)
-    assert "Maintenance Report" in result.stdout or "maintenance_report" in result.stdout
+    assert (
+        "Maintenance Report" in result.stdout or "maintenance_report" in result.stdout
+    )
 
 
 @pytest.mark.integration

@@ -74,8 +74,12 @@ class SupportBundleGenerator:
                 # Diagnostics JSON (Design 7.24 schema)
                 diagnostics = DiagnosticCollector.collect_all()
                 if sanitize:
-                    diagnostics = SupportBundleGenerator._sanitize_diagnostics(diagnostics)
-                diag_json = json.dumps(diagnostics, indent=2, default=str, ensure_ascii=False)
+                    diagnostics = SupportBundleGenerator._sanitize_diagnostics(
+                        diagnostics
+                    )
+                diag_json = json.dumps(
+                    diagnostics, indent=2, default=str, ensure_ascii=False
+                )
                 zipf.writestr("diagnostics.json", diag_json)
                 total_size += len(diag_json.encode("utf-8"))
 
@@ -86,13 +90,19 @@ class SupportBundleGenerator:
                         if total_size >= MAX_BUNDLE_SIZE_BYTES:
                             break
                         try:
-                            content = log_file.read_text(encoding="utf-8", errors="ignore")
+                            content = log_file.read_text(
+                                encoding="utf-8", errors="ignore"
+                            )
                             if sanitize:
-                                content = SupportBundleGenerator._sanitize_log_content(content)
+                                content = SupportBundleGenerator._sanitize_log_content(
+                                    content
+                                )
                             zipf.writestr(f"logs/{log_file.name}", content)
                             total_size += len(content.encode("utf-8"))
                         except Exception as e:
-                            logger.warning(f"Could not include log file {log_file}: {e}")
+                            logger.warning(
+                                f"Could not include log file {log_file}: {e}"
+                            )
 
                     # Crash logs (Design 7.23: also check crashes/ subdir)
                     crash_dirs = [log_dir, log_dir / "crashes"]
@@ -103,13 +113,21 @@ class SupportBundleGenerator:
                             if total_size >= MAX_BUNDLE_SIZE_BYTES:
                                 break
                             try:
-                                content = crash_file.read_text(encoding="utf-8", errors="ignore")
+                                content = crash_file.read_text(
+                                    encoding="utf-8", errors="ignore"
+                                )
                                 if sanitize:
-                                    content = SupportBundleGenerator._sanitize_log_content(content)
+                                    content = (
+                                        SupportBundleGenerator._sanitize_log_content(
+                                            content
+                                        )
+                                    )
                                 zipf.writestr(f"crashes/{crash_file.name}", content)
                                 total_size += len(content.encode("utf-8"))
                             except Exception as e:
-                                logger.warning(f"Could not include crash log {crash_file}: {e}")
+                                logger.warning(
+                                    f"Could not include crash log {crash_file}: {e}"
+                                )
 
                 # Config file (if exists, sanitized)
                 if include_config:
@@ -123,7 +141,11 @@ class SupportBundleGenerator:
                                 # Remove sensitive data
                                 if isinstance(config, dict):
                                     if sanitize:
-                                        config = SupportBundleGenerator._sanitize_config(config)
+                                        config = (
+                                            SupportBundleGenerator._sanitize_config(
+                                                config
+                                            )
+                                        )
                                     else:
                                         # Still remove obvious secrets
                                         config.pop("api_keys", None)
@@ -131,7 +153,9 @@ class SupportBundleGenerator:
                                         config.pop("password", None)
                             zipf.writestr(
                                 "config.yaml",
-                                yaml.dump(config, default_flow_style=False, allow_unicode=True),
+                                yaml.dump(
+                                    config, default_flow_style=False, allow_unicode=True
+                                ),
                             )
                         except ImportError:
                             logger.warning("yaml module not available, skipping config")
@@ -207,7 +231,11 @@ Contents:
                         st["paths"][k] = redact_path(v)
             if "status" in st and isinstance(st["status"], dict):
                 for k, v in st["status"].items():
-                    if isinstance(v, dict) and "path" in v and isinstance(v.get("path"), str):
+                    if (
+                        isinstance(v, dict)
+                        and "path" in v
+                        and isinstance(v.get("path"), str)
+                    ):
                         st["status"][k]["path"] = redact_path(v["path"])
 
         return sanitized
@@ -252,7 +280,15 @@ Contents:
         sanitized = config.copy()
 
         # Remove or redact sensitive keys
-        sensitive_keys = ["api_key", "api_keys", "token", "tokens", "password", "secret", "secrets"]
+        sensitive_keys = [
+            "api_key",
+            "api_keys",
+            "token",
+            "tokens",
+            "password",
+            "secret",
+            "secrets",
+        ]
         for key in sensitive_keys:
             if key in sanitized:
                 sanitized[key] = "[REDACTED]"

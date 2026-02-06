@@ -137,7 +137,9 @@ class IConfigService(ABC):
         pass
 
     @abstractmethod
-    def register_change_callback(self, callback: Callable[[str, Any, Any], None]) -> None:
+    def register_change_callback(
+        self, callback: Callable[[str, Any, Any], None]
+    ) -> None:
         """Register a callback to be notified when configuration changes.
 
         Args:
@@ -147,7 +149,9 @@ class IConfigService(ABC):
         pass
 
     @abstractmethod
-    def unregister_change_callback(self, callback: Callable[[str, Any, Any], None]) -> None:
+    def unregister_change_callback(
+        self, callback: Callable[[str, Any, Any], None]
+    ) -> None:
         """Unregister a configuration change callback.
 
         Args:
@@ -237,7 +241,9 @@ class ITelemetryService(ABC):
     """Interface for opt-in telemetry (Step 14)."""
 
     @abstractmethod
-    def track(self, event_name: str, properties: Optional[Dict[str, Any]] = None) -> None:
+    def track(
+        self, event_name: str, properties: Optional[Dict[str, Any]] = None
+    ) -> None:
         """Track a telemetry event. No-op if disabled."""
         pass
 

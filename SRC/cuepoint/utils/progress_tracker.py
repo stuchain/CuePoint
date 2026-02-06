@@ -38,8 +38,12 @@ class ProgressTracker:
         self.start_time = time.perf_counter()
         self.callback = callback
         self.track_times: list[float] = []
-        self.last_update_time = 0.0  # Initialize to 0 so first update always passes throttling
-        self.current_track_name = ""  # Store current track name for get_progress_message
+        self.last_update_time = (
+            0.0  # Initialize to 0 so first update always passes throttling
+        )
+        self.current_track_name = (
+            ""  # Store current track name for get_progress_message
+        )
 
     def update(
         self, current: int, track_name: str = "", force_update: bool = False
@@ -144,7 +148,9 @@ class ProgressTracker:
             Formatted string like "Processing: 5/10 (50.0%) - ETA: 30s"
         """
         info = self.get_current_info()
-        message = f"Processing: {info['current']}/{info['total']} ({info['percentage']:.1f}%)"
+        message = (
+            f"Processing: {info['current']}/{info['total']} ({info['percentage']:.1f}%)"
+        )
         if info["remaining"]:
             message += f" - ETA: {info['remaining']:.0f}s"
         if info["track_name"]:

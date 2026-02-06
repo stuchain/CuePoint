@@ -197,4 +197,3 @@ class BeatportCandidate:
             f"BeatportCandidate(url={self.url!r}, title={self.title!r}, "
             f"score={self.score:.1f}, guard_ok={self.guard_ok})"
         )
-

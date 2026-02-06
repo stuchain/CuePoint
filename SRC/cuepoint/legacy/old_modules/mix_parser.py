@@ -26,28 +26,30 @@ from text_processing import _strip_accents, normalize_text, _word_tokens
 
 # Regular expressions for detecting mix types in titles
 MIX_PATTERNS = {
-    "original": re.compile(r"\boriginal\s+mix\b", re.I),      # "Original Mix"
-    "extended": re.compile(r"\bextended\s+mix\b", re.I),      # "Extended Mix"
-    "club":     re.compile(r"\bclub\s+mix\b", re.I),          # "Club Mix"
-    "radio":    re.compile(r"\bradio\s+edit\b|\bradio\s+mix\b", re.I),  # "Radio Edit" or "Radio Mix"
-    "edit":     re.compile(r"\bedit\b", re.I),                # "Edit"
-    "remix":    re.compile(r"\bremix\b", re.I),               # "Remix"
-    "dub":      re.compile(r"\bdub\s+mix\b|\bdub\b", re.I),   # "Dub Mix" or "Dub"
-    "guitar":   re.compile(r"\bguitar\s+mix\b|\bguitar\b", re.I),  # "Guitar Mix"
-    "vip":      re.compile(r"\bvip\b", re.I),               # "VIP"
-    "rework":   re.compile(r"\bre[-\s]?work\b", re.I),        # "Rework", "Re-work", "Re work"
-    "refire":   re.compile(r"\bre[-\s]?fire\b", re.I),        # "Refire", "Re-fire", "Re fire"
-    "acapella": re.compile(r"\bacapella\b", re.I),            # "Acapella"
-    "instrumental": re.compile(r"\binstrumental\b", re.I),     # "Instrumental"
+    "original": re.compile(r"\boriginal\s+mix\b", re.I),  # "Original Mix"
+    "extended": re.compile(r"\bextended\s+mix\b", re.I),  # "Extended Mix"
+    "club": re.compile(r"\bclub\s+mix\b", re.I),  # "Club Mix"
+    "radio": re.compile(
+        r"\bradio\s+edit\b|\bradio\s+mix\b", re.I
+    ),  # "Radio Edit" or "Radio Mix"
+    "edit": re.compile(r"\bedit\b", re.I),  # "Edit"
+    "remix": re.compile(r"\bremix\b", re.I),  # "Remix"
+    "dub": re.compile(r"\bdub\s+mix\b|\bdub\b", re.I),  # "Dub Mix" or "Dub"
+    "guitar": re.compile(r"\bguitar\s+mix\b|\bguitar\b", re.I),  # "Guitar Mix"
+    "vip": re.compile(r"\bvip\b", re.I),  # "VIP"
+    "rework": re.compile(r"\bre[-\s]?work\b", re.I),  # "Rework", "Re-work", "Re work"
+    "refire": re.compile(r"\bre[-\s]?fire\b", re.I),  # "Refire", "Re-fire", "Re fire"
+    "acapella": re.compile(r"\bacapella\b", re.I),  # "Acapella"
+    "instrumental": re.compile(r"\binstrumental\b", re.I),  # "Instrumental"
 }
 
 
 def _extract_remix_phrases(original_title: str) -> List[str]:
     """Extract remix phrases from title"""
     phrases = []
-    for pat in (r'\(([^)]*remix[^)]*)\)', r'\[([^\]]*remix[^\]]*)\]'):
+    for pat in (r"\(([^)]*remix[^)]*)\)", r"\[([^\]]*remix[^\]]*)\]"):
         for m in re.findall(pat, original_title, flags=re.I):
-            ph = re.sub(r'\s+', ' ', m.strip())
+            ph = re.sub(r"\s+", " ", m.strip())
             if ph:
                 phrases.append(ph)
     out, seen = [], set()
@@ -63,13 +65,13 @@ def _extract_original_mix_phrases(original_title: str) -> List[str]:
     """Extract original mix phrases from title"""
     phrases = []
     # 1) Parenthesized/bracketed "Original Mix"
-    for pat in (r'\(([^)]*original\s+mix[^)]*)\)', r'\[([^\]]*original\s+mix[^\]]*)\]'):
+    for pat in (r"\(([^)]*original\s+mix[^)]*)\)", r"\[([^\]]*original\s+mix[^\]]*)\]"):
         for m in re.findall(pat, original_title, flags=re.I):
-            ph = re.sub(r'\s+', ' ', m.strip())
+            ph = re.sub(r"\s+", " ", m.strip())
             if ph:
                 phrases.append(ph)
     # 2) Standalone "Original Mix" anywhere in the title (e.g., "… Original Mix")
-    if re.search(r'\boriginal\s+mix\b', original_title or "", flags=re.I):
+    if re.search(r"\boriginal\s+mix\b", original_title or "", flags=re.I):
         phrases.append("Original Mix")
     # Dedup, preserve order
     out, seen = [], set()
@@ -84,9 +86,9 @@ def _extract_original_mix_phrases(original_title: str) -> List[str]:
 def _extract_extended_mix_phrases(original_title: str) -> List[str]:
     """Extract extended mix phrases from title"""
     phrases = []
-    for pat in (r'\(([^)]*extended\s+mix[^)]*)\)', r'\[([^\]]*extended\s+mix[^\]]*)\]'):
+    for pat in (r"\(([^)]*extended\s+mix[^)]*)\)", r"\[([^\]]*extended\s+mix[^\]]*)\]"):
         for m in re.findall(pat, original_title, flags=re.I):
-            ph = re.sub(r'\s+', ' ', m.strip())
+            ph = re.sub(r"\s+", " ", m.strip())
             if ph:
                 phrases.append(ph)
     out, seen = [], set()
@@ -107,16 +109,20 @@ def _extract_generic_parenthetical_phrases(original_title: str) -> List[str]:
     if not original_title:
         return []
     phrases: List[str] = []
-    for pat in (r'\(([^)]{1,64})\)', r'\[([^\]]{1,64})\]'):
+    for pat in (r"\(([^)]{1,64})\)", r"\[([^\]]{1,64})\]"):
         for m in re.findall(pat, original_title, flags=re.I):
-            ph = re.sub(r'\s+', ' ', m.strip())
+            ph = re.sub(r"\s+", " ", m.strip())
             # Normalize dashes/hyphens inside the captured phrase (e.g., "Re–fire" → "Re-fire")
             ph = ph.replace("—", "-").replace("–", "-").replace("‐", "-")
             if not ph:
                 continue
-            if re.search(r'\b(feat\.?|ft\.?|featuring|original\s+mix|extended\s+mix|radio\s+edit|club\s+mix|remix|edit|version|vip|dub)\b', ph, flags=re.I):
+            if re.search(
+                r"\b(feat\.?|ft\.?|featuring|original\s+mix|extended\s+mix|radio\s+edit|club\s+mix|remix|edit|version|vip|dub)\b",
+                ph,
+                flags=re.I,
+            ):
                 continue
-            if re.fullmatch(r'[\d\s:\-\/]+', ph):
+            if re.fullmatch(r"[\d\s:\-\/]+", ph):
                 continue
             phrases.append(ph)
     out, seen = [], set()
@@ -169,13 +175,13 @@ def _infer_special_mix_intent(phrases: List[str]) -> Dict[str, bool]:
 def _extract_bracket_artist_hints(original_title: str) -> List[str]:
     """Extract artist hints from brackets"""
     hints = []
-    for m in re.findall(r'\[([^\]]+)\]', original_title):
+    for m in re.findall(r"\[([^\]]+)\]", original_title):
         token = m.strip()
         if not token:
             continue
-        if re.search(r'\b(remix|edit|mix|version)\b', token, flags=re.I):
+        if re.search(r"\b(remix|edit|mix|version)\b", token, flags=re.I):
             continue
-        if re.fullmatch(r'[\d\s\-]+', token):
+        if re.fullmatch(r"[\d\s\-]+", token):
             continue
         if len(token) <= 64:
             hints.append(token)
@@ -205,7 +211,7 @@ def _merge_name_lists(*names_lists: List[str]) -> str:
 
 def _split_display_names(s: str) -> List[str]:
     """Split display names string into list"""
-    parts = re.split(r'\s*,\s*|\s*&\s*|\s+and\s+|/\s*', s)
+    parts = re.split(r"\s*,\s*|\s*&\s*|\s+and\s+|/\s*", s)
     return [p.strip() for p in parts if p and p.strip()]
 
 
@@ -213,41 +219,47 @@ def _extract_remixer_names_from_title(title: str) -> List[str]:
     """Extract remixer names from title"""
     names = []
     # Extract from parenthetical remix patterns
-    for m in re.findall(r'\(([^)]*?)\bremix\b[^)]*\)', title, flags=re.I):
+    for m in re.findall(r"\(([^)]*?)\bremix\b[^)]*\)", title, flags=re.I):
         core = m
-        parts = re.split(r',|&| and | x |/|\+', core, flags=re.I)
+        parts = re.split(r",|&| and | x |/|\+", core, flags=re.I)
         for p in parts:
-            p = re.sub(r'\b(remix|edit|version|mix)\b', '', p, flags=re.I)
-            p = re.sub(r'\s{2,}', ' ', p).strip()
+            p = re.sub(r"\b(remix|edit|version|mix)\b", "", p, flags=re.I)
+            p = re.sub(r"\s{2,}", " ", p).strip()
             if p and len(p) <= 64:
                 names.append(p)
-    
+
     # Also extract from bracket patterns like [Marco Generani remix]
-    for m in re.findall(r'\[([^\]]*?)\bremix\b[^\]]*\]', title, flags=re.I):
+    for m in re.findall(r"\[([^\]]*?)\bremix\b[^\]]*\]", title, flags=re.I):
         core = m
-        parts = re.split(r',|&| and | x |/|\+', core, flags=re.I)
+        parts = re.split(r",|&| and | x |/|\+", core, flags=re.I)
         for p in parts:
-            p = re.sub(r'\b(remix|edit|version|mix)\b', '', p, flags=re.I)
-            p = re.sub(r'\s{2,}', ' ', p).strip()
+            p = re.sub(r"\b(remix|edit|version|mix)\b", "", p, flags=re.I)
+            p = re.sub(r"\s{2,}", " ", p).strip()
             if p and len(p) <= 64:
                 names.append(p)
-    
+
     # Also extract from bracket patterns without "remix" keyword like [Marco Generani]
-    for m in re.findall(r'\[([^\]]+)\]', title):
+    for m in re.findall(r"\[([^\]]+)\]", title):
         bracket_content = m.strip()
         # Skip if it looks like a number or single letter
-        if not re.match(r'^[\d\s\-]+$', bracket_content) and len(bracket_content) > 1:
+        if not re.match(r"^[\d\s\-]+$", bracket_content) and len(bracket_content) > 1:
             # Check if it contains remix-related terms
-            if re.search(r'\b(remix|edit|version|mix|rework|refire)\b', bracket_content, flags=re.I):
-                parts = re.split(r',|&| and | x |/|\+', bracket_content, flags=re.I)
+            if re.search(
+                r"\b(remix|edit|version|mix|rework|refire)\b",
+                bracket_content,
+                flags=re.I,
+            ):
+                parts = re.split(r",|&| and | x |/|\+", bracket_content, flags=re.I)
                 for p in parts:
-                    p = re.sub(r'\b(remix|edit|version|mix|rework|refire)\b', '', p, flags=re.I)
-                    p = re.sub(r'\s{2,}', ' ', p).strip()
+                    p = re.sub(
+                        r"\b(remix|edit|version|mix|rework|refire)\b", "", p, flags=re.I
+                    )
+                    p = re.sub(r"\s{2,}", " ", p).strip()
                     if p and len(p) <= 64:
                         names.append(p)
 
     # Fallback: detect "... <name> remix" without brackets (unicode-safe)
-    t = re.sub(r'\s{2,}', ' ', title).strip()
+    t = re.sub(r"\s{2,}", " ", title).strip()
 
     # First try a unicode-friendly class (handles letters like ä)
     m = re.search(r"([\w.+&' ]{2,64})\s+remix\b", t, flags=re.I)
@@ -258,8 +270,10 @@ def _extract_remixer_names_from_title(title: str) -> List[str]:
 
     if m:
         cand = m.group(1).strip()
-        if not re.search(r'\b(original|extended|club|radio|edit|version|mix)\b', cand, flags=re.I):
-            parts = [p for p in re.split(r'\s+', cand) if p]
+        if not re.search(
+            r"\b(original|extended|club|radio|edit|version|mix)\b", cand, flags=re.I
+        ):
+            parts = [p for p in re.split(r"\s+", cand) if p]
             for tail in (3, 2, 1):
                 if len(parts) >= tail:
                     guess = " ".join(parts[-tail:])
@@ -284,16 +298,16 @@ def _parse_mix_flags(title: str) -> Dict[str, object]:
     flags = {
         "is_original": bool(MIX_PATTERNS["original"].search(t)),
         "is_extended": bool(MIX_PATTERNS["extended"].search(t)),
-        "is_club":     bool(MIX_PATTERNS["club"].search(t)),
-        "is_radio":    bool(MIX_PATTERNS["radio"].search(t)),
-        "is_edit":     bool(MIX_PATTERNS["edit"].search(t)),
-        "is_remix":    bool(MIX_PATTERNS["remix"].search(t)),
-        "is_dub":      bool(MIX_PATTERNS["dub"].search(t)),
-        "is_guitar":   bool(MIX_PATTERNS["guitar"].search(t)),
-        "is_vip":      bool(MIX_PATTERNS["vip"].search(t)),
-        "is_rework":   bool(MIX_PATTERNS["rework"].search(t)),
-        "is_refire":   bool(MIX_PATTERNS["refire"].search(t)),
-        "remixers":    [],
+        "is_club": bool(MIX_PATTERNS["club"].search(t)),
+        "is_radio": bool(MIX_PATTERNS["radio"].search(t)),
+        "is_edit": bool(MIX_PATTERNS["edit"].search(t)),
+        "is_remix": bool(MIX_PATTERNS["remix"].search(t)),
+        "is_dub": bool(MIX_PATTERNS["dub"].search(t)),
+        "is_guitar": bool(MIX_PATTERNS["guitar"].search(t)),
+        "is_vip": bool(MIX_PATTERNS["vip"].search(t)),
+        "is_rework": bool(MIX_PATTERNS["rework"].search(t)),
+        "is_refire": bool(MIX_PATTERNS["refire"].search(t)),
+        "remixers": [],
         "remixer_tokens": set(),
         "is_acapella": bool(MIX_PATTERNS["acapella"].search(t)),
         "is_instrumental": bool(MIX_PATTERNS["instrumental"].search(t)),
@@ -308,10 +322,19 @@ def _parse_mix_flags(title: str) -> Dict[str, object]:
     flags["remixer_tokens"] = toks
 
     has_any_mix_token = (
-        flags["is_original"] or flags["is_extended"] or flags["is_club"] or
-        flags["is_radio"] or flags["is_edit"] or flags["is_remix"] or
-        flags["is_dub"] or flags["is_guitar"] or flags["is_vip"] or
-        flags["is_rework"] or flags["is_refire"] or flags["is_acapella"] or flags["is_instrumental"]
+        flags["is_original"]
+        or flags["is_extended"]
+        or flags["is_club"]
+        or flags["is_radio"]
+        or flags["is_edit"]
+        or flags["is_remix"]
+        or flags["is_dub"]
+        or flags["is_guitar"]
+        or flags["is_vip"]
+        or flags["is_rework"]
+        or flags["is_refire"]
+        or flags["is_acapella"]
+        or flags["is_instrumental"]
     )
 
     flags["prefer_plain"] = not has_any_mix_token
@@ -319,26 +342,28 @@ def _parse_mix_flags(title: str) -> Dict[str, object]:
     return flags
 
 
-def _mix_bonus(input_mix: Dict[str, object], cand_mix: Dict[str, object]) -> Tuple[int, str]:
+def _mix_bonus(
+    input_mix: Dict[str, object], cand_mix: Dict[str, object]
+) -> Tuple[int, str]:
     """Return (bonus, reason). Positive favors a consistent mix; negative penalizes mismatches."""
     bonus = 0
     reason = ""
 
     in_orig = bool(input_mix.get("is_original"))
-    in_ext  = bool(input_mix.get("is_extended"))
+    in_ext = bool(input_mix.get("is_extended"))
     in_remx = bool(input_mix.get("is_remix"))
     prefer_plain = bool(input_mix.get("prefer_plain"))
 
     c_orig = bool(cand_mix.get("is_original"))
-    c_ext  = bool(cand_mix.get("is_extended"))
+    c_ext = bool(cand_mix.get("is_extended"))
     c_remx = bool(cand_mix.get("is_remix"))
     c_club = bool(cand_mix.get("is_club"))
-    c_radio= bool(cand_mix.get("is_radio"))
+    c_radio = bool(cand_mix.get("is_radio"))
     c_edit = bool(cand_mix.get("is_edit"))
-    c_dub  = bool(cand_mix.get("is_dub"))
+    c_dub = bool(cand_mix.get("is_dub"))
     c_guit = bool(cand_mix.get("is_guitar"))
-    c_vip  = bool(cand_mix.get("is_vip"))
-    c_alt  = c_dub or c_guit or c_vip
+    c_vip = bool(cand_mix.get("is_vip"))
+    c_alt = c_dub or c_guit or c_vip
 
     if prefer_plain:
         if c_remx or c_alt or c_edit or c_radio:
@@ -433,7 +458,9 @@ def _mix_bonus(input_mix: Dict[str, object], cand_mix: Dict[str, object]) -> Tup
     return bonus, reason
 
 
-def _mix_ok_for_early_exit(input_mix: Dict[str, object], cand_mix: Dict[str, object], cand_artists: str = "") -> bool:
+def _mix_ok_for_early_exit(
+    input_mix: Dict[str, object], cand_mix: Dict[str, object], cand_artists: str = ""
+) -> bool:
     """Gate for early-exit: candidate must satisfy input mix intent if present.
     Also accepts a remixer match via candidate artists when title tokens are missing."""
     if not input_mix:
@@ -443,8 +470,14 @@ def _mix_ok_for_early_exit(input_mix: Dict[str, object], cand_mix: Dict[str, obj
         if cand_mix.get("is_original") or cand_mix.get("is_extended"):
             return True
         # treat plain titles (no explicit mix markers) as acceptable
-        is_plain = not (cand_mix.get("is_remix") or cand_mix.get("is_dub") or cand_mix.get("is_vip")
-                        or cand_mix.get("is_radio") or cand_mix.get("is_edit") or cand_mix.get("is_club"))
+        is_plain = not (
+            cand_mix.get("is_remix")
+            or cand_mix.get("is_dub")
+            or cand_mix.get("is_vip")
+            or cand_mix.get("is_radio")
+            or cand_mix.get("is_edit")
+            or cand_mix.get("is_club")
+        )
         return bool(is_plain)
 
     # Remix explicitly requested
@@ -459,7 +492,9 @@ def _mix_ok_for_early_exit(input_mix: Dict[str, object], cand_mix: Dict[str, obj
                 if itoks & ctoks:
                     return True
                 # 2) Fallback: remixer appears among candidate artists
-                artist_tokens = set(re.split(r'\s+', normalize_text(cand_artists or "")))
+                artist_tokens = set(
+                    re.split(r"\s+", normalize_text(cand_artists or ""))
+                )
                 return bool(itoks & artist_tokens)
             # remix requested but no specific remixer given → accept any remix or extended remix
             return True
@@ -468,4 +503,3 @@ def _mix_ok_for_early_exit(input_mix: Dict[str, object], cand_mix: Dict[str, obj
 
     # No explicit mix intent → OK
     return True
-

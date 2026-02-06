@@ -7,7 +7,6 @@ Unit tests for Step 5.6: Custom Exception Hierarchy
 Tests all custom exceptions and their features.
 """
 
-
 from cuepoint.exceptions.cuepoint_exceptions import (
     BeatportAPIError,
     CacheError,
@@ -47,9 +46,7 @@ class TestCuePointException:
     def test_exception_with_all_fields(self):
         """Test exception with all fields."""
         context = {"track": "Test Track"}
-        exc = CuePointException(
-            "Test error", error_code="TEST_ERROR", context=context
-        )
+        exc = CuePointException("Test error", error_code="TEST_ERROR", context=context)
         assert str(exc) == "[TEST_ERROR] Test error"
         assert exc.error_code == "TEST_ERROR"
         assert exc.context == context
@@ -184,4 +181,3 @@ class TestExceptionHierarchy:
         assert exc.context == context
         assert isinstance(exc, CuePointException)
         assert exc.context == context
-

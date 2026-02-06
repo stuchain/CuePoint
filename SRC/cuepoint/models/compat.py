@@ -40,18 +40,19 @@ def track_from_rbtrack(rbtrack: "RBTrack") -> Track:
     """
     # Handle empty artist field - try to extract from title, or use default
     artist = rbtrack.artists.strip() if rbtrack.artists else ""
-    
+
     # If artist is still empty, try to extract from title
     if not artist:
         from cuepoint.data.rekordbox import extract_artists_from_title
+
         extracted = extract_artists_from_title(rbtrack.title)
         if extracted:
             artist = extracted[0]  # Use extracted artist
-    
+
     # If still empty, use a default value to satisfy validation
     if not artist:
         artist = "Unknown Artist"
-    
+
     return Track(
         title=rbtrack.title,
         artist=artist,
@@ -137,7 +138,7 @@ def track_result_from_old(old: "OldTrackResult") -> TrackResult:
                 # 1. Old candidate dicts may use "candidate_url", "candidate_title", etc.
                 # 2. Old uses "genres", new uses "genre"
                 cand_data = {}
-                
+
                 # Map candidate_* fields to direct fields (processor.py format)
                 field_mapping = {
                     "candidate_url": "url",
@@ -155,67 +156,103 @@ def track_result_from_old(old: "OldTrackResult") -> TrackResult:
                     "search_query_text": "query_text",
                     "winner": "is_winner",
                 }
-                
+
                 # Copy fields, mapping candidate_* to direct names
                 for old_key, new_key in field_mapping.items():
                     if old_key in cand_dict:
                         cand_data[new_key] = cand_dict[old_key]
-                
+
                 # Also copy direct fields if they exist (processor_service.py format)
                 # Only copy if not already set from mapping
                 direct_fields = [
-                    "url", "title", "artists", "key", "release_year", "bpm", "label",
-                    "genres", "release_name", "release_date", "score", "title_sim",
-                    "artist_sim", "query_index", "query_text", "candidate_index",
-                    "base_score", "bonus_year", "bonus_key", "guard_ok", "reject_reason",
-                    "elapsed_ms", "is_winner",
+                    "url",
+                    "title",
+                    "artists",
+                    "key",
+                    "release_year",
+                    "bpm",
+                    "label",
+                    "genres",
+                    "release_name",
+                    "release_date",
+                    "score",
+                    "title_sim",
+                    "artist_sim",
+                    "query_index",
+                    "query_text",
+                    "candidate_index",
+                    "base_score",
+                    "bonus_year",
+                    "bonus_key",
+                    "guard_ok",
+                    "reject_reason",
+                    "elapsed_ms",
+                    "is_winner",
                 ]
                 for field in direct_fields:
                     if field in cand_dict and field not in cand_data:
                         cand_data[field] = cand_dict[field]
-                
+
                 # Handle genres -> genre conversion
                 if "genres" in cand_data and "genre" not in cand_data:
                     cand_data["genre"] = cand_data.pop("genres")
-                
+
                 # Handle string conversions for numeric fields
                 if "title_sim" in cand_data and isinstance(cand_data["title_sim"], str):
                     try:
                         cand_data["title_sim"] = int(cand_data["title_sim"])
                     except (ValueError, TypeError):
                         cand_data["title_sim"] = 0
-                
-                if "artist_sim" in cand_data and isinstance(cand_data["artist_sim"], str):
+
+                if "artist_sim" in cand_data and isinstance(
+                    cand_data["artist_sim"], str
+                ):
                     try:
                         cand_data["artist_sim"] = int(cand_data["artist_sim"])
                     except (ValueError, TypeError):
                         cand_data["artist_sim"] = 0
-                
+
                 if "score" in cand_data and isinstance(cand_data["score"], str):
                     try:
                         cand_data["score"] = float(cand_data["score"])
                     except (ValueError, TypeError):
                         cand_data["score"] = 0.0
-                
-                if "base_score" in cand_data and isinstance(cand_data["base_score"], str):
+
+                if "base_score" in cand_data and isinstance(
+                    cand_data["base_score"], str
+                ):
                     try:
                         cand_data["base_score"] = float(cand_data["base_score"])
                     except (ValueError, TypeError):
                         cand_data["base_score"] = 0.0
-                
+
                 # Handle guard_ok conversion (Y/N -> bool)
                 if "guard_ok" in cand_data:
                     if isinstance(cand_data["guard_ok"], str):
-                        cand_data["guard_ok"] = cand_data["guard_ok"].upper() in ("Y", "TRUE", "1", "YES")
+                        cand_data["guard_ok"] = cand_data["guard_ok"].upper() in (
+                            "Y",
+                            "TRUE",
+                            "1",
+                            "YES",
+                        )
                     elif not isinstance(cand_data["guard_ok"], bool):
                         cand_data["guard_ok"] = bool(cand_data["guard_ok"])
-                
+
                 # Handle is_winner conversion (Y/N -> bool)
                 if "winner" in cand_dict and "is_winner" not in cand_data:
-                    cand_data["is_winner"] = str(cand_dict.get("winner", "")).upper() in ("Y", "TRUE", "1", "YES")
-                elif "is_winner" in cand_data and isinstance(cand_data["is_winner"], str):
-                    cand_data["is_winner"] = cand_data["is_winner"].upper() in ("Y", "TRUE", "1", "YES")
-                
+                    cand_data["is_winner"] = str(
+                        cand_dict.get("winner", "")
+                    ).upper() in ("Y", "TRUE", "1", "YES")
+                elif "is_winner" in cand_data and isinstance(
+                    cand_data["is_winner"], str
+                ):
+                    cand_data["is_winner"] = cand_data["is_winner"].upper() in (
+                        "Y",
+                        "TRUE",
+                        "1",
+                        "YES",
+                    )
+
                 # Ensure all required fields have defaults
                 required_fields = {
                     "url": "",
@@ -240,48 +277,58 @@ def track_result_from_old(old: "OldTrackResult") -> TrackResult:
                     "elapsed_ms": 0,
                     "is_winner": False,
                 }
-                
+
                 # Fill in missing required fields (but don't overwrite existing values)
                 for key, default_value in required_fields.items():
                     if key not in cand_data:
                         cand_data[key] = default_value
-                
+
                 # Convert numeric fields
-                if "query_index" in cand_data and isinstance(cand_data["query_index"], str):
+                if "query_index" in cand_data and isinstance(
+                    cand_data["query_index"], str
+                ):
                     try:
                         cand_data["query_index"] = int(cand_data["query_index"])
                     except (ValueError, TypeError):
                         cand_data["query_index"] = 0
-                
-                if "candidate_index" in cand_data and isinstance(cand_data["candidate_index"], str):
+
+                if "candidate_index" in cand_data and isinstance(
+                    cand_data["candidate_index"], str
+                ):
                     try:
                         cand_data["candidate_index"] = int(cand_data["candidate_index"])
                     except (ValueError, TypeError):
                         cand_data["candidate_index"] = 0
-                
-                if "bonus_year" in cand_data and isinstance(cand_data["bonus_year"], str):
+
+                if "bonus_year" in cand_data and isinstance(
+                    cand_data["bonus_year"], str
+                ):
                     try:
                         cand_data["bonus_year"] = int(cand_data["bonus_year"])
                     except (ValueError, TypeError):
                         cand_data["bonus_year"] = 0
-                
+
                 if "bonus_key" in cand_data and isinstance(cand_data["bonus_key"], str):
                     try:
                         cand_data["bonus_key"] = int(cand_data["bonus_key"])
                     except (ValueError, TypeError):
                         cand_data["bonus_key"] = 0
-                
-                if "elapsed_ms" in cand_data and isinstance(cand_data["elapsed_ms"], str):
+
+                if "elapsed_ms" in cand_data and isinstance(
+                    cand_data["elapsed_ms"], str
+                ):
                     try:
                         cand_data["elapsed_ms"] = int(cand_data["elapsed_ms"])
                     except (ValueError, TypeError):
                         cand_data["elapsed_ms"] = 0
-                
+
                 # Skip if URL is empty or missing (validation will fail)
                 url_value = cand_data.get("url")
-                if not url_value or (isinstance(url_value, str) and not url_value.strip()):
+                if not url_value or (
+                    isinstance(url_value, str) and not url_value.strip()
+                ):
                     continue
-                
+
                 # Try to create from dict
                 # This will raise ValueError if validation fails
                 try:
@@ -325,6 +372,7 @@ def track_result_from_old(old: "OldTrackResult") -> TrackResult:
 def track_result_to_old(new: TrackResult) -> "OldTrackResult":
     # Lazy import to avoid circular dependency
     from cuepoint.ui.gui_interface import TrackResult as OldTrackResult
+
     """Convert new TrackResult back to old model (for backward compatibility).
 
     This is useful when you need to pass a TrackResult to code that still
@@ -378,4 +426,3 @@ def track_result_to_old(new: TrackResult) -> "OldTrackResult":
         candidates=candidates_dict,
         queries=new.queries_data if new.queries_data else [],
     )
-

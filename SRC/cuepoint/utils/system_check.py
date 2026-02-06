@@ -71,7 +71,10 @@ class SystemRequirements:
         """
         platform_name = get_platform()
         if platform_name not in ("macos", "windows"):
-            return False, f"Unsupported platform: {platform_name}. Only macOS and Windows are supported."
+            return (
+                False,
+                f"Unsupported platform: {platform_name}. Only macOS and Windows are supported.",
+            )
         return True, None
 
     @staticmethod
@@ -86,7 +89,9 @@ class SystemRequirements:
                 version_str = platform.mac_ver()[0]
                 version_parts = [int(x) for x in version_str.split(".")[:2]]
                 if tuple(version_parts) < SystemRequirements.MIN_MACOS_VERSION:
-                    min_version_str = ".".join(map(str, SystemRequirements.MIN_MACOS_VERSION))
+                    min_version_str = ".".join(
+                        map(str, SystemRequirements.MIN_MACOS_VERSION)
+                    )
                     return False, (
                         f"macOS {min_version_str}+ required, found {version_str}. "
                         f"Please upgrade to macOS {min_version_str} or later."
@@ -184,7 +189,11 @@ class SystemRequirements:
         """
         info = {
             "platform": get_platform(),
-            "os_version": platform.version() if is_windows() else platform.mac_ver()[0] if is_macos() else "unknown",
+            "os_version": platform.version()
+            if is_windows()
+            else platform.mac_ver()[0]
+            if is_macos()
+            else "unknown",
             "architecture": platform.machine(),
             "python_version": sys.version,
         }

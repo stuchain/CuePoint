@@ -68,16 +68,17 @@ def load_processed_track_keys(csv_path: str) -> Set[tuple]:
     try:
         _, rows = read_csv_skip_comments(path)
         for row in rows:
-                idx = row.get("playlist_index", "")
-                title = row.get("original_title", "")
-                artist = row.get("original_artists", "")
-                try:
-                    keys.add((int(idx) if idx else 0, title or "", artist or ""))
-                except ValueError:
-                    pass
+            idx = row.get("playlist_index", "")
+            title = row.get("original_title", "")
+            artist = row.get("original_artists", "")
+            try:
+                keys.add((int(idx) if idx else 0, title or "", artist or ""))
+            except ValueError:
+                pass
     except (OSError, csv.Error):
         pass
     return keys
+
 
 # Try to import openpyxl for Excel export
 try:
@@ -215,7 +216,9 @@ def write_csv_files(
         output_files["candidates"] = candidates_path
 
     # Write queries CSV (with same delimiter)
-    queries_path = write_queries_csv(results, timestamped_filename, output_dir, delimiter=delimiter)
+    queries_path = write_queries_csv(
+        results, timestamped_filename, output_dir, delimiter=delimiter
+    )
     if queries_path:
         output_files["queries"] = queries_path
 
@@ -360,7 +363,9 @@ def write_main_csv(
 
         # Design 9: Schema headers (must be first lines)
         effective_run_id = run_id or generate_run_id()
-        header_lines = get_csv_header_lines(SCHEMA_VERSION, effective_run_id, run_status)
+        header_lines = get_csv_header_lines(
+            SCHEMA_VERSION, effective_run_id, run_status
+        )
 
         # Design 6.31: Precompute all rows for batched write
         all_rows = []
@@ -488,9 +493,7 @@ def append_rows_to_main_csv(
     fieldnames = _main_csv_fieldnames(include_metadata)
     buffer_size = WRITE_BUFFER_SIZE if len(results) >= WRITE_BATCH_THRESHOLD else -1
     try:
-        with open(
-            path, "a", newline="", encoding="utf-8", buffering=buffer_size
-        ) as f:
+        with open(path, "a", newline="", encoding="utf-8", buffering=buffer_size) as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter=delimiter)
             all_rows = []
             for result in results:
@@ -507,7 +510,10 @@ def append_rows_to_main_csv(
 
 
 def write_candidates_csv(
-    results: List[TrackResult], base_filename: str, output_dir: str = "output", delimiter: str = ","
+    results: List[TrackResult],
+    base_filename: str,
+    output_dir: str = "output",
+    delimiter: str = ",",
 ) -> Optional[str]:
     """
     Write candidates CSV file (all candidates evaluated for all tracks).
@@ -524,7 +530,9 @@ def write_candidates_csv(
     # Collect all candidates from all tracks
     all_candidates = []
     for result in results:
-        all_candidates.extend(result.candidates_data)  # Use candidates_data for dict format
+        all_candidates.extend(
+            result.candidates_data
+        )  # Use candidates_data for dict format
 
     if not all_candidates:
         return None
@@ -552,7 +560,10 @@ def write_candidates_csv(
 
 
 def write_queries_csv(
-    results: List[TrackResult], base_filename: str, output_dir: str = "output", delimiter: str = ","
+    results: List[TrackResult],
+    base_filename: str,
+    output_dir: str = "output",
+    delimiter: str = ",",
 ) -> Optional[str]:
     """
     Write queries CSV file (all queries executed for all tracks).
@@ -688,12 +699,18 @@ def write_review_candidates_csv(
 
     all_candidates = []
     for result in review_results:
-        all_candidates.extend(result.candidates_data)  # Use candidates_data for dict format
+        all_candidates.extend(
+            result.candidates_data
+        )  # Use candidates_data for dict format
 
     if not all_candidates:
         return None
 
-    base = base_filename.replace(".csv", "") if base_filename.endswith(".csv") else base_filename
+    base = (
+        base_filename.replace(".csv", "")
+        if base_filename.endswith(".csv")
+        else base_filename
+    )
     filepath = os.path.join(output_dir, f"{base}_review_candidates.csv")
 
     fieldnames = list(all_candidates[0].keys())
@@ -724,7 +741,11 @@ def write_review_queries_csv(
     if not all_queries:
         return None
 
-    base = base_filename.replace(".csv", "") if base_filename.endswith(".csv") else base_filename
+    base = (
+        base_filename.replace(".csv", "")
+        if base_filename.endswith(".csv")
+        else base_filename
+    )
     filepath = os.path.join(output_dir, f"{base}_review_queries.csv")
 
     fieldnames = list(all_queries[0].keys())
@@ -818,7 +839,9 @@ def write_json_file(
             base_file_path = file_path
 
         # Ensure directory exists
-        output_dir = os.path.dirname(base_file_path) if os.path.dirname(base_file_path) else "."
+        output_dir = (
+            os.path.dirname(base_file_path) if os.path.dirname(base_file_path) else "."
+        )
         os.makedirs(output_dir, exist_ok=True)
 
         # Build JSON structure
@@ -854,7 +877,9 @@ def write_json_file(
                     "beatport_artists": result.beatport_artists or "",
                     "beatport_url": result.beatport_url,
                     "match_score": (
-                        float(result.match_score) if result.match_score is not None else None
+                        float(result.match_score)
+                        if result.match_score is not None
+                        else None
                     ),
                     "confidence": result.confidence or "unknown",
                     "key": result.beatport_key or "",
@@ -887,13 +912,19 @@ def write_json_file(
                     # Also include scores in metadata section
                     track_data["match"]["scores"] = {
                         "match_score": (
-                            float(result.match_score) if result.match_score is not None else None
+                            float(result.match_score)
+                            if result.match_score is not None
+                            else None
                         ),
                         "title_sim": (
-                            float(result.title_sim) if result.title_sim is not None else None
+                            float(result.title_sim)
+                            if result.title_sim is not None
+                            else None
                         ),
                         "artist_sim": (
-                            float(result.artist_sim) if result.artist_sim is not None else None
+                            float(result.artist_sim)
+                            if result.artist_sim is not None
+                            else None
                         ),
                     }
 
@@ -961,7 +992,9 @@ def write_json_file(
         raise RuntimeError(f"JSON export failed: {e}") from e
 
 
-def write_excel_file(results: List[TrackResult], file_path: str, playlist_name: str = "") -> str:
+def write_excel_file(
+    results: List[TrackResult], file_path: str, playlist_name: str = ""
+) -> str:
     """
     Write results to Excel file (.xlsx).
 
@@ -978,15 +1011,20 @@ def write_excel_file(results: List[TrackResult], file_path: str, playlist_name: 
     """
     if not OPENPYXL_AVAILABLE:
         raise ImportError(
-            "openpyxl is required for Excel export. " "Install it with: pip install openpyxl"
+            "openpyxl is required for Excel export. "
+            "Install it with: pip install openpyxl"
         )
 
-    os.makedirs(os.path.dirname(file_path) if os.path.dirname(file_path) else ".", exist_ok=True)
+    os.makedirs(
+        os.path.dirname(file_path) if os.path.dirname(file_path) else ".", exist_ok=True
+    )
 
     # Create workbook
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = playlist_name[:31] if playlist_name else "Results"  # Excel sheet name limit
+    ws.title = (
+        playlist_name[:31] if playlist_name else "Results"
+    )  # Excel sheet name limit
 
     # Define headers
     headers = [
@@ -1008,7 +1046,9 @@ def write_excel_file(results: List[TrackResult], file_path: str, playlist_name: 
     ]
 
     # Write headers with styling
-    header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+    header_fill = PatternFill(
+        start_color="366092", end_color="366092", fill_type="solid"
+    )
     header_font = Font(bold=True, color="FFFFFF")
 
     for col_idx, header in enumerate(headers, start=1):
@@ -1032,7 +1072,9 @@ def write_excel_file(results: List[TrackResult], file_path: str, playlist_name: 
         )
         ws.cell(row=row_idx, column=8, value=result.confidence or "")
         ws.cell(
-            row=row_idx, column=9, value=result.beatport_key_camelot or result.beatport_key or ""
+            row=row_idx,
+            column=9,
+            value=result.beatport_key_camelot or result.beatport_key or "",
         )
         ws.cell(
             row=row_idx,
@@ -1059,9 +1101,13 @@ def write_excel_file(results: List[TrackResult], file_path: str, playlist_name: 
 
         # Color code matched/unmatched rows
         if result.matched:
-            fill = PatternFill(start_color="E8F5E9", end_color="E8F5E9", fill_type="solid")
+            fill = PatternFill(
+                start_color="E8F5E9", end_color="E8F5E9", fill_type="solid"
+            )
         else:
-            fill = PatternFill(start_color="FFEBEE", end_color="FFEBEE", fill_type="solid")
+            fill = PatternFill(
+                start_color="FFEBEE", end_color="FFEBEE", fill_type="solid"
+            )
 
         for col_idx in range(1, len(headers) + 1):
             ws.cell(row=row_idx, column=col_idx).fill = fill
@@ -1090,7 +1136,9 @@ def write_excel_file(results: List[TrackResult], file_path: str, playlist_name: 
     return file_path
 
 
-def write_performance_report(stats, base_filename: str, output_dir: str = "output") -> str:
+def write_performance_report(
+    stats, base_filename: str, output_dir: str = "output"
+) -> str:
     """
     Generate and save performance report to file
 
@@ -1118,9 +1166,13 @@ def write_performance_report(stats, base_filename: str, output_dir: str = "outpu
     # Overall Statistics
     report_lines.append("Overall Performance:")
     report_lines.append(f"  Total tracks processed: {stats.total_tracks}")
-    report_lines.append(f"  Matched tracks: {stats.matched_tracks} ({stats.match_rate():.1f}%)")
+    report_lines.append(
+        f"  Matched tracks: {stats.matched_tracks} ({stats.match_rate():.1f}%)"
+    )
     report_lines.append(f"  Unmatched tracks: {stats.unmatched_tracks}")
-    report_lines.append(f"  Total processing time: {_format_time_for_report(stats.total_time)}")
+    report_lines.append(
+        f"  Total processing time: {_format_time_for_report(stats.total_time)}"
+    )
     report_lines.append(
         f"  Average time per track: {_format_time_for_report(stats.average_time_per_track())}"
     )
@@ -1135,7 +1187,9 @@ def write_performance_report(stats, base_filename: str, output_dir: str = "outpu
     report_lines.append("")
 
     # Query Type Breakdown
-    by_type = defaultdict(lambda: {"count": 0, "total_time": 0.0, "total_candidates": 0})
+    by_type = defaultdict(
+        lambda: {"count": 0, "total_time": 0.0, "total_candidates": 0}
+    )
     for query in stats.query_metrics:
         qtype = query.query_type
         by_type[qtype]["count"] += 1
@@ -1145,7 +1199,9 @@ def write_performance_report(stats, base_filename: str, output_dir: str = "outpu
     report_lines.append("Query Performance by Type:")
     for qtype, data in sorted(by_type.items()):
         avg_time = data["total_time"] / data["count"] if data["count"] > 0 else 0.0
-        avg_candidates = data["total_candidates"] / data["count"] if data["count"] > 0 else 0.0
+        avg_candidates = (
+            data["total_candidates"] / data["count"] if data["count"] > 0 else 0.0
+        )
         report_lines.append(f"  {qtype.replace('_', ' ').title()}:")
         report_lines.append(f"    Count: {data['count']}")
         report_lines.append(f"    Avg time: {_format_time_for_report(avg_time)}")
@@ -1165,7 +1221,9 @@ def write_performance_report(stats, base_filename: str, output_dir: str = "outpu
     for track in slowest:
         title_preview = track.track_title[:60]
         time_str = _format_time_for_report(track.total_time)
-        report_lines.append(f"  {title_preview}: {time_str} ({track.total_queries} queries)")
+        report_lines.append(
+            f"  {title_preview}: {time_str} ({track.total_queries} queries)"
+        )
     report_lines.append("")
 
     # Bottleneck Analysis
@@ -1216,7 +1274,9 @@ def _identify_bottlenecks(stats) -> List[str]:
     # Check track processing time
     avg_track_time = stats.average_time_per_track()
     if avg_track_time > 60.0:
-        bottlenecks.append(f"Slow track processing (avg {avg_track_time:.1f}s per track)")
+        bottlenecks.append(
+            f"Slow track processing (avg {avg_track_time:.1f}s per track)"
+        )
 
     # Check match rate
     match_rate = stats.match_rate()

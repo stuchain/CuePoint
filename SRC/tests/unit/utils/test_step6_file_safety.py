@@ -28,8 +28,8 @@ class TestSafeFileWriter:
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = Path(tmpdir) / "test.txt"
             content = b"test content"
-            
-            result = SafeFileWriter.write_atomic(file_path, content, mode='wb')
+
+            result = SafeFileWriter.write_atomic(file_path, content, mode="wb")
             assert result is True
             assert file_path.exists()
             assert file_path.read_bytes() == content
@@ -39,7 +39,7 @@ class TestSafeFileWriter:
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = Path(tmpdir) / "test.txt"
             content = "test content"
-            
+
             result = SafeFileWriter.write_text_atomic(file_path, content)
             assert result is True
             assert file_path.exists()
@@ -51,17 +51,19 @@ class TestSafeFileWriter:
             file_path = Path(tmpdir) / "test.txt"
             original_content = "original"
             new_content = "new content"
-            
+
             # Create original file
             file_path.write_text(original_content)
-            
+
             # Write with backup
-            result = SafeFileWriter.write_atomic(file_path, new_content.encode(), backup=True)
+            result = SafeFileWriter.write_atomic(
+                file_path, new_content.encode(), backup=True
+            )
             assert result is True
             assert file_path.read_text() == new_content
-            
+
             # Check backup exists
-            backup = file_path.with_suffix(file_path.suffix + '.bak')
+            backup = file_path.with_suffix(file_path.suffix + ".bak")
             assert backup.exists()
             assert backup.read_text() == original_content
 
@@ -70,9 +72,9 @@ class TestSafeFileWriter:
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = Path(tmpdir) / "test.txt"
             content = b"test"
-            
+
             SafeFileWriter.write_atomic(file_path, content)
-            
+
             # Verify write
             assert WriteVerifier.verify_write(file_path, expected_size=len(content))
 
@@ -80,7 +82,7 @@ class TestSafeFileWriter:
         """Test atomic write to restricted location."""
         # This would need actual restricted location to test properly
         # For now, just test the function exists
-        assert hasattr(SafeFileWriter, 'write_atomic')
+        assert hasattr(SafeFileWriter, "write_atomic")
 
 
 class TestWriteVerifier:
@@ -91,14 +93,14 @@ class TestWriteVerifier:
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = Path(tmpdir) / "test.txt"
             file_path.write_text("test")
-            
+
             assert WriteVerifier.verify_write(file_path) is True
 
     def test_verify_write_not_exists(self):
         """Test verifying non-existent file."""
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = Path(tmpdir) / "nonexistent.txt"
-            
+
             assert WriteVerifier.verify_write(file_path) is False
 
     def test_verify_write_size(self):
@@ -107,8 +109,11 @@ class TestWriteVerifier:
             file_path = Path(tmpdir) / "test.txt"
             content = b"test content"
             file_path.write_bytes(content)
-            
-            assert WriteVerifier.verify_write(file_path, expected_size=len(content)) is True
+
+            assert (
+                WriteVerifier.verify_write(file_path, expected_size=len(content))
+                is True
+            )
             assert WriteVerifier.verify_write(file_path, expected_size=999) is False
 
     def test_verify_content(self):
@@ -117,7 +122,7 @@ class TestWriteVerifier:
             file_path = Path(tmpdir) / "test.txt"
             content = b"test content"
             file_path.write_bytes(content)
-            
+
             assert WriteVerifier.verify_content(file_path, content) is True
             assert WriteVerifier.verify_content(file_path, b"different") is False
 
@@ -130,9 +135,9 @@ class TestBackupManager:
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = Path(tmpdir) / "test.txt"
             file_path.write_text("original content")
-            
+
             backup_path = BackupManager.create_backup(file_path)
-            
+
             assert backup_path.exists()
             assert backup_path.read_text() == "original content"
             assert backup_path.suffix == ".bak"
@@ -143,11 +148,11 @@ class TestBackupManager:
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = Path(tmpdir) / "test.txt"
             file_path.write_text("content")
-            
+
             # Create multiple backups with higher max_backups
             BackupManager.create_backup(file_path, max_backups=10)
             BackupManager.create_backup(file_path, max_backups=10)
-            
+
             backups = BackupManager.list_backups(file_path)
             assert len(backups) >= 1  # At least one backup should exist
             assert all(b.suffix == ".bak" for b in backups)
@@ -158,16 +163,16 @@ class TestBackupManager:
             file_path = Path(tmpdir) / "test.txt"
             original_content = "original"
             file_path.write_text(original_content)
-            
+
             # Create backup
             backup_path = BackupManager.create_backup(file_path)
-            
+
             # Modify file
             file_path.write_text("modified")
-            
+
             # Restore from backup (don't create backup of modified file)
             BackupManager.restore_backup(backup_path, file_path, create_backup=False)
-            
+
             assert file_path.read_text() == original_content
 
     def test_backup_cleanup(self):
@@ -175,11 +180,11 @@ class TestBackupManager:
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = Path(tmpdir) / "test.txt"
             file_path.write_text("content")
-            
+
             # Create more backups than max
             for _ in range(7):
                 BackupManager.create_backup(file_path, max_backups=5)
-            
+
             backups = BackupManager.list_backups(file_path)
             # Should have at most 5 backups
             assert len(backups) <= 5
@@ -188,7 +193,7 @@ class TestBackupManager:
         """Test creating backup of non-existent file."""
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = Path(tmpdir) / "nonexistent.txt"
-            
+
             with pytest.raises(FileNotFoundError):
                 BackupManager.create_backup(file_path)
 
@@ -201,7 +206,7 @@ class TestOverwriteProtection:
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = Path(tmpdir) / "test.txt"
             file_path.write_text("existing content")
-            
+
             would_overwrite, message = OverwriteProtection.check_overwrite(file_path)
             assert would_overwrite is True
             assert message is not None
@@ -211,7 +216,7 @@ class TestOverwriteProtection:
         """Test checking overwrite when file doesn't exist."""
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = Path(tmpdir) / "nonexistent.txt"
-            
+
             would_overwrite, message = OverwriteProtection.check_overwrite(file_path)
             assert would_overwrite is False
             assert message is None
@@ -222,18 +227,16 @@ class TestOverwriteProtection:
             file_path = Path(tmpdir) / "test.txt"
             original_content = "original"
             new_content = "new"
-            
+
             file_path.write_text(original_content)
-            
+
             result = OverwriteProtection.safe_overwrite(
-                file_path,
-                new_content,
-                create_backup=True
+                file_path, new_content, create_backup=True
             )
-            
+
             assert result is True
             assert file_path.read_text() == new_content
-            
+
             # Check backup was created
             backups = BackupManager.list_backups(file_path)
             assert len(backups) > 0
@@ -243,12 +246,10 @@ class TestOverwriteProtection:
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = Path(tmpdir) / "test.txt"
             file_path.write_text("original")
-            
+
             result = OverwriteProtection.safe_overwrite(
-                file_path,
-                "new",
-                create_backup=False
+                file_path, "new", create_backup=False
             )
-            
+
             assert result is True
             assert file_path.read_text() == "new"

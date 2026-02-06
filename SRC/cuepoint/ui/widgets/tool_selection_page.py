@@ -56,11 +56,7 @@ class ToolSelectionPage(QWidget):
         # Subtitle
         subtitle = QLabel("Select a tool to get started")
         subtitle.setAlignment(Qt.AlignCenter)
-        subtitle.setStyleSheet(
-            "font-size: 18px; "
-            "color: #666; "
-            "margin-bottom: 40px;"
-        )
+        subtitle.setStyleSheet("font-size: 18px; color: #666; margin-bottom: 40px;")
         layout.addWidget(subtitle)
 
         # Tool buttons container
@@ -96,11 +92,7 @@ class ToolSelectionPage(QWidget):
         # Tool description
         description = QLabel("Beatport Track Matching")
         description.setAlignment(Qt.AlignCenter)
-        description.setStyleSheet(
-            "font-size: 14px; "
-            "color: #888; "
-            "margin-top: 10px;"
-        )
+        description.setStyleSheet("font-size: 14px; color: #888; margin-top: 10px;")
         tools_layout.addWidget(description)
 
         layout.addLayout(tools_layout)
@@ -108,46 +100,48 @@ class ToolSelectionPage(QWidget):
 
     def _load_logo(self, size: Optional[Tuple[int, int]] = None) -> Optional[QLabel]:
         """Load and display the logo image.
-        
+
         Args:
             size: Optional tuple (width, height) to scale the logo.
-        
+
         Returns:
             QLabel with logo pixmap, or None if logo not found.
         """
         # Determine the logo path
-        if getattr(sys, 'frozen', False):
+        if getattr(sys, "frozen", False):
             # Running as packaged app
-            if hasattr(sys, '_MEIPASS'):
+            if hasattr(sys, "_MEIPASS"):
                 base_path = Path(sys._MEIPASS)
             else:
                 import os
+
                 base_path = Path(os.path.dirname(sys.executable))
-            logo_path = base_path / 'assets' / 'icons' / 'logo.png'
+            logo_path = base_path / "assets" / "icons" / "logo.png"
         else:
             # Running as script - use SRC/cuepoint/ui/assets/icons
             # This file is at SRC/cuepoint/ui/widgets/tool_selection_page.py
             # So parent.parent is SRC/cuepoint/ui/
             base_path = Path(__file__).resolve().parent.parent
-            logo_path = base_path / 'assets' / 'icons' / 'logo.png'
-        
+            logo_path = base_path / "assets" / "icons" / "logo.png"
+
         if not logo_path.exists():
             return None
-        
+
         try:
             pixmap = QPixmap(str(logo_path))
             if pixmap.isNull():
                 return None
-            
+
             # Scale if size specified
             if size:
                 width, height = size
                 pixmap = pixmap.scaled(
-                    width, height,
+                    width,
+                    height,
                     Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation
+                    Qt.TransformationMode.SmoothTransformation,
                 )
-            
+
             logo_label = QLabel()
             logo_label.setPixmap(pixmap)
             logo_label.setAlignment(Qt.AlignCenter)
@@ -158,4 +152,3 @@ class ToolSelectionPage(QWidget):
     def get_selected_tool(self) -> str:
         """Get the currently selected tool (for future use if multiple tools)"""
         return "inkey"  # Only tool for now
-

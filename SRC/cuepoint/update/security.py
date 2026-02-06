@@ -42,7 +42,10 @@ class FeedIntegrityVerifier:
         try:
             parsed = urlparse(url)
             if parsed.scheme != "https":
-                return False, f"Feed URL must use HTTPS, got: {parsed.scheme or 'missing scheme'}"
+                return (
+                    False,
+                    f"Feed URL must use HTTPS, got: {parsed.scheme or 'missing scheme'}",
+                )
             if not parsed.netloc:
                 return False, "Feed URL is missing a host"
             return True, None
@@ -55,7 +58,10 @@ class FeedIntegrityVerifier:
         try:
             parsed = urlparse(url)
             if parsed.scheme != "https":
-                return False, f"Download URL must use HTTPS, got: {parsed.scheme or 'missing scheme'}"
+                return (
+                    False,
+                    f"Download URL must use HTTPS, got: {parsed.scheme or 'missing scheme'}",
+                )
             if not parsed.netloc:
                 return False, "Download URL is missing a host"
             return True, None
@@ -67,7 +73,9 @@ class PackageIntegrityVerifier:
     """Verify update package integrity."""
 
     @staticmethod
-    def verify_checksum(file_path: Path, expected_checksum: str) -> Tuple[bool, Optional[str]]:
+    def verify_checksum(
+        file_path: Path, expected_checksum: str
+    ) -> Tuple[bool, Optional[str]]:
         """Verify package SHA-256 checksum.
 
         Args:
@@ -96,14 +104,19 @@ class PackageIntegrityVerifier:
             return False, f"Checksum verification error: {e}"
 
     @staticmethod
-    def verify_file_size(file_path: Path, expected_size: int) -> Tuple[bool, Optional[str]]:
+    def verify_file_size(
+        file_path: Path, expected_size: int
+    ) -> Tuple[bool, Optional[str]]:
         """Verify package file size matches expected bytes."""
         try:
             if expected_size < 0:
                 return False, "Expected size cannot be negative"
             actual_size = file_path.stat().st_size
             if actual_size != expected_size:
-                return False, f"File size mismatch: expected {expected_size}, got {actual_size}"
+                return (
+                    False,
+                    f"File size mismatch: expected {expected_size}, got {actual_size}",
+                )
             return True, None
         except FileNotFoundError:
             return False, f"File not found: {file_path}"
@@ -120,5 +133,3 @@ class PackageIntegrityVerifier:
             return True
         except ValueError:
             return False
-
-

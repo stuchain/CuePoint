@@ -444,4 +444,3 @@ class TestBeatportCandidateStringRepresentation:
         assert "Test Artist" in str(candidate)
         assert "Test Track" in str(candidate)
         assert "85.5" in str(candidate)
-

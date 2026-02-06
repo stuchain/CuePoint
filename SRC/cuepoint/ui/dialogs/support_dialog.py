@@ -33,7 +33,13 @@ class BundleGenerationThread(QThread):
     finished = Signal(Path)
     error = Signal(str)
 
-    def __init__(self, output_path: Path, include_logs: bool, include_config: bool, sanitize: bool):
+    def __init__(
+        self,
+        output_path: Path,
+        include_logs: bool,
+        include_config: bool,
+        sanitize: bool,
+    ):
         """Initialize bundle generation thread.
 
         Args:
@@ -103,15 +109,21 @@ class SupportBundleDialog(QDialog):
         options_label = QLabel(tr("support.bundle.options", "Include in bundle:"))
         layout.addWidget(options_label)
 
-        self.include_logs_checkbox = QCheckBox(tr("support.bundle.include_logs", "Application logs"))
+        self.include_logs_checkbox = QCheckBox(
+            tr("support.bundle.include_logs", "Application logs")
+        )
         self.include_logs_checkbox.setChecked(True)
         layout.addWidget(self.include_logs_checkbox)
 
-        self.include_config_checkbox = QCheckBox(tr("support.bundle.include_config", "Configuration files"))
+        self.include_config_checkbox = QCheckBox(
+            tr("support.bundle.include_config", "Configuration files")
+        )
         self.include_config_checkbox.setChecked(True)
         layout.addWidget(self.include_config_checkbox)
 
-        self.sanitize_checkbox = QCheckBox(tr("support.bundle.sanitize", "Sanitize sensitive information"))
+        self.sanitize_checkbox = QCheckBox(
+            tr("support.bundle.sanitize", "Sanitize sensitive information")
+        )
         self.sanitize_checkbox.setChecked(True)
         layout.addWidget(self.sanitize_checkbox)
 
@@ -140,7 +152,9 @@ class SupportBundleDialog(QDialog):
 
         button_layout.addStretch()
 
-        self.generate_button = QPushButton(tr("support.bundle.generate", "Generate Bundle"))
+        self.generate_button = QPushButton(
+            tr("support.bundle.generate", "Generate Bundle")
+        )
         self.generate_button.setDefault(True)
         self.generate_button.clicked.connect(self.generate_bundle)
         button_layout.addWidget(self.generate_button)
@@ -152,7 +166,9 @@ class SupportBundleDialog(QDialog):
         self.generate_button.setEnabled(False)
         self.progress_bar.setVisible(True)
         self.status_label.setVisible(True)
-        self.status_label.setText(tr("support.bundle.generating", "Generating support bundle..."))
+        self.status_label.setText(
+            tr("support.bundle.generating", "Generating support bundle...")
+        )
 
         # Get output directory
         output_dir = AppPaths.exports_dir()
@@ -187,11 +203,24 @@ class SupportBundleDialog(QDialog):
         # Show success message
         msg = QMessageBox(self)
         msg.setIcon(QMessageBox.Information)
-        msg.setWindowTitle(tr("support.bundle.success_title", "Support Bundle Generated"))
-        msg.setText(tr("support.bundle.success_text", "Support bundle generated successfully:\n{filename}").format(filename=bundle_path.name))
-        msg.setInformativeText(tr("support.bundle.success_info", "Location: {location}").format(location=bundle_path.parent))
+        msg.setWindowTitle(
+            tr("support.bundle.success_title", "Support Bundle Generated")
+        )
+        msg.setText(
+            tr(
+                "support.bundle.success_text",
+                "Support bundle generated successfully:\n{filename}",
+            ).format(filename=bundle_path.name)
+        )
+        msg.setInformativeText(
+            tr("support.bundle.success_info", "Location: {location}").format(
+                location=bundle_path.parent
+            )
+        )
 
-        open_button = msg.addButton(tr("support.bundle.open_location", "Open Location"), QMessageBox.ActionRole)
+        open_button = msg.addButton(
+            tr("support.bundle.open_location", "Open Location"), QMessageBox.ActionRole
+        )
         msg.addButton(tr("button.ok", "OK"), QMessageBox.AcceptRole)
 
         msg.exec()
@@ -209,13 +238,20 @@ class SupportBundleDialog(QDialog):
             error_message: Error message.
         """
         self.progress_bar.setVisible(False)
-        self.status_label.setText(tr("support.bundle.error", "Error generating bundle: {error}").format(error=error_message))
+        self.status_label.setText(
+            tr("support.bundle.error", "Error generating bundle: {error}").format(
+                error=error_message
+            )
+        )
         self.generate_button.setEnabled(True)
 
         QMessageBox.critical(
             self,
             tr("support.bundle.error_title", "Error"),
-            tr("support.bundle.error_text", "Failed to generate support bundle:\n{error}").format(error=error_message),
+            tr(
+                "support.bundle.error_text",
+                "Failed to generate support bundle:\n{error}",
+            ).format(error=error_message),
         )
 
     def _reveal_file(self, file_path: Path):

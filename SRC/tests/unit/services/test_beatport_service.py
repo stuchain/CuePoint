@@ -8,10 +8,17 @@ from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError
 from cuepoint.services.beatport_service import BeatportService
 
 
-def _make_mock_provider(search_return=None, parse_return=None, search_side_effect=None, parse_side_effect=None):
+def _make_mock_provider(
+    search_return=None,
+    parse_return=None,
+    search_side_effect=None,
+    parse_side_effect=None,
+):
     """Create a mock provider for testing (BeatportService uses get_active_provider)."""
     provider = Mock()
-    provider.search = Mock(return_value=search_return or [], side_effect=search_side_effect)
+    provider.search = Mock(
+        return_value=search_return or [], side_effect=search_side_effect
+    )
     provider.parse = Mock(return_value=parse_return, side_effect=parse_side_effect)
     return provider
 
@@ -22,26 +29,20 @@ class TestBeatportService:
     def test_init(self, mock_cache_service, mock_logging_service):
         """Test service initialization."""
         service = BeatportService(
-            cache_service=mock_cache_service,
-            logging_service=mock_logging_service
+            cache_service=mock_cache_service, logging_service=mock_logging_service
         )
 
         assert service.cache_service is mock_cache_service
         assert service.logging_service is mock_logging_service
 
-    def test_search_tracks_cache_hit(
-        self,
-        mock_cache_service,
-        mock_logging_service
-    ):
+    def test_search_tracks_cache_hit(self, mock_cache_service, mock_logging_service):
         """Test search_tracks with cache hit."""
         # Setup cache to return results
         cached_urls = ["https://www.beatport.com/track/test/123"]
         mock_cache_service.get.return_value = cached_urls
 
         service = BeatportService(
-            cache_service=mock_cache_service,
-            logging_service=mock_logging_service
+            cache_service=mock_cache_service, logging_service=mock_logging_service
         )
 
         result = service.search_tracks("test query", max_results=10)
@@ -52,12 +53,9 @@ class TestBeatportService:
         # Should not call the actual search function
         mock_logging_service.info.assert_not_called()
 
-    @patch('cuepoint.services.beatport_service.get_active_provider')
+    @patch("cuepoint.services.beatport_service.get_active_provider")
     def test_search_tracks_cache_miss(
-        self,
-        mock_get_provider,
-        mock_cache_service,
-        mock_logging_service
+        self, mock_get_provider, mock_cache_service, mock_logging_service
     ):
         """Test search_tracks with cache miss."""
         # Setup cache to return None (cache miss)
@@ -69,8 +67,7 @@ class TestBeatportService:
         mock_get_provider.return_value = mock_provider
 
         service = BeatportService(
-            cache_service=mock_cache_service,
-            logging_service=mock_logging_service
+            cache_service=mock_cache_service, logging_service=mock_logging_service
         )
 
         result = service.search_tracks("test query", max_results=10)
@@ -86,24 +83,22 @@ class TestBeatportService:
         )
         mock_logging_service.info.assert_called()
 
-    @patch('cuepoint.services.beatport_service.get_active_provider')
+    @patch("cuepoint.services.beatport_service.get_active_provider")
     def test_search_tracks_error_handling(
-        self,
-        mock_get_provider,
-        mock_cache_service,
-        mock_logging_service
+        self, mock_get_provider, mock_cache_service, mock_logging_service
     ):
         """Test search_tracks error handling."""
         # Setup cache to return None
         mock_cache_service.get.return_value = None
 
         # Setup provider to raise exception
-        mock_provider = _make_mock_provider(search_side_effect=Exception("Search failed"))
+        mock_provider = _make_mock_provider(
+            search_side_effect=Exception("Search failed")
+        )
         mock_get_provider.return_value = mock_provider
 
         service = BeatportService(
-            cache_service=mock_cache_service,
-            logging_service=mock_logging_service
+            cache_service=mock_cache_service, logging_service=mock_logging_service
         )
 
         with pytest.raises(BeatportAPIError) as exc_info:
@@ -113,36 +108,30 @@ class TestBeatportService:
         assert "test query" in exc_info.value.message
         mock_logging_service.error.assert_called()
 
-    def test_fetch_track_data_cache_hit(
-        self,
-        mock_cache_service,
-        mock_logging_service
-    ):
+    def test_fetch_track_data_cache_hit(self, mock_cache_service, mock_logging_service):
         """Test fetch_track_data with cache hit."""
         # Setup cache to return track data
         cached_data = {
             "url": "https://www.beatport.com/track/test/123",
             "title": "Test Track",
-            "artists": "Test Artist"
+            "artists": "Test Artist",
         }
         mock_cache_service.get.return_value = cached_data
 
         service = BeatportService(
-            cache_service=mock_cache_service,
-            logging_service=mock_logging_service
+            cache_service=mock_cache_service, logging_service=mock_logging_service
         )
 
         result = service.fetch_track_data("https://www.beatport.com/track/test/123")
 
         assert result == cached_data
-        mock_cache_service.get.assert_called_once_with("track:https://www.beatport.com/track/test/123")
+        mock_cache_service.get.assert_called_once_with(
+            "track:https://www.beatport.com/track/test/123"
+        )
 
-    @patch('cuepoint.services.beatport_service.get_active_provider')
+    @patch("cuepoint.services.beatport_service.get_active_provider")
     def test_fetch_track_data_cache_miss(
-        self,
-        mock_get_provider,
-        mock_cache_service,
-        mock_logging_service
+        self, mock_get_provider, mock_cache_service, mock_logging_service
     ):
         """Test fetch_track_data with cache miss."""
         # Setup cache to return None
@@ -166,8 +155,7 @@ class TestBeatportService:
         mock_get_provider.return_value = mock_provider
 
         service = BeatportService(
-            cache_service=mock_cache_service,
-            logging_service=mock_logging_service
+            cache_service=mock_cache_service, logging_service=mock_logging_service
         )
 
         result = service.fetch_track_data(url)
@@ -193,12 +181,9 @@ class TestBeatportService:
         assert args[1]["title"] == "Test Track"
         assert kwargs["ttl"] == 86400  # 24 hours TTL
 
-    @patch('cuepoint.services.beatport_service.get_active_provider')
+    @patch("cuepoint.services.beatport_service.get_active_provider")
     def test_fetch_track_data_error_handling(
-        self,
-        mock_get_provider,
-        mock_cache_service,
-        mock_logging_service
+        self, mock_get_provider, mock_cache_service, mock_logging_service
     ):
         """Test fetch_track_data error handling (returns None instead of raising)."""
         # Setup cache to return None
@@ -209,8 +194,7 @@ class TestBeatportService:
         mock_get_provider.return_value = mock_provider
 
         service = BeatportService(
-            cache_service=mock_cache_service,
-            logging_service=mock_logging_service
+            cache_service=mock_cache_service, logging_service=mock_logging_service
         )
 
         # Should return None instead of raising
@@ -220,17 +204,14 @@ class TestBeatportService:
         mock_logging_service.error.assert_called()
 
     def test_search_tracks_default_max_results(
-        self,
-        mock_cache_service,
-        mock_logging_service
+        self, mock_cache_service, mock_logging_service
     ):
         """Test search_tracks with default max_results."""
         cached_urls = ["https://www.beatport.com/track/test/123"]
         mock_cache_service.get.return_value = cached_urls
 
         service = BeatportService(
-            cache_service=mock_cache_service,
-            logging_service=mock_logging_service
+            cache_service=mock_cache_service, logging_service=mock_logging_service
         )
 
         result = service.search_tracks("test query")
@@ -238,34 +219,29 @@ class TestBeatportService:
         # Should use default max_results=50
         mock_cache_service.get.assert_called_once_with("search:test query:50")
         assert result == cached_urls
-    
-    @patch('cuepoint.services.beatport_service.get_active_provider')
+
+    @patch("cuepoint.services.beatport_service.get_active_provider")
     def test_search_tracks_network_error(
-        self,
-        mock_get_provider,
-        mock_cache_service,
-        mock_logging_service
+        self, mock_get_provider, mock_cache_service, mock_logging_service
     ):
         """Test search_tracks handles network errors."""
         mock_cache_service.get.return_value = None  # No cache
-        mock_provider = _make_mock_provider(search_side_effect=ConnectionError("Network error"))
+        mock_provider = _make_mock_provider(
+            search_side_effect=ConnectionError("Network error")
+        )
         mock_get_provider.return_value = mock_provider
 
         service = BeatportService(
-            cache_service=mock_cache_service,
-            logging_service=mock_logging_service
+            cache_service=mock_cache_service, logging_service=mock_logging_service
         )
 
         # Should raise BeatportAPIError on network error
         with pytest.raises(BeatportAPIError):
             service.search_tracks("Test Query")
-    
-    @patch('cuepoint.services.beatport_service.get_active_provider')
+
+    @patch("cuepoint.services.beatport_service.get_active_provider")
     def test_fetch_track_data_invalid_url(
-        self,
-        mock_get_provider,
-        mock_cache_service,
-        mock_logging_service
+        self, mock_get_provider, mock_cache_service, mock_logging_service
     ):
         """Test fetch_track_data with invalid URL."""
         mock_cache_service.get.return_value = None
@@ -273,21 +249,17 @@ class TestBeatportService:
         mock_get_provider.return_value = mock_provider
 
         service = BeatportService(
-            cache_service=mock_cache_service,
-            logging_service=mock_logging_service
+            cache_service=mock_cache_service, logging_service=mock_logging_service
         )
 
         result = service.fetch_track_data("not-a-valid-url")
 
         # Should return None (provider returns None for invalid URL)
         assert result is None
-    
-    @patch('cuepoint.services.beatport_service.get_active_provider')
+
+    @patch("cuepoint.services.beatport_service.get_active_provider")
     def test_search_tracks_empty_query(
-        self,
-        mock_get_provider,
-        mock_cache_service,
-        mock_logging_service
+        self, mock_get_provider, mock_cache_service, mock_logging_service
     ):
         """Test search_tracks with empty query."""
         mock_cache_service.get.return_value = None  # No cache
@@ -295,52 +267,47 @@ class TestBeatportService:
         mock_get_provider.return_value = mock_provider
 
         service = BeatportService(
-            cache_service=mock_cache_service,
-            logging_service=mock_logging_service
+            cache_service=mock_cache_service, logging_service=mock_logging_service
         )
 
         result = service.search_tracks("")
 
         # Should return empty list
         assert result == []
-    
-    @patch('cuepoint.services.beatport_service.get_active_provider')
+
+    @patch("cuepoint.services.beatport_service.get_active_provider")
     def test_fetch_track_data_timeout(
-        self,
-        mock_get_provider,
-        mock_cache_service,
-        mock_logging_service
+        self, mock_get_provider, mock_cache_service, mock_logging_service
     ):
         """Test fetch_track_data handles timeout errors."""
         mock_cache_service.get.return_value = None
-        mock_provider = _make_mock_provider(parse_side_effect=TimeoutError("Request timeout"))
+        mock_provider = _make_mock_provider(
+            parse_side_effect=TimeoutError("Request timeout")
+        )
         mock_get_provider.return_value = mock_provider
 
         service = BeatportService(
-            cache_service=mock_cache_service,
-            logging_service=mock_logging_service
+            cache_service=mock_cache_service, logging_service=mock_logging_service
         )
 
         result = service.fetch_track_data("https://www.beatport.com/track/test/123")
 
         # Should return None on timeout
         assert result is None
-    
-    @patch('cuepoint.services.beatport_service.get_active_provider')
+
+    @patch("cuepoint.services.beatport_service.get_active_provider")
     def test_search_tracks_custom_max_results(
-        self,
-        mock_get_provider,
-        mock_cache_service,
-        mock_logging_service
+        self, mock_get_provider, mock_cache_service, mock_logging_service
     ):
         """Test search_tracks with custom max_results value."""
         mock_cache_service.get.return_value = None  # Cache miss
-        mock_provider = _make_mock_provider(search_return=["https://www.beatport.com/track/test/123"])
+        mock_provider = _make_mock_provider(
+            search_return=["https://www.beatport.com/track/test/123"]
+        )
         mock_get_provider.return_value = mock_provider
 
         service = BeatportService(
-            cache_service=mock_cache_service,
-            logging_service=mock_logging_service
+            cache_service=mock_cache_service, logging_service=mock_logging_service
         )
 
         result = service.search_tracks("test query", max_results=25)
@@ -351,13 +318,10 @@ class TestBeatportService:
             idx=0, query="test query", max_results=25
         )
         assert result == ["https://www.beatport.com/track/test/123"]
-    
-    @patch('cuepoint.services.beatport_service.get_active_provider')
+
+    @patch("cuepoint.services.beatport_service.get_active_provider")
     def test_fetch_track_data_with_none_values(
-        self,
-        mock_get_provider,
-        mock_cache_service,
-        mock_logging_service
+        self, mock_get_provider, mock_cache_service, mock_logging_service
     ):
         """Test fetch_track_data when provider returns None values for some fields."""
         mock_cache_service.get.return_value = None  # Cache miss
@@ -378,8 +342,7 @@ class TestBeatportService:
         mock_get_provider.return_value = mock_provider
 
         service = BeatportService(
-            cache_service=mock_cache_service,
-            logging_service=mock_logging_service
+            cache_service=mock_cache_service, logging_service=mock_logging_service
         )
 
         result = service.fetch_track_data(url)
@@ -392,22 +355,20 @@ class TestBeatportService:
         assert result["key"] is None
         assert result["year"] is None
         assert result["bpm"] is None
-    
-    @patch('cuepoint.services.beatport_service.get_active_provider')
+
+    @patch("cuepoint.services.beatport_service.get_active_provider")
     def test_search_tracks_prefer_direct_false(
-        self,
-        mock_get_provider,
-        mock_cache_service,
-        mock_logging_service
+        self, mock_get_provider, mock_cache_service, mock_logging_service
     ):
         """Test search_tracks calls provider.search with expected args."""
         mock_cache_service.get.return_value = None  # Cache miss
-        mock_provider = _make_mock_provider(search_return=["https://www.beatport.com/track/test/123"])
+        mock_provider = _make_mock_provider(
+            search_return=["https://www.beatport.com/track/test/123"]
+        )
         mock_get_provider.return_value = mock_provider
 
         service = BeatportService(
-            cache_service=mock_cache_service,
-            logging_service=mock_logging_service
+            cache_service=mock_cache_service, logging_service=mock_logging_service
         )
 
         result = service.search_tracks("test query", max_results=10)
@@ -417,13 +378,10 @@ class TestBeatportService:
             idx=0, query="test query", max_results=10
         )
         assert result == ["https://www.beatport.com/track/test/123"]
-    
-    @patch('cuepoint.services.beatport_service.get_active_provider')
+
+    @patch("cuepoint.services.beatport_service.get_active_provider")
     def test_fetch_track_data_empty_url(
-        self,
-        mock_get_provider,
-        mock_cache_service,
-        mock_logging_service
+        self, mock_get_provider, mock_cache_service, mock_logging_service
     ):
         """Test fetch_track_data with empty URL."""
         mock_cache_service.get.return_value = None
@@ -431,8 +389,7 @@ class TestBeatportService:
         mock_get_provider.return_value = mock_provider
 
         service = BeatportService(
-            cache_service=mock_cache_service,
-            logging_service=mock_logging_service
+            cache_service=mock_cache_service, logging_service=mock_logging_service
         )
 
         result = service.fetch_track_data("")
@@ -440,13 +397,10 @@ class TestBeatportService:
         # Should return None for invalid URL
         assert result is None
         mock_logging_service.error.assert_called()
-    
-    @patch('cuepoint.services.beatport_service.get_active_provider')
+
+    @patch("cuepoint.services.beatport_service.get_active_provider")
     def test_search_tracks_cache_key_format(
-        self,
-        mock_get_provider,
-        mock_cache_service,
-        mock_logging_service
+        self, mock_get_provider, mock_cache_service, mock_logging_service
     ):
         """Test that cache keys are formatted correctly."""
         mock_cache_service.get.return_value = None  # Cache miss
@@ -454,8 +408,7 @@ class TestBeatportService:
         mock_get_provider.return_value = mock_provider
 
         service = BeatportService(
-            cache_service=mock_cache_service,
-            logging_service=mock_logging_service
+            cache_service=mock_cache_service, logging_service=mock_logging_service
         )
 
         service.search_tracks("query with spaces", max_results=100)
@@ -464,13 +417,10 @@ class TestBeatportService:
         expected_key = "search:query with spaces:100"
         mock_cache_service.get.assert_called_once_with(expected_key)
         mock_cache_service.set.assert_called_once_with(expected_key, [], ttl=3600)
-    
-    @patch('cuepoint.services.beatport_service.get_active_provider')
+
+    @patch("cuepoint.services.beatport_service.get_active_provider")
     def test_fetch_track_data_cache_key_format(
-        self,
-        mock_get_provider,
-        mock_cache_service,
-        mock_logging_service
+        self, mock_get_provider, mock_cache_service, mock_logging_service
     ):
         """Test that track cache keys are formatted correctly."""
         mock_cache_service.get.return_value = None  # Cache miss
@@ -491,8 +441,7 @@ class TestBeatportService:
         mock_get_provider.return_value = mock_provider
 
         service = BeatportService(
-            cache_service=mock_cache_service,
-            logging_service=mock_logging_service
+            cache_service=mock_cache_service, logging_service=mock_logging_service
         )
 
         service.fetch_track_data(url)

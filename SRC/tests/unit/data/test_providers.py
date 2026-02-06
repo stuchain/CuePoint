@@ -124,12 +124,25 @@ class TestProviderRegistration:
 
     def test_register_provider(self):
         """Can register custom provider."""
+
         class FakeProvider:
             name = "fake"
+
             def search(self, idx, query, max_results=50):
                 return []
+
             def parse(self, url):
-                return {"title": "x", "artists": "y", "key": None, "year": None, "bpm": None, "label": None, "genres": None, "release_name": None, "release_date": None}
+                return {
+                    "title": "x",
+                    "artists": "y",
+                    "key": None,
+                    "year": None,
+                    "bpm": None,
+                    "label": None,
+                    "genres": None,
+                    "release_name": None,
+                    "release_date": None,
+                }
 
         register_provider("fake", FakeProvider())
         try:
@@ -139,4 +152,5 @@ class TestProviderRegistration:
         finally:
             # Cleanup - remove fake from registry
             from cuepoint.data import providers as mod
+
             mod._PROVIDERS.pop("fake", None)

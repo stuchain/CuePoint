@@ -19,7 +19,9 @@ __version__ = "1.0.1-test21"
 
 # Build identifier (set by CI or build script)
 __build_number__: Optional[str] = "202512161452"  # Will be set during build
-__commit_sha__: Optional[str] = "e5b0565c160cb1b72d0f111c5ac7aa077e30ca58"  # Will be set during build
+__commit_sha__: Optional[str] = (
+    "e5b0565c160cb1b72d0f111c5ac7aa077e30ca58"  # Will be set during build
+)
 __build_date__: Optional[str] = "2025-12-16T14:52:41.687705"  # Will be set during build
 
 

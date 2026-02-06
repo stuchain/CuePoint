@@ -196,7 +196,9 @@ class TestMetricsCollector:
     def test_record_processing(self):
         """Test recording processing metrics."""
         collector = MetricsCollector(enabled=True)
-        collector.record_processing(tracks_processed=10, matches_found=9, processing_time=5.0)
+        collector.record_processing(
+            tracks_processed=10, matches_found=9, processing_time=5.0
+        )
 
         assert collector.metrics.processing.total_tracks_processed == 10
         assert collector.metrics.processing.successful_matches == 9
@@ -257,7 +259,9 @@ class TestMetricsCollector:
         """Test getting metrics summary."""
         collector = MetricsCollector(enabled=True)
         collector.record_installation_attempt(success=True)
-        collector.record_processing(tracks_processed=10, matches_found=9, processing_time=5.0)
+        collector.record_processing(
+            tracks_processed=10, matches_found=9, processing_time=5.0
+        )
 
         summary = collector.get_metrics_summary()
         assert "installation" in summary
@@ -268,17 +272,17 @@ class TestMetricsCollector:
     def test_get_success_criteria_status(self):
         """Test getting success criteria status."""
         collector = MetricsCollector(enabled=True)
-        
+
         # Set up metrics to meet targets
         collector.metrics.installation.total_attempts = 100
         collector.metrics.installation.successful_installs = 96  # 96% > 95%
-        
+
         collector.metrics.processing.total_tracks_processed = 100
         collector.metrics.processing.successful_matches = 99  # 99% > 98%
-        
+
         collector.metrics.errors.total_errors = 10
         collector.metrics.errors.recovered_errors = 9  # 90% >= 90%
-        
+
         collector.metrics.updates.updates_available = 10
         collector.metrics.updates.updates_installed = 8  # 80% >= 80%
 
@@ -292,7 +296,7 @@ class TestMetricsCollector:
         """Test saving and loading metrics from file."""
         with tempfile.TemporaryDirectory() as tmpdir:
             metrics_file = Path(tmpdir) / "metrics.json"
-            
+
             # Create collector and record some metrics
             collector1 = MetricsCollector(metrics_file=metrics_file, enabled=True)
             collector1.record_installation_attempt(success=True)
@@ -300,7 +304,7 @@ class TestMetricsCollector:
 
             # Create new collector and load metrics
             collector2 = MetricsCollector(metrics_file=metrics_file, enabled=True)
-            
+
             assert collector2.metrics.installation.total_attempts == 1
             assert collector2.metrics.installation.successful_installs == 1
             assert collector2.metrics.session_count == 1
@@ -334,7 +338,9 @@ class TestMetricsCollector:
         """Test that disabled collector doesn't record metrics."""
         collector = MetricsCollector(enabled=False)
         collector.record_installation_attempt(success=True)
-        collector.record_processing(tracks_processed=10, matches_found=9, processing_time=5.0)
+        collector.record_processing(
+            tracks_processed=10, matches_found=9, processing_time=5.0
+        )
 
         assert collector.metrics.installation.total_attempts == 0
         assert collector.metrics.processing.total_tracks_processed == 0
@@ -344,7 +350,7 @@ class TestMetricsCollector:
         import threading
 
         collector = MetricsCollector(enabled=True)
-        
+
         def record_installations():
             for _ in range(10):
                 collector.record_installation_attempt(success=True)
@@ -362,9 +368,7 @@ class TestMetricsCollector:
     def test_logging_service_integration(self):
         """Test integration with logging service."""
         logging_service = Mock()
-        collector = MetricsCollector(
-            logging_service=logging_service, enabled=True
-        )
+        collector = MetricsCollector(logging_service=logging_service, enabled=True)
         collector.record_installation_attempt(success=True)
 
         # Verify logging was called

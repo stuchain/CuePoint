@@ -16,14 +16,14 @@ import sys
 import tempfile
 import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
 from cuepoint.models.result import TrackResult
 from cuepoint.services.output_writer import write_csv_files, write_json_file
 
 
 class TestEnhancedExport(unittest.TestCase):
     """Comprehensive tests for enhanced export functionality"""
-    
+
     def setUp(self):
         """Set up test fixtures"""
         self.temp_dir = tempfile.mkdtemp()
@@ -44,7 +44,7 @@ class TestEnhancedExport(unittest.TestCase):
                 beatport_label="Test Label",
                 beatport_genres="House, Deep House",
                 beatport_release="Test Release",
-                beatport_release_date="2023-01-15"
+                beatport_release_date="2023-01-15",
             ),
             TrackResult(
                 playlist_index=2,
@@ -52,7 +52,7 @@ class TestEnhancedExport(unittest.TestCase):
                 artist="Another Artist",
                 matched=False,
                 beatport_title=None,
-                beatport_artists=None
+                beatport_artists=None,
             ),
             TrackResult(
                 playlist_index=3,
@@ -66,14 +66,14 @@ class TestEnhancedExport(unittest.TestCase):
                 confidence="medium",
                 beatport_key="A Minor",
                 beatport_bpm="130",
-                beatport_year="2024"
-            )
+                beatport_year="2024",
+            ),
         ]
-    
+
     def tearDown(self):
         """Clean up test fixtures"""
         shutil.rmtree(self.temp_dir, ignore_errors=True)
-    
+
     def test_json_export_basic(self):
         """Test basic JSON export without options"""
         filepath = os.path.join(self.temp_dir, "test_export.json")
@@ -82,21 +82,21 @@ class TestEnhancedExport(unittest.TestCase):
             filepath,
             include_metadata=False,
             include_processing_info=False,
-            compress=False
+            compress=False,
         )
-        
+
         self.assertTrue(os.path.exists(filepath))
         self.assertTrue(filepath.endswith(".json"))
-        
-        with open(filepath, 'r', encoding='utf-8') as f:
+
+        with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
-        
+
         self.assertEqual(data["total_tracks"], 3)
         self.assertEqual(data["matched_tracks"], 2)
         self.assertEqual(len(data["tracks"]), 3)
         self.assertIn("version", data)
         self.assertIn("generated", data)
-    
+
     def test_json_export_with_metadata(self):
         """Test JSON export with metadata inclusion"""
         filepath = os.path.join(self.temp_dir, "test_export_metadata.json")
@@ -105,19 +105,19 @@ class TestEnhancedExport(unittest.TestCase):
             filepath,
             include_metadata=True,
             include_processing_info=False,
-            compress=False
+            compress=False,
         )
-        
-        with open(filepath, 'r', encoding='utf-8') as f:
+
+        with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
-        
+
         # Check that matched tracks have metadata
         matched_track = next(t for t in data["tracks"] if t["matched"])
         self.assertIn("match", matched_track)
         self.assertIn("metadata", matched_track["match"])
         self.assertIn("label", matched_track["match"]["metadata"])
         self.assertIn("genres", matched_track["match"]["metadata"])
-    
+
     def test_json_export_without_metadata(self):
         """Test JSON export without metadata inclusion"""
         filepath = os.path.join(self.temp_dir, "test_export_no_metadata.json")
@@ -126,21 +126,21 @@ class TestEnhancedExport(unittest.TestCase):
             filepath,
             include_metadata=False,
             include_processing_info=False,
-            compress=False
+            compress=False,
         )
-        
-        with open(filepath, 'r', encoding='utf-8') as f:
+
+        with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
-        
+
         # Check that matched tracks don't have metadata section
         matched_track = next(t for t in data["tracks"] if t["matched"])
         self.assertIn("match", matched_track)
         self.assertNotIn("metadata", matched_track["match"])
-    
+
     def test_json_export_with_processing_info(self):
         """Test JSON export with processing information"""
         settings = {"setting1": "value1", "setting2": "value2"}
-        
+
         filepath = os.path.join(self.temp_dir, "test_export_processing.json")
         filepath = write_json_file(
             self.test_results,
@@ -148,16 +148,16 @@ class TestEnhancedExport(unittest.TestCase):
             include_metadata=False,
             include_processing_info=True,
             compress=False,
-            settings=settings
+            settings=settings,
         )
-        
-        with open(filepath, 'r', encoding='utf-8') as f:
+
+        with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
-        
+
         self.assertIn("processing_info", data)
         self.assertEqual(data["processing_info"]["settings"], settings)
         self.assertIn("timestamp", data["processing_info"])
-    
+
     def test_json_export_with_compression(self):
         """Test JSON export with gzip compression"""
         filepath = os.path.join(self.temp_dir, "test_export_compressed.json.gz")
@@ -166,15 +166,15 @@ class TestEnhancedExport(unittest.TestCase):
             filepath,
             include_metadata=True,
             include_processing_info=False,
-            compress=True
+            compress=True,
         )
-        
+
         self.assertTrue(os.path.exists(filepath))
         self.assertTrue(filepath.endswith(".json.gz"))
-        
+
         # Verify it's actually compressed (smaller than uncompressed)
         compressed_size = os.path.getsize(filepath)
-        
+
         # Create uncompressed version for comparison
         uncompressed_path = os.path.join(self.temp_dir, "test_export_uncompressed.json")
         uncompressed_path = write_json_file(
@@ -182,19 +182,19 @@ class TestEnhancedExport(unittest.TestCase):
             uncompressed_path,
             include_metadata=True,
             include_processing_info=False,
-            compress=False
+            compress=False,
         )
         uncompressed_size = os.path.getsize(uncompressed_path)
-        
+
         # Compressed should be smaller (for this test data)
         self.assertLess(compressed_size, uncompressed_size)
-        
+
         # Verify we can read compressed file
-        with gzip.open(filepath, 'rt', encoding='utf-8') as f:
+        with gzip.open(filepath, "rt", encoding="utf-8") as f:
             data = json.load(f)
-        
+
         self.assertEqual(data["total_tracks"], 3)
-    
+
     def test_json_export_special_characters(self):
         """Test JSON export handles special characters correctly"""
         filepath = os.path.join(self.temp_dir, "test_export_special.json")
@@ -203,21 +203,20 @@ class TestEnhancedExport(unittest.TestCase):
             filepath,
             include_metadata=True,
             include_processing_info=False,
-            compress=False
+            compress=False,
         )
-        
-        with open(filepath, 'r', encoding='utf-8') as f:
+
+        with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
-        
+
         # Find track with special characters
         special_track = next(
-            t for t in data["tracks"]
-            if "émojis" in t.get("title", "")
+            t for t in data["tracks"] if "émojis" in t.get("title", "")
         )
-        
+
         self.assertIn("émojis", special_track["title"])
         self.assertIn("🎵", special_track["title"])
-    
+
     def test_csv_export_basic(self):
         """Test basic CSV export"""
         result = write_csv_files(
@@ -225,14 +224,14 @@ class TestEnhancedExport(unittest.TestCase):
             "test_csv",
             self.temp_dir,
             delimiter=",",
-            include_metadata=False
+            include_metadata=False,
         )
-        
+
         self.assertIn("main", result)
         self.assertTrue(os.path.exists(result["main"]))
-        
+
         # Verify CSV content (skip # comment lines - Design 9 schema headers)
-        with open(result["main"], 'r', encoding='utf-8', newline='') as f:
+        with open(result["main"], "r", encoding="utf-8", newline="") as f:
             lines = [line for line in f if not line.strip().startswith("#")]
         reader = csv.DictReader(lines)
         rows = list(reader)
@@ -240,7 +239,7 @@ class TestEnhancedExport(unittest.TestCase):
         self.assertGreaterEqual(len(rows), 1)  # At least one track
         if rows:
             self.assertIn("playlist_index", rows[0])
-    
+
     def test_csv_export_custom_delimiter_comma(self):
         """Test CSV export with comma delimiter"""
         result = write_csv_files(
@@ -248,17 +247,21 @@ class TestEnhancedExport(unittest.TestCase):
             "test_csv_comma",
             self.temp_dir,
             delimiter=",",
-            include_metadata=True
+            include_metadata=True,
         )
-        
-        with open(result["main"], 'r', encoding='utf-8', newline='') as f:
+
+        with open(result["main"], "r", encoding="utf-8", newline="") as f:
             content = f.read()
 
         # Skip # comment lines, find header row
-        lines = [line for line in content.split('\n') if line and not line.strip().startswith("#")]
+        lines = [
+            line
+            for line in content.split("\n")
+            if line and not line.strip().startswith("#")
+        ]
         if lines:
-            self.assertGreater(len(lines[0].split(',')), 5)
-    
+            self.assertGreater(len(lines[0].split(",")), 5)
+
     def test_csv_export_custom_delimiter_semicolon(self):
         """Test CSV export with semicolon delimiter"""
         result = write_csv_files(
@@ -266,17 +269,21 @@ class TestEnhancedExport(unittest.TestCase):
             "test_csv_semicolon",
             self.temp_dir,
             delimiter=";",
-            include_metadata=True
+            include_metadata=True,
         )
-        
-        with open(result["main"], 'r', encoding='utf-8', newline='') as f:
+
+        with open(result["main"], "r", encoding="utf-8", newline="") as f:
             content = f.read()
 
         # Skip # comment lines, find header row
-        lines = [line for line in content.split('\n') if line and not line.strip().startswith("#")]
+        lines = [
+            line
+            for line in content.split("\n")
+            if line and not line.strip().startswith("#")
+        ]
         if lines:
-            self.assertGreater(len(lines[0].split(';')), 5)
-    
+            self.assertGreater(len(lines[0].split(";")), 5)
+
     def test_csv_export_custom_delimiter_tab(self):
         """Test CSV export with tab delimiter (TSV)"""
         result = write_csv_files(
@@ -284,17 +291,17 @@ class TestEnhancedExport(unittest.TestCase):
             "test_csv_tab",
             self.temp_dir,
             delimiter="\t",
-            include_metadata=True
+            include_metadata=True,
         )
-        
+
         self.assertTrue(result["main"].endswith(".tsv"))
-        
-        with open(result["main"], 'r', encoding='utf-8', newline='') as f:
-            reader = csv.reader(f, delimiter='\t')
+
+        with open(result["main"], "r", encoding="utf-8", newline="") as f:
+            reader = csv.reader(f, delimiter="\t")
             rows = list(reader)
-        
+
         self.assertGreaterEqual(len(rows), 2)  # Header + tracks
-    
+
     def test_csv_export_custom_delimiter_pipe(self):
         """Test CSV export with pipe delimiter"""
         result = write_csv_files(
@@ -302,17 +309,17 @@ class TestEnhancedExport(unittest.TestCase):
             "test_csv_pipe",
             self.temp_dir,
             delimiter="|",
-            include_metadata=True
+            include_metadata=True,
         )
-        
+
         self.assertTrue(result["main"].endswith(".psv"))
-        
-        with open(result["main"], 'r', encoding='utf-8', newline='') as f:
-            reader = csv.reader(f, delimiter='|')
+
+        with open(result["main"], "r", encoding="utf-8", newline="") as f:
+            reader = csv.reader(f, delimiter="|")
             rows = list(reader)
-        
+
         self.assertGreaterEqual(len(rows), 2)
-    
+
     def test_csv_export_with_metadata(self):
         """Test CSV export with metadata columns"""
         result = write_csv_files(
@@ -320,10 +327,10 @@ class TestEnhancedExport(unittest.TestCase):
             "test_csv_metadata",
             self.temp_dir,
             delimiter=",",
-            include_metadata=True
+            include_metadata=True,
         )
-        
-        with open(result["main"], 'r', encoding='utf-8', newline='') as f:
+
+        with open(result["main"], "r", encoding="utf-8", newline="") as f:
             lines = [line for line in f if not line.strip().startswith("#")]
         reader = csv.reader(lines)
         header = next(reader)
@@ -333,7 +340,7 @@ class TestEnhancedExport(unittest.TestCase):
         self.assertIn("beatport_genres", header)
         self.assertIn("beatport_release", header)
         self.assertIn("beatport_release_date", header)
-    
+
     def test_csv_export_without_metadata(self):
         """Test CSV export without metadata columns"""
         result = write_csv_files(
@@ -341,37 +348,37 @@ class TestEnhancedExport(unittest.TestCase):
             "test_csv_no_metadata",
             self.temp_dir,
             delimiter=",",
-            include_metadata=False
+            include_metadata=False,
         )
-        
-        with open(result["main"], 'r', encoding='utf-8', newline='') as f:
+
+        with open(result["main"], "r", encoding="utf-8", newline="") as f:
             reader = csv.reader(f)
             header = next(reader)
-        
+
         # Check metadata columns are NOT present
         self.assertNotIn("beatport_label", header)
         self.assertNotIn("beatport_genres", header)
-    
+
     def test_csv_export_candidates_file(self):
         """Test CSV export creates candidates file when candidates exist"""
         # Add candidates to test results (use candidates_data for dict format)
         self.test_results[0].candidates_data = [
             {"beatport_title": "Candidate 1", "match_score": 85.0},
-            {"beatport_title": "Candidate 2", "match_score": 80.0}
+            {"beatport_title": "Candidate 2", "match_score": 80.0},
         ]
-        
+
         result = write_csv_files(
             self.test_results,
             "test_csv_candidates",
             self.temp_dir,
             delimiter=",",
-            include_metadata=False
+            include_metadata=False,
         )
-        
+
         self.assertIn("candidates", result)
         self.assertIsNotNone(result["candidates"])
         self.assertTrue(os.path.exists(result["candidates"]))
-    
+
     def test_export_error_handling_invalid_delimiter(self):
         """Test error handling for invalid delimiter"""
         with self.assertRaises(ValueError):
@@ -380,9 +387,9 @@ class TestEnhancedExport(unittest.TestCase):
                 "test",
                 self.temp_dir,
                 delimiter="invalid",
-                include_metadata=False
+                include_metadata=False,
             )
-    
+
     def test_export_empty_results(self):
         """Test export with empty results list"""
         filepath = os.path.join(self.temp_dir, "test_empty.json")
@@ -391,16 +398,16 @@ class TestEnhancedExport(unittest.TestCase):
             filepath,
             include_metadata=False,
             include_processing_info=False,
-            compress=False
+            compress=False,
         )
-        
-        with open(filepath, 'r', encoding='utf-8') as f:
+
+        with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
-        
+
         self.assertEqual(data["total_tracks"], 0)
         self.assertEqual(data["matched_tracks"], 0)
         self.assertEqual(len(data["tracks"]), 0)
-    
+
     def test_export_large_dataset(self):
         """Test export with large dataset (performance test)"""
         import time
@@ -413,11 +420,11 @@ class TestEnhancedExport(unittest.TestCase):
                 artist=f"Artist {i % 10}",
                 matched=(i % 2 == 0),
                 beatport_title=f"Track {i}" if i % 2 == 0 else None,
-                beatport_url=f"https://beatport.com/track/{i}" if i % 2 == 0 else None
+                beatport_url=f"https://beatport.com/track/{i}" if i % 2 == 0 else None,
             )
             for i in range(1000)
         ]
-        
+
         start_time = time.time()
         filepath = os.path.join(self.temp_dir, "test_large.json.gz")
         filepath = write_json_file(
@@ -425,21 +432,20 @@ class TestEnhancedExport(unittest.TestCase):
             filepath,
             include_metadata=True,
             include_processing_info=False,
-            compress=True
+            compress=True,
         )
         export_time = time.time() - start_time
-        
+
         # Export should complete in reasonable time (< 10 seconds for 1000 tracks)
         self.assertLess(export_time, 10.0)
-        
+
         # Verify file was created and is readable
         self.assertTrue(os.path.exists(filepath))
-        with gzip.open(filepath, 'rt', encoding='utf-8') as f:
+        with gzip.open(filepath, "rt", encoding="utf-8") as f:
             data = json.load(f)
-        
+
         self.assertEqual(data["total_tracks"], 1000)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-

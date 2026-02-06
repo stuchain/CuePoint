@@ -221,10 +221,10 @@ class ChangelogViewer(QDialog):
             entry: Changelog entry dictionary.
         """
         html = f"""
-        <h2>Version {entry['version']}</h2>
-        <p><i>Released: {entry['date']}</i></p>
+        <h2>Version {entry["version"]}</h2>
+        <p><i>Released: {entry["date"]}</i></p>
         <hr>
-        {entry['content']}
+        {entry["content"]}
         """
 
         self.content_browser.setHtml(html)

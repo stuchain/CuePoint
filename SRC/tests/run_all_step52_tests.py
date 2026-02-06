@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Run all Step 5.2 tests and display results."""
+
 import subprocess
 import sys
 import os
@@ -22,17 +23,17 @@ all_results = []
 for test_file in test_files:
     print(f"Testing: {test_file}")
     print("-" * 80)
-    
+
     result = subprocess.run(
         [sys.executable, "-m", "pytest", test_file, "-v", "--tb=short"],
         capture_output=True,
         text=True,
     )
-    
+
     print(result.stdout)
     if result.stderr:
         print("STDERR:", result.stderr, file=sys.stderr)
-    
+
     all_results.append((test_file, result.returncode == 0))
     print()
 
@@ -54,4 +55,3 @@ if all_passed:
 else:
     print("❌ SOME TESTS FAILED")
     sys.exit(1)
-

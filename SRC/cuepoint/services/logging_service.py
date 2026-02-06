@@ -25,33 +25,35 @@ logging.raiseExceptions = False
 
 class SafeUnicodeStream:
     """Wrapper for streams that safely handles Unicode encoding errors.
-    
+
     This wraps sys.stdout/sys.stderr to catch UnicodeEncodeError and
     replace problematic characters with '?' before they reach the stream.
     """
-    
+
     def __init__(self, stream):
         self.stream = stream
-        self.encoding = getattr(stream, 'encoding', None) or 'utf-8'
-    
+        self.encoding = getattr(stream, "encoding", None) or "utf-8"
+
     def write(self, text):
         """Write text, handling Unicode encoding errors."""
         try:
             self.stream.write(text)
         except (UnicodeEncodeError, UnicodeError):
             # Replace problematic characters with '?'
-            safe_text = text.encode(self.encoding, errors='replace').decode(self.encoding, errors='replace')
+            safe_text = text.encode(self.encoding, errors="replace").decode(
+                self.encoding, errors="replace"
+            )
             try:
                 self.stream.write(safe_text)
             except (UnicodeEncodeError, UnicodeError):
                 # Last resort: ASCII with replacement
-                safe_text = text.encode('ascii', errors='replace').decode('ascii')
+                safe_text = text.encode("ascii", errors="replace").decode("ascii")
                 self.stream.write(safe_text)
-    
+
     def flush(self):
         """Flush the underlying stream."""
         self.stream.flush()
-    
+
     def __getattr__(self, name):
         """Delegate other attributes to the underlying stream."""
         return getattr(self.stream, name)
@@ -92,7 +94,7 @@ class LoggingService(ILoggingService):
 
         # Prevent propagation to root logger to avoid duplicate handlers
         self.logger.propagate = False
-        
+
         # Also clear root logger handlers to prevent it from trying to log
         # This prevents the root logger from also trying to handle our messages
         # and causing Unicode errors
@@ -101,8 +103,10 @@ class LoggingService(ILoggingService):
             # Only remove StreamHandlers that write to stdout/stderr to avoid
             # interfering with other logging setups
             root_logger.handlers = [
-                h for h in root_logger.handlers 
-                if not isinstance(h, logging.StreamHandler) or h.stream not in (sys.stdout, sys.stderr)
+                h
+                for h in root_logger.handlers
+                if not isinstance(h, logging.StreamHandler)
+                or h.stream not in (sys.stdout, sys.stderr)
             ]
 
         # Create formatters (Design 7.20: run_id, version, os in logs)
@@ -122,7 +126,7 @@ class LoggingService(ILoggingService):
                 log_dir / "cuepoint.log",
                 maxBytes=5 * 1024 * 1024,  # Design 7.15: 5 MB
                 backupCount=5,
-                encoding='utf-8'  # Ensure log files use UTF-8 encoding
+                encoding="utf-8",  # Ensure log files use UTF-8 encoding
             )
             file_handler.setLevel(logging.DEBUG)
             file_handler.setFormatter(file_formatter)
@@ -205,7 +209,9 @@ class LoggingService(ILoggingService):
         safe_message = LogSanitizer.sanitize_message(str(message))
         safe_extra = LogSanitizer.sanitize_dict(extra)
 
-        self.logger.log(level, safe_message, *args, extra=safe_extra, exc_info=exc_info, **kwargs)
+        self.logger.log(
+            level, safe_message, *args, extra=safe_extra, exc_info=exc_info, **kwargs
+        )
 
     def get_log_path(self) -> Optional[Path]:
         """Get path to current log file (Design 7.53).

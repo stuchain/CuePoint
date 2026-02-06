@@ -90,9 +90,9 @@ class TestCrashLogger:
             crash_log = Path(tmpdir) / "test-crash.log"
             exception = ValueError("Test error")
             traceback_str = "Traceback (most recent call last):\n  File test.py, line 1\n    raise ValueError('Test error')\nValueError: Test error"
-            
+
             CrashLogger.write_crash_info(crash_log, exception, traceback_str)
-            
+
             assert crash_log.exists()
             content = crash_log.read_text()
             assert "CuePoint Crash Report" in content
@@ -157,13 +157,19 @@ class TestLogSanitizerPathRedaction:
         assert "~" in sanitized or "REDACTED" in sanitized
         # Must not contain raw home path (Design 4.79)
         assert str(home) not in sanitized
-        assert "Music" in sanitized or "rekordbox" in sanitized or "REDACTED" in sanitized
+        assert (
+            "Music" in sanitized or "rekordbox" in sanitized or "REDACTED" in sanitized
+        )
 
     def test_sanitize_path_windows_user_profile_redacted(self):
         """Windows USERPROFILE-style path is redacted."""
         with patch.dict("os.environ", {"USERPROFILE": "C:\\Users\\Jane"}, clear=False):
-            sanitized = LogSanitizer.sanitize_path("C:\\Users\\Jane\\Documents\\file.xml")
-            assert "Jane" not in sanitized or "~" in sanitized or "REDACTED" in sanitized
+            sanitized = LogSanitizer.sanitize_path(
+                "C:\\Users\\Jane\\Documents\\file.xml"
+            )
+            assert (
+                "Jane" not in sanitized or "~" in sanitized or "REDACTED" in sanitized
+            )
 
     def test_sanitize_path_unix_home_redacted(self):
         """Unix path under home is redacted."""
@@ -182,10 +188,10 @@ class TestLogTiming:
         """Test timing successful operation."""
         CuePointLogger.configure()
         logger = logging.getLogger("test")
-        
+
         with log_timing("test_operation", logger):
             pass
-        
+
         assert "Starting test_operation" in caplog.text
         assert "Completed test_operation" in caplog.text
 
@@ -193,10 +199,10 @@ class TestLogTiming:
         """Test timing failed operation."""
         CuePointLogger.configure()
         logger = logging.getLogger("test")
-        
+
         with pytest.raises(ValueError):
             with log_timing("test_operation", logger):
                 raise ValueError("Test error")
-        
+
         assert "Starting test_operation" in caplog.text
         assert "Failed test_operation" in caplog.text

@@ -7,7 +7,9 @@ Tests for Rekordbox Instructions Dialog
 
 import pytest
 
-from cuepoint.ui.dialogs.rekordbox_instructions_dialog import RekordboxInstructionsDialog
+from cuepoint.ui.dialogs.rekordbox_instructions_dialog import (
+    RekordboxInstructionsDialog,
+)
 
 
 @pytest.fixture
@@ -38,7 +40,7 @@ def test_dialog_has_content(dialog):
     # Check that dialog has a layout
     layout = dialog.layout()
     assert layout is not None
-    
+
     # Check that there's a scroll area
     _ = dialog.findChildren(type(dialog))
     # The dialog should have content
@@ -58,4 +60,3 @@ def test_dialog_close_button(dialog):
     _ = dialog.findChildren(type(dialog))
     # Dialog should have a button box
     assert True  # Placeholder - will verify button box exists
-

@@ -240,4 +240,3 @@ class TestAppConfig:
         assert restored.cache.enabled is False
         assert restored.processing.max_concurrent == 10
         assert restored.reliability.checkpoint_every == 25
-

@@ -25,6 +25,7 @@ class _CacheFileInfo(TypedDict):
     age: timedelta
     mtime: float
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -111,7 +112,7 @@ class CacheManager:
                     logger.error(f"Error clearing cache item {item}: {e}")
 
             logger.info(
-                f"Cleared {cleared_count} cache items ({cleared_size / (1024*1024):.1f} MB)"
+                f"Cleared {cleared_count} cache items ({cleared_size / (1024 * 1024):.1f} MB)"
             )
         except Exception as e:
             logger.error(f"Error clearing cache: {e}")
@@ -183,7 +184,7 @@ class CacheManager:
         if removed_count > 0:
             logger.info(
                 f"Pruned cache: removed {removed_count} files "
-                f"({removed_size / (1024*1024):.1f} MB)"
+                f"({removed_size / (1024 * 1024):.1f} MB)"
             )
 
         return removed_count, removed_size

@@ -125,9 +125,15 @@ class ResultsView(QWidget):
         self.batch_results: Dict[str, List[TrackResult]] = {}  # For batch mode
         self.output_files: dict = {}
         self.is_batch_mode = False
-        self.playlist_tables: Dict[str, QTableWidget] = {}  # Store tables for each playlist
-        self.playlist_filters: Dict[str, Dict[str, Any]] = {}  # Store filters for each playlist
-        self.filtered_results: List[TrackResult] = []  # Store filtered results for single mode
+        self.playlist_tables: Dict[
+            str, QTableWidget
+        ] = {}  # Store tables for each playlist
+        self.playlist_filters: Dict[
+            str, Dict[str, Any]
+        ] = {}  # Store filters for each playlist
+        self.filtered_results: List[
+            TrackResult
+        ] = []  # Store filtered results for single mode
         self._filter_debounce_timer = QTimer()
         self._filter_debounce_timer.setSingleShot(True)
         self._filter_debounce_timer.timeout.connect(self._apply_filters_debounced)
@@ -139,7 +145,10 @@ class ResultsView(QWidget):
     def _ensure_table_min_rows(self, table: QTableWidget, rows: int = 10) -> None:
         """Ensure the table has enough visible height to show N rows (when space allows)."""
         try:
-            header_h = table.horizontalHeader().height() or table.horizontalHeader().sizeHint().height()
+            header_h = (
+                table.horizontalHeader().height()
+                or table.horizontalHeader().sizeHint().height()
+            )
             row_h = table.verticalHeader().defaultSectionSize() or 24
             frame = table.frameWidth() * 2
             # Small extra padding to account for layout/frame differences across platforms
@@ -174,7 +183,7 @@ class ResultsView(QWidget):
         top_main_layout = QVBoxLayout(top_widget)  # Main vertical layout
         top_main_layout.setSpacing(15)  # Increased spacing between sections
         top_main_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         # Horizontal layout for compact boxes (Summary and Filters)
         top_layout = QHBoxLayout()
         top_layout.setSpacing(10)
@@ -209,7 +218,9 @@ class ResultsView(QWidget):
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText(TooltipCopy.SEARCH_RESULTS)
         self.search_box.textChanged.connect(self._trigger_filter_debounced)
-        self.search_box.setToolTip("Search for tracks by title, artist, or Beatport data (Ctrl+F)")
+        self.search_box.setToolTip(
+            "Search for tracks by title, artist, or Beatport data (Ctrl+F)"
+        )
         self.search_box.setAccessibleName("Search input field")
         self.search_box.setAccessibleDescription(
             "Enter text to search for tracks. Keyboard shortcut: Ctrl+F"
@@ -223,29 +234,35 @@ class ResultsView(QWidget):
         self.status_filter.currentTextChanged.connect(self._trigger_filter_debounced)
         self.status_filter.setToolTip("Filter results by match status")
         self.status_filter.setAccessibleName("Match status filter")
-        self.status_filter.setAccessibleDescription("Select match status to filter results")
+        self.status_filter.setAccessibleDescription(
+            "Select match status to filter results"
+        )
         self.status_filter.setFocusPolicy(Qt.StrongFocus)
         filters_layout.addWidget(self.status_filter)
 
         # Confidence filter
         self.confidence_filter = QComboBox()
         self.confidence_filter.addItems(["All", "High", "Medium", "Low"])
-        self.confidence_filter.currentTextChanged.connect(self._trigger_filter_debounced)
+        self.confidence_filter.currentTextChanged.connect(
+            self._trigger_filter_debounced
+        )
         self.confidence_filter.setToolTip("Filter results by match confidence level")
         self.confidence_filter.setAccessibleName("Confidence filter")
-        self.confidence_filter.setAccessibleDescription("Select confidence level to filter results")
+        self.confidence_filter.setAccessibleDescription(
+            "Select confidence level to filter results"
+        )
         self.confidence_filter.setFocusPolicy(Qt.StrongFocus)
         filters_layout.addWidget(self.confidence_filter)
 
         filters_layout.addStretch()
         top_layout.addWidget(filters_group, 1)  # Equal stretch
-        
+
         # Add horizontal boxes to main top layout
         top_main_layout.addLayout(top_layout)
-        
+
         # Add significant spacing between Filters box and Advanced Filters to prevent visual overlap
         top_main_layout.addSpacing(25)  # Increased spacing to clearly separate sections
-        
+
         # Advanced Filters - SEPARATE checkable QGroupBox (like history_view.py does)
         # This is NOT a panelBox, so it has normal QGroupBox styling with checkbox in title
         advanced_filters_group = QGroupBox("Advanced Filters")
@@ -263,9 +280,11 @@ class ResultsView(QWidget):
         """)
         advanced_filters_layout = QVBoxLayout()
         # Adjust padding - reduce top padding, increase bottom padding for button visibility
-        advanced_filters_layout.setContentsMargins(10, 6, 10, 35)  # Less top, more bottom padding
+        advanced_filters_layout.setContentsMargins(
+            10, 6, 10, 35
+        )  # Less top, more bottom padding
         advanced_filters_layout.setSpacing(10)  # Slightly increased spacing
-        
+
         # Container widget for advanced filter controls (to show/hide)
         self.advanced_filters_container = QWidget()
         container_layout = QVBoxLayout(self.advanced_filters_container)
@@ -273,7 +292,9 @@ class ResultsView(QWidget):
         container_layout.setContentsMargins(0, 5, 0, 0)  # Small top margin, no bottom
         container_layout.setSpacing(10)  # Consistent spacing between filter rows
         # Use Minimum to allow natural growth based on content
-        self.advanced_filters_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
+        self.advanced_filters_container.setSizePolicy(
+            QSizePolicy.Preferred, QSizePolicy.Minimum
+        )
 
         # Year range filter
         year_layout = QHBoxLayout()
@@ -358,7 +379,7 @@ class ResultsView(QWidget):
 
         # Hide container by default
         self.advanced_filters_container.setVisible(False)
-        
+
         # Connect checkbox to show/hide container and update layout (like history_view.py)
         def on_advanced_filters_toggled(checked: bool):
             self.advanced_filters_container.setVisible(checked)
@@ -366,6 +387,7 @@ class ResultsView(QWidget):
             clear_button.setVisible(checked)
             # Force layout update to ensure content is visible and button is not clipped
             if checked:
+
                 def _update_geometries() -> None:
                     # Update all geometries to ensure proper sizing
                     self.advanced_filters_container.updateGeometry()
@@ -373,10 +395,14 @@ class ResultsView(QWidget):
                     advanced_filters_group.updateGeometry()
                     # Ensure Advanced Filters group box has enough height for all content including button
                     if self.advanced_filters_container.isVisible():
-                        container_height = self.advanced_filters_container.sizeHint().height()
+                        container_height = (
+                            self.advanced_filters_container.sizeHint().height()
+                        )
                         button_height = clear_button.sizeHint().height()
                         # Add space for button, spacing, and padding
-                        advanced_filters_group.setMinimumHeight(container_height + button_height + 50)
+                        advanced_filters_group.setMinimumHeight(
+                            container_height + button_height + 50
+                        )
                     top_widget.updateGeometry()
                     self.updateGeometry()
                     # Update splitter to allow top section to grow
@@ -385,20 +411,23 @@ class ResultsView(QWidget):
                     advanced_filters_group.update()
                     self.advanced_filters_container.update()
                     clear_button.update()
+
                 QTimer.singleShot(10, _update_geometries)
-                QTimer.singleShot(100, _update_geometries)  # Second update to ensure it sticks
+                QTimer.singleShot(
+                    100, _update_geometries
+                )  # Second update to ensure it sticks
             else:
                 # Reset minimum height when collapsed
                 advanced_filters_group.setMinimumHeight(0)
-        
+
         advanced_filters_group.toggled.connect(on_advanced_filters_toggled)
-        
+
         # Add container to Advanced Filters group box
         advanced_filters_layout.addWidget(self.advanced_filters_container)
-        
+
         # Add spacing before button to separate it from filters
         advanced_filters_layout.addSpacing(25)
-        
+
         # Clear filters button - add directly to group box layout (not container)
         # This ensures it's on the same visual surface as the Advanced Filters content
         clear_button = QPushButton("Clear All Filters")
@@ -436,12 +465,12 @@ class ResultsView(QWidget):
             }
         """)
         advanced_filters_layout.addWidget(clear_button)
-        
+
         advanced_filters_group.setLayout(advanced_filters_layout)
-        
+
         # Add Advanced Filters group box to top section (separate from Filters panelBox)
         top_main_layout.addWidget(advanced_filters_group)
-        
+
         # Add spacing after Advanced Filters to ensure nothing gets hidden behind it
         top_main_layout.addSpacing(5)
 
@@ -491,7 +520,7 @@ class ResultsView(QWidget):
         # Ensure "10 tracks visible" when possible (table remains scrollable)
         self.table.verticalHeader().setDefaultSectionSize(26 if is_macos() else 28)
         self._ensure_table_min_rows(self.table, 10)
-        
+
         # Connect sort signal to update visual indicators
         self.table.horizontalHeader().sectionClicked.connect(self._on_column_sorted)
         self._current_sort_column = -1
@@ -539,7 +568,9 @@ class ResultsView(QWidget):
         self.export_btn.setObjectName("secondaryActionButton")
         self.export_btn.setFixedHeight(30 if is_macos() else 32)
         self.export_btn.clicked.connect(self.show_export_dialog)
-        self.export_btn.setToolTip("Export results to CSV, JSON, or Excel format (Ctrl+E)")
+        self.export_btn.setToolTip(
+            "Export results to CSV, JSON, or Excel format (Ctrl+E)"
+        )
         self.export_btn.setAccessibleName("Export button")
         self.export_btn.setAccessibleDescription(
             "Click to export results. Keyboard shortcut: Ctrl+E"
@@ -552,7 +583,9 @@ class ResultsView(QWidget):
         self.export_all_btn.setObjectName("secondaryActionButton")
         self.export_all_btn.setFixedHeight(30 if is_macos() else 32)
         self.export_all_btn.clicked.connect(self.export_all_csv)
-        self.export_all_btn.setToolTip("Export all CSV files (main, candidates, queries, review)")
+        self.export_all_btn.setToolTip(
+            "Export all CSV files (main, candidates, queries, review)"
+        )
         self.export_all_btn.setAccessibleName("Export all CSV files button")
         self.export_all_btn.setAccessibleDescription("Click to export all CSV files")
         self.export_all_btn.setFocusPolicy(Qt.StrongFocus)
@@ -710,9 +743,9 @@ class ResultsView(QWidget):
         self.filtered_results = self.results_controller.filtered_results.copy()
 
         # Switch to single mode UI
-        if hasattr(self, 'single_table_group'):
+        if hasattr(self, "single_table_group"):
             self.single_table_group.setVisible(True)
-        if hasattr(self, 'batch_tabs'):
+        if hasattr(self, "batch_tabs"):
             self.batch_tabs.setVisible(False)
 
         # Update summary statistics
@@ -732,9 +765,9 @@ class ResultsView(QWidget):
         self.batch_results = results_dict
 
         # Switch to batch mode UI
-        if hasattr(self, 'single_table_group'):
+        if hasattr(self, "single_table_group"):
             self.single_table_group.setVisible(False)
-        if hasattr(self, 'batch_tabs'):
+        if hasattr(self, "batch_tabs"):
             self.batch_tabs.setVisible(True)
 
         # Clear existing tabs
@@ -753,7 +786,9 @@ class ResultsView(QWidget):
         # Update summary statistics (aggregate for all playlists)
         self._update_batch_summary()
 
-    def _create_playlist_tab(self, playlist_name: str, results: List[TrackResult]) -> QWidget:
+    def _create_playlist_tab(
+        self, playlist_name: str, results: List[TrackResult]
+    ) -> QWidget:
         """Create a tab widget for a single playlist with its own table and filters.
 
         Creates a complete tab widget with filter controls and results table
@@ -878,7 +913,9 @@ class ResultsView(QWidget):
             + [f"{k} Minor" for k in "C C# D D# E F F# G G# A A# B".split()]
         )
         key_filter.addItems(keys)
-        key_filter.setToolTip("Filter by musical key (only shows matched tracks with key data)")
+        key_filter.setToolTip(
+            "Filter by musical key (only shows matched tracks with key data)"
+        )
         key_filter.setFixedWidth(220)
         key_layout.addWidget(key_filter)
         key_layout.addStretch()
@@ -1110,7 +1147,9 @@ class ResultsView(QWidget):
             self.table.setItem(row, 8, matched_item)
 
             # Score
-            score_text = f"{result.match_score:.1f}" if result.match_score is not None else "N/A"
+            score_text = (
+                f"{result.match_score:.1f}" if result.match_score is not None else "N/A"
+            )
             score_item = QTableWidgetItem(score_text)
             score_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.table.setItem(row, 9, score_item)
@@ -1151,20 +1190,21 @@ class ResultsView(QWidget):
 
         # Keep table tall enough to show ~10 rows when space allows
         self._ensure_table_min_rows(self.table, 10)
-    
+
     def _update_table_row_for_result(self, result: TrackResult) -> None:
         """Update a single row in the table for a specific result.
-        
+
         This is much faster than repopulating the entire table and keeps
         the UI responsive. Finds the row by playlist_index and updates
         only the cells that may have changed.
-        
+
         Args:
             result: TrackResult to update in the table
         """
         import logging
+
         logger = logging.getLogger(__name__)
-        
+
         try:
             # Find the row index for this result in the filtered results
             filtered = self._filter_results()
@@ -1173,39 +1213,41 @@ class ResultsView(QWidget):
                 if r.playlist_index == result.playlist_index:
                     row_index = idx
                     break
-            
+
             if row_index is None:
                 # Result not in filtered view (maybe filtered out), just refresh
-                logger.debug(f"Result {result.playlist_index} not in filtered view, skipping row update")
+                logger.debug(
+                    f"Result {result.playlist_index} not in filtered view, skipping row update"
+                )
                 return
-            
+
             # Update only the cells that may have changed
             # Original Title (column 1) - usually doesn't change, but update for consistency
             self.table.setItem(row_index, 1, QTableWidgetItem(result.title))
-            
+
             # Original Artists (column 2) - usually doesn't change, but update for consistency
             self.table.setItem(row_index, 2, QTableWidgetItem(result.artist or ""))
-            
+
             # Beatport Title (column 3)
             beatport_title = result.beatport_title or ""
             self.table.setItem(row_index, 3, QTableWidgetItem(beatport_title))
-            
+
             # Beatport Artists (column 4)
             beatport_artists = result.beatport_artists or ""
             self.table.setItem(row_index, 4, QTableWidgetItem(beatport_artists))
-            
+
             # Key (column 5)
             key_text = result.beatport_key or ""
             self.table.setItem(row_index, 5, QTableWidgetItem(key_text))
-            
+
             # Camelot Key (column 6)
             camelot_key_text = result.beatport_key_camelot or ""
             self.table.setItem(row_index, 6, QTableWidgetItem(camelot_key_text))
-            
+
             # Release Year (column 7)
             year_text = result.beatport_year or ""
             self.table.setItem(row_index, 7, QTableWidgetItem(year_text))
-            
+
             # Matched status (column 8)
             matched_item = QTableWidgetItem("✓" if result.matched else "✗")
             matched_item.setTextAlignment(Qt.AlignCenter)
@@ -1214,35 +1256,41 @@ class ResultsView(QWidget):
             else:
                 matched_item.setForeground(Qt.darkRed)
             self.table.setItem(row_index, 8, matched_item)
-            
+
             # Score (column 9)
-            score_text = f"{result.match_score:.1f}" if result.match_score is not None else "N/A"
+            score_text = (
+                f"{result.match_score:.1f}" if result.match_score is not None else "N/A"
+            )
             score_item = QTableWidgetItem(score_text)
             score_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.table.setItem(row_index, 9, score_item)
-            
+
             # Confidence (column 10)
             confidence_text = result.confidence or ""
             confidence_item = QTableWidgetItem(
                 confidence_text.capitalize() if confidence_text else ""
             )
             self.table.setItem(row_index, 10, confidence_item)
-            
+
             # BPM (column 11)
             bpm_text = result.beatport_bpm or ""
             self.table.setItem(row_index, 11, QTableWidgetItem(bpm_text))
-            
+
             # Process events to keep UI responsive
             from PySide6.QtWidgets import QApplication
+
             QApplication.processEvents()
-            
+
         except Exception as e:
             logger.error(f"Error updating table row for result: {e}", exc_info=True)
             # Fallback: repopulate entire table if row update fails
             try:
                 self._populate_table()
             except Exception as fallback_error:
-                logger.error(f"Error in fallback _populate_table: {fallback_error}", exc_info=True)
+                logger.error(
+                    f"Error in fallback _populate_table: {fallback_error}",
+                    exc_info=True,
+                )
 
     def _on_column_sorted(self, column: int) -> None:
         """Handle column sorting with visual indicators"""
@@ -1250,7 +1298,7 @@ class ResultsView(QWidget):
         sort_order = self.table.horizontalHeader().sortIndicatorOrder()
         self._current_sort_column = column
         self._current_sort_order = sort_order
-    
+
     def _trigger_filter_debounced(self) -> None:
         """Trigger filter with debouncing for performance.
 
@@ -1328,10 +1376,12 @@ class ResultsView(QWidget):
             active_filters.append(f"Confidence: {self.confidence_filter.currentText()}")
 
         # Check score filter
-        if hasattr(self, 'score_min') and hasattr(self, 'score_max'):
+        if hasattr(self, "score_min") and hasattr(self, "score_max"):
             if self.score_min.value() > 0 or self.score_max.value() < 200:
                 min_val = self.score_min.value() if self.score_min.value() > 0 else None
-                max_val = self.score_max.value() if self.score_max.value() < 200 else None
+                max_val = (
+                    self.score_max.value() if self.score_max.value() < 200 else None
+                )
                 if min_val and max_val:
                     active_filters.append(f"Score: {min_val}-{max_val}")
                 elif min_val:
@@ -1340,7 +1390,9 @@ class ResultsView(QWidget):
                     active_filters.append(f"Score: ≤{max_val}")
 
         if active_filters:
-            self.filter_status_label.setText(f"Active filters: {', '.join(active_filters)}")
+            self.filter_status_label.setText(
+                f"Active filters: {', '.join(active_filters)}"
+            )
         else:
             self.filter_status_label.setText("No filters active")
 
@@ -1361,8 +1413,16 @@ class ResultsView(QWidget):
         bpm_max_val = self.bpm_max.value() if self.bpm_max.value() < 200 else None
         key_filter_val = self.key_filter.currentText()
         key_val = None if key_filter_val == "All" else key_filter_val
-        score_min_val = self.score_min.value() if hasattr(self, 'score_min') and self.score_min.value() > 0 else None
-        score_max_val = self.score_max.value() if hasattr(self, 'score_max') and self.score_max.value() < 200 else None
+        score_min_val = (
+            self.score_min.value()
+            if hasattr(self, "score_min") and self.score_min.value() > 0
+            else None
+        )
+        score_max_val = (
+            self.score_max.value()
+            if hasattr(self, "score_max") and self.score_max.value() < 200
+            else None
+        )
 
         # Use controller to apply standard filters
         filtered = self.results_controller.apply_filters(
@@ -1374,7 +1434,7 @@ class ResultsView(QWidget):
             bpm_max=bpm_max_val,
             key=key_val,
         )
-        
+
         # Apply additional filters not supported by controller
         if status_val:
             if status_val == "Matched":
@@ -1384,16 +1444,19 @@ class ResultsView(QWidget):
             elif status_val == "Review Needed":
                 # Review needed = matched but low confidence or low score
                 filtered = [
-                    r for r in filtered 
-                    if r.matched and (
-                        r.confidence == "low" or 
-                        (r.match_score is not None and r.match_score < 70)
+                    r
+                    for r in filtered
+                    if r.matched
+                    and (
+                        r.confidence == "low"
+                        or (r.match_score is not None and r.match_score < 70)
                     )
                 ]
-        
+
         if score_min_val is not None or score_max_val is not None:
             filtered = [
-                r for r in filtered
+                r
+                for r in filtered
                 if r.match_score is not None
                 and (score_min_val is None or r.match_score >= score_min_val)
                 and (score_max_val is None or r.match_score <= score_max_val)
@@ -1442,7 +1505,9 @@ class ResultsView(QWidget):
         else:
             self.result_count_label.setStyleSheet("font-weight: bold;")
 
-    def _populate_table_for_playlist(self, table: QTableWidget, results: List[TrackResult]) -> None:
+    def _populate_table_for_playlist(
+        self, table: QTableWidget, results: List[TrackResult]
+    ) -> None:
         """Populate a specific table with results for a playlist in batch mode.
 
         Applies filters for the playlist, populates the table with TrackResult
@@ -1515,7 +1580,9 @@ class ResultsView(QWidget):
             table.setItem(row, 8, matched_item)
 
             # Score
-            score_text = f"{result.match_score:.1f}" if result.match_score is not None else "N/A"
+            score_text = (
+                f"{result.match_score:.1f}" if result.match_score is not None else "N/A"
+            )
             score_item = QTableWidgetItem(score_text)
             score_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             table.setItem(row, 9, score_item)
@@ -1589,18 +1656,32 @@ class ResultsView(QWidget):
             ]
 
         # Year range filter
-        year_min_val = filters["year_min"].value() if filters["year_min"].value() > 1900 else None
-        year_max_val = filters["year_max"].value() if filters["year_max"].value() < 2100 else None
+        year_min_val = (
+            filters["year_min"].value() if filters["year_min"].value() > 1900 else None
+        )
+        year_max_val = (
+            filters["year_max"].value() if filters["year_max"].value() < 2100 else None
+        )
 
         if year_min_val or year_max_val:
-            filtered = [r for r in filtered if self._year_in_range(r, year_min_val, year_max_val)]
+            filtered = [
+                r
+                for r in filtered
+                if self._year_in_range(r, year_min_val, year_max_val)
+            ]
 
         # BPM range filter
-        bpm_min_val = filters["bpm_min"].value() if filters["bpm_min"].value() > 60 else None
-        bpm_max_val = filters["bpm_max"].value() if filters["bpm_max"].value() < 200 else None
+        bpm_min_val = (
+            filters["bpm_min"].value() if filters["bpm_min"].value() > 60 else None
+        )
+        bpm_max_val = (
+            filters["bpm_max"].value() if filters["bpm_max"].value() < 200 else None
+        )
 
         if bpm_min_val or bpm_max_val:
-            filtered = [r for r in filtered if self._bpm_in_range(r, bpm_min_val, bpm_max_val)]
+            filtered = [
+                r for r in filtered if self._bpm_in_range(r, bpm_min_val, bpm_max_val)
+            ]
 
         # Key filter
         key_filter_val = filters["key"].currentText()
@@ -1613,7 +1694,9 @@ class ResultsView(QWidget):
 
         return filtered
 
-    def _clear_filters_for_playlist(self, playlist_name: str, results: List[TrackResult]) -> None:
+    def _clear_filters_for_playlist(
+        self, playlist_name: str, results: List[TrackResult]
+    ) -> None:
         """Clear all filters for a specific playlist in batch mode.
 
         Resets all filter widgets to default values and reapplies filters
@@ -1636,7 +1719,9 @@ class ResultsView(QWidget):
         filters["confidence"].setCurrentText("All")
         self._apply_filters_for_playlist(playlist_name, results)
 
-    def _apply_filters_for_playlist(self, playlist_name: str, results: List[TrackResult]) -> None:
+    def _apply_filters_for_playlist(
+        self, playlist_name: str, results: List[TrackResult]
+    ) -> None:
         """Apply filters and update table for a specific playlist in batch mode.
 
         Applies current filter values and repopulates the table for the
@@ -1751,26 +1836,30 @@ class ResultsView(QWidget):
 
         # Show candidate dialog
         # Use candidates_data (dict format) for CandidateDialog, or convert BeatportCandidate objects
-        candidates_dicts = result.candidates_data if result.candidates_data else [
-            {
-                "candidate_url": c.url,
-                "candidate_title": c.title,
-                "candidate_artists": c.artists,
-                "candidate_key": c.key or "",
-                "candidate_key_camelot": c.key or "",
-                "candidate_year": str(c.release_year) if c.release_year else "",
-                "candidate_bpm": c.bpm or "",
-                "candidate_label": c.label or "",
-                "candidate_genres": c.genre or "",
-                "candidate_release": c.release_name or "",
-                "candidate_release_date": c.release_date or "",
-                "final_score": c.score,
-                "match_score": c.score,
-                "title_sim": c.title_sim,
-                "artist_sim": c.artist_sim,
-            }
-            for c in result.candidates
-        ]
+        candidates_dicts = (
+            result.candidates_data
+            if result.candidates_data
+            else [
+                {
+                    "candidate_url": c.url,
+                    "candidate_title": c.title,
+                    "candidate_artists": c.artists,
+                    "candidate_key": c.key or "",
+                    "candidate_key_camelot": c.key or "",
+                    "candidate_year": str(c.release_year) if c.release_year else "",
+                    "candidate_bpm": c.bpm or "",
+                    "candidate_label": c.label or "",
+                    "candidate_genres": c.genre or "",
+                    "candidate_release": c.release_name or "",
+                    "candidate_release_date": c.release_date or "",
+                    "final_score": c.score,
+                    "match_score": c.score,
+                    "title_sim": c.title_sim,
+                    "artist_sim": c.artist_sim,
+                }
+                for c in result.candidates
+            ]
+        )
         dialog = CandidateDialog(
             track_title=result.title,
             track_artist=result.artist or "",
@@ -1818,7 +1907,9 @@ class ResultsView(QWidget):
         result.beatport_artists = candidate.get(
             "candidate_artists", candidate.get("beatport_artists", "")
         )
-        result.beatport_url = candidate.get("candidate_url", candidate.get("beatport_url", ""))
+        result.beatport_url = candidate.get(
+            "candidate_url", candidate.get("beatport_url", "")
+        )
 
         # Update scores
         try:
@@ -1876,17 +1967,23 @@ class ResultsView(QWidget):
         file_path = options.get("file_path")
 
         if not file_path:
-            QMessageBox.warning(self, "No File Selected", "Please select a file location")
+            QMessageBox.warning(
+                self, "No File Selected", "Please select a file location"
+            )
             return
 
         # Get results to export
         results_to_export = (
-            self._filter_results() if options.get("export_filtered", False) else self.results
+            self._filter_results()
+            if options.get("export_filtered", False)
+            else self.results
         )
 
         if not results_to_export:
             QMessageBox.warning(
-                self, "No Results", "No results to export (filter may have excluded all results)"
+                self,
+                "No Results",
+                "No results to export (filter may have excluded all results)",
             )
             return
 
@@ -1912,7 +2009,9 @@ class ResultsView(QWidget):
                     include_candidates=options.get("include_candidates", False),
                     include_queries=options.get("include_queries", False),
                     include_metadata=options.get("include_metadata", True),
-                    include_processing_info=options.get("include_processing_info", False),
+                    include_processing_info=options.get(
+                        "include_processing_info", False
+                    ),
                     compress=options.get("compress", False),
                     settings=settings,
                 )
@@ -1922,7 +2021,9 @@ class ResultsView(QWidget):
 
             elif format_type == "excel":
                 # Export to Excel (with metadata option)
-                write_excel_file(results_to_export, file_path, playlist_name=self.playlist_name)
+                write_excel_file(
+                    results_to_export, file_path, playlist_name=self.playlist_name
+                )
                 QMessageBox.information(
                     self, "Export Complete", f"Excel file exported to:\n{file_path}"
                 )
@@ -1949,10 +2050,14 @@ class ResultsView(QWidget):
 
                 if output_files.get("main"):
                     QMessageBox.information(
-                        self, "Export Complete", f"CSV file exported to:\n{output_files['main']}"
+                        self,
+                        "Export Complete",
+                        f"CSV file exported to:\n{output_files['main']}",
                     )
                 else:
-                    QMessageBox.warning(self, "Export Failed", "Failed to export CSV file")
+                    QMessageBox.warning(
+                        self, "Export Failed", "Failed to export CSV file"
+                    )
 
         except ImportError as e:
             QMessageBox.critical(
@@ -1961,7 +2066,9 @@ class ResultsView(QWidget):
                 f"Missing dependency:\n{str(e)}\n\nPlease install required package.",
             )
         except Exception as e:
-            QMessageBox.critical(self, "Export Error", f"Error exporting file:\n{str(e)}")
+            QMessageBox.critical(
+                self, "Export Error", f"Error exporting file:\n{str(e)}"
+            )
 
     def export_all_csv(self) -> None:
         """Export all CSV files (main, candidates, queries, review).
@@ -1979,7 +2086,9 @@ class ResultsView(QWidget):
             return
 
         # Get output directory
-        output_dir = QFileDialog.getExistingDirectory(self, "Select Output Directory", "output")
+        output_dir = QFileDialog.getExistingDirectory(
+            self, "Select Output Directory", "output"
+        )
 
         if not output_dir:
             return
@@ -2018,22 +2127,29 @@ class ResultsView(QWidget):
             if output_files.get("main"):
                 files_list.append(f"Main: {os.path.basename(output_files['main'])}")
             if output_files.get("candidates"):
-                files_list.append(f"Candidates: {os.path.basename(output_files['candidates'])}")
+                files_list.append(
+                    f"Candidates: {os.path.basename(output_files['candidates'])}"
+                )
             if output_files.get("queries"):
-                files_list.append(f"Queries: {os.path.basename(output_files['queries'])}")
+                files_list.append(
+                    f"Queries: {os.path.basename(output_files['queries'])}"
+                )
             if output_files.get("review"):
                 files_list.append(f"Review: {os.path.basename(output_files['review'])}")
 
             if files_list:
-                message = f"Exported {len(files_list)} file(s) to:\n{output_dir}\n\n" + "\n".join(
-                    files_list
+                message = (
+                    f"Exported {len(files_list)} file(s) to:\n{output_dir}\n\n"
+                    + "\n".join(files_list)
                 )
                 QMessageBox.information(self, "Export Complete", message)
             else:
                 QMessageBox.warning(self, "Export Failed", "No files were exported")
 
         except Exception as e:
-            QMessageBox.critical(self, "Export Error", f"Error exporting CSV files:\n{str(e)}")
+            QMessageBox.critical(
+                self, "Export Error", f"Error exporting CSV files:\n{str(e)}"
+            )
 
     def open_output_folder(self) -> None:
         """Open output folder in file explorer.
@@ -2091,7 +2207,9 @@ class ResultsView(QWidget):
         # View candidates action (only if candidates exist)
         if result.candidates:
             view_candidates_action = menu.addAction("View Candidates...")
-            view_candidates_action.triggered.connect(lambda: self._view_candidates_for_row(row))
+            view_candidates_action.triggered.connect(
+                lambda: self._view_candidates_for_row(row)
+            )
         else:
             view_candidates_action = menu.addAction("No candidates available")
             view_candidates_action.setEnabled(False)
@@ -2152,26 +2270,30 @@ class ResultsView(QWidget):
 
         # Show candidate dialog
         # Use candidates_data (dict format) for CandidateDialog, or convert BeatportCandidate objects
-        candidates_dicts = result.candidates_data if result.candidates_data else [
-            {
-                "candidate_url": c.url,
-                "candidate_title": c.title,
-                "candidate_artists": c.artists,
-                "candidate_key": c.key or "",
-                "candidate_key_camelot": c.key or "",
-                "candidate_year": str(c.release_year) if c.release_year else "",
-                "candidate_bpm": c.bpm or "",
-                "candidate_label": c.label or "",
-                "candidate_genres": c.genre or "",
-                "candidate_release": c.release_name or "",
-                "candidate_release_date": c.release_date or "",
-                "final_score": c.score,
-                "match_score": c.score,
-                "title_sim": c.title_sim,
-                "artist_sim": c.artist_sim,
-            }
-            for c in result.candidates
-        ]
+        candidates_dicts = (
+            result.candidates_data
+            if result.candidates_data
+            else [
+                {
+                    "candidate_url": c.url,
+                    "candidate_title": c.title,
+                    "candidate_artists": c.artists,
+                    "candidate_key": c.key or "",
+                    "candidate_key_camelot": c.key or "",
+                    "candidate_year": str(c.release_year) if c.release_year else "",
+                    "candidate_bpm": c.bpm or "",
+                    "candidate_label": c.label or "",
+                    "candidate_genres": c.genre or "",
+                    "candidate_release": c.release_name or "",
+                    "candidate_release_date": c.release_date or "",
+                    "final_score": c.score,
+                    "match_score": c.score,
+                    "title_sim": c.title_sim,
+                    "artist_sim": c.artist_sim,
+                }
+                for c in result.candidates
+            ]
+        )
         dialog = CandidateDialog(
             track_title=result.title,
             track_artist=result.artist or "",
@@ -2182,12 +2304,16 @@ class ResultsView(QWidget):
 
         # Connect candidate selection
         dialog.candidate_selected.connect(
-            lambda candidate: self._on_candidate_selected(result.playlist_index, candidate)
+            lambda candidate: self._on_candidate_selected(
+                result.playlist_index, candidate
+            )
         )
 
         dialog.exec()
 
-    def _on_candidate_selected(self, playlist_index: int, candidate: Dict[str, Any]) -> None:
+    def _on_candidate_selected(
+        self, playlist_index: int, candidate: Dict[str, Any]
+    ) -> None:
         """Handle candidate selection in single playlist mode.
 
         Updates the TrackResult with the selected candidate's data,
@@ -2215,7 +2341,9 @@ class ResultsView(QWidget):
         result.beatport_artists = candidate.get(
             "candidate_artists", candidate.get("beatport_artists", "")
         )
-        result.beatport_url = candidate.get("candidate_url", candidate.get("beatport_url", ""))
+        result.beatport_url = candidate.get(
+            "candidate_url", candidate.get("beatport_url", "")
+        )
 
         # Update scores
         try:
@@ -2236,10 +2364,16 @@ class ResultsView(QWidget):
             result.artist_sim = None
 
         # Update metadata
-        result.beatport_key = candidate.get("candidate_key", candidate.get("beatport_key", ""))
+        result.beatport_key = candidate.get(
+            "candidate_key", candidate.get("beatport_key", "")
+        )
         result.beatport_key_camelot = candidate.get("candidate_key_camelot", "")
-        result.beatport_bpm = candidate.get("candidate_bpm", candidate.get("beatport_bpm", ""))
-        result.beatport_year = candidate.get("candidate_year", candidate.get("beatport_year", ""))
+        result.beatport_bpm = candidate.get(
+            "candidate_bpm", candidate.get("beatport_bpm", "")
+        )
+        result.beatport_year = candidate.get(
+            "candidate_year", candidate.get("beatport_year", "")
+        )
         result.beatport_label = candidate.get(
             "candidate_label", candidate.get("beatport_label", "")
         )
@@ -2271,9 +2405,10 @@ class ResultsView(QWidget):
         # Update only the affected row instead of repopulating entire table
         # This is much faster and keeps UI responsive
         self._update_table_row_for_result(result)
-        
+
         # Process events to keep UI responsive during update
         from PySide6.QtWidgets import QApplication
+
         QApplication.processEvents()
 
         # Update summary (this is fast)
@@ -2287,6 +2422,7 @@ class ResultsView(QWidget):
                 # Use status bar or a non-blocking notification if available
                 # For now, just log it - user can see the table updated
                 import logging
+
                 logger = logging.getLogger(__name__)
                 logger.info(f"Candidate selected: {result.title} - {result.artist}")
         except Exception:

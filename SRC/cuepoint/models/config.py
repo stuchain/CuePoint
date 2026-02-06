@@ -491,7 +491,9 @@ def load_config_from_yaml(yaml_path: str) -> dict:
     try:
         import yaml  # type: ignore[import-untyped]
     except ImportError:
-        raise ImportError("YAML support requires pyyaml. Install with: pip install pyyaml>=6.0")
+        raise ImportError(
+            "YAML support requires pyyaml. Install with: pip install pyyaml>=6.0"
+        )
 
     if not os.path.exists(yaml_path):
         raise FileNotFoundError(f"Configuration file not found: {yaml_path}")
@@ -500,7 +502,9 @@ def load_config_from_yaml(yaml_path: str) -> dict:
         yaml_content = yaml.safe_load(f)
 
     if not isinstance(yaml_content, dict):
-        raise ValueError(f"YAML file must contain a dictionary at root level: {yaml_path}")
+        raise ValueError(
+            f"YAML file must contain a dictionary at root level: {yaml_path}"
+        )
 
     # Flatten nested structure
     flattened = _flatten_yaml_dict(yaml_content)
@@ -515,7 +519,9 @@ def load_config_from_yaml(yaml_path: str) -> dict:
             # Type check: ensure YAML value matches default type
             if not isinstance(value, type(default_value)):
                 # Allow int/float conversion for numeric types
-                if isinstance(default_value, (int, float)) and isinstance(value, (int, float)):
+                if isinstance(default_value, (int, float)) and isinstance(
+                    value, (int, float)
+                ):
                     pass  # OK - both numeric
                 elif isinstance(default_value, bool) and isinstance(value, bool):
                     pass  # OK - both boolean

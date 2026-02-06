@@ -54,8 +54,12 @@ class Track:
             raise ValueError("Track duration cannot be negative")
         if self.bpm is not None and (self.bpm < 0 or self.bpm > 300):
             raise ValueError("Track BPM must be between 0 and 300")
-        if self.year is not None and (self.year < 1900 or self.year > datetime.now().year + 1):
-            raise ValueError(f"Track year must be between 1900 and {datetime.now().year + 1}")
+        if self.year is not None and (
+            self.year < 1900 or self.year > datetime.now().year + 1
+        ):
+            raise ValueError(
+                f"Track year must be between 1900 and {datetime.now().year + 1}"
+            )
 
     def to_dict(self) -> dict:
         """Convert track to dictionary.
@@ -110,4 +114,3 @@ class Track:
     def __repr__(self) -> str:
         """Developer representation."""
         return f"Track(title={self.title!r}, artist={self.artist!r}, bpm={self.bpm}, year={self.year})"
-

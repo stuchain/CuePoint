@@ -72,9 +72,12 @@ class AppPaths:
         Returns:
             Path to configuration directory.
         """
-        path = Path(
-            QStandardPaths.writableLocation(QStandardPaths.AppConfigLocation)  # type: ignore[attr-defined]
-        ) / "CuePoint"
+        path = (
+            Path(
+                QStandardPaths.writableLocation(QStandardPaths.AppConfigLocation)  # type: ignore[attr-defined]
+            )
+            / "CuePoint"
+        )
         return AppPaths._ensure_dir(path)
 
     @staticmethod
@@ -98,9 +101,12 @@ class AppPaths:
         Returns:
             Path to data directory.
         """
-        path = Path(
-            QStandardPaths.writableLocation(QStandardPaths.AppLocalDataLocation)  # type: ignore[attr-defined]
-        ) / "CuePoint"
+        path = (
+            Path(
+                QStandardPaths.writableLocation(QStandardPaths.AppLocalDataLocation)  # type: ignore[attr-defined]
+            )
+            / "CuePoint"
+        )
         return AppPaths._ensure_dir(path)
 
     @staticmethod
@@ -115,7 +121,10 @@ class AppPaths:
         Returns:
             Path to cache directory.
         """
-        path = Path(QStandardPaths.writableLocation(QStandardPaths.CacheLocation)) / "CuePoint"  # type: ignore[attr-defined]
+        path = (
+            Path(QStandardPaths.writableLocation(QStandardPaths.CacheLocation))
+            / "CuePoint"
+        )  # type: ignore[attr-defined]
         return AppPaths._ensure_dir(path)
 
     @staticmethod
@@ -197,7 +206,11 @@ class AppPaths:
             for char in invalid_chars:
                 filename = filename.replace(char, "_")
             # Remove reserved names
-            reserved = ["CON", "PRN", "AUX", "NUL"] + [f"COM{i}" for i in range(1, 10)] + [f"LPT{i}" for i in range(1, 10)]
+            reserved = (
+                ["CON", "PRN", "AUX", "NUL"]
+                + [f"COM{i}" for i in range(1, 10)]
+                + [f"LPT{i}" for i in range(1, 10)]
+            )
             name, ext = os.path.splitext(filename)
             if name.upper() in reserved:
                 filename = f"_{name}{ext}"
@@ -329,23 +342,22 @@ class AppPaths:
             Path to temporary file.
         """
         import tempfile
-        return Path(tempfile.mktemp(
-            prefix=prefix,
-            suffix=suffix,
-            dir=str(AppPaths.temp_dir())
-        ))
+
+        return Path(
+            tempfile.mktemp(prefix=prefix, suffix=suffix, dir=str(AppPaths.temp_dir()))
+        )
 
 
 class StorageInvariants:
     """Enforce storage invariants to prevent writing to restricted locations.
-    
+
     Implements Step 6.1.3 - Storage Invariants.
     """
 
     @staticmethod
     def get_app_dir() -> Path:
         """Get application installation directory.
-        
+
         Returns:
             Path to app directory (bundle on macOS, executable dir on Windows).
         """
@@ -354,10 +366,10 @@ class StorageInvariants:
     @staticmethod
     def is_restricted_location(path: Path) -> bool:
         """Check if path is in a restricted location.
-        
+
         Args:
             path: Path to check.
-            
+
         Returns:
             True if path is in a restricted location.
         """
@@ -399,10 +411,10 @@ class StorageInvariants:
     @staticmethod
     def is_app_bundle(path: Path) -> bool:
         """Check if path is within an app bundle (macOS).
-        
+
         Args:
             path: Path to check.
-            
+
         Returns:
             True if path is within an app bundle.
         """
@@ -421,10 +433,10 @@ class StorageInvariants:
     @staticmethod
     def validate_write_location(path: Path) -> Tuple[bool, Optional[str]]:
         """Validate that a path is safe to write to.
-        
+
         Args:
             path: Path to validate.
-            
+
         Returns:
             Tuple of (is_safe, error_message).
         """
@@ -441,18 +453,18 @@ class StorageInvariants:
 
 class PathValidator:
     """Path validation utilities.
-    
+
     Implements Step 6.1.1.3 - Path Validation and Creation.
     """
 
     @staticmethod
     def validate_path(path: Path, create: bool = True) -> Tuple[bool, Optional[str]]:
         """Validate a path exists and is writable.
-        
+
         Args:
             path: Path to validate.
             create: If True, create directory if missing.
-            
+
         Returns:
             Tuple of (is_valid, error_message).
         """
@@ -483,13 +495,13 @@ class PathValidator:
     @staticmethod
     def ensure_path(path: Path) -> Path:
         """Ensure path exists, creating if necessary.
-        
+
         Args:
             path: Path to ensure exists.
-            
+
         Returns:
             Path object (guaranteed to exist).
-            
+
         Raises:
             PermissionError: If cannot create.
             OSError: If creation fails.
@@ -506,14 +518,14 @@ class PathValidator:
 
 class PathMigration:
     """Handle path migrations when app structure changes.
-    
+
     Implements Step 6.1.4 - Path Migration Support.
     """
 
     @staticmethod
     def detect_migration_needed() -> bool:
         """Detect if path migration is needed.
-        
+
         Returns:
             True if migration is needed.
         """
@@ -532,7 +544,7 @@ class PathMigration:
     @staticmethod
     def get_old_paths() -> List[Path]:
         """Get list of old path locations.
-        
+
         Returns:
             List of old path locations that may need migration.
         """
@@ -540,7 +552,9 @@ class PathMigration:
 
         # Check for old structure (example - adjust based on actual old structure)
         if is_macos():
-            old_data = Path.home() / "Library" / "Application Support" / "CuePoint" / "data"
+            old_data = (
+                Path.home() / "Library" / "Application Support" / "CuePoint" / "data"
+            )
             if old_data.exists():
                 old_paths.append(old_data)
 
@@ -555,10 +569,10 @@ class PathMigration:
     @staticmethod
     def map_old_to_new(old_path: Path) -> Path:
         """Map old path to new path structure.
-        
+
         Args:
             old_path: Old path location.
-            
+
         Returns:
             New path location.
         """
@@ -569,7 +583,7 @@ class PathMigration:
     @staticmethod
     def migrate_paths() -> Tuple[bool, Optional[str]]:
         """Migrate paths from old structure to new.
-        
+
         Returns:
             Tuple of (success, error_message).
         """
@@ -598,7 +612,9 @@ class PathMigration:
                 if backup_path.exists():
                     # If backup already exists, add timestamp
                     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-                    backup_path = old_path.with_suffix(old_path.suffix + f".old-{timestamp}")
+                    backup_path = old_path.with_suffix(
+                        old_path.suffix + f".old-{timestamp}"
+                    )
                 old_path.rename(backup_path)
 
             return True, None
@@ -609,14 +625,14 @@ class PathMigration:
 
 class PathDiagnostics:
     """Collect path diagnostics for support and debugging.
-    
+
     Implements Step 6.1.5 - Path Diagnostics.
     """
 
     @staticmethod
     def collect_diagnostics() -> Dict[str, Any]:
         """Collect comprehensive path diagnostics.
-        
+
         Returns:
             Dictionary with path information.
         """
@@ -659,7 +675,7 @@ class PathDiagnostics:
     @staticmethod
     def format_diagnostics() -> str:
         """Format diagnostics as human-readable string.
-        
+
         Returns:
             Formatted diagnostic string.
         """

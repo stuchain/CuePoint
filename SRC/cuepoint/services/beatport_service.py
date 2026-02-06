@@ -17,7 +17,10 @@ from typing import Any, Dict, List, Optional
 
 from cuepoint.data.providers import get_active_provider
 from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError
-from cuepoint.services.circuit_breaker import CircuitOpenError, get_network_circuit_breaker
+from cuepoint.services.circuit_breaker import (
+    CircuitOpenError,
+    get_network_circuit_breaker,
+)
 from cuepoint.services.interfaces import (
     IBeatportService,
     ICacheService,
@@ -74,7 +77,9 @@ class BeatportService(IBeatportService):
         """
         # Skip Beatport when CUEPOINT_SKIP_BEATPORT=1 (system tests, CI)
         if os.environ.get("CUEPOINT_SKIP_BEATPORT", "").lower() in ("1", "true", "yes"):
-            self.logging_service.debug(f"Skipping Beatport search (CUEPOINT_SKIP_BEATPORT): {query}")
+            self.logging_service.debug(
+                f"Skipping Beatport search (CUEPOINT_SKIP_BEATPORT): {query}"
+            )
             return []
 
         # Check cache first
@@ -87,7 +92,7 @@ class BeatportService(IBeatportService):
         # Perform search
         try:
             self.logging_service.info(f"Searching Beatport for: {query}")
-            
+
             # Test if ddgs is available before searching
             try:
                 from duckduckgo_search import DDGS
@@ -105,20 +110,26 @@ class BeatportService(IBeatportService):
                     f"DuckDuckGo search (ddgs) test failed: {test_err!r}. "
                     "Track search may be limited."
                 )
-            
+
             provider = get_active_provider(
-                self.config_service.get("providers.active") if self.config_service else None
+                self.config_service.get("providers.active")
+                if self.config_service
+                else None
             )
 
             def _search() -> List[str]:
                 return run_with_retry(
-                    lambda: provider.search(idx=0, query=query, max_results=max_results),
+                    lambda: provider.search(
+                        idx=0, query=query, max_results=max_results
+                    ),
                     config_service=self.config_service,
                 )
 
             urls = get_network_circuit_breaker().call(_search)
-            
-            self.logging_service.info(f"Found {len(urls)} track URLs for query: {query}")
+
+            self.logging_service.info(
+                f"Found {len(urls)} track URLs for query: {query}"
+            )
 
             # Cache results (1 hour TTL)
             self.cache_service.set(cache_key, urls, ttl=3600)
@@ -136,16 +147,20 @@ class BeatportService(IBeatportService):
         except Exception as e:
             try:
                 from cuepoint.utils.alerting import record_failure
+
                 record_failure("beatport_search", str(e))
             except ImportError:
                 pass
             error_msg = f"Failed to search Beatport for '{query}': {str(e)}"
             self.logging_service.error(
-                error_msg, exc_info=e, extra={"query": query, "max_results": max_results}
+                error_msg,
+                exc_info=e,
+                extra={"query": query, "max_results": max_results},
             )
             # Log additional diagnostic info
             import sys
             import traceback
+
             self.logging_service.debug(
                 f"Search error details:\n"
                 f"  Exception type: {type(e).__name__}\n"
@@ -195,7 +210,9 @@ class BeatportService(IBeatportService):
         # Fetch from API (Design 5.1 retry, Design 5.38 circuit breaker)
         try:
             provider = get_active_provider(
-                self.config_service.get("providers.active") if self.config_service else None
+                self.config_service.get("providers.active")
+                if self.config_service
+                else None
             )
 
             def _fetch():
@@ -221,6 +238,7 @@ class BeatportService(IBeatportService):
         except Exception as e:
             try:
                 from cuepoint.utils.alerting import record_failure
+
                 record_failure("beatport_fetch", str(e))
             except ImportError:
                 pass

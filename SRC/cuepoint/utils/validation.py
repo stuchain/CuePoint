@@ -17,7 +17,9 @@ from typing import List, Optional, Tuple
 logger = logging.getLogger(__name__)
 
 # Step 8.2 secure defaults: basic XML hardening limits
-_MAX_XML_FILE_SIZE_BYTES = 100 * 1024 * 1024  # 100MB (kept consistent with existing behavior)
+_MAX_XML_FILE_SIZE_BYTES = (
+    100 * 1024 * 1024
+)  # 100MB (kept consistent with existing behavior)
 _MAX_XML_DEPTH = 100
 _MAX_XML_ELEMENTS = 1_000_000
 
@@ -75,7 +77,10 @@ def validate_xml_file(file_path: Path) -> Tuple[bool, Optional[str]]:
         if file_size == 0:
             return False, "File is empty"
         if file_size > _MAX_XML_FILE_SIZE_BYTES:
-            return False, f"File is too large (max {_MAX_XML_FILE_SIZE_BYTES // (1024 * 1024)}MB)"
+            return (
+                False,
+                f"File is too large (max {_MAX_XML_FILE_SIZE_BYTES // (1024 * 1024)}MB)",
+            )
     except OSError as e:
         return False, f"Error checking file size: {e}"
 
@@ -92,7 +97,10 @@ def validate_xml_file(file_path: Path) -> Tuple[bool, Optional[str]]:
         try:
             element_count = sum(1 for _ in root.iter())
             if element_count > _MAX_XML_ELEMENTS:
-                return False, f"XML has too many elements ({element_count} > {_MAX_XML_ELEMENTS})"
+                return (
+                    False,
+                    f"XML has too many elements ({element_count} > {_MAX_XML_ELEMENTS})",
+                )
         except Exception:
             # If counting fails, continue—parsing succeeded and other checks apply.
             pass
@@ -147,7 +155,9 @@ def validate_playlist_selection(
     return True, None
 
 
-def validate_export_path(file_path: Path, overwrite: bool = False) -> Tuple[bool, Optional[str]]:
+def validate_export_path(
+    file_path: Path, overwrite: bool = False
+) -> Tuple[bool, Optional[str]]:
     """Validate export file path.
 
     Args:
@@ -168,7 +178,10 @@ def validate_export_path(file_path: Path, overwrite: bool = False) -> Tuple[bool
 
     # Check file doesn't exist (unless overwrite allowed)
     if file_path.exists() and not overwrite:
-        return False, f"File already exists: {file_path}. Use overwrite option to replace."
+        return (
+            False,
+            f"File already exists: {file_path}. Use overwrite option to replace.",
+        )
 
     # Check disk space (rough estimate)
     try:

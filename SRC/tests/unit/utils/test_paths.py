@@ -67,7 +67,9 @@ class TestAppPaths:
         assert (app_dir / "cuepoint").exists()
 
     @patch.object(sys, "frozen", True, create=True)
-    @patch.object(sys, "executable", "/Applications/CuePoint.app/Contents/MacOS/CuePoint")
+    @patch.object(
+        sys, "executable", "/Applications/CuePoint.app/Contents/MacOS/CuePoint"
+    )
     def test_app_dir_macos_bundle(self):
         """Test app directory on macOS bundle."""
         if sys.platform != "darwin":

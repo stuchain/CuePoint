@@ -30,7 +30,11 @@ from dateutil import parser as dateparser
 from ddgs import DDGS
 
 from config import BASE_URL, SESSION, SETTINGS
-from mix_parser import _extract_remixer_names_from_title, _merge_name_lists, _split_display_names
+from mix_parser import (
+    _extract_remixer_names_from_title,
+    _merge_name_lists,
+    _split_display_names,
+)
 from utils import vlog, retry_with_backoff
 
 # Cache hit tracking for performance metrics
@@ -41,7 +45,7 @@ _last_cache_hit = False
 class BeatportCandidate:
     """
     Represents a Beatport track candidate with all metadata
-    
+
     This dataclass stores all information about a candidate track:
     - Basic info: URL, title, artists
     - Musical metadata: Key, year, BPM
@@ -49,6 +53,7 @@ class BeatportCandidate:
     - Scoring info: Similarity scores, bonuses, guard status
     - Search info: Which query found it, candidate index
     """
+
     url: str
     title: str
     artists: str
@@ -84,12 +89,7 @@ def get_last_cache_hit() -> bool:
     return _last_cache_hit
 
 
-@retry_with_backoff(
-    max_retries=3,
-    backoff_base=1.0,
-    backoff_max=30.0,
-    jitter=True
-)
+@retry_with_backoff(max_retries=3, backoff_base=1.0, backoff_max=30.0, jitter=True)
 def request_html(url: str) -> Optional[BeautifulSoup]:
     """Fetch a URL robustly, handling empty gzipped/brotli responses by retrying without compression."""
     global _last_cache_hit
@@ -119,9 +119,9 @@ def request_html(url: str) -> Optional[BeautifulSoup]:
             # Track cache hit status for performance metrics
             if resp:
                 # Check if response came from cache (requests_cache adds this attribute)
-                if hasattr(resp, 'from_cache'):
+                if hasattr(resp, "from_cache"):
                     _last_cache_hit = resp.from_cache
-                elif hasattr(resp, '_from_cache'):
+                elif hasattr(resp, "_from_cache"):
                     _last_cache_hit = resp._from_cache
                 else:
                     _last_cache_hit = False
@@ -140,7 +140,10 @@ def request_html(url: str) -> Optional[BeautifulSoup]:
             return None
 
     if _is_empty_body(resp):
-        vlog("fetch", f"[http] empty body (enc={resp.headers.get('Content-Encoding','-')}, cl={resp.headers.get('Content-Length','-')}); retry identity")
+        vlog(
+            "fetch",
+            f"[http] empty body (enc={resp.headers.get('Content-Encoding', '-')}, cl={resp.headers.get('Content-Length', '-')}); retry identity",
+        )
         h2 = dict(SESSION.headers)
         h2["Accept-Encoding"] = "identity"
         h2["Cache-Control"] = "no-cache"
@@ -150,7 +153,7 @@ def request_html(url: str) -> Optional[BeautifulSoup]:
 
     if resp and _is_empty_body(resp):
         vlog("fetch", "[http] still empty; retry with cache-buster + identity")
-        bust = f"_r={int(time.time()*1000)}"
+        bust = f"_r={int(time.time() * 1000)}"
         sep = "&" if ("?" in url) else "?"
         busted_url = f"{url}{sep}{bust}"
         h3 = dict(SESSION.headers)
@@ -175,6 +178,7 @@ def _parse_structured_json_ld(soup: BeautifulSoup) -> Dict[str, str]:
     for tag in soup.find_all("script", {"type": "application/ld+json"}):
         try:
             data = json.loads(tag.string or "")
+
             def grab(d):
                 if not isinstance(d, dict):
                     return
@@ -184,19 +188,32 @@ def _parse_structured_json_ld(soup: BeautifulSoup) -> Dict[str, str]:
                     if isinstance(by, dict) and by.get("name"):
                         out["artists"] = by["name"]
                     elif isinstance(by, list):
-                        out["artists"] = ", ".join([x.get("name") for x in by if isinstance(x, dict) and x.get("name")])
-                    for k in ("contributor","creator"):
+                        out["artists"] = ", ".join(
+                            [
+                                x.get("name")
+                                for x in by
+                                if isinstance(x, dict) and x.get("name")
+                            ]
+                        )
+                    for k in ("contributor", "creator"):
                         v = d.get(k)
                         if isinstance(v, list):
-                            rem = [x.get("name") for x in v if isinstance(x, dict) and x.get("name")]
+                            rem = [
+                                x.get("name")
+                                for x in v
+                                if isinstance(x, dict) and x.get("name")
+                            ]
                             if rem:
                                 out["remixers"] = ", ".join(rem)
                     if d.get("inAlbum"):
                         alb = d.get("inAlbum")
                         if isinstance(alb, dict):
-                            out["release_name"] = alb.get("name") or out.get("release_name")
+                            out["release_name"] = alb.get("name") or out.get(
+                                "release_name"
+                            )
                     if d.get("datePublished"):
                         out["release_date"] = d.get("datePublished")
+
             if isinstance(data, list):
                 for d in data:
                     grab(d)
@@ -215,6 +232,7 @@ def _parse_next_data(soup: BeautifulSoup) -> Dict[str, str]:
         if not tag or not tag.string:
             return out
         data = json.loads(tag.string)
+
         def dig(node):
             if isinstance(node, dict):
                 if "title" in node and ("artists" in node or "performers" in node):
@@ -243,34 +261,64 @@ def _parse_next_data(soup: BeautifulSoup) -> Dict[str, str]:
                     out["key"] = node["key"]
                 if "bpm" in node and node["bpm"]:
                     out["bpm"] = str(node["bpm"])
-                if "label" in node and isinstance(node["label"], dict) and node["label"].get("name"):
+                if (
+                    "label" in node
+                    and isinstance(node["label"], dict)
+                    and node["label"].get("name")
+                ):
                     out["label"] = node["label"]["name"]
                 if "genres" in node and isinstance(node["genres"], list):
-                    out["genres"] = ", ".join([g.get("name") for g in node["genres"] if isinstance(g, dict) and g.get("name")])
+                    out["genres"] = ", ".join(
+                        [
+                            g.get("name")
+                            for g in node["genres"]
+                            if isinstance(g, dict) and g.get("name")
+                        ]
+                    )
                 if "releaseDate" in node and node["releaseDate"]:
                     out["release_date"] = node["releaseDate"]
-                if "release" in node and isinstance(node["release"], dict) and node["release"].get("title"):
+                if (
+                    "release" in node
+                    and isinstance(node["release"], dict)
+                    and node["release"].get("title")
+                ):
                     out["release_name"] = node["release"]["title"]
-                for k in ("track", "data", "props", "pageProps", "results", "item", "items"):
+                for k in (
+                    "track",
+                    "data",
+                    "props",
+                    "pageProps",
+                    "results",
+                    "item",
+                    "items",
+                ):
                     v = node.get(k)
                     if v is not None:
                         dig(v)
             elif isinstance(node, list):
                 for x in node:
                     dig(x)
+
         dig(data)
     except Exception:
         return out
     return out
 
 
-@retry_with_backoff(
-    max_retries=2,
-    backoff_base=0.5,
-    backoff_max=10.0,
-    jitter=True
-)
-def parse_track_page(url: str) -> Tuple[str, str, Optional[str], Optional[int], Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]]:
+@retry_with_backoff(max_retries=2, backoff_base=0.5, backoff_max=10.0, jitter=True)
+def parse_track_page(
+    url: str,
+) -> Tuple[
+    str,
+    str,
+    Optional[str],
+    Optional[int],
+    Optional[str],
+    Optional[str],
+    Optional[str],
+    Optional[str],
+    Optional[str],
+]:
     """Parse a Beatport track page and extract metadata"""
     soup = request_html(url)
     if soup is None:
@@ -294,7 +342,7 @@ def parse_track_page(url: str) -> Tuple[str, str, Optional[str], Optional[int], 
         header = soup.select_one("h1, h2")
         header = header.parent if header else None
         for _ in range(3):
-            if header and header.find('a', href=re.compile(r"^/artist/")):
+            if header and header.find("a", href=re.compile(r"^/artist/")):
                 break
             header = header.parent if header else None
         if header:
@@ -305,10 +353,16 @@ def parse_track_page(url: str) -> Tuple[str, str, Optional[str], Optional[int], 
         if not artists:
             byline = soup.find(string=re.compile(r"^\s*Artists?\s*:\s*$", re.I))
             if byline and byline.parent:
-                artists = re.sub(r"Artists?:\s*", "", byline.parent.get_text(" ", strip=True), flags=re.I)
+                artists = re.sub(
+                    r"Artists?:\s*",
+                    "",
+                    byline.parent.get_text(" ", strip=True),
+                    flags=re.I,
+                )
 
     remixers = info.get("remixers") or ""
     if not remixers:
+
         def val_after_label(label_regex: str) -> Optional[str]:
             lbls = soup.find_all(string=re.compile(label_regex, re.I))
             for lab in lbls:
@@ -321,6 +375,7 @@ def parse_track_page(url: str) -> Tuple[str, str, Optional[str], Optional[int], 
                 except Exception:
                     continue
             return None
+
         remixers = val_after_label(r"^\s*Remixers?\s*$") or ""
 
     title_remixers = _extract_remixer_names_from_title(title)
@@ -330,7 +385,11 @@ def parse_track_page(url: str) -> Tuple[str, str, Optional[str], Optional[int], 
     if remixers:
         a_list = _split_display_names(artists)
         r_list = _split_display_names(remixers)
-        artists = _merge_name_lists(a_list, r_list) if a_list or r_list else (artists or remixers)
+        artists = (
+            _merge_name_lists(a_list, r_list)
+            if a_list or r_list
+            else (artists or remixers)
+        )
 
     def val_after_label(label_regex: str) -> Optional[str]:
         lbls = soup.find_all(string=re.compile(label_regex, re.I))
@@ -363,7 +422,15 @@ def parse_track_page(url: str) -> Tuple[str, str, Optional[str], Optional[int], 
     if genres is None:
         genre_links = soup.select('a[href^="/genre/"]')
         if genre_links:
-            genres = ", ".join(dict.fromkeys([g.get_text(strip=True) for g in genre_links if g.get_text(strip=True)]))
+            genres = ", ".join(
+                dict.fromkeys(
+                    [
+                        g.get_text(strip=True)
+                        for g in genre_links
+                        if g.get_text(strip=True)
+                    ]
+                )
+            )
         else:
             genres = val_after_label(r"^\s*Genres?\s*$")
 
@@ -396,13 +463,29 @@ def parse_track_page(url: str) -> Tuple[str, str, Optional[str], Optional[int], 
             except Exception:
                 pass
 
-    return title or "", artists or "", key, year, bpm, label, genres, rel_name, rel_date_iso
+    return (
+        title or "",
+        artists or "",
+        key,
+        year,
+        bpm,
+        label,
+        genres,
+        rel_name,
+        rel_date_iso,
+    )
 
 
-def track_urls(idx: int, query: str, max_results: int, use_direct_search: Optional[bool] = None, fallback_to_browser: bool = False) -> List[str]:
+def track_urls(
+    idx: int,
+    query: str,
+    max_results: int,
+    use_direct_search: Optional[bool] = None,
+    fallback_to_browser: bool = False,
+) -> List[str]:
     """
     Unified search function that can use direct Beatport search, DuckDuckGo, or both.
-    
+
     Args:
         idx: Track index for logging
         query: Search query
@@ -411,7 +494,7 @@ def track_urls(idx: int, query: str, max_results: int, use_direct_search: Option
                           if None, use SETTINGS to decide (hybrid mode for remixes)
         fallback_to_browser: If True and other methods find many results but might miss the track,
                            try browser automation as fallback
-    
+
     Returns:
         List of Beatport track URLs
     """
@@ -428,21 +511,33 @@ def track_urls(idx: int, query: str, max_results: int, use_direct_search: Option
                 if search_terms_for_detection.startswith("/track"):
                     search_terms_for_detection = search_terms_for_detection[6:].strip()
                 search_terms_for_detection = search_terms_for_detection.strip()
-        
+
         # Clean query for detection - remove quotes but preserve parentheses (they indicate remix info)
-        clean_query_for_detection = search_terms_for_detection.strip('"').strip("'").strip()
+        clean_query_for_detection = (
+            search_terms_for_detection.strip('"').strip("'").strip()
+        )
         # Remove quote marks but preserve parentheses
-        clean_query_for_detection = clean_query_for_detection.replace('"""', '').replace('"', '').replace("'", '')
+        clean_query_for_detection = (
+            clean_query_for_detection.replace('"""', "")
+            .replace('"', "")
+            .replace("'", "")
+        )
         ql = (clean_query_for_detection or "").lower()
-        has_remix_keywords = (" remix" in ql) or ("extended mix" in ql) or (ql.count("(") > 0 and ql.count(")") > 0)
+        has_remix_keywords = (
+            (" remix" in ql)
+            or ("extended mix" in ql)
+            or (ql.count("(") > 0 and ql.count(")") > 0)
+        )
         has_original_mix = "original mix" in ql
-        use_direct_search = SETTINGS.get("USE_DIRECT_SEARCH_FOR_REMIXES", True) and (has_remix_keywords or has_original_mix)
-    
+        use_direct_search = SETTINGS.get("USE_DIRECT_SEARCH_FOR_REMIXES", True) and (
+            has_remix_keywords or has_original_mix
+        )
+
     if use_direct_search:
         # Try direct Beatport search with multiple methods
         try:
             from beatport_search import beatport_search_direct, beatport_search_browser
-            
+
             # Method 1: Try API/direct HTML scraping
             # Extract just the search terms if query has "site:beatport.com" prefix
             search_query = query
@@ -457,21 +552,42 @@ def track_urls(idx: int, query: str, max_results: int, use_direct_search: Option
                     search_query = search_query.strip()
                     # Remove quotes for search (but preserve for browser search)
                     search_query = search_query.strip('"').strip("'").strip()
-                    search_query = search_query.replace('"""', '').replace('"', '').replace("'", '')
-            
+                    search_query = (
+                        search_query.replace('"""', "")
+                        .replace('"', "")
+                        .replace("'", "")
+                    )
+
             direct_urls = beatport_search_direct(idx, search_query, max_results)
             # Clean query for remix detection - use search_query (already cleaned) instead of original query
             clean_query_for_check = search_query.strip('"').strip("'").strip()
-            clean_query_for_check = clean_query_for_check.replace('"""', '').replace('"', '').replace("'", '')
+            clean_query_for_check = (
+                clean_query_for_check.replace('"""', "")
+                .replace('"', "")
+                .replace("'", "")
+            )
             ql = (clean_query_for_check or "").lower()
-            is_remix_query = (" remix" in ql) or ("extended mix" in ql) or (ql.count("(") > 0 and ql.count(")") > 0)
-            
+            is_remix_query = (
+                (" remix" in ql)
+                or ("extended mix" in ql)
+                or (ql.count("(") > 0 and ql.count(")") > 0)
+            )
+
             # If direct search found results, check if we need browser automation for remix queries
             if direct_urls and len(direct_urls) > 0:
                 # If we found some results but it's a remix query and we found very few, try browser automation
-                if is_remix_query and len(direct_urls) < 5 and SETTINGS.get("USE_BROWSER_AUTOMATION", False):
-                    vlog(idx, f"[search] Direct search found {len(direct_urls)} URLs for remix query, trying browser automation")
-                    browser_urls = beatport_search_browser(idx, search_query, max_results)
+                if (
+                    is_remix_query
+                    and len(direct_urls) < 5
+                    and SETTINGS.get("USE_BROWSER_AUTOMATION", False)
+                ):
+                    vlog(
+                        idx,
+                        f"[search] Direct search found {len(direct_urls)} URLs for remix query, trying browser automation",
+                    )
+                    browser_urls = beatport_search_browser(
+                        idx, search_query, max_results
+                    )
                     if browser_urls:
                         # Merge results (browser automation finds more, prepend its results)
                         seen = set(direct_urls)
@@ -490,12 +606,15 @@ def track_urls(idx: int, query: str, max_results: int, use_direct_search: Option
                                 merged.append(url)
                                 if len(merged) >= max_results:
                                     break
-                        vlog(idx, f"[search] Combined {len(merged)} URLs (browser {len(browser_urls)} + direct {len(direct_urls)})")
+                        vlog(
+                            idx,
+                            f"[search] Combined {len(merged)} URLs (browser {len(browser_urls)} + direct {len(direct_urls)})",
+                        )
                         return merged[:max_results]
-                
+
                 if direct_urls:
                     return direct_urls[:max_results]
-            
+
             # Method 2: Try browser automation if enabled and direct search found nothing OR very few results
             # For remix queries, browser automation is critical since pages are JS-rendered
             # CRITICAL: If direct search found very few results (<10) for a remix query, try browser automation
@@ -505,18 +624,31 @@ def track_urls(idx: int, query: str, max_results: int, use_direct_search: Option
                 should_try_browser = False
                 if direct_urls is None or len(direct_urls) == 0:
                     should_try_browser = True
-                    vlog(idx, "[search] Direct search found 0 URLs, trying browser automation")
+                    vlog(
+                        idx,
+                        "[search] Direct search found 0 URLs, trying browser automation",
+                    )
                 elif is_remix_query and len(direct_urls) < 10:
                     # For remix queries, if we found <10 results, browser might find more
-                    vlog(idx, f"[search] Direct search found only {len(direct_urls)} URLs for remix query, trying browser automation")
+                    vlog(
+                        idx,
+                        f"[search] Direct search found only {len(direct_urls)} URLs for remix query, trying browser automation",
+                    )
                     should_try_browser = True
-                
+
                 if should_try_browser:
                     # Use the cleaned search_query (without site: prefix) for browser automation
-                    browser_query = search_query if 'search_query' in locals() else query
-                    browser_urls = beatport_search_browser(idx, browser_query, max_results)
+                    browser_query = (
+                        search_query if "search_query" in locals() else query
+                    )
+                    browser_urls = beatport_search_browser(
+                        idx, browser_query, max_results
+                    )
                     if browser_urls:
-                        vlog(idx, f"[search] Browser automation found {len(browser_urls)} URLs")
+                        vlog(
+                            idx,
+                            f"[search] Browser automation found {len(browser_urls)} URLs",
+                        )
                         # If direct search also found some, merge them (browser results first, they're more reliable)
                         if direct_urls and len(direct_urls) > 0:
                             seen = set(browser_urls)
@@ -527,20 +659,25 @@ def track_urls(idx: int, query: str, max_results: int, use_direct_search: Option
                                     merged.append(url)
                                     if len(merged) >= max_results:
                                         break
-                            vlog(idx, f"[search] Merged {len(merged)} URLs (browser {len(browser_urls)} + direct {len(direct_urls)})")
+                            vlog(
+                                idx,
+                                f"[search] Merged {len(merged)} URLs (browser {len(browser_urls)} + direct {len(direct_urls)})",
+                            )
                             return merged[:max_results]
                         return browser_urls
-            
+
             # If both fail, fall through to DuckDuckGo
         except ImportError:
             # beatport_search module not available, fall through to DuckDuckGo
             pass
         except Exception as e:
-            vlog(idx, f"[search] direct search failed: {e!r}, falling back to DuckDuckGo")
-    
+            vlog(
+                idx, f"[search] direct search failed: {e!r}, falling back to DuckDuckGo"
+            )
+
     # Fall back to DuckDuckGo
     ddg_urls = ddg_track_urls(idx, query, max_results)
-    
+
     # CRITICAL: If DuckDuckGo finds many results (50+) but we're looking for a specific track,
     # try browser automation to find the exact track. This fixes cases like:
     # - "Tim Green The Night is Blue" where DDG returns 100+ results but misses the correct track
@@ -561,11 +698,15 @@ def track_urls(idx: int, query: str, max_results: int, use_direct_search: Option
             # Check if it's not a remix query (those already use direct search)
             if not ((" remix" in ql.lower()) or ("extended mix" in ql.lower())):
                 should_try_browser = True
-    
+
     if should_try_browser and SETTINGS.get("USE_BROWSER_AUTOMATION", False):
-        vlog(idx, f"[search] DDG found {len(ddg_urls)} results, trying browser automation for better accuracy")
+        vlog(
+            idx,
+            f"[search] DDG found {len(ddg_urls)} results, trying browser automation for better accuracy",
+        )
         try:
             from beatport_search import beatport_search_browser
+
             browser_urls = beatport_search_browser(idx, query, max_results)
             if browser_urls:
                 # Merge browser results with DDG results (browser is more reliable, prepend its results)
@@ -585,13 +726,16 @@ def track_urls(idx: int, query: str, max_results: int, use_direct_search: Option
                         merged.append(url)
                         if len(merged) >= max_results:
                             break
-                vlog(idx, f"[search] Combined {len(merged)} URLs (browser {len(browser_urls)} + DDG {len(ddg_urls)})")
+                vlog(
+                    idx,
+                    f"[search] Combined {len(merged)} URLs (browser {len(browser_urls)} + DDG {len(ddg_urls)})",
+                )
                 return merged[:max_results]
         except ImportError:
             pass
         except Exception as e:
             vlog(idx, f"[search] Browser fallback failed: {e!r}")
-    
+
     return ddg_urls
 
 
@@ -603,20 +747,33 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
         ql = (query or "").lower()
         # Increase max results for remix/extended queries - they often need more results to find the right track
         # For exact quoted remix queries (like "Never Sleep Again (Keinemusik Remix)"), increase even more
-        is_exact_remix_query = query.startswith('"') and query.endswith('"') and ((" remix" in ql) or ("(" in ql and ")" in ql))
-        if (" remix" in ql) or ("extended mix" in ql) or ("re-fire" in ql) or ("refire" in ql) or ("rework" in ql) or ("re-edit" in ql) or ("(" in ql and ")" in ql) or re.search(r"\bstyler\b", ql):
+        is_exact_remix_query = (
+            query.startswith('"')
+            and query.endswith('"')
+            and ((" remix" in ql) or ("(" in ql and ")" in ql))
+        )
+        if (
+            (" remix" in ql)
+            or ("extended mix" in ql)
+            or ("re-fire" in ql)
+            or ("refire" in ql)
+            or ("rework" in ql)
+            or ("re-edit" in ql)
+            or ("(" in ql and ")" in ql)
+            or re.search(r"\bstyler\b", ql)
+        ):
             if is_exact_remix_query:
                 mr = max(mr, 200)  # Even higher for exact quoted remix queries
             else:
                 mr = max(mr, 150)  # Increased from 120 for better remix discovery
-        
+
         # Try multiple search strategies - prioritize quoted/exact matches
         # For quoted queries, try quoted first (more specific)
         if query.startswith('"') and query.endswith('"'):
             # Already quoted, use as-is
             search_queries = [
-                f'site:beatport.com/track {query}',
-                f'site:beatport.com {query}',
+                f"site:beatport.com/track {query}",
+                f"site:beatport.com {query}",
             ]
         else:
             # Not quoted - try quoted version first for better precision
@@ -625,7 +782,7 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                 f"site:beatport.com/track {query}",
                 f"site:beatport.com {query}",  # Broader search last
             ]
-        
+
         with DDGS() as ddgs:
             for search_q in search_queries:
                 try:
@@ -635,7 +792,9 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                             urls.append(href)
                     # For remix queries, don't break early - we need to find specific tracks
                     # Only break early for non-remix queries with many results
-                    if len(urls) >= 20 and (" remix" not in ql and "extended mix" not in ql):
+                    if len(urls) >= 20 and (
+                        " remix" not in ql and "extended mix" not in ql
+                    ):
                         break
                 except Exception as e:
                     vlog(idx, f"[search] ddgs error for '{search_q}': {e!r}")
@@ -655,24 +814,24 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
         ql = (query or "").lower().strip()
         primary_tok = ql.split()[0] if ql else ""
         needs_fallback = len(out) < LOW_TRACK_THRESHOLD
-        
+
         # Check if we found the primary token in any URL
         if primary_tok and len(primary_tok) >= 3:
             found_primary = any((primary_tok in u.lower()) for u in out)
             if not found_primary:
                 needs_fallback = True
-        
+
         # More aggressive fallback for specific cases
         if needs_fallback and (" " in ql):
             extra_pages: list[str] = []
-            
+
             # Try broader searches
             fallback_queries = [
                 f"site:beatport.com {query}",
-                f"site:beatport.com \"{query}\"",
+                f'site:beatport.com "{query}"',
                 f"beatport.com {query}",
             ]
-            
+
             with DDGS() as ddgs:
                 for fallback_q in fallback_queries:
                     try:
@@ -683,7 +842,7 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                     except Exception as e:
                         vlog(idx, f"[fallback-search] error for '{fallback_q}': {e!r}")
                         continue
-            
+
             # Process extra pages to find track links
             for page_url in extra_pages[:6]:
                 if "/track/" in page_url:
@@ -692,11 +851,11 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                         seen.add(page_url)
                         out.append(page_url)
                     continue
-                    
+
                 soup = request_html(page_url)
                 if not soup:
                     continue
-                    
+
                 # Look for track links
                 for a in soup.select('a[href^="/track/"]'):
                     try:
@@ -720,22 +879,28 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
             parts = ql.split()
             if len(parts) >= 2:
                 # Try common URL patterns
-                track_name = "-".join(parts[:-1])  # Everything except last part (artist)
+                track_name = "-".join(
+                    parts[:-1]
+                )  # Everything except last part (artist)
                 artist_name = parts[-1]  # Last part (artist)
-                
+
                 # Broader searches
                 broader_searches = [
                     f"site:beatport.com {track_name} {artist_name}",
-                    f"site:beatport.com \"{track_name}\" {artist_name}",
+                    f'site:beatport.com "{track_name}" {artist_name}',
                     f"beatport.com {track_name} {artist_name}",
                 ]
-                
+
                 with DDGS() as ddgs:
                     for broad_q in broader_searches:
                         try:
                             for r in ddgs.text(broad_q, region="us-en", max_results=10):
                                 href = r.get("href") or r.get("url") or ""
-                                if href and "beatport.com/track/" in href and href not in seen:
+                                if (
+                                    href
+                                    and "beatport.com/track/" in href
+                                    and href not in seen
+                                ):
                                     seen.add(href)
                                     out.append(href)
                         except Exception as e:
@@ -746,7 +911,7 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
 
     if SETTINGS["TRACE"]:
         from utils import tlog
+
         for i, u in enumerate(out, 1):
             tlog(idx, f"[cand {i}] {u}")
     return out
-

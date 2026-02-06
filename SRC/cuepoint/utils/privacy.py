@@ -75,7 +75,9 @@ class DataRetentionManager:
     """Enforce basic retention policies (best-effort)."""
 
     @staticmethod
-    def enforce_cache_retention(cache_dir: Optional[Path] = None, max_size_mb: int = 100) -> None:
+    def enforce_cache_retention(
+        cache_dir: Optional[Path] = None, max_size_mb: int = 100
+    ) -> None:
         cache_dir = cache_dir or AppPaths.cache_dir()
         if not cache_dir.exists():
             return
@@ -100,7 +102,9 @@ class DataRetentionManager:
                 pass
 
     @staticmethod
-    def enforce_log_retention(logs_dir: Optional[Path] = None, max_files: int = 5) -> None:
+    def enforce_log_retention(
+        logs_dir: Optional[Path] = None, max_files: int = 5
+    ) -> None:
         logs_dir = logs_dir or AppPaths.logs_dir()
         if not logs_dir.exists():
             return
@@ -152,5 +156,3 @@ class DataDeletionManager:
         DataDeletionManager.clear_cache()
         DataDeletionManager.clear_logs()
         DataDeletionManager.clear_config()
-
-

@@ -92,7 +92,9 @@ class ShortcutCustomizationDialog(QDialog):
         all_shortcuts = self.shortcut_manager.get_all_shortcuts()
         self.table.setRowCount(len(all_shortcuts))
 
-        for row, (action_id, (sequence, description, context)) in enumerate(all_shortcuts.items()):
+        for row, (action_id, (sequence, description, context)) in enumerate(
+            all_shortcuts.items()
+        ):
             self.table.setItem(row, 0, QTableWidgetItem(action_id))
             self.table.setItem(row, 1, QTableWidgetItem(description))
             shortcut_item = QTableWidgetItem(sequence)
@@ -115,7 +117,9 @@ class ShortcutCustomizationDialog(QDialog):
                 # Check for conflicts
                 if self.check_conflict(action_id, new_shortcut):
                     QMessageBox.warning(
-                        self, "Conflict", f"Shortcut '{new_shortcut}' is already in use."
+                        self,
+                        "Conflict",
+                        f"Shortcut '{new_shortcut}' is already in use.",
                     )
                     return
 
@@ -157,7 +161,10 @@ class ShortcutCustomizationDialog(QDialog):
     def on_reset_all(self):
         """Reset all shortcuts to defaults"""
         reply = QMessageBox.question(
-            self, "Reset All", "Reset all shortcuts to defaults?", QMessageBox.Yes | QMessageBox.No
+            self,
+            "Reset All",
+            "Reset all shortcuts to defaults?",
+            QMessageBox.Yes | QMessageBox.No,
         )
         if reply == QMessageBox.Yes:
             self.changes.clear()
@@ -167,7 +174,9 @@ class ShortcutCustomizationDialog(QDialog):
         """Save changes"""
         for action_id, sequence in self.changes.items():
             if not self.shortcut_manager.set_custom_shortcut(action_id, sequence):
-                QMessageBox.warning(self, "Error", f"Failed to set shortcut for '{action_id}'")
+                QMessageBox.warning(
+                    self, "Error", f"Failed to set shortcut for '{action_id}'"
+                )
                 return
 
         QMessageBox.information(self, "Saved", "Shortcuts saved successfully.")

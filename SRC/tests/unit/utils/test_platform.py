@@ -81,7 +81,10 @@ class TestPlatformDetection:
         result = is_apple_silicon()
         assert isinstance(result, bool)
         # Should be True only on macOS ARM64
-        if platform.system() == "Darwin" and platform.machine().lower() in ("arm64", "aarch64"):
+        if platform.system() == "Darwin" and platform.machine().lower() in (
+            "arm64",
+            "aarch64",
+        ):
             assert result is True
         else:
             assert result is False
@@ -116,6 +119,7 @@ class TestPlatformDetection:
         """Test Apple Silicon detection with mocked platform."""
         # Reset singleton
         import cuepoint.utils.platform as platform_module
+
         platform_module._platform_info = None
 
         assert is_macos() is True
@@ -127,6 +131,7 @@ class TestPlatformDetection:
         """Test Windows detection with mocked platform."""
         # Reset singleton
         import cuepoint.utils.platform as platform_module
+
         platform_module._platform_info = None
 
         assert is_windows() is True

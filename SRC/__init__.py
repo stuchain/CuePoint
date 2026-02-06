@@ -18,10 +18,10 @@ except ImportError:
 # Use try/except to handle cases where cuepoint package might not be available (e.g., during tests)
 try:
     from cuepoint.models.config import SETTINGS
+
     __all__ = ["SETTINGS"]
 except ImportError:
     # If import fails (e.g., during test setup), set SETTINGS to None
     # This allows tests to run without breaking
     SETTINGS = None
     __all__ = []
-

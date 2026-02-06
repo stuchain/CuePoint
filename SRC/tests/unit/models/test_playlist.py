@@ -154,7 +154,10 @@ class TestPlaylistSerialization:
         assert len(data["tracks"]) == 1
         assert data["tracks"][0]["title"] == "Track 1"
         # Path conversion may use different separators on different platforms
-        assert data["file_path"] in ("/path/to/playlist.xml", "\\path\\to\\playlist.xml")
+        assert data["file_path"] in (
+            "/path/to/playlist.xml",
+            "\\path\\to\\playlist.xml",
+        )
         assert data["created_date"] == "2020-01-01"
         assert data["modified_date"] == "2020-01-02"
 
@@ -234,4 +237,3 @@ class TestPlaylistStringRepresentation:
         assert "Playlist" in repr_str
         assert "Test Playlist" in repr_str
         assert "track_count=0" in repr_str or "0" in repr_str
-

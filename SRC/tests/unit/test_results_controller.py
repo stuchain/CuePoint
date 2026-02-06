@@ -25,7 +25,7 @@ def sample_results():
             beatport_bpm="128",
             beatport_key="C Major",
             match_score=95.0,
-            confidence="high"
+            confidence="high",
         ),
         TrackResult(
             playlist_index=2,
@@ -38,13 +38,10 @@ def sample_results():
             beatport_bpm="130",
             beatport_key="D Major",
             match_score=80.0,
-            confidence="medium"
+            confidence="medium",
         ),
         TrackResult(
-            playlist_index=3,
-            title="Test Track 3",
-            artist="Artist C",
-            matched=False
+            playlist_index=3, title="Test Track 3", artist="Artist C", matched=False
         ),
     ]
 
@@ -108,7 +105,7 @@ def test_clear_filters(controller, sample_results):
     controller.set_results(sample_results)
     controller.apply_filters(search_text="Track 1")
     assert len(controller.filtered_results) == 1
-    
+
     controller.clear_filters()
     assert len(controller.filtered_results) == 3
 
@@ -117,12 +114,12 @@ def test_sort_results(controller, sample_results):
     """Test sorting results"""
     controller.set_results(sample_results)
     controller.apply_filters()  # No filters, all results
-    
+
     sorted_results = controller.sort_results("title", ascending=True)
     assert sorted_results[0].title == "Test Track 1"
     assert sorted_results[1].title == "Test Track 2"
     assert sorted_results[2].title == "Test Track 3"
-    
+
     sorted_results = controller.sort_results("title", ascending=False)
     assert sorted_results[0].title == "Test Track 3"
 
@@ -131,7 +128,7 @@ def test_get_summary_statistics(controller, sample_results):
     """Test summary statistics calculation"""
     controller.set_results(sample_results)
     stats = controller.get_summary_statistics()
-    
+
     assert stats["total"] == 3
     assert stats["matched"] == 2
     assert stats["unmatched"] == 1
@@ -143,13 +140,10 @@ def test_get_summary_statistics(controller, sample_results):
 
 def test_get_batch_summary_statistics(controller, sample_results):
     """Test batch summary statistics"""
-    batch_results = {
-        "Playlist 1": sample_results[:2],
-        "Playlist 2": sample_results[2:]
-    }
-    
+    batch_results = {"Playlist 1": sample_results[:2], "Playlist 2": sample_results[2:]}
+
     stats = controller.get_batch_summary_statistics(batch_results)
-    
+
     assert stats["playlist_count"] == 2
     assert stats["total"] == 3
     assert stats["matched"] == 2
@@ -169,31 +163,3 @@ def test_bpm_in_range(controller, sample_results):
     assert controller._bpm_in_range(result, 127, 129) is True
     assert controller._bpm_in_range(result, 130, 140) is False
     assert controller._bpm_in_range(result, None, 127) is False
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

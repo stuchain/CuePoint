@@ -37,9 +37,7 @@ class TestCacheConfig:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_dir = Path(tmpdir) / "custom_cache"
             config = CacheConfig(
-                cache_dir=cache_dir,
-                ttl=timedelta(days=1),
-                size_limit=50 * 1024 * 1024
+                cache_dir=cache_dir, ttl=timedelta(days=1), size_limit=50 * 1024 * 1024
             )
             assert config.cache_dir == cache_dir
             assert config.ttl == timedelta(days=1)
@@ -62,15 +60,15 @@ class TestHTTPCacheManager:
     def test_initialize(self):
         """Test cache manager initialization."""
         HTTPCacheManager.close()  # Clean up any existing session
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_dir = Path(tmpdir) / "cache"
             config = CacheConfig(cache_dir=cache_dir)
             HTTPCacheManager.initialize(config)
-            
+
             # Should initialize even if requests-cache not available
             assert HTTPCacheManager._config == config
-            
+
             # Clean up
             HTTPCacheManager.close()
 
@@ -78,10 +76,10 @@ class TestHTTPCacheManager:
         """Test getting session."""
         HTTPCacheManager._session = None
         HTTPCacheManager._config = None
-        
+
         session = HTTPCacheManager.get_session()
         # May be None if requests-cache not available
-        assert session is None or hasattr(session, 'cache')
+        assert session is None or hasattr(session, "cache")
 
     def test_clear_cache(self):
         """Test clearing cache."""
@@ -139,8 +137,7 @@ class TestCacheValidator:
     def test_is_cache_valid_with_max_age(self):
         """Test cache validation with max age."""
         result = CacheValidator.is_cache_valid(
-            "http://example.com",
-            max_age=timedelta(days=1)
+            "http://example.com", max_age=timedelta(days=1)
         )
         assert isinstance(result, bool)
 

@@ -36,7 +36,9 @@ def sha256_file(file_path: Path, chunk_size: int = 1024 * 1024) -> str:
 
 def constant_time_equal(a: str, b: str) -> bool:
     """Constant-time string compare (best-effort)."""
-    return hmac.compare_digest(a.encode("utf-8", errors="ignore"), b.encode("utf-8", errors="ignore"))
+    return hmac.compare_digest(
+        a.encode("utf-8", errors="ignore"), b.encode("utf-8", errors="ignore")
+    )
 
 
 def is_hex_digest(value: str, length: int) -> bool:
@@ -56,10 +58,3 @@ def is_hex_digest(value: str, length: int) -> bool:
 def is_sha256_hex(value: str) -> bool:
     """Return True if value looks like a 64-char hex SHA-256 digest."""
     return is_hex_digest(value, 64)
-
-
-
-
-
-
-

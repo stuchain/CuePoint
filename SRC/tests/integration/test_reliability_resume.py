@@ -17,7 +17,9 @@ from cuepoint.services.output_writer import (
 from cuepoint.models.result import TrackResult
 
 
-def _make_result(playlist_index: int, title: str, artist: str, matched: bool) -> TrackResult:
+def _make_result(
+    playlist_index: int, title: str, artist: str, matched: bool
+) -> TrackResult:
     """Build a minimal TrackResult for tests."""
     return TrackResult(
         playlist_index=playlist_index,
@@ -102,6 +104,7 @@ def test_run_with_retry_integration_injected_failure():
     from cuepoint.services.reliability_retry import run_with_retry
 
     attempts = []
+
     def flaky(attempts_list):
         attempts_list.append(1)
         if len(attempts_list) < 2:
@@ -111,4 +114,3 @@ def test_run_with_retry_integration_injected_failure():
     result = run_with_retry(flaky, attempts, max_retries=3)
     assert result == "ok"
     assert len(attempts) == 2  # first failed, second succeeded
-

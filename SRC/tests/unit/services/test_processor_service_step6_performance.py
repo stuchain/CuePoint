@@ -18,8 +18,10 @@ class TestThrottledProgressCallback:
     def test_throttle_forwards_on_completion(self):
         """Last update (completion) always forwarded."""
         calls = []
+
         def cb(info):
             calls.append(info)
+
         wrapped = _throttled_progress_callback(cb, throttle_ms=9999, eta_every_n=1)
         info = ProgressInfo(
             completed_tracks=10,
@@ -34,8 +36,10 @@ class TestThrottledProgressCallback:
     def test_eta_computed(self):
         """ETA computed when enough tracks completed."""
         calls = []
+
         def cb(info):
             calls.append(info)
+
         wrapped = _throttled_progress_callback(cb, throttle_ms=0, eta_every_n=5)
         info = ProgressInfo(
             completed_tracks=5,
@@ -55,12 +59,18 @@ class TestGuardrailProgressCallback:
     def test_guardrail_forwards_normally(self):
         """Guardrail forwards when within limits."""
         calls = []
+
         def cb(info):
             calls.append(info)
+
         controller = ProcessingController()
         logging = Mock()
         wrapped = _guardrail_progress_callback(
-            cb, controller, runtime_max_sec=3600, memory_max_mb=0, logging_service=logging
+            cb,
+            controller,
+            runtime_max_sec=3600,
+            memory_max_mb=0,
+            logging_service=logging,
         )
         info = ProgressInfo(
             completed_tracks=5,
@@ -76,8 +86,10 @@ class TestGuardrailProgressCallback:
     def test_guardrail_cancels_on_runtime_exceeded(self):
         """Guardrail cancels when runtime exceeded."""
         calls = []
+
         def cb(info):
             calls.append(info)
+
         controller = ProcessingController()
         logging = Mock()
         wrapped = _guardrail_progress_callback(
@@ -104,7 +116,7 @@ class TestProcessorPerformanceCollector:
     def minimal_xml(self, tmp_path):
         """Create minimal benchmark XML."""
         xml = tmp_path / "bench.xml"
-        xml.write_text('''<?xml version="1.0" encoding="UTF-8"?>
+        xml.write_text("""<?xml version="1.0" encoding="UTF-8"?>
 <DJ_PLAYLISTS Version="1.0.0">
     <PRODUCT Name="rekordbox" Version="6.7.0"/>
     <COLLECTION>
@@ -118,7 +130,7 @@ class TestProcessorPerformanceCollector:
         </NODE>
     </PLAYLISTS>
 </DJ_PLAYLISTS>
-''')
+""")
         return xml
 
     def test_process_playlist_from_xml_with_collector(self, minimal_xml):

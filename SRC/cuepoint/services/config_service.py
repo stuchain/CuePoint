@@ -26,7 +26,11 @@ from cuepoint.services.interfaces import IConfigService
 class ConfigService(IConfigService):
     """Implementation of configuration service with multiple sources support."""
 
-    def __init__(self, config_file: Optional[Path] = None, settings: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        config_file: Optional[Path] = None,
+        settings: Optional[Dict[str, Any]] = None,
+    ):
         """Initialize configuration service.
 
         Args:
@@ -43,7 +47,9 @@ class ConfigService(IConfigService):
             config_file.parent.mkdir(parents=True, exist_ok=True)
 
         self.config_file = config_file
-        self._legacy_settings: Dict[str, Any] = settings.copy() if settings else SETTINGS.copy()
+        self._legacy_settings: Dict[str, Any] = (
+            settings.copy() if settings else SETTINGS.copy()
+        )
         self.config = AppConfig.default()
 
         # Configuration change notification callbacks
@@ -118,7 +124,9 @@ class ConfigService(IConfigService):
         # Notify all registered callbacks
         self._notify_change(key, old_value, value)
 
-    def register_change_callback(self, callback: Callable[[str, Any, Any], None]) -> None:
+    def register_change_callback(
+        self, callback: Callable[[str, Any, Any], None]
+    ) -> None:
         """Register a callback to be notified when configuration changes.
 
         Args:
@@ -135,7 +143,9 @@ class ConfigService(IConfigService):
         if callback not in self._change_callbacks:
             self._change_callbacks.append(callback)
 
-    def unregister_change_callback(self, callback: Callable[[str, Any, Any], None]) -> None:
+    def unregister_change_callback(
+        self, callback: Callable[[str, Any, Any], None]
+    ) -> None:
         """Unregister a configuration change callback.
 
         Args:
@@ -165,7 +175,9 @@ class ConfigService(IConfigService):
         try:
             self.config_file.parent.mkdir(parents=True, exist_ok=True)
             with open(self.config_file, "w", encoding="utf-8") as f:
-                yaml.dump(self.config.to_dict(), f, default_flow_style=False, sort_keys=False)
+                yaml.dump(
+                    self.config.to_dict(), f, default_flow_style=False, sort_keys=False
+                )
         except Exception as e:
             raise ConfigurationError(
                 message=f"Failed to save configuration: {e}",
@@ -247,9 +259,13 @@ class ConfigService(IConfigService):
                         if legacy_key:
                             self._legacy_settings[legacy_key] = value
         except yaml.YAMLError as e:
-            raise ValueError(f"Invalid YAML in configuration file {file_path}: {e}") from e
+            raise ValueError(
+                f"Invalid YAML in configuration file {file_path}: {e}"
+            ) from e
 
-    def _flatten_dict(self, d: Dict[str, Any], parent_key: str = "", sep: str = ".") -> Dict[str, Any]:
+    def _flatten_dict(
+        self, d: Dict[str, Any], parent_key: str = "", sep: str = "."
+    ) -> Dict[str, Any]:
         """Flatten nested dictionary."""
         items = []
         for k, v in d.items():
@@ -283,19 +299,40 @@ class ConfigService(IConfigService):
             "CUEPOINT_BEATPORT_MAX_RETRIES": ("beatport.max_retries", int),
             "CUEPOINT_BEATPORT_CONNECT_TIMEOUT": ("beatport.connect_timeout", int),
             "CUEPOINT_BEATPORT_READ_TIMEOUT": ("beatport.read_timeout", int),
-            "CUEPOINT_CACHE_ENABLED": ("cache.enabled", lambda x: x.lower() in ("true", "1", "yes")),
+            "CUEPOINT_CACHE_ENABLED": (
+                "cache.enabled",
+                lambda x: x.lower() in ("true", "1", "yes"),
+            ),
             "CUEPOINT_CACHE_MAX_SIZE": ("cache.max_size", int),
             "CUEPOINT_PROCESSING_MAX_CONCURRENT": ("processing.max_concurrent", int),
             "CUEPOINT_PROCESSING_TRACK_WORKERS": ("processing.track_workers", int),
-            "CUEPOINT_PROCESSING_CANDIDATE_WORKERS": ("processing.candidate_workers", int),
-            "CUEPOINT_PROCESSING_TIME_BUDGET": ("processing.per_track_time_budget_sec", int),
+            "CUEPOINT_PROCESSING_CANDIDATE_WORKERS": (
+                "processing.candidate_workers",
+                int,
+            ),
+            "CUEPOINT_PROCESSING_TIME_BUDGET": (
+                "processing.per_track_time_budget_sec",
+                int,
+            ),
             "CUEPOINT_LOGGING_LEVEL": ("logging.level", str),
-            "CUEPOINT_LOGGING_FILE_ENABLED": ("logging.file_enabled", lambda x: x.lower() in ("true", "1", "yes")),
-            "CUEPOINT_LOGGING_CONSOLE_ENABLED": ("logging.console_enabled", lambda x: x.lower() in ("true", "1", "yes")),
-            "CUEPOINT_LOGGING_VERBOSE": ("logging.verbose", lambda x: x.lower() in ("true", "1", "yes")),
+            "CUEPOINT_LOGGING_FILE_ENABLED": (
+                "logging.file_enabled",
+                lambda x: x.lower() in ("true", "1", "yes"),
+            ),
+            "CUEPOINT_LOGGING_CONSOLE_ENABLED": (
+                "logging.console_enabled",
+                lambda x: x.lower() in ("true", "1", "yes"),
+            ),
+            "CUEPOINT_LOGGING_VERBOSE": (
+                "logging.verbose",
+                lambda x: x.lower() in ("true", "1", "yes"),
+            ),
             "CUEPOINT_MATCHING_MIN_ACCEPT_SCORE": ("matching.min_accept_score", float),
             "CUEPOINT_MATCHING_EARLY_EXIT_SCORE": ("matching.early_exit_score", float),
-            "CUEPOINT_TELEMETRY_ENABLED": ("telemetry.enabled", lambda x: x.lower() in ("true", "1", "yes")),
+            "CUEPOINT_TELEMETRY_ENABLED": (
+                "telemetry.enabled",
+                lambda x: x.lower() in ("true", "1", "yes"),
+            ),
         }
 
         for env_var, (config_key, type_converter) in env_mappings.items():
@@ -393,7 +430,10 @@ class ConfigService(IConfigService):
         # Validate telemetry config (Step 14)
         if not 0.0 <= self.config.telemetry.sample_rate <= 1.0:
             errors.append("telemetry.sample_rate must be between 0.0 and 1.0")
-        if self.config.telemetry.endpoint and not self.config.telemetry.endpoint.startswith("https://"):
+        if (
+            self.config.telemetry.endpoint
+            and not self.config.telemetry.endpoint.startswith("https://")
+        ):
             errors.append("telemetry.endpoint must use HTTPS")
 
         # Validate export config

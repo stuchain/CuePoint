@@ -28,19 +28,21 @@ class TestWorker:
 
     def test_worker_initialization(self):
         """Test worker initialization."""
+
         def task():
             return "result"
-        
+
         worker = Worker(task)
         assert worker.task == task
         assert worker._cancelled is False
 
     def test_worker_cancel(self):
         """Test worker cancellation."""
+
         def task():
             time.sleep(1)
             return "result"
-        
+
         worker = Worker(task)
         worker.cancel()
         assert worker._cancelled is True
@@ -57,10 +59,10 @@ class TestWorkerManager:
     def test_start_worker(self):
         """Test starting worker."""
         manager = WorkerManager()
-        
+
         def task():
             return "result"
-        
+
         worker = manager.start_worker(task)
         assert isinstance(worker, Worker)
         assert worker in manager.workers
@@ -68,11 +70,11 @@ class TestWorkerManager:
     def test_cancel_all(self):
         """Test canceling all workers."""
         manager = WorkerManager()
-        
+
         def task():
             time.sleep(1)
             return "result"
-        
+
         worker = manager.start_worker(task)
         manager.cancel_all()
         assert worker._cancelled is True
@@ -89,10 +91,10 @@ class TestUIThreadHelper:
     def test_call_on_ui_thread(self):
         """Test calling on UI thread."""
         called = [False]
-        
+
         def test_func():
             called[0] = True
-        
+
         UIThreadHelper.call_on_ui_thread(test_func)
         # May not execute immediately, but should not raise
         assert True  # Just check it doesn't crash

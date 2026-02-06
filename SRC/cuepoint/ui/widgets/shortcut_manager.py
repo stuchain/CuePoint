@@ -175,7 +175,10 @@ class ShortcutManager(QObject):
                     break
 
             # Enable if global or matches current context
-            if shortcut_context == ShortcutContext.GLOBAL or shortcut_context == context:
+            if (
+                shortcut_context == ShortcutContext.GLOBAL
+                or shortcut_context == context
+            ):
                 shortcut.setEnabled(True)
             else:
                 shortcut.setEnabled(False)

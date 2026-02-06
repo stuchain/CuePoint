@@ -104,15 +104,24 @@ def validate_output_path(path: str) -> Tuple[bool, Optional[str]]:
     try:
         abs_path = os.path.abspath(path)
         if ".." in path or path.startswith(".."):
-            return False, f"D004: Output path invalid - path traversal not allowed: {path}"
-        if os.path.exists(abs_path) and not os.path.isfile(abs_path) and not os.path.isdir(abs_path):
+            return (
+                False,
+                f"D004: Output path invalid - path traversal not allowed: {path}",
+            )
+        if (
+            os.path.exists(abs_path)
+            and not os.path.isfile(abs_path)
+            and not os.path.isdir(abs_path)
+        ):
             return False, f"D004: Output path invalid: {path}"
         return True, None
     except Exception as e:
         return False, f"D004: Output path invalid: {e}"
 
 
-def validate_main_csv_schema(headers: List[str], include_metadata: bool = True) -> Tuple[bool, Optional[str]]:
+def validate_main_csv_schema(
+    headers: List[str], include_metadata: bool = True
+) -> Tuple[bool, Optional[str]]:
     """Validate main CSV schema (Design 9.43, 9.44).
 
     Args:
@@ -230,7 +239,11 @@ def result_to_audit_entry(result: TrackResult) -> Dict[str, Any]:
         entry["candidate_title"] = result.beatport_title
         if result.beatport_url:
             # Redact full URLs to avoid storing PII (Design 9.55)
-            entry["candidate_url"] = result.beatport_url[:80] + "..." if len(result.beatport_url) > 80 else result.beatport_url
+            entry["candidate_url"] = (
+                result.beatport_url[:80] + "..."
+                if len(result.beatport_url) > 80
+                else result.beatport_url
+            )
     if result.confidence:
         entry["confidence"] = result.confidence
     if result.error:
@@ -351,7 +364,9 @@ def create_backup(filepath: str, max_backups: int = MAX_BACKUPS) -> Optional[str
         return None
 
 
-def get_csv_header_lines(schema_version: int, run_id: str, run_status: str = "complete") -> List[str]:
+def get_csv_header_lines(
+    schema_version: int, run_id: str, run_status: str = "complete"
+) -> List[str]:
     """Get comment header lines for CSV files (Design 9.86, 9.87, 9.128).
 
     Args:
@@ -396,7 +411,10 @@ def verify_outputs(
         candidates = [
             os.path.join(output_dir, f)
             for f in os.listdir(output_dir)
-            if f.endswith(".csv") and "_candidates" not in f and "_queries" not in f and "_review" not in f
+            if f.endswith(".csv")
+            and "_candidates" not in f
+            and "_queries" not in f
+            and "_review" not in f
         ]
         if not candidates:
             errors.append("D005: No main CSV found in output directory")
@@ -423,7 +441,9 @@ def verify_outputs(
                 valid, err = validate_main_csv_schema(headers, include_metadata=True)
                 if not valid and err:
                     # Also try without metadata (optional columns)
-                    valid, err = validate_main_csv_schema(headers, include_metadata=False)
+                    valid, err = validate_main_csv_schema(
+                        headers, include_metadata=False
+                    )
                 if not valid and err:
                     errors.append(err)
                 # Design 9.149: Re-import validation
@@ -457,7 +477,10 @@ def validate_reimport_readiness(headers: List[str]) -> Tuple[bool, Optional[str]
     """
     for col in REKORDBOX_REIMPORT_REQUIRED:
         if col not in headers:
-            return False, f"D001: Missing re-import column: {col} (required for Rekordbox)"
+            return (
+                False,
+                f"D001: Missing re-import column: {col} (required for Rekordbox)",
+            )
     return True, None
 
 
@@ -505,12 +528,14 @@ def write_summary_report(
     unmatched_entries = []
     for r in results:
         if not r.matched:
-            unmatched_entries.append({
-                "playlist_index": r.playlist_index,
-                "title": r.title,
-                "artist": r.artist or "",
-                "recommended_actions": _recommended_actions_for_unmatched(r),
-            })
+            unmatched_entries.append(
+                {
+                    "playlist_index": r.playlist_index,
+                    "title": r.title,
+                    "artist": r.artist or "",
+                    "recommended_actions": _recommended_actions_for_unmatched(r),
+                }
+            )
 
     report = {
         "run_id": run_id,
@@ -569,7 +594,9 @@ def generate_diff_report(
             if r.title != (r.beatport_title or ""):
                 entry["changes"].append(f"Title: {r.title} -> {r.beatport_title or ''}")
             if (r.artist or "") != (r.beatport_artists or ""):
-                entry["changes"].append(f"Artist: {r.artist or ''} -> {r.beatport_artists or ''}")
+                entry["changes"].append(
+                    f"Artist: {r.artist or ''} -> {r.beatport_artists or ''}"
+                )
             if r.beatport_bpm:
                 entry["changes"].append(f"BPM: (empty) -> {r.beatport_bpm}")
             if r.beatport_key:

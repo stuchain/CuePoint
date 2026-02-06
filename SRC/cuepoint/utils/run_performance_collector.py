@@ -24,6 +24,7 @@ def _get_process_memory_mb() -> float:
     """Get current process memory usage in MB. Uses psutil if available."""
     try:
         import psutil
+
         process = psutil.Process()
         return process.memory_info().rss / (1024 * 1024)
     except Exception:
@@ -72,7 +73,9 @@ class RunPerformanceReport:
             "duration_sec": round(self.duration_sec, 2),
             "memory_mb_peak": round(self.memory_mb_peak, 2),
             "stages": {k: round(v, 2) for k, v in self.stages.items()},
-            "cache_hit_rate": round(self.cache_hit_rate, 2) if self.cache_hit_rate is not None else None,
+            "cache_hit_rate": round(self.cache_hit_rate, 2)
+            if self.cache_hit_rate is not None
+            else None,
             "tracks_processed": self.tracks_processed,
             "matched_count": self.matched_count,
             "created_at": self.created_at,

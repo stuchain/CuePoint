@@ -133,4 +133,3 @@ def load_playlist_from_json(filepath: Path) -> Playlist:
         data = json.load(f)
 
     return Playlist.from_dict(data)
-

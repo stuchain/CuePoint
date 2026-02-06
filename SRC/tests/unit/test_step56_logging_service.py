@@ -22,6 +22,7 @@ class TestLoggingService:
         """Close all handlers after each test to prevent Windows file locking."""
         # Get all loggers and close their handlers
         import logging
+
         for logger_name in logging.Logger.manager.loggerDict:
             logger = logging.getLogger(logger_name)
             for handler in logger.handlers[:]:
@@ -30,7 +31,9 @@ class TestLoggingService:
 
     def test_init_default(self):
         """Test LoggingService initialization with defaults."""
-        service = LoggingService(enable_file_logging=False, enable_console_logging=False)
+        service = LoggingService(
+            enable_file_logging=False, enable_console_logging=False
+        )
         assert service.logger.name == "cuepoint"
         assert service.logger.level == logging.INFO
 
@@ -62,31 +65,41 @@ class TestLoggingService:
 
     def test_debug(self):
         """Test debug logging."""
-        service = LoggingService(enable_file_logging=False, enable_console_logging=False)
+        service = LoggingService(
+            enable_file_logging=False, enable_console_logging=False
+        )
         # Should not raise
         service.debug("Debug message")
 
     def test_info(self):
         """Test info logging."""
-        service = LoggingService(enable_file_logging=False, enable_console_logging=False)
+        service = LoggingService(
+            enable_file_logging=False, enable_console_logging=False
+        )
         # Should not raise
         service.info("Info message")
 
     def test_warning(self):
         """Test warning logging."""
-        service = LoggingService(enable_file_logging=False, enable_console_logging=False)
+        service = LoggingService(
+            enable_file_logging=False, enable_console_logging=False
+        )
         # Should not raise
         service.warning("Warning message")
 
     def test_error(self):
         """Test error logging."""
-        service = LoggingService(enable_file_logging=False, enable_console_logging=False)
+        service = LoggingService(
+            enable_file_logging=False, enable_console_logging=False
+        )
         # Should not raise
         service.error("Error message")
 
     def test_error_with_exc_info(self):
         """Test error logging with exception info."""
-        service = LoggingService(enable_file_logging=False, enable_console_logging=False)
+        service = LoggingService(
+            enable_file_logging=False, enable_console_logging=False
+        )
 
         try:
             raise ValueError("Test exception")
@@ -96,13 +109,17 @@ class TestLoggingService:
 
     def test_critical(self):
         """Test critical logging."""
-        service = LoggingService(enable_file_logging=False, enable_console_logging=False)
+        service = LoggingService(
+            enable_file_logging=False, enable_console_logging=False
+        )
         # Should not raise
         service.critical("Critical message")
 
     def test_logging_with_extra(self):
         """Test logging with extra context."""
-        service = LoggingService(enable_file_logging=False, enable_console_logging=False)
+        service = LoggingService(
+            enable_file_logging=False, enable_console_logging=False
+        )
         # Should not raise
         service.info("Message", extra={"key": "value", "number": 42})
 
@@ -141,7 +158,7 @@ class TestLoggingService:
             for handler in service.logger.handlers[:]:
                 handler.close()
                 service.logger.removeHandler(handler)
-            
+
             content = log_file.read_text()
             assert "Test message 1" in content
             assert "Test message 2" in content
@@ -231,13 +248,16 @@ class TestLoggingService:
 
     def test_no_duplicate_handlers(self):
         """Test that handlers are not duplicated on multiple initializations."""
-        service1 = LoggingService(enable_file_logging=False, enable_console_logging=False)
+        service1 = LoggingService(
+            enable_file_logging=False, enable_console_logging=False
+        )
         handler_count1 = len(service1.logger.handlers)
 
         # Create another service with same logger name
         service2 = LoggingService(
-            logger_name="cuepoint", enable_file_logging=False, enable_console_logging=False
+            logger_name="cuepoint",
+            enable_file_logging=False,
+            enable_console_logging=False,
         )
         # Handlers should be cleared, so count should be same or less
         assert len(service2.logger.handlers) <= handler_count1
-

@@ -71,7 +71,9 @@ class LogViewer(QDialog):
         controls_layout.addWidget(level_label)
 
         self.level_combo = QComboBox()
-        self.level_combo.addItems(["All", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
+        self.level_combo.addItems(
+            ["All", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        )
         self.level_combo.currentTextChanged.connect(self.load_logs)
         controls_layout.addWidget(self.level_combo)
 
@@ -209,7 +211,9 @@ class LogViewer(QDialog):
                     logger.error(f"Error deleting log file {log_file}: {e}")
 
             if cleared_count > 0:
-                QMessageBox.information(self, "Logs Cleared", f"Cleared {cleared_count} log file(s).")
+                QMessageBox.information(
+                    self, "Logs Cleared", f"Cleared {cleared_count} log file(s)."
+                )
                 self.load_logs()
 
     def export_logs(self):
@@ -223,10 +227,16 @@ class LogViewer(QDialog):
 
         if file_path:
             try:
-                Path(file_path).write_text(self.log_text.toPlainText(), encoding="utf-8")
-                QMessageBox.information(self, "Export Complete", f"Logs exported to:\n{file_path}")
+                Path(file_path).write_text(
+                    self.log_text.toPlainText(), encoding="utf-8"
+                )
+                QMessageBox.information(
+                    self, "Export Complete", f"Logs exported to:\n{file_path}"
+                )
             except Exception as e:
-                QMessageBox.critical(self, "Export Failed", f"Failed to export logs:\n{e}")
+                QMessageBox.critical(
+                    self, "Export Failed", f"Failed to export logs:\n{e}"
+                )
 
     def open_logs_folder(self):
         """Open logs folder in file explorer."""
@@ -240,4 +250,6 @@ class LogViewer(QDialog):
             else:
                 subprocess.Popen(["xdg-open", str(log_dir)])
         except Exception as e:
-            QMessageBox.warning(self, "Cannot Open Folder", f"Could not open folder:\n{e}")
+            QMessageBox.warning(
+                self, "Cannot Open Folder", f"Could not open folder:\n{e}"
+            )

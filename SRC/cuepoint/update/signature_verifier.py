@@ -52,10 +52,3 @@ class SignatureVerifier:
             ok=False,
             error="Not implemented in v1.0 (Sparkle/WinSparkle handles signature verification)",
         )
-
-
-
-
-
-
-

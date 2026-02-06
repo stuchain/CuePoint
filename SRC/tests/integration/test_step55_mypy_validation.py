@@ -95,7 +95,7 @@ class TestMypyValidation:
                             break
                     if not should_ignore:
                         filtered_errors.append(line)
-            
+
             if filtered_errors:
                 pytest.fail(f"Mypy found type errors in services:\n{output}")
 
@@ -147,10 +147,12 @@ class TestMypyValidation:
             filtered_errors = []
             for line in output.split("\n"):
                 if "error:" in line.lower():
-                    should_ignore = any(pattern in line.lower() for pattern in ignore_patterns)
+                    should_ignore = any(
+                        pattern in line.lower() for pattern in ignore_patterns
+                    )
                     if not should_ignore:
                         filtered_errors.append(line)
-            
+
             if filtered_errors:
                 pytest.fail(f"Mypy found type errors in core:\n{output}")
 
@@ -201,10 +203,12 @@ class TestMypyValidation:
             filtered_errors = []
             for line in output.split("\n"):
                 if "error:" in line.lower():
-                    should_ignore = any(pattern in line.lower() for pattern in ignore_patterns)
+                    should_ignore = any(
+                        pattern in line.lower() for pattern in ignore_patterns
+                    )
                     if not should_ignore:
                         filtered_errors.append(line)
-            
+
             if filtered_errors:
                 pytest.fail(f"Mypy found type errors in data layer:\n{output}")
 
@@ -257,10 +261,12 @@ class TestMypyValidation:
             filtered_errors = []
             for line in output.split("\n"):
                 if "error:" in line.lower():
-                    should_ignore = any(pattern in line.lower() for pattern in ignore_patterns)
+                    should_ignore = any(
+                        pattern in line.lower() for pattern in ignore_patterns
+                    )
                     if not should_ignore:
                         filtered_errors.append(line)
-            
+
             if filtered_errors:
                 pytest.fail(f"Mypy found type errors in controllers:\n{output}")
 
@@ -314,10 +320,11 @@ class TestMypyValidation:
             filtered_errors = []
             for line in output.split("\n"):
                 if "error:" in line.lower():
-                    should_ignore = any(pattern in line.lower() for pattern in ignore_patterns)
+                    should_ignore = any(
+                        pattern in line.lower() for pattern in ignore_patterns
+                    )
                     if not should_ignore:
                         filtered_errors.append(line)
-            
+
             if filtered_errors:
                 pytest.fail(f"Mypy found type errors in utils:\n{output}")
-

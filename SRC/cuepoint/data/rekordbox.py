@@ -139,7 +139,9 @@ def parse_rekordbox(xml_path: str) -> Dict[str, Playlist]:
             title = (t.get("Name") or t.get("Title") or "").strip()
             artists = (t.get("Artist") or t.get("Artists") or "").strip()
             if not tid:
-                _logger.debug("[reliability] Skipping TRACK with missing TrackID in %s", xml_path)
+                _logger.debug(
+                    "[reliability] Skipping TRACK with missing TrackID in %s", xml_path
+                )
                 continue
             if not title:
                 _logger.debug(
@@ -264,7 +266,9 @@ def inspect_rekordbox_xml(xml_path: str) -> Dict[str, object]:
 
     playlists_root = root.find(".//PLAYLISTS")
     has_playlists = playlists_root is not None
-    playlist_nodes = playlists_root.findall(".//NODE") if playlists_root is not None else []
+    playlist_nodes = (
+        playlists_root.findall(".//NODE") if playlists_root is not None else []
+    )
 
     playlist_names: List[str] = []
     playlist_name_duplicates: List[str] = []

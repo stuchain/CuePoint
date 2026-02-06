@@ -40,11 +40,7 @@ class RekordboxInstructionsDialog(QDialog):
 
         # Title
         title = QLabel("How to Export an XML File from Rekordbox")
-        title.setStyleSheet(
-            "font-size: 20px; "
-            "font-weight: bold; "
-            "margin-bottom: 10px;"
-        )
+        title.setStyleSheet("font-size: 20px; font-weight: bold; margin-bottom: 10px;")
         layout.addWidget(title)
 
         # Scroll area for content
@@ -73,15 +69,11 @@ class RekordboxInstructionsDialog(QDialog):
         # Step 1
         step1_title = QLabel("Step 1: Open Rekordbox")
         step1_title.setStyleSheet(
-            "font-size: 16px; "
-            "font-weight: bold; "
-            "margin-top: 10px;"
+            "font-size: 16px; font-weight: bold; margin-top: 10px;"
         )
         content_layout.addWidget(step1_title)
 
-        step1_text = QLabel(
-            "Open the Rekordbox application on your computer."
-        )
+        step1_text = QLabel("Open the Rekordbox application on your computer.")
         step1_text.setWordWrap(True)
         # Lighter gray (closer to white) for better visibility
         step1_text.setStyleSheet("font-size: 14px; color: #cccccc;")
@@ -94,9 +86,7 @@ class RekordboxInstructionsDialog(QDialog):
         # Step 2
         step2_title = QLabel("Step 2: Go to File Menu")
         step2_title.setStyleSheet(
-            "font-size: 16px; "
-            "font-weight: bold; "
-            "margin-top: 10px;"
+            "font-size: 16px; font-weight: bold; margin-top: 10px;"
         )
         content_layout.addWidget(step2_title)
 
@@ -109,15 +99,15 @@ class RekordboxInstructionsDialog(QDialog):
         content_layout.addWidget(step2_text)
 
         # Photo placeholder for Step 2
-        photo2 = self._create_photo_placeholder("Step 2: File menu with Export Collection")
+        photo2 = self._create_photo_placeholder(
+            "Step 2: File menu with Export Collection"
+        )
         content_layout.addWidget(photo2)
 
         # Step 3
         step3_title = QLabel("Step 3: Save the XML File")
         step3_title.setStyleSheet(
-            "font-size: 16px; "
-            "font-weight: bold; "
-            "margin-top: 10px;"
+            "font-size: 16px; font-weight: bold; margin-top: 10px;"
         )
         content_layout.addWidget(step3_title)
 
@@ -138,9 +128,7 @@ class RekordboxInstructionsDialog(QDialog):
         # Step 4
         step4_title = QLabel("Step 4: Use the File in inKey")
         step4_title.setStyleSheet(
-            "font-size: 16px; "
-            "font-weight: bold; "
-            "margin-top: 10px;"
+            "font-size: 16px; font-weight: bold; margin-top: 10px;"
         )
         content_layout.addWidget(step4_title)
 
@@ -156,9 +144,7 @@ class RekordboxInstructionsDialog(QDialog):
         # What is XML section
         what_is_title = QLabel("What is an XML File?")
         what_is_title.setStyleSheet(
-            "font-size: 16px; "
-            "font-weight: bold; "
-            "margin-top: 20px;"
+            "font-size: 16px; font-weight: bold; margin-top: 20px;"
         )
         content_layout.addWidget(what_is_title)
 
@@ -189,41 +175,44 @@ class RekordboxInstructionsDialog(QDialog):
         from PySide6.QtGui import QPixmap
         import sys
         import os
-        
+
         placeholder = QLabel()
         placeholder.setMinimumHeight(200)
         placeholder.setAlignment(Qt.AlignCenter)
         placeholder.setWordWrap(True)
-        
+
         # Determine the resource path
         # In development: SRC/cuepoint/ui/resources/images/rekordbox_instructions/
         # In frozen app: resources/images/rekordbox_instructions/ (in _MEIPASS)
-        if getattr(sys, 'frozen', False):
+        if getattr(sys, "frozen", False):
             # Running as packaged app
             # PyInstaller bundles resources to: _MEIPASS/resources/
-            if hasattr(sys, '_MEIPASS'):
-                base_path = Path(sys._MEIPASS) / 'resources'
+            if hasattr(sys, "_MEIPASS"):
+                base_path = Path(sys._MEIPASS) / "resources"
             else:
-                base_path = Path(os.path.dirname(sys.executable)) / 'resources'
+                base_path = Path(os.path.dirname(sys.executable)) / "resources"
         else:
             # Running as script - use SRC/cuepoint/ui/resources
             # __file__ is at SRC/cuepoint/ui/dialogs/rekordbox_instructions_dialog.py
             # So parent.parent is SRC/cuepoint/ui/
             # Use resolve() to get absolute path
-            base_path = Path(__file__).resolve().parent.parent / 'resources'
-        
+            base_path = Path(__file__).resolve().parent.parent / "resources"
+
         # Extract step number from description (e.g., "Step 1: ..." -> "step1")
         # Description format: "Step 1: Rekordbox main window" -> "step1"
         import re
-        match = re.search(r'step\s*(\d+)', description.lower())
+
+        match = re.search(r"step\s*(\d+)", description.lower())
         if match:
             step_num = match.group(1)
-            step_name = f'step{step_num}'
+            step_name = f"step{step_num}"
         else:
             # Fallback: try to extract from first word
-            step_name = description.lower().split()[0] if description else 'step1'
-        photo_path = (base_path / 'images' / 'rekordbox_instructions' / f'{step_name}.png').resolve()
-        
+            step_name = description.lower().split()[0] if description else "step1"
+        photo_path = (
+            base_path / "images" / "rekordbox_instructions" / f"{step_name}.png"
+        ).resolve()
+
         # Try to load the image
         if photo_path.exists():
             try:
@@ -232,9 +221,10 @@ class RekordboxInstructionsDialog(QDialog):
                     # Scale to fit width (800px for wider window) while maintaining aspect ratio
                     # This ensures images are properly sized and centered
                     scaled_pixmap = pixmap.scaled(
-                        800, 600, 
-                        Qt.AspectRatioMode.KeepAspectRatio, 
-                        Qt.TransformationMode.SmoothTransformation
+                        800,
+                        600,
+                        Qt.AspectRatioMode.KeepAspectRatio,
+                        Qt.TransformationMode.SmoothTransformation,
                     )
                     placeholder.setPixmap(scaled_pixmap)
                     # Ensure image is centered
@@ -244,11 +234,15 @@ class RekordboxInstructionsDialog(QDialog):
             except Exception as e:
                 # If loading fails, log error and fall through to placeholder
                 import logging
-                logging.getLogger(__name__).warning(f"Failed to load image {photo_path}: {e}")
+
+                logging.getLogger(__name__).warning(
+                    f"Failed to load image {photo_path}: {e}"
+                )
                 pass
         else:
             # Log when image file is not found (helpful for debugging)
             import logging
+
             logger = logging.getLogger(__name__)
             logger.warning(
                 f"Rekordbox instruction image not found: {photo_path}\n"
@@ -257,7 +251,7 @@ class RekordboxInstructionsDialog(QDialog):
                 f"  frozen: {getattr(sys, 'frozen', False)}\n"
                 f"  _MEIPASS: {getattr(sys, '_MEIPASS', 'N/A')}"
             )
-        
+
         # Fallback: show placeholder if image not found
         placeholder.setText(f"[Photo: {description}]")
         placeholder.setStyleSheet(
@@ -268,4 +262,3 @@ class RekordboxInstructionsDialog(QDialog):
             "padding: 20px;"
         )
         return placeholder
-

@@ -19,13 +19,21 @@ from cuepoint.utils.i18n import tr
 class EmptyState:
     """Empty state copy for UX consistency."""
 
-    NO_XML_TITLE = tr("empty_no_xml_title", "Select a Rekordbox XML to start.", "EmptyState")
+    NO_XML_TITLE = tr(
+        "empty_no_xml_title", "Select a Rekordbox XML to start.", "EmptyState"
+    )
     NO_XML_ACTION = tr("empty_no_xml_action", "Browse", "EmptyState")
-    NO_PLAYLIST_TITLE = tr("empty_no_playlist_title", "Choose a playlist to continue.", "EmptyState")
+    NO_PLAYLIST_TITLE = tr(
+        "empty_no_playlist_title", "Choose a playlist to continue.", "EmptyState"
+    )
     NO_PLAYLIST_ACTION = tr("empty_no_playlist_action", "Select playlist", "EmptyState")
     NO_RESULTS_TITLE = tr("empty_no_results_title", "No results yet", "EmptyState")
     NO_RESULTS_ACTION = tr("empty_no_results_action", "Start processing", "EmptyState")
-    GET_STARTED_TITLE = tr("get_started_title", "Get started by selecting your Collection XML", "EmptyState")
+    GET_STARTED_TITLE = tr(
+        "get_started_title",
+        "Get started by selecting your Collection XML",
+        "EmptyState",
+    )
     GET_STARTED_BODY = tr(
         "get_started_body",
         "Export your Rekordbox collection as XML, then select it here.\n"
@@ -34,7 +42,9 @@ class EmptyState:
     )
     BROWSE_FOR_XML = tr("browse_xml", "Browse for XML…", "EmptyState")
     VIEW_INSTRUCTIONS = tr("view_instructions", "View instructions…", "EmptyState")
-    NO_PLAYLISTS_IN_XML = tr("empty_no_playlists_in_xml", "No playlists found in XML", "EmptyState")
+    NO_PLAYLISTS_IN_XML = tr(
+        "empty_no_playlists_in_xml", "No playlists found in XML", "EmptyState"
+    )
     XML_NOT_FOUND = tr("empty_xml_not_found", "XML file not found", "EmptyState")
     ERROR_LOADING_XML = tr("empty_error_loading_xml", "Error loading XML", "EmptyState")
     NO_XML_LOADED = tr("empty_no_xml_loaded", "No XML file loaded", "EmptyState")
@@ -76,7 +86,9 @@ class LoadingCopy:
     SEARCHING_BEATPORT = tr("loading_searching", "Searching Beatport...", "LoadingCopy")
     WRITING_OUTPUTS = tr("loading_writing", "Writing outputs...", "LoadingCopy")
     PROCESSING = tr("loading_processing", "Processing...", "LoadingCopy")
-    PROCESSING_COUNT = tr("loading_count", "Processing {current}/{total}", "LoadingCopy")
+    PROCESSING_COUNT = tr(
+        "loading_count", "Processing {current}/{total}", "LoadingCopy"
+    )
 
 
 # --- Status (Design 8.55-8.56) ---

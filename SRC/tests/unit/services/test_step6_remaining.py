@@ -29,16 +29,20 @@ class TestLoadProcessedTrackKeys:
                 extrasaction="ignore",
             )
             w.writeheader()
-            w.writerow({
-                "playlist_index": "1",
-                "original_title": "Track 1",
-                "original_artists": "Artist 1",
-            })
-            w.writerow({
-                "playlist_index": "2",
-                "original_title": "Track 2",
-                "original_artists": "Artist 2",
-            })
+            w.writerow(
+                {
+                    "playlist_index": "1",
+                    "original_title": "Track 1",
+                    "original_artists": "Artist 1",
+                }
+            )
+            w.writerow(
+                {
+                    "playlist_index": "2",
+                    "original_title": "Track 2",
+                    "original_artists": "Artist 2",
+                }
+            )
         keys = load_processed_track_keys(str(csv_path))
         assert (1, "Track 1", "Artist 1") in keys
         assert (2, "Track 2", "Artist 2") in keys
@@ -61,9 +65,7 @@ class TestAppendRowsFsync:
                 matched=False,
             ),
         ]
-        out = append_rows_to_main_csv(
-            results, str(main_path), fsync=False
-        )
+        out = append_rows_to_main_csv(results, str(main_path), fsync=False)
         assert out == str(main_path)
         with open(main_path, encoding="utf-8") as f:
             lines = f.readlines()
@@ -94,7 +96,7 @@ class TestIncrementalProcessing:
     def minimal_xml(self, tmp_path):
         """Create minimal XML with 2 tracks."""
         xml = tmp_path / "bench.xml"
-        xml.write_text('''<?xml version="1.0" encoding="UTF-8"?>
+        xml.write_text("""<?xml version="1.0" encoding="UTF-8"?>
 <DJ_PLAYLISTS Version="1.0.0">
     <PRODUCT Name="rekordbox" Version="6.7.0"/>
     <COLLECTION>
@@ -110,7 +112,7 @@ class TestIncrementalProcessing:
         </NODE>
     </PLAYLISTS>
 </DJ_PLAYLISTS>
-''')
+""")
         return xml
 
     def test_incremental_skips_processed(self, minimal_xml, tmp_path):
@@ -128,11 +130,13 @@ class TestIncrementalProcessing:
                 extrasaction="ignore",
             )
             w.writeheader()
-            w.writerow({
-                "playlist_index": "1",
-                "original_title": "Track 1",
-                "original_artists": "Artist 1",
-            })
+            w.writerow(
+                {
+                    "playlist_index": "1",
+                    "original_title": "Track 1",
+                    "original_artists": "Artist 1",
+                }
+            )
 
         mock_beatport = Mock()
         mock_beatport.search_tracks.return_value = []

@@ -36,7 +36,9 @@ class PlaylistSelector(QWidget):
         self.combo.setPlaceholderText(EmptyState.NO_PLAYLIST_TITLE)
         self.combo.setToolTip(TooltipCopy.PLAYLIST)
         self.combo.setAccessibleName("Playlist selector")
-        self.combo.setAccessibleDescription("Select a playlist from the loaded Rekordbox collection XML")
+        self.combo.setAccessibleDescription(
+            "Select a playlist from the loaded Rekordbox collection XML"
+        )
         self.combo.setFocusPolicy(Qt.StrongFocus)
         self.combo.currentTextChanged.connect(self.on_selection_changed)
         self.combo.setStyleSheet("font-size: 11px;")

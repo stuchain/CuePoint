@@ -222,4 +222,3 @@ if __name__ == "__main__":
     for metric, met in targets_met.items():
         status = "✅" if met else "❌"
         print(f"{status} {metric:30s}: Target {'met' if met else 'NOT met'}")
-

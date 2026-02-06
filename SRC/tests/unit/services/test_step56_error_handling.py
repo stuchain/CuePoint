@@ -29,13 +29,18 @@ class TestBeatportServiceErrorHandling:
     def test_search_tracks_raises_beatport_api_error(self):
         """Test that search_tracks raises BeatportAPIError on failure."""
         cache_service = CacheService()
-        logging_service = LoggingService(enable_file_logging=False, enable_console_logging=False)
+        logging_service = LoggingService(
+            enable_file_logging=False, enable_console_logging=False
+        )
         service = BeatportService(cache_service, logging_service)
 
         mock_provider = MagicMock()
         mock_provider.search.side_effect = Exception("Network error")
 
-        with patch("cuepoint.services.beatport_service.get_active_provider", return_value=mock_provider):
+        with patch(
+            "cuepoint.services.beatport_service.get_active_provider",
+            return_value=mock_provider,
+        ):
             with pytest.raises(BeatportAPIError) as exc_info:
                 service.search_tracks("test query")
 
@@ -46,13 +51,18 @@ class TestBeatportServiceErrorHandling:
     def test_fetch_track_data_returns_none_on_error(self):
         """Test that fetch_track_data returns None instead of raising on error."""
         cache_service = CacheService()
-        logging_service = LoggingService(enable_file_logging=False, enable_console_logging=False)
+        logging_service = LoggingService(
+            enable_file_logging=False, enable_console_logging=False
+        )
         service = BeatportService(cache_service, logging_service)
 
         mock_provider = MagicMock()
         mock_provider.parse.side_effect = Exception("Parse error")
 
-        with patch("cuepoint.services.beatport_service.get_active_provider", return_value=mock_provider):
+        with patch(
+            "cuepoint.services.beatport_service.get_active_provider",
+            return_value=mock_provider,
+        ):
             result = service.fetch_track_data("https://www.beatport.com/track/test")
 
             assert result is None
@@ -63,7 +73,9 @@ class TestExportServiceErrorHandling:
 
     def test_export_to_csv_raises_export_error(self):
         """Test that export_to_csv raises ExportError on failure."""
-        logging_service = LoggingService(enable_file_logging=False, enable_console_logging=False)
+        logging_service = LoggingService(
+            enable_file_logging=False, enable_console_logging=False
+        )
         service = ExportService(logging_service=logging_service)
 
         # Mock write_csv_files to raise an exception
@@ -78,7 +90,9 @@ class TestExportServiceErrorHandling:
 
     def test_export_to_json_raises_export_error(self):
         """Test that export_to_json raises ExportError on failure."""
-        logging_service = LoggingService(enable_file_logging=False, enable_console_logging=False)
+        logging_service = LoggingService(
+            enable_file_logging=False, enable_console_logging=False
+        )
         service = ExportService(logging_service=logging_service)
 
         # Mock open() to raise an exception
@@ -91,11 +105,14 @@ class TestExportServiceErrorHandling:
 
     def test_export_to_excel_raises_export_error_missing_dependency(self):
         """Test that export_to_excel raises ExportError when openpyxl is missing."""
-        logging_service = LoggingService(enable_file_logging=False, enable_console_logging=False)
+        logging_service = LoggingService(
+            enable_file_logging=False, enable_console_logging=False
+        )
         service = ExportService(logging_service=logging_service)
 
         # Mock import to raise only for openpyxl (not for other modules)
         import builtins
+
         original_import = builtins.__import__
 
         def mock_import(name, *args, **kwargs):
@@ -112,13 +129,16 @@ class TestExportServiceErrorHandling:
 
     def test_export_to_excel_raises_export_error_on_failure(self):
         """Test that export_to_excel raises ExportError on file write failure."""
-        logging_service = LoggingService(enable_file_logging=False, enable_console_logging=False)
+        logging_service = LoggingService(
+            enable_file_logging=False, enable_console_logging=False
+        )
         service = ExportService(logging_service=logging_service)
 
         # Check if openpyxl is available - if not, we can't test file write failure
         # In that case, we'll test the missing dependency path instead
         try:
             import openpyxl  # noqa: F401
+
             openpyxl_available = True
         except ImportError:
             openpyxl_available = False
@@ -190,7 +210,10 @@ class TestErrorLogging:
         mock_provider = MagicMock()
         mock_provider.search.side_effect = Exception("Test error")
 
-        with patch("cuepoint.services.beatport_service.get_active_provider", return_value=mock_provider):
+        with patch(
+            "cuepoint.services.beatport_service.get_active_provider",
+            return_value=mock_provider,
+        ):
             with pytest.raises(BeatportAPIError):
                 service.search_tracks("test")
 
@@ -227,13 +250,18 @@ class TestErrorContext:
     def test_beatport_api_error_includes_context(self):
         """Test that BeatportAPIError includes query context."""
         cache_service = CacheService()
-        logging_service = LoggingService(enable_file_logging=False, enable_console_logging=False)
+        logging_service = LoggingService(
+            enable_file_logging=False, enable_console_logging=False
+        )
         service = BeatportService(cache_service, logging_service)
 
         mock_provider = MagicMock()
         mock_provider.search.side_effect = Exception("Test error")
 
-        with patch("cuepoint.services.beatport_service.get_active_provider", return_value=mock_provider):
+        with patch(
+            "cuepoint.services.beatport_service.get_active_provider",
+            return_value=mock_provider,
+        ):
             with pytest.raises(BeatportAPIError) as exc_info:
                 service.search_tracks("test query", max_results=10)
 
@@ -242,7 +270,9 @@ class TestErrorContext:
 
     def test_export_error_includes_context(self):
         """Test that ExportError includes filepath context."""
-        logging_service = LoggingService(enable_file_logging=False, enable_console_logging=False)
+        logging_service = LoggingService(
+            enable_file_logging=False, enable_console_logging=False
+        )
         service = ExportService(logging_service=logging_service)
 
         test_path = "/test/path/results.csv"
@@ -256,4 +286,3 @@ class TestErrorContext:
 
             assert exc_info.value.context["filepath"] == test_path
             assert exc_info.value.context["track_count"] == 0
-

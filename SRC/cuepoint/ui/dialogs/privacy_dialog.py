@@ -105,7 +105,9 @@ class PrivacyDialog(QDialog):
         self.btn_open_data_folder.clicked.connect(self._on_open_data_folder)
 
         # Dialog buttons
-        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self
+        )
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
@@ -164,12 +166,20 @@ class PrivacyDialog(QDialog):
         return "\n".join(lines)
 
     def _load_settings(self) -> None:
-        self.clear_cache_on_exit.setChecked(bool(self._settings.value(self.KEY_CLEAR_CACHE_ON_EXIT, False, type=bool)))
-        self.clear_logs_on_exit.setChecked(bool(self._settings.value(self.KEY_CLEAR_LOGS_ON_EXIT, False, type=bool)))
+        self.clear_cache_on_exit.setChecked(
+            bool(self._settings.value(self.KEY_CLEAR_CACHE_ON_EXIT, False, type=bool))
+        )
+        self.clear_logs_on_exit.setChecked(
+            bool(self._settings.value(self.KEY_CLEAR_LOGS_ON_EXIT, False, type=bool))
+        )
 
     def _save_settings(self) -> None:
-        self._settings.setValue(self.KEY_CLEAR_CACHE_ON_EXIT, self.clear_cache_on_exit.isChecked())
-        self._settings.setValue(self.KEY_CLEAR_LOGS_ON_EXIT, self.clear_logs_on_exit.isChecked())
+        self._settings.setValue(
+            self.KEY_CLEAR_CACHE_ON_EXIT, self.clear_cache_on_exit.isChecked()
+        )
+        self._settings.setValue(
+            self.KEY_CLEAR_LOGS_ON_EXIT, self.clear_logs_on_exit.isChecked()
+        )
         self._settings.sync()
 
     def accept(self) -> None:
@@ -177,24 +187,30 @@ class PrivacyDialog(QDialog):
         super().accept()
 
     def _on_clear_cache(self) -> None:
-        if QMessageBox.question(
-            self,
-            "Clear cache",
-            "Clear cache now?\n\nThis only affects cached data and can improve privacy at the cost of performance.",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
-        ) == QMessageBox.Yes:
+        if (
+            QMessageBox.question(
+                self,
+                "Clear cache",
+                "Clear cache now?\n\nThis only affects cached data and can improve privacy at the cost of performance.",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            == QMessageBox.Yes
+        ):
             DataDeletionManager.clear_cache()
             QMessageBox.information(self, "Cache cleared", "Cache was cleared.")
 
     def _on_clear_logs(self) -> None:
-        if QMessageBox.question(
-            self,
-            "Clear logs",
-            "Clear logs now?\n\nLogs are used for debugging and support; clearing them may reduce diagnosability.",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
-        ) == QMessageBox.Yes:
+        if (
+            QMessageBox.question(
+                self,
+                "Clear logs",
+                "Clear logs now?\n\nLogs are used for debugging and support; clearing them may reduce diagnosability.",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            == QMessageBox.Yes
+        ):
             DataDeletionManager.clear_logs()
             QMessageBox.information(self, "Logs cleared", "Logs were cleared.")
 
@@ -211,15 +227,16 @@ class PrivacyDialog(QDialog):
             )
 
     def _on_clear_all(self) -> None:
-        if QMessageBox.warning(
-            self,
-            "Clear all app data",
-            "This will clear cache, logs, and configuration.\n\n"
-            "Your exports will not be deleted.\n\nContinue?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
-        ) == QMessageBox.Yes:
+        if (
+            QMessageBox.warning(
+                self,
+                "Clear all app data",
+                "This will clear cache, logs, and configuration.\n\n"
+                "Your exports will not be deleted.\n\nContinue?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            == QMessageBox.Yes
+        ):
             DataDeletionManager.clear_all()
             QMessageBox.information(self, "Data cleared", "All app data was cleared.")
-
-

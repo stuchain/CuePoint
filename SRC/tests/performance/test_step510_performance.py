@@ -85,10 +85,14 @@ class TestProcessingPerformance:
         duration = time.perf_counter() - start
 
         # Assert performance requirement
-        assert duration < 50.0, f"Processing 10 tracks took {duration:.3f}s, expected < 50.0s"
+        assert duration < 50.0, (
+            f"Processing 10 tracks took {duration:.3f}s, expected < 50.0s"
+        )
         assert len(results) == len(tracks)
         avg_time = duration / len(tracks)
-        assert avg_time < 5.0, f"Average time per track: {avg_time:.3f}s, expected < 5.0s"
+        assert avg_time < 5.0, (
+            f"Average time per track: {avg_time:.3f}s, expected < 5.0s"
+        )
 
     def test_process_playlist_50_tracks_performance(self, processor_service):
         """Test playlist processing performance (50 tracks).
@@ -102,27 +106,37 @@ class TestProcessingPerformance:
         duration = time.perf_counter() - start
 
         # Assert performance requirement
-        assert duration < 250.0, f"Processing 50 tracks took {duration:.3f}s, expected < 250.0s"
+        assert duration < 250.0, (
+            f"Processing 50 tracks took {duration:.3f}s, expected < 250.0s"
+        )
         assert len(results) == len(tracks)
         avg_time = duration / len(tracks)
-        assert avg_time < 5.0, f"Average time per track: {avg_time:.3f}s, expected < 5.0s"
+        assert avg_time < 5.0, (
+            f"Average time per track: {avg_time:.3f}s, expected < 5.0s"
+        )
 
     def test_process_playlist_100_tracks_performance(self, processor_service):
         """Test playlist processing performance (100 tracks).
 
         Target: < 5 minutes (300 seconds)
         """
-        tracks = [Track(title=f"Track {i}", artist=f"Artist {i}") for i in range(1, 101)]
+        tracks = [
+            Track(title=f"Track {i}", artist=f"Artist {i}") for i in range(1, 101)
+        ]
 
         start = time.perf_counter()
         results = processor_service.process_playlist(tracks)
         duration = time.perf_counter() - start
 
         # Assert performance requirement
-        assert duration < 300.0, f"Processing 100 tracks took {duration:.3f}s, expected < 300.0s"
+        assert duration < 300.0, (
+            f"Processing 100 tracks took {duration:.3f}s, expected < 300.0s"
+        )
         assert len(results) == len(tracks)
         avg_time = duration / len(tracks)
-        assert avg_time < 3.0, f"Average time per track: {avg_time:.3f}s, expected < 3.0s"
+        assert avg_time < 3.0, (
+            f"Average time per track: {avg_time:.3f}s, expected < 3.0s"
+        )
 
 
 @pytest.mark.performance
@@ -135,7 +149,9 @@ class TestExportPerformance:
         Target: < 2 seconds for 100 results
         """
         # Generate test results
-        tracks = [Track(title=f"Track {i}", artist=f"Artist {i}") for i in range(1, 101)]
+        tracks = [
+            Track(title=f"Track {i}", artist=f"Artist {i}") for i in range(1, 101)
+        ]
         results = processor_service.process_playlist(tracks)
 
         from cuepoint.services.output_writer import write_main_csv
@@ -155,7 +171,9 @@ class TestExportPerformance:
         Target: < 2 seconds for 100 results
         """
         # Generate test results
-        tracks = [Track(title=f"Track {i}", artist=f"Artist {i}") for i in range(1, 101)]
+        tracks = [
+            Track(title=f"Track {i}", artist=f"Artist {i}") for i in range(1, 101)
+        ]
         results = processor_service.process_playlist(tracks)
 
         import json
@@ -198,7 +216,9 @@ class TestCachePerformance:
         duration = time.perf_counter() - start
 
         # Assert performance requirement
-        assert duration < 1.0, f"Cache set (1000 ops) took {duration:.3f}s, expected < 1.0s"
+        assert duration < 1.0, (
+            f"Cache set (1000 ops) took {duration:.3f}s, expected < 1.0s"
+        )
 
     def test_cache_get_performance(self):
         """Test cache get performance.
@@ -219,7 +239,9 @@ class TestCachePerformance:
         duration = time.perf_counter() - start
 
         # Assert performance requirement
-        assert duration < 1.0, f"Cache get (1000 ops) took {duration:.3f}s, expected < 1.0s"
+        assert duration < 1.0, (
+            f"Cache get (1000 ops) took {duration:.3f}s, expected < 1.0s"
+        )
 
     def test_cache_hit_vs_miss_performance(self):
         """Test that cache hits are significantly faster than misses."""
@@ -294,7 +316,9 @@ class TestMemoryPerformance:
         """
         import sys
 
-        tracks = [Track(title=f"Track {i}", artist=f"Artist {i}") for i in range(1, 101)]
+        tracks = [
+            Track(title=f"Track {i}", artist=f"Artist {i}") for i in range(1, 101)
+        ]
 
         # Measure memory before
         import gc
@@ -326,7 +350,9 @@ class TestMemoryPerformance:
 
         # Process multiple batches
         for batch in range(5):
-            tracks = [Track(title=f"Track {i}", artist=f"Artist {i}") for i in range(1, 21)]
+            tracks = [
+                Track(title=f"Track {i}", artist=f"Artist {i}") for i in range(1, 21)
+            ]
             results = processor_service.process_playlist(tracks)
 
             # Force garbage collection
@@ -337,4 +363,3 @@ class TestMemoryPerformance:
         # Memory should not grow unbounded
         # This is a basic check - more sophisticated leak detection would use memory_profiler
         assert True  # If we get here without OOM, test passes
-

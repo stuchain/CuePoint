@@ -22,21 +22,14 @@ def sample_results():
     """Create sample TrackResult objects for testing"""
     return [
         TrackResult(
-            playlist_index=1,
-            title="Test Track",
-            artist="Test Artist",
-            matched=True
+            playlist_index=1, title="Test Track", artist="Test Artist", matched=True
         )
     ]
 
 
 def test_validate_export_options_valid(controller):
     """Test validation of valid export options"""
-    options = {
-        "format": "csv",
-        "file_path": "/tmp/test.csv",
-        "delimiter": ","
-    }
+    options = {"format": "csv", "file_path": "/tmp/test.csv", "delimiter": ","}
     is_valid, error = controller.validate_export_options(options)
     assert is_valid is True
     assert error is None
@@ -44,9 +37,7 @@ def test_validate_export_options_valid(controller):
 
 def test_validate_export_options_no_file(controller):
     """Test validation with no file path"""
-    options = {
-        "format": "csv"
-    }
+    options = {"format": "csv"}
     is_valid, error = controller.validate_export_options(options)
     assert is_valid is False
     assert error is not None
@@ -54,10 +45,7 @@ def test_validate_export_options_no_file(controller):
 
 def test_validate_export_options_invalid_format(controller):
     """Test validation with invalid format"""
-    options = {
-        "format": "invalid",
-        "file_path": "/tmp/test.invalid"
-    }
+    options = {"format": "invalid", "file_path": "/tmp/test.invalid"}
     is_valid, error = controller.validate_export_options(options)
     assert is_valid is False
     assert error is not None
@@ -65,11 +53,7 @@ def test_validate_export_options_invalid_format(controller):
 
 def test_validate_export_options_invalid_delimiter(controller):
     """Test validation with invalid delimiter"""
-    options = {
-        "format": "csv",
-        "file_path": "/tmp/test.csv",
-        "delimiter": "invalid"
-    }
+    options = {"format": "csv", "file_path": "/tmp/test.csv", "delimiter": "invalid"}
     is_valid, error = controller.validate_export_options(options)
     assert is_valid is False
     assert error is not None
@@ -79,9 +63,7 @@ def test_prepare_results_for_export_all(controller, sample_results):
     """Test preparing all results for export"""
     filtered = sample_results[:1]  # Only first result
     results = controller.prepare_results_for_export(
-        all_results=sample_results,
-        filtered_results=filtered,
-        export_filtered=False
+        all_results=sample_results, filtered_results=filtered, export_filtered=False
     )
     assert len(results) == len(sample_results)
 
@@ -90,9 +72,7 @@ def test_prepare_results_for_export_filtered(controller, sample_results):
     """Test preparing filtered results for export"""
     filtered = sample_results[:1]  # Only first result
     results = controller.prepare_results_for_export(
-        all_results=sample_results,
-        filtered_results=filtered,
-        export_filtered=True
+        all_results=sample_results, filtered_results=filtered, export_filtered=True
     )
     assert len(results) == 1
 
@@ -146,10 +126,10 @@ def test_prepare_export_data(controller, sample_results):
         "file_path": "/tmp/test.csv",
         "playlist_name": "Test Playlist",
         "include_metadata": True,
-        "delimiter": ","
+        "delimiter": ",",
     }
     data = controller.prepare_export_data(sample_results, options)
-    
+
     assert data["results"] == sample_results
     assert data["format"] == "csv"
     assert data["file_path"] == "/tmp/test.csv"
@@ -166,10 +146,11 @@ def test_get_default_output_directory(controller):
 def test_generate_default_filename(controller):
     """Test generating default filename"""
     filename = controller.generate_default_filename(
-        playlist_name="Test Playlist",
-        format_type="csv",
-        options={"delimiter": ","}
+        playlist_name="Test Playlist", format_type="csv", options={"delimiter": ","}
     )
     assert filename.endswith(".csv")
-    assert "Test Playlist" in filename or "TestPlaylist" in filename or "Test_Playlist" in filename
-
+    assert (
+        "Test Playlist" in filename
+        or "TestPlaylist" in filename
+        or "Test_Playlist" in filename
+    )

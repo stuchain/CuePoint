@@ -27,38 +27,38 @@ for test_file in test_files:
     print(f"\n{'=' * 80}")
     print(f"Running: {test_file}")
     print(f"{'=' * 80}")
-    
+
     result = subprocess.run(
         [sys.executable, "-m", "pytest", test_file, "-v", "--tb=short"],
         capture_output=True,
         text=True,
     )
-    
+
     print(result.stdout)
     if result.stderr:
         print("STDERR:", result.stderr, file=sys.stderr)
-    
+
     # Parse output to count tests
-    lines = result.stdout.split('\n')
+    lines = result.stdout.split("\n")
     for line in lines:
-        if ' passed' in line or ' failed' in line or ' error' in line:
+        if " passed" in line or " failed" in line or " error" in line:
             print(f"\n{line}")
             # Extract numbers
             parts = line.split()
             for i, part in enumerate(parts):
-                if part in ['passed', 'failed', 'error']:
+                if part in ["passed", "failed", "error"]:
                     if i > 0:
                         try:
-                            count = int(parts[i-1])
-                            if 'passed' in part:
+                            count = int(parts[i - 1])
+                            if "passed" in part:
                                 total_passed += count
                                 total_tests += count
-                            elif 'failed' in part or 'error' in part:
+                            elif "failed" in part or "error" in part:
                                 total_failed += count
                                 total_tests += count
                         except ValueError:
                             pass
-    
+
     if result.returncode != 0:
         print(f"❌ Tests failed for {test_file}")
     else:
@@ -78,4 +78,3 @@ if total_failed > 0:
 else:
     print("\n✅ All Step 5.3 tests PASSED!")
     sys.exit(0)
-

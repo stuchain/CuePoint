@@ -16,4 +16,3 @@ Use the new Phase 5 GUI structure instead:
 
 This legacy package will be removed in a future version.
 """
-

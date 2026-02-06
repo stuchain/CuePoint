@@ -24,6 +24,7 @@ class TestValidateChangelog:
 
     def test_parse_changelog_sections_empty_file(self):
         import validate_changelog as m
+
         parse_changelog_sections = m.parse_changelog_sections
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
@@ -37,6 +38,7 @@ class TestValidateChangelog:
 
     def test_parse_changelog_sections_with_unreleased(self):
         import validate_changelog as m
+
         parse_changelog_sections = m.parse_changelog_sections
 
         content = """# Changelog
@@ -64,6 +66,7 @@ class TestValidateChangelog:
 
     def test_validate_changelog_missing_file(self):
         import validate_changelog as m
+
         validate_changelog = m.validate_changelog
 
         valid, errors = validate_changelog(Path("/nonexistent/changelog.md"), "1.0.0")
@@ -72,6 +75,7 @@ class TestValidateChangelog:
 
     def test_validate_changelog_with_unreleased_content(self):
         import validate_changelog as m
+
         validate_changelog = m.validate_changelog
 
         content = """# Changelog
@@ -85,13 +89,16 @@ class TestValidateChangelog:
             f.write(content)
             path = Path(f.name)
         try:
-            valid, errors = validate_changelog(path, "1.0.1", require_version_entry=True)
+            valid, errors = validate_changelog(
+                path, "1.0.1", require_version_entry=True
+            )
             assert valid, errors
         finally:
             path.unlink(missing_ok=True)
 
     def test_extract_base_version(self):
         import validate_changelog as m
+
         extract_base_version = m.extract_base_version
 
         assert extract_base_version("1.0.0") == "1.0.0"
@@ -104,6 +111,7 @@ class TestValidateAppcast:
 
     def test_validate_semver(self):
         import validate_appcast as m
+
         validate_semver = m.validate_semver
 
         assert validate_semver("1.0.0") is True
@@ -114,6 +122,7 @@ class TestValidateAppcast:
 
     def test_validate_appcast_missing_file(self):
         import validate_appcast as m
+
         validate_appcast = m.validate_appcast
 
         valid, errors = validate_appcast(Path("/nonexistent/appcast.xml"))
@@ -122,6 +131,7 @@ class TestValidateAppcast:
 
     def test_validate_appcast_valid_xml(self):
         import validate_appcast as m
+
         validate_appcast = m.validate_appcast
 
         xml = """<?xml version="1.0"?>
@@ -140,13 +150,16 @@ class TestValidateAppcast:
             f.write(xml)
             path = Path(f.name)
         try:
-            valid, errors = validate_appcast(path, check_https=True, check_version_format=True)
+            valid, errors = validate_appcast(
+                path, check_https=True, check_version_format=True
+            )
             assert valid, errors
         finally:
             path.unlink(missing_ok=True)
 
     def test_validate_appcast_rejects_http_url(self):
         import validate_appcast as m
+
         validate_appcast = m.validate_appcast
 
         xml = """<?xml version="1.0"?>
@@ -176,6 +189,7 @@ class TestGenerateSbom:
 
     def test_parse_requirements_file(self):
         import generate_sbom as m
+
         parse_requirements_file = m.parse_requirements_file
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
@@ -190,6 +204,7 @@ class TestGenerateSbom:
 
     def test_spdx_id(self):
         import generate_sbom as m
+
         spdx_id = m.spdx_id
 
         assert "Package" in spdx_id("foo", "1.0.0")
@@ -201,6 +216,7 @@ class TestGenerateBuildMetadata:
 
     def test_get_version(self):
         import generate_build_metadata as m
+
         get_version = m.get_version
 
         v = get_version()
@@ -209,6 +225,7 @@ class TestGenerateBuildMetadata:
 
     def test_generate_build_metadata_output(self):
         import generate_build_metadata as m
+
         get_project_root = m.get_project_root
 
         root = get_project_root()
@@ -221,6 +238,7 @@ class TestValidateVersion:
 
     def test_validate_semver(self):
         import validate_version as m
+
         validate_semver = m.validate_semver
 
         ok, err = validate_semver("1.0.0")
@@ -232,6 +250,7 @@ class TestValidateVersion:
 
     def test_extract_base_version(self):
         import validate_version as m
+
         extract_base_version = m.extract_base_version
 
         assert extract_base_version("1.0.0") == "1.0.0"
@@ -243,6 +262,7 @@ class TestVerifyInstaller:
 
     def test_sha256_file(self):
         import verify_installer as m
+
         sha256_file = m.sha256_file
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".bin") as f:
@@ -257,6 +277,7 @@ class TestVerifyInstaller:
 
     def test_verify_checksum_match(self):
         import verify_installer as m
+
         sha256_file = m.sha256_file
         verify_checksum = m.verify_checksum
 
@@ -272,6 +293,7 @@ class TestVerifyInstaller:
 
     def test_verify_checksum_mismatch(self):
         import verify_installer as m
+
         verify_checksum = m.verify_checksum
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".bin") as f:
@@ -286,6 +308,7 @@ class TestVerifyInstaller:
 
     def test_parse_checksums_file_gnu_format(self):
         import verify_installer as m
+
         parse_checksums_file = m.parse_checksums_file
 
         # SHA256 hashes are 64 hex chars
@@ -305,6 +328,7 @@ class TestVerifyInstaller:
 
     def test_parse_checksums_file_bsd_format(self):
         import verify_installer as m
+
         parse_checksums_file = m.parse_checksums_file
 
         # SHA256 hashes are 64 hex chars

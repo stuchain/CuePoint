@@ -57,6 +57,7 @@ class DiagnosticCollector:
         run_id = None
         try:
             from cuepoint.utils.run_context import get_current_run_id
+
             run_id = get_current_run_id()
         except ImportError:
             pass
@@ -192,15 +193,16 @@ class DiagnosticCollector:
             try:
                 size_mb = 0
                 if path.exists():
-                    size_mb = (
-                        sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
-                        / (1024 * 1024)
-                    )
+                    size_mb = sum(
+                        f.stat().st_size for f in path.rglob("*") if f.is_file()
+                    ) / (1024 * 1024)
 
                 path_status[name] = {
                     "path": path_str,
                     "exists": path.exists(),
-                    "writable": os.access(path if path.exists() else path.parent, os.W_OK),
+                    "writable": os.access(
+                        path if path.exists() else path.parent, os.W_OK
+                    ),
                     "size_mb": size_mb,
                 }
             except Exception as e:
@@ -226,7 +228,9 @@ class DiagnosticCollector:
         logs_dir = AppPaths.logs_dir()
         log_files = list(logs_dir.glob("*.log*"))
 
-        total_size = sum(f.stat().st_size for f in log_files) / (1024 * 1024) if log_files else 0
+        total_size = (
+            sum(f.stat().st_size for f in log_files) / (1024 * 1024) if log_files else 0
+        )
 
         return {
             "log_directory": str(logs_dir),
@@ -268,13 +272,17 @@ class DiagnosticCollector:
 
         # Read crash logs
         crash_logs = list(AppPaths.logs_dir().glob("crash-*.log"))
-        for crash_log in sorted(crash_logs, key=lambda p: p.stat().st_mtime, reverse=True)[:5]:
+        for crash_log in sorted(
+            crash_logs, key=lambda p: p.stat().st_mtime, reverse=True
+        )[:5]:
             try:
                 errors.append(
                     {
                         "type": "crash",
                         "file": crash_log.name,
-                        "timestamp": datetime.fromtimestamp(crash_log.stat().st_mtime).isoformat(),
+                        "timestamp": datetime.fromtimestamp(
+                            crash_log.stat().st_mtime
+                        ).isoformat(),
                         "preview": crash_log.read_text(encoding="utf-8")[:500],
                     }
                 )

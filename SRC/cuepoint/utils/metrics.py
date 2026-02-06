@@ -300,9 +300,7 @@ class MetricsCollector:
         with self.lock:
             self.metrics.processing.total_tracks_processed += tracks_processed
             self.metrics.processing.successful_matches += matches_found
-            self.metrics.processing.failed_matches += (
-                tracks_processed - matches_found
-            )
+            self.metrics.processing.failed_matches += tracks_processed - matches_found
             self.metrics.processing.add_processing_time(processing_time)
 
             self._save_metrics()
@@ -312,9 +310,7 @@ class MetricsCollector:
                     f"Processing metrics: {self.metrics.processing.to_dict()}"
                 )
 
-    def record_error(
-        self, error_type: str, recovered: bool = False
-    ) -> None:
+    def record_error(self, error_type: str, recovered: bool = False) -> None:
         """Record an error occurrence.
 
         Args:
@@ -417,16 +413,20 @@ class MetricsCollector:
             return {
                 "installation_success_rate": self.metrics.installation.calculate_success_rate(),
                 "installation_target": 95.0,
-                "installation_meets_target": self.metrics.installation.calculate_success_rate() >= 95.0,
+                "installation_meets_target": self.metrics.installation.calculate_success_rate()
+                >= 95.0,
                 "processing_success_rate": self.metrics.processing.calculate_success_rate(),
                 "processing_target": 98.0,
-                "processing_meets_target": self.metrics.processing.calculate_success_rate() >= 98.0,
+                "processing_meets_target": self.metrics.processing.calculate_success_rate()
+                >= 98.0,
                 "error_recovery_rate": self.metrics.errors.calculate_recovery_rate(),
                 "error_recovery_target": 90.0,
-                "error_recovery_meets_target": self.metrics.errors.calculate_recovery_rate() >= 90.0,
+                "error_recovery_meets_target": self.metrics.errors.calculate_recovery_rate()
+                >= 90.0,
                 "update_adoption_rate": self.metrics.updates.calculate_adoption_rate(),
                 "update_adoption_target": 80.0,
-                "update_adoption_meets_target": self.metrics.updates.calculate_adoption_rate() >= 80.0,
+                "update_adoption_meets_target": self.metrics.updates.calculate_adoption_rate()
+                >= 80.0,
             }
 
     def clear_metrics(self) -> None:

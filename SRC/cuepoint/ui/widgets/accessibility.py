@@ -47,7 +47,9 @@ class AccessibilityHelper:
         # Qt automatically uses label text as accessible name
 
     @staticmethod
-    def set_table_accessible_name(table: QWidget, name: str, description: Optional[str] = None):
+    def set_table_accessible_name(
+        table: QWidget, name: str, description: Optional[str] = None
+    ):
         """Set accessible name and description for table.
 
         Args:
@@ -60,7 +62,9 @@ class AccessibilityHelper:
             table.setAccessibleDescription(description)
 
     @staticmethod
-    def set_button_accessible_name(button: QWidget, name: str, description: Optional[str] = None):
+    def set_button_accessible_name(
+        button: QWidget, name: str, description: Optional[str] = None
+    ):
         """Set accessible name and description for button.
 
         Args:
@@ -73,7 +77,9 @@ class AccessibilityHelper:
             button.setAccessibleDescription(description)
 
     @staticmethod
-    def set_input_accessible_name(input_widget: QWidget, name: str, description: Optional[str] = None):
+    def set_input_accessible_name(
+        input_widget: QWidget, name: str, description: Optional[str] = None
+    ):
         """Set accessible name and description for input field.
 
         Args:

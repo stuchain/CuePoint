@@ -68,7 +68,13 @@ class PerformanceView(QWidget):
         self.query_table = QTableWidget()
         self.query_table.setColumnCount(5)
         self.query_table.setHorizontalHeaderLabels(
-            ["Query Type", "Count", "Avg Time (s)", "Total Candidates", "Cache Hit Rate"]
+            [
+                "Query Type",
+                "Count",
+                "Avg Time (s)",
+                "Total Candidates",
+                "Cache Hit Rate",
+            ]
         )
         self.query_table.horizontalHeader().setStretchLastSection(True)
         self.query_table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -136,7 +142,9 @@ class PerformanceView(QWidget):
             # Show a message when no data is available
             self.overall_table.setRowCount(1)
             self.overall_table.setItem(0, 0, QTableWidgetItem("Status"))
-            self.overall_table.setItem(0, 1, QTableWidgetItem("No performance data available yet"))
+            self.overall_table.setItem(
+                0, 1, QTableWidgetItem("No performance data available yet")
+            )
             return
 
         self._update_overall_stats(stats)
@@ -189,13 +197,19 @@ class PerformanceView(QWidget):
         for row, (qtype, data) in enumerate(sorted(by_type.items())):
             avg_time = data["total_time"] / data["count"] if data["count"] > 0 else 0.0
             hit_rate = (
-                (data["cache_hits"] / data["cache_total"] * 100) if data["cache_total"] > 0 else 0.0
+                (data["cache_hits"] / data["cache_total"] * 100)
+                if data["cache_total"] > 0
+                else 0.0
             )
 
-            self.query_table.setItem(row, 0, QTableWidgetItem(qtype.replace("_", " ").title()))
+            self.query_table.setItem(
+                row, 0, QTableWidgetItem(qtype.replace("_", " ").title())
+            )
             self.query_table.setItem(row, 1, QTableWidgetItem(str(data["count"])))
             self.query_table.setItem(row, 2, QTableWidgetItem(f"{avg_time:.3f}"))
-            self.query_table.setItem(row, 3, QTableWidgetItem(str(data["total_candidates"])))
+            self.query_table.setItem(
+                row, 3, QTableWidgetItem(str(data["total_candidates"]))
+            )
             self.query_table.setItem(row, 4, QTableWidgetItem(f"{hit_rate:.1f}%"))
 
     def _update_slowest_tracks(self, stats: PerformanceStats):
@@ -208,11 +222,17 @@ class PerformanceView(QWidget):
         self.slowest_table.setRowCount(len(slowest))
         for row, track in enumerate(slowest):
             title = (
-                track.track_title[:50] + "..." if len(track.track_title) > 50 else track.track_title
+                track.track_title[:50] + "..."
+                if len(track.track_title) > 50
+                else track.track_title
             )
             self.slowest_table.setItem(row, 0, QTableWidgetItem(title))
-            self.slowest_table.setItem(row, 1, QTableWidgetItem(f"{track.total_time:.2f}"))
-            self.slowest_table.setItem(row, 2, QTableWidgetItem(str(track.total_queries)))
+            self.slowest_table.setItem(
+                row, 1, QTableWidgetItem(f"{track.total_time:.2f}")
+            )
+            self.slowest_table.setItem(
+                row, 2, QTableWidgetItem(str(track.total_queries))
+            )
 
     def _update_tips(self, stats: PerformanceStats):
         """Update performance tips based on metrics"""
@@ -232,7 +252,9 @@ class PerformanceView(QWidget):
         if len(stats.query_metrics) > 0:
             avg_query_time = stats.average_time_per_query()
             if avg_query_time > 3.0:
-                tips.append("• Queries are taking longer than expected - check network connection")
+                tips.append(
+                    "• Queries are taking longer than expected - check network connection"
+                )
 
         # Check match rate
         match_rate = stats.match_rate()
@@ -268,13 +290,17 @@ class PerformanceView(QWidget):
             from cuepoint.services.output_writer import write_performance_report
         except ImportError:
             QMessageBox.information(
-                self, "Not Available", "Performance report export is not yet implemented."
+                self,
+                "Not Available",
+                "Performance report export is not yet implemented.",
             )
             return
 
         stats = performance_collector.get_stats()
         if not stats:
-            QMessageBox.information(self, "No Data", "No performance data available to export.")
+            QMessageBox.information(
+                self, "No Data", "No performance data available to export."
+            )
             return
 
         # Generate and save report
@@ -284,4 +310,6 @@ class PerformanceView(QWidget):
                 self, "Report Exported", f"Performance report saved to:\n{report_path}"
             )
         except Exception as e:
-            QMessageBox.warning(self, "Export Error", f"Failed to export report:\n{str(e)}")
+            QMessageBox.warning(
+                self, "Export Error", f"Failed to export report:\n{str(e)}"
+            )

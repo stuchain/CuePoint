@@ -57,5 +57,3 @@ class SecretManager:
             ) from e
 
         keyring.delete_password(service, username)
-
-

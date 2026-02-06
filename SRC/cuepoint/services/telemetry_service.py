@@ -109,7 +109,9 @@ class TelemetryService:
         except Exception:
             return True
 
-    def _build_event(self, event_name: str, properties: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def _build_event(
+        self, event_name: str, properties: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """Build a telemetry event with required fields."""
         props = _scrub_properties(properties or {})
         # Omit None/empty values

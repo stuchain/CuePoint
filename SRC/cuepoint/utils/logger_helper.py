@@ -8,7 +8,6 @@ Utility functions for getting logger instances without DI.
 Useful for legacy code that hasn't been migrated to dependency injection.
 """
 
-
 from cuepoint.services.interfaces import ILoggingService
 from cuepoint.services.logging_service import LoggingService
 from cuepoint.utils.di_container import get_container

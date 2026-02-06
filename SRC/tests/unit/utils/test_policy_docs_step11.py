@@ -74,7 +74,9 @@ class TestPolicyDocs:
     def test_find_data_processing_notice_from_source(self):
         """Find data processing notice when running from source (Step 11)."""
         path = find_data_processing_notice()
-        assert path is not None, "data-processing-notice.md should exist in DOCS/POLICY/"
+        assert path is not None, (
+            "data-processing-notice.md should exist in DOCS/POLICY/"
+        )
         assert path.exists()
         assert "data-processing" in path.name or "data" in path.name
 
@@ -84,7 +86,9 @@ class TestLicenseBundleGeneration:
 
     def test_generate_licenses_script_exists(self):
         """Verify generate_licenses.py exists and can be run."""
-        script = Path(__file__).resolve().parents[4] / "scripts" / "generate_licenses.py"
+        script = (
+            Path(__file__).resolve().parents[4] / "scripts" / "generate_licenses.py"
+        )
         assert script.exists(), "scripts/generate_licenses.py must exist"
 
     def test_license_bundle_contains_key_deps(self):
@@ -92,7 +96,9 @@ class TestLicenseBundleGeneration:
         repo_root = Path(__file__).resolve().parents[4]
         licenses_file = repo_root / "THIRD_PARTY_LICENSES.txt"
         if not licenses_file.exists():
-            pytest.skip("THIRD_PARTY_LICENSES.txt not generated (run generate_licenses.py)")
+            pytest.skip(
+                "THIRD_PARTY_LICENSES.txt not generated (run generate_licenses.py)"
+            )
         content = licenses_file.read_text(encoding="utf-8", errors="replace")
         assert "THIRD-PARTY LICENSES" in content or "Package:" in content
         # Should have at least one dependency

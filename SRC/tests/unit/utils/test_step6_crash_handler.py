@@ -76,9 +76,9 @@ class TestCrashReport:
         """Test generating crash report."""
         exception = ValueError("Test error")
         traceback_str = "Traceback (most recent call last):\n  File test.py, line 1\n    raise ValueError('Test error')\nValueError: Test error"
-        
+
         report = CrashReport.generate_report(exception, traceback_str)
-        
+
         assert "timestamp" in report
         assert "exception" in report
         assert report["exception"]["type"] == "ValueError"
@@ -96,9 +96,9 @@ class TestCrashReport:
                 "exception": {"type": "ValueError", "message": "Test"},
             }
             report_path = Path(tmpdir) / "crash_report.json"
-            
+
             CrashReport.save_report(report, report_path)
-            
+
             assert report_path.exists()
             loaded = json.loads(report_path.read_text())
             assert loaded["exception"]["type"] == "ValueError"
@@ -112,7 +112,7 @@ class TestCrashReportMetadata:
         report_id1 = CrashReportMetadata.generate_report_id("ValueError", "traceback1")
         report_id2 = CrashReportMetadata.generate_report_id("ValueError", "traceback1")
         report_id3 = CrashReportMetadata.generate_report_id("ValueError", "traceback2")
-        
+
         # Same exception and traceback should generate same ID
         assert report_id1 == report_id2
         # Different traceback should generate different ID
@@ -126,9 +126,9 @@ class TestCrashReportMetadata:
             "timestamp": "2024-01-01T00:00:00",
             "exception": {"type": "ValueError", "traceback": "test"},
         }
-        
+
         report_with_metadata = CrashReportMetadata.add_metadata(report)
-        
+
         assert "metadata" in report_with_metadata
         assert "report_id" in report_with_metadata["metadata"]
         assert "session_id" in report_with_metadata["metadata"]

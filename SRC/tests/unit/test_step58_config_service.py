@@ -290,7 +290,9 @@ class TestConfigServiceValidation:
 
             service.set("processing.max_concurrent", 0)  # Invalid: must be >= 1
             errors = service.validate()
-            assert any("processing.max_concurrent must be >= 1" in error for error in errors)
+            assert any(
+                "processing.max_concurrent must be >= 1" in error for error in errors
+            )
 
     def test_validate_invalid_logging_level(self):
         """Test validation catches invalid logging level."""
@@ -310,7 +312,9 @@ class TestConfigServiceValidation:
 
             service.set("matching.min_accept_score", 300.0)  # Invalid: must be <= 200
             errors = service.validate()
-            assert any("matching.min_accept_score must be between" in error for error in errors)
+            assert any(
+                "matching.min_accept_score must be between" in error for error in errors
+            )
 
     def test_validate_multiple_errors(self):
         """Test validation returns multiple errors."""
@@ -375,7 +379,9 @@ class TestConfigServiceErrorHandling:
             service = ConfigService(config_file=config_file)
 
             # Mock open to simulate permission error (works on all platforms)
-            with patch("builtins.open", side_effect=PermissionError("Permission denied")):
+            with patch(
+                "builtins.open", side_effect=PermissionError("Permission denied")
+            ):
                 with pytest.raises(ConfigurationError) as exc_info:
                     service.save()
 
@@ -545,4 +551,3 @@ class TestConfigServiceChangeNotifications:
 
             # Should only be called once (no duplicates)
             assert len(changes) == 1
-

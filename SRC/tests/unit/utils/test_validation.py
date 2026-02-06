@@ -107,7 +107,7 @@ class TestValidateXMLFile:
             f.write(
                 '<?xml version="1.0"?>\n'
                 '<!DOCTYPE DJ_PLAYLISTS [ <!ENTITY xxe "xxe"> ]>\n'
-                '<DJ_PLAYLISTS><COLLECTION></COLLECTION></DJ_PLAYLISTS>'
+                "<DJ_PLAYLISTS><COLLECTION></COLLECTION></DJ_PLAYLISTS>"
             )
             temp_path = Path(f.name)
 

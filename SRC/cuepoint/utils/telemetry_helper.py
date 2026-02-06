@@ -16,7 +16,9 @@ from typing import Any, Dict, Optional
 class _NoOpTelemetry:
     """No-op telemetry when service unavailable."""
 
-    def track(self, event_name: str, properties: Optional[Dict[str, Any]] = None) -> None:
+    def track(
+        self, event_name: str, properties: Optional[Dict[str, Any]] = None
+    ) -> None:
         pass
 
     def flush(self) -> None:

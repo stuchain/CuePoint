@@ -193,4 +193,3 @@ class TestStep52DIResolution:
         container2 = get_container()
 
         assert container1 is not container2
-

@@ -76,7 +76,9 @@ class I18nManager:
             bool: True if setup succeeded (even if no translations are present).
         """
         if not _QT_AVAILABLE or app is None:
-            logger.debug("setup_translations called without Qt/app; using English defaults")
+            logger.debug(
+                "setup_translations called without Qt/app; using English defaults"
+            )
             return True
 
         # Best-effort: attempt to load translations for the system locale.

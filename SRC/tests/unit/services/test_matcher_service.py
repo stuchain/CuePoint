@@ -9,12 +9,9 @@ from cuepoint.services.matcher_service import MatcherService
 
 class TestMatcherService:
     """Test matcher service."""
-    
-    @patch('cuepoint.services.matcher_service.best_beatport_match')
-    def test_find_best_match(
-        self,
-        mock_best_match
-    ):
+
+    @patch("cuepoint.services.matcher_service.best_beatport_match")
+    def test_find_best_match(self, mock_best_match):
         """Test finding best match."""
         # Setup
         mock_best_match.return_value = (
@@ -41,15 +38,15 @@ class TestMatcherService:
                 guard_ok=True,
                 reject_reason="",
                 elapsed_ms=100,
-                is_winner=False
+                is_winner=False,
             ),
             [],
             [],
-            1
+            1,
         )
-        
+
         service = MatcherService()
-        
+
         # Test
         best, candidates, queries_audit, last_q = service.find_best_match(
             idx=1,
@@ -60,25 +57,22 @@ class TestMatcherService:
             input_year=None,
             input_key=None,
             input_mix=None,
-            input_generic_phrases=None
+            input_generic_phrases=None,
         )
-        
+
         # Verify
         assert best is not None
         assert best.title == "Test Track"
         mock_best_match.assert_called_once()
-    
-    @patch('cuepoint.services.matcher_service.best_beatport_match')
-    def test_find_best_match_no_match(
-        self,
-        mock_best_match
-    ):
+
+    @patch("cuepoint.services.matcher_service.best_beatport_match")
+    def test_find_best_match_no_match(self, mock_best_match):
         """Test finding best match when no match exists."""
         # Setup
         mock_best_match.return_value = (None, [], [], 1)
-        
+
         service = MatcherService()
-        
+
         # Test
         best, candidates, queries_audit, last_q = service.find_best_match(
             idx=1,
@@ -89,16 +83,9 @@ class TestMatcherService:
             input_year=None,
             input_key=None,
             input_mix=None,
-            input_generic_phrases=None
+            input_generic_phrases=None,
         )
-        
+
         # Verify
         assert best is None
         assert len(candidates) == 0
-
-
-
-
-
-
-

@@ -73,7 +73,10 @@ class ExportService(IExportService):
 
         # Check file doesn't exist (unless overwrite allowed)
         if file_path.exists() and not overwrite:
-            return False, f"File already exists: {filepath}. Use overwrite option to replace."
+            return (
+                False,
+                f"File already exists: {filepath}. Use overwrite option to replace.",
+            )
 
         # Check disk space (rough estimate: 1KB per track minimum)
         try:
@@ -137,11 +140,15 @@ class ExportService(IExportService):
 
         """
         # Validate export path
-        is_valid, error_msg = self._validate_export_path(filepath, len(results), overwrite)
+        is_valid, error_msg = self._validate_export_path(
+            filepath, len(results), overwrite
+        )
         if not is_valid:
             msg = f"Failed to export CSV to {filepath}: {error_msg or 'Invalid export path'}"
             if self.logging_service:
-                self.logging_service.error(msg, extra={"filepath": filepath, "track_count": len(results)})
+                self.logging_service.error(
+                    msg, extra={"filepath": filepath, "track_count": len(results)}
+                )
             raise ExportError(
                 message=msg,
                 error_code="EXPORT_CSV_ERROR",
@@ -203,7 +210,9 @@ class ExportService(IExportService):
         except Exception as e:
             error_msg = f"Failed to export CSV to {filepath}: {str(e)}"
             if self.logging_service:
-                self.logging_service.error(error_msg, exc_info=e, extra={"filepath": filepath})
+                self.logging_service.error(
+                    error_msg, exc_info=e, extra={"filepath": filepath}
+                )
             raise ExportError(
                 message=error_msg,
                 error_code="EXPORT_CSV_ERROR",
@@ -230,11 +239,15 @@ class ExportService(IExportService):
 
         """
         # Validate export path
-        is_valid, error_msg = self._validate_export_path(filepath, len(results), overwrite)
+        is_valid, error_msg = self._validate_export_path(
+            filepath, len(results), overwrite
+        )
         if not is_valid:
             msg = f"Failed to export JSON to {filepath}: {error_msg or 'Invalid export path'}"
             if self.logging_service:
-                self.logging_service.error(msg, extra={"filepath": filepath, "track_count": len(results)})
+                self.logging_service.error(
+                    msg, extra={"filepath": filepath, "track_count": len(results)}
+                )
             raise ExportError(
                 message=msg,
                 error_code="EXPORT_JSON_ERROR",
@@ -249,7 +262,7 @@ class ExportService(IExportService):
             import json
 
             data = [result.to_dict() for result in results] if results else []
-            
+
             # Atomic write: write to temp file first, then rename
             temp_file = None
             try:
@@ -259,10 +272,10 @@ class ExportService(IExportService):
                 )
                 # Close the OS-level handle immediately (Windows otherwise keeps the file locked)
                 os.close(temp_fd)
-                
+
                 with open(temp_file, "w", encoding="utf-8") as f:
                     json.dump(data, f, indent=2, ensure_ascii=False)
-                
+
                 # Atomic rename
                 if file_path.exists() and overwrite:
                     file_path.unlink()
@@ -283,7 +296,9 @@ class ExportService(IExportService):
         except Exception as e:
             error_msg = f"Failed to export JSON to {filepath}: {str(e)}"
             if self.logging_service:
-                self.logging_service.error(error_msg, exc_info=e, extra={"filepath": filepath})
+                self.logging_service.error(
+                    error_msg, exc_info=e, extra={"filepath": filepath}
+                )
             raise ExportError(
                 message=error_msg,
                 error_code="EXPORT_JSON_ERROR",
@@ -310,11 +325,15 @@ class ExportService(IExportService):
             >>> service.export_to_excel(results, "output/results.xlsx")
         """
         # Validate export path
-        is_valid, error_msg = self._validate_export_path(filepath, len(results), overwrite)
+        is_valid, error_msg = self._validate_export_path(
+            filepath, len(results), overwrite
+        )
         if not is_valid:
             msg = f"Failed to export Excel to {filepath}: {error_msg or 'Invalid export path'}"
             if self.logging_service:
-                self.logging_service.error(msg, extra={"filepath": filepath, "track_count": len(results)})
+                self.logging_service.error(
+                    msg, extra={"filepath": filepath, "track_count": len(results)}
+                )
             raise ExportError(
                 message=msg,
                 error_code="EXPORT_EXCEL_ERROR",
@@ -325,7 +344,9 @@ class ExportService(IExportService):
             from openpyxl import Workbook
             from openpyxl.styles import Alignment, Font, PatternFill
         except ImportError as e:
-            error_msg = "Excel export requires openpyxl. Install with: pip install openpyxl"
+            error_msg = (
+                "Excel export requires openpyxl. Install with: pip install openpyxl"
+            )
             if self.logging_service:
                 self.logging_service.error(error_msg, exc_info=e)
             raise ExportError(
@@ -374,10 +395,10 @@ class ExportService(IExportService):
                     suffix=".tmp", dir=str(parent_dir), prefix="cuepoint_export_"
                 )
                 os.close(temp_fd)
-                
+
                 # Save to temp file
                 wb.save(temp_file)
-                
+
                 # Atomic rename
                 if file_path.exists() and overwrite:
                     file_path.unlink()
@@ -398,7 +419,9 @@ class ExportService(IExportService):
         except Exception as e:
             error_msg = f"Failed to export Excel to {filepath}: {str(e)}"
             if self.logging_service:
-                self.logging_service.error(error_msg, exc_info=e, extra={"filepath": filepath})
+                self.logging_service.error(
+                    error_msg, exc_info=e, extra={"filepath": filepath}
+                )
             raise ExportError(
                 message=error_msg,
                 error_code="EXPORT_EXCEL_ERROR",

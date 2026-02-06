@@ -14,7 +14,12 @@ import pytest
 
 from cuepoint.models.result import TrackResult
 from cuepoint.services.processor_service import ProcessorService
-from cuepoint.ui.gui_interface import ErrorType, ProcessingController, ProcessingError, ProgressInfo
+from cuepoint.ui.gui_interface import (
+    ErrorType,
+    ProcessingController,
+    ProcessingError,
+    ProgressInfo,
+)
 
 
 class TestProcessorServiceProcessPlaylistFromXML:
@@ -139,7 +144,10 @@ class TestProcessorServiceProcessPlaylistFromXML:
 
         # Verify (message is "Preflight checks failed.", details contain P001)
         assert exc_info.value.error_type == ErrorType.FILE_NOT_FOUND
-        assert "XML file not found" in exc_info.value.details or "P001" in exc_info.value.details
+        assert (
+            "XML file not found" in exc_info.value.details
+            or "P001" in exc_info.value.details
+        )
 
     def test_process_playlist_from_xml_playlist_not_found(
         self,
@@ -191,7 +199,10 @@ class TestProcessorServiceProcessPlaylistFromXML:
 
             # Verify (message is "Preflight checks failed.", details contain P010)
             assert exc_info.value.error_type == ErrorType.PLAYLIST_NOT_FOUND
-            assert "not found in XML" in exc_info.value.details or "P010" in exc_info.value.details
+            assert (
+                "not found in XML" in exc_info.value.details
+                or "P010" in exc_info.value.details
+            )
 
         finally:
             os.unlink(xml_path)
@@ -245,7 +256,10 @@ class TestProcessorServiceProcessPlaylistFromXML:
 
             # Verify (message is "Preflight checks failed.", details contain P011)
             assert exc_info.value.error_type == ErrorType.VALIDATION_ERROR
-            assert "empty" in exc_info.value.details.lower() or "P011" in exc_info.value.details
+            assert (
+                "empty" in exc_info.value.details.lower()
+                or "P011" in exc_info.value.details
+            )
 
         finally:
             os.unlink(xml_path)
@@ -538,4 +552,3 @@ class TestProcessorServiceProcessPlaylistFromXML:
 
         finally:
             os.unlink(xml_path)
-

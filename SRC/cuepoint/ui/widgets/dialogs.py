@@ -61,11 +61,13 @@ class ErrorDialog(QDialog):
         title_layout = QHBoxLayout()
         error_icon = QLabel("⚠️")
         error_icon.setStyleSheet("font-size: 24px;")
-        
+
         # Get user-friendly title based on error type (Step 8: dark theme)
         title_text = self._get_error_title()
         title_label = QLabel(title_text)
-        title_label.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {Colors.ERROR};")
+        title_label.setStyleSheet(
+            f"font-size: 18px; font-weight: bold; color: {Colors.ERROR};"
+        )
         title_layout.addWidget(error_icon)
         title_layout.addWidget(title_label)
         title_layout.addStretch()
@@ -73,29 +75,41 @@ class ErrorDialog(QDialog):
 
         # "What went wrong" section
         what_went_wrong_group = QGroupBox("What went wrong:")
-        what_went_wrong_group.setStyleSheet("QGroupBox { font-weight: bold; margin-top: 10px; }")
+        what_went_wrong_group.setStyleSheet(
+            "QGroupBox { font-weight: bold; margin-top: 10px; }"
+        )
         what_layout = QVBoxLayout()
         what_label = QLabel(self._get_what_went_wrong())
         what_label.setWordWrap(True)
-        what_label.setStyleSheet(f"font-size: 12px; padding: 5px; color: {Colors.TEXT_PRIMARY};")
+        what_label.setStyleSheet(
+            f"font-size: 12px; padding: 5px; color: {Colors.TEXT_PRIMARY};"
+        )
         what_layout.addWidget(what_label)
         what_went_wrong_group.setLayout(what_layout)
         layout.addWidget(what_went_wrong_group)
 
         # "How to fix" section
         how_to_fix_group = QGroupBox("How to fix:")
-        how_to_fix_group.setStyleSheet("QGroupBox { font-weight: bold; margin-top: 10px; }")
+        how_to_fix_group.setStyleSheet(
+            "QGroupBox { font-weight: bold; margin-top: 10px; }"
+        )
         how_layout = QVBoxLayout()
         how_layout.setSpacing(5)
-        
+
         # Use suggestions if available, otherwise provide default fixes
-        fixes = self.error.suggestions if self.error.suggestions else self._get_default_fixes()
+        fixes = (
+            self.error.suggestions
+            if self.error.suggestions
+            else self._get_default_fixes()
+        )
         for i, fix in enumerate(fixes, 1):
             fix_label = QLabel(f"{i}. {fix}")
             fix_label.setWordWrap(True)
-            fix_label.setStyleSheet(f"font-size: 12px; padding: 5px; color: {Colors.PRIMARY};")
+            fix_label.setStyleSheet(
+                f"font-size: 12px; padding: 5px; color: {Colors.PRIMARY};"
+            )
             how_layout.addWidget(fix_label)
-        
+
         how_to_fix_group.setLayout(how_layout)
         layout.addWidget(how_to_fix_group)
 
@@ -104,31 +118,41 @@ class ErrorDialog(QDialog):
         self.tech_details_group.setCheckable(True)
         self.tech_details_group.setChecked(False)
         self.tech_details_group.setTitle("Show Technical Details")
-        self.tech_details_group.setStyleSheet("QGroupBox { font-weight: bold; margin-top: 10px; }")
+        self.tech_details_group.setStyleSheet(
+            "QGroupBox { font-weight: bold; margin-top: 10px; }"
+        )
         self.tech_details_group.toggled.connect(self._toggle_tech_details)
-        
+
         tech_layout = QVBoxLayout()
-        
+
         # Error type
-        error_type_label = QLabel(f"Error Type: {self.error.error_type.value.replace('_', ' ').title()}")
-        error_type_label.setStyleSheet(f"font-size: 11px; color: {Colors.TEXT_SECONDARY}; padding: 3px;")
+        error_type_label = QLabel(
+            f"Error Type: {self.error.error_type.value.replace('_', ' ').title()}"
+        )
+        error_type_label.setStyleSheet(
+            f"font-size: 11px; color: {Colors.TEXT_SECONDARY}; padding: 3px;"
+        )
         tech_layout.addWidget(error_type_label)
-        
+
         # Original message
         if self.error.message:
             message_label = QLabel(f"Message: {self.error.message}")
             message_label.setWordWrap(True)
-            message_label.setStyleSheet(f"font-size: 11px; color: {Colors.TEXT_SECONDARY}; padding: 3px;")
+            message_label.setStyleSheet(
+                f"font-size: 11px; color: {Colors.TEXT_SECONDARY}; padding: 3px;"
+            )
             tech_layout.addWidget(message_label)
-        
+
         # Details (if available)
         if self.error.details:
             details_text = QTextEdit(self.error.details)
             details_text.setReadOnly(True)
             details_text.setMaximumHeight(100)
-            details_text.setStyleSheet(f"background-color: {Colors.SURFACE}; color: {Colors.TEXT_PRIMARY}; padding: 5px; font-size: 10px; font-family: monospace;")
+            details_text.setStyleSheet(
+                f"background-color: {Colors.SURFACE}; color: {Colors.TEXT_PRIMARY}; padding: 5px; font-size: 10px; font-family: monospace;"
+            )
             tech_layout.addWidget(details_text)
-        
+
         self.tech_details_group.setLayout(tech_layout)
         layout.addWidget(self.tech_details_group)
 
@@ -139,7 +163,9 @@ class ErrorDialog(QDialog):
             link_label = QLabel(f'<a href="{doc_link}">Learn More</a>')
             link_label.setOpenExternalLinks(True)
             link_label.setStyleSheet(f"color: {Colors.PRIMARY}; padding: 5px;")
-            link_label.linkActivated.connect(lambda url: QDesktopServices.openUrl(QUrl(url)))
+            link_label.linkActivated.connect(
+                lambda url: QDesktopServices.openUrl(QUrl(url))
+            )
             link_layout.addWidget(link_label)
             link_layout.addStretch()
             layout.addLayout(link_layout)
@@ -149,18 +175,20 @@ class ErrorDialog(QDialog):
             recoverable_label = QLabel(
                 "✓ This error is recoverable. You can try again after fixing the issue."
             )
-            recoverable_label.setStyleSheet(f"color: {Colors.SUCCESS}; font-style: italic; padding: 5px; background-color: rgba(76, 175, 80, 0.2); border-radius: 3px;")
+            recoverable_label.setStyleSheet(
+                f"color: {Colors.SUCCESS}; font-style: italic; padding: 5px; background-color: rgba(76, 175, 80, 0.2); border-radius: 3px;"
+            )
             layout.addWidget(recoverable_label)
 
         # Action buttons
         button_box = QDialogButtonBox(QDialogButtonBox.Ok)
-        
+
         # Add action buttons based on error type
         action_buttons = self._get_action_buttons()
         for button_text, callback in action_buttons:
             action_btn = button_box.addButton(button_text, QDialogButtonBox.ActionRole)
             action_btn.clicked.connect(callback)
-        
+
         ok_btn = button_box.button(QDialogButtonBox.Ok)
         ok_btn.setDefault(True)
         ok_btn.clicked.connect(self.accept)
@@ -171,90 +199,93 @@ class ErrorDialog(QDialog):
         self.setMinimumWidth(550)
         self.setMaximumWidth(750)
         self.setModal(True)
-    
+
     def _get_error_title(self) -> str:
         """Get user-friendly error title"""
         titles = {
-            'file_not_found': 'File Not Found',
-            'playlist_not_found': 'Playlist Not Found',
-            'xml_parse_error': 'Invalid XML File',
-            'network_error': 'Network Error',
-            'processing_error': 'Processing Error',
-            'validation_error': 'Validation Error',
+            "file_not_found": "File Not Found",
+            "playlist_not_found": "Playlist Not Found",
+            "xml_parse_error": "Invalid XML File",
+            "network_error": "Network Error",
+            "processing_error": "Processing Error",
+            "validation_error": "Validation Error",
         }
-        return titles.get(self.error.error_type.value, 'Error')
-    
+        return titles.get(self.error.error_type.value, "Error")
+
     def _get_what_went_wrong(self) -> str:
         """Get user-friendly explanation (Step 8: use ErrorCopy)."""
         explanations = {
-            'file_not_found': ErrorCopy.FILE_NOT_FOUND,
-            'playlist_not_found': ErrorCopy.PLAYLIST_MISSING,
-            'xml_parse_error': ErrorCopy.XML_UNREADABLE,
-            'network_error': 'Could not connect to Beatport or the connection was interrupted.',
-            'processing_error': 'An error occurred while processing your tracks.',
-            'validation_error': 'The data you provided is invalid or incomplete.',
+            "file_not_found": ErrorCopy.FILE_NOT_FOUND,
+            "playlist_not_found": ErrorCopy.PLAYLIST_MISSING,
+            "xml_parse_error": ErrorCopy.XML_UNREADABLE,
+            "network_error": "Could not connect to Beatport or the connection was interrupted.",
+            "processing_error": "An error occurred while processing your tracks.",
+            "validation_error": "The data you provided is invalid or incomplete.",
         }
         return explanations.get(self.error.error_type.value, self.error.message)
-    
+
     def _get_default_fixes(self) -> list:
         """Get default fix suggestions (Step 8: use ErrorCopy)."""
         fixes = {
-            'file_not_found': [
-                'Check if the file still exists at the specified location',
+            "file_not_found": [
+                "Check if the file still exists at the specified location",
                 ErrorCopy.CHOOSE_ANOTHER_FILE,
-                'Export a new XML file from Rekordbox if the file was deleted',
+                "Export a new XML file from Rekordbox if the file was deleted",
             ],
-            'playlist_not_found': [
-                'Check if the playlist name is correct',
-                'Select a different playlist from the dropdown',
-                'Export a new XML file from Rekordbox to refresh playlists',
+            "playlist_not_found": [
+                "Check if the playlist name is correct",
+                "Select a different playlist from the dropdown",
+                "Export a new XML file from Rekordbox to refresh playlists",
             ],
-            'xml_parse_error': [
-                'Verify the file is a valid Rekordbox XML export',
-                'Try exporting a new XML file from Rekordbox',
-                'Check if the file is corrupted or incomplete',
+            "xml_parse_error": [
+                "Verify the file is a valid Rekordbox XML export",
+                "Try exporting a new XML file from Rekordbox",
+                "Check if the file is corrupted or incomplete",
             ],
-            'network_error': [
-                'Check your internet connection',
-                'Wait a few moments and try again',
-                'Check if Beatport is accessible in your browser'
+            "network_error": [
+                "Check your internet connection",
+                "Wait a few moments and try again",
+                "Check if Beatport is accessible in your browser",
             ],
-            'processing_error': [
-                'Check the technical details for more information',
-                'Try processing a smaller playlist',
-                'Restart the application and try again'
+            "processing_error": [
+                "Check the technical details for more information",
+                "Try processing a smaller playlist",
+                "Restart the application and try again",
             ],
-            'validation_error': [
-                'Review the input data for errors',
-                'Check the technical details for specific issues',
-                'Ensure all required fields are provided'
+            "validation_error": [
+                "Review the input data for errors",
+                "Check the technical details for specific issues",
+                "Ensure all required fields are provided",
             ],
         }
-        return fixes.get(self.error.error_type.value, ['Please check the technical details and try again.'])
-    
+        return fixes.get(
+            self.error.error_type.value,
+            ["Please check the technical details and try again."],
+        )
+
     def _get_documentation_link(self) -> str:
         """Get documentation link for this error type"""
         # Placeholder - would link to actual documentation
         links = {
-            'file_not_found': 'https://docs.cuepoint.com/troubleshooting/file-errors',
-            'xml_parse_error': 'https://docs.cuepoint.com/troubleshooting/xml-format',
-            'network_error': 'https://docs.cuepoint.com/troubleshooting/network-issues',
+            "file_not_found": "https://docs.cuepoint.com/troubleshooting/file-errors",
+            "xml_parse_error": "https://docs.cuepoint.com/troubleshooting/xml-format",
+            "network_error": "https://docs.cuepoint.com/troubleshooting/network-issues",
         }
-        return links.get(self.error.error_type.value, '')
-    
+        return links.get(self.error.error_type.value, "")
+
     def _get_action_buttons(self) -> list:
         """Get action buttons based on error type"""
         actions = []
-        if self.error.error_type.value == 'file_not_found':
-            actions.append(('Select Different File', self._on_select_file))
+        if self.error.error_type.value == "file_not_found":
+            actions.append(("Select Different File", self._on_select_file))
         return actions
-    
+
     def _on_select_file(self):
         """Handle select file action"""
         # This would trigger file selection in parent window
         # For now, just accept the dialog
         self.accept()
-    
+
     def _toggle_tech_details(self, checked: bool):
         """Toggle technical details visibility"""
         # The group box handles visibility automatically
@@ -292,15 +323,15 @@ class AboutDialog(QDialog):
 
         # Tab widget for About and Changelog
         tab_widget = QTabWidget(self)
-        
+
         # About tab
         about_tab = self._create_about_tab()
         tab_widget.addTab(about_tab, "About")
-        
+
         # Changelog tab
         changelog_tab = self._create_changelog_tab()
         tab_widget.addTab(changelog_tab, "Changelog")
-        
+
         layout.addWidget(tab_widget)
 
         # OK button
@@ -324,7 +355,7 @@ class AboutDialog(QDialog):
         logo_label = self._load_logo()
         if logo_label:
             layout.addWidget(logo_label)
-        
+
         # Title
         title_label = QLabel("CuePoint")
         title_label.setStyleSheet("font-size: 24px; font-weight: bold;")
@@ -333,13 +364,17 @@ class AboutDialog(QDialog):
 
         # Version
         from cuepoint.utils.platform import get_platform_string
-        from cuepoint.version import get_build_info, get_version_display_string, is_dev_build
-        
+        from cuepoint.version import (
+            get_build_info,
+            get_version_display_string,
+            is_dev_build,
+        )
+
         version_text = get_version_display_string()
         version_label = QLabel(version_text)
         version_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(version_label)
-        
+
         # Build info (if available)
         build_info = get_build_info()
         if build_info.get("build_date"):
@@ -347,14 +382,16 @@ class AboutDialog(QDialog):
             build_date_label.setAlignment(Qt.AlignCenter)
             build_date_label.setStyleSheet("color: #999; font-size: 10px;")
             layout.addWidget(build_date_label)
-        
+
         # Dev build indicator
         if is_dev_build():
             dev_label = QLabel("Development Build")
             dev_label.setAlignment(Qt.AlignCenter)
-            dev_label.setStyleSheet("color: orange; font-weight: bold; font-size: 11px;")
+            dev_label.setStyleSheet(
+                "color: orange; font-weight: bold; font-size: 11px;"
+            )
             layout.addWidget(dev_label)
-        
+
         # Platform info
         platform_label = QLabel(f"Platform: {get_platform_string()}")
         platform_label.setAlignment(Qt.AlignCenter)
@@ -418,7 +455,9 @@ class AboutDialog(QDialog):
 
         report_btn = QPushButton("Report Issue")
         report_btn.setObjectName("secondaryActionButton")
-        report_btn.setToolTip("Open issue tracker (if configured via CUEPOINT_ISSUE_URL)")
+        report_btn.setToolTip(
+            "Open issue tracker (if configured via CUEPOINT_ISSUE_URL)"
+        )
         report_btn.clicked.connect(self._report_issue)
         links_layout.addWidget(report_btn)
 
@@ -453,26 +492,26 @@ class AboutDialog(QDialog):
 
             # Create a changelog viewer instance to load the data
             changelog_viewer = ChangelogViewer(self)
-            
+
             # Create content browser
             content_browser = QTextBrowser()
             content_browser.setOpenExternalLinks(True)
             content_browser.setReadOnly(True)
-            
+
             # Display changelog content
             if changelog_viewer.changelog_data:
                 # Display first version
                 entry = changelog_viewer.changelog_data[0]
                 html = f"""
-                <h2>Version {entry['version']}</h2>
-                <p><i>Released: {entry['date']}</i></p>
+                <h2>Version {entry["version"]}</h2>
+                <p><i>Released: {entry["date"]}</i></p>
                 <hr>
-                {entry['content']}
+                {entry["content"]}
                 """
                 content_browser.setHtml(html)
             else:
                 content_browser.setHtml("<p>No changelog available.</p>")
-            
+
             layout.addWidget(content_browser)
         except Exception as e:
             # Fallback if changelog viewer fails
@@ -498,7 +537,9 @@ class AboutDialog(QDialog):
         from cuepoint.utils.policy_docs import find_terms_of_use, load_policy_text
 
         path = find_terms_of_use()
-        text = load_policy_text(path, "Terms of use could not be loaded. See DOCS/POLICY/terms-of-use.md")
+        text = load_policy_text(
+            path, "Terms of use could not be loaded. See DOCS/POLICY/terms-of-use.md"
+        )
         self._show_policy_viewer("Terms of Use", text)
 
     def _open_support_policy(self) -> None:
@@ -514,10 +555,16 @@ class AboutDialog(QDialog):
 
     def _open_licenses(self) -> None:
         """Open third-party licenses in a viewer (Step 11)."""
-        from cuepoint.utils.policy_docs import find_third_party_licenses, load_policy_text
+        from cuepoint.utils.policy_docs import (
+            find_third_party_licenses,
+            load_policy_text,
+        )
 
         path = find_third_party_licenses()
-        text = load_policy_text(path, "Third-party licenses could not be loaded. See THIRD_PARTY_LICENSES.txt")
+        text = load_policy_text(
+            path,
+            "Third-party licenses could not be loaded. See THIRD_PARTY_LICENSES.txt",
+        )
         self._show_policy_viewer("Third-Party Licenses", text)
 
     def _show_policy_viewer(self, title: str, text: str) -> None:
@@ -595,69 +642,79 @@ class AboutDialog(QDialog):
         except Exception as e:
             from PySide6.QtWidgets import QMessageBox
 
-            QMessageBox.warning(self, "Report Issue", f"Could not open issue tracker:\n{e}")
+            QMessageBox.warning(
+                self, "Report Issue", f"Could not open issue tracker:\n{e}"
+            )
 
     def _load_logo(self, size: Optional[Tuple[int, int]] = None) -> Optional[QLabel]:
         """Load and display the logo image.
-        
+
         Args:
             size: Optional tuple (width, height) to scale the logo.
                   If None, uses default size (200x80) for About dialog.
-        
+
         Returns:
             QLabel with logo pixmap, or None if logo not found.
         """
         import os
 
         # Determine the logo path
-        if getattr(sys, 'frozen', False):
+        if getattr(sys, "frozen", False):
             # Running as packaged app
-            if hasattr(sys, '_MEIPASS'):
+            if hasattr(sys, "_MEIPASS"):
                 base_path = Path(sys._MEIPASS)
             else:
                 base_path = Path(os.path.dirname(sys.executable))
-            logo_path = base_path / 'assets' / 'icons' / 'logo.png'
+            logo_path = base_path / "assets" / "icons" / "logo.png"
         else:
             # Running as script - use SRC/cuepoint/ui/assets/icons
             # This file is at SRC/cuepoint/ui/widgets/dialogs.py
             # So parent.parent is SRC/cuepoint/ui/
             base_path = Path(__file__).resolve().parent.parent
-            logo_path = base_path / 'assets' / 'icons' / 'logo.png'
-        
+            logo_path = base_path / "assets" / "icons" / "logo.png"
+
         if not logo_path.exists():
             import logging
+
             logger = logging.getLogger(__name__)
             logger.warning(f"Logo not found at: {logo_path}")
             return None
-        
+
         try:
             pixmap = QPixmap(str(logo_path))
             if pixmap.isNull():
                 import logging
+
                 logger = logging.getLogger(__name__)
                 logger.warning(f"Failed to load logo pixmap from: {logo_path}")
                 return None
-            
+
             # Scale if size specified, otherwise use default for About dialog
             if size:
                 width, height = size
             else:
                 # Default size for About dialog (200px width, maintain aspect ratio)
                 width = 200
-                height = int(pixmap.height() * (200 / pixmap.width())) if pixmap.width() > 0 else 80
-            
+                height = (
+                    int(pixmap.height() * (200 / pixmap.width()))
+                    if pixmap.width() > 0
+                    else 80
+                )
+
             pixmap = pixmap.scaled(
-                width, height,
+                width,
+                height,
                 Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation
+                Qt.TransformationMode.SmoothTransformation,
             )
-            
+
             logo_label = QLabel()
             logo_label.setPixmap(pixmap)
             logo_label.setAlignment(Qt.AlignCenter)
             return logo_label
         except Exception as e:
             import logging
+
             logger = logging.getLogger(__name__)
             logger.error(f"Error loading logo: {e}", exc_info=True)
             return None
@@ -963,7 +1020,9 @@ class KeyboardShortcutsDialog(QDialog):
     def on_customize(self):
         """Open customization dialog"""
         # Use new GUI structure - legacy GUI has been moved
-        from cuepoint.ui.widgets.shortcut_customization_dialog import ShortcutCustomizationDialog
+        from cuepoint.ui.widgets.shortcut_customization_dialog import (
+            ShortcutCustomizationDialog,
+        )
 
         dialog = ShortcutCustomizationDialog(self.shortcut_manager, self)
         dialog.exec()

@@ -17,7 +17,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from cuepoint.core.mix_parser import _extract_generic_parenthetical_phrases, _parse_mix_flags
+from cuepoint.core.mix_parser import (
+    _extract_generic_parenthetical_phrases,
+    _parse_mix_flags,
+)
 from cuepoint.core.query_generator import make_search_queries
 from cuepoint.core.text_processing import sanitize_title_for_search
 from cuepoint.data.rekordbox import (
@@ -32,7 +35,11 @@ from cuepoint.models.config import SETTINGS
 from cuepoint.models.preflight import PreflightIssue, PreflightResult
 from cuepoint.models.result import TrackResult
 from cuepoint.models.track import Track
-from cuepoint.services.checkpoint_service import CheckpointData, CheckpointService, compute_xml_hash
+from cuepoint.services.checkpoint_service import (
+    CheckpointData,
+    CheckpointService,
+    compute_xml_hash,
+)
 from cuepoint.services.interfaces import (
     IBeatportService,
     IConfigService,
@@ -112,6 +119,7 @@ def _guardrail_progress_callback(
         if memory_max_mb > 0:
             try:
                 import psutil
+
                 mb = psutil.Process().memory_info().rss / (1024 * 1024)
                 if mb >= memory_max_mb:
                     logging_service.warning(
@@ -197,7 +205,10 @@ class ProcessorService(IProcessorService):
         effective_settings = (
             settings
             if settings is not None
-            else {key: self.config_service.get(key, SETTINGS.get(key)) for key in SETTINGS.keys()}
+            else {
+                key: self.config_service.get(key, SETTINGS.get(key))
+                for key in SETTINGS.keys()
+            }
         )
 
         t0 = time.perf_counter()
@@ -244,14 +255,16 @@ class ProcessorService(IProcessorService):
         # Execute matching
         min_accept_score = effective_settings.get("MIN_ACCEPT_SCORE", 70)
 
-        best, all_candidates, queries_audit, last_qidx = self.matcher_service.find_best_match(
-            idx=idx,
-            track_title=title_for_search,
-            track_artists_for_scoring=artists_for_scoring,
-            title_only_mode=title_only_search,
-            queries=queries,
-            input_mix=input_mix_flags,
-            input_generic_phrases=input_generic_phrases,
+        best, all_candidates, queries_audit, last_qidx = (
+            self.matcher_service.find_best_match(
+                idx=idx,
+                track_title=title_for_search,
+                track_artists_for_scoring=artists_for_scoring,
+                title_only_mode=title_only_search,
+                queries=queries,
+                input_mix=input_mix_flags,
+                input_generic_phrases=input_generic_phrases,
+            )
         )
 
         dur = (time.perf_counter() - t0) * 1000
@@ -279,11 +292,15 @@ class ProcessorService(IProcessorService):
                         "candidate_title": cand.title,
                         "candidate_artists": cand.artists,
                         "candidate_key": cand.key or "",
-                        "candidate_key_camelot": cand.key or "",  # TODO: convert to Camelot
-                        "candidate_year": str(cand.release_year) if cand.release_year else "",
+                        "candidate_key_camelot": cand.key
+                        or "",  # TODO: convert to Camelot
+                        "candidate_year": str(cand.release_year)
+                        if cand.release_year
+                        else "",
                         "candidate_bpm": cand.bpm or "",
                         "candidate_label": cand.label or "",
-                        "candidate_genres": cand.genre or "",  # Note: new model uses "genre"
+                        "candidate_genres": cand.genre
+                        or "",  # Note: new model uses "genre"
                         "candidate_release": cand.release_name or "",
                         "candidate_release_date": cand.release_date or "",
                         "final_score": cand.score,
@@ -314,8 +331,9 @@ class ProcessorService(IProcessorService):
 
             # Convert key to Camelot notation
             from cuepoint.core.matcher import _camelot_key
+
             camelot_key = _camelot_key(best.key) if best.key else None
-            
+
             return TrackResult(
                 playlist_index=idx,
                 title=track.title,
@@ -337,7 +355,11 @@ class ProcessorService(IProcessorService):
                 match_score=best.score,
                 title_sim=float(best.title_sim),
                 artist_sim=float(best.artist_sim),
-                confidence="high" if best.score >= 95 else "medium" if best.score >= 85 else "low",
+                confidence="high"
+                if best.score >= 95
+                else "medium"
+                if best.score >= 85
+                else "low",
                 search_query_index=str(best.query_index),
                 search_stop_query_index=str(last_qidx),
                 candidate_index=str(best.candidate_index),
@@ -347,7 +369,9 @@ class ProcessorService(IProcessorService):
             )
         else:
             # No match found
-            self.logging_service.warning(f"[{idx}] No match found (duration: {dur:.0f} ms)")
+            self.logging_service.warning(
+                f"[{idx}] No match found (duration: {dur:.0f} ms)"
+            )
 
             # Build candidates_data list even when no match (for export and UI)
             # This ensures candidates are saved even when no match is found
@@ -362,8 +386,11 @@ class ProcessorService(IProcessorService):
                         "candidate_title": cand.title,
                         "candidate_artists": cand.artists,
                         "candidate_key": cand.key or "",
-                        "candidate_key_camelot": cand.key or "",  # TODO: convert to Camelot
-                        "candidate_year": str(cand.release_year) if cand.release_year else "",
+                        "candidate_key_camelot": cand.key
+                        or "",  # TODO: convert to Camelot
+                        "candidate_year": str(cand.release_year)
+                        if cand.release_year
+                        else "",
                         "candidate_bpm": cand.bpm or "",
                         "candidate_label": cand.label or "",
                         "candidate_genres": cand.genre or "",
@@ -458,7 +485,9 @@ class ProcessorService(IProcessorService):
         preflight_enabled = self.config_service.get("product.preflight_enabled", True)
         if preflight_enabled is None:
             preflight_enabled = True
-        warnings_only = self.config_service.get("product.preflight_warnings_only", False)
+        warnings_only = self.config_service.get(
+            "product.preflight_warnings_only", False
+        )
         if warnings_only is None:
             warnings_only = False
         preflight_enabled = bool(preflight_enabled)
@@ -466,7 +495,11 @@ class ProcessorService(IProcessorService):
         if not preflight_enabled and not force:
             return PreflightResult(
                 errors=[],
-                warnings=[PreflightIssue(code="P090", message="Preflight disabled in settings.")],
+                warnings=[
+                    PreflightIssue(
+                        code="P090", message="Preflight disabled in settings."
+                    )
+                ],
                 checks={"preflight_enabled": False},
                 warnings_only=warnings_only,
                 generated_at=datetime.now(),
@@ -474,16 +507,21 @@ class ProcessorService(IProcessorService):
 
         xml_path_value = (xml_path or "").strip()
         if not xml_path_value:
-            errors.append(PreflightIssue(code="P001", message="XML file path is required."))
-            return PreflightResult(errors=errors, warnings=warnings, checks=checks, warnings_only=warnings_only)
+            errors.append(
+                PreflightIssue(code="P001", message="XML file path is required.")
+            )
+            return PreflightResult(
+                errors=errors,
+                warnings=warnings,
+                checks=checks,
+                warnings_only=warnings_only,
+            )
 
         xml_path_obj = Path(xml_path_value)
         checks["xml_path_length"] = len(str(xml_path_obj))
 
         if not xml_path_obj.exists():
-            errors.append(
-                PreflightIssue(code="P001", message="XML file not found.")
-            )
+            errors.append(PreflightIssue(code="P001", message="XML file not found."))
         elif not xml_path_obj.is_file():
             errors.append(
                 PreflightIssue(code="P002", message="XML path points to a directory.")
@@ -503,7 +541,9 @@ class ProcessorService(IProcessorService):
         if xml_path_obj.exists() and xml_path_obj.is_file():
             if xml_path_obj.suffix.lower() != ".xml":
                 warnings.append(
-                    PreflightIssue(code="P004", message="XML file extension is not .xml.")
+                    PreflightIssue(
+                        code="P004", message="XML file extension is not .xml."
+                    )
                 )
             try:
                 if xml_path_obj.stat().st_size == 0:
@@ -533,7 +573,10 @@ class ProcessorService(IProcessorService):
         effective_settings = (
             settings
             if settings is not None
-            else {key: self.config_service.get(key, SETTINGS.get(key)) for key in SETTINGS.keys()}
+            else {
+                key: self.config_service.get(key, SETTINGS.get(key))
+                for key in SETTINGS.keys()
+            }
         )
 
         def _safe_int(value: Any, fallback: int) -> int:
@@ -547,11 +590,16 @@ class ProcessorService(IProcessorService):
             SETTINGS.get("TRACK_WORKERS", 1),
         )
         candidate_workers = _safe_int(
-            effective_settings.get("CANDIDATE_WORKERS", SETTINGS.get("CANDIDATE_WORKERS", 1)),
+            effective_settings.get(
+                "CANDIDATE_WORKERS", SETTINGS.get("CANDIDATE_WORKERS", 1)
+            ),
             SETTINGS.get("CANDIDATE_WORKERS", 1),
         )
         per_track_timeout = _safe_int(
-            effective_settings.get("PER_TRACK_TIME_BUDGET_SEC", SETTINGS.get("PER_TRACK_TIME_BUDGET_SEC", 1)),
+            effective_settings.get(
+                "PER_TRACK_TIME_BUDGET_SEC",
+                SETTINGS.get("PER_TRACK_TIME_BUDGET_SEC", 1),
+            ),
             SETTINGS.get("PER_TRACK_TIME_BUDGET_SEC", 1),
         )
 
@@ -577,16 +625,24 @@ class ProcessorService(IProcessorService):
         cache_ttl_default = self.config_service.get("cache.ttl_default", 0)
         cache_ttl_search = self.config_service.get("cache.ttl_search", 0)
         cache_ttl_track = self.config_service.get("cache.ttl_track", 0)
-        if any(isinstance(val, (int, float)) and val < 0 for val in [cache_ttl_default, cache_ttl_search, cache_ttl_track]):
+        if any(
+            isinstance(val, (int, float)) and val < 0
+            for val in [cache_ttl_default, cache_ttl_search, cache_ttl_track]
+        ):
             errors.append(
                 PreflightIssue(code="P033", message="Cache TTL values must be >= 0.")
             )
 
         export_format = self.config_service.get("export.default_format", "csv")
         valid_formats = {"csv", "json", "excel", "xlsx"}
-        if isinstance(export_format, str) and export_format.lower() not in valid_formats:
+        if (
+            isinstance(export_format, str)
+            and export_format.lower() not in valid_formats
+        ):
             errors.append(
-                PreflightIssue(code="P034", message="Output format selection is invalid.")
+                PreflightIssue(
+                    code="P034", message="Output format selection is invalid."
+                )
             )
 
         # Design 6.46: Performance config validation
@@ -594,12 +650,16 @@ class ProcessorService(IProcessorService):
             perf_max_workers = self.config_service.get("performance.max_workers", 8)
             if isinstance(perf_max_workers, (int, float)) and perf_max_workers < 1:
                 errors.append(
-                    PreflightIssue(code="P030", message="Performance max_workers must be >= 1.")
+                    PreflightIssue(
+                        code="P030", message="Performance max_workers must be >= 1."
+                    )
                 )
             perf_cache_mb = self.config_service.get("performance.cache_max_mb", 500)
             if isinstance(perf_cache_mb, (int, float)) and perf_cache_mb < 100:
                 errors.append(
-                    PreflightIssue(code="P033", message="Performance cache_max_mb must be >= 100.")
+                    PreflightIssue(
+                        code="P033", message="Performance cache_max_mb must be >= 100."
+                    )
                 )
         except Exception:
             pass
@@ -610,7 +670,9 @@ class ProcessorService(IProcessorService):
                 errors.append(PreflightIssue(code="CONFIG_INVALID", message=err))
 
         # Design 5.2: Network preflight - block if offline (reliability UX fallback)
-        preflight_network = self.config_service.get("product.preflight_network_check", True)
+        preflight_network = self.config_service.get(
+            "product.preflight_network_check", True
+        )
         if preflight_network is None:
             preflight_network = True
         if preflight_network and not errors:
@@ -627,7 +689,11 @@ class ProcessorService(IProcessorService):
                 checks["network_online"] = None  # Check skipped on error
 
         # Playlist validation (only if XML is accessible)
-        if xml_path_obj.exists() and xml_path_obj.is_file() and is_readable(xml_path_obj):
+        if (
+            xml_path_obj.exists()
+            and xml_path_obj.is_file()
+            and is_readable(xml_path_obj)
+        ):
             try:
                 playlist_index, duplicates = read_playlist_index(xml_path_value)
                 inspection = inspect_rekordbox_xml(xml_path_value)
@@ -635,21 +701,30 @@ class ProcessorService(IProcessorService):
                 checks["xml_has_playlists"] = inspection.get("has_playlists")
                 checks["xml_has_tracks"] = inspection.get("has_tracks")
                 checks["tracks_missing_title"] = inspection.get("tracks_missing_title")
-                checks["tracks_missing_artist"] = inspection.get("tracks_missing_artist")
+                checks["tracks_missing_artist"] = inspection.get(
+                    "tracks_missing_artist"
+                )
 
                 root_tag = str(inspection.get("root_tag") or "")
                 if not root_tag:
                     errors.append(
-                        PreflightIssue(code="P005", message="XML root element is missing.")
+                        PreflightIssue(
+                            code="P005", message="XML root element is missing."
+                        )
                     )
                 elif root_tag.upper() not in {"DJ_PLAYLISTS"}:
                     errors.append(
-                        PreflightIssue(code="P005", message="XML root element is not a Rekordbox export.")
+                        PreflightIssue(
+                            code="P005",
+                            message="XML root element is not a Rekordbox export.",
+                        )
                     )
 
                 if not inspection.get("has_playlists"):
                     errors.append(
-                        PreflightIssue(code="P005", message="XML has no playlist nodes.")
+                        PreflightIssue(
+                            code="P005", message="XML has no playlist nodes."
+                        )
                     )
                 if not inspection.get("has_tracks"):
                     warnings.append(
@@ -679,11 +754,15 @@ class ProcessorService(IProcessorService):
 
                 if inspection.get("tracks_missing_title"):
                     warnings.append(
-                        PreflightIssue(code="P005", message="Some tracks are missing titles.")
+                        PreflightIssue(
+                            code="P005", message="Some tracks are missing titles."
+                        )
                     )
                 if inspection.get("tracks_missing_artist"):
                     warnings.append(
-                        PreflightIssue(code="P005", message="Some tracks are missing artists.")
+                        PreflightIssue(
+                            code="P005", message="Some tracks are missing artists."
+                        )
                     )
 
                 if duplicates:
@@ -706,7 +785,9 @@ class ProcessorService(IProcessorService):
                         )
                 else:
                     errors.append(
-                        PreflightIssue(code="P010", message="Playlist name is required.")
+                        PreflightIssue(
+                            code="P010", message="Playlist name is required."
+                        )
                     )
             except Exception:
                 errors.append(
@@ -719,11 +800,16 @@ class ProcessorService(IProcessorService):
             checks["output_path_length"] = len(str(output_path))
             if len(str(output_path)) > max_path_len:
                 errors.append(
-                    PreflightIssue(code="P023", message="Output path exceeds OS path length limits.")
+                    PreflightIssue(
+                        code="P023",
+                        message="Output path exceeds OS path length limits.",
+                    )
                 )
             if output_path.exists() and not output_path.is_dir():
                 errors.append(
-                    PreflightIssue(code="P021", message="Output path is not a directory.")
+                    PreflightIssue(
+                        code="P021", message="Output path is not a directory."
+                    )
                 )
             elif not output_path.exists():
                 parent_dir = output_path.parent
@@ -743,7 +829,9 @@ class ProcessorService(IProcessorService):
                     )
             elif not is_writable(output_path):
                 errors.append(
-                    PreflightIssue(code="P021", message="Output folder is not writable.")
+                    PreflightIssue(
+                        code="P021", message="Output folder is not writable."
+                    )
                 )
             else:
                 try:
@@ -776,11 +864,15 @@ class ProcessorService(IProcessorService):
             cache_dir = AppPaths.cache_dir()
             if not is_writable(cache_dir):
                 errors.append(
-                    PreflightIssue(code="P033", message="Cache directory is not writable.")
+                    PreflightIssue(
+                        code="P033", message="Cache directory is not writable."
+                    )
                 )
         except Exception:
             warnings.append(
-                PreflightIssue(code="P033", message="Cache directory could not be validated.")
+                PreflightIssue(
+                    code="P033", message="Cache directory could not be validated."
+                )
             )
 
         if warnings_only and errors:
@@ -839,7 +931,10 @@ class ProcessorService(IProcessorService):
         effective_settings = (
             settings
             if settings is not None
-            else {key: self.config_service.get(key, SETTINGS.get(key)) for key in SETTINGS.keys()}
+            else {
+                key: self.config_service.get(key, SETTINGS.get(key))
+                for key in SETTINGS.keys()
+            }
         )
 
         # Design 6.25: Throttle progress updates to avoid UI stutter (default 200ms)
@@ -848,9 +943,15 @@ class ProcessorService(IProcessorService):
         runtime_max_minutes = 120
         memory_max_mb = 2048
         try:
-            throttle_ms = int(self.config_service.get("performance.progress_throttle_ms", 200))
-            eta_every_n = int(self.config_service.get("performance.eta_update_every_tracks", 50))
-            runtime_max_minutes = int(self.config_service.get("performance.runtime_max_minutes", 120))
+            throttle_ms = int(
+                self.config_service.get("performance.progress_throttle_ms", 200)
+            )
+            eta_every_n = int(
+                self.config_service.get("performance.eta_update_every_tracks", 50)
+            )
+            runtime_max_minutes = int(
+                self.config_service.get("performance.runtime_max_minutes", 120)
+            )
             memory_max_mb = 2048  # Design 6.167: 2GB hard limit
         except (TypeError, ValueError):
             pass
@@ -1012,9 +1113,7 @@ class ProcessorService(IProcessorService):
 
         # Design 7.52: Set run_id for observability (diagnostics, support bundle, logs)
         run_id = (
-            resume_checkpoint.run_id
-            if resume_checkpoint
-            else uuid.uuid4().hex[:12]
+            resume_checkpoint.run_id if resume_checkpoint else uuid.uuid4().hex[:12]
         )
         set_run_id(run_id)
         self.logging_service.info("[run] run_started run_id=%s", run_id)
@@ -1102,17 +1201,19 @@ class ProcessorService(IProcessorService):
                 with ThreadPoolExecutor(max_workers=track_workers) as ex:
                     # Submit all tasks
                     future_to_args = {
-                    ex.submit(
-                        self.process_track,
-                        idx,
-                        track,
-                        effective_settings,
-                    ): (idx, track)
+                        ex.submit(
+                            self.process_track,
+                            idx,
+                            track,
+                            effective_settings,
+                        ): (idx, track)
                         for idx, track in inputs
                     }
 
                     # Process completed tasks as they finish
-                    results_dict: Dict[int, TrackResult] = {}  # Store results by index for ordering
+                    results_dict: Dict[
+                        int, TrackResult
+                    ] = {}  # Store results by index for ordering
                     processed_futures = set()  # Track which futures we've processed
 
                     self.logging_service.info(
@@ -1125,7 +1226,7 @@ class ProcessorService(IProcessorService):
                         iterator = as_completed(future_to_args)
                         loop_iterations = 0
                         max_iterations = len(future_to_args) * 2  # Safety limit
-                        
+
                         for future in iterator:
                             loop_iterations += 1
                             if loop_iterations > max_iterations:
@@ -1134,7 +1235,7 @@ class ProcessorService(IProcessorService):
                                     f"This should never happen. Breaking to process remaining futures."
                                 )
                                 break
-                                
+
                             # Check for cancellation before processing each result
                             if controller and controller.is_cancelled():
                                 # Cancel remaining futures that haven't started yet
@@ -1149,7 +1250,7 @@ class ProcessorService(IProcessorService):
                                 result = future.result()
                                 results_dict[result.playlist_index] = result
                                 processed_futures.add(future)
-                                
+
                                 # Log completion for debugging (especially important in packaged apps)
                                 self.logging_service.debug(
                                     f"Track {result.playlist_index} completed: "
@@ -1170,7 +1271,10 @@ class ProcessorService(IProcessorService):
                                     if progress_callback:
                                         try:
                                             completed = len(results_dict)
-                                            elapsed_time = time.perf_counter() - processing_start_time
+                                            elapsed_time = (
+                                                time.perf_counter()
+                                                - processing_start_time
+                                            )
                                             progress_info = ProgressInfo(
                                                 completed_tracks=completed,
                                                 total_tracks=total,
@@ -1199,7 +1303,9 @@ class ProcessorService(IProcessorService):
                                         and len(results_dict) > 0
                                     ):
                                         sorted_indices = sorted(results_dict.keys())
-                                        max_idx = max(sorted_indices) if sorted_indices else 0
+                                        max_idx = (
+                                            max(sorted_indices) if sorted_indices else 0
+                                        )
                                         K = 0
                                         for i in range(1, max_idx + 1):
                                             if i not in results_dict:
@@ -1208,7 +1314,10 @@ class ProcessorService(IProcessorService):
                                         if K > last_checkpoint_count:
                                             try:
                                                 if last_checkpoint_count == 0:
-                                                    ordered = [results_dict[i] for i in range(1, K + 1)]
+                                                    ordered = [
+                                                        results_dict[i]
+                                                        for i in range(1, K + 1)
+                                                    ]
                                                     out_paths = write_csv_files(
                                                         ordered,
                                                         base_filename,
@@ -1217,16 +1326,28 @@ class ProcessorService(IProcessorService):
                                                         run_id=run_id,
                                                         run_status="partial",
                                                     )
-                                                    checkpoint_output_paths.update(out_paths)
+                                                    checkpoint_output_paths.update(
+                                                        out_paths
+                                                    )
                                                 else:
                                                     batch = [
                                                         results_dict[i]
-                                                        for i in range(last_checkpoint_count + 1, K + 1)
+                                                        for i in range(
+                                                            last_checkpoint_count + 1,
+                                                            K + 1,
+                                                        )
                                                     ]
-                                                    if batch and checkpoint_output_paths.get("main"):
+                                                    if (
+                                                        batch
+                                                        and checkpoint_output_paths.get(
+                                                            "main"
+                                                        )
+                                                    ):
                                                         append_rows_to_main_csv(
                                                             batch,
-                                                            checkpoint_output_paths["main"],
+                                                            checkpoint_output_paths[
+                                                                "main"
+                                                            ],
                                                             delimiter=",",
                                                             include_metadata=True,
                                                             fsync=False,  # Design 6.30: avoid frequent fsync
@@ -1259,7 +1380,7 @@ class ProcessorService(IProcessorService):
                                 idx, track = future_to_args[future]
                                 self.logging_service.warning(
                                     f"Error processing track {idx} '{track.title}': {e}",
-                                    exc_info=True  # Include full traceback for debugging
+                                    exc_info=True,  # Include full traceback for debugging
                                 )
                                 # Create error result
                                 error_result = TrackResult(
@@ -1272,7 +1393,7 @@ class ProcessorService(IProcessorService):
                                 results_dict[idx] = error_result
                                 with progress_lock:
                                     unmatched_count += 1
-                                    
+
                         # Log loop completion
                         self.logging_service.info(
                             f"as_completed loop finished: {loop_iterations} iterations, "
@@ -1289,19 +1410,26 @@ class ProcessorService(IProcessorService):
                         # Critical: If the loop itself fails, we must still process remaining futures
                         self.logging_service.error(
                             f"Error in parallel processing loop: {loop_error}",
-                            exc_info=True
+                            exc_info=True,
                         )
                         # Process any remaining futures that weren't handled
                         for future in future_to_args.keys():
                             if future not in processed_futures:
                                 try:
                                     if future.done():
-                                        result = future.result(timeout=1.0)  # Short timeout for done futures
+                                        result = future.result(
+                                            timeout=1.0
+                                        )  # Short timeout for done futures
                                         results_dict[result.playlist_index] = result
                                     else:
                                         # Future not done yet, wait for it with timeout
                                         # CRITICAL: Use longer timeout to handle DuckDuckGo search timeouts
-                                        timeout_sec = effective_settings.get("PER_TRACK_TIME_BUDGET_SEC", 45) * 2
+                                        timeout_sec = (
+                                            effective_settings.get(
+                                                "PER_TRACK_TIME_BUDGET_SEC", 45
+                                            )
+                                            * 2
+                                        )
                                         result = future.result(timeout=timeout_sec)
                                         results_dict[result.playlist_index] = result
                                 except TimeoutError:
@@ -1340,7 +1468,9 @@ class ProcessorService(IProcessorService):
 
                     # CRITICAL: Ensure all futures are processed before exiting
                     # This handles cases where the as_completed loop might exit early
-                    remaining_futures = [f for f in future_to_args.keys() if f not in processed_futures]
+                    remaining_futures = [
+                        f for f in future_to_args.keys() if f not in processed_futures
+                    ]
                     if remaining_futures:
                         self.logging_service.warning(
                             f"as_completed loop exited early! Processing {len(remaining_futures)} remaining futures "
@@ -1358,7 +1488,12 @@ class ProcessorService(IProcessorService):
                                 if not future.done():
                                     # Future is still running, wait for it with timeout
                                     # If DuckDuckGo times out, this will prevent infinite waiting
-                                    timeout_sec = effective_settings.get("PER_TRACK_TIME_BUDGET_SEC", 45) * 2
+                                    timeout_sec = (
+                                        effective_settings.get(
+                                            "PER_TRACK_TIME_BUDGET_SEC", 45
+                                        )
+                                        * 2
+                                    )
                                     result = future.result(timeout=timeout_sec)
                                     results_dict[result.playlist_index] = result
                                     processed_futures.add(future)
@@ -1369,7 +1504,9 @@ class ProcessorService(IProcessorService):
                                             unmatched_count += 1
                                 else:
                                     # Future is done, get result (should be instant)
-                                    result = future.result(timeout=1.0)  # Short timeout for done futures
+                                    result = future.result(
+                                        timeout=1.0
+                                    )  # Short timeout for done futures
                                     results_dict[result.playlist_index] = result
                                     processed_futures.add(future)
                                     with progress_lock:
@@ -1401,7 +1538,7 @@ class ProcessorService(IProcessorService):
                                 idx, track = future_to_args[future]
                                 self.logging_service.warning(
                                     f"Error processing remaining track {idx} '{track.title}': {e}",
-                                    exc_info=True
+                                    exc_info=True,
                                 )
                                 error_result = TrackResult(
                                     playlist_index=idx,
@@ -1427,7 +1564,7 @@ class ProcessorService(IProcessorService):
                         # Match sequential-mode behavior for tests/UI
                         if self.logging_service:
                             self.logging_service.info("Processing cancelled by user")
-                    
+
                     # Verify we have results for all tracks
                     expected_count = len(inputs)
                     actual_count = len(results_dict)
@@ -1435,7 +1572,9 @@ class ProcessorService(IProcessorService):
                         f"Parallel processing complete: {actual_count}/{expected_count} tracks processed"
                     )
                     if actual_count < expected_count:
-                        missing_indices = set(range(1, expected_count + 1)) - set(results_dict.keys())
+                        missing_indices = set(range(1, expected_count + 1)) - set(
+                            results_dict.keys()
+                        )
                         self.logging_service.error(
                             f"CRITICAL: Missing results for {len(missing_indices)} tracks! "
                             f"Expected {expected_count} tracks, got {actual_count}. "
@@ -1457,14 +1596,14 @@ class ProcessorService(IProcessorService):
                                 results_dict[idx] = error_result
                                 with progress_lock:
                                     unmatched_count += 1
-                    
+
                     # Sort results by playlist index to maintain order
                     results = [results_dict[idx] for idx in sorted(results_dict.keys())]
             except Exception as parallel_error:
                 # If parallel processing fails catastrophically, fall back to sequential
                 self.logging_service.error(
                     f"Parallel processing failed, falling back to sequential: {parallel_error}",
-                    exc_info=True
+                    exc_info=True,
                 )
                 # Fall through to sequential processing below
                 track_workers = 1  # Force sequential mode
@@ -1476,7 +1615,9 @@ class ProcessorService(IProcessorService):
         # If parallel processing failed or track_workers <= 1, use sequential mode
         if track_workers <= 1 or not results:
             # SEQUENTIAL MODE: Process tracks one at a time
-            self.logging_service.info(f"Using sequential processing (TRACK_WORKERS={track_workers})")
+            self.logging_service.info(
+                f"Using sequential processing (TRACK_WORKERS={track_workers})"
+            )
             results = []  # Re-initialize for sequential mode
             for idx, track in inputs:
                 # Design 5.12, 5.25: Pause/resume support
@@ -1490,7 +1631,10 @@ class ProcessorService(IProcessorService):
                                     total_tracks=total,
                                     matched_count=matched_count,
                                     unmatched_count=unmatched_count,
-                                    current_track={"title": track.title, "artists": track.artist or ""},
+                                    current_track={
+                                        "title": track.title,
+                                        "artists": track.artist or "",
+                                    },
                                     elapsed_time=elapsed_time,
                                     status_message="Paused",
                                     reliability_state=ReliabilityState.PAUSED,
@@ -1522,7 +1666,10 @@ class ProcessorService(IProcessorService):
                         total_tracks=total,
                         matched_count=matched_count,
                         unmatched_count=unmatched_count,
-                        current_track={"title": track.title, "artists": track.artist or ""},
+                        current_track={
+                            "title": track.title,
+                            "artists": track.artist or "",
+                        },
                         elapsed_time=elapsed_time,
                         reliability_state=ReliabilityState.RUNNING,
                     )
@@ -1553,7 +1700,7 @@ class ProcessorService(IProcessorService):
                             )
                             checkpoint_output_paths.update(out_paths)
                         else:
-                            batch = results[last_checkpoint_count:len(results)]
+                            batch = results[last_checkpoint_count : len(results)]
                             if batch and checkpoint_output_paths.get("main"):
                                 append_rows_to_main_csv(
                                     batch,
@@ -1607,19 +1754,25 @@ class ProcessorService(IProcessorService):
                 unmatched_inputs = []
                 for result in unmatched_results:
                     idx = result.playlist_index
-                    track: Optional[Track] = tracks[idx - 1] if idx <= len(tracks) else None
+                    track: Optional[Track] = (
+                        tracks[idx - 1] if idx <= len(tracks) else None
+                    )
                     if track:
                         unmatched_inputs.append((idx, track))
 
                 # Re-search unmatched tracks in parallel
-                track_workers = enhanced_settings.get("TRACK_WORKERS", SETTINGS.get("TRACK_WORKERS", 12))
+                track_workers = enhanced_settings.get(
+                    "TRACK_WORKERS", SETTINGS.get("TRACK_WORKERS", 12)
+                )
                 if track_workers > 1 and len(unmatched_inputs) > 1:
                     # Parallel re-search
                     self.logging_service.info(
                         f"Re-searching {len(unmatched_inputs)} unmatched tracks using parallel "
                         f"processing with {min(track_workers, len(unmatched_inputs))} workers"
                     )
-                    with ThreadPoolExecutor(max_workers=min(track_workers, len(unmatched_inputs))) as ex:
+                    with ThreadPoolExecutor(
+                        max_workers=min(track_workers, len(unmatched_inputs))
+                    ) as ex:
                         future_to_idx = {
                             ex.submit(
                                 self.process_track,
@@ -1649,7 +1802,9 @@ class ProcessorService(IProcessorService):
 
                                     # Update progress callback
                                     if progress_callback:
-                                        elapsed_time = time.perf_counter() - processing_start_time
+                                        elapsed_time = (
+                                            time.perf_counter() - processing_start_time
+                                        )
                                         progress_info = ProgressInfo(
                                             completed_tracks=len(results),
                                             total_tracks=total,
@@ -1679,9 +1834,13 @@ class ProcessorService(IProcessorService):
 
                         idx = result.playlist_index
                         # Find the original track
-                        track: Optional[Track] = tracks[idx - 1] if idx <= len(tracks) else None
+                        track: Optional[Track] = (
+                            tracks[idx - 1] if idx <= len(tracks) else None
+                        )
                         if track:
-                            new_result = self.process_track(idx, track, enhanced_settings)
+                            new_result = self.process_track(
+                                idx, track, enhanced_settings
+                            )
                             # Update the result if we found a match
                             if new_result.matched:
                                 # Replace the unmatched result with the new matched result
@@ -1691,7 +1850,9 @@ class ProcessorService(IProcessorService):
 
                                 # Update progress callback
                                 if progress_callback:
-                                    elapsed_time = time.perf_counter() - processing_start_time
+                                    elapsed_time = (
+                                        time.perf_counter() - processing_start_time
+                                    )
                                     progress_info = ProgressInfo(
                                         completed_tracks=len(results),
                                         total_tracks=total,
@@ -1733,7 +1894,9 @@ class ProcessorService(IProcessorService):
                     delimiter=",",
                     include_metadata=True,
                 )
-                self.logging_service.info("[reliability] Appended %s rows to checkpoint output", len(results))
+                self.logging_service.info(
+                    "[reliability] Appended %s rows to checkpoint output", len(results)
+                )
             checkpoint_service.discard()
 
         # Design 6.74: End performance collector and log report

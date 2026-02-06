@@ -51,9 +51,7 @@ class RunSummary:
         total = len(results)
         matched = sum(1 for r in results if r.matched)
         unmatched = total - matched
-        low_confidence = sum(
-            1 for r in results if (r.match_score or 0.0) < 70.0
-        )
+        low_confidence = sum(1 for r in results if (r.match_score or 0.0) < 70.0)
         run_id = cls._generate_run_id(start_time or end_time)
         redacted_xml = cls.redact_path(input_xml_path, redact_paths)
         return cls(

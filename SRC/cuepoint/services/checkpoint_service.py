@@ -83,6 +83,7 @@ def get_checkpoint_dir() -> Path:
     """Return directory for checkpoint files (app data location)."""
     try:
         from cuepoint.utils.paths import AppPaths
+
         return AppPaths.data_dir()
     except Exception:
         return Path.home() / ".cuepoint" / "data"
@@ -91,7 +92,11 @@ def get_checkpoint_dir() -> Path:
 class CheckpointService:
     """Save/load and validate checkpoints (Design 5.27, 5.29, 5.30)."""
 
-    def __init__(self, checkpoint_dir: Optional[Path] = None, logger: Optional[logging.Logger] = None):
+    def __init__(
+        self,
+        checkpoint_dir: Optional[Path] = None,
+        logger: Optional[logging.Logger] = None,
+    ):
         self._dir = Path(checkpoint_dir) if checkpoint_dir else get_checkpoint_dir()
         self._dir.mkdir(parents=True, exist_ok=True)
         self._log = logger or logging.getLogger(__name__)
@@ -130,7 +135,11 @@ class CheckpointService:
         try:
             tmp_path.write_text(raw, encoding="utf-8")
             tmp_path.replace(path)
-            self._log.info("[reliability] checkpoint_saved run_id=%s index=%s", run_id, last_track_index)
+            self._log.info(
+                "[reliability] checkpoint_saved run_id=%s index=%s",
+                run_id,
+                last_track_index,
+            )
         except OSError as e:
             self._log.warning("[reliability] checkpoint save failed: %s", e)
             if tmp_path.exists():
@@ -169,9 +178,7 @@ class CheckpointService:
         # Design 5.69: Discard checkpoint older than 7 days
         if data.created_at:
             try:
-                created = datetime.fromisoformat(
-                    data.created_at.replace("Z", "+00:00")
-                )
+                created = datetime.fromisoformat(data.created_at.replace("Z", "+00:00"))
                 if created.tzinfo is None:
                     created = created.replace(tzinfo=timezone.utc)
                 if datetime.now(timezone.utc) - created > timedelta(
@@ -190,7 +197,11 @@ class CheckpointService:
     def _validate_main_csv_headers(self, main_path: str) -> bool:
         """Design 5.16: Ensure main CSV headers match expected schema."""
         try:
-            from cuepoint.services.output_writer import _main_csv_fieldnames, read_csv_skip_comments
+            from cuepoint.services.output_writer import (
+                _main_csv_fieldnames,
+                read_csv_skip_comments,
+            )
+
             expected = set(_main_csv_fieldnames(True))
             fieldnames, _ = read_csv_skip_comments(main_path)
             if not fieldnames:

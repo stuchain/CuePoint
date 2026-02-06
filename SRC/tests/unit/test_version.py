@@ -99,9 +99,12 @@ class TestVersionModule:
         """Test version follows SemVer format (allows pre-release suffix)."""
         version = get_version()
         import re
+
         # SemVer: X.Y.Z or X.Y.Z-prerelease
         pattern = r"^\d+\.\d+\.\d+(-[a-zA-Z0-9.]+)?$"
-        assert re.match(pattern, version), f"Version {version} does not match SemVer format"
+        assert re.match(pattern, version), (
+            f"Version {version} does not match SemVer format"
+        )
 
     @patch("cuepoint.version.__build_number__", "123")
     @patch("cuepoint.version.__commit_sha__", "abcdef1234567890")
@@ -111,8 +114,9 @@ class TestVersionModule:
         import importlib
 
         import cuepoint.version as version_module
+
         importlib.reload(version_module)
-        
+
         version_str = version_module.get_version_string()
         # Should include build number
         assert "." in version_str or version_str.count(".") >= 2

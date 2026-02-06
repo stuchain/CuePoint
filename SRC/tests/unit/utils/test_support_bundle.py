@@ -42,7 +42,9 @@ class TestSupportBundleGenerator:
 
     @patch("cuepoint.utils.support_bundle.DiagnosticCollector")
     @patch("cuepoint.utils.support_bundle.AppPaths")
-    def test_bundle_contains_diagnostics(self, mock_paths, mock_diagnostics, temp_output_dir):
+    def test_bundle_contains_diagnostics(
+        self, mock_paths, mock_diagnostics, temp_output_dir
+    ):
         """Test that bundle contains diagnostics JSON."""
         temp_output_dir.mkdir()
 
@@ -70,7 +72,9 @@ class TestSupportBundleGenerator:
         temp_output_dir.mkdir()
 
         # Create a real temporary log file for testing
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.log', delete=False) as tmp_log:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".log", delete=False
+        ) as tmp_log:
             tmp_log.write("Test log content")
             tmp_log_path = Path(tmp_log.name)
 
@@ -99,7 +103,9 @@ class TestSupportBundleGenerator:
 
     @patch("cuepoint.utils.support_bundle.DiagnosticCollector")
     @patch("cuepoint.utils.support_bundle.AppPaths")
-    def test_bundle_handles_errors_gracefully(self, mock_paths, mock_diagnostics, temp_output_dir):
+    def test_bundle_handles_errors_gracefully(
+        self, mock_paths, mock_diagnostics, temp_output_dir
+    ):
         """Test that bundle generation handles errors gracefully."""
         temp_output_dir.mkdir()
 

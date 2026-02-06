@@ -103,7 +103,9 @@ class RunSummaryDialog(QDialog):
 
         step4 = QLabel(SuccessCopy.STEP_UNDO_GUIDANCE)
         step4.setWordWrap(True)
-        step4.setStyleSheet("color: #888; font-size: 11px; margin-left: 8px; font-style: italic;")
+        step4.setStyleSheet(
+            "color: #888; font-size: 11px; margin-left: 8px; font-style: italic;"
+        )
         layout.addWidget(step4)
 
         layout.addStretch(1)
@@ -151,7 +153,9 @@ class RunSummaryDialog(QDialog):
     def _verify_outputs(self) -> None:
         """Design 9: Verify output files (schema, checksums)."""
         if not self._summary.output_paths:
-            QMessageBox.information(self, "Verify Outputs", "No output paths to verify.")
+            QMessageBox.information(
+                self, "Verify Outputs", "No output paths to verify."
+            )
             return
         first_path = Path(self._summary.output_paths[0])
         output_dir = str(first_path.parent)

@@ -1,6 +1,5 @@
 """Unit tests for i18n manager utility."""
 
-
 from cuepoint.utils.i18n import I18nManager
 
 

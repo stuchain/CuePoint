@@ -43,14 +43,14 @@ def sample_track_results():
             match_score=95.0,
             title_sim=95.0,
             artist_sim=100.0,
-            confidence="high"
+            confidence="high",
         ),
         TrackResult(
             playlist_index=1,
             title="Test Track 2",
             artist="Test Artist 2",
-            matched=False
-        )
+            matched=False,
+        ),
     ]
 
 
@@ -68,50 +68,50 @@ class TestWriteCsvFiles:
     def test_write_csv_files_success(self, sample_track_results, temp_output_dir):
         """Test writing CSV files successfully."""
         result = write_csv_files(
-            sample_track_results,
-            "test_output",
-            output_dir=temp_output_dir
+            sample_track_results, "test_output", output_dir=temp_output_dir
         )
-        
+
         assert "main" in result
         assert os.path.exists(result["main"])
         assert result["main"].endswith(".csv")
 
-    def test_write_csv_files_custom_delimiter(self, sample_track_results, temp_output_dir):
+    def test_write_csv_files_custom_delimiter(
+        self, sample_track_results, temp_output_dir
+    ):
         """Test writing CSV files with custom delimiter."""
         result = write_csv_files(
             sample_track_results,
             "test_output",
             output_dir=temp_output_dir,
-            delimiter=";"
+            delimiter=";",
         )
-        
+
         assert "main" in result
         # Verify delimiter was used (header row uses ;)
         _, rows = read_csv_skip_comments(result["main"], delimiter=";")
         assert len(rows) == 2  # Parsed correctly with ; delimiter
 
-    def test_write_csv_files_invalid_delimiter(self, sample_track_results, temp_output_dir):
+    def test_write_csv_files_invalid_delimiter(
+        self, sample_track_results, temp_output_dir
+    ):
         """Test writing CSV files with invalid delimiter."""
         with pytest.raises(ValueError, match="Invalid delimiter"):
             write_csv_files(
                 sample_track_results,
                 "test_output",
                 output_dir=temp_output_dir,
-                delimiter="X"
+                delimiter="X",
             )
 
     def test_write_csv_files_creates_directory(self, sample_track_results):
         """Test that write_csv_files creates output directory if it doesn't exist."""
         with tempfile.TemporaryDirectory() as tmpdir:
             new_dir = os.path.join(tmpdir, "new_output")
-            
+
             result = write_csv_files(
-                sample_track_results,
-                "test_output",
-                output_dir=new_dir
+                sample_track_results, "test_output", output_dir=new_dir
             )
-            
+
             assert os.path.exists(new_dir)
             assert os.path.exists(result["main"])
 
@@ -123,15 +123,11 @@ class TestWriteMainCsv:
     def test_write_main_csv_success(self, sample_track_results, temp_output_dir):
         """Test writing main CSV file."""
         filename = "test_main.csv"
-        result = write_main_csv(
-            sample_track_results,
-            filename,
-            temp_output_dir
-        )
-        
+        result = write_main_csv(sample_track_results, filename, temp_output_dir)
+
         assert result is not None
         assert os.path.exists(result)
-        
+
         # Verify file contains expected data (Design 9: skip comment headers)
         _, rows = read_csv_skip_comments(result)
         assert len(rows) == 2
@@ -142,27 +138,23 @@ class TestWriteMainCsv:
         """Test writing main CSV with metadata columns."""
         filename = "test_main.csv"
         result = write_main_csv(
-            sample_track_results,
-            filename,
-            temp_output_dir,
-            include_metadata=True
+            sample_track_results, filename, temp_output_dir, include_metadata=True
         )
-        
+
         fieldnames, rows = read_csv_skip_comments(result)
         assert fieldnames
         assert "match_score" in fieldnames
         assert "title_sim" in fieldnames
 
-    def test_write_main_csv_without_metadata(self, sample_track_results, temp_output_dir):
+    def test_write_main_csv_without_metadata(
+        self, sample_track_results, temp_output_dir
+    ):
         """Test writing main CSV without metadata columns."""
         filename = "test_main.csv"
         result = write_main_csv(
-            sample_track_results,
-            filename,
-            temp_output_dir,
-            include_metadata=False
+            sample_track_results, filename, temp_output_dir, include_metadata=False
         )
-        
+
         fieldnames, rows = read_csv_skip_comments(result)
         # Should still have basic columns
         assert "original_title" in fieldnames
@@ -176,12 +168,8 @@ class TestWriteCandidatesCsv:
     def test_write_candidates_csv_success(self, sample_track_results, temp_output_dir):
         """Test writing candidates CSV file."""
         filename = "test_main.csv"
-        result = write_candidates_csv(
-            sample_track_results,
-            filename,
-            temp_output_dir
-        )
-        
+        result = write_candidates_csv(sample_track_results, filename, temp_output_dir)
+
         # May return None if no candidates
         if result:
             assert os.path.exists(result)
@@ -194,12 +182,8 @@ class TestWriteQueriesCsv:
     def test_write_queries_csv_success(self, sample_track_results, temp_output_dir):
         """Test writing queries CSV file."""
         filename = "test_main.csv"
-        result = write_queries_csv(
-            sample_track_results,
-            filename,
-            temp_output_dir
-        )
-        
+        result = write_queries_csv(sample_track_results, filename, temp_output_dir)
+
         # May return None if no queries
         if result:
             assert os.path.exists(result)
@@ -215,12 +199,9 @@ class TestWriteReviewCsv:
         # write_review_csv takes review_indices (Set[int]), not filename
         review_indices = {0}  # Review first track
         result = write_review_csv(
-            sample_track_results,
-            review_indices,
-            filename,
-            temp_output_dir
+            sample_track_results, review_indices, filename, temp_output_dir
         )
-        
+
         # May return None if no review tracks
         if result:
             assert os.path.exists(result)
@@ -231,9 +212,16 @@ class TestWriteExcelFile:
     """Test write_excel_file function."""
 
     @pytest.mark.skipif(
-        not hasattr(__import__('cuepoint.services.output_writer', fromlist=['OPENPYXL_AVAILABLE']), 'OPENPYXL_AVAILABLE') or
-        not __import__('cuepoint.services.output_writer', fromlist=['OPENPYXL_AVAILABLE']).OPENPYXL_AVAILABLE,
-        reason="openpyxl not available"
+        not hasattr(
+            __import__(
+                "cuepoint.services.output_writer", fromlist=["OPENPYXL_AVAILABLE"]
+            ),
+            "OPENPYXL_AVAILABLE",
+        )
+        or not __import__(
+            "cuepoint.services.output_writer", fromlist=["OPENPYXL_AVAILABLE"]
+        ).OPENPYXL_AVAILABLE,
+        reason="openpyxl not available",
     )
     def test_write_excel_file_success(self, sample_track_results, temp_output_dir):
         """Test writing Excel file."""
@@ -241,34 +229,34 @@ class TestWriteExcelFile:
         result = write_excel_file(
             sample_track_results,
             filename,
-            "Test Playlist"  # playlist_name parameter, not output_dir
+            "Test Playlist",  # playlist_name parameter, not output_dir
         )
-        
+
         assert result is not None
         assert os.path.exists(result)
         assert result.endswith(".xlsx")
 
     def test_write_excel_file_no_openpyxl(self, sample_track_results, temp_output_dir):
         """Test that Excel writing handles missing openpyxl gracefully."""
-        with patch('cuepoint.services.output_writer.OPENPYXL_AVAILABLE', False):
+        with patch("cuepoint.services.output_writer.OPENPYXL_AVAILABLE", False):
             # write_excel_file raises ImportError when openpyxl is not available
             with pytest.raises(ImportError, match="openpyxl is required"):
                 write_excel_file(
                     sample_track_results,
                     os.path.join(temp_output_dir, "test_output.xlsx"),
-                    "Test Playlist"
+                    "Test Playlist",
                 )
 
 
 @pytest.mark.unit
 class TestWriteMainCsvEdgeCases:
     """Test write_main_csv with edge cases."""
-    
+
     def test_write_main_csv_empty_results(self, temp_output_dir):
         """Test writing main CSV with empty results list."""
         result = write_main_csv([], "test.csv", temp_output_dir)
         assert result is None
-    
+
     def test_write_main_csv_none_values(self, temp_output_dir):
         """Test writing main CSV when TrackResult has None values."""
         results = [
@@ -281,19 +269,19 @@ class TestWriteMainCsvEdgeCases:
                 beatport_title=None,
                 beatport_key=None,
                 beatport_year=None,
-                beatport_bpm=None
+                beatport_bpm=None,
             )
         ]
         result = write_main_csv(results, "test.csv", temp_output_dir)
         assert result is not None
         assert os.path.exists(result)
-        
+
         # Verify None values are handled (written as empty strings)
         _, rows = read_csv_skip_comments(result)
         assert len(rows) == 1
         # None values should be empty strings in CSV
         assert rows[0]["beatport_url"] == "" or rows[0]["beatport_url"] is None
-    
+
     def test_write_main_csv_special_characters(self, temp_output_dir):
         """Test writing main CSV with special characters in data."""
         results = [
@@ -301,98 +289,99 @@ class TestWriteMainCsvEdgeCases:
                 playlist_index=1,
                 title='Test Track "with" quotes & special chars',
                 artist="Artist & Co.",
-                matched=False
+                matched=False,
             )
         ]
         result = write_main_csv(results, "test.csv", temp_output_dir)
         assert result is not None
-        
+
         # Verify special characters are handled correctly
         _, rows = read_csv_skip_comments(result)
         assert len(rows) == 1
-        assert "quotes" in rows[0]["original_title"] or "quotes" in str(rows[0].values())
-    
+        assert "quotes" in rows[0]["original_title"] or "quotes" in str(
+            rows[0].values()
+        )
+
     def test_write_main_csv_tab_delimiter(self, sample_track_results, temp_output_dir):
         """Test writing main CSV with tab delimiter."""
         result = write_main_csv(
-            sample_track_results,
-            "test.tsv",
-            temp_output_dir,
-            delimiter="\t"
+            sample_track_results, "test.tsv", temp_output_dir, delimiter="\t"
         )
         assert result is not None
-        
-        with open(result, 'r', encoding='utf-8') as f:
+
+        with open(result, "r", encoding="utf-8") as f:
             for line in f:
-                if not line.strip().startswith('#'):
-                    assert '\t' in line
+                if not line.strip().startswith("#"):
+                    assert "\t" in line
                     break
-    
+
     def test_write_main_csv_pipe_delimiter(self, sample_track_results, temp_output_dir):
         """Test writing main CSV with pipe delimiter."""
         result = write_main_csv(
-            sample_track_results,
-            "test.psv",
-            temp_output_dir,
-            delimiter="|"
+            sample_track_results, "test.psv", temp_output_dir, delimiter="|"
         )
         assert result is not None
-        
-        with open(result, 'r', encoding='utf-8') as f:
+
+        with open(result, "r", encoding="utf-8") as f:
             for line in f:
-                if not line.strip().startswith('#'):
-                    assert '|' in line
+                if not line.strip().startswith("#"):
+                    assert "|" in line
                     break
-    
-    def test_write_main_csv_file_write_error(self, sample_track_results, temp_output_dir):
+
+    def test_write_main_csv_file_write_error(
+        self, sample_track_results, temp_output_dir
+    ):
         """Test writing main CSV with file write error."""
         # Mock open to raise IOError
-        with patch('builtins.open', side_effect=IOError("Disk full")):
+        with patch("builtins.open", side_effect=IOError("Disk full")):
             # The function wraps OSError in RuntimeError
             with pytest.raises(RuntimeError, match="CSV export failed"):
                 write_main_csv(sample_track_results, "test.csv", temp_output_dir)
-    
-    def test_write_main_csv_invalid_delimiter(self, sample_track_results, temp_output_dir):
+
+    def test_write_main_csv_invalid_delimiter(
+        self, sample_track_results, temp_output_dir
+    ):
         """Test writing main CSV with invalid delimiter."""
         with pytest.raises(ValueError, match="Invalid delimiter"):
             write_main_csv(
-                sample_track_results,
-                "test.csv",
-                temp_output_dir,
-                delimiter="X"
+                sample_track_results, "test.csv", temp_output_dir, delimiter="X"
             )
-    
-    def test_write_main_csv_file_not_exists(self, sample_track_results, temp_output_dir):
+
+    def test_write_main_csv_file_not_exists(
+        self, sample_track_results, temp_output_dir
+    ):
         """Test write_main_csv when file doesn't exist after write - line 215."""
-        with patch('os.path.exists', return_value=False):
+        with patch("os.path.exists", return_value=False):
             result = write_main_csv(sample_track_results, "test.csv", temp_output_dir)
             # Should return None when file doesn't exist
             assert result is None
-    
+
     def test_write_main_csv_file_empty(self, sample_track_results, temp_output_dir):
         """Test write_main_csv when file is empty - line 219."""
-        with patch('os.path.getsize', return_value=0):
+        with patch("os.path.getsize", return_value=0):
             result = write_main_csv(sample_track_results, "test.csv", temp_output_dir)
             # Should return None when file is empty
             assert result is None
-    
-    @patch('performance.performance_collector')
-    def test_write_main_csv_performance_tracking(self, mock_collector, sample_track_results, temp_output_dir):
+
+    @patch("performance.performance_collector")
+    def test_write_main_csv_performance_tracking(
+        self, mock_collector, sample_track_results, temp_output_dir
+    ):
         """Test write_main_csv performance tracking - lines 229-238."""
         # Mock performance_collector
         mock_collector.record_export = Mock()
-        
+
         result = write_main_csv(sample_track_results, "test.csv", temp_output_dir)
-        
+
         # Should record export metrics (if performance tracking available)
         assert result is not None
         # Verify record_export was called if performance_collector is available
-        if hasattr(mock_collector, 'record_export'):
+        if hasattr(mock_collector, "record_export"):
             try:
                 mock_collector.record_export.assert_called_once()
                 call_kwargs = mock_collector.record_export.call_args[1]
-                assert call_kwargs['format'] == 'csv'
-                assert call_kwargs['compressed'] is False
+                assert call_kwargs["format"] == "csv"
+                assert call_kwargs["compressed"] is False
             except AssertionError:
                 # Performance tracking may not be available, which is fine
                 pass
@@ -401,7 +390,7 @@ class TestWriteMainCsvEdgeCases:
 @pytest.mark.unit
 class TestWriteCandidatesCsvEdgeCases:
     """Test write_candidates_csv with edge cases."""
-    
+
     def test_write_candidates_csv_multiple_candidates(self, temp_output_dir):
         """Test writing candidates CSV when tracks have multiple candidates."""
 
@@ -420,29 +409,29 @@ class TestWriteCandidatesCsvEdgeCases:
                 "candidate_artists": "Artist 2",
                 "final_score": 85.0,
                 "match_score": 85.0,
-            }
+            },
         ]
-        
+
         results = [
             TrackResult(
                 playlist_index=1,
                 title="Test Track",
                 artist="Test Artist",
                 matched=True,
-                candidates_data=candidates_data  # Use candidates_data instead of candidates
+                candidates_data=candidates_data,  # Use candidates_data instead of candidates
             )
         ]
-        
+
         result = write_candidates_csv(results, "test.csv", temp_output_dir)
         assert result is not None
         assert os.path.exists(result)
-        
+
         # Verify multiple candidates written
-        with open(result, 'r', encoding='utf-8') as f:
+        with open(result, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             rows = list(reader)
             assert len(rows) == 2  # One row per candidate
-    
+
     def test_write_candidates_csv_no_candidates(self, temp_output_dir):
         """Test writing candidates CSV when tracks have no candidates."""
         results = [
@@ -451,14 +440,14 @@ class TestWriteCandidatesCsvEdgeCases:
                 title="Test Track",
                 artist="Test Artist",
                 matched=False,
-                candidates=[]
+                candidates=[],
             )
         ]
-        
+
         result = write_candidates_csv(results, "test.csv", temp_output_dir)
         # Should return None when no candidates
         assert result is None
-    
+
     def test_write_candidates_csv_empty_results(self, temp_output_dir):
         """Test writing candidates CSV with empty results."""
         result = write_candidates_csv([], "test.csv", temp_output_dir)
@@ -468,7 +457,7 @@ class TestWriteCandidatesCsvEdgeCases:
 @pytest.mark.unit
 class TestWriteQueriesCsvEdgeCases:
     """Test write_queries_csv with edge cases."""
-    
+
     def test_write_queries_csv_with_queries(self, temp_output_dir):
         """Test writing queries CSV when tracks have queries."""
         results = [
@@ -479,21 +468,21 @@ class TestWriteQueriesCsvEdgeCases:
                 matched=False,
                 queries_data=[
                     {"index": 1, "query": "query1", "candidates": 5, "elapsed_ms": 100},
-                    {"index": 2, "query": "query2", "candidates": 3, "elapsed_ms": 80}
-                ]
+                    {"index": 2, "query": "query2", "candidates": 3, "elapsed_ms": 80},
+                ],
             )
         ]
-        
+
         result = write_queries_csv(results, "test.csv", temp_output_dir)
         assert result is not None
         assert os.path.exists(result)
-        
+
         # Verify queries written
-        with open(result, 'r', encoding='utf-8') as f:
+        with open(result, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             rows = list(reader)
             assert len(rows) == 2  # One row per query
-    
+
     def test_write_queries_csv_no_queries(self, temp_output_dir):
         """Test writing queries CSV when tracks have no queries."""
         results = [
@@ -502,10 +491,10 @@ class TestWriteQueriesCsvEdgeCases:
                 title="Test Track",
                 artist="Test Artist",
                 matched=False,
-                queries_data=[]
+                queries_data=[],
             )
         ]
-        
+
         result = write_queries_csv(results, "test.csv", temp_output_dir)
         # Should return None when no queries
         assert result is None
@@ -514,7 +503,7 @@ class TestWriteQueriesCsvEdgeCases:
 @pytest.mark.unit
 class TestWriteReviewCsvEdgeCases:
     """Test write_review_csv with edge cases."""
-    
+
     def test_write_review_csv_with_review_tracks(self, temp_output_dir):
         """Test writing review CSV for tracks needing review."""
         results = [
@@ -522,41 +511,35 @@ class TestWriteReviewCsvEdgeCases:
                 playlist_index=1,
                 title="Test Track 1",
                 artist="Test Artist",
-                matched=False  # Needs review
+                matched=False,  # Needs review
             ),
             TrackResult(
                 playlist_index=2,
                 title="Test Track 2",
                 artist="Test Artist",
-                matched=True  # Matched, doesn't need review
-            )
+                matched=True,  # Matched, doesn't need review
+            ),
         ]
-        
+
         review_indices = {1}  # First track (playlist_index=1) needs review
-        result = write_review_csv(
-            results,
-            review_indices,
-            "test.csv",
-            temp_output_dir
-        )
+        result = write_review_csv(results, review_indices, "test.csv", temp_output_dir)
         assert result is not None
         assert os.path.exists(result)
-        
+
         # Verify only review tracks included
-        with open(result, 'r', encoding='utf-8') as f:
+        with open(result, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             rows = list(reader)
             assert len(rows) == 1
             assert rows[0]["original_title"] == "Test Track 1"
-    
-    def test_write_review_csv_empty_indices(self, sample_track_results, temp_output_dir):
+
+    def test_write_review_csv_empty_indices(
+        self, sample_track_results, temp_output_dir
+    ):
         """Test writing review CSV with empty review indices."""
         review_indices = set()  # No tracks need review
         result = write_review_csv(
-            sample_track_results,
-            review_indices,
-            "test.csv",
-            temp_output_dir
+            sample_track_results, review_indices, "test.csv", temp_output_dir
         )
         # Should return None when no review tracks
         assert result is None
@@ -565,47 +548,47 @@ class TestWriteReviewCsvEdgeCases:
 @pytest.mark.unit
 class TestWriteJsonFile:
     """Test write_json_file function."""
-    
+
     def test_write_json_file_success(self, sample_track_results, temp_output_dir):
         """Test writing JSON file successfully."""
         from cuepoint.services.output_writer import write_json_file
-        
+
         filepath = os.path.join(temp_output_dir, "test.json")
         result = write_json_file(sample_track_results, filepath)
-        
+
         assert result is not None
         assert os.path.exists(result)
-        
+
         # Verify JSON is valid
-        with open(result, 'r', encoding='utf-8') as f:
+        with open(result, "r", encoding="utf-8") as f:
             data = json.load(f)
             # write_json_file returns a dict structure with metadata
             assert isinstance(data, dict)
             assert "tracks" in data
             assert len(data["tracks"]) == 2
-    
+
     def test_write_json_file_empty_results(self, temp_output_dir):
         """Test writing JSON file with empty results."""
         from cuepoint.services.output_writer import write_json_file
-        
+
         filepath = os.path.join(temp_output_dir, "test.json")
         result = write_json_file([], filepath)
-        
+
         assert result is not None
         assert os.path.exists(result)
-        
+
         # Verify JSON contains empty tracks array
-        with open(result, 'r', encoding='utf-8') as f:
+        with open(result, "r", encoding="utf-8") as f:
             data = json.load(f)
             # write_json_file returns a dict with tracks array
             assert isinstance(data, dict)
             assert data.get("tracks") == []
             assert data.get("total_tracks") == 0
-    
+
     def test_write_json_file_none_values(self, temp_output_dir):
         """Test writing JSON file when TrackResult has None values."""
         from cuepoint.services.output_writer import write_json_file
-        
+
         results = [
             TrackResult(
                 playlist_index=1,
@@ -614,56 +597,58 @@ class TestWriteJsonFile:
                 matched=False,
                 beatport_url=None,
                 beatport_title=None,
-                match_score=None
+                match_score=None,
             )
         ]
-        
+
         filepath = os.path.join(temp_output_dir, "test.json")
         result = write_json_file(results, filepath)
-        
+
         assert result is not None
         # Verify JSON is valid (None values serialized as null)
-        with open(result, 'r', encoding='utf-8') as f:
+        with open(result, "r", encoding="utf-8") as f:
             data = json.load(f)
             # write_json_file returns a dict structure
             assert isinstance(data, dict)
             assert "tracks" in data
             assert len(data["tracks"]) == 1
             assert isinstance(data["tracks"][0], dict)
-    
+
     def test_write_json_file_special_characters(self, temp_output_dir):
         """Test writing JSON file with special characters."""
         from cuepoint.services.output_writer import write_json_file
-        
+
         results = [
             TrackResult(
                 playlist_index=1,
                 title='Test Track "with" quotes & special chars',
                 artist="Artist & Co.",
-                matched=False
+                matched=False,
             )
         ]
-        
+
         filepath = os.path.join(temp_output_dir, "test.json")
         result = write_json_file(results, filepath)
-        
+
         assert result is not None
         # Verify JSON is valid and special characters preserved
-        with open(result, 'r', encoding='utf-8') as f:
+        with open(result, "r", encoding="utf-8") as f:
             data = json.load(f)
             # write_json_file returns a dict structure
             assert isinstance(data, dict)
             assert "tracks" in data
             assert len(data["tracks"]) == 1
             track_data = data["tracks"][0]
-            assert "quotes" in track_data.get("title", "") or "quotes" in str(track_data.values())
-    
+            assert "quotes" in track_data.get("title", "") or "quotes" in str(
+                track_data.values()
+            )
+
     def test_write_json_file_write_error(self, sample_track_results, temp_output_dir):
         """Test writing JSON file with file write error."""
         from cuepoint.services.output_writer import write_json_file
 
         # Mock open to raise IOError
-        with patch('builtins.open', side_effect=IOError("Disk full")):
+        with patch("builtins.open", side_effect=IOError("Disk full")):
             filepath = os.path.join(temp_output_dir, "test.json")
             # The function wraps OSError in RuntimeError
             with pytest.raises(RuntimeError, match="JSON export failed"):
@@ -673,33 +658,48 @@ class TestWriteJsonFile:
 @pytest.mark.unit
 class TestWriteExcelFileEdgeCases:
     """Test write_excel_file with edge cases."""
-    
+
     @pytest.mark.skipif(
-        not hasattr(__import__('cuepoint.services.output_writer', fromlist=['OPENPYXL_AVAILABLE']), 'OPENPYXL_AVAILABLE') or
-        not __import__('cuepoint.services.output_writer', fromlist=['OPENPYXL_AVAILABLE']).OPENPYXL_AVAILABLE,
-        reason="openpyxl not available"
+        not hasattr(
+            __import__(
+                "cuepoint.services.output_writer", fromlist=["OPENPYXL_AVAILABLE"]
+            ),
+            "OPENPYXL_AVAILABLE",
+        )
+        or not __import__(
+            "cuepoint.services.output_writer", fromlist=["OPENPYXL_AVAILABLE"]
+        ).OPENPYXL_AVAILABLE,
+        reason="openpyxl not available",
     )
     def test_write_excel_file_empty_results(self, temp_output_dir):
         """Test writing Excel file with empty results."""
         filename = os.path.join(temp_output_dir, "test_output.xlsx")
         result = write_excel_file([], filename, "Test Playlist")
-        
+
         assert result is not None
         assert os.path.exists(result)
-        
+
         # Verify Excel file created (may have only headers)
         try:
             import openpyxl
+
             wb = openpyxl.load_workbook(result, read_only=True)
             assert wb.active is not None
             wb.close()
         except ImportError:
             pytest.skip("openpyxl not available")
-    
+
     @pytest.mark.skipif(
-        not hasattr(__import__('cuepoint.services.output_writer', fromlist=['OPENPYXL_AVAILABLE']), 'OPENPYXL_AVAILABLE') or
-        not __import__('cuepoint.services.output_writer', fromlist=['OPENPYXL_AVAILABLE']).OPENPYXL_AVAILABLE,
-        reason="openpyxl not available"
+        not hasattr(
+            __import__(
+                "cuepoint.services.output_writer", fromlist=["OPENPYXL_AVAILABLE"]
+            ),
+            "OPENPYXL_AVAILABLE",
+        )
+        or not __import__(
+            "cuepoint.services.output_writer", fromlist=["OPENPYXL_AVAILABLE"]
+        ).OPENPYXL_AVAILABLE,
+        reason="openpyxl not available",
     )
     def test_write_excel_file_none_values(self, temp_output_dir):
         """Test writing Excel file when TrackResult has None values."""
@@ -711,32 +711,39 @@ class TestWriteExcelFileEdgeCases:
                 matched=False,
                 beatport_url=None,
                 beatport_title=None,
-                match_score=None
+                match_score=None,
             )
         ]
-        
+
         filename = os.path.join(temp_output_dir, "test_output.xlsx")
         result = write_excel_file(results, filename, "Test Playlist")
-        
+
         assert result is not None
         assert os.path.exists(result)
-    
+
     @pytest.mark.skipif(
-        not hasattr(__import__('cuepoint.services.output_writer', fromlist=['OPENPYXL_AVAILABLE']), 'OPENPYXL_AVAILABLE') or
-        not __import__('cuepoint.services.output_writer', fromlist=['OPENPYXL_AVAILABLE']).OPENPYXL_AVAILABLE,
-        reason="openpyxl not available"
+        not hasattr(
+            __import__(
+                "cuepoint.services.output_writer", fromlist=["OPENPYXL_AVAILABLE"]
+            ),
+            "OPENPYXL_AVAILABLE",
+        )
+        or not __import__(
+            "cuepoint.services.output_writer", fromlist=["OPENPYXL_AVAILABLE"]
+        ).OPENPYXL_AVAILABLE,
+        reason="openpyxl not available",
     )
     def test_write_excel_file_write_error(self, sample_track_results, temp_output_dir):
         """Test writing Excel file with file write error."""
         from unittest.mock import patch
 
         # Mock Workbook.save to raise exception
-        with patch('openpyxl.Workbook') as mock_wb_class:
+        with patch("openpyxl.Workbook") as mock_wb_class:
             mock_wb = mock_wb_class.return_value
             mock_ws = mock_wb.active
             mock_ws.append = Mock()
             mock_wb.save = Mock(side_effect=IOError("Permission denied"))
-            
+
             filename = os.path.join(temp_output_dir, "test_output.xlsx")
             with pytest.raises(OSError):
                 write_excel_file(sample_track_results, filename, "Test Playlist")
@@ -745,69 +752,69 @@ class TestWriteExcelFileEdgeCases:
 @pytest.mark.unit
 class TestGetReviewIndices:
     """Test _get_review_indices helper function."""
-    
+
     def test_get_review_indices_with_unmatched(self):
         """Test getting review indices for unmatched tracks."""
         from cuepoint.services.output_writer import _get_review_indices
-        
+
         results = [
             TrackResult(
                 playlist_index=1,
                 title="Track 1",
                 artist="Artist 1",
-                matched=False  # Needs review
+                matched=False,  # Needs review
             ),
             TrackResult(
                 playlist_index=2,
                 title="Track 2",
                 artist="Artist 2",
                 matched=True,
-                beatport_url="https://www.beatport.com/track/test/123"  # Has URL, doesn't need review
+                beatport_url="https://www.beatport.com/track/test/123",  # Has URL, doesn't need review
             ),
             TrackResult(
                 playlist_index=3,
                 title="Track 3",
                 artist="Artist 3",
-                matched=False  # Needs review
-            )
+                matched=False,  # Needs review
+            ),
         ]
-        
+
         indices = _get_review_indices(results)
         assert isinstance(indices, Set)
         # Function returns playlist_index values, not list indices
         assert 1 in indices  # First track (playlist_index=1, unmatched)
         assert 3 in indices  # Third track (playlist_index=3, unmatched)
         assert 2 not in indices  # Second track is matched with URL (playlist_index=2)
-    
+
     def test_get_review_indices_all_matched(self):
         """Test getting review indices when all tracks are matched."""
         from cuepoint.services.output_writer import _get_review_indices
-        
+
         results = [
             TrackResult(
                 playlist_index=1,
                 title="Track 1",
                 artist="Artist 1",
                 matched=True,
-                beatport_url="https://www.beatport.com/track/test1/123"  # Has URL
+                beatport_url="https://www.beatport.com/track/test1/123",  # Has URL
             ),
             TrackResult(
                 playlist_index=2,
                 title="Track 2",
                 artist="Artist 2",
                 matched=True,
-                beatport_url="https://www.beatport.com/track/test2/456"  # Has URL
-            )
+                beatport_url="https://www.beatport.com/track/test2/456",  # Has URL
+            ),
         ]
-        
+
         indices = _get_review_indices(results)
         # All tracks are matched with URLs, so no review needed
         assert len(indices) == 0
-    
+
     def test_get_review_indices_empty_results(self):
         """Test getting review indices with empty results."""
         from cuepoint.services.output_writer import _get_review_indices
-        
+
         indices = _get_review_indices([])
         assert len(indices) == 0
 
@@ -815,7 +822,7 @@ class TestGetReviewIndices:
 @pytest.mark.unit
 class TestWriteCsvFilesEdgeCases:
     """Test write_csv_files with edge cases."""
-    
+
     def test_write_csv_files_empty_results(self, temp_output_dir):
         """Test writing CSV files with empty results."""
         result = write_csv_files([], "test", temp_output_dir)
@@ -824,12 +831,14 @@ class TestWriteCsvFilesEdgeCases:
         # Main CSV returns None for empty results
         if "main" in result:
             assert result["main"] is None or not os.path.exists(result["main"])
-    
-    def test_write_csv_files_all_file_types(self, sample_track_results, temp_output_dir):
+
+    def test_write_csv_files_all_file_types(
+        self, sample_track_results, temp_output_dir
+    ):
         """Test that write_csv_files creates all expected file types."""
         # Add candidates and queries to results
         from cuepoint.models.beatport_candidate import BeatportCandidate
-        
+
         results_with_data = [
             TrackResult(
                 playlist_index=1,
@@ -860,21 +869,23 @@ class TestWriteCsvFilesEdgeCases:
                         guard_ok=True,
                         reject_reason="",
                         elapsed_ms=100,
-                        is_winner=False
+                        is_winner=False,
                     )
                 ],
-                queries_data=[{"index": 1, "query": "test", "candidates": 1, "elapsed_ms": 100}]
+                queries_data=[
+                    {"index": 1, "query": "test", "candidates": 1, "elapsed_ms": 100}
+                ],
             ),
             TrackResult(
                 playlist_index=2,
                 title="Unmatched Track",
                 artist="Artist",
-                matched=False  # Needs review
-            )
+                matched=False,  # Needs review
+            ),
         ]
-        
+
         result = write_csv_files(results_with_data, "test", temp_output_dir)
-        
+
         # Should create main, candidates, queries, and review files
         assert "main" in result
         assert result["main"] is not None
@@ -884,7 +895,7 @@ class TestWriteCsvFilesEdgeCases:
             assert result["queries"] is not None
         if "review" in result:
             assert result["review"] is not None
-    
+
     def test_write_csv_files_candidates_path_none(self, temp_output_dir):
         """Test write_csv_files when candidates_path is None - line 100."""
         results = [
@@ -893,21 +904,20 @@ class TestWriteCsvFilesEdgeCases:
                 title="Test Track",
                 artist="Test Artist",
                 matched=False,
-                candidates_data=[]  # No candidates
+                candidates_data=[],  # No candidates
             )
         ]
-        
+
         result = write_csv_files(results, "test_output", output_dir=temp_output_dir)
-        
+
         # Should not include candidates key when None
         assert "main" in result
         assert "candidates" not in result or result.get("candidates") is None
-    
-    
+
     def test_write_review_candidates_csv(self, temp_output_dir):
         """Test write_review_candidates_csv function - lines 423-444."""
         from cuepoint.services.output_writer import write_review_candidates_csv
-        
+
         results = [
             TrackResult(
                 playlist_index=1,
@@ -915,120 +925,129 @@ class TestWriteCsvFilesEdgeCases:
                 artist="Test Artist",
                 matched=False,
                 candidates_data=[
-                    {"candidate_url": "https://www.beatport.com/track/test1/123", "final_score": 60.0}
-                ]
+                    {
+                        "candidate_url": "https://www.beatport.com/track/test1/123",
+                        "final_score": 60.0,
+                    }
+                ],
             ),
             TrackResult(
                 playlist_index=2,
                 title="Test Track 2",
                 artist="Test Artist",
                 matched=True,
-                candidates_data=[]
-            )
+                candidates_data=[],
+            ),
         ]
-        
+
         review_indices = {1}
-        result = write_review_candidates_csv(results, review_indices, "test.csv", temp_output_dir)
-        
+        result = write_review_candidates_csv(
+            results, review_indices, "test.csv", temp_output_dir
+        )
+
         # Should write candidates CSV for review tracks only
         assert result is not None
         assert os.path.exists(result)
         assert "review_candidates" in result
-    
+
     def test_write_review_candidates_csv_no_candidates(self, temp_output_dir):
         """Test write_review_candidates_csv when no candidates - lines 431-432."""
         from cuepoint.services.output_writer import write_review_candidates_csv
-        
+
         results = [
             TrackResult(
                 playlist_index=1,
                 title="Test Track",
                 artist="Test Artist",
                 matched=False,
-                candidates_data=[]
+                candidates_data=[],
             )
         ]
-        
+
         review_indices = {1}
-        result = write_review_candidates_csv(results, review_indices, "test.csv", temp_output_dir)
-        
+        result = write_review_candidates_csv(
+            results, review_indices, "test.csv", temp_output_dir
+        )
+
         # Should return None when no candidates
         assert result is None
-    
+
     def test_write_review_queries_csv(self, temp_output_dir):
         """Test write_review_queries_csv function - lines 454-475."""
         from cuepoint.services.output_writer import write_review_queries_csv
-        
+
         results = [
             TrackResult(
                 playlist_index=1,
                 title="Test Track 1",
                 artist="Test Artist",
                 matched=False,
-                queries_data=[
-                    {"index": 1, "query": "query1", "candidates": 5}
-                ]
+                queries_data=[{"index": 1, "query": "query1", "candidates": 5}],
             ),
             TrackResult(
                 playlist_index=2,
                 title="Test Track 2",
                 artist="Test Artist",
                 matched=True,
-                queries_data=[]
-            )
+                queries_data=[],
+            ),
         ]
-        
+
         review_indices = {1}
-        result = write_review_queries_csv(results, review_indices, "test.csv", temp_output_dir)
-        
+        result = write_review_queries_csv(
+            results, review_indices, "test.csv", temp_output_dir
+        )
+
         # Should write queries CSV for review tracks only
         assert result is not None
         assert os.path.exists(result)
         assert "review_queries" in result
-    
+
     def test_write_review_queries_csv_no_queries(self, temp_output_dir):
         """Test write_review_queries_csv when no queries - lines 462-463."""
         from cuepoint.services.output_writer import write_review_queries_csv
-        
+
         results = [
             TrackResult(
                 playlist_index=1,
                 title="Test Track",
                 artist="Test Artist",
                 matched=False,
-                queries_data=[]
+                queries_data=[],
             )
         ]
-        
+
         review_indices = {1}
-        result = write_review_queries_csv(results, review_indices, "test.csv", temp_output_dir)
-        
+        result = write_review_queries_csv(
+            results, review_indices, "test.csv", temp_output_dir
+        )
+
         # Should return None when no queries
         assert result is None
-    
+
     def test_get_review_indices_score_below_70(self, temp_output_dir):
         """Test _get_review_indices with score < 70 - line 494."""
         from cuepoint.services.output_writer import _get_review_indices
-        
+
         results = [
             TrackResult(
                 playlist_index=1,
                 title="Test Track",
                 artist="Test Artist",
                 matched=True,
-                match_score=65.0  # Below 70
+                match_score=65.0,  # Below 70
             )
         ]
-        
+
         review_indices = _get_review_indices(results)
-        
+
         # Should include track with score < 70
         assert 1 in review_indices
-    
+
     def test_get_review_indices_artist_sim_below_50(self, temp_output_dir):
         """Test _get_review_indices with artist_sim < 50 - line 499."""
         from cuepoint.services.output_writer import _get_review_indices
-        
+
         results = [
             TrackResult(
                 playlist_index=1,
@@ -1036,73 +1055,81 @@ class TestWriteCsvFilesEdgeCases:
                 artist="Test Artist",
                 matched=True,
                 match_score=80.0,
-                artist_sim=40.0  # Below 50
+                artist_sim=40.0,  # Below 50
             )
         ]
-        
+
         review_indices = _get_review_indices(results)
-        
+
         # Should include track with artist_sim < 50
         assert 1 in review_indices
-    
-    def test_write_json_file_compression_gz_extension(self, sample_track_results, temp_output_dir):
+
+    def test_write_json_file_compression_gz_extension(
+        self, sample_track_results, temp_output_dir
+    ):
         """Test write_json_file with .gz extension - lines 548-554."""
         from cuepoint.services.output_writer import write_json_file
-        
+
         filepath = os.path.join(temp_output_dir, "test.json.gz")
         result = write_json_file(sample_track_results, filepath, compress=False)
-        
+
         # Should automatically compress when .gz extension present
         assert result.endswith(".gz")
         assert os.path.exists(result)
-        
+
         # Verify it's actually compressed
         import gzip
-        with gzip.open(result, 'rt', encoding='utf-8') as f:
+
+        with gzip.open(result, "rt", encoding="utf-8") as f:
             data = json.load(f)
             assert isinstance(data, dict)
-    
-    def test_write_json_file_compression_explicit(self, sample_track_results, temp_output_dir):
+
+    def test_write_json_file_compression_explicit(
+        self, sample_track_results, temp_output_dir
+    ):
         """Test write_json_file with explicit compression - lines 667-668."""
         from cuepoint.services.output_writer import write_json_file
-        
+
         filepath = os.path.join(temp_output_dir, "test.json")
         result = write_json_file(sample_track_results, filepath, compress=True)
-        
+
         # Should add .gz extension when compress=True
         assert result.endswith(".gz")
         assert os.path.exists(result)
-        
+
         # Verify it's compressed
         import gzip
-        with gzip.open(result, 'rt', encoding='utf-8') as f:
+
+        with gzip.open(result, "rt", encoding="utf-8") as f:
             data = json.load(f)
             assert isinstance(data, dict)
-    
-    def test_write_json_file_include_processing_info(self, sample_track_results, temp_output_dir):
+
+    def test_write_json_file_include_processing_info(
+        self, sample_track_results, temp_output_dir
+    ):
         """Test write_json_file with include_processing_info - line 573."""
         from cuepoint.services.output_writer import write_json_file
-        
+
         filepath = os.path.join(temp_output_dir, "test.json")
         settings = {"setting1": "value1", "setting2": "value2"}
         result = write_json_file(
             sample_track_results,
             filepath,
             include_processing_info=True,
-            settings=settings
+            settings=settings,
         )
-        
+
         # Verify processing info included
-        with open(result, 'r', encoding='utf-8') as f:
+        with open(result, "r", encoding="utf-8") as f:
             data = json.load(f)
             assert "processing_info" in data
             assert data["processing_info"]["settings"] == settings
             assert data["processing_info"]["export_format"] == "json"
-    
+
     def test_write_json_file_include_candidates(self, temp_output_dir):
         """Test write_json_file with include_candidates - line 640."""
         from cuepoint.services.output_writer import write_json_file
-        
+
         results = [
             TrackResult(
                 playlist_index=1,
@@ -1110,20 +1137,24 @@ class TestWriteCsvFilesEdgeCases:
                 artist="Test Artist",
                 matched=True,
                 candidates=[
-                    {"beatport_title": "Candidate 1", "beatport_url": "https://beatport.com/track/1/123", "match_score": 90.0}
-                ]
+                    {
+                        "beatport_title": "Candidate 1",
+                        "beatport_url": "https://beatport.com/track/1/123",
+                        "match_score": 90.0,
+                    }
+                ],
             )
         ]
-        
+
         filepath = os.path.join(temp_output_dir, "test.json")
         result = write_json_file(results, filepath, include_candidates=True)
-        
+
         # Verify candidates included
-        with open(result, 'r', encoding='utf-8') as f:
+        with open(result, "r", encoding="utf-8") as f:
             data = json.load(f)
             assert "candidates" in data["tracks"][0]
             assert len(data["tracks"][0]["candidates"]) > 0
-    
+
     def test_write_json_file_include_queries(self, temp_output_dir):
         """Test write_json_file with include_queries - line 652."""
         from cuepoint.services.output_writer import write_json_file
@@ -1135,85 +1166,107 @@ class TestWriteCsvFilesEdgeCases:
                 playlist_index=1,
                 title="Test Track",
                 artist="Test Artist",
-                matched=False
+                matched=False,
             )
         ]
         # Manually set queries attribute since TrackResult doesn't have it
         # Use setattr to add the attribute dynamically
-        setattr(results[0], 'queries', ["query1", "query2"])
-        
+        setattr(results[0], "queries", ["query1", "query2"])
+
         filepath = os.path.join(temp_output_dir, "test.json")
         result = write_json_file(results, filepath, include_queries=True)
-        
+
         # Verify queries included
-        with open(result, 'r', encoding='utf-8') as f:
+        with open(result, "r", encoding="utf-8") as f:
             data = json.load(f)
             assert "queries" in data["tracks"][0]
             assert data["tracks"][0]["queries"] == ["query1", "query2"]
-    
-    @patch('performance.performance_collector')
-    def test_write_json_file_performance_tracking(self, mock_collector, sample_track_results, temp_output_dir):
+
+    @patch("performance.performance_collector")
+    def test_write_json_file_performance_tracking(
+        self, mock_collector, sample_track_results, temp_output_dir
+    ):
         """Test write_json_file performance tracking - lines 684-693."""
         from cuepoint.services.output_writer import write_json_file
 
         # Mock performance_collector
         mock_collector.record_export = Mock()
-        
+
         filepath = os.path.join(temp_output_dir, "test.json")
         result = write_json_file(sample_track_results, filepath, compress=True)
-        
+
         # Should record export metrics (if performance tracking available)
         assert result is not None
         # Verify record_export was called if performance_collector is available
-        if hasattr(mock_collector, 'record_export'):
+        if hasattr(mock_collector, "record_export"):
             try:
                 mock_collector.record_export.assert_called_once()
                 call_kwargs = mock_collector.record_export.call_args[1]
-                assert call_kwargs['format'] == 'json'
-                assert call_kwargs['compressed'] is True
+                assert call_kwargs["format"] == "json"
+                assert call_kwargs["compressed"] is True
             except AssertionError:
                 # Performance tracking may not be available, which is fine
                 pass
-    
+
     @pytest.mark.skipif(
-        not hasattr(__import__('cuepoint.services.output_writer', fromlist=['OPENPYXL_AVAILABLE']), 'OPENPYXL_AVAILABLE') or
-        not __import__('cuepoint.services.output_writer', fromlist=['OPENPYXL_AVAILABLE']).OPENPYXL_AVAILABLE,
-        reason="openpyxl not available"
+        not hasattr(
+            __import__(
+                "cuepoint.services.output_writer", fromlist=["OPENPYXL_AVAILABLE"]
+            ),
+            "OPENPYXL_AVAILABLE",
+        )
+        or not __import__(
+            "cuepoint.services.output_writer", fromlist=["OPENPYXL_AVAILABLE"]
+        ).OPENPYXL_AVAILABLE,
+        reason="openpyxl not available",
     )
-    def test_write_excel_file_full_coverage(self, sample_track_results, temp_output_dir):
+    def test_write_excel_file_full_coverage(
+        self, sample_track_results, temp_output_dir
+    ):
         """Test write_excel_file full functionality - lines 722-820."""
         filename = os.path.join(temp_output_dir, "test_output.xlsx")
         result = write_excel_file(sample_track_results, filename, "Test Playlist")
-        
+
         assert result is not None
         assert os.path.exists(result)
         assert result.endswith(".xlsx")
-        
+
         # Verify Excel file can be opened and has data
         from openpyxl import load_workbook
+
         wb = load_workbook(result, read_only=True)
         ws = wb.active
         assert ws.title == "Test Playlist"
         assert ws.max_row >= 2  # Header + at least one data row
         wb.close()
-    
+
     @pytest.mark.skipif(
-        not hasattr(__import__('cuepoint.services.output_writer', fromlist=['OPENPYXL_AVAILABLE']), 'OPENPYXL_AVAILABLE') or
-        not __import__('cuepoint.services.output_writer', fromlist=['OPENPYXL_AVAILABLE']).OPENPYXL_AVAILABLE,
-        reason="openpyxl not available"
+        not hasattr(
+            __import__(
+                "cuepoint.services.output_writer", fromlist=["OPENPYXL_AVAILABLE"]
+            ),
+            "OPENPYXL_AVAILABLE",
+        )
+        or not __import__(
+            "cuepoint.services.output_writer", fromlist=["OPENPYXL_AVAILABLE"]
+        ).OPENPYXL_AVAILABLE,
+        reason="openpyxl not available",
     )
-    def test_write_excel_file_long_playlist_name(self, sample_track_results, temp_output_dir):
+    def test_write_excel_file_long_playlist_name(
+        self, sample_track_results, temp_output_dir
+    ):
         """Test write_excel_file with long playlist name - line 727."""
         filename = os.path.join(temp_output_dir, "test_output.xlsx")
         long_name = "A" * 50  # Longer than Excel's 31 char limit
         result = write_excel_file(sample_track_results, filename, long_name)
-        
+
         # Should truncate to 31 characters
         from openpyxl import load_workbook
+
         wb = load_workbook(result, read_only=True)
         assert len(wb.active.title) <= 31
         wb.close()
-    
+
     def test_write_performance_report(self, temp_output_dir):
         """Test write_performance_report function - lines 835-917."""
         from unittest.mock import Mock
@@ -1228,31 +1281,31 @@ class TestWriteCsvFilesEdgeCases:
         mock_stats.total_time = 120.5
         mock_stats.query_metrics = [
             Mock(query_type="title_artist", execution_time=1.5, candidates_found=5),
-            Mock(query_type="title_only", execution_time=0.8, candidates_found=3)
+            Mock(query_type="title_only", execution_time=0.8, candidates_found=3),
         ]
         mock_stats.cache_stats = {"hits": 5, "misses": 5}
         mock_stats.track_metrics = [
             Mock(track_title="Slow Track", total_time=15.0, total_queries=3),
-            Mock(track_title="Fast Track", total_time=1.0, total_queries=1)
+            Mock(track_title="Fast Track", total_time=1.0, total_queries=1),
         ]
         mock_stats.match_rate = Mock(return_value=80.0)
         mock_stats.average_time_per_track = Mock(return_value=12.05)
         mock_stats.average_time_per_query = Mock(return_value=1.15)
         mock_stats.cache_hit_rate = Mock(return_value=50.0)
-        
+
         result = write_performance_report(mock_stats, "test_report", temp_output_dir)
-        
+
         assert result is not None
         assert os.path.exists(result)
         assert "performance" in result
-        
+
         # Verify report content
-        with open(result, 'r', encoding='utf-8') as f:
+        with open(result, "r", encoding="utf-8") as f:
             content = f.read()
             assert "Performance Analysis Report" in content
             assert "Total tracks processed: 10" in content
             assert "Matched tracks: 8" in content
-    
+
     def test_format_time_for_report(self):
         """Test _format_time_for_report function - lines 922-929."""
         from cuepoint.services.output_writer import _format_time_for_report
@@ -1260,17 +1313,17 @@ class TestWriteCsvFilesEdgeCases:
         # Test milliseconds
         result = _format_time_for_report(0.5)
         assert "ms" in result
-        
+
         # Test seconds
         result = _format_time_for_report(30.5)
         assert "s" in result
         assert "30" in result
-        
+
         # Test minutes
         result = _format_time_for_report(90.5)
         assert "m" in result
         assert "s" in result
-    
+
     def test_identify_bottlenecks(self):
         """Test _identify_bottlenecks function - lines 934-956."""
         from unittest.mock import Mock
@@ -1285,16 +1338,12 @@ class TestWriteCsvFilesEdgeCases:
         mock_stats.average_time_per_track = Mock(return_value=70.0)
         mock_stats.match_rate = Mock(return_value=40.0)
         mock_stats.total_tracks = 20
-        
+
         bottlenecks = _identify_bottlenecks(mock_stats)
-        
+
         # Should identify multiple bottlenecks
         assert len(bottlenecks) > 0
         assert any("Slow queries" in b for b in bottlenecks)
         assert any("Low cache hit rate" in b for b in bottlenecks)
         assert any("Slow track processing" in b for b in bottlenecks)
         assert any("Low match rate" in b for b in bottlenecks)
-
-
-
-

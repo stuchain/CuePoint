@@ -139,11 +139,15 @@ class CandidateDialog(QDialog):
             self.table.setItem(row_idx, 0, rank_item)
 
             # Title
-            title = candidate.get("candidate_title", candidate.get("beatport_title", ""))
+            title = candidate.get(
+                "candidate_title", candidate.get("beatport_title", "")
+            )
             self.table.setItem(row_idx, 1, QTableWidgetItem(title))
 
             # Artists
-            artists = candidate.get("candidate_artists", candidate.get("beatport_artists", ""))
+            artists = candidate.get(
+                "candidate_artists", candidate.get("beatport_artists", "")
+            )
             self.table.setItem(row_idx, 2, QTableWidgetItem(artists))
 
             # Score
@@ -180,7 +184,9 @@ class CandidateDialog(QDialog):
             self.table.setItem(row_idx, 8, QTableWidgetItem(year))
 
             # Label
-            label = candidate.get("candidate_label", candidate.get("beatport_label", ""))
+            label = candidate.get(
+                "candidate_label", candidate.get("beatport_label", "")
+            )
             self.table.setItem(row_idx, 9, QTableWidgetItem(label))
 
             # URL
@@ -199,8 +205,12 @@ class CandidateDialog(QDialog):
                     for col in range(11):
                         item = self.table.item(row_idx, col)
                         if item:
-                            item.setBackground(QBrush(QColor(200, 255, 200)))  # Light green
-                            item.setForeground(QBrush(QColor(0, 100, 0)))  # Dark green text
+                            item.setBackground(
+                                QBrush(QColor(200, 255, 200))
+                            )  # Light green
+                            item.setForeground(
+                                QBrush(QColor(0, 100, 0))
+                            )  # Dark green text
 
         # Resize columns to content
         self.table.resizeColumnsToContents()

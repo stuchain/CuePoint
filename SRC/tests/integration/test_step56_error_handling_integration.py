@@ -43,10 +43,14 @@ class TestServiceErrorHandlingIntegration:
     def test_error_propagation_through_services(self):
         """Test that errors propagate correctly through service chain."""
         cache_service = CacheService()
-        logging_service = LoggingService(enable_file_logging=False, enable_console_logging=False)
+        logging_service = LoggingService(
+            enable_file_logging=False, enable_console_logging=False
+        )
         beatport_service = BeatportService(cache_service, logging_service)
 
-        with patch("cuepoint.data.beatport_search.beatport_search_hybrid") as mock_search:
+        with patch(
+            "cuepoint.data.beatport_search.beatport_search_hybrid"
+        ) as mock_search:
             mock_search.side_effect = Exception("Network timeout")
 
             # Error should be caught, logged, and re-raised as BeatportAPIError
@@ -59,7 +63,9 @@ class TestServiceErrorHandlingIntegration:
 
     def test_export_error_recovery(self):
         """Test that export errors can be caught and handled."""
-        logging_service = LoggingService(enable_file_logging=False, enable_console_logging=False)
+        logging_service = LoggingService(
+            enable_file_logging=False, enable_console_logging=False
+        )
         service = ExportService(logging_service=logging_service)
 
         # Mock write_csv_files to raise an exception
@@ -92,7 +98,9 @@ class TestLoggingIntegration:
         service = BeatportService(cache_service, mock_logging)
 
         # Mock successful search (provider calls beatport_search_hybrid from beatport_search)
-        with patch("cuepoint.data.beatport_search.beatport_search_hybrid") as mock_search:
+        with patch(
+            "cuepoint.data.beatport_search.beatport_search_hybrid"
+        ) as mock_search:
             mock_search.return_value = ["url1", "url2"]
 
             service.search_tracks("test query")
@@ -108,7 +116,9 @@ class TestLoggingIntegration:
         cache_service = CacheService()
         service = BeatportService(cache_service, mock_logging)
 
-        with patch("cuepoint.data.beatport_search.beatport_search_hybrid") as mock_search:
+        with patch(
+            "cuepoint.data.beatport_search.beatport_search_hybrid"
+        ) as mock_search:
             mock_search.side_effect = Exception("Test error")
 
             with pytest.raises(BeatportAPIError):
@@ -118,4 +128,3 @@ class TestLoggingIntegration:
             assert mock_logging.error.called
             call_args = mock_logging.error.call_args
             assert call_args[1]["exc_info"] is not None
-

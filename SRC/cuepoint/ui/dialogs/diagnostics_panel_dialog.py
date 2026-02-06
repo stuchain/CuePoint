@@ -9,7 +9,14 @@ Local status page showing log path, last run ID, and health checks.
 
 from pathlib import Path
 
-from PySide6.QtWidgets import QDialog, QGroupBox, QHBoxLayout, QLabel, QPushButton, QVBoxLayout
+from PySide6.QtWidgets import (
+    QDialog,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+)
 
 from cuepoint.utils.health_check import run_all_health_checks
 from cuepoint.utils.i18n import tr
@@ -40,13 +47,16 @@ class DiagnosticsPanelDialog(QDialog):
         run_layout.addWidget(QLabel(f"Run ID: {run_id}"))
         try:
             from cuepoint.utils.logger import CuePointLogger
+
             log_path = CuePointLogger.get_log_file()
         except Exception:
             try:
                 log_path = AppPaths.logs_dir() / "cuepoint.log"
             except Exception:
                 log_path = Path("~/.cuepoint/logs/cuepoint.log")
-        run_layout.addWidget(QLabel(tr("diagnostics.log_path", "Log path:") + f" {log_path}"))
+        run_layout.addWidget(
+            QLabel(tr("diagnostics.log_path", "Log path:") + f" {log_path}")
+        )
         copy_btn = QPushButton(tr("diagnostics.copy_run_id", "Copy Run ID"))
         copy_btn.clicked.connect(lambda: self._copy_to_clipboard(run_id))
         run_layout.addWidget(copy_btn)
@@ -80,6 +90,7 @@ class DiagnosticsPanelDialog(QDialog):
     def _copy_to_clipboard(self, text: str):
         from PySide6.QtGui import QClipboard
         from PySide6.QtWidgets import QApplication
+
         app = QApplication.instance()
         if app and app.clipboard():
             app.clipboard().setText(text, QClipboard.Mode.Clipboard)

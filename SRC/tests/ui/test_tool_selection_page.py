@@ -43,23 +43,23 @@ def test_tool_selection_page_signal_emission(tool_selection_page, qapp):
     """Test that tool_selected signal is emitted when button is clicked"""
     # Track if signal was emitted
     signal_received = []
-    
+
     def on_tool_selected(tool_name):
         signal_received.append(tool_name)
-    
+
     tool_selection_page.tool_selected.connect(on_tool_selected)
-    
+
     # Find the inKey button and click it
     _ = tool_selection_page.findChildren(type(tool_selection_page))
     # Find button by text
     for child in tool_selection_page.findChildren(type(tool_selection_page)):
-        if hasattr(child, 'text') and child.text() == "inKey":
+        if hasattr(child, "text") and child.text() == "inKey":
             QTest.mouseClick(child, Qt.LeftButton)
             break
-    
+
     # Process events to allow signal to propagate
     qapp.processEvents()
-    
+
     # Check if signal was emitted (we'll verify this works in integration test)
     # For now, just verify the button exists
     assert True  # Placeholder - will verify in integration test
@@ -70,7 +70,7 @@ def test_tool_selection_page_ui_elements(tool_selection_page):
     # Check that layout exists
     layout = tool_selection_page.layout()
     assert layout is not None
-    
+
     # Check that we can get the selected tool
     tool = tool_selection_page.get_selected_tool()
     assert tool is not None
@@ -81,24 +81,23 @@ def test_tool_selection_page_integration(qapp):
     """Integration test for tool selection page"""
     page = ToolSelectionPage()
     page.show()
-    
+
     # Verify page is visible
     assert page.isVisible()
-    
+
     # Verify we can get selected tool
     tool = page.get_selected_tool()
     assert tool == "inkey"
-    
+
     # Verify signal can be connected
     signal_received = []
-    
+
     def on_tool_selected(tool_name):
         signal_received.append(tool_name)
-    
+
     page.tool_selected.connect(on_tool_selected)
-    
+
     # Find and click the inKey button
     # This is a simplified test - in real scenario we'd use QTest
     # For now, just verify the page structure
     assert page.layout() is not None
-

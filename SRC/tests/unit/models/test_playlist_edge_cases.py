@@ -41,9 +41,7 @@ class TestPlaylistEdgeCases:
 
     def test_playlist_with_many_tracks(self):
         """Test playlist with many tracks."""
-        tracks = [
-            Track(title=f"Track {i}", artist=f"Artist {i}") for i in range(1000)
-        ]
+        tracks = [Track(title=f"Track {i}", artist=f"Artist {i}") for i in range(1000)]
         playlist = Playlist(name="Large Playlist", tracks=tracks)
         assert playlist.get_track_count() == 1000
 
@@ -115,9 +113,7 @@ class TestPlaylistTrackManagementEdgeCases:
     def test_remove_track_updates_all_positions(self):
         """Test removing track updates all remaining positions."""
         playlist = Playlist(name="Playlist")
-        tracks = [
-            Track(title=f"Track {i}", artist=f"Artist {i}") for i in range(1, 6)
-        ]
+        tracks = [Track(title=f"Track {i}", artist=f"Artist {i}") for i in range(1, 6)]
         for track in tracks:
             playlist.add_track(track)
 
@@ -133,9 +129,7 @@ class TestPlaylistTrackManagementEdgeCases:
     def test_remove_all_tracks(self):
         """Test removing all tracks."""
         playlist = Playlist(name="Playlist")
-        tracks = [
-            Track(title=f"Track {i}", artist=f"Artist {i}") for i in range(1, 4)
-        ]
+        tracks = [Track(title=f"Track {i}", artist=f"Artist {i}") for i in range(1, 4)]
         for track in tracks:
             playlist.add_track(track)
 
@@ -275,4 +269,3 @@ class TestPlaylistStringRepresentationEdgeCases:
         repr_str = repr(playlist)
         assert "Playlist" in repr_str
         assert "Test Playlist" in repr_str
-

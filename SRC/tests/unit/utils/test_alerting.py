@@ -3,7 +3,6 @@
 
 """Unit tests for alerting hooks (Design 7)."""
 
-
 from cuepoint.utils.alerting import (
     get_failure_count,
     record_failure,

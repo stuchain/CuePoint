@@ -26,7 +26,13 @@ if __name__ == "__main__":
     print()
     print("2. Running integration tests for mypy validation...")
     result = subprocess.run(
-        [sys.executable, "-m", "pytest", "tests/integration/test_step55_mypy_validation.py", "-v"],
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "tests/integration/test_step55_mypy_validation.py",
+            "-v",
+        ],
         cwd=src_dir,
     )
     integration_passed = result.returncode == 0
@@ -39,4 +45,3 @@ if __name__ == "__main__":
     else:
         print("❌ Some Step 5.5 tests failed.")
         sys.exit(1)
-

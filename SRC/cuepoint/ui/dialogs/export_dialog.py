@@ -165,12 +165,12 @@ class ExportDialog(QDialog):
         # Output location display
         output_dir_group = QGroupBox("Output Location")
         output_dir_layout = QVBoxLayout()
-        
+
         # Default output directory display
         self.output_dir_label = QLabel()
         self.update_output_dir_display()
         output_dir_layout.addWidget(self.output_dir_label)
-        
+
         # File path selection
         file_layout = QHBoxLayout()
         file_layout.addWidget(QLabel("Output File:"))
@@ -182,15 +182,15 @@ class ExportDialog(QDialog):
         browse_button = QPushButton("Browse...")
         browse_button.clicked.connect(self._browse_file)
         file_layout.addWidget(browse_button)
-        
+
         output_dir_layout.addLayout(file_layout)
-        
+
         # Open folder button
         open_folder_button = QPushButton("Open Output Folder")
         open_folder_button.setToolTip("Open the output folder in your file explorer")
         open_folder_button.clicked.connect(self._open_output_folder)
         output_dir_layout.addWidget(open_folder_button)
-        
+
         output_dir_group.setLayout(output_dir_layout)
         layout.addWidget(output_dir_group)
 
@@ -213,10 +213,14 @@ class ExportDialog(QDialog):
     def _setup_connections(self):
         """Setup signal connections for dynamic UI updates"""
         # Enable/disable compression based on format
-        self.json_radio.toggled.connect(lambda checked: self.compress_checkbox.setEnabled(checked))
+        self.json_radio.toggled.connect(
+            lambda checked: self.compress_checkbox.setEnabled(checked)
+        )
 
         # Enable/disable delimiter based on format
-        self.csv_radio.toggled.connect(lambda checked: self.delimiter_combo.setEnabled(checked))
+        self.csv_radio.toggled.connect(
+            lambda checked: self.delimiter_combo.setEnabled(checked)
+        )
 
         # Update file extension hint when format changes
         self.format_group.buttonClicked.connect(self._update_file_extension_hint)
@@ -258,9 +262,7 @@ class ExportDialog(QDialog):
         # Determine file filter based on selected format
         if self.json_radio.isChecked():
             if self.compress_checkbox.isChecked():
-                file_filter = (
-                    "Compressed JSON Files (*.json.gz);;JSON Files (*.json);;All Files (*.*)"
-                )
+                file_filter = "Compressed JSON Files (*.json.gz);;JSON Files (*.json);;All Files (*.*)"
             else:
                 file_filter = "JSON Files (*.json);;All Files (*.*)"
             default_ext = ".json"
@@ -279,7 +281,9 @@ class ExportDialog(QDialog):
             file_filter = "Excel Files (*.xlsx);;All Files (*.*)"
             default_ext = ".xlsx"
 
-        file_path, _ = QFileDialog.getSaveFileName(self, "Export Results", "", file_filter)
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "Export Results", "", file_filter
+        )
 
         if file_path:
             # Ensure correct extension
@@ -321,8 +325,12 @@ class ExportDialog(QDialog):
             "file_path": self.file_path_edit.text() or self.file_path,
             "include_metadata": self.include_metadata_checkbox.isChecked(),
             "include_processing_info": self.include_processing_info_checkbox.isChecked(),
-            "compress": self.compress_checkbox.isChecked() if format_type == "json" else False,
-            "delimiter": self.delimiter_combo.currentText() if format_type == "csv" else ",",
+            "compress": self.compress_checkbox.isChecked()
+            if format_type == "json"
+            else False,
+            "delimiter": self.delimiter_combo.currentText()
+            if format_type == "csv"
+            else ",",
             # Legacy options for backward compatibility
             "export_filtered": self.export_filtered_check.isChecked(),
             "include_candidates": self.include_candidates_check.isChecked(),
@@ -335,7 +343,9 @@ class ExportDialog(QDialog):
         """Validate export options"""
         file_path = self.file_path_edit.text() or self.file_path
         if not file_path:
-            QMessageBox.warning(self, "Invalid Options", "Please select an output file location.")
+            QMessageBox.warning(
+                self, "Invalid Options", "Please select an output file location."
+            )
             return False
 
         # Check if directory exists and is writable
@@ -345,7 +355,9 @@ class ExportDialog(QDialog):
                 os.makedirs(output_dir, exist_ok=True)
             except OSError:
                 QMessageBox.warning(
-                    self, "Invalid Path", f"Cannot create output directory:\n{output_dir}"
+                    self,
+                    "Invalid Path",
+                    f"Cannot create output directory:\n{output_dir}",
                 )
                 return False
 
@@ -359,7 +371,7 @@ class ExportDialog(QDialog):
 
     def _open_output_folder(self):
         """Open output folder in file explorer.
-        
+
         Opens the default exports directory or the directory of the selected file.
         """
         # Get directory to open
@@ -373,7 +385,7 @@ class ExportDialog(QDialog):
         else:
             # Use default exports directory
             folder_path = AppPaths.exports_dir()
-        
+
         # Open folder based on platform
         try:
             if platform.system() == "Windows":
@@ -384,14 +396,12 @@ class ExportDialog(QDialog):
                 subprocess.Popen(["xdg-open", str(folder_path)])
         except Exception as e:
             QMessageBox.warning(
-                self,
-                "Cannot Open Folder",
-                f"Could not open folder:\n{str(e)}"
+                self, "Cannot Open Folder", f"Could not open folder:\n{str(e)}"
             )
 
     def show_export_complete(self, file_path: str):
         """Show export completion message with option to open folder.
-        
+
         Args:
             file_path: Path to the exported file.
         """
@@ -400,14 +410,14 @@ class ExportDialog(QDialog):
         msg.setWindowTitle("Export Complete")
         msg.setText("Results exported successfully!")
         msg.setInformativeText(f"File: {file_path}")
-        
+
         # Add "Open Folder" button
         open_folder_btn = msg.addButton("Open Folder", QMessageBox.ActionRole)
         open_file_btn = msg.addButton("Open File", QMessageBox.ActionRole)
         msg.addButton("OK", QMessageBox.AcceptRole)
-        
+
         msg.exec()
-        
+
         if msg.clickedButton() == open_folder_btn:
             # Open folder containing the file
             folder_path = Path(file_path).parent

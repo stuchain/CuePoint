@@ -32,7 +32,13 @@ from cuepoint.utils.support_bundle import SupportBundleGenerator
 class CrashDialog(QDialog):
     """Dialog shown when application crashes (Design 7.25, 7.26)."""
 
-    def __init__(self, exception: Exception, traceback_str: str, crash_log: Path, crash_report_path: Path):
+    def __init__(
+        self,
+        exception: Exception,
+        traceback_str: str,
+        crash_log: Path,
+        crash_report_path: Path,
+    ):
         """Initialize crash dialog.
 
         Args:
@@ -81,13 +87,18 @@ class CrashDialog(QDialog):
         trace_preview = QTextEdit()
         trace_preview.setReadOnly(True)
         trace_preview.setMaximumHeight(120)
-        trace_preview.setPlainText(self.traceback_str[:2000] + ("..." if len(self.traceback_str) > 2000 else ""))
+        trace_preview.setPlainText(
+            self.traceback_str[:2000]
+            + ("..." if len(self.traceback_str) > 2000 else "")
+        )
         layout.addWidget(trace_preview)
 
         # Buttons (Design 7.26)
         button_layout = QHBoxLayout()
 
-        export_btn = QPushButton(tr("crash.dialog.export_bundle", "Export Support Bundle"))
+        export_btn = QPushButton(
+            tr("crash.dialog.export_bundle", "Export Support Bundle")
+        )
         export_btn.setDefault(True)
         export_btn.clicked.connect(self._on_export_bundle)
         button_layout.addWidget(export_btn)

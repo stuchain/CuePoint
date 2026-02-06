@@ -36,7 +36,10 @@ class MatcherService(IMatcherService):
         input_mix: Optional[Dict[str, object]] = None,
         input_generic_phrases: Optional[List[str]] = None,
     ) -> Tuple[
-        Optional[BeatportCandidate], List[BeatportCandidate], List[Tuple[int, str, int, int]], int
+        Optional[BeatportCandidate],
+        List[BeatportCandidate],
+        List[Tuple[int, str, int, int]],
+        int,
     ]:
         """Find best Beatport match for a track.
 

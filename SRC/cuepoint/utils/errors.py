@@ -100,7 +100,11 @@ def error_file_not_found(
     """
     abs_path = os.path.abspath(file_path)
     current_dir = os.getcwd()
-    dir_exists = os.path.exists(os.path.dirname(abs_path)) if os.path.dirname(abs_path) else False
+    dir_exists = (
+        os.path.exists(os.path.dirname(abs_path))
+        if os.path.dirname(abs_path)
+        else False
+    )
     file_exists = os.path.exists(file_path)
 
     context = {
@@ -120,7 +124,9 @@ def error_file_not_found(
         if not os.path.isabs(file_path):
             possible_in_current = os.path.join(current_dir, file_path)
             if os.path.exists(possible_in_current):
-                suggestions.append(f"Found file in current directory: {possible_in_current}")
+                suggestions.append(
+                    f"Found file in current directory: {possible_in_current}"
+                )
 
         # Check for common variations
         if file_path.endswith(".xml"):
@@ -168,7 +174,9 @@ def error_playlist_not_found(playlist_name: str, available_playlists: List[str])
     # Try to find similar playlist names
     playlist_lower = playlist_name.lower()
     similar = [
-        p for p in available_playlists if playlist_lower in p.lower() or p.lower() in playlist_lower
+        p
+        for p in available_playlists
+        if playlist_lower in p.lower() or p.lower() in playlist_lower
     ]
 
     if similar:
@@ -191,7 +199,9 @@ def error_playlist_not_found(playlist_name: str, available_playlists: List[str])
     )
 
 
-def error_xml_parsing(xml_path: str, error: Exception, line_number: Optional[int] = None) -> str:
+def error_xml_parsing(
+    xml_path: str, error: Exception, line_number: Optional[int] = None
+) -> str:
     """
     Generate an error message for XML parsing errors
 
@@ -217,7 +227,9 @@ def error_xml_parsing(xml_path: str, error: Exception, line_number: Optional[int
 
     if line_number:
         context["Line number"] = str(line_number)
-        suggestions.append(f"Check line {line_number} in the XML file for syntax errors")
+        suggestions.append(
+            f"Check line {line_number} in the XML file for syntax errors"
+        )
 
     see_also = "Rekordbox XML export format documentation"
 
@@ -306,7 +318,9 @@ def error_config_invalid(
         suggestions.insert(0, f"Fix invalid setting: {invalid_key}")
         if expected_type and actual_value:
             suggestions.append(f"  - Expected: {expected_type}")
-            suggestions.append(f"  - Got: {actual_value} ({type(actual_value).__name__})")
+            suggestions.append(
+                f"  - Got: {actual_value} ({type(actual_value).__name__})"
+            )
 
     context = {"Config file": config_path, "Error": str(error)}
 
@@ -324,7 +338,9 @@ def error_config_invalid(
     )
 
 
-def error_missing_dependency(package_name: str, install_command: Optional[str] = None) -> str:
+def error_missing_dependency(
+    package_name: str, install_command: Optional[str] = None
+) -> str:
     """
     Generate an error message for missing dependencies
 

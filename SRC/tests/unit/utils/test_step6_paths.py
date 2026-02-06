@@ -151,9 +151,7 @@ class TestStorageInvariants:
         user_path = AppPaths.data_dir() / "test.txt"
         assert StorageInvariants.is_restricted_location(user_path) is False
 
-    @pytest.mark.skipif(
-        os.name != "nt", reason="Windows-specific test"
-    )
+    @pytest.mark.skipif(os.name != "nt", reason="Windows-specific test")
     def test_is_restricted_location_program_files(self):
         """Test detecting restricted location (Program Files on Windows)."""
         program_files = Path(os.environ.get("ProgramFiles", ""))
@@ -176,9 +174,7 @@ class TestStorageInvariants:
         assert is_safe is False
         assert error is not None
 
-    @pytest.mark.skipif(
-        os.name == "nt", reason="macOS-specific test"
-    )
+    @pytest.mark.skipif(os.name == "nt", reason="macOS-specific test")
     def test_is_app_bundle_macos(self):
         """Test app bundle detection on macOS."""
         # This would need actual .app bundle to test properly

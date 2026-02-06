@@ -99,13 +99,19 @@ def test_cli_resume_and_reliability_flags(tmp_path: Path) -> None:
     cmd = [
         sys.executable,
         str(project_root / "SRC" / "main.py"),
-        "--xml", str(small_xml),
-        "--playlist", "My Playlist",
-        "--output-dir", str(out_dir),
-        "--out", "reliability_test",
+        "--xml",
+        str(small_xml),
+        "--playlist",
+        "My Playlist",
+        "--output-dir",
+        str(out_dir),
+        "--out",
+        "reliability_test",
         "--no-resume",
-        "--checkpoint-every", "25",
-        "--max-retries", "2",
+        "--checkpoint-every",
+        "25",
+        "--max-retries",
+        "2",
         "--no-preflight",  # Skip network check for fast CI run
     ]
     result = subprocess.run(

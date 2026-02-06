@@ -31,8 +31,12 @@ def check_search_service(beatport_service: Any = None) -> HealthCheckResult:
     """
     try:
         if NetworkState.is_online():
-            return HealthCheckResult("search", True, "Online", "Network available for Beatport search")
-        return HealthCheckResult("search", False, "Offline", "No network; search will use cache only")
+            return HealthCheckResult(
+                "search", True, "Online", "Network available for Beatport search"
+            )
+        return HealthCheckResult(
+            "search", False, "Offline", "No network; search will use cache only"
+        )
     except Exception as e:
         return HealthCheckResult("search", False, "Error", str(e))
 
@@ -50,7 +54,9 @@ def check_parsing_service() -> HealthCheckResult:
             path = f.name
         try:
             parse_rekordbox(path)
-            return HealthCheckResult("parsing", True, "OK", "Rekordbox parser operational")
+            return HealthCheckResult(
+                "parsing", True, "OK", "Rekordbox parser operational"
+            )
         finally:
             Path(path).unlink(missing_ok=True)
     except Exception as e:
@@ -64,9 +70,12 @@ def check_cache_service(cache_service: Any = None) -> HealthCheckResult:
             try:
                 from cuepoint.services.interfaces import ICacheService
                 from cuepoint.utils.di_container import get_container
+
                 cache_service = get_container().resolve(ICacheService)
             except Exception:
-                return HealthCheckResult("caching", False, "Unavailable", "Cache service not initialized")
+                return HealthCheckResult(
+                    "caching", False, "Unavailable", "Cache service not initialized"
+                )
 
         # Simple get/set round-trip
         key = "_health_check_"

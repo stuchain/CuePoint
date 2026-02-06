@@ -9,7 +9,11 @@ import os
 import pytest
 
 from cuepoint.utils.paths import AppPaths
-from cuepoint.utils.privacy import DataDeletionManager, DataRetentionManager, PrivacyAuditor
+from cuepoint.utils.privacy import (
+    DataDeletionManager,
+    DataRetentionManager,
+    PrivacyAuditor,
+)
 
 
 @pytest.mark.unit
@@ -75,9 +79,9 @@ class TestDataRetentionManager:
         os.utime(new, (new_mtime, new_mtime))
 
         # Limit to ~1KB so one file must be removed
-        DataRetentionManager.enforce_cache_retention(cache_dir=cache_dir, max_size_mb=0)  # 0MB => 0 bytes
+        DataRetentionManager.enforce_cache_retention(
+            cache_dir=cache_dir, max_size_mb=0
+        )  # 0MB => 0 bytes
         # With 0MB limit, everything should be removed best-effort
         assert not old.exists()
         assert not new.exists()
-
-

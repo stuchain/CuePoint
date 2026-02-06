@@ -15,7 +15,9 @@ def dialog_with_errors(qapp):
     """Create a PreflightDialog instance with errors."""
     preflight = PreflightResult(
         errors=[PreflightIssue(code="P001", message="XML file not found.")],
-        warnings=[PreflightIssue(code="P020", message="Output folder will be created.")],
+        warnings=[
+            PreflightIssue(code="P020", message="Output folder will be created.")
+        ],
     )
     return PreflightDialog(preflight=preflight)
 

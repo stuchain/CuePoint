@@ -44,20 +44,30 @@ class PrivacyService:
         )
 
     def set_preferences(self, prefs: PrivacyPreferences) -> None:
-        self._settings.setValue(self.KEY_CLEAR_CACHE_ON_EXIT, bool(prefs.clear_cache_on_exit))
-        self._settings.setValue(self.KEY_CLEAR_LOGS_ON_EXIT, bool(prefs.clear_logs_on_exit))
+        self._settings.setValue(
+            self.KEY_CLEAR_CACHE_ON_EXIT, bool(prefs.clear_cache_on_exit)
+        )
+        self._settings.setValue(
+            self.KEY_CLEAR_LOGS_ON_EXIT, bool(prefs.clear_logs_on_exit)
+        )
         self._settings.sync()
 
     def set_clear_cache_on_exit(self, enabled: bool) -> None:
         prefs = self.get_preferences()
         self.set_preferences(
-            PrivacyPreferences(clear_cache_on_exit=bool(enabled), clear_logs_on_exit=prefs.clear_logs_on_exit)
+            PrivacyPreferences(
+                clear_cache_on_exit=bool(enabled),
+                clear_logs_on_exit=prefs.clear_logs_on_exit,
+            )
         )
 
     def set_clear_logs_on_exit(self, enabled: bool) -> None:
         prefs = self.get_preferences()
         self.set_preferences(
-            PrivacyPreferences(clear_cache_on_exit=prefs.clear_cache_on_exit, clear_logs_on_exit=bool(enabled))
+            PrivacyPreferences(
+                clear_cache_on_exit=prefs.clear_cache_on_exit,
+                clear_logs_on_exit=bool(enabled),
+            )
         )
 
     def apply_exit_policies(self) -> None:
@@ -71,10 +81,3 @@ class PrivacyService:
         except Exception:
             # Never block app exit
             return
-
-
-
-
-
-
-

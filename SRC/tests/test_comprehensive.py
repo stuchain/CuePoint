@@ -12,119 +12,123 @@ src_path = os.path.dirname(os.path.abspath(__file__))
 if src_path not in sys.path:
     sys.path.insert(0, src_path)
 
+
 def test_all_imports():
     """Test all critical imports"""
     print("=" * 80)
     print("TEST 1: Import Verification")
     print("=" * 80)
-    
+
     errors = []
-    
+
     # Test core imports
     try:
         print("[OK] Core matcher imports")
     except Exception as e:
         errors.append(f"Core matcher: {e}")
         print(f"[FAIL] Core matcher: {e}")
-    
+
     try:
         print("[OK] Core mix_parser imports")
     except Exception as e:
         errors.append(f"Core mix_parser: {e}")
         print(f"[FAIL] Core mix_parser: {e}")
-    
+
     try:
         print("[OK] Core query_generator imports")
     except Exception as e:
         errors.append(f"Core query_generator: {e}")
         print(f"[FAIL] Core query_generator: {e}")
-    
+
     try:
         print("[OK] Core text_processing imports")
     except Exception as e:
         errors.append(f"Core text_processing: {e}")
         print(f"[FAIL] Core text_processing: {e}")
-    
+
     # Test data imports
     try:
         print("[OK] Data beatport imports")
     except Exception as e:
         errors.append(f"Data beatport: {e}")
         print(f"[FAIL] Data beatport: {e}")
-    
+
     try:
         print("[OK] Data rekordbox imports")
     except Exception as e:
         errors.append(f"Data rekordbox: {e}")
         print(f"[FAIL] Data rekordbox: {e}")
-    
+
     # Test models imports
     try:
         print("[OK] Models config imports")
     except Exception as e:
         errors.append(f"Models config: {e}")
         print(f"[FAIL] Models config: {e}")
-    
+
     # Test new Phase 5 architecture imports
     try:
         print("[OK] Phase 5 processor imports (ProcessorService, CLIProcessor)")
     except Exception as e:
         errors.append(f"Phase 5 processor: {e}")
         print(f"[FAIL] Phase 5 processor: {e}")
-    
+
     # Test legacy imports (for backward compatibility verification)
     try:
         print("[OK] Legacy processor imports (deprecated - kept for compatibility)")
     except Exception as e:
         # Legacy imports are optional - don't fail if they don't work
         print(f"[INFO] Legacy processor not available: {e}")
-    
+
     try:
         print("[OK] Services output_writer imports")
     except Exception as e:
         errors.append(f"Services output_writer: {e}")
         print(f"[FAIL] Services output_writer: {e}")
-    
+
     # Test utils imports
     try:
         print("[OK] Utils utils imports")
     except Exception as e:
         errors.append(f"Utils utils: {e}")
         print(f"[FAIL] Utils utils: {e}")
-    
+
     try:
         print("[OK] Utils performance imports")
     except Exception as e:
         errors.append(f"Utils performance: {e}")
         print(f"[FAIL] Utils performance: {e}")
-    
+
     try:
         print("[OK] Utils errors imports")
     except Exception as e:
         errors.append(f"Utils errors: {e}")
         print(f"[FAIL] Utils errors: {e}")
-    
+
     # Test UI imports (basic ones that don't require Qt)
     try:
         print("[OK] UI gui_interface imports")
     except Exception as e:
         errors.append(f"UI gui_interface: {e}")
         print(f"[FAIL] UI gui_interface: {e}")
-    
+
     # Test UI imports that require Qt (may fail if Qt not installed, but should not fail on import)
     try:
         from cuepoint.ui.main_window import MainWindow  # noqa: F401
+
         print("[OK] UI main_window imports")
     except ImportError as e:
         if "PySide6" in str(e) or "PyQt" in str(e):
-            print("[SKIP] UI main_window (Qt not available, but import path is correct)")
+            print(
+                "[SKIP] UI main_window (Qt not available, but import path is correct)"
+            )
         else:
             errors.append(f"UI main_window: {e}")
             print(f"[FAIL] UI main_window: {e}")
     except Exception as e:
         errors.append(f"UI main_window: {e}")
         print(f"[FAIL] UI main_window: {e}")
-    
+
     print("\n" + "=" * 80)
     if errors:
         print(f"[FAIL] {len(errors)} import error(s) found")
@@ -139,23 +143,23 @@ def test_entry_points():
     print("\n" + "=" * 80)
     print("TEST 2: Entry Point Verification")
     print("=" * 80)
-    
+
     errors = []
-    
+
     # Test CLI entry point
     try:
         print("[OK] CLI entry point (main.py) can be imported")
     except Exception as e:
         errors.append(f"CLI entry point: {e}")
         print(f"[FAIL] CLI entry point: {e}")
-    
+
     # Test GUI entry point
     try:
         print("[OK] GUI entry point (gui_app.py) can be imported")
     except Exception as e:
         errors.append(f"GUI entry point: {e}")
         print(f"[FAIL] GUI entry point: {e}")
-    
+
     print("\n" + "=" * 80)
     if errors:
         print(f"[FAIL] {len(errors)} entry point error(s) found")
@@ -170,7 +174,7 @@ def test_circular_imports():
     print("\n" + "=" * 80)
     print("TEST 3: Circular Import Check")
     print("=" * 80)
-    
+
     # Try importing modules that depend on each other
     try:
         # These should all work without circular import errors
@@ -186,12 +190,16 @@ def test_basic_functionality():
     print("\n" + "=" * 80)
     print("TEST 4: Basic Functionality")
     print("=" * 80)
-    
+
     errors = []
-    
+
     # Test text processing
     try:
-        from cuepoint.core.text_processing import normalize_text, sanitize_title_for_search
+        from cuepoint.core.text_processing import (
+            normalize_text,
+            sanitize_title_for_search,
+        )
+
         result = normalize_text("Test Track (Extended Mix)")
         assert isinstance(result, str)
         result2 = sanitize_title_for_search("[3] Test Track")
@@ -201,20 +209,22 @@ def test_basic_functionality():
     except Exception as e:
         errors.append(f"Text processing: {e}")
         print(f"[FAIL] Text processing: {e}")
-    
+
     # Test config
     try:
         from cuepoint.models.config import SETTINGS
+
         assert isinstance(SETTINGS, dict)
         assert "MAX_SEARCH_RESULTS" in SETTINGS
         print("[OK] Config module works")
     except Exception as e:
         errors.append(f"Config: {e}")
         print(f"[FAIL] Config: {e}")
-    
+
     # Test performance collector
     try:
         from cuepoint.utils.performance import performance_collector
+
         performance_collector.reset()
         performance_collector.start_session()
         stats = performance_collector.get_stats()
@@ -223,7 +233,7 @@ def test_basic_functionality():
     except Exception as e:
         errors.append(f"Performance collector: {e}")
         print(f"[FAIL] Performance collector: {e}")
-    
+
     print("\n" + "=" * 80)
     if errors:
         print(f"[FAIL] {len(errors)} functionality error(s) found")
@@ -239,26 +249,26 @@ def main():
     print("COMPREHENSIVE TEST SUITE - Step 5.1 Verification")
     print("=" * 80)
     print()
-    
+
     results = []
-    
+
     results.append(("Imports", test_all_imports()))
     results.append(("Entry Points", test_entry_points()))
     results.append(("Circular Imports", test_circular_imports()))
     results.append(("Basic Functionality", test_basic_functionality()))
-    
+
     # Summary
     print("\n" + "=" * 80)
     print("TEST SUMMARY")
     print("=" * 80)
-    
+
     all_passed = True
     for test_name, passed in results:
         status = "[OK]" if passed else "[FAIL]"
         print(f"{status} {test_name}")
         if not passed:
             all_passed = False
-    
+
     print("\n" + "=" * 80)
     if all_passed:
         print("[SUCCESS] All tests passed!")

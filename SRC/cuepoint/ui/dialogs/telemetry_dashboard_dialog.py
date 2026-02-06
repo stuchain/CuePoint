@@ -8,8 +8,14 @@ Simple analytics dashboard for trend review.
 Shows run success rate, match rate, and error trends from local telemetry.
 """
 
-
-from PySide6.QtWidgets import QDialog, QGroupBox, QHBoxLayout, QLabel, QPushButton, QVBoxLayout
+from PySide6.QtWidgets import (
+    QDialog,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+)
 
 from cuepoint.utils.telemetry_analytics import (
     RETENTION_DAYS,

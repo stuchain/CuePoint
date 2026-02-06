@@ -37,7 +37,10 @@ class TestTrackFromRBTrackEdgeCases:
         rbtrack = RBTrack(track_id="1", title="Track", artists="")
         # Empty string should be handled
         track = track_from_rbtrack(rbtrack)
-        assert track.artist in ("Unknown Artist", "Track")  # Either default or extracted
+        assert track.artist in (
+            "Unknown Artist",
+            "Track",
+        )  # Either default or extracted
 
     def test_conversion_with_title_containing_artist(self):
         """Test conversion extracts artist from various title formats."""
@@ -578,4 +581,3 @@ class TestTrackResultToOldEdgeCases:
         assert converted_back.matched == original.matched
         assert converted_back.beatport_url == original.beatport_url
         assert converted_back.match_score == original.match_score
-

@@ -42,10 +42,3 @@ class SecurityService:
             return SecurityCheckResult(ok=True, error=None)
         except Exception as e:
             return SecurityCheckResult(ok=False, error=f"SSL context error: {e}")
-
-
-
-
-
-
-

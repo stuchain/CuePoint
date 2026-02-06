@@ -202,4 +202,3 @@ def measure_block(
             result = process_track(track)
     """
     return PerformanceContext(name, threshold, log_slow, logger)
-

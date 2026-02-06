@@ -17,28 +17,35 @@ def test_step52_imports_smoke() -> None:
     assert container is not None
 
     from cuepoint.services.cache_service import CacheEntry, CacheService
+
     assert CacheEntry is not None
     cache = CacheService()
     assert cache is not None
 
     from cuepoint.services.logging_service import LoggingService
+
     assert LoggingService is not None
 
     from cuepoint.services.config_service import ConfigService
+
     assert ConfigService is not None
 
     from cuepoint.services.export_service import ExportService
+
     assert ExportService is not None
 
     from cuepoint.services.matcher_service import MatcherService
+
     assert MatcherService is not None
 
     from cuepoint.services.beatport_service import BeatportService
+
     assert BeatportService is not None
 
     from cuepoint.services.processor_service import ProcessorService
+
     assert ProcessorService is not None
 
     from cuepoint.services.bootstrap import bootstrap_services
-    assert callable(bootstrap_services)
 
+    assert callable(bootstrap_services)

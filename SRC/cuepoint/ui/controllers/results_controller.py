@@ -96,7 +96,9 @@ class ResultsController:
 
         # Apply year filter
         if year_min is not None or year_max is not None:
-            filtered = [r for r in filtered if self._year_in_range(r, year_min, year_max)]
+            filtered = [
+                r for r in filtered if self._year_in_range(r, year_min, year_max)
+            ]
 
         # Apply BPM filter
         if bpm_min is not None or bpm_max is not None:
@@ -105,7 +107,9 @@ class ResultsController:
         # Apply key filter
         if key and key != "All":
             filtered = [
-                r for r in filtered if r.matched and r.beatport_key and r.beatport_key == key
+                r
+                for r in filtered
+                if r.matched and r.beatport_key and r.beatport_key == key
             ]
 
         self.filtered_results = filtered
@@ -194,7 +198,9 @@ class ResultsController:
         if key == "title":
             self.filtered_results.sort(key=lambda r: r.title.lower(), reverse=reverse)
         elif key == "artist":
-            self.filtered_results.sort(key=lambda r: (r.artist or "").lower(), reverse=reverse)
+            self.filtered_results.sort(
+                key=lambda r: (r.artist or "").lower(), reverse=reverse
+            )
         elif key == "confidence":
             # Sort by confidence level (high > medium > low > None)
             confidence_order = {"high": 3, "medium": 2, "low": 1, None: 0}
@@ -209,7 +215,8 @@ class ResultsController:
             self.filtered_results.sort(key=lambda r: r.playlist_index, reverse=reverse)
         elif key == "score":
             self.filtered_results.sort(
-                key=lambda r: r.match_score if r.match_score is not None else 0.0, reverse=reverse
+                key=lambda r: r.match_score if r.match_score is not None else 0.0,
+                reverse=reverse,
             )
 
         return self.filtered_results
@@ -257,14 +264,22 @@ class ResultsController:
 
         # Calculate average score for matched tracks
         matched_scores = [
-            r.match_score for r in self.all_results if r.matched and r.match_score is not None
+            r.match_score
+            for r in self.all_results
+            if r.matched and r.match_score is not None
         ]
         avg_score = sum(matched_scores) / len(matched_scores) if matched_scores else 0.0
 
         # Count by confidence
-        high_conf = sum(1 for r in self.all_results if r.matched and r.confidence == "high")
-        medium_conf = sum(1 for r in self.all_results if r.matched and r.confidence == "medium")
-        low_conf = sum(1 for r in self.all_results if r.matched and r.confidence == "low")
+        high_conf = sum(
+            1 for r in self.all_results if r.matched and r.confidence == "high"
+        )
+        medium_conf = sum(
+            1 for r in self.all_results if r.matched and r.confidence == "medium"
+        )
+        low_conf = sum(
+            1 for r in self.all_results if r.matched and r.confidence == "low"
+        )
 
         return {
             "total": total,
@@ -272,7 +287,11 @@ class ResultsController:
             "unmatched": unmatched,
             "match_rate": match_rate,
             "avg_score": avg_score,
-            "confidence_breakdown": {"high": high_conf, "medium": medium_conf, "low": low_conf},
+            "confidence_breakdown": {
+                "high": high_conf,
+                "medium": medium_conf,
+                "low": low_conf,
+            },
         }
 
     def get_batch_summary_statistics(
@@ -311,11 +330,21 @@ class ResultsController:
                 total += len(results)
                 matched += sum(1 for r in results if r.matched)
                 matched_scores.extend(
-                    [r.match_score for r in results if r.matched and r.match_score is not None]
+                    [
+                        r.match_score
+                        for r in results
+                        if r.matched and r.match_score is not None
+                    ]
                 )
-                high_conf += sum(1 for r in results if r.matched and r.confidence == "high")
-                medium_conf += sum(1 for r in results if r.matched and r.confidence == "medium")
-                low_conf += sum(1 for r in results if r.matched and r.confidence == "low")
+                high_conf += sum(
+                    1 for r in results if r.matched and r.confidence == "high"
+                )
+                medium_conf += sum(
+                    1 for r in results if r.matched and r.confidence == "medium"
+                )
+                low_conf += sum(
+                    1 for r in results if r.matched and r.confidence == "low"
+                )
 
         unmatched = total - matched
         match_rate = (matched / total * 100) if total > 0 else 0.0
@@ -330,5 +359,9 @@ class ResultsController:
             "unmatched": unmatched,
             "match_rate": match_rate,
             "avg_score": avg_score,
-            "confidence_breakdown": {"high": high_conf, "medium": medium_conf, "low": low_conf},
+            "confidence_breakdown": {
+                "high": high_conf,
+                "medium": medium_conf,
+                "low": low_conf,
+            },
         }

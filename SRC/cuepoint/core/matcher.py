@@ -346,7 +346,10 @@ def best_beatport_match(
     input_mix: Optional[Dict[str, object]] = None,
     input_generic_phrases: Optional[List[str]] = None,
 ) -> Tuple[
-    Optional[BeatportCandidate], List[BeatportCandidate], List[Tuple[int, str, int, int]], int
+    Optional[BeatportCandidate],
+    List[BeatportCandidate],
+    List[Tuple[int, str, int, int]],
+    int,
 ]:
     """
     Find best Beatport match for a track by executing queries and scoring candidates.
@@ -423,7 +426,9 @@ def best_beatport_match(
     ] = {}
 
     visited_urls: set[str] = set()  # URLs we've already fetched
-    visited_track_ids: set[str] = set()  # Track IDs we've already parsed (avoid re-parsing)
+    visited_track_ids: set[str] = (
+        set()
+    )  # Track IDs we've already parsed (avoid re-parsing)
 
     # track_title should already be cleaned (no [F], [3], etc.) but ensure it's clean
     base_title_clean = sanitize_title_for_search(track_title).strip().lower()
@@ -501,7 +506,9 @@ def best_beatport_match(
             return int(SETTINGS.get("MR_MED", 40))
         if has_mix or has_phrase or family_full_plus_one:
             return (
-                int(SETTINGS.get("MR_HIGH", 100)) if scarcity else int(SETTINGS.get("MR_MED", 40))
+                int(SETTINGS.get("MR_HIGH", 100))
+                if scarcity
+                else int(SETTINGS.get("MR_MED", 40))
             )
         return int(SETTINGS.get("MR_LOW", 10))
 
@@ -611,7 +618,9 @@ def best_beatport_match(
                 # Penalize if candidate has < 67% of tokens AND very high similarity
                 # Reduces score but doesn't reject (may still be valid in some cases)
                 elif token_ratio < 0.67 and t_sim >= 90:
-                    t_sim = max(70, t_sim - 15)  # Reduce by 15 points (keep at least 70)
+                    t_sim = max(
+                        70, t_sim - 15
+                    )  # Reduce by 15 points (keep at least 70)
 
         # ========================================================================
         # GUARD 2: Title Token Coverage
@@ -625,7 +634,9 @@ def best_beatport_match(
 
         if len(in_sig) >= 2:  # Only apply if input has 2+ significant tokens
             shared = set(in_sig) & set(cand_sig)  # Common tokens
-            coverage = len(shared) / max(1, len(in_sig))  # Percentage of input tokens matched
+            coverage = len(shared) / max(
+                1, len(in_sig)
+            )  # Percentage of input tokens matched
 
             # Reject if low coverage AND both similarities are low
             if coverage < 0.3 and t_sim < 85 and a_sim < 90:
@@ -662,7 +673,9 @@ def best_beatport_match(
         matched_generic = False
         if input_generic_phrases:
             try:
-                matched_generic = _any_phrase_token_set_in_title(input_generic_phrases, title or "")
+                matched_generic = _any_phrase_token_set_in_title(
+                    input_generic_phrases, title or ""
+                )
                 if matched_generic:
                     gen_bonus += SETTINGS.get("GENERIC_PHRASE_MATCH_BONUS", 24)
                 else:
@@ -706,7 +719,9 @@ def best_beatport_match(
             # Check if we have an exact artist match vs a partial match
             from cuepoint.core.text_processing import split_artists
 
-            input_artist_tokens = set([t.lower() for t in split_artists(track_artists_for_scoring)])
+            input_artist_tokens = set(
+                [t.lower() for t in split_artists(track_artists_for_scoring)]
+            )
             cand_artist_tokens = set([t.lower() for t in split_artists(artists)])
 
             # If input has specific artist and candidate doesn't match well, penalize
@@ -762,7 +777,9 @@ def best_beatport_match(
             # Reject if no overlap AND artist similarity is very low (< 20%)
 
             overlap = _artist_token_overlap(track_artists_for_scoring, artists or "")
-            remix_implies_overlap = title_mentions_input_remix(title, track_artists_for_scoring)
+            remix_implies_overlap = title_mentions_input_remix(
+                title, track_artists_for_scoring
+            )
 
             if not (overlap or remix_implies_overlap):
                 if a_sim < 20:  # Very low artist similarity with no token overlap
@@ -790,7 +807,9 @@ def best_beatport_match(
                 elif a_sim >= 70:
                     title_floor = 35  # Lower still for good artist match
                 elif a_sim >= 85:
-                    title_floor = 30  # Very lenient for excellent artist match on remixes
+                    title_floor = (
+                        30  # Very lenient for excellent artist match on remixes
+                    )
             elif (overlap or remix_implies_overlap) and a_sim >= 50:
                 # Non-remix but artist matches reasonably well
                 title_floor = 55
@@ -909,7 +928,11 @@ def best_beatport_match(
             if (isinstance(cap, (int, str)) and str(cap).isdigit())
             else (cap if isinstance(cap, int) else None)
         )
-        urls = urls_all[:cap_i] if (cap_i and cap_i > 0 and len(urls_all) > cap_i) else urls_all
+        urls = (
+            urls_all[:cap_i]
+            if (cap_i and cap_i > 0 and len(urls_all) > cap_i)
+            else urls_all
+        )
 
         queries_audit.append((i, q, len(urls_all), q_elapsed))
 
@@ -927,7 +950,10 @@ def best_beatport_match(
         # - Keep the concise summary always (existing behavior).
         # - When VERBOSE/TRACE is enabled, also print the actual query text so it's
         #   clear why some query variants return 0 candidates.
-        print(f"[{idx}]   q{i} -> {len(urls)} candidates (raw={len(urls_all)}, MR={mr})", flush=True)
+        print(
+            f"[{idx}]   q{i} -> {len(urls)} candidates (raw={len(urls_all)}, MR={mr})",
+            flush=True,
+        )
         if SETTINGS.get("TRACE") or SETTINGS.get("VERBOSE"):
             try:
                 # Shorten for readability in console; full query is stored in queries_audit/queries_data.
@@ -939,7 +965,7 @@ def best_beatport_match(
 
         # If we ended up with 0 candidates but had raw results, it usually means
         # downstream filtering/deduplication/capping removed them. Print a hint in TRACE mode.
-        if (SETTINGS.get("TRACE") and len(urls) == 0 and len(urls_all) > 0):
+        if SETTINGS.get("TRACE") and len(urls) == 0 and len(urls_all) > 0:
             try:
                 print(
                     f"[{idx}]     note: raw results existed but 0 remained after cap/filter/dedupe",
@@ -1028,15 +1054,41 @@ def best_beatport_match(
             """
             # Check URL cache first
             if u in parsed_cache:
-                title, artists, key, year, bpm, label, genres, rel_name, rel_date = parsed_cache[u]
-                return u, title, artists, key, year, bpm, label, genres, rel_name, rel_date, 0
+                title, artists, key, year, bpm, label, genres, rel_name, rel_date = (
+                    parsed_cache[u]
+                )
+                return (
+                    u,
+                    title,
+                    artists,
+                    key,
+                    year,
+                    bpm,
+                    label,
+                    genres,
+                    rel_name,
+                    rel_date,
+                    0,
+                )
 
             # Parse the Beatport track page
             t0 = time.perf_counter()
-            title, artists, key, year, bpm, label, genres, rel_name, rel_date = parse_track_page(u)
+            title, artists, key, year, bpm, label, genres, rel_name, rel_date = (
+                parse_track_page(u)
+            )
 
             # Cache by URL
-            parsed_cache[u] = (title, artists, key, year, bpm, label, genres, rel_name, rel_date)
+            parsed_cache[u] = (
+                title,
+                artists,
+                key,
+                year,
+                bpm,
+                label,
+                genres,
+                rel_name,
+                rel_date,
+            )
 
             # Also cache by track ID (same track can appear with different URL slugs)
             track_id = extract_track_id_from_url(u)
@@ -1054,7 +1106,19 @@ def best_beatport_match(
                 )
 
             elapsed_ms = int((time.perf_counter() - t0) * 1000)
-            return u, title, artists, key, year, bpm, label, genres, rel_name, rel_date, elapsed_ms
+            return (
+                u,
+                title,
+                artists,
+                key,
+                year,
+                bpm,
+                label,
+                genres,
+                rel_name,
+                rel_date,
+                elapsed_ms,
+            )
 
         with ThreadPoolExecutor(max_workers=SETTINGS["CANDIDATE_WORKERS"]) as ex:
             futures = [ex.submit(fetch, u) for u in to_fetch]
@@ -1119,9 +1183,17 @@ def best_beatport_match(
                 # Use cached data from parsed_cache_by_id
                 for u, track_id in skipped_by_id:
                     if track_id in parsed_cache_by_id:
-                        title, artists, key, year, bpm, label, genres, rel_name, rel_date = (
-                            parsed_cache_by_id[track_id]
-                        )
+                        (
+                            title,
+                            artists,
+                            key,
+                            year,
+                            bpm,
+                            label,
+                            genres,
+                            rel_name,
+                            rel_date,
+                        ) = parsed_cache_by_id[track_id]
                         # Mark URL as visited to avoid re-considering
                         visited_urls.add(u)
                         # Consider this candidate using cached data (no re-parsing needed)
@@ -1144,7 +1216,9 @@ def best_beatport_match(
             else:
                 join_timeout = max(6, 3 * len(to_fetch))
                 try:
-                    for fut in as_completed(futures, timeout=join_timeout) if futures else []:
+                    for fut in (
+                        as_completed(futures, timeout=join_timeout) if futures else []
+                    ):
                         try:
                             (
                                 u,
@@ -1203,9 +1277,17 @@ def best_beatport_match(
                     # Use cached data from parsed_cache_by_id
                     for u, track_id in skipped_by_id:
                         if track_id in parsed_cache_by_id:
-                            title, artists, key, year, bpm, label, genres, rel_name, rel_date = (
-                                parsed_cache_by_id[track_id]
-                            )
+                            (
+                                title,
+                                artists,
+                                key,
+                                year,
+                                bpm,
+                                label,
+                                genres,
+                                rel_name,
+                                rel_date,
+                            ) = parsed_cache_by_id[track_id]
                             # Mark URL as visited to avoid re-considering
                             visited_urls.add(u)
                             # Consider this candidate using cached data (no re-parsing needed)
@@ -1292,10 +1374,15 @@ def best_beatport_match(
             # Check if special phrase requirement is met
             generic_ok = True
             if input_generic_phrases:
-                generic_ok = _any_phrase_token_set_in_title(input_generic_phrases, best.title or "")
+                generic_ok = _any_phrase_token_set_in_title(
+                    input_generic_phrases, best.title or ""
+                )
 
             # Check if score meets early exit threshold
-            if SETTINGS.get("EARLY_EXIT_SCORE") and best.score >= SETTINGS["EARLY_EXIT_SCORE"]:
+            if (
+                SETTINGS.get("EARLY_EXIT_SCORE")
+                and best.score >= SETTINGS["EARLY_EXIT_SCORE"]
+            ):
                 # Ensure minimum queries have been executed (avoid premature exit)
                 if i >= int(min_q_for_exit or 0):
                     # Check mix type compatibility (unless disabled)
@@ -1308,7 +1395,8 @@ def best_beatport_match(
                     # Early exit if all conditions met
                     if mix_ok and generic_ok:
                         print(
-                            f"[{idx}]   early-exit on q{i}: best score {best.score:.1f}", flush=True
+                            f"[{idx}]   early-exit on q{i}: best score {best.score:.1f}",
+                            flush=True,
                         )
                         track_metrics.early_exit = True
                         track_metrics.early_exit_query_index = i

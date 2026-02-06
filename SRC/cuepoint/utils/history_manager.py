@@ -23,6 +23,7 @@ class _HistoryFileInfo(TypedDict):
     mtime: datetime
     size: int
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -102,7 +103,9 @@ class HistoryManager:
         }
 
     @staticmethod
-    def cleanup_old_files(max_days: int = DEFAULT_MAX_AGE_DAYS, dry_run: bool = False) -> int:
+    def cleanup_old_files(
+        max_days: int = DEFAULT_MAX_AGE_DAYS, dry_run: bool = False
+    ) -> int:
         """Clean up old history files (user-controlled).
 
         Args:

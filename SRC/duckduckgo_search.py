@@ -15,8 +15,9 @@ try:
 except Exception as err:  # pragma: no cover
     # Provide a minimal stub so imports don't crash in environments without ddgs.
     _import_err = err
+
     class DDGS:  # type: ignore
         def __init__(self, *args, **kwargs):
-            raise ImportError("ddgs dependency is required for DuckDuckGo search") from _import_err
-
-
+            raise ImportError(
+                "ddgs dependency is required for DuckDuckGo search"
+            ) from _import_err

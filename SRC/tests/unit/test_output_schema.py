@@ -9,7 +9,11 @@ from pathlib import Path
 import pytest
 
 from cuepoint.models.result import TrackResult
-from cuepoint.services.output_writer import read_csv_skip_comments, write_csv_files, write_main_csv
+from cuepoint.services.output_writer import (
+    read_csv_skip_comments,
+    write_csv_files,
+    write_main_csv,
+)
 
 # Expected main CSV schema (must match output_writer.write_main_csv)
 MAIN_CSV_HEADERS_BASE = [
@@ -135,7 +139,9 @@ def test_main_csv_commas_quoted(tmp_path: Path) -> None:
 def test_write_csv_files_main_schema(tmp_path: Path) -> None:
     """write_csv_files produces main CSV with correct schema."""
     results = [
-        TrackResult(playlist_index=i, title=f"Track {i}", artist=f"Artist {i}", matched=False)
+        TrackResult(
+            playlist_index=i, title=f"Track {i}", artist=f"Artist {i}", matched=False
+        )
         for i in range(3)
     ]
     out = write_csv_files(

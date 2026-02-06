@@ -17,6 +17,7 @@ from typing import List, Optional
 @dataclass
 class PerformanceMetrics:
     """Performance metrics for an operation."""
+
     operation: str
     count: int
     total_time: float
@@ -33,15 +34,15 @@ class PerformanceMetrics:
 @contextmanager
 def measure_time(operation_name: str):
     """Context manager to measure operation time.
-    
+
     Usage:
         with measure_time("parse_xml") as timer:
             result = parse_xml(xml_file)
         print(f"Operation took {timer.elapsed} seconds")
     """
     start_time = time.perf_counter()
-    timer = type('Timer', (), {'elapsed': 0.0})()
-    
+    timer = type("Timer", (), {"elapsed": 0.0})()
+
     try:
         yield timer
     finally:
@@ -50,11 +51,11 @@ def measure_time(operation_name: str):
 
 def measure_multiple(operation, iterations: int = 10) -> List[float]:
     """Measure operation multiple times.
-    
+
     Args:
         operation: Callable to measure
         iterations: Number of iterations
-        
+
     Returns:
         List of execution times in seconds.
     """
@@ -69,17 +70,17 @@ def measure_multiple(operation, iterations: int = 10) -> List[float]:
 
 def calculate_metrics(times: List[float], operation_name: str) -> PerformanceMetrics:
     """Calculate performance metrics from execution times.
-    
+
     Args:
         times: List of execution times
         operation_name: Name of operation
-        
+
     Returns:
         PerformanceMetrics object.
     """
     sorted_times = sorted(times)
     count = len(times)
-    
+
     return PerformanceMetrics(
         operation=operation_name,
         count=count,
@@ -91,7 +92,7 @@ def calculate_metrics(times: List[float], operation_name: str) -> PerformanceMet
         p50_time=sorted_times[int(count * 0.50)] if count > 0 else 0.0,
         p95_time=sorted_times[int(count * 0.95)] if count > 0 else 0.0,
         p99_time=sorted_times[int(count * 0.99)] if count > 0 else 0.0,
-        std_dev=statistics.stdev(times) if count > 1 else 0.0
+        std_dev=statistics.stdev(times) if count > 1 else 0.0,
     )
 
 
@@ -99,16 +100,16 @@ def check_performance_budget(
     metrics: PerformanceMetrics,
     budget_ms: float,
     warning_threshold: Optional[float] = None,
-    critical_threshold: Optional[float] = None
+    critical_threshold: Optional[float] = None,
 ) -> tuple[bool, str]:
     """Check if performance meets budget.
-    
+
     Args:
         metrics: Performance metrics
         budget_ms: Performance budget in milliseconds
         warning_threshold: Warning threshold (default: 1.2x budget)
         critical_threshold: Critical threshold (default: 1.5x budget)
-        
+
     Returns:
         Tuple of (meets_budget, status_message).
     """
@@ -116,9 +117,9 @@ def check_performance_budget(
         warning_threshold = budget_ms * 1.2
     if critical_threshold is None:
         critical_threshold = budget_ms * 1.5
-    
+
     p95_ms = metrics.p95_time * 1000
-    
+
     if p95_ms > critical_threshold:
         return False, f"CRITICAL: {p95_ms:.1f}ms > {critical_threshold:.1f}ms (p95)"
     elif p95_ms > warning_threshold:
@@ -127,4 +128,3 @@ def check_performance_budget(
         return True, f"SLOW: {p95_ms:.1f}ms > {budget_ms:.1f}ms (p95)"
     else:
         return True, f"OK: {p95_ms:.1f}ms <= {budget_ms:.1f}ms (p95)"
-

@@ -31,7 +31,14 @@ if TYPE_CHECKING:
     pass
 
 from PySide6.QtCore import QSettings, Qt, QTimer
-from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent, QIcon, QKeyEvent, QKeySequence
+from PySide6.QtGui import (
+    QAction,
+    QDragEnterEvent,
+    QDropEvent,
+    QIcon,
+    QKeyEvent,
+    QKeySequence,
+)
 from PySide6.QtWidgets import (
     QButtonGroup,
     QDialog,
@@ -59,7 +66,12 @@ from cuepoint.ui.controllers.config_controller import ConfigController
 from cuepoint.ui.controllers.export_controller import ExportController
 from cuepoint.ui.controllers.main_controller import GUIController
 from cuepoint.ui.controllers.results_controller import ResultsController
-from cuepoint.ui.gui_interface import ErrorType, ProcessingError, ProgressInfo, ReliabilityState
+from cuepoint.ui.gui_interface import (
+    ErrorType,
+    ProcessingError,
+    ProgressInfo,
+    ReliabilityState,
+)
 from cuepoint.ui.strings import EmptyState
 from cuepoint.ui.widgets.batch_processor import BatchProcessorWidget
 from cuepoint.ui.widgets.config_panel import ConfigPanel
@@ -221,7 +233,9 @@ class MainWindow(QMainWindow):
         try:
             # Never show onboarding during automated tests (pytest-qt processes events
             # and a modal dialog here will hang the test run).
-            if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("CUEPOINT_DISABLE_ONBOARDING"):
+            if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get(
+                "CUEPOINT_DISABLE_ONBOARDING"
+            ):
                 return
 
             from cuepoint.services.interfaces import IConfigService
@@ -246,9 +260,10 @@ class MainWindow(QMainWindow):
                 self.show()
                 self.raise_()
                 from PySide6.QtWidgets import QApplication
+
                 QApplication.processEvents()
                 self._show_onboarding_dialog()
-            
+
             QTimer.singleShot(100, show_onboarding_after_window_ready)
         except Exception:
             # Onboarding is best-effort; never block app startup.
@@ -279,13 +294,13 @@ class MainWindow(QMainWindow):
             self.raise_()
             self.activateWindow()
             QApplication.processEvents()
-            
+
             # Also ensure window is visible after a short delay (in case of timing issues)
             def ensure_window_visible():
                 self.show()
                 self.raise_()
                 self.activateWindow()
-            
+
             QTimer.singleShot(100, ensure_window_visible)
 
             # Persist onboarding outcome - always mark as complete when dialog closes
@@ -293,7 +308,9 @@ class MainWindow(QMainWindow):
             if hasattr(self, "_onboarding_service"):
                 if result == QDialog.DialogCode.Accepted:
                     if dialog.dont_show_again_checked():
-                        self._onboarding_service.dismiss_onboarding(dont_show_again=True)
+                        self._onboarding_service.dismiss_onboarding(
+                            dont_show_again=True
+                        )
                     else:
                         self._onboarding_service.mark_first_run_complete()
                 else:
@@ -303,8 +320,10 @@ class MainWindow(QMainWindow):
                         dont_show = dialog.dont_show_again_checked()
                     except Exception:
                         dont_show = False
-                    self._onboarding_service.dismiss_onboarding(dont_show_again=dont_show)
-            
+                    self._onboarding_service.dismiss_onboarding(
+                        dont_show_again=dont_show
+                    )
+
             # Final check - ensure main window is definitely visible
             self.show()
             self.raise_()
@@ -340,7 +359,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("CuePoint - Beatport Metadata Enricher")
         self.setMinimumSize(Layout.WINDOW_MIN_WIDTH, Layout.WINDOW_MIN_HEIGHT)
         self.setGeometry(100, 100, Layout.DEFAULT_WIDTH, Layout.DEFAULT_HEIGHT)
-        
+
         # Set window icon (inherits from application icon, but set explicitly for compatibility)
         self._set_window_icon()
 
@@ -353,7 +372,7 @@ class MainWindow(QMainWindow):
 
         # Create tab widget
         self.tabs = QTabWidget()
-        
+
         # Initially show tool selection page
         self.show_tool_selection_page()
 
@@ -408,7 +427,9 @@ class MainWindow(QMainWindow):
             }
         """)
         self.single_mode_radio.setAccessibleName("Single mode radio button")
-        self.single_mode_radio.setAccessibleDescription("Process one playlist at a time")
+        self.single_mode_radio.setAccessibleDescription(
+            "Process one playlist at a time"
+        )
         self.single_mode_radio.toggled.connect(self.on_mode_changed)
         self.mode_button_group.addButton(self.single_mode_radio, 0)
         mode_layout.addWidget(self.single_mode_radio)
@@ -434,7 +455,9 @@ class MainWindow(QMainWindow):
             }
         """)
         self.batch_mode_radio.setAccessibleName("Batch mode radio button")
-        self.batch_mode_radio.setAccessibleDescription("Process multiple playlists in sequence")
+        self.batch_mode_radio.setAccessibleDescription(
+            "Process multiple playlists in sequence"
+        )
         self.batch_mode_radio.toggled.connect(self.on_mode_changed)
         self.mode_button_group.addButton(self.batch_mode_radio, 1)
         mode_layout.addWidget(self.batch_mode_radio)
@@ -508,7 +531,7 @@ class MainWindow(QMainWindow):
         start_layout.addStretch()
         self.start_button = QPushButton("Start Processing")
         self.start_button.setObjectName("primaryActionButton")
-        
+
         # Set play icon using Qt's standard icons (better rendering than Unicode)
         try:
             # Use Qt's standard play icon from style
@@ -518,7 +541,7 @@ class MainWindow(QMainWindow):
         except Exception:
             # Fallback: if icon fails, just use text without Unicode character
             pass
-        
+
         self.start_button.setToolTip(
             "Start processing the selected playlist(s).\n"
             "Searches Beatport for each track and enriches with metadata.\n"
@@ -527,14 +550,16 @@ class MainWindow(QMainWindow):
         self.start_button.setFixedWidth(220)
         self.start_button.setFocusPolicy(Qt.StrongFocus)
         self.start_button.setAccessibleName("Start processing button")
-        self.start_button.setAccessibleDescription("Start processing the selected playlist(s)")
+        self.start_button.setAccessibleDescription(
+            "Start processing the selected playlist(s)"
+        )
         self.start_button.clicked.connect(self.start_processing)
         self._set_start_enabled(False)
         start_layout.addWidget(self.start_button)
         start_layout.addStretch()
         self.start_button_container.setVisible(False)
         main_layout.addWidget(self.start_button_container)
-        
+
         # Backward compat
         self.start_row = self.start_button
         self.controls_row = None
@@ -569,14 +594,18 @@ class MainWindow(QMainWindow):
         """)
         prog_row1.addWidget(self.progress_bar, 1)
         self.progress_pct = QLabel("0%")
-        self.progress_pct.setStyleSheet("font-size: 16px; font-weight: bold; color: #fff; min-width: 50px; background: transparent; padding: 0px; border: none;")
+        self.progress_pct.setStyleSheet(
+            "font-size: 16px; font-weight: bold; color: #fff; min-width: 50px; background: transparent; padding: 0px; border: none;"
+        )
         self.progress_pct.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         prog_row1.addWidget(self.progress_pct)
         progress_main.addLayout(prog_row1)
 
         # Track info
         self.progress_track = QLabel("Ready to start...")
-        self.progress_track.setStyleSheet("font-size: 12px; color: #ccc; background: transparent; padding: 0px; border: none;")
+        self.progress_track.setStyleSheet(
+            "font-size: 12px; color: #ccc; background: transparent; padding: 0px; border: none;"
+        )
         self.progress_track.setWordWrap(True)
         progress_main.addWidget(self.progress_track)
 
@@ -584,24 +613,34 @@ class MainWindow(QMainWindow):
         prog_row2 = QHBoxLayout()
         prog_row2.setSpacing(20)
         self.progress_elapsed = QLabel("Elapsed: 0s")
-        self.progress_elapsed.setStyleSheet("font-size: 12px; color: #aaa; background: transparent; padding: 0px;")
+        self.progress_elapsed.setStyleSheet(
+            "font-size: 12px; color: #aaa; background: transparent; padding: 0px;"
+        )
         prog_row2.addWidget(self.progress_elapsed)
         self.progress_remaining = QLabel("Remaining: --")
-        self.progress_remaining.setStyleSheet("font-size: 12px; color: #aaa; background: transparent; padding: 0px;")
+        self.progress_remaining.setStyleSheet(
+            "font-size: 12px; color: #aaa; background: transparent; padding: 0px;"
+        )
         prog_row2.addWidget(self.progress_remaining)
         prog_row2.addStretch()
         self.progress_matched = QLabel("✓ Matched: 0")
-        self.progress_matched.setStyleSheet("font-size: 12px; color: #4CAF50; font-weight: bold; background: transparent; padding: 0px;")
+        self.progress_matched.setStyleSheet(
+            "font-size: 12px; color: #4CAF50; font-weight: bold; background: transparent; padding: 0px;"
+        )
         prog_row2.addWidget(self.progress_matched)
         self.progress_unmatched = QLabel("✗ Unmatched: 0")
-        self.progress_unmatched.setStyleSheet("font-size: 12px; color: #F44336; font-weight: bold; background: transparent; padding: 0px;")
+        self.progress_unmatched.setStyleSheet(
+            "font-size: 12px; color: #F44336; font-weight: bold; background: transparent; padding: 0px;"
+        )
         prog_row2.addWidget(self.progress_unmatched)
         # Design 5.12, 5.40: Pause / Resume button
         self.pause_button = QPushButton("Pause")
         self.pause_button.setFixedWidth(90)
         self.pause_button.setFocusPolicy(Qt.StrongFocus)
         self.pause_button.setAccessibleName("Pause processing button")
-        self.pause_button.setAccessibleDescription("Pause the current processing; click Resume to continue")
+        self.pause_button.setAccessibleDescription(
+            "Pause the current processing; click Resume to continue"
+        )
         self.pause_button.clicked.connect(self.on_pause_resume_clicked)
         self.pause_button.setEnabled(False)
         prog_row2.addWidget(self.pause_button)
@@ -610,7 +649,9 @@ class MainWindow(QMainWindow):
         self.cancel_button.setFixedWidth(110)
         self.cancel_button.setFocusPolicy(Qt.StrongFocus)
         self.cancel_button.setAccessibleName("Cancel processing button")
-        self.cancel_button.setAccessibleDescription("Cancel the current processing operation")
+        self.cancel_button.setAccessibleDescription(
+            "Cancel the current processing operation"
+        )
         self.cancel_button.clicked.connect(self.on_cancel_requested)
         prog_row2.addWidget(self.cancel_button)
         progress_main.addLayout(prog_row2)
@@ -632,7 +673,7 @@ class MainWindow(QMainWindow):
         results_layout.addWidget(self.results_view)
         self.results_group.setVisible(False)
         main_layout.addWidget(self.results_group, 1)  # Takes remaining space
-        
+
         # Add stretch at end to push everything to top when results hidden
         main_layout.addStretch()
 
@@ -643,7 +684,9 @@ class MainWindow(QMainWindow):
         # History tab (Past Searches)
         history_tab_content = QWidget()
         history_layout = QVBoxLayout(history_tab_content)
-        history_layout.setContentsMargins(Layout.MARGIN, Layout.MARGIN, Layout.MARGIN, Layout.MARGIN)
+        history_layout.setContentsMargins(
+            Layout.MARGIN, Layout.MARGIN, Layout.MARGIN, Layout.MARGIN
+        )
         self.history_view = HistoryView(export_controller=self.export_controller)
         self.history_view.rerun_requested.connect(self.on_rerun_requested)
         history_layout.addWidget(self.history_view)
@@ -671,33 +714,35 @@ class MainWindow(QMainWindow):
 
         # Status bar
         self.statusBar().showMessage("Ready")
-        
+
         # Add status bar widgets (permanent widgets on the right)
         # File path label
         self.status_file_label = QLabel()
         self.status_file_label.setStyleSheet("color: #666; padding: 0 5px;")
         self.status_file_label.setVisible(False)
         self.statusBar().addPermanentWidget(self.status_file_label)
-        
+
         # Playlist label
         self.status_playlist_label = QLabel()
         self.status_playlist_label.setStyleSheet("color: #666; padding: 0 5px;")
         self.status_playlist_label.setVisible(False)
         self.statusBar().addPermanentWidget(self.status_playlist_label)
-        
+
         # Stats label
         self.status_stats_label = QLabel()
-        self.status_stats_label.setStyleSheet("color: #4CAF50; font-weight: bold; padding: 0 5px;")
+        self.status_stats_label.setStyleSheet(
+            "color: #4CAF50; font-weight: bold; padding: 0 5px;"
+        )
         self.status_stats_label.setVisible(False)
         self.statusBar().addPermanentWidget(self.status_stats_label)
-        
+
         # Progress indicator (initially hidden)
         self.status_progress = QProgressBar()
         self.status_progress.setMaximumWidth(200)
         self.status_progress.setMaximumHeight(20)
         self.status_progress.setVisible(False)
         self.statusBar().addPermanentWidget(self.status_progress)
-        
+
         # Logo in status bar removed per user request
 
         # Enable drag and drop for the window
@@ -747,7 +792,11 @@ class MainWindow(QMainWindow):
         """
         # Global shortcuts
         self.shortcut_manager.register_shortcut(
-            "open_file", "Ctrl+O", self.on_file_open, ShortcutContext.GLOBAL, "Open XML file"
+            "open_file",
+            "Ctrl+O",
+            self.on_file_open,
+            ShortcutContext.GLOBAL,
+            "Open XML file",
         )
 
         self.shortcut_manager.register_shortcut(
@@ -775,12 +824,20 @@ class MainWindow(QMainWindow):
         )
 
         self.shortcut_manager.register_shortcut(
-            "fullscreen", "F11", self.toggle_fullscreen, ShortcutContext.GLOBAL, "Toggle fullscreen"
+            "fullscreen",
+            "F11",
+            self.toggle_fullscreen,
+            ShortcutContext.GLOBAL,
+            "Toggle fullscreen",
         )
 
         # Main window shortcuts
         self.shortcut_manager.register_shortcut(
-            "new_session", "Ctrl+N", self.on_new_session, ShortcutContext.MAIN_WINDOW, "New session"
+            "new_session",
+            "Ctrl+N",
+            self.on_new_session,
+            ShortcutContext.MAIN_WINDOW,
+            "New session",
         )
 
         self.shortcut_manager.register_shortcut(
@@ -807,7 +864,7 @@ class MainWindow(QMainWindow):
             ShortcutContext.GLOBAL,
             "Open settings",
         )
-        
+
         # Enter key to start processing (only when button is enabled)
         self.shortcut_manager.register_shortcut(
             "enter_start",
@@ -816,7 +873,7 @@ class MainWindow(QMainWindow):
             ShortcutContext.MAIN_WINDOW,
             "Start processing (Enter)",
         )
-        
+
         # Escape key to cancel (only when processing)
         self.shortcut_manager.register_shortcut(
             "escape_cancel",
@@ -828,17 +885,21 @@ class MainWindow(QMainWindow):
 
         # Set initial context
         self.shortcut_manager.set_context(ShortcutContext.MAIN_WINDOW)
-    
+
     def _on_enter_start(self) -> None:
         """Handle Enter key to start processing"""
         # Only start if button is enabled and visible
-        if hasattr(self, 'start_button') and self.start_button.isEnabled() and self.start_button.isVisible():
+        if (
+            hasattr(self, "start_button")
+            and self.start_button.isEnabled()
+            and self.start_button.isVisible()
+        ):
             self.start_processing()
-    
+
     def _on_escape_cancel(self) -> None:
         """Handle Escape key to cancel processing"""
         # Only cancel if processing is active
-        if hasattr(self, 'controller') and self.controller.is_processing():
+        if hasattr(self, "controller") and self.controller.is_processing():
             self.on_cancel_requested()
 
     def _set_start_enabled(self, enabled: bool) -> None:
@@ -930,7 +991,7 @@ class MainWindow(QMainWindow):
         from PySide6.QtWidgets import QDialog
 
         from cuepoint.ui.dialogs.settings_dialog import SettingsDialog
-        
+
         dialog = SettingsDialog(config_controller=self.config_controller, parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             # Settings are saved automatically by ConfigPanel
@@ -1000,7 +1061,7 @@ class MainWindow(QMainWindow):
 
         # Settings Menu - ADDED AFTER FILE MENU
         settings_menu = menubar.addMenu("&Settings")
-        
+
         # Open Settings
         settings_action = QAction("&Settings...", self)
         settings_action.setShortcut(QKeySequence("Ctrl+,"))
@@ -1125,7 +1186,9 @@ class MainWindow(QMainWindow):
         diagnostics_menu.addAction(diagnostics_panel_action)
 
         analytics_dashboard_action = QAction("&Analytics Dashboard...", self)
-        analytics_dashboard_action.setToolTip("View usage trends (run success rate, match rate)")
+        analytics_dashboard_action.setToolTip(
+            "View usage trends (run success rate, match rate)"
+        )
         analytics_dashboard_action.triggered.connect(self._on_show_analytics_dashboard)
         diagnostics_menu.addAction(analytics_dashboard_action)
 
@@ -1135,7 +1198,9 @@ class MainWindow(QMainWindow):
         diagnostics_menu.addAction(log_viewer_action)
 
         support_bundle_action = QAction("Export &Support Bundle...", self)
-        support_bundle_action.setToolTip("Generate a support bundle zip with diagnostics and logs")
+        support_bundle_action.setToolTip(
+            "Generate a support bundle zip with diagnostics and logs"
+        )
         support_bundle_action.triggered.connect(self.on_export_support_bundle)
         diagnostics_menu.addAction(support_bundle_action)
 
@@ -1211,19 +1276,25 @@ class MainWindow(QMainWindow):
             file_path: Path to the selected XML file.
         """
         if self.file_selector.validate_file(file_path):
-            self.statusBar().showMessage(f"Loading XML file: {os.path.basename(file_path)}...")
+            self.statusBar().showMessage(
+                f"Loading XML file: {os.path.basename(file_path)}..."
+            )
             try:
                 # Load playlists into playlist selector
                 self.playlist_selector.load_xml_file(file_path)
                 playlist_count = len(self.playlist_selector.playlists)
-                self.statusBar().showMessage(f"File loaded: {playlist_count} playlists found")
+                self.statusBar().showMessage(
+                    f"File loaded: {playlist_count} playlists found"
+                )
 
                 # Update batch processor with playlists
-                self.batch_processor.set_playlists(list(self.playlist_selector.playlists.keys()))
+                self.batch_processor.set_playlists(
+                    list(self.playlist_selector.playlists.keys())
+                )
 
                 # SHOW MODE BOX (progressive disclosure)
                 self.mode_box.setVisible(True)
-                
+
                 # Update status bar with file path
                 self._update_status_file_path(file_path)
 
@@ -1233,22 +1304,25 @@ class MainWindow(QMainWindow):
                         self._config_service.save()
                     except Exception:
                         pass
-                
+
                 # Process events to ensure visibility update is applied
                 from PySide6.QtWidgets import QApplication
+
                 QApplication.processEvents()
 
                 # Save to recent files (don't let this fail hide the mode_group)
                 try:
-                    if hasattr(self, 'save_recent_file'):
+                    if hasattr(self, "save_recent_file"):
                         self.save_recent_file(file_path)
                 except Exception as save_error:
                     # Log but don't fail - recent files is optional
                     import traceback
+
                     print(f"Warning: Could not save to recent files: {save_error}")
                     traceback.print_exc()
             except Exception as e:
                 import traceback
+
                 print(f"Error in on_file_selected: {e}")
                 traceback.print_exc()
                 self.statusBar().showMessage(f"Error loading XML: {str(e)}")
@@ -1278,7 +1352,9 @@ class MainWindow(QMainWindow):
     def _update_empty_state_hint(self) -> None:
         """Show/hide the onboarding-style empty hint based on current state."""
         try:
-            if not hasattr(self, "empty_state_hint") or not hasattr(self, "file_selector"):
+            if not hasattr(self, "empty_state_hint") or not hasattr(
+                self, "file_selector"
+            ):
                 return
             file_path = self.file_selector.get_file_path()
             show = not file_path or not self.file_selector.validate_file(file_path)
@@ -1291,7 +1367,7 @@ class MainWindow(QMainWindow):
         """Handle processing mode change between single and batch modes."""
         is_batch_mode = self.batch_mode_radio.isChecked()
         is_single_mode = self.single_mode_radio.isChecked()
-        
+
         if not is_batch_mode and not is_single_mode:
             self.playlist_box.setVisible(False)
             self.start_button.setVisible(False)
@@ -1344,11 +1420,11 @@ class MainWindow(QMainWindow):
         else:
             # Filter out files that no longer exist
             valid_files = [f for f in recent_files[:10] if os.path.exists(f)]
-            
+
             # Update settings if any files were removed
             if len(valid_files) < len(recent_files[:10]):
                 settings.setValue("recent_files", valid_files + recent_files[10:])
-            
+
             if not valid_files:
                 action = QAction("No recent files", self)
                 action.setEnabled(False)
@@ -1360,21 +1436,25 @@ class MainWindow(QMainWindow):
                     try:
                         mtime = os.path.getmtime(file_path)
                         from datetime import datetime
+
                         dt = datetime.fromtimestamp(mtime)
                         # Format: "Today, 2:30 PM" or "Yesterday" or "Jan 15"
                         now = datetime.now()
                         if dt.date() == now.date():
                             time_str = f"Today, {dt.strftime('%I:%M %p')}"
-                        elif dt.date() == (now.date() - datetime.timedelta(days=1)).date():
+                        elif (
+                            dt.date()
+                            == (now.date() - datetime.timedelta(days=1)).date()
+                        ):
                             time_str = "Yesterday"
                         else:
                             time_str = dt.strftime("%b %d")
-                        
+
                         # Display: "filename.xml - Today, 2:30 PM"
                         display_text = f"{file_name} - {time_str}"
                     except Exception:
                         display_text = file_name
-                    
+
                     action = QAction(display_text, self)
                     action.setData(file_path)
                     # Tooltip with full path
@@ -1383,7 +1463,7 @@ class MainWindow(QMainWindow):
                         lambda checked, path=file_path: self.on_open_recent_file(path)
                     )
                     self.recent_files_menu.addAction(action)
-                
+
                 # Add separator and Clear Recent Files option
                 self.recent_files_menu.addSeparator()
                 clear_action = QAction("Clear Recent Files", self)
@@ -1410,7 +1490,9 @@ class MainWindow(QMainWindow):
                 recent_files.remove(file_path)
                 settings.setValue("recent_files", recent_files)
             self.update_recent_files_menu()
-            QMessageBox.warning(self, "File Not Found", f"The file no longer exists:\n{file_path}")
+            QMessageBox.warning(
+                self, "File Not Found", f"The file no longer exists:\n{file_path}"
+            )
 
     def save_recent_file(self, file_path: str) -> None:
         """Save a file path to the recent files list.
@@ -1424,7 +1506,7 @@ class MainWindow(QMainWindow):
         """
         if not file_path or not os.path.exists(file_path):
             return  # Don't save invalid files
-        
+
         settings = QSettings("CuePoint", "CuePoint")
         recent_files = settings.value("recent_files", [])
 
@@ -1438,11 +1520,11 @@ class MainWindow(QMainWindow):
         # Keep only last 10
         recent_files = recent_files[:10]
         settings.setValue("recent_files", recent_files)
-        
+
         # Update menu if it exists
-        if hasattr(self, 'recent_files_menu'):
+        if hasattr(self, "recent_files_menu"):
             self.update_recent_files_menu()
-    
+
     def clear_recent_files(self) -> None:
         """Clear all recent files from the list."""
         reply = QMessageBox.question(
@@ -1450,9 +1532,9 @@ class MainWindow(QMainWindow):
             "Clear Recent Files",
             "Are you sure you want to clear all recent files?",
             QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
+            QMessageBox.No,
         )
-        
+
         if reply == QMessageBox.Yes:
             settings = QSettings("CuePoint", "CuePoint")
             settings.setValue("recent_files", [])
@@ -1590,7 +1672,9 @@ class MainWindow(QMainWindow):
             dialog = ShortcutsDialog(self.shortcut_manager, self)
             dialog.exec()
         except Exception as e:
-            QMessageBox.warning(self, "Shortcuts", f"Could not open shortcuts dialog:\n{e}")
+            QMessageBox.warning(
+                self, "Shortcuts", f"Could not open shortcuts dialog:\n{e}"
+            )
 
     def on_show_privacy(self) -> None:
         """Show privacy information and data controls via Help > Privacy."""
@@ -1605,12 +1689,20 @@ class MainWindow(QMainWindow):
     def on_show_terms(self) -> None:
         """Show terms of use via Help > Terms of Use (Step 11)."""
         try:
-            from PySide6.QtWidgets import QDialog, QDialogButtonBox, QTextEdit, QVBoxLayout
+            from PySide6.QtWidgets import (
+                QDialog,
+                QDialogButtonBox,
+                QTextEdit,
+                QVBoxLayout,
+            )
 
             from cuepoint.utils.policy_docs import find_terms_of_use, load_policy_text
 
             path = find_terms_of_use()
-            text = load_policy_text(path, "Terms of use could not be loaded. See DOCS/POLICY/terms-of-use.md")
+            text = load_policy_text(
+                path,
+                "Terms of use could not be loaded. See DOCS/POLICY/terms-of-use.md",
+            )
             dlg = QDialog(self)
             dlg.setWindowTitle("Terms of Use")
             dlg.setMinimumSize(700, 520)
@@ -1629,12 +1721,23 @@ class MainWindow(QMainWindow):
     def on_show_licenses(self) -> None:
         """Show third-party licenses via Help > Third-Party Licenses (Step 11)."""
         try:
-            from PySide6.QtWidgets import QDialog, QDialogButtonBox, QTextEdit, QVBoxLayout
+            from PySide6.QtWidgets import (
+                QDialog,
+                QDialogButtonBox,
+                QTextEdit,
+                QVBoxLayout,
+            )
 
-            from cuepoint.utils.policy_docs import find_third_party_licenses, load_policy_text
+            from cuepoint.utils.policy_docs import (
+                find_third_party_licenses,
+                load_policy_text,
+            )
 
             path = find_third_party_licenses()
-            text = load_policy_text(path, "Third-party licenses could not be loaded. See THIRD_PARTY_LICENSES.txt")
+            text = load_policy_text(
+                path,
+                "Third-party licenses could not be loaded. See THIRD_PARTY_LICENSES.txt",
+            )
             dlg = QDialog(self)
             dlg.setWindowTitle("Third-Party Licenses")
             dlg.setMinimumSize(700, 520)
@@ -1648,12 +1751,19 @@ class MainWindow(QMainWindow):
             v.addWidget(bb)
             dlg.exec()
         except Exception as e:
-            QMessageBox.warning(self, "Third-Party Licenses", f"Could not open licenses:\n{e}")
+            QMessageBox.warning(
+                self, "Third-Party Licenses", f"Could not open licenses:\n{e}"
+            )
 
     def on_show_support_policy(self) -> None:
         """Show support policy via Help > Support Policy (Step 11)."""
         try:
-            from PySide6.QtWidgets import QDialog, QDialogButtonBox, QTextEdit, QVBoxLayout
+            from PySide6.QtWidgets import (
+                QDialog,
+                QDialogButtonBox,
+                QTextEdit,
+                QVBoxLayout,
+            )
 
             from cuepoint.utils.policy_docs import find_support_policy, load_policy_text
 
@@ -1675,12 +1785,16 @@ class MainWindow(QMainWindow):
             v.addWidget(bb)
             dlg.exec()
         except Exception as e:
-            QMessageBox.warning(self, "Support Policy", f"Could not open support policy:\n{e}")
+            QMessageBox.warning(
+                self, "Support Policy", f"Could not open support policy:\n{e}"
+            )
 
     def _on_show_analytics_dashboard(self) -> None:
         """Show analytics dashboard (Step 14) via Help > Support & Diagnostics."""
         try:
-            from cuepoint.ui.dialogs.telemetry_dashboard_dialog import TelemetryDashboardDialog
+            from cuepoint.ui.dialogs.telemetry_dashboard_dialog import (
+                TelemetryDashboardDialog,
+            )
 
             dialog = TelemetryDashboardDialog(self)
             dialog.exec()
@@ -1696,12 +1810,16 @@ class MainWindow(QMainWindow):
     def _on_show_diagnostics_panel(self) -> None:
         """Show diagnostics panel (Design 7.132): log path, run ID, health checks."""
         try:
-            from cuepoint.ui.dialogs.diagnostics_panel_dialog import DiagnosticsPanelDialog
+            from cuepoint.ui.dialogs.diagnostics_panel_dialog import (
+                DiagnosticsPanelDialog,
+            )
 
             dialog = DiagnosticsPanelDialog(self)
             dialog.exec()
         except Exception as e:
-            QMessageBox.warning(self, "Diagnostics", f"Could not open diagnostics panel:\n{e}")
+            QMessageBox.warning(
+                self, "Diagnostics", f"Could not open diagnostics panel:\n{e}"
+            )
 
     def on_show_log_viewer(self) -> None:
         """Show the log viewer dialog."""
@@ -1723,7 +1841,9 @@ class MainWindow(QMainWindow):
                 # Bundle was generated successfully
                 pass
         except Exception as e:
-            QMessageBox.critical(self, "Support Bundle", f"Failed to create support bundle:\n{e}")
+            QMessageBox.critical(
+                self, "Support Bundle", f"Failed to create support bundle:\n{e}"
+            )
 
     def on_open_logs_folder(self) -> None:
         """Open the logs folder in the OS file manager (Step 9.5)."""
@@ -1748,7 +1868,9 @@ class MainWindow(QMainWindow):
             dialog = ReportIssueDialog(self)
             dialog.exec()
         except Exception as e:
-            QMessageBox.warning(self, "Report Issue", f"Could not open issue reporter:\n{e}")
+            QMessageBox.warning(
+                self, "Report Issue", f"Could not open issue reporter:\n{e}"
+            )
 
     def _open_folder(self, folder_path) -> None:
         """Open a folder in the OS file manager."""
@@ -1790,20 +1912,21 @@ class MainWindow(QMainWindow):
         if app and not app.windowIcon().isNull():
             self.setWindowIcon(app.windowIcon())
             return
-        
+
         # Fallback: load icon directly
-        if getattr(sys, 'frozen', False):
-            if hasattr(sys, '_MEIPASS'):
+        if getattr(sys, "frozen", False):
+            if hasattr(sys, "_MEIPASS"):
                 base_path = Path(sys._MEIPASS)
             else:
                 import os
+
                 base_path = Path(os.path.dirname(sys.executable))
-            icon_path = base_path / 'assets' / 'icons' / 'logo.png'
+            icon_path = base_path / "assets" / "icons" / "logo.png"
         else:
             # Running as script - use SRC/cuepoint/ui/assets/icons
             base_path = Path(__file__).resolve().parent
-            icon_path = base_path / 'assets' / 'icons' / 'logo.png'
-        
+            icon_path = base_path / "assets" / "icons" / "logo.png"
+
         if icon_path.exists():
             try:
                 icon = QIcon(str(icon_path))
@@ -1814,7 +1937,7 @@ class MainWindow(QMainWindow):
 
     def _load_logo_for_statusbar(self) -> Optional[QLabel]:
         """Load logo for status bar (top right corner).
-        
+
         Returns:
             QLabel with logo pixmap, or None if logo not found.
         """
@@ -1823,30 +1946,32 @@ class MainWindow(QMainWindow):
         from PySide6.QtGui import QPixmap
 
         # Determine the logo path
-        if getattr(sys, 'frozen', False):
+        if getattr(sys, "frozen", False):
             # Running as packaged app
-            if hasattr(sys, '_MEIPASS'):
+            if hasattr(sys, "_MEIPASS"):
                 base_path = Path(sys._MEIPASS)
             else:
                 base_path = Path(os.path.dirname(sys.executable))
-            logo_path = base_path / 'assets' / 'icons' / 'logo.png'
+            logo_path = base_path / "assets" / "icons" / "logo.png"
         else:
             # Running as script - use SRC/cuepoint/ui/assets/icons
             base_path = Path(__file__).resolve().parent
-            logo_path = base_path / 'assets' / 'icons' / 'logo.png'
-        
+            logo_path = base_path / "assets" / "icons" / "logo.png"
+
         if not logo_path.exists():
             return None
-        
+
         try:
             pixmap = QPixmap(str(logo_path))
             if pixmap.isNull():
                 return None
-            
+
             # Scale to fit status bar (small size: 80px width)
             if pixmap.width() > 80:
-                pixmap = pixmap.scaledToWidth(80, Qt.TransformationMode.SmoothTransformation)
-            
+                pixmap = pixmap.scaledToWidth(
+                    80, Qt.TransformationMode.SmoothTransformation
+                )
+
             logo_label = QLabel()
             logo_label.setPixmap(pixmap)
             logo_label.setAlignment(Qt.AlignCenter)
@@ -1870,28 +1995,33 @@ class MainWindow(QMainWindow):
             dialog = ChangelogViewer(self)
             dialog.exec()
         except Exception as e:
-            QMessageBox.warning(self, "Changelog", f"Could not open changelog viewer:\n{e}")
+            QMessageBox.warning(
+                self, "Changelog", f"Could not open changelog viewer:\n{e}"
+            )
 
     def _setup_update_system(self) -> None:
         """Set up update system (Step 5.5)."""
         import logging
         import sys
+
         logger = logging.getLogger(__name__)
-        
+
         # Skip update system during pytest/CI - avoids scheduled timers and network
         # calls that can hang on Windows (Design: test stability)
-        if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("CUEPOINT_SKIP_UPDATE_CHECK"):
+        if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get(
+            "CUEPOINT_SKIP_UPDATE_CHECK"
+        ):
             self.update_manager = None
             return
-        
+
         logger.info("=" * 60)
         logger.info("UPDATE SYSTEM SETUP - Starting initialization")
         logger.info("=" * 60)
-        
+
         # For packaged apps, be extra defensive - if anything fails, disable update system
-        is_frozen = getattr(sys, 'frozen', False)
+        is_frozen = getattr(sys, "frozen", False)
         logger.info(f"Environment: frozen={is_frozen}, executable={sys.executable}")
-        
+
         try:
             # First, verify Qt is fully initialized before proceeding
             logger.info("Step 1: Verifying Qt initialization...")
@@ -1899,13 +2029,16 @@ class MainWindow(QMainWindow):
                 QTimer,  # Import QTimer unconditionally (already imported at top, but ensure it's available)
             )
             from PySide6.QtWidgets import QApplication
+
             app = QApplication.instance()
             if app is None:
-                logger.warning("QApplication not initialized, skipping update system setup")
+                logger.warning(
+                    "QApplication not initialized, skipping update system setup"
+                )
                 self.update_manager = None
                 return
             logger.info(f"✓ QApplication instance found: {app}")
-            
+
             # For frozen apps, add extra validation
             if is_frozen:
                 logger.info("Step 2: Running Qt validation for frozen app...")
@@ -1918,31 +2051,41 @@ class MainWindow(QMainWindow):
                     del test_obj
                     logger.info("✓ Qt validation passed for frozen app")
                 except Exception as qt_error:
-                    logger.error(f"✗ Qt validation failed in frozen app: {qt_error}", exc_info=True)
+                    logger.error(
+                        f"✗ Qt validation failed in frozen app: {qt_error}",
+                        exc_info=True,
+                    )
                     self.update_manager = None
                     return  # Don't proceed if Qt isn't working
             else:
                 logger.info("Step 2: Skipping Qt validation (not frozen)")
-            
+
             logger.info("Step 3: Importing update system modules...")
             from cuepoint.update.update_manager import UpdateManager
             from cuepoint.version import get_version
+
             logger.info("✓ Update system modules imported")
 
             current_version = get_version()
             feed_url = "https://stuchain.github.io/CuePoint/updates"
-            logger.info(f"Step 4: Creating UpdateManager (version={current_version}, feed={feed_url})...")
+            logger.info(
+                f"Step 4: Creating UpdateManager (version={current_version}, feed={feed_url})..."
+            )
 
             # Create update manager with error handling
             try:
                 self.update_manager = UpdateManager(current_version, feed_url)
                 logger.info("✓ Update manager created successfully")
             except Exception as create_error:
-                logger.error(f"✗ Failed to create update manager: {create_error}", exc_info=True)
+                logger.error(
+                    f"✗ Failed to create update manager: {create_error}", exc_info=True
+                )
                 self.update_manager = None
                 if is_frozen:
                     # In frozen apps, if update manager creation fails, disable entirely
-                    logger.warning("Update system disabled in packaged app due to initialization failure")
+                    logger.warning(
+                        "Update system disabled in packaged app due to initialization failure"
+                    )
                 return  # Can't continue without update manager
 
             logger.info("Step 5: Setting up callbacks...")
@@ -1951,21 +2094,28 @@ class MainWindow(QMainWindow):
                 logger.info("  - Setting on_update_available callback...")
                 self.update_manager.set_on_update_available(self._on_update_available)
                 logger.info("  ✓ on_update_available callback set")
-                
+
                 logger.info("  - Setting on_check_complete callback...")
-                self.update_manager.set_on_check_complete(self._on_update_check_complete)
+                self.update_manager.set_on_check_complete(
+                    self._on_update_check_complete
+                )
                 logger.info("  ✓ on_check_complete callback set")
-                
+
                 logger.info("  - Setting on_error callback...")
                 self.update_manager.set_on_error(self._on_update_error)
                 logger.info("  ✓ on_error callback set")
-                
+
                 logger.info("✓ All update manager callbacks set successfully")
             except Exception as callback_error:
-                logger.error(f"✗ Failed to set update manager callbacks: {callback_error}", exc_info=True)
+                logger.error(
+                    f"✗ Failed to set update manager callbacks: {callback_error}",
+                    exc_info=True,
+                )
                 if is_frozen:
                     # In frozen apps, if callbacks fail, disable update system entirely
-                    logger.warning("Update system disabled in packaged app due to callback failure")
+                    logger.warning(
+                        "Update system disabled in packaged app due to callback failure"
+                    )
                     self.update_manager = None
                     return
                 # Continue anyway for non-frozen apps - update manager exists but callbacks may not work
@@ -1976,28 +2126,41 @@ class MainWindow(QMainWindow):
             logger.info("Step 6: Scheduling startup update check...")
             try:
                 # Longer delay for frozen apps to ensure Qt is fully ready
-                delay_ms = 10000 if is_frozen else 5000  # 10 seconds for frozen, 5 for dev
+                delay_ms = (
+                    10000 if is_frozen else 5000
+                )  # 10 seconds for frozen, 5 for dev
                 QTimer.singleShot(delay_ms, self._check_for_updates_on_startup)
-                logger.info(f"✓ Startup update check scheduled (delay: {delay_ms}ms, frozen={is_frozen})")
+                logger.info(
+                    f"✓ Startup update check scheduled (delay: {delay_ms}ms, frozen={is_frozen})"
+                )
             except Exception as schedule_error:
-                logger.error(f"✗ Failed to schedule startup update check: {schedule_error}", exc_info=True)
+                logger.error(
+                    f"✗ Failed to schedule startup update check: {schedule_error}",
+                    exc_info=True,
+                )
                 if is_frozen:
                     # In frozen apps, if scheduling fails, disable update system
-                    logger.warning("Update system disabled in packaged app due to scheduling failure")
+                    logger.warning(
+                        "Update system disabled in packaged app due to scheduling failure"
+                    )
                     self.update_manager = None
                 # Continue anyway for non-frozen apps - app can still work without startup check
-            
+
             logger.info("=" * 60)
             logger.info("UPDATE SYSTEM SETUP - Completed successfully")
             logger.info("=" * 60)
         except Exception as e:
             # Update system is best-effort
             logger.error("=" * 60)
-            logger.error(f"UPDATE SYSTEM SETUP - Failed with exception: {e}", exc_info=True)
+            logger.error(
+                f"UPDATE SYSTEM SETUP - Failed with exception: {e}", exc_info=True
+            )
             logger.error("=" * 60)
             if is_frozen:
                 # In frozen apps, any exception means disable update system entirely
-                logger.warning("Update system disabled in packaged app due to exception")
+                logger.warning(
+                    "Update system disabled in packaged app due to exception"
+                )
             # Don't set to None if it already exists (might be partially initialized)
             if not hasattr(self, "update_manager"):
                 self.update_manager = None
@@ -2005,19 +2168,20 @@ class MainWindow(QMainWindow):
     def _check_for_updates_on_startup(self) -> None:
         """Check for updates on startup (Step 5.5)."""
         import logging
+
         logger = logging.getLogger(__name__)
-        
+
         logger.info("=" * 60)
         logger.info("STARTUP UPDATE CHECK - Beginning check process")
         logger.info("=" * 60)
-        
+
         try:
             logger.info("Step 1: Verifying update manager availability...")
             if not hasattr(self, "update_manager") or not self.update_manager:
                 logger.warning("✗ Update manager not available for startup check")
                 return
             logger.info("✓ Update manager is available")
-            
+
             try:
                 # Check if should check on startup
                 logger.info("Step 2: Checking update preferences...")
@@ -2025,7 +2189,9 @@ class MainWindow(QMainWindow):
 
                 check_frequency = self.update_manager.preferences.get_check_frequency()
                 logger.info(f"  - Check frequency: {check_frequency}")
-                logger.info(f"  - CHECK_ON_STARTUP constant: {UpdatePreferences.CHECK_ON_STARTUP}")
+                logger.info(
+                    f"  - CHECK_ON_STARTUP constant: {UpdatePreferences.CHECK_ON_STARTUP}"
+                )
 
                 if check_frequency == UpdatePreferences.CHECK_ON_STARTUP:
                     logger.info("✓ Update check on startup is enabled")
@@ -2039,22 +2205,32 @@ class MainWindow(QMainWindow):
                         logger.info(f"  - Window geometry: {self.geometry()}")
                         logger.info(f"  - Window isMinimized: {self.isMinimized()}")
                         logger.info(f"  - Window isMaximized: {self.isMaximized()}")
-                        
+
                         if not is_visible:
-                            logger.warning("✗ Main window not visible yet, skipping startup update check")
+                            logger.warning(
+                                "✗ Main window not visible yet, skipping startup update check"
+                            )
                             return
-                        
+
                         logger.info("✓ Main window is visible and ready")
                         # On macOS, use longer delay - windowing system needs more time
                         delay_ms = 1200 if sys.platform == "darwin" else 500
-                        logger.info(f"Step 4: Scheduling dialog creation ({delay_ms}ms delay)...")
+                        logger.info(
+                            f"Step 4: Scheduling dialog creation ({delay_ms}ms delay)..."
+                        )
                         from PySide6.QtCore import QTimer as QTimer2
-                        QTimer2.singleShot(delay_ms, lambda: self._do_startup_update_check())
+
+                        QTimer2.singleShot(
+                            delay_ms, lambda: self._do_startup_update_check()
+                        )
                         logger.info("✓ Dialog creation scheduled")
                     except Exception as dialog_error:
-                        logger.error(f"✗ Error scheduling startup update check dialog: {dialog_error}", exc_info=True)
+                        logger.error(
+                            f"✗ Error scheduling startup update check dialog: {dialog_error}",
+                            exc_info=True,
+                        )
                         # Don't crash the app if dialog fails
-                        
+
                         # Start the check - use force=True to ensure check runs on startup
                         # (force=False would check _should_check() which returns False for CHECK_ON_STARTUP)
                         logger.info("Step 5: Starting update check (force=True)...")
@@ -2062,36 +2238,51 @@ class MainWindow(QMainWindow):
                             # Status will be updated via callbacks
                             logger.info("✓ Startup update check initiated")
                         else:
-                            logger.warning("✗ Update check already in progress or failed to start")
-                            if hasattr(self, "update_check_dialog") and self.update_check_dialog:
-                                self.update_check_dialog.set_error("Update check already in progress")
+                            logger.warning(
+                                "✗ Update check already in progress or failed to start"
+                            )
+                            if (
+                                hasattr(self, "update_check_dialog")
+                                and self.update_check_dialog
+                            ):
+                                self.update_check_dialog.set_error(
+                                    "Update check already in progress"
+                                )
                 else:
-                    logger.info(f"✗ Update check on startup is disabled (frequency={check_frequency})")
+                    logger.info(
+                        f"✗ Update check on startup is disabled (frequency={check_frequency})"
+                    )
                     return
-                    
+
             except Exception as dialog_error:
-                logger.error(f"✗ Error showing update check dialog: {dialog_error}", exc_info=True)
+                logger.error(
+                    f"✗ Error showing update check dialog: {dialog_error}",
+                    exc_info=True,
+                )
                 # Don't crash the app if dialog fails
         except Exception as e:
             logger.warning(f"✗ Startup update check failed: {e}", exc_info=True)
             # Don't crash the app if update check fails
         except Exception as fatal_error:
             # Catch-all to prevent any update-related code from crashing the app
-            logger.error(f"✗ Fatal error in startup update check: {fatal_error}", exc_info=True)
-        
+            logger.error(
+                f"✗ Fatal error in startup update check: {fatal_error}", exc_info=True
+            )
+
         logger.info("=" * 60)
         logger.info("STARTUP UPDATE CHECK - Process completed")
         logger.info("=" * 60)
-    
+
     def _do_startup_update_check(self) -> None:
         """Actually perform the startup update check (called after delay)."""
         import logging
+
         logger = logging.getLogger(__name__)
-        
+
         logger.info("=" * 60)
         logger.info("DO STARTUP UPDATE CHECK - Creating dialog and starting check")
         logger.info("=" * 60)
-        
+
         try:
             # Safety: Verify MainWindow is still valid (not destroyed)
             try:
@@ -2107,12 +2298,13 @@ class MainWindow(QMainWindow):
                 logger.warning("✗ Update manager not available")
                 return
             logger.info("✓ Update manager is available")
-            
+
             logger.info("Step 2: Importing modules...")
             from cuepoint.update.update_ui import show_update_check_dialog
             from cuepoint.version import get_version
+
             logger.info("✓ Modules imported")
-            
+
             # Show update check dialog on startup
             logger.info("Step 3: Creating update check dialog...")
             try:
@@ -2121,32 +2313,48 @@ class MainWindow(QMainWindow):
                 logger.info(f"  - Parent widget: {self} (type: {type(self)})")
                 logger.info(f"  - Parent visible: {self.isVisible()}")
                 logger.info(f"  - Parent windowTitle: {self.windowTitle()}")
-                
-                self.update_check_dialog = show_update_check_dialog(current_version, self)
-                logger.info(f"✓ Update check dialog created: {self.update_check_dialog}")
+
+                self.update_check_dialog = show_update_check_dialog(
+                    current_version, self
+                )
+                logger.info(
+                    f"✓ Update check dialog created: {self.update_check_dialog}"
+                )
                 logger.info(f"  - Dialog type: {type(self.update_check_dialog)}")
-                logger.info(f"  - Dialog visible: {self.update_check_dialog.isVisible()}")
+                logger.info(
+                    f"  - Dialog visible: {self.update_check_dialog.isVisible()}"
+                )
                 logger.info(f"  - Dialog modal: {self.update_check_dialog.isModal()}")
-                
+
                 logger.info("Step 4: Setting dialog to 'checking' state...")
                 self.update_check_dialog.set_checking()
                 logger.info("✓ Dialog set to checking state")
-                
+
                 # Start the check - use force=True to ensure check runs on startup
                 logger.info("Step 5: Starting update check (force=True)...")
                 check_started = self.update_manager.check_for_updates(force=True)
                 if check_started:
                     logger.info("✓ Startup update check initiated successfully")
                 else:
-                    logger.warning("✗ Update check failed to start or already in progress")
-                    if hasattr(self, "update_check_dialog") and self.update_check_dialog:
-                        self.update_check_dialog.set_error("Update check already in progress")
+                    logger.warning(
+                        "✗ Update check failed to start or already in progress"
+                    )
+                    if (
+                        hasattr(self, "update_check_dialog")
+                        and self.update_check_dialog
+                    ):
+                        self.update_check_dialog.set_error(
+                            "Update check already in progress"
+                        )
             except Exception as dialog_error:
-                logger.error(f"✗ Error showing update check dialog: {dialog_error}", exc_info=True)
+                logger.error(
+                    f"✗ Error showing update check dialog: {dialog_error}",
+                    exc_info=True,
+                )
                 # Don't crash the app if dialog fails
         except Exception as e:
             logger.error(f"✗ Error in _do_startup_update_check: {e}", exc_info=True)
-        
+
         logger.info("=" * 60)
         logger.info("DO STARTUP UPDATE CHECK - Completed")
         logger.info("=" * 60)
@@ -2156,9 +2364,10 @@ class MainWindow(QMainWindow):
         # Try to set up update system if it's not available
         if not hasattr(self, "update_manager") or not self.update_manager:
             import logging
+
             logger = logging.getLogger(__name__)
             logger.warning("Update manager not available, attempting to set it up...")
-            
+
             try:
                 self._setup_update_system()
             except Exception as e:
@@ -2169,7 +2378,7 @@ class MainWindow(QMainWindow):
                     f"Update system is not available.\n\nError: {str(e)}\n\nPlease restart the application.",
                 )
                 return
-        
+
         if not hasattr(self, "update_manager") or not self.update_manager:
             QMessageBox.warning(
                 self,
@@ -2181,7 +2390,7 @@ class MainWindow(QMainWindow):
         # Show update check dialog
         from cuepoint.update.update_ui import show_update_check_dialog
         from cuepoint.version import get_version
-        
+
         self.update_check_dialog = show_update_check_dialog(get_version(), self)
         self.update_check_dialog.set_checking()
 
@@ -2199,8 +2408,9 @@ class MainWindow(QMainWindow):
             update_info: Update information dictionary.
         """
         import logging
+
         logger = logging.getLogger(__name__)
-        
+
         logger.info("=" * 60)
         logger.info("ON UPDATE AVAILABLE - Update found, processing callback")
         logger.info("=" * 60)
@@ -2209,85 +2419,112 @@ class MainWindow(QMainWindow):
             logger.info(f"  - Version: {update_info.get('short_version', 'N/A')}")
             logger.info(f"  - Download URL: {update_info.get('download_url', 'N/A')}")
             logger.info(f"  - File size: {update_info.get('file_size', 'N/A')}")
-        
+
         # Note: Thread safety is handled by UpdateManager using QTimer.singleShot
         # This method should already be called on the main thread, but we add
         # a safety check that won't crash if it fails
         try:
             from PySide6.QtCore import QThread, QTimer
             from PySide6.QtWidgets import QApplication
+
             app = QApplication.instance()
             if app is not None:
                 current_thread = QThread.currentThread()
                 main_thread = app.thread()
                 if current_thread != main_thread:
-                    logger.warning("_on_update_available called from non-main thread, marshaling to main thread")
+                    logger.warning(
+                        "_on_update_available called from non-main thread, marshaling to main thread"
+                    )
                     # Capture update_info in a way that won't cause issues
-                    update_info_copy = update_info.copy() if isinstance(update_info, dict) else update_info
+                    update_info_copy = (
+                        update_info.copy()
+                        if isinstance(update_info, dict)
+                        else update_info
+                    )
+
                     # Use a function reference instead of lambda to avoid closure issues
                     def marshal_callback():
                         try:
                             self._on_update_available(update_info_copy)
                         except Exception as marshal_error:
-                            logger.error(f"Error in marshaled callback: {marshal_error}", exc_info=True)
+                            logger.error(
+                                f"Error in marshaled callback: {marshal_error}",
+                                exc_info=True,
+                            )
+
                     QTimer.singleShot(0, marshal_callback)
                     return
         except Exception:
             # Thread check failed - continue anyway (UpdateManager should have handled threading)
             logger.debug("Thread check failed, continuing anyway (non-critical)")
-        
+
         # We're on the main thread now - safe to access Qt widgets
         try:
             from cuepoint.version import get_version
 
             current_version = get_version()
-            new_version = update_info.get("version") or update_info.get("short_version", "Unknown")
-            
-            logger.info(f"Update available: current={current_version}, new={new_version}")
+            new_version = update_info.get("version") or update_info.get(
+                "short_version", "Unknown"
+            )
+
+            logger.info(
+                f"Update available: current={current_version}, new={new_version}"
+            )
 
             # Update the check dialog if it's open
             # Check if dialog exists and is still valid (not destroyed)
-            dialog_exists = hasattr(self, "update_check_dialog") and self.update_check_dialog is not None
+            dialog_exists = (
+                hasattr(self, "update_check_dialog")
+                and self.update_check_dialog is not None
+            )
             if dialog_exists:
                 try:
                     # Try to access a property to verify dialog is still valid
                     _ = self.update_check_dialog.windowTitle()
                 except (RuntimeError, AttributeError):
                     # Dialog was destroyed
-                    logger.warning("Update check dialog was destroyed, creating new one")
+                    logger.warning(
+                        "Update check dialog was destroyed, creating new one"
+                    )
                     dialog_exists = False
                     self.update_check_dialog = None
-            
+
             if dialog_exists:
                 logger.info("Updating check dialog with update info")
                 try:
                     self.update_check_dialog.set_update_found(update_info)
                 except (RuntimeError, AttributeError) as e:
-                    logger.error(f"Error updating dialog (may have been destroyed): {e}")
+                    logger.error(
+                        f"Error updating dialog (may have been destroyed): {e}"
+                    )
                     # Dialog was destroyed, create a new one
                     dialog_exists = False
                     self.update_check_dialog = None
-                
+
                 # Only continue if dialog still exists
                 if dialog_exists:
                     # Verify button exists and is visible
-                    if not hasattr(self.update_check_dialog, 'download_button'):
+                    if not hasattr(self.update_check_dialog, "download_button"):
                         logger.error("Download button not found in dialog!")
                         dialog_exists = False
                     elif not self.update_check_dialog.download_button.isVisible():
                         logger.warning("Download button is not visible!")
-                    
+
                     # Always ensure button is connected (even if already connected, reconnect to be safe)
                     # Store update_info in dialog for download FIRST (before connection)
                     if dialog_exists:
                         self.update_check_dialog.update_info = update_info
-                        logger.info(f"Stored update_info in dialog: {update_info.get('short_version', 'unknown')}")
-                        
+                        logger.info(
+                            f"Stored update_info in dialog: {update_info.get('short_version', 'unknown')}"
+                        )
+
                         # Also store in update_manager as fallback
-                        if hasattr(self, 'update_manager') and self.update_manager:
+                        if hasattr(self, "update_manager") and self.update_manager:
                             self.update_manager._update_available = update_info
-                            logger.info("Stored update_info in update_manager as fallback")
-                        
+                            logger.info(
+                                "Stored update_info in update_manager as fallback"
+                            )
+
                         # Disconnect any existing handler first (including dialog's own _on_download)
                         try:
                             self.update_check_dialog.download_button.clicked.disconnect()
@@ -2297,44 +2534,58 @@ class MainWindow(QMainWindow):
                             logger.info("No existing button handlers to disconnect")
                             pass
                         except Exception as e:
-                            logger.warning(f"Error disconnecting button: {e}, continuing anyway")
-                        
+                            logger.warning(
+                                f"Error disconnecting button: {e}, continuing anyway"
+                            )
+
                         # Connect to our handler that will trigger download
                         logger.info("Connecting download button to download handler")
-                        
+
                         # Store reference to self for the closure
                         main_window_self = self
-                        
+
                         # Use a proper function reference instead of lambda to avoid closure issues
                         def on_download_clicked():
                             import logging
 
                             from PySide6.QtWidgets import QMessageBox
+
                             btn_logger = logging.getLogger(__name__)
-                            btn_logger.info("Download button clicked - proceeding with download")
-                            
+                            btn_logger.info(
+                                "Download button clicked - proceeding with download"
+                            )
+
                             # Show immediate visual feedback
                             try:
-                                main_window_self.statusBar().showMessage("Starting download...", 3000)
+                                main_window_self.statusBar().showMessage(
+                                    "Starting download...", 3000
+                                )
                             except Exception:
                                 pass
-                            
+
                             try:
-                                btn_logger.info("Calling _on_update_install_from_dialog...")
+                                btn_logger.info(
+                                    "Calling _on_update_install_from_dialog..."
+                                )
                                 main_window_self._on_update_install_from_dialog()
-                                btn_logger.info("_on_update_install_from_dialog completed")
+                                btn_logger.info(
+                                    "_on_update_install_from_dialog completed"
+                                )
                             except Exception as e:
-                                btn_logger.error(f"Error in download handler: {e}", exc_info=True)
+                                btn_logger.error(
+                                    f"Error in download handler: {e}", exc_info=True
+                                )
                                 import traceback
+
                                 btn_logger.error(traceback.format_exc())
-                                
+
                                 # Show error message to user
                                 QMessageBox.critical(
                                     main_window_self,
                                     "Download Error",
-                                    f"Failed to start download:\n\n{str(e)}\n\nPlease check the logs for details."
+                                    f"Failed to start download:\n\n{str(e)}\n\nPlease check the logs for details.",
                                 )
-                        
+
                         # Ensure button is enabled and visible
                         try:
                             self.update_check_dialog.download_button.setEnabled(True)
@@ -2342,44 +2593,67 @@ class MainWindow(QMainWindow):
                         except Exception as e:
                             logger.error(f"Failed to enable/show button: {e}")
                             dialog_exists = False
-                        
+
                         # Connect the button with error handling (only if dialog still exists)
                         if dialog_exists:
                             try:
-                                self.update_check_dialog.download_button.clicked.connect(on_download_clicked)
+                                self.update_check_dialog.download_button.clicked.connect(
+                                    on_download_clicked
+                                )
                                 self.update_check_dialog._download_connected = True
                                 logger.info("Download button connected successfully")
-                                
+
                                 # Verify button state
                                 logger.info("Button state after connection:")
-                                logger.info(f"  - Text: {self.update_check_dialog.download_button.text()}")
-                                logger.info(f"  - Visible: {self.update_check_dialog.download_button.isVisible()}")
-                                logger.info(f"  - Enabled: {self.update_check_dialog.download_button.isEnabled()}")
-                                logger.info(f"  - Default: {self.update_check_dialog.download_button.isDefault()}")
-                                
+                                logger.info(
+                                    f"  - Text: {self.update_check_dialog.download_button.text()}"
+                                )
+                                logger.info(
+                                    f"  - Visible: {self.update_check_dialog.download_button.isVisible()}"
+                                )
+                                logger.info(
+                                    f"  - Enabled: {self.update_check_dialog.download_button.isEnabled()}"
+                                )
+                                logger.info(
+                                    f"  - Default: {self.update_check_dialog.download_button.isDefault()}"
+                                )
+
                                 # Test connection by checking receivers (PySide6 way)
                                 try:
-
                                     # Get signal index
-                                    signal_index = self.update_check_dialog.download_button.metaObject().indexOfSignal("clicked()")
+                                    signal_index = self.update_check_dialog.download_button.metaObject().indexOfSignal(
+                                        "clicked()"
+                                    )
                                     if signal_index >= 0:
-                                        logger.info(f"Button signal found at index: {signal_index}")
+                                        logger.info(
+                                            f"Button signal found at index: {signal_index}"
+                                        )
                                         # Check if we can get receiver count (PySide6 doesn't expose this easily, but we can try)
-                                        logger.info("Button connection verified - signal exists")
+                                        logger.info(
+                                            "Button connection verified - signal exists"
+                                        )
                                 except Exception as e:
-                                    logger.warning(f"Could not verify button connection details: {e}")
-                                    logger.info("Button connection should still work despite verification warning")
+                                    logger.warning(
+                                        f"Could not verify button connection details: {e}"
+                                    )
+                                    logger.info(
+                                        "Button connection should still work despite verification warning"
+                                    )
                             except Exception as connect_error:
-                                logger.error(f"CRITICAL: Failed to connect download button: {connect_error}", exc_info=True)
+                                logger.error(
+                                    f"CRITICAL: Failed to connect download button: {connect_error}",
+                                    exc_info=True,
+                                )
                                 # Show visible error to user
                                 try:
                                     from PySide6.QtWidgets import QMessageBox
+
                                     QMessageBox.critical(
                                         self,
                                         "Update Error",
                                         f"Failed to connect download button.\n\n"
                                         f"Error: {str(connect_error)}\n\n"
-                                        f"Please try checking for updates again or download manually."
+                                        f"Please try checking for updates again or download manually.",
                                     )
                                 except Exception:
                                     pass
@@ -2387,7 +2661,7 @@ class MainWindow(QMainWindow):
             else:
                 # Show update dialog if check dialog not open
                 from cuepoint.update.update_ui import show_update_dialog
-                
+
                 result = show_update_dialog(
                     current_version=current_version,
                     update_info=update_info,
@@ -2396,20 +2670,29 @@ class MainWindow(QMainWindow):
                     on_later=self._on_update_later,
                     on_skip=self._on_update_skip,
                 )
-                
+
                 logger.info(f"Update dialog result: {result}")
 
             # Update status bar (only if we're on main thread)
             try:
                 from PySide6.QtCore import QThread
                 from PySide6.QtWidgets import QApplication
+
                 app = QApplication.instance()
                 if app and QThread.currentThread() == app.thread():
-                    self.statusBar().showMessage(f"Update available: {new_version}", 5000)
+                    self.statusBar().showMessage(
+                        f"Update available: {new_version}", 5000
+                    )
                 else:
                     # Not on main thread - marshal to main thread
                     from PySide6.QtCore import QTimer
-                    QTimer.singleShot(0, lambda: self.statusBar().showMessage(f"Update available: {new_version}", 5000))
+
+                    QTimer.singleShot(
+                        0,
+                        lambda: self.statusBar().showMessage(
+                            f"Update available: {new_version}", 5000
+                        ),
+                    )
             except Exception as status_error:
                 logger.warning(f"Could not update status bar: {status_error}")
         except Exception as e:
@@ -2418,10 +2701,13 @@ class MainWindow(QMainWindow):
 
             logger.error(f"Error in _on_update_available: {e}")
             logger.error(traceback.format_exc())
-            
+
             # Try to update check dialog if open (safely)
             try:
-                if hasattr(self, "update_check_dialog") and self.update_check_dialog is not None:
+                if (
+                    hasattr(self, "update_check_dialog")
+                    and self.update_check_dialog is not None
+                ):
                     try:
                         # Verify dialog is still valid
                         _ = self.update_check_dialog.windowTitle()
@@ -2431,10 +2717,11 @@ class MainWindow(QMainWindow):
                         pass
             except Exception as dialog_error:
                 logger.warning(f"Could not update dialog: {dialog_error}")
-            
+
             # Try to show error message (but don't crash if it fails)
             try:
                 from PySide6.QtWidgets import QMessageBox
+
                 QMessageBox.warning(
                     self,
                     "Update Available",
@@ -2443,9 +2730,13 @@ class MainWindow(QMainWindow):
             except Exception as msg_error:
                 logger.error(f"Could not show error message: {msg_error}")
                 # Last resort: just log it
-                logger.error("Update is available but UI could not be updated. Check logs for details.")
+                logger.error(
+                    "Update is available but UI could not be updated. Check logs for details."
+                )
 
-    def _on_update_check_complete(self, update_available: bool, error: Optional[str]) -> None:
+    def _on_update_check_complete(
+        self, update_available: bool, error: Optional[str]
+    ) -> None:
         """Handle update check complete callback (Step 5.5).
 
         Args:
@@ -2453,8 +2744,9 @@ class MainWindow(QMainWindow):
             error: Error message if check failed.
         """
         import logging
+
         logger = logging.getLogger(__name__)
-        
+
         # Update the check dialog if it's open
         if hasattr(self, "update_check_dialog") and self.update_check_dialog:
             if error:
@@ -2463,17 +2755,23 @@ class MainWindow(QMainWindow):
                 self.statusBar().showMessage(f"Update check failed: {error}", 5000)
             elif update_available:
                 # Update dialog will be shown by _on_update_available
-                logger.info("Update available - dialog should be shown by _on_update_available callback")
+                logger.info(
+                    "Update available - dialog should be shown by _on_update_available callback"
+                )
                 # Double-check that callback was called
-                if hasattr(self, 'update_manager') and self.update_manager:
+                if hasattr(self, "update_manager") and self.update_manager:
                     update_info = self.update_manager.get_update_info()
                     if update_info:
-                        logger.info(f"Update info available: {update_info.get('short_version')}")
+                        logger.info(
+                            f"Update info available: {update_info.get('short_version')}"
+                        )
                         # Update dialog if not already updated
                         if not self.update_check_dialog.update_info:
                             self.update_check_dialog.set_update_found(update_info)
                     else:
-                        logger.warning("Update available flag is True but no update_info found!")
+                        logger.warning(
+                            "Update available flag is True but no update_info found!"
+                        )
             else:
                 logger.info("No update available - user is on latest version")
                 self.update_check_dialog.set_no_update()
@@ -2484,7 +2782,9 @@ class MainWindow(QMainWindow):
                 logger.error(f"Update check failed: {error}")
                 self.statusBar().showMessage(f"Update check failed: {error}", 5000)
             elif update_available:
-                logger.info("Update available - dialog should be shown by _on_update_available callback")
+                logger.info(
+                    "Update available - dialog should be shown by _on_update_available callback"
+                )
             else:
                 logger.info("No update available - user is on latest version")
                 self.statusBar().showMessage("You are using the latest version", 3000)
@@ -2504,114 +2804,126 @@ class MainWindow(QMainWindow):
             import logging
 
             logging.error(f"Error showing update error dialog: {e}")
-            QMessageBox.warning(self, "Update Error", f"Error checking for updates:\n{error_message}")
+            QMessageBox.warning(
+                self, "Update Error", f"Error checking for updates:\n{error_message}"
+            )
 
     def _on_update_install(self) -> None:
         """Handle update install action (Step 10.9.3 - Automatic download and installation)."""
         if not hasattr(self, "update_manager") or not self.update_manager:
             return
-        
+
         update_info = self.update_manager._update_available
         if not update_info:
             QMessageBox.warning(self, "Update", "Update information not available.")
             return
-        
+
         self._download_and_install_update(update_info)
-    
+
     def _on_update_install_from_dialog(self) -> None:
         """Handle update install from update check dialog."""
         import logging
+
         logger = logging.getLogger(__name__)
-        
+
         logger.info("=" * 60)
         logger.info("DOWNLOAD BUTTON CLICKED - Starting handler")
         logger.info("=" * 60)
-        
+
         # Log build environment info for debugging
-        logger.info(f"Build environment: frozen={getattr(sys, 'frozen', False)}, "
-                   f"python={sys.version_info.major}.{sys.version_info.minor}, "
-                   f"platform={platform.system()}")
-        
+        logger.info(
+            f"Build environment: frozen={getattr(sys, 'frozen', False)}, "
+            f"python={sys.version_info.major}.{sys.version_info.minor}, "
+            f"platform={platform.system()}"
+        )
+
         # Show immediate visual feedback
         try:
             self.statusBar().showMessage("Preparing download...", 2000)
         except Exception:
             pass
-        
+
         # Debug: Check if dialog exists
         if not hasattr(self, "update_check_dialog"):
             logger.error("update_check_dialog attribute not found on MainWindow")
             QMessageBox.warning(
                 self,
                 "Update Error",
-                "Update dialog not found. Please try checking for updates again."
+                "Update dialog not found. Please try checking for updates again.",
             )
             return
-        
+
         if not self.update_check_dialog:
             logger.error("update_check_dialog is None")
             QMessageBox.warning(
                 self,
                 "Update Error",
-                "Update dialog is not available. Please try checking for updates again."
+                "Update dialog is not available. Please try checking for updates again.",
             )
             return
-        
+
         # Get update info - try multiple sources
-        update_info = getattr(self.update_check_dialog, 'update_info', None)
-        
+        update_info = getattr(self.update_check_dialog, "update_info", None)
+
         # Fallback: try to get from update_manager if available
-        if not update_info and hasattr(self, 'update_manager') and self.update_manager:
-            update_info = getattr(self.update_manager, '_update_available', None)
+        if not update_info and hasattr(self, "update_manager") and self.update_manager:
+            update_info = getattr(self.update_manager, "_update_available", None)
             if update_info:
                 logger.info("Retrieved update_info from update_manager as fallback")
-        
+
         logger.info(f"Update info from dialog: {update_info}")
         if update_info:
-            logger.info(f"Update info details: version={update_info.get('short_version', 'unknown')}, download_url={update_info.get('download_url', 'none')}")
-        
+            logger.info(
+                f"Update info details: version={update_info.get('short_version', 'unknown')}, download_url={update_info.get('download_url', 'none')}"
+            )
+
         if not update_info:
-            logger.error("Update info is None or missing from both dialog and update_manager")
+            logger.error(
+                "Update info is None or missing from both dialog and update_manager"
+            )
             QMessageBox.warning(
-                self, 
-                "Update Error", 
+                self,
+                "Update Error",
                 "Update information not available in dialog.\n\n"
-                "Please check for updates again."
+                "Please check for updates again.",
             )
             return
-        
+
         # Verify download URL exists
         download_url = update_info.get("download_url")
         if not download_url:
             enclosure = update_info.get("enclosure", {})
             if isinstance(enclosure, dict):
                 download_url = enclosure.get("url")
-        
+
         if not download_url:
             logger.error("No download URL found in update_info")
             QMessageBox.warning(
                 self,
                 "Update Error",
                 "Download URL not found in update information.\n\n"
-                "Please check for updates again or download manually from the release page."
+                "Please check for updates again or download manually from the release page.",
             )
             return
-        
-        logger.info(f"Starting download from dialog, version: {update_info.get('short_version', 'unknown')}, URL: {download_url}")
-        
+
+        logger.info(
+            f"Starting download from dialog, version: {update_info.get('short_version', 'unknown')}, URL: {download_url}"
+        )
+
         # Show download location
         import tempfile
         from pathlib import Path
-        download_dir = Path(tempfile.gettempdir()) / 'CuePoint_Updates'
+
+        download_dir = Path(tempfile.gettempdir()) / "CuePoint_Updates"
         logger.info(f"Download will be saved to: {download_dir}")
-        
+
         # Close the update check dialog first
         try:
             self.update_check_dialog.accept()
             logger.info("Update check dialog closed")
         except Exception as e:
             logger.warning(f"Error closing dialog: {e}, continuing anyway")
-        
+
         # Start download and install
         try:
             logger.info("Calling _download_and_install_update...")
@@ -2622,16 +2934,17 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(
                 self,
                 "Download Error",
-                f"Failed to start download:\n\n{str(e)}\n\nPlease check the logs for details."
+                f"Failed to start download:\n\n{str(e)}\n\nPlease check the logs for details.",
             )
-    
+
     def _download_and_install_update(self, update_info: Dict) -> None:
         """Download and install update with progress dialog.
-        
+
         Args:
             update_info: Update information dictionary
         """
         from PySide6.QtWidgets import QMessageBox
+
         # Get download URL
         download_url = update_info.get("download_url")
         if not download_url:
@@ -2639,7 +2952,7 @@ class MainWindow(QMainWindow):
             enclosure = update_info.get("enclosure", {})
             if isinstance(enclosure, dict):
                 download_url = enclosure.get("url")
-        
+
         if not download_url:
             QMessageBox.information(
                 self,
@@ -2647,42 +2960,53 @@ class MainWindow(QMainWindow):
                 "Download URL not available. Please check the release page manually.",
             )
             return
-        
+
         # Show diagnostic dialog first (QMessageBox is from module-level import)
         try:
             import logging
 
             from PySide6.QtWidgets import QDialog
 
-            from cuepoint.ui.dialogs.download_progress_dialog import DownloadProgressDialog
-            from cuepoint.ui.dialogs.update_diagnostic_dialog import UpdateDiagnosticDialog
-            
+            from cuepoint.ui.dialogs.download_progress_dialog import (
+                DownloadProgressDialog,
+            )
+            from cuepoint.ui.dialogs.update_diagnostic_dialog import (
+                UpdateDiagnosticDialog,
+            )
+
             logger = logging.getLogger(__name__)
-            
+
             # Show diagnostic dialog (parent=None on macOS to avoid crash)
             diag_parent = None if sys.platform == "darwin" else self
             diagnostic_dialog = UpdateDiagnosticDialog(update_info, parent=diag_parent)
             diagnostic_result = diagnostic_dialog.exec()
-            
+
             if diagnostic_result != QDialog.DialogCode.Accepted:
                 # User chose "Update Later"
                 logger.info("Update cancelled by user (Update Later)")
                 self.statusBar().showMessage("Update postponed", 2000)
                 return
-            
+
             # User chose "Update Now" - proceed with download
             logger.info(f"Starting download from: {download_url}")
-            
+
             # Verify URL format (GitHub Releases format)
             if "github.com" in download_url and "/releases/download/" in download_url:
-                logger.info("Download URL appears to be a GitHub Releases URL - should be publicly accessible")
+                logger.info(
+                    "Download URL appears to be a GitHub Releases URL - should be publicly accessible"
+                )
             else:
-                logger.warning(f"Download URL format: {download_url} (may not be GitHub Releases)")
-            
+                logger.warning(
+                    f"Download URL format: {download_url} (may not be GitHub Releases)"
+                )
+
             download_dialog = DownloadProgressDialog(download_url, parent=self)
             result = download_dialog.exec()
-            
-            if result == QDialog.DialogCode.Accepted and download_dialog.get_downloaded_file():
+
+            if (
+                result == QDialog.DialogCode.Accepted
+                and download_dialog.get_downloaded_file()
+            ):
                 # Download completed; verify checksum before install (Design 4.9, 4.36)
                 downloaded_file = download_dialog.get_downloaded_file()
                 logger.info(f"Download completed: {downloaded_file}")
@@ -2691,6 +3015,7 @@ class MainWindow(QMainWindow):
                     from pathlib import Path
 
                     from cuepoint.update.security import PackageIntegrityVerifier
+
                     ok, err = PackageIntegrityVerifier.verify_checksum(
                         Path(downloaded_file), expected_checksum
                     )
@@ -2703,7 +3028,9 @@ class MainWindow(QMainWindow):
                         )
                         return
                 else:
-                    logger.warning("Update has no checksum; refusing to install (fail closed)")
+                    logger.warning(
+                        "Update has no checksum; refusing to install (fail closed)"
+                    )
                     QMessageBox.critical(
                         self,
                         "Update Verification Failed",
@@ -2717,10 +3044,11 @@ class MainWindow(QMainWindow):
             else:
                 logger.warning("Download failed or was cancelled")
                 self.statusBar().showMessage("Download failed", 3000)
-                
+
         except Exception as e:
             import logging
             import traceback
+
             logger = logging.getLogger(__name__)
             logger.error(f"Update download failed: {e}")
             logger.error(traceback.format_exc())
@@ -2729,25 +3057,25 @@ class MainWindow(QMainWindow):
                 "Update Error",
                 f"Failed to download update:\n\n{str(e)}\n\nPlease download manually from the release page.",
             )
-    
+
     def _install_update(self, installer_path: str) -> None:
         """Install downloaded update (Step 10.9.3)."""
         try:
             from PySide6.QtWidgets import QMessageBox
 
             from cuepoint.update.update_installer import UpdateInstaller
-            
+
             installer = UpdateInstaller()
-            
+
             if not installer.can_install():
                 QMessageBox.warning(
                     self,
                     "Installation Not Supported",
                     "Automatic installation is not supported on this platform.\n\n"
-                    "Please install the update manually:\n" + installer_path
+                    "Please install the update manually:\n" + installer_path,
                 )
                 return
-            
+
             # Confirm installation
             reply = QMessageBox.question(
                 self,
@@ -2755,47 +3083,52 @@ class MainWindow(QMainWindow):
                 "The application will close and the update will be installed.\n\n"
                 "Do you want to continue?",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.Yes
+                QMessageBox.StandardButton.Yes,
             )
-            
+
             if reply == QMessageBox.StandardButton.Yes:
                 # Show message that app will close and installer will launch
                 import logging
+
                 logger = logging.getLogger(__name__)
-                logger.info("User confirmed installation, preparing to launch installer...")
-                
+                logger.info(
+                    "User confirmed installation, preparing to launch installer..."
+                )
+
                 # Show brief message (non-blocking)
                 try:
                     self.statusBar().showMessage("Launching installer...", 2000)
                     # Process events to show the message
                     from PySide6.QtWidgets import QApplication
+
                     QApplication.processEvents()
                 except Exception:
                     pass
-                
+
                 # Perform installation (this will close the app)
                 success, error = installer.install(installer_path)
-                
+
                 if not success:
                     # If we get here, installation failed before app closed
                     QMessageBox.critical(
                         self,
                         "Installation Failed",
                         f"Failed to install update:\n\n{error}\n\n"
-                        "Please install manually:\n" + installer_path
+                        "Please install manually:\n" + installer_path,
                     )
                 # If successful, installer.install() will have closed the app
             else:
                 self.statusBar().showMessage("Installation cancelled", 2000)
-                
+
         except Exception as e:
             import logging
+
             logging.error(f"Update installation failed: {e}")
             QMessageBox.critical(
                 self,
                 "Installation Error",
                 f"Failed to install update:\n\n{str(e)}\n\n"
-                "Please install manually:\n" + installer_path
+                "Please install manually:\n" + installer_path,
             )
 
     def _on_update_later(self) -> None:
@@ -2810,7 +3143,9 @@ class MainWindow(QMainWindow):
                 version = update_info.get("version") or update_info.get("short_version")
                 if version:
                     self.update_manager.preferences.ignore_version(version)
-                    self.statusBar().showMessage(f"Version {version} will be skipped", 3000)
+                    self.statusBar().showMessage(
+                        f"Version {version} will be skipped", 3000
+                    )
 
     def on_batch_started(self, playlist_names: List[str]) -> None:
         """Handle batch processing started signal from batch processor.
@@ -2854,7 +3189,9 @@ class MainWindow(QMainWindow):
             pass
 
         # Connect controller signals to batch processor
-        self.controller.progress_updated.connect(self.batch_processor.on_playlist_progress)
+        self.controller.progress_updated.connect(
+            self.batch_processor.on_playlist_progress
+        )
         self.controller.processing_complete.connect(self._on_batch_playlist_complete)
         self.controller.error_occurred.connect(self._on_batch_playlist_error)
 
@@ -2888,16 +3225,18 @@ class MainWindow(QMainWindow):
             self.batch_processor.on_playlist_completed(playlist_name, results)
 
             # Check if batch is complete
-            if hasattr(self.controller, "batch_index") and self.controller.batch_index >= len(
-                self.batch_playlist_names
-            ):
+            if hasattr(
+                self.controller, "batch_index"
+            ) and self.controller.batch_index >= len(self.batch_playlist_names):
                 # Batch complete - reconnect regular signals
                 self._reconnect_regular_signals()
-            elif hasattr(self.controller, "batch_index") and self.controller.batch_index < len(
-                self.batch_playlist_names
-            ):
+            elif hasattr(
+                self.controller, "batch_index"
+            ) and self.controller.batch_index < len(self.batch_playlist_names):
                 # Notify start of next playlist
-                next_playlist_name = self.batch_playlist_names[self.controller.batch_index]
+                next_playlist_name = self.batch_playlist_names[
+                    self.controller.batch_index
+                ]
                 self.batch_processor.on_playlist_started(next_playlist_name)
 
     def _on_batch_playlist_error(self, error: ProcessingError) -> None:
@@ -2918,16 +3257,18 @@ class MainWindow(QMainWindow):
             self.batch_processor.on_playlist_error(playlist_name, error)
 
             # Check if batch is complete
-            if hasattr(self.controller, "batch_index") and self.controller.batch_index >= len(
-                self.batch_playlist_names
-            ):
+            if hasattr(
+                self.controller, "batch_index"
+            ) and self.controller.batch_index >= len(self.batch_playlist_names):
                 # Batch complete - reconnect regular signals
                 self._reconnect_regular_signals()
-            elif hasattr(self.controller, "batch_index") and self.controller.batch_index < len(
-                self.batch_playlist_names
-            ):
+            elif hasattr(
+                self.controller, "batch_index"
+            ) and self.controller.batch_index < len(self.batch_playlist_names):
                 # Notify start of next playlist
-                next_playlist_name = self.batch_playlist_names[self.controller.batch_index]
+                next_playlist_name = self.batch_playlist_names[
+                    self.controller.batch_index
+                ]
                 self.batch_processor.on_playlist_started(next_playlist_name)
 
     def _reconnect_regular_signals(self) -> None:
@@ -2937,11 +3278,15 @@ class MainWindow(QMainWindow):
         regular signal handlers for single playlist processing mode.
         """
         try:
-            self.controller.progress_updated.disconnect(self.batch_processor.on_playlist_progress)
+            self.controller.progress_updated.disconnect(
+                self.batch_processor.on_playlist_progress
+            )
         except BaseException:
             pass
         try:
-            self.controller.processing_complete.disconnect(self._on_batch_playlist_complete)
+            self.controller.processing_complete.disconnect(
+                self._on_batch_playlist_complete
+            )
         except BaseException:
             pass
         try:
@@ -2978,11 +3323,15 @@ class MainWindow(QMainWindow):
         # Pass all playlists, even empty ones (so user can see what was processed)
         # Filter out None values only
         filtered_dict = {
-            name: results for name, results in results_dict.items() if results is not None
+            name: results
+            for name, results in results_dict.items()
+            if results is not None
         }
 
         if not filtered_dict:
-            self.statusBar().showMessage("Batch processing complete, but no results to display")
+            self.statusBar().showMessage(
+                "Batch processing complete, but no results to display"
+            )
             return
 
         # Ensure we're on Main tab (should already be there, but just in case)
@@ -3012,7 +3361,9 @@ class MainWindow(QMainWindow):
 
         # Calculate summary statistics for status bar
         total = sum(len(results) for results in filtered_dict.values())
-        matched = sum(sum(1 for r in results if r.matched) for results in filtered_dict.values())
+        matched = sum(
+            sum(1 for r in results if r.matched) for results in filtered_dict.values()
+        )
         match_rate = (matched / total * 100) if total > 0 else 0
 
         # Update status bar
@@ -3021,7 +3372,9 @@ class MainWindow(QMainWindow):
             f"{total} total tracks, {matched}/{total} matched ({match_rate:.1f}%)"
         )
 
-    def _auto_save_results(self, results: List[TrackResult], playlist_name: str) -> Optional[Dict[str, str]]:
+    def _auto_save_results(
+        self, results: List[TrackResult], playlist_name: str
+    ) -> Optional[Dict[str, str]]:
         """Automatically save results to CSV file after processing.
 
         Creates a sanitized filename from the playlist name and saves
@@ -3064,7 +3417,9 @@ class MainWindow(QMainWindow):
             # Show success message in status bar
             if output_files.get("main"):
                 main_file = output_files["main"]
-                self.statusBar().showMessage(f"Results saved: {os.path.basename(main_file)}", 3000)
+                self.statusBar().showMessage(
+                    f"Results saved: {os.path.basename(main_file)}", 3000
+                )
 
                 # Refresh Past Searches tab to show the new file
                 if hasattr(self, "history_view"):
@@ -3085,7 +3440,10 @@ class MainWindow(QMainWindow):
                         except Exception as e:
                             # Log but don't fail - refresh is best-effort
                             import logging
-                            logging.getLogger(__name__).warning(f"Could not refresh history view: {e}")
+
+                            logging.getLogger(__name__).warning(
+                                f"Could not refresh history view: {e}"
+                            )
 
                     # Refresh after a short delay to ensure file system has updated
                     QTimer.singleShot(500, refresh_with_file)
@@ -3182,7 +3540,9 @@ class MainWindow(QMainWindow):
             # Add performance tab if not already added
             if self.performance_tab_index is None:
                 print("[DEBUG] Adding Performance tab")  # Debug output
-                self.performance_tab_index = self.tabs.addTab(self.performance_view, "Performance")
+                self.performance_tab_index = self.tabs.addTab(
+                    self.performance_view, "Performance"
+                )
                 self.performance_view.start_monitoring()
                 # Switch to performance tab to show it to the user
                 self.tabs.setCurrentIndex(self.performance_tab_index)
@@ -3191,12 +3551,16 @@ class MainWindow(QMainWindow):
                 )  # Debug output
             else:
                 # Tab already exists, just start monitoring
-                print("[DEBUG] Performance tab already exists, starting monitoring")  # Debug output
+                print(
+                    "[DEBUG] Performance tab already exists, starting monitoring"
+                )  # Debug output
                 self.performance_view.start_monitoring()
                 # Switch to performance tab to show it to the user
                 self.tabs.setCurrentIndex(self.performance_tab_index)
         else:
-            print("[DEBUG] track_performance is False, not adding Performance tab")  # Debug output
+            print(
+                "[DEBUG] track_performance is False, not adding Performance tab"
+            )  # Debug output
             # Remove performance tab if it exists
             if self.performance_tab_index is not None:
                 self.performance_view.stop_monitoring()
@@ -3210,6 +3574,7 @@ class MainWindow(QMainWindow):
         try:
             from cuepoint.utils.run_context import get_current_run_id
             from cuepoint.utils.telemetry_helper import get_telemetry
+
             get_telemetry().track(
                 "run_start",
                 {"run_id": get_current_run_id() or "", "track_count": 0},
@@ -3221,11 +3586,16 @@ class MainWindow(QMainWindow):
         checkpoint_service = None
         resume_checkpoint = None
         try:
-            from cuepoint.services.checkpoint_service import CheckpointService, get_checkpoint_dir
+            from cuepoint.services.checkpoint_service import (
+                CheckpointService,
+                get_checkpoint_dir,
+            )
+
             checkpoint_service = CheckpointService(checkpoint_dir=get_checkpoint_dir())
             resume_checkpoint = checkpoint_service.validate_and_load(xml_path)
             if resume_checkpoint and resume_checkpoint.playlist == playlist_name:
                 from PySide6.QtWidgets import QMessageBox
+
                 reply = QMessageBox.question(
                     self,
                     "Resume previous run?",
@@ -3270,7 +3640,9 @@ class MainWindow(QMainWindow):
             container = get_container()
             processor_service: IProcessorService = container.resolve(IProcessorService)
             if self._config_service:
-                preflight_enabled = self._config_service.get("product.preflight_enabled", True)
+                preflight_enabled = self._config_service.get(
+                    "product.preflight_enabled", True
+                )
                 if preflight_enabled is None:
                     preflight_enabled = True
                 preflight_enabled = bool(preflight_enabled)
@@ -3303,13 +3675,18 @@ class MainWindow(QMainWindow):
         """
         try:
             # Prevent multiple cancel requests
-            if hasattr(self, '_cancelling') and self._cancelling:
+            if hasattr(self, "_cancelling") and self._cancelling:
                 return
-            
+
             # Check if processing has been running for a while and show confirmation
             try:
-                if hasattr(self, '_processing_start_time') and self._processing_start_time:
-                    elapsed = (datetime.now() - self._processing_start_time).total_seconds()
+                if (
+                    hasattr(self, "_processing_start_time")
+                    and self._processing_start_time
+                ):
+                    elapsed = (
+                        datetime.now() - self._processing_start_time
+                    ).total_seconds()
                     if elapsed > 5:  # More than 5 seconds
                         reply = QMessageBox.question(
                             self,
@@ -3318,65 +3695,73 @@ class MainWindow(QMainWindow):
                             "Are you sure you want to cancel?\n"
                             "All progress will be lost.",
                             QMessageBox.Yes | QMessageBox.No,
-                            QMessageBox.No
+                            QMessageBox.No,
                         )
                         if reply == QMessageBox.No:
                             return
             except Exception:
                 # If confirmation dialog fails, continue with cancellation anyway
                 pass
-            
+
             self._cancelling = True
-            
+
             # Disable cancel button immediately to prevent multiple clicks
             try:
-                if hasattr(self, 'cancel_button') and self.cancel_button:
+                if hasattr(self, "cancel_button") and self.cancel_button:
                     self.cancel_button.setEnabled(False)
                     self.cancel_button.setText("Cancelling...")
-                if hasattr(self, 'pause_button') and self.pause_button:
+                if hasattr(self, "pause_button") and self.pause_button:
                     self.pause_button.setEnabled(False)
             except Exception:
                 pass
-            
+
             # Cancel processing in a safe way
             try:
-                if hasattr(self, 'controller') and self.controller:
-                    if hasattr(self.controller, 'is_processing') and self.controller.is_processing():
+                if hasattr(self, "controller") and self.controller:
+                    if (
+                        hasattr(self.controller, "is_processing")
+                        and self.controller.is_processing()
+                    ):
                         try:
                             self.controller.cancel_processing()
                         except Exception as e:
                             print(f"Error in controller.cancel_processing: {e}")
                             import traceback
+
                             traceback.print_exc()
             except Exception as e:
                 print(f"Error accessing controller: {e}")
                 import traceback
+
                 traceback.print_exc()
-            
+
             try:
-                if hasattr(self, 'statusBar') and self.statusBar():
+                if hasattr(self, "statusBar") and self.statusBar():
                     self.statusBar().showMessage("Cancelling processing...")
             except Exception:
                 pass
-            
+
             # Use QTimer to safely reset UI after cancellation
             from PySide6.QtCore import QTimer
+
             QTimer.singleShot(1000, self._on_cancel_complete)
-            
+
         except Exception as e:
             # Log error but don't crash - ensure UI is reset
             import traceback
+
             error_msg = f"Error cancelling processing: {str(e)}"
             print(error_msg)
             print(traceback.format_exc())
             try:
-                if hasattr(self, 'statusBar') and self.statusBar():
+                if hasattr(self, "statusBar") and self.statusBar():
                     self.statusBar().showMessage(error_msg, 5000)
             except Exception:
                 pass
             # Still try to reset UI
             try:
                 from PySide6.QtCore import QTimer
+
                 QTimer.singleShot(500, self._on_cancel_complete)
             except Exception:
                 # Last resort: reset cancelling flag directly
@@ -3389,48 +3774,55 @@ class MainWindow(QMainWindow):
         """Called after cancellation is complete - safely reset UI"""
         try:
             # Check if window still exists (prevent crash if window was closed)
-            if not hasattr(self, 'isVisible') or not self.isVisible():
+            if not hasattr(self, "isVisible") or not self.isVisible():
                 return
-            
+
             self._cancelling = False
-            
+
             # Re-enable start button
-            if hasattr(self, 'start_button') and self.start_button:
+            if hasattr(self, "start_button") and self.start_button:
                 try:
                     self._set_start_enabled(True)
                 except RuntimeError:
                     # Widget might have been deleted
                     pass
-            
+
             # Reset cancel button
-            if hasattr(self, 'cancel_button'):
+            if hasattr(self, "cancel_button"):
                 try:
                     self.cancel_button.setEnabled(True)
                     self.cancel_button.setText("Cancel")
                 except RuntimeError:
                     pass
-            
+
             # Hide progress section
-            if hasattr(self, 'progress_group') and self.progress_group:
+            if hasattr(self, "progress_group") and self.progress_group:
                 try:
                     self.progress_group.setVisible(False)
                 except RuntimeError:
                     pass
-            
-            if hasattr(self, 'statusBar'):
+
+            if hasattr(self, "statusBar"):
                 try:
                     self.statusBar().showMessage("Processing cancelled", 2000)
                 except RuntimeError:
                     pass
-            
+
         except Exception as e:
             import traceback
+
             print(f"Error in cancel complete: {e}")
             print(traceback.format_exc())
             # Try to at least show a message, but don't crash if window is closed
             try:
-                if hasattr(self, 'statusBar') and hasattr(self, 'isVisible') and self.isVisible():
-                    self.statusBar().showMessage("Processing cancelled (with errors)", 3000)
+                if (
+                    hasattr(self, "statusBar")
+                    and hasattr(self, "isVisible")
+                    and self.isVisible()
+                ):
+                    self.statusBar().showMessage(
+                        "Processing cancelled (with errors)", 3000
+                    )
             except Exception:
                 pass
 
@@ -3473,27 +3865,39 @@ class MainWindow(QMainWindow):
 
         # Time
         if progress_info.elapsed_time > 0:
-            self.progress_elapsed.setText(f"Elapsed: {self._format_time(progress_info.elapsed_time)}")
+            self.progress_elapsed.setText(
+                f"Elapsed: {self._format_time(progress_info.elapsed_time)}"
+            )
             if progress_info.completed_tracks > 0:
                 avg = progress_info.elapsed_time / progress_info.completed_tracks
-                remaining = avg * (progress_info.total_tracks - progress_info.completed_tracks)
-                self.progress_remaining.setText(f"Remaining: {self._format_time(remaining)}")
-        
+                remaining = avg * (
+                    progress_info.total_tracks - progress_info.completed_tracks
+                )
+                self.progress_remaining.setText(
+                    f"Remaining: {self._format_time(remaining)}"
+                )
+
         # Update status bar progress indicator
-        if hasattr(self, 'status_progress') and self.controller.is_processing():
+        if hasattr(self, "status_progress") and self.controller.is_processing():
             if progress_info.total_tracks > 0:
-                percentage = (progress_info.completed_tracks / progress_info.total_tracks) * 100
+                percentage = (
+                    progress_info.completed_tracks / progress_info.total_tracks
+                ) * 100
                 self.status_progress.setMaximum(100)
                 self.status_progress.setValue(int(percentage))
                 self.status_progress.setVisible(True)
         else:
-            if hasattr(self, 'status_progress'):
+            if hasattr(self, "status_progress"):
                 self.status_progress.setVisible(False)
 
         # Step 8: Process events so Cancel button stays responsive (Design 8.4)
-        if progress_info.completed_tracks % 5 == 0 or progress_info.completed_tracks <= 1:
+        if (
+            progress_info.completed_tracks % 5 == 0
+            or progress_info.completed_tracks <= 1
+        ):
             try:
                 from PySide6.QtWidgets import QApplication
+
                 QApplication.processEvents()
             except Exception:
                 pass
@@ -3561,9 +3965,9 @@ class MainWindow(QMainWindow):
         # Hide progress, show results
         self.progress_group.setVisible(False)
         self.results_group.setVisible(True)
-        
+
         # Hide status bar progress
-        if hasattr(self, 'status_progress'):
+        if hasattr(self, "status_progress"):
             self.status_progress.setVisible(False)
 
         # Switch to Main tab to show results
@@ -3576,7 +3980,7 @@ class MainWindow(QMainWindow):
         self.cancel_button.setEnabled(False)
         if hasattr(self, "pause_button") and self.pause_button:
             self.pause_button.setEnabled(False)
-        
+
         # Capture processing duration for summary
         processing_start_time = getattr(self, "_processing_start_time", None)
         processing_end_time = datetime.now()
@@ -3586,7 +3990,7 @@ class MainWindow(QMainWindow):
         # Clear processing start time
         if hasattr(self, "_processing_start_time"):
             self._processing_start_time = None
-        
+
         # Get playlist name for file naming
         playlist_name = self.playlist_selector.get_selected_playlist() or "playlist"
 
@@ -3610,6 +4014,7 @@ class MainWindow(QMainWindow):
             try:
                 from cuepoint.utils.run_context import get_current_run_id
                 from cuepoint.utils.telemetry_helper import get_telemetry
+
                 total = len(results)
                 matched = sum(1 for r in results if r.matched)
                 match_rate = matched / total if total else 0.0
@@ -3625,7 +4030,10 @@ class MainWindow(QMainWindow):
                         "tracks_unmatched": total - matched,
                     },
                 )
-                telemetry.track("export_complete", {"output_count": len(output_files) if output_files else 0})
+                telemetry.track(
+                    "export_complete",
+                    {"output_count": len(output_files) if output_files else 0},
+                )
                 telemetry.flush()
             except Exception:
                 pass
@@ -3639,7 +4047,9 @@ class MainWindow(QMainWindow):
                 input_xml_path = self.file_selector.get_file_path()
                 redact_paths = True
                 if self._config_service:
-                    redact_paths_value = self._config_service.get("product.redact_paths_in_logs", True)
+                    redact_paths_value = self._config_service.get(
+                        "product.redact_paths_in_logs", True
+                    )
                     if redact_paths_value is None:
                         redact_paths_value = True
                     redact_paths = bool(redact_paths_value)
@@ -3663,13 +4073,17 @@ class MainWindow(QMainWindow):
                     if not json_path:
                         last_out = ""
                         if self._config_service:
-                            last_out = self._config_service.get("product.last_output_dir", "") or ""
+                            last_out = (
+                                self._config_service.get("product.last_output_dir", "")
+                                or ""
+                            )
                         json_path = os.path.join(
                             get_output_directory(last_out if last_out else None),
                             f"run_summary_{summary.run_id}.json",
                         )
                     try:
                         import json
+
                         with open(json_path, "w", encoding="utf-8") as handle:
                             json.dump(summary.to_dict(), handle, indent=2)
                     except Exception:
@@ -3684,144 +4098,153 @@ class MainWindow(QMainWindow):
         percentage = (matched_count / total_count * 100) if total_count > 0 else 0
         self.statusBar().showMessage(
             f"Processing complete: {matched_count}/{total_count} tracks matched ({percentage:.0f}%)",
-            5000
+            5000,
         )
         self._update_status_stats_from_results(results)
-    
+
     def _update_status_file_path(self, file_path: str) -> None:
         """Update file path in status bar"""
-        if not hasattr(self, 'status_file_label'):
+        if not hasattr(self, "status_file_label"):
             return
-        
+
         # Truncate path if too long
         display_path = self._truncate_path(file_path, max_length=50)
         self.status_file_label.setText(f"File: {display_path}")
         self.status_file_label.setToolTip(file_path)  # Full path in tooltip
         self.status_file_label.setVisible(True)
-    
+
     def _update_status_playlist(self, playlist_name: str, track_count: int = 0) -> None:
         """Update playlist in status bar"""
-        if not hasattr(self, 'status_playlist_label'):
+        if not hasattr(self, "status_playlist_label"):
             return
-        
+
         playlist_text = f"Playlist: {playlist_name}"
         if track_count > 0:
             playlist_text += f" ({track_count} tracks)"
-        
+
         self.status_playlist_label.setText(playlist_text)
         self.status_playlist_label.setVisible(True)
-    
+
     def _update_status_stats(self, progress_info: ProgressInfo) -> None:
         """Update statistics in status bar"""
-        if not hasattr(self, 'status_stats_label'):
+        if not hasattr(self, "status_stats_label"):
             return
-        
+
         if progress_info.total_tracks > 0 and progress_info.matched_count is not None:
             matched = progress_info.matched_count
             total = progress_info.total_tracks
             percentage = (matched / total * 100) if total > 0 else 0
-            self.status_stats_label.setText(f"Matched: {matched}/{total} ({percentage:.0f}%)")
+            self.status_stats_label.setText(
+                f"Matched: {matched}/{total} ({percentage:.0f}%)"
+            )
             self.status_stats_label.setVisible(True)
         else:
             self.status_stats_label.setVisible(False)
-    
+
     def _update_status_stats_from_results(self, results: List[TrackResult]) -> None:
         """Update statistics in status bar from results"""
-        if not hasattr(self, 'status_stats_label'):
+        if not hasattr(self, "status_stats_label"):
             return
-        
+
         if results:
             matched_count = sum(1 for r in results if r.matched)
             total_count = len(results)
             percentage = (matched_count / total_count * 100) if total_count > 0 else 0
-            self.status_stats_label.setText(f"Matched: {matched_count}/{total_count} ({percentage:.0f}%)")
+            self.status_stats_label.setText(
+                f"Matched: {matched_count}/{total_count} ({percentage:.0f}%)"
+            )
             self.status_stats_label.setVisible(True)
         else:
             self.status_stats_label.setVisible(False)
-    
+
     def _truncate_path(self, file_path: str, max_length: int = 50) -> str:
         """Truncate file path to fit in status bar"""
         if len(file_path) <= max_length:
             return file_path
-        
+
         # Try to show beginning and end
         if max_length < 20:
             # Too short, just show end
-            return "..." + file_path[-(max_length - 3):]
-        
+            return "..." + file_path[-(max_length - 3) :]
+
         # Show beginning and end
         start_len = (max_length - 3) // 2
         end_len = max_length - 3 - start_len
         return file_path[:start_len] + "..." + file_path[-end_len:]
-    
+
     def on_rerun_requested(self, xml_path: str, playlist_name: str) -> None:
         """Handle re-run request from history view.
-        
+
         Loads the XML file and playlist, then navigates to the main tab
         with pre-filled selections.
-        
+
         Args:
             xml_path: Path to the XML file to load
             playlist_name: Name of the playlist to select
         """
         try:
             # Switch to main interface if on tool selection page
-            if hasattr(self, 'tool_selection_page') and self.tool_selection_page.isVisible():
+            if (
+                hasattr(self, "tool_selection_page")
+                and self.tool_selection_page.isVisible()
+            ):
                 self.show_main_interface()
-            
+
             # Load XML file
             if os.path.exists(xml_path):
                 self.file_selector.set_file(xml_path)
                 self.on_file_selected(xml_path)
-                
+
                 # Wait a bit for XML to load, then select playlist
                 from PySide6.QtCore import QTimer
-                QTimer.singleShot(500, lambda: self._select_playlist_after_load(playlist_name))
+
+                QTimer.singleShot(
+                    500, lambda: self._select_playlist_after_load(playlist_name)
+                )
             else:
                 QMessageBox.warning(
                     self,
                     "File Not Found",
                     f"The XML file could not be found:\n{xml_path}\n\n"
-                    "Please select a different file."
+                    "Please select a different file.",
                 )
                 # Allow user to browse for XML file
                 new_path, _ = QFileDialog.getOpenFileName(
                     self,
                     "Select XML File",
                     os.path.dirname(xml_path) if xml_path else "",
-                    "XML Files (*.xml);;All Files (*.*)"
+                    "XML Files (*.xml);;All Files (*.*)",
                 )
                 if new_path and os.path.exists(new_path):
                     self.file_selector.set_file(new_path)
                     self.on_file_selected(new_path)
-                    QTimer.singleShot(500, lambda: self._select_playlist_after_load(playlist_name))
-            
+                    QTimer.singleShot(
+                        500, lambda: self._select_playlist_after_load(playlist_name)
+                    )
+
             # Navigate to main tab
             self.tabs.setCurrentIndex(0)
-            
+
             # Show message in status bar
             self.statusBar().showMessage(
-                f"Re-run: Loaded {os.path.basename(xml_path)} - {playlist_name}",
-                5000
+                f"Re-run: Loaded {os.path.basename(xml_path)} - {playlist_name}", 5000
             )
-            
+
         except Exception as e:
             QMessageBox.warning(
-                self,
-                "Re-run Error",
-                f"Error loading file for re-run:\n{str(e)}"
+                self, "Re-run Error", f"Error loading file for re-run:\n{str(e)}"
             )
-    
+
     def _select_playlist_after_load(self, playlist_name: str) -> None:
         """Select playlist after XML file has been loaded"""
         try:
-            if hasattr(self, 'playlist_selector'):
+            if hasattr(self, "playlist_selector"):
                 # Try to set the selected playlist
                 self.playlist_selector.set_selected_playlist(playlist_name)
                 self.on_playlist_selected(playlist_name)
-                
+
                 # Focus on start button (user can review and start)
-                if hasattr(self, 'start_button'):
+                if hasattr(self, "start_button"):
                     self.start_button.setFocus()
         except Exception as e:
             print(f"Warning: Could not select playlist '{playlist_name}': {e}")
@@ -3839,11 +4262,16 @@ class MainWindow(QMainWindow):
         try:
             from cuepoint.utils.run_context import get_current_run_id
             from cuepoint.utils.telemetry_helper import get_telemetry
+
             get_telemetry().track(
                 "run_error",
                 {
                     "run_id": get_current_run_id() or "",
-                    "error_code": getattr(error, "error_code", str(getattr(error, "error_type", "UNKNOWN"))),
+                    "error_code": getattr(
+                        error,
+                        "error_code",
+                        str(getattr(error, "error_type", "UNKNOWN")),
+                    ),
                     "stage": "processing",
                 },
             )
@@ -3868,6 +4296,7 @@ class MainWindow(QMainWindow):
         # Design 5.38, 5.40: Circuit open -> Retry now / Close (manual retry)
         if error.error_type == ErrorType.CIRCUIT_OPEN:
             from cuepoint.services.circuit_breaker import get_network_circuit_breaker
+
             msg = QMessageBox(self)
             msg.setIcon(QMessageBox.Icon.Warning)
             msg.setWindowTitle("Network Paused")
@@ -3989,11 +4418,14 @@ class MainWindow(QMainWindow):
                         # In packaged app, only restore if file is in user-accessible location
                         # Don't restore paths from development directories (Step 8 fix)
                         from pathlib import Path
+
                         xml_path = Path(last_xml)
                         user_home = Path.home()
-                        if not str(xml_path.resolve()).startswith(str(user_home.resolve())):
+                        if not str(xml_path.resolve()).startswith(
+                            str(user_home.resolve())
+                        ):
                             last_xml = None  # Skip dev/test paths outside user home
-                    
+
                     if last_xml:
                         # Load XML file
                         if hasattr(self, "file_selector"):
@@ -4008,7 +4440,9 @@ class MainWindow(QMainWindow):
 
                                 def restore_playlist():
                                     try:
-                                        self.playlist_selector.set_selected_playlist(last_playlist)
+                                        self.playlist_selector.set_selected_playlist(
+                                            last_playlist
+                                        )
                                     except Exception:
                                         pass  # Playlist may not exist anymore
 
@@ -4016,7 +4450,10 @@ class MainWindow(QMainWindow):
                 except Exception as e:
                     # Log but don't fail - state restoration is best-effort
                     import logging
-                    logging.getLogger(__name__).warning(f"Could not restore last XML: {e}")
+
+                    logging.getLogger(__name__).warning(
+                        f"Could not restore last XML: {e}"
+                    )
             else:
                 # File doesn't exist anymore, clear it from settings
                 settings.remove("last_xml")

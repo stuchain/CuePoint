@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Run Step 5.2 tests and print results."""
+
 import sys
 import subprocess
 
@@ -21,4 +22,3 @@ if __name__ == "__main__":
     if result.stderr:
         print("STDERR:", result.stderr, file=sys.stderr)
     sys.exit(result.returncode)
-

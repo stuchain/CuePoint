@@ -32,7 +32,9 @@ class TestProcessorServiceErrorHandling:
             enable_file_logging=False, enable_console_logging=False
         )
         self.config_service = ConfigService()
-        self.beatport_service = BeatportService(self.cache_service, self.logging_service)
+        self.beatport_service = BeatportService(
+            self.cache_service, self.logging_service
+        )
         self.matcher_service = MatcherService()
         self.processor_service = ProcessorService(
             beatport_service=self.beatport_service,
@@ -83,7 +85,9 @@ class TestProcessorServiceErrorHandling:
             # Check that error mentions playlist not found (details has "P010: Playlist not found in XML.")
             err = exc_info.value
             combined = f"{err.message} {err.details or ''}".lower()
-            assert "not found" in combined or err.error_type.name == "PLAYLIST_NOT_FOUND"
+            assert (
+                "not found" in combined or err.error_type.name == "PLAYLIST_NOT_FOUND"
+            )
         finally:
             Path(xml_path).unlink()
 
@@ -140,4 +144,3 @@ class TestProcessorServiceErrorHandling:
         assert err.error_type == ErrorType.FILE_NOT_FOUND
         combined = f"{err.message} {err.details or ''}".lower()
         assert "not found" in combined
-

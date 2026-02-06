@@ -1,6 +1,5 @@
 """Unit tests for network circuit breaker (Design 5.38)."""
 
-
 import pytest
 
 from cuepoint.services.circuit_breaker import (
@@ -102,6 +101,7 @@ def test_success_resets_consecutive_failures():
 def test_get_network_circuit_breaker_singleton():
     """get_network_circuit_breaker() returns the same instance."""
     from cuepoint.services import circuit_breaker as cb_mod
+
     original = cb_mod._breaker
     try:
         cb_mod._breaker = None

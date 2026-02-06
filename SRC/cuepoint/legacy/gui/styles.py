@@ -7,4 +7,3 @@ Styles Module - Theme and styling
 This module will contain application-wide styling and themes.
 (To be implemented as needed)
 """
-

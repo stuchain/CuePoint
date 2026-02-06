@@ -63,7 +63,9 @@ class ShortcutsDialog(QDialog):
         search_layout.addWidget(search_label)
 
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText(tr("shortcuts.search_placeholder", "Search shortcuts..."))
+        self.search_input.setPlaceholderText(
+            tr("shortcuts.search_placeholder", "Search shortcuts...")
+        )
         self.search_input.textChanged.connect(self._filter_shortcuts)
         search_layout.addWidget(self.search_input)
         layout.addLayout(search_layout)
@@ -107,12 +109,20 @@ class ShortcutsDialog(QDialog):
             for shortcut_id, shortcut_tuple in all_shortcuts.items():
                 # get_all_shortcuts returns (sequence, description, context)
                 if isinstance(shortcut_tuple, tuple) and len(shortcut_tuple) >= 3:
-                    sequence, description, context = shortcut_tuple[0], shortcut_tuple[1], shortcut_tuple[2]
+                    sequence, description, context = (
+                        shortcut_tuple[0],
+                        shortcut_tuple[1],
+                        shortcut_tuple[2],
+                    )
                 else:
                     # Fallback for different return format
                     context = ShortcutContext.GLOBAL
                     description = shortcut_id
-                    sequence = shortcut_tuple[0] if isinstance(shortcut_tuple, tuple) and len(shortcut_tuple) > 0 else ""
+                    sequence = (
+                        shortcut_tuple[0]
+                        if isinstance(shortcut_tuple, tuple) and len(shortcut_tuple) > 0
+                        else ""
+                    )
 
                 shortcuts_data.append(
                     {
@@ -174,12 +184,22 @@ class ShortcutsDialog(QDialog):
         context_names = {
             ShortcutContext.GLOBAL: tr("shortcuts.context.global", "Global"),
             ShortcutContext.MAIN_WINDOW: tr("shortcuts.context.main", "Main Window"),
-            ShortcutContext.RESULTS_VIEW: tr("shortcuts.context.results", "Results View"),
-            ShortcutContext.BATCH_PROCESSOR: tr("shortcuts.context.batch", "Batch Processor"),
+            ShortcutContext.RESULTS_VIEW: tr(
+                "shortcuts.context.results", "Results View"
+            ),
+            ShortcutContext.BATCH_PROCESSOR: tr(
+                "shortcuts.context.batch", "Batch Processor"
+            ),
             ShortcutContext.SETTINGS: tr("shortcuts.context.settings", "Settings"),
-            ShortcutContext.HISTORY_VIEW: tr("shortcuts.context.history", "History View"),
-            ShortcutContext.EXPORT_DIALOG: tr("shortcuts.context.export", "Export Dialog"),
-            ShortcutContext.CANDIDATE_DIALOG: tr("shortcuts.context.candidate", "Candidate Dialog"),
+            ShortcutContext.HISTORY_VIEW: tr(
+                "shortcuts.context.history", "History View"
+            ),
+            ShortcutContext.EXPORT_DIALOG: tr(
+                "shortcuts.context.export", "Export Dialog"
+            ),
+            ShortcutContext.CANDIDATE_DIALOG: tr(
+                "shortcuts.context.candidate", "Candidate Dialog"
+            ),
         }
         return context_names.get(context, context.replace("_", " ").title())
 

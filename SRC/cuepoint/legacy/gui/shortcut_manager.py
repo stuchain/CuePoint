@@ -19,6 +19,7 @@ from pathlib import Path
 
 class ShortcutContext:
     """Context for keyboard shortcuts"""
+
     GLOBAL = "global"
     MAIN_WINDOW = "main_window"
     RESULTS_VIEW = "results_view"
@@ -31,9 +32,9 @@ class ShortcutContext:
 
 class ShortcutManager(QObject):
     """Manages keyboard shortcuts with context awareness and customization"""
-    
+
     shortcut_conflict = Signal(str, str)  # Emitted when shortcuts conflict
-    
+
     # Default shortcuts by context
     DEFAULT_SHORTCUTS = {
         ShortcutContext.GLOBAL: {
@@ -87,7 +88,7 @@ class ShortcutManager(QObject):
             "cancel": ("Esc", "Close dialog"),
         },
     }
-    
+
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.parent_widget = parent
@@ -98,18 +99,18 @@ class ShortcutManager(QObject):
         self.context_shortcuts: Dict[str, List[str]] = {}  # Track shortcuts by context
         self.config_path = Path.home() / ".cuepoint" / "shortcuts.json"
         self.load_custom_shortcuts()
-    
+
     def register_shortcut(
         self,
         action_id: str,
         default_sequence: str,
         callback: Callable,
         context: str = ShortcutContext.GLOBAL,
-        description: str = ""
+        description: str = "",
     ):
         """
         Register a keyboard shortcut.
-        
+
         Args:
             action_id: Unique identifier for the action
             default_sequence: Default key sequence (e.g., "Ctrl+O")
@@ -119,10 +120,10 @@ class ShortcutManager(QObject):
         """
         # Use custom shortcut if available, otherwise use default
         sequence = self.custom_shortcuts.get(action_id, default_sequence)
-        
+
         # Adapt for platform (Cmd on macOS, Ctrl on others)
         sequence = self._adapt_for_platform(sequence)
-        
+
         # Create shortcut
         shortcut = QShortcut(QKeySequence(sequence), self.parent_widget)
         # Use WindowShortcut for global shortcuts, WidgetShortcut for context-specific
@@ -130,36 +131,36 @@ class ShortcutManager(QObject):
             shortcut.setContext(Qt.WindowShortcut)  # Active anywhere in the window
         else:
             shortcut.setContext(Qt.WidgetShortcut)  # Only active when widget has focus
-        
+
         # Store callback
         self.shortcut_actions[action_id] = callback
         shortcut.activated.connect(callback)
-        
+
         # Store shortcut
         self.shortcuts[action_id] = shortcut
-        
+
         # Track by context
         if context not in self.context_shortcuts:
             self.context_shortcuts[context] = []
         if action_id not in self.context_shortcuts[context]:
             self.context_shortcuts[context].append(action_id)
-        
+
         # Check for conflicts
         self._check_conflicts(action_id, sequence)
-    
+
     def _adapt_for_platform(self, sequence: str) -> str:
         """Adapt key sequence for platform (Cmd on macOS, Ctrl on others)"""
         if sys.platform == "darwin":  # macOS
             return sequence.replace("Ctrl+", "Meta+")
         return sequence
-    
+
     def _check_conflicts(self, action_id: str, sequence: str):
         """Check for shortcut conflicts"""
         for other_id, other_shortcut in self.shortcuts.items():
             if other_id != action_id:
                 if other_shortcut.key().toString() == sequence:
                     self.shortcut_conflict.emit(action_id, other_id)
-    
+
     def set_context(self, context: str):
         """Set the current context for shortcuts"""
         self.current_context = context
@@ -171,17 +172,20 @@ class ShortcutManager(QObject):
                 if action_id in shortcuts:
                     shortcut_context = ctx
                     break
-            
+
             # Enable if global or matches current context
-            if shortcut_context == ShortcutContext.GLOBAL or shortcut_context == context:
+            if (
+                shortcut_context == ShortcutContext.GLOBAL
+                or shortcut_context == context
+            ):
                 shortcut.setEnabled(True)
             else:
                 shortcut.setEnabled(False)
-    
+
     def get_shortcut(self, action_id: str) -> Optional[QShortcut]:
         """Get shortcut by action ID"""
         return self.shortcuts.get(action_id)
-    
+
     def get_shortcut_sequence(self, action_id: str) -> str:
         """Get key sequence for an action"""
         shortcut = self.shortcuts.get(action_id)
@@ -193,23 +197,23 @@ class ShortcutManager(QObject):
                 sequence = context_shortcuts[action_id][0]
                 return self._adapt_for_platform(sequence)
         return ""
-    
+
     def set_custom_shortcut(self, action_id: str, sequence: str) -> bool:
         """
         Set a custom shortcut for an action.
-        
+
         Returns:
             True if successful, False if conflict
         """
         # Adapt for platform
         sequence = self._adapt_for_platform(sequence)
-        
+
         # Check for conflicts
         for other_id, other_shortcut in self.shortcuts.items():
             if other_id != action_id:
                 if other_shortcut.key().toString() == sequence:
                     return False  # Conflict
-        
+
         # Update shortcut
         if action_id in self.shortcuts:
             self.shortcuts[action_id].setKey(QKeySequence(sequence))
@@ -217,7 +221,7 @@ class ShortcutManager(QObject):
             self.save_custom_shortcuts()
             return True
         return False
-    
+
     def reset_shortcut(self, action_id: str):
         """Reset shortcut to default"""
         if action_id in self.custom_shortcuts:
@@ -231,7 +235,7 @@ class ShortcutManager(QObject):
                         self.shortcuts[action_id].setKey(QKeySequence(default))
                     self.save_custom_shortcuts()
                     return
-    
+
     def get_all_shortcuts(self) -> Dict[str, Tuple[str, str, str]]:
         """Get all shortcuts with descriptions and contexts"""
         all_shortcuts = {}
@@ -245,7 +249,7 @@ class ShortcutManager(QObject):
                 sequence = self._adapt_for_platform(sequence)
                 all_shortcuts[action_id] = (sequence, description, context)
         return all_shortcuts
-    
+
     def get_shortcuts_for_context(self, context: str) -> Dict[str, Tuple[str, str]]:
         """Get shortcuts for a specific context"""
         shortcuts = {}
@@ -259,22 +263,21 @@ class ShortcutManager(QObject):
             sequence = self._adapt_for_platform(sequence)
             shortcuts[action_id] = (sequence, description)
         return shortcuts
-    
+
     def load_custom_shortcuts(self):
         """Load custom shortcuts from file"""
         if self.config_path.exists():
             try:
-                with open(self.config_path, 'r', encoding='utf-8') as f:
+                with open(self.config_path, "r", encoding="utf-8") as f:
                     self.custom_shortcuts = json.load(f)
             except Exception as e:
                 print(f"Error loading shortcuts: {e}")
-    
+
     def save_custom_shortcuts(self):
         """Save custom shortcuts to file"""
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         try:
-            with open(self.config_path, 'w', encoding='utf-8') as f:
+            with open(self.config_path, "w", encoding="utf-8") as f:
                 json.dump(self.custom_shortcuts, f, indent=2, ensure_ascii=False)
         except Exception as e:
             print(f"Error saving shortcuts: {e}")
-

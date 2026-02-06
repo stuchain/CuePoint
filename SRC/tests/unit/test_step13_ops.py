@@ -12,7 +12,6 @@ import sys
 from pathlib import Path
 
 
-
 class TestExportSupportBundleCLI:
     """Tests for --export-support-bundle CLI flag (Design 13.182)."""
 

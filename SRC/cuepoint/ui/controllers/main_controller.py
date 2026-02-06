@@ -21,7 +21,12 @@ from PySide6.QtCore import QObject, QThread, Signal
 
 from cuepoint.models.result import TrackResult
 from cuepoint.services.interfaces import IProcessorService
-from cuepoint.ui.gui_interface import ErrorType, ProcessingController, ProcessingError, ProgressInfo
+from cuepoint.ui.gui_interface import (
+    ErrorType,
+    ProcessingController,
+    ProcessingError,
+    ProgressInfo,
+)
 from cuepoint.utils.di_container import get_container
 
 if TYPE_CHECKING:
@@ -132,15 +137,14 @@ class ProcessingWorker(QThread):
                     # This ensures the signal is queued on the main thread's event loop
                     try:
                         from PySide6.QtCore import QMetaObject, Qt
+
                         QMetaObject.invokeMethod(
-                            self,
-                            "progress_updated",
-                            Qt.QueuedConnection,
-                            progress_info
+                            self, "progress_updated", Qt.QueuedConnection, progress_info
                         )
                     except Exception as fallback_error:
                         # If both methods fail, log but don't break processing
                         import logging
+
                         logging.getLogger(__name__).warning(
                             f"Progress callback failed (non-fatal): {e}, fallback also failed: {fallback_error}"
                         )
@@ -165,12 +169,19 @@ class ProcessingWorker(QThread):
         except Exception as e:
             # Design 5.38: circuit open -> ProcessingError with CIRCUIT_OPEN for Retry UX
             from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError
-            if isinstance(e, BeatportAPIError) and getattr(e, "error_code", None) == "CIRCUIT_OPEN":
+
+            if (
+                isinstance(e, BeatportAPIError)
+                and getattr(e, "error_code", None) == "CIRCUIT_OPEN"
+            ):
                 error = ProcessingError(
                     error_type=ErrorType.CIRCUIT_OPEN,
                     message="Paused due to repeated failures.",
                     details="The network circuit breaker tripped after 5 consecutive failures. Wait 30s or click Retry now.",
-                    suggestions=["Click Retry now to try again", "Wait 30 seconds and start again"],
+                    suggestions=[
+                        "Click Retry now to try again",
+                        "Wait 30 seconds and start again",
+                    ],
                     recoverable=True,
                 )
                 self.error_occurred.emit(error)
@@ -334,29 +345,34 @@ class GUIController(QObject):
         and exit cleanly, allowing all parallel tasks to complete or cancel.
         """
         try:
-            if hasattr(self, 'current_worker') and self.current_worker:
-                if hasattr(self.current_worker, 'isRunning') and self.current_worker.isRunning():
+            if hasattr(self, "current_worker") and self.current_worker:
+                if (
+                    hasattr(self.current_worker, "isRunning")
+                    and self.current_worker.isRunning()
+                ):
                     # Request cancellation (sets flag in ProcessingController)
-                    if hasattr(self.current_worker, 'cancel'):
+                    if hasattr(self.current_worker, "cancel"):
                         try:
                             self.current_worker.cancel()
                         except Exception as e:
                             print(f"Error calling worker.cancel(): {e}")
                             import traceback
+
                             traceback.print_exc()
 
                     # Wait for thread to finish gracefully
-                    if hasattr(self.current_worker, 'wait'):
+                    if hasattr(self.current_worker, "wait"):
                         try:
                             # Wait up to 5 seconds for graceful shutdown
                             if not self.current_worker.wait(5000):
                                 # Thread is still running after timeout; terminate and wait again
-                                if hasattr(self.current_worker, 'terminate'):
+                                if hasattr(self.current_worker, "terminate"):
                                     self.current_worker.terminate()
                                 self.current_worker.wait(5000)
                         except Exception as e:
                             print(f"Error waiting for worker thread: {e}")
                             import traceback
+
                             traceback.print_exc()
 
                     # Only clean up worker reference, don't delete the thread object yet
@@ -364,10 +380,10 @@ class GUIController(QObject):
                     # We just need to clear our reference so we don't try to use it
                     worker = self.current_worker
                     self.current_worker = None
-                    
+
                     # Schedule worker for deletion after it finishes (if it's still running)
                     # This is safe because deleteLater() only schedules deletion, doesn't force it
-                    if hasattr(worker, 'isRunning') and worker.isRunning():
+                    if hasattr(worker, "isRunning") and worker.isRunning():
                         # Use deleteLater() to schedule cleanup when thread finishes
                         # This prevents the "Destroyed while thread is still running" warning
                         try:
@@ -379,9 +395,10 @@ class GUIController(QObject):
                     self.current_worker = None
             else:
                 self.current_worker = None
-                
+
         except Exception as e:
             import traceback
+
             print(f"Error in cancel_processing: {e}")
             print(traceback.format_exc())
             # Still try to clean up
@@ -470,7 +487,9 @@ class GUIController(QObject):
 
         # Connect worker signals
         self.current_worker.progress_updated.connect(self.progress_updated.emit)
-        self.current_worker.processing_complete.connect(self._on_batch_playlist_complete)
+        self.current_worker.processing_complete.connect(
+            self._on_batch_playlist_complete
+        )
         self.current_worker.error_occurred.connect(self._on_batch_playlist_error)
 
         # Start worker thread

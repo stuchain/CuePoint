@@ -3,7 +3,6 @@
 
 """Unit tests for health checks (Design 7)."""
 
-
 from cuepoint.utils.health_check import (
     HealthCheckResult,
     check_parsing_service,

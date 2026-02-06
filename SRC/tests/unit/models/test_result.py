@@ -284,7 +284,7 @@ class TestTrackResultHelperMethods:
             match_score=0.5,  # Below 0.7 threshold
         )
         assert result.has_high_confidence() is False  # 0.5 < 0.7
-        
+
         # Test with None match_score
         result2 = TrackResult(
             playlist_index=1,
@@ -449,4 +449,3 @@ class TestTrackResultEdgeCases:
         assert result.match_score == 85.5555555
         assert result.title_sim == 90.123456
         assert result.artist_sim == 80.987654
-

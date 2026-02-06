@@ -126,7 +126,9 @@ class TestTypeHints:
         assert "return" in hints
         # parse_rekordbox now returns Dict[str, Playlist] instead of Tuple
         return_type_str = str(hints["return"])
-        assert "Dict" in return_type_str or "dict" in return_type_str.lower(), f"Expected Dict, got {return_type_str}"
+        assert "Dict" in return_type_str or "dict" in return_type_str.lower(), (
+            f"Expected Dict, got {return_type_str}"
+        )
 
         # Test is_track_url
         func = beatport.is_track_url
@@ -357,4 +359,3 @@ class TestInterfaceDocumentation:
         assert IProcessorService.process_track.__doc__ is not None
         assert IBeatportService.search_tracks.__doc__ is not None
         assert IBeatportService.fetch_track_data.__doc__ is not None
-

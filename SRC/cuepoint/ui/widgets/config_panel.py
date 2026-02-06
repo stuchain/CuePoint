@@ -36,7 +36,9 @@ class ConfigPanel(QWidget):
     # Signal emitted when settings change
     settings_changed = Signal(dict)
 
-    def __init__(self, config_controller: Optional[ConfigController] = None, parent=None):
+    def __init__(
+        self, config_controller: Optional[ConfigController] = None, parent=None
+    ):
         super().__init__(parent)
         # Use provided controller or create a new one
         self.config_controller = config_controller or ConfigController()
@@ -76,7 +78,7 @@ class ConfigPanel(QWidget):
         # Performance Presets (moved to advanced)
         preset_group = QGroupBox("Performance Preset")
         preset_layout = QVBoxLayout()
-        
+
         # Preset label with help button
         preset_label_layout = QHBoxLayout()
         preset_label = QLabel("Performance Preset")
@@ -86,7 +88,7 @@ class ConfigPanel(QWidget):
             "• Balanced: Good speed/accuracy balance (Recommended)\n"
             "• Fast: Quick processing, may miss some matches\n"
             "• Turbo: Very fast, lower accuracy\n"
-            "• Exhaustive: Slow but thorough search"
+            "• Exhaustive: Slow but thorough search",
         )
         preset_label_layout.addWidget(preset_label)
         preset_label_layout.addWidget(preset_help_btn)
@@ -126,7 +128,9 @@ class ConfigPanel(QWidget):
         verbose_layout = QHBoxLayout()
         self.verbose_check = QCheckBox("Enable verbose logging")
         self.verbose_check.setChecked(False)
-        self.verbose_check.setToolTip("Show detailed progress information during processing")
+        self.verbose_check.setToolTip(
+            "Show detailed progress information during processing"
+        )
         verbose_help_btn = self._create_help_button(
             "Verbose Logging",
             "Enable detailed logging for debugging.\n\n"
@@ -134,7 +138,7 @@ class ConfigPanel(QWidget):
             "• Detailed search queries\n"
             "• Match scoring information\n"
             "• Processing steps\n\n"
-            "Note: May slow down processing slightly."
+            "Note: May slow down processing slightly.",
         )
         verbose_layout.addWidget(self.verbose_check)
         verbose_layout.addWidget(verbose_help_btn)
@@ -155,7 +159,7 @@ class ConfigPanel(QWidget):
             "• Processing speed (tracks/second)\n"
             "• Memory usage\n"
             "• Network request statistics\n"
-            "• Time per track breakdown"
+            "• Time per track breakdown",
         )
         perf_layout.addWidget(self.track_performance_check)
         perf_layout.addWidget(perf_help_btn)
@@ -203,7 +207,9 @@ class ConfigPanel(QWidget):
         self.min_score_spin.setMaximum(200.0)
         self.min_score_spin.setValue(70.0)
         self.min_score_spin.setDecimals(1)
-        self.min_score_spin.setToolTip("Lower = more matches but potentially lower quality")
+        self.min_score_spin.setToolTip(
+            "Lower = more matches but potentially lower quality"
+        )
         score_layout.addWidget(score_label)
         score_layout.addWidget(self.min_score_spin)
         score_layout.addStretch()
@@ -240,7 +246,9 @@ class ConfigPanel(QWidget):
         self.checkpoint_every_spin.setMinimum(10)
         self.checkpoint_every_spin.setMaximum(500)
         self.checkpoint_every_spin.setValue(50)
-        self.checkpoint_every_spin.setToolTip("Lower = more frequent saves, slightly slower")
+        self.checkpoint_every_spin.setToolTip(
+            "Lower = more frequent saves, slightly slower"
+        )
         ckpt_layout.addWidget(ckpt_label)
         ckpt_layout.addWidget(ckpt_help)
         ckpt_layout.addWidget(self.checkpoint_every_spin)
@@ -267,7 +275,9 @@ class ConfigPanel(QWidget):
         resume_layout = QHBoxLayout()
         self.resume_enabled_check = QCheckBox("Enable resume from checkpoint")
         self.resume_enabled_check.setChecked(True)
-        self.resume_enabled_check.setToolTip("Offer to resume after crash or interruption")
+        self.resume_enabled_check.setToolTip(
+            "Offer to resume after crash or interruption"
+        )
         resume_help = self._create_help_button(
             "Resume from Checkpoint",
             "When enabled, CuePoint will offer to resume from the last checkpoint if processing was interrupted.\n\n"
@@ -304,7 +314,7 @@ class ConfigPanel(QWidget):
         self.checkpoint_every_spin.valueChanged.connect(self._on_reliability_changed)
         self.max_retries_spin.valueChanged.connect(self._on_reliability_changed)
         self.resume_enabled_check.stateChanged.connect(self._on_reliability_changed)
-    
+
     def _create_help_button(self, title: str, help_text: str) -> QToolButton:
         """Create a help button with contextual help"""
         help_btn = QToolButton()
@@ -331,15 +341,10 @@ class ConfigPanel(QWidget):
         help_btn.setToolTip(f"Help: {title}\n\nClick for more information")
         help_btn.clicked.connect(lambda: self._show_help_dialog(title, help_text))
         return help_btn
-    
+
     def _show_help_dialog(self, title: str, help_text: str):
         """Show help dialog with contextual information"""
-        QMessageBox.information(
-            self,
-            f"Help: {title}",
-            help_text,
-            QMessageBox.Ok
-        )
+        QMessageBox.information(self, f"Help: {title}", help_text, QMessageBox.Ok)
 
     def load_defaults(self):
         """Load default settings from config.py SETTINGS"""
@@ -356,9 +361,15 @@ class ConfigPanel(QWidget):
         try:
             cs = getattr(self.config_controller, "config_service", None)
             if cs is not None:
-                self.checkpoint_every_spin.setValue(int(cs.get("reliability.checkpoint_every", 50)))
-                self.max_retries_spin.setValue(int(cs.get("reliability.max_retries", 3)))
-                self.resume_enabled_check.setChecked(bool(cs.get("reliability.resume_enabled", True)))
+                self.checkpoint_every_spin.setValue(
+                    int(cs.get("reliability.checkpoint_every", 50))
+                )
+                self.max_retries_spin.setValue(
+                    int(cs.get("reliability.max_retries", 3))
+                )
+                self.resume_enabled_check.setChecked(
+                    bool(cs.get("reliability.resume_enabled", True))
+                )
             else:
                 self.checkpoint_every_spin.setValue(50)
                 self.max_retries_spin.setValue(3)
@@ -391,7 +402,9 @@ class ConfigPanel(QWidget):
                 "MAX_SEARCH_RESULTS": self.max_results_spin.value(),
             }
             settings.update(
-                self.config_controller.merge_settings_with_preset(preset, custom_settings)
+                self.config_controller.merge_settings_with_preset(
+                    preset, custom_settings
+                )
             )
 
             # Also include other default settings from config.py
@@ -399,7 +412,9 @@ class ConfigPanel(QWidget):
             settings["TITLE_WEIGHT"] = SETTINGS.get("TITLE_WEIGHT", 0.55)
             settings["ARTIST_WEIGHT"] = SETTINGS.get("ARTIST_WEIGHT", 0.45)
             settings["EARLY_EXIT_SCORE"] = SETTINGS.get("EARLY_EXIT_SCORE", 90)
-            settings["EARLY_EXIT_MIN_QUERIES"] = SETTINGS.get("EARLY_EXIT_MIN_QUERIES", 8)
+            settings["EARLY_EXIT_MIN_QUERIES"] = SETTINGS.get(
+                "EARLY_EXIT_MIN_QUERIES", 8
+            )
         else:
             # For other presets, use controller to get preset values
             settings.update(self.config_controller.get_preset_values(preset))
@@ -439,8 +454,12 @@ class ConfigPanel(QWidget):
             # Get preset values from controller
             preset_values = self.config_controller.get_preset_values(preset)
             self.track_workers_spin.setValue(preset_values.get("TRACK_WORKERS", 12))
-            self.time_budget_spin.setValue(preset_values.get("PER_TRACK_TIME_BUDGET_SEC", 45))
-            self.min_score_spin.setValue(float(preset_values.get("MIN_ACCEPT_SCORE", 70.0)))
+            self.time_budget_spin.setValue(
+                preset_values.get("PER_TRACK_TIME_BUDGET_SEC", 45)
+            )
+            self.min_score_spin.setValue(
+                float(preset_values.get("MIN_ACCEPT_SCORE", 70.0))
+            )
             self.max_results_spin.setValue(preset_values.get("MAX_SEARCH_RESULTS", 50))
 
         # Disable advanced settings when preset is selected (except balanced)
@@ -465,10 +484,14 @@ class ConfigPanel(QWidget):
         try:
             cs = getattr(self.config_controller, "config_service", None)
             if cs is not None:
-                cs.set("reliability.checkpoint_every", self.checkpoint_every_spin.value())
+                cs.set(
+                    "reliability.checkpoint_every", self.checkpoint_every_spin.value()
+                )
                 cs.set("reliability.max_retries", self.max_retries_spin.value())
                 cs.set("beatport.max_retries", self.max_retries_spin.value())
-                cs.set("reliability.resume_enabled", self.resume_enabled_check.isChecked())
+                cs.set(
+                    "reliability.resume_enabled", self.resume_enabled_check.isChecked()
+                )
                 try:
                     cs.save()
                 except Exception:

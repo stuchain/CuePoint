@@ -65,7 +65,10 @@ class TestMigrateCsvFile:
         reader = csv.DictReader(lines)
         rows = list(reader)
         assert len(rows) >= 1
-        assert "output_schema_version" in rows[0] or "output_schema_version" in reader.fieldnames
+        assert (
+            "output_schema_version" in rows[0]
+            or "output_schema_version" in reader.fieldnames
+        )
 
     def test_migrate_same_version_no_op(self, tmp_path):
         """Migrate v1->v1 is no-op (success)."""
@@ -114,7 +117,9 @@ class TestRunMigrate:
         """Specify neither file nor directory returns error."""
         result = run_migrate(1, 2)
         assert result.files_migrated == 0
-        assert any("file" in e.lower() or "directory" in e.lower() for e in result.errors)
+        assert any(
+            "file" in e.lower() or "directory" in e.lower() for e in result.errors
+        )
 
     def test_run_migrate_unsupported_version(self):
         """Unsupported version returns error."""
