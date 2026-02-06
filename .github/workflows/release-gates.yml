@@ -79,6 +79,11 @@ jobs:
         with:
           python-version: '3.11'
       
+      - name: Install Qt dependencies (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libxcb-xinerama0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xfixes0
+      
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
@@ -150,7 +155,7 @@ jobs:
       
       - name: Run type checker
         run: |
-          python -m pytest SRC/tests/integration/test_step55_mypy_validation.py -v -p no:pytestqt
+          python -m pytest SRC/tests/integration/test_step55_mypy_validation.py -v -p no:pytest-qt
         continue-on-error: false
       
       - name: Check code formatting
