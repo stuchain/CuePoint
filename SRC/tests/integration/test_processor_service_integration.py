@@ -76,23 +76,16 @@ class TestProcessorServiceIntegration:
         sample_track
     ):
         """Test process_track with real services but mocked network calls."""
-        # Mock Beatport search helpers to avoid network or browser automation
-        with patch("cuepoint.core.matcher.track_urls") as mock_track_urls:
-            mock_track_urls.return_value = []
-            with patch("cuepoint.services.beatport_service.beatport_search_hybrid") as mock_hybrid:
-                mock_hybrid.return_value = []  # No results from search
-                with patch.object(processor_service.beatport_service, "search_tracks") as mock_search:
-                    mock_search.return_value = []
+        # _mock_track_urls fixture patches track_urls to return [], avoiding network
+        # Process track
+        result = processor_service.process_track(1, sample_track)
 
-                    # Process track
-                    result = processor_service.process_track(1, sample_track)
-
-                    # Verify result structure
-                    assert result is not None
-                    assert isinstance(result, TrackResult)
-                    assert result.title == sample_track.title
-                    assert result.artist == sample_track.artist
-                    assert isinstance(result.matched, bool)
+        # Verify result structure
+        assert result is not None
+        assert isinstance(result, TrackResult)
+        assert result.title == sample_track.title
+        assert result.artist == sample_track.artist
+        assert isinstance(result.matched, bool)
     
     def test_process_track_integration_with_match(
         self,
@@ -100,32 +93,28 @@ class TestProcessorServiceIntegration:
         sample_track
     ):
         """Test process_track with a successful match scenario."""
+        # Matcher uses track_urls and parse_track_page from cuepoint.data.beatport
         with patch("cuepoint.core.matcher.track_urls") as mock_track_urls:
-            mock_track_urls.return_value = []
-            # Mock search to return a URL
-            with patch("cuepoint.services.beatport_service.beatport_search_hybrid") as mock_search:
-                mock_search.return_value = ["https://www.beatport.com/track/test/123"]
+            mock_track_urls.return_value = ["https://www.beatport.com/track/test/123"]
+            with patch("cuepoint.core.matcher.parse_track_page") as mock_parse:
+                mock_parse.return_value = (
+                    "Test Track",
+                    "Test Artist",
+                    "C Major",
+                    2023,
+                    128.0,
+                    "Test Label",
+                    "House",
+                    "Test Release",
+                    "2023-01-15",
+                )
 
-                # Mock parse_track_page to return track data
-                with patch("cuepoint.services.beatport_service.parse_track_page") as mock_parse:
-                    mock_parse.return_value = (
-                        "Test Track",
-                        "Test Artist",
-                        "C Major",
-                        2023,
-                        128.0,
-                        "Test Label",
-                        "House",
-                        "Test Release",
-                        "2023-01-15",
-                    )
+                # Process track
+                result = processor_service.process_track(1, sample_track)
 
-                    # Process track
-                    result = processor_service.process_track(1, sample_track)
-
-                    # Verify result
-                    assert result is not None
-                    assert isinstance(result, TrackResult)
+                # Verify result
+                assert result is not None
+                assert isinstance(result, TrackResult)
     
     def test_process_playlist_integration(
         self,
@@ -137,20 +126,15 @@ class TestProcessorServiceIntegration:
             Track(title="Track 2", artist="Artist 2"),
         ]
 
-        # Mock network calls
-        with patch("cuepoint.core.matcher.track_urls") as mock_track_urls:
-            mock_track_urls.return_value = []
-            with patch("cuepoint.services.beatport_service.beatport_search_hybrid") as mock_search:
-                mock_search.return_value = []
+        # _mock_track_urls fixture already patches track_urls to return []
+        # Process playlist
+        results = processor_service.process_playlist(tracks)
 
-                # Process playlist
-                results = processor_service.process_playlist(tracks)
-
-                # Verify results
-                assert len(results) == 2
-                assert all(isinstance(r, TrackResult) for r in results)
-                assert results[0].title == "Track 1"
-                assert results[1].title == "Track 2"
+        # Verify results
+        assert len(results) == 2
+        assert all(isinstance(r, TrackResult) for r in results)
+        assert results[0].title == "Track 1"
+        assert results[1].title == "Track 2"
     
     def test_process_playlist_from_xml_integration(
         self,
@@ -179,21 +163,16 @@ class TestProcessorServiceIntegration:
             xml_path = f.name
         
         try:
-            # Mock network calls
-            with patch("cuepoint.core.matcher.track_urls") as mock_track_urls:
-                mock_track_urls.return_value = []
-                with patch("cuepoint.services.beatport_service.beatport_search_hybrid") as mock_search:
-                    mock_search.return_value = []
+            # _mock_track_urls fixture already patches track_urls to return []
+            # Process playlist from XML
+            results = processor_service.process_playlist_from_xml(
+                xml_path,
+                "Test Playlist"
+            )
 
-                    # Process playlist from XML
-                    results = processor_service.process_playlist_from_xml(
-                        xml_path,
-                        "Test Playlist"
-                    )
-
-                    # Verify results
-                    assert len(results) == 2
-                    assert all(isinstance(r, TrackResult) for r in results)
+            # Verify results
+            assert len(results) == 2
+            assert all(isinstance(r, TrackResult) for r in results)
         finally:
             Path(xml_path).unlink(missing_ok=True)
 
@@ -234,17 +213,13 @@ class TestProcessorServiceIntegration:
             "MIN_ACCEPT_SCORE": 90,  # Higher threshold
             "MAX_SEARCH_RESULTS": 20
         }
-        
-        # Mock network calls
-        with patch('cuepoint.services.beatport_service.beatport_search_hybrid') as mock_search:
-            mock_search.return_value = []
-            
-            # Process with custom settings
-            result = processor_service.process_track(1, sample_track, settings=custom_settings)
-            
-            # Verify result
-            assert result is not None
-            # Settings should be applied (though we can't easily verify without checking internals)
+
+        # _mock_track_urls fixture already patches track_urls to return []
+        # Process with custom settings
+        result = processor_service.process_track(1, sample_track, settings=custom_settings)
+
+        # Verify result
+        assert result is not None
     
     def test_process_track_artist_extraction(
         self,
@@ -374,17 +349,15 @@ class TestProcessorServiceIntegration:
         sample_track
     ):
         """Test process_track with parsing error (mock parse_track_page)."""
-        # Mock search to return URL
-        with patch.object(processor_service.beatport_service, 'search_tracks') as mock_search:
-            mock_search.return_value = ["https://www.beatport.com/track/test/123"]
-            
-            # Mock parse_track_page to raise error
-            with patch('cuepoint.services.beatport_service.parse_track_page') as mock_parse:
+        # Matcher uses track_urls and parse_track_page from cuepoint.data.beatport
+        with patch("cuepoint.core.matcher.track_urls") as mock_track_urls:
+            mock_track_urls.return_value = ["https://www.beatport.com/track/test/123"]
+            with patch("cuepoint.core.matcher.parse_track_page") as mock_parse:
                 mock_parse.side_effect = Exception("Parsing error")
-                
+
                 # Process track - should handle error gracefully
                 result = processor_service.process_track(1, sample_track)
-                
+
                 # Verify result - should still return a result
                 assert result is not None
                 assert isinstance(result, TrackResult)
@@ -506,29 +479,26 @@ class TestProcessorServiceIntegration:
         try:
             # Track progress calls
             progress_calls = []
-            
+
             def progress_callback(progress_info: ProgressInfo):
                 progress_calls.append(progress_info)
-            
-            # Mock network calls
-            with patch('cuepoint.services.beatport_service.beatport_search_hybrid') as mock_search:
-                mock_search.return_value = []
-                
-                # Process playlist from XML with progress callback
-                results = processor_service.process_playlist_from_xml(
-                    xml_path,
-                    "Test Playlist",
-                    progress_callback=progress_callback
-                )
-                
-                # Verify progress callback was called
-                assert len(progress_calls) > 0
-                # Verify callback received ProgressInfo objects
-                for progress_info in progress_calls:
-                    assert isinstance(progress_info, ProgressInfo)
-                    assert progress_info.completed_tracks > 0
-                    assert progress_info.total_tracks > 0
-                    assert progress_info.completed_tracks <= progress_info.total_tracks
+
+            # _mock_track_urls fixture already patches track_urls to return []
+            # Process playlist from XML with progress callback
+            results = processor_service.process_playlist_from_xml(
+                xml_path,
+                "Test Playlist",
+                progress_callback=progress_callback
+            )
+
+            # Verify progress callback was called
+            assert len(progress_calls) > 0
+            # Verify callback received ProgressInfo objects
+            for progress_info in progress_calls:
+                assert isinstance(progress_info, ProgressInfo)
+                assert progress_info.completed_tracks > 0
+                assert progress_info.total_tracks > 0
+                assert progress_info.completed_tracks <= progress_info.total_tracks
         finally:
             Path(xml_path).unlink(missing_ok=True)
 
@@ -557,15 +527,12 @@ class TestProcessorServiceIntegration:
             Track(title="Track 1", artist="Artist 1"),
             Track(title="Track 2", artist="Artist 2"),
         ]
-        
-        # Mock network calls
-        with patch.object(processor_service.beatport_service, 'search_tracks') as mock_search:
-            mock_search.return_value = []
-            
-            # Process playlist
-            results = processor_service.process_playlist(tracks)
-            
-            # Verify results
-            assert len(results) == 2
-            assert all(isinstance(r, TrackResult) for r in results)
+
+        # _mock_track_urls fixture already patches track_urls to return []
+        # Process playlist
+        results = processor_service.process_playlist(tracks)
+
+        # Verify results
+        assert len(results) == 2
+        assert all(isinstance(r, TrackResult) for r in results)
 

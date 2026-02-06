@@ -70,21 +70,17 @@ def test_performance_collector():
     
     # Get stats
     stats = performance_collector.get_stats()
-    if stats:
-        print(f"\n[OK] Stats retrieved:")
-        print(f"  - Total tracks: {stats.total_tracks}")
-        print(f"  - Matched tracks: {stats.matched_tracks}")
-        print(f"  - Total queries: {len(stats.query_metrics)}")
-        print(f"  - Cache hits: {stats.cache_stats['hits']}")
-        print(f"  - Cache misses: {stats.cache_stats['misses']}")
-        print(f"  - Match rate: {stats.match_rate():.1f}%")
-        print(f"  - Cache hit rate: {stats.cache_hit_rate():.1f}%")
-        print(f"  - Avg time per track: {stats.average_time_per_track():.3f}s")
-        print(f"  - Avg time per query: {stats.average_time_per_query():.3f}s")
-        return True
-    else:
-        print("✗ Failed to retrieve stats")
-        return False
+    assert stats is not None, "Failed to retrieve stats"
+    print(f"\n[OK] Stats retrieved:")
+    print(f"  - Total tracks: {stats.total_tracks}")
+    print(f"  - Matched tracks: {stats.matched_tracks}")
+    print(f"  - Total queries: {len(stats.query_metrics)}")
+    print(f"  - Cache hits: {stats.cache_stats['hits']}")
+    print(f"  - Cache misses: {stats.cache_stats['misses']}")
+    print(f"  - Match rate: {stats.match_rate():.1f}%")
+    print(f"  - Cache hit rate: {stats.cache_hit_rate():.1f}%")
+    print(f"  - Avg time per track: {stats.average_time_per_track():.3f}s")
+    print(f"  - Avg time per query: {stats.average_time_per_query():.3f}s")
 
 
 def test_performance_report():
@@ -94,34 +90,22 @@ def test_performance_report():
     print("=" * 80)
     
     stats = performance_collector.get_stats()
-    if not stats:
-        print("[FAIL] No stats available for report generation")
-        return False
-    
-    try:
-        # Generate report
-        report_path = write_performance_report(stats, "test_performance", "output")
-        print(f"[OK] Performance report generated: {report_path}")
-        
-        # Check if file exists
-        if os.path.exists(report_path):
-            print(f"[OK] Report file exists ({os.path.getsize(report_path)} bytes)")
-            
-            # Read and display first few lines
-            with open(report_path, 'r', encoding='utf-8') as f:
-                lines = f.readlines()[:10]
-                print("\nFirst 10 lines of report:")
-                for line in lines:
-                    print(f"  {line.rstrip()}")
-            return True
-        else:
-            print("[FAIL] Report file not found")
-            return False
-    except Exception as e:
-        print(f"[FAIL] Error generating report: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+    assert stats is not None, "No stats available for report generation"
+
+    # Generate report
+    report_path = write_performance_report(stats, "test_performance", "output")
+    print(f"[OK] Performance report generated: {report_path}")
+
+    # Check if file exists
+    assert os.path.exists(report_path), "Report file not found"
+    print(f"[OK] Report file exists ({os.path.getsize(report_path)} bytes)")
+
+    # Read and display first few lines
+    with open(report_path, 'r', encoding='utf-8') as f:
+        lines = f.readlines()[:10]
+        print("\nFirst 10 lines of report:")
+        for line in lines:
+            print(f"  {line.rstrip()}")
 
 
 def test_multiple_tracks():
@@ -168,20 +152,16 @@ def test_multiple_tracks():
         print(f"[OK] Track {track_idx} processed")
     
     performance_collector.end_session()
-    
+
     stats = performance_collector.get_stats()
-    if stats:
-        print(f"\n[OK] Multi-track stats:")
-        print(f"  - Total tracks: {stats.total_tracks}")
-        print(f"  - Matched: {stats.matched_tracks}, Unmatched: {stats.unmatched_tracks}")
-        print(f"  - Total queries: {len(stats.query_metrics)}")
-        print(f"  - Total time: {stats.total_time:.2f}s")
-        print(f"  - Avg time per track: {stats.average_time_per_track():.3f}s")
-        print(f"  - Match rate: {stats.match_rate():.1f}%")
-        return True
-    else:
-        print("[FAIL] Failed to retrieve stats")
-        return False
+    assert stats is not None, "Failed to retrieve stats"
+    print(f"\n[OK] Multi-track stats:")
+    print(f"  - Total tracks: {stats.total_tracks}")
+    print(f"  - Matched: {stats.matched_tracks}, Unmatched: {stats.unmatched_tracks}")
+    print(f"  - Total queries: {len(stats.query_metrics)}")
+    print(f"  - Total time: {stats.total_time:.2f}s")
+    print(f"  - Avg time per track: {stats.average_time_per_track():.3f}s")
+    print(f"  - Match rate: {stats.match_rate():.1f}%")
 
 
 def test_retry_decorator():
@@ -208,17 +188,10 @@ def test_retry_decorator():
             raise exception_type("Simulated network error")
         return "Success"
     
-    try:
-        result = test_function()
-        if result == "Success" and call_count[0] == 3:
-            print(f"[OK] Retry decorator works (called {call_count[0]} times)")
-            return True
-        else:
-            print(f"[FAIL] Unexpected result: {result}, calls: {call_count[0]}")
-            return False
-    except Exception as e:
-        print(f"[FAIL] Retry decorator failed: {e}")
-        return False
+    result = test_function()
+    assert result == "Success", f"Unexpected result: {result}"
+    assert call_count[0] == 3, f"Expected 3 calls, got {call_count[0]}"
+    print(f"[OK] Retry decorator works (called {call_count[0]} times)")
 
 
 def main():

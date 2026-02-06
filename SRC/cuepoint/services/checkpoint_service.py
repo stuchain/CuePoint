@@ -191,14 +191,12 @@ class CheckpointService:
     def _validate_main_csv_headers(self, main_path: str) -> bool:
         """Design 5.16: Ensure main CSV headers match expected schema."""
         try:
-            from cuepoint.services.output_writer import _main_csv_fieldnames
+            from cuepoint.services.output_writer import _main_csv_fieldnames, read_csv_skip_comments
             expected = set(_main_csv_fieldnames(True))
-            with open(main_path, newline="", encoding="utf-8") as f:
-                r = csv.reader(f)
-                row = next(r, None)
-            if not row:
+            fieldnames, _ = read_csv_skip_comments(main_path)
+            if not fieldnames:
                 return False
-            header_set = set(cell.strip() for cell in row)
+            header_set = set(fieldnames)
             return bool(expected and expected.issubset(header_set))
         except Exception:
             return False
