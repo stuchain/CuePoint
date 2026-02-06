@@ -58,7 +58,7 @@ def main() -> None:
     shutil.copy(src, dst)
     try:
         subprocess.run(
-            [sys.executable, "-m", "hashin", "-r", str(dst)],
+            [sys.executable, "-m", "hashin", "-r", str(dst), "--update-all"],
             check=True,
             cwd=root,
             timeout=300,

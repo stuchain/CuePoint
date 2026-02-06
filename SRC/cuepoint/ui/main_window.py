@@ -1879,6 +1879,12 @@ class MainWindow(QMainWindow):
         import sys
         logger = logging.getLogger(__name__)
         
+        # Skip update system during pytest/CI - avoids scheduled timers and network
+        # calls that can hang on Windows (Design: test stability)
+        if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("CUEPOINT_SKIP_UPDATE_CHECK"):
+            self.update_manager = None
+            return
+        
         logger.info("=" * 60)
         logger.info("UPDATE SYSTEM SETUP - Starting initialization")
         logger.info("=" * 60)
