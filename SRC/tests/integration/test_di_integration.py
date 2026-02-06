@@ -7,6 +7,8 @@ Integration tests for Dependency Injection
 Tests that all services work together correctly through the DI container.
 """
 
+from unittest.mock import patch
+
 import pytest
 from cuepoint.utils.di_container import reset_container, get_container
 from cuepoint.services.bootstrap import bootstrap_services
@@ -90,20 +92,19 @@ class TestDIIntegration:
         assert service is not None
         assert isinstance(service, IExportService)
     
-    def test_processor_service_process_track(self):
-        """Test that processor service can process a track."""
+    @patch("cuepoint.core.matcher.track_urls", return_value=[])
+    def test_processor_service_process_track(self, _mock_track_urls):
+        """Test that processor service can process a track (mocked search to avoid network)."""
         processor = self.container.resolve(IProcessorService)
-        
+
         track = Track(
             track_id="1",
             title="Test Track",
             artist="Test Artist"
         )
-        
-        # This will actually try to search Beatport, so we expect it might fail
-        # or take time, but the structure should work
+
         result = processor.process_track(1, track)
-        
+
         assert result is not None
         assert result.playlist_index == 1
         assert result.title == "Test Track"

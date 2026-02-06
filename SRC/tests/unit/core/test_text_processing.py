@@ -1,7 +1,7 @@
 """Unit tests for text_processing module. Design 3.103, 3.15, 3.16."""
 
 import pytest
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from cuepoint.core.text_processing import (
@@ -48,6 +48,7 @@ class TestNormalizeText:
 
     @pytest.mark.unit
     @given(st.text(alphabet=st.characters(blacklist_categories=("Cs",)), max_size=200))
+    @settings(deadline=None)  # Unicode normalization can be slow on some inputs (CI)
     def test_normalization_idempotent(self, s: str) -> None:
         """Property: normalize(normalize(s)) == normalize(s). Design 3.16."""
         result = normalize_text(s)

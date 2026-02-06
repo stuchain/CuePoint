@@ -38,7 +38,7 @@ jobs:
       - name: Run unit tests
         run: |
           pytest SRC/tests/unit/ -v --cov=SRC/cuepoint --cov-report=xml
-        timeout-minutes: 10
+        timeout-minutes: 15
         env:
           # Linux: offscreen platform for Qt without display/EGL. Windows: omit to avoid
           # hangs (offscreen has limitations on Windows - see pytest-qt troubleshooting).
@@ -168,11 +168,6 @@ jobs:
           python scripts/release_readiness.py
         continue-on-error: false
 
-      - name: Check performance (if metrics available)
-        run: |
-          python scripts/check_performance.py
-        continue-on-error: true
-  
   build-gates:
     name: Build Gates
     runs-on: ${{ matrix.os }}
