@@ -27,6 +27,7 @@ Example:
 
 import json
 import logging
+import os
 import random
 import re
 import socket
@@ -635,6 +636,9 @@ def track_urls(
     """
     Unified search function that can use direct Beatport search, DuckDuckGo, or both.
 
+    When CUEPOINT_SKIP_BEATPORT=1 (system tests, CI), returns [] immediately to avoid
+    network timeouts.
+
     Args:
         idx: Track index for logging
         query: Search query
@@ -647,6 +651,9 @@ def track_urls(
     Returns:
         List of Beatport track URLs
     """
+    if os.environ.get("CUEPOINT_SKIP_BEATPORT", "").lower() in ("1", "true", "yes"):
+        return []
+
     diag_enabled = bool(SETTINGS.get("TRACE") or SETTINGS.get("VERBOSE"))
     diag_steps: list[str] = []
     def _diag(msg: str) -> None:

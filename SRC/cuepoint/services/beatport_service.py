@@ -6,8 +6,13 @@ Beatport Service Implementation
 
 Service for searching and fetching data from Beatport.
 Uses provider abstraction (Step 12) - configurable via providers.active.
+
+Environment:
+    CUEPOINT_SKIP_BEATPORT: When set to "1" or "true", skips all network calls
+        and returns empty results. Used by system tests to avoid timeouts in CI.
 """
 
+import os
 from typing import Any, Dict, List, Optional
 
 from cuepoint.data.providers import get_active_provider
@@ -67,6 +72,11 @@ class BeatportService(IBeatportService):
             >>> urls = service.search_tracks("Never Sleep Again Tim Green", max_results=10)
             >>> print(f"Found {len(urls)} tracks")
         """
+        # Skip Beatport when CUEPOINT_SKIP_BEATPORT=1 (system tests, CI)
+        if os.environ.get("CUEPOINT_SKIP_BEATPORT", "").lower() in ("1", "true", "yes"):
+            self.logging_service.debug(f"Skipping Beatport search (CUEPOINT_SKIP_BEATPORT): {query}")
+            return []
+
         # Check cache first
         cache_key = f"search:{query}:{max_results}"
         cached = self.cache_service.get(cache_key)
@@ -172,6 +182,10 @@ class BeatportService(IBeatportService):
             >>> data = service.fetch_track_data("https://www.beatport.com/track/...")
             >>> print(data["title"])
         """
+        # Skip Beatport when CUEPOINT_SKIP_BEATPORT=1 (system tests, CI)
+        if os.environ.get("CUEPOINT_SKIP_BEATPORT", "").lower() in ("1", "true", "yes"):
+            return None
+
         # Check cache
         cache_key = f"track:{url}"
         cached = self.cache_service.get(cache_key)

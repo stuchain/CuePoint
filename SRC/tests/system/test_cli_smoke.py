@@ -2,13 +2,21 @@
 System / CLI smoke tests. Design 3.32, 3.93.
 
 Run CLI with small XML; validate exit code and that outputs are produced.
+
+Uses CUEPOINT_SKIP_BEATPORT=1 to avoid real network calls (Beatport search),
+which would cause timeouts in CI. Tracks are processed as unmatched; outputs
+(CSV files) are still produced.
 """
 
+import os
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
+
+# Env for subprocess: skip Beatport to avoid network timeouts in CI
+_SKIP_BEATPORT_ENV = {**os.environ, "CUEPOINT_SKIP_BEATPORT": "1"}
 
 
 def tests_dir() -> Path:
@@ -40,6 +48,7 @@ def test_cli_smoke_small_xml(tmp_path: Path) -> None:
         str(out_dir),
         "--out",
         "smoke_test",
+        "--no-preflight",  # Skip network check for fast CI run
     ]
     result = subprocess.run(
         cmd,
@@ -47,6 +56,7 @@ def test_cli_smoke_small_xml(tmp_path: Path) -> None:
         capture_output=True,
         text=True,
         timeout=120,
+        env=_SKIP_BEATPORT_ENV,
     )
     assert result.returncode == 0, f"CLI failed: {result.stderr or result.stdout}"
     # At least main CSV should exist (with timestamp in name)
@@ -96,6 +106,7 @@ def test_cli_resume_and_reliability_flags(tmp_path: Path) -> None:
         "--no-resume",
         "--checkpoint-every", "25",
         "--max-retries", "2",
+        "--no-preflight",  # Skip network check for fast CI run
     ]
     result = subprocess.run(
         cmd,
@@ -103,6 +114,7 @@ def test_cli_resume_and_reliability_flags(tmp_path: Path) -> None:
         capture_output=True,
         text=True,
         timeout=120,
+        env=_SKIP_BEATPORT_ENV,
     )
     assert result.returncode == 0, f"CLI failed: {result.stderr or result.stdout}"
 
