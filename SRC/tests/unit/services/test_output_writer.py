@@ -7,7 +7,6 @@ import csv
 import json
 import os
 import tempfile
-from pathlib import Path
 from typing import Set
 from unittest.mock import Mock, patch
 
@@ -405,7 +404,6 @@ class TestWriteCandidatesCsvEdgeCases:
     
     def test_write_candidates_csv_multiple_candidates(self, temp_output_dir):
         """Test writing candidates CSV when tracks have multiple candidates."""
-        from cuepoint.models.beatport_candidate import BeatportCandidate
 
         # Create candidates_data list (dict format) as the function expects
         candidates_data = [

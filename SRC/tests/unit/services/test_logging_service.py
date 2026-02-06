@@ -6,7 +6,6 @@
 import logging
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 

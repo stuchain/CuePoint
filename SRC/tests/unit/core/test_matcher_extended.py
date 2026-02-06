@@ -1,8 +1,7 @@
 """Extended unit tests for matcher module - additional edge cases and coverage."""
 
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
-import pytest
 
 from cuepoint.core.matcher import best_beatport_match
 from cuepoint.models.beatport_candidate import BeatportCandidate

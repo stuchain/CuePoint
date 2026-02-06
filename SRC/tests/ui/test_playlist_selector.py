@@ -25,8 +25,8 @@ def test_playlist_selector():
     if not os.path.exists(xml_path):
         xml_path = os.path.join("..", "collection.xml")
         if not os.path.exists(xml_path):
-            print(f"ERROR: collection.xml not found in current directory or parent directory")
-            print(f"Please ensure collection.xml exists to test PlaylistSelector")
+            print("ERROR: collection.xml not found in current directory or parent directory")
+            print("Please ensure collection.xml exists to test PlaylistSelector")
             return 1
     
     # Create test window

@@ -19,7 +19,7 @@ def main():
     
     output_file = "step52_test_results.txt"
     
-    print(f"Running Step 5.2 tests...")
+    print("Running Step 5.2 tests...")
     print(f"Output will be saved to: {output_file}")
     print()
     

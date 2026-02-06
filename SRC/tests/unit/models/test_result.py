@@ -8,7 +8,6 @@ Tests all validation rules, edge cases, and error handling.
 """
 
 import pytest
-from datetime import datetime
 
 from cuepoint.models.beatport_candidate import BeatportCandidate
 from cuepoint.models.result import TrackResult

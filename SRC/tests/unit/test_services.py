@@ -5,8 +5,7 @@
 Unit tests for Service implementations
 """
 
-import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, patch
 from cuepoint.services.cache_service import CacheService, CacheEntry
 from cuepoint.services.logging_service import LoggingService
 from cuepoint.services.config_service import ConfigService

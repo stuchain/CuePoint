@@ -22,19 +22,20 @@ import os
 import platform
 import subprocess
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # For update system (Step 5)
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:
-    from cuepoint.update.update_manager import UpdateManager
+    pass
 
 from PySide6.QtCore import QSettings, Qt, QTimer
 from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent, QIcon, QKeyEvent, QKeySequence
 from PySide6.QtWidgets import (
     QButtonGroup,
     QDialog,
+    QFileDialog,
     QFrame,
     QGroupBox,
     QHBoxLayout,
@@ -46,7 +47,6 @@ from PySide6.QtWidgets import (
     QPushButton,
     QRadioButton,
     QScrollArea,
-    QSplitter,
     QStyle,
     QTabWidget,
     QVBoxLayout,
@@ -124,7 +124,7 @@ class MainWindow(QMainWindow):
             from cuepoint.utils.di_container import get_container
 
             container = get_container()
-            self._config_service = container.resolve(IConfigService)  # type: ignore[type-abstract]
+            self._config_service = container.resolve(IConfigService)
         except Exception:
             self._config_service = None
         # Tool selection page state
@@ -231,7 +231,7 @@ class MainWindow(QMainWindow):
             config_service = None
             try:
                 container = get_container()
-                config_service = container.resolve(IConfigService)  # type: ignore[type-abstract]
+                config_service = container.resolve(IConfigService)
             except Exception:
                 config_service = None
 
@@ -301,7 +301,7 @@ class MainWindow(QMainWindow):
                     # Check if "don't show again" was checked before dialog closed
                     try:
                         dont_show = dialog.dont_show_again_checked()
-                    except:
+                    except Exception:
                         dont_show = False
                     self._onboarding_service.dismiss_onboarding(dont_show_again=dont_show)
             
@@ -310,7 +310,7 @@ class MainWindow(QMainWindow):
             self.raise_()
             self.activateWindow()
             QApplication.processEvents()
-        except Exception as e:
+        except Exception:
             # If anything goes wrong, still mark as complete to prevent infinite loop
             # And ensure main window is visible
             try:
@@ -319,7 +319,7 @@ class MainWindow(QMainWindow):
                 self.activateWindow()
                 if hasattr(self, "_onboarding_service"):
                     self._onboarding_service.mark_first_run_complete()
-            except:
+            except Exception:
                 pass
             return
 
@@ -1372,7 +1372,7 @@ class MainWindow(QMainWindow):
                         
                         # Display: "filename.xml - Today, 2:30 PM"
                         display_text = f"{file_name} - {time_str}"
-                    except:
+                    except Exception:
                         display_text = file_name
                     
                     action = QAction(display_text, self)
@@ -1783,7 +1783,6 @@ class MainWindow(QMainWindow):
         """Set the window icon from application icon or logo."""
         from pathlib import Path
 
-        from PySide6.QtGui import QIcon
         from PySide6.QtWidgets import QApplication
 
         # Try to get icon from QApplication first (set in gui_app.py)
@@ -1912,7 +1911,7 @@ class MainWindow(QMainWindow):
                 logger.info("Step 2: Running Qt validation for frozen app...")
                 # Verify we can import Qt modules and create objects
                 try:
-                    from PySide6.QtCore import QObject, Signal
+                    from PySide6.QtCore import QObject
 
                     # Test creating a simple QObject to verify Qt is working
                     test_obj = QObject()
@@ -1927,7 +1926,6 @@ class MainWindow(QMainWindow):
             
             logger.info("Step 3: Importing update system modules...")
             from cuepoint.update.update_manager import UpdateManager
-            from cuepoint.update.update_ui import show_update_dialog, show_update_error_dialog
             from cuepoint.version import get_version
             logger.info("✓ Update system modules imported")
 
@@ -2024,8 +2022,6 @@ class MainWindow(QMainWindow):
                 # Check if should check on startup
                 logger.info("Step 2: Checking update preferences...")
                 from cuepoint.update.update_preferences import UpdatePreferences
-                from cuepoint.update.update_ui import show_update_check_dialog
-                from cuepoint.version import get_version
 
                 check_frequency = self.update_manager.preferences.get_check_frequency()
                 logger.info(f"  - Check frequency: {check_frequency}")
@@ -2320,7 +2316,7 @@ class MainWindow(QMainWindow):
                             # Show immediate visual feedback
                             try:
                                 main_window_self.statusBar().showMessage("Starting download...", 3000)
-                            except:
+                            except Exception:
                                 pass
                             
                             try:
@@ -2355,7 +2351,7 @@ class MainWindow(QMainWindow):
                                 logger.info("Download button connected successfully")
                                 
                                 # Verify button state
-                                logger.info(f"Button state after connection:")
+                                logger.info("Button state after connection:")
                                 logger.info(f"  - Text: {self.update_check_dialog.download_button.text()}")
                                 logger.info(f"  - Visible: {self.update_check_dialog.download_button.isVisible()}")
                                 logger.info(f"  - Enabled: {self.update_check_dialog.download_button.isEnabled()}")
@@ -2363,7 +2359,6 @@ class MainWindow(QMainWindow):
                                 
                                 # Test connection by checking receivers (PySide6 way)
                                 try:
-                                    from PySide6.QtCore import QObject
 
                                     # Get signal index
                                     signal_index = self.update_check_dialog.download_button.metaObject().indexOfSignal("clicked()")
@@ -2386,7 +2381,7 @@ class MainWindow(QMainWindow):
                                         f"Error: {str(connect_error)}\n\n"
                                         f"Please try checking for updates again or download manually."
                                     )
-                                except:
+                                except Exception:
                                     pass
                                 dialog_exists = False
             else:
@@ -2540,7 +2535,7 @@ class MainWindow(QMainWindow):
         # Show immediate visual feedback
         try:
             self.statusBar().showMessage("Preparing download...", 2000)
-        except:
+        except Exception:
             pass
         
         # Debug: Check if dialog exists
@@ -2636,6 +2631,7 @@ class MainWindow(QMainWindow):
         Args:
             update_info: Update information dictionary
         """
+        from PySide6.QtWidgets import QMessageBox
         # Get download URL
         download_url = update_info.get("download_url")
         if not download_url:
@@ -2652,11 +2648,11 @@ class MainWindow(QMainWindow):
             )
             return
         
-        # Show diagnostic dialog first
+        # Show diagnostic dialog first (QMessageBox is from module-level import)
         try:
             import logging
 
-            from PySide6.QtWidgets import QDialog, QMessageBox
+            from PySide6.QtWidgets import QDialog
 
             from cuepoint.ui.dialogs.download_progress_dialog import DownloadProgressDialog
             from cuepoint.ui.dialogs.update_diagnostic_dialog import UpdateDiagnosticDialog
@@ -2774,7 +2770,7 @@ class MainWindow(QMainWindow):
                     # Process events to show the message
                     from PySide6.QtWidgets import QApplication
                     QApplication.processEvents()
-                except:
+                except Exception:
                     pass
                 
                 # Perform installation (this will close the app)
@@ -3272,7 +3268,7 @@ class MainWindow(QMainWindow):
                 last_out = self._config_service.get("product.last_output_dir", "") or ""
             output_dir = get_output_directory(last_out if last_out else None)
             container = get_container()
-            processor_service: IProcessorService = container.resolve(IProcessorService)  # type: ignore[type-abstract]
+            processor_service: IProcessorService = container.resolve(IProcessorService)
             if self._config_service:
                 preflight_enabled = self._config_service.get("product.preflight_enabled", True)
                 if preflight_enabled is None:
@@ -3318,9 +3314,9 @@ class MainWindow(QMainWindow):
                         reply = QMessageBox.question(
                             self,
                             "Cancel Processing?",
-                            f"Processing is in progress.\n\n"
-                            f"Are you sure you want to cancel?\n"
-                            f"All progress will be lost.",
+                            "Processing is in progress.\n\n"
+                            "Are you sure you want to cancel?\n"
+                            "All progress will be lost.",
                             QMessageBox.Yes | QMessageBox.No,
                             QMessageBox.No
                         )
@@ -3376,17 +3372,17 @@ class MainWindow(QMainWindow):
             try:
                 if hasattr(self, 'statusBar') and self.statusBar():
                     self.statusBar().showMessage(error_msg, 5000)
-            except:
+            except Exception:
                 pass
             # Still try to reset UI
             try:
                 from PySide6.QtCore import QTimer
                 QTimer.singleShot(500, self._on_cancel_complete)
-            except:
+            except Exception:
                 # Last resort: reset cancelling flag directly
                 try:
                     self._cancelling = False
-                except:
+                except Exception:
                     pass
 
     def _on_cancel_complete(self) -> None:
@@ -3435,7 +3431,7 @@ class MainWindow(QMainWindow):
             try:
                 if hasattr(self, 'statusBar') and hasattr(self, 'isVisible') and self.isVisible():
                     self.statusBar().showMessage("Processing cancelled (with errors)", 3000)
-            except:
+            except Exception:
                 pass
 
     def on_progress_updated(self, progress_info: ProgressInfo) -> None:
@@ -3829,11 +3825,6 @@ class MainWindow(QMainWindow):
                     self.start_button.setFocus()
         except Exception as e:
             print(f"Warning: Could not select playlist '{playlist_name}': {e}")
-
-            # Automatically save results to CSV (after displaying)
-            self._auto_save_results(results, playlist_name)
-        else:
-            self.statusBar().showMessage("Processing complete: No results to display", 5000)
 
     def on_error_occurred(self, error: ProcessingError) -> None:
         """Handle error from controller.

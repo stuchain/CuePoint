@@ -7,9 +7,7 @@ Test script for FileSelector widget
 
 import sys
 import os
-from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel
-import sys
-import os
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
 from cuepoint.ui.widgets.file_selector import FileSelector
 

@@ -28,7 +28,6 @@ from cuepoint.data.rekordbox import (
     parse_rekordbox,
     read_playlist_index,
 )
-from cuepoint.models.compat import track_from_rbtrack
 from cuepoint.models.config import SETTINGS
 from cuepoint.models.preflight import PreflightIssue, PreflightResult
 from cuepoint.models.result import TrackResult
@@ -60,7 +59,6 @@ from cuepoint.utils.run_context import set_run_id
 from cuepoint.utils.run_performance_collector import (
     STAGE_PARSE_XML,
     STAGE_SEARCH_CANDIDATES,
-    STAGE_WRITE_OUTPUTS,
     RunPerformanceCollector,
 )
 
@@ -1306,7 +1304,7 @@ class ProcessorService(IProcessorService):
                                         timeout_sec = effective_settings.get("PER_TRACK_TIME_BUDGET_SEC", 45) * 2
                                         result = future.result(timeout=timeout_sec)
                                         results_dict[result.playlist_index] = result
-                                except TimeoutError as timeout_err:
+                                except TimeoutError:
                                     # Future timed out - likely due to DuckDuckGo search hanging
                                     idx, track = future_to_args[future]
                                     self.logging_service.error(
@@ -1318,7 +1316,7 @@ class ProcessorService(IProcessorService):
                                         title=track.title,
                                         artist=track.artist or "",
                                         matched=False,
-                                        error=f"Processing timed out (likely due to DuckDuckGo search timeouts)",
+                                        error="Processing timed out (likely due to DuckDuckGo search timeouts)",
                                     )
                                     results_dict[idx] = error_result
                                     with progress_lock:
@@ -1379,7 +1377,7 @@ class ProcessorService(IProcessorService):
                                             matched_count += 1
                                         else:
                                             unmatched_count += 1
-                            except TimeoutError as timeout_err:
+                            except TimeoutError:
                                 # Future timed out - this can happen if DuckDuckGo searches hang
                                 processed_futures.add(future)
                                 idx, track = future_to_args[future]
@@ -1392,7 +1390,7 @@ class ProcessorService(IProcessorService):
                                     title=track.title,
                                     artist=track.artist or "",
                                     matched=False,
-                                    error=f"Processing timed out (likely due to DuckDuckGo search timeouts)",
+                                    error="Processing timed out (likely due to DuckDuckGo search timeouts)",
                                 )
                                 results_dict[idx] = error_result
                                 with progress_lock:

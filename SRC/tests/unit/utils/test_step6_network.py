@@ -7,7 +7,6 @@ Tests for Step 6.4: Networking Reliability
 Tests TimeoutConfig, NetworkConfig, RetryConfig, exponential_backoff, NetworkState.
 """
 
-import socket
 import time
 from unittest.mock import Mock, patch
 

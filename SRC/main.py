@@ -118,10 +118,10 @@ def main():
     
     # Get services from DI container
     container = get_container()
-    processor_service = container.resolve(IProcessorService)  # type: ignore
-    export_service = container.resolve(IExportService)  # type: ignore
-    config_service = container.resolve(IConfigService)  # type: ignore
-    logging_service = container.resolve(ILoggingService)  # type: ignore
+    processor_service = container.resolve(IProcessorService)
+    export_service = container.resolve(IExportService)
+    config_service = container.resolve(IConfigService)
+    logging_service = container.resolve(ILoggingService)
     
     # Create CLI processor
     cli_processor = CLIProcessor(
@@ -225,7 +225,6 @@ def main():
 
     # Design 13.182: --export-support-bundle - generate support bundle and exit
     if getattr(args, "export_support_bundle", False):
-        from pathlib import Path
 
         from cuepoint.utils.paths import AppPaths
         from cuepoint.utils.support_bundle import SupportBundleGenerator
@@ -315,7 +314,7 @@ def main():
             for key, value in yaml_settings.items():
                 config_service.set(key, value)
             print(f"Loaded configuration from: {args.config}")
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             print_error(error_file_not_found(args.config, "Configuration", "Check the --config file path"))
         except ImportError as e:
             if "yaml" in str(e).lower() or "pyyaml" in str(e).lower():

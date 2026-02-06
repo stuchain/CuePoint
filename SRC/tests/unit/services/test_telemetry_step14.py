@@ -10,7 +10,6 @@ import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 from cuepoint.services.telemetry_service import TelemetryService, _scrub_properties
 
@@ -65,9 +64,12 @@ class TestTelemetryServiceOptIn:
     def test_track_persists_when_enabled(self):
         config = MagicMock()
         def _get(k, d=None):
-            if k == "telemetry.enabled": return True
-            if k == "telemetry.sample_rate": return 1.0
-            if k == "telemetry.endpoint": return None
+            if k == "telemetry.enabled":
+                return True
+            if k == "telemetry.sample_rate":
+                return 1.0
+            if k == "telemetry.endpoint":
+                return None
             return d
         config.get.side_effect = _get
         with tempfile.TemporaryDirectory() as tmp:
@@ -92,9 +94,12 @@ class TestTelemetryServiceDeleteLocalData:
     def test_delete_local_data_removes_file(self):
         config = MagicMock()
         def _get(k, d=None):
-            if k == "telemetry.enabled": return True
-            if k == "telemetry.sample_rate": return 1.0
-            if k == "telemetry.endpoint": return None  # No endpoint -> persist to file
+            if k == "telemetry.enabled":
+                return True
+            if k == "telemetry.sample_rate":
+                return 1.0
+            if k == "telemetry.endpoint":
+                return None  # No endpoint -> persist to file
             return d
         config.get.side_effect = _get
         with tempfile.TemporaryDirectory() as tmp:
@@ -112,9 +117,12 @@ class TestTelemetryServiceFlush:
     def test_flush_clears_queue(self):
         config = MagicMock()
         def _get(k, d=None):
-            if k == "telemetry.enabled": return True
-            if k == "telemetry.sample_rate": return 1.0
-            if k == "telemetry.endpoint": return "https://example.com/events"
+            if k == "telemetry.enabled":
+                return True
+            if k == "telemetry.sample_rate":
+                return 1.0
+            if k == "telemetry.endpoint":
+                return "https://example.com/events"
             return d
         config.get.side_effect = _get
         with tempfile.TemporaryDirectory() as tmp:
@@ -133,9 +141,12 @@ class TestTelemetryServiceEventSchema:
     def test_event_has_required_fields(self):
         config = MagicMock()
         def _get(k, d=None):
-            if k == "telemetry.enabled": return True
-            if k == "telemetry.sample_rate": return 1.0
-            if k == "telemetry.endpoint": return None
+            if k == "telemetry.enabled":
+                return True
+            if k == "telemetry.sample_rate":
+                return 1.0
+            if k == "telemetry.endpoint":
+                return None
             return d
         config.get.side_effect = _get
         with tempfile.TemporaryDirectory() as tmp:

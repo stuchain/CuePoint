@@ -70,7 +70,6 @@ class TestSupportBundleGenerator:
         temp_output_dir.mkdir()
 
         # Create a real temporary log file for testing
-        import tempfile
         with tempfile.NamedTemporaryFile(mode='w', suffix='.log', delete=False) as tmp_log:
             tmp_log.write("Test log content")
             tmp_log_path = Path(tmp_log.name)

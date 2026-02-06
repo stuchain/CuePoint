@@ -26,7 +26,7 @@ class SecretManager:
     def store_secret(service: str, username: str, secret: str) -> None:
         """Store a secret securely."""
         try:
-            import keyring  # type: ignore
+            import keyring
         except Exception as e:  # pragma: no cover
             raise RuntimeError(
                 "Secret storage requires the optional 'keyring' dependency."
@@ -38,7 +38,7 @@ class SecretManager:
     def get_secret(service: str, username: str) -> Optional[str]:
         """Retrieve a secret from secure storage."""
         try:
-            import keyring  # type: ignore
+            import keyring
         except Exception as e:  # pragma: no cover
             raise RuntimeError(
                 "Secret storage requires the optional 'keyring' dependency."
@@ -50,7 +50,7 @@ class SecretManager:
     def delete_secret(service: str, username: str) -> None:
         """Delete a secret from secure storage."""
         try:
-            import keyring  # type: ignore
+            import keyring
         except Exception as e:  # pragma: no cover
             raise RuntimeError(
                 "Secret storage requires the optional 'keyring' dependency."

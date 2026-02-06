@@ -2,7 +2,6 @@
 
 from unittest.mock import Mock, patch
 
-import pytest
 
 from cuepoint.core.matcher import (
     _camelot_key,
@@ -14,8 +13,7 @@ from cuepoint.core.matcher import (
     _year_bonus,
     best_beatport_match,
 )
-from cuepoint.models.beatport_candidate import BeatportCandidate
-from cuepoint.models.config import NEAR_KEYS, SETTINGS
+from cuepoint.models.config import SETTINGS
 
 
 class TestMatcherHelpers:
@@ -1185,7 +1183,6 @@ class TestBestBeatportMatch:
     
     def test_special_bonus_refire_rework(self):
         """Test special bonuses for refire/rework matches - lines 656-657."""
-        from cuepoint.core.mix_parser import _parse_mix_flags
         
         with patch('cuepoint.core.matcher.track_urls') as mock_track_urls, \
              patch('cuepoint.core.matcher.parse_track_page') as mock_parse:
@@ -1578,7 +1575,7 @@ class TestBestBeatportMatch:
         
         try:
             with patch('cuepoint.core.matcher.track_urls') as mock_track_urls, \
-                 patch('cuepoint.core.matcher.parse_track_page') as mock_parse:
+                 patch('cuepoint.core.matcher.parse_track_page'):
                 mock_track_urls.return_value = [
                     "https://www.beatport.com/track/test/123"
                 ]

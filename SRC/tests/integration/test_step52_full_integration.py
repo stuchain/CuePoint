@@ -10,7 +10,6 @@ Tests the complete flow from entry point → bootstrap → DI → controller →
 import os
 import tempfile
 
-import pytest
 
 from cuepoint.services.bootstrap import bootstrap_services
 from cuepoint.services.interfaces import IProcessorService
@@ -75,7 +74,6 @@ class TestStep52FullIntegration:
 
     def test_beatport_service_dependencies_injected(self):
         """Test that BeatportService has dependencies injected."""
-        from cuepoint.services.interfaces import IBeatportService
 
         container = get_container()
         processor_service = container.resolve(IProcessorService)
@@ -106,8 +104,8 @@ class TestStep52FullIntegration:
             xml_path = f.name
 
         try:
-            # Create worker
-            worker = ProcessingWorker(
+            # Create worker (verifies ProcessingWorker can be instantiated)
+            _ = ProcessingWorker(
                 xml_path=xml_path,
                 playlist_name="Test Playlist",
             )

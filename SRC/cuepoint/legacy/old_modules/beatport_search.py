@@ -24,10 +24,9 @@ import json
 import re
 import time
 import random
-from typing import List, Optional, Dict, Any
+from typing import List, Any
 from urllib.parse import quote_plus
 
-from bs4 import BeautifulSoup
 
 from config import BASE_URL, SESSION, SETTINGS
 from beatport import is_track_url, request_html, vlog
@@ -227,7 +226,7 @@ def beatport_search_direct(idx: int, query: str, max_results: int = 50) -> List[
         # Fetch the search page
         soup = request_html(search_url)
         if not soup:
-            vlog(idx, f"[beatport-direct] Failed to fetch search page")
+            vlog(idx, "[beatport-direct] Failed to fetch search page")
             return []
         
         # Method 1: Look for track links directly in HTML
@@ -342,7 +341,7 @@ def beatport_search_browser(idx: int, query: str, max_results: int = 50) -> List
             # Wait for track links to appear
             try:
                 page.wait_for_selector('a[href^="/track/"]', timeout=10000)
-            except:
+            except Exception:
                 pass  # Links might already be there
             
             # Extract all track links
@@ -403,7 +402,7 @@ def beatport_search_browser(idx: int, query: str, max_results: int = 50) -> List
                 WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, 'a[href^="/track/"]'))
                 )
-            except:
+            except Exception:
                 pass
             
             # Extract track links
@@ -426,7 +425,7 @@ def beatport_search_browser(idx: int, query: str, max_results: int = 50) -> List
             driver.quit()
             
     except ImportError:
-        vlog(idx, f"[beatport-browser] Selenium not available - install with: pip install selenium")
+        vlog(idx, "[beatport-browser] Selenium not available - install with: pip install selenium")
     except Exception as e:
         vlog(idx, f"[beatport-browser] Selenium error: {e!r}")
     

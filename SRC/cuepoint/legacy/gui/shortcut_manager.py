@@ -13,7 +13,6 @@ from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtCore import Qt, QObject, Signal
 from PySide6.QtWidgets import QWidget
 import json
-import os
 import sys
 from pathlib import Path
 

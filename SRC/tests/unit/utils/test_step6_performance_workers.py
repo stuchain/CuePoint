@@ -10,7 +10,6 @@ Tests Worker, WorkerManager, UIThreadHelper, ProgressThrottler, PerformanceBudge
 import time
 from unittest.mock import Mock
 
-import pytest
 
 from cuepoint.utils.performance_workers import (
     DebouncedFilter,

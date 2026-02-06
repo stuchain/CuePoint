@@ -1,8 +1,6 @@
 """Unit tests for Step 6 remaining features: disk I/O, incremental, profiling."""
 
 import csv
-import tempfile
-from pathlib import Path
 
 import pytest
 

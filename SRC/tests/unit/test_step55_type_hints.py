@@ -6,10 +6,7 @@
 This module verifies that all public APIs have type hints and documentation.
 """
 
-import inspect
-import sys
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, get_type_hints
+from typing import List, get_type_hints
 
 import pytest
 
@@ -19,9 +16,6 @@ from cuepoint.data import beatport, rekordbox
 from cuepoint.services import (
     beatport_service,
     cache_service,
-    config_service,
-    export_service,
-    logging_service,
     matcher_service,
     processor_service,
 )
@@ -31,7 +25,6 @@ from cuepoint.ui.controllers import (
     main_controller,
     results_controller,
 )
-from cuepoint.utils import di_container, errors, utils
 
 
 class TestTypeHints:
@@ -140,7 +133,7 @@ class TestTypeHints:
         hints = get_type_hints(func)
         assert "u" in hints
         assert "return" in hints
-        assert hints["return"] == bool
+        assert hints["return"] is bool
 
     @pytest.mark.unit
     def test_controller_type_hints(self):
@@ -309,7 +302,7 @@ class TestTypeChecking:
         # This test verifies that imports work correctly
         # If there are circular import issues, this will fail
         from cuepoint.core.matcher import best_beatport_match
-        from cuepoint.data.rekordbox import RBTrack, parse_rekordbox
+        from cuepoint.data.rekordbox import parse_rekordbox
         from cuepoint.services.beatport_service import BeatportService
         from cuepoint.services.cache_service import CacheService
         from cuepoint.services.processor_service import ProcessorService
@@ -347,9 +340,6 @@ class TestInterfaceDocumentation:
         from cuepoint.services.interfaces import (
             IBeatportService,
             ICacheService,
-            IConfigService,
-            IExportService,
-            ILoggingService,
             IMatcherService,
             IProcessorService,
         )

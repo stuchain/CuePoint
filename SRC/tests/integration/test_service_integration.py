@@ -12,7 +12,6 @@ from cuepoint.services.interfaces import (
     ILoggingService,
     IMatcherService
 )
-from cuepoint.data.rekordbox import RBTrack
 
 
 @pytest.mark.integration

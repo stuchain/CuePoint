@@ -1,6 +1,5 @@
 """Unit tests for network circuit breaker (Design 5.38)."""
 
-import time
 
 import pytest
 

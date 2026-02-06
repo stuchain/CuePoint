@@ -12,8 +12,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTableWidget,
     QTableWidgetItem, QPushButton, QGroupBox, QTextEdit, QMessageBox
 )
-from PySide6.QtCore import Qt, QTimer
-from typing import Optional
+from PySide6.QtCore import QTimer
 from collections import defaultdict
 import sys
 import os

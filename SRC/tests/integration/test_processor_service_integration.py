@@ -2,7 +2,7 @@
 
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -485,7 +485,7 @@ class TestProcessorServiceIntegration:
 
             # _mock_track_urls fixture already patches track_urls to return []
             # Process playlist from XML with progress callback
-            results = processor_service.process_playlist_from_xml(
+            processor_service.process_playlist_from_xml(
                 xml_path,
                 "Test Playlist",
                 progress_callback=progress_callback

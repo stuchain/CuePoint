@@ -15,7 +15,6 @@ import shutil
 import sys
 import tempfile
 import unittest
-from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
 from cuepoint.models.result import TrackResult
@@ -256,7 +255,7 @@ class TestEnhancedExport(unittest.TestCase):
             content = f.read()
 
         # Skip # comment lines, find header row
-        lines = [l for l in content.split('\n') if l and not l.strip().startswith("#")]
+        lines = [line for line in content.split('\n') if line and not line.strip().startswith("#")]
         if lines:
             self.assertGreater(len(lines[0].split(',')), 5)
     
@@ -274,7 +273,7 @@ class TestEnhancedExport(unittest.TestCase):
             content = f.read()
 
         # Skip # comment lines, find header row
-        lines = [l for l in content.split('\n') if l and not l.strip().startswith("#")]
+        lines = [line for line in content.split('\n') if line and not line.strip().startswith("#")]
         if lines:
             self.assertGreater(len(lines[0].split(';')), 5)
     

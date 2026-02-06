@@ -1,7 +1,6 @@
 """Unit tests for export service validation and error handling."""
 
 import os
-import shutil
 import tempfile
 from pathlib import Path
 

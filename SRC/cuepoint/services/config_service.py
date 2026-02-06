@@ -15,7 +15,7 @@ import os
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-import yaml  # type: ignore[import-untyped]
+import yaml
 
 from cuepoint.exceptions.cuepoint_exceptions import ConfigurationError
 from cuepoint.models.config import SETTINGS

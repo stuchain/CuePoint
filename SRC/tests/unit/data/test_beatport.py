@@ -3,7 +3,7 @@
 
 """Unit tests for beatport data module."""
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from bs4 import BeautifulSoup

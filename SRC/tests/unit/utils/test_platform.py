@@ -4,10 +4,8 @@ import platform
 import sys
 from unittest.mock import patch
 
-import pytest
 
 from cuepoint.utils.platform import (
-    PlatformInfo,
     get_architecture,
     get_os_version,
     get_platform,

@@ -9,7 +9,6 @@ Local status page showing log path, last run ID, and health checks.
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QDialog, QGroupBox, QHBoxLayout, QLabel, QPushButton, QVBoxLayout
 
 from cuepoint.utils.health_check import run_all_health_checks

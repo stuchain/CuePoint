@@ -14,7 +14,6 @@ import shutil
 import json
 import gzip
 import csv
-from unittest.mock import Mock, patch, MagicMock
 from PySide6.QtWidgets import QApplication
 import sys
 
@@ -22,7 +21,6 @@ if not QApplication.instance():
     app = QApplication(sys.argv)
 
 import sys
-import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
 from cuepoint.models.result import TrackResult
 from cuepoint.ui.dialogs.export_dialog import ExportDialog

@@ -25,7 +25,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QGroupBox, QFileDialog,
     QMessageBox, QLineEdit, QComboBox, QHeaderView, QMenu, QDialog,
-    QTabWidget, QScrollArea, QSpinBox, QSplitter
+    QTabWidget, QSpinBox, QSplitter
 )
 from PySide6.QtCore import Qt, Signal, QTimer
 from typing import List, Optional, Dict, Any
@@ -961,7 +961,7 @@ class ResultsView(QWidget):
     
     def apply_filters(self):
         """Apply filters and update table using controller"""
-        filtered = self._filter_results()
+        self._filter_results()
         self._populate_table()
         self._update_filter_status()
         

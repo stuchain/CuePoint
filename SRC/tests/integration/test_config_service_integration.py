@@ -348,7 +348,7 @@ class TestConfigServiceIntegration:
         # Verify reset (custom legacy setting may persist, but structured config is reset)
         # The reset_to_defaults resets structured config, but legacy settings may persist
         # This is acceptable behavior - just verify the method completes without error
-        value = config_service.get("TEST_RESET")
+        config_service.get("TEST_RESET")  # May return persisted legacy value
         # Legacy settings may persist after reset - this is acceptable
         # The important thing is that structured config is reset
         assert True  # Test passes if no exception was raised

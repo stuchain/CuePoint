@@ -17,9 +17,8 @@ This utility tracks:
 """
 
 import json
-import time
 from collections import defaultdict
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from threading import Lock
@@ -417,17 +416,17 @@ class MetricsCollector:
         with self.lock:
             return {
                 "installation_success_rate": self.metrics.installation.calculate_success_rate(),
-                "target": 95.0,
-                "meets_target": self.metrics.installation.calculate_success_rate() >= 95.0,
+                "installation_target": 95.0,
+                "installation_meets_target": self.metrics.installation.calculate_success_rate() >= 95.0,
                 "processing_success_rate": self.metrics.processing.calculate_success_rate(),
-                "target": 98.0,
-                "meets_target": self.metrics.processing.calculate_success_rate() >= 98.0,
+                "processing_target": 98.0,
+                "processing_meets_target": self.metrics.processing.calculate_success_rate() >= 98.0,
                 "error_recovery_rate": self.metrics.errors.calculate_recovery_rate(),
-                "target": 90.0,
-                "meets_target": self.metrics.errors.calculate_recovery_rate() >= 90.0,
+                "error_recovery_target": 90.0,
+                "error_recovery_meets_target": self.metrics.errors.calculate_recovery_rate() >= 90.0,
                 "update_adoption_rate": self.metrics.updates.calculate_adoption_rate(),
-                "target": 80.0,
-                "meets_target": self.metrics.updates.calculate_adoption_rate() >= 80.0,
+                "update_adoption_target": 80.0,
+                "update_adoption_meets_target": self.metrics.updates.calculate_adoption_rate() >= 80.0,
             }
 
     def clear_metrics(self) -> None:

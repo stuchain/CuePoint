@@ -11,6 +11,7 @@ Implements performance requirements from Step 1.11.
 import logging
 import time
 from collections import defaultdict
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -184,9 +185,6 @@ class PerformanceContext:
 # ============================================================================
 # Performance Collector (Legacy Compatibility)
 # ============================================================================
-
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
 
 
 @dataclass

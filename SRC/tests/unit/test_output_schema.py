@@ -4,8 +4,6 @@ Golden/schema tests for CSV output. Design 3.25, 3.45, 3.49, 3.50.
 Validates main CSV headers, column order, UTF-8 encoding, and formatting.
 """
 
-import csv
-import os
 from pathlib import Path
 
 import pytest

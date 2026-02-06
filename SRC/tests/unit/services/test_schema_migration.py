@@ -4,13 +4,10 @@
 """Unit tests for schema migration (Step 12)."""
 
 import csv
-import os
-from pathlib import Path
 
 import pytest
 
 from cuepoint.services.schema_migration import (
-    F002_MIGRATION_FAILED,
     _parse_schema_version,
     migrate_csv_file,
     run_migrate,
@@ -64,7 +61,7 @@ class TestMigrateCsvFile:
         assert "output_schema_version" in content or "2" in content
         # Check data rows
         with open(p, "r", newline="", encoding="utf-8") as f:
-            lines = [l for l in f if not l.strip().startswith("#")]
+            lines = [line for line in f if not line.strip().startswith("#")]
         reader = csv.DictReader(lines)
         rows = list(reader)
         assert len(rows) >= 1

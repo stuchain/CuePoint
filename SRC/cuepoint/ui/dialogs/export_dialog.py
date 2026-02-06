@@ -398,7 +398,7 @@ class ExportDialog(QDialog):
         msg = QMessageBox(self)
         msg.setIcon(QMessageBox.Information)
         msg.setWindowTitle("Export Complete")
-        msg.setText(f"Results exported successfully!")
+        msg.setText("Results exported successfully!")
         msg.setInformativeText(f"File: {file_path}")
         
         # Add "Open Folder" button

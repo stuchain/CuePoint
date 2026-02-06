@@ -12,10 +12,11 @@ from __future__ import annotations
 
 try:
     from ddgs import DDGS
-except Exception as e:  # pragma: no cover
+except Exception as err:  # pragma: no cover
     # Provide a minimal stub so imports don't crash in environments without ddgs.
+    _import_err = err
     class DDGS:  # type: ignore
         def __init__(self, *args, **kwargs):
-            raise ImportError("ddgs dependency is required for DuckDuckGo search") from e
+            raise ImportError("ddgs dependency is required for DuckDuckGo search") from _import_err
 
 

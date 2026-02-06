@@ -1,6 +1,5 @@
 """Unit tests for query_generator module. Design 3.23, 3.105."""
 
-import pytest
 
 from cuepoint.core.query_generator import (
     _artist_tokens,
@@ -374,7 +373,6 @@ class TestMakeSearchQueries:
         """Test query generation when extract_artists_from_title raises exception (lines 225-226)."""
         from unittest.mock import patch
 
-        from cuepoint.core.query_generator import extract_artists_from_title
 
         # Mock extract_artists_from_title to raise an exception
         with patch('cuepoint.core.query_generator.extract_artists_from_title') as mock_extract:

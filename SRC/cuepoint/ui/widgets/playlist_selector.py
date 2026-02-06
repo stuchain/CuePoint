@@ -8,7 +8,7 @@ This module contains the PlaylistSelector class for selecting playlists from XML
 """
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QWidget
+from PySide6.QtWidgets import QComboBox, QHBoxLayout, QWidget
 
 from cuepoint.data.rekordbox import parse_rekordbox
 from cuepoint.models.playlist import Playlist

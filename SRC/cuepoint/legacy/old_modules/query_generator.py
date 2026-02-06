@@ -21,7 +21,7 @@ Key functions:
 """
 
 import re
-from itertools import combinations, permutations
+from itertools import combinations
 from typing import List, Optional, Tuple
 
 from config import SETTINGS
@@ -35,7 +35,7 @@ from mix_parser import (
     _parse_mix_flags,
 )
 from rekordbox import extract_artists_from_title
-from text_processing import _word_tokens, normalize_text, sanitize_title_for_search
+from text_processing import normalize_text, sanitize_title_for_search
 
 
 def _ordered_unique(seq: List[str]) -> List[str]:

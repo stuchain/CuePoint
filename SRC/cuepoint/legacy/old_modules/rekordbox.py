@@ -19,7 +19,7 @@ from typing import Dict, List, Optional, Tuple
 
 import xml.etree.ElementTree as ET
 
-from error_handling import error_file_not_found, error_xml_parsing
+from error_handling import error_xml_parsing
 
 
 @dataclass

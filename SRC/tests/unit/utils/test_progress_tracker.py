@@ -3,7 +3,6 @@
 import time
 from unittest.mock import Mock
 
-import pytest
 
 from cuepoint.utils.progress_tracker import ProgressTracker
 

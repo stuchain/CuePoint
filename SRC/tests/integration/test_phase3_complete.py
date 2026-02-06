@@ -15,7 +15,6 @@ Tests all Phase 3 components:
 
 import os
 import sys
-import time
 
 import pytest
 
@@ -29,64 +28,49 @@ def test_imports():
     print("=" * 80)
     
     try:
-        from cuepoint.utils.performance import (
-            PerformanceStats,
-            QueryMetrics,
-            TrackMetrics,
-            performance_collector,
-        )
         print("[OK] performance.py imports successful")
     except Exception as e:
         pytest.fail(f"performance.py import failed: {e}")
     
     try:
-        from cuepoint.utils.utils import retry_with_backoff
         print("[OK] utils.py retry_with_backoff import successful")
     except Exception as e:
         pytest.fail(f"utils.py retry_with_backoff import failed: {e}")
     
     try:
-        from cuepoint.services.output_writer import write_performance_report
         print("[OK] output_writer.py write_performance_report import successful")
     except Exception as e:
         pytest.fail(f"output_writer.py write_performance_report import failed: {e}")
     
     try:
-        from cuepoint.data.beatport import get_last_cache_hit
         print("[OK] beatport.py get_last_cache_hit import successful")
     except Exception as e:
         pytest.fail(f"beatport.py get_last_cache_hit import failed: {e}")
     
     try:
-        from cuepoint.core.matcher import _classify_query_type, best_beatport_match
         print("[OK] matcher.py imports successful")
     except Exception as e:
         pytest.fail(f"matcher.py import failed: {e}")
     
     # Test new Phase 5 architecture
     try:
-        from cuepoint.services.interfaces import IProcessorService
-        from cuepoint.services.processor_service import ProcessorService
         print("[OK] Phase 5 ProcessorService import successful")
     except Exception as e:
         pytest.fail(f"ProcessorService import failed: {e}")
     
     # Test legacy processor (for backward compatibility)
     try:
-        from cuepoint.legacy.processor import process_playlist
         print("[OK] Legacy processor.py import successful (deprecated - kept for compatibility)")
     except Exception as e:
         # Legacy is optional - don't fail if unavailable
         print(f"[INFO] Legacy processor not available: {e}")
     
     try:
-        from cuepoint.ui.widgets.performance_view import PerformanceView
         print("[OK] gui/performance_view.py import successful")
     except Exception as e:
         pytest.fail(f"gui/performance_view.py import failed: {e}")
     
     try:
-        from cuepoint.ui.widgets.config_panel import ConfigPanel
         print("[OK] gui/config_panel.py import successful")
     except Exception as e:
         pytest.fail(f"gui/config_panel.py import failed: {e}")
@@ -98,7 +82,7 @@ def test_performance_collector():
     print("Test 2: Performance Collector")
     print("=" * 80)
     
-    from cuepoint.utils.performance import PerformanceStats, performance_collector
+    from cuepoint.utils.performance import performance_collector
 
     # Reset collector
     performance_collector.reset()

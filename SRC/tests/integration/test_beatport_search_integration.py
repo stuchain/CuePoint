@@ -3,7 +3,6 @@
 import sys
 from unittest.mock import MagicMock, Mock, patch
 
-import pytest
 
 from cuepoint.data.beatport_search import (
     _extract_track_ids_from_next_data,

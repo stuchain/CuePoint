@@ -10,9 +10,7 @@ Tests the LoggingService implementation.
 import logging
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
-import pytest
 
 from cuepoint.services.logging_service import LoggingService
 

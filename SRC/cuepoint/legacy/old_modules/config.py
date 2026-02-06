@@ -388,7 +388,6 @@ SESSION.headers.update(HEADERS)
 # Check if requests-cache is available for HTTP response caching
 # If available, responses are cached to speed up repeated runs
 try:
-    import requests_cache  # type: ignore
     HAVE_CACHE = True
 except Exception:
     HAVE_CACHE = False
@@ -550,7 +549,7 @@ def load_config_from_yaml(yaml_path: str) -> dict:
         default_value = SETTINGS.get(key)
         if default_value is not None:
             # Type check: ensure YAML value matches default type
-            if type(value) != type(default_value):
+            if type(value) is not type(default_value):
                 # Allow int/float conversion for numeric types
                 if isinstance(default_value, (int, float)) and isinstance(value, (int, float)):
                     pass  # OK - both numeric

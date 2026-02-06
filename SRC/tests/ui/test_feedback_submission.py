@@ -7,7 +7,7 @@ Tests for Feedback Submission
 Tests feedback dialog and submission functionality.
 """
 
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 from PySide6.QtWidgets import QApplication

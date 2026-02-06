@@ -26,7 +26,6 @@ from typing import Any, Dict, List, Optional
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QAbstractSpinBox,
-    QCheckBox,
     QComboBox,
     QDialog,
     QFileDialog,
@@ -38,7 +37,6 @@ from PySide6.QtWidgets import (
     QMenu,
     QMessageBox,
     QPushButton,
-    QScrollArea,
     QSizePolicy,
     QSpinBox,
     QSplitter,
@@ -49,7 +47,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from cuepoint.core.matcher import _camelot_key
 from cuepoint.models.result import TrackResult
 from cuepoint.services.output_writer import (
     preview_csv_output_paths,
@@ -1249,23 +1246,8 @@ class ResultsView(QWidget):
 
     def _on_column_sorted(self, column: int) -> None:
         """Handle column sorting with visual indicators"""
-        # Get current sort order
+        # Get current sort order (QHeaderView handles sort indicators automatically)
         sort_order = self.table.horizontalHeader().sortIndicatorOrder()
-        
-        # Update visual indicator
-        header = self.table.horizontalHeader()
-        for i in range(self.table.columnCount()):
-            header_item = header.model().headerData(i, Qt.Horizontal, Qt.DisplayRole)
-            if i == column:
-                # Show sort indicator for current column
-                if sort_order == Qt.AscendingOrder:
-                    indicator = " ↑"
-                else:
-                    indicator = " ↓"
-                # Note: QHeaderView handles sort indicators automatically
-                # We just need to ensure sorting is enabled
-            # Clear indicators for other columns is handled by Qt
-        
         self._current_sort_column = column
         self._current_sort_order = sort_order
     

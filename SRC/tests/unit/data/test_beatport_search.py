@@ -1,7 +1,7 @@
 """Unit tests for beatport_search module."""
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 
 from cuepoint.data.beatport_search import (
     _extract_track_ids_from_next_data,

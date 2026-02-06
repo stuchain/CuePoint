@@ -183,7 +183,7 @@ class UpdateInstaller:
             
             # Fallback: Launch installer directly (visible, no /S)
             if not launcher_ps1 or not launcher_ps1.exists():
-                logger.warning(f"Launcher script not found, launching installer directly")
+                logger.warning("Launcher script not found, launching installer directly")
                 logger.info("Note: Installer will detect if app is running")
                 logger.info(f"Installer path: {installer_path}")
                 logger.info(f"Installer absolute path: {installer_path.resolve()}")
@@ -305,7 +305,7 @@ class UpdateInstaller:
                 # Clean up mount point
                 try:
                     mount_point.rmdir()
-                except:
+                except OSError:
                     pass
             
         except Exception as e:
@@ -326,7 +326,7 @@ class UpdateInstaller:
             try:
                 subprocess.run(['hdiutil', '-version'], capture_output=True, check=True)
                 return True
-            except:
+            except (subprocess.CalledProcessError, FileNotFoundError):
                 return False
         else:
             return False

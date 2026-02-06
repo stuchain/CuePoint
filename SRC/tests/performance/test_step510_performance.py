@@ -9,8 +9,7 @@ Tests critical performance paths and ensures they meet target metrics.
 
 import pytest
 import time
-from unittest.mock import Mock, MagicMock
-from typing import Dict, Any
+from unittest.mock import Mock
 
 from cuepoint.models.track import Track
 from cuepoint.models.result import TrackResult
@@ -141,7 +140,6 @@ class TestExportPerformance:
 
         from cuepoint.services.output_writer import write_main_csv
         import tempfile
-        import os
 
         with tempfile.TemporaryDirectory() as tmpdir:
             start = time.perf_counter()
@@ -231,7 +229,7 @@ class TestCachePerformance:
 
         # First access (cache miss - will be None)
         start = time.perf_counter()
-        result1 = cache.get("test_key")
+        _ = cache.get("test_key")
         miss_time = time.perf_counter() - start
 
         # Set value
@@ -278,7 +276,7 @@ class TestFilterPerformance:
 
         # Measure filter performance
         start = time.perf_counter()
-        filtered = controller.apply_filters(search_text="Track 1")
+        controller.apply_filters(search_text="Track 1")
         duration = time.perf_counter() - start
 
         # Assert performance requirement
@@ -325,7 +323,6 @@ class TestMemoryPerformance:
     def test_no_memory_leak(self, processor_service):
         """Test that processing doesn't cause memory leaks."""
         import gc
-        import sys
 
         # Process multiple batches
         for batch in range(5):

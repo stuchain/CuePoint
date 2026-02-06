@@ -9,8 +9,6 @@ Dialog for displaying and discovering all keyboard shortcuts.
 
 from typing import Dict, List, Optional
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QKeySequence
 from PySide6.QtWidgets import (
     QDialog,
     QHBoxLayout,
@@ -20,7 +18,6 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
-    QWidget,
 )
 
 from cuepoint.ui.widgets.shortcut_manager import ShortcutContext, ShortcutManager

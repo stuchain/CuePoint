@@ -5,7 +5,6 @@
 Unit tests for Step 5.8 configuration models.
 """
 
-import pytest
 from pathlib import Path
 
 from cuepoint.models.config_models import (

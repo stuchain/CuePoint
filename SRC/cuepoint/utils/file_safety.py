@@ -18,7 +18,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
-from cuepoint.utils.paths import AppPaths, StorageInvariants
+from cuepoint.utils.paths import StorageInvariants
 
 logger = logging.getLogger(__name__)
 

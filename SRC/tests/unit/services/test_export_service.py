@@ -269,7 +269,7 @@ class TestExportService:
         self
     ):
         """Test ExportService initialization without logging service."""
-        service = ExportService()
+        _ = ExportService()
     
     def test_export_to_csv_permission_error(
         self,
@@ -433,7 +433,7 @@ class TestExportService:
         service = ExportService(logging_service=mock_logging_service)
         
         # Mock open to raise IOError
-        from unittest.mock import patch, mock_open
+        from unittest.mock import patch
         with patch('builtins.open', side_effect=IOError("Disk full")):
             with tempfile.TemporaryDirectory() as tmpdir:
                 filepath = os.path.join(tmpdir, "test.json")
@@ -450,7 +450,7 @@ class TestExportService:
     ):
         """Test Excel export with file write error."""
         try:
-            import openpyxl
+            import openpyxl  # noqa: F401
         except ImportError:
             pytest.skip("openpyxl not available")
         

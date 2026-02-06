@@ -7,8 +7,6 @@ Update downloader implementation.
 Handles downloading update installers/DMGs with progress tracking.
 """
 
-import os
-import sys
 import tempfile
 from pathlib import Path
 from typing import Callable, Optional
@@ -79,7 +77,6 @@ class UpdateDownloader(QObject if QT_AVAILABLE else object):
         try:
             import logging
             import time
-            from PySide6.QtCore import QTimer
             
             logger = logging.getLogger(__name__)
             logger.info(f"Starting download from URL: {url}")
@@ -291,5 +288,5 @@ class UpdateDownloader(QObject if QT_AVAILABLE else object):
             
             return str(download_path)
             
-        except Exception as e:
+        except Exception:
             return None

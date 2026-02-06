@@ -19,7 +19,7 @@ import time
 from config import SETTINGS, HAVE_CACHE
 import random
 from functools import wraps
-from typing import Callable, Any, Optional, Type, Tuple
+from typing import Callable, Type, Tuple
 
 
 def vlog(idx, *args):

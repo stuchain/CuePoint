@@ -11,7 +11,6 @@ consistent design language across the application.
 
 import sys
 from dataclasses import dataclass
-from typing import Dict
 
 
 def _get_platform() -> str:

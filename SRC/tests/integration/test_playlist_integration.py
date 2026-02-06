@@ -10,8 +10,6 @@ import os
 
 import pytest
 from PySide6.QtWidgets import QApplication
-import sys
-import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
 from cuepoint.ui.main_window import MainWindow
 

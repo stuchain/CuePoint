@@ -764,7 +764,6 @@ def write_performance_report(stats, base_filename: str, output_dir: str = "outpu
     Returns:
         Path to the generated report file
     """
-    from performance import PerformanceStats
     from collections import defaultdict
     
     # Ensure output directory exists

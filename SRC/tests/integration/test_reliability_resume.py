@@ -5,16 +5,13 @@
 
 from pathlib import Path
 
-import pytest
 
 from cuepoint.services.checkpoint_service import (
     CheckpointService,
-    CheckpointData,
     compute_xml_hash,
 )
 from cuepoint.services.output_writer import (
     append_rows_to_main_csv,
-    write_csv_files,
     write_main_csv,
 )
 from cuepoint.models.result import TrackResult

@@ -11,7 +11,7 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtGui import QIcon
 
 logger = logging.getLogger(__name__)
 

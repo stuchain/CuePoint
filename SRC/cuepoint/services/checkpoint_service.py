@@ -8,7 +8,6 @@ Saves and loads processing checkpoints for resume-after-crash.
 Checkpoint schema is versioned; validation ensures XML unchanged before resume.
 """
 
-import csv
 import hashlib
 import json
 import logging

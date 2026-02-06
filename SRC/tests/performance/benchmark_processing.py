@@ -17,12 +17,6 @@ from typing import Dict, List, Optional, Tuple
 from cuepoint.models.track import Track
 from cuepoint.models.result import TrackResult
 from cuepoint.services.processor_service import ProcessorService
-from cuepoint.services.interfaces import (
-    IBeatportService,
-    IConfigService,
-    ILoggingService,
-    IMatcherService,
-)
 
 
 def create_test_track(index: int) -> Track:
@@ -272,7 +266,7 @@ if __name__ == "__main__":
 
     # Bootstrap services
     container = bootstrap_services()
-    service = container.resolve(ProcessorService)  # type: ignore
+    service = container.resolve(ProcessorService)
 
     # Run benchmarks
     results = run_all_benchmarks(service, profile=False)

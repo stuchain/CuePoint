@@ -7,7 +7,7 @@ Integration tests for Step 5.3: UI Components using Controllers
 Tests that UI components properly use controllers and maintain separation of concerns.
 """
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
 from PySide6.QtWidgets import QApplication

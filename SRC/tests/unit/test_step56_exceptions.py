@@ -7,7 +7,6 @@ Unit tests for Step 5.6: Custom Exception Hierarchy
 Tests all custom exceptions and their features.
 """
 
-import pytest
 
 from cuepoint.exceptions.cuepoint_exceptions import (
     BeatportAPIError,

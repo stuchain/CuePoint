@@ -9,13 +9,9 @@ Tests the centralized ErrorHandler class.
 
 from unittest.mock import MagicMock
 
-import pytest
 
 from cuepoint.exceptions.cuepoint_exceptions import (
-    BeatportAPIError,
-    CuePointException,
     ProcessingError,
-    ValidationError,
 )
 from cuepoint.services.interfaces import ILoggingService
 from cuepoint.utils.error_handler import ErrorHandler

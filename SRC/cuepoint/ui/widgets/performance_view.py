@@ -8,8 +8,6 @@ This module provides a GUI widget for displaying real-time performance metrics
 during playlist processing.
 """
 
-import os
-import sys
 from collections import defaultdict
 
 from PySide6.QtCore import QTimer

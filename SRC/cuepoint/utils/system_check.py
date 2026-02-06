@@ -91,15 +91,14 @@ class SystemRequirements:
                         f"macOS {min_version_str}+ required, found {version_str}. "
                         f"Please upgrade to macOS {min_version_str} or later."
                     )
-            except (ValueError, IndexError) as e:
+            except (ValueError, IndexError):
                 # If version detection fails, warn but don't block
                 return True, None  # Don't fail on version parse errors
 
         elif is_windows():
             try:
                 # Windows version check
-                version = platform.version()
-                # Windows 10/11 should have version 10.0+
+                platform.version()  # Windows 10/11 should have version 10.0+
                 # This is a simplified check - full implementation would parse version string
                 # For now, we'll assume Windows 10+ if we're on Windows
                 pass
@@ -129,7 +128,7 @@ class SystemRequirements:
         except ImportError:
             # psutil not available - skip check, don't fail
             return True, None
-        except Exception as e:
+        except Exception:
             # Other error - skip check, don't fail
             return True, None
 
@@ -155,7 +154,7 @@ class SystemRequirements:
         except ImportError:
             # psutil not available - skip check, don't fail
             return True, None
-        except Exception as e:
+        except Exception:
             # Other error (e.g., permission denied) - skip check, don't fail
             return True, None
 

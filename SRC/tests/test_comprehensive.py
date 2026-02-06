@@ -22,35 +22,24 @@ def test_all_imports():
     
     # Test core imports
     try:
-        from cuepoint.core.matcher import _camelot_key, _confidence_label, best_beatport_match
         print("[OK] Core matcher imports")
     except Exception as e:
         errors.append(f"Core matcher: {e}")
         print(f"[FAIL] Core matcher: {e}")
     
     try:
-        from cuepoint.core.mix_parser import (
-            _extract_generic_parenthetical_phrases,
-            _parse_mix_flags,
-        )
         print("[OK] Core mix_parser imports")
     except Exception as e:
         errors.append(f"Core mix_parser: {e}")
         print(f"[FAIL] Core mix_parser: {e}")
     
     try:
-        from cuepoint.core.query_generator import make_search_queries
         print("[OK] Core query_generator imports")
     except Exception as e:
         errors.append(f"Core query_generator: {e}")
         print(f"[FAIL] Core query_generator: {e}")
     
     try:
-        from cuepoint.core.text_processing import (
-            normalize_text,
-            sanitize_title_for_search,
-            score_components,
-        )
         print("[OK] Core text_processing imports")
     except Exception as e:
         errors.append(f"Core text_processing: {e}")
@@ -58,14 +47,12 @@ def test_all_imports():
     
     # Test data imports
     try:
-        from cuepoint.data.beatport import BeatportCandidate, track_urls
         print("[OK] Data beatport imports")
     except Exception as e:
         errors.append(f"Data beatport: {e}")
         print(f"[FAIL] Data beatport: {e}")
     
     try:
-        from cuepoint.data.rekordbox import RBTrack, extract_artists_from_title, parse_rekordbox
         print("[OK] Data rekordbox imports")
     except Exception as e:
         errors.append(f"Data rekordbox: {e}")
@@ -73,14 +60,6 @@ def test_all_imports():
     
     # Test models imports
     try:
-        from cuepoint.models.config import (
-            BASE_URL,
-            HAVE_CACHE,
-            NEAR_KEYS,
-            SESSION,
-            SETTINGS,
-            load_config_from_yaml,
-        )
         print("[OK] Models config imports")
     except Exception as e:
         errors.append(f"Models config: {e}")
@@ -88,9 +67,6 @@ def test_all_imports():
     
     # Test new Phase 5 architecture imports
     try:
-        from cuepoint.cli.cli_processor import CLIProcessor
-        from cuepoint.services.interfaces import IExportService, IProcessorService
-        from cuepoint.services.processor_service import ProcessorService
         print("[OK] Phase 5 processor imports (ProcessorService, CLIProcessor)")
     except Exception as e:
         errors.append(f"Phase 5 processor: {e}")
@@ -98,14 +74,12 @@ def test_all_imports():
     
     # Test legacy imports (for backward compatibility verification)
     try:
-        from cuepoint.legacy.processor import process_playlist, run
         print("[OK] Legacy processor imports (deprecated - kept for compatibility)")
     except Exception as e:
         # Legacy imports are optional - don't fail if they don't work
         print(f"[INFO] Legacy processor not available: {e}")
     
     try:
-        from cuepoint.services.output_writer import write_csv_files, write_json_file
         print("[OK] Services output_writer imports")
     except Exception as e:
         errors.append(f"Services output_writer: {e}")
@@ -113,27 +87,18 @@ def test_all_imports():
     
     # Test utils imports
     try:
-        from cuepoint.utils.utils import (
-            retry_with_backoff,
-            startup_banner,
-            tlog,
-            vlog,
-            with_timestamp,
-        )
         print("[OK] Utils utils imports")
     except Exception as e:
         errors.append(f"Utils utils: {e}")
         print(f"[FAIL] Utils utils: {e}")
     
     try:
-        from cuepoint.utils.performance import PerformanceStats, performance_collector
         print("[OK] Utils performance imports")
     except Exception as e:
         errors.append(f"Utils performance: {e}")
         print(f"[FAIL] Utils performance: {e}")
     
     try:
-        from cuepoint.utils.errors import error_file_not_found, print_error
         print("[OK] Utils errors imports")
     except Exception as e:
         errors.append(f"Utils errors: {e}")
@@ -141,7 +106,6 @@ def test_all_imports():
     
     # Test UI imports (basic ones that don't require Qt)
     try:
-        from cuepoint.ui.gui_interface import ErrorType, ProcessingError, ProgressInfo, TrackResult
         print("[OK] UI gui_interface imports")
     except Exception as e:
         errors.append(f"UI gui_interface: {e}")
@@ -149,7 +113,7 @@ def test_all_imports():
     
     # Test UI imports that require Qt (may fail if Qt not installed, but should not fail on import)
     try:
-        from cuepoint.ui.main_window import MainWindow
+        from cuepoint.ui.main_window import MainWindow  # noqa: F401
         print("[OK] UI main_window imports")
     except ImportError as e:
         if "PySide6" in str(e) or "PyQt" in str(e):
@@ -180,7 +144,6 @@ def test_entry_points():
     
     # Test CLI entry point
     try:
-        from main import main
         print("[OK] CLI entry point (main.py) can be imported")
     except Exception as e:
         errors.append(f"CLI entry point: {e}")
@@ -188,7 +151,6 @@ def test_entry_points():
     
     # Test GUI entry point
     try:
-        from gui_app import main as gui_main
         print("[OK] GUI entry point (gui_app.py) can be imported")
     except Exception as e:
         errors.append(f"GUI entry point: {e}")
@@ -212,11 +174,6 @@ def test_circular_imports():
     # Try importing modules that depend on each other
     try:
         # These should all work without circular import errors
-        from cuepoint.cli.cli_processor import CLIProcessor
-        from cuepoint.core.matcher import best_beatport_match
-        from cuepoint.core.query_generator import make_search_queries
-        from cuepoint.services.processor_service import ProcessorService
-        from cuepoint.ui.main_window import MainWindow
         print("[OK] No circular import issues detected")
         return True
     except Exception as e:

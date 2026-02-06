@@ -94,7 +94,6 @@ def measure_time_async(
             # ... code ...
             pass
     """
-    import asyncio
 
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)

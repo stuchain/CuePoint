@@ -10,9 +10,7 @@ Tests HTTPCacheManager, CacheConfig, CacheInvalidation, CacheValidator, CacheSiz
 import tempfile
 from datetime import timedelta
 from pathlib import Path
-from unittest.mock import Mock, patch
 
-import pytest
 
 from cuepoint.utils.http_cache import (
     CacheConfig,

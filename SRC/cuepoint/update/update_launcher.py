@@ -17,7 +17,6 @@ import os
 import platform
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 # Try to import Qt for dialog (if available)
@@ -41,7 +40,7 @@ def get_installed_app_path() -> Path:
             install_path = winreg.QueryValueEx(key, "InstallLocation")[0]
             winreg.CloseKey(key)
             return Path(install_path) / "CuePoint.exe"
-        except:
+        except OSError:
             # Fallback to default location
             return Path(os.path.expandvars(r"%LOCALAPPDATA%\CuePoint\CuePoint.exe"))
     elif platform.system() == 'Darwin':
@@ -185,7 +184,7 @@ def main():
     if exit_code != 0:
         print(f"\nWarning: Installer exited with code {exit_code}")
         if QT_AVAILABLE:
-            app = QApplication.instance() or QApplication(sys.argv)
+            _ = QApplication.instance() or QApplication(sys.argv)
             QMessageBox.warning(
                 None,
                 "Installation Warning",
@@ -207,7 +206,7 @@ def main():
         else:
             print("Failed to launch CuePoint. Please launch it manually.")
             if QT_AVAILABLE:
-                app = QApplication.instance() or QApplication(sys.argv)
+                _ = QApplication.instance() or QApplication(sys.argv)
                 QMessageBox.information(
                     None,
                     "Launch Failed",

@@ -10,7 +10,7 @@ Tests all aspects of the shortcut manager, customization, and accessibility impr
 import sys
 import os
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 from pathlib import Path
 import tempfile
 import shutil
@@ -18,10 +18,8 @@ import shutil
 # Add SRC to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from PySide6.QtWidgets import QApplication, QWidget, QPushButton, QLineEdit
+from PySide6.QtWidgets import QApplication, QWidget
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QKeySequence, QKeyEvent
-from PySide6.QtTest import QTest
 
 import sys
 import os
@@ -233,7 +231,7 @@ class TestShortcutCustomizationDialog(unittest.TestCase):
         if self.dialog.table.rowCount() >= 2:
             # Get first two shortcuts
             action1 = self.dialog.table.item(0, 0).text()
-            action2 = self.dialog.table.item(1, 0).text()
+            _ = self.dialog.table.item(1, 0).text()  # action2 - for conflict check structure
             shortcut1 = self.dialog.table.item(0, 2).text()
             
             # Check if conflict detection works

@@ -10,7 +10,6 @@ Tests AppPaths, StorageInvariants, PathValidator, PathMigration, and PathDiagnos
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 

@@ -7,7 +7,7 @@ Playlist Selector Module - Playlist dropdown widget
 This module contains the PlaylistSelector class for selecting playlists from XML.
 """
 
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox
+from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QComboBox
 from PySide6.QtCore import Signal
 from rekordbox import parse_rekordbox
 
@@ -58,7 +58,7 @@ class PlaylistSelector(QWidget):
             self.combo.setEnabled(False)
             self.combo.setPlaceholderText("XML file not found")
             raise
-        except Exception as e:
+        except Exception:
             # Error handling will be done by parent
             self.combo.clear()
             self.combo.setEnabled(False)

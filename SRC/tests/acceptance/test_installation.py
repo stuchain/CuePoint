@@ -7,9 +7,7 @@ These tests verify that the distribution packages work correctly.
 import platform
 import shutil
 import subprocess
-import tempfile
 from pathlib import Path
-from typing import Optional
 
 import pytest
 

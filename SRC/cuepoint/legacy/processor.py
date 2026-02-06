@@ -1148,7 +1148,7 @@ def process_playlist(
                             ex.submit(
                                 process_track_with_callback,
                                 idx,
-                                rb,
+                                track,
                                 settings=enhanced_settings,
                                 progress_callback=None,
                                 controller=controller,

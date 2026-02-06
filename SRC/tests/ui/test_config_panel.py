@@ -8,8 +8,7 @@ Tests the ConfigPanel widget with different presets and settings.
 """
 
 import sys
-from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLabel
-import sys
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
 from cuepoint.ui.widgets.config_panel import ConfigPanel

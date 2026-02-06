@@ -305,7 +305,7 @@ class TestExportServiceIntegration:
     def test_export_to_json_serialization_error(self, export_service):
         """Test JSON export with serialization error."""
         from cuepoint.exceptions.cuepoint_exceptions import ExportError
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import patch
         
         # Create a result that might cause serialization issues
         results = [
@@ -335,7 +335,7 @@ class TestExportServiceIntegration:
             export_service.export_to_csv([], filepath)
             
             # Verify files were created (may have headers only or may not create files for empty)
-            csv_files = list(Path(tmpdir).glob("*.csv"))
+            list(Path(tmpdir).glob("*.csv"))  # May be empty for empty results
             # Empty results may or may not create files - both behaviors are acceptable
             # Just verify no error was raised
             assert True  # Test passes if no exception was raised

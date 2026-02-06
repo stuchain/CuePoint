@@ -25,9 +25,8 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeoutError
-from rapidfuzz import fuzz
 
-from beatport import BeatportCandidate, track_urls, is_track_url, parse_track_page, get_last_cache_hit
+from beatport import BeatportCandidate, track_urls, parse_track_page, get_last_cache_hit
 from config import NEAR_KEYS, SETTINGS
 from mix_parser import (
     _any_phrase_token_set_in_title,
@@ -36,10 +35,9 @@ from mix_parser import (
     _mix_ok_for_early_exit,
     _parse_mix_flags,
 )
-from query_generator import _artist_tokens, _ordered_unique
+from query_generator import _artist_tokens
 from text_processing import (
     _artist_token_overlap,
-    _word_tokens,
     normalize_text,
     sanitize_title_for_search,
     score_components,
@@ -855,7 +853,7 @@ def best_beatport_match(
                             # Consider this candidate using cached data (no re-parsing needed)
                             consider(u, title, artists, key, year, bpm, label, genres, rel_name, rel_date, i, q, cand_index_map.get(u, 0), 0)
                 except FuturesTimeoutError:
-                    vlog(idx, f"[warn] candidate fetch join timed out")
+                    vlog(idx, "[warn] candidate fetch join timed out")
                     for fut in futures:
                         if fut.done():
                             try:

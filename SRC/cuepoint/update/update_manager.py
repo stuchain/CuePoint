@@ -14,7 +14,6 @@ from typing import Callable, Dict, Optional
 
 from cuepoint.update.update_checker import UpdateChecker, UpdateCheckError
 from cuepoint.update.update_preferences import UpdatePreferences
-from cuepoint.update.version_utils import compare_versions
 
 # Lazy definition of CallbackReceiver to avoid Qt initialization issues in packaged apps
 # We'll define it when needed, after Qt is confirmed to be initialized
@@ -327,7 +326,6 @@ class UpdateManager:
             # so we can't use QTimer.singleShot(). Instead, we use Qt signals
             # which are thread-safe and automatically marshal to the main thread.
             try:
-                from PySide6.QtCore import QObject, Signal
                 from PySide6.QtWidgets import QApplication
                 
                 # Get QApplication instance to ensure we're in Qt context

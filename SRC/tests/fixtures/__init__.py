@@ -8,7 +8,6 @@ Provides convenient functions for loading test fixtures in tests.
 """
 
 from pathlib import Path
-from typing import Optional
 
 # Base fixture directory
 FIXTURE_DIR = Path(__file__).parent

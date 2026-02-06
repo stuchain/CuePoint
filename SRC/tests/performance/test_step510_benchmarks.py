@@ -11,10 +11,8 @@ to establish baselines and detect regressions.
 import pytest
 import time
 from pathlib import Path
-from typing import Dict, Any
 
 from cuepoint.models.track import Track
-from cuepoint.services.bootstrap import bootstrap_services
 from cuepoint.services.processor_service import ProcessorService
 
 
@@ -118,7 +116,6 @@ class TestPerformanceBenchmarks:
 
         import json
         import tempfile
-        from pathlib import Path
 
         with tempfile.TemporaryDirectory() as tmpdir:
             json_path = Path(tmpdir) / "benchmark.json"

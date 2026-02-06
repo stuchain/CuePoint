@@ -1,13 +1,9 @@
 """Unit tests for Step 6 Performance and Scalability (processor integration)."""
 
-import tempfile
-from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
 
-from cuepoint.models.beatport_candidate import BeatportCandidate
-from cuepoint.models.result import TrackResult
 from cuepoint.services.processor_service import (
     ProcessorService,
     _guardrail_progress_callback,

@@ -37,7 +37,7 @@ def main():
     # Bootstrap services
     print("\n1. Bootstrapping services...")
     container = bootstrap_services()
-    service = container.resolve(ProcessorService)  # type: ignore
+    service = container.resolve(ProcessorService)
     print("   Services ready")
 
     # Run benchmarks

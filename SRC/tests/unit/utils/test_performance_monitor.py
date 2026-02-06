@@ -2,9 +2,8 @@
 
 import time
 
-import pytest
 
-from cuepoint.utils.performance import PerformanceContext, PerformanceMonitor
+from cuepoint.utils.performance import PerformanceMonitor
 
 
 class TestPerformanceMonitor:

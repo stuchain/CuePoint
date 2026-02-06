@@ -14,7 +14,6 @@ import json
 import os
 import shutil
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from cuepoint.models.result import TrackResult
@@ -277,7 +276,6 @@ def write_audit_log(
     }
 
     os.makedirs(os.path.dirname(filepath) or ".", exist_ok=True)
-    base_path = filepath
     if compress:
         filepath = filepath + ".gz"
         import gzip

@@ -11,8 +11,6 @@ import os
 import sys
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QKeyEvent
-from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
 # Add SRC to path
@@ -22,9 +20,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
-from cuepoint.models.result import TrackResult
 from cuepoint.ui.main_window import MainWindow
-from cuepoint.ui.widgets.results_view import ResultsView
 
 
 def test_shortcuts_in_gui():

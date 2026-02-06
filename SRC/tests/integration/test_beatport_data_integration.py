@@ -283,7 +283,6 @@ class TestBeatportDataIntegration:
     @patch('requests.Session.get')
     def test_request_html_cache_hit_detection(self, mock_get):
         """Test request_html detecting cache hits."""
-        from bs4 import BeautifulSoup
         
         mock_resp = Mock()
         mock_resp.status_code = 200
@@ -303,7 +302,6 @@ class TestBeatportDataIntegration:
     @patch('requests.Session.get')
     def test_request_html_retry_on_failure(self, mock_get):
         """Test request_html retrying on failed status code."""
-        from bs4 import BeautifulSoup
 
         # Mock first response with 404
         mock_resp1 = Mock()
@@ -999,7 +997,6 @@ class TestBeatportDataIntegration:
     @patch('requests.Session.get')
     def test_request_html_from_cache_attribute(self, mock_get):
         """Test request_html detecting cache via _from_cache attribute."""
-        from bs4 import BeautifulSoup
         
         mock_resp = Mock()
         mock_resp.status_code = 200
@@ -2143,7 +2140,6 @@ class TestBeatportDataIntegration:
             main_search_calls = [call for call in mock_ddgs.text.call_args_list 
                                 if 'site:beatport.com/track' in str(call) or 'site:beatport.com' in str(call)]
             for call in main_search_calls:
-                args = call[0] if call[0] else []
                 kwargs = call[1] if len(call) > 1 and call[1] else {}
                 # max_results is passed as a keyword argument
                 if 'max_results' in kwargs:
@@ -2154,7 +2150,6 @@ class TestBeatportDataIntegration:
     @patch('cuepoint.data.beatport.request_html')
     def test_ddg_track_urls_fallback_page_track_url_direct(self, mock_request, mock_ddgs_class):
         """Test ddg_track_urls fallback adding track URL directly - lines 938-943."""
-        from bs4 import BeautifulSoup
 
         # Mock DDGS returning page URL that is already a track URL
         mock_ddgs = Mock()

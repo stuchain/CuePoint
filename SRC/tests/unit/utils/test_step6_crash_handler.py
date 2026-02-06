@@ -11,16 +11,13 @@ import json
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
-import pytest
 
 from cuepoint.utils.crash_handler import (
     CrashHandler,
     CrashReport,
     CrashReportMetadata,
     ExceptionContext,
-    ThreadExceptionHandler,
 )
 
 
@@ -35,7 +32,7 @@ class TestCrashHandler:
 
     def test_restore_handler(self):
         """Test restoring original handler."""
-        original = sys.excepthook
+        _ = sys.excepthook
         handler = CrashHandler()
         # Handler should have saved the original
         assert handler._original_excepthook is not None

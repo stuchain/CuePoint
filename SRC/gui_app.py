@@ -112,9 +112,9 @@ if "--test-search-dependencies" in sys.argv:
             if getattr(sys, 'frozen', False):
                 try:
                     from PySide6.QtWidgets import QApplication, QMessageBox
-                    app = QApplication(sys.argv)
+                    _ = QApplication(sys.argv)
                     QMessageBox.critical(None, "Test Error", error_msg)
-                except:
+                except Exception:
                     pass
             
             sys.exit(1)
@@ -127,9 +127,9 @@ if "--test-search-dependencies" in sys.argv:
             if getattr(sys, 'frozen', False):
                 try:
                     from PySide6.QtWidgets import QApplication, QMessageBox
-                    app = QApplication(sys.argv)
+                    _ = QApplication(sys.argv)
                     QMessageBox.critical(None, "Test Error", error_msg)
-                except:
+                except Exception:
                     pass
             
             sys.exit(1)
@@ -223,7 +223,7 @@ def main():
         
         # Install crash handler (Step 6.3)
         from cuepoint.utils.crash_handler import CrashHandler, ThreadExceptionHandler
-        crash_handler = CrashHandler()
+        CrashHandler()
         ThreadExceptionHandler.install_thread_exception_handler()
         
         # Check for path migration (Step 6.1.4)
@@ -339,7 +339,6 @@ def main():
         try:
             # Import fresh to avoid any scoping issues
             from PySide6.QtWidgets import QApplication as QtApp
-            from PySide6.QtWidgets import QMessageBox
 
             # Check if QApplication instance already exists
             existing_app = QtApp.instance()
@@ -347,7 +346,7 @@ def main():
                 QMessageBox.critical(None, "Startup Error", error_msg)
             else:
                 # Create a temporary QApplication for the error dialog
-                temp_app = QtApp(sys.argv)
+                _ = QtApp(sys.argv)
                 QMessageBox.critical(None, "Startup Error", error_msg)
         except Exception as gui_error:
             # Fallback to console output if GUI error display fails

@@ -14,6 +14,7 @@ Implements Step 6.3 - Crash Handling with:
 
 import json
 import logging
+import platform
 import sys
 import threading
 import traceback
@@ -23,8 +24,8 @@ from typing import Any, Dict, Optional
 
 from PySide6.QtCore import QObject, Signal
 
-from cuepoint.utils.logger import CrashLogger, CuePointLogger
-from cuepoint.utils.paths import AppPaths, PathDiagnostics
+from cuepoint.utils.logger import CrashLogger
+from cuepoint.utils.paths import PathDiagnostics
 
 try:
     from cuepoint.version import get_build_info
@@ -403,7 +404,3 @@ class CrashReportMetadata:
         }
         
         return report
-
-
-# Import platform here to avoid issues
-import platform

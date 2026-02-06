@@ -2,7 +2,6 @@
 
 import time
 
-import pytest
 
 from cuepoint.services.cache_service import CacheEntry, CacheService
 

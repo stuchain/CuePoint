@@ -8,7 +8,7 @@ Provides semantic versioning comparison functions.
 """
 
 import re
-from typing import List, Optional, Tuple
+from typing import Optional, Tuple
 
 
 def parse_version(version_string: str) -> Tuple[int, int, int, Optional[str]]:

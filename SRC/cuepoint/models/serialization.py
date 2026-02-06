@@ -9,7 +9,7 @@ Provides JSON serialization/deserialization for data models.
 
 import json
 from pathlib import Path
-from typing import Any, List
+from typing import List
 
 from cuepoint.models.playlist import Playlist
 from cuepoint.models.result import TrackResult

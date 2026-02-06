@@ -4,9 +4,7 @@ import pytest
 
 from cuepoint.utils.run_performance_collector import (
     STAGE_PARSE_XML,
-    STAGE_SEARCH_CANDIDATES,
     RunPerformanceCollector,
-    RunPerformanceReport,
 )
 
 

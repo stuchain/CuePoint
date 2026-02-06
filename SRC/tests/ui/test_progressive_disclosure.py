@@ -8,10 +8,6 @@ Tests for Progressive Disclosure functionality
 import pytest
 import os
 import tempfile
-from pathlib import Path
-from unittest.mock import patch, MagicMock
-from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import Qt
 
 from cuepoint.ui.main_window import MainWindow
 from cuepoint.models.playlist import Playlist
@@ -54,7 +50,7 @@ def sample_xml_file():
     # Cleanup
     try:
         os.unlink(temp_path)
-    except:
+    except Exception:
         pass
 
 
@@ -88,7 +84,6 @@ def test_processing_mode_appears_after_xml_selected(main_window, sample_xml_file
     assert not main_window.mode_group.isVisible()
     
     # Mock validate_file to return True
-    original_validate = main_window.file_selector.validate_file
     main_window.file_selector.validate_file = lambda path: True
     
     # Mock load_xml_file to not raise exception

@@ -6,8 +6,6 @@ Tests for Rekordbox Instructions Dialog
 """
 
 import pytest
-from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import Qt
 
 from cuepoint.ui.dialogs.rekordbox_instructions_dialog import RekordboxInstructionsDialog
 
@@ -42,7 +40,7 @@ def test_dialog_has_content(dialog):
     assert layout is not None
     
     # Check that there's a scroll area
-    scroll_areas = dialog.findChildren(type(dialog))
+    _ = dialog.findChildren(type(dialog))
     # The dialog should have content
     assert True  # Placeholder - structure verification
 
@@ -57,7 +55,7 @@ def test_dialog_can_be_shown(dialog, qapp):
 def test_dialog_close_button(dialog):
     """Test that dialog has close button"""
     # Find button box
-    button_boxes = dialog.findChildren(type(dialog))
+    _ = dialog.findChildren(type(dialog))
     # Dialog should have a button box
     assert True  # Placeholder - will verify button box exists
 

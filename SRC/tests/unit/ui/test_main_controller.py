@@ -5,14 +5,13 @@
 
 import os
 import tempfile
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 import pytest
-from PySide6.QtCore import QObject
 
 from cuepoint.models.result import TrackResult
 from cuepoint.ui.controllers.main_controller import GUIController, ProcessingWorker
-from cuepoint.ui.gui_interface import ErrorType, ProcessingError, ProgressInfo
+from cuepoint.ui.gui_interface import ErrorType, ProcessingError
 
 
 @pytest.fixture

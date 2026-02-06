@@ -4,7 +4,6 @@ import platform
 import sys
 from unittest.mock import patch
 
-import pytest
 
 from cuepoint.utils.system_check import SystemRequirements
 

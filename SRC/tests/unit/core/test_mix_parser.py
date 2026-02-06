@@ -1,6 +1,5 @@
 """Unit tests for mix_parser module."""
 
-import pytest
 
 from cuepoint.core.mix_parser import (
     _any_phrase_token_set_in_title,

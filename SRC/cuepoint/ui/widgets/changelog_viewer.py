@@ -9,9 +9,8 @@ Viewer for displaying release notes and changelog information.
 
 import re
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,

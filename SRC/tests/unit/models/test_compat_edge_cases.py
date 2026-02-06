@@ -19,7 +19,6 @@ from cuepoint.models.compat import (
     track_result_to_old,
 )
 from cuepoint.models.result import TrackResult
-from cuepoint.models.track import Track
 from cuepoint.ui.gui_interface import TrackResult as OldTrackResult
 
 

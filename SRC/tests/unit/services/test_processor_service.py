@@ -6,9 +6,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from cuepoint.data.rekordbox import RBTrack
 from cuepoint.models.beatport_candidate import BeatportCandidate
-from cuepoint.models.playlist import Playlist
 from cuepoint.models.result import TrackResult
 from cuepoint.models.track import Track
 from cuepoint.services.processor_service import ProcessorService

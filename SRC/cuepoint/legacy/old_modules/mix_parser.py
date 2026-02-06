@@ -54,7 +54,8 @@ def _extract_remix_phrases(original_title: str) -> List[str]:
     for p in phrases:
         k = p.lower()
         if k not in seen:
-            seen.add(k); out.append(p)
+            seen.add(k)
+            out.append(p)
     return out
 
 
@@ -75,7 +76,8 @@ def _extract_original_mix_phrases(original_title: str) -> List[str]:
     for p in phrases:
         k = p.lower()
         if k not in seen:
-            seen.add(k); out.append(p)
+            seen.add(k)
+            out.append(p)
     return out
 
 
@@ -91,7 +93,8 @@ def _extract_extended_mix_phrases(original_title: str) -> List[str]:
     for p in phrases:
         k = p.lower()
         if k not in seen:
-            seen.add(k); out.append(p)
+            seen.add(k)
+            out.append(p)
     return out
 
 
@@ -120,7 +123,8 @@ def _extract_generic_parenthetical_phrases(original_title: str) -> List[str]:
     for p in phrases:
         k = p.lower()
         if k not in seen:
-            seen.add(k); out.append(p)
+            seen.add(k)
+            out.append(p)
     return out
 
 
@@ -179,7 +183,8 @@ def _extract_bracket_artist_hints(original_title: str) -> List[str]:
     for h in hints:
         k = h.lower()
         if k not in seen:
-            seen.add(k); out.append(h)
+            seen.add(k)
+            out.append(h)
     return out
 
 
@@ -190,9 +195,11 @@ def _merge_name_lists(*names_lists: List[str]) -> str:
     for names in names_lists:
         for s in names:
             s = s.strip()
-            if not s: continue
+            if not s:
+                continue
             if s.lower() not in seen:
-                seen.add(s.lower()); out.append(s)
+                seen.add(s.lower())
+                out.append(s)
     return ", ".join(out)
 
 
@@ -264,7 +271,8 @@ def _extract_remixer_names_from_title(title: str) -> List[str]:
     for nm in names:
         k = nm.lower()
         if k and k not in seen:
-            seen.add(k); out.append(nm)
+            seen.add(k)
+            out.append(nm)
     return out
 
 
@@ -335,11 +343,13 @@ def _mix_bonus(input_mix: Dict[str, object], cand_mix: Dict[str, object]) -> Tup
     if prefer_plain:
         if c_remx or c_alt or c_edit or c_radio:
             bonus -= 12
-            if not reason: reason = "prefer_plain_penalize_alt"
+            if not reason:
+                reason = "prefer_plain_penalize_alt"
         else:
             # Plain / Original / Extended are all fine; give a small nudge up
             bonus += 4
-            if not reason: reason = "prefer_plain_bonus"
+            if not reason:
+                reason = "prefer_plain_bonus"
 
     if in_orig or in_ext:
         if (in_orig and c_orig) or (in_ext and c_ext):
@@ -375,11 +385,14 @@ def _mix_bonus(input_mix: Dict[str, object], cand_mix: Dict[str, object]) -> Tup
             ctoks = cand_mix.get("remixer_tokens", set())
             if itoks:
                 if itoks & ctoks:
-                    bonus += 12; reason = "remixer_match"
+                    bonus += 12
+                    reason = "remixer_match"
                 else:
-                    bonus -= 6; reason = reason or "remixer_mismatch"
+                    bonus -= 6
+                    reason = reason or "remixer_mismatch"
             else:
-                bonus += 3; reason = reason or "any_remix_ok"
+                bonus += 3
+                reason = reason or "any_remix_ok"
         elif c_ext:
             # CRITICAL: Extended Remix IS compatible with Remix request
             # Many tracks are listed as "Extended Remix" but are just longer versions of "Remix"
@@ -388,13 +401,16 @@ def _mix_bonus(input_mix: Dict[str, object], cand_mix: Dict[str, object]) -> Tup
             ctoks = cand_mix.get("remixer_tokens", set())
             # If remixer tokens match, treat extended remix as valid match
             if itoks and ctoks and (itoks & ctoks):
-                bonus += 8; reason = "remix_extended_remix_compatible"
+                bonus += 8
+                reason = "remix_extended_remix_compatible"
             elif not itoks:
                 # No specific remixer requested, extended remix is acceptable
-                bonus += 2; reason = "remix_extended_remix_compatible"
+                bonus += 2
+                reason = "remix_extended_remix_compatible"
             else:
                 # Remixer mismatch, but still compatible format
-                bonus -= 2; reason = reason or "remixer_mismatch_but_compatible_format"
+                bonus -= 2
+                reason = reason or "remixer_mismatch_but_compatible_format"
         else:
             # When remix is requested, penalize original/extended/plain mixes
             # Especially if a specific remixer is requested
@@ -402,10 +418,12 @@ def _mix_bonus(input_mix: Dict[str, object], cand_mix: Dict[str, object]) -> Tup
             if itoks:
                 # Specific remixer requested but found original/extended - moderate-heavy penalty
                 # Large enough to prefer remixes, but not so large as to block all matches
-                bonus -= 12; reason = reason or "wanted_specific_remix_got_original"
+                bonus -= 12
+                reason = reason or "wanted_specific_remix_got_original"
             else:
                 # Remix requested but no specific remixer - moderate penalty
-                bonus -= 6; reason = reason or "wanted_remix"
+                bonus -= 6
+                reason = reason or "wanted_remix"
 
     if not (prefer_plain or in_orig or in_ext or in_remx):
         if c_alt:

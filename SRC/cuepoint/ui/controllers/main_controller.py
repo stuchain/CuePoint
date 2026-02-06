@@ -116,7 +116,7 @@ class ProcessingWorker(QThread):
         try:
             # Get ProcessorService from DI container
             container = get_container()
-            processor_service: IProcessorService = container.resolve(IProcessorService)  # type: ignore[type-abstract]
+            processor_service: IProcessorService = container.resolve(IProcessorService)
 
             # Create progress callback that emits signal to GUI
             # CRITICAL: This is called from ThreadPoolExecutor threads, not Qt threads
@@ -387,7 +387,7 @@ class GUIController(QObject):
             # Still try to clean up
             try:
                 self.current_worker = None
-            except:
+            except Exception:
                 pass
 
     def is_processing(self) -> bool:

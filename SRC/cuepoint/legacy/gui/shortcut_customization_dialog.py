@@ -9,11 +9,11 @@ Allows users to customize keyboard shortcuts.
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
-    QPushButton, QLabel, QLineEdit, QMessageBox, QGroupBox, QHeaderView
+    QPushButton, QLabel, QLineEdit, QMessageBox
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence, QKeyEvent
-from typing import Dict, Tuple, Optional
+from typing import Dict
 from cuepoint.legacy.gui.shortcut_manager import ShortcutManager
 
 

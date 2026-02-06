@@ -5,7 +5,6 @@ Runs pipeline with small.xml fixture: parse XML, build TrackResults, write CSVs,
 verify main output row count and schema.
 """
 
-import csv
 from pathlib import Path
 
 import pytest

@@ -12,9 +12,7 @@ import threading
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
-from datetime import datetime
 from typing import Dict, List, Optional
-from urllib.parse import urlparse
 
 from cuepoint.update.security import FeedIntegrityVerifier, PackageIntegrityVerifier
 from cuepoint.update.version_utils import (
@@ -99,7 +97,7 @@ class UpdateChecker:
             logger = logging.getLogger(__name__)
             
             feed_url = self.get_feed_url(platform)
-            logger.info(f"Checking for updates:")
+            logger.info("Checking for updates:")
             logger.info(f"  Feed URL: {feed_url}")
             logger.info(f"  Current version: {self.current_version}")
             logger.info(f"  Channel: {self.channel}")

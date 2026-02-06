@@ -9,17 +9,12 @@ all services work together through the DI container.
 """
 
 import os
-import sys
-import tempfile
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch, MagicMock
 
-import pytest
 
 from cuepoint.cli.cli_processor import CLIProcessor
 from cuepoint.models.preflight import PreflightResult
 from cuepoint.models.result import TrackResult
-from cuepoint.models.track import Track
 from cuepoint.services.bootstrap import bootstrap_services
 from cuepoint.services.interfaces import (
     IProcessorService,
@@ -352,8 +347,7 @@ class TestCLIMigration:
 
     def test_error_scenarios_file_not_found(self):
         """Test error handling for file not found."""
-        from cuepoint.exceptions.cuepoint_exceptions import ProcessingError
-        from cuepoint.ui.gui_interface import ErrorType
+        from cuepoint.ui.gui_interface import ErrorType, ProcessingError
 
         processor_service = self.container.resolve(IProcessorService)  # type: ignore
         export_service = self.container.resolve(IExportService)  # type: ignore
@@ -368,8 +362,6 @@ class TestCLIMigration:
         )
 
         # Mock processor to raise file not found error
-        # ProcessingError is from gui_interface, not exceptions
-        from cuepoint.ui.gui_interface import ProcessingError
         
         error = ProcessingError(
             message="File not found",
@@ -390,8 +382,7 @@ class TestCLIMigration:
 
     def test_error_scenarios_playlist_not_found(self):
         """Test error handling for playlist not found."""
-        from cuepoint.exceptions.cuepoint_exceptions import ProcessingError
-        from cuepoint.ui.gui_interface import ErrorType
+        from cuepoint.ui.gui_interface import ErrorType, ProcessingError
 
         processor_service = self.container.resolve(IProcessorService)  # type: ignore
         export_service = self.container.resolve(IExportService)  # type: ignore
@@ -406,8 +397,6 @@ class TestCLIMigration:
         )
 
         # Mock processor to raise playlist not found error
-        # ProcessingError is from gui_interface, not exceptions
-        from cuepoint.ui.gui_interface import ProcessingError
         
         error = ProcessingError(
             message="Playlist not found",

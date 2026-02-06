@@ -11,7 +11,6 @@ tracking timing, query effectiveness, cache statistics, and generating performan
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
 import time
-from collections import defaultdict
 
 
 @dataclass

@@ -176,7 +176,8 @@ def _parse_structured_json_ld(soup: BeautifulSoup) -> Dict[str, str]:
         try:
             data = json.loads(tag.string or "")
             def grab(d):
-                if not isinstance(d, dict): return
+                if not isinstance(d, dict):
+                    return
                 if d.get("@type") in ("MusicRecording", "MusicComposition"):
                     out["title"] = d.get("name") or out.get("title")
                     by = d.get("byArtist")
@@ -197,7 +198,8 @@ def _parse_structured_json_ld(soup: BeautifulSoup) -> Dict[str, str]:
                     if d.get("datePublished"):
                         out["release_date"] = d.get("datePublished")
             if isinstance(data, list):
-                for d in data: grab(d)
+                for d in data:
+                    grab(d)
             elif isinstance(data, dict):
                 grab(data)
         except Exception:
@@ -224,7 +226,8 @@ def _parse_next_data(soup: BeautifulSoup) -> Dict[str, str]:
                         for a in arts:
                             if isinstance(a, dict):
                                 nm = a.get("name") or a.get("title")
-                                if nm: names.append(nm)
+                                if nm:
+                                    names.append(nm)
                         if names:
                             out["artists"] = ", ".join(dict.fromkeys(names))
                 if "remixers" in node and isinstance(node["remixers"], list):
@@ -232,7 +235,8 @@ def _parse_next_data(soup: BeautifulSoup) -> Dict[str, str]:
                     for r in node["remixers"]:
                         if isinstance(r, dict):
                             nm = r.get("name") or r.get("title")
-                            if nm: rnames.append(nm)
+                            if nm:
+                                rnames.append(nm)
                     if rnames:
                         out["remixers"] = ", ".join(dict.fromkeys(rnames))
                 if "key" in node and isinstance(node["key"], (str,)):
@@ -501,7 +505,7 @@ def track_urls(idx: int, query: str, max_results: int, use_direct_search: Option
                 should_try_browser = False
                 if direct_urls is None or len(direct_urls) == 0:
                     should_try_browser = True
-                    vlog(idx, f"[search] Direct search found 0 URLs, trying browser automation")
+                    vlog(idx, "[search] Direct search found 0 URLs, trying browser automation")
                 elif is_remix_query and len(direct_urls) < 10:
                     # For remix queries, if we found <10 results, browser might find more
                     vlog(idx, f"[search] Direct search found only {len(direct_urls)} URLs for remix query, trying browser automation")
@@ -642,7 +646,8 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
     out, seen = [], set()
     for u in urls:
         if is_track_url(u) and u not in seen:
-            seen.add(u); out.append(u)
+            seen.add(u)
+            out.append(u)
 
     # Enhanced fallback: when we don't find the expected track, try broader searches
     try:
@@ -684,7 +689,8 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                 if "/track/" in page_url:
                     # If it's already a track URL, add it directly
                     if is_track_url(page_url) and page_url not in seen:
-                        seen.add(page_url); out.append(page_url)
+                        seen.add(page_url)
+                        out.append(page_url)
                     continue
                     
                 soup = request_html(page_url)
@@ -699,7 +705,8 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                             continue
                         full = BASE_URL + href if href.startswith("/track/") else href
                         if is_track_url(full) and full not in seen:
-                            seen.add(full); out.append(full)
+                            seen.add(full)
+                            out.append(full)
                     except Exception:
                         continue
     except Exception as _e:
@@ -729,7 +736,8 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                             for r in ddgs.text(broad_q, region="us-en", max_results=10):
                                 href = r.get("href") or r.get("url") or ""
                                 if href and "beatport.com/track/" in href and href not in seen:
-                                    seen.add(href); out.append(href)
+                                    seen.add(href)
+                                    out.append(href)
                         except Exception as e:
                             vlog(idx, f"[broader-search] error for '{broad_q}': {e!r}")
                             continue

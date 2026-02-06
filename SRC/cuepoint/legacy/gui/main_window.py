@@ -5,33 +5,21 @@
 Main Window Module - Main application window
 
 This module contains the MainWindow class for the GUI application.
+
+LEGACY MODULE - DEPRECATED
+Moved to legacy folder as part of Phase 5 migration.
+Use cuepoint.ui.main_window.MainWindow and cuepoint.ui.controllers.main_controller.GUIController.
 """
 
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QMenuBar, QStatusBar, QGroupBox, QLabel, QPushButton, QTabWidget,
-    QMenu, QMessageBox, QRadioButton, QButtonGroup, QScrollArea, QSplitter
+    QGroupBox, QPushButton, QTabWidget,
+    QMenu, QMessageBox, QRadioButton, QButtonGroup, QSplitter
 )
 from PySide6.QtCore import Qt, QSettings
 from PySide6.QtGui import QDragEnterEvent, QDropEvent, QKeySequence, QAction, QKeyEvent
 from typing import List, Dict
 import os
-import sys
-
-"""
-LEGACY MODULE - DEPRECATED
-
-This module has been moved to the legacy folder as part of Phase 5 migration.
-It is kept for backward compatibility and reference only.
-
-⚠️  DO NOT USE IN NEW CODE ⚠️
-
-Use the new Phase 5 GUI structure instead:
-- cuepoint.ui.main_window.MainWindow
-- cuepoint.ui.controllers.main_controller.GUIController
-
-This legacy module will be removed in a future version.
-"""
 
 from cuepoint.legacy.gui.file_selector import FileSelector
 from cuepoint.legacy.gui.playlist_selector import PlaylistSelector
@@ -45,7 +33,6 @@ from cuepoint.legacy.gui.shortcut_manager import ShortcutManager, ShortcutContex
 from cuepoint.legacy.gui_controller import GUIController
 from cuepoint.ui.gui_interface import ProcessingError
 from cuepoint.services.output_writer import write_csv_files
-from cuepoint.utils.utils import with_timestamp
 from cuepoint.legacy.gui.performance_view import PerformanceView
 
 
@@ -725,15 +712,15 @@ class MainWindow(QMainWindow):
         # Disconnect regular processing signals temporarily (if connected)
         try:
             self.controller.progress_updated.disconnect(self.on_progress_updated)
-        except:
+        except Exception:
             pass
         try:
             self.controller.processing_complete.disconnect(self.on_processing_complete)
-        except:
+        except Exception:
             pass
         try:
             self.controller.error_occurred.disconnect(self.on_error_occurred)
-        except:
+        except Exception:
             pass
         
         # Connect controller signals to batch processor
@@ -789,15 +776,15 @@ class MainWindow(QMainWindow):
         """Reconnect regular processing signals after batch completes"""
         try:
             self.controller.progress_updated.disconnect(self.batch_processor.on_playlist_progress)
-        except:
+        except Exception:
             pass
         try:
             self.controller.processing_complete.disconnect(self._on_batch_playlist_complete)
-        except:
+        except Exception:
             pass
         try:
             self.controller.error_occurred.disconnect(self._on_batch_playlist_error)
-        except:
+        except Exception:
             pass
         
         self.controller.progress_updated.connect(self.on_progress_updated)

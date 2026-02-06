@@ -9,12 +9,10 @@ This module contains the ProgressWidget class for displaying processing progress
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QFrame,
     QHBoxLayout,
     QLabel,
     QProgressBar,
     QPushButton,
-    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )

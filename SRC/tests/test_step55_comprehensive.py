@@ -16,21 +16,16 @@ from typing import get_type_hints
 import pytest
 
 # Import modules to check
-from cuepoint.core import matcher, mix_parser, query_generator, text_processing
+from cuepoint.core import matcher, query_generator, text_processing
 from cuepoint.data import beatport, rekordbox
 from cuepoint.services import (
     beatport_service,
     cache_service,
-    config_service,
-    export_service,
-    logging_service,
     matcher_service,
     processor_service,
 )
 from cuepoint.ui.controllers import (
-    config_controller,
     export_controller,
-    main_controller,
     results_controller,
 )
 

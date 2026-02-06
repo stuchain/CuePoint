@@ -12,10 +12,9 @@ from PySide6.QtWidgets import (
     QTextBrowser, QTableWidget, QTableWidgetItem, QTabWidget, QLineEdit
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
 from typing import Optional
 
-from gui_interface import ProcessingError, ErrorType
+from gui_interface import ProcessingError
 from cuepoint.legacy.gui.shortcut_manager import ShortcutManager, ShortcutContext
 
 

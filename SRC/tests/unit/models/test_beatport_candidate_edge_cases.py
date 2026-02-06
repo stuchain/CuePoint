@@ -7,7 +7,6 @@ Comprehensive edge case tests for BeatportCandidate model.
 Tests all boundary conditions, error handling, and edge cases.
 """
 
-import pytest
 
 from cuepoint.models.beatport_candidate import BeatportCandidate
 

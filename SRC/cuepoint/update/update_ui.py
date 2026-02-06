@@ -12,7 +12,7 @@ import sys
 from typing import Callable, Dict, Optional
 
 from PySide6.QtCore import Qt, Signal, QTimer, QUrl
-from PySide6.QtGui import QDesktopServices, QTextDocument, QClipboard
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
@@ -496,7 +496,7 @@ class UpdateCheckDialog(QDialog):
         new_version = update_info.get('short_version') or update_info.get('version', 'Unknown')
         from cuepoint.version import get_version_display_string as get_app_version_display
         
-        status_text = f"✓ Update available!"
+        status_text = "✓ Update available!"
         self.set_status(status_text, show_progress=False)
         
         # Show results
@@ -632,7 +632,7 @@ class UpdateCheckDialog(QDialog):
                                 "Download Error (Fallback Handler)",
                                 error_msg
                             )
-                        except:
+                        except Exception:
                             pass
                 
                 self.download_button.clicked.connect(fallback_handler)
@@ -649,9 +649,6 @@ class UpdateCheckDialog(QDialog):
         Args:
             position: Position where context menu was requested
         """
-        import logging
-        logger = logging.getLogger(__name__)
-        
         menu = QMenu(self)
         
         # Add "Show Diagnostics" option
@@ -664,15 +661,13 @@ class UpdateCheckDialog(QDialog):
     def _show_button_diagnostics(self) -> None:
         """Show diagnostic information about the download button state."""
         from PySide6.QtWidgets import QDialog, QVBoxLayout, QTextEdit, QPushButton, QLabel
-        import logging
-        logger = logging.getLogger(__name__)
-        
+
         diagnostics = []
         diagnostics.append("=== DOWNLOAD BUTTON DIAGNOSTICS ===\n")
         
         # Check button state
         try:
-            diagnostics.append(f"✓ Button exists: True")
+            diagnostics.append("✓ Button exists: True")
             diagnostics.append(f"✓ Button visible: {self.download_button.isVisible()}")
             diagnostics.append(f"✓ Button enabled: {self.download_button.isEnabled()}")
             diagnostics.append(f"✓ Button text: {self.download_button.text()}")
@@ -681,51 +676,51 @@ class UpdateCheckDialog(QDialog):
         
         # Check connection status
         try:
-            diagnostics.append(f"\n✓ Connection status:")
+            diagnostics.append("\n✓ Connection status:")
             diagnostics.append(f"  - Has _download_connected: {hasattr(self, '_download_connected')}")
             if hasattr(self, '_download_connected'):
                 diagnostics.append(f"  - _download_connected value: {self._download_connected}")
             else:
-                diagnostics.append(f"  - ✗ NOT CONNECTED (this is the problem!)")
+                diagnostics.append("  - ✗ NOT CONNECTED (this is the problem!)")
         except Exception as e:
             diagnostics.append(f"\n✗ Connection check failed: {e}")
         
         # Check update_info
         try:
-            diagnostics.append(f"\n✓ Update info status:")
+            diagnostics.append("\n✓ Update info status:")
             diagnostics.append(f"  - Has update_info: {hasattr(self, 'update_info')}")
             if hasattr(self, 'update_info'):
                 if self.update_info:
-                    diagnostics.append(f"  - update_info is not None")
+                    diagnostics.append("  - update_info is not None")
                     diagnostics.append(f"    Version: {self.update_info.get('short_version', 'N/A')}")
                     diagnostics.append(f"    Download URL: {self.update_info.get('download_url', 'N/A')[:80]}...")
                 else:
-                    diagnostics.append(f"  - ✗ update_info is None")
+                    diagnostics.append("  - ✗ update_info is None")
             else:
-                diagnostics.append(f"  - ✗ update_info attribute missing")
+                diagnostics.append("  - ✗ update_info attribute missing")
         except Exception as e:
             diagnostics.append(f"\n✗ Update info check failed: {e}")
         
         # Check parent window
         try:
             parent = self.parent()
-            diagnostics.append(f"\n✓ Parent window:")
+            diagnostics.append("\n✓ Parent window:")
             if parent:
-                diagnostics.append(f"  - Parent exists: True")
+                diagnostics.append("  - Parent exists: True")
                 diagnostics.append(f"  - Parent type: {type(parent).__name__}")
                 diagnostics.append(f"  - Has _on_update_install_from_dialog: {hasattr(parent, '_on_update_install_from_dialog')}")
                 
                 # Check if parent has update_check_dialog reference
                 if hasattr(parent, 'update_check_dialog'):
-                    diagnostics.append(f"  - Parent has update_check_dialog: True")
+                    diagnostics.append("  - Parent has update_check_dialog: True")
                     if parent.update_check_dialog == self:
-                        diagnostics.append(f"  - ✓ Parent references this dialog")
+                        diagnostics.append("  - ✓ Parent references this dialog")
                     else:
-                        diagnostics.append(f"  - ✗ Parent references different dialog")
+                        diagnostics.append("  - ✗ Parent references different dialog")
                 else:
-                    diagnostics.append(f"  - ✗ Parent missing update_check_dialog reference")
+                    diagnostics.append("  - ✗ Parent missing update_check_dialog reference")
             else:
-                diagnostics.append(f"  - ✗ No parent window")
+                diagnostics.append("  - ✗ No parent window")
         except Exception as e:
             diagnostics.append(f"\n✗ Parent check failed: {e}")
         
@@ -733,35 +728,35 @@ class UpdateCheckDialog(QDialog):
         try:
             parent = self.parent()
             if parent and hasattr(parent, 'update_manager'):
-                diagnostics.append(f"\n✓ Update manager fallback:")
+                diagnostics.append("\n✓ Update manager fallback:")
                 if parent.update_manager:
-                    diagnostics.append(f"  - update_manager exists: True")
+                    diagnostics.append("  - update_manager exists: True")
                     diagnostics.append(f"  - Has _update_available: {hasattr(parent.update_manager, '_update_available')}")
                     if hasattr(parent.update_manager, '_update_available'):
                         fallback = parent.update_manager._update_available
                         if fallback:
-                            diagnostics.append(f"  - _update_available is not None")
+                            diagnostics.append("  - _update_available is not None")
                             diagnostics.append(f"    Version: {fallback.get('short_version', 'N/A')}")
                         else:
-                            diagnostics.append(f"  - _update_available is None")
+                            diagnostics.append("  - _update_available is None")
                 else:
-                    diagnostics.append(f"  - ✗ update_manager is None")
+                    diagnostics.append("  - ✗ update_manager is None")
             else:
-                diagnostics.append(f"\n✗ Cannot check update_manager (no parent)")
+                diagnostics.append("\n✗ Cannot check update_manager (no parent)")
         except Exception as e:
             diagnostics.append(f"\n✗ Update manager check failed: {e}")
         
-        diagnostics.append(f"\n=== RECOMMENDATIONS ===")
+        diagnostics.append("\n=== RECOMMENDATIONS ===")
         if not hasattr(self, '_download_connected') or not self._download_connected:
-            diagnostics.append(f"✗ Button is NOT connected!")
-            diagnostics.append(f"  → Try closing and reopening the update dialog")
-            diagnostics.append(f"  → Check if _on_update_available was called")
+            diagnostics.append("✗ Button is NOT connected!")
+            diagnostics.append("  → Try closing and reopening the update dialog")
+            diagnostics.append("  → Check if _on_update_available was called")
         else:
-            diagnostics.append(f"✓ Button appears to be connected")
+            diagnostics.append("✓ Button appears to be connected")
         
         if not hasattr(self, 'update_info') or not self.update_info:
-            diagnostics.append(f"✗ update_info is missing!")
-            diagnostics.append(f"  → This will prevent download from working")
+            diagnostics.append("✗ update_info is missing!")
+            diagnostics.append("  → This will prevent download from working")
         
         # Show diagnostic dialog
         diag_dialog = QDialog(self)
@@ -880,7 +875,7 @@ class UpdateCheckDialog(QDialog):
         
         # Show brief feedback in status
         original_text = self.status_label.text()
-        self.status_label.setText(f"✓ Link copied to clipboard")
+        self.status_label.setText("✓ Link copied to clipboard")
         
         # Restore original text after 2 seconds
         from PySide6.QtCore import QTimer
@@ -960,7 +955,7 @@ def show_update_check_dialog(
                 app = QApplication.instance()
                 if app:
                     app.processEvents()
-            logger.info(f"  ✓ Dialog shown successfully")
+            logger.info("  ✓ Dialog shown successfully")
             logger.info(f"  - Dialog visible: {dialog.isVisible()}")
             logger.info(f"  - Dialog modal: {dialog.isModal()}")
             logger.info(f"  - Dialog geometry: {dialog.geometry()}")

@@ -8,8 +8,6 @@ Test script to verify FileSelector integration in MainWindow
 import sys
 import os
 from PySide6.QtWidgets import QApplication
-import sys
-import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
 from cuepoint.ui.main_window import MainWindow
 
@@ -49,7 +47,7 @@ def test_integration():
         
         # Test validation
         test_path = "test.xml"
-        result = window.file_selector.validate_file(test_path)
+        window.file_selector.validate_file(test_path)
         print(f"   [OK] validate_file works (test.xml exists: {os.path.exists(test_path)})")
         
         print("\n" + "="*60)

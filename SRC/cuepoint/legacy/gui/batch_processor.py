@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QPushButton, QLabel, QProgressBar, QGroupBox, QMessageBox
 )
 from PySide6.QtCore import Qt, Signal, QTimer
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Optional
 import time
 from gui_interface import TrackResult, ProgressInfo, ProcessingError
 

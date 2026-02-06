@@ -5,10 +5,8 @@ import tempfile
 from pathlib import Path
 from unittest.mock import Mock
 
-import pytest
 
 from cuepoint.utils.metrics import (
-    ApplicationMetrics,
     ErrorMetrics,
     InstallationMetrics,
     MetricsCollector,

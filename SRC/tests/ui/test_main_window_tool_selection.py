@@ -6,9 +6,6 @@ Tests for MainWindow tool selection integration
 """
 
 import pytest
-from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import Qt
-from PySide6.QtTest import QTest
 
 from cuepoint.ui.main_window import MainWindow
 

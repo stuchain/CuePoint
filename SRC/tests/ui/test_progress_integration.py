@@ -8,9 +8,7 @@ Tests that ProgressWidget is properly integrated into MainWindow.
 """
 
 import sys
-from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QTimer
-import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
 from cuepoint.ui.main_window import MainWindow

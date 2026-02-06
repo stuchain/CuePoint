@@ -8,9 +8,7 @@ Simple analytics dashboard for trend review.
 Shows run success rate, match rate, and error trends from local telemetry.
 """
 
-from pathlib import Path
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QDialog, QGroupBox, QHBoxLayout, QLabel, QPushButton, QVBoxLayout
 
 from cuepoint.utils.telemetry_analytics import (
@@ -110,7 +108,7 @@ class TelemetryDashboardDialog(QDialog):
             )
         elif m.events_in_window == 0:
             self._window_label.setText(
-                f"No telemetry data yet. Enable telemetry in Settings → Privacy."
+                "No telemetry data yet. Enable telemetry in Settings → Privacy."
             )
         else:
             self._window_label.setText(f"{m.events_in_window} events")

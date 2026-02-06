@@ -15,26 +15,22 @@ _src_dir = os.path.dirname(_test_dir)
 if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
 
-from typing import Generator
-from unittest.mock import MagicMock, Mock
+from typing import Generator  # noqa: E402
+from unittest.mock import Mock  # noqa: E402
 
-import pytest
+import pytest  # noqa: E402
 
-from cuepoint.data.rekordbox import RBTrack
-from cuepoint.models.beatport_candidate import BeatportCandidate
-from cuepoint.models.compat import track_from_rbtrack
-from cuepoint.models.result import TrackResult
-from cuepoint.models.track import Track
-from cuepoint.services.interfaces import (
+from cuepoint.models.beatport_candidate import BeatportCandidate  # noqa: E402
+from cuepoint.models.result import TrackResult  # noqa: E402
+from cuepoint.models.track import Track  # noqa: E402
+from cuepoint.services.interfaces import (  # noqa: E402
     IBeatportService,
     ICacheService,
     IConfigService,
-    IExportService,
     ILoggingService,
     IMatcherService,
-    IProcessorService,
 )
-from cuepoint.utils.di_container import DIContainer, reset_container
+from cuepoint.utils.di_container import DIContainer, reset_container  # noqa: E402
 
 
 def pytest_sessionfinish(session, exitstatus):
@@ -235,8 +231,8 @@ def qapp():
 # File System Fixtures (Step 7.1)
 # ============================================================================
 
-import tempfile
-from pathlib import Path
+import tempfile  # noqa: E402
+from pathlib import Path  # noqa: E402
 
 
 @pytest.fixture

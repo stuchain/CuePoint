@@ -128,7 +128,6 @@ class TestConfigService:
     
     def test_load_from_file_invalid_yaml(self, tmp_path):
         """Test loading from invalid YAML file."""
-        import tempfile
         service = ConfigService()
         
         # Create invalid YAML file
@@ -188,7 +187,7 @@ class TestConfigService:
     def test_load_creates_config_dir(self, tmp_path):
         """Test that load creates config directory if it doesn't exist."""
         config_file = tmp_path / "new_dir" / "config.yaml"
-        service = ConfigService(config_file=config_file)
+        _ = ConfigService(config_file=config_file)
         
         # Directory should be created
         assert config_file.parent.exists()

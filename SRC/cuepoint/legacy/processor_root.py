@@ -18,8 +18,6 @@ Key functions:
 - run(): Main orchestration function (parses XML, processes all tracks, writes outputs)
 """
 
-import csv
-import io
 import os
 import random
 import re
@@ -28,7 +26,7 @@ import threading
 import time
 import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Dict, List, Tuple, Optional, Any, Callable
+from typing import Dict, List, Tuple, Optional, Any
 
 from tqdm import tqdm
 
@@ -120,12 +118,6 @@ def generate_summary_report(
     matched_scores = [float(r.get("match_score", "0") or 0) for r in rows if (r.get("beatport_url") or "").strip()]
     avg_score = sum(matched_scores) / len(matched_scores) if matched_scores else 0
     
-    matched_title_sims = [int(float(r.get("title_sim", "0") or 0)) for r in rows if (r.get("beatport_url") or "").strip()]
-    avg_title_sim = sum(matched_title_sims) / len(matched_title_sims) if matched_title_sims else 0
-    
-    matched_artist_sims = [int(float(r.get("artist_sim", "0") or 0)) for r in rows if (r.get("beatport_url") or "").strip()]
-    avg_artist_sim = sum(matched_artist_sims) / len(matched_artist_sims) if matched_artist_sims else 0
-    
     # Performance statistics
     total_queries = len(all_queries)
     avg_queries_per_track = total_queries / total_tracks if total_tracks > 0 else 0
@@ -199,7 +191,7 @@ def generate_summary_report(
                     file_info = f"  - {file_name} ({row_count:,} rows)"
             else:
                 file_info = f"  - {file_name}"
-        except:
+        except Exception:
             file_info = f"  - {file_name}"
         
             lines.append("| " + f"{file_info:<76}" + "|")
@@ -909,7 +901,7 @@ def process_playlist(
                                 # Don't let callback errors break processing
                                 pass
                 
-                except Exception as e:
+                except Exception:
                     # Handle errors from individual track processing
                     idx, rb = future_to_args[future]
                     # Create error result
@@ -1031,7 +1023,7 @@ def process_playlist(
                                             matched_count += 1
                                             unmatched_count -= 1
                                         break
-                            except Exception as e:
+                            except Exception:
                                 # Error handling - keep original unmatched result
                                 pass
                 else:
@@ -1336,9 +1328,9 @@ def run(xml_path: str, playlist_name: str, out_csv_base: str, auto_research: boo
                 if new_matches > 0:
                     print(f"\n{'='*80}")
                     print(f"Found {new_matches} new match(es)!")
-                    print(f"Updated CSV files.")
+                    print("Updated CSV files.")
                 else:
-                    print(f"\nNo new matches found after re-search.")
+                    print("\nNo new matches found after re-search.")
                 
                 print(f"\n{'='*80}")
                 print("Re-search complete.")
@@ -1371,12 +1363,12 @@ def run(xml_path: str, playlist_name: str, out_csv_base: str, auto_research: boo
         with open(summary_file, "w", encoding="utf-8") as f:
             f.write(summary)
         print(f"\nSummary saved to: {summary_file}")
-    except Exception as e:
+    except Exception:
         # If we can't write summary file, just continue (non-critical)
         pass
 
 
-def process_track_async(
+def process_track_async(  # noqa: F811
     idx: int,
     rb: RBTrack,
     settings: Optional[Dict[str, Any]] = None,
@@ -1400,11 +1392,6 @@ def process_track_async(
     if not ASYNC_AVAILABLE or not ASYNC_MATCHER_AVAILABLE:
         # Fallback to sync version if async not available
         return process_track_with_callback(idx, rb, settings)
-    
-    # Use provided settings or fall back to global SETTINGS
-    effective_settings = settings if settings is not None else SETTINGS
-    
-    t0 = time.perf_counter()
     
     # Extract artists, clean title (same logic as sync version)
     original_artists = rb.artists or ""
@@ -1458,9 +1445,6 @@ def process_track_async(
                 return best, candlog, queries_audit, stop_qidx
         
         best, candlog, queries_audit, stop_qidx = loop.run_until_complete(run_async_matching())
-        
-        # Convert to TrackResult (same logic as sync version)
-        dur = (time.perf_counter() - t0) * 1000
         
         # Build candidate rows
         cand_rows: List[Dict[str, str]] = []
@@ -1684,7 +1668,7 @@ def _convert_async_match_to_track_result(
         )
 
 
-def process_playlist_async(
+def process_playlist_async(  # noqa: F811
     xml_path: str,
     playlist_name: str,
     settings: Optional[Dict[str, Any]] = None,
@@ -1721,9 +1705,6 @@ def process_playlist_async(
     
     # Track processing start time
     processing_start_time = time.perf_counter()
-    
-    # Use provided settings or fall back to global SETTINGS
-    effective_settings = settings if settings is not None else SETTINGS
     
     # Parse Rekordbox XML file to extract tracks and playlists
     try:
@@ -1954,7 +1935,7 @@ def process_playlist_async(
         loop.close()
 
 
-def process_track_async(
+def process_track_async(  # noqa: F811
     idx: int,
     rb: RBTrack,
     settings: Optional[Dict[str, Any]] = None,
@@ -1978,11 +1959,6 @@ def process_track_async(
     if not ASYNC_AVAILABLE or not ASYNC_MATCHER_AVAILABLE:
         # Fallback to sync version if async not available
         return process_track_with_callback(idx, rb, settings)
-    
-    # Use provided settings or fall back to global SETTINGS
-    effective_settings = settings if settings is not None else SETTINGS
-    
-    t0 = time.perf_counter()
     
     # Extract artists, clean title (same logic as sync version)
     original_artists = rb.artists or ""
@@ -2036,9 +2012,6 @@ def process_track_async(
                 return best, candlog, queries_audit, stop_qidx
         
         best, candlog, queries_audit, stop_qidx = loop.run_until_complete(run_async_matching())
-        
-        # Convert to TrackResult (same logic as sync version)
-        dur = (time.perf_counter() - t0) * 1000
         
         # Build candidate rows
         cand_rows: List[Dict[str, str]] = []
@@ -2147,7 +2120,7 @@ def process_track_async(
         loop.close()
 
 
-def process_playlist_async(
+def process_playlist_async(  # noqa: F811
     xml_path: str,
     playlist_name: str,
     settings: Optional[Dict[str, Any]] = None,
@@ -2184,9 +2157,6 @@ def process_playlist_async(
     
     # Track processing start time
     processing_start_time = time.perf_counter()
-    
-    # Use provided settings or fall back to global SETTINGS
-    effective_settings = settings if settings is not None else SETTINGS
     
     # Parse Rekordbox XML file to extract tracks and playlists
     try:

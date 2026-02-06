@@ -21,7 +21,6 @@ Usage:
 """
 
 import sys
-from typing import Dict
 
 # Step 8: theme_tokens provides ColorTokens, SpacingTokens, RadiusTokens, SizeTokens
 # for programmatic access. Styles use compatible values for stylesheet generation.

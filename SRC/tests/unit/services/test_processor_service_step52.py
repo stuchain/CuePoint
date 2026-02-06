@@ -9,13 +9,9 @@ Tests the process_playlist_from_xml method and DI integration.
 
 import os
 import tempfile
-import xml.etree.ElementTree as ET
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from cuepoint.data.rekordbox import RBTrack
 from cuepoint.models.result import TrackResult
 from cuepoint.services.processor_service import ProcessorService
 from cuepoint.ui.gui_interface import ErrorType, ProcessingController, ProcessingError, ProgressInfo

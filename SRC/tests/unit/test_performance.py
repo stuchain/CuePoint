@@ -18,7 +18,7 @@ import time
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
 
-from cuepoint.utils.performance import performance_collector, PerformanceStats, TrackMetrics, QueryMetrics
+from cuepoint.utils.performance import performance_collector
 from cuepoint.services.output_writer import write_performance_report
 
 
@@ -71,7 +71,7 @@ def test_performance_collector():
     # Get stats
     stats = performance_collector.get_stats()
     assert stats is not None, "Failed to retrieve stats"
-    print(f"\n[OK] Stats retrieved:")
+    print("\n[OK] Stats retrieved:")
     print(f"  - Total tracks: {stats.total_tracks}")
     print(f"  - Matched tracks: {stats.matched_tracks}")
     print(f"  - Total queries: {len(stats.query_metrics)}")
@@ -155,7 +155,7 @@ def test_multiple_tracks():
 
     stats = performance_collector.get_stats()
     assert stats is not None, "Failed to retrieve stats"
-    print(f"\n[OK] Multi-track stats:")
+    print("\n[OK] Multi-track stats:")
     print(f"  - Total tracks: {stats.total_tracks}")
     print(f"  - Matched: {stats.matched_tracks}, Unmatched: {stats.unmatched_tracks}")
     print(f"  - Total queries: {len(stats.query_metrics)}")

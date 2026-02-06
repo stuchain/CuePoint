@@ -7,7 +7,6 @@ Unit tests for Step 5.6: Error Handling & Logging
 Tests error handling patterns, custom exceptions, and logging integration.
 """
 
-import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
@@ -17,13 +16,11 @@ import pytest
 from cuepoint.exceptions.cuepoint_exceptions import (
     BeatportAPIError,
     ExportError,
-    ProcessingError,
 )
 from cuepoint.services.beatport_service import BeatportService
 from cuepoint.services.cache_service import CacheService
 from cuepoint.services.export_service import ExportService
 from cuepoint.services.logging_service import LoggingService
-from cuepoint.models.result import TrackResult
 
 
 class TestBeatportServiceErrorHandling:

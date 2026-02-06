@@ -7,7 +7,6 @@ Download Progress Dialog Module
 Shows download progress for update downloads.
 """
 
-import sys
 from typing import Optional
 
 from PySide6.QtCore import Qt, QTimer

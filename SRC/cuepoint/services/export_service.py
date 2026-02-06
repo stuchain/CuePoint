@@ -189,7 +189,7 @@ class ExportService(IExportService):
                         f"Exported {len(results)} tracks to CSV: {filepath}",
                         extra={"filepath": filepath, "track_count": len(results)},
                     )
-            except Exception as e:
+            except Exception:
                 # Clean up temp file if it exists
                 if temp_file and os.path.exists(temp_file):
                     try:
@@ -267,7 +267,7 @@ class ExportService(IExportService):
                 if file_path.exists() and overwrite:
                     file_path.unlink()
                 Path(temp_file).replace(file_path)
-            except Exception as e:
+            except Exception:
                 # Clean up temp file if it exists
                 if temp_file and os.path.exists(temp_file):
                     try:
@@ -382,7 +382,7 @@ class ExportService(IExportService):
                 if file_path.exists() and overwrite:
                     file_path.unlink()
                 Path(temp_file).replace(file_path)
-            except Exception as e:
+            except Exception:
                 # Clean up temp file if it exists
                 if temp_file and os.path.exists(temp_file):
                     try:

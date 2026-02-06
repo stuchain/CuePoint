@@ -4,10 +4,7 @@
 """Unit tests for checkpoint service (Design 5.8, 5.27, 5.116)."""
 
 import json
-import tempfile
-from pathlib import Path
 
-import pytest
 
 from cuepoint.services.checkpoint_service import (
     CHECKPOINT_SCHEMA_VERSION,
@@ -108,7 +105,7 @@ def test_checkpoint_service_can_resume_hash_mismatch(tmp_path):
     svc = CheckpointService(checkpoint_dir=tmp_path)
     xml_file = tmp_path / "input.xml"
     xml_file.write_text("<a/>", encoding="utf-8")
-    current_hash = compute_xml_hash(str(xml_file))
+    _ = compute_xml_hash(str(xml_file))  # Hash exists but mismatch is tested via cp
     cp = CheckpointData(
         schema_version=CHECKPOINT_SCHEMA_VERSION,
         run_id="r",

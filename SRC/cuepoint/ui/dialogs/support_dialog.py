@@ -10,7 +10,7 @@ User-friendly dialog for generating and exporting support bundles.
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import QThread, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,

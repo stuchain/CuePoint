@@ -11,7 +11,6 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from cuepoint.models.beatport_candidate import BeatportCandidate
-from cuepoint.models.track import Track
 
 
 @dataclass

@@ -8,8 +8,7 @@ Tests the ErrorDialog with different types of ProcessingError objects.
 """
 
 import sys
-from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton
-import sys
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
 from cuepoint.ui.widgets.dialogs import ErrorDialog

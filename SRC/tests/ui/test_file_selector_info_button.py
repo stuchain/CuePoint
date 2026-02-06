@@ -6,7 +6,6 @@ Tests for FileSelector info button
 """
 
 import pytest
-from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
 
@@ -21,17 +20,13 @@ def file_selector(qapp):
 
 def test_file_selector_has_info_button(file_selector):
     """Test that FileSelector has an info button"""
-    # Find tool buttons
-    tool_buttons = file_selector.findChildren(type(file_selector))
     # Check that info button exists by looking for tooltip
     info_button = None
     for child in file_selector.findChildren(type(file_selector)):
         if hasattr(child, 'toolTip') and 'Rekordbox' in child.toolTip():
             info_button = child
             break
-    
-    # Info button should exist
-    assert True  # Placeholder - will verify in integration test
+    assert info_button is not None, "Info button with Rekordbox tooltip should exist"
 
 
 def test_file_selector_info_button_has_tooltip(file_selector):

@@ -8,7 +8,6 @@ Contrast validation, size validation, and WCAG compliance checking.
 Design 8.17-8.18: WCAG AA minimum contrast, automated color checks.
 """
 
-import colorsys
 from typing import Dict, List, Tuple
 
 

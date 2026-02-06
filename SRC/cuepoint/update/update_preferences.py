@@ -61,7 +61,7 @@ class UpdatePreferences:
             try:
                 with open(self.preferences_file, 'r', encoding='utf-8') as f:
                     self._preferences = json.load(f)
-            except (json.JSONDecodeError, IOError) as e:
+            except (json.JSONDecodeError, IOError):
                 # If file is corrupted, start with defaults
                 self._preferences = self._get_default_preferences()
         else:

@@ -8,12 +8,8 @@ Tests all filter types, combinations, edge cases, and performance.
 """
 
 import unittest
-from unittest.mock import Mock
 from PySide6.QtWidgets import QApplication
-from PySide6.QtTest import QTest
-from PySide6.QtCore import Qt
 import sys
-import time
 
 if not QApplication.instance():
     app = QApplication(sys.argv)
@@ -23,7 +19,6 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
 from cuepoint.ui.widgets.results_view import ResultsView
 from cuepoint.ui.widgets.history_view import HistoryView
-from cuepoint.models.result import TrackResult
 
 
 class MockTrackResult:

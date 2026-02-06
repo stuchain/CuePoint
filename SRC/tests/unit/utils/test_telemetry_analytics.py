@@ -5,14 +5,9 @@
 Unit tests for telemetry analytics (Step 14 dashboard).
 """
 
-import json
-import tempfile
-from pathlib import Path
 
-import pytest
 
 from cuepoint.utils.telemetry_analytics import (
-    TelemetryMetrics,
     compute_metrics,
     get_dashboard_metrics,
     load_events,

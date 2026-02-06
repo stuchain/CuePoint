@@ -8,7 +8,7 @@ This module provides conversion functions to bridge old and new model implementa
 enabling gradual migration without breaking changes.
 """
 
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
     from cuepoint.data.beatport import BeatportCandidate as OldBeatportCandidate
@@ -61,7 +61,6 @@ def track_from_rbtrack(rbtrack: "RBTrack") -> Track:
 
 def beatport_candidate_from_old(old: "OldBeatportCandidate") -> BeatportCandidate:
     # Lazy import to avoid circular dependency
-    from cuepoint.data.beatport import BeatportCandidate as OldBeatportCandidate
     """Convert old BeatportCandidate to new model.
 
     Args:
@@ -109,7 +108,6 @@ def beatport_candidate_from_old(old: "OldBeatportCandidate") -> BeatportCandidat
 
 def track_result_from_old(old: "OldTrackResult") -> TrackResult:
     # Lazy import to avoid circular dependency
-    from cuepoint.ui.gui_interface import TrackResult as OldTrackResult
     """Convert old TrackResult to new model.
 
     This function handles the conversion of the `candidates` field from
@@ -289,7 +287,7 @@ def track_result_from_old(old: "OldTrackResult") -> TrackResult:
                 try:
                     candidate = BeatportCandidate.from_dict(cand_data)
                     candidates.append(candidate)
-                except (ValueError, KeyError, TypeError) as e:
+                except (ValueError, KeyError, TypeError):
                     # Skip invalid candidates - log would be helpful but we don't have logger here
                     # In production, this should be logged
                     pass

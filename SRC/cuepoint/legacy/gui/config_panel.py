@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QRadioButton, QButtonGroup, QGroupBox, QSpinBox, QDoubleSpinBox, QPushButton
 )
 from PySide6.QtCore import Signal, Qt
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from config import SETTINGS
 from cuepoint.ui.controllers.config_controller import ConfigController
 

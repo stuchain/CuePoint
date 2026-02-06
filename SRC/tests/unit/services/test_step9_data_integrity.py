@@ -31,7 +31,7 @@ from cuepoint.services.integrity_service import (
     write_checksum_file,
     write_summary_report,
 )
-from cuepoint.services.output_writer import write_csv_files, write_main_csv
+from cuepoint.services.output_writer import write_csv_files
 from cuepoint.utils.run_context import clear_run_id, set_run_id
 
 
@@ -201,7 +201,6 @@ class TestRunIdAndHeaders:
         clear_run_id()
         rid = set_run_id("custom123")
         assert rid == "custom123"
-        from cuepoint.services.integrity_service import generate_run_id
 
         assert generate_run_id() == "custom123"
         clear_run_id()
@@ -209,9 +208,9 @@ class TestRunIdAndHeaders:
     def test_get_csv_header_lines(self):
         """Header lines have correct format."""
         lines = get_csv_header_lines(1, "abc123", "complete")
-        assert any("# schema_version=1" in l for l in lines)
-        assert any("# run_id=abc123" in l for l in lines)
-        assert any("# run_status=complete" in l for l in lines)
+        assert any("# schema_version=1" in line for line in lines)
+        assert any("# run_id=abc123" in line for line in lines)
+        assert any("# run_status=complete" in line for line in lines)
 
 
 class TestBackup:

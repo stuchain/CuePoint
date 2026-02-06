@@ -19,7 +19,6 @@ from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QAbstractSpinBox,
     QComboBox,
-    QDateEdit,
     QDialog,
     QFileDialog,
     QGroupBox,
@@ -1807,7 +1806,6 @@ class HistoryView(QWidget):
         try:
             # Determine if file is compressed
             is_compressed = file_path.endswith('.gz')
-            actual_path = file_path[:-3] if is_compressed else file_path
 
             # Get all column names from csv_rows
             if not self.csv_rows:

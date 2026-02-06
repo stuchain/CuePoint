@@ -1,8 +1,7 @@
 """Unit tests for matcher service."""
 
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
-import pytest
 
 from cuepoint.models.beatport_candidate import BeatportCandidate
 from cuepoint.services.matcher_service import MatcherService

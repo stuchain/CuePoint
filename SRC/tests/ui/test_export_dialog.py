@@ -11,10 +11,7 @@ import unittest
 import tempfile
 import os
 import shutil
-from unittest.mock import Mock, patch, MagicMock
 from PySide6.QtWidgets import QApplication
-from PySide6.QtTest import QTest
-from PySide6.QtCore import Qt
 import sys
 
 # Initialize QApplication for tests
@@ -22,7 +19,6 @@ if not QApplication.instance():
     app = QApplication(sys.argv)
 
 import sys
-import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
 from cuepoint.ui.dialogs.export_dialog import ExportDialog
 

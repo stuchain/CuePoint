@@ -4,8 +4,6 @@ Secure defaults tests (Design 4.81, 4.101, 4.47).
 Ensures default config has telemetry off, redaction on, update verification on.
 """
 
-import tempfile
-from pathlib import Path
 
 import pytest
 

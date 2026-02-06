@@ -9,7 +9,7 @@ Checks for key services: search (Beatport), parsing (rekordbox), caching.
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Dict, Optional
 
 from cuepoint.utils.network import NetworkState
 

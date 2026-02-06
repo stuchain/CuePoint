@@ -6,7 +6,6 @@ Tests for Tool Selection Page widget
 """
 
 import pytest
-from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
 
@@ -28,7 +27,7 @@ def test_tool_selection_page_creation(tool_selection_page):
 def test_tool_selection_page_has_title(tool_selection_page):
     """Test that the page has a title"""
     # Find the title label
-    children = tool_selection_page.findChildren(type(tool_selection_page))
+    _ = tool_selection_page.findChildren(type(tool_selection_page))
     # The title should be in the layout
     layout = tool_selection_page.layout()
     assert layout is not None
@@ -51,7 +50,7 @@ def test_tool_selection_page_signal_emission(tool_selection_page, qapp):
     tool_selection_page.tool_selected.connect(on_tool_selected)
     
     # Find the inKey button and click it
-    buttons = tool_selection_page.findChildren(type(tool_selection_page))
+    _ = tool_selection_page.findChildren(type(tool_selection_page))
     # Find button by text
     for child in tool_selection_page.findChildren(type(tool_selection_page)):
         if hasattr(child, 'text') and child.text() == "inKey":

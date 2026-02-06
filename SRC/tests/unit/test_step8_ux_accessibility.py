@@ -15,7 +15,6 @@ Tests for Design 08-ux-and-accessibility.md:
 import os
 import tempfile
 
-import pytest
 
 from cuepoint.models.result import TrackResult
 from cuepoint.services.output_writer import preview_csv_output_paths, write_csv_files
@@ -25,7 +24,6 @@ from cuepoint.ui.strings import (
     ErrorCopy,
     ExportCopy,
     SuccessCopy,
-    TooltipCopy,
 )
 from cuepoint.ui.widgets.theme_tokens import ColorTokens
 from cuepoint.utils.accessibility import (
@@ -232,7 +230,7 @@ class TestStep8DisplayScaling:
         from cuepoint.ui.main_window import MainWindow
         from cuepoint.ui.widgets.styles import Layout
 
-        app = QApplication.instance() or QApplication([])
+        _ = QApplication.instance() or QApplication([])
         try:
             window = MainWindow()
             min_w = window.minimumWidth()

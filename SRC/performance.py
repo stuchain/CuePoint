@@ -12,4 +12,3 @@ from __future__ import annotations
 
 from cuepoint.utils.performance import performance_collector
 
-

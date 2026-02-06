@@ -13,7 +13,7 @@ from pathlib import Path
 # Add SRC to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from cuepoint.update.update_checker import UpdateChecker, UpdateCheckError
+from cuepoint.update.update_checker import UpdateChecker
 from cuepoint.update.update_preferences import UpdatePreferences
 from cuepoint.update.version_utils import (
     compare_versions,

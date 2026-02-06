@@ -9,17 +9,13 @@ file output, summary statistics, and error handling.
 """
 
 import os
-import sys
-from pathlib import Path
-from unittest.mock import Mock, MagicMock, patch, call
-from typing import List, Dict, Any
+from unittest.mock import Mock, patch
 
 import pytest
 
 from cuepoint.cli.cli_processor import CLIProcessor
 from cuepoint.models.preflight import PreflightResult
 from cuepoint.models.result import TrackResult
-from cuepoint.models.beatport_candidate import BeatportCandidate
 from cuepoint.ui.gui_interface import ProgressInfo, ProcessingError, ErrorType
 from cuepoint.services.interfaces import (
     IProcessorService,

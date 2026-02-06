@@ -29,12 +29,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-_logger = logging.getLogger(__name__)
+from cuepoint.models.compat import track_from_rbtrack  # noqa: E402
+from cuepoint.models.playlist import Playlist  # noqa: E402
+from cuepoint.models.track import Track  # noqa: E402
+from cuepoint.utils.errors import error_xml_parsing  # noqa: E402
 
-from cuepoint.models.compat import track_from_rbtrack
-from cuepoint.models.playlist import Playlist
-from cuepoint.models.track import Track
-from cuepoint.utils.errors import error_xml_parsing
+_logger = logging.getLogger(__name__)
 
 # Design 4.70: Cap XML file size to mitigate DoS (entity expansion, huge files)
 MAX_XML_SIZE_BYTES = 100 * 1024 * 1024  # 100 MiB

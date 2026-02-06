@@ -17,12 +17,12 @@ import socket
 import time
 from dataclasses import dataclass
 from functools import wraps
-from typing import Any, Callable, Optional, Protocol, TypeVar
+from typing import Callable, Optional, Protocol, TypeVar
 
 try:
     import requests
     from requests.adapters import HTTPAdapter
-    from requests.exceptions import ConnectionError, HTTPError, RequestException, SSLError, Timeout
+    from requests.exceptions import ConnectionError, HTTPError, Timeout
     REQUESTS_AVAILABLE = True
 except ImportError:
     REQUESTS_AVAILABLE = False

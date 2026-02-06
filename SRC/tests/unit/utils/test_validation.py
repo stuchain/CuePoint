@@ -1,11 +1,9 @@
 """Unit tests for validation utility."""
 
 import tempfile
-import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 
 from cuepoint.utils.validation import (
     validate_export_path,

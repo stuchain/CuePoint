@@ -11,14 +11,13 @@ and generates comparison reports.
 import json
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional, Any
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from tests.performance.benchmark_processing import (
     run_all_benchmarks,
-    create_test_tracks,
 )
 from cuepoint.services.processor_service import ProcessorService
 from cuepoint.services.bootstrap import bootstrap_services
@@ -119,7 +118,7 @@ def generate_performance_report(
     if current is None:
         print("Running current benchmarks...")
         container = bootstrap_services()
-        service = container.resolve(ProcessorService)  # type: ignore
+        service = container.resolve(ProcessorService)
         current = run_all_benchmarks(service, profile=False)
 
     # Compare performance
