@@ -27,7 +27,9 @@ def check_tests_pass():
             return True
         else:
             print("[FAIL] Some tests failed")
-            print(result.stdout[-500:])  # Last 500 chars
+            output = result.stdout + result.stderr
+            # Show last 2000 chars (failures usually at end)
+            print(output[-2000:] if len(output) > 2000 else output)
             return False
     except subprocess.TimeoutExpired:
         print("[FAIL] Tests timed out")
@@ -68,6 +70,9 @@ def check_coverage():
             return True
         else:
             print("[FAIL] Coverage check failed")
+            output = result.stdout + result.stderr
+            # Show last 1500 chars (failures + coverage summary at end)
+            print(output[-1500:] if len(output) > 1500 else output)
             return False
     except FileNotFoundError:
         print("WARNING: pytest not found, skipping coverage check")
