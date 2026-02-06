@@ -7,9 +7,20 @@ Release Readiness Check Script (Step 7.4)
 Runs all automated release readiness checks before tagging a release.
 """
 
+import os
+import platform
 import subprocess
 import sys
 from pathlib import Path
+
+
+def _pytest_env() -> dict:
+    """Environment for pytest - use offscreen Qt on Linux (headless CI)."""
+    env = os.environ.copy()
+    if platform.system() == "Linux":
+        env.setdefault("QT_QPA_PLATFORM", "offscreen")
+    env.setdefault("CUEPOINT_SKIP_UPDATE_CHECK", "1")
+    return env
 
 
 def check_tests_pass():
@@ -21,6 +32,7 @@ def check_tests_pass():
             capture_output=True,
             text=True,
             timeout=600,
+            env=_pytest_env(),
         )
         if result.returncode == 0:
             print("[PASS] All tests pass")
@@ -48,6 +60,7 @@ def check_coverage():
             capture_output=True,
             text=True,
             timeout=600,
+            env=_pytest_env(),
         )
         if result.returncode == 0:
             # Check if coverage report shows >= 70%
@@ -146,12 +159,12 @@ def check_build_artifacts():
     if not dist_dir.exists():
         print("WARNING: dist/ directory not found (build may not have run)")
         return True  # Don't fail if dist doesn't exist
-    
+
     artifacts = list(dist_dir.glob("*"))
     if not artifacts:
         print("WARNING: No build artifacts found (build may not have run)")
         return True  # Don't fail if no artifacts
-    
+
     print(f"[PASS] Found {len(artifacts)} build artifacts")
     return True
 
@@ -159,7 +172,7 @@ def check_build_artifacts():
 def check_release_notes():
     """Check release notes exist."""
     print("Checking release notes...")
-    
+
     # Check for release notes in common locations
     release_notes_paths = [
         Path("CHANGELOG.md"),
@@ -167,14 +180,14 @@ def check_release_notes():
         Path("docs/RELEASE_NOTES.md"),
         Path("DOCS/RELEASE_NOTES.md"),
     ]
-    
+
     for path in release_notes_paths:
         if path.exists():
             content = path.read_text(encoding="utf-8", errors="ignore")
             if len(content.strip()) > 100:  # Minimum content length
                 print(f"[PASS] Release notes found: {path}")
                 return True
-    
+
     print("WARNING: Release notes not found or too short (non-blocking)")
     return True  # Don't fail on missing release notes
 
@@ -182,12 +195,12 @@ def check_release_notes():
 def check_version_consistency():
     """Check version numbers are consistent."""
     print("Checking version consistency...")
-    
+
     try:
         # Import version module
         sys.path.insert(0, "SRC")
         from cuepoint.version import get_version
-        
+
         version = get_version()
         if version:
             print(f"[PASS] Version: {version}")
@@ -231,7 +244,7 @@ def main():
     print("Release Readiness Check")
     print("=" * 60)
     print()
-    
+
     checks = [
         ("Tests", check_tests_pass),
         ("Coverage", check_coverage),
@@ -242,7 +255,7 @@ def main():
         ("Release Notes", check_release_notes),
         ("Version Consistency", check_version_consistency),
     ]
-    
+
     results = []
     for name, check_func in checks:
         try:
@@ -252,19 +265,19 @@ def main():
             print(f"[FAIL] {name} check failed with error: {e}")
             results.append((name, False))
         print()
-    
+
     # Summary
     print("=" * 60)
     print("Summary")
     print("=" * 60)
-    
+
     all_passed = True
     for name, result in results:
         status = "[PASS]" if result else "[FAIL]"
         print(f"{status} {name}")
         if not result:
             all_passed = False
-    
+
     print()
     if all_passed:
         print("[PASS] All automated checks passed")
