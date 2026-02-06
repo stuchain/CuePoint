@@ -150,7 +150,7 @@ jobs:
       
       - name: Run type checker
         run: |
-          python -m pytest SRC/tests/integration/test_step55_mypy_validation.py -v
+          python -m pytest SRC/tests/integration/test_step55_mypy_validation.py -v -p no:pytestqt
         continue-on-error: false
       
       - name: Check code formatting

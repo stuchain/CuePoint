@@ -10,6 +10,9 @@ https://stuchain.github.io/CuePoint/
 # Microsoft docs (page moved or removed)
 https://docs.microsoft.com/en-us/windows/win32/win_cert/code-signing
 
+# GitHub docs (can return 503 Service Unavailable transiently in CI)
+https://docs.github.com/en/code-security/dependabot
+
 # GitHub blob links (may 404 when default branch differs; use relative links instead)
 https://github.com/stuchain/CuePoint/blob/main/
 https://github.com/StuChain/CuePoint/blob/main/
