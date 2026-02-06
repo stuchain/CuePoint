@@ -42,6 +42,15 @@ _PLAYWRIGHT_USABLE = True
 _PLAYWRIGHT_ERROR_LOGGED = False
 
 
+def _attr_str(val: str | list | None) -> str:
+    """Normalize BeautifulSoup attribute value to str (handles AttributeValueList)."""
+    if val is None:
+        return ""
+    if isinstance(val, str):
+        return val
+    return val[0] if val else ""
+
+
 def _extract_track_ids_from_next_data(
     data: Any, seen: set, urls: List[str], max_results: int
 ) -> None:
@@ -327,7 +336,7 @@ def beatport_search_direct(idx: int, query: str, max_results: int = 50) -> List[
 
         # Method 1: Look for track links directly in HTML
         for link in soup.select('a[href^="/track/"]'):
-            href = link.get("href", "")
+            href = _attr_str(link.get("href"))
             if not href:
                 continue
 
@@ -382,10 +391,11 @@ def beatport_search_direct(idx: int, query: str, max_results: int = 50) -> List[
 
         # Method 4: Look for track URLs in data attributes
         for element in soup.find_all(attrs={"data-track-id": True}):
-            track_id = element.get("data-track-id")
+            track_id = _attr_str(element.get("data-track-id"))
+            href_val = _attr_str(element.get("href"))
             track_slug = (
-                element.get("data-track-slug")
-                or element.get("href", "").replace("/track/", "").split("/")[0]
+                _attr_str(element.get("data-track-slug"))
+                or href_val.replace("/track/", "").split("/")[0]
             )
             if track_id and track_slug:
                 url = f"{BASE_URL}/track/{track_slug}/{track_id}"

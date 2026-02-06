@@ -569,7 +569,8 @@ def parse_track_page(
                 lbls = soup.find_all(string=re.compile(label_regex, re.I))
                 for lab in lbls:
                     try:
-                        val = lab.find_parent().find_next_sibling()
+                        parent = lab.find_parent()
+                        val = parent.find_next_sibling() if parent else None
                         if val:
                             text = val.get_text(" ", strip=True)
                             if text:
@@ -597,7 +598,8 @@ def parse_track_page(
             lbls = soup.find_all(string=re.compile(label_regex, re.I))
             for lab in lbls:
                 try:
-                    val = lab.find_parent().find_next_sibling()
+                    parent = lab.find_parent()
+                    val = parent.find_next_sibling() if parent else None
                     if val:
                         text = val.get_text(" ", strip=True)
                         if text:

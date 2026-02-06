@@ -122,9 +122,13 @@ class AppPaths:
             Path to cache directory.
         """
         path = (
-            Path(QStandardPaths.writableLocation(QStandardPaths.CacheLocation))
+            Path(
+                QStandardPaths.writableLocation(
+                    QStandardPaths.CacheLocation  # type: ignore[attr-defined]
+                )
+            )
             / "CuePoint"
-        )  # type: ignore[attr-defined]
+        )
         return AppPaths._ensure_dir(path)
 
     @staticmethod
