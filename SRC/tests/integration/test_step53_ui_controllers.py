@@ -7,7 +7,7 @@ Integration tests for Step 5.3: UI Components using Controllers
 Tests that UI components properly use controllers and maintain separation of concerns.
 """
 
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from PySide6.QtWidgets import QApplication
@@ -142,13 +142,14 @@ class TestExportDialogWithController:
         """Test that validation uses controller"""
         controller = ExportController()
         dialog = ExportDialog(export_controller=controller)
-        
+
         # Set invalid options
         dialog.file_path_edit.setText("")  # No file path
-        
-        # Validate
-        is_valid = dialog.validate()
-        
+
+        # Patch QMessageBox.warning to avoid modal dialog blocking in headless/CI
+        with patch("cuepoint.ui.dialogs.export_dialog.QMessageBox.warning"):
+            is_valid = dialog.validate()
+
         # Should be invalid (controller validates)
         assert is_valid is False
 
