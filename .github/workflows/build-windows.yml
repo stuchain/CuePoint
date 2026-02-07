@@ -101,14 +101,29 @@ jobs:
             $version = & $nsisPath /VERSION 2>&1
             Write-Host "NSIS version: $version"
           } else {
-            Write-Host "NSIS not found, installing via Chocolatey..."
+            Write-Host "NSIS not found, trying Chocolatey..."
             choco install nsis -y
-            Write-Host "Chocolatey installation completed"
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "Chocolatey failed (often 503), trying winget..."
+              winget install -e --id NSIS.NSIS --accept-package-agreements --accept-source-agreements --silent
+              if ($LASTEXITCODE -ne 0) {
+                Write-Error "Both Chocolatey and winget failed to install NSIS"
+                exit 1
+              }
+            }
+            Write-Host "NSIS installation completed"
           }
           
-          # Refresh PATH to include NSIS
+          # Refresh PATH to include NSIS (critical after winget/Chocolatey install)
           Write-Host "Refreshing PATH environment variable..."
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+          foreach ($dir in @("${env:ProgramFiles(x86)}\NSIS", "${env:ProgramFiles}\NSIS")) {
+            if (Test-Path $dir) {
+              $env:Path = "$dir;" + $env:Path
+              Write-Host "Prepended NSIS dir to PATH: $dir"
+              break
+            }
+          }
           Write-Host "Updated PATH: $env:Path"
           
           # Verify NSIS installation
@@ -139,18 +154,6 @@ jobs:
             }
           }
       
-      - name: Set build info
-        run: |
-          Write-Host "=== DEBUG: Setting build info ==="
-          Write-Host "GITHUB_RUN_NUMBER: ${{ github.run_number }}"
-          Write-Host "GITHUB_RUN_ID: ${{ github.run_id }}"
-          Write-Host "Running: python scripts/set_build_info.py"
-          python scripts/set_build_info.py
-          Write-Host "Build info script completed"
-        env:
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-      
       - name: Sync version from git tag
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
@@ -164,6 +167,18 @@ jobs:
               exit 1
           }
           Write-Host "[OK] Version synced successfully"
+      
+      - name: Set build info
+        run: |
+          Write-Host "=== DEBUG: Setting build info ==="
+          Write-Host "GITHUB_RUN_NUMBER: ${{ github.run_number }}"
+          Write-Host "GITHUB_RUN_ID: ${{ github.run_id }}"
+          Write-Host "Running: python scripts/set_build_info.py"
+          python scripts/set_build_info.py
+          Write-Host "Build info script completed"
+        env:
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
       
       - name: Generate version info
         run: |

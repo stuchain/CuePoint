@@ -20,8 +20,8 @@ jobs:
         with:
           python-version: '3.13'
       
-      - name: Verify version sync
-        run: python scripts/sync_version.py --validate-only --tag ${{ github.ref_name }}
+      - name: Sync version from git tag
+        run: python scripts/sync_version.py --tag ${{ github.ref_name }}
       
       - name: Validate version
         run: python scripts/validate_version.py
