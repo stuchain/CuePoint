@@ -92,67 +92,10 @@ jobs:
           Write-Host "Licenses file created: $(Get-Item THIRD_PARTY_LICENSES.txt | Select-Object -ExpandProperty Length) bytes"
       
       - name: Install NSIS
-        run: |
-          Write-Host "=== DEBUG: Installing NSIS ==="
-          Write-Host "Checking if NSIS is already installed..."
-          $nsisPath = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
-          if (Test-Path $nsisPath) {
-            Write-Host "NSIS already found at: $nsisPath"
-            $version = & $nsisPath /VERSION 2>&1
-            Write-Host "NSIS version: $version"
-          } else {
-            Write-Host "NSIS not found, trying Chocolatey..."
-            choco install nsis -y
-            if ($LASTEXITCODE -ne 0) {
-              Write-Host "Chocolatey failed (often 503), trying winget..."
-              winget install -e --id NSIS.NSIS --accept-package-agreements --accept-source-agreements --silent
-              if ($LASTEXITCODE -ne 0) {
-                Write-Error "Both Chocolatey and winget failed to install NSIS"
-                exit 1
-              }
-            }
-            Write-Host "NSIS installation completed"
-          }
-          
-          # Refresh PATH to include NSIS (critical after winget/Chocolatey install)
-          Write-Host "Refreshing PATH environment variable..."
-          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-          foreach ($dir in @("${env:ProgramFiles(x86)}\NSIS", "${env:ProgramFiles}\NSIS")) {
-            if (Test-Path $dir) {
-              $env:Path = "$dir;" + $env:Path
-              Write-Host "Prepended NSIS dir to PATH: $dir"
-              break
-            }
-          }
-          Write-Host "Updated PATH: $env:Path"
-          
-          # Verify NSIS installation
-          Write-Host "Verifying NSIS installation..."
-          $nsisPath = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
-          if (Test-Path $nsisPath) {
-            Write-Host "[OK] NSIS found at: $nsisPath"
-            $version = & $nsisPath /VERSION 2>&1
-            Write-Host "NSIS version: $version"
-          } else {
-            Write-Host "[WARN] NSIS not found at expected path, checking PATH..."
-            $makensis = Get-Command makensis -ErrorAction SilentlyContinue
-            if ($makensis) {
-              Write-Host "[OK] makensis found in PATH at: $($makensis.Path)"
-            } else {
-              Write-Error "makensis not found in PATH"
-              Write-Host "Searched paths:"
-              $possiblePaths = @(
-                "${env:ProgramFiles(x86)}\NSIS\makensis.exe",
-                "${env:ProgramFiles}\NSIS\makensis.exe",
-                "C:\Program Files (x86)\NSIS\makensis.exe",
-                "C:\Program Files\NSIS\makensis.exe"
-              )
-              foreach ($path in $possiblePaths) {
-                Write-Host "  $path : $(if (Test-Path $path) { 'EXISTS' } else { 'NOT FOUND' })"
-              }
-              exit 1
-            }
-          }
+        uses: negrutiu/nsis-install@v2
+        with:
+          distro: negrutiu
+          arch: x86
       
       - name: Sync version from git tag
         if: startsWith(github.ref, 'refs/tags/v')
