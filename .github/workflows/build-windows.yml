@@ -40,8 +40,8 @@ jobs:
           
           if ("${{ github.ref }}" -like "refs/tags/v*") {
             Write-Host "Release build: using pip --require-hashes (2.8)"
-            pip install "pip<26"
-            pip install pip-tools
+            python -m pip install "pip<26"
+            python -m pip install pip-tools
             python scripts/generate_requirements_hashes.py
             pip install -r requirements-build-hashed.txt --require-hashes
           } else {

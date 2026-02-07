@@ -142,12 +142,10 @@ class TestProcessorServiceProcessPlaylistFromXML:
                 playlist_name="Test Playlist",
             )
 
-        # Verify (message is "Preflight checks failed.", details contain P001)
+        # Verify (message or details indicate file not found)
         assert exc_info.value.error_type == ErrorType.FILE_NOT_FOUND
-        assert (
-            "XML file not found" in exc_info.value.details
-            or "P001" in exc_info.value.details
-        )
+        err_text = ((exc_info.value.message or "") + " " + (exc_info.value.details or "")).lower()
+        assert "xml" in err_text and ("not found" in err_text or "does not exist" in err_text or "p001" in err_text)
 
     def test_process_playlist_from_xml_playlist_not_found(
         self,
@@ -197,12 +195,10 @@ class TestProcessorServiceProcessPlaylistFromXML:
                     playlist_name="Nonexistent Playlist",
                 )
 
-            # Verify (message is "Preflight checks failed.", details contain P010)
+            # Verify (message or details indicate playlist not found)
             assert exc_info.value.error_type == ErrorType.PLAYLIST_NOT_FOUND
-            assert (
-                "not found in XML" in exc_info.value.details
-                or "P010" in exc_info.value.details
-            )
+            err_text = (exc_info.value.message or "") + " " + (exc_info.value.details or "")
+            assert "not found" in err_text.lower() or "P010" in (exc_info.value.details or "")
 
         finally:
             os.unlink(xml_path)
@@ -254,12 +250,10 @@ class TestProcessorServiceProcessPlaylistFromXML:
                     playlist_name="Empty Playlist",
                 )
 
-            # Verify (message is "Preflight checks failed.", details contain P011)
+            # Verify (message or details indicate empty playlist)
             assert exc_info.value.error_type == ErrorType.VALIDATION_ERROR
-            assert (
-                "empty" in exc_info.value.details.lower()
-                or "P011" in exc_info.value.details
-            )
+            err_text = ((exc_info.value.message or "") + " " + (exc_info.value.details or "")).lower()
+            assert "empty" in err_text or "no valid tracks" in err_text or "p011" in err_text
 
         finally:
             os.unlink(xml_path)

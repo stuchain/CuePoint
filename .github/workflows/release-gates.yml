@@ -100,8 +100,8 @@ jobs:
 
       - name: Validate deterministic build (pip --require-hashes, Design 2.8)
         run: |
-          pip install "pip<26"
-          pip install pip-tools
+          python -m pip install "pip<26"
+          python -m pip install pip-tools
           python scripts/generate_requirements_hashes.py
           pip install -r requirements-build-hashed.txt --require-hashes
           echo "Deterministic install verified: pip --require-hashes succeeded"
