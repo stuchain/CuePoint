@@ -76,7 +76,7 @@ class CLIProcessor:
         preflight_only: bool = False,
         preflight_report_path: Optional[str] = None,
         run_summary_json_path: Optional[str] = None,
-        preflight_enabled: bool = True,
+        preflight_enabled: bool = False,
         resume: bool = False,
         incremental_previous_csv: Optional[str] = None,
         benchmark_mode: bool = False,

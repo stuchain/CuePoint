@@ -651,9 +651,9 @@ def main():
         pass
     print(f"Run ID: {run_id}")
 
-    preflight_enabled_value = config_service.get("product.preflight_enabled", True)
+    preflight_enabled_value = config_service.get("product.preflight_enabled", False)
     if preflight_enabled_value is None:
-        preflight_enabled_value = True
+        preflight_enabled_value = False
     preflight_enabled = not args.no_preflight and bool(preflight_enabled_value)
     run_summary_json_path = args.run_summary_json
     run_summary_write_value = config_service.get("run_summary.write_json", False)

@@ -58,6 +58,11 @@ datas = [
     (str(project_root / 'SRC' / 'cuepoint' / 'update' / 'update_launcher.bat'), 'update'),
     (str(project_root / 'SRC' / 'cuepoint' / 'update' / 'update_launcher.ps1'), 'update'),
 ]
+# Add app icons for taskbar/dock (used at runtime by Qt setWindowIcon)
+if (project_root / 'build' / 'icon.ico').exists():
+    datas.append((str(project_root / 'build' / 'icon.ico'), '.'))
+if (project_root / 'build' / 'icon.icns').exists():
+    datas.append((str(project_root / 'build' / 'icon.icns'), '.'))
 
 # For macOS: explicitly include icon.icns in Resources folder
 if is_macos:

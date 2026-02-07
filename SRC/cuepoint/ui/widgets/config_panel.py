@@ -9,7 +9,7 @@ This module contains the ConfigPanel class for configuring processing settings.
 
 from typing import Any, Dict, Optional
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
@@ -63,13 +63,39 @@ class ConfigPanel(QWidget):
 
         layout.addSpacing(10)
 
+        # Preflight checks (runs before search, shows dialog if issues found)
+        preflight_group = QGroupBox("Before Search")
+        preflight_layout = QVBoxLayout()
+        self.preflight_check = QCheckBox("Show preflight checks before search")
+        self.preflight_check.setToolTip(
+            "When enabled, validation runs before processing. If issues are found "
+            "(e.g. invalid playlist names, missing artists), a dialog appears with "
+            "options to fix, proceed, or cancel."
+        )
+        preflight_help_btn = self._create_help_button(
+            "Preflight Checks",
+            "Preflight validates your XML file and playlist before processing.\n\n"
+            "When enabled, a dialog appears if issues are found:\n"
+            "• Invalid characters in playlist names\n"
+            "• Missing artist information\n"
+            "• Duplicate playlist names\n"
+            "• Output directory issues\n\n"
+            "You can then fix issues, proceed anyway, or cancel.",
+        )
+        preflight_row = QHBoxLayout()
+        preflight_row.addWidget(self.preflight_check)
+        preflight_row.addWidget(preflight_help_btn)
+        preflight_row.addStretch()
+        preflight_layout.addLayout(preflight_row)
+        preflight_group.setLayout(preflight_layout)
+        layout.addWidget(preflight_group)
+
         # Note: Auto-research is ALWAYS ON (removed checkbox)
         # Note: Performance Preset and Verbose logging moved to advanced settings
 
-        # Show Advanced Settings button
+        # Show Advanced Settings button (moved to bottom by SettingsDialog)
         self.show_advanced_btn = QPushButton("Show Advanced Settings")
         self.show_advanced_btn.clicked.connect(self._toggle_advanced_settings)
-        layout.addWidget(self.show_advanced_btn)
 
         # Advanced Settings (hidden by default) - ALL SETTINGS HERE
         self.advanced_group = QGroupBox("Advanced Settings")
@@ -295,15 +321,10 @@ class ConfigPanel(QWidget):
         self.advanced_group.setVisible(False)  # Hidden by default
         layout.addWidget(self.advanced_group)
 
-        # Reset button
-        reset_layout = QHBoxLayout()
-        reset_layout.addStretch()
+        # Reset button (moved to bottom by SettingsDialog)
         self.reset_btn = QPushButton("Reset to Defaults")
         self.reset_btn.clicked.connect(self.reset_to_defaults)
         self.reset_btn.setToolTip("Reset all settings to default values from config.py")
-        reset_layout.addWidget(self.reset_btn)
-        reset_layout.addStretch()
-        layout.addLayout(reset_layout)
 
         # Connect advanced settings changes
         self.track_workers_spin.valueChanged.connect(self._on_setting_changed)
@@ -314,6 +335,7 @@ class ConfigPanel(QWidget):
         self.checkpoint_every_spin.valueChanged.connect(self._on_reliability_changed)
         self.max_retries_spin.valueChanged.connect(self._on_reliability_changed)
         self.resume_enabled_check.stateChanged.connect(self._on_reliability_changed)
+        self.preflight_check.stateChanged.connect(self._on_preflight_changed)
 
     def _create_help_button(self, title: str, help_text: str) -> QToolButton:
         """Create a help button with contextual help"""
@@ -370,14 +392,19 @@ class ConfigPanel(QWidget):
                 self.resume_enabled_check.setChecked(
                     bool(cs.get("reliability.resume_enabled", True))
                 )
+                self.preflight_check.setChecked(
+                    bool(cs.get("product.preflight_enabled", False))
+                )
             else:
                 self.checkpoint_every_spin.setValue(50)
                 self.max_retries_spin.setValue(3)
                 self.resume_enabled_check.setChecked(True)
+                self.preflight_check.setChecked(False)
         except Exception:
             self.checkpoint_every_spin.setValue(50)
             self.max_retries_spin.setValue(3)
             self.resume_enabled_check.setChecked(True)
+            self.preflight_check.setChecked(False)
 
     def get_settings(self) -> Dict[str, Any]:
         """
@@ -431,6 +458,15 @@ class ConfigPanel(QWidget):
     def get_auto_research(self) -> bool:
         """Get auto-research setting - always returns True"""
         return True
+
+    def get_persisted_snapshot(self) -> tuple:
+        """Return a comparable snapshot of persisted settings for change detection."""
+        return (
+            self.preflight_check.isChecked(),
+            self.checkpoint_every_spin.value(),
+            self.max_retries_spin.value(),
+            self.resume_enabled_check.isChecked(),
+        )
 
     def _get_selected_preset(self) -> str:
         """Get currently selected preset"""
@@ -500,6 +536,25 @@ class ConfigPanel(QWidget):
             pass
         self._on_setting_changed()
 
+    def _on_preflight_changed(self):
+        """Persist preflight setting to config service."""
+        try:
+            cs = getattr(self.config_controller, "config_service", None)
+            if cs is not None:
+                cs.set("product.preflight_enabled", self.preflight_check.isChecked())
+                try:
+                    cs.save()
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        self._on_setting_changed()
+
+    def apply_and_persist(self) -> None:
+        """Explicitly persist all current settings to config (e.g. when Apply clicked)."""
+        self._on_reliability_changed()
+        self._on_preflight_changed()
+
     def _toggle_advanced_settings(self):
         """Toggle visibility of advanced settings"""
         is_visible = self.advanced_group.isVisible()
@@ -516,6 +571,17 @@ class ConfigPanel(QWidget):
             self.max_results_spin.setEnabled(enabled)
         else:
             self.show_advanced_btn.setText("Show Advanced Settings")
+
+        # Force layout update so content doesn't overlap when expanding.
+        # Defer to next event loop so visibility change takes effect first.
+        def _update_layout():
+            self.updateGeometry()
+            w = self.parent()
+            while w is not None:
+                w.updateGeometry()
+                w = w.parent()
+
+        QTimer.singleShot(0, _update_layout)
 
     def reset_to_defaults(self):
         """Reset all settings to defaults from config.py"""
@@ -534,5 +600,9 @@ class ConfigPanel(QWidget):
         self.max_retries_spin.setValue(3)
         self.resume_enabled_check.setChecked(True)
         self._on_reliability_changed()
+
+        # Reset preflight to default (disabled)
+        self.preflight_check.setChecked(False)
+        self._on_preflight_changed()
 
         self._on_setting_changed()

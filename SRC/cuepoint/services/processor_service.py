@@ -482,9 +482,9 @@ class ProcessorService(IProcessorService):
         warnings: List[PreflightIssue] = []
         checks: Dict[str, Any] = {"preflight_enabled": True}
 
-        preflight_enabled = self.config_service.get("product.preflight_enabled", True)
+        preflight_enabled = self.config_service.get("product.preflight_enabled", False)
         if preflight_enabled is None:
-            preflight_enabled = True
+            preflight_enabled = False
         warnings_only = self.config_service.get(
             "product.preflight_warnings_only", False
         )

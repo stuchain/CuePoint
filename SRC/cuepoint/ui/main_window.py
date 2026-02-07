@@ -126,10 +126,6 @@ class MainWindow(QMainWindow):
         # Create controllers for UI components
         self.results_controller = ResultsController()
         self.export_controller = ExportController()
-        self.config_controller = ConfigController()
-        # Create shortcut manager
-        self.shortcut_manager = ShortcutManager(self)
-        self.shortcut_manager.shortcut_conflict.connect(self.on_shortcut_conflict)
         self._config_service = None
         try:
             from cuepoint.services.interfaces import IConfigService
@@ -139,6 +135,18 @@ class MainWindow(QMainWindow):
             self._config_service = container.resolve(IConfigService)
         except Exception:
             self._config_service = None
+        # Fallback: ensure config persists even if DI fails (e.g. bootstrap not run)
+        if self._config_service is None:
+            try:
+                from cuepoint.services.config_service import ConfigService
+
+                self._config_service = ConfigService()
+            except Exception:
+                pass
+        self.config_controller = ConfigController(config_service=self._config_service)
+        # Create shortcut manager
+        self.shortcut_manager = ShortcutManager(self)
+        self.shortcut_manager.shortcut_conflict.connect(self.on_shortcut_conflict)
         # Tool selection page state
         self.tool_selection_page = None
         self.current_page = "tool_selection"  # or "main"
@@ -646,7 +654,7 @@ class MainWindow(QMainWindow):
         prog_row2.addWidget(self.pause_button)
         self.cancel_button = QPushButton("Cancel")
         self.cancel_button.setObjectName("dangerButton")
-        self.cancel_button.setFixedWidth(110)
+        self.cancel_button.setFixedWidth(90)
         self.cancel_button.setFocusPolicy(Qt.StrongFocus)
         self.cancel_button.setAccessibleName("Cancel processing button")
         self.cancel_button.setAccessibleDescription(
@@ -927,10 +935,12 @@ class MainWindow(QMainWindow):
         if self.tool_selection_page:
             self.setCentralWidget(self.tool_selection_page)
             self.current_page = "tool_selection"
+            self.menuBar().hide()
 
     def show_main_interface(self) -> None:
         """Show the main interface (existing tabs)"""
         self.setCentralWidget(self.tabs)
+        self.menuBar().show()
         self.tabs.show()  # Ensure tabs are visible
         self.current_page = "main"
 
@@ -1913,7 +1923,7 @@ class MainWindow(QMainWindow):
             self.setWindowIcon(app.windowIcon())
             return
 
-        # Fallback: load icon directly
+        # Fallback: load icon directly (use platform-specific when frozen)
         if getattr(sys, "frozen", False):
             if hasattr(sys, "_MEIPASS"):
                 base_path = Path(sys._MEIPASS)
@@ -1921,7 +1931,20 @@ class MainWindow(QMainWindow):
                 import os
 
                 base_path = Path(os.path.dirname(sys.executable))
-            icon_path = base_path / "assets" / "icons" / "logo.png"
+            if sys.platform == "win32":
+                ico = base_path / "icon.ico"
+                icon_path = (
+                    ico if ico.exists() else base_path / "assets" / "icons" / "logo.png"
+                )
+            elif sys.platform == "darwin":
+                icns = base_path / "icon.icns"
+                icon_path = (
+                    icns
+                    if icns.exists()
+                    else base_path / "assets" / "icons" / "logo.png"
+                )
+            else:
+                icon_path = base_path / "assets" / "icons" / "logo.png"
         else:
             # Running as script - use SRC/cuepoint/ui/assets/icons
             base_path = Path(__file__).resolve().parent
@@ -3428,15 +3451,8 @@ class MainWindow(QMainWindow):
 
                     def refresh_with_file():
                         try:
-                            # Refresh the history view to show the new file
+                            # Refresh the history view to show the new file (stay on current tab)
                             self.history_view.refresh_recent_files()
-                            # Also switch to Past Searches tab to show the new file
-                            if hasattr(self, "tabs"):
-                                # Find Past Searches tab index
-                                for i in range(self.tabs.count()):
-                                    if self.tabs.tabText(i) == "Past Searches":
-                                        self.tabs.setCurrentIndex(i)
-                                        break
                         except Exception as e:
                             # Log but don't fail - refresh is best-effort
                             import logging
@@ -3641,10 +3657,10 @@ class MainWindow(QMainWindow):
             processor_service: IProcessorService = container.resolve(IProcessorService)
             if self._config_service:
                 preflight_enabled = self._config_service.get(
-                    "product.preflight_enabled", True
+                    "product.preflight_enabled", False
                 )
                 if preflight_enabled is None:
-                    preflight_enabled = True
+                    preflight_enabled = False
                 preflight_enabled = bool(preflight_enabled)
                 if not preflight_enabled:
                     return True

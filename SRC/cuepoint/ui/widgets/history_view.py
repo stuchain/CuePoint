@@ -39,6 +39,7 @@ from PySide6.QtWidgets import (
 )
 
 from cuepoint.core.matcher import _camelot_key
+from cuepoint.services.output_writer import read_csv_skip_comments
 from cuepoint.ui.controllers.export_controller import ExportController
 from cuepoint.ui.dialogs.export_dialog import ExportDialog
 from cuepoint.ui.widgets.candidate_dialog import CandidateDialog
@@ -406,10 +407,8 @@ class HistoryView(QWidget):
                 )
                 return
 
-            # Read CSV file
-            with open(file_path, "r", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                rows = list(reader)
+            # Read CSV file (skip # comment lines from Design 9 schema headers)
+            _, rows = read_csv_skip_comments(file_path)
 
             if not rows:
                 QMessageBox.warning(

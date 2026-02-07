@@ -109,3 +109,11 @@ class PrivacySettingsWidget(QWidget):
     def _on_changed(self) -> None:
         self._privacy.set_clear_cache_on_exit(self.chk_clear_cache.isChecked())
         self._privacy.set_clear_logs_on_exit(self.chk_clear_logs.isChecked())
+
+    def get_snapshot(self) -> tuple:
+        """Return a comparable snapshot for change detection."""
+        return (
+            self.chk_telemetry.isChecked(),
+            self.chk_clear_cache.isChecked(),
+            self.chk_clear_logs.isChecked(),
+        )

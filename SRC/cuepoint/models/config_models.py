@@ -91,7 +91,7 @@ class ProductConfig:
     onboarding_seen: bool = False
     onboarding_dismissed: bool = False
     onboarding_version: Optional[str] = None
-    preflight_enabled: bool = True
+    preflight_enabled: bool = False
     preflight_warnings_only: bool = False
     preflight_network_check: bool = True  # Design 5.2: Block if offline
     last_xml_path: str = ""

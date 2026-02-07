@@ -57,8 +57,6 @@ See [Coding Standards](https://github.com/stuchain/CuePoint/blob/main/DOCS/DEVEL
 2. Create a branch (`git checkout -b feature/your-feature`)
 3. Implement changes
 4. Run tests: `python scripts/run_tests.py --all`
-5. Open a PR with the checklist above
-
-## Documentation- **Start here**: [DOCS/README.md](https://github.com/stuchain/CuePoint/blob/main/DOCS/README.md)
+5. Open a PR with the checklist above## Documentation- **Start here**: [DOCS/README.md](https://github.com/stuchain/CuePoint/blob/main/DOCS/README.md)
 - **Architecture**: [DOCS/DEVELOPMENT/architecture.md](https://github.com/stuchain/CuePoint/blob/main/DOCS/DEVELOPMENT/architecture.md)
 - **Match rules**: [DOCS/DEVELOPMENT/match-rules-and-scoring.md](https://github.com/stuchain/CuePoint/blob/main/DOCS/DEVELOPMENT/match-rules-and-scoring.md)

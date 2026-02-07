@@ -171,21 +171,24 @@ def _set_application_icon(app) -> None:
 
     # Determine icon path based on platform and environment
     if getattr(sys, "frozen", False):
-        # Running as packaged app - PyInstaller embeds the icon in the executable
-        # The icon is set via pyinstaller.spec, so we don't need to set it here
-        # But we can try to load from assets as fallback
+        # Running as packaged app - use platform-specific icons for taskbar/dock
         if hasattr(sys, "_MEIPASS"):
             base_path = Path(sys._MEIPASS)
         else:
             import os
 
             base_path = Path(os.path.dirname(sys.executable))
-        # Try platform-specific icons first
+        # Prefer .ico (Windows) and .icns (macOS) for taskbar/dock - bundled by PyInstaller
         if sys.platform == "win32":
-            # In packaged app, icon is embedded, but try assets as fallback
-            icon_path = base_path / "assets" / "icons" / "logo.png"
+            ico = base_path / "icon.ico"
+            icon_path = (
+                ico if ico.exists() else base_path / "assets" / "icons" / "logo.png"
+            )
         elif sys.platform == "darwin":
-            icon_path = base_path / "assets" / "icons" / "logo.png"
+            icns = base_path / "icon.icns"
+            icon_path = (
+                icns if icns.exists() else base_path / "assets" / "icons" / "logo.png"
+            )
         else:
             icon_path = base_path / "assets" / "icons" / "logo.png"
     else:
