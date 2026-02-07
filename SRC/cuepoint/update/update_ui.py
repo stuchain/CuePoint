@@ -282,12 +282,9 @@ class UpdateCheckDialog(QDialog):
         logger.info(f"  - Parent: {parent} (type: {type(parent) if parent else None})")
 
         try:
-            # On macOS, avoid using parent to prevent crashes (Qt/macOS parent-child issues)
-            if sys.platform == "darwin":
-                logger.debug("  - macOS: Using parent=None to avoid dialog crash")
-                parent = None
+            # On macOS, keep parent for native sheet (WindowModal); parentless causes app to close
             # Validate parent before passing to super()
-            elif parent is not None:
+            if parent is not None:
                 logger.debug("  - Validating parent widget...")
                 try:
                     # Quick validation that parent is a valid QWidget
@@ -349,10 +346,12 @@ class UpdateCheckDialog(QDialog):
             self.setWindowTitle("Check for Updates")
             self.setMinimumWidth(600)
             self.setMinimumHeight(400)
-            self.setModal(False)  # Non-modal so it doesn't block
-            # On macOS, use Window flag for proper top-level window (avoids parent-related crashes)
-            if sys.platform == "darwin":
-                self.setWindowFlags(self.windowFlags() | Qt.WindowType.Window)
+            # On macOS with parent: use WindowModal (native sheet) to avoid app closing
+            # On other platforms or no parent: non-modal so it doesn't block
+            if sys.platform == "darwin" and self.parent():
+                self.setWindowModality(Qt.WindowModality.WindowModal)
+            else:
+                self.setModal(False)
 
             layout = QVBoxLayout(self)
             layout.setSpacing(15)
@@ -987,11 +986,11 @@ def show_update_check_dialog(
     logger.info(f"  - Parent: {parent} (type: {type(parent) if parent else None})")
 
     try:
-        # On macOS, never use parent - known to cause crashes when update dialog pops up
+        # On macOS, use parent with WindowModal (native sheet) - parentless floating window
+        # causes app to close; sheet is the native pattern and avoids that
         if sys.platform == "darwin":
-            logger.info("Step 1: macOS - Using parent=None to prevent dialog crash")
-            parent = None
-        elif parent is not None:
+            logger.info("Step 1: macOS - Will use parent with WindowModal (native sheet)")
+        if parent is not None:
             logger.info("Step 1: Validating parent widget...")
             try:
                 # Try to access a property to verify parent is valid
@@ -1005,7 +1004,7 @@ def show_update_check_dialog(
                 )
                 parent = None
         else:
-            logger.info("  - No parent provided, creating dialog without parent")
+            logger.info("  - No parent provided" + (", sheet disabled on macOS" if sys.platform == "darwin" else ""))
 
         # Create dialog with error handling
         logger.info("Step 2: Creating UpdateCheckDialog instance...")
@@ -1033,12 +1032,15 @@ def show_update_check_dialog(
         # Show dialog with error handling
         logger.info("Step 3: Showing dialog...")
         try:
-            # On macOS, flush events before show to ensure windowing system is ready
-            if sys.platform == "darwin":
+            # On macOS with parent: use open() for native sheet (avoids app closing)
+            # Otherwise: show() for non-modal
+            if sys.platform == "darwin" and parent is not None:
                 app = QApplication.instance()
                 if app:
                     app.processEvents()
-            dialog.show()  # Show non-modal
+                dialog.open()  # Sheet on macOS
+            else:
+                dialog.show()  # Non-modal
             if sys.platform == "darwin":
                 app = QApplication.instance()
                 if app:

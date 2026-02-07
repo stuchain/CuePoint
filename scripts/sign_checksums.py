@@ -33,10 +33,9 @@ def sign_file(file_path: Path, key_id: str | None, passphrase: str | None) -> Pa
 
     env = os.environ.copy()
     if passphrase:
-        env["GPG_TTY"] = "1"
-        # Passphrase via pinentry or GPG_PASSPHRASE; gpg often reads PINENTRY or we use --passphrase-fd
-        # For non-interactive: --passphrase-fd 0 with passphrase on stdin
-        cmd = ["gpg", "--detach-sign", "--armor", "--batch", "--yes"]
+        # CI/headless: use loopback so gpg reads passphrase from stdin, not pinentry
+        # (pinentry needs TTY/display and fails with "No such file or directory")
+        cmd = ["gpg", "--detach-sign", "--armor", "--batch", "--yes", "--pinentry-mode", "loopback"]
         if key_id:
             cmd.extend(["--local-user", key_id])
         cmd.extend(["--passphrase-fd", "0", str(file_path)])

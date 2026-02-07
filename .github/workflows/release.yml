@@ -169,6 +169,10 @@ jobs:
             echo "No GPG_PRIVATE_KEY secret; skipping checksum signing."
             exit 0
           fi
+          echo "Configuring GPG for headless CI..."
+          mkdir -p ~/.gnupg
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+          chmod 600 ~/.gnupg/gpg-agent.conf
           echo "Importing GPG key..."
           echo "$GPG_PRIVATE_KEY" | gpg --batch --import
           echo "Signing SHA256SUMS..."
