@@ -274,6 +274,15 @@ class UpdateManager:
         Returns:
             True if check was initiated, False if skipped
         """
+        # Validate platform before starting check
+        if not self.platform or self.platform == "unknown":
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(
+                f"Cannot check for updates: invalid platform '{self.platform}'"
+            )
+            return False
+
         with self._lock:
             if self._checking:
                 return False
@@ -287,10 +296,17 @@ class UpdateManager:
                 return False
 
         # Start check in background thread
-        thread = threading.Thread(target=self._do_check, daemon=True)
-        thread.start()
-
-        return True
+        try:
+            thread = threading.Thread(target=self._do_check, daemon=True)
+            thread.start()
+            return True
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to start update check thread: {e}", exc_info=True)
+            with self._lock:
+                self._checking = False
+            return False
 
     def _should_check(self) -> bool:
         """Check if update check should be performed."""
@@ -312,7 +328,28 @@ class UpdateManager:
 
     def _do_check(self) -> None:
         """Perform update check in background thread."""
+        import logging
+
+        logger = logging.getLogger(__name__)
+        
         try:
+            # Validate platform before proceeding
+            if not self.platform or self.platform == "unknown":
+                logger.error(f"Invalid platform for update check: {self.platform}")
+                with self._lock:
+                    self._checking = False
+                # Try to notify on main thread if possible
+                try:
+                    from PySide6.QtWidgets import QApplication
+                    app = QApplication.instance()
+                    if app and hasattr(app, "_callback_receiver") and app._callback_receiver:
+                        app._callback_receiver.check_complete_signal.emit(
+                            False, "Invalid platform for update check"
+                        )
+                except Exception:
+                    pass
+                return
+
             # Update channel if changed
             channel = self.preferences.get_channel()
             if self.checker.channel != channel:
@@ -321,9 +358,6 @@ class UpdateManager:
                 )
 
             # Check for updates
-            import logging
-
-            logger = logging.getLogger(__name__)
             logger.info(
                 f"Starting update check: current={self.current_version}, platform={self.platform}, channel={self.checker.channel}"
             )
@@ -387,6 +421,22 @@ class UpdateManager:
                         except Exception as e:
                             logger.error(f"Error calling check complete callback: {e}")
                 else:
+                    # Verify Qt is fully initialized before proceeding
+                    # On macOS, Qt may not be ready immediately after app creation
+                    try:
+                        # Try to access Qt's event loop to verify it's ready
+                        from PySide6.QtCore import QCoreApplication
+                        if not QCoreApplication.instance():
+                            logger.warning(
+                                "QCoreApplication instance not available, skipping signal emission"
+                            )
+                            return
+                    except Exception as qt_check_error:
+                        logger.warning(
+                            f"Error checking Qt initialization: {qt_check_error}, skipping signal emission"
+                        )
+                        return
+
                     # Use receiver that was created on main thread (in set_on_update_available/set_on_check_complete)
                     if not hasattr(app, "_callback_receiver"):
                         # Receiver not created yet - this shouldn't happen if callbacks were set properly
@@ -413,38 +463,100 @@ class UpdateManager:
 
                     receiver = app._callback_receiver
 
-                    # Validate receiver is still valid
+                    # Validate receiver is still valid and is a QObject
                     if receiver is None:
                         logger.warning(
                             "Callback receiver is None, skipping signal emission"
                         )
                         return
+                    
+                    # On macOS, verify the receiver is still a valid QObject
+                    try:
+                        from PySide6.QtCore import QObject
+                        if not isinstance(receiver, QObject):
+                            logger.warning(
+                                f"Callback receiver is not a QObject (type: {type(receiver)}), skipping signal emission"
+                            )
+                            return
+                    except Exception as type_check_error:
+                        logger.warning(
+                            f"Error checking receiver type: {type_check_error}, skipping signal emission"
+                        )
+                        return
 
                     try:
+                        # Validate receiver is still a valid QObject before emitting
+                        if not hasattr(receiver, 'update_available_signal') or not hasattr(receiver, 'check_complete_signal'):
+                            logger.warning(
+                                "Callback receiver missing required signals, skipping emission"
+                            )
+                            return
+
                         # Capture update_info in closure to avoid reference issues
-                        update_info_copy = update_info.copy() if update_info else None
+                        # Use defensive copy with type checking
+                        update_info_copy = None
+                        if update_info:
+                            try:
+                                if isinstance(update_info, dict):
+                                    update_info_copy = update_info.copy()
+                                else:
+                                    logger.warning(
+                                        f"update_info is not a dict (type: {type(update_info)}), skipping"
+                                    )
+                            except (AttributeError, TypeError) as copy_error:
+                                logger.error(
+                                    f"Error copying update_info: {copy_error}",
+                                    exc_info=True,
+                                )
+                                # Continue without copy - use original if safe
+                                if isinstance(update_info, dict):
+                                    update_info_copy = update_info
 
                         if update_info_copy and self._on_update_available:
                             logger.info(
                                 f"Scheduling update available callback on main thread (version: {update_info_copy.get('short_version')})"
                             )
                             # Emit signal from background thread - Qt will automatically marshal to main thread
-                            receiver.update_available_signal.emit(update_info_copy)
+                            # Wrap in try-except to catch any Qt threading violations
+                            try:
+                                receiver.update_available_signal.emit(update_info_copy)
+                            except RuntimeError as qt_error:
+                                # Qt threading violation or signal connection issue
+                                logger.error(
+                                    f"Qt signal emission failed (threading issue?): {qt_error}",
+                                    exc_info=True,
+                                )
+                                # Don't try fallback - Qt is in a bad state
+                                return
 
                         if self._on_check_complete:
                             has_update = update_info is not None
                             # Emit signal from background thread - Qt will automatically marshal to main thread
-                            receiver.check_complete_signal.emit(has_update, None)
+                            try:
+                                receiver.check_complete_signal.emit(has_update, None)
+                            except RuntimeError as qt_error:
+                                # Qt threading violation or signal connection issue
+                                logger.error(
+                                    f"Qt signal emission failed (threading issue?): {qt_error}",
+                                    exc_info=True,
+                                )
+                                # Don't try fallback - Qt is in a bad state
+                                return
                     except Exception as e:
                         logger.error(
                             f"Error emitting update signals: {e}", exc_info=True
                         )
                         # Fallback to direct call if signal emission fails
+                        # But only if we're sure Qt is in a good state
                         try:
-                            if update_info and self._on_update_available:
-                                self._on_update_available(update_info)
-                            if self._on_check_complete:
-                                self._on_check_complete(update_info is not None, None)
+                            # Verify Qt is still accessible before fallback
+                            from PySide6.QtWidgets import QApplication
+                            app_check = QApplication.instance()
+                            if app_check is not None:
+                                if update_info and self._on_update_available:
+                                    self._on_update_available(update_info)
+                                if self._on_check_complete:
+                                    self._on_check_complete(update_info is not None, None)
                         except Exception as fallback_error:
                             logger.error(
                                 f"Error in fallback direct callback: {fallback_error}",
@@ -466,16 +578,16 @@ class UpdateManager:
                 logger.error(traceback.format_exc())
 
         except UpdateCheckError as e:
-            import logging
-
-            logger = logging.getLogger(__name__)
             logger.error(f"Update check failed: {e}")
 
             with self._lock:
                 self._checking = False
 
-            self.preferences.set_last_check_timestamp()
-            self.preferences.set_last_check_result("error")
+            try:
+                self.preferences.set_last_check_timestamp()
+                self.preferences.set_last_check_result("error")
+            except Exception as pref_error:
+                logger.error(f"Error updating preferences: {pref_error}")
 
             error_msg = str(e)
             try:
@@ -516,13 +628,16 @@ class UpdateManager:
                     self._on_check_complete(False, error_msg)
 
         except Exception as e:
-            import logging
-
-            logger = logging.getLogger(__name__)
             logger.error(f"Unexpected error during update check: {e}", exc_info=True)
 
             with self._lock:
                 self._checking = False
+
+            try:
+                self.preferences.set_last_check_timestamp()
+                self.preferences.set_last_check_result("error")
+            except Exception as pref_error:
+                logger.error(f"Error updating preferences after exception: {pref_error}")
 
             error_msg = f"Unexpected error during update check: {e}"
 

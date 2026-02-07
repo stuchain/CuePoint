@@ -158,17 +158,29 @@ class UpdateChecker:
                 },
             )
 
-            # Create SSL context
-            ssl_context = ssl.create_default_context()
+            # Create SSL context with error handling
+            try:
+                ssl_context = ssl.create_default_context()
+            except Exception as ssl_error:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to create SSL context: {ssl_error}", exc_info=True)
+                raise UpdateCheckError(f"SSL context creation failed: {ssl_error}")
 
             # Fetch with timeout
-            with urllib.request.urlopen(
-                request, timeout=timeout, context=ssl_context
-            ) as response:
-                if response.status != 200:
-                    raise UpdateCheckError(f"HTTP {response.status}: {response.reason}")
+            try:
+                with urllib.request.urlopen(
+                    request, timeout=timeout, context=ssl_context
+                ) as response:
+                    if response.status != 200:
+                        raise UpdateCheckError(f"HTTP {response.status}: {response.reason}")
 
-                return response.read()
+                    return response.read()
+            except TimeoutError as timeout_error:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Request timeout fetching appcast from {url}: {timeout_error}")
+                raise UpdateCheckError(f"Request timeout: {timeout_error}")
 
         except urllib.error.URLError as e:
             import logging
