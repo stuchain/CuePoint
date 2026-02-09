@@ -129,6 +129,31 @@ class UpdateChecker:
             with self._lock:
                 self._checking = False
 
+    def check_update_from_appcast(self, appcast_data: bytes) -> Optional[Dict]:
+        """
+        Parse appcast data and find latest update (no network fetch).
+
+        Used when fetch is done via QNetworkAccessManager on main thread
+        to avoid urllib/SSL crashes in signed macOS apps.
+
+        Args:
+            appcast_data: Raw appcast XML bytes
+
+        Returns:
+            Latest update dict or None
+        """
+        with self._lock:
+            if self._checking:
+                return None
+            self._checking = True
+
+        try:
+            items = self._parse_appcast(appcast_data)
+            return self._find_latest_update(items)
+        finally:
+            with self._lock:
+                self._checking = False
+
     def _fetch_appcast(self, url: str, timeout: int) -> bytes:
         """
         Fetch appcast XML from URL.

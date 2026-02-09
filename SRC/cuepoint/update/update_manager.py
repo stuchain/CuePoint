@@ -8,6 +8,7 @@ Coordinates update checking, notification, and installation.
 """
 
 import platform
+import sys
 import threading
 from datetime import datetime, timedelta
 from typing import Callable, Dict, Optional
@@ -309,18 +310,184 @@ class UpdateManager:
                     self._checking = False
                 return False
 
-        # Start check in background thread
+        # On frozen macOS (signed/notarized app), urllib/SSL can crash during
+        # network fetch. Use QNetworkAccessManager on main thread instead.
+        use_qt_network = (
+            getattr(sys, "frozen", False)
+            and sys.platform == "darwin"
+        )
+
         try:
-            thread = threading.Thread(target=self._do_check, daemon=True)
-            thread.start()
+            if use_qt_network:
+                try:
+                    from PySide6.QtCore import QTimer
+                    from PySide6.QtWidgets import QApplication
+                    if QApplication.instance():
+                        QTimer.singleShot(0, self._do_check_qt_main_thread)
+                        return True
+                except ImportError:
+                    pass
+                # Fallback to thread if Qt path fails
+                use_qt_network = False
+
+            if not use_qt_network:
+                thread = threading.Thread(target=self._do_check, daemon=True)
+                thread.start()
             return True
         except Exception as e:
             import logging
             logger = logging.getLogger(__name__)
-            logger.error(f"Failed to start update check thread: {e}", exc_info=True)
+            logger.error(f"Failed to start update check: {e}", exc_info=True)
             with self._lock:
                 self._checking = False
             return False
+
+    def _do_check_qt_main_thread(self) -> None:
+        """Perform update check on main thread using QNetworkAccessManager.
+
+        Avoids urllib/SSL which can crash in signed macOS apps (hardened runtime).
+        Must run on main thread - called via QTimer.singleShot(0, ...).
+        """
+        import logging
+
+        logger = logging.getLogger(__name__)
+
+        try:
+            from PySide6.QtCore import QUrl
+            from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest
+            from PySide6.QtWidgets import QApplication
+        except ImportError:
+            logger.error("Qt network modules not available, falling back to thread")
+            with self._lock:
+                self._checking = False
+            try:
+                thread = threading.Thread(target=self._do_check, daemon=True)
+                thread.start()
+            except Exception:
+                pass
+            return
+
+        feed_url = self.checker.get_feed_url(self.platform)
+
+        from cuepoint.update.security import FeedIntegrityVerifier
+        is_valid, error = FeedIntegrityVerifier.verify_feed_https(feed_url)
+        if not is_valid:
+            logger.error(f"Feed URL failed integrity check: {error}")
+            with self._lock:
+                self._checking = False
+                self._last_check_error = error or "Feed URL failed integrity checks"
+            self.preferences.set_last_check_timestamp()
+            self.preferences.set_last_check_result("error")
+            self._emit_check_complete()
+            return
+
+        logger.info(
+            f"Starting update check (Qt network): {self.current_version}, "
+            f"platform={self.platform}, url={feed_url}"
+        )
+
+        # Create request
+        request = QNetworkRequest(QUrl(feed_url))
+        request.setRawHeader(
+            b"User-Agent",
+            f"CuePoint/{self.current_version}".encode("utf-8"),
+        )
+        request.setRawHeader(
+            b"Accept",
+            b"application/rss+xml, application/xml, text/xml",
+        )
+
+        app = QApplication.instance()
+        if not app:
+            logger.error("QApplication not available")
+            with self._lock:
+                self._checking = False
+                self._last_check_error = "Qt context not available"
+            self._emit_check_complete()
+            return
+
+        network = QNetworkAccessManager(app)
+        reply = network.get(request)
+
+        def on_finished():
+            try:
+                if reply.error():
+                    err_msg = reply.errorString() or "Network error"
+                    logger.error(f"Update check failed: {err_msg}")
+                    with self._lock:
+                        self._update_available = None
+                        self._last_check_error = err_msg
+                        self._checking = False
+                    self.preferences.set_last_check_timestamp()
+                    self.preferences.set_last_check_result("error")
+                    self._emit_check_complete()
+                    return
+
+                data = reply.readAll()
+                appcast_data = bytes(data.data()) if data else b""
+
+                if not appcast_data:
+                    raise UpdateCheckError("Empty appcast response")
+
+                update_info = self.checker.check_update_from_appcast(appcast_data)
+
+                if update_info:
+                    version = update_info.get("version") or update_info.get("short_version")
+                    if version and self.preferences.is_version_ignored(version):
+                        update_info = None
+                else:
+                    logger.info(
+                        f"No update available (current: {self.current_version} is latest)"
+                    )
+
+                with self._lock:
+                    self._update_available = update_info
+                    self._last_check_error = None
+                    self._checking = False
+
+                self.preferences.set_last_check_timestamp()
+                if update_info:
+                    self.preferences.set_last_check_result("update_available")
+                else:
+                    self.preferences.set_last_check_result("no_update")
+
+                self._emit_update_available_if_needed()
+                self._emit_check_complete()
+            except Exception as e:
+                logger.error(f"Update check failed: {e}", exc_info=True)
+                with self._lock:
+                    self._update_available = None
+                    self._last_check_error = str(e)
+                    self._checking = False
+                try:
+                    self.preferences.set_last_check_timestamp()
+                    self.preferences.set_last_check_result("error")
+                except Exception:
+                    pass
+                self._emit_check_complete()
+
+        reply.finished.connect(on_finished)
+
+    def _emit_update_available_if_needed(self) -> None:
+        """Emit update_available signal if we have update and callback."""
+        try:
+            from PySide6.QtWidgets import QApplication
+            app = QApplication.instance()
+            if app and hasattr(app, "_callback_receiver") and app._callback_receiver:
+                if self._update_available and self._on_update_available:
+                    app._callback_receiver.update_available_signal.emit()
+        except Exception:
+            pass
+
+    def _emit_check_complete(self) -> None:
+        """Emit check_complete signal."""
+        try:
+            from PySide6.QtWidgets import QApplication
+            app = QApplication.instance()
+            if app and hasattr(app, "_callback_receiver") and app._callback_receiver:
+                app._callback_receiver.check_complete_signal.emit()
+        except Exception:
+            pass
 
     def _should_check(self) -> bool:
         """Check if update check should be performed."""

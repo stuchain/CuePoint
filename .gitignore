@@ -316,6 +316,7 @@ test_collection.xml
 # Build-specific (keep templates)
 !build/*.template
 !build/*.spec
+!build/entitlements.plist
 build/Info.plist
 build/version_info.txt
 

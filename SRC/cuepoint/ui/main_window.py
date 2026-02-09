@@ -2145,13 +2145,13 @@ class MainWindow(QMainWindow):
 
             # Schedule startup check (after window is visible and fully initialized)
             # Use a longer delay for packaged apps to ensure everything is ready
-            # Packaged apps may need more time for Qt initialization
             logger.info("Step 6: Scheduling startup update check...")
             try:
-                # Longer delay for frozen apps to ensure Qt is fully ready
+                # Longer delay for frozen apps: Qt init + macOS security settle
+                # (user may have just allowed app in Privacy & Security)
                 delay_ms = (
-                    10000 if is_frozen else 5000
-                )  # 10 seconds for frozen, 5 for dev
+                    20000 if is_frozen else 5000
+                )  # 20 seconds for frozen, 5 for dev
                 QTimer.singleShot(delay_ms, self._check_for_updates_on_startup)
                 logger.info(
                     f"✓ Startup update check scheduled (delay: {delay_ms}ms, frozen={is_frozen})"
