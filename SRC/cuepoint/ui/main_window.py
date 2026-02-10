@@ -3105,14 +3105,16 @@ class MainWindow(QMainWindow):
     def _show_manual_install_dialog(
         self, title: str, message: str, installer_path: str
     ) -> None:
-        """Show a dialog for manual install with an 'Open folder' button."""
+        """Show a dialog for manual install with Cancel and Update manually buttons."""
         msg = QMessageBox(self)
         msg.setWindowTitle(title)
         msg.setText(message)
-        open_btn = msg.addButton("Open folder", QMessageBox.ButtonRole.ActionRole)
-        msg.addButton(QMessageBox.StandardButton.Ok)
+        msg.addButton(QMessageBox.StandardButton.Cancel)
+        update_btn = msg.addButton(
+            "Update manually", QMessageBox.ButtonRole.ActionRole
+        )
         msg.exec()
-        if msg.clickedButton() == open_btn:
+        if msg.clickedButton() == update_btn:
             self._open_installer_folder(installer_path)
 
     def _install_update(self, installer_path: str) -> None:
@@ -3128,7 +3130,7 @@ class MainWindow(QMainWindow):
                 self._show_manual_install_dialog(
                     "Installation Not Supported",
                     "Automatic installation is not supported on this platform.\n\n"
-                    "Please install the update manually:\n" + installer_path,
+                    "Please install the update manually.",
                     installer_path,
                 )
                 return
@@ -3170,7 +3172,7 @@ class MainWindow(QMainWindow):
                     self._show_manual_install_dialog(
                         "Installation Failed",
                         f"Failed to install update:\n\n{error}\n\n"
-                        "Please install manually:\n" + installer_path,
+                        "Please install manually.",
                         installer_path,
                     )
                 # If successful, installer.install() will have closed the app
@@ -3184,7 +3186,7 @@ class MainWindow(QMainWindow):
             self._show_manual_install_dialog(
                 "Installation Error",
                 f"Failed to install update:\n\n{str(e)}\n\n"
-                "Please install manually:\n" + installer_path,
+                "Please install manually.",
                 installer_path,
             )
 

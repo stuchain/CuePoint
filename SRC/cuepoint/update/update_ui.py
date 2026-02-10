@@ -130,7 +130,7 @@ class UpdateAvailableDialog(QDialog):
         button_box = QDialogButtonBox(Qt.Horizontal, self)
 
         # Install button (primary)
-        install_button = QPushButton("Download & Install")
+        install_button = QPushButton("Download")
         install_button.setDefault(True)
         button_box.addButton(install_button, QDialogButtonBox.AcceptRole)
 
@@ -445,7 +445,7 @@ class UpdateCheckDialog(QDialog):
             self.close_button.setDefault(True)
             button_box.addButton(self.close_button, QDialogButtonBox.AcceptRole)
 
-            self.download_button = QPushButton("Download & Install")
+            self.download_button = QPushButton("Download")
             self.download_button.setVisible(False)
             self.download_button.setContextMenuPolicy(
                 Qt.ContextMenuPolicy.CustomContextMenu
@@ -579,9 +579,7 @@ class UpdateCheckDialog(QDialog):
             self.details_text.setVisible(True)
 
         # Show download button
-        self.download_button.setText(
-            "Download & Install"
-        )  # Match the button text in the image
+        self.download_button.setText("Download")  # Match the button text in the image
         self.download_button.setVisible(True)
         self.download_button.setEnabled(True)  # Ensure button is enabled
         self.download_button.setDefault(True)

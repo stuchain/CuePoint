@@ -15,7 +15,6 @@ from urllib.parse import urlparse
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
-    QApplication,
     QDialog,
     QDialogButtonBox,
     QHBoxLayout,
@@ -85,14 +84,6 @@ class UpdateDiagnosticDialog(QDialog):
         download_label.setWordWrap(True)
         layout.addWidget(download_label)
 
-        if download_url:
-            url_label = QLabel(f"URL: {download_url}")
-            url_label.setWordWrap(True)
-            url_label.setTextInteractionFlags(
-                Qt.TextInteractionFlag.TextSelectableByMouse
-            )
-            layout.addWidget(url_label)
-
         # Lightweight sanity warning for mismatched file type
         expected_ext = (
             ".exe"
@@ -115,13 +106,6 @@ class UpdateDiagnosticDialog(QDialog):
 
         # Quick actions
         actions_layout = QHBoxLayout()
-        copy_link_btn = QPushButton("Copy Download Link")
-        copy_link_btn.setEnabled(bool(download_url))
-        copy_link_btn.clicked.connect(
-            lambda: QApplication.clipboard().setText(download_url)
-        )
-        actions_layout.addWidget(copy_link_btn)
-
         open_release_btn = QPushButton("Open Release Page")
         target_url = release_notes_url or download_url
         open_release_btn.setEnabled(bool(target_url))
