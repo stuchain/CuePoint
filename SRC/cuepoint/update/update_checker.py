@@ -183,9 +183,15 @@ class UpdateChecker:
                 },
             )
 
-            # Create SSL context with error handling
+            # Create SSL context: use certifi's CA bundle in packaged apps so SSL
+            # verification works (GitHub build was failing with CERTIFICATE_VERIFY_FAILED
+            # because the app bundle couldn't find the system CA store).
             try:
-                ssl_context = ssl.create_default_context()
+                try:
+                    import certifi
+                    ssl_context = ssl.create_default_context(cafile=certifi.where())
+                except ImportError:
+                    ssl_context = ssl.create_default_context()
             except Exception as ssl_error:
                 import logging
                 logger = logging.getLogger(__name__)
