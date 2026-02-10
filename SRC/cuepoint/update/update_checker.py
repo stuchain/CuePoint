@@ -334,11 +334,16 @@ class UpdateChecker:
             signature = enclosure.get(
                 f"{{{self.SPARKLE_NS}}}edSignature"
             ) or enclosure.get(f"{{{self.SPARKLE_NS}}}dsaSignature")
-            checksum = None
-            if signature and PackageIntegrityVerifier.is_sha256_hex(
+            # Checksum: explicit sparkle:sha256, or legacy 64-char hex in signature
+            checksum = enclosure.get(f"{{{self.SPARKLE_NS}}}sha256")
+            if checksum:
+                checksum = checksum.strip().lower()
+            if not checksum and signature and PackageIntegrityVerifier.is_sha256_hex(
                 signature.strip().lower()
             ):
                 checksum = signature.strip().lower()
+            if checksum and not PackageIntegrityVerifier.is_sha256_hex(checksum):
+                checksum = None
 
             # Get release notes
             release_notes_elem = item.find("description")

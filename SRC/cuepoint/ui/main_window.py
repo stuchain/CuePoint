@@ -3051,15 +3051,17 @@ class MainWindow(QMainWindow):
                         )
                         return
                 else:
-                    logger.warning(
-                        "Update has no checksum; refusing to install (fail closed)"
-                    )
-                    QMessageBox.critical(
+                    logger.warning("Update has no checksum in appcast (e.g. EdDSA only)")
+                    reply = QMessageBox.warning(
                         self,
-                        "Update Verification Failed",
-                        "This update does not include a checksum. For security, installation is blocked.\n\nPlease download the latest release manually from the release page.",
+                        "Update Not Verified",
+                        "This update does not include a checksum in the feed, so the download could not be verified.\n\n"
+                        "You can install anyway (download was over HTTPS from the release server), or open the release page to download manually.",
+                        QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
+                        QMessageBox.StandardButton.Ok,
                     )
-                    return
+                    if reply != QMessageBox.StandardButton.Ok:
+                        return
                 self._install_update(downloaded_file)
             elif download_dialog.cancelled:
                 logger.info("Download cancelled by user")

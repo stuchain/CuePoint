@@ -9,12 +9,22 @@ Usage:
 """
 
 import argparse
+import hashlib
 import sys
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from email.utils import formatdate
 from pathlib import Path
 from typing import Optional
+
+
+def sha256_of_file(path: Path, chunk_size: int = 1024 * 1024) -> str:
+    """Compute SHA-256 hex digest of a file."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while chunk := f.read(chunk_size):
+            h.update(chunk)
+    return h.hexdigest().lower()
 
 # Add SRC to path
 _script_dir = Path(__file__).resolve().parent
@@ -130,7 +140,13 @@ def generate_appcast_item(
         enclosure.set(f'{{{SPARKLE_NS}}}edSignature', ed_signature)
     elif dsa_signature:
         enclosure.set(f'{{{SPARKLE_NS}}}dsaSignature', dsa_signature)
-    
+
+    # Add SHA256 checksum so the app can verify the download (optional but recommended)
+    try:
+        enclosure.set(f'{{{SPARKLE_NS}}}sha256', sha256_of_file(dmg_file))
+    except OSError:
+        pass  # Don't fail appcast generation if we can't read the file again
+
     # Release notes link
     if release_notes_url:
         notes_link = ET.SubElement(item, f'{{{SPARKLE_NS}}}releaseNotesLink')
