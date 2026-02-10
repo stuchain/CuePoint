@@ -175,6 +175,10 @@ class UpdateManager:
         self._on_check_complete: Optional[Callable[[bool, Optional[str]], None]] = None
         self._on_error: Optional[Callable[[str], None]] = None
 
+        # Persistent Qt network manager for update check (frozen macOS); avoids GC and reuses SSL
+        self._qt_network_manager = None
+        self._update_network_ref = None
+
     def _ensure_receiver_created(self) -> None:
         """Ensure callback receiver is created on main thread."""
         import logging
@@ -406,13 +410,41 @@ class UpdateManager:
             self._emit_check_complete()
             return
 
-        network = QNetworkAccessManager(app)
-        reply = network.get(request)
+        # Use persistent manager so it (and SSL state) survive for the async request
+        if self._qt_network_manager is None:
+            self._qt_network_manager = QNetworkAccessManager(app)
+        reply = self._qt_network_manager.get(request)
+        self._update_network_ref = reply  # keep reply alive until on_finished
 
         def on_finished():
             try:
                 if reply.error():
-                    err_msg = reply.errorString() or "Network error"
+                    self._update_network_ref = None
+                    err_str = (reply.errorString() or "").strip()
+                    logger.warning(f"Qt network request failed: {err_str or reply.error()}")
+                    # On frozen macOS, Qt SSL/network can fail while Safari works. Retry with urllib in a thread once.
+                    if getattr(sys, "frozen", False) and sys.platform == "darwin":
+                        try:
+                            logger.info("Retrying update check with urllib in background thread...")
+                            thread = threading.Thread(target=self._do_check, daemon=True)
+                            thread.start()
+                            return  # thread will emit check_complete when done
+                        except Exception as retry_err:
+                            logger.error(f"Retry failed: {retry_err}")
+                    err_code = None
+                    try:
+                        err_val = reply.error()
+                        if err_val is not None:
+                            err_code = getattr(err_val, "value", None)
+                            if err_code is None:
+                                err_code = int(err_val)
+                    except (TypeError, ValueError, AttributeError):
+                        pass
+                    if err_str and err_str.lower() != "unknown error":
+                        err_msg = err_str
+                    else:
+                        code_part = f" (Qt code {err_code})" if err_code not in (None, 0) else ""
+                        err_msg = f"Network error{code_part}. Check internet connection and that the update server is reachable."
                     logger.error(f"Update check failed: {err_msg}")
                     with self._lock:
                         self._update_available = None
@@ -424,6 +456,8 @@ class UpdateManager:
                     return
 
                 data = reply.readAll()
+                # Clear ref so manager/reply can be freed
+                self._update_network_ref = None
                 appcast_data = bytes(data.data()) if data else b""
 
                 if not appcast_data:
@@ -454,6 +488,7 @@ class UpdateManager:
                 self._emit_update_available_if_needed()
                 self._emit_check_complete()
             except Exception as e:
+                self._update_network_ref = None
                 logger.error(f"Update check failed: {e}", exc_info=True)
                 with self._lock:
                     self._update_available = None
