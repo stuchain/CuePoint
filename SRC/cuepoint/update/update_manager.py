@@ -422,15 +422,16 @@ class UpdateManager:
                     self._update_network_ref = None
                     err_str = (reply.errorString() or "").strip()
                     logger.warning(f"Qt network request failed: {err_str or reply.error()}")
-                    # On frozen macOS, Qt SSL/network can fail while Safari works. Retry with urllib in a thread once.
+                    # Retry on main thread with urllib (blocking). Thread+urllib crashes in signed app;
+                    # main-thread urllib may work and avoids showing a permanent error.
                     if getattr(sys, "frozen", False) and sys.platform == "darwin":
                         try:
-                            logger.info("Retrying update check with urllib in background thread...")
-                            thread = threading.Thread(target=self._do_check, daemon=True)
-                            thread.start()
-                            return  # thread will emit check_complete when done
-                        except Exception as retry_err:
-                            logger.error(f"Retry failed: {retry_err}")
+                            from PySide6.QtCore import QTimer
+                            logger.info("Retrying update check on main thread (sync fetch)...")
+                            QTimer.singleShot(0, self._do_check_main_thread_sync)
+                            return
+                        except Exception:
+                            pass
                     err_code = None
                     try:
                         err_val = reply.error()
@@ -502,6 +503,71 @@ class UpdateManager:
                 self._emit_check_complete()
 
         reply.finished.connect(on_finished)
+
+    def _do_check_main_thread_sync(self) -> None:
+        """Run update check on main thread with urllib (blocking). Used as fallback when Qt
+        network fails on frozen macOS; main-thread fetch may work where thread+urllib crashes.
+        """
+        import logging
+
+        logger = logging.getLogger(__name__)
+
+        try:
+            feed_url = self.checker.get_feed_url(self.platform)
+            from cuepoint.update.security import FeedIntegrityVerifier
+            is_valid, error = FeedIntegrityVerifier.verify_feed_https(feed_url)
+            if not is_valid:
+                with self._lock:
+                    self._checking = False
+                    self._last_check_error = error or "Feed URL failed integrity checks"
+                self.preferences.set_last_check_timestamp()
+                self.preferences.set_last_check_result("error")
+                self._emit_check_complete()
+                return
+
+            logger.info("Update check (main-thread sync): fetching appcast...")
+            appcast_data = self.checker._fetch_appcast(feed_url, timeout=15)
+            update_info = self.checker.check_update_from_appcast(appcast_data)
+
+            if update_info:
+                version = update_info.get("version") or update_info.get("short_version")
+                if version and self.preferences.is_version_ignored(version):
+                    update_info = None
+
+            with self._lock:
+                self._update_available = update_info
+                self._last_check_error = None
+                self._checking = False
+
+            self.preferences.set_last_check_timestamp()
+            if update_info:
+                self.preferences.set_last_check_result("update_available")
+            else:
+                self.preferences.set_last_check_result("no_update")
+
+            self._emit_update_available_if_needed()
+            self._emit_check_complete()
+        except UpdateCheckError as e:
+            logger.warning(f"Update check failed: {e}")
+            with self._lock:
+                self._update_available = None
+                self._last_check_error = str(e)
+                self._checking = False
+            self.preferences.set_last_check_timestamp()
+            self.preferences.set_last_check_result("error")
+            self._emit_check_complete()
+        except Exception as e:
+            logger.error(f"Update check failed: {e}", exc_info=True)
+            with self._lock:
+                self._update_available = None
+                self._last_check_error = str(e)
+                self._checking = False
+            try:
+                self.preferences.set_last_check_timestamp()
+                self.preferences.set_last_check_result("error")
+            except Exception:
+                pass
+            self._emit_check_complete()
 
     def _emit_update_available_if_needed(self) -> None:
         """Emit update_available signal if we have update and callback."""
