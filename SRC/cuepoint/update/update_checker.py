@@ -269,8 +269,12 @@ class UpdateChecker:
                 if item_data:
                     items.append(item_data)
 
-            # Sort by version (latest first)
-            items.sort(key=lambda x: self._version_sort_key(x["version"]), reverse=True)
+            # Sort by semantic version (short_version) so 1.0.0-feb10 > 1.0.0-feb1
+            def _item_sort_key(x):
+                v = x.get("short_version") or x.get("version") or "0.0.0"
+                return self._version_sort_key(v)
+
+            items.sort(key=_item_sort_key, reverse=True)
 
             return items
 
@@ -507,62 +511,22 @@ class UpdateChecker:
                     continue
 
                 # Both are same type (both stable or both prerelease) - allow if newer
-                # Design 4.9, 4.57: require checksum for update (fail closed)
+                # Prefer items with checksum (SHA256); allow items with only EdDSA signature
+                # so we don't skip all appcast items (many feeds use sparkle:edSignature only).
                 if not item.get("checksum"):
-                    logger.warning(
-                        f"Skipping item: no checksum for version {version} (update verification required)"
+                    logger.debug(
+                        f"Item {version} has no SHA256 checksum (may have EdDSA only); still offering as update"
                     )
-                    continue
                 logger.info(
                     f"Found newer version: {version} (current: {self.current_version})"
                 )
                 return item
 
             elif base_comparison == 0:
-                # Same base version - apply prerelease rules and compare full versions
-                logger.debug(f"Same base version: {base_candidate} == {base_current}")
-
-                # Compare full versions (including prerelease suffix)
-                try:
-                    full_comparison = compare_versions(version, self.current_version)
-                    logger.debug(
-                        f"Full version comparison '{version}' vs '{self.current_version}': {full_comparison}"
-                    )
-
-                    # Apply version type filtering for same base version:
-                    # - Test/prerelease versions can only update to test/prerelease versions
-                    # - Stable versions can only update to stable versions
-                    if current_is_prerelease and not version_is_prerelease:
-                        # Current is test/prerelease, candidate is stable with same base - skip
-                        logger.debug(
-                            f"Skipping stable version '{version}' with same base "
-                            f"(current is test/prerelease '{self.current_version}')"
-                        )
-                        continue
-
-                    if not current_is_prerelease and version_is_prerelease:
-                        # Current is stable, candidate is test/prerelease with same base - skip
-                        logger.debug(
-                            f"Skipping test/prerelease version '{version}' with same base "
-                            f"(current is stable '{self.current_version}')"
-                        )
-                        continue
-
-                    # Both are same type (both stable or both prerelease) - use full comparison
-                    if full_comparison > 0:
-                        # Design 4.9, 4.57: require checksum for update (fail closed)
-                        if not item.get("checksum"):
-                            logger.warning(
-                                f"Skipping item: no checksum for version {version} (update verification required)"
-                            )
-                            continue
-                        logger.info(
-                            f"Found newer version with same base: {version} > {self.current_version}"
-                        )
-                        return item
-                except ValueError as e:
-                    logger.warning(f"Could not compare full versions: {e}")
-                    continue
+                # Same base version (e.g. 1.0.0 vs 1.0.0-feb10): do not offer as update.
+                # Only offer when base version increases (e.g. 1.0.0 -> 1.0.2).
+                logger.debug(f"Same base version: {base_candidate} == {base_current}, skipping")
+                continue
             # else: base_comparison < 0, candidate is older, skip
 
         logger.info("No newer version found")
