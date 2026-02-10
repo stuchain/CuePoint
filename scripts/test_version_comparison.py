@@ -7,10 +7,10 @@ Test version comparison to understand why updates aren't detected.
 import sys
 from pathlib import Path
 
-# Add SRC to path
+# Add src to path
 _script_dir = Path(__file__).resolve().parent
 _project_root = _script_dir.parent
-_src_dir = _project_root / 'SRC'
+_src_dir = _project_root / 'src'
 sys.path.insert(0, str(_src_dir))
 
 from cuepoint.update.version_utils import compare_versions, extract_base_version, is_stable_version

@@ -1,26 +1,11 @@
 # Release Readiness Summary
 
-## ✅ Comprehensive Test Suite Created
+## Test suites for release
 
-I've created a complete test suite to ensure everything is ready for release. All tests are passing!
+Use these tests to verify release readiness. (Former ARCHIVE-based installer test suites were removed with the ARCHIVE folder.)
 
-## Test Suites Created
-
-### 1. Release Readiness Comprehensive Tests
-**File**: `ARCHIVE/tests/update_installer/tests/test_release_readiness_comprehensive.py`
-
-**Tests** (20 tests):
-- ✅ PyInstaller configuration (spec file, DLL inclusion, tuple formats)
-- ✅ Hook file existence and configuration
-- ✅ PyInstaller version requirements (>= 6.10.0)
-- ✅ Requirements files configuration
-- ✅ GitHub Actions workflows (Windows & macOS)
-- ✅ Update system configuration
-- ✅ Version configuration
-- ✅ Build scripts
-- ✅ Documentation
-
-**Run**: `python ARCHIVE/tests/update_installer/tests/test_release_readiness_comprehensive.py`
+### 1. Unit tests
+**Run**: `pytest src/tests -v`
 
 ### 2. Build and Executable Tests
 **File**: `scripts/test_build_and_executable.py`
@@ -32,13 +17,6 @@ I've created a complete test suite to ensure everything is ready for release. Al
 - ✅ Executable validation (if built)
 
 **Run**: `python scripts/test_build_and_executable.py`
-
-### 3. Test Runner
-**File**: `ARCHIVE/tests/update_installer/tests/run_release_readiness_tests.py`
-
-**Runs all test suites together**
-
-**Run**: `python ARCHIVE/tests/update_installer/tests/run_release_readiness_tests.py`
 
 ## Test Results
 
@@ -72,52 +50,38 @@ I've created a complete test suite to ensure everything is ready for release. Al
 
 ## Pre-Release Checklist
 
-### Quick Test (Run All)
+### Quick test (run all)
 ```bash
-python ARCHIVE/tests/update_installer/tests/run_release_readiness_tests.py
+pytest src/tests -v && python scripts/test_build_and_executable.py && python scripts/test_update_detection.py && python scripts/validate_version.py
 ```
 
-### Individual Test Suites
+### Individual test suites
 ```bash
-# Release readiness tests
-python ARCHIVE/tests/update_installer/tests/test_release_readiness_comprehensive.py
-
-# Build and executable tests
+pytest src/tests -v
 python scripts/test_build_and_executable.py
-
-# DLL fix tests
-python ARCHIVE/tests/update_installer/tests/run_dll_fix_tests.py
-
-# Update installer tests
-python ARCHIVE/tests/update_installer/tests/run_update_installer_tests.py
+python scripts/test_update_detection.py
+python scripts/validate_version.py
 ```
 
-## Critical Verification Steps
+## Critical verification steps
 
 Before releasing, verify:
 
-1. ✅ **All automated tests pass**
-   ```bash
-   python ARCHIVE/tests/update_installer/tests/run_release_readiness_tests.py
-   ```
-
-2. ✅ **Build succeeds**
-   ```bash
-   python scripts/build_pyinstaller.py
-   ```
-
-3. ✅ **Executable runs without DLL errors** (CRITICAL)
+1. ✅ **All unit tests pass**: `pytest src/tests -v`
+2. ✅ **Build and executable test pass**: `python scripts/test_build_and_executable.py`
+3. ✅ **Build succeeds**: `python scripts/build_pyinstaller.py` (or CI build)
+4. ✅ **Executable runs without DLL errors** (CRITICAL)
    - Launch the built executable
    - Verify NO "Failed to load Python DLL" error
    - App should launch successfully
 
-4. ✅ **Update flow works**
+5. ✅ **Update flow works**
    - Test update detection
    - Test update installation
    - Verify app launches after update
    - Verify NO DLL errors after update
 
-5. ✅ **Installation works**
+6. ✅ **Installation works**
    - Test fresh installation
    - Test update installation
    - Verify app launches
@@ -125,10 +89,8 @@ Before releasing, verify:
 
 ## Documentation
 
-- **Test Plan**: `release-readiness-test-plan.md` - Complete test plan
-- **Pre-Release Checklist**: `pre-release-checklist.md` - Updated with new tests
-- **DLL Fix Docs**: `../../ARCHIVE/docs/TROUBLESHOOTING/PYTHON313_DLL_FIX_V3.md` - DLL fix documentation
-- **Community Solution**: `../../ARCHIVE/docs/TROUBLESHOOTING/PYTHON313_DLL_FIX_COMMUNITY_SOLUTION.md` - Community approach
+- **Test Plan**: `release-readiness-test-plan.md` - Test plan
+- **Pre-Release Checklist**: `pre-release-checklist.md` - Pre-release steps
 
 ## Next Steps
 
@@ -149,18 +111,11 @@ Release is ready when:
 - ✅ Installation works correctly
 - ✅ Version information is correct
 
-## Files Created/Updated
+## Key files
 
-### New Files
-- `ARCHIVE/tests/update_installer/tests/test_release_readiness_comprehensive.py` - Comprehensive test suite
-- `ARCHIVE/tests/update_installer/tests/run_release_readiness_tests.py` - Test runner
 - `scripts/test_build_and_executable.py` - Build and executable tests
-- `release-readiness-test-plan.md` - Complete test plan
-- `release-readiness-summary.md` - This file
-
-### Updated Files
-- `pre-release-checklist.md` - Added new test steps
-- `../../ARCHIVE/docs/TROUBLESHOOTING/WORKFLOW_UPDATES_PYINSTALLER_6.10.md` - Workflow documentation
+- `release-readiness-test-plan.md` - Test plan
+- `pre-release-checklist.md` - Pre-release checklist
 
 ## Summary
 

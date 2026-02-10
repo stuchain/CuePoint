@@ -117,15 +117,15 @@ class PrivacyDialog(QDialog):
         from pathlib import Path
 
         try:
-            # SRC/cuepoint/ui/dialogs/privacy_dialog.py -> project root is parents[4]
+            # src/cuepoint/ui/dialogs/privacy_dialog.py -> project root is parents[4]
             repo_root = Path(__file__).resolve().parents[4]
-            for candidate in ("PRIVACY_NOTICE.md", "DOCS/POLICY/privacy-notice.md"):
+            for candidate in ("PRIVACY_NOTICE.md", "docs/policy/privacy-notice.md"):
                 notice_path = repo_root / candidate
                 if notice_path.exists():
                     text = notice_path.read_text(encoding="utf-8", errors="replace")
                     break
             else:
-                text = "Privacy notice could not be loaded. See DOCS/POLICY/privacy-notice.md in the project."
+                text = "Privacy notice could not be loaded. See docs/policy/privacy-notice.md in the project."
         except Exception:
             text = "Privacy notice could not be loaded."
 

@@ -149,7 +149,7 @@ def main():
     project_root = Path(__file__).parent.parent
     
     # Paths
-    logo_path = project_root / 'SRC' / 'cuepoint' / 'ui' / 'assets' / 'icons' / 'logo.png'
+    logo_path = project_root / 'src' / 'cuepoint' / 'ui' / 'assets' / 'icons' / 'logo.png'
     build_dir = project_root / 'build'
     build_dir.mkdir(exist_ok=True)
     
@@ -159,7 +159,7 @@ def main():
     # Check if logo exists
     if not logo_path.exists():
         print(f"Error: Logo not found at {logo_path}")
-        print("Please ensure logo.png exists at SRC/cuepoint/ui/assets/icons/logo.png")
+        print("Please ensure logo.png exists at src/cuepoint/ui/assets/icons/logo.png")
         sys.exit(1)
     
     print(f"Generating icons from {logo_path}...")

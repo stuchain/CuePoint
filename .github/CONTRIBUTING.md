@@ -19,10 +19,10 @@ Thanks for helping improve CuePoint. Design 10.41.
 2. **Activate venv**:
    - Windows: `.venv\Scripts\activate`
    - macOS/Linux: `source .venv/bin/activate`
-3. **Run the app**: `python SRC/gui_app.py`
+3. **Run the app**: `python src/gui_app.py`
 4. **Run tests**: `python scripts/run_tests.py --unit`
 
-See [Developer Setup](https://github.com/stuchain/CuePoint/blob/main/DOCS/DEVELOPMENT/developer-setup.md) for details.
+See [Developer Setup](https://github.com/stuchain/CuePoint/blob/main/docs/development/developer-setup.md) for details.
 
 ## Dev Setup (Manual)
 
@@ -38,9 +38,9 @@ Before opening a PR, ensure:
 
 - [ ] **Tests**: Added or updated for new/changed logic
 - [ ] **Docs**: Updated for user-facing changes
-- [ ] **Lint**: `ruff check SRC/` passes
-- [ ] **Types**: `mypy SRC/ --ignore-missing-imports` passes (or known issues documented)
-- [ ] **Changelog**: Updated in `DOCS/RELEASE/changelog.md` for notable changes
+- [ ] **Lint**: `ruff check src/` passes
+- [ ] **Types**: `mypy src/ --ignore-missing-imports` passes (or known issues documented)
+- [ ] **Changelog**: Updated in `docs/release/changelog.md` for notable changes
 
 ## Coding Standards
 
@@ -49,7 +49,7 @@ Before opening a PR, ensure:
 - **Typing**: Type hints for public APIs
 - **Testing**: Unit tests for new logic; regression tests for bug fixes
 
-See [Coding Standards](https://github.com/stuchain/CuePoint/blob/main/DOCS/DEVELOPMENT/coding-standards.md).
+See [Coding Standards](https://github.com/stuchain/CuePoint/blob/main/docs/development/coding-standards.md).
 
 ## Contribution Flow
 
@@ -57,6 +57,6 @@ See [Coding Standards](https://github.com/stuchain/CuePoint/blob/main/DOCS/DEVEL
 2. Create a branch (`git checkout -b feature/your-feature`)
 3. Implement changes
 4. Run tests: `python scripts/run_tests.py --all`
-5. Open a PR with the checklist above## Documentation- **Start here**: [DOCS/README.md](https://github.com/stuchain/CuePoint/blob/main/DOCS/README.md)
-- **Architecture**: [DOCS/DEVELOPMENT/architecture.md](https://github.com/stuchain/CuePoint/blob/main/DOCS/DEVELOPMENT/architecture.md)
-- **Match rules**: [DOCS/DEVELOPMENT/match-rules-and-scoring.md](https://github.com/stuchain/CuePoint/blob/main/DOCS/DEVELOPMENT/match-rules-and-scoring.md)
+5. Open a PR with the checklist above## Documentation- **Start here**: [docs/README.md](https://github.com/stuchain/CuePoint/blob/main/docs/README.md)
+- **Architecture**: [docs/development/architecture.md](https://github.com/stuchain/CuePoint/blob/main/docs/development/architecture.md)
+- **Match rules**: [docs/development/match-rules-and-scoring.md](https://github.com/stuchain/CuePoint/blob/main/docs/development/match-rules-and-scoring.md)

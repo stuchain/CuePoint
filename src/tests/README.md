@@ -5,7 +5,7 @@ This directory contains the primary automated test suite for CuePoint.
 ## Running tests
 
 ```bash
-python -m pytest SRC/tests
+python -m pytest src/tests
 ```
 
 ## Archived test suites

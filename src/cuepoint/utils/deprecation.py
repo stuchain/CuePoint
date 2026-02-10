@@ -4,7 +4,7 @@
 """Deprecation warnings for config keys and CLI flags (Step 12: Future-Proofing).
 
 When a config key or CLI flag is deprecated, add it here. Warnings are emitted
-when deprecated features are used. See DOCS/POLICY/deprecation-schedule.md.
+when deprecated features are used. See docs/policy/deprecation-schedule.md.
 """
 
 import warnings
@@ -30,7 +30,7 @@ def warn_deprecated_config(key: str) -> None:
     replacement, removal = info
     warnings.warn(
         f"Config key '{key}' is deprecated. Use '{replacement}' instead. "
-        f"'{key}' will be removed in {removal}. See DOCS/POLICY/deprecation-schedule.md.",
+        f"'{key}' will be removed in {removal}. See docs/policy/deprecation-schedule.md.",
         DeprecationWarning,
         stacklevel=2,
     )
@@ -48,7 +48,7 @@ def warn_deprecated_cli_flag(flag: str) -> None:
     replacement, removal = info
     warnings.warn(
         f"CLI flag '{flag}' is deprecated. Use '{replacement}' instead. "
-        f"'{flag}' will be removed in {removal}. See DOCS/POLICY/deprecation-schedule.md.",
+        f"'{flag}' will be removed in {removal}. See docs/policy/deprecation-schedule.md.",
         DeprecationWarning,
         stacklevel=2,
     )

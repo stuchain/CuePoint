@@ -4,7 +4,7 @@
 """
 Validate Changelog for Release Gate
 
-Ensures DOCS/RELEASE/CHANGELOG.md has an entry for the current version
+Ensures docs/release/CHANGELOG.md has an entry for the current version
 or a non-empty [Unreleased] section. Used by CI to block releases when
 changelog is missing or incomplete.
 
@@ -13,7 +13,7 @@ Error taxonomy: R002 Changelog missing.
 
 Usage:
     python scripts/validate_changelog.py [--version X.Y.Z]
-    python scripts/validate_changelog.py  # uses version from SRC/cuepoint/version.py
+    python scripts/validate_changelog.py  # uses version from src/cuepoint/version.py
 """
 
 import argparse
@@ -23,10 +23,10 @@ from pathlib import Path
 
 
 def get_version_from_file() -> str | None:
-    """Get version from SRC/cuepoint/version.py."""
+    """Get version from src/cuepoint/version.py."""
     script_dir = Path(__file__).resolve().parent
     project_root = script_dir.parent
-    version_file = project_root / "SRC" / "cuepoint" / "version.py"
+    version_file = project_root / "src" / "cuepoint" / "version.py"
     if not version_file.exists():
         return None
     content = version_file.read_text(encoding="utf-8")
@@ -151,13 +151,13 @@ def main() -> None:
     parser.add_argument(
         "--version",
         type=str,
-        help="Version to check (default: from SRC/cuepoint/version.py)",
+        help="Version to check (default: from src/cuepoint/version.py)",
     )
     parser.add_argument(
         "--changelog",
         type=Path,
         default=None,
-        help="Path to changelog (default: DOCS/RELEASE/CHANGELOG.md)",
+        help="Path to changelog (default: docs/release/CHANGELOG.md)",
     )
     parser.add_argument(
         "--no-require-version",
@@ -168,7 +168,7 @@ def main() -> None:
 
     script_dir = Path(__file__).resolve().parent
     project_root = script_dir.parent
-    changelog_path = args.changelog or (project_root / "DOCS" / "RELEASE" / "CHANGELOG.md")
+    changelog_path = args.changelog or (project_root / "docs" / "release" / "CHANGELOG.md")
 
     version = args.version or get_version_from_file()
     if not version:

@@ -1,7 +1,5 @@
 # Incident Response Runbook
 
-Design: Step 13 Post-Launch Operations and Support.
-
 ## Purpose
 
 This runbook guides response to incidents (critical bugs, crashes, update failures). Follow these steps to identify impact, communicate, and mitigate.
@@ -114,4 +112,4 @@ See [Rollback Runbook](rollback.md).
 - [Triage Workflow](triage-workflow.md)
 - [Rollback](rollback.md)
 - [Update Feed Recovery](update-feed-recovery-runbook.md)
-- [Support SLA Playbook](../prerelease/support-sla-playbook.md)
+- [Support SLA Playbook](../security/support-sla-playbook.md)

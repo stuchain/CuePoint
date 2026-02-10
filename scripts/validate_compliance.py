@@ -25,7 +25,7 @@ def main() -> int:
         print("ERROR: requirements-build.txt is missing")
         return 1
 
-    privacy_dialog = repo_root / "SRC" / "cuepoint" / "ui" / "dialogs" / "privacy_dialog.py"
+    privacy_dialog = repo_root / "src" / "cuepoint" / "ui" / "dialogs" / "privacy_dialog.py"
     if not privacy_dialog.exists():
         print("ERROR: Privacy dialog is missing (expected in-app privacy disclosure)")
         return 1

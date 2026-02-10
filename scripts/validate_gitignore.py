@@ -29,7 +29,7 @@ def check_ignored_files():
     # Patterns that are allowed to be tracked (test files, etc.)
     allowed_patterns = [
         'test_logs/',
-        'SRC/tests/',
+        'src/tests/',
     ]
     
     errors = []

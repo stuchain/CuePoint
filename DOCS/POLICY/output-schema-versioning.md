@@ -1,6 +1,6 @@
 # Output Schema Versioning
 
-Design 10.12, 10.36. Versioning policy for CSV and export formats.
+Versioning policy for CSV and export formats.
 
 ## Overview
 
@@ -8,13 +8,13 @@ CuePoint exports CSV, JSON, and Excel. Schema changes can break downstream tools
 
 ## Current Schema
 
-- **CSV**: Main results, candidates, audit log. See `SRC/cuepoint/services/output_writer.py`
+- **CSV**: Main results, candidates, audit log. See `src/cuepoint/services/output_writer.py`
 - **JSON**: Same data in JSON structure
 - **Excel**: Same columns in spreadsheet format
 
 ## Schema Version
 
-Output files include a `schema_version` header (Design 9). Current version: `1.0`.
+Output files include a `schema_version` header. Current version: `1.0`.
 
 ## Versioning Rules
 
@@ -37,7 +37,7 @@ Output files include a `schema_version` header (Design 9). Current version: `1.0
 For breaking changes:
 
 1. Bump schema version (e.g., 1.0 → 2.0)
-2. Add migration guide in `DOCS/RELEASE/` or `DOCS/GUIDES/`
+2. Add migration guide in `docs/release/` or `docs/guides/`
 3. Document in release notes
 4. Consider backward-compat mode (e.g., flag for old format)
 

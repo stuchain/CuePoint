@@ -1,6 +1,6 @@
 # Maintenance Roadmap — CuePoint
 
-**Step 15: Long-Term Maintenance and Evolution**  
+**Long-term maintenance and evolution**  
 **Version 1.0 — 2026-02-04**  
 **Last updated**: 2026-02-04
 
@@ -12,7 +12,7 @@ This roadmap tracks planned refactors, upgrades, and maintenance work. It is rev
 
 | Item | Priority | Status | Target |
 | --- | --- | --- | --- |
-| Step 15 implementation | P0 | Done | 2026-02 |
+| Maintenance docs & policy | P0 | Done | 2026-02 |
 | Dependency audit in CI | P0 | Done | 2026-02 |
 | Maintenance policy documentation | P0 | Done | 2026-02 |
 
@@ -31,7 +31,7 @@ This roadmap tracks planned refactors, upgrades, and maintenance work. It is rev
 
 ## Deprecation Schedule
 
-See [Deprecation Schedule](../POLICY/deprecation-schedule.md) for config keys and CLI flags.
+See [Deprecation Schedule](../policy/deprecation-schedule.md) for config keys and CLI flags.
 
 ## Tech Debt Items
 
@@ -51,4 +51,4 @@ Track in GitHub issues with label `tech-debt`. Prioritize by:
 
 - [Maintenance Policy](maintenance-policy.md)
 - [Roadmap](../roadmap.md)
-- [Deprecation Schedule](../POLICY/deprecation-schedule.md)
+- [Deprecation Schedule](../policy/deprecation-schedule.md)

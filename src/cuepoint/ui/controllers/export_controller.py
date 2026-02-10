@@ -166,9 +166,9 @@ class ExportController:
         Returns:
             Path to default output directory
         """
-        # Try to find SRC directory
+        # Try to find src directory
         current_file = os.path.abspath(__file__)
-        # Navigate from controllers/export_controller.py to SRC/
+        # Navigate from controllers/export_controller.py to src/
         src_dir = os.path.dirname(
             os.path.dirname(os.path.dirname(os.path.dirname(current_file)))
         )

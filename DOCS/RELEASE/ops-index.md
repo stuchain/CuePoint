@@ -1,7 +1,5 @@
 # Post-Launch Operations Index
 
-Design: Step 13 Post-Launch Operations and Support.
-
 ## Overview
 
 This index links to all operational documentation for CuePoint post-launch support, releases, and incident response.
@@ -21,8 +19,8 @@ This index links to all operational documentation for CuePoint post-launch suppo
 | --- | --- |
 | [Support Channels](ops-support-channels.md) | Where to get help (Issues, Discussions) |
 | [Triage Workflow](triage-workflow.md) | How we triage and prioritize issues |
-| [Support SLA Playbook](../prerelease/support-sla-playbook.md) | Detailed triage and escalation |
-| [Support SLA](../POLICY/support-sla.md) | Response time expectations |
+| [Support SLA Playbook](../security/support-sla-playbook.md) | Detailed triage and escalation |
+| [Support SLA](../policy/support-sla.md) | Response time expectations |
 
 ## Operations
 
@@ -32,7 +30,7 @@ This index links to all operational documentation for CuePoint post-launch suppo
 | [Backup & Disaster Recovery](backup-disaster-recovery.md) | Backup procedures |
 | [Known Issues](known-issues.md) | Current known issues and workarounds |
 
-## Maintenance (Step 15)
+## Maintenance
 
 | Document | Purpose |
 | --- | --- |

@@ -23,7 +23,7 @@ You may use the CuePoint name and logo when:
 
 ## Brand Assets
 
-- **Logo**: Located in `DOCS/images/logo.png`
+- **Logo**: Located in `docs/images/logo.png`
 - **Usage**: Use the official logo when linking to or referencing CuePoint.
 
 ## Contact

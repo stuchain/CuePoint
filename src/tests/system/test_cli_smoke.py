@@ -33,13 +33,13 @@ def test_cli_smoke_small_xml(tmp_path: Path) -> None:
     small_xml = fixtures_dir() / "small.xml"
     if not small_xml.exists():
         pytest.skip("fixtures/rekordbox/small.xml not found")
-    # Run from project root so SRC/main.py and imports work
+    # Run from project root so src/main.py and imports work
     project_root = tests_dir().parent.parent
     out_dir = tmp_path / "output"
     out_dir.mkdir(parents=True, exist_ok=True)
     cmd = [
         sys.executable,
-        str(project_root / "SRC" / "main.py"),
+        str(project_root / "src" / "main.py"),
         "--xml",
         str(small_xml),
         "--playlist",
@@ -70,7 +70,7 @@ def test_cli_missing_xml_returns_error() -> None:
     project_root = Path(__file__).resolve().parent.parent.parent
     cmd = [
         sys.executable,
-        str(project_root / "SRC" / "main.py"),
+        str(project_root / "src" / "main.py"),
         "--xml",
         "/nonexistent/path.xml",
         "--playlist",
@@ -98,7 +98,7 @@ def test_cli_resume_and_reliability_flags(tmp_path: Path) -> None:
     # Run with --no-resume and reliability flags (should run normally)
     cmd = [
         sys.executable,
-        str(project_root / "SRC" / "main.py"),
+        str(project_root / "src" / "main.py"),
         "--xml",
         str(small_xml),
         "--playlist",
@@ -134,7 +134,7 @@ def test_cli_missing_playlist_returns_error() -> None:
         pytest.skip("fixtures/rekordbox/small.xml not found")
     cmd = [
         sys.executable,
-        str(project_root / "SRC" / "main.py"),
+        str(project_root / "src" / "main.py"),
         "--xml",
         str(small_xml),
         # missing --playlist

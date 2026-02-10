@@ -34,7 +34,7 @@ See [CONTRIBUTING.md](../../.github/CONTRIBUTING.md) for detailed setup and work
 | Bug report | Issue template | Per Support SLA (P1/P2) |
 | Feature request | Issue template | Per Support SLA (P2) |
 | Pull request | PR + review | Best effort, typically within 5 days |
-| Documentation | PR to DOCS/ | Same as code PRs |
+| Documentation | PR to docs/ | Same as code PRs |
 
 ## Intellectual Property
 

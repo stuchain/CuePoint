@@ -6,8 +6,8 @@ Design 10.9. Running against sample data without affecting production.
 
 | Type | Path |
 | --- | --- |
-| Rekordbox XML | `SRC/tests/fixtures/rekordbox/` |
-| Beatport HTML | `SRC/tests/fixtures/beatport/` |
+| Rekordbox XML | `src/tests/fixtures/rekordbox/` |
+| Beatport HTML | `src/tests/fixtures/beatport/` |
 
 ## Sample XML Files
 
@@ -27,19 +27,19 @@ Design 10.9. Running against sample data without affecting production.
 # source .venv/bin/activate  # macOS/Linux
 
 # Process minimal XML
-python SRC/main.py --xml SRC/tests/fixtures/rekordbox/minimal.xml --playlist "Test Playlist" --out sandbox_out
+python src/main.py --xml src/tests/fixtures/rekordbox/minimal.xml --playlist "Test Playlist" --out sandbox_out
 
 # With debug logs
 set CUEPOINT_DEBUG=1   # Windows
 # export CUEPOINT_DEBUG=1  # macOS/Linux
-python SRC/main.py --xml SRC/tests/fixtures/rekordbox/minimal.xml --playlist "Test Playlist" --out sandbox_out
+python src/main.py --xml src/tests/fixtures/rekordbox/minimal.xml --playlist "Test Playlist" --out sandbox_out
 ```
 
 ## Running GUI with Sample Data
 
-1. Launch GUI: `python SRC/gui_app.py`
+1. Launch GUI: `python src/gui_app.py`
 2. File > Import XML
-3. Select `SRC/tests/fixtures/rekordbox/minimal.xml` (or `small.xml`)
+3. Select `src/tests/fixtures/rekordbox/minimal.xml` (or `small.xml`)
 4. Choose a playlist from the dropdown
 5. Process and review results
 
@@ -58,4 +58,4 @@ Default output: `CuePoint_Output/` in user Documents (or as configured). For san
 
 - Use **synthetic data only** (no real user data)
 - Document fixture changes in commit messages
-- See [Fixtures README](https://github.com/stuchain/CuePoint/blob/main/SRC/tests/fixtures/README.md)
+- See [Fixtures README](https://github.com/stuchain/CuePoint/blob/main/src/tests/fixtures/README.md)

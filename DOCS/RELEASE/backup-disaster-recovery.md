@@ -1,7 +1,5 @@
 # Backup and Disaster Recovery
 
-Design: Step 13 Post-Launch Operations and Support.
-
 ## Purpose
 
 This document defines backup and disaster recovery procedures for CuePoint release artifacts and documentation.
@@ -9,7 +7,7 @@ This document defines backup and disaster recovery procedures for CuePoint relea
 ## Scope
 
 - Release artifacts (installers, checksums)
-- Documentation (DOCS, README)
+- Documentation (docs, README)
 - Appcast/update feeds
 - Build configuration
 
@@ -40,9 +38,9 @@ This document defines backup and disaster recovery procedures for CuePoint relea
 
 ### 2. Documentation
 
-- All docs in `DOCS/` are version-controlled
+- All docs in `docs/` are version-controlled
 - Tag releases to preserve doc state: `git tag v1.2.3`
-- Archive important design docs in `DOCS/ARCHIVE/` when superseded
+- Supersede or update design docs when they change (no separate archive folder)
 
 ### 3. Appcast
 
@@ -94,7 +92,7 @@ This document defines backup and disaster recovery procedures for CuePoint relea
 
 - **Release artifacts**: Retain indefinitely for supported versions
 - **Support bundles** (user-submitted): 30 days, then delete
-- **Logs** (local): Per [log retention policy](../prerelease/designs/07-observability-and-supportability.md)
+- **Logs** (local): Per log retention policy (see operations docs)
 
 ## Related Documents
 

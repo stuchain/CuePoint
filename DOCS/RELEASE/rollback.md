@@ -41,8 +41,8 @@ When a release is broken (critical bug, security issue, or failed installs), fol
 
 - [ ] Create hotfix branch from the **last good** release tag (e.g. `git checkout -b hotfix/1.2.4 v1.2.3`).
 - [ ] Apply the minimal fix; run tests.
-- [ ] Bump version (e.g. to `1.2.4`) in `SRC/cuepoint/version.py` and sync (e.g. `scripts/sync_version.py`).
-- [ ] Update `DOCS/RELEASE/changelog.md` with the fix and version.
+- [ ] Bump version (e.g. to `1.2.4`) in `src/cuepoint/version.py` and sync (e.g. `scripts/sync_version.py`).
+- [ ] Update `docs/release/changelog.md` with the fix and version.
 - [ ] Create and push tag (e.g. `v1.2.4`).
 - [ ] Let CI build, sign, and run release workflow.
 - [ ] After release is published, regenerate appcast so the new version is the latest entry.
@@ -50,7 +50,7 @@ When a release is broken (critical bug, security issue, or failed installs), fol
 
 ## Rollback drill (periodic test)
 
-Design 2.37: run periodically to validate rollback steps.
+Run periodically to validate rollback steps.
 
 1. **Simulate a bad release**: Add a test entry to a copy of the appcast (or use a test channel).
 2. **Remove the appcast entry**: Edit the appcast so the test version is no longer the latest; publish.
@@ -60,10 +60,9 @@ Design 2.37: run periodically to validate rollback steps.
 
 ## Optional: checksum file signing
 
-Design 2.17: you may sign `SHA256SUMS` (e.g. with GPG) when a key is available. See [Key management](key-management.md#checksum-file-signing-optional).
+You may sign `SHA256SUMS` (e.g. with GPG) when a key is available. See [Key management](key-management.md#checksum-file-signing-optional).
 
 ## References
 
-- Design: `DOCS/prerelease/designs/02-release-engineering-and-distribution.md` (2.4, 2.20, 2.37, 2.89).
-- Release strategy: `DOCS/RELEASE/release-strategy.md`.
-- Key management: [key-management.md](key-management.md).
+- [Release strategy](release-strategy.md)
+- [Key management](key-management.md)

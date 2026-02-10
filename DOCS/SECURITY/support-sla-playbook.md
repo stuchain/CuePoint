@@ -1,4 +1,4 @@
-# Support SLA Playbook (Design 7)
+# Support SLA Playbook
 
 Triage and escalation procedures for CuePoint support.
 

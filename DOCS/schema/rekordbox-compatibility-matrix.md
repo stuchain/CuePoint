@@ -1,6 +1,6 @@
 # Rekordbox XML Compatibility Matrix
 
-Step 12: Future-Proofing - Compatibility matrix for Rekordbox XML versions.
+Compatibility matrix for Rekordbox XML versions.
 
 ## Overview
 

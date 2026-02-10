@@ -24,7 +24,7 @@ python scripts/dev_setup.py
 source .venv/bin/activate
 
 # 4. Run app
-python SRC/gui_app.py
+python src/gui_app.py
 ```
 
 ## Manual Setup
@@ -43,15 +43,15 @@ pip install -r requirements.txt -r requirements-dev.txt
 | Python OK | `python --version` (3.11+) |
 | Dependencies | `pip list \| grep -E "PySide6|pytest"` |
 | Tests | `python scripts/run_tests.py --unit --no-slow` |
-| App runs | `python SRC/gui_app.py` |
+| App runs | `python src/gui_app.py` |
 
 ## Developer Tooling
 
 | Tool | Purpose | Command |
 | --- | --- | --- |
-| Ruff | Linting | `ruff check SRC/` |
-| Black | Formatting | `black SRC/` |
-| Mypy | Type checking | `mypy SRC/ --ignore-missing-imports` |
+| Ruff | Linting | `ruff check src/` |
+| Black | Formatting | `black src/` |
+| Mypy | Type checking | `mypy src/ --ignore-missing-imports` |
 | Pytest | Tests | `python scripts/run_tests.py` |
 
 ## Environment Variables
@@ -71,10 +71,10 @@ python scripts/run_tests.py --unit
 python scripts/run_tests.py --all
 
 # Run CLI with sample XML
-python SRC/main.py --xml SRC/tests/fixtures/rekordbox/minimal.xml --playlist "Test Playlist" --out test
+python src/main.py --xml src/tests/fixtures/rekordbox/minimal.xml --playlist "Test Playlist" --out test
 
 # Run GUI
-python SRC/gui_app.py
+python src/gui_app.py
 ```
 
 ## Optional: Playwright (Browser Search)

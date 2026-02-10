@@ -21,8 +21,8 @@ from pathlib import Path
 from typing import Dict, List, Optional
 from unittest.mock import Mock, patch
 
-# Add SRC to path
-sys.path.insert(0, str(Path(__file__).parent.parent / 'SRC'))
+# Add src to path
+sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 from cuepoint.update.update_checker import UpdateChecker, UpdateCheckError
 from cuepoint.update.version_utils import (

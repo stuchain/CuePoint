@@ -1,13 +1,13 @@
 # Deprecation Schedule — Config Keys and CLI Flags
 
-**Step 12: Future-Proofing** — Concrete schedule for config keys and CLI flags.
+Concrete schedule for config keys and CLI flags.
 
 **Version 1.0 — 2026-02-03**  
 **Last updated**: 2026-02-03
 
 ## Overview
 
-This document extends the [Deprecation Policy](deprecation-policy.md) with a concrete schedule for config keys and CLI flags. Per Design 12.41, deprecations are announced at least 90 days before removal.
+This document extends the [Deprecation Policy](deprecation-policy.md) with a concrete schedule for config keys and CLI flags. Deprecations are announced at least 90 days before removal.
 
 ## Process
 
@@ -68,4 +68,4 @@ When deprecating a config key or CLI flag:
 
 - [Deprecation Policy](deprecation-policy.md) — General process
 - [Breaking Change Policy](breaking-change-policy.md) — Major version changes
-- [Config Template](../../config.yaml.template) — Current config structure
+- [Config Template](../../config/config.yaml.template) — Current config structure

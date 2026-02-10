@@ -8,11 +8,11 @@ Design 10.25. High-level pipeline and core services.
 Input (Rekordbox XML) → Parse → Query Generation → Search → Match/Score → Output (CSV/JSON/Excel)
 ```
 
-1. **Parse**: Load XML, extract playlists and tracks (`SRC/cuepoint/data/rekordbox.py`)
-2. **Query Generation**: Build search queries from title/artist (`SRC/cuepoint/core/query_generator.py`)
-3. **Search**: Find Beatport track URLs via DuckDuckGo, direct search, or browser (`SRC/cuepoint/data/beatport.py`)
-4. **Match/Score**: Fetch candidate pages, score with fuzzy matching, apply guards (`SRC/cuepoint/core/matcher.py`)
-5. **Output**: Write CSV/JSON/Excel with enriched metadata (`SRC/cuepoint/services/output_writer.py`)
+1. **Parse**: Load XML, extract playlists and tracks (`src/cuepoint/data/rekordbox.py`)
+2. **Query Generation**: Build search queries from title/artist (`src/cuepoint/core/query_generator.py`)
+3. **Search**: Find Beatport track URLs via DuckDuckGo, direct search, or browser (`src/cuepoint/data/beatport.py`)
+4. **Match/Score**: Fetch candidate pages, score with fuzzy matching, apply guards (`src/cuepoint/core/matcher.py`)
+5. **Output**: Write CSV/JSON/Excel with enriched metadata (`src/cuepoint/services/output_writer.py`)
 
 ## Core Services
 
@@ -60,7 +60,7 @@ Input (Rekordbox XML) → Parse → Query Generation → Search → Match/Score 
 
 ## Code Reading Guide
 
-1. Start at `SRC/main.py` (CLI) or `SRC/gui_app.py` (GUI)
+1. Start at `src/main.py` (CLI) or `src/gui_app.py` (GUI)
 2. Follow `CLIProcessor` or GUI controller into `ProcessorService`
 3. Trace `ProcessorService.process_track()` → `MatcherService.find_best_match()` → `core/matcher.best_beatport_match()`
 4. For Beatport data flow: `beatport_service.fetch_track_data()` → `data/beatport.parse_track_page()`

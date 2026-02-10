@@ -14,8 +14,8 @@ Usage:
 import sys
 from pathlib import Path
 
-# Add SRC to path
-sys.path.insert(0, str(Path("SRC").resolve()))
+# Add src to path
+sys.path.insert(0, str(Path("src").resolve()))
 
 from cuepoint.update.update_checker import UpdateChecker
 from cuepoint.update.version_utils import (

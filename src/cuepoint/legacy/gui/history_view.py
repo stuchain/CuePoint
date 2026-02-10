@@ -1112,13 +1112,13 @@ class HistoryView(QWidget):
         dialog.exec()
 
     def _get_output_dirs(self):
-        """Get list of output directory paths (only SRC/output folder)"""
-        # Determine SRC directory
-        current_file = os.path.abspath(__file__)  # SRC/gui/history_view.py
-        src_dir = os.path.dirname(os.path.dirname(current_file))  # SRC/
+        """Get list of output directory paths (only src/output folder)"""
+        # Determine src directory
+        current_file = os.path.abspath(__file__)  # src/gui/history_view.py
+        src_dir = os.path.dirname(os.path.dirname(current_file))  # src/
 
         output_dirs = []
-        # Only use SRC output folder
+        # Only use src output folder
         src_output = os.path.join(src_dir, "output")
         if os.path.exists(src_output):
             output_dirs.append(src_output)

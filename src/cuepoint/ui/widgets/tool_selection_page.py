@@ -118,9 +118,9 @@ class ToolSelectionPage(QWidget):
                 base_path = Path(os.path.dirname(sys.executable))
             logo_path = base_path / "assets" / "icons" / "logo.png"
         else:
-            # Running as script - use SRC/cuepoint/ui/assets/icons
-            # This file is at SRC/cuepoint/ui/widgets/tool_selection_page.py
-            # So parent.parent is SRC/cuepoint/ui/
+            # Running as script - use src/cuepoint/ui/assets/icons
+            # This file is at src/cuepoint/ui/widgets/tool_selection_page.py
+            # So parent.parent is src/cuepoint/ui/
             base_path = Path(__file__).resolve().parent.parent
             logo_path = base_path / "assets" / "icons" / "logo.png"
 

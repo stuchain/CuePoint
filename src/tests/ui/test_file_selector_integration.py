@@ -66,9 +66,9 @@ def test_integration():
         print("ALL INTEGRATION TESTS PASSED!")
         print("=" * 60)
         print("\nYou can now test the window:")
-        print("  python SRC/test_gui_window.py")
+        print("  python src/test_gui_window.py")
         print("\nOr test FileSelector standalone:")
-        print("  python SRC/test_file_selector.py")
+        print("  python src/test_file_selector.py")
 
         return True
 

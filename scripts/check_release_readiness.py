@@ -17,7 +17,7 @@ def check_tests_pass():
     """Check that all tests pass."""
     print("Checking tests...")
     result = subprocess.run(
-        ["pytest", "SRC/tests/", "-v", "--tb=short"],
+        ["pytest", "src/tests/", "-v", "--tb=short"],
         capture_output=True,
         text=True
     )
@@ -35,7 +35,7 @@ def check_coverage():
     """Check code coverage meets threshold."""
     print("Checking code coverage...")
     result = subprocess.run(
-        ["pytest", "SRC/tests/", "--cov=SRC/cuepoint", "--cov-report=term"],
+        ["pytest", "src/tests/", "--cov=src/cuepoint", "--cov-report=term"],
         capture_output=True,
         text=True
     )
@@ -64,7 +64,7 @@ def check_linting():
     print("Checking linting...")
     # Try ruff first, fall back to flake8
     result = subprocess.run(
-        ["ruff", "check", "SRC/"],
+        ["ruff", "check", "src/"],
         capture_output=True,
         text=True
     )
@@ -82,7 +82,7 @@ def check_type_checking():
     """Check type checking passes."""
     print("Checking type checking...")
     result = subprocess.run(
-        ["mypy", "SRC/cuepoint"],
+        ["mypy", "src/cuepoint"],
         capture_output=True,
         text=True
     )
@@ -142,7 +142,7 @@ def check_version_consistency():
     
     # Check version in multiple locations
     version_files = [
-        Path("SRC/cuepoint/version.py"),
+        Path("src/cuepoint/version.py"),
         Path("pyproject.toml"),
     ]
     

@@ -29,7 +29,7 @@ Run benchmarks with:
 
 ```bash
 python scripts/bench.py --dataset 1k
-python scripts/bench.py --dataset all --save benchmarks/results.json
+python scripts/bench.py --dataset all --save scripts/benchmarks/results.json
 python scripts/bench.py --dataset 1k --profile          # cProfile, top 20 slowest
 python scripts/bench.py --dataset 1k --compare-baseline # Fail if regression > 20%
 python scripts/bench.py --dataset 1k --update-baseline # Create/update baseline.json
@@ -113,7 +113,7 @@ Run benchmarks with cProfile to capture hot paths (Design 6.19):
 python scripts/bench.py --dataset 1k --profile
 ```
 
-This saves the top 20 slowest functions to `benchmarks/profile_1k.txt`.
+This saves the top 20 slowest functions to `scripts/benchmarks/profile_1k.txt`.
 
 ## Tuning Tips
 

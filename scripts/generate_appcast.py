@@ -26,10 +26,10 @@ def sha256_of_file(path: Path, chunk_size: int = 1024 * 1024) -> str:
             h.update(chunk)
     return h.hexdigest().lower()
 
-# Add SRC to path
+# Add src to path
 _script_dir = Path(__file__).resolve().parent
 _project_root = _script_dir.parent
-_src_dir = _project_root / 'SRC'
+_src_dir = _project_root / 'src'
 sys.path.insert(0, str(_src_dir))
 
 try:

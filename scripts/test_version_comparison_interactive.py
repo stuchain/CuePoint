@@ -13,8 +13,8 @@ Usage:
 import sys
 from pathlib import Path
 
-# Add SRC to path
-sys.path.insert(0, str(Path(__file__).parent.parent / 'SRC'))
+# Add src to path
+sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 from cuepoint.update.version_utils import (
     compare_versions,

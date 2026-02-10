@@ -1,6 +1,6 @@
 # Output Schema Migration Guide
 
-Step 12: Future-Proofing - Migrating output CSV files between schema versions.
+Migrating output CSV files between schema versions.
 
 ## Overview
 
@@ -19,7 +19,7 @@ cuepoint migrate --from 1 --to 2 [--file path] [--directory dir]
 
 ## Preconditions
 
-1. **Backup**: The tool creates a `.bak` timestamped backup before overwriting (Design 12.26).
+1. **Backup**: The tool creates a `.bak` timestamped backup before overwriting (see implementation).
 2. **Schema versions**: Supported versions 1 and 2.
 
 ## Migration Steps

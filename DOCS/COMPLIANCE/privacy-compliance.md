@@ -145,7 +145,7 @@ This document outlines the privacy compliance process for CuePoint, ensuring com
 
 - **In-App**: Privacy dialog accessible from Help menu
 - **Online**: PRIVACY_NOTICE.md in repository
-- **Documentation**: DOCS/POLICY/privacy-notice.md
+- **Documentation**: docs/policy/privacy-notice.md
 
 ### Content
 
@@ -268,7 +268,7 @@ Privacy policy includes:
 - [License Compliance](license-compliance.md)
 - [Accessibility Compliance](accessibility-compliance.md)
 - [Privacy Notice](../../PRIVACY_NOTICE.md)
-- [Security Response Process](../SECURITY/security-response-process.md)
+- [Security Response Process](../security/security-response-process.md)
 
 ## Last Updated
 

@@ -94,8 +94,7 @@ class ChangelogViewer(QDialog):
         changelog_paths = [
             Path("CHANGELOG.md"),
             Path("docs/CHANGELOG.md"),
-            Path("DOCS/CHANGELOG.md"),
-            Path("DOCS/RELEASE/changelog.md"),
+            Path("docs/release/CHANGELOG.md"),
             Path("CHANGELOG.txt"),
         ]
 

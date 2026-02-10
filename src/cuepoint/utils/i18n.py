@@ -51,7 +51,7 @@ class I18nManager:
         self._language_code = "en"
         self._translator: Optional["QTranslator"] = None
         # Default translations directory (repo root / translations)
-        # This file is at: SRC/cuepoint/utils/i18n.py → repo root is 3 parents up.
+        # This file is at: src/cuepoint/utils/i18n.py → repo root is 3 parents up.
         self._translations_dir = Path(__file__).resolve().parents[3] / "translations"
 
     @classmethod

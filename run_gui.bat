@@ -1,5 +1,5 @@
 @echo off
-cd SRC
+cd src
 python gui_app.py
 pause
 

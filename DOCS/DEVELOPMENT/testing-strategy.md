@@ -18,10 +18,10 @@ Design 10.8, 10.121. What tests to add and when.
 
 | Layer | Location | Purpose |
 | --- | --- | --- |
-| Unit | `SRC/tests/unit/` | Fast, isolated, mock external deps |
-| Integration | `SRC/tests/integration/` | Real modules, mocked network/disk |
-| System | `SRC/tests/system/` | CLI smoke, end-to-end |
-| Regression | `SRC/tests/regression/` | Previously reported bugs |
+| Unit | `src/tests/unit/` | Fast, isolated, mock external deps |
+| Integration | `src/tests/integration/` | Real modules, mocked network/disk |
+| System | `src/tests/system/` | CLI smoke, end-to-end |
+| Regression | `src/tests/regression/` | Previously reported bugs |
 
 ## When to Add Tests
 
@@ -49,7 +49,7 @@ python scripts/run_tests.py --all
 python scripts/run_tests.py --unit --no-slow
 
 # Specific module
-pytest SRC/tests/unit/core/test_matcher.py -v
+pytest src/tests/unit/core/test_matcher.py -v
 ```
 
 ## Markers
@@ -69,23 +69,23 @@ pytest SRC/tests/unit/core/test_matcher.py -v
 
 ## Adding a Unit Test
 
-1. Create or extend `SRC/tests/unit/<module>/test_<name>.py`
+1. Create or extend `src/tests/unit/<module>/test_<name>.py`
 2. Use pytest fixtures for setup
 3. Mock external calls (`patch`, `MagicMock`)
 4. Assert behavior, not implementation
 
 ## Adding an Integration Test
 
-1. Create or extend `SRC/tests/integration/test_<name>.py`
+1. Create or extend `src/tests/integration/test_<name>.py`
 2. Use real modules; mock only network/filesystem
-3. Use fixtures from `SRC/tests/fixtures/`
+3. Use fixtures from `src/tests/fixtures/`
 
 ## Fixtures
 
-- `SRC/tests/fixtures/rekordbox/`: Sample XML files
-- `SRC/tests/fixtures/beatport/`: Sample HTML responses
+- `src/tests/fixtures/rekordbox/`: Sample XML files
+- `src/tests/fixtures/beatport/`: Sample HTML responses
 
-See [Fixtures README](https://github.com/stuchain/CuePoint/blob/main/SRC/tests/fixtures/README.md).
+See [Fixtures README](https://github.com/stuchain/CuePoint/blob/main/src/tests/fixtures/README.md).
 
 ## Related
 

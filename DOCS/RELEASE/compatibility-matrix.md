@@ -1,6 +1,6 @@
 # Compatibility Matrix — CuePoint
 
-**Step 15: Long-Term Maintenance and Evolution**  
+**Long-term maintenance and evolution**  
 **Version 1.0 — 2026-02-04**  
 **Last updated**: 2026-02-04
 

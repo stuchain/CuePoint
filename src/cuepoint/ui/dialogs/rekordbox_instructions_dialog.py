@@ -182,7 +182,7 @@ class RekordboxInstructionsDialog(QDialog):
         placeholder.setWordWrap(True)
 
         # Determine the resource path
-        # In development: SRC/cuepoint/ui/resources/images/rekordbox_instructions/
+        # In development: src/cuepoint/ui/resources/images/rekordbox_instructions/
         # In frozen app: resources/images/rekordbox_instructions/ (in _MEIPASS)
         if getattr(sys, "frozen", False):
             # Running as packaged app
@@ -192,9 +192,9 @@ class RekordboxInstructionsDialog(QDialog):
             else:
                 base_path = Path(os.path.dirname(sys.executable)) / "resources"
         else:
-            # Running as script - use SRC/cuepoint/ui/resources
-            # __file__ is at SRC/cuepoint/ui/dialogs/rekordbox_instructions_dialog.py
-            # So parent.parent is SRC/cuepoint/ui/
+            # Running as script - use src/cuepoint/ui/resources
+            # __file__ is at src/cuepoint/ui/dialogs/rekordbox_instructions_dialog.py
+            # So parent.parent is src/cuepoint/ui/
             # Use resolve() to get absolute path
             base_path = Path(__file__).resolve().parent.parent / "resources"
 

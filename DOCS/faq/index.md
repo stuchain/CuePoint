@@ -1,6 +1,6 @@
 # Frequently Asked Questions
 
-Design 10.26. Common questions and where to find answers.
+Common questions and where to find answers.
 
 ## User Questions
 
@@ -38,19 +38,19 @@ python scripts/run_tests.py --unit
 python scripts/run_tests.py --all
 ```
 
-See [Testing Strategy](../DEVELOPMENT/testing-strategy.md).
+See [Testing Strategy](../development/testing-strategy.md).
 
 ### How do I add new match rules?
 
-See [Match Rules & Scoring](../DEVELOPMENT/match-rules-and-scoring.md).
+See [Match Rules & Scoring](../development/match-rules-and-scoring.md).
 
 ### How do I update Beatport parsing?
 
-See [Beatport Parsing](../DEVELOPMENT/beatport-parsing.md).
+See [Beatport Parsing](../development/beatport-parsing.md).
 
 ### Where do I start contributing?
 
-See [Contributing](../../.github/CONTRIBUTING.md) and [Developer Setup](../DEVELOPMENT/developer-setup.md).
+See [Contributing](../../.github/CONTRIBUTING.md) and [Developer Setup](../development/developer-setup.md).
 
 ---
 

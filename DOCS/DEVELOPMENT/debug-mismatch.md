@@ -12,7 +12,7 @@ set CUEPOINT_DEBUG=1
 export CUEPOINT_DEBUG=1
 
 # Run CLI
-python SRC/main.py --xml your.xml --playlist "Playlist" --out debug_out
+python src/main.py --xml your.xml --playlist "Playlist" --out debug_out
 ```
 
 Or in GUI: Settings > Advanced > enable debug logging (if available).
@@ -51,7 +51,7 @@ Search logs for your track index `[N]` and the candidate URLs.
 ## Step 6: Reproduce in Unit Test
 
 1. Create a minimal XML with the problematic track
-2. Add a test in `SRC/tests/unit/core/test_matcher.py` or `test_processor_service.py`
+2. Add a test in `src/tests/unit/core/test_matcher.py` or `test_processor_service.py`
 3. Mock `track_urls` and `parse_track_page` to return known candidates
 4. Assert expected best match or rejection
 
@@ -66,7 +66,7 @@ Search logs for your track index `[N]` and the candidate URLs.
 
 ## Step 8: Inspect Matcher Logic
 
-Key functions in `SRC/cuepoint/core/matcher.py`:
+Key functions in `src/cuepoint/core/matcher.py`:
 
 - `best_beatport_match()`: Main entry
 - `consider()`: Scores a single candidate

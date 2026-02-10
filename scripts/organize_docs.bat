@@ -1,12 +1,12 @@
 @echo off
-REM Organize DOCS folder structure
+REM Organize docs folder structure
 REM This reorganizes documentation into a cleaner structure
 
 echo ========================================
-echo DOCS Folder Reorganization
+echo docs Folder Reorganization
 echo ========================================
 echo.
-echo This will reorganize the DOCS folder into:
+echo This will reorganize the docs folder into:
 echo   - DEVELOPMENT/guidelines/     (coding standards, testing, error handling)
 echo   - DEVELOPMENT/architecture/   (architecture docs)
 echo   - PHASES/completed/           (completed phases 0-7)
@@ -18,7 +18,7 @@ echo   - DESIGNS/ARCHIVE/            (old designs)
 echo.
 pause
 
-cd DOCS
+cd docs
 
 REM Create new directory structure
 echo Creating directory structure...

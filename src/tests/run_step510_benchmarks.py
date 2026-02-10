@@ -10,7 +10,7 @@ This script runs all performance benchmarks and generates a comparison report.
 import sys
 from pathlib import Path
 
-# Add SRC to path
+# Add src to path
 sys.path.insert(0, str(Path(__file__).parent))
 
 import sys

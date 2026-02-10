@@ -201,7 +201,7 @@ python scripts/generate_licenses.py --output THIRD_PARTY_LICENSES.txt
 
 - [Privacy Compliance](privacy-compliance.md)
 - [Accessibility Compliance](accessibility-compliance.md)
-- [Security Response Process](../SECURITY/security-response-process.md)
+- [Security Response Process](../security/security-response-process.md)
 
 ## Last Updated
 

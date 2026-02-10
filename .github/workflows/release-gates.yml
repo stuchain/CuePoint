@@ -37,7 +37,7 @@ jobs:
       
       - name: Run unit tests
         run: |
-          pytest SRC/tests/unit/ -v --cov=SRC/cuepoint --cov-report=xml
+          pytest src/tests/unit/ -v --cov=src/cuepoint --cov-report=xml
         timeout-minutes: 15
         env:
           # Linux: offscreen platform for Qt without display/EGL. Windows: omit to avoid
@@ -48,7 +48,7 @@ jobs:
       
       - name: Run integration tests
         run: |
-          pytest SRC/tests/integration/ -v --timeout=120
+          pytest src/tests/integration/ -v --timeout=120
         env:
           # Linux: offscreen for headless. Windows/macOS: omit (offscreen can hang on Windows).
           QT_QPA_PLATFORM: ${{ matrix.os == 'ubuntu-latest' && 'offscreen' || '' }}
@@ -150,17 +150,17 @@ jobs:
       
       - name: Run linter
         run: |
-          ruff check SRC/
+          ruff check src/
         continue-on-error: false
       
       - name: Run type checker
         run: |
-          python -m pytest SRC/tests/integration/test_step55_mypy_validation.py -v -p no:pytest-qt
+          python -m pytest src/tests/integration/test_step55_mypy_validation.py -v -p no:pytest-qt
         continue-on-error: false
       
       - name: Check code formatting
         run: |
-          ruff format --check SRC/
+          ruff format --check src/
         continue-on-error: false
       
       - name: Check file sizes

@@ -1,16 +1,14 @@
 # Release Deployment Runbook
 
-Design: Step 13 Post-Launch Operations and Support.
-
 ## Purpose
 
 This runbook provides step-by-step instructions for deploying a CuePoint release. Follow these steps to ensure a safe, repeatable release.
 
 ## Prerequisites
 
-- [ ] All tests passing (`pytest SRC/tests/`)
-- [ ] Version synced in `SRC/cuepoint/version.py`, `pyproject.toml`
-- [ ] Changelog updated in `DOCS/RELEASE/changelog.md`
+- [ ] All tests passing (`pytest src/tests/`)
+- [ ] Version synced in `src/cuepoint/version.py`, `pyproject.toml`
+- [ ] Changelog updated in `docs/release/CHANGELOG.md`
 - [ ] Release notes prepared
 
 ## Release Gates (Pre-Release)
@@ -18,7 +16,7 @@ This runbook provides step-by-step instructions for deploying a CuePoint release
 1. **Verify release gates**:
    - Run `python scripts/check_release_readiness.py`
    - Ensure release gates workflow passes (version sync, changelog)
-   - Run `pytest SRC/tests/ -v`
+   - Run `pytest src/tests/ -v`
 
 2. **Confirm build provenance**:
    - Commit SHA recorded
@@ -28,7 +26,7 @@ This runbook provides step-by-step instructions for deploying a CuePoint release
 
 ### 1. Prepare Release Notes
 
-- Update `DOCS/RELEASE/changelog.md` with all changes
+- Update `docs/release/changelog.md` with all changes
 - Use [Release Notes Template](release-notes-template.md)
 - Include: highlights, fixes, known issues
 

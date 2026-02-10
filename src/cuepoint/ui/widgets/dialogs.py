@@ -538,7 +538,7 @@ class AboutDialog(QDialog):
 
         path = find_terms_of_use()
         text = load_policy_text(
-            path, "Terms of use could not be loaded. See DOCS/POLICY/terms-of-use.md"
+            path, "Terms of use could not be loaded. See docs/policy/terms-of-use.md"
         )
         self._show_policy_viewer("Terms of Use", text)
 
@@ -549,7 +549,7 @@ class AboutDialog(QDialog):
         path = find_support_policy()
         text = load_policy_text(
             path,
-            "Support policy could not be loaded. See DOCS/POLICY/support-sla.md",
+            "Support policy could not be loaded. See docs/policy/support-sla.md",
         )
         self._show_policy_viewer("Support Policy", text)
 
@@ -667,9 +667,9 @@ class AboutDialog(QDialog):
                 base_path = Path(os.path.dirname(sys.executable))
             logo_path = base_path / "assets" / "icons" / "logo.png"
         else:
-            # Running as script - use SRC/cuepoint/ui/assets/icons
-            # This file is at SRC/cuepoint/ui/widgets/dialogs.py
-            # So parent.parent is SRC/cuepoint/ui/
+            # Running as script - use src/cuepoint/ui/assets/icons
+            # This file is at src/cuepoint/ui/widgets/dialogs.py
+            # So parent.parent is src/cuepoint/ui/
             base_path = Path(__file__).resolve().parent.parent
             logo_path = base_path / "assets" / "icons" / "logo.png"
 

@@ -70,7 +70,7 @@ class TestConfigurationFiles:
     def test_coding_standards_doc_exists(self):
         """Test that coding standards documentation exists."""
         root = Path(__file__).parent.parent.parent.parent
-        doc = root / "DOCS" / "DEVELOPMENT" / "coding-standards.md"
+        doc = root / "docs" / "development" / "coding-standards.md"
         assert doc.exists(), "coding-standards.md not found"
 
 
@@ -135,7 +135,7 @@ class TestCodeFormatting:
     def cuepoint_path(self) -> Path:
         """Get the path to the cuepoint source directory."""
         root = Path(__file__).parent.parent.parent.parent
-        return root / "SRC" / "cuepoint"
+        return root / "src" / "cuepoint"
 
     def test_black_can_format_code(self):
         """Test that black can format code (check mode)."""
@@ -178,7 +178,7 @@ class TestLinting:
     def cuepoint_path(self) -> Path:
         """Get the path to the cuepoint source directory."""
         root = Path(__file__).parent.parent.parent.parent
-        return root / "SRC" / "cuepoint"
+        return root / "src" / "cuepoint"
 
     def test_pylint_can_run(self):
         """Test that pylint can run on the codebase."""
@@ -278,7 +278,7 @@ class TestTypeChecking:
     def cuepoint_path(self) -> Path:
         """Get the path to the cuepoint source directory."""
         root = Path(__file__).parent.parent.parent.parent
-        return root / "SRC" / "cuepoint"
+        return root / "src" / "cuepoint"
 
     def test_mypy_can_run(self):
         """Test that mypy can run on the codebase."""
@@ -374,7 +374,7 @@ class TestCodeQualityMetrics:
     def cuepoint_path(self) -> Path:
         """Get the path to the cuepoint source directory."""
         root = Path(__file__).parent.parent.parent.parent
-        return root / "SRC" / "cuepoint"
+        return root / "src" / "cuepoint"
 
     def test_python_files_exist(self):
         """Test that Python files exist in the cuepoint directory."""

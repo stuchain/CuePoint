@@ -1,10 +1,10 @@
 # Changelog Policy
 
-Design 10.34, 10.169. How to update the changelog.
+How to update the changelog.
 
 ## Location
 
-`DOCS/RELEASE/changelog.md`
+`docs/release/changelog.md`
 
 ## Format
 

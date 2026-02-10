@@ -1711,7 +1711,7 @@ class MainWindow(QMainWindow):
             path = find_terms_of_use()
             text = load_policy_text(
                 path,
-                "Terms of use could not be loaded. See DOCS/POLICY/terms-of-use.md",
+                "Terms of use could not be loaded. See docs/policy/terms-of-use.md",
             )
             dlg = QDialog(self)
             dlg.setWindowTitle("Terms of Use")
@@ -1780,7 +1780,7 @@ class MainWindow(QMainWindow):
             path = find_support_policy()
             text = load_policy_text(
                 path,
-                "Support policy could not be loaded. See DOCS/POLICY/support-sla.md",
+                "Support policy could not be loaded. See docs/policy/support-sla.md",
             )
             dlg = QDialog(self)
             dlg.setWindowTitle("Support Policy")
@@ -1946,7 +1946,7 @@ class MainWindow(QMainWindow):
             else:
                 icon_path = base_path / "assets" / "icons" / "logo.png"
         else:
-            # Running as script - use SRC/cuepoint/ui/assets/icons
+            # Running as script - use src/cuepoint/ui/assets/icons
             base_path = Path(__file__).resolve().parent
             icon_path = base_path / "assets" / "icons" / "logo.png"
 
@@ -1977,7 +1977,7 @@ class MainWindow(QMainWindow):
                 base_path = Path(os.path.dirname(sys.executable))
             logo_path = base_path / "assets" / "icons" / "logo.png"
         else:
-            # Running as script - use SRC/cuepoint/ui/assets/icons
+            # Running as script - use src/cuepoint/ui/assets/icons
             base_path = Path(__file__).resolve().parent
             logo_path = base_path / "assets" / "icons" / "logo.png"
 

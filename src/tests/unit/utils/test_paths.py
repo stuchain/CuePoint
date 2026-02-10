@@ -60,7 +60,7 @@ class TestAppPaths:
 
     def test_app_dir_from_source(self):
         """Test app directory when running from source."""
-        # When not frozen, should return SRC directory
+        # When not frozen, should return src directory
         app_dir = AppPaths.app_dir()
         assert app_dir.exists()
         # Should contain cuepoint directory

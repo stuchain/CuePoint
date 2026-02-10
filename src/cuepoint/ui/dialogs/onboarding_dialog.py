@@ -162,13 +162,13 @@ class ResultsScreen(_OnboardingScreen):
         from pathlib import Path
 
         repo_root = Path(__file__).resolve().parents[4]
-        guide_path = repo_root / "DOCS" / "user-guide" / "workflows.md"
+        guide_path = repo_root / "docs" / "user-guide" / "workflows.md"
         if guide_path.exists():
             QDesktopServices.openUrl(QUrl.fromLocalFile(str(guide_path)))
         else:
             QDesktopServices.openUrl(
                 QUrl(
-                    "https://github.com/stuchain/CuePoint/blob/main/DOCS/user-guide/workflows.md"
+                    "https://github.com/stuchain/CuePoint/blob/main/docs/user-guide/workflows.md"
                 )
             )
 

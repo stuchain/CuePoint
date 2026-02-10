@@ -18,10 +18,10 @@ from email.utils import formatdate
 from pathlib import Path
 from typing import Optional
 
-# Add SRC to path
+# Add src to path
 _script_dir = Path(__file__).resolve().parent
 _project_root = _script_dir.parent
-_src_dir = _project_root / 'SRC'
+_src_dir = _project_root / 'src'
 sys.path.insert(0, str(_src_dir))
 
 try:

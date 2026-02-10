@@ -34,8 +34,8 @@ class IconManager:
         """Initialize icon manager and load icons."""
         # Try multiple possible icon base paths
         possible_paths = [
-            Path("SRC/cuepoint/ui/assets/icons"),
-            Path("SRC/cuepoint/ui/icons"),
+            Path("src/cuepoint/ui/assets/icons"),
+            Path("src/cuepoint/ui/icons"),
             Path("assets/icons"),
             Path("icons"),
         ]

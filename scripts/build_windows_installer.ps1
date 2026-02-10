@@ -30,7 +30,7 @@ $projectRoot = Split-Path -Parent $scriptDir
 # Get version if not provided
 if (-not $Version) {
     try {
-        $versionFile = Join-Path $projectRoot "SRC\cuepoint\version.py"
+        $versionFile = Join-Path $projectRoot "src\cuepoint\version.py"
         $versionContent = Get-Content $versionFile -Raw
         if ($versionContent -match '__version__\s*=\s*["'']([^"'']+)["'']') {
             $Version = $matches[1]

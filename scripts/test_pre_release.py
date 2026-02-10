@@ -108,7 +108,7 @@ def test_version_consistency():
     results = []
     
     # Check version.py exists
-    version_file = Path("SRC/cuepoint/version.py")
+    version_file = Path("src/cuepoint/version.py")
     if not version_file.exists():
         results.append(TestResult(
             "version.py exists",
@@ -167,7 +167,7 @@ def test_update_checker_logic():
     results = []
     
     try:
-        sys.path.insert(0, str(Path("SRC").resolve()))
+        sys.path.insert(0, str(Path("src").resolve()))
         from cuepoint.update.version_utils import (
             compare_versions,
             is_stable_version,
@@ -253,7 +253,7 @@ def test_about_dialog_logo():
     results = []
     
     try:
-        sys.path.insert(0, str(Path("SRC").resolve()))
+        sys.path.insert(0, str(Path("src").resolve()))
         from cuepoint.ui.widgets.dialogs import AboutDialog
         
         # Check if _load_logo method exists
@@ -310,7 +310,7 @@ def test_rekordbox_dialog():
     results = []
     
     try:
-        sys.path.insert(0, str(Path("SRC").resolve()))
+        sys.path.insert(0, str(Path("src").resolve()))
         from cuepoint.ui.dialogs.rekordbox_instructions_dialog import RekordboxInstructionsDialog
         
         # Check window size
@@ -470,7 +470,7 @@ def test_gui_app_version():
     print_header("Testing GUI App Version Usage")
     results = []
     
-    gui_app_path = Path("SRC/gui_app.py")
+    gui_app_path = Path("src/gui_app.py")
     if not gui_app_path.exists():
         results.append(TestResult("gui_app.py exists", False))
         return results

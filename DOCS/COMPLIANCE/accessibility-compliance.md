@@ -207,7 +207,7 @@ This document outlines the accessibility compliance process for CuePoint, ensuri
 
 - [License Compliance](license-compliance.md)
 - [Privacy Compliance](privacy-compliance.md)
-- [Security Response Process](../SECURITY/security-response-process.md)
+- [Security Response Process](../security/security-response-process.md)
 
 ## Resources
 

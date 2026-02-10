@@ -269,8 +269,8 @@ The release schedule may be adjusted based on:
 ## Related Documents
 
 - [Release Strategy](release-strategy.md)
-- [Release Deployment Runbook](../../ARCHIVE/docs/OPERATIONS/Release/Release_Deployment.md)
-- [Rollback Procedure](../../ARCHIVE/docs/OPERATIONS/Release/Rollback_Procedure.md)
+- [Release Deployment Runbook](release-deployment-runbook.md)
+- [Rollback](rollback.md)
 - [Changelog](changelog.md)
 
 ## Last Updated

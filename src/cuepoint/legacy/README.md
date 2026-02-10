@@ -61,7 +61,7 @@ cli_processor.process_playlist(xml_path, playlist_name, out_csv_base)
 **Status**: ❌ Deprecated  
 **Replaced by**: `cuepoint.ui.*` (new GUI structure)
 
-**What it was**: Old GUI implementation with widgets and controllers in `SRC/gui/` directory.
+**What it was**: Old GUI implementation with widgets and controllers in `src/gui/` directory.
 
 **Why it was moved**: 
 - Used legacy processor (`gui_controller.py` used `legacy.processor`)
@@ -111,8 +111,8 @@ These modules will be removed in a future version after:
 ## Questions?
 
 See:
-- `DOCS/PHASES/05_Phase_5_Code_Restructuring/11_Step_5.11_CLI_Migration.md` - CLI migration guide
-- `DOCS/DESIGNS/05_CLI_Migration_Design.md` - Design document
-- `SRC/cuepoint/cli/cli_processor.py` - New CLI implementation
-- `SRC/cuepoint/services/processor_service.py` - New processor service
+- `docs/phases/05_Phase_5_Code_Restructuring/11_Step_5.11_CLI_Migration.md` - CLI migration guide
+- `docs/designs/05_CLI_Migration_Design.md` - Design document
+- `src/cuepoint/cli/cli_processor.py` - New CLI implementation
+- `src/cuepoint/services/processor_service.py` - New processor service
 

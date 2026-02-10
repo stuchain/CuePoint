@@ -41,7 +41,7 @@ def run_pytest(
         f"--timeout={timeout}",
     ]
     if by_path:
-        # Run all tests under the given path (e.g. SRC/tests/unit/)
+        # Run all tests under the given path (e.g. src/tests/unit/)
         pass
     else:
         cmd.extend(["-m", path_or_marker])
@@ -67,17 +67,17 @@ def main() -> None:
 
     extra = []
     if args.coverage:
-        extra.extend(["--cov=SRC/cuepoint", "--cov-report=term", "--cov-report=xml"])
+        extra.extend(["--cov=src/cuepoint", "--cov-report=term", "--cov-report=xml"])
     if args.no_slow:
         extra.append("-m")
         extra.append("not slow")
 
     # Run by path so all tests in each layer run (Design 3.34, 3.35, 3.17)
     paths = {
-        "unit": "SRC/tests/unit/",
-        "integration": "SRC/tests/integration/",
-        "regression": "SRC/tests/regression/",
-        "system": "SRC/tests/system/",
+        "unit": "src/tests/unit/",
+        "integration": "src/tests/integration/",
+        "regression": "src/tests/regression/",
+        "system": "src/tests/system/",
     }
     exit_code = 0
     if args.all:
@@ -87,7 +87,7 @@ def main() -> None:
             if args.no_slow:
                 ex.extend(["-m", "not slow"])
             if args.coverage and name == "unit":
-                ex.extend(["--cov=SRC/cuepoint", "--cov-report=term", "--cov-report=xml"])
+                ex.extend(["--cov=src/cuepoint", "--cov-report=term", "--cov-report=xml"])
             exit_code = run_pytest(path, by_path=True, extra=ex)
             if exit_code != 0:
                 break

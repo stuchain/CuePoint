@@ -155,7 +155,7 @@ jobs:
           done
           sleep 2
           
-          VERSION=$(python -c "import sys; sys.path.insert(0, 'SRC'); from cuepoint.version import __version__; print(__version__)")
+          VERSION=$(python -c "import sys; sys.path.insert(0, 'src'); from cuepoint.version import __version__; print(__version__)")
           echo "Version: $VERSION"
           echo "Running: bash scripts/create_dmg.sh \"$VERSION\""
           bash scripts/create_dmg.sh "$VERSION"

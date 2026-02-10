@@ -4,7 +4,7 @@
 """
 Set Build Information During CI Build
 
-This script updates SRC/cuepoint/version.py with build identifiers:
+This script updates src/cuepoint/version.py with build identifiers:
 - Build number (from CI or date-based)
 - Commit SHA (from git)
 - Build date (current timestamp)
@@ -98,7 +98,7 @@ def update_version_file() -> None:
     # Get path to version file
     script_dir = Path(__file__).parent
     project_root = script_dir.parent
-    version_file = project_root / "SRC" / "cuepoint" / "version.py"
+    version_file = project_root / "src" / "cuepoint" / "version.py"
 
     if not version_file.exists():
         print(f"Error: Version file not found: {version_file}")

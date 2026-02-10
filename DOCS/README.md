@@ -1,6 +1,6 @@
 # CuePoint Documentation
 
-**Start here.** Single entry point for all CuePoint documentation. Design 10.1.
+**Start here.** Single entry point for all CuePoint documentation.
 
 CuePoint enriches Rekordbox XML playlists with Beatport metadata (BPM, key, artists, etc.).
 
@@ -31,15 +31,16 @@ For contributors: setup, architecture, extending the codebase.
 | Section | Description |
 | --- | --- |
 | [Contributing](../.github/CONTRIBUTING.md) | How to contribute (start here) |
-| [Architecture Overview](DEVELOPMENT/architecture.md) | Pipeline, core services |
-| [Developer Setup](DEVELOPMENT/developer-setup.md) | Environment, scripts, tooling |
-| [Match Rules & Scoring](DEVELOPMENT/match-rules-and-scoring.md) | How to add match rules |
-| [Beatport Parsing](DEVELOPMENT/beatport-parsing.md) | How to update Beatport parsing |
-| [Testing Strategy](DEVELOPMENT/testing-strategy.md) | What tests to add and when |
-| [Dev Sandbox](DEVELOPMENT/dev-sandbox.md) | Running against sample data |
-| [Debug a Mismatch](DEVELOPMENT/debug-mismatch.md) | Step-by-step mismatch debugging |
-| [Common Dev Errors](DEVELOPMENT/common-errors.md) | Dev environment troubleshooting |
-| [Coding Standards](DEVELOPMENT/coding-standards.md) | Formatting, linting, typing |
+| [Architecture Overview](development/architecture.md) | Pipeline, core services |
+| [Developer Setup](development/developer-setup.md) | Environment, scripts, tooling |
+| [Match Rules & Scoring](development/match-rules-and-scoring.md) | How to add match rules |
+| [Beatport Parsing](development/beatport-parsing.md) | How to update Beatport parsing |
+| [Testing Strategy](development/testing-strategy.md) | What tests to add and when |
+| [Dev Sandbox](development/dev-sandbox.md) | Running against sample data |
+| [Debug a Mismatch](development/debug-mismatch.md) | Step-by-step mismatch debugging |
+| [Common Dev Errors](development/common-errors.md) | Dev environment troubleshooting |
+| [Coding Standards](development/coding-standards.md) | Formatting, linting, typing |
+| [Remediation notes](development/remediation-notes.md) | Archive of one-off fix notes |
 
 ---
 
@@ -47,13 +48,7 @@ For contributors: setup, architecture, extending the codebase.
 
 | Section | Description |
 | --- | --- |
-| [Release Checklist](release-checklist.md) | Pre-release checks |
-| [Release Readiness Test Plan](RELEASE/release-readiness-test-plan.md) | Validation steps |
-| [Reproducible Builds](GUIDES/reproducible-builds.md) | Deterministic builds, checksums, verification |
-| [Changelog](RELEASE/changelog.md) | Version history |
-| [Changelog Policy](POLICY/changelog-policy.md) | How to update changelog |
-| [Output Schema Versioning](POLICY/output-schema-versioning.md) | CSV/export format versioning |
-| [Docs Ownership](DEVELOPMENT/docs-ownership.md) | Doc maintenance and review |
+| [Changelog](release/CHANGELOG.md) | Version history |
 
 ---
 
@@ -61,16 +56,21 @@ For contributors: setup, architecture, extending the codebase.
 
 | Section | Description |
 | --- | --- |
-| [Privacy Compliance](COMPLIANCE/privacy-compliance.md) | Data handling |
-| [Security Response](SECURITY/security-response-process.md) | Vulnerability reporting |
+| [Privacy Compliance](compliance/privacy-compliance.md) | Data handling |
+| [Security Response](security/security-response-process.md) | Vulnerability reporting |
 
 ---
 
 ## Quick Links
 
-- **New contributor?** → Start here: [Contributing](../.github/CONTRIBUTING.md) → [Developer Setup](DEVELOPMENT/developer-setup.md)
+- **New contributor?** → [Contributing](../.github/CONTRIBUTING.md) → [Developer Setup](development/developer-setup.md)
 - **User issue?** → [Troubleshooting](user-guide/troubleshooting.md)
-- **Release?** → [Release Checklist](release-checklist.md)
+
+---
+
+## For maintainers
+
+Release and ops docs (checklists, runbooks, changelog policy, signing guides): [Release](release/), [Release Checklist](release-checklist.md), [Ops Index](release/ops-index.md), [Release guides](release/guides/) (signing, reproducible builds, GitHub Secrets), [Changelog Policy](policy/changelog-policy.md), [Docs Ownership](development/docs-ownership.md).
 
 ---
 

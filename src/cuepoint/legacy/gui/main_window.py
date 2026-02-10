@@ -912,11 +912,11 @@ class MainWindow(QMainWindow):
             # Create base filename (write_csv_files will add timestamp)
             base_filename = f"{safe_playlist_name}.csv"
 
-            # Determine SRC directory
-            current_file = os.path.abspath(__file__)  # SRC/gui/main_window.py
-            src_dir = os.path.dirname(os.path.dirname(current_file))  # SRC/
+            # Determine src directory
+            current_file = os.path.abspath(__file__)  # src/gui/main_window.py
+            src_dir = os.path.dirname(os.path.dirname(current_file))  # src/
 
-            # Save to output directory in SRC folder
+            # Save to output directory in src folder
             output_dir = os.path.join(src_dir, "output")
             output_dir = os.path.abspath(output_dir)  # Ensure absolute path
             os.makedirs(output_dir, exist_ok=True)

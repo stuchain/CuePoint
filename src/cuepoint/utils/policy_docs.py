@@ -21,7 +21,7 @@ def _get_base_path() -> Path:
         # PyInstaller sets _MEIPASS; use getattr for mypy (attr-defined)
         meipass = getattr(sys, "_MEIPASS", ".")
         return Path(meipass)
-    # From source: SRC/cuepoint/utils/policy_docs.py -> project root
+    # From source: src/cuepoint/utils/policy_docs.py -> project root
     return Path(__file__).resolve().parents[3]
 
 
@@ -31,7 +31,7 @@ def find_privacy_notice() -> Optional[Path]:
     candidates = [
         base / "PRIVACY_NOTICE.md",
         base / "docs" / "PRIVACY_NOTICE.md",  # bundled
-        base / "DOCS" / "POLICY" / "privacy-notice.md",
+        base / "docs" / "policy" / "privacy-notice.md",
     ]
     for p in candidates:
         if p.exists():
@@ -44,7 +44,7 @@ def find_terms_of_use() -> Optional[Path]:
     base = _get_base_path()
     candidates = [
         base / "docs" / "terms-of-use.md",  # bundled
-        base / "DOCS" / "POLICY" / "terms-of-use.md",
+        base / "docs" / "policy" / "terms-of-use.md",
     ]
     for p in candidates:
         if p.exists():
@@ -70,8 +70,8 @@ def find_support_policy() -> Optional[Path]:
     base = _get_base_path()
     candidates = [
         base / "docs" / "support-sla.md",  # bundled (PyInstaller)
-        base / "DOCS" / "POLICY" / "support-sla.md",
-        base / "DOCS" / "prerelease" / "support-sla-playbook.md",
+        base / "docs" / "policy" / "support-sla.md",
+        base / "docs" / "security" / "support-sla-playbook.md",
     ]
     for p in candidates:
         if p.exists():
@@ -84,7 +84,7 @@ def find_data_processing_notice() -> Optional[Path]:
     base = _get_base_path()
     candidates = [
         base / "docs" / "data-processing-notice.md",  # bundled
-        base / "DOCS" / "POLICY" / "data-processing-notice.md",
+        base / "docs" / "policy" / "data-processing-notice.md",
     ]
     for p in candidates:
         if p.exists():

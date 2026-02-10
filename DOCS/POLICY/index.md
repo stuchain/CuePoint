@@ -21,7 +21,7 @@ This index lists all legal, compliance, and policy documents for CuePoint.
 | Support SLA | [support-sla.md](support-sla.md) | Response time expectations |
 | Support Policy | [../user-guide/support-policy.md](../user-guide/support-policy.md) | Supported platforms and diagnostics |
 | Deprecation Policy | [deprecation-policy.md](deprecation-policy.md) | Deprecation notice and process |
-| Deprecation Schedule | [deprecation-schedule.md](deprecation-schedule.md) | Config keys and CLI flags schedule (Step 12) |
+| Deprecation Schedule | [deprecation-schedule.md](deprecation-schedule.md) | Config keys and CLI flags schedule (schedule) |
 | Breaking Change Policy | [breaking-change-policy.md](breaking-change-policy.md) | Breaking changes and migration |
 
 ## Community

@@ -89,7 +89,7 @@ def check_version_consistency() -> Tuple[bool, List[str]]:
     # Check version.py
     try:
         project_root = Path(__file__).parent.parent
-        sys.path.insert(0, str(project_root / "SRC"))
+        sys.path.insert(0, str(project_root / "src"))
         from cuepoint.version import __version__
         version = __version__
     except ImportError:

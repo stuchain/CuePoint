@@ -88,7 +88,7 @@ def get_version_from_file() -> Optional[str]:
     """
     script_dir = Path(__file__).parent
     project_root = script_dir.parent
-    version_file = project_root / "SRC" / "cuepoint" / "version.py"
+    version_file = project_root / "src" / "cuepoint" / "version.py"
     
     if not version_file.exists():
         print(f"Error: Version file not found: {version_file}")
@@ -112,7 +112,7 @@ def update_version_file(new_version: str) -> bool:
     """
     script_dir = Path(__file__).parent
     project_root = script_dir.parent
-    version_file = project_root / "SRC" / "cuepoint" / "version.py"
+    version_file = project_root / "src" / "cuepoint" / "version.py"
     
     if not version_file.exists():
         print(f"Error: Version file not found: {version_file}")

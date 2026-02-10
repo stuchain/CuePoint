@@ -1,6 +1,6 @@
 # Telemetry Policy
 
-## v1.0 Status (Step 14 Implementation)
+## v1.0 Status
 - ✅ Telemetry implemented (opt-in only)
 - ✅ Default OFF – no data collection unless user enables
 - ✅ All processing local; optional remote endpoint

@@ -20,8 +20,8 @@ import unittest
 from unittest.mock import Mock, patch, MagicMock, call
 from pathlib import Path
 
-# Add SRC to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "SRC"))
+# Add src to path
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 try:
     from PySide6.QtWidgets import QApplication, QDialog

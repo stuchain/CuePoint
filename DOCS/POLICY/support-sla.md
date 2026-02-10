@@ -36,7 +36,7 @@ When reporting an issue, please include:
 - **P1**: Addressed in sprint; target next patch release.
 - **P2**: Backlog; addressed when capacity allows.
 
-See the [Support SLA Playbook](../prerelease/support-sla-playbook.md) for detailed triage and escalation procedures.
+See the [Support SLA Playbook](../security/support-sla-playbook.md) for detailed triage and escalation procedures.
 
 ## Limitations
 

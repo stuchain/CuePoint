@@ -24,7 +24,7 @@ cd CuePoint
 source .venv/bin/activate # macOS/Linux
 
 # Run with project root as cwd
-python SRC/main.py --help
+python src/main.py --help
 ```
 
 ### "No module named 'PySide6'" or missing deps
@@ -51,13 +51,13 @@ pip install ddgs>=9.0.0
 
 **Cause**: `pythonpath` or `PYTHONPATH` not set.
 
-**Fix**: Run from project root. `pytest.ini` sets `pythonpath = SRC`. Use:
+**Fix**: Run from project root. `pytest.ini` sets `pythonpath = src`. Use:
 ```bash
 python scripts/run_tests.py --unit
 ```
 or
 ```bash
-pytest SRC/tests/unit/ -v
+pytest src/tests/unit/ -v
 ```
 from project root.
 
@@ -79,13 +79,13 @@ from project root.
 
 **Fix**:
 ```bash
-ruff check SRC/ --fix
-mypy SRC/ --ignore-missing-imports
+ruff check src/ --fix
+mypy src/ --ignore-missing-imports
 ```
 
 ### Black reformats differently than CI
 
-**Fix**: Use same Black version as in `requirements-dev.txt` (25.12.0). Run `black SRC/` before committing.
+**Fix**: Use same Black version as in `requirements-dev.txt` (25.12.0). Run `black src/` before committing.
 
 ## GUI Errors
 
@@ -124,4 +124,4 @@ pip install --force-reinstall PySide6
 - [ ] Venv activated
 - [ ] `pip install -r requirements.txt -r requirements-dev.txt`
 - [ ] Running from project root
-- [ ] `python SRC/main.py --help` works
+- [ ] `python src/main.py --help` works

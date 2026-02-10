@@ -13,7 +13,7 @@ This document defines the strategy for alternative metadata sources (beyond Beat
 ### Metadata Sources
 
 - **Primary**: Beatport (search + parse)
-- **Provider abstraction**: Implemented (`SRC/cuepoint/data/providers.py`)
+- **Provider abstraction**: Implemented (`src/cuepoint/data/providers.py`)
 - **Fallback**: None (Beatport only today)
 
 ### Caching
@@ -124,6 +124,6 @@ See `providers.py` docstrings and [Beatport Site Change Plan](beatport-site-chan
 ## 8. References
 
 - [Beatport Site Change Plan](beatport-site-change-plan.md)
-- [Provider abstraction](https://github.com/stuchain/CuePoint/blob/main/SRC/cuepoint/data/providers.py)
+- [Provider abstraction](https://github.com/stuchain/CuePoint/blob/main/src/cuepoint/data/providers.py)
 - [Schema Migration Guide](../schema/migration-guide.md)
 - [Roadmap](../roadmap.md)

@@ -1,11 +1,11 @@
-# SRC Directory
+# src directory
 
 This directory contains the source code for the CuePoint application.
 
 ## Structure
 
 ```
-SRC/
+src/
 ├── __init__.py              # Package initialization
 ├── gui_app.py               # GUI application entry point
 ├── main.py                  # CLI application entry point

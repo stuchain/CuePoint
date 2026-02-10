@@ -1,7 +1,5 @@
 # Known Issues
 
-Design: Step 13 Post-Launch Operations and Support.
-
 ## Purpose
 
 This document tracks known issues, workarounds, and planned fixes. Update after each release and after incidents.

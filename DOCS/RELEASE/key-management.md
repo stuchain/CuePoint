@@ -11,7 +11,7 @@ Design: 02 Release Engineering and Distribution (2.2, 2.13). Key storage, rotati
 
 ## Required Secrets (when signing is enabled)
 
-See [GitHub Secrets Setup](../GUIDES/github-secrets-setup.md) for step-by-step configuration.
+See [GitHub Secrets Setup](guides/github-secrets-setup.md) for step-by-step configuration.
 
 - **macOS**: `MACOS_SIGNING_CERT_P12`, `MACOS_SIGNING_CERT_PASSWORD`, `APPLE_DEVELOPER_ID`, `APPLE_TEAM_ID`, `APPLE_NOTARYTOOL_ISSUER_ID`, `APPLE_NOTARYTOOL_KEY_ID`, `APPLE_NOTARYTOOL_KEY`
 - **Windows**: `WINDOWS_CERT_PFX`, `WINDOWS_CERT_PASSWORD`
@@ -35,6 +35,5 @@ Design 2.17: “Sign checksum file if possible.” You can sign `SHA256SUMS` wit
 
 ## References
 
-- Design: `DOCS/prerelease/designs/02-release-engineering-and-distribution.md` (2.2, 2.13, 2.49).
-- Setup: [GitHub Secrets Setup](../GUIDES/github-secrets-setup.md).
-- No-signing option: [Step 10 No Signing Guide](../GUIDES/step-10-no-signing-guide.md).
+- [GitHub Secrets Setup](guides/github-secrets-setup.md)
+- [Step 10 No Signing Guide](guides/step-10-no-signing-guide.md) (no-signing option)

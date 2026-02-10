@@ -4,7 +4,7 @@ Design 10.4. How to update Beatport parsing safely.
 
 ## Overview
 
-Beatport data is fetched and parsed in `SRC/cuepoint/data/beatport.py`:
+Beatport data is fetched and parsed in `src/cuepoint/data/beatport.py`:
 
 - **`track_urls()`**: Finds Beatport track URLs via DuckDuckGo, direct search, or browser
 - **`parse_track_page()`**: Parses a single Beatport track page and extracts metadata
@@ -32,12 +32,12 @@ When Beatport changes their page structure, one or more of these may break.
 
 ## Safe Update Process
 
-1. **Capture a real page** (or use existing fixtures in `SRC/tests/fixtures/beatport/`)
+1. **Capture a real page** (or use existing fixtures in `src/tests/fixtures/beatport/`)
 2. **Identify the change**: Compare old vs new HTML/JSON structure
 3. **Update the parser** in `beatport.py`:
    - Prefer JSON-LD / `__NEXT_DATA__` over raw HTML when possible
    - Add fallbacks for missing fields
-4. **Add or update fixtures** in `SRC/tests/fixtures/beatport/`
+4. **Add or update fixtures** in `src/tests/fixtures/beatport/`
 5. **Run integration tests**:
    ```bash
    python scripts/run_tests.py --integration -k beatport
@@ -46,8 +46,8 @@ When Beatport changes their page structure, one or more of these may break.
 
 ## Fixtures
 
-- `SRC/tests/fixtures/beatport/search_results_standard.html`
-- `SRC/tests/fixtures/beatport/track_page_standard.html`
+- `src/tests/fixtures/beatport/search_results_standard.html`
+- `src/tests/fixtures/beatport/track_page_standard.html`
 
 Tests mock `requests` to return these fixtures. When Beatport changes, update fixtures to match new structure and adjust parsing logic.
 
@@ -61,7 +61,7 @@ Tests mock `requests` to return these fixtures. When Beatport changes, update fi
 
 ```bash
 # Unit tests for parse_track_page (mocked HTTP)
-pytest SRC/tests/integration/test_beatport_data_integration.py -v -k "parse_track"
+pytest src/tests/integration/test_beatport_data_integration.py -v -k "parse_track"
 
 # Full Beatport integration tests
 python scripts/run_tests.py --integration -k beatport

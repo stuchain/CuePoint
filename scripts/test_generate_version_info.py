@@ -9,8 +9,8 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-# Add SRC to path
-sys.path.insert(0, str(Path('SRC').resolve()))
+# Add src to path
+sys.path.insert(0, str(Path('src').resolve()))
 
 # Import the version module
 import cuepoint.version as version_module

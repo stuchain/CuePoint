@@ -1,38 +1,10 @@
 # CuePoint Documentation
 
-Welcome to CuePoint documentation!
+**Start here:** [README.md](README.md) is the main documentation index (user docs, developer docs, release, compliance).
 
-CuePoint is a professional tool for enriching Rekordbox XML files with Beatport metadata.
+Quick links:
 
-## Getting Started
-
-- [Installation](getting-started/installation.md)
-- [Quick Start](getting-started/quick-start.md)
-- [First Steps](getting-started/first-steps.md)
-
-## User Guide
-
-- [Workflows](user-guide/workflows.md)
-- [Troubleshooting](user-guide/troubleshooting.md)
-
-## Release
-
-- [Roadmap](roadmap.md) — Major features and source expansion (Step 12)
-- [Release Readiness Test Plan](RELEASE/release-readiness-test-plan.md)
-- [Release Checklist](release-checklist.md)
-
-## Compliance
-
-- [Privacy Compliance](COMPLIANCE/privacy-compliance.md)
-
-## Support
-
-- [GitHub Issues](https://github.com/stuchain/CuePoint/issues)
-- [GitHub Discussions](https://github.com/stuchain/CuePoint/discussions)
-- [Report a Bug](https://github.com/stuchain/CuePoint/issues/new?template=bug_report.yml)
-- [Request a Feature](https://github.com/stuchain/CuePoint/issues/new?template=feature_request.yml)
-
-## Contributing
-
-- [Contributing Guide](https://github.com/stuchain/CuePoint/blob/main/.github/CONTRIBUTING.md)
-
+- [Getting started](getting-started/quick-start.md)
+- [User guide](user-guide/getting-started.md)
+- [Contributing](https://github.com/stuchain/CuePoint/blob/main/.github/CONTRIBUTING.md)
+- [Support](https://github.com/stuchain/CuePoint/issues)

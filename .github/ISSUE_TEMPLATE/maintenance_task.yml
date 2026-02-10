@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         Use this template for maintenance tasks: tech debt, refactors, dependency updates, or compatibility work.
-        See [Maintenance Policy](https://github.com/stuchain/CuePoint/blob/main/DOCS/RELEASE/maintenance-policy.md).
+        See [Maintenance Policy](https://github.com/stuchain/CuePoint/blob/main/docs/release/maintenance-policy.md).
 
   - type: textarea
     id: task
@@ -35,7 +35,7 @@ body:
     attributes:
       label: Additional Context
       description: Module, files, or rationale
-      placeholder: e.g., SRC/cuepoint/parsers/xml_parser.py - high complexity
+      placeholder: e.g., src/cuepoint/parsers/xml_parser.py - high complexity
 
   - type: textarea
     id: acceptance

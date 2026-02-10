@@ -54,7 +54,7 @@ Intelligent matching algorithm that:
 - **Supported OS**: Windows 10+ (x64), macOS 12+ (Intel/Apple Silicon)
 - **Rekordbox export**: XML export format from recent Rekordbox versions
 - **File size guidance**: XML exports <= 100MB recommended (larger files can be slower)
-- **Support policy**: See `DOCS/user-guide/support-policy.md` for update cadence and EOL policy
+- **Support policy**: See `docs/user-guide/support-policy.md` for update cadence and EOL policy
 
 ## Keyboard Shortcuts
 

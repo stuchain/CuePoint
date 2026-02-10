@@ -93,7 +93,7 @@ echo   - requirements*.txt
 echo   - run_gui.bat, run_gui.sh, run_gui.command
 echo   - install_requirements.sh
 echo   - install-macos.md, fix-pyside6-macos.md
-echo   - All SRC/, DOCS/, config/ directories
+echo   - All src/, docs/, config/ directories
 echo.
 pause
 

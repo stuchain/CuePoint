@@ -69,7 +69,7 @@ def check_compatibility_shim():
     print("\nChecking duckduckgo_search compatibility shim...")
     
     # Check if file exists
-    shim_path = Path('SRC') / 'duckduckgo_search.py'
+    shim_path = Path('src') / 'duckduckgo_search.py'
     if shim_path.exists():
         print(f"✓ Shim file exists: {shim_path}")
     else:

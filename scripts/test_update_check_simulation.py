@@ -7,10 +7,10 @@ Simulate the update check to see why updates aren't being detected.
 import sys
 from pathlib import Path
 
-# Add SRC to path
+# Add src to path
 _script_dir = Path(__file__).resolve().parent
 _project_root = _script_dir.parent
-_src_dir = _project_root / 'SRC'
+_src_dir = _project_root / 'src'
 sys.path.insert(0, str(_src_dir))
 
 from cuepoint.update.update_checker import UpdateChecker

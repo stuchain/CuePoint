@@ -9,7 +9,7 @@ CuePoint is a shared core pipeline surfaced through two interfaces:
 - **Core pipeline**: parsing, query generation, search, scoring, and export.
 - **Interfaces**: GUI and CLI both call the same services (`ProcessorService`).
 
-Primary orchestration happens in `SRC/cuepoint/services/processor_service.py`, which:
+Primary orchestration happens in `src/cuepoint/services/processor_service.py`, which:
 
 1. Normalizes track inputs.
 2. Generates search queries.
@@ -56,7 +56,7 @@ flowchart LR
 
 ## Input parsing
 
-Parsing happens in `SRC/cuepoint/data/rekordbox.py`. Key behaviors:
+Parsing happens in `src/cuepoint/data/rekordbox.py`. Key behaviors:
 
 - Extracts playlists and track rows from a Rekordbox XML export.
 - If the artist field is missing, the app attempts to extract artists from the title.
@@ -64,7 +64,7 @@ Parsing happens in `SRC/cuepoint/data/rekordbox.py`. Key behaviors:
 
 ## Query generation
 
-Query generation is defined in `SRC/cuepoint/core/query_generator.py` and uses a staged strategy:
+Query generation is defined in `src/cuepoint/core/query_generator.py` and uses a staged strategy:
 
 - **Priority queries**: full title + artist combinations.
 - **N-gram queries**: 1- to N-word title fragments.
@@ -78,21 +78,21 @@ Query generation is bounded by limits like:
 - `MAX_QUERIES_PER_TRACK`
 - `CROSS_TITLE_GRAMS_WITH_ARTISTS`
 
-These defaults are documented in `config.yaml.template` and enforced via `SETTINGS` in `SRC/cuepoint/models/config.py`.
+These defaults are documented in `config/config.yaml.template` and enforced via `SETTINGS` in `src/cuepoint/models/config.py`.
 
 ## Search strategy
 
-Beatport search combines multiple approaches (`SRC/cuepoint/data/beatport_search.py`):
+Beatport search combines multiple approaches (`src/cuepoint/data/beatport_search.py`):
 
 - **Direct search** (Beatport pages or internal APIs) for accuracy.
 - **DuckDuckGo** discovery for URLs when direct search fails or is limited.
 - **Browser automation** (Playwright/Selenium) as a fallback when pages are JS-rendered.
 
-The service entry point (`SRC/cuepoint/services/beatport_service.py`) caches search results and logs diagnostics.
+The service entry point (`src/cuepoint/services/beatport_service.py`) caches search results and logs diagnostics.
 
 ## Candidate parsing
 
-Track URLs are parsed in `SRC/cuepoint/data/beatport.py` to extract:
+Track URLs are parsed in `src/cuepoint/data/beatport.py` to extract:
 
 - title, artists, key
 - year, BPM, label, genre
@@ -102,7 +102,7 @@ Parsed track data is cached for reuse.
 
 ## Matching and scoring
 
-Core scoring lives in `SRC/cuepoint/core/matcher.py`.
+Core scoring lives in `src/cuepoint/core/matcher.py`.
 
 **Score composition**
 
@@ -131,7 +131,7 @@ Processing is parallelized:
 - **Candidate workers**: fetch and parse Beatport candidates in parallel.
 - **Per-track time budgets**: hard caps prevent runaway search times.
 
-These are configured through `SETTINGS` and `config.yaml.template`.
+These are configured through `SETTINGS` and `config/config.yaml.template`.
 
 ## Caching and determinism
 
@@ -145,7 +145,7 @@ The system can also run deterministically using the `SEED` setting for reproduci
 
 ## Outputs and artifacts
 
-Exports are written by `SRC/cuepoint/services/output_writer.py`:
+Exports are written by `src/cuepoint/services/output_writer.py`:
 
 - **Main CSV**: one row per track with match details.
 - **Candidates CSV**: all candidates with scores.
@@ -158,8 +158,8 @@ The review file is only generated when any tracks fall below the acceptance thre
 
 Configuration is layered:
 
-1. **Defaults** in `SRC/cuepoint/models/config.py`.
-2. **YAML** overrides in `config.yaml` (see `config.yaml.template`).
+1. **Defaults** in `src/cuepoint/models/config.py`.
+2. **YAML** overrides in `config.yaml` (see `config/config.yaml.template`).
 3. **CLI** overrides and presets (`--fast`, `--turbo`, `--exhaustive`, etc.).
 
 Settings are mapped from nested YAML into a flat `SETTINGS` dict and are read by core services.
@@ -168,19 +168,19 @@ Settings are mapped from nested YAML into a flat `SETTINGS` dict and are read by
 
 **GUI**
 
-- Built with PySide6/Qt (`SRC/cuepoint/ui/`).
+- Built with PySide6/Qt (`src/cuepoint/ui/`).
 - Runs processing in a background thread and streams progress.
 - Shares the same `ProcessorService` as the CLI.
 
 **CLI**
 
-- Entry point in `main.py`, with CLI logic in `SRC/cuepoint/cli/cli_processor.py`.
+- Entry point in `main.py`, with CLI logic in `src/cuepoint/cli/cli_processor.py`.
 - Accepts `--xml`, `--playlist`, `--out`, and other flags.
 - Writes outputs to the configured output directory.
 
 ## Update flow
 
-The desktop app includes an update manager (`SRC/cuepoint/update/`):
+The desktop app includes an update manager (`src/cuepoint/update/`):
 
 - Checks an appcast feed for new releases.
 - Downloads the correct installer for the platform.
@@ -194,10 +194,10 @@ The desktop app includes an update manager (`SRC/cuepoint/update/`):
 
 ## Key files at a glance
 
-- Core pipeline: `SRC/cuepoint/services/processor_service.py`
-- Matching/scoring: `SRC/cuepoint/core/matcher.py`
-- Query generation: `SRC/cuepoint/core/query_generator.py`
-- Beatport search: `SRC/cuepoint/data/beatport_search.py`
-- Output writer: `SRC/cuepoint/services/output_writer.py`
-- Config defaults: `SRC/cuepoint/models/config.py`
-- Config template: `config.yaml.template`
+- Core pipeline: `src/cuepoint/services/processor_service.py`
+- Matching/scoring: `src/cuepoint/core/matcher.py`
+- Query generation: `src/cuepoint/core/query_generator.py`
+- Beatport search: `src/cuepoint/data/beatport_search.py`
+- Output writer: `src/cuepoint/services/output_writer.py`
+- Config defaults: `src/cuepoint/models/config.py`
+- Config template: `config/config.yaml.template`

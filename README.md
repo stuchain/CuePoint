@@ -1,10 +1,10 @@
 <div align="center">
   <h1>  <p>
-    <img src="DOCS/images/logo.png" alt="CuePoint hero" width="28%"/>
+    <img src="docs/images/logo.png" alt="CuePoint hero" width="28%"/>
   </p></h1>
   <p><strong>Accurate music metadata for Rekordbox libraries, sourced from Beatport.</strong></p>
   <p>
-    <a href="DOCS/how-to-run.md">How to run</a>
+    <a href="docs/how-to-run.md">How to run</a>
     •
     <a href=".github/TECHNICAL_ANALYSIS.md">Technical analysis</a>
   </p>
@@ -69,7 +69,7 @@
 </ul>
 
 <h2>How to run</h2>
-<p>See <code>DOCS/how-to-run.md</code> for:</p>
+<p>See <code>docs/how-to-run.md</code> for:</p>
 <ul>
   <li>Install from GitHub Releases</li>
   <li>Build locally</li>
@@ -79,7 +79,7 @@
 <h2>UI</h2>
 <h3>Quick demo</h3>
 <p align="center">
-  <img src="DOCS/images/gifs/gif1.gif" alt="CuePoint demo" width="100%"/>
+  <img src="docs/images/gifs/gif1.gif" alt="CuePoint demo" width="100%"/>
 </p>
 
 <h2>What you get</h2>
@@ -163,12 +163,12 @@ flowchart LR
   <li><strong>Rekordbox export</strong>: XML export format from recent Rekordbox versions</li>
   <li><strong>File size guidance</strong>: XML exports &lt;= 100MB recommended (larger files can be slower)</li>
 </ul>
-<p>See <a href="DOCS/user-guide/support-policy.md">DOCS/user-guide/support-policy.md</a> for update cadence and end-of-life policy.</p>
+<p>See <a href="docs/user-guide/support-policy.md">docs/user-guide/support-policy.md</a> for update cadence and end-of-life policy.</p>
 
 <h2>Project layout</h2>
 <ul>
-  <li><code>SRC/cuepoint</code>: application code</li>
-  <li><code>SRC/tests</code>: canonical tests</li>
+  <li><code>src/cuepoint</code>: application code</li>
+  <li><code>src/tests</code>: canonical tests</li>
   <li><code>scripts/</code>: utilities</li>
   <li><code>ARCHIVE/</code>: legacy material</li>
 </ul>
@@ -184,7 +184,7 @@ flowchart LR
     <a href="https://github.com/stuchain/CuePoint/releases">
       <img alt="releases" src="https://img.shields.io/badge/Download-Releases-2ea44f?style=for-the-badge"/>
     </a>
-    <a href="DOCS/how-to-run.md">
+    <a href="docs/how-to-run.md">
       <img alt="how-to-run" src="https://img.shields.io/badge/How%20to%20run-Guide-1f6feb?style=for-the-badge"/>
     </a>
   </p>

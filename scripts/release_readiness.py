@@ -28,7 +28,7 @@ def check_tests_pass():
     print("Checking tests...")
     try:
         result = subprocess.run(
-            ["pytest", "SRC/tests/", "-v", "--tb=short"],
+            ["pytest", "src/tests/", "-v", "--tb=short"],
             capture_output=True,
             text=True,
             timeout=600,
@@ -56,7 +56,7 @@ def check_coverage():
     print("Checking test coverage...")
     try:
         result = subprocess.run(
-            ["pytest", "SRC/tests/", "--cov=SRC/cuepoint", "--cov-report=term-missing"],
+            ["pytest", "src/tests/", "--cov=src/cuepoint", "--cov-report=term-missing"],
             capture_output=True,
             text=True,
             timeout=600,
@@ -100,7 +100,7 @@ def check_linting():
     print("Checking linting...")
     try:
         result = subprocess.run(
-            ["ruff", "check", "SRC/"],
+            ["ruff", "check", "src/"],
             capture_output=True,
             text=True,
             timeout=120,
@@ -125,7 +125,7 @@ def check_type_checking():
     print("Checking type checking...")
     try:
         result = subprocess.run(
-            ["mypy", "SRC/cuepoint"],
+            ["mypy", "src/cuepoint"],
             capture_output=True,
             text=True,
             timeout=180,
@@ -178,7 +178,7 @@ def check_release_notes():
         Path("CHANGELOG.md"),
         Path("RELEASE_NOTES.md"),
         Path("docs/RELEASE_NOTES.md"),
-        Path("DOCS/RELEASE_NOTES.md"),
+        Path("docs/RELEASE_NOTES.md"),
     ]
 
     for path in release_notes_paths:
@@ -198,7 +198,7 @@ def check_version_consistency():
 
     try:
         # Import version module
-        sys.path.insert(0, "SRC")
+        sys.path.insert(0, "src")
         from cuepoint.version import get_version
 
         version = get_version()

@@ -1,7 +1,5 @@
 # Update Feed Recovery Runbook
 
-Design: Step 13 Post-Launch Operations and Support.
-
 ## Purpose
 
 When the appcast (update feed) is invalid, corrupted, or missing, follow this runbook to recover and restore the update flow.

@@ -6,41 +6,26 @@ This checklist ensures all recent changes are tested before releasing to GitHub.
 
 ## ✅ Automated Tests (Run These First)
 
-### 1. Comprehensive Release Readiness Test (NEW - CRITICAL)
+### 1. Unit tests
 ```bash
-python ARCHIVE/tests/update_installer/tests/run_release_readiness_tests.py
+pytest src/tests -v
 ```
 **Expected**: All tests should pass
-**Tests**: PyInstaller configuration, DLL fix, update system, version, workflows
 
-### 2. DLL Fix Tests (CRITICAL for Python 3.13)
-```bash
-python ARCHIVE/tests/update_installer/tests/run_dll_fix_tests.py
-```
-**Expected**: All tests should pass
-**Tests**: DLL inclusion in spec, tuple formats, post-analysis checks
-
-### 3. Build and Executable Test
+### 2. Build and Executable Test
 ```bash
 python scripts/test_build_and_executable.py
 ```
 **Expected**: All tests should pass
 **Tests**: PyInstaller version, spec file configuration, executable validation
 
-### 4. Update Installer Tests
-```bash
-python ARCHIVE/tests/update_installer/tests/run_update_installer_tests.py
-```
-**Expected**: All tests should pass
-**Tests**: Update installation flow, error handling, platform-specific logic
-
-### 5. Update Detection Test
+### 3. Update Detection Test
 ```bash
 python scripts/test_update_detection.py
 ```
 **Expected**: All update detection scenarios should pass
 
-### 6. Version Validation
+### 4. Version Validation
 ```bash
 python scripts/validate_version.py
 ```
@@ -112,11 +97,11 @@ Verify these files have version sync steps:
 ## ✅ Code Inspection
 
 ### Verify Key Changes
-- [ ] `SRC/gui_app.py` - Uses `get_version()` (not hardcoded "1.0.0")
-- [ ] `SRC/__init__.py` - Imports `__version__` from `cuepoint.version`
-- [ ] `SRC/cuepoint/ui/widgets/dialogs.py` - Has `_load_logo()` method
-- [ ] `SRC/cuepoint/update/update_checker.py` - Uses `short_version` for comparison
-- [ ] `SRC/cuepoint/update/update_checker.py` - Allows prerelease-to-prerelease updates
+- [ ] `src/gui_app.py` - Uses `get_version()` (not hardcoded "1.0.0")
+- [ ] `src/__init__.py` - Imports `__version__` from `cuepoint.version`
+- [ ] `src/cuepoint/ui/widgets/dialogs.py` - Has `_load_logo()` method
+- [ ] `src/cuepoint/update/update_checker.py` - Uses `short_version` for comparison
+- [ ] `src/cuepoint/update/update_checker.py` - Allows prerelease-to-prerelease updates
 
 ## ✅ Test Scenarios
 
@@ -142,8 +127,8 @@ Verify these files have version sync steps:
 
 Before creating release tag, ensure:
 
-- [ ] **All automated tests pass** (run `python ARCHIVE/tests/update_installer/tests/run_release_readiness_tests.py`)
-- [ ] **DLL fix tests pass** (run `python ARCHIVE/tests/update_installer/tests/run_dll_fix_tests.py`)
+- [ ] **All unit tests pass** (run `pytest src/tests -v`)
+- [ ] **Build and executable test pass** (run `python scripts/test_build_and_executable.py`)
 - [ ] **Build test passes** (run `python scripts/test_build_and_executable.py`)
 - [ ] **Application builds successfully** (run `python scripts/build_pyinstaller.py`)
 - [ ] **Executable runs without DLL errors** (critical - test manually)
@@ -176,7 +161,7 @@ If all checks pass:
 1. **Update version.py** (if needed):
    ```bash
    # Option 1: Update manually
-   # Edit SRC/cuepoint/version.py to new version
+   # Edit src/cuepoint/version.py to new version
    
    # Option 2: Sync from existing tag
    python scripts/sync_version.py --tag v1.0.1

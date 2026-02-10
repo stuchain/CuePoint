@@ -1,24 +1,9 @@
-# User Guides
+# Guides
 
-This directory contains user-facing documentation and guides.
+Guides for installation and daily use.
 
-## Installation Guides
+- [install-macos.md](install-macos.md) — macOS installation
+- [fix-pyside6-macos.md](fix-pyside6-macos.md) — PySide6 troubleshooting on macOS
+- [how-to-see-shortcuts.md](how-to-see-shortcuts.md) — Keyboard shortcuts
 
-- **`install-macos.md`** - macOS installation instructions
-- **`fix-pyside6-macos.md`** - PySide6 troubleshooting on macOS
-
-## Usage Guides
-
-- **`how-to-see-shortcuts.md`** - Keyboard shortcuts reference
-
-## Maintenance Guides
-
-- **`cleanup-plan.md`** - Cleanup plan
-- **`organize-files.md`** - Organize files into archive
-- **`root-files-organization.md`** - Root directory organization
-
-## Quick Links
-
-- Main README: `../../README.md`
-- Archived design logs: `../../ARCHIVE/docs/`
-
+Main docs: [../README.md](../README.md)

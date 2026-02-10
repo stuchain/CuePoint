@@ -1,6 +1,6 @@
 # Beatport Site Change Response Plan
 
-Step 12: Future-Proofing - Plan for handling Beatport site changes (parsing or access).
+Plan for handling Beatport site changes (parsing or access).
 
 ## Overview
 
@@ -21,21 +21,21 @@ Beatport may change their website structure, API endpoints, or access patterns. 
 
 ### 2. Update Parsing Logic
 
-- **Location**: `SRC/cuepoint/data/beatport.py` (parse_track_page), `SRC/cuepoint/data/beatport_search.py`
+- **Location**: `src/cuepoint/data/beatport.py` (parse_track_page), `src/cuepoint/data/beatport_search.py`
 - **Strategy**: The code uses multiple fallbacks (JSON-LD, __NEXT_DATA__, HTML scraping). Update the relevant parser.
-- **Testing**: Add/update fixtures in `SRC/tests/fixtures/` with new HTML samples.
+- **Testing**: Add/update fixtures in `src/tests/fixtures/` with new HTML samples.
 - **Self-healing**: Design 5.11 - stale cache invalidation when empty result from cache.
 
 ### 3. Provider Abstraction (Step 12)
 
 - If Beatport changes are severe, consider adding a fallback provider.
 - Use `providers.active` config or `--provider` flag to switch.
-- Provider registry: `SRC/cuepoint/data/providers.py`.
+- Provider registry: `src/cuepoint/data/providers.py`.
 
 ### 4. Communication
 
 - Document the change in release notes.
-- If a workaround exists, document in `DOCS/user-guide/troubleshooting.md`.
+- If a workaround exists, document in `docs/user-guide/troubleshooting.md`.
 - Consider deprecation notice if a provider becomes unreliable (Design 12.82).
 
 ## Prevention

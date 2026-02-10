@@ -39,7 +39,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
-VERSION_IN_FILE=$(python -c "import sys; sys.path.insert(0, 'SRC'); from cuepoint.version import get_version; print(get_version())" 2>/dev/null || echo "")
+VERSION_IN_FILE=$(python -c "import sys; sys.path.insert(0, 'src'); from cuepoint.version import get_version; print(get_version())" 2>/dev/null || echo "")
 
 if [ -z "$VERSION_IN_FILE" ]; then
     echo "Warning: Could not read version from version.py"

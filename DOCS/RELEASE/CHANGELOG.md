@@ -36,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - License compliance verification
 
 ### Documentation
-- Comprehensive documentation in DOCS/
+- Comprehensive documentation in docs/
 - Build system documentation
 - Release process documentation
 - User guides and developer guides

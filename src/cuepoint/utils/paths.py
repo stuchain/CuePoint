@@ -188,8 +188,8 @@ class AppPaths:
                 return exe_path.parent
         else:
             # Running from source
-            # This file is at: SRC/cuepoint/utils/paths.py
-            # App root is: SRC/
+            # This file is at: src/cuepoint/utils/paths.py
+            # App root is: src/
             return Path(__file__).parent.parent.parent
 
     @staticmethod

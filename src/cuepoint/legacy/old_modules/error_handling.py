@@ -120,7 +120,7 @@ def error_file_not_found(
             suggestions.append("Check if file extension is correct (.xml vs .XML)")
         elif file_path.endswith((".yaml", ".yml")):
             suggestions.append("Check if you meant .yaml or .yml")
-            suggestions.append("Copy config.yaml.template and customize it")
+            suggestions.append("Copy config/config.yaml.template and customize it")
 
         # Suggest checking directory
         if os.path.dirname(abs_path) and not os.path.exists(os.path.dirname(abs_path)):
@@ -313,7 +313,7 @@ def error_config_invalid(
     if invalid_key:
         context["Invalid key"] = invalid_key
 
-    see_also = "config.yaml.template for example configuration format"
+    see_also = "config/config.yaml.template for example configuration format"
 
     return format_error_message(
         error_type="Configuration Error",

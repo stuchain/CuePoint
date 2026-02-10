@@ -11,9 +11,9 @@
 ## Docs
 
 - [ ] Docs updated for user-facing changes
-- [ ] Changelog updated in `DOCS/RELEASE/changelog.md` (if notable)
+- [ ] Changelog updated in `docs/release/changelog.md` (if notable)
 
 ## Checklist
 
-- [ ] Lint passes: `ruff check SRC/`
+- [ ] Lint passes: `ruff check src/`
 - [ ] No new lint issues introduced

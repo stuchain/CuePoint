@@ -219,8 +219,8 @@ CuePoint follows [Semantic Versioning](https://semver.org) (SemVer):
 ## Related Documents
 
 - [Release Schedule](release-schedule.md)
-- [Release Deployment Runbook](../../ARCHIVE/docs/OPERATIONS/Release/Release_Deployment.md)
-- [Rollback Procedure](../../ARCHIVE/docs/OPERATIONS/Release/Rollback_Procedure.md)
+- [Release Deployment Runbook](release-deployment-runbook.md)
+- [Rollback](rollback.md)
 - [Changelog](changelog.md)
 
 ## Last Updated

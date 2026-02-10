@@ -14,9 +14,9 @@ import pytest
 
 
 def _repo_root() -> Path:
-    """Repository root (where requirements.txt, scripts/, DOCS/ live)."""
-    # __file__ = SRC/tests/integration/test_step15_maintenance.py
-    # parent.parent.parent = SRC, parent of SRC = repo root
+    """Repository root (where requirements.txt, scripts/, docs/ live)."""
+    # __file__ = src/tests/integration/test_step15_maintenance.py
+    # parent.parent.parent = src, parent of src = repo root
     return Path(__file__).resolve().parent.parent.parent.parent
 
 
@@ -71,9 +71,9 @@ def test_maintenance_report_json_output() -> None:
 def test_maintenance_report_cli_flag() -> None:
     """--maintenance-report CLI flag runs report and exits."""
     repo_root = _repo_root()
-    main_py = repo_root / "SRC" / "main.py"
+    main_py = repo_root / "src" / "main.py"
     if not main_py.exists():
-        pytest.skip("SRC/main.py not found")
+        pytest.skip("src/main.py not found")
     # --skip-audit for fast test (pip-audit can be slow; CI runs it separately)
     result = subprocess.run(
         [sys.executable, str(main_py), "--maintenance-report", "--skip-audit"],
@@ -118,6 +118,6 @@ def test_requirements_files_exist() -> None:
 def test_maintenance_docs_exist() -> None:
     """Step 15 maintenance documentation exists."""
     repo_root = _repo_root()
-    assert (repo_root / "DOCS" / "RELEASE" / "maintenance-policy.md").exists()
-    assert (repo_root / "DOCS" / "RELEASE" / "compatibility-matrix.md").exists()
-    assert (repo_root / "DOCS" / "RELEASE" / "maintenance-roadmap.md").exists()
+    assert (repo_root / "docs" / "release" / "maintenance-policy.md").exists()
+    assert (repo_root / "docs" / "release" / "compatibility-matrix.md").exists()
+    assert (repo_root / "docs" / "release" / "maintenance-roadmap.md").exists()

@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 
-# Add SRC to path
+# Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from cuepoint.version import (

@@ -45,7 +45,7 @@ class TestPolicyDocs:
     def test_find_terms_of_use_from_source(self):
         """Find terms of use when running from source."""
         path = find_terms_of_use()
-        # From source, DOCS/POLICY/terms-of-use.md should exist
+        # From source, docs/policy/terms-of-use.md should exist
         if path:
             assert path.exists()
             assert "terms-of-use" in path.name or "terms" in path.name
@@ -67,7 +67,7 @@ class TestPolicyDocs:
     def test_find_support_policy_from_source(self):
         """Find support policy when running from source (Step 11)."""
         path = find_support_policy()
-        assert path is not None, "support-sla.md should exist in DOCS/POLICY/"
+        assert path is not None, "support-sla.md should exist in docs/policy/"
         assert path.exists()
         assert "support" in path.name.lower() or "sla" in path.name.lower()
 
@@ -75,7 +75,7 @@ class TestPolicyDocs:
         """Find data processing notice when running from source (Step 11)."""
         path = find_data_processing_notice()
         assert path is not None, (
-            "data-processing-notice.md should exist in DOCS/POLICY/"
+            "data-processing-notice.md should exist in docs/policy/"
         )
         assert path.exists()
         assert "data-processing" in path.name or "data" in path.name
@@ -116,7 +116,7 @@ class TestCLIPolicyFlags:
         env = os.environ.copy()
         env["PYTHONIOENCODING"] = "utf-8"
         result = subprocess.run(
-            [sys.executable, str(project_root / "SRC" / "main.py"), "--show-privacy"],
+            [sys.executable, str(project_root / "src" / "main.py"), "--show-privacy"],
             cwd=str(project_root),
             capture_output=True,
             text=True,
@@ -137,7 +137,7 @@ class TestCLIPolicyFlags:
         env = os.environ.copy()
         env["PYTHONIOENCODING"] = "utf-8"
         result = subprocess.run(
-            [sys.executable, str(project_root / "SRC" / "main.py"), "--show-terms"],
+            [sys.executable, str(project_root / "src" / "main.py"), "--show-terms"],
             cwd=str(project_root),
             capture_output=True,
             text=True,
@@ -155,33 +155,33 @@ class TestPolicyDocsExist:
     """Verify all Step 11 policy documents exist in repo."""
 
     def test_privacy_notice_exists(self):
-        """DOCS/POLICY/privacy-notice.md or PRIVACY_NOTICE.md exists."""
+        """docs/policy/privacy-notice.md or PRIVACY_NOTICE.md exists."""
         repo_root = Path(__file__).resolve().parents[4]
-        assert (repo_root / "DOCS" / "POLICY" / "privacy-notice.md").exists() or (
+        assert (repo_root / "docs" / "policy" / "privacy-notice.md").exists() or (
             repo_root / "PRIVACY_NOTICE.md"
         ).exists()
 
     def test_terms_of_use_exists(self):
-        """DOCS/POLICY/terms-of-use.md exists."""
+        """docs/policy/terms-of-use.md exists."""
         repo_root = Path(__file__).resolve().parents[4]
-        assert (repo_root / "DOCS" / "POLICY" / "terms-of-use.md").exists()
+        assert (repo_root / "docs" / "policy" / "terms-of-use.md").exists()
 
     def test_support_sla_exists(self):
-        """DOCS/POLICY/support-sla.md exists."""
+        """docs/policy/support-sla.md exists."""
         repo_root = Path(__file__).resolve().parents[4]
-        assert (repo_root / "DOCS" / "POLICY" / "support-sla.md").exists()
+        assert (repo_root / "docs" / "policy" / "support-sla.md").exists()
 
     def test_data_processing_notice_exists(self):
-        """DOCS/POLICY/data-processing-notice.md exists."""
+        """docs/policy/data-processing-notice.md exists."""
         repo_root = Path(__file__).resolve().parents[4]
-        assert (repo_root / "DOCS" / "POLICY" / "data-processing-notice.md").exists()
+        assert (repo_root / "docs" / "policy" / "data-processing-notice.md").exists()
 
     def test_code_of_conduct_exists(self):
-        """DOCS/POLICY/code-of-conduct.md exists."""
+        """docs/policy/code-of-conduct.md exists."""
         repo_root = Path(__file__).resolve().parents[4]
-        assert (repo_root / "DOCS" / "POLICY" / "code-of-conduct.md").exists()
+        assert (repo_root / "docs" / "policy" / "code-of-conduct.md").exists()
 
     def test_community_contributions_exists(self):
-        """DOCS/POLICY/community-contributions.md exists."""
+        """docs/policy/community-contributions.md exists."""
         repo_root = Path(__file__).resolve().parents[4]
-        assert (repo_root / "DOCS" / "POLICY" / "community-contributions.md").exists()
+        assert (repo_root / "docs" / "policy" / "community-contributions.md").exists()

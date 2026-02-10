@@ -1564,7 +1564,7 @@ class HistoryView(QWidget):
         dialog.exec()
 
     def _get_output_dirs(self):
-        """Get list of output directory paths (single location: SRC/output)
+        """Get list of output directory paths (single location: src/output)
 
         Returns a list with a single output directory to ensure all files
         are saved and found in one consistent location.

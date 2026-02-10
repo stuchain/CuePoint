@@ -18,8 +18,8 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-# Add SRC to path
-sys.path.insert(0, str(Path(__file__).parent.parent / 'SRC'))
+# Add src to path
+sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 from cuepoint.update.update_checker import UpdateChecker
 from cuepoint.update.version_utils import extract_base_version, is_stable_version

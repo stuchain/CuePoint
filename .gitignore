@@ -139,7 +139,7 @@ cache/
 
 # Output files (user-generated)
 output/
-SRC/output/
+src/output/
 *.csv
 *.json
 *.xlsx
@@ -307,6 +307,8 @@ project.xcworkspace/
 .Trash-*
 
 # Project-specific
+# Temporary / debug (do not commit)
+tmp_smoke_debug/
 # Benchmarks: keep baseline for CI regression (Design 6.53)
 !benchmarks/baseline.json
 collection.xml

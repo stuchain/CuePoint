@@ -4,7 +4,7 @@ Design 10.3. How to add or modify match rules and scoring behavior.
 
 ## Overview
 
-Matching happens in `SRC/cuepoint/core/matcher.py`. The flow:
+Matching happens in `src/cuepoint/core/matcher.py`. The flow:
 
 1. **Query execution**: Run search queries to find Beatport track URLs
 2. **Candidate fetching**: Parse each candidate page via `parse_track_page()`
@@ -16,10 +16,10 @@ Matching happens in `SRC/cuepoint/core/matcher.py`. The flow:
 
 | File | Purpose |
 | --- | --- |
-| `SRC/cuepoint/core/matcher.py` | Main matching logic, `best_beatport_match()`, `consider()` |
-| `SRC/cuepoint/core/text_processing.py` | `score_components()`, `normalize_text()`, similarity |
-| `SRC/cuepoint/core/mix_parser.py` | Mix type parsing (remix, extended, original) |
-| `SRC/cuepoint/models/config.py` | `SETTINGS` (weights, thresholds, early exit) |
+| `src/cuepoint/core/matcher.py` | Main matching logic, `best_beatport_match()`, `consider()` |
+| `src/cuepoint/core/text_processing.py` | `score_components()`, `normalize_text()`, similarity |
+| `src/cuepoint/core/mix_parser.py` | Mix type parsing (remix, extended, original) |
+| `src/cuepoint/models/config.py` | `SETTINGS` (weights, thresholds, early exit) |
 
 ## Scoring Components
 
@@ -40,7 +40,7 @@ Thresholds in `config.py`:
 1. Open `matcher.py`, find the `consider()` function (or equivalent scoring block)
 2. Add your bonus logic (e.g., genre match, label match)
 3. Add the bonus to the final score
-4. Add a unit test in `SRC/tests/unit/core/test_matcher.py`
+4. Add a unit test in `src/tests/unit/core/test_matcher.py`
 
 ## Adding a New Guard
 
@@ -53,7 +53,7 @@ Guards reject candidates that pass scoring but are likely wrong:
 
 ## Modifying Weights or Thresholds
 
-Edit `SRC/cuepoint/models/config.py`:
+Edit `src/cuepoint/models/config.py`:
 
 ```python
 SETTINGS = {
@@ -64,16 +64,16 @@ SETTINGS = {
 }
 ```
 
-Or override via YAML config (see `config.yaml.template`).
+Or override via YAML config (see `config/config.yaml.template`).
 
 ## Query Generation
 
-Queries are built in `SRC/cuepoint/core/query_generator.py`. To add new query variants:
+Queries are built in `src/cuepoint/core/query_generator.py`. To add new query variants:
 
 1. Edit `query_generator.py`
 2. Add your query pattern to the generation logic
 3. Ensure `max_queries_per_track` in config allows enough queries
-4. Add tests in `SRC/tests/unit/core/test_query_generator.py`
+4. Add tests in `src/tests/unit/core/test_query_generator.py`
 
 ## Testing Changes
 

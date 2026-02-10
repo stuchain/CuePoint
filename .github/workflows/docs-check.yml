@@ -4,10 +4,10 @@ name: Docs Check
 on:
   push:
     branches: ['main', 'prerelease']
-    paths: ['DOCS/**', '.github/**', '.lycheeignore']
+    paths: ['docs/**', '.github/**', '.lycheeignore']
   pull_request:
     branches: ['main', 'prerelease']
-    paths: ['DOCS/**', '.github/**', '.lycheeignore']
+    paths: ['docs/**', '.github/**', '.lycheeignore']
 
 jobs:
   link-check:
@@ -18,7 +18,7 @@ jobs:
       - name: Lychee link check
         uses: lycheeverse/lychee-action@v2
         with:
-          args: 'DOCS/ .github/ --no-progress --root-dir ${{ github.workspace }}'
+          args: 'docs/ .github/ --no-progress --root-dir ${{ github.workspace }}'
           fail: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

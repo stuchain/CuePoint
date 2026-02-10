@@ -27,7 +27,7 @@ def get_project_root() -> Path:
 
 def get_version() -> str:
     root = get_project_root()
-    vf = root / "SRC" / "cuepoint" / "version.py"
+    vf = root / "src" / "cuepoint" / "version.py"
     if not vf.exists():
         return "0.0.0"
     content = vf.read_text(encoding="utf-8")

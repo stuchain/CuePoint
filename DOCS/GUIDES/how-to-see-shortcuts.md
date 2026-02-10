@@ -5,13 +5,13 @@
 ### 1. Launch the Application
 
 ```bash
-cd SRC
+cd src
 python gui_app.py
 ```
 
 Or if you have a launcher script:
 ```bash
-python SRC/gui_app.py
+python src/gui_app.py
 ```
 
 ---
@@ -189,7 +189,7 @@ Help
 
 ### ❓ "Shortcuts dialog is empty"
 - This shouldn't happen, but if it does, check the console for errors
-- Make sure `shortcut_manager.py` is in `SRC/gui/` directory
+- Make sure `shortcut_manager.py` is in `src/gui/` directory
 
 ---
 

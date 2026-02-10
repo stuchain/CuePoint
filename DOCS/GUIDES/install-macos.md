@@ -147,7 +147,7 @@ After installation, you can run the GUI:
 
 ### Option 2: From Terminal
 ```bash
-cd SRC
+cd src
 python3 gui_app.py
 ```
 
@@ -202,7 +202,7 @@ playwright --version
 
 1. ✅ Install requirements
 2. ✅ Install Playwright browsers
-3. ✅ Run the GUI: `./run_gui.command` or `python3 SRC/gui_app.py`
+3. ✅ Run the GUI: `./run_gui.command` or `python3 src/gui_app.py`
 4. 🎉 Start using CuePoint!
 
 ## Need Help?

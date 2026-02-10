@@ -15,8 +15,8 @@ This script checks for:
 import sys
 from pathlib import Path
 
-# Add SRC to path
-sys.path.insert(0, str(Path('SRC').resolve()))
+# Add src to path
+sys.path.insert(0, str(Path('src').resolve()))
 
 def check_ddgs_engines():
     """Check if all ddgs engines are available."""
@@ -100,11 +100,11 @@ def check_duckduckgo_search_shim():
         if getattr(sys, 'frozen', False):
             # In frozen app, check if it's in the bundle
             if hasattr(sys, '_MEIPASS'):
-                shim_path = Path(sys._MEIPASS) / 'SRC' / 'duckduckgo_search.py'
+                shim_path = Path(sys._MEIPASS) / 'src' / 'duckduckgo_search.py'
             else:
-                shim_path = Path(sys.executable).parent / 'SRC' / 'duckduckgo_search.py'
+                shim_path = Path(sys.executable).parent / 'src' / 'duckduckgo_search.py'
         else:
-            shim_path = Path('SRC') / 'duckduckgo_search.py'
+            shim_path = Path('src') / 'duckduckgo_search.py'
         
         if shim_path.exists():
             print(f"✓ Compatibility shim found: {shim_path}")

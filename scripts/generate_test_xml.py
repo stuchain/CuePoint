@@ -64,12 +64,12 @@ def main() -> None:
         "--output-dir",
         type=Path,
         default=None,
-        help="Output directory (default: SRC/tests/fixtures/rekordbox)",
+        help="Output directory (default: src/tests/fixtures/rekordbox)",
     )
     args = parser.parse_args()
 
     root = get_project_root()
-    out_dir = args.output_dir or (root / "SRC" / "tests" / "fixtures" / "rekordbox")
+    out_dir = args.output_dir or (root / "src" / "tests" / "fixtures" / "rekordbox")
     out_dir.mkdir(parents=True, exist_ok=True)
 
     if args.small:

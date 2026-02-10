@@ -1,7 +1,5 @@
 # Operations KPIs and Metrics
 
-Design: Step 13 Post-Launch Operations and Support.
-
 ## Purpose
 
 Track key performance indicators for support, releases, and operational health.
@@ -96,5 +94,5 @@ Track key performance indicators for support, releases, and operational health.
 ## Related Documents
 
 - [Triage Workflow](triage-workflow.md)
-- [Support SLA](../POLICY/support-sla.md)
+- [Support SLA](../policy/support-sla.md)
 - [Ops Index](ops-index.md)

@@ -1,6 +1,6 @@
 # Maintenance Policy — CuePoint
 
-**Step 15: Long-Term Maintenance and Evolution**  
+**Long-term maintenance and evolution**  
 **Version 1.0 — 2026-02-04**  
 **Last updated**: 2026-02-04
 
@@ -53,7 +53,7 @@ This policy defines how CuePoint maintains stability, security, and evolvability
 ### 2.2 Security Patch Workflow
 
 1. **Identify**: Dependabot alert, `pip-audit`, or external report.
-2. **Assess**: Determine severity and impact (see [Vulnerability Patch Runbook](../SECURITY/vulnerability-patch.md)).
+2. **Assess**: Determine severity and impact (see [Vulnerability Patch Runbook](../security/vulnerability-patch.md)).
 3. **Patch**: Update dependency or apply workaround.
 4. **Release**: Hotfix release for Critical/High; include in next release for Medium/Low.
 5. **Communicate**: Security advisory for Critical/High; release notes for all.
@@ -157,7 +157,7 @@ The [Maintenance Roadmap](maintenance-roadmap.md) tracks:
 - Output formats (schema changes).
 - APIs (internal or public interfaces).
 
-See [Deprecation Policy](../POLICY/deprecation-policy.md) and [Deprecation Schedule](../POLICY/deprecation-schedule.md) for details.
+See [Deprecation Policy](../policy/deprecation-policy.md) and [Deprecation Schedule](../policy/deprecation-schedule.md) for details.
 
 ## 7. Maintenance Metrics
 
@@ -185,9 +185,9 @@ Run `python main.py --maintenance-report` to generate a maintenance status repor
 
 ## 9. Related Documents
 
-- [Vulnerability Patch Runbook](../SECURITY/vulnerability-patch.md)
-- [Deprecation Policy](../POLICY/deprecation-policy.md)
-- [Deprecation Schedule](../POLICY/deprecation-schedule.md)
+- [Vulnerability Patch Runbook](../security/vulnerability-patch.md)
+- [Deprecation Policy](../policy/deprecation-policy.md)
+- [Deprecation Schedule](../policy/deprecation-schedule.md)
 - [Compatibility Matrix](compatibility-matrix.md)
 - [Maintenance Roadmap](maintenance-roadmap.md)
 - [Release Strategy](release-strategy.md)

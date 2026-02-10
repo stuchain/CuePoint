@@ -1,19 +1,19 @@
 .PHONY: format lint type-check quality-check check-format
 
 format:
-	black SRC/cuepoint
-	isort SRC/cuepoint
+	black src/cuepoint
+	isort src/cuepoint
 
 lint:
-	pylint SRC/cuepoint
-	flake8 SRC/cuepoint
+	pylint src/cuepoint
+	flake8 src/cuepoint
 
 type-check:
-	mypy SRC/cuepoint
+	mypy src/cuepoint
 
 quality-check: format lint type-check
 	@echo "All quality checks passed!"
 
 check-format:
-	black --check SRC/cuepoint
-	isort --check-only SRC/cuepoint
+	black --check src/cuepoint
+	isort --check-only src/cuepoint

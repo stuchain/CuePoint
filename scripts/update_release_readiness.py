@@ -2,7 +2,7 @@
 """Update release-readiness.md Step 7 checkboxes."""
 from pathlib import Path
 
-path = Path(__file__).parent.parent / "DOCS" / "prerelease" / "release-readiness.md"
+path = Path(__file__).parent.parent / "docs" / "future-features" / "prerelease" / "release-readiness.md"
 content = path.read_text(encoding="utf-8")
 
 # Mark Step 7 items as complete (uses Unicode curly quotes from file)

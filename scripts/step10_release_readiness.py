@@ -93,7 +93,7 @@ def check_step_10_3_certificates(verbose: bool = False) -> Tuple[bool, List[str]
     print("  - macOS: Developer ID Application Certificate (.p12)")
     print("  - macOS: App Store Connect API Key (.p8)")
     print("  - Windows: Code Signing Certificate (.pfx)")
-    print("\nSee DOCS/DESIGNS/SHIP v1.0/10_Final_Configuration_and_Release_Readiness.md")
+    print("\nSee docs/designs/SHIP v1.0/10_Final_Configuration_and_Release_Readiness.md")
     print("  for detailed instructions.")
     
     return True, []
@@ -118,7 +118,7 @@ def check_step_10_4_github_secrets(verbose: bool = False) -> Tuple[bool, List[st
     print("    Windows (2):")
     print("      - WINDOWS_CERT_PFX")
     print("      - WINDOWS_CERT_PASSWORD")
-    print("\nSee DOCS/DESIGNS/SHIP v1.0/10_Final_Configuration_and_Release_Readiness.md")
+    print("\nSee docs/designs/SHIP v1.0/10_Final_Configuration_and_Release_Readiness.md")
     print("  for detailed instructions.")
     
     return True, []
@@ -171,7 +171,7 @@ def check_step_10_7_pre_release_checklist(verbose: bool = False) -> Tuple[bool, 
     errors = []
     
     # Check version file
-    version_file = Path("SRC/cuepoint/version.py")
+    version_file = Path("src/cuepoint/version.py")
     if version_file.exists():
         print(f"[PASS] Version file exists: {version_file}")
         try:
@@ -521,7 +521,7 @@ def check_step_10_18_production_release(verbose: bool = False) -> Tuple[bool, Li
     
     print("[MANUAL] Production release creation:")
     print("  1. Complete all verification steps (10.1-10.17)")
-    print("  2. Update version in SRC/cuepoint/version.py")
+    print("  2. Update version in src/cuepoint/version.py")
     print("  3. Update CHANGELOG.md")
     print("  4. Run final release readiness check:")
     print("     python scripts/release_readiness.py")
@@ -544,9 +544,9 @@ def check_step_10_19_troubleshooting(verbose: bool = False) -> Tuple[bool, List[
     
     print("[NOTE] Troubleshooting documentation:")
     print("  - Common issues documented in:")
-    print("    DOCS/DESIGNS/SHIP v1.0/10_Final_Configuration_and_Release_Readiness.md")
+    print("    docs/designs/SHIP v1.0/10_Final_Configuration_and_Release_Readiness.md")
     print("  - Review workflow logs in GitHub Actions")
-    print("  - Check DOCS/GUIDES/ for detailed instructions")
+    print("  - Check docs/guides/ for detailed instructions")
     
     return True, []
 
@@ -607,7 +607,7 @@ def main():
     print("Step 10.1: Goals")
     print("=" * 60)
     print("[INFO] Goals defined in:")
-    print("  DOCS/DESIGNS/SHIP v1.0/10_Final_Configuration_and_Release_Readiness.md")
+    print("  docs/designs/SHIP v1.0/10_Final_Configuration_and_Release_Readiness.md")
     print("\nPrimary Goals:")
     print("  - Configure all required secrets and certificates")
     print("  - Test build workflows end-to-end")
@@ -677,7 +677,7 @@ def main():
     print("3. Run test builds and verify workflows")
     print("4. When all checks pass, proceed with Step 10.18 (Create Release)")
     print("\nFor detailed instructions, see:")
-    print("  DOCS/DESIGNS/SHIP v1.0/10_Final_Configuration_and_Release_Readiness.md")
+    print("  docs/designs/SHIP v1.0/10_Final_Configuration_and_Release_Readiness.md")
     
     return 0 if len(all_errors) == 0 else 1
 

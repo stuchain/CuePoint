@@ -18,8 +18,8 @@ https://github.com/stuchain/CuePoint/blob/main/
 https://github.com/StuChain/CuePoint/blob/main/
 
 # File links that lychee fails to resolve (paths exist; workaround for lychee path resolution)
-file://.*/DOCS/RELEASE/changelog\.md
-file://.*/DOCS/POLICY/telemetry\.md
-file://.*/DOCS/RELEASE/link
-file://.*/DOCS/SECURITY/Security_Incident_Response\.md
-file://.*/DOCS/OPERATIONS/Release/
+file://.*/docs/release/changelog\.md
+file://.*/docs/policy/telemetry\.md
+file://.*/docs/release/link
+file://.*/docs/security/Security_Incident_Response\.md
+file://.*/docs/operations/Release/

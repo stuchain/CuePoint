@@ -25,12 +25,12 @@ import time
 from io import StringIO
 from pathlib import Path
 
-# Add SRC to path
+# Add src to path
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
-SRC_PATH = PROJECT_ROOT / "SRC"
-if str(SRC_PATH) not in sys.path:
-    sys.path.insert(0, str(SRC_PATH))
+SOURCE_DIR = PROJECT_ROOT / "src"
+if str(SOURCE_DIR) not in sys.path:
+    sys.path.insert(0, str(SOURCE_DIR))
 
 # Design 6.128: Benchmark targets (seconds)
 TARGETS = {
@@ -42,7 +42,7 @@ TARGETS = {
 
 def get_fixture_path(dataset: str) -> Path:
     """Get path to benchmark fixture."""
-    fixtures_dir = SRC_PATH / "tests" / "fixtures" / "rekordbox"
+    fixtures_dir = SOURCE_DIR / "tests" / "fixtures" / "rekordbox"
     name = f"benchmark_{dataset}.xml"
     path = fixtures_dir / name
     if not path.exists():
@@ -132,7 +132,7 @@ def run_benchmark(
         ps = pstats.Stats(profiler, stream=s).sort_stats(pstats.SortKey.CUMULATIVE)
         ps.print_stats(20)
         report_text = s.getvalue()
-        out_path = profile_output_path or (output_dir or PROJECT_ROOT / "benchmarks") / f"profile_{dataset}.txt"
+        out_path = profile_output_path or (output_dir or SCRIPT_DIR / "benchmarks") / f"profile_{dataset}.txt"
         Path(out_path).parent.mkdir(parents=True, exist_ok=True)
         with open(out_path, "w", encoding="utf-8") as f:
             f.write(report_text)
@@ -193,12 +193,12 @@ def main() -> int:
     parser.add_argument("--profile", action="store_true",
                         help="Run with cProfile, save top 20 slowest functions (Design 6.19)")
     parser.add_argument("--compare-baseline", action="store_true",
-                        help="Compare against benchmarks/baseline.json, fail if regression > 20% (Design 6.115)")
+                        help="Compare against scripts/benchmarks/baseline.json, fail if regression > 20% (Design 6.115)")
     parser.add_argument("--update-baseline", action="store_true",
                         help="Update baseline.json with current results (Design 6.54)")
     args = parser.parse_args()
 
-    output_dir = args.output_dir or (PROJECT_ROOT / "benchmarks")
+    output_dir = args.output_dir or (SCRIPT_DIR / "benchmarks")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     datasets = ["1k", "5k", "10k"] if args.dataset == "all" else [args.dataset]

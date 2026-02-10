@@ -18,8 +18,8 @@ import plistlib
 import sys
 from pathlib import Path
 
-# Add SRC to path
-sys.path.insert(0, str(Path('SRC').resolve()))
+# Add src to path
+sys.path.insert(0, str(Path('src').resolve()))
 
 try:
     from cuepoint.version import __build_number__, __version__

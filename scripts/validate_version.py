@@ -77,7 +77,7 @@ def get_version_from_file() -> Optional[str]:
     """
     script_dir = Path(__file__).parent
     project_root = script_dir.parent
-    version_file = project_root / "SRC" / "cuepoint" / "version.py"
+    version_file = project_root / "src" / "cuepoint" / "version.py"
 
     if not version_file.exists():
         return None

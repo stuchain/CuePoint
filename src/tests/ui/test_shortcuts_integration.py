@@ -13,7 +13,7 @@ import sys
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import QApplication
 
-# Add SRC to path
+# Add src to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import os

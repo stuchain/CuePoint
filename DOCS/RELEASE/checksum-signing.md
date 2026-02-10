@@ -93,7 +93,7 @@ This creates a file `release-signing-key.asc` (text starting with `-----BEGIN PG
 
 **Publish this file** so users can import it once:
 
-- Add it to your repo (e.g. in `DOCS/` or project root), or  
+- Add it to your repo (e.g. in `docs/` or project root), or  
 - Put it on your website or in release notes.
 
 Users only need to import it **once**; after that they can verify any future release signed with the same key.
@@ -263,4 +263,3 @@ So after a release, the release page will have **SHA256SUMS** and, if you config
 ## See also
 
 - [Key management](key-management.md) — where to store keys, rotation.
-- Design: `DOCS/prerelease/designs/02-release-engineering-and-distribution.md` (section 2.17).

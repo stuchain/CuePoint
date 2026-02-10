@@ -13,7 +13,7 @@ from pathlib import Path
 
 # Project root
 ROOT = Path(__file__).resolve().parent.parent
-DOCS_RELEASE = ROOT / "DOCS" / "RELEASE"
+RELEASE_DIR = ROOT / "docs" / "release"
 GITHUB = ROOT / ".github"
 
 
@@ -30,7 +30,7 @@ def check_doc_links() -> bool:
     """Check that key internal doc links resolve."""
     import re
     ok = True
-    ops_index = DOCS_RELEASE / "ops-index.md"
+    ops_index = RELEASE_DIR / "ops-index.md"
     if ops_index.exists():
         content = ops_index.read_text(encoding="utf-8", errors="replace")
         for match in re.finditer(r'\]\(([^)#]+)', content):
@@ -54,15 +54,15 @@ def main() -> int:
     # Required docs
     print("\n1. Documentation")
     docs = [
-        (DOCS_RELEASE / "ops-index.md", "Ops index"),
-        (DOCS_RELEASE / "ops-support-channels.md", "Support channels"),
-        (DOCS_RELEASE / "triage-workflow.md", "Triage workflow"),
-        (DOCS_RELEASE / "release-deployment-runbook.md", "Release deployment runbook"),
-        (DOCS_RELEASE / "incident-response-runbook.md", "Incident response runbook"),
-        (DOCS_RELEASE / "update-feed-recovery-runbook.md", "Update feed recovery runbook"),
-        (DOCS_RELEASE / "backup-disaster-recovery.md", "Backup & disaster recovery"),
-        (DOCS_RELEASE / "ops-kpis.md", "Ops KPIs"),
-        (DOCS_RELEASE / "known-issues.md", "Known issues"),
+        (RELEASE_DIR / "ops-index.md", "Ops index"),
+        (RELEASE_DIR / "ops-support-channels.md", "Support channels"),
+        (RELEASE_DIR / "triage-workflow.md", "Triage workflow"),
+        (RELEASE_DIR / "release-deployment-runbook.md", "Release deployment runbook"),
+        (RELEASE_DIR / "incident-response-runbook.md", "Incident response runbook"),
+        (RELEASE_DIR / "update-feed-recovery-runbook.md", "Update feed recovery runbook"),
+        (RELEASE_DIR / "backup-disaster-recovery.md", "Backup & disaster recovery"),
+        (RELEASE_DIR / "ops-kpis.md", "Ops KPIs"),
+        (RELEASE_DIR / "known-issues.md", "Known issues"),
     ]
     for path, desc in docs:
         if not check_file(path, desc):
@@ -103,7 +103,7 @@ def main() -> int:
 
     # CLI flag (check main.py)
     print("\n5. CLI --export-support-bundle")
-    main_py = ROOT / "SRC" / "main.py"
+    main_py = ROOT / "src" / "main.py"
     if main_py.exists():
         content = main_py.read_text(encoding="utf-8", errors="replace")
         if "--export-support-bundle" in content and "SupportBundleGenerator" in content:

@@ -1,7 +1,5 @@
 # Post-Launch Support Channels
 
-Design: Step 13 Post-Launch Operations and Support.
-
 ## Overview
 
 CuePoint provides support through the following channels. Use the appropriate channel for your needs.
@@ -20,7 +18,7 @@ CuePoint provides support through the following channels. Use the appropriate ch
 - Security vulnerabilities (use [Security template](https://github.com/stuchain/CuePoint/issues/new?template=security_vulnerability.yml))
 - Support questions (use [Support Question template](https://github.com/stuchain/CuePoint/issues/new?template=support_question.yml))
 
-**Response expectations**: See [Support SLA](../POLICY/support-sla.md).
+**Response expectations**: See [Support SLA](../policy/support-sla.md).
 
 ### GitHub Discussions
 
@@ -72,11 +70,11 @@ The bundle contains:
 - **P1 (Major)**: Addressed in sprint; target next patch release
 - **P2 (Minor)**: Backlog; addressed when capacity allows
 
-See [Triage Workflow](triage-workflow.md) and [Support SLA Playbook](../prerelease/support-sla-playbook.md). 
+See [Triage Workflow](triage-workflow.md) and [Support SLA Playbook](../security/support-sla-playbook.md). 
 
 ## Related Documents
 
 - [Triage Workflow](triage-workflow.md)
-- [Support SLA](../POLICY/support-sla.md)
+- [Support SLA](../policy/support-sla.md)
 - [Support Policy](../user-guide/support-policy.md)
 - [Ops Index](ops-index.md)

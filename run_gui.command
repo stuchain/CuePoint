@@ -25,9 +25,9 @@ fi
 # Show SSL backend (helps detect LibreSSL vs OpenSSL)
 "$PY" -c "import ssl; print('Python:', __import__('sys').version.split()[0]); print('SSL:', ssl.OPENSSL_VERSION)" 2>/dev/null
 
-# Change to SRC directory
-cd "$SCRIPT_DIR/SRC" || {
-    echo "Error: Could not change to SRC directory"
+# Change to src directory
+cd "$SCRIPT_DIR/src" || {
+    echo "Error: Could not change to src directory"
     echo "Press any key to exit..."
     read -n 1
     exit 1

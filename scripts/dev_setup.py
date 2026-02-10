@@ -135,10 +135,10 @@ def main() -> None:
         print("     .venv\\Scripts\\activate")
     else:
         print("     source .venv/bin/activate")
-    print("  2. Run GUI:  python SRC/gui_app.py")
-    print("  3. Run CLI:  python SRC/main.py --help")
+    print("  2. Run GUI:  python src/gui_app.py")
+    print("  3. Run CLI:  python src/main.py --help")
     print("  4. Run tests: python scripts/run_tests.py --all")
-    print("\nDocs: DOCS/README.md | Contributing: .github/CONTRIBUTING.md")
+    print("\nDocs: docs/README.md | Contributing: .github/CONTRIBUTING.md")
 
 
 if __name__ == "__main__":

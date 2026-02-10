@@ -1,6 +1,6 @@
 # Documentation Ownership
 
-Design 10.10, 10.50. Doc maintenance and review.
+Doc maintenance and review.
 
 ## Ownership Matrix
 
@@ -23,11 +23,11 @@ Design 10.10, 10.50. Doc maintenance and review.
 
 | Area | Path |
 | --- | --- |
-| User docs | `DOCS/user-guide/`, `DOCS/getting-started/` |
-| Developer docs | `DOCS/DEVELOPMENT/` |
-| Release docs | `DOCS/RELEASE/` |
-| Policy | `DOCS/POLICY/` |
-| Compliance | `DOCS/COMPLIANCE/` |
+| User docs | `docs/user-guide/`, `docs/getting-started/` |
+| Developer docs | `docs/development/` |
+| Release docs | `docs/release/` |
+| Policy | `docs/policy/` |
+| Compliance | `docs/compliance/` |
 
 ## PR Checklist for Docs
 
