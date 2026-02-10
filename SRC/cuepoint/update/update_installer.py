@@ -18,6 +18,10 @@ from pathlib import Path
 from typing import Optional
 
 
+# Full path to hdiutil so we don't depend on PATH (packaged macOS app often has minimal PATH)
+_HDIUTIL = "/usr/bin/hdiutil"
+
+
 class UpdateInstaller:
     """
     Handles automatic installation of updates.
@@ -276,10 +280,10 @@ class UpdateInstaller:
             import shutil
             import tempfile
 
-            # Mount DMG
+            # Mount DMG (use full path so it works when app has minimal PATH)
             mount_point = Path(tempfile.mkdtemp(prefix="CuePoint_Update_"))
             mount_cmd = [
-                "hdiutil",
+                _HDIUTIL,
                 "attach",
                 str(dmg_path),
                 "-mountpoint",
@@ -325,7 +329,7 @@ class UpdateInstaller:
 
             finally:
                 # Unmount DMG
-                unmount_cmd = ["hdiutil", "detach", str(mount_point), "-quiet"]
+                unmount_cmd = [_HDIUTIL, "detach", str(mount_point), "-quiet"]
                 subprocess.run(unmount_cmd, capture_output=True)
 
                 # Clean up mount point
@@ -348,11 +352,13 @@ class UpdateInstaller:
             # Windows: Can install if we can launch executables
             return True
         elif self.platform == "darwin":
-            # macOS: Can install if hdiutil is available
+            # macOS: Can install if hdiutil is available (use full path; packaged app often has minimal PATH)
             try:
-                subprocess.run(["hdiutil", "-version"], capture_output=True, check=True)
+                subprocess.run(
+                    [_HDIUTIL, "-version"], capture_output=True, check=True, timeout=5
+                )
                 return True
-            except (subprocess.CalledProcessError, FileNotFoundError):
+            except (subprocess.CalledProcessError, FileNotFoundError, OSError):
                 return False
         else:
             return False

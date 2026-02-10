@@ -3083,6 +3083,38 @@ class MainWindow(QMainWindow):
                 f"Failed to download update:\n\n{str(e)}\n\nPlease download manually from the release page.",
             )
 
+    def _open_installer_folder(self, installer_path: str) -> None:
+        """Open the folder containing the installer in the system file manager."""
+        from pathlib import Path
+
+        path = Path(installer_path)
+        if not path.exists():
+            path = path.parent
+        folder = path.parent if path.is_file() else path
+        folder_str = str(folder.resolve())
+        try:
+            if platform.system() == "Darwin":
+                subprocess.Popen(["open", folder_str], start_new_session=True)
+            elif platform.system() == "Windows":
+                subprocess.Popen(["explorer", folder_str])
+            else:
+                subprocess.Popen(["xdg-open", folder_str], start_new_session=True)
+        except (OSError, FileNotFoundError):
+            pass
+
+    def _show_manual_install_dialog(
+        self, title: str, message: str, installer_path: str
+    ) -> None:
+        """Show a dialog for manual install with an 'Open folder' button."""
+        msg = QMessageBox(self)
+        msg.setWindowTitle(title)
+        msg.setText(message)
+        open_btn = msg.addButton("Open folder", QMessageBox.ButtonRole.ActionRole)
+        msg.addButton(QMessageBox.StandardButton.Ok)
+        msg.exec()
+        if msg.clickedButton() == open_btn:
+            self._open_installer_folder(installer_path)
+
     def _install_update(self, installer_path: str) -> None:
         """Install downloaded update (Step 10.9.3)."""
         try:
@@ -3093,11 +3125,11 @@ class MainWindow(QMainWindow):
             installer = UpdateInstaller()
 
             if not installer.can_install():
-                QMessageBox.warning(
-                    self,
+                self._show_manual_install_dialog(
                     "Installation Not Supported",
                     "Automatic installation is not supported on this platform.\n\n"
                     "Please install the update manually:\n" + installer_path,
+                    installer_path,
                 )
                 return
 
@@ -3135,11 +3167,11 @@ class MainWindow(QMainWindow):
 
                 if not success:
                     # If we get here, installation failed before app closed
-                    QMessageBox.critical(
-                        self,
+                    self._show_manual_install_dialog(
                         "Installation Failed",
                         f"Failed to install update:\n\n{error}\n\n"
                         "Please install manually:\n" + installer_path,
+                        installer_path,
                     )
                 # If successful, installer.install() will have closed the app
             else:
@@ -3149,11 +3181,11 @@ class MainWindow(QMainWindow):
             import logging
 
             logging.error(f"Update installation failed: {e}")
-            QMessageBox.critical(
-                self,
+            self._show_manual_install_dialog(
                 "Installation Error",
                 f"Failed to install update:\n\n{str(e)}\n\n"
                 "Please install manually:\n" + installer_path,
+                installer_path,
             )
 
     def _on_update_later(self) -> None:
