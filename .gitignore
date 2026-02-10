@@ -311,7 +311,10 @@ project.xcworkspace/
 tmp_smoke_debug/
 # Benchmarks: keep baseline for CI regression (Design 6.53)
 !benchmarks/baseline.json
+# Profiler output may contain local paths (do not commit)
+scripts/benchmarks/profile_*.txt
 collection.xml
+collection1.xml
 *.xml.backup
 test_collection.xml
 

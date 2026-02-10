@@ -944,7 +944,7 @@
  
  ## 4.145 Example Redacted Path
  
- - `C:\Users\Stelios\Music\rekordbox.xml` -> `~\Music\rekordbox.xml`
+ - `C:\Users\<username>\Music\rekordbox.xml` -> `~\Music\rekordbox.xml`
  
  ## 4.146 Security by Design Practices
  
