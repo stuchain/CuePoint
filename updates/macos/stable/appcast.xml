@@ -2,12 +2,12 @@
 <rss xmlns:ns0="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
   <channel>
     <item>
-      <title>Version 1.0.3-test1.1</title>
-      <pubDate>Wed, 11 Feb 2026 11:00:58 -0000</pubDate>
-      <ns0:version>10003</ns0:version>
-      <ns0:shortVersionString>1.0.3-test1.1</ns0:shortVersionString>
-      <enclosure url="https://github.com/stuchain/CuePoint/releases/download/v1.0.3-test1.1/CuePoint-v1.0.3-test1.1-macos-universal.dmg" ns0:version="10003" ns0:shortVersionString="1.0.3-test1.1" length="104061799" type="application/octet-stream" ns0:sha256="132827063f7f169961c5951d62996d1ba4b47429b300cba4e68bbf752a49d885" />
-      <ns0:releaseNotesLink>https://github.com/stuchain/CuePoint/releases/tag/v1.0.3-test1.1</ns0:releaseNotesLink>
+      <title>Version 1.0.4-prerelease1.1</title>
+      <pubDate>Wed, 11 Feb 2026 13:30:57 -0000</pubDate>
+      <ns0:version>10004</ns0:version>
+      <ns0:shortVersionString>1.0.4-prerelease1.1</ns0:shortVersionString>
+      <enclosure url="https://github.com/stuchain/CuePoint/releases/download/v1.0.4-prerelease1.1/CuePoint-v1.0.4-prerelease1.1-macos-universal.dmg" ns0:version="10004" ns0:shortVersionString="1.0.4-prerelease1.1" length="104061968" type="application/octet-stream" ns0:sha256="9d619a2042879ba04145d072b68ca41abc6b05b56c7304bb3029cca5bef5b85a" />
+      <ns0:releaseNotesLink>https://github.com/stuchain/CuePoint/releases/tag/v1.0.4-prerelease1.1</ns0:releaseNotesLink>
     </item>
     <title>CuePoint Updates</title>
     <link>https://github.com/StuChain/CuePoint</link>
