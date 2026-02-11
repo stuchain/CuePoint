@@ -65,19 +65,19 @@ cp -R "dist/${APP_NAME}.app" "${DMG_DIR}/"
 echo "Creating Applications symlink..."
 ln -s /Applications "${DMG_DIR}/Applications"
 
-# Create README
-cat > "${DMG_DIR}/README.txt" << EOF
-CuePoint ${VERSION}
+# Create README (gatekeeper / unsigned app instructions)
+cat > "${DMG_DIR}/README.txt" << 'EOF'
+CuePoint - Installation (unsigned app)
 
-Installation:
-1. Drag CuePoint.app to the Applications folder
-2. Open Applications and launch CuePoint
+Step 1: Drag CuePoint into the Applications folder.
 
-System Requirements:
-- macOS 10.15 or later
-- 100MB free disk space
+Step 2: Try to open the app - it will not let you. DO NOT MOVE TO BIN.
 
-For support, visit: https://github.com/yourusername/cuepoint
+Step 3: Go to Settings -> Privacy & Security -> scroll until you see CuePoint and click "Always open".
+
+Step 4: Try again opening the app from the Applications folder.
+
+For support, visit: https://github.com/StuChain/CuePoint
 EOF
 
 # Create initial DMG (read-write for layout configuration)

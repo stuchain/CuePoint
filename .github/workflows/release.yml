@@ -133,6 +133,21 @@ jobs:
           workflow_conclusion: success
           allow_forks: false
       
+      - name: Create Windows README
+        run: |
+          cat > artifacts/windows/README.txt << 'READMEEOF'
+CuePoint - Installation (unsigned app)
+
+Step 1: Open CuePoint Setup.exe
+
+Step 2: After you get a popup called "Windows protected your PC", click "More info"
+
+Step 3: Click "Run anyway" (this happens because we do not pay 200 euros/year to sign the app with Microsoft)
+
+Step 4: Install and enjoy
+READMEEOF
+          echo "Created artifacts/windows/README.txt"
+      
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -207,6 +222,7 @@ jobs:
           files: |
             artifacts/macos/*.dmg
             artifacts/windows/*.exe
+            artifacts/windows/README.txt
             dist/sbom.spdx.json
             THIRD_PARTY_LICENSES.txt
             SHA256SUMS
