@@ -96,6 +96,19 @@ jobs:
       - name: Validate version
         run: python scripts/validate_version.py
       
+      - name: Generate application icons
+        run: |
+          echo "=== Generating application icons (taskbar/dock) ==="
+          python scripts/generate_icons.py
+          if [ -f build/icon.icns ]; then
+            echo "[OK] icon.icns created for macOS"
+          elif [ -f build/icon.ico ]; then
+            echo "[OK] icon.ico created (ICNS may need manual conversion on macOS)"
+          else
+            echo "ERROR: No icon file found after generate_icons.py"
+            exit 1
+          fi
+      
       - name: Build with PyInstaller
         run: |
           python scripts/build_pyinstaller.py

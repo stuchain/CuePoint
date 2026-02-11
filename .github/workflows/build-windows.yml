@@ -148,6 +148,17 @@ jobs:
           python scripts/validate_version.py
           Write-Host "Version validation completed"
       
+      - name: Generate application icons
+        run: |
+          Write-Host "=== Generating application icons (taskbar/dock) ==="
+          python scripts/generate_icons.py
+          if (Test-Path "build\icon.ico") {
+              Write-Host "[OK] icon.ico created for Windows"
+          } else {
+              Write-Error "icon.ico not found after generate_icons.py"
+              exit 1
+          }
+      
       - name: Verify Python DLL exists
         run: |
           Write-Host "=== DEBUG: Verifying Python DLL ==="

@@ -7,7 +7,10 @@ Converts the logo.png to:
 - build/icon.ico (Windows)
 - build/icon.icns (macOS)
 
-This script should be run before building the application.
+Run before building the application (CI does this automatically).
+For local development: run once so the taskbar/dock shows the CuePoint logo
+when you run from run_gui.bat or run_gui.command:
+  python scripts/generate_icons.py
 """
 
 import sys
