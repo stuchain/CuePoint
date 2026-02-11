@@ -5,18 +5,30 @@
 Generate WinSparkle update feed XML (Sparkle-compatible) for Windows auto-updates
 
 WinSparkle uses the same appcast XML format as Sparkle, so this generates
-Sparkle-compatible XML for Windows.
+Sparkle-compatible XML for Windows. Includes sparkle:sha256 checksum on the
+enclosure so the app can verify the download and avoid the "Update Not Verified"
+dialog.
 
 Usage:
     python scripts/generate_update_feed.py --exe <exe_path> --version <version> --url <download_url> [--notes <notes_url>] [--output <output_path>] [--append]
 """
 
 import argparse
+import hashlib
 import sys
 import xml.etree.ElementTree as ET
 from email.utils import formatdate
 from pathlib import Path
 from typing import Optional
+
+
+def sha256_of_file(path: Path, chunk_size: int = 1024 * 1024) -> str:
+    """Compute SHA-256 hex digest of a file."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while chunk := f.read(chunk_size):
+            h.update(chunk)
+    return h.hexdigest().lower()
 
 # Add src to path
 _script_dir = Path(__file__).resolve().parent
@@ -116,8 +128,13 @@ def generate_appcast_item(
     enclosure.set('length', str(file_size))
     enclosure.set('type', 'application/octet-stream')
     
-    # Note: Windows uses code signing for verification, not EdDSA signatures
-    # The installer is signed with the code signing certificate
+    # Add SHA256 checksum so the app can verify the download (avoids "Update Not Verified" dialog)
+    try:
+        enclosure.set(f'{{{SPARKLE_NS}}}sha256', sha256_of_file(exe_file))
+    except OSError:
+        pass  # Don't fail feed generation if we can't read the file
+    
+    # Note: Windows also uses code signing for the installer; checksum adds integrity verification
     
     # Release notes link
     if release_notes_url:
