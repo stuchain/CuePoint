@@ -777,7 +777,7 @@ class UpdateManager:
                         # Emit no-arg signals; slot retrieves data from manager
                         if update_info and self._on_update_available:
                             logger.info(
-                                f"Scheduling update available callback on main thread (version: {update_info_copy.get('short_version')})"
+                                f"Scheduling update available callback on main thread (version: {update_info.get('short_version')})"
                             )
                             # Emit no-arg signal - slot retrieves update_info from manager
                             # (avoids PySide6 bug passing dict through queued cross-thread signals)

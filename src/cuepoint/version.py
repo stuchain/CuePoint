@@ -17,6 +17,9 @@ from typing import Any, Dict, Optional
 # Version follows Semantic Versioning (SemVer): MAJOR.MINOR.PATCH
 __version__ = "1.0.0-feb1"
 
+# When running locally (not frozen/packaged), report this version for update testing
+__version_local_dev__ = "1.0.0-test1.0"
+
 # Build identifier (set by CI or build script)
 __build_number__: Optional[str] = "202602061840"  # Will be set during build
 __commit_sha__: Optional[str] = (
@@ -25,12 +28,19 @@ __commit_sha__: Optional[str] = (
 __build_date__: Optional[str] = "2026-02-06T18:40:43.547654"  # Will be set during build
 
 
+def _is_running_locally() -> bool:
+    """True when running from source (not a frozen/packaged build)."""
+    return not getattr(sys, "frozen", False)
+
+
 def get_version() -> str:
     """Get version string (MAJOR.MINOR.PATCH).
 
-    Returns:
-        Version string in SemVer format.
+    When running locally (not packaged), returns __version_local_dev__ (e.g. 1.0.0-test1.0)
+    so the update checker uses the test track. Packaged builds use __version__.
     """
+    if _is_running_locally():
+        return __version_local_dev__
     return __version__
 
 
@@ -40,8 +50,8 @@ def get_version_string() -> str:
     Returns:
         Version string, optionally with build number appended.
     """
-    version = __version__
-    if __build_number__:
+    version = get_version()
+    if __build_number__ and not _is_running_locally():
         version += f".{__build_number__}"
     return version
 
@@ -91,7 +101,7 @@ def get_build_info() -> Dict[str, Any]:
         Dictionary containing all version and build information.
     """
     return {
-        "version": __version__,
+        "version": get_version(),
         "version_string": get_version_string(),
         "build_number": __build_number__,
         "commit_sha": __commit_sha__,
@@ -119,8 +129,8 @@ def get_version_display_string() -> str:
     Returns:
         Formatted version string suitable for display in UI.
     """
-    version_str = f"Version {__version__}"
-    if __build_number__:
+    version_str = f"Version {get_version()}"
+    if __build_number__ and not _is_running_locally():
         version_str += f" (Build {__build_number__})"
     if __commit_sha__:
         version_str += f" - {get_short_commit_sha()}"
