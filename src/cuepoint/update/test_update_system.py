@@ -19,6 +19,7 @@ from cuepoint.update.version_utils import (
     compare_versions,
     is_newer_version,
     is_stable_version,
+    is_test_version,
     parse_version,
 )
 
@@ -47,6 +48,13 @@ def test_version_utils():
     # Test is_stable_version
     assert is_stable_version("1.0.0") is True
     assert is_stable_version("1.0.0-beta.1") is False
+
+    # Test is_test_version (test vs non-test track)
+    assert is_test_version("1.0.3-test1") is True
+    assert is_test_version("1.0.4-test4") is True
+    assert is_test_version("1.0.0") is False
+    assert is_test_version("1.0.0-alpha") is False
+    assert is_test_version("1.0.0-beta.1") is False
 
     print("[OK] Version utilities tests passed")
 

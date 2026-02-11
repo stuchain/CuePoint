@@ -120,3 +120,35 @@ class TestUpdateCheckerIntegration:
         assert result is not None
         assert result.get("short_version") == "1.0.1"
         assert result.get("checksum") == "a" * 64
+
+    def test_find_latest_update_test_vs_nontest_tracks(self):
+        """Non-test (e.g. alpha) does not see test releases; test only sees test."""
+        base_item = {
+            "version": "1.0.4",
+            "download_url": "https://example.com/CuePoint.exe",
+            "file_size": 1000,
+            "checksum": "a" * 64,
+            "release_notes": "",
+            "pub_date": None,
+        }
+        # Non-test current (1.0.0-alpha) must not see 1.0.3-test4 as update
+        checker_alpha = UpdateChecker(
+            "https://example.com/updates", "1.0.0-alpha", "stable"
+        )
+        items_test = [{**base_item, "short_version": "1.0.3-test4"}]
+        result = checker_alpha._find_latest_update(items_test)
+        assert result is None, "1.0.0-alpha must not see 1.0.3-test4 as update"
+
+        # Test current (1.0.3-test1) must see 1.0.4-test4 as update
+        checker_test = UpdateChecker(
+            "https://example.com/updates", "1.0.3-test1", "stable"
+        )
+        items_test_only = [{**base_item, "short_version": "1.0.4-test4"}]
+        result = checker_test._find_latest_update(items_test_only)
+        assert result is not None
+        assert result.get("short_version") == "1.0.4-test4"
+
+        # Test current (1.0.3-test1) must not see 1.0.4-alpha as update
+        items_nontest = [{**base_item, "short_version": "1.0.4-alpha"}]
+        result = checker_test._find_latest_update(items_nontest)
+        assert result is None, "1.0.3-test1 must not see 1.0.4-alpha as update"

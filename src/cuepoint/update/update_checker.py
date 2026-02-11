@@ -18,7 +18,7 @@ from cuepoint.update.security import FeedIntegrityVerifier, PackageIntegrityVeri
 from cuepoint.update.version_utils import (
     compare_versions,
     extract_base_version,
-    is_stable_version,
+    is_test_version,
     parse_version,
 )
 
@@ -415,14 +415,15 @@ class UpdateChecker:
         1. Compare base versions (X.Y.Z) - if base is newer, check version type compatibility
         2. If base versions are equal, compare full versions (including prerelease)
 
-        Version type filtering:
-        - Test/prerelease versions (e.g., "1.0.0-test", "1.0.1-test17") can only update to
-          other test/prerelease versions
-        - Stable versions (e.g., "1.0.0", "1.0.1") can only update to other stable versions
+        Version type filtering (test vs non-test):
+        - Versions with a "-test" prerelease (e.g. 1.0.3-test1) can only update to other
+          test versions (e.g. 1.0.4-test4).
+        - Non-test versions (stable like 1.0.0, or prerelease like 1.0.0-alpha) can only
+          update to non-test versions; they never see test releases as updates.
 
         This ensures that:
-        - Test versions stay in the test channel
-        - Stable versions stay in the stable channel
+        - 1.0.0-alpha does not see 1.0.3-test4 as an update
+        - 1.0.3-test1 sees 1.0.4-test4 as an update but not 1.0.4-alpha
 
         Args:
             items: List of update items (sorted by version, latest first)
@@ -434,17 +435,17 @@ class UpdateChecker:
 
         logger = logging.getLogger(__name__)
 
-        # Extract base version and check if current is prerelease
+        # Extract base version and whether current is a test release
         try:
             base_current = extract_base_version(self.current_version)
-            current_is_prerelease = not is_stable_version(self.current_version)
+            current_is_test = is_test_version(self.current_version)
         except ValueError:
             logger.warning(f"Could not parse current version: {self.current_version}")
             return None
 
         logger.info(
             f"Finding latest update. Current: {self.current_version} "
-            f"(base: {base_current}, prerelease: {current_is_prerelease}), "
+            f"(base: {base_current}, test: {current_is_test}), "
             f"Channel: {self.channel}, Items: {len(items)}"
         )
 
@@ -471,14 +472,14 @@ class UpdateChecker:
             # Try to parse as semantic version, skip if invalid
             try:
                 base_candidate = extract_base_version(version)
-                version_is_prerelease = not is_stable_version(version)
+                version_is_test = is_test_version(version)
             except (ValueError, AttributeError) as e:
                 logger.debug(f"Skipping item: could not parse version '{version}': {e}")
                 continue
 
             logger.debug(
                 f"Checking version: {version} "
-                f"(base: {base_candidate}, prerelease: {version_is_prerelease})"
+                f"(base: {base_candidate}, test: {version_is_test})"
             )
 
             # STAGE 1: Compare base versions (X.Y.Z)
@@ -496,26 +497,24 @@ class UpdateChecker:
                     f"Found newer base version: {base_candidate} > {base_current}"
                 )
 
-                # Apply version type filtering:
-                # - Test/prerelease versions can only update to test/prerelease versions
-                # - Stable versions can only update to stable versions
-                if current_is_prerelease and not version_is_prerelease:
-                    # Current is test/prerelease, candidate is stable - skip
+                # Apply test vs non-test filtering: same track only
+                if current_is_test and not version_is_test:
+                    # Current is test, candidate is non-test (e.g. stable/alpha) - skip
                     logger.debug(
-                        f"Skipping stable version '{version}' "
-                        f"(current is test/prerelease '{self.current_version}')"
+                        f"Skipping non-test version '{version}' "
+                        f"(current is test '{self.current_version}')"
                     )
                     continue
 
-                if not current_is_prerelease and version_is_prerelease:
-                    # Current is stable, candidate is test/prerelease - skip
+                if not current_is_test and version_is_test:
+                    # Current is non-test, candidate is test - skip
                     logger.debug(
-                        f"Skipping test/prerelease version '{version}' "
-                        f"(current is stable '{self.current_version}')"
+                        f"Skipping test version '{version}' "
+                        f"(current is non-test '{self.current_version}')"
                     )
                     continue
 
-                # Both are same type (both stable or both prerelease) - allow if newer
+                # Both on same track (both test or both non-test) - allow if newer
                 # Prefer items with checksum (SHA256); allow items with only EdDSA signature
                 # so we don't skip all appcast items (many feeds use sparkle:edSignature only).
                 if not item.get("checksum"):

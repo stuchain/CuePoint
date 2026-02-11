@@ -133,6 +133,30 @@ def is_stable_version(version: str) -> bool:
         return False
 
 
+def is_test_version(version: str) -> bool:
+    """
+    Check if a version is a test release (prerelease identifier starts with "test").
+
+    Test releases (e.g. 1.0.3-test1, 1.0.4-test4) are kept on a separate update track:
+    - Non-test builds (1.0.0, 1.0.0-alpha) only see non-test updates.
+    - Test builds only see test updates.
+
+    Args:
+        version: Version string to check (e.g. "1.0.3-test1", "1.0.0-alpha")
+
+    Returns:
+        True if version has a prerelease that starts with "test", False otherwise
+    """
+    try:
+        _, _, _, prerelease = parse_version(version)
+        return (
+            prerelease is not None
+            and prerelease.lower().startswith("test")
+        )
+    except ValueError:
+        return False
+
+
 def extract_base_version(version: str) -> str:
     """
     Extract base version (X.Y.Z) from version string, removing prerelease suffix and build metadata.
