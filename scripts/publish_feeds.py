@@ -44,7 +44,8 @@ def publish_feeds(
     branch: str = "gh-pages",
     message: str = "Update feeds",
     remote: str = "origin",
-    github_token: Optional[str] = None
+    github_token: Optional[str] = None,
+    index_path: Optional[str] = None,
 ) -> bool:
     """
     Publish appcast files to GitHub Pages branch.
@@ -55,6 +56,7 @@ def publish_feeds(
         message: Commit message
         remote: Remote name (default: origin)
         github_token: Optional GitHub token for authentication (for CI/CD)
+        index_path: Optional path to index.html for the Pages root (e.g. gh-pages-root/index.html)
         
     Returns:
         True if successful, False otherwise
@@ -81,10 +83,20 @@ def publish_feeds(
     run_command(['git', 'config', 'user.name', git_user_name], cwd=repo_root)
     run_command(['git', 'config', 'user.email', git_user_email], cwd=repo_root)
     
-    # CRITICAL: Save generated appcast content BEFORE checking out gh-pages
+    # CRITICAL: Save generated appcast content (and optional index) BEFORE checking out gh-pages
     # When we checkout gh-pages, it will overwrite our generated files with old content
     # So we need to preserve the generated content and restore it after checkout
     print("Saving generated appcast content before branch checkout...")
+    saved_index_content: Optional[str] = None
+    if index_path:
+        index_file = Path(index_path)
+        if not index_file.is_absolute():
+            index_file = repo_root / index_file
+        if index_file.exists():
+            saved_index_content = index_file.read_text(encoding="utf-8")
+            print(f"  Saved index content from: {index_file.relative_to(repo_root)} ({len(saved_index_content)} bytes)")
+        else:
+            print(f"  Warning: Index file not found: {index_path}", file=sys.stderr)
     generated_appcast_content = {}
     for appcast_file in appcast_files:
         appcast_path = Path(appcast_file)
@@ -195,6 +207,14 @@ def publish_feeds(
                     print(f"  Verified: Restored appcast contains versions: {', '.join(versions)}")
             except Exception as e:
                 print(f"  Warning: Could not verify versions in restored content: {e}")
+    
+    # Restore index.html to repo root if we saved it
+    if saved_index_content is not None:
+        index_dest = repo_root / "index.html"
+        index_dest.write_text(saved_index_content, encoding="utf-8")
+        print(f"  Restored index: {index_dest.relative_to(repo_root)}")
+        run_command(["git", "add", "index.html"], cwd=repo_root)
+        print("  Added index.html to git")
     
     # Copy appcast files to repository
     for appcast_file in appcast_files:
@@ -563,6 +583,11 @@ def main():
         help='GitHub token for authentication (for CI/CD)'
     )
     parser.add_argument(
+        '--index',
+        metavar='PATH',
+        help='Path to index.html to publish at Pages root (e.g. gh-pages-root/index.html)'
+    )
+    parser.add_argument(
         '--dry-run',
         action='store_true',
         help='Show what would be done without making changes'
@@ -588,7 +613,8 @@ def main():
         args.branch,
         args.message,
         args.remote,
-        github_token
+        github_token,
+        args.index,
     )
     
     return 0 if success else 1
