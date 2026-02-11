@@ -216,6 +216,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
       
+      # Test tags (e.g. v1.0.3-test1.1) create a draft release: hidden from public
+      # Releases list; only visible to maintainers at GitHub Releases when logged in.
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -227,8 +229,8 @@ jobs:
             THIRD_PARTY_LICENSES.txt
             SHA256SUMS
           body_path: RELEASE_NOTES.md
-          draft: false
-          prerelease: false
+          draft: ${{ contains(github.ref_name, '-test') }}
+          prerelease: ${{ contains(github.ref_name, '-test') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
@@ -239,6 +241,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Fetch Existing Appcast Feeds
+        if: ${{ !contains(github.ref_name, '-test') }}
         run: |
           echo "=== Fetching Existing Appcast Feeds ==="
           
@@ -266,6 +269,7 @@ jobs:
           fi
       
       - name: Generate Appcast Feeds
+        if: ${{ !contains(github.ref_name, '-test') }}
         run: |
           echo "=== Generating Appcast Feeds ==="
           VERSION="${{ github.ref_name }}"
@@ -330,6 +334,7 @@ jobs:
           echo "Appcast generation complete"
       
       - name: Validate Appcast Feeds
+        if: ${{ !contains(github.ref_name, '-test') }}
         run: |
           echo "=== Validating Appcast Feeds ==="
           if [ -f "updates/macos/stable/appcast.xml" ] && [ -f "updates/windows/stable/appcast.xml" ]; then
@@ -342,6 +347,7 @@ jobs:
           fi
       
       - name: Publish Appcast Feeds to GitHub Pages
+        if: ${{ !contains(github.ref_name, '-test') }}
         run: |
           echo "=== Publishing Appcast Feeds ==="
           

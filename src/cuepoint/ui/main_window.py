@@ -935,7 +935,7 @@ class MainWindow(QMainWindow):
         if self.tool_selection_page:
             self.setCentralWidget(self.tool_selection_page)
             self.current_page = "tool_selection"
-            self.menuBar().hide()
+            self.menuBar().show()
 
     def show_main_interface(self) -> None:
         """Show the main interface (existing tabs)"""
@@ -1232,6 +1232,11 @@ class MainWindow(QMainWindow):
         report_issue_action.setToolTip("Open the issue tracker (if configured)")
         report_issue_action.triggered.connect(self.on_report_issue)
         diagnostics_menu.addAction(report_issue_action)
+
+        test_sentry_action = QAction("Send &test event to Sentry", self)
+        test_sentry_action.setToolTip("Send a test error to Sentry to verify reporting is working")
+        test_sentry_action.triggered.connect(self._on_test_sentry_report)
+        diagnostics_menu.addAction(test_sentry_action)
 
         help_menu.addSeparator()
 
@@ -1881,6 +1886,36 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(
                 self, "Report Issue", f"Could not open issue reporter:\n{e}"
             )
+
+    def _on_test_sentry_report(self) -> None:
+        """Send a test event to Sentry so the user can verify reporting works."""
+        try:
+            from cuepoint.utils.error_reporting_prefs import ErrorReportingPrefs
+
+            prefs = ErrorReportingPrefs()
+            if not (prefs.is_enabled() and prefs.has_user_consented()):
+                QMessageBox.warning(
+                    self,
+                    "Sentry test",
+                    "Error reporting is off.\n\n"
+                    "Enable it in Settings → Privacy → \"Send error reports to help fix bugs\", "
+                    "then try again.",
+                    QMessageBox.Ok,
+                )
+                return
+        except Exception:
+            pass
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.error("CuePoint Sentry test event (user-triggered)")
+        QMessageBox.information(
+            self,
+            "Sentry test",
+            "A test event was sent to Sentry.\n\n"
+            "Check your Sentry project (Issues) in a few seconds.",
+            QMessageBox.Ok,
+        )
 
     def _open_folder(self, folder_path) -> None:
         """Open a folder in the OS file manager."""

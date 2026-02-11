@@ -515,12 +515,12 @@ class UpdateChecker:
                     continue
 
                 # Both on same track (both test or both non-test) - allow if newer
-                # Prefer items with checksum (SHA256); allow items with only EdDSA signature
-                # so we don't skip all appcast items (many feeds use sparkle:edSignature only).
+                # Design 4.27, 4.109: require checksum; skip item if missing (no update offered).
                 if not item.get("checksum"):
                     logger.debug(
-                        f"Item {version} has no SHA256 checksum (may have EdDSA only); still offering as update"
+                        f"Skipping item {version}: no checksum (SHA256 required)"
                     )
+                    continue
                 logger.info(
                     f"Found newer version: {version} (current: {self.current_version})"
                 )

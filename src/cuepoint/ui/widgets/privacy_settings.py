@@ -62,6 +62,14 @@ class PrivacySettingsWidget(QWidget):
         )
         group_layout.addWidget(self.chk_telemetry)
 
+        # Error reporting (Sentry) – consent to send crash/error reports
+        self.chk_error_reporting = QCheckBox("Send error reports to help fix bugs")
+        self.chk_error_reporting.setToolTip(
+            "When enabled, crash reports and error details are sent to the developers "
+            "so we can fix issues. No personal data or file contents are included."
+        )
+        group_layout.addWidget(self.chk_error_reporting)
+
         self.chk_clear_cache = QCheckBox("Clear cache on exit")
         self.chk_clear_logs = QCheckBox("Clear logs on exit")
 
@@ -80,6 +88,7 @@ class PrivacySettingsWidget(QWidget):
         layout.addWidget(group)
 
         self.chk_telemetry.toggled.connect(self._on_telemetry_changed)
+        self.chk_error_reporting.toggled.connect(self._on_error_reporting_changed)
         self.chk_clear_cache.toggled.connect(self._on_changed)
         self.chk_clear_logs.toggled.connect(self._on_changed)
         self.btn_manage.clicked.connect(self.open_privacy_dialog_requested.emit)
@@ -93,6 +102,15 @@ class PrivacySettingsWidget(QWidget):
                 "telemetry.enabled", False
             )
             self.chk_telemetry.setChecked(bool(enabled))
+        try:
+            from cuepoint.utils.error_reporting_prefs import ErrorReportingPrefs
+
+            er_prefs = ErrorReportingPrefs()
+            self.chk_error_reporting.setChecked(
+                er_prefs.is_enabled() and er_prefs.has_user_consented()
+            )
+        except Exception:
+            self.chk_error_reporting.setChecked(False)
 
     def _on_telemetry_changed(self, checked: bool) -> None:
         if self._config_controller:
@@ -106,6 +124,16 @@ class PrivacySettingsWidget(QWidget):
                 except Exception:
                     pass
 
+    def _on_error_reporting_changed(self, checked: bool) -> None:
+        try:
+            from cuepoint.utils.error_reporting_prefs import ErrorReportingPrefs
+
+            er_prefs = ErrorReportingPrefs()
+            er_prefs.set_enabled(bool(checked))
+            er_prefs.set_consented(bool(checked))
+        except Exception:
+            pass
+
     def _on_changed(self) -> None:
         self._privacy.set_clear_cache_on_exit(self.chk_clear_cache.isChecked())
         self._privacy.set_clear_logs_on_exit(self.chk_clear_logs.isChecked())
@@ -114,6 +142,7 @@ class PrivacySettingsWidget(QWidget):
         """Return a comparable snapshot for change detection."""
         return (
             self.chk_telemetry.isChecked(),
+            self.chk_error_reporting.isChecked(),
             self.chk_clear_cache.isChecked(),
             self.chk_clear_logs.isChecked(),
         )

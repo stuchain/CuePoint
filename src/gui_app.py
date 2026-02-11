@@ -236,6 +236,15 @@ def main():
         CrashHandler()
         ThreadExceptionHandler.install_thread_exception_handler()
 
+        # Initialize Sentry as early as possible (captures import/startup errors)
+        # Consent is enforced in before_send once QApplication exists
+        try:
+            from cuepoint.utils.sentry_init import init_sentry_early
+
+            init_sentry_early()
+        except Exception:
+            pass
+
         # Check for path migration (Step 6.1.4)
         if PathMigration.detect_migration_needed():
             # Perform migration silently (user can be notified if needed)
@@ -321,6 +330,15 @@ def main():
         # Create and show main window
         window = MainWindow()
         window.show()
+        # First-run: ask once for error-reporting consent
+        try:
+            from cuepoint.ui.dialogs.first_run_error_reporting_dialog import (
+                show_if_first_run,
+            )
+
+            show_if_first_run(parent=window)
+        except Exception:
+            pass
         # Step 14: app_start telemetry (GUI)
         try:
             from cuepoint.utils.telemetry_helper import get_telemetry
@@ -350,6 +368,14 @@ def main():
         sys.exit(app.exec())
 
     except Exception as e:
+        # Send to Sentry so startup failures are reported
+        try:
+            import sentry_sdk
+
+            sentry_sdk.capture_exception(e)
+        except Exception:
+            pass
+
         # Handle startup errors gracefully
         error_msg = f"Failed to start CuePoint GUI:\n\n{str(e)}"
 

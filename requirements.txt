@@ -40,6 +40,9 @@ selenium==4.39.0
 # Excel export support (for GUI export functionality)
 openpyxl==3.1.5
 
+# Error reporting (optional: set SENTRY_DSN to enable)
+sentry-sdk>=2.0.0,<3
+
 # Testing dependencies
 pytest==9.0.2
 pytest-qt==4.5.0

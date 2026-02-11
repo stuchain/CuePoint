@@ -333,3 +333,4 @@ build/version_info.txt
 *.sqlite
 bp_cache.sqlite*
 
+scripts/delete_all_releases.py

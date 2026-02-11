@@ -99,6 +99,14 @@ class CrashHandler(QObject):
                 exception, traceback_str, crash_log, crash_report_path
             )
 
+        # Report to Sentry (if DSN set and user consented)
+        try:
+            import sentry_sdk
+
+            sentry_sdk.capture_exception(exception)
+        except Exception as e:
+            logger.debug("Sentry capture failed: %s", e)
+
         # Report to GitHub Issues (Step 11.2)
         try:
             from cuepoint.utils.error_reporter import report_error
@@ -206,6 +214,14 @@ class ThreadExceptionHandler:
             crash_report = CrashReport.generate_report(exception, traceback_str)
             crash_report_path = crash_log.with_suffix(".json")
             CrashReport.save_report(crash_report, crash_report_path)
+
+            # Report to Sentry (if DSN set and user consented)
+            try:
+                import sentry_sdk
+
+                sentry_sdk.capture_exception(exception)
+            except Exception as e:
+                logger.debug("Sentry capture failed: %s", e)
 
             # Report to GitHub Issues (Step 11.2)
             try:
