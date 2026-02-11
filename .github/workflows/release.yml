@@ -135,17 +135,17 @@ jobs:
       
       - name: Create Windows README
         run: |
-          cat > artifacts/windows/README.txt << 'READMEEOF'
-CuePoint - Installation (unsigned app)
-
-Step 1: Open CuePoint Setup.exe
-
-Step 2: After you get a popup called "Windows protected your PC", click "More info"
-
-Step 3: Click "Run anyway" (this happens because we do not pay 200 euros/year to sign the app with Microsoft)
-
-Step 4: Install and enjoy
-READMEEOF
+          printf '%s\n' \
+            'CuePoint - Installation (unsigned app)' \
+            '' \
+            'Step 1: Open CuePoint Setup.exe' \
+            '' \
+            'Step 2: After you get a popup called "Windows protected your PC", click "More info"' \
+            '' \
+            'Step 3: Click "Run anyway" (this happens because we do not pay 200 euros/year to sign the app with Microsoft)' \
+            '' \
+            'Step 4: Install and enjoy' \
+            > artifacts/windows/README.txt
           echo "Created artifacts/windows/README.txt"
       
       - name: Set up Python

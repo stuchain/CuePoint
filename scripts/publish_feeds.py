@@ -88,6 +88,7 @@ def publish_feeds(
     # So we need to preserve the generated content and restore it after checkout
     print("Saving generated appcast content before branch checkout...")
     saved_index_content: Optional[str] = None
+    saved_logo_bytes: Optional[bytes] = None
     if index_path:
         index_file = Path(index_path)
         if not index_file.is_absolute():
@@ -95,6 +96,10 @@ def publish_feeds(
         if index_file.exists():
             saved_index_content = index_file.read_text(encoding="utf-8")
             print(f"  Saved index content from: {index_file.relative_to(repo_root)} ({len(saved_index_content)} bytes)")
+            logo_file = index_file.parent / "logo.png"
+            if logo_file.exists():
+                saved_logo_bytes = logo_file.read_bytes()
+                print(f"  Saved logo from: {logo_file.relative_to(repo_root)} ({len(saved_logo_bytes)} bytes)")
         else:
             print(f"  Warning: Index file not found: {index_path}", file=sys.stderr)
     generated_appcast_content = {}
@@ -215,6 +220,12 @@ def publish_feeds(
         print(f"  Restored index: {index_dest.relative_to(repo_root)}")
         run_command(["git", "add", "index.html"], cwd=repo_root)
         print("  Added index.html to git")
+    if saved_logo_bytes is not None:
+        logo_dest = repo_root / "logo.png"
+        logo_dest.write_bytes(saved_logo_bytes)
+        print(f"  Restored logo: {logo_dest.relative_to(repo_root)}")
+        run_command(["git", "add", "logo.png"], cwd=repo_root)
+        print("  Added logo.png to git")
     
     # Copy appcast files to repository
     for appcast_file in appcast_files:
