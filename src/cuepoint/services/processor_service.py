@@ -495,11 +495,7 @@ class ProcessorService(IProcessorService):
         if not preflight_enabled and not force:
             return PreflightResult(
                 errors=[],
-                warnings=[
-                    PreflightIssue(
-                        code="P090", message="Preflight disabled in settings."
-                    )
-                ],
+                warnings=[],
                 checks={"preflight_enabled": False},
                 warnings_only=warnings_only,
                 generated_at=datetime.now(),
