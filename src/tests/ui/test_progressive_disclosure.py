@@ -5,9 +5,18 @@
 Tests for Progressive Disclosure functionality
 """
 
-import pytest
 import os
+import sys
 import tempfile
+
+import pytest
+
+# Skip entire module on Windows: Qt + pytest teardown can cause access violation
+# (GC/traceback formatting with Qt objects and background threads).
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="UI tests with Qt can cause access violation on Windows during teardown",
+)
 
 from cuepoint.ui.main_window import MainWindow
 from cuepoint.models.playlist import Playlist

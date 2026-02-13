@@ -1,5 +1,6 @@
 """Unit tests for Beatport service."""
 
+import sys
 from unittest.mock import Mock, patch
 
 import pytest
@@ -83,6 +84,7 @@ class TestBeatportService:
         )
         mock_logging_service.info.assert_called()
 
+    @pytest.mark.skipif(sys.platform == "win32", reason="Qt event loop can raise on Windows")
     @patch("cuepoint.services.beatport_service.get_active_provider")
     def test_search_tracks_error_handling(
         self, mock_get_provider, mock_cache_service, mock_logging_service

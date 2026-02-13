@@ -240,6 +240,98 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
+      # --- Test tag only: fetch existing test appcasts from gh-pages (design: two appcast feeds) ---
+      - name: Fetch Existing Test Appcast Feeds
+        if: ${{ contains(github.ref_name, '-test') }}
+        run: |
+          echo "=== Fetching Existing Test Appcast Feeds ==="
+          mkdir -p updates/macos/test
+          mkdir -p updates/windows/test
+          git fetch origin gh-pages:gh-pages 2>/dev/null || echo "gh-pages branch not found, will create new test appcasts"
+          if git show origin/gh-pages:updates/macos/test/appcast.xml > updates/macos/test/appcast.xml 2>/dev/null; then
+            echo "[OK] Fetched existing macOS test appcast"
+          else
+            echo "[INFO] No existing macOS test appcast found, will create new one"
+            rm -f updates/macos/test/appcast.xml
+          fi
+          if git show origin/gh-pages:updates/windows/test/appcast.xml > updates/windows/test/appcast.xml 2>/dev/null; then
+            echo "[OK] Fetched existing Windows test appcast"
+          else
+            echo "[INFO] No existing Windows test appcast found, will create new one"
+            rm -f updates/windows/test/appcast.xml
+          fi
+      
+      - name: Generate Test Appcast Feeds
+        if: ${{ contains(github.ref_name, '-test') }}
+        run: |
+          echo "=== Generating Test Appcast Feeds ==="
+          VERSION="${{ github.ref_name }}"
+          REPO="${{ github.repository }}"
+          VERSION_NUM="${VERSION#v}"
+          echo "Version: $VERSION_NUM"
+          DMG_FILE=$(ls artifacts/macos/*.dmg 2>/dev/null | head -1)
+          EXE_FILE=$(ls artifacts/windows/*.exe 2>/dev/null | head -1)
+          if [ -z "$DMG_FILE" ] || [ -z "$EXE_FILE" ]; then
+            echo "Warning: DMG or EXE file not found, skipping test appcast generation"
+            exit 0
+          fi
+          DMG_URL="https://github.com/$REPO/releases/download/$VERSION/$(basename $DMG_FILE)"
+          EXE_URL="https://github.com/$REPO/releases/download/$VERSION/$(basename $EXE_FILE)"
+          RELEASE_NOTES_URL="https://github.com/$REPO/releases/tag/$VERSION"
+          if [ -f "$DMG_FILE" ]; then
+            python scripts/generate_appcast.py \
+              --dmg "$DMG_FILE" \
+              --version "$VERSION_NUM" \
+              --url "$DMG_URL" \
+              --notes "$RELEASE_NOTES_URL" \
+              --output updates/macos/test/appcast.xml \
+              --append \
+              --channel test
+            echo "[OK] macOS test appcast generated"
+          fi
+          if [ -f "$EXE_FILE" ]; then
+            python scripts/generate_update_feed.py \
+              --exe "$EXE_FILE" \
+              --version "$VERSION_NUM" \
+              --url "$EXE_URL" \
+              --notes "$RELEASE_NOTES_URL" \
+              --output updates/windows/test/appcast.xml \
+              --append \
+              --channel test
+            echo "[OK] Windows test appcast generated"
+          fi
+          echo "Test appcast generation complete"
+      
+      - name: Validate Test Appcast Feeds
+        if: ${{ contains(github.ref_name, '-test') }}
+        run: |
+          echo "=== Validating Test Appcast Feeds ==="
+          if [ -f "updates/macos/test/appcast.xml" ] && [ -f "updates/windows/test/appcast.xml" ]; then
+            python scripts/validate_feeds.py \
+              --macos updates/macos/test/appcast.xml \
+              --windows updates/windows/test/appcast.xml
+            echo "[OK] Test appcast feeds validated"
+          else
+            echo "Warning: Test appcast files not found, skipping validation"
+          fi
+      
+      - name: Publish Test Appcast Feeds to GitHub Pages
+        if: ${{ contains(github.ref_name, '-test') }}
+        run: |
+          echo "=== Publishing Test Appcast Feeds (no index) ==="
+          if [ -f "updates/macos/test/appcast.xml" ] && [ -f "updates/windows/test/appcast.xml" ]; then
+            python scripts/publish_feeds.py \
+              updates/macos/test/appcast.xml updates/windows/test/appcast.xml \
+              --branch gh-pages \
+              --message "Update appcast feeds (test) for ${{ github.ref_name }}" \
+              --github-token "${{ secrets.GITHUB_TOKEN }}"
+            echo "[OK] Test appcast feeds published to gh-pages branch"
+          else
+            echo "Warning: Test appcast files not found, skipping publish"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
       - name: Fetch Existing Appcast Feeds
         if: ${{ !contains(github.ref_name, '-test') }}
         run: |

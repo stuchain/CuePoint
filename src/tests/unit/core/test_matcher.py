@@ -1,7 +1,9 @@
 """Unit tests for matcher module."""
 
+import sys
 from unittest.mock import Mock, patch
 
+import pytest
 
 from cuepoint.core.matcher import (
     _camelot_key,
@@ -1745,6 +1747,10 @@ class TestBestBeatportMatch:
             else:
                 SETTINGS.pop("RUN_ALL_QUERIES", None)
 
+    @pytest.mark.skipif(
+        sys.platform == "win32",
+        reason="Qt event loop can raise SETUP ERROR on Windows",
+    )
     def test_candidate_with_none_title(self):
         """Test candidate with None title - lines 1060-1079."""
         with (

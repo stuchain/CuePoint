@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QPushButton,
 )
 from PySide6.QtCore import Signal
-from gui_interface import ProgressInfo
+from cuepoint.ui.gui_interface import ProgressInfo
 
 
 class ProgressWidget(QWidget):

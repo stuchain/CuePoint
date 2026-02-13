@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from typing import Optional
 
-from gui_interface import ProcessingError
+from cuepoint.ui.gui_interface import ProcessingError
 from cuepoint.legacy.gui.shortcut_manager import ShortcutManager, ShortcutContext
 
 

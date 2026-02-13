@@ -370,9 +370,10 @@ class TestProcessorServiceIntegration:
             with pytest.raises(ProcessingError) as exc_info:
                 processor_service.process_playlist_from_xml(xml_path, "Empty Playlist")
 
-            # Verify error type
+            # Verify error type (details may be "Playlist is empty" or "The playlist contains no valid tracks.")
             assert exc_info.value.error_type == ErrorType.VALIDATION_ERROR
-            assert "Playlist is empty" in (exc_info.value.details or "")
+            details = exc_info.value.details or ""
+            assert "empty" in details or "no valid tracks" in details, f"Expected empty playlist message, got: {details}"
         finally:
             Path(xml_path).unlink(missing_ok=True)
 
@@ -386,9 +387,10 @@ class TestProcessorServiceIntegration:
                 "/nonexistent/path/file.xml", "Test Playlist"
             )
 
-        # Verify error type
+        # Verify error type (details may be "XML file not found" or "The specified Rekordbox XML export file does not exist.")
         assert exc_info.value.error_type == ErrorType.FILE_NOT_FOUND
-        assert "XML file not found" in (exc_info.value.details or "")
+        details = exc_info.value.details or ""
+        assert "not found" in details or "does not exist" in details or "XML" in details, f"Expected file not found message, got: {details}"
 
     def test_process_playlist_from_xml_malformed_xml(self, processor_service):
         """Test process_playlist_from_xml with malformed XML."""

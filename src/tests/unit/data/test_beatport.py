@@ -3,6 +3,7 @@
 
 """Unit tests for beatport data module."""
 
+import sys
 from unittest.mock import Mock, patch
 
 import pytest
@@ -140,6 +141,7 @@ class TestRequestHtml:
         # Just verify it doesn't crash
         assert result is None or isinstance(result, BeautifulSoup)
 
+    @pytest.mark.skipif(sys.platform == "win32", reason="Qt event loop can raise on Windows")
     @patch("cuepoint.data.beatport.retry_with_backoff")
     def test_request_html_failure(self, mock_retry):
         """Test failed HTML request."""

@@ -41,7 +41,7 @@ except ImportError:
 
 from config import HAVE_CACHE, SETTINGS
 from error_handling import error_playlist_not_found, error_file_not_found, print_error
-from gui_interface import (
+from cuepoint.ui.gui_interface import (
     TrackResult,
     ProcessingController,
     ProgressCallback,

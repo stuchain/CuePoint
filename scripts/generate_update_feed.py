@@ -265,7 +265,7 @@ def main():
                        action='store_true',
                        help='Append to existing appcast instead of creating new')
     parser.add_argument('--channel',
-                       choices=['stable', 'beta'],
+                       choices=['stable', 'beta', 'test'],
                        default='stable',
                        help='Update channel (default: stable)')
     

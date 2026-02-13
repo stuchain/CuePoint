@@ -10,6 +10,7 @@ Tests shortcuts in a running GUI application with actual user interactions.
 import os
 import sys
 
+import pytest
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import QApplication
 
@@ -23,6 +24,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
 from cuepoint.ui.main_window import MainWindow
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Qt event loop can raise 'Exceptions caught in Qt event loop' on Windows",
+)
 def test_shortcuts_in_gui():
     """Test shortcuts in actual GUI application"""
     app = QApplication.instance()

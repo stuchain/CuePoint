@@ -1,0 +1,150 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+Unit tests for two-appcast-feeds (stable vs test) design.
+
+Verifies FR1, FR2, I2: effective channel is "test" when version is test,
+otherwise from preferences; UpdateChecker builds correct feed URL for test channel.
+"""
+
+import tempfile
+from pathlib import Path
+
+import pytest
+
+from cuepoint.update.update_checker import UpdateChecker
+from cuepoint.update.update_manager import UpdateManager
+from cuepoint.update.update_preferences import UpdatePreferences
+from cuepoint.update.version_utils import is_test_version
+
+
+@pytest.mark.unit
+class TestEffectiveChannel:
+    """UpdateManager must use effective_channel: test when version is test, else preference."""
+
+    def test_test_version_uses_test_channel_ignores_preference(self):
+        """FR1, I2: Test version => channel "test" even if preference is stable or beta."""
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            prefs_path = f.name
+        try:
+            prefs = UpdatePreferences(preferences_file=Path(prefs_path))
+            prefs.set_channel(UpdatePreferences.CHANNEL_STABLE)
+            manager = UpdateManager(
+                current_version="1.0.3-test1",
+                feed_url="https://example.com/updates",
+                preferences=prefs,
+            )
+            assert manager.checker.channel == "test"
+        finally:
+            Path(prefs_path).unlink(missing_ok=True)
+
+    def test_test_version_uses_test_channel_when_preference_beta(self):
+        """FR1, I2: Test version => channel "test" when preference is beta."""
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            prefs_path = f.name
+        try:
+            prefs = UpdatePreferences(preferences_file=Path(prefs_path))
+            prefs.set_channel(UpdatePreferences.CHANNEL_BETA)
+            manager = UpdateManager(
+                current_version="1.0.4-test4",
+                feed_url="https://example.com/updates",
+                preferences=prefs,
+            )
+            assert manager.checker.channel == "test"
+        finally:
+            Path(prefs_path).unlink(missing_ok=True)
+
+    def test_non_test_version_uses_stable_from_preference(self):
+        """FR2: Non-test version => channel from preferences (stable)."""
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            prefs_path = f.name
+        try:
+            prefs = UpdatePreferences(preferences_file=Path(prefs_path))
+            prefs.set_channel(UpdatePreferences.CHANNEL_STABLE)
+            manager = UpdateManager(
+                current_version="1.0.0",
+                feed_url="https://example.com/updates",
+                preferences=prefs,
+            )
+            assert manager.checker.channel == "stable"
+        finally:
+            Path(prefs_path).unlink(missing_ok=True)
+
+    def test_non_test_version_uses_beta_from_preference(self):
+        """FR2: Non-test version => channel from preferences (beta)."""
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            prefs_path = f.name
+        try:
+            prefs = UpdatePreferences(preferences_file=Path(prefs_path))
+            prefs.set_channel(UpdatePreferences.CHANNEL_BETA)
+            manager = UpdateManager(
+                current_version="1.0.0-alpha",
+                feed_url="https://example.com/updates",
+                preferences=prefs,
+            )
+            assert manager.checker.channel == "beta"
+        finally:
+            Path(prefs_path).unlink(missing_ok=True)
+
+
+@pytest.mark.unit
+class TestUpdateCheckerTestChannelFeedUrl:
+    """UpdateChecker with channel "test" must produce feed URLs with /test/."""
+
+    def test_get_feed_url_macos_test_channel(self):
+        """Feed URL for macOS and channel test contains /macos/test/appcast.xml."""
+        checker = UpdateChecker(
+            feed_url="https://stuchain.github.io/CuePoint/updates",
+            current_version="1.0.3-test1",
+            channel="test",
+        )
+        url = checker.get_feed_url("macos")
+        assert "/macos/test/appcast.xml" in url
+        assert url == "https://stuchain.github.io/CuePoint/updates/macos/test/appcast.xml"
+
+    def test_get_feed_url_windows_test_channel(self):
+        """Feed URL for Windows and channel test contains /windows/test/appcast.xml."""
+        checker = UpdateChecker(
+            feed_url="https://stuchain.github.io/CuePoint/updates",
+            current_version="1.0.3-test1",
+            channel="test",
+        )
+        url = checker.get_feed_url("windows")
+        assert "/windows/test/appcast.xml" in url
+        assert url == "https://stuchain.github.io/CuePoint/updates/windows/test/appcast.xml"
+
+    def test_get_feed_url_stable_channel_unchanged(self):
+        """Stable channel still produces /stable/ path (regression)."""
+        checker = UpdateChecker(
+            feed_url="https://example.com/updates",
+            current_version="1.0.0",
+            channel="stable",
+        )
+        assert "/stable/appcast.xml" in checker.get_feed_url("macos")
+        assert "/stable/appcast.xml" in checker.get_feed_url("windows")
+
+
+@pytest.mark.unit
+class TestIsTestVersionEdgeCases:
+    """Edge cases for is_test_version (design §7.6)."""
+
+    def test_stable_not_test(self):
+        assert is_test_version("1.0.0") is False
+
+    def test_test_suffix_is_test(self):
+        assert is_test_version("1.0.0-test") is True
+        assert is_test_version("1.0.0-test1") is True
+        assert is_test_version("1.0.0-test1.1") is True
+
+    def test_alpha_beta_not_test(self):
+        assert is_test_version("1.0.0-alpha") is False
+        assert is_test_version("1.0.0-beta.1") is False
+
+    def test_case_insensitive_test_prefix(self):
+        """Prerelease is lowercased before startswith('test')."""
+        assert is_test_version("1.0.0-TEST2") is True
+
+    def test_test_with_suffix_unsigned(self):
+        """e.g. 1.0.0-test-unsigned42: prerelease starts with 'test'."""
+        assert is_test_version("2.1.0-test-unsigned42") is True

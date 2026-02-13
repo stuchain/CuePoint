@@ -15,6 +15,7 @@ from typing import Callable, Dict, Optional
 
 from cuepoint.update.update_checker import UpdateChecker, UpdateCheckError
 from cuepoint.update.update_preferences import UpdatePreferences
+from cuepoint.update.version_utils import is_test_version
 
 # Lazy definition of CallbackReceiver to avoid Qt initialization issues in packaged apps
 # We'll define it when needed, after Qt is confirmed to be initialized
@@ -160,9 +161,13 @@ class UpdateManager:
         else:
             self.platform = "unknown"
 
-        # Create checker
-        channel = self.preferences.get_channel()
-        self.checker = UpdateChecker(feed_url, current_version, channel)
+        # Create checker: test builds must use test feed; others use preference (stable/beta)
+        effective_channel = (
+            "test"
+            if is_test_version(current_version)
+            else self.preferences.get_channel()
+        )
+        self.checker = UpdateChecker(feed_url, current_version, effective_channel)
 
         # State
         self._lock = threading.Lock()

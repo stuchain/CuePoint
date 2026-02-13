@@ -398,6 +398,8 @@ class ExportService(IExportService):
 
                 # Save to temp file
                 wb.save(temp_file)
+                if hasattr(wb, "close"):
+                    wb.close()  # Release file handle (Windows: avoid WinError 32 on cleanup)
 
                 # Atomic rename
                 if file_path.exists() and overwrite:

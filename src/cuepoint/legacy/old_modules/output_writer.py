@@ -15,7 +15,7 @@ import os
 import time
 from typing import List, Dict, Set, Optional, Any
 from datetime import datetime
-from gui_interface import TrackResult
+from cuepoint.ui.gui_interface import TrackResult
 from utils import with_timestamp
 
 # Try to import openpyxl for Excel export

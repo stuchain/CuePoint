@@ -48,7 +48,7 @@ import subprocess
 import platform
 import time
 
-from gui_interface import TrackResult
+from cuepoint.ui.gui_interface import TrackResult
 from cuepoint.legacy.gui.candidate_dialog import CandidateDialog
 from cuepoint.legacy.gui.export_dialog import ExportDialog
 from cuepoint.legacy.gui.shortcut_manager import ShortcutManager, ShortcutContext
