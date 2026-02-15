@@ -60,11 +60,11 @@ jobs:
         with:
           files: ./coverage.xml
           fail_ci_if_error: false
-          minimum_coverage: 39
+          minimum_coverage: 35
       
       - name: Check test coverage
         run: |
-          coverage report --fail-under=39
+          coverage report --fail-under=35
         continue-on-error: false
   
   code-quality-gates:

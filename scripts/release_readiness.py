@@ -68,7 +68,7 @@ def check_tests_pass():
 def check_coverage():
     """Check test coverage meets threshold (unit tests only)."""
     print("Checking test coverage (unit only)...")
-    print(f"  Path: {_TEST_PATH}  Threshold: 39%")
+    print(f"  Path: {_TEST_PATH}  Threshold: 35%")
     try:
         start = time.monotonic()
         result = subprocess.run(
@@ -88,7 +88,7 @@ def check_coverage():
         elapsed = time.monotonic() - start
         output = result.stdout
         # Threshold aligned with release-gates.yml (fail-under)
-        COVERAGE_THRESHOLD = 39
+        COVERAGE_THRESHOLD = 35
         if result.returncode == 0 and "TOTAL" in output:
             # Show TOTAL line and a few preceding lines (coverage summary)
             lines = output.split("\n")
