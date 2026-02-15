@@ -2,9 +2,9 @@ name: Security Scan
 
 on:
   push:
-    branches: [main, prerelease, ship_v1.0, v1]
+    branches: [main, main_deprecated, ship_v1.0, v1]
   pull_request:
-    branches: [main, prerelease, ship_v1.0, v1]
+    branches: [main, main_deprecated, ship_v1.0, v1]
   schedule:
     - cron: '0 0 * * 0'  # weekly
 

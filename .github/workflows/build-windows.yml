@@ -5,7 +5,7 @@ on:
     tags:
       - 'v*'
     branches:
-      - prerelease
+      - main
   workflow_dispatch:
 
 jobs:

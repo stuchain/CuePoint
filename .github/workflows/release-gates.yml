@@ -3,7 +3,7 @@ name: Release Gates
 on:
   push:
     branches:
-      - prerelease
+      - main
   workflow_dispatch:
 
 jobs:
