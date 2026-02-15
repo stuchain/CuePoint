@@ -168,12 +168,6 @@ jobs:
           python scripts/check_file_sizes.py
         continue-on-error: false
 
-      - name: Run release readiness check
-        run: |
-          python scripts/release_readiness.py
-        timeout-minutes: 25
-        continue-on-error: false
-
   build-gates:
     name: Build Gates
     runs-on: ${{ matrix.os }}

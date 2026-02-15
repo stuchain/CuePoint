@@ -4,6 +4,11 @@
   </p></h1>
   <p><strong>Accurate music metadata for Rekordbox libraries, sourced from Beatport.</strong></p>
   <p>
+    <a href="https://stuchain.github.io/CuePoint/">
+      <img alt="Download" src="https://img.shields.io/badge/Download-Releases-2ea44f?style=for-the-badge"/>
+    </a>
+  </p>
+  <p>
     <a href="docs/how-to-run.md">How to run</a>
     •
     <a href=".github/TECHNICAL_ANALYSIS.md">Technical analysis</a>
