@@ -13,17 +13,6 @@ from unittest.mock import Mock
 
 import pytest
 
-# Skip on Linux (headless) and Windows 3.12+: QThread and QTimer in
-# Worker/DebouncedFilter/UIThreadHelper can hang without a real event loop.
-_skip_performance_workers = (
-    sys.platform == "linux"
-    or (sys.platform == "win32" and sys.version_info >= (3, 12))
-)
-pytestmark = pytest.mark.skipif(
-    _skip_performance_workers,
-    reason="Qt QThread/timer tests can hang (Linux headless or Windows 3.12+)",
-)
-
 from cuepoint.utils.performance_workers import (
     DebouncedFilter,
     PerformanceBudget,
@@ -33,6 +22,13 @@ from cuepoint.utils.performance_workers import (
     UIThreadHelper,
     Worker,
     WorkerManager,
+)
+
+# Skip on Linux and Windows in CI: QThread and QTimer in Worker/DebouncedFilter/
+# UIThreadHelper need a running event loop; without it, thread/timer teardown can hang.
+pytestmark = pytest.mark.skipif(
+    sys.platform in ("linux", "win32"),
+    reason="Qt QThread/timer tests can hang without event loop (Linux/Windows CI)",
 )
 
 
