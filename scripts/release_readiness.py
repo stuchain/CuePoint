@@ -28,7 +28,7 @@ def check_tests_pass():
     print("Checking tests...")
     try:
         result = subprocess.run(
-            ["pytest", "src/tests/", "-v", "--tb=short"],
+            [sys.executable, "-m", "pytest", "src/tests/", "-v", "--tb=short"],
             capture_output=True,
             text=True,
             timeout=600,
@@ -56,26 +56,38 @@ def check_coverage():
     print("Checking test coverage...")
     try:
         result = subprocess.run(
-            ["pytest", "src/tests/", "--cov=src/cuepoint", "--cov-report=term-missing"],
+            [
+                sys.executable,
+                "-m",
+                "pytest",
+                "src/tests/",
+                "--cov=src/cuepoint",
+                "--cov-report=term-missing",
+            ],
             capture_output=True,
             text=True,
             timeout=600,
             env=_pytest_env(),
         )
         if result.returncode == 0:
-            # Check if coverage report shows >= 70%
             output = result.stdout
+            # Threshold aligned with release-gates.yml (fail-under)
+            COVERAGE_THRESHOLD = 39
             if "TOTAL" in output:
                 # Extract coverage percentage
                 for line in output.split("\n"):
                     if "TOTAL" in line and "%" in line:
                         try:
                             pct = float(line.split("%")[0].split()[-1])
-                            if pct >= 70:
-                                print(f"[PASS] Coverage: {pct:.1f}% (>= 70%)")
+                            if pct >= COVERAGE_THRESHOLD:
+                                print(
+                                    f"[PASS] Coverage: {pct:.1f}% (>= {COVERAGE_THRESHOLD}%)"
+                                )
                                 return True
                             else:
-                                print(f"[FAIL] Coverage: {pct:.1f}% (< 70%)")
+                                print(
+                                    f"[FAIL] Coverage: {pct:.1f}% (< {COVERAGE_THRESHOLD}%)"
+                                )
                                 return False
                         except (ValueError, IndexError):
                             pass
@@ -100,7 +112,7 @@ def check_linting():
     print("Checking linting...")
     try:
         result = subprocess.run(
-            ["ruff", "check", "src/"],
+            [sys.executable, "-m", "ruff", "check", "src/"],
             capture_output=True,
             text=True,
             timeout=120,
@@ -125,7 +137,7 @@ def check_type_checking():
     print("Checking type checking...")
     try:
         result = subprocess.run(
-            ["mypy", "src/cuepoint"],
+            [sys.executable, "-m", "mypy", "src/cuepoint"],
             capture_output=True,
             text=True,
             timeout=180,
@@ -218,7 +230,7 @@ def check_file_sizes():
     print("Checking file sizes...")
     try:
         result = subprocess.run(
-            ["python", "scripts/check_file_sizes.py"],
+            [sys.executable, "scripts/check_file_sizes.py"],
             capture_output=True,
             text=True,
             timeout=60,

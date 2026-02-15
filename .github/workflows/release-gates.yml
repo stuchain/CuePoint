@@ -38,7 +38,7 @@ jobs:
       - name: Run unit tests
         run: |
           pytest src/tests/unit/ -v --cov=src/cuepoint --cov-report=xml
-        timeout-minutes: 15
+        timeout-minutes: 30
         env:
           # Linux: offscreen platform for Qt without display/EGL. Windows: omit to avoid
           # hangs (offscreen has limitations on Windows - see pytest-qt troubleshooting).

@@ -8,7 +8,7 @@ Captures key metrics from a processing run for GUI/CLI display.
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
 import uuid
@@ -72,7 +72,7 @@ class RunSummary:
 
     @staticmethod
     def _generate_run_id(timestamp: Optional[datetime]) -> str:
-        time_part = (timestamp or datetime.utcnow()).strftime("%Y%m%dT%H%M%S")
+        time_part = (timestamp or datetime.now(timezone.utc)).strftime("%Y%m%dT%H%M%S")
         return f"{time_part}_{uuid.uuid4().hex[:6]}"
 
     @staticmethod

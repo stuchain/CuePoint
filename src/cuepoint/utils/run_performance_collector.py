@@ -164,7 +164,7 @@ class RunPerformanceCollector:
         if self._start_time and self._end_time:
             duration_sec = self._end_time - self._start_time
 
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         return RunPerformanceReport(
             run_id=self.run_id,
@@ -176,7 +176,7 @@ class RunPerformanceCollector:
             cache_hit_rate=self.cache_hit_rate,
             tracks_processed=self._tracks_processed,
             matched_count=self._matched_count,
-            created_at=datetime.utcnow().isoformat() + "Z",
+            created_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         )
 
     def export_json(self, path: Path, version: str = "") -> None:
