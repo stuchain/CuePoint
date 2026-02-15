@@ -123,11 +123,13 @@ if [ -d "$MOUNT_POINT" ]; then
     sleep 1
 fi
 
-# Mount with retry logic
+# Mount with retry logic (capture disk id for reliable unmount in CI)
+ATTACH_OUTPUT=""
 MAX_RETRIES=3
 RETRY_COUNT=0
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    if hdiutil attach "${TEMP_DIR}/${DMG_NAME}-temp.dmg" -mountpoint "$MOUNT_POINT" -readwrite -nobrowse 2>&1; then
+    ATTACH_OUTPUT=$(hdiutil attach "${TEMP_DIR}/${DMG_NAME}-temp.dmg" -mountpoint "$MOUNT_POINT" -readwrite -nobrowse 2>&1) && true
+    if [ -d "$MOUNT_POINT" ]; then
         echo "DMG mounted successfully"
         break
     else
@@ -137,12 +139,18 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
             sleep 2
         else
             echo "Error: Failed to mount DMG after $MAX_RETRIES attempts"
-            echo "DMG file info:"
+            echo "$ATTACH_OUTPUT"
             ls -lh "${TEMP_DIR}/${DMG_NAME}-temp.dmg" || true
             exit 1
         fi
     fi
 done
+# Capture disk identifier for unmount (e.g. disk6 from "/dev/disk6" or "disk6")
+MOUNTED_DISK=""
+if echo "$ATTACH_OUTPUT" | grep -qE '/dev/disk[0-9]+'; then
+    MOUNTED_DISK=$(echo "$ATTACH_OUTPUT" | grep -oE 'disk[0-9]+' | head -1)
+    echo "Mounted disk identifier: $MOUNTED_DISK"
+fi
 
 # Configure layout with AppleScript
 echo "Configuring DMG layout..."
@@ -194,51 +202,57 @@ if [ -n "$CI" ]; then
     sleep 1
 fi
 
-# Unmount with retry logic
+# Unmount with retry logic (try mount point first, then disk id in CI)
 MAX_RETRIES=5
 RETRY_COUNT=0
+UNMOUNTED=0
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    # Check if still mounted
-    if [ ! -d "$MOUNT_POINT" ]; then
-        echo "DMG already unmounted"
-        break
-    fi
-    
-    # Try to detach
+    # Try detach by mount point first
     if hdiutil detach "$MOUNT_POINT" -force 2>&1; then
         echo "DMG unmounted successfully"
+        UNMOUNTED=1
         break
+    fi
+    # If mount point is gone but we have disk id, detach by disk (image may still be open)
+    if [ ! -d "$MOUNT_POINT" ] && [ -n "$MOUNTED_DISK" ]; then
+        echo "Mount point gone, detaching by disk: $MOUNTED_DISK"
+        if hdiutil detach "$MOUNTED_DISK" -force 2>&1; then
+            echo "DMG detached by disk id successfully"
+            UNMOUNTED=1
+            break
+        fi
+        diskutil unmountDisk force "$MOUNTED_DISK" 2>/dev/null || true
+        sleep 1
+    fi
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+        echo "DMG unmount failed, retrying in 2 seconds... (attempt $RETRY_COUNT/$MAX_RETRIES)"
+        [ -n "$MOUNTED_DISK" ] && hdiutil detach "$MOUNTED_DISK" -force 2>/dev/null || true
+        osascript -e 'tell application "Finder" to close every window' 2>/dev/null || true
+        sleep 2
     else
-        RETRY_COUNT=$((RETRY_COUNT + 1))
-        if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-            echo "DMG unmount failed, retrying in 2 seconds... (attempt $RETRY_COUNT/$MAX_RETRIES)"
-            # Try closing Finder windows again
-            osascript -e 'tell application "Finder" to close every window' 2>/dev/null || true
+        echo "Trying alternative unmount methods..."
+        DISK_NUM="${MOUNTED_DISK:-$(diskutil list | grep -A 1 "${APP_NAME}" | grep -oE 'disk[0-9]+' | head -1)}"
+        if [ -n "$DISK_NUM" ]; then
+            echo "Attempting diskutil unmountDisk force $DISK_NUM"
+            diskutil unmountDisk force "$DISK_NUM" 2>/dev/null || true
             sleep 2
-        else
-            echo "Warning: Failed to unmount DMG after $MAX_RETRIES attempts"
-            # Try alternative unmount methods
-            echo "Trying alternative unmount methods..."
-            # Try by disk number
-            DISK_NUM=$(diskutil list | grep -A 1 "${APP_NAME}" | grep -o 'disk[0-9]*' | head -1)
-            if [ -n "$DISK_NUM" ]; then
-                echo "Attempting to unmount disk: $DISK_NUM"
-                diskutil unmountDisk force "$DISK_NUM" 2>/dev/null || true
-                hdiutil detach "$DISK_NUM" -force 2>/dev/null || true
-            fi
-            # Final attempt
-            hdiutil detach "$MOUNT_POINT" -force 2>/dev/null || true
-            sleep 1
-            # Check if still mounted
-            if [ -d "$MOUNT_POINT" ]; then
-                echo "Error: DMG is still mounted at $MOUNT_POINT"
-                echo "This may cause the compression step to fail"
-            else
-                echo "DMG successfully unmounted using alternative method"
-            fi
+            echo "Attempting hdiutil detach $DISK_NUM -force"
+            hdiutil detach "$DISK_NUM" -force 2>/dev/null || true
+            sleep 2
+        fi
+        hdiutil detach "$MOUNT_POINT" -force 2>/dev/null || true
+        if [ ! -d "$MOUNT_POINT" ]; then
+            echo "DMG unmounted using alternative method"
+            UNMOUNTED=1
         fi
     fi
 done
+# In CI, give the system time to release the image before convert
+if [ -n "$CI" ]; then
+    echo "CI: waiting 5s for image to be released before compression..."
+    sleep 5
+fi
 
 # Convert to compressed DMG
 echo "Compressing DMG..."
@@ -248,12 +262,20 @@ if [ -d "$MOUNT_POINT" ]; then
     echo "Error: DMG is still mounted at $MOUNT_POINT, cannot compress"
     echo "Attempting emergency unmount..."
     hdiutil detach "$MOUNT_POINT" -force 2>/dev/null || true
-    diskutil unmountDisk force "$MOUNT_POINT" 2>/dev/null || true
-    sleep 2
+    [ -n "$MOUNTED_DISK" ] && hdiutil detach "$MOUNTED_DISK" -force 2>/dev/null || true
+    [ -n "$MOUNTED_DISK" ] && diskutil unmountDisk force "$MOUNTED_DISK" 2>/dev/null || true
+    sleep 3
     if [ -d "$MOUNT_POINT" ]; then
         echo "Error: Cannot unmount DMG, compression will fail"
         exit 1
     fi
+fi
+# If image is still attached (e.g. mount point gone but image open), detach by disk id
+if [ -n "$MOUNTED_DISK" ] && hdiutil info 2>/dev/null | grep -qF "${TEMP_DIR}/${DMG_NAME}-temp.dmg"; then
+    echo "Image still attached, detaching disk $MOUNTED_DISK..."
+    hdiutil detach "$MOUNTED_DISK" -force 2>/dev/null || true
+    diskutil unmountDisk force "$MOUNTED_DISK" 2>/dev/null || true
+    sleep 3
 fi
 
 # Verify temp DMG exists
