@@ -43,70 +43,48 @@ class RunSummaryDialog(QDialog):
     def _setup_ui(self) -> None:
         self.setWindowTitle("Run Summary")
         self.setModal(True)
-        self.resize(520, 480)
+        self.resize(400, 320)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 16)
-        layout.setSpacing(10)
+        layout.setContentsMargins(16, 12, 16, 12)
+        layout.setSpacing(8)
 
         title = QLabel(SuccessCopy.RUN_SUMMARY_TITLE)
-        title.setStyleSheet("font-size: 18px; font-weight: bold;")
+        title.setStyleSheet("font-size: 14px; font-weight: bold;")
         layout.addWidget(title)
 
-        summary_lines = [
-            f"Run ID: {self._summary.run_id}",
-            f"Playlist: {self._summary.playlist}",
-            f"Input XML: {self._summary.input_xml_path or 'N/A'}",
-            f"Tracks: {self._summary.total_tracks}",
-            f"Matched: {self._summary.matched}",
-            f"Unmatched: {self._summary.unmatched}",
-            f"Low confidence: {self._summary.low_confidence}",
-            f"Duration: {self._summary.duration_sec:.2f}s",
-            f"Errors: {self._summary.error_count}",
-            f"Warnings: {self._summary.warning_count}",
-        ]
-        for line in summary_lines:
-            label = QLabel(line)
-            label.setAlignment(Qt.AlignLeft)
-            layout.addWidget(label)
+        # Single line: playlist + key stats
+        stats = (
+            f"{self._summary.total_tracks} tracks, {self._summary.matched} matched"
+            + (f", {self._summary.unmatched} unmatched" if self._summary.unmatched else "")
+            + (f", {self._summary.low_confidence} low confidence" if self._summary.low_confidence else "")
+            + f" — {self._summary.duration_sec:.1f}s"
+        )
+        if self._summary.error_count or self._summary.warning_count:
+            stats += f" — {self._summary.error_count} errors, {self._summary.warning_count} warnings"
+        summary_label = QLabel(stats)
+        summary_label.setWordWrap(True)
+        summary_label.setStyleSheet("font-size: 12px; color: #ccc;")
+        layout.addWidget(summary_label)
+
+        if self._summary.playlist:
+            pl_label = QLabel(f"Playlist: {self._summary.playlist}")
+            pl_label.setStyleSheet("font-size: 11px; color: #888;")
+            layout.addWidget(pl_label)
 
         if self._summary.output_paths:
-            outputs_label = QLabel("Outputs")
-            outputs_label.setStyleSheet("font-weight: bold;")
-            layout.addWidget(outputs_label)
-
             outputs_list = QListWidget()
             outputs_list.setSelectionMode(QListWidget.NoSelection)
+            outputs_list.setMaximumHeight(72)
             for path in self._summary.output_paths:
                 QListWidgetItem(path, outputs_list)
             layout.addWidget(outputs_list)
 
-        # Step 8: Clear success criteria and what to do next (Design 8.74-8.75)
-        what_next = QLabel(SuccessCopy.WHAT_TO_DO_NEXT)
-        what_next.setStyleSheet("font-weight: bold; font-size: 13px; margin-top: 8px;")
-        layout.addWidget(what_next)
-
-        step1 = QLabel(SuccessCopy.STEP_REVIEW)
-        step1.setWordWrap(True)
-        step1.setStyleSheet("color: #ccc; font-size: 12px; margin-left: 8px;")
-        layout.addWidget(step1)
-
-        step2 = QLabel(SuccessCopy.STEP_EXPORT)
-        step2.setWordWrap(True)
-        step2.setStyleSheet("color: #ccc; font-size: 12px; margin-left: 8px;")
-        layout.addWidget(step2)
-
-        step3 = QLabel(SuccessCopy.STEP_REKORDBOX)
-        step3.setWordWrap(True)
-        step3.setStyleSheet("color: #ccc; font-size: 12px; margin-left: 8px;")
-        layout.addWidget(step3)
-
-        step4 = QLabel(SuccessCopy.STEP_UNDO_GUIDANCE)
-        step4.setWordWrap(True)
-        step4.setStyleSheet(
-            "color: #888; font-size: 11px; margin-left: 8px; font-style: italic;"
-        )
-        layout.addWidget(step4)
+        # One short line for next steps (Design 8.74-8.75)
+        next_line = QLabel(SuccessCopy.STEP_NEXT_SHORT)
+        next_line.setWordWrap(True)
+        next_line.setStyleSheet("color: #888; font-size: 11px; margin-top: 4px;")
+        layout.addWidget(next_line)
 
         layout.addStretch(1)
 

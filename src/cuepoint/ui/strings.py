@@ -145,6 +145,11 @@ class SuccessCopy:
         "To undo: Rekordbox does not auto-revert. Re-import your original XML or restore from backup if needed.",
         "SuccessCopy",
     )
+    STEP_NEXT_SHORT = tr(
+        "success_step_next_short",
+        "Export (Ctrl+E) then import the CSV into Rekordbox.",
+        "SuccessCopy",
+    )
 
 
 # --- Tooltips (Design 8.128) ---
