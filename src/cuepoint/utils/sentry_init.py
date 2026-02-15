@@ -6,13 +6,16 @@ Sentry initialization for automatic error reporting.
 
 Initializes the Sentry SDK when a DSN is available (env SENTRY_DSN or
 default below). Captures unhandled exceptions, ERROR/WARNING logs, and
-(when consent is given) sends them to Sentry. Use init_sentry_early()
-right after the crash handler so import-time and startup errors are also
-captured.
+(when consent is given) sends them to Sentry with full analytic context:
+stack traces, local variables, source context, breadcrumbs, and build/env
+tags. Use init_sentry_early() right after the crash handler so import-time
+and startup errors are also captured.
 """
 
 import logging
 import os
+import platform
+import sys
 from typing import Callable, Optional
 
 logger = logging.getLogger(__name__)
@@ -37,6 +40,30 @@ def _consent_allowed() -> bool:
         return prefs.is_enabled() and prefs.has_user_consented()
     except Exception:
         return False
+
+
+def _get_analytic_context() -> tuple[dict, dict]:
+    """Return (tags, extra) for full analytic context on every Sentry event."""
+    tags = {
+        "platform": platform.system(),
+        "platform_release": platform.release(),
+        "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+        "machine": platform.machine(),
+        "frozen": str(getattr(sys, "frozen", False)),
+    }
+    extra = {}
+    try:
+        from cuepoint.version import get_build_info
+
+        build_info = get_build_info()
+        extra["build"] = build_info
+        if build_info.get("commit_sha"):
+            tags["commit_sha"] = build_info.get("short_commit_sha") or build_info.get("commit_sha", "")[:8]
+        if build_info.get("build_number"):
+            tags["build_number"] = str(build_info["build_number"])
+    except Exception:
+        pass
+    return tags, extra
 
 
 def init_sentry_early() -> bool:
@@ -79,12 +106,24 @@ def init_sentry_early() -> bool:
     def before_send(event, hint):
         if not _consent_allowed():
             return None
+        tags, extra = _get_analytic_context()
+        if event.get("tags") is None:
+            event["tags"] = {}
+        event["tags"].update(tags)
+        if event.get("extra") is None:
+            event["extra"] = {}
+        event["extra"].update(extra)
         return event
 
     sentry_sdk.init(
         dsn=dsn,
         release=release,
         environment=env,
+        # Full analytic: attach stack traces to all events, local vars, source context
+        attach_stacktrace=True,
+        include_local_variables=True,
+        include_source_context=True,
+        max_breadcrumbs=200,
         traces_sample_rate=0.0,
         profiles_sample_rate=0.0,
         send_default_pii=False,
@@ -137,14 +176,30 @@ def init_sentry(
         level=logging.INFO,
         event_level=logging.WARNING,
     )
+
+    def before_send_with_context(event, hint):
+        tags, extra = _get_analytic_context()
+        if event.get("tags") is None:
+            event["tags"] = {}
+        event["tags"].update(tags)
+        if event.get("extra") is None:
+            event["extra"] = {}
+        event["extra"].update(extra)
+        return event
+
     sentry_sdk.init(
         dsn=dsn,
         release=release or get_version(),
         environment=env,
+        attach_stacktrace=True,
+        include_local_variables=True,
+        include_source_context=True,
+        max_breadcrumbs=200,
         traces_sample_rate=0.0,
         profiles_sample_rate=0.0,
         send_default_pii=False,
         integrations=[logging_integration],
+        before_send=before_send_with_context,
     )
     logger.info("Sentry error reporting initialized")
     return True

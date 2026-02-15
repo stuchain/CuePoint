@@ -302,10 +302,11 @@
     (function () {
       var winEl = document.getElementById('win-dl');
       var macEl = document.getElementById('mac-dl');
+      // GitHub releases/latest returns the latest non-prerelease, non-draft release only.
       fetch('https://api.github.com/repos/stuchain/CuePoint/releases/latest')
         .then(function (r) { return r.json(); })
         .then(function (release) {
-          if (!release.assets || !release.assets.length) return;
+          if (release.prerelease || !release.assets || !release.assets.length) return;
           release.assets.forEach(function (asset) {
             var name = asset.name.toLowerCase();
             if (name.endsWith('.exe')) winEl.href = asset.browser_download_url;

@@ -216,8 +216,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
       
-      # Test tags (e.g. v1.0.3-test1.1) create a draft release: hidden from public
-      # Releases list; only visible to maintainers at GitHub Releases when logged in.
+      # All tags create a published release. Test tags (e.g. v1.0.3-test1.1) are
+      # marked prerelease so assets are public (no 404); website uses releases/latest
+      # which returns only non-prerelease, so it points to stable only.
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -229,7 +230,7 @@ jobs:
             THIRD_PARTY_LICENSES.txt
             SHA256SUMS
           body_path: RELEASE_NOTES.md
-          draft: ${{ contains(github.ref_name, '-test') }}
+          draft: false
           prerelease: ${{ contains(github.ref_name, '-test') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

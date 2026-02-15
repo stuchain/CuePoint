@@ -44,10 +44,11 @@
 | FR4 | Test tags do not run appcast generation. | Add workflow branch for test tag: generate and publish only `updates/*/test/` appcasts. |
 | I3, I4 | Not explicitly enforced; workflow only has one appcast path (stable). | Enforce by: (1) stable steps run only on non-test tag; (2) new test steps run only on test tag; (3) test publish does not pass `--index`. |
 
-### 1.5 Test releases remain drafts (no change)
+### 1.5 Test releases: published + prerelease (in-app update works)
 
-- **GitHub Release creation** in the release workflow **does not change**: test tags continue to create **draft** (and prerelease) releases; normal tags create published releases.
-- **Rationale:** Draft test releases stay hidden from the public Releases list and from `releases/latest`. The **only** addition is the **test appcast feed** on gh-pages, so that test builds can discover updates in-app. The website and “latest” behavior remain unchanged; test releases are still not offered for download on the site.
+- **GitHub Release creation:** Test tags create **published** releases with `prerelease: true` (not draft). This makes release assets publicly downloadable so in-app update (e.g. 0.0.3-test → 0.0.4-test) does not get 404.
+- **Website:** The site uses `releases/latest`, which returns the latest **non-prerelease** release, and the download page explicitly skips prereleases. So the website continues to offer only normal (stable) releases for download.
+- **Releases page:** Test builds appear in the GitHub Releases list with a Pre-release badge; they are visible but clearly marked.
 
 ---
 

@@ -148,3 +148,40 @@ class TestIsTestVersionEdgeCases:
     def test_test_with_suffix_unsigned(self):
         """e.g. 1.0.0-test-unsigned42: prerelease starts with 'test'."""
         assert is_test_version("2.1.0-test-unsigned42") is True
+
+
+@pytest.mark.unit
+class TestTestToTestUpdateReturnsDownloadUrl:
+    """Test build updating to newer test build gets a valid download_url (no 404 after publishing test releases)."""
+
+    def test_test_version_sees_newer_test_in_appcast_with_download_url(self):
+        """0.0.3-test sees 0.0.4-test in appcast and gets update with HTTPS download_url."""
+        # Minimal appcast with one item: 0.0.4-test, GitHub-style enclosure URL
+        ns = "http://www.andymatuschak.org/xml-namespaces/sparkle"
+        appcast_xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:sparkle="{ns}">
+  <channel>
+    <item>
+      <title>CuePoint 0.0.4-test</title>
+      <sparkle:version>202502111200</sparkle:version>
+      <sparkle:shortVersionString>0.0.4-test</sparkle:shortVersionString>
+      <enclosure url="https://github.com/stuchain/CuePoint/releases/download/v0.0.4-test/CuePoint-Setup-0.0.4-test.exe"
+                 length="50000000"
+                 type="application/octet-stream"
+                 sparkle:sha256="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"/>
+    </item>
+  </channel>
+</rss>"""
+        checker = UpdateChecker(
+            feed_url="https://stuchain.github.io/CuePoint/updates",
+            current_version="0.0.3-test",
+            channel="test",
+        )
+        result = checker.check_update_from_appcast(appcast_xml.encode("utf-8"))
+        assert result is not None
+        assert result.get("short_version") == "0.0.4-test"
+        download_url = result.get("download_url")
+        assert download_url is not None
+        assert download_url.startswith("https://")
+        assert "releases/download" in download_url
+        assert "0.0.4-test" in download_url
