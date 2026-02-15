@@ -186,7 +186,7 @@ class UpdateInstaller:
                         time.sleep(0.2)
                         if process.poll() is not None:
                             return_code = process.returncode
-                            logger.warning(
+                            logger.info(
                                 f"Launcher exited immediately with code {return_code}, falling back to direct installer launch"
                             )
                             launcher_ps1 = None  # Fall through to direct launch
@@ -200,7 +200,7 @@ class UpdateInstaller:
 
             # Fallback: Launch installer directly (visible, no /S)
             if not launcher_ps1 or not launcher_ps1.exists():
-                logger.warning(
+                logger.info(
                     "Launcher script not found, launching installer directly"
                 )
                 logger.info("Note: Installer will detect if app is running")

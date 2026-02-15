@@ -16,7 +16,6 @@ from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QDialog,
-    QDialogButtonBox,
     QHBoxLayout,
     QLabel,
     QPushButton,
@@ -104,28 +103,35 @@ class UpdateDiagnosticDialog(QDialog):
             warn_label.setStyleSheet("color: #b45309;")
             layout.addWidget(warn_label)
 
-        # Quick actions
-        actions_layout = QHBoxLayout()
+        # Buttons row: Open Release Page (left, purple) | Update Later | Update Now (right)
+        buttons_layout = QHBoxLayout()
+        buttons_layout.setSpacing(10)
+
         open_release_btn = QPushButton("Open Release Page")
+        open_release_btn.setMinimumWidth(120)
+        open_release_btn.setStyleSheet(
+            "QPushButton { background-color: #7c3aed; color: white; }"
+            "QPushButton:hover { background-color: #8b5cf6; }"
+            "QPushButton:disabled { background-color: #4b5563; color: #9ca3af; }"
+        )
         target_url = release_notes_url or download_url
         open_release_btn.setEnabled(bool(target_url))
         open_release_btn.clicked.connect(
             lambda: QDesktopServices.openUrl(QUrl(target_url))
         )
-        actions_layout.addWidget(open_release_btn)
-        layout.addLayout(actions_layout)
+        buttons_layout.addWidget(open_release_btn)
 
-        # Buttons
-        button_box = QDialogButtonBox(Qt.Horizontal, self)
+        self.update_later_button = QPushButton("Update Later")
+        self.update_later_button.setMinimumWidth(120)
+        buttons_layout.addWidget(self.update_later_button)
 
         self.update_now_button = QPushButton("Update Now")
         self.update_now_button.setDefault(True)
-        button_box.addButton(self.update_now_button, QDialogButtonBox.AcceptRole)
+        self.update_now_button.setMinimumWidth(120)
+        buttons_layout.addWidget(self.update_now_button)
 
-        self.update_later_button = QPushButton("Update Later")
-        button_box.addButton(self.update_later_button, QDialogButtonBox.RejectRole)
-
-        layout.addWidget(button_box)
+        buttons_layout.addStretch(1)
+        layout.addLayout(buttons_layout)
 
         # Connect signals
         self.update_now_button.clicked.connect(self.accept)

@@ -593,7 +593,7 @@ class UpdateCheckDialog(QDialog):
         # Fallback: Ensure button is connected even if main_window connection failed
         # This is a safety mechanism for frozen/packaged builds
         if not hasattr(self, "_download_connected") or not self._download_connected:
-            logger.warning(
+            logger.info(
                 "Button not connected yet, attempting fallback connection..."
             )
             self._ensure_button_connected()
@@ -684,7 +684,7 @@ class UpdateCheckDialog(QDialog):
                     f"Failed to establish fallback connection: {e}", exc_info=True
                 )
         else:
-            logger.warning(
+            logger.info(
                 "Cannot establish fallback connection - parent window or handler not available"
             )
 
