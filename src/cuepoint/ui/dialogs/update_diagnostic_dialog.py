@@ -103,12 +103,13 @@ class UpdateDiagnosticDialog(QDialog):
             warn_label.setStyleSheet("color: #b45309;")
             layout.addWidget(warn_label)
 
-        # Buttons row: Open Release Page (left, purple) | Update Later | Update Now (right)
+        # Buttons row: Open Release Page | Update Later | Update Now (same size, in line)
+        BUTTON_WIDTH = 140
         buttons_layout = QHBoxLayout()
         buttons_layout.setSpacing(10)
 
         open_release_btn = QPushButton("Open Release Page")
-        open_release_btn.setMinimumWidth(120)
+        open_release_btn.setFixedWidth(BUTTON_WIDTH)
         open_release_btn.setStyleSheet(
             "QPushButton { background-color: #7c3aed; color: white; }"
             "QPushButton:hover { background-color: #8b5cf6; }"
@@ -122,15 +123,14 @@ class UpdateDiagnosticDialog(QDialog):
         buttons_layout.addWidget(open_release_btn)
 
         self.update_later_button = QPushButton("Update Later")
-        self.update_later_button.setMinimumWidth(120)
+        self.update_later_button.setFixedWidth(BUTTON_WIDTH)
         buttons_layout.addWidget(self.update_later_button)
 
         self.update_now_button = QPushButton("Update Now")
         self.update_now_button.setDefault(True)
-        self.update_now_button.setMinimumWidth(120)
+        self.update_now_button.setFixedWidth(BUTTON_WIDTH)
         buttons_layout.addWidget(self.update_now_button)
 
-        buttons_layout.addStretch(1)
         layout.addLayout(buttons_layout)
 
         # Connect signals
