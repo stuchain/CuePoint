@@ -14,6 +14,5 @@ Guides for release managers and maintainers (signing, CI, reproducible builds, d
 - [version-sync-automation.md](version-sync-automation.md) — Version sync
 - [rollback-plan.md](rollback-plan.md) — Rollback procedures
 - [download-location-info.md](download-location-info.md) — Download locations
-- [src-rename-checklist.md](src-rename-checklist.md) — One-off checklist (SRC→src; already done)
 
 See also: [../ops-index.md](../ops-index.md), [../release-deployment-runbook.md](../release-deployment-runbook.md).

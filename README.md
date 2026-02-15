@@ -170,7 +170,6 @@ flowchart LR
   <li><code>src/cuepoint</code>: application code</li>
   <li><code>src/tests</code>: canonical tests</li>
   <li><code>scripts/</code>: utilities</li>
-  <li><code>ARCHIVE/</code>: legacy material</li>
 </ul>
 
 <h2>License</h2>
