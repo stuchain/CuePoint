@@ -10,6 +10,7 @@ otherwise from preferences; UpdateChecker builds correct feed URL for test chann
 
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -153,6 +154,34 @@ class TestIsTestVersionEdgeCases:
 @pytest.mark.unit
 class TestTestToTestUpdateReturnsDownloadUrl:
     """Test build updating to newer test build gets a valid download_url (no 404 after publishing test releases)."""
+
+    def test_thread_path_keeps_test_channel_for_test_build(self):
+        """_do_check (thread path, used on Windows) must not overwrite test channel with preference.
+
+        Bug: channel was set from preferences.get_channel() so test builds fetched stable feed.
+        """
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            prefs_path = f.name
+        try:
+            prefs = UpdatePreferences(preferences_file=Path(prefs_path))
+            prefs.set_channel(UpdatePreferences.CHANNEL_STABLE)
+            manager = UpdateManager(
+                current_version="0.0.1-test",
+                feed_url="https://example.com/updates",
+                preferences=prefs,
+            )
+            assert manager.checker.channel == "test"
+            feed_url_before = manager.checker.get_feed_url("windows")
+            assert "/test/" in feed_url_before
+
+            with patch.object(manager.checker, "check_for_updates", return_value=None):
+                manager._do_check()
+
+            assert manager.checker.channel == "test"
+            feed_url_after = manager.checker.get_feed_url("windows")
+            assert "/test/" in feed_url_after
+        finally:
+            Path(prefs_path).unlink(missing_ok=True)
 
     def test_test_version_sees_newer_test_in_appcast_with_download_url(self):
         """0.0.3-test sees 0.0.4-test in appcast and gets update with HTTPS download_url."""

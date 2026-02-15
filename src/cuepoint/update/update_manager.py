@@ -636,11 +636,15 @@ class UpdateManager:
                     pass
                 return
 
-            # Update channel if changed
-            channel = self.preferences.get_channel()
-            if self.checker.channel != channel:
+            # Update channel if changed (use effective channel: test builds must stay on test)
+            effective_channel = (
+                "test"
+                if is_test_version(self.current_version)
+                else self.preferences.get_channel()
+            )
+            if self.checker.channel != effective_channel:
                 self.checker = UpdateChecker(
-                    self.feed_url, self.current_version, channel
+                    self.feed_url, self.current_version, effective_channel
                 )
 
             # Check for updates
