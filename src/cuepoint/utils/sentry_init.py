@@ -169,7 +169,9 @@ def init_sentry(
     try:
         from cuepoint.version import get_version
     except ImportError:
-        get_version = lambda: "unknown"
+
+        def get_version():
+            return "unknown"
 
     env = "development" if os.environ.get("CUEPOINT_DEV") else "production"
     logging_integration = LoggingIntegration(

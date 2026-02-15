@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Dict
 from urllib.parse import urlparse
 
-from PySide6.QtCore import Qt, QUrl
+from PySide6.QtCore import QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QDialog,

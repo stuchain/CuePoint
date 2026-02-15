@@ -11,16 +11,16 @@ import tempfile
 
 import pytest
 
+from cuepoint.models.playlist import Playlist
+from cuepoint.models.track import Track
+from cuepoint.ui.main_window import MainWindow
+
 # Skip entire module on Windows: Qt + pytest teardown can cause access violation
 # (GC/traceback formatting with Qt objects and background threads).
 pytestmark = pytest.mark.skipif(
     sys.platform == "win32",
     reason="UI tests with Qt can cause access violation on Windows during teardown",
 )
-
-from cuepoint.ui.main_window import MainWindow
-from cuepoint.models.playlist import Playlist
-from cuepoint.models.track import Track
 
 
 @pytest.fixture
