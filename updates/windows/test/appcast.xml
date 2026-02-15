@@ -2,12 +2,12 @@
 <rss xmlns:ns0="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
   <channel>
     <item>
-      <title>Version 0.0.3-test</title>
-      <pubDate>Sun, 15 Feb 2026 12:58:03 -0000</pubDate>
-      <ns0:version>3</ns0:version>
-      <ns0:shortVersionString>0.0.3-test</ns0:shortVersionString>
-      <enclosure url="https://github.com/stuchain/CuePoint/releases/download/v0.0.3-test/CuePoint-Setup-v0.0.3-test.exe" ns0:version="3" ns0:shortVersionString="0.0.3-test" length="113133631" type="application/octet-stream" ns0:sha256="8f52b22dc79619d4cf6aa2f1f9fb779e08bc7fb50cf6e8dea7b64ae62ef37ec2" />
-      <ns0:releaseNotesLink>https://github.com/stuchain/CuePoint/releases/tag/v0.0.3-test</ns0:releaseNotesLink>
+      <title>Version 0.0.4-test</title>
+      <pubDate>Sun, 15 Feb 2026 13:05:22 -0000</pubDate>
+      <ns0:version>4</ns0:version>
+      <ns0:shortVersionString>0.0.4-test</ns0:shortVersionString>
+      <enclosure url="https://github.com/stuchain/CuePoint/releases/download/v0.0.4-test/CuePoint-Setup-v0.0.4-test.exe" ns0:version="4" ns0:shortVersionString="0.0.4-test" length="113131586" type="application/octet-stream" ns0:sha256="a2ec540939db897ba08d0cfa9dd9eedee2b8a3f22c40cc277ad668eb769f4248" />
+      <ns0:releaseNotesLink>https://github.com/stuchain/CuePoint/releases/tag/v0.0.4-test</ns0:releaseNotesLink>
     </item>
     <title>CuePoint Updates</title>
     <link>https://github.com/StuChain/CuePoint</link>
