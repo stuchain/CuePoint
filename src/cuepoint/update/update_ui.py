@@ -593,9 +593,7 @@ class UpdateCheckDialog(QDialog):
         # Fallback: Ensure button is connected even if main_window connection failed
         # This is a safety mechanism for frozen/packaged builds
         if not hasattr(self, "_download_connected") or not self._download_connected:
-            logger.info(
-                "Button not connected yet, attempting fallback connection..."
-            )
+            logger.info("Button not connected yet, attempting fallback connection...")
             self._ensure_button_connected()
 
     def set_no_update(self) -> None:
@@ -987,7 +985,9 @@ def show_update_check_dialog(
         # On macOS, use parent with WindowModal (native sheet) - parentless floating window
         # causes app to close; sheet is the native pattern and avoids that
         if sys.platform == "darwin":
-            logger.info("Step 1: macOS - Will use parent with WindowModal (native sheet)")
+            logger.info(
+                "Step 1: macOS - Will use parent with WindowModal (native sheet)"
+            )
         if parent is not None:
             logger.info("Step 1: Validating parent widget...")
             try:
@@ -1002,7 +1002,10 @@ def show_update_check_dialog(
                 )
                 parent = None
         else:
-            logger.info("  - No parent provided" + (", sheet disabled on macOS" if sys.platform == "darwin" else ""))
+            logger.info(
+                "  - No parent provided"
+                + (", sheet disabled on macOS" if sys.platform == "darwin" else "")
+            )
 
         # Create dialog with error handling
         logger.info("Step 2: Creating UpdateCheckDialog instance...")

@@ -84,14 +84,18 @@ class TestGenerateAppcastChannelTest:
                 timeout=10,
             )
             assert result.returncode != 0
-            assert "invalid" in result.stderr.lower() or "choice" in result.stderr.lower()
+            assert (
+                "invalid" in result.stderr.lower() or "choice" in result.stderr.lower()
+            )
 
 
 @pytest.mark.unit
 class TestGenerateUpdateFeedChannelTest:
     """generate_update_feed.py must accept --channel test and write to test path."""
 
-    @pytest.mark.skipif(sys.platform == "win32", reason="Qt event loop can raise on Windows")
+    @pytest.mark.skipif(
+        sys.platform == "win32", reason="Qt event loop can raise on Windows"
+    )
     def test_channel_test_produces_test_path(self):
         """With --channel test and --output to test path, script succeeds."""
         with tempfile.TemporaryDirectory() as tmp:
@@ -125,7 +129,9 @@ class TestGenerateUpdateFeedChannelTest:
             content = out.read_text(encoding="utf-8")
             assert "1.0.0-test1" in content or "test1" in content
 
-    @pytest.mark.skipif(sys.platform == "win32", reason="Qt event loop can raise on Windows")
+    @pytest.mark.skipif(
+        sys.platform == "win32", reason="Qt event loop can raise on Windows"
+    )
     def test_channel_invalid_fails(self):
         """--channel invalid must fail (argparse invalid choice)."""
         with tempfile.TemporaryDirectory() as tmp:
@@ -152,4 +158,6 @@ class TestGenerateUpdateFeedChannelTest:
                 timeout=10,
             )
             assert result.returncode != 0
-            assert "invalid" in result.stderr.lower() or "choice" in result.stderr.lower()
+            assert (
+                "invalid" in result.stderr.lower() or "choice" in result.stderr.lower()
+            )

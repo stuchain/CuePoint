@@ -308,7 +308,9 @@ class TestWordTokens:
         assert len(artists2) >= 2
         assert len(artists3) >= 2
 
-    @pytest.mark.skipif(sys.platform == "win32", reason="Qt event loop can raise on Windows")
+    @pytest.mark.skipif(
+        sys.platform == "win32", reason="Qt event loop can raise on Windows"
+    )
     def test_split_artists_various_separators(self):
         """Test splitting with various separators."""
         artists1 = split_artists("Artist A, Artist B")

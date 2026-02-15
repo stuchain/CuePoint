@@ -91,7 +91,9 @@ class SettingsDialog(QDialog):
 
         # Connect change signals to update Apply button state
         self.config_panel.settings_changed.connect(self._update_apply_button)
-        self.config_panel.preflight_check.stateChanged.connect(self._update_apply_button)
+        self.config_panel.preflight_check.stateChanged.connect(
+            self._update_apply_button
+        )
         self.config_panel.checkpoint_every_spin.valueChanged.connect(
             self._update_apply_button
         )

@@ -149,10 +149,7 @@ def is_test_version(version: str) -> bool:
     """
     try:
         _, _, _, prerelease = parse_version(version)
-        return (
-            prerelease is not None
-            and prerelease.lower().startswith("test")
-        )
+        return prerelease is not None and prerelease.lower().startswith("test")
     except ValueError:
         return False
 

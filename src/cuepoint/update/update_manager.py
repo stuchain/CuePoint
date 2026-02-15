@@ -102,9 +102,7 @@ def _get_callback_receiver_class():
                 try:
                     if self._on_check_complete and self._update_manager:
                         has_update = self._update_manager.has_update()
-                        error = getattr(
-                            self._update_manager, "_last_check_error", None
-                        )
+                        error = getattr(self._update_manager, "_last_check_error", None)
                         self._on_check_complete(has_update, error)
                 except Exception as e:
                     logger.error(
@@ -173,7 +171,9 @@ class UpdateManager:
         self._lock = threading.Lock()
         self._checking = False
         self._update_available: Optional[Dict] = None
-        self._last_check_error: Optional[str] = None  # For cross-thread callback (no-arg signal)
+        self._last_check_error: Optional[str] = (
+            None  # For cross-thread callback (no-arg signal)
+        )
 
         # Callbacks
         self._on_update_available: Optional[Callable[[Dict], None]] = None
@@ -301,6 +301,7 @@ class UpdateManager:
         # Validate platform before starting check
         if not self.platform or self.platform == "unknown":
             import logging
+
             logger = logging.getLogger(__name__)
             logger.error(
                 f"Cannot check for updates: invalid platform '{self.platform}'"
@@ -321,16 +322,14 @@ class UpdateManager:
 
         # On frozen macOS (signed/notarized app), urllib/SSL can crash during
         # network fetch. Use QNetworkAccessManager on main thread instead.
-        use_qt_network = (
-            getattr(sys, "frozen", False)
-            and sys.platform == "darwin"
-        )
+        use_qt_network = getattr(sys, "frozen", False) and sys.platform == "darwin"
 
         try:
             if use_qt_network:
                 try:
                     from PySide6.QtCore import QTimer
                     from PySide6.QtWidgets import QApplication
+
                     if QApplication.instance():
                         QTimer.singleShot(0, self._do_check_qt_main_thread)
                         return True
@@ -345,6 +344,7 @@ class UpdateManager:
             return True
         except Exception as e:
             import logging
+
             logger = logging.getLogger(__name__)
             logger.error(f"Failed to start update check: {e}", exc_info=True)
             with self._lock:
@@ -379,6 +379,7 @@ class UpdateManager:
         feed_url = self.checker.get_feed_url(self.platform)
 
         from cuepoint.update.security import FeedIntegrityVerifier
+
         is_valid, error = FeedIntegrityVerifier.verify_feed_https(feed_url)
         if not is_valid:
             logger.error(f"Feed URL failed integrity check: {error}")
@@ -426,13 +427,18 @@ class UpdateManager:
                 if reply.error():
                     self._update_network_ref = None
                     err_str = (reply.errorString() or "").strip()
-                    logger.warning(f"Qt network request failed: {err_str or reply.error()}")
+                    logger.warning(
+                        f"Qt network request failed: {err_str or reply.error()}"
+                    )
                     # Retry on main thread with urllib (blocking). Thread+urllib crashes in signed app;
                     # main-thread urllib may work and avoids showing a permanent error.
                     if getattr(sys, "frozen", False) and sys.platform == "darwin":
                         try:
                             from PySide6.QtCore import QTimer
-                            logger.info("Retrying update check on main thread (sync fetch)...")
+
+                            logger.info(
+                                "Retrying update check on main thread (sync fetch)..."
+                            )
                             QTimer.singleShot(0, self._do_check_main_thread_sync)
                             return
                         except Exception:
@@ -449,7 +455,11 @@ class UpdateManager:
                     if err_str and err_str.lower() != "unknown error":
                         err_msg = err_str
                     else:
-                        code_part = f" (Qt code {err_code})" if err_code not in (None, 0) else ""
+                        code_part = (
+                            f" (Qt code {err_code})"
+                            if err_code not in (None, 0)
+                            else ""
+                        )
                         err_msg = f"Network error{code_part}. Check internet connection and that the update server is reachable."
                     logger.error(f"Update check failed: {err_msg}")
                     with self._lock:
@@ -472,7 +482,9 @@ class UpdateManager:
                 update_info = self.checker.check_update_from_appcast(appcast_data)
 
                 if update_info:
-                    version = update_info.get("version") or update_info.get("short_version")
+                    version = update_info.get("version") or update_info.get(
+                        "short_version"
+                    )
                     if version and self.preferences.is_version_ignored(version):
                         update_info = None
                 else:
@@ -520,6 +532,7 @@ class UpdateManager:
         try:
             feed_url = self.checker.get_feed_url(self.platform)
             from cuepoint.update.security import FeedIntegrityVerifier
+
             is_valid, error = FeedIntegrityVerifier.verify_feed_https(feed_url)
             if not is_valid:
                 with self._lock:
@@ -578,6 +591,7 @@ class UpdateManager:
         """Emit update_available signal if we have update and callback."""
         try:
             from PySide6.QtWidgets import QApplication
+
             app = QApplication.instance()
             if app and hasattr(app, "_callback_receiver") and app._callback_receiver:
                 if self._update_available and self._on_update_available:
@@ -589,6 +603,7 @@ class UpdateManager:
         """Emit check_complete signal."""
         try:
             from PySide6.QtWidgets import QApplication
+
             app = QApplication.instance()
             if app and hasattr(app, "_callback_receiver") and app._callback_receiver:
                 app._callback_receiver.check_complete_signal.emit()
@@ -618,7 +633,7 @@ class UpdateManager:
         import logging
 
         logger = logging.getLogger(__name__)
-        
+
         try:
             # Validate platform before proceeding
             if not self.platform or self.platform == "unknown":
@@ -629,8 +644,13 @@ class UpdateManager:
                     self._last_check_error = err_msg
                 try:
                     from PySide6.QtWidgets import QApplication
+
                     app = QApplication.instance()
-                    if app and hasattr(app, "_callback_receiver") and app._callback_receiver:
+                    if (
+                        app
+                        and hasattr(app, "_callback_receiver")
+                        and app._callback_receiver
+                    ):
                         app._callback_receiver.check_complete_signal.emit()
                 except Exception:
                     pass
@@ -717,6 +737,7 @@ class UpdateManager:
                     try:
                         # Try to access Qt's event loop to verify it's ready
                         from PySide6.QtCore import QCoreApplication
+
                         if not QCoreApplication.instance():
                             logger.warning(
                                 "QCoreApplication instance not available, skipping signal emission"
@@ -760,10 +781,11 @@ class UpdateManager:
                             "Callback receiver is None, skipping signal emission"
                         )
                         return
-                    
+
                     # On macOS, verify the receiver is still a valid QObject
                     try:
                         from PySide6.QtCore import QObject
+
                         if not isinstance(receiver, QObject):
                             logger.warning(
                                 f"Callback receiver is not a QObject (type: {type(receiver)}), skipping signal emission"
@@ -777,7 +799,9 @@ class UpdateManager:
 
                     try:
                         # Validate receiver is still a valid QObject before emitting
-                        if not hasattr(receiver, 'update_available_signal') or not hasattr(receiver, 'check_complete_signal'):
+                        if not hasattr(
+                            receiver, "update_available_signal"
+                        ) or not hasattr(receiver, "check_complete_signal"):
                             logger.warning(
                                 "Callback receiver missing required signals, skipping emission"
                             )
@@ -818,12 +842,15 @@ class UpdateManager:
                         try:
                             # Verify Qt is still accessible before fallback
                             from PySide6.QtWidgets import QApplication
+
                             app_check = QApplication.instance()
                             if app_check is not None:
                                 if update_info and self._on_update_available:
                                     self._on_update_available(update_info)
                                 if self._on_check_complete:
-                                    self._on_check_complete(update_info is not None, None)
+                                    self._on_check_complete(
+                                        update_info is not None, None
+                                    )
                         except Exception as fallback_error:
                             logger.error(
                                 f"Error in fallback direct callback: {fallback_error}",
@@ -906,7 +933,9 @@ class UpdateManager:
                 self.preferences.set_last_check_timestamp()
                 self.preferences.set_last_check_result("error")
             except Exception as pref_error:
-                logger.error(f"Error updating preferences after exception: {pref_error}")
+                logger.error(
+                    f"Error updating preferences after exception: {pref_error}"
+                )
 
             try:
                 from PySide6.QtCore import QTimer, QApplication

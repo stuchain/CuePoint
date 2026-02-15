@@ -56,8 +56,16 @@ class RunSummaryDialog(QDialog):
         # Single line: playlist + key stats
         stats = (
             f"{self._summary.total_tracks} tracks, {self._summary.matched} matched"
-            + (f", {self._summary.unmatched} unmatched" if self._summary.unmatched else "")
-            + (f", {self._summary.low_confidence} low confidence" if self._summary.low_confidence else "")
+            + (
+                f", {self._summary.unmatched} unmatched"
+                if self._summary.unmatched
+                else ""
+            )
+            + (
+                f", {self._summary.low_confidence} low confidence"
+                if self._summary.low_confidence
+                else ""
+            )
             + f" — {self._summary.duration_sec:.1f}s"
         )
         if self._summary.error_count or self._summary.warning_count:

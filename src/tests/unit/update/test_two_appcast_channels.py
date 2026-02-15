@@ -102,7 +102,9 @@ class TestUpdateCheckerTestChannelFeedUrl:
         )
         url = checker.get_feed_url("macos")
         assert "/macos/test/appcast.xml" in url
-        assert url == "https://stuchain.github.io/CuePoint/updates/macos/test/appcast.xml"
+        assert (
+            url == "https://stuchain.github.io/CuePoint/updates/macos/test/appcast.xml"
+        )
 
     def test_get_feed_url_windows_test_channel(self):
         """Feed URL for Windows and channel test contains /windows/test/appcast.xml."""
@@ -113,7 +115,10 @@ class TestUpdateCheckerTestChannelFeedUrl:
         )
         url = checker.get_feed_url("windows")
         assert "/windows/test/appcast.xml" in url
-        assert url == "https://stuchain.github.io/CuePoint/updates/windows/test/appcast.xml"
+        assert (
+            url
+            == "https://stuchain.github.io/CuePoint/updates/windows/test/appcast.xml"
+        )
 
     def test_get_feed_url_stable_channel_unchanged(self):
         """Stable channel still produces /stable/ path (regression)."""

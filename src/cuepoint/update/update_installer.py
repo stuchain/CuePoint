@@ -200,9 +200,7 @@ class UpdateInstaller:
 
             # Fallback: Launch installer directly (visible, no /S)
             if not launcher_ps1 or not launcher_ps1.exists():
-                logger.info(
-                    "Launcher script not found, launching installer directly"
-                )
+                logger.info("Launcher script not found, launching installer directly")
                 logger.info("Note: Installer will detect if app is running")
                 logger.info(f"Installer path: {installer_path}")
                 logger.info(f"Installer absolute path: {installer_path.resolve()}")

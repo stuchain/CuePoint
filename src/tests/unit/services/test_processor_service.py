@@ -289,8 +289,12 @@ class TestProcessorService:
             service.process_playlist_from_xml("nonexistent.xml", "Test Playlist")
 
         assert exc_info.value.error_type == ErrorType.FILE_NOT_FOUND
-        err_text = ((exc_info.value.message or "") + " " + (exc_info.value.details or "")).lower()
-        assert "xml" in err_text and ("not found" in err_text or "does not exist" in err_text)
+        err_text = (
+            (exc_info.value.message or "") + " " + (exc_info.value.details or "")
+        ).lower()
+        assert "xml" in err_text and (
+            "not found" in err_text or "does not exist" in err_text
+        )
 
     def test_process_playlist_from_xml_playlist_not_found(
         self,
@@ -340,7 +344,9 @@ class TestProcessorService:
                 service.process_playlist_from_xml(xml_path, "Nonexistent Playlist")
 
             assert exc_info.value.error_type == ErrorType.PLAYLIST_NOT_FOUND
-            err_text = (exc_info.value.message or "") + " " + (exc_info.value.details or "")
+            err_text = (
+                (exc_info.value.message or "") + " " + (exc_info.value.details or "")
+            )
             assert "not found" in err_text.lower()
         finally:
             Path(xml_path).unlink(missing_ok=True)
@@ -513,7 +519,9 @@ class TestProcessorService:
                 service.process_playlist_from_xml(xml_path, "Empty Playlist")
 
             assert exc_info.value.error_type == ErrorType.VALIDATION_ERROR
-            err_text = ((exc_info.value.message or "") + " " + (exc_info.value.details or "")).lower()
+            err_text = (
+                (exc_info.value.message or "") + " " + (exc_info.value.details or "")
+            ).lower()
             assert "empty" in err_text or "no valid tracks" in err_text
         finally:
             Path(xml_path).unlink(missing_ok=True)
@@ -564,6 +572,7 @@ class TestProcessorService:
         mock_config_service,
     ):
         """Test preflight error for missing XML."""
+
         def config_get(key, default=None):
             if key == "product.preflight_enabled":
                 return True
@@ -589,6 +598,7 @@ class TestProcessorService:
         mock_config_service,
     ):
         """Test preflight error for missing playlist."""
+
         def config_get(key, default=None):
             if key == "product.preflight_enabled":
                 return True
@@ -636,6 +646,7 @@ class TestProcessorService:
         mock_config_service,
     ):
         """Test preflight output directory validation."""
+
         def config_get(key, default=None):
             if key == "product.preflight_enabled":
                 return True
@@ -691,6 +702,7 @@ class TestProcessorService:
         mock_config_service,
     ):
         """Test preflight config validation."""
+
         def config_get(key, default=None):
             if key == "product.preflight_enabled":
                 return True

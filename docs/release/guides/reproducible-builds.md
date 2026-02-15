@@ -162,6 +162,6 @@ Lock the base image digest (e.g. `python:3.13.7-slim@sha256:...`) for full repro
 
 ## Related Documentation
 
-- [Release Deployment Runbook](../release/release-deployment-runbook.md) – Full release process and build
-- [Checksum Signing](../release/checksum-signing.md) – GPG signing of SHA256SUMS
-- [Key Management](../release/key-management.md) – Certificate handling
+- [Release Deployment Runbook](../release-deployment-runbook.md) – Full release process and build
+- [Checksum Signing](../checksum-signing.md) – GPG signing of SHA256SUMS
+- [Key Management](../key-management.md) – Certificate handling

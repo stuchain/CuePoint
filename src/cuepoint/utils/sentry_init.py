@@ -22,9 +22,7 @@ logger = logging.getLogger(__name__)
 
 # Default DSN for CuePoint Sentry project. Safe to ship (only allows sending events).
 # Override with SENTRY_DSN environment variable if needed.
-DEFAULT_SENTRY_DSN = (
-    "https://f6809b0fe8cdd6674bccbe0c87fd9535@o4510867725746176.ingest.de.sentry.io/4510867733217360"
-)
+DEFAULT_SENTRY_DSN = "https://f6809b0fe8cdd6674bccbe0c87fd9535@o4510867725746176.ingest.de.sentry.io/4510867733217360"
 
 
 def _consent_allowed() -> bool:
@@ -58,7 +56,10 @@ def _get_analytic_context() -> tuple[dict, dict]:
         build_info = get_build_info()
         extra["build"] = build_info
         if build_info.get("commit_sha"):
-            tags["commit_sha"] = build_info.get("short_commit_sha") or build_info.get("commit_sha", "")[:8]
+            tags["commit_sha"] = (
+                build_info.get("short_commit_sha")
+                or build_info.get("commit_sha", "")[:8]
+            )
         if build_info.get("build_number"):
             tags["build_number"] = str(build_info["build_number"])
     except Exception:

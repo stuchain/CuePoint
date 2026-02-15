@@ -190,7 +190,9 @@ class TestTrackStringRepresentation:
         track = Track(title="Test Track", artist="Test Artist")
         assert str(track) == "Test Artist - Test Track"
 
-    @pytest.mark.skipif(sys.platform == "win32", reason="Qt event loop can raise on Windows")
+    @pytest.mark.skipif(
+        sys.platform == "win32", reason="Qt event loop can raise on Windows"
+    )
     def test_repr_representation(self):
         """Test developer representation."""
         track = Track(title="Test Track", artist="Test Artist", bpm=128.0, year=2020)

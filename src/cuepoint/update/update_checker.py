@@ -189,13 +189,17 @@ class UpdateChecker:
             try:
                 try:
                     import certifi
+
                     ssl_context = ssl.create_default_context(cafile=certifi.where())
                 except ImportError:
                     ssl_context = ssl.create_default_context()
             except Exception as ssl_error:
                 import logging
+
                 logger = logging.getLogger(__name__)
-                logger.error(f"Failed to create SSL context: {ssl_error}", exc_info=True)
+                logger.error(
+                    f"Failed to create SSL context: {ssl_error}", exc_info=True
+                )
                 raise UpdateCheckError(f"SSL context creation failed: {ssl_error}")
 
             # Fetch with timeout
@@ -204,13 +208,18 @@ class UpdateChecker:
                     request, timeout=timeout, context=ssl_context
                 ) as response:
                     if response.status != 200:
-                        raise UpdateCheckError(f"HTTP {response.status}: {response.reason}")
+                        raise UpdateCheckError(
+                            f"HTTP {response.status}: {response.reason}"
+                        )
 
                     return response.read()
             except TimeoutError as timeout_error:
                 import logging
+
                 logger = logging.getLogger(__name__)
-                logger.error(f"Request timeout fetching appcast from {url}: {timeout_error}")
+                logger.error(
+                    f"Request timeout fetching appcast from {url}: {timeout_error}"
+                )
                 raise UpdateCheckError(f"Request timeout: {timeout_error}")
 
         except urllib.error.URLError as e:
@@ -338,8 +347,10 @@ class UpdateChecker:
             checksum = enclosure.get(f"{{{self.SPARKLE_NS}}}sha256")
             if checksum:
                 checksum = checksum.strip().lower()
-            if not checksum and signature and PackageIntegrityVerifier.is_sha256_hex(
-                signature.strip().lower()
+            if (
+                not checksum
+                and signature
+                and PackageIntegrityVerifier.is_sha256_hex(signature.strip().lower())
             ):
                 checksum = signature.strip().lower()
             if checksum and not PackageIntegrityVerifier.is_sha256_hex(checksum):
@@ -529,7 +540,9 @@ class UpdateChecker:
             elif base_comparison == 0:
                 # Same base version (e.g. 1.0.0 vs 1.0.0-feb10): do not offer as update.
                 # Only offer when base version increases (e.g. 1.0.0 -> 1.0.2).
-                logger.debug(f"Same base version: {base_candidate} == {base_current}, skipping")
+                logger.debug(
+                    f"Same base version: {base_candidate} == {base_current}, skipping"
+                )
                 continue
             # else: base_comparison < 0, candidate is older, skip
 

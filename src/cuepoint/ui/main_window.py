@@ -1234,7 +1234,9 @@ class MainWindow(QMainWindow):
         diagnostics_menu.addAction(report_issue_action)
 
         test_sentry_action = QAction("Send &test event to Sentry", self)
-        test_sentry_action.setToolTip("Send a test error to Sentry to verify reporting is working")
+        test_sentry_action.setToolTip(
+            "Send a test error to Sentry to verify reporting is working"
+        )
         test_sentry_action.triggered.connect(self._on_test_sentry_report)
         diagnostics_menu.addAction(test_sentry_action)
 
@@ -1898,7 +1900,7 @@ class MainWindow(QMainWindow):
                     self,
                     "Sentry test",
                     "Error reporting is off.\n\n"
-                    "Enable it in Settings → Privacy → \"Send error reports to help fix bugs\", "
+                    'Enable it in Settings → Privacy → "Send error reports to help fix bugs", '
                     "then try again.",
                     QMessageBox.Ok,
                 )
@@ -3086,13 +3088,16 @@ class MainWindow(QMainWindow):
                         )
                         return
                 else:
-                    logger.warning("Update has no checksum in appcast (e.g. EdDSA only)")
+                    logger.warning(
+                        "Update has no checksum in appcast (e.g. EdDSA only)"
+                    )
                     reply = QMessageBox.warning(
                         self,
                         "Update Not Verified",
                         "This update does not include a checksum in the feed, so the download could not be verified.\n\n"
                         "You can install anyway (download was over HTTPS from the release server), or open the release page to download manually.",
-                        QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
+                        QMessageBox.StandardButton.Ok
+                        | QMessageBox.StandardButton.Cancel,
                         QMessageBox.StandardButton.Ok,
                     )
                     if reply != QMessageBox.StandardButton.Ok:
@@ -3145,9 +3150,7 @@ class MainWindow(QMainWindow):
         msg.setWindowTitle(title)
         msg.setText(message)
         msg.addButton(QMessageBox.StandardButton.Cancel)
-        update_btn = msg.addButton(
-            "Update manually", QMessageBox.ButtonRole.ActionRole
-        )
+        update_btn = msg.addButton("Update manually", QMessageBox.ButtonRole.ActionRole)
         msg.exec()
         if msg.clickedButton() == update_btn:
             self._open_installer_folder(installer_path)
@@ -3220,8 +3223,7 @@ class MainWindow(QMainWindow):
             logging.error(f"Update installation failed: {e}")
             self._show_manual_install_dialog(
                 "Installation Error",
-                f"Failed to install update:\n\n{str(e)}\n\n"
-                "Please install manually.",
+                f"Failed to install update:\n\n{str(e)}\n\nPlease install manually.",
                 installer_path,
             )
 
