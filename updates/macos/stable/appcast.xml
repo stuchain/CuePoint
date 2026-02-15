@@ -3,10 +3,10 @@
   <channel>
     <item>
       <title>Version 0.0.1</title>
-      <pubDate>Sun, 15 Feb 2026 18:04:19 -0000</pubDate>
+      <pubDate>Sun, 15 Feb 2026 18:18:04 -0000</pubDate>
       <ns0:version>1</ns0:version>
       <ns0:shortVersionString>0.0.1</ns0:shortVersionString>
-      <enclosure url="https://github.com/stuchain/CuePoint/releases/download/v0.0.1/CuePoint-v0.0.1-macos-universal.dmg" ns0:version="1" ns0:shortVersionString="0.0.1" length="105352698" type="application/octet-stream" ns0:sha256="e909e45b28ed0524c2bf1e4fb27b2c571814bd851e5c15292cbc80a46eb12905" />
+      <enclosure url="https://github.com/stuchain/CuePoint/releases/download/v0.0.1/CuePoint-v0.0.1-macos-universal.dmg" ns0:version="1" ns0:shortVersionString="0.0.1" length="105352349" type="application/octet-stream" ns0:sha256="ec6cc46cb5cbe60075e9ca2d5624b8a15262e12a0f8053e31f356de7b57dd891" />
       <ns0:releaseNotesLink>https://github.com/stuchain/CuePoint/releases/tag/v0.0.1</ns0:releaseNotesLink>
     </item>
     <title>CuePoint Updates</title>
