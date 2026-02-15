@@ -171,6 +171,7 @@ jobs:
       - name: Run release readiness check
         run: |
           python scripts/release_readiness.py
+        timeout-minutes: 25
         continue-on-error: false
 
   build-gates:

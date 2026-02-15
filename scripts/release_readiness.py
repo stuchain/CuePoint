@@ -11,6 +11,7 @@ import os
 import platform
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 
@@ -23,28 +24,41 @@ def _pytest_env() -> dict:
     return env
 
 
+# Unit tests only (integration tests run separately in CI test-gates job).
+# Full suite can hang on Linux headless; unit tests are fast and stable.
+_TEST_PATH = "src/tests/unit/"
+
+
 def check_tests_pass():
-    """Check that all tests pass."""
-    print("Checking tests...")
+    """Check that unit tests pass."""
+    print("Checking tests (unit only)...")
+    print(f"  Path: {_TEST_PATH}  Timeout: 600s")
     try:
+        start = time.monotonic()
         result = subprocess.run(
-            [sys.executable, "-m", "pytest", "src/tests/", "-v", "--tb=short"],
+            [sys.executable, "-m", "pytest", _TEST_PATH, "-v", "--tb=short"],
             capture_output=True,
             text=True,
             timeout=600,
             env=_pytest_env(),
         )
+        elapsed = time.monotonic() - start
+        output = result.stdout + result.stderr
         if result.returncode == 0:
-            print("[PASS] All tests pass")
+            # Show pytest summary line (e.g. "1616 passed, 19 skipped in 120.45s")
+            for line in output.splitlines():
+                s = line.strip()
+                if (" passed" in s or " failed" in s) and " in " in s and "==" in s:
+                    print(f"  {s}")
+                    break
+            print(f"[PASS] All tests pass ({elapsed:.1f}s)")
             return True
         else:
-            print("[FAIL] Some tests failed")
-            output = result.stdout + result.stderr
-            # Show last 2000 chars (failures usually at end)
+            print(f"[FAIL] Some tests failed ({elapsed:.1f}s)")
             print(output[-2000:] if len(output) > 2000 else output)
             return False
     except subprocess.TimeoutExpired:
-        print("[FAIL] Tests timed out")
+        print("[FAIL] Tests timed out (600s)")
         return False
     except FileNotFoundError:
         print("WARNING: pytest not found, skipping test check")
@@ -52,15 +66,17 @@ def check_tests_pass():
 
 
 def check_coverage():
-    """Check test coverage meets threshold."""
-    print("Checking test coverage...")
+    """Check test coverage meets threshold (unit tests only)."""
+    print("Checking test coverage (unit only)...")
+    print(f"  Path: {_TEST_PATH}  Threshold: 39%")
     try:
+        start = time.monotonic()
         result = subprocess.run(
             [
                 sys.executable,
                 "-m",
                 "pytest",
-                "src/tests/",
+                _TEST_PATH,
                 "--cov=src/cuepoint",
                 "--cov-report=term-missing",
             ],
@@ -69,34 +85,42 @@ def check_coverage():
             timeout=600,
             env=_pytest_env(),
         )
-        if result.returncode == 0:
-            output = result.stdout
-            # Threshold aligned with release-gates.yml (fail-under)
-            COVERAGE_THRESHOLD = 39
-            if "TOTAL" in output:
-                # Extract coverage percentage
-                for line in output.split("\n"):
-                    if "TOTAL" in line and "%" in line:
-                        try:
-                            pct = float(line.split("%")[0].split()[-1])
-                            if pct >= COVERAGE_THRESHOLD:
-                                print(
-                                    f"[PASS] Coverage: {pct:.1f}% (>= {COVERAGE_THRESHOLD}%)"
-                                )
-                                return True
-                            else:
-                                print(
-                                    f"[FAIL] Coverage: {pct:.1f}% (< {COVERAGE_THRESHOLD}%)"
-                                )
-                                return False
-                        except (ValueError, IndexError):
-                            pass
+        elapsed = time.monotonic() - start
+        output = result.stdout
+        # Threshold aligned with release-gates.yml (fail-under)
+        COVERAGE_THRESHOLD = 39
+        if result.returncode == 0 and "TOTAL" in output:
+            # Show TOTAL line and a few preceding lines (coverage summary)
+            lines = output.split("\n")
+            for i, line in enumerate(lines):
+                if "TOTAL" in line and "%" in line:
+                    # Print TOTAL and 2 lines before (header)
+                    start_i = max(0, i - 2)
+                    for j in range(start_i, min(i + 1, len(lines))):
+                        print(f"  {lines[j]}")
+                    try:
+                        pct = float(line.split("%")[0].split()[-1])
+                        if pct >= COVERAGE_THRESHOLD:
+                            print(
+                                f"[PASS] Coverage: {pct:.1f}% (>= {COVERAGE_THRESHOLD}%) ({elapsed:.1f}s)"
+                            )
+                            return True
+                        else:
+                            print(
+                                f"[FAIL] Coverage: {pct:.1f}% (< {COVERAGE_THRESHOLD}%)"
+                            )
+                            return False
+                    except (ValueError, IndexError):
+                        pass
+                    break
             print("[PASS] Coverage check passed")
             return True
+        elif result.returncode == 0:
+            print(f"[PASS] Coverage check passed ({elapsed:.1f}s)")
+            return True
         else:
-            print("[FAIL] Coverage check failed")
+            print(f"[FAIL] Coverage check failed ({elapsed:.1f}s)")
             output = result.stdout + result.stderr
-            # Show last 1500 chars (failures + coverage summary at end)
             print(output[-1500:] if len(output) > 1500 else output)
             return False
     except FileNotFoundError:
@@ -109,20 +133,25 @@ def check_coverage():
 
 def check_linting():
     """Check code passes linting."""
-    print("Checking linting...")
+    print("Checking linting (ruff check src/)...")
     try:
+        start = time.monotonic()
         result = subprocess.run(
             [sys.executable, "-m", "ruff", "check", "src/"],
             capture_output=True,
             text=True,
             timeout=120,
         )
+        elapsed = time.monotonic() - start
         if result.returncode == 0:
-            print("[PASS] Linting passed")
+            # Ruff doesn't print "N files" on success; show stderr if any (e.g. "Checked X files")
+            if result.stderr.strip():
+                print(f"  {result.stderr.strip()}")
+            print(f"[PASS] Linting passed ({elapsed:.1f}s)")
             return True
         else:
-            print("[FAIL] Linting issues found")
-            print(result.stdout[:500])  # First 500 chars
+            print(f"[FAIL] Linting issues found ({elapsed:.1f}s)")
+            print(result.stdout[:800] if result.stdout else result.stderr[:800])
             return False
     except FileNotFoundError:
         print("WARNING: ruff not found, skipping linting check")
@@ -134,27 +163,33 @@ def check_linting():
 
 def check_type_checking():
     """Check code passes type checking."""
-    print("Checking type checking...")
+    print("Checking type checking (mypy src/cuepoint)...")
     try:
+        start = time.monotonic()
         result = subprocess.run(
             [sys.executable, "-m", "mypy", "src/cuepoint"],
             capture_output=True,
             text=True,
             timeout=180,
         )
+        elapsed = time.monotonic() - start
         # mypy returns 0 on success, non-zero on errors
-        # But we might have some type errors that are acceptable
         if result.returncode == 0:
-            print("[PASS] Type checking passed")
+            # Show last line if it's a summary (e.g. "Success: no issues found")
+            lines = (result.stdout or "").strip().splitlines()
+            if lines:
+                print(f"  {lines[-1]}")
+            print(f"[PASS] Type checking passed ({elapsed:.1f}s)")
             return True
         else:
-            # Count errors
-            error_count = result.stdout.count("error:")
+            error_count = (result.stdout or "").count("error:")
             if error_count == 0:
-                print("[PASS] Type checking passed (warnings only)")
+                print(f"[PASS] Type checking passed (warnings only) ({elapsed:.1f}s)")
                 return True
             else:
-                print(f"[WARN] Type checking found {error_count} errors (non-blocking)")
+                print(
+                    f"[WARN] Type checking found {error_count} errors (non-blocking) ({elapsed:.1f}s)"
+                )
                 return True  # Don't block on type errors for now
     except FileNotFoundError:
         print("WARNING: mypy not found, skipping type checking")
@@ -166,81 +201,92 @@ def check_type_checking():
 
 def check_build_artifacts():
     """Check build artifacts exist."""
-    print("Checking build artifacts...")
+    print("Checking build artifacts (dist/)...")
     dist_dir = Path("dist")
     if not dist_dir.exists():
-        print("WARNING: dist/ directory not found (build may not have run)")
+        print("  WARNING: dist/ directory not found (build may not have run)")
         return True  # Don't fail if dist doesn't exist
 
-    artifacts = list(dist_dir.glob("*"))
+    artifacts = sorted(dist_dir.glob("*"))
     if not artifacts:
-        print("WARNING: No build artifacts found (build may not have run)")
+        print("  WARNING: No build artifacts found (build may not have run)")
         return True  # Don't fail if no artifacts
 
-    print(f"[PASS] Found {len(artifacts)} build artifacts")
+    for a in artifacts[:10]:
+        size = a.stat().st_size if a.is_file() else 0
+        print(f"  - {a.name} ({size:,} bytes)" if size else f"  - {a.name}/")
+    if len(artifacts) > 10:
+        print(f"  ... and {len(artifacts) - 10} more")
+    print(f"[PASS] Found {len(artifacts)} build artifact(s)")
     return True
 
 
 def check_release_notes():
     """Check release notes exist."""
-    print("Checking release notes...")
+    print("Checking release notes (CHANGELOG.md, RELEASE_NOTES.md, ...)...")
 
-    # Check for release notes in common locations
     release_notes_paths = [
         Path("CHANGELOG.md"),
         Path("RELEASE_NOTES.md"),
-        Path("docs/RELEASE_NOTES.md"),
         Path("docs/RELEASE_NOTES.md"),
     ]
 
     for path in release_notes_paths:
         if path.exists():
             content = path.read_text(encoding="utf-8", errors="ignore")
-            if len(content.strip()) > 100:  # Minimum content length
+            n = len(content.strip())
+            if n > 100:
+                print(f"  Found: {path} ({n} chars)")
                 print(f"[PASS] Release notes found: {path}")
                 return True
-
-    print("WARNING: Release notes not found or too short (non-blocking)")
-    return True  # Don't fail on missing release notes
+            else:
+                print(f"  Skipped (too short): {path} ({n} chars)")
+    print("  WARNING: Release notes not found or too short (non-blocking)")
+    return True
 
 
 def check_version_consistency():
     """Check version numbers are consistent."""
-    print("Checking version consistency...")
+    print("Checking version consistency (cuepoint.version.get_version)...")
 
     try:
-        # Import version module
         sys.path.insert(0, "src")
         from cuepoint.version import get_version
 
         version = get_version()
         if version:
+            print(f"  Version: {version}")
             print(f"[PASS] Version: {version}")
             return True
         else:
-            print("WARNING: Could not determine version")
+            print("  WARNING: Could not determine version")
             return True
     except Exception as e:
-        print(f"WARNING: Version check error: {e}")
+        print(f"  WARNING: Version check error: {e}")
         return True  # Don't fail on version check
 
 
 def check_file_sizes():
     """Check no large files in repository."""
-    print("Checking file sizes...")
+    print("Checking file sizes (scripts/check_file_sizes.py)...")
     try:
+        start = time.monotonic()
         result = subprocess.run(
             [sys.executable, "scripts/check_file_sizes.py"],
             capture_output=True,
             text=True,
             timeout=60,
         )
+        elapsed = time.monotonic() - start
         if result.returncode == 0:
-            print("[PASS] File size check passed")
+            if result.stdout.strip():
+                for line in result.stdout.strip().splitlines()[:5]:
+                    print(f"  {line}")
+            print(f"[PASS] File size check passed ({elapsed:.1f}s)")
             return True
         else:
-            print("[FAIL] File size check failed")
-            print(result.stdout)
+            print(f"[FAIL] File size check failed ({elapsed:.1f}s)")
+            print(result.stdout or result.stderr)
             return False
     except FileNotFoundError:
         print("WARNING: check_file_sizes.py not found, skipping")
@@ -255,6 +301,10 @@ def main():
     print("=" * 60)
     print("Release Readiness Check")
     print("=" * 60)
+    print(f"  Python: {sys.version.split()[0]}  ({platform.system()} {platform.machine()})")
+    print(f"  CWD: {Path.cwd()}")
+    print(f"  Test path: {_TEST_PATH} (unit tests only)")
+    print("=" * 60)
     print()
 
     checks = [
@@ -267,9 +317,12 @@ def main():
         ("Release Notes", check_release_notes),
         ("Version Consistency", check_version_consistency),
     ]
+    n_checks = len(checks)
 
     results = []
-    for name, check_func in checks:
+    total_start = time.monotonic()
+    for i, (name, check_func) in enumerate(checks, 1):
+        print(f"--- Check {i}/{n_checks}: {name} ---")
         try:
             result = check_func()
             results.append((name, result))
@@ -277,6 +330,8 @@ def main():
             print(f"[FAIL] {name} check failed with error: {e}")
             results.append((name, False))
         print()
+
+    total_elapsed = time.monotonic() - total_start
 
     # Summary
     print("=" * 60)
@@ -286,10 +341,12 @@ def main():
     all_passed = True
     for name, result in results:
         status = "[PASS]" if result else "[FAIL]"
-        print(f"{status} {name}")
+        print(f"  {status} {name}")
         if not result:
             all_passed = False
 
+    print()
+    print(f"  Total time: {total_elapsed:.1f}s")
     print()
     if all_passed:
         print("[PASS] All automated checks passed")
