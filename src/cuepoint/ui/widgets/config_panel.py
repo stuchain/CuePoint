@@ -9,14 +9,16 @@ This module contains the ConfigPanel class for configuring processing settings.
 
 from typing import Any, Dict, Optional
 
-from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtCore import Qt, QObject, QThread, QTimer, Signal
 from PySide6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
+    QComboBox,
     QDoubleSpinBox,
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QMessageBox,
     QPushButton,
     QRadioButton,
@@ -28,6 +30,35 @@ from PySide6.QtWidgets import (
 
 from cuepoint.models.config import SETTINGS
 from cuepoint.ui.controllers.config_controller import ConfigController
+
+
+class _BeatportTokenTestWorker(QObject):
+    """Runs in a thread: GET a real API endpoint that requires auth; emits result."""
+
+    result_ready = Signal(bool, str)
+
+    def __init__(self, token: str, base_url: str = "https://api.beatport.com/v4"):
+        super().__init__()
+        self._token = (token or "").strip()
+        self._base_url = base_url.rstrip("/")
+
+    def run(self) -> None:
+        try:
+            import requests
+            # Use an endpoint that requires a valid token (same as Discover/genres)
+            url = f"{self._base_url}/catalog/genres"
+            headers = {"Authorization": f"Bearer {self._token}", "Content-Type": "application/json"}
+            r = requests.get(url, headers=headers, timeout=15)
+            if r.status_code == 200:
+                self.result_ready.emit(True, "Token OK")
+            elif r.status_code == 401:
+                self.result_ready.emit(False, "Invalid or expired token.")
+            elif r.status_code == 403:
+                self.result_ready.emit(False, "Access forbidden (token invalid or insufficient scope).")
+            else:
+                self.result_ready.emit(False, f"API returned {r.status_code}.")
+        except Exception as e:
+            self.result_ready.emit(False, str(e) or "Request failed.")
 
 
 class ConfigPanel(QWidget):
@@ -89,6 +120,42 @@ class ConfigPanel(QWidget):
         preflight_layout.addLayout(preflight_row)
         preflight_group.setLayout(preflight_layout)
         layout.addWidget(preflight_group)
+
+        # inCrate (Phase 5): Beatport API token, playlist name format, optional credentials
+        incrate_group = QGroupBox("inCrate")
+        incrate_layout = QVBoxLayout()
+        incrate_layout.addWidget(QLabel("Beatport API token (for Discover):"))
+        self.incrate_token_edit = QLineEdit()
+        self.incrate_token_edit.setEchoMode(QLineEdit.EchoMode.Password)
+        self.incrate_token_edit.setPlaceholderText("Optional for discovery")
+        incrate_layout.addWidget(self.incrate_token_edit)
+        incrate_layout.addWidget(QLabel("Playlist name format:"))
+        self.incrate_playlist_format = QComboBox()
+        self.incrate_playlist_format.addItem("Short (e.g. feb26)", "short")
+        self.incrate_playlist_format.addItem("ISO (e.g. 2025-02-26)", "iso")
+        incrate_layout.addWidget(self.incrate_playlist_format)
+        incrate_layout.addWidget(QLabel("Beatport username (browser fallback, optional):"))
+        self.incrate_username_edit = QLineEdit()
+        self.incrate_username_edit.setPlaceholderText("Optional")
+        incrate_layout.addWidget(self.incrate_username_edit)
+        incrate_layout.addWidget(QLabel("Beatport password (optional):"))
+        self.incrate_password_edit = QLineEdit()
+        self.incrate_password_edit.setEchoMode(QLineEdit.EchoMode.Password)
+        self.incrate_password_edit.setPlaceholderText("Optional")
+        incrate_layout.addWidget(self.incrate_password_edit)
+        incrate_test_row = QHBoxLayout()
+        self.incrate_test_btn = QPushButton("Test connection")
+        self.incrate_test_btn.setToolTip("Verify the API token with a single request (catalog/genres).")
+        self.incrate_test_btn.clicked.connect(self._on_incrate_test_connection)
+        incrate_test_row.addWidget(self.incrate_test_btn)
+        incrate_test_row.addStretch()
+        incrate_layout.addLayout(incrate_test_row)
+        self.incrate_test_result_label = QLabel("")
+        self.incrate_test_result_label.setStyleSheet("color: #666; font-size: 12px;")
+        self.incrate_test_result_label.setWordWrap(True)
+        incrate_layout.addWidget(self.incrate_test_result_label)
+        incrate_group.setLayout(incrate_layout)
+        layout.addWidget(incrate_group)
 
         # Note: Auto-research is ALWAYS ON (removed checkbox)
         # Note: Performance Preset and Verbose logging moved to advanced settings
@@ -395,6 +462,20 @@ class ConfigPanel(QWidget):
                 self.preflight_check.setChecked(
                     bool(cs.get("product.preflight_enabled", False))
                 )
+                if hasattr(self, "incrate_token_edit"):
+                    self.incrate_token_edit.setText(
+                        str(cs.get("incrate.beatport_access_token") or "")
+                    )
+                    fmt = str(cs.get("incrate.playlist_name_format") or "short")
+                    idx = self.incrate_playlist_format.findData(fmt)
+                    if idx >= 0:
+                        self.incrate_playlist_format.setCurrentIndex(idx)
+                    self.incrate_username_edit.setText(
+                        str(cs.get("incrate.beatport_username") or "")
+                    )
+                    self.incrate_password_edit.setText(
+                        str(cs.get("incrate.beatport_password") or "")
+                    )
             else:
                 self.checkpoint_every_spin.setValue(50)
                 self.max_retries_spin.setValue(3)
@@ -461,11 +542,19 @@ class ConfigPanel(QWidget):
 
     def get_persisted_snapshot(self) -> tuple:
         """Return a comparable snapshot of persisted settings for change detection."""
+        incrate_token = self.incrate_token_edit.text().strip() if hasattr(self, "incrate_token_edit") else ""
+        incrate_fmt = self.incrate_playlist_format.currentData() or "short" if hasattr(self, "incrate_playlist_format") else "short"
+        incrate_user = self.incrate_username_edit.text().strip() if hasattr(self, "incrate_username_edit") else ""
+        incrate_pass = self.incrate_password_edit.text().strip() if hasattr(self, "incrate_password_edit") else ""
         return (
             self.preflight_check.isChecked(),
             self.checkpoint_every_spin.value(),
             self.max_retries_spin.value(),
             self.resume_enabled_check.isChecked(),
+            incrate_token,
+            incrate_fmt,
+            incrate_user,
+            incrate_pass,
         )
 
     def _get_selected_preset(self) -> str:
@@ -550,10 +639,61 @@ class ConfigPanel(QWidget):
             pass
         self._on_setting_changed()
 
+    def _on_incrate_changed(self):
+        """Persist inCrate settings to config service (Phase 5)."""
+        try:
+            cs = getattr(self.config_controller, "config_service", None)
+            if cs is not None and hasattr(self, "incrate_token_edit"):
+                cs.set("incrate.beatport_access_token", self.incrate_token_edit.text().strip())
+                cs.set("incrate.playlist_name_format", self.incrate_playlist_format.currentData() or "short")
+                cs.set("incrate.beatport_username", self.incrate_username_edit.text().strip())
+                cs.set("incrate.beatport_password", self.incrate_password_edit.text().strip())
+                try:
+                    cs.save()
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        self._on_setting_changed()
+
+    def _on_incrate_test_connection(self) -> None:
+        """Test Beatport API token in a background thread."""
+        token = self.incrate_token_edit.text().strip() if hasattr(self, "incrate_token_edit") else ""
+        if not token:
+            self.incrate_test_result_label.setText("Enter a token first.")
+            self.incrate_test_result_label.setStyleSheet("color: #c62828; font-size: 12px;")
+            return
+        self.incrate_test_btn.setEnabled(False)
+        self.incrate_test_result_label.setText("Testing...")
+        self.incrate_test_result_label.setStyleSheet("color: #666; font-size: 12px;")
+        base_url = "https://api.beatport.com/v4"
+        try:
+            cs = getattr(self.config_controller, "config_service", None)
+            if cs is not None:
+                base_url = (cs.get("incrate.beatport_api_base_url") or base_url).strip() or base_url
+        except Exception:
+            pass
+        self._incrate_test_thread = QThread(self)
+        self._incrate_test_worker = _BeatportTokenTestWorker(token, base_url)
+        self._incrate_test_worker.moveToThread(self._incrate_test_thread)
+        self._incrate_test_thread.started.connect(self._incrate_test_worker.run)
+        self._incrate_test_worker.result_ready.connect(self._on_incrate_test_result)
+        self._incrate_test_worker.result_ready.connect(self._incrate_test_thread.quit)
+        self._incrate_test_thread.start()
+
+    def _on_incrate_test_result(self, success: bool, message: str) -> None:
+        self.incrate_test_btn.setEnabled(True)
+        self.incrate_test_result_label.setText(message)
+        if success:
+            self.incrate_test_result_label.setStyleSheet("color: #2e7d32; font-size: 12px;")
+        else:
+            self.incrate_test_result_label.setStyleSheet("color: #c62828; font-size: 12px;")
+
     def apply_and_persist(self) -> None:
         """Explicitly persist all current settings to config (e.g. when Apply clicked)."""
         self._on_reliability_changed()
         self._on_preflight_changed()
+        self._on_incrate_changed()
 
     def _toggle_advanced_settings(self):
         """Toggle visibility of advanced settings"""

@@ -149,6 +149,7 @@ class MainWindow(QMainWindow):
         self.shortcut_manager.shortcut_conflict.connect(self.on_shortcut_conflict)
         # Tool selection page state
         self.tool_selection_page = None
+        self._incrate_page = None
         self.current_page = "tool_selection"  # or "main"
         self.init_ui()
         self.setup_connections()
@@ -944,6 +945,43 @@ class MainWindow(QMainWindow):
         self.tabs.show()  # Ensure tabs are visible
         self.current_page = "main"
 
+    def _show_incrate_page(self) -> None:
+        """Show the inCrate page (lazy-create with DI services)."""
+        if self._incrate_page is None:
+            try:
+                from cuepoint.services.beatport_api import BeatportApi
+                from cuepoint.services.incrate_discovery_service import (
+                    IncrateDiscoveryService,
+                )
+                from cuepoint.services.inventory_service import InventoryService
+                from cuepoint.ui.widgets.incrate_page import IncratePage
+                from cuepoint.utils.di_container import get_container
+
+                container = get_container()
+                inventory = container.resolve(InventoryService)
+                beatport_api = container.resolve(BeatportApi)
+                discovery = container.resolve(IncrateDiscoveryService)
+                self._incrate_page = IncratePage(
+                    inventory_service=inventory,
+                    beatport_api=beatport_api,
+                    discovery_service=discovery,
+                    config_service=self._config_service,
+                )
+                self._incrate_page.back_to_tools_requested.connect(
+                    self.show_tool_selection_page
+                )
+            except Exception as e:
+                QMessageBox.warning(
+                    self,
+                    "inCrate",
+                    f"Could not load inCrate: {e}. Check that services are registered.",
+                )
+                return
+        if self._incrate_page is not None:
+            self.setCentralWidget(self._incrate_page)
+            self.current_page = "incrate"
+            self.menuBar().show()
+
     def on_tool_selected(self, tool_name: str) -> None:
         """Handle tool selection"""
         if tool_name == "inkey":
@@ -951,6 +989,8 @@ class MainWindow(QMainWindow):
             self.show_main_interface()
             # Switch to Main tab
             self.tabs.setCurrentIndex(0)
+        elif tool_name == "incrate":
+            self._show_incrate_page()
 
     def on_new_session(self) -> None:
         """Start a new session by clearing all results and resetting progress.

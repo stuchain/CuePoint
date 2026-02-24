@@ -8,8 +8,14 @@ Bootstrap function to register all services with the DI container.
 This should be called at application startup.
 """
 
+import os
+
+from cuepoint.services.beatport_api import BeatportApi
+from cuepoint.services.beatport_api_client import BeatportApiClient
 from cuepoint.services.beatport_service import BeatportService
 from cuepoint.services.cache_service import CacheService
+from cuepoint.services.incrate_discovery_service import IncrateDiscoveryService
+from cuepoint.services.inventory_service import InventoryService, default_inventory_db_path
 from cuepoint.services.config_service import ConfigService
 from cuepoint.services.export_service import ExportService
 from cuepoint.services.interfaces import (
@@ -59,6 +65,41 @@ def bootstrap_services() -> None:
 
     container.register_factory(IBeatportService, create_beatport_service)
 
+    # inCrate Phase 2: Beatport API client for charts/labels (discovery)
+    def create_beatport_api() -> BeatportApi:
+        cfg = config_service
+        base_url = (cfg.get("incrate.beatport_api_base_url") or "https://api.beatport.com/v4").strip()
+        token = (os.environ.get("BEATPORT_ACCESS_TOKEN") or cfg.get("incrate.beatport_access_token") or "").strip()
+        timeout = int(cfg.get("incrate.beatport_api_timeout") or 30)
+        client = BeatportApiClient(base_url=base_url, access_token=token, timeout=timeout)
+        return BeatportApi(client=client, cache_service=cache_service)
+
+    container.register_factory(BeatportApi, create_beatport_api)
+
+    # inCrate Phase 1: Inventory service (import from XML, enrich via full inKey pipeline + workers)
+    def create_inventory_service() -> InventoryService:
+        raw = config_service.get("incrate.inventory_db_path")
+        db_path = (raw and str(raw).strip()) or default_inventory_db_path()
+        return InventoryService(
+            db_path=db_path,
+            config_service=config_service,
+            beatport_service=container.resolve(IBeatportService),
+            logging_service=container.resolve(ILoggingService),
+            processor_service=container.resolve(IProcessorService),
+        )
+
+    container.register_factory(InventoryService, create_inventory_service)
+
+    # inCrate Phase 3: Discovery (charts + label releases)
+    def create_incrate_discovery_service() -> IncrateDiscoveryService:
+        return IncrateDiscoveryService(
+            inventory_service=container.resolve(InventoryService),
+            beatport_api=container.resolve(BeatportApi),
+            config_service=config_service,
+        )
+
+    container.register_factory(IncrateDiscoveryService, create_incrate_discovery_service)
+
     # Register processor service (depends on beatport, matcher, logging, config)
     def create_processor_service() -> IProcessorService:
         return ProcessorService(
@@ -104,5 +145,4 @@ def bootstrap_services() -> None:
 
             register_alert_hook(_log_alert)
     except Exception:
-        pass
         pass

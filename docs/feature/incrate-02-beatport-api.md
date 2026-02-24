@@ -109,6 +109,8 @@ Research Beatport’s public/partner API and OpenAPI spec (e.g. from ivo-toby/be
 - **Base URL:** e.g. https://api.beatport.com/v4 or similar; config key `incrate.beatport_api_base_url`.
 - **Auth:** Bearer token in header: `Authorization: Bearer {token}`. Config key `incrate.beatport_access_token` or env `BEATPORT_ACCESS_TOKEN`.
 
+**Getting an access token:** Beatport API v4 uses OAuth2. See [beatport-api-token.md](beatport-api-token.md) for step-by-step flows (Authorization Code, User Password, Client Credentials), refresh, and revoke. Put the resulting `access_token` in Settings → inCrate → Beatport API token or in `BEATPORT_ACCESS_TOKEN`.
+
 ---
 
 ## 5. Step-by-step implementation

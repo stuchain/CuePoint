@@ -27,8 +27,9 @@ import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, Iterator, List, Optional, Tuple
 
+from cuepoint.core.mix_parser import _extract_remixer_names_from_title  # noqa: E402
 from cuepoint.models.compat import track_from_rbtrack  # noqa: E402
 from cuepoint.models.playlist import Playlist  # noqa: E402
 from cuepoint.models.track import Track  # noqa: E402
@@ -38,6 +39,103 @@ _logger = logging.getLogger(__name__)
 
 # Design 4.70: Cap XML file size to mitigate DoS (entity expansion, huge files)
 MAX_XML_SIZE_BYTES = 100 * 1024 * 1024  # 100 MiB
+
+# Report progress every N tracks during streaming parse (and on first track)
+_PARSE_PROGRESS_INTERVAL = 100
+
+
+def parse_collection(
+    xml_path: str,
+    progress_callback: Optional[Callable[[int, int], None]] = None,
+) -> Iterator[Tuple[str, str, str, str, Optional[str]]]:
+    """Yield (track_id, title, artist, remix_version, label) for each TRACK in COLLECTION.
+
+    Uses streaming iterparse so the full tree is not loaded into memory; progress_callback
+    is invoked with (parsed_count, -1) periodically (total -1 means unknown). Parses only
+    the COLLECTION section; does not read PLAYLISTS.
+
+    Args:
+        xml_path: Path to Rekordbox XML export file.
+        progress_callback: Optional callback(current_count, total). total=-1 during parse.
+
+    Yields:
+        Tuples of (track_id, title, artist, remix_version, label). label is None if missing.
+
+    Raises:
+        FileNotFoundError: If XML file does not exist.
+        ValueError: If XML file exceeds MAX_XML_SIZE_BYTES.
+        ET.ParseError: If XML parsing fails.
+    """
+    import os
+
+    if not os.path.exists(xml_path):
+        raise FileNotFoundError(f"XML file not found: {xml_path}")
+
+    size = os.path.getsize(xml_path)
+    if size > MAX_XML_SIZE_BYTES:
+        raise ValueError(
+            f"XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). "
+            "Refusing to parse to prevent resource exhaustion."
+        )
+
+    in_collection = False
+    parsed_count = 0
+    _logger.info("inCrate import: starting streaming parse of %s", xml_path)
+
+    def maybe_report() -> None:
+        nonlocal parsed_count
+        if progress_callback is None:
+            return
+        if parsed_count == 0:
+            return
+        if parsed_count == 1 or parsed_count % _PARSE_PROGRESS_INTERVAL == 0:
+            _logger.info("inCrate import: parsing progress — %s tracks so far", parsed_count)
+            progress_callback(parsed_count, -1)
+
+    context = ET.iterparse(xml_path, events=("start", "end"))
+    try:
+        for event, elem in context:
+            if event == "start":
+                if elem.tag == "COLLECTION":
+                    in_collection = True
+                continue
+            # event == "end"
+            if elem.tag == "TRACK" and in_collection:
+                tid = (elem.get("TrackID") or elem.get("ID") or elem.get("Key") or "").strip()
+                if not tid:
+                    _logger.debug(
+                        "[reliability] Skipping TRACK with missing TrackID in %s",
+                        xml_path,
+                    )
+                    elem.clear()
+                    continue
+                title = (elem.get("Name") or elem.get("Title") or "").strip()
+                if not title:
+                    _logger.debug(
+                        "[reliability] Skipping TRACK id=%s (missing title) in %s",
+                        tid,
+                        xml_path,
+                    )
+                    elem.clear()
+                    continue
+                artist = (elem.get("Artist") or elem.get("Artists") or "").strip()
+                remix_raw = (elem.get("Remixer") or "").strip()
+                if remix_raw:
+                    remix_version = remix_raw
+                else:
+                    derived = _extract_remixer_names_from_title(title)
+                    remix_version = ", ".join(derived) if derived else ""
+                label_raw = (elem.get("Label") or "").strip()
+                label = label_raw or None
+                parsed_count += 1
+                maybe_report()
+                yield (tid, title, artist, remix_version, label)
+            elif elem.tag == "COLLECTION":
+                in_collection = False
+            elem.clear()
+    finally:
+        del context
+    _logger.info("inCrate import: parse complete — %s tracks", parsed_count)
 
 
 @dataclass

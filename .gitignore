@@ -1,5 +1,9 @@
 # CuePoint .gitignore
 
+# Local token files (never commit)
+beatporttoken.txt
+state.json
+
 # Python
 __pycache__/
 *.py[cod]

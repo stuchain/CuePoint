@@ -10,7 +10,7 @@ These models work alongside the existing SETTINGS dictionary for backward compat
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -166,6 +166,26 @@ class TelemetryConfig:
 
 
 @dataclass
+class IncrateConfig:
+    """inCrate inventory, enrichment, Beatport API, and discovery configuration (Phase 1–3)."""
+
+    inventory_db_path: Optional[str] = None  # None = use platform default
+    enrich_on_first_import: bool = True
+    enrichment_delay_seconds: float = 0.5
+    # Phase 2: Beatport API client
+    beatport_api_base_url: str = "https://api.beatport.com/v4"
+    beatport_access_token: str = ""
+    beatport_api_timeout: int = 30
+    # Phase 3: Discovery
+    new_releases_days: int = 30
+    discovery_genre_ids: List[int] = field(default_factory=list)
+    # Phase 4: Playlist and auth
+    playlist_name_format: str = "short"  # "short" | "iso"
+    beatport_username: str = ""
+    beatport_password: str = ""
+
+
+@dataclass
 class AppConfig:
     """Main application configuration.
 
@@ -174,6 +194,7 @@ class AppConfig:
     """
 
     beatport: BeatportConfig = field(default_factory=BeatportConfig)
+    incrate: IncrateConfig = field(default_factory=IncrateConfig)
     cache: CacheConfig = field(default_factory=CacheConfig)
     processing: ProcessingConfig = field(default_factory=ProcessingConfig)
     export: ExportConfig = field(default_factory=ExportConfig)
@@ -303,6 +324,19 @@ class AppConfig:
                 "enabled": self.telemetry.enabled,
                 "endpoint": self.telemetry.endpoint,
                 "sample_rate": self.telemetry.sample_rate,
+            },
+            "incrate": {
+                "inventory_db_path": self.incrate.inventory_db_path,
+                "enrich_on_first_import": self.incrate.enrich_on_first_import,
+                "enrichment_delay_seconds": self.incrate.enrichment_delay_seconds,
+                "beatport_api_base_url": self.incrate.beatport_api_base_url,
+                "beatport_access_token": self.incrate.beatport_access_token,
+                "beatport_api_timeout": self.incrate.beatport_api_timeout,
+                "new_releases_days": self.incrate.new_releases_days,
+                "discovery_genre_ids": list(self.incrate.discovery_genre_ids),
+                "playlist_name_format": self.incrate.playlist_name_format,
+                "beatport_username": self.incrate.beatport_username,
+                "beatport_password": self.incrate.beatport_password,
             },
         }
 
@@ -558,6 +592,62 @@ class AppConfig:
                 sample_rate=float(
                     tel_data.get("sample_rate", config.telemetry.sample_rate)
                 ),
+            )
+
+        if "incrate" in data:
+            inc_data = data["incrate"]
+            config.incrate = IncrateConfig(
+                inventory_db_path=inc_data.get(
+                    "inventory_db_path", config.incrate.inventory_db_path
+                ),
+                enrich_on_first_import=inc_data.get(
+                    "enrich_on_first_import", config.incrate.enrich_on_first_import
+                ),
+                enrichment_delay_seconds=float(
+                    inc_data.get(
+                        "enrichment_delay_seconds",
+                        config.incrate.enrichment_delay_seconds,
+                    )
+                ),
+                beatport_api_base_url=inc_data.get(
+                    "beatport_api_base_url", config.incrate.beatport_api_base_url
+                ),
+                beatport_access_token=inc_data.get(
+                    "beatport_access_token", config.incrate.beatport_access_token
+                ),
+                beatport_api_timeout=int(
+                    inc_data.get(
+                        "beatport_api_timeout", config.incrate.beatport_api_timeout
+                    )
+                ),
+                new_releases_days=int(
+                    inc_data.get("new_releases_days", config.incrate.new_releases_days)
+                ),
+                discovery_genre_ids=[
+                    int(x)
+                    for x in (
+                        inc_data.get(
+                            "discovery_genre_ids", config.incrate.discovery_genre_ids
+                        )
+                        or []
+                    )
+                    if x is not None
+                ],
+                playlist_name_format=str(
+                    inc_data.get(
+                        "playlist_name_format", config.incrate.playlist_name_format
+                    )
+                    or "short"
+                ).strip()
+                or "short",
+                beatport_username=str(
+                    inc_data.get("beatport_username", config.incrate.beatport_username)
+                    or ""
+                ).strip(),
+                beatport_password=str(
+                    inc_data.get("beatport_password", config.incrate.beatport_password)
+                    or ""
+                ).strip(),
             )
 
         return config

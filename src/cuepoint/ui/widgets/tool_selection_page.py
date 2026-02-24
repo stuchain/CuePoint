@@ -64,8 +64,9 @@ class ToolSelectionPage(QWidget):
         tools_layout.setSpacing(20)
         tools_layout.setAlignment(Qt.AlignCenter)
 
-        # inKey button (only tool for now)
+        # inKey button
         inkey_button = QPushButton("inKey")
+        inkey_button.setObjectName("inKey")
         inkey_button.setMinimumSize(300, 80)
         inkey_button.setStyleSheet(
             """
@@ -88,12 +89,40 @@ class ToolSelectionPage(QWidget):
         )
         inkey_button.clicked.connect(lambda: self.tool_selected.emit("inkey"))
         tools_layout.addWidget(inkey_button)
+        inkey_desc = QLabel("Beatport Track Matching")
+        inkey_desc.setAlignment(Qt.AlignCenter)
+        inkey_desc.setStyleSheet("font-size: 14px; color: #888; margin-top: 10px;")
+        tools_layout.addWidget(inkey_desc)
 
-        # Tool description
-        description = QLabel("Beatport Track Matching")
-        description.setAlignment(Qt.AlignCenter)
-        description.setStyleSheet("font-size: 14px; color: #888; margin-top: 10px;")
-        tools_layout.addWidget(description)
+        # inCrate button
+        incrate_button = QPushButton("inCrate")
+        incrate_button.setObjectName("inCrate")
+        incrate_button.setMinimumSize(300, 80)
+        incrate_button.setStyleSheet(
+            """
+            QPushButton {
+                font-size: 24px;
+                font-weight: bold;
+                background-color: #2E7D32;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                padding: 20px;
+            }
+            QPushButton:hover {
+                background-color: #1B5E20;
+            }
+            QPushButton:pressed {
+                background-color: #0D3D10;
+            }
+            """
+        )
+        incrate_button.clicked.connect(lambda: self.tool_selected.emit("incrate"))
+        tools_layout.addWidget(incrate_button)
+        incrate_desc = QLabel("Charts & new releases")
+        incrate_desc.setAlignment(Qt.AlignCenter)
+        incrate_desc.setStyleSheet("font-size: 14px; color: #888; margin-top: 10px;")
+        tools_layout.addWidget(incrate_desc)
 
         layout.addLayout(tools_layout)
         layout.addStretch()

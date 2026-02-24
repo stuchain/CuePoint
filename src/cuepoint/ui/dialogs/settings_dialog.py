@@ -106,6 +106,19 @@ class SettingsDialog(QDialog):
         self.privacy_settings.chk_telemetry.toggled.connect(self._update_apply_button)
         self.privacy_settings.chk_clear_cache.toggled.connect(self._update_apply_button)
         self.privacy_settings.chk_clear_logs.toggled.connect(self._update_apply_button)
+        if hasattr(self.config_panel, "incrate_token_edit"):
+            self.config_panel.incrate_token_edit.textChanged.connect(
+                self._update_apply_button
+            )
+            self.config_panel.incrate_playlist_format.currentIndexChanged.connect(
+                self._update_apply_button
+            )
+            self.config_panel.incrate_username_edit.textChanged.connect(
+                self._update_apply_button
+            )
+            self.config_panel.incrate_password_edit.textChanged.connect(
+                self._update_apply_button
+            )
 
     def _open_privacy_dialog(self) -> None:
         from cuepoint.ui.dialogs.privacy_dialog import PrivacyDialog

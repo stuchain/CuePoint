@@ -173,7 +173,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_inventory_track_key ON inventory(track_key
   3. After each row (or every N rows), call progress_callback(current, total).
   4. Throttle: time.sleep(0.5) or configurable delay between Beatport calls to avoid rate limit.
   5. On exception (e.g. BeatportAPIError): log and continue with next row; do not fail entire run.
-- **Query building:** reuse `cuepoint.core.query_generator` if it has a public function to build search query from artist+title; else simple concatenation with space.
+- **Query building and matching:** Use the same flow as inKey: `make_search_queries(title, artist)` and `best_beatport_match()` (same query variants, scoring, guards, and early exit). Implemented in `enrichment.enrich_labels_for_empty`; search/fetch happen inside the matcher via `data.beatport` (track_urls, parse_track_page).
 
 ### 4.5 InventoryService (facade)
 

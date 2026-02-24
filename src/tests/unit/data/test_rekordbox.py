@@ -14,6 +14,7 @@ from cuepoint.data.rekordbox import (
     extract_artists_from_title,
     is_readable,
     is_writable,
+    parse_collection,
     parse_rekordbox,
     read_playlist_index,
 )
@@ -484,5 +485,229 @@ class TestRekordboxValidationHelpers:
             assert "Playlist" in playlists_dict
             # Should only include track 1, not 999
             assert playlists_dict["Playlist"].get_track_count() == 1
+        finally:
+            os.unlink(xml_path)
+
+
+class TestParseCollection:
+    """Unit tests for parse_collection (inCrate Phase 1: COLLECTION-only parsing)."""
+
+    def _collection_xml(self, tracks):
+        """Build minimal DJ_PLAYLISTS XML with only COLLECTION and TRACKs.
+
+        tracks: list of dicts with keys TrackID, Name, Artist, and optionally
+                Label, Remixer. Use None for missing optional attrs.
+        """
+        root = ET.Element("DJ_PLAYLISTS")
+        root.set("Version", "1.0.0")
+        collection = ET.SubElement(root, "COLLECTION")
+        for tr in tracks:
+            t = ET.SubElement(collection, "TRACK")
+            t.set("TrackID", tr.get("TrackID") or "")
+            if "ID" in tr:
+                t.set("ID", tr["ID"])
+            if "Key" in tr:
+                t.set("Key", tr["Key"])
+            t.set("Name", tr.get("Name") or tr.get("Title") or "")
+            t.set("Artist", tr.get("Artist") or tr.get("Artists") or "")
+            if tr.get("Label") is not None:
+                t.set("Label", tr["Label"])
+            if tr.get("Remixer") is not None:
+                t.set("Remixer", tr["Remixer"])
+        return ET.tostring(root, encoding="unicode")
+
+    def test_parse_collection_returns_iterator(self):
+        """parse_collection(xml_path) returns iterator yielding (track_id, title, artist, remix_version, label)."""
+        xml = self._collection_xml([
+            {"TrackID": "1", "Name": "Track One", "Artist": "Artist A"},
+            {"TrackID": "2", "Name": "Track Two", "Artist": "Artist B"},
+        ])
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
+            f.write(xml)
+            f.flush()
+            xml_path = f.name
+        try:
+            it = parse_collection(xml_path)
+            first = next(it)
+            second = next(it)
+            with pytest.raises(StopIteration):
+                next(it)
+            assert first == ("1", "Track One", "Artist A", "", None)
+            assert second == ("2", "Track Two", "Artist B", "", None)
+        finally:
+            os.unlink(xml_path)
+
+    def test_parse_collection_reads_label_and_remixer(self):
+        """TRACK with Label and Remixer attrs yields tuple with label and remix_version."""
+        xml = self._collection_xml([
+            {
+                "TrackID": "1",
+                "Name": "Track One",
+                "Artist": "Artist A",
+                "Label": "Defected",
+                "Remixer": "DJ X",
+            },
+        ])
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
+            f.write(xml)
+            f.flush()
+            xml_path = f.name
+        try:
+            rows = list(parse_collection(xml_path))
+            assert len(rows) == 1
+            assert rows[0][4] == "Defected"  # label
+            assert rows[0][3] == "DJ X"      # remix_version
+        finally:
+            os.unlink(xml_path)
+
+    def test_parse_collection_skips_missing_track_id(self):
+        """TRACK without TrackID is skipped; only valid TRACKs yielded."""
+        root = ET.Element("DJ_PLAYLISTS")
+        root.set("Version", "1.0.0")
+        collection = ET.SubElement(root, "COLLECTION")
+        t1 = ET.SubElement(collection, "TRACK")
+        # no TrackID
+        t1.set("Name", "No ID Track")
+        t1.set("Artist", "Artist")
+        t2 = ET.SubElement(collection, "TRACK")
+        t2.set("TrackID", "2")
+        t2.set("Name", "Valid Track")
+        t2.set("Artist", "Artist B")
+        xml = ET.tostring(root, encoding="unicode")
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
+            f.write(xml)
+            f.flush()
+            xml_path = f.name
+        try:
+            rows = list(parse_collection(xml_path))
+            assert len(rows) == 1
+            assert rows[0][0] == "2"
+            assert rows[0][1] == "Valid Track"
+        finally:
+            os.unlink(xml_path)
+
+    def test_parse_collection_skips_missing_title(self):
+        """TRACK without Name/Title is skipped."""
+        xml = self._collection_xml([
+            {"TrackID": "1", "Name": "", "Artist": "Artist A"},
+            {"TrackID": "2", "Name": "Valid Title", "Artist": "Artist B"},
+        ])
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
+            f.write(xml)
+            f.flush()
+            xml_path = f.name
+        try:
+            rows = list(parse_collection(xml_path))
+            assert len(rows) == 1
+            assert rows[0][1] == "Valid Title"
+        finally:
+            os.unlink(xml_path)
+
+    def test_parse_collection_empty_collection(self):
+        """COLLECTION with no TRACK yields nothing."""
+        xml = self._collection_xml([])
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
+            f.write(xml)
+            f.flush()
+            xml_path = f.name
+        try:
+            assert list(parse_collection(xml_path)) == []
+        finally:
+            os.unlink(xml_path)
+
+    def test_parse_collection_file_not_found(self):
+        """Missing file raises FileNotFoundError."""
+        with pytest.raises(FileNotFoundError, match="XML file not found"):
+            list(parse_collection("nonexistent.xml"))
+
+    def test_parse_collection_oversized_xml(self):
+        """File larger than MAX_XML_SIZE_BYTES raises ValueError with 'too large'."""
+        xml = self._collection_xml([
+            {"TrackID": "1", "Name": "Track", "Artist": "Artist"},
+        ])
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
+            f.write(xml)
+            f.flush()
+            xml_path = f.name
+        try:
+            with patch("os.path.getsize", return_value=MAX_XML_SIZE_BYTES + 1):
+                with pytest.raises(ValueError, match="too large"):
+                    list(parse_collection(xml_path))
+        finally:
+            os.unlink(xml_path)
+
+    def test_parse_collection_remix_from_title_when_remixer_empty(self):
+        """When Remixer is empty, remix_version is derived from title via mix_parser."""
+        xml = self._collection_xml([
+            {
+                "TrackID": "1",
+                "Name": "Song (Artist Remix)",
+                "Artist": "Artist A",
+                "Remixer": "",
+            },
+        ])
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
+            f.write(xml)
+            f.flush()
+            xml_path = f.name
+        try:
+            rows = list(parse_collection(xml_path))
+            assert len(rows) == 1
+            # remix_version (index 3) should be derived from title; mix_parser returns list, joined as ", "
+            assert rows[0][3] == "Artist"  # _extract_remixer_names_from_title("Song (Artist Remix)") -> ["Artist"]
+        finally:
+            os.unlink(xml_path)
+
+    def test_parse_collection_alternative_attributes(self):
+        """XML using Key instead of TrackID, Artists instead of Artist still yields."""
+        xml = self._collection_xml([
+            {"TrackID": "1", "Name": "Track 1", "Artist": "Artist 1"},
+        ])
+        # Override: use ID and Title and Artists
+        root = ET.fromstring(xml)
+        coll = root.find(".//COLLECTION")
+        for t in coll.findall("TRACK"):
+            t.set("Key", "99")
+            t.set("ID", "99")
+            t.set("Title", "Alt Title")
+            t.set("Artists", "Alt Artist")
+            # Remove TrackID/Name/Artist so parser falls back to Key, Title, Artists
+            t.attrib.pop("TrackID", None)
+            t.attrib.pop("Name", None)
+            t.attrib.pop("Artist", None)
+        xml = ET.tostring(root, encoding="unicode")
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
+            f.write(xml)
+            f.flush()
+            xml_path = f.name
+        try:
+            rows = list(parse_collection(xml_path))
+            assert len(rows) == 1
+            assert rows[0][0] == "99"
+            assert rows[0][1] == "Alt Title"
+            assert rows[0][2] == "Alt Artist"
+        finally:
+            os.unlink(xml_path)
+
+    def test_parse_collection_progress_callback_during_streaming(self):
+        """With progress_callback, parser calls it with (count, -1) during parse (streaming)."""
+        tracks = [
+            {"TrackID": str(i), "Name": f"Track {i}", "Artist": f"Artist {i}"}
+            for i in range(1, 151)
+        ]
+        xml = self._collection_xml(tracks)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
+            f.write(xml)
+            f.flush()
+            xml_path = f.name
+        try:
+            progress_calls = []
+            def progress(current: int, total: int) -> None:
+                progress_calls.append((current, total))
+            rows = list(parse_collection(xml_path, progress_callback=progress))
+            assert len(rows) == 150
+            assert (1, -1) in progress_calls, "Expected (1, -1) after first track"
+            assert (100, -1) in progress_calls, "Expected (100, -1) at 100 tracks"
+            assert all(t == -1 for _, t in progress_calls), "Total should be -1 during parse"
         finally:
             os.unlink(xml_path)
