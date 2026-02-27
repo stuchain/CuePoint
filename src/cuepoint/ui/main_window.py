@@ -158,6 +158,8 @@ class MainWindow(QMainWindow):
         self.restore_state()
         # Step 9.4: first-run onboarding (shown asynchronously after window is visible)
         self._schedule_onboarding_if_needed()
+        # Beatport token: if missing, show get-token dialog (after window ready / onboarding)
+        self._schedule_beatport_token_check_if_needed()
 
         # Step 9.2: Set up focus management for accessibility
         self._setup_focus_management()
@@ -350,6 +352,45 @@ class MainWindow(QMainWindow):
             except Exception:
                 pass
             return
+
+    def _schedule_beatport_token_check_if_needed(self) -> None:
+        """If Beatport token is missing, show get-token dialog after window is ready."""
+        if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get(
+            "CUEPOINT_DISABLE_ONBOARDING"
+        ):
+            return
+
+        def show_beatport_token_dialog_if_missing():
+            try:
+                token = (os.environ.get("BEATPORT_ACCESS_TOKEN") or "").strip()
+                if not token and self._config_service:
+                    token = (
+                        self._config_service.get("incrate.beatport_access_token") or ""
+                    ).strip()
+                if token:
+                    return
+                from PySide6.QtWidgets import QApplication
+
+                self.show()
+                self.raise_()
+                QApplication.processEvents()
+                from cuepoint.ui.dialogs.beatport_token_dialog import BeatportTokenDialog
+
+                dialog = BeatportTokenDialog(parent=self, initial_token="")
+                if dialog.exec() == QDialog.DialogCode.Accepted:
+                    new_token = dialog.get_token()
+                    if new_token and self._config_service:
+                        self._config_service.set(
+                            "incrate.beatport_access_token", new_token
+                        )
+                        try:
+                            self._config_service.save()
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+
+        QTimer.singleShot(600, show_beatport_token_dialog_if_missing)
 
     def init_ui(self) -> None:
         """Initialize all UI components and layout.
@@ -689,6 +730,7 @@ class MainWindow(QMainWindow):
         # Create config panel (but don't add to tabs - it will be in Settings dialog)
         # Keep it accessible for getting settings during processing
         self.config_panel = ConfigPanel(config_controller=self.config_controller)
+        self.config_panel.token_test_succeeded.connect(self._on_incrate_token_test_succeeded)
 
         # History tab (Past Searches)
         history_tab_content = QWidget()
@@ -947,40 +989,55 @@ class MainWindow(QMainWindow):
 
     def _show_incrate_page(self) -> None:
         """Show the inCrate page (lazy-create with DI services)."""
-        if self._incrate_page is None:
-            try:
-                from cuepoint.services.beatport_api import BeatportApi
-                from cuepoint.services.incrate_discovery_service import (
-                    IncrateDiscoveryService,
-                )
-                from cuepoint.services.inventory_service import InventoryService
-                from cuepoint.ui.widgets.incrate_page import IncratePage
-                from cuepoint.utils.di_container import get_container
-
-                container = get_container()
-                inventory = container.resolve(InventoryService)
-                beatport_api = container.resolve(BeatportApi)
-                discovery = container.resolve(IncrateDiscoveryService)
-                self._incrate_page = IncratePage(
-                    inventory_service=inventory,
-                    beatport_api=beatport_api,
-                    discovery_service=discovery,
-                    config_service=self._config_service,
-                )
-                self._incrate_page.back_to_tools_requested.connect(
-                    self.show_tool_selection_page
-                )
-            except Exception as e:
-                QMessageBox.warning(
-                    self,
-                    "inCrate",
-                    f"Could not load inCrate: {e}. Check that services are registered.",
-                )
-                return
+        if not self._ensure_incrate_page_created():
+            QMessageBox.warning(
+                self,
+                "inCrate",
+                "Could not load inCrate. Check that services are registered.",
+            )
+            return
         if self._incrate_page is not None:
             self.setCentralWidget(self._incrate_page)
             self.current_page = "incrate"
             self.menuBar().show()
+
+    def _ensure_incrate_page_created(self) -> bool:
+        """Create inCrate page if not yet created (so it loads with current config/token). Does not switch UI."""
+        if self._incrate_page is not None:
+            return True
+        try:
+            from cuepoint.services.beatport_api import BeatportApi
+            from cuepoint.services.incrate_discovery_service import (
+                IncrateDiscoveryService,
+            )
+            from cuepoint.services.inventory_service import InventoryService
+            from cuepoint.ui.widgets.incrate_page import IncratePage
+            from cuepoint.utils.di_container import get_container
+
+            container = get_container()
+            inventory = container.resolve(InventoryService)
+            beatport_api = container.resolve(BeatportApi)
+            discovery = container.resolve(IncrateDiscoveryService)
+            self._incrate_page = IncratePage(
+                inventory_service=inventory,
+                beatport_api=beatport_api,
+                discovery_service=discovery,
+                config_service=self._config_service,
+                get_beatport_api=lambda: container.resolve(BeatportApi),
+            )
+            self._incrate_page.back_to_tools_requested.connect(
+                self.show_tool_selection_page
+            )
+            return True
+        except Exception:
+            return False
+
+    def _on_incrate_token_test_succeeded(self) -> None:
+        """After Test connection succeeds in Settings, ensure inCrate page exists and refresh genres."""
+        self._ensure_incrate_page_created()
+        if self._incrate_page is not None:
+            # Defer so the "connection OK" message shows first, then genres load
+            QTimer.singleShot(0, self._incrate_page.refresh_genres)
 
     def on_tool_selected(self, tool_name: str) -> None:
         """Handle tool selection"""
@@ -4506,6 +4563,13 @@ class MainWindow(QMainWindow):
         # Save current tab
         if hasattr(self, "tabs"):
             settings.setValue("last_tab", self.tabs.currentIndex())
+
+        # Save inCrate Discover selection (artists, labels, genres, period) so it restores next time
+        if getattr(self, "_incrate_page", None) is not None:
+            try:
+                self._incrate_page.persist_discover_selection()
+            except Exception:
+                pass
 
         settings.sync()
 

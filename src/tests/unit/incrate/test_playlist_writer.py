@@ -40,12 +40,19 @@ class TestCreatePlaylistAndAddTracksApiSuccess:
 
 
 class TestCreatePlaylistAndAddTracksApiFailureFallsBack:
-    def test_create_playlist_and_add_tracks_api_failure_falls_back(self):
+    def test_create_playlist_and_add_tracks_api_failure_tries_browser_when_credentials_given(self):
+        """When API fails and credentials + browser callable are provided, we try the browser fallback."""
         api = Mock()
         api.create_playlist.side_effect = Exception("API error")
         api.add_track_to_playlist = Mock()
         tracks = [_track(100)]
-        browser_result = PlaylistResult(True, "https://beatport.com/playlist/1", "1", 1, None)
+        browser_result = PlaylistResult(
+            success=True,
+            playlist_url="https://www.beatport.com/playlist/xyz",
+            playlist_id="xyz",
+            added_count=1,
+            error=None,
+        )
         browser_fn = Mock(return_value=browser_result)
         result = create_playlist_and_add_tracks(
             "feb26",
@@ -58,6 +65,23 @@ class TestCreatePlaylistAndAddTracksApiFailureFallsBack:
         browser_fn.assert_called_once()
         assert result.success is True
         assert result.added_count == 1
+        assert result.playlist_url == "https://www.beatport.com/playlist/xyz"
+
+    def test_create_playlist_and_add_tracks_api_failure_no_browser_when_no_callable(self):
+        """When API fails and no browser callable, we do not call browser and return API error."""
+        api = Mock()
+        api.create_playlist.side_effect = Exception("API error")
+        tracks = [_track(100)]
+        result = create_playlist_and_add_tracks(
+            "feb26",
+            tracks,
+            api_client=api,
+            browser_add_to_playlist=None,
+            beatport_username="u",
+            beatport_password="p",
+        )
+        assert result.success is False
+        assert "API error" in (result.error or "")
 
 
 class TestPlaylistResultOnApiError:
@@ -76,4 +100,4 @@ class TestPlaylistResultOnApiError:
         assert result.success is False
         assert result.added_count == 0
         assert result.error is not None
-        assert "credentials" in result.error.lower() or "missing" in result.error.lower()
+        assert "playlist" in result.error.lower() or "401" in result.error.lower() or "unauthorized" in result.error.lower()

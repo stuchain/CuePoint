@@ -27,6 +27,8 @@ class IncrateDiscoveryService:
         charts_to_date: Optional[date] = None,
         new_releases_days: Optional[int] = None,
         progress_callback: Optional[Callable[[str, int, int], None]] = None,
+        library_artist_names: Optional[List[str]] = None,
+        library_label_names: Optional[List[str]] = None,
     ) -> List[DiscoveredTrack]:
         """Run discovery; use config for defaults when args are None.
 
@@ -36,6 +38,8 @@ class IncrateDiscoveryService:
             charts_to_date: End date for charts; if None, today.
             new_releases_days: Days back for label releases; if None, use incrate.new_releases_days (default 30).
             progress_callback: Optional (stage, current, total).
+            library_artist_names: If non-empty, only chart authors in this list; None/empty = all.
+            library_label_names: If non-empty, only these labels for releases; None/empty = all.
 
         Returns:
             Deduplicated list of DiscoveredTrack.
@@ -67,4 +71,6 @@ class IncrateDiscoveryService:
             to_date,
             new_releases_days=days,
             progress_callback=progress_callback,
+            library_artist_names=library_artist_names,
+            library_label_names=library_label_names,
         )

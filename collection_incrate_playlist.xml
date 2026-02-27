@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<DJ_PLAYLISTS Version="1.0.0">
+  <COLLECTION>
+    <TRACK TrackID="1" Name="Track 1" Artist="Jimi Jules" Label="Nothing But"/>
+    <TRACK TrackID="2" Name="Track 2" Artist="Marasi" Label="Nothing But"/>
+    <TRACK TrackID="3" Name="Track 3" Artist="Diass" Label="Kompakt"/>
+    <TRACK TrackID="4" Name="Track 4" Artist="Yamil" Label="Kompakt"/>
+  </COLLECTION>
+</DJ_PLAYLISTS>

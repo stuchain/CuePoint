@@ -2,9 +2,16 @@
 
 import json
 import logging
+import re
 from datetime import date
 from typing import Any, Dict, List, Optional
 
+# Web track URL format: https://www.beatport.com/track/{slug}/{id} or /track/t/{id}
+BEATPORT_WEB_TRACK_BASE = "https://www.beatport.com/track"
+# API returns URLs like https://api.beatport.com/v4/catalog/tracks/23332107/
+_API_TRACK_ID_RE = re.compile(r"/catalog/tracks/(\d+)/?$")
+
+from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError
 from cuepoint.incrate.beatport_api_models import (
     ChartDetail,
     ChartSummary,
@@ -38,6 +45,28 @@ def _parse_date(s: Optional[str]) -> str:
     if not s:
         return ""
     return str(s).split("T")[0].strip()
+
+
+def api_track_url_to_web(url: str, track_id: Optional[int] = None, slug: Optional[str] = None) -> str:
+    """Convert API track URL to www Beatport track URL so the browser can open it.
+
+    API returns e.g. https://api.beatport.com/v4/catalog/tracks/23332107/
+    Web format is https://www.beatport.com/track/{slug}/{id} or /track/t/{id}.
+    """
+    u = (url or "").strip()
+    if not u:
+        return ""
+    # Already a web track URL
+    if "www.beatport.com" in u and "/track/" in u and "/catalog/" not in u:
+        return u
+    # API URL: extract track ID and build web URL
+    if "api.beatport.com" in u or "/catalog/tracks/" in u:
+        m = _API_TRACK_ID_RE.search(u)
+        tid = track_id if track_id is not None else (int(m.group(1)) if m else None)
+        if tid is not None:
+            slug_part = (slug or "").strip() or "t"
+            return f"{BEATPORT_WEB_TRACK_BASE}/{slug_part}/{tid}"
+    return u
 
 
 def _parse_genre(obj: Any) -> Genre:
@@ -79,12 +108,17 @@ def _parse_chart_track(obj: Any, position: int = 0) -> ChartTrack:
         ).strip()
     else:
         artists_str = str(artists or "").strip()
-    url = str(obj.get("url") or obj.get("beatport_url") or "").strip()
+    raw_url = str(obj.get("url") or obj.get("beatport_url") or "").strip()
+    track_id = int((obj.get("id", obj.get("track_id", 0)) or 0))
+    slug = str(obj.get("slug") or "").strip()
+    beatport_url = api_track_url_to_web(raw_url, track_id=track_id, slug=slug or None)
+    if not beatport_url:
+        beatport_url = raw_url
     return ChartTrack(
-        track_id=int(obj.get("id", obj.get("track_id", 0)) or 0),
+        track_id=track_id,
         title=str(obj.get("title") or "").strip(),
         artists=artists_str,
-        beatport_url=url,
+        beatport_url=beatport_url,
         position=int(obj.get("position", position) or position),
     )
 
@@ -135,11 +169,17 @@ def _parse_label_release_track(obj: Any) -> LabelReleaseTrack:
         ).strip()
     else:
         artists_str = str(artists or "").strip()
+    raw_url = str(obj.get("url") or obj.get("beatport_url") or "").strip()
+    track_id = int((obj.get("id", obj.get("track_id", 0)) or 0))
+    slug = str(obj.get("slug") or "").strip()
+    beatport_url = api_track_url_to_web(raw_url, track_id=track_id, slug=slug or None)
+    if not beatport_url:
+        beatport_url = raw_url
     return LabelReleaseTrack(
-        track_id=int(obj.get("id", obj.get("track_id", 0)) or 0),
+        track_id=track_id,
         title=str(obj.get("title") or obj.get("name") or "").strip(),
         artists=artists_str,
-        beatport_url=str(obj.get("url") or obj.get("beatport_url") or "").strip(),
+        beatport_url=beatport_url,
         release_date=_parse_date(obj.get("release_date") or obj.get("date") or ""),
     )
 
@@ -192,7 +232,9 @@ class BeatportApi:
         if self._cache:
             cached = self._cache.get(_CACHE_GENRES)
             if cached is not None:
+                _logger.info("Beatport API: list_genres — cache hit, %s genres", len(cached))
                 return cached
+        _logger.info("Beatport API: list_genres — cache miss, fetching")
         data = self._client.get("/catalog/genres") or self._client.get("/genres")
         if data is None:
             return []
@@ -200,6 +242,7 @@ class BeatportApi:
         if isinstance(results, dict):
             results = results.get("genres", results.get("items", []))
         genres = [_parse_genre(o) for o in results if isinstance(o, dict) and (o.get("id") is not None)]
+        _logger.info("Beatport API: list_genres — parsed %s genres from API", len(genres))
         if self._cache:
             self._cache.set(_CACHE_GENRES, genres, ttl=_CACHE_GENRES_TTL)
         return genres
@@ -216,7 +259,19 @@ class BeatportApi:
         if self._cache:
             cached = self._cache.get(cache_key)
             if cached is not None:
+                _logger.info(
+                    "Beatport API: list_charts(genre_id=%s) — cache hit, %s charts",
+                    genre_id,
+                    len(cached),
+                )
                 return cached
+        _logger.info(
+            "Beatport API: list_charts(genre_id=%s, from=%s, to=%s, limit=%s) — cache miss, fetching",
+            genre_id,
+            from_date,
+            to_date,
+            limit,
+        )
         # API uses publish_date slice and page/per_page (not from/to/limit)
         publish_slice = f"{from_date.isoformat()}:{to_date.isoformat()}"
         per_page = min(max(1, limit), 100)
@@ -249,6 +304,12 @@ class BeatportApi:
             if isinstance(results, dict):
                 results = results.get("charts", results.get("items", []))
             raw_page = [c for c in results if isinstance(c, dict)]
+            _logger.info(
+                "Beatport API: list_charts page %s — got %s items (total so far %s)",
+                page,
+                len(raw_page),
+                len(all_raw) + len(raw_page),
+            )
             if not raw_page:
                 break
             all_raw.extend(raw_page)
@@ -258,6 +319,12 @@ class BeatportApi:
                 break
             page += 1
         if not all_raw:
+            _logger.info(
+                "Beatport API: list_charts(genre_id=%s, from=%s, to=%s) — no charts returned (raw empty)",
+                genre_id,
+                from_date,
+                to_date,
+            )
             if self._cache:
                 self._cache.set(cache_key, [], ttl=_CACHE_CHARTS_TTL)
             return []
@@ -282,6 +349,13 @@ class BeatportApi:
             if not c.published_date or from_d <= c.published_date <= to_d
         ]
         filtered.sort(key=lambda c: c.published_date or "", reverse=True)
+        _logger.info(
+            "Beatport API: list_charts(genre_id=%s, from=%s, to=%s) — %s charts (after date filter)",
+            genre_id,
+            from_date,
+            to_date,
+            len(filtered),
+        )
         if self._cache:
             self._cache.set(cache_key, filtered, ttl=_CACHE_CHARTS_TTL)
         return filtered
@@ -292,13 +366,25 @@ class BeatportApi:
         if self._cache:
             cached = self._cache.get(cache_key)
             if cached is not None:
+                _logger.info(
+                    "Beatport API: get_chart(%s) — cache hit, %s tracks",
+                    chart_id,
+                    len(cached.tracks) if cached else 0,
+                )
                 return cached
+        _logger.info("Beatport API: get_chart(%s) — cache miss, fetching", chart_id)
         data = self._client.get(f"/catalog/charts/{chart_id}") or self._client.get(f"/charts/{chart_id}")
         if data is None or not isinstance(data, dict):
+            _logger.debug("Beatport API: get_chart(%s) — no data or not dict", chart_id)
             return None
         detail = _parse_chart_detail(data)
         # Chart detail may not include tracks; try dedicated tracks endpoint
         if not detail.tracks and (data.get("track_count") or 0) > 0:
+            _logger.info(
+                "Beatport API: get_chart(%s) — main response had 0 tracks but track_count=%s, fetching /tracks",
+                chart_id,
+                data.get("track_count"),
+            )
             tracks_data = self._client.get(f"/catalog/charts/{chart_id}/tracks") or self._client.get(
                 f"/charts/{chart_id}/tracks"
             )
@@ -323,6 +409,12 @@ class BeatportApi:
                             published_date=detail.published_date or _parse_date(data.get("publish_date") or ""),
                             tracks=[_parse_chart_track(t, i + 1) for i, t in enumerate(track_objs)],
                         )
+        if not detail.tracks:
+            _logger.info(
+                "Beatport API: get_chart(%s) — chart %r has 0 tracks",
+                chart_id,
+                (detail.name or "")[:40],
+            )
         if self._cache:
             self._cache.set(cache_key, detail, ttl=_CACHE_CHART_TTL)
         return detail
@@ -338,7 +430,20 @@ class BeatportApi:
         if self._cache:
             cached = self._cache.get(cache_key)
             if cached is not None:
+                n_t = sum(len(r.tracks) for r in cached)
+                _logger.info(
+                    "Beatport API: get_label_releases(label_id=%s) — cache hit, %s releases, %s tracks",
+                    label_id,
+                    len(cached),
+                    n_t,
+                )
                 return cached
+        _logger.info(
+            "Beatport API: get_label_releases(label_id=%s, from=%s, to=%s) — cache miss, fetching",
+            label_id,
+            from_date,
+            to_date,
+        )
         data = self._client.get(
             f"/catalog/labels/{label_id}/releases",
             params={"from": from_date.isoformat(), "to": to_date.isoformat()},
@@ -463,9 +568,58 @@ class BeatportApi:
                         label_id,
                         len(virtual_release.tracks),
                     )
+        n_tracks = sum(len(r.tracks) for r in filtered)
+        _logger.info(
+            "Beatport API: get_label_releases(label_id=%s) — returning %s releases, %s tracks",
+            label_id,
+            len(filtered),
+            n_tracks,
+        )
         if self._cache:
             self._cache.set(cache_key, filtered, ttl=_CACHE_LABEL_RELEASES_TTL)
         return filtered
+
+    def _search_label_via_catalog_search(self, name: str) -> Optional[int]:
+        """Try GET /catalog/search?q=... to find labels; return first matching label id or None."""
+        query = (name or "").strip()
+        if not query:
+            return None
+        # Try catalog search endpoint (often returns relevant labels first)
+        for param_q in [query, query.lower().replace(" ", "-")]:
+            data = self._client.get("/catalog/search", params={"q": param_q}) or self._client.get(
+                "/catalog/search", params={"query": param_q}
+            )
+            if data is None or not isinstance(data, dict):
+                continue
+            # Response may be { "labels": [...] }, { "labels": { "results": [...] } }, or { "results": [ { "type": "label", ... } ] }
+            labels_raw: List[Dict[str, Any]] = []
+            if "labels" in data:
+                lab = data["labels"]
+                if isinstance(lab, list):
+                    labels_raw = [r for r in lab if isinstance(r, dict) and r.get("id") is not None]
+                elif isinstance(lab, dict) and "results" in lab:
+                    labels_raw = [r for r in lab["results"] if isinstance(r, dict) and r.get("id") is not None]
+            if not labels_raw and "results" in data:
+                for r in data["results"]:
+                    if isinstance(r, dict) and (r.get("type") == "label" or "slug" in r) and r.get("id") is not None:
+                        labels_raw.append(r)
+            if not labels_raw:
+                continue
+            want_name = query.lower()
+            want_slug = want_name.replace(" ", "-").replace("_", "-")
+            for item in labels_raw:
+                item_name = (item.get("name") or item.get("title") or "").strip().lower()
+                item_slug = (item.get("slug") or "").strip().lower().replace("_", "-")
+                if item_name == want_name or (item_slug and item_slug == want_slug):
+                    return int(item["id"])
+                if want_name in item_name or item_name in want_name:
+                    return int(item["id"])
+            # First result if it looks like a name match (substring)
+            if labels_raw:
+                first_name = (labels_raw[0].get("name") or labels_raw[0].get("title") or "").strip().lower()
+                if want_name in first_name or first_name in want_name:
+                    return int(labels_raw[0]["id"])
+        return None
 
     def search_label_by_name(self, name: str) -> Optional[int]:
         """Resolve label name to id. Returns first match id or None. Cached 1h."""
@@ -476,34 +630,109 @@ class BeatportApi:
         if self._cache:
             cached = self._cache.get(cache_key)
             if cached is not None:
+                _logger.info("Beatport API: search_label_by_name(%r) — cache hit, id=%s", name[:50], cached)
                 return cached
-        data = self._client.get("/catalog/labels", params={"q": name.strip()}) or self._client.get(
-            "/labels", params={"q": name.strip()}
-        )
-        if data is None:
+        _logger.info("Beatport API: search_label_by_name(%r) — cache miss, fetching", name[:50])
+        # Prefer catalog search endpoint (returns relevant labels for the query)
+        search_id = self._search_label_via_catalog_search(name)
+        if search_id is not None:
+            _logger.info(
+                "Beatport API: search_label_by_name(%r) — found via /catalog/search, id=%s",
+                name[:50],
+                search_id,
+            )
+            if self._cache:
+                self._cache.set(cache_key, search_id, ttl=_CACHE_LABEL_SEARCH_TTL)
+            return search_id
+        query = name.strip()
+        raw_list: List[Dict[str, Any]] = []
+        page = 1
+        per_page = 50
+        total_count: Optional[int] = None
+        max_pages = 15  # fetch up to 15 pages (e.g. 750 results) to find a match
+        while page <= max_pages:
+            data = self._client.get(
+                "/catalog/labels",
+                params={"q": query, "per_page": per_page, "page": page},
+            ) or self._client.get(
+                "/labels",
+                params={"q": query, "per_page": per_page, "page": page},
+            )
+            if data is None:
+                if page == 1:
+                    _logger.info(
+                        "Beatport API: search_label_by_name(%r) — API returned no data",
+                        name[:50],
+                    )
+                    if self._cache:
+                        self._cache.set(cache_key, None, ttl=_CACHE_LABEL_SEARCH_TTL)
+                    return None
+                break
+            if isinstance(data, dict) and page == 1:
+                total_count = data.get("count")
+                _logger.info(
+                    "Beatport API: search_label_by_name(%r) — response count=%s, page=%s, per_page=%s",
+                    name[:50],
+                    total_count,
+                    data.get("page"),
+                    data.get("per_page"),
+                )
+            results = data if isinstance(data, list) else (
+                data.get("labels") or data.get("results") or data.get("data") or []
+            )
+            if isinstance(results, dict):
+                results = results.get("labels", results.get("items", []))
+            page_items = [r for r in results if isinstance(r, dict) and r.get("id") is not None]
+            if not page_items:
+                break
+            raw_list.extend(page_items)
+            if page == 1 and raw_list:
+                first = raw_list[0]
+                _logger.info(
+                    "Beatport API: search_label_by_name(%r) — first result name=%r, slug=%r",
+                    name[:50],
+                    first.get("name"),
+                    first.get("slug"),
+                )
+            # If we have enough to find a match, or no more pages, stop fetching
+            if len(page_items) < per_page:
+                break
+            if total_count is not None and len(raw_list) >= total_count:
+                break
+            page += 1
+            _logger.debug(
+                "Beatport API: search_label_by_name(%r) — fetching page %s (%s items so far)",
+                name[:50],
+                page,
+                len(raw_list),
+            )
+        if not raw_list:
+            _logger.info(
+                "Beatport API: search_label_by_name(%r) — API returned 0 label items after %s page(s)",
+                name[:50],
+                page,
+            )
             if self._cache:
                 self._cache.set(cache_key, None, ttl=_CACHE_LABEL_SEARCH_TTL)
             return None
-        # API may return { "labels": [...] }, { "results": [...] }, { "data": [...] }, or list
-        results = data if isinstance(data, list) else (
-            data.get("labels") or data.get("results") or data.get("data") or []
-        )
-        if isinstance(results, dict):
-            results = results.get("labels", results.get("items", []))
         want_name = (name or "").strip().lower()
         want_slug = want_name.replace(" ", "-").replace("_", "-")
-        for item in results:
-            if not isinstance(item, dict) or item.get("id") is None:
-                continue
+        # Normalize for flexible match: remove punctuation like ":", collapse spaces
+        def _norm(s: str) -> str:
+            s = (s or "").strip().lower()
+            for c in ".:-_":
+                s = s.replace(c, " ")
+            return " ".join(s.split())
+
+        want_norm = _norm(want_name)
+        for item in raw_list:
             item_name = (item.get("name") or item.get("title") or "").strip().lower()
             label_id = int(item["id"])
             if item_name == want_name:
                 if self._cache:
                     self._cache.set(cache_key, label_id, ttl=_CACHE_LABEL_SEARCH_TTL)
                 return label_id
-        for item in results:
-            if not isinstance(item, dict) or item.get("id") is None:
-                continue
+        for item in raw_list:
             item_slug = (item.get("slug") or "").strip().lower().replace("_", "-")
             if item_slug and want_slug and item_slug == want_slug:
                 label_id = int(item["id"])
@@ -531,21 +760,75 @@ class BeatportApi:
                         if self._cache:
                             self._cache.set(cache_key, label_id, ttl=_CACHE_LABEL_SEARCH_TTL)
                         return label_id
-        for item in results:
-            if not isinstance(item, dict) or item.get("id") is None:
-                continue
+        # Substring match (either direction)
+        for item in raw_list:
             item_name = (item.get("name") or item.get("title") or "").strip().lower()
             label_id = int(item["id"])
             if want_name in item_name or item_name in want_name:
                 if self._cache:
                     self._cache.set(cache_key, label_id, ttl=_CACHE_LABEL_SEARCH_TTL)
                 return label_id
-        for item in results:
-            if isinstance(item, dict) and item.get("id") is not None:
-                label_id = int(item["id"])
+        # Normalized match (e.g. "d:vision" vs "d vision" or "dvision")
+        for item in raw_list:
+            item_name = (item.get("name") or item.get("title") or "").strip().lower()
+            item_norm = _norm(item_name)
+            label_id = int(item["id"])
+            if want_norm == item_norm or want_norm in item_norm or item_norm in want_norm:
                 if self._cache:
                     self._cache.set(cache_key, label_id, ttl=_CACHE_LABEL_SEARCH_TTL)
                 return label_id
+        # Single result fallback: when API returns exactly one label for the query, use it
+        if len(raw_list) == 1:
+            label_id = int(raw_list[0]["id"])
+            item_name = (raw_list[0].get("name") or raw_list[0].get("title") or "").strip()
+            _logger.info(
+                "Beatport API: search_label_by_name(%r) — no exact match, using single result id=%s name=%r",
+                name[:50],
+                label_id,
+                item_name[:40],
+            )
+            if self._cache:
+                self._cache.set(cache_key, label_id, ttl=_CACHE_LABEL_SEARCH_TTL)
+            return label_id
+        _logger.info(
+            "Beatport API: search_label_by_name(%r) — no match among %s results (sample: %s)",
+            name[:50],
+            len(raw_list),
+            [(r.get("name") or r.get("title") or r.get("id")) for r in raw_list[:5]],
+        )
         if self._cache:
             self._cache.set(cache_key, None, ttl=_CACHE_LABEL_SEARCH_TTL)
         return None
+
+    def create_playlist(self, name: str) -> Optional[str]:
+        """Create a playlist for the current user. Returns playlist id or None."""
+        if not (name or "").strip():
+            return None
+        post = getattr(self._client, "post", None)
+        if not callable(post):
+            return None
+        try:
+            data = post("my/playlists", json={"name": (name or "").strip()})
+            if data is None or not isinstance(data, dict):
+                return None
+            pid = data.get("id")
+            if pid is not None:
+                return str(pid)
+            return None
+        except BeatportAPIError:
+            raise
+        except Exception as e:
+            _logger.warning("create_playlist failed: %s", e)
+            return None
+
+    def add_track_to_playlist(self, playlist_id: str, track_id: int) -> None:
+        """Add a track to a playlist. Raises on failure."""
+        post = getattr(self._client, "post", None)
+        if not callable(post):
+            raise RuntimeError("API client does not support POST")
+        post(f"my/playlists/{playlist_id}/tracks", json={"track_id": int(track_id)})
+
+    def playlist_url(self, playlist_id: str) -> Optional[str]:
+        """Return the Beatport URL for a playlist (if known)."""
+        base = "https://www.beatport.com"
+        return f"{base}/playlist/placeholder/{playlist_id}" if playlist_id else None

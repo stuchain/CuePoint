@@ -4,6 +4,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Callable, List, Optional
 
+from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError
 from cuepoint.incrate.beatport_api_models import DiscoveredTrack
 
 _logger = logging.getLogger(__name__)
@@ -33,7 +34,13 @@ def _try_api_path(
     try:
         playlist_id = create_playlist(name)
         if not playlist_id:
-            return None
+            return PlaylistResult(
+                success=False,
+                playlist_url=None,
+                playlist_id=None,
+                added_count=0,
+                error="Could not create playlist. Your Beatport token may not have playlist write access, or the API may not support playlist creation.",
+            )
         added = 0
         for t in tracks:
             try:
@@ -50,9 +57,27 @@ def _try_api_path(
             added_count=added,
             error=None,
         )
+    except BeatportAPIError as e:
+        err_msg = getattr(e, "message", str(e)) or "Beatport API error"
+        if getattr(e, "status_code", None) == 403:
+            err_msg = "Beatport API access forbidden (403). Your token may not have playlist write scope."
+        _logger.debug("API playlist path failed: %s", e)
+        return PlaylistResult(
+            success=False,
+            playlist_url=None,
+            playlist_id=None,
+            added_count=0,
+            error=err_msg,
+        )
     except Exception as e:
         _logger.debug("API playlist path failed: %s", e)
-        return None
+        return PlaylistResult(
+            success=False,
+            playlist_url=None,
+            playlist_id=None,
+            added_count=0,
+            error=f"Playlist API failed: {e!s}",
+        )
 
 
 def _try_browser_path(
@@ -62,15 +87,7 @@ def _try_browser_path(
     password: Optional[str],
     browser_add_to_playlist: Optional[Callable[[str, List[DiscoveredTrack], str, str], PlaylistResult]],
 ) -> PlaylistResult:
-    """Use browser automation if available and credentials provided."""
-    if not username or not password:
-        return PlaylistResult(
-            success=False,
-            playlist_url=None,
-            playlist_id=None,
-            added_count=0,
-            error="Browser automation not available or credentials missing",
-        )
+    """Use browser automation (manual login in window, then create playlist and add tracks)."""
     if not callable(browser_add_to_playlist):
         return PlaylistResult(
             success=False,
@@ -124,6 +141,22 @@ def create_playlist_and_add_tracks(
     result = None
     if api_client is not None:
         result = _try_api_path(name, tracks, api_client)
+    if result is not None and result.success:
+        return result
+    # When API failed or was skipped, try browser (you log in manually in the window)
+    if callable(browser_add_to_playlist):
+        browser_result = _try_browser_path(
+            name,
+            tracks,
+            beatport_username,
+            beatport_password,
+            browser_add_to_playlist,
+        )
+        if browser_result.success:
+            return browser_result
+        # If browser also failed, prefer returning browser error so user knows to sign in there
+        if result is not None and not result.success:
+            return browser_result
     if result is not None:
         return result
     return _try_browser_path(

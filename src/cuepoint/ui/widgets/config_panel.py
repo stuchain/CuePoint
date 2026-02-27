@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
     QComboBox,
+    QDialog,
     QDoubleSpinBox,
     QGroupBox,
     QHBoxLayout,
@@ -30,6 +31,7 @@ from PySide6.QtWidgets import (
 
 from cuepoint.models.config import SETTINGS
 from cuepoint.ui.controllers.config_controller import ConfigController
+from cuepoint.ui.dialogs.beatport_token_dialog import BeatportTokenDialog
 
 
 class _BeatportTokenTestWorker(QObject):
@@ -66,6 +68,8 @@ class ConfigPanel(QWidget):
 
     # Signal emitted when settings change
     settings_changed = Signal(dict)
+    # Emitted when Test connection succeeds (so inCrate page can refresh genres)
+    token_test_succeeded = Signal()
 
     def __init__(
         self, config_controller: Optional[ConfigController] = None, parent=None
@@ -125,10 +129,18 @@ class ConfigPanel(QWidget):
         incrate_group = QGroupBox("inCrate")
         incrate_layout = QVBoxLayout()
         incrate_layout.addWidget(QLabel("Beatport API token (for Discover):"))
+        incrate_token_row = QHBoxLayout()
         self.incrate_token_edit = QLineEdit()
         self.incrate_token_edit.setEchoMode(QLineEdit.EchoMode.Password)
         self.incrate_token_edit.setPlaceholderText("Optional for discovery")
-        incrate_layout.addWidget(self.incrate_token_edit)
+        incrate_token_row.addWidget(self.incrate_token_edit)
+        self.incrate_get_token_btn = QPushButton("Get token from browser…")
+        self.incrate_get_token_btn.setToolTip(
+            "Open Beatport and follow steps to copy the Bearer token from DevTools"
+        )
+        self.incrate_get_token_btn.clicked.connect(self._on_incrate_get_token)
+        incrate_token_row.addWidget(self.incrate_get_token_btn)
+        incrate_layout.addLayout(incrate_token_row)
         incrate_layout.addWidget(QLabel("Playlist name format:"))
         self.incrate_playlist_format = QComboBox()
         self.incrate_playlist_format.addItem("Short (e.g. feb26)", "short")
@@ -656,6 +668,16 @@ class ConfigPanel(QWidget):
             pass
         self._on_setting_changed()
 
+    def _on_incrate_get_token(self) -> None:
+        """Open get-token dialog; on Save, set token in edit and persist."""
+        current = (self.incrate_token_edit.text() or "").strip() if hasattr(self, "incrate_token_edit") else ""
+        dialog = BeatportTokenDialog(parent=self, initial_token=current)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            token = dialog.get_token()
+            if token and hasattr(self, "incrate_token_edit"):
+                self.incrate_token_edit.setText(token)
+                self._on_incrate_changed()
+
     def _on_incrate_test_connection(self) -> None:
         """Test Beatport API token in a background thread."""
         token = self.incrate_token_edit.text().strip() if hasattr(self, "incrate_token_edit") else ""
@@ -686,6 +708,9 @@ class ConfigPanel(QWidget):
         self.incrate_test_result_label.setText(message)
         if success:
             self.incrate_test_result_label.setStyleSheet("color: #2e7d32; font-size: 12px;")
+            # Persist current token so inCrate page refresh uses it
+            self._on_incrate_changed()
+            self.token_test_succeeded.emit()
         else:
             self.incrate_test_result_label.setStyleSheet("color: #c62828; font-size: 12px;")
 

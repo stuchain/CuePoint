@@ -1,11 +1,15 @@
 """inCrate main page: Import, Discover, Results, Playlist sections (Phase 5)."""
 
 import logging
-from datetime import date, timedelta
-from typing import Any, List, Optional
+from datetime import date, datetime, timedelta
+from typing import Any, Callable, List, Optional
 
-from PySide6.QtCore import QObject, QThread, Signal
+from PySide6.QtCore import QObject, Qt, QThread, Signal
 from PySide6.QtWidgets import (
+    QDialog,
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
     QMessageBox,
     QPushButton,
     QScrollArea,
@@ -15,8 +19,21 @@ from PySide6.QtWidgets import (
 )
 
 from cuepoint.incrate.beatport_api_models import DiscoveredTrack
+from cuepoint.incrate.past_results_storage import (
+    load_past_results,
+    save_past_result,
+    PastDiscoveryRun,
+)
+from cuepoint.incrate.beatport_oauth import (
+    get_oauth_client_credentials,
+    token_via_password,
+)
+from cuepoint.incrate.beatport_playlist_browser import add_to_playlist_via_browser
 from cuepoint.incrate.playlist_name import default_playlist_name
-from cuepoint.incrate.playlist_writer import create_playlist_and_add_tracks
+from cuepoint.incrate.playlist_writer import PlaylistResult, create_playlist_and_add_tracks
+from cuepoint.services.beatport_api import BeatportApi
+from cuepoint.services.beatport_api_client import BeatportApiClient
+from cuepoint.ui.dialogs.beatport_playlist_signin_dialog import BeatportPlaylistSignInDialog
 from cuepoint.ui.widgets.incrate_discover_section import IncrateDiscoverSection
 from cuepoint.ui.widgets.incrate_import_section import IncrateImportSection
 from cuepoint.ui.widgets.incrate_inventory_section import IncrateInventorySection
@@ -24,6 +41,16 @@ from cuepoint.ui.widgets.incrate_playlist_section import IncratePlaylistSection
 from cuepoint.ui.widgets.incrate_results_section import IncrateResultsSection
 
 _logger = logging.getLogger(__name__)
+
+
+def _browser_add_to_playlist(
+    name: str,
+    tracks: list,
+    username: str,
+    password: str,
+) -> PlaylistResult:
+    """Playwright browser fallback: sign in and add tracks to a new playlist (visible browser window)."""
+    return add_to_playlist_via_browser(name, tracks, username, password, headless=False)
 
 
 class ImportThread(QThread):
@@ -98,6 +125,8 @@ class DiscoveryThread(QThread):
         from_date: date,
         to_date: date,
         new_releases_days: int = 30,
+        library_artist_names: Optional[List[str]] = None,
+        library_label_names: Optional[List[str]] = None,
         parent: Optional[QObject] = None,
     ):
         super().__init__(parent)
@@ -106,15 +135,25 @@ class DiscoveryThread(QThread):
         self._from_date = from_date
         self._to_date = to_date
         self._days = new_releases_days
+        self._artist_names = library_artist_names
+        self._label_names = library_label_names
 
     def run(self) -> None:
         try:
             _logger.info(
-                "inCrate discovery: thread run() started — genres=%s, from=%s, to=%s, days=%s",
+                "inCrate discovery: thread run() started — genres=%s, artists=%s, labels=%s, from=%s, to=%s, days=%s",
                 len(self._genre_ids),
+                len(self._artist_names) if self._artist_names else "all",
+                len(self._label_names) if self._label_names else "all",
                 self._from_date,
                 self._to_date,
                 self._days,
+            )
+            _logger.info(
+                "inCrate discovery: thread params — genre_ids=%s, artist_names=%s, label_names=%s",
+                self._genre_ids,
+                self._artist_names or [],
+                self._label_names or [],
             )
             self.progress.emit("Discovering...")
             self.progress_range.emit(0, 0)
@@ -138,6 +177,8 @@ class DiscoveryThread(QThread):
                 charts_to_date=self._to_date,
                 new_releases_days=self._days,
                 progress_callback=progress_cb,
+                library_artist_names=self._artist_names,
+                library_label_names=self._label_names,
             )
             _logger.info("inCrate discovery: finished — %s tracks", len(result) if result else 0)
             self.finished_result.emit(result)
@@ -157,14 +198,20 @@ class IncratePage(QWidget):
         beatport_api: Any,
         discovery_service: Any,
         config_service: Optional[Any] = None,
+        get_beatport_api: Optional[Callable[[], Any]] = None,
         parent: Optional[QWidget] = None,
     ):
         super().__init__(parent)
         self._inventory = inventory_service
         self._beatport_api = beatport_api
+        self._get_beatport_api = get_beatport_api  # Optional factory for current token (e.g. after Test token)
         self._discovery = discovery_service
         self._config = config_service
         self._discovered_tracks: List[DiscoveredTrack] = []
+        self._last_discovery_genre_ids: List[int] = []
+        self._last_discovery_artist_names: List[str] = []
+        self._last_discovery_label_names: List[str] = []
+        self._past_runs: List[PastDiscoveryRun] = []
         self._import_thread: Optional[QThread] = None
         self._discovery_thread: Optional[QThread] = None
         self._init_ui()
@@ -179,13 +226,16 @@ class IncratePage(QWidget):
         layout.addWidget(back_btn)
 
         self.tabs = QTabWidget()
-        # Workflow tab: Import, Discover, Results, Playlist
+        # Workflow tab: Import, Discover, Results, Playlist (scrollable)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(scroll.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll_content = QWidget()
+        scroll_content.setMinimumHeight(1600)
         scroll_layout = QVBoxLayout(scroll_content)
-        scroll_layout.setSpacing(16)
+        scroll_layout.setSpacing(20)
 
         self.import_section = IncrateImportSection(self)
         self.import_section.import_done.connect(self._on_import_done)
@@ -216,6 +266,23 @@ class IncratePage(QWidget):
         self.inventory_section.set_db_path(self._inventory.db_path)
         self.inventory_section.refresh_requested.connect(self._on_inventory_refresh)
         self.tabs.addTab(self.inventory_section, "Inventory")
+
+        # Past results tab: list of saved runs + results table
+        past_widget = QWidget()
+        past_layout = QVBoxLayout(past_widget)
+        past_layout.addWidget(QLabel("Saved discovery runs (most recent first). Select one to view or use in Workflow."))
+        self.past_runs_list = QListWidget()
+        self.past_runs_list.currentRowChanged.connect(self._on_past_run_selected)
+        past_layout.addWidget(self.past_runs_list)
+        self.past_use_btn = QPushButton("Use in Workflow")
+        self.past_use_btn.setToolTip("Copy this result set to Workflow tab so you can add to playlist")
+        self.past_use_btn.clicked.connect(self._on_use_past_in_workflow)
+        self.past_use_btn.setEnabled(False)
+        past_layout.addWidget(self.past_use_btn)
+        self.past_results_section = IncrateResultsSection(self)
+        past_layout.addWidget(self.past_results_section)
+        self.tabs.addTab(past_widget, "Past results")
+
         self.tabs.currentChanged.connect(self._on_tab_changed)
 
         layout.addWidget(self.tabs)
@@ -238,9 +305,11 @@ class IncratePage(QWidget):
         self._load_inventory_tab()
 
     def _on_tab_changed(self, index: int) -> None:
-        """When switching to Inventory tab, load table if needed."""
+        """When switching tabs, load tab content if needed."""
         if index == 1:
             self._load_inventory_tab()
+        elif index == 2:
+            self._load_past_results_tab()
 
     def _on_inventory_refresh(self) -> None:
         self._load_inventory_tab()
@@ -254,13 +323,62 @@ class IncratePage(QWidget):
         except Exception as e:
             _logger.warning("inCrate: could not load inventory for tab: %s", e)
 
+    def _load_past_results_tab(self) -> None:
+        """Load saved discovery runs into the Past results list."""
+        self._past_runs = load_past_results()
+        self.past_runs_list.clear()
+        for run in self._past_runs:
+            try:
+                ts = run.timestamp
+                if "T" in ts:
+                    dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                    label = dt.strftime("%d %b %Y %H:%M")
+                else:
+                    label = ts[:16] if len(ts) >= 16 else ts
+                item = QListWidgetItem(f"{label} — {len(run.tracks)} tracks")
+                item.setData(Qt.ItemDataRole.UserRole, run.run_id)
+                self.past_runs_list.addItem(item)
+            except Exception:
+                item = QListWidgetItem(f"{len(run.tracks)} tracks")
+                item.setData(Qt.ItemDataRole.UserRole, run.run_id)
+                self.past_runs_list.addItem(item)
+        self.past_use_btn.setEnabled(False)
+        self.past_results_section.set_tracks([])
+
+    def _on_past_run_selected(self, row: int) -> None:
+        """Show selected past run's tracks in the results section."""
+        if row < 0 or row >= len(self._past_runs):
+            self.past_results_section.set_tracks([])
+            self.past_use_btn.setEnabled(False)
+            return
+        run = self._past_runs[row]
+        self.past_results_section.set_tracks(run.tracks)
+        self.past_use_btn.setEnabled(True)
+
+    def _on_use_past_in_workflow(self) -> None:
+        """Copy selected past result to Workflow tab and switch to it."""
+        row = self.past_runs_list.currentRow()
+        if row < 0 or row >= len(self._past_runs):
+            return
+        run = self._past_runs[row]
+        self._discovered_tracks = list(run.tracks)
+        self.results_section.set_tracks(self._discovered_tracks)
+        self.tabs.setCurrentIndex(0)
+
     def _refresh_stats(self) -> None:
         try:
             stats = self._inventory.get_inventory_stats()
             total = stats.get("total", 0)
-            artists = len(self._inventory.get_library_artists())
-            labels = len(self._inventory.get_library_labels())
+            library_artists = self._inventory.get_library_artists()
+            library_labels = self._inventory.get_library_labels()
+            artists = len(library_artists)
+            labels = len(library_labels)
             self.import_section.set_stats(total, artists, labels)
+            saved_artists = self._get_saved_discover_artist_names()
+            saved_labels = self._get_saved_discover_label_names()
+            self.discover_section.set_artists(library_artists, selected_names=saved_artists)
+            self.discover_section.set_labels(library_labels, selected_names=saved_labels)
+            self._load_saved_discover_period()
             token = ""
             if self._config:
                 try:
@@ -280,14 +398,113 @@ class IncratePage(QWidget):
             self.import_section.set_stats(0, 0, 0)
             self.discover_section.set_discover_enabled(False)
 
+    def _get_saved_discover_genre_ids(self) -> List[int]:
+        if not self._config:
+            return []
+        raw = self._config.get("incrate.discover_genre_ids")
+        if not isinstance(raw, list):
+            return []
+        return [int(x) for x in raw if x is not None and str(x).strip() != "" and (isinstance(x, int) or str(x).isdigit())]
+
+    def _get_saved_discover_artist_names(self) -> List[str]:
+        if not self._config:
+            return []
+        raw = self._config.get("incrate.discover_artist_names")
+        if not isinstance(raw, list):
+            return []
+        return [str(x).strip() for x in raw if x is not None and str(x).strip()]
+
+    def _get_saved_discover_label_names(self) -> List[str]:
+        if not self._config:
+            return []
+        raw = self._config.get("incrate.discover_label_names")
+        if not isinstance(raw, list):
+            return []
+        return [str(x).strip() for x in raw if x is not None and str(x).strip()]
+
+    def _load_saved_discover_period(self) -> None:
+        if not self._config:
+            return
+        try:
+            from_str = self._config.get("incrate.discover_charts_from")
+            to_str = self._config.get("incrate.discover_charts_to")
+            days = self._config.get("incrate.discover_new_releases_days")
+            if from_str and to_str:
+                from_date = date.fromisoformat(str(from_str).strip())
+                to_date = date.fromisoformat(str(to_str).strip())
+                d = 30
+                if days is not None:
+                    try:
+                        d = max(1, min(365, int(days)))
+                    except (TypeError, ValueError):
+                        pass
+                self.discover_section.set_period(from_date, to_date, d)
+            elif days is not None:
+                try:
+                    d = max(1, min(365, int(days)))
+                    to_date = date.today()
+                    from_date = to_date - timedelta(days=d)
+                    self.discover_section.set_period(from_date, to_date, d)
+                except (TypeError, ValueError):
+                    pass
+        except (ValueError, TypeError):
+            pass
+
+    def _save_discover_selection(
+        self,
+        genre_ids: List[int],
+        artist_names: List[str],
+        label_names: List[str],
+        from_date: date,
+        to_date: date,
+        new_releases_days: int,
+    ) -> None:
+        """Persist Discover selections and period to config so they are restored next time."""
+        if not self._config:
+            return
+        try:
+            self._config.set("incrate.discover_genre_ids", genre_ids)
+            self._config.set("incrate.discover_artist_names", artist_names)
+            self._config.set("incrate.discover_label_names", label_names)
+            self._config.set("incrate.discover_charts_from", from_date.isoformat())
+            self._config.set("incrate.discover_charts_to", to_date.isoformat())
+            self._config.set("incrate.discover_new_releases_days", new_releases_days)
+            self._config.save()
+        except Exception:
+            pass
+
+    def persist_discover_selection(self) -> None:
+        """Save current Discover genre/artist/label and period to config (e.g. on app close)."""
+        genre_ids = self.discover_section.get_selected_genre_ids()
+        artist_names = self.discover_section.get_selected_artist_names()
+        label_names = self.discover_section.get_selected_label_names()
+        from_date = self.discover_section.get_charts_from_date()
+        to_date = self.discover_section.get_charts_to_date()
+        new_releases_days = self.discover_section.get_new_releases_days()
+        self._save_discover_selection(
+            list(genre_ids),
+            list(artist_names),
+            list(label_names),
+            from_date,
+            to_date,
+            new_releases_days,
+        )
+
     def _load_genres(self) -> None:
         try:
-            genres = self._beatport_api.list_genres()
+            api = self._get_beatport_api() if self._get_beatport_api else self._beatport_api
+            genres = api.list_genres()
+            saved_ids = self._get_saved_discover_genre_ids()
             self.discover_section.set_genres(
-                [{"id": g.id, "name": g.name} for g in genres]
+                [{"id": g.id, "name": g.name} for g in genres],
+                selected_ids=saved_ids,
             )
         except Exception:
             self.discover_section.set_genres([])
+
+    def refresh_genres(self) -> None:
+        """Reload genres from API (e.g. after Test token succeeds in Settings)."""
+        self._load_genres()
 
     def _on_import_clicked(self) -> None:
         path = self.import_section.get_xml_path()
@@ -354,13 +571,23 @@ class IncratePage(QWidget):
 
     def _on_discover_clicked(self) -> None:
         genre_ids = self.discover_section.get_selected_genre_ids()
-        to_date = date.today()
-        from_date = to_date - timedelta(days=31)
+        artist_names = self.discover_section.get_selected_artist_names()
+        label_names = self.discover_section.get_selected_label_names()
+        from_date = self.discover_section.get_charts_from_date()
+        to_date = self.discover_section.get_charts_to_date()
+        new_releases_days = self.discover_section.get_new_releases_days()
+        self._last_discovery_genre_ids = list(genre_ids)
+        self._last_discovery_artist_names = list(artist_names)
+        self._last_discovery_label_names = list(label_names)
+        self._save_discover_selection(genre_ids, artist_names, label_names, from_date, to_date, new_releases_days)
         _logger.info(
-            "inCrate discovery: user clicked Discover — genres=%s, from=%s, to=%s",
+            "inCrate discovery: user clicked Discover — genres=%s, artists=%s, labels=%s, from=%s, to=%s, days=%s",
             len(genre_ids),
+            len(artist_names),
+            len(label_names),
             from_date,
             to_date,
+            new_releases_days,
         )
         self.discover_section.set_discovering(True)
         self.discover_section.set_progress("Discovering...")
@@ -370,7 +597,9 @@ class IncratePage(QWidget):
             genre_ids,
             from_date,
             to_date,
-            new_releases_days=30,
+            new_releases_days=new_releases_days,
+            library_artist_names=artist_names if artist_names else None,
+            library_label_names=label_names if label_names else None,
             parent=self,
         )
         thread.progress.connect(self._on_discovery_progress)
@@ -397,6 +626,13 @@ class IncratePage(QWidget):
         self.discover_section.hide_progress_bar()
         self._discovered_tracks = list(tracks) if tracks else []
         self.results_section.set_tracks(self._discovered_tracks)
+        if self._discovered_tracks:
+            save_past_result(
+                self._last_discovery_genre_ids,
+                self._last_discovery_artist_names,
+                self._last_discovery_label_names,
+                self._discovered_tracks,
+            )
         _logger.info(
             "inCrate discovery: finished — %s tracks",
             len(self._discovered_tracks),
@@ -421,24 +657,42 @@ class IncratePage(QWidget):
         if not tracks:
             self.playlist_section.set_status("No tracks to add. Run Discover first.", is_error=True)
             return
-        username = None
-        password = None
-        if self._config:
+        self.playlist_section.set_adding(True)
+        track_list = list(tracks)
+        result = self._do_add_to_playlist(name, track_list)
+        self.playlist_section.set_adding(False)
+        if result.success:
+            self._apply_playlist_result(result)
+        else:
+            self._apply_playlist_result(result)
+            self._show_playlist_signin_and_retry(name, track_list, result.error or "Add to playlist failed.")
+
+    def _do_add_to_playlist(
+        self,
+        name: str,
+        tracks: list,
+        api_client: Optional[Any] = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        show_signin_on_fail: bool = False,
+    ) -> PlaylistResult:
+        if not username and not password and self._config:
             try:
                 username = (self._config.get("incrate.beatport_username") or "").strip() or None
                 password = (self._config.get("incrate.beatport_password") or "").strip() or None
             except (TypeError, AttributeError):
                 pass
-        self.playlist_section.set_adding(True)
-        result = create_playlist_and_add_tracks(
+        api = api_client or (self._get_beatport_api() if self._get_beatport_api else self._beatport_api)
+        return create_playlist_and_add_tracks(
             name,
-            list(tracks),
-            api_client=self._beatport_api,
-            browser_add_to_playlist=None,
+            tracks,
+            api_client=api,
+            browser_add_to_playlist=_browser_add_to_playlist,
             beatport_username=username,
             beatport_password=password,
         )
-        self.playlist_section.set_adding(False)
+
+    def _apply_playlist_result(self, result: PlaylistResult) -> None:
         if result.success:
             self.playlist_section.set_status(
                 f"Added {result.added_count} tracks to playlist."
@@ -446,3 +700,62 @@ class IncratePage(QWidget):
             )
         else:
             self.playlist_section.set_status(result.error or "Add to playlist failed.", is_error=True)
+
+    def _show_playlist_signin_and_retry(self, name: str, tracks: list, first_error: str) -> None:
+        """Show sign-in dialog; on accept, try password grant and retry add to playlist."""
+        username = (self._config.get("incrate.beatport_username") or "").strip() if self._config else ""
+        password = (self._config.get("incrate.beatport_password") or "").strip() if self._config else ""
+        dialog = BeatportPlaylistSignInDialog(
+            parent=self,
+            initial_username=username,
+            initial_password=password,
+            error_message=first_error,
+        )
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        u = dialog.get_username()
+        p = dialog.get_password()
+        if not u or not p:
+            self.playlist_section.set_status("Enter email and password to sign in.", is_error=True)
+            return
+        if dialog.get_remember() and self._config:
+            try:
+                self._config.set("incrate.beatport_username", u)
+                self._config.set("incrate.beatport_password", p)
+                self._config.save()
+            except Exception:
+                pass
+        config_get = getattr(self._config, "get", None) if self._config else None
+        client_id, client_secret = get_oauth_client_credentials(config_get=config_get)
+        if client_id and client_secret:
+            self.playlist_section.set_status("Signing in…", is_error=False)
+            self.playlist_section.set_adding(True)
+            try:
+                token = token_via_password(client_id, client_secret, u, p)
+                base_url = "https://api.beatport.com/v4"
+                if self._config:
+                    try:
+                        base_url = (self._config.get("incrate.beatport_api_base_url") or base_url).strip() or base_url
+                    except Exception:
+                        pass
+                client = BeatportApiClient(base_url=base_url, access_token=token, timeout=30)
+                api = BeatportApi(client=client, cache_service=None)
+                result = self._do_add_to_playlist(name, tracks, api_client=api, username=u, password=p, show_signin_on_fail=False)
+                self._apply_playlist_result(result)
+            except Exception as e:
+                err = str(e)
+                if "401" in err or "Unauthorized" in err:
+                    self.playlist_section.set_status("Sign-in failed: wrong email or password.", is_error=True)
+                else:
+                    self.playlist_section.set_status(f"Sign-in failed: {err}", is_error=True)
+            finally:
+                self.playlist_section.set_adding(False)
+        else:
+            # No OAuth credentials: try browser automation with email/password
+            self.playlist_section.set_status("Opening browser to sign in and add tracks…", is_error=False)
+            self.playlist_section.set_adding(True)
+            try:
+                result = self._do_add_to_playlist(name, tracks, username=u, password=p)
+                self._apply_playlist_result(result)
+            finally:
+                self.playlist_section.set_adding(False)

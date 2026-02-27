@@ -80,3 +80,5 @@ class DiscoveredTrack:
     artists: str
     source_type: str  # "chart" | "label_release"
     source_name: str  # chart name or release title
+    source_label_name: Optional[str] = None  # label name when source_type is label_release
+    source_url: Optional[str] = None  # link to open (track page, release, or chart)

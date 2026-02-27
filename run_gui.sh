@@ -23,6 +23,14 @@ fi
 # Show SSL backend (helps detect LibreSSL vs OpenSSL)
 "$PY" -c "import ssl; print('Python:', __import__('sys').version.split()[0]); print('SSL:', ssl.OPENSSL_VERSION)" 2>/dev/null
 
+# Ensure Playwright and Chromium are installed (for inCrate Add to playlist browser fallback)
+if ! "$PY" -c "import playwright" 2>/dev/null; then
+    echo "Playwright not found. Installing..."
+    "$PY" -m pip install playwright
+fi
+echo "Ensuring Chromium for Playwright..."
+"$PY" -m playwright install chromium
+
 # Change to src directory
 cd "$SCRIPT_DIR/src" || {
     echo "Error: Could not change to src directory"

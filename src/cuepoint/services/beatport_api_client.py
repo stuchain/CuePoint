@@ -36,8 +36,25 @@ class BeatportApiClient:
         url = f"{self.base_url}/{path.lstrip('/')}"
         kwargs.setdefault("headers", self._headers())
         kwargs.setdefault("timeout", self.timeout)
-        _logger.debug("Beatport API %s %s", method, path)
+        params = kwargs.get("params") or {}
+        _logger.info(
+            "Beatport API request: %s %s params=%s",
+            method,
+            path,
+            {k: (str(v)[:80] if v is not None else v) for k, v in list(params.items())[:5]},
+        )
         resp = self._session.request(method, url, **kwargs)
+        try:
+            body_len = len(resp.content) if resp.content else 0
+            _logger.info(
+                "Beatport API response: %s %s -> %s (body %s bytes)",
+                method,
+                path,
+                resp.status_code,
+                body_len,
+            )
+        except Exception:
+            _logger.info("Beatport API response: %s %s -> %s", method, path, resp.status_code)
         if resp.status_code == 401:
             _logger.warning("Beatport API 401: invalid or expired token")
             raise BeatportAPIError(
@@ -109,4 +126,24 @@ class BeatportApiClient:
                 str(e) or "Beatport API request failed",
                 status_code=getattr(getattr(e, "response", None), "status_code", None),
                 error_code="BEATPORT_API_HTTP",
+            ) from e
+
+    def post(self, path: str, json: Optional[Dict[str, Any]] = None) -> Any:
+        """POST path with optional JSON body; return JSON. Raises on 4xx/5xx."""
+        if not self.access_token:
+            raise BeatportAPIError(
+                "Configure Beatport API token (incrate.beatport_access_token or BEATPORT_ACCESS_TOKEN)",
+                status_code=0,
+                error_code="BEATPORT_API_NO_TOKEN",
+            )
+        resp = self._request("POST", path, json=json or {})
+        if resp.status_code == 404:
+            return None
+        resp.raise_for_status()
+        try:
+            return resp.json() if resp.content else None
+        except ValueError as e:
+            raise BeatportAPIError(
+                "Invalid API response",
+                error_code="BEATPORT_API_JSON",
             ) from e
