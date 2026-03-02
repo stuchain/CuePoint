@@ -3,7 +3,7 @@
 import logging
 import re
 import time
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from cuepoint.incrate.beatport_api_models import DiscoveredTrack
 from cuepoint.incrate.playlist_writer import PlaylistResult
@@ -23,6 +23,63 @@ AFTER_ACTION_DELAY = 500
 MANUAL_LOGIN_WAIT_MS = 120_000  # 2 minutes to log in manually
 
 
+def _do_beatport_login(page, username: str, password: str) -> Optional[str]:
+    """Fill Beatport login form and submit. Handles modal 'Log In' button if present.
+    Uses timeouts and waits for load state to avoid 'Execution context was destroyed' on navigation.
+    Returns None on success, or an error message string on failure.
+    """
+    t = SELECTOR_TIMEOUT
+    try:
+        page.wait_for_load_state("domcontentloaded", timeout=t)
+        # If the "Create Account or Log In" modal is shown, click the "Log In" button inside the dialog first
+        try:
+            modal_log_in = page.locator('[role="dialog"]').get_by_role("button", name=re.compile(r"log\s*in", re.I))
+            modal_log_in.first.click(timeout=5000)
+            page.wait_for_timeout(1200)
+            page.wait_for_load_state("domcontentloaded", timeout=t)
+        except Exception:
+            pass
+        # Beatport login form uses id="username" and id="password" (form id="login-form")
+        user_input = page.locator("#username")
+        try:
+            user_input.first.wait_for(state="visible", timeout=t)
+        except Exception:
+            user_input = page.get_by_placeholder("Username")
+            try:
+                user_input.first.wait_for(state="visible", timeout=5000)
+            except Exception:
+                user_input = page.locator('input[name="username"], input[type="text"]')
+                user_input.first.wait_for(state="visible", timeout=5000)
+        user_input.first.fill(username, timeout=5000)
+        page.wait_for_timeout(200)
+        pass_input = page.locator("#password")
+        try:
+            pass_input.first.wait_for(state="visible", timeout=5000)
+        except Exception:
+            pass_input = page.get_by_placeholder("Password")
+            try:
+                pass_input.first.wait_for(state="visible", timeout=5000)
+            except Exception:
+                pass_input = page.locator('input[type="password"], input[name="password"]')
+                pass_input.first.wait_for(state="visible", timeout=5000)
+        pass_input.first.fill(password, timeout=5000)
+        page.wait_for_timeout(300)
+        # Submit: Beatport login form id="login-form", single submit button (type="submit", Mui styled)
+        login_btn = page.locator("#login-form button[type='submit']")
+        login_btn.first.wait_for(state="visible", timeout=5000)
+        login_btn.first.scroll_into_view_if_needed(timeout=5000)
+        # Click and wait for navigation so login completes before caller continues to create playlist
+        try:
+            with page.expect_navigation(timeout=NAV_TIMEOUT, wait_until="domcontentloaded"):
+                login_btn.first.click(timeout=5000)
+        except Exception:
+            # No navigation (e.g. client-side redirect); caller will wait for playlist form
+            pass
+        return None
+    except Exception as e:
+        return str(e) or "Login form failed"
+
+
 def add_to_playlist_via_browser(
     name: str,
     tracks: List[DiscoveredTrack],
@@ -30,16 +87,18 @@ def add_to_playlist_via_browser(
     password: str,
     headless: bool = False,
 ) -> PlaylistResult:
-    """Open Chromium, let you log in to Beatport manually, then create a playlist and add tracks.
+    """Open Chromium, log in to Beatport (with stored credentials or manually), then create a playlist and add tracks.
 
-    Opens the Beatport login page and waits for you to sign in (and complete 2FA if needed).
-    After you're logged in, it creates the playlist and adds each track automatically.
+    If Beatport username and password are provided (e.g. from Settings → inCrate), the browser will
+    open the login page, click "Log In" if the Create Account modal is shown, fill the form, and submit.
+    Otherwise it waits for you to sign in manually (and complete 2FA if needed).
+    After login, it creates the playlist and adds each track automatically.
 
     Args:
         name: Playlist name.
         tracks: Tracks to add (must have beatport_url).
-        username: Unused (kept for API compatibility); you log in manually in the browser.
-        password: Unused (kept for API compatibility).
+        username: Beatport username (from config). If set with password, used to auto-login.
+        password: Beatport password (from config). If set with username, used to auto-login.
         headless: If False, show the browser window (required for manual login).
 
     Returns:
@@ -75,25 +134,73 @@ def add_to_playlist_via_browser(
             page.set_default_navigation_timeout(NAV_TIMEOUT)
 
             try:
-                # 1) Open login page and wait for you to log in manually
-                _logger.info("Beatport browser: opening login page — log in manually in the browser window")
-                page.goto(LOGIN_URL, wait_until="domcontentloaded")
-                # Wait until we're no longer on the login page (you've logged in and been redirected)
-                def _not_on_login(url) -> bool:
+                def _not_on_login(url: Union[str, object]) -> bool:
                     u = getattr(url, "path", None) or str(url)
                     return "/account/login" not in u
 
-                try:
-                    page.wait_for_url(_not_on_login, timeout=MANUAL_LOGIN_WAIT_MS)
-                except Exception:
-                    return PlaylistResult(
-                        success=False,
-                        playlist_url=None,
-                        playlist_id=None,
-                        added_count=0,
-                        error="Timed out waiting for you to log in. Log in to Beatport in the browser window and try again.",
-                    )
-                page.wait_for_timeout(1500)
+                if username and password:
+                    # 1a) Go to playlist-create page first; Beatport shows "Create Account or Log In" modal there
+                    _logger.info("Beatport browser: opening playlist page (login modal will appear)")
+                    page.goto(PLAYLIST_NEW_URL, wait_until="domcontentloaded")
+                    page.wait_for_load_state("domcontentloaded", timeout=NAV_TIMEOUT)
+                    page.wait_for_timeout(2500)
+                    # Wait for login UI to be present (modal or form) so we don't run during navigation
+                    try:
+                        page.wait_for_selector(
+                            '[role="dialog"] button[name="Log In"], #username, input[placeholder="Username"]',
+                            state="visible",
+                            timeout=SELECTOR_TIMEOUT,
+                        )
+                    except Exception:
+                        pass
+                    page.wait_for_load_state("domcontentloaded", timeout=10000)
+                    _logger.info("Beatport browser: logging in with stored credentials")
+                    login_err = _do_beatport_login(page, username, password)
+                    if login_err:
+                        return PlaylistResult(
+                            success=False,
+                            playlist_url=None,
+                            playlist_id=None,
+                            added_count=0,
+                            error=f"Auto-login failed: {login_err}. Check Settings → inCrate username/password.",
+                        )
+                    # Wait until we're past login: either redirected away from login URL or playlist form visible
+                    try:
+                        page.wait_for_url(_not_on_login, timeout=NAV_TIMEOUT)
+                    except Exception:
+                        pass
+                    # If still on a page with login, or modal just closed, wait for playlist name field
+                    name_sel = 'input[placeholder*="name" i], input[name="name"], input[id*="name" i]'
+                    try:
+                        page.wait_for_selector(name_sel, state="visible", timeout=NAV_TIMEOUT)
+                    except Exception:
+                        if "/account/login" in (getattr(page.url, "path", None) or str(page.url)):
+                            return PlaylistResult(
+                                success=False,
+                                playlist_url=None,
+                                playlist_id=None,
+                                added_count=0,
+                                error="Login form was submitted but still on login page (wrong credentials or captcha).",
+                            )
+                    page.wait_for_timeout(1500)
+                else:
+                    # 1b) No stored credentials: open login page and wait for manual login
+                    _logger.info("Beatport browser: opening login page — log in manually in the browser window")
+                    page.goto(LOGIN_URL, wait_until="domcontentloaded")
+                    page.wait_for_timeout(1500)
+                    try:
+                        page.wait_for_url(_not_on_login, timeout=MANUAL_LOGIN_WAIT_MS)
+                    except Exception:
+                        return PlaylistResult(
+                            success=False,
+                            playlist_url=None,
+                            playlist_id=None,
+                            added_count=0,
+                            error="Timed out waiting for you to log in. Log in to Beatport in the browser window, or set Beatport username/password in Settings → inCrate.",
+                        )
+                    page.wait_for_timeout(1500)
+                    page.goto(PLAYLIST_NEW_URL, wait_until="domcontentloaded")
+                    page.wait_for_timeout(1500)
 
                 # 2) Create playlist
                 _logger.info("Beatport browser: creating playlist %r", name)
