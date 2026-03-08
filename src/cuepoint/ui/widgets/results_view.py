@@ -47,7 +47,49 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from cuepoint.models.result import TrackResult
+from PySide6.QtGui import QBrush, QColor, QPainter
+from PySide6.QtWidgets import QStyledItemDelegate
+
+from cuepoint.core.matcher import _camelot_key
+from cuepoint.data.rekordbox import playlist_path_for_display
+from cuepoint.models.result import FILE_NOT_FOUND_ERROR, TrackResult
+
+# Column indices: Write=0, Index=1, then Title, Artists, Beatport Title, etc. through BPM=13
+COL_WRITE = 0
+COL_INDEX = 1
+COL_ORIGINAL_TITLE = 2
+COL_ORIGINAL_ARTISTS = 3
+COL_BEATPORT_TITLE = 4
+COL_BEATPORT_ARTISTS = 5
+COL_KEY = 6
+COL_CAMELOT_KEY = 7
+COL_RELEASE_YEAR = 8
+COL_LABEL = 9
+COL_MATCHED = 10
+COL_SCORE = 11
+COL_CONFIDENCE = 12
+COL_BPM = 13
+# Faded red for unmatched rows (drawn by delegate so it shows despite stylesheet)
+UNMATCHED_ROW_BG = QColor(0x5C, 0x2E, 0x2E)
+# Role for delegate to paint unmatched row background (stylesheets override setBackground)
+UNMATCHED_ROW_ROLE = Qt.ItemDataRole.UserRole + 1
+
+
+class UnmatchedRowDelegate(QStyledItemDelegate):
+    """Paints unmatched rows with a faded red background so they show despite QTableView::item stylesheet."""
+
+    def __init__(self, parent: QWidget, bg_color: QColor):
+        super().__init__(parent)
+        self._bg_color = bg_color
+
+    def paint(
+        self, painter: QPainter, option, index
+    ):
+        if index.data(UNMATCHED_ROW_ROLE):
+            painter.fillRect(option.rect, self._bg_color)
+        super().paint(painter, option, index)
+
+
 from cuepoint.services.output_writer import (
     preview_csv_output_paths,
     write_csv_files,
@@ -110,6 +152,8 @@ class ResultsView(QWidget):
 
     # Signal emitted when a result is updated (candidate selected)
     result_updated = Signal(int, TrackResult)  # playlist_index, updated_result
+    # Signal emitted when user clicks Sync with Rekordbox (main window handles it)
+    write_to_track_tags_requested = Signal()
 
     def __init__(
         self,
@@ -495,9 +539,10 @@ class ResultsView(QWidget):
 
         # Create table with key columns
         self.table = QTableWidget()
-        self.table.setColumnCount(12)
+        self.table.setColumnCount(14)
         self.table.setHorizontalHeaderLabels(
             [
+                "Write",
                 "Index",
                 "Original Title",
                 "Original Artists",
@@ -506,6 +551,7 @@ class ResultsView(QWidget):
                 "Key",
                 "Camelot Key",
                 "Release Year",
+                "Label",
                 "Matched",
                 "Score",
                 "Confidence",
@@ -513,7 +559,8 @@ class ResultsView(QWidget):
             ]
         )
         self.table.setSortingEnabled(True)
-        self.table.setAlternatingRowColors(True)
+        # Disable alternating row colors so unmatched-row red background is visible
+        self.table.setAlternatingRowColors(False)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
@@ -532,6 +579,9 @@ class ResultsView(QWidget):
 
         # Enable double-click to view candidates
         self.table.doubleClicked.connect(self._on_row_double_clicked)
+
+        # Delegate paints unmatched row background (works despite QTableView::item stylesheet)
+        self.table.setItemDelegate(UnmatchedRowDelegate(self.table, UNMATCHED_ROW_BG))
 
         single_table_layout.addWidget(self.table, 1)  # Give table stretch priority
         self.single_table_group.setLayout(single_table_layout)
@@ -560,47 +610,28 @@ class ResultsView(QWidget):
         # Add splitter to main layout (advanced filters is now part of top_widget)
         layout.addWidget(splitter, 1)  # Give splitter stretch priority
 
-        # Export buttons (outside splitter, at bottom)
+        # Sync with Rekordbox button only (centered)
         button_layout = QHBoxLayout()
         button_layout.addStretch()
-
-        self.export_btn = QPushButton("Export...")
-        self.export_btn.setObjectName("secondaryActionButton")
-        self.export_btn.setFixedHeight(30 if is_macos() else 32)
-        self.export_btn.clicked.connect(self.show_export_dialog)
-        self.export_btn.setToolTip(
-            "Export results to CSV, JSON, or Excel format (Ctrl+E)"
+        self.write_to_track_tags_btn = QPushButton("Sync with Rekordbox")
+        self.write_to_track_tags_btn.setObjectName("syncWithRekordboxButton")
+        self.write_to_track_tags_btn.setFixedHeight(30 if is_macos() else 32)
+        self.write_to_track_tags_btn.clicked.connect(self.write_to_track_tags_requested.emit)
+        self.write_to_track_tags_btn.setToolTip(
+            "Write Key, Comment, Year and Label into audio files. In Rekordbox right-click tracks and choose Reload Tags."
         )
-        self.export_btn.setAccessibleName("Export button")
-        self.export_btn.setAccessibleDescription(
-            "Click to export results. Keyboard shortcut: Ctrl+E"
+        self.write_to_track_tags_btn.setAccessibleName("Sync with Rekordbox button")
+        self.write_to_track_tags_btn.setAccessibleDescription(
+            "Write Key, Comment, Year and Label into audio file tags; then Reload Tags in Rekordbox"
         )
-        self.export_btn.setFocusPolicy(Qt.StrongFocus)
-        button_layout.addWidget(self.export_btn)
-
-        # Legacy export buttons (for backward compatibility)
-        self.export_all_btn = QPushButton("Export All CSV Files")
-        self.export_all_btn.setObjectName("secondaryActionButton")
-        self.export_all_btn.setFixedHeight(30 if is_macos() else 32)
-        self.export_all_btn.clicked.connect(self.export_all_csv)
-        self.export_all_btn.setToolTip(
-            "Export all CSV files (main, candidates, queries, review)"
+        self.write_to_track_tags_btn.setFocusPolicy(Qt.StrongFocus)
+        self.write_to_track_tags_btn.setEnabled(False)
+        self.write_to_track_tags_btn.setStyleSheet(
+            "QPushButton#syncWithRekordboxButton { background-color: #2196F3; color: white; }"
+            " QPushButton#syncWithRekordboxButton:hover { background-color: #1976D2; }"
+            " QPushButton#syncWithRekordboxButton:pressed { background-color: #0D47A1; }"
         )
-        self.export_all_btn.setAccessibleName("Export all CSV files button")
-        self.export_all_btn.setAccessibleDescription("Click to export all CSV files")
-        self.export_all_btn.setFocusPolicy(Qt.StrongFocus)
-        button_layout.addWidget(self.export_all_btn)
-
-        self.open_folder_btn = QPushButton("Open Output Folder")
-        self.open_folder_btn.setObjectName("secondaryActionButton")
-        self.open_folder_btn.setFixedHeight(30 if is_macos() else 32)
-        self.open_folder_btn.clicked.connect(self.open_output_folder)
-        self.open_folder_btn.setToolTip("Open the output folder in file explorer")
-        self.open_folder_btn.setAccessibleName("Open output folder button")
-        self.open_folder_btn.setAccessibleDescription("Click to open the output folder")
-        self.open_folder_btn.setFocusPolicy(Qt.StrongFocus)
-        button_layout.addWidget(self.open_folder_btn)
-
+        button_layout.addWidget(self.write_to_track_tags_btn)
         button_layout.addStretch()
         layout.addLayout(button_layout)
 
@@ -754,6 +785,8 @@ class ResultsView(QWidget):
         # Populate table
         self._populate_table()
 
+        self._update_transfer_to_rekordbox_button()
+
     def set_batch_results(self, results_dict: Dict[str, List[TrackResult]]):
         """
         Set batch results to display (multiple playlists mode).
@@ -785,6 +818,70 @@ class ResultsView(QWidget):
 
         # Update summary statistics (aggregate for all playlists)
         self._update_batch_summary()
+
+        self._update_transfer_to_rekordbox_button()
+
+    def _update_transfer_to_rekordbox_button(self) -> None:
+        """Enable Sync with Rekordbox when there are results."""
+        has_results = (
+            (not self.is_batch_mode and bool(self.results))
+            or (self.is_batch_mode and bool(self.batch_results))
+        )
+        if hasattr(self, "write_to_track_tags_btn"):
+            self.write_to_track_tags_btn.setEnabled(has_results)
+
+    def get_results_selected_for_tag_write(
+        self,
+    ) -> tuple[
+        Optional[List[TrackResult]],
+        Optional[Dict[str, List[TrackResult]]],
+        Optional[str],
+    ]:
+        """Return only results whose Write checkbox is checked, for use when writing to track tags.
+
+        Returns:
+            For single playlist: (list of checked TrackResults, None, playlist_name).
+            For batch: (None, dict of playlist_name -> list of checked TrackResults, None).
+            If no results or no tables, returns (None, None, None) or empty list/dict.
+        """
+        if self.is_batch_mode:
+            out: Dict[str, List[TrackResult]] = {}
+            results_by_playlist = self.batch_results or {}
+            for playlist_name, results in results_by_playlist.items():
+                table = self.playlist_tables.get(playlist_name)
+                if not table or not results:
+                    continue
+                playlist_index_to_result = {r.playlist_index: r for r in results}
+                selected = []
+                for row in range(table.rowCount()):
+                    write_item = table.item(row, COL_WRITE)
+                    index_item = table.item(row, COL_INDEX)
+                    if not index_item or not write_item:
+                        continue
+                    if write_item.checkState() != Qt.CheckState.Checked:
+                        continue
+                    pi = index_item.data(Qt.UserRole)
+                    if pi is not None and pi in playlist_index_to_result:
+                        selected.append(playlist_index_to_result[pi])
+                if selected:
+                    out[playlist_name] = selected
+            return (None, out, None)
+        # Single playlist
+        if not hasattr(self, "table") or not self.results:
+            return (None, None, None)
+        playlist_index_to_result = {r.playlist_index: r for r in self.results}
+        selected = []
+        for row in range(self.table.rowCount()):
+            write_item = self.table.item(row, COL_WRITE)
+            index_item = self.table.item(row, COL_INDEX)
+            if not index_item or not write_item:
+                continue
+            if write_item.checkState() != Qt.CheckState.Checked:
+                continue
+            pi = index_item.data(Qt.UserRole)
+            if pi is not None and pi in playlist_index_to_result:
+                selected.append(playlist_index_to_result[pi])
+        return (selected, None, self.playlist_name or "")
 
     def _create_playlist_tab(
         self, playlist_name: str, results: List[TrackResult]
@@ -943,9 +1040,10 @@ class ResultsView(QWidget):
 
         # Create table for this playlist
         table = QTableWidget()
-        table.setColumnCount(12)
+        table.setColumnCount(14)
         table.setHorizontalHeaderLabels(
             [
+                "Write",
                 "Index",
                 "Original Title",
                 "Original Artists",
@@ -954,6 +1052,7 @@ class ResultsView(QWidget):
                 "Key",
                 "Camelot Key",
                 "Release Year",
+                "Label",
                 "Matched",
                 "Score",
                 "Confidence",
@@ -961,12 +1060,14 @@ class ResultsView(QWidget):
             ]
         )
         table.setSortingEnabled(True)
-        table.setAlternatingRowColors(True)
+        table.setAlternatingRowColors(False)  # so unmatched-row red background is visible
         table.setSelectionBehavior(QTableWidget.SelectRows)
         table.setEditTriggers(QTableWidget.NoEditTriggers)
         table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         table.verticalHeader().setDefaultSectionSize(26 if is_macos() else 28)
         self._ensure_table_min_rows(table, 10)
+
+        table.setItemDelegate(UnmatchedRowDelegate(table, UNMATCHED_ROW_BG))
 
         # Enable context menu and double-click
         table.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -1103,48 +1204,71 @@ class ResultsView(QWidget):
         self.table.setRowCount(len(filtered))
 
         for row, result in enumerate(filtered):
+            # Write - checkbox to include this track when writing to track tags
+            write_item = QTableWidgetItem()
+            write_item.setFlags(write_item.flags() | Qt.ItemIsUserCheckable)
+            is_file_not_found = getattr(result, "error", None) == FILE_NOT_FOUND_ERROR
+            write_item.setCheckState(
+                Qt.CheckState.Unchecked if is_file_not_found else Qt.CheckState.Checked
+            )
+            if is_file_not_found:
+                write_item.setFlags(write_item.flags() & ~Qt.ItemIsEnabled)
+            write_item.setTextAlignment(Qt.AlignCenter)
+            self.table.setItem(row, COL_WRITE, write_item)
+
             # Index - display as number, sort numerically (1, 2, 3, ..., 10, 11, 12)
             index_item = QTableWidgetItem(str(result.playlist_index))
             index_item.setData(
                 Qt.EditRole, result.playlist_index
             )  # Store numeric value for proper numeric sorting
+            index_item.setData(Qt.UserRole, result.playlist_index)
             index_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.table.setItem(row, 0, index_item)
+            self.table.setItem(row, COL_INDEX, index_item)
 
             # Original Title
-            self.table.setItem(row, 1, QTableWidgetItem(result.title))
+            self.table.setItem(row, COL_ORIGINAL_TITLE, QTableWidgetItem(result.title))
 
             # Original Artists
-            self.table.setItem(row, 2, QTableWidgetItem(result.artist or ""))
+            self.table.setItem(row, COL_ORIGINAL_ARTISTS, QTableWidgetItem(result.artist or ""))
 
             # Beatport Title
             beatport_title = result.beatport_title or ""
-            self.table.setItem(row, 3, QTableWidgetItem(beatport_title))
+            self.table.setItem(row, COL_BEATPORT_TITLE, QTableWidgetItem(beatport_title))
 
             # Beatport Artists
             beatport_artists = result.beatport_artists or ""
-            self.table.setItem(row, 4, QTableWidgetItem(beatport_artists))
+            self.table.setItem(row, COL_BEATPORT_ARTISTS, QTableWidgetItem(beatport_artists))
 
             # Key (regular key)
             key_text = result.beatport_key or ""
-            self.table.setItem(row, 5, QTableWidgetItem(key_text))
+            self.table.setItem(row, COL_KEY, QTableWidgetItem(key_text))
 
             # Camelot Key
             camelot_key_text = result.beatport_key_camelot or ""
-            self.table.setItem(row, 6, QTableWidgetItem(camelot_key_text))
+            self.table.setItem(row, COL_CAMELOT_KEY, QTableWidgetItem(camelot_key_text))
 
             # Release Year
             year_text = result.beatport_year or ""
-            self.table.setItem(row, 7, QTableWidgetItem(year_text))
+            self.table.setItem(row, COL_RELEASE_YEAR, QTableWidgetItem(year_text))
 
-            # Matched status
-            matched_item = QTableWidgetItem("✓" if result.matched else "✗")
+            # Label
+            label_text = result.beatport_label or ""
+            self.table.setItem(row, COL_LABEL, QTableWidgetItem(label_text))
+
+            # Matched status (show "Not found" for missing playlist files)
+            if getattr(result, "error", None) == FILE_NOT_FOUND_ERROR:
+                matched_text = "Not found"
+            else:
+                matched_text = "✓" if result.matched else "✗"
+            matched_item = QTableWidgetItem(matched_text)
             matched_item.setTextAlignment(Qt.AlignCenter)
             if result.matched:
                 matched_item.setForeground(Qt.darkGreen)
             else:
                 matched_item.setForeground(Qt.darkRed)
-            self.table.setItem(row, 8, matched_item)
+            if getattr(result, "file_path", None) and matched_text == "Not found":
+                matched_item.setToolTip(result.file_path)
+            self.table.setItem(row, COL_MATCHED, matched_item)
 
             # Score
             score_text = (
@@ -1152,33 +1276,36 @@ class ResultsView(QWidget):
             )
             score_item = QTableWidgetItem(score_text)
             score_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.table.setItem(row, 9, score_item)
+            self.table.setItem(row, COL_SCORE, score_item)
 
             # Confidence
             confidence_text = result.confidence or ""
             confidence_item = QTableWidgetItem(
                 confidence_text.capitalize() if confidence_text else ""
             )
-            self.table.setItem(row, 10, confidence_item)
+            self.table.setItem(row, COL_CONFIDENCE, confidence_item)
 
             # BPM
             bpm_text = result.beatport_bpm or ""
-            self.table.setItem(row, 11, QTableWidgetItem(bpm_text))
+            self.table.setItem(row, COL_BPM, QTableWidgetItem(bpm_text))
+
+            # Unmatched row: set role so delegate paints faded red background
+            if not result.matched:
+                for col in range(self.table.columnCount()):
+                    item = self.table.item(row, col)
+                    if item:
+                        item.setData(UNMATCHED_ROW_ROLE, True)
 
         # Re-enable sorting
         self.table.setSortingEnabled(True)
 
-        # Always default to Index column (column 0) in ascending order
-        # Only restore user's sort if they sorted by a different column
-        if sort_column >= 0 and sort_column != 0 and sort_order is not None:
-            # User sorted by a different column, restore that
+        # Default sort by Index column (column 1) in ascending order
+        if sort_column >= 0 and sort_column != COL_INDEX and sort_order is not None:
             self.table.sortItems(sort_column, sort_order)
         else:
-            # Default: sort by Index column (column 0) in ascending order
-            # Clear any previous sort indicator first
             self.table.horizontalHeader().setSortIndicator(-1, Qt.AscendingOrder)
-            self.table.sortItems(0, Qt.AscendingOrder)
-            self.table.horizontalHeader().setSortIndicator(0, Qt.AscendingOrder)
+            self.table.sortItems(COL_INDEX, Qt.AscendingOrder)
+            self.table.horizontalHeader().setSortIndicator(COL_INDEX, Qt.AscendingOrder)
 
         # Resize columns to content
         self.table.resizeColumnsToContents()
@@ -1221,60 +1348,85 @@ class ResultsView(QWidget):
                 )
                 return
 
+            # Preserve Write checkbox (column 0) state when updating
+            write_item = self.table.item(row_index, COL_WRITE)
+            check_state = (
+                write_item.checkState() if write_item and write_item.flags() & Qt.ItemIsUserCheckable
+                else Qt.CheckState.Checked
+            )
+
             # Update only the cells that may have changed
-            # Original Title (column 1) - usually doesn't change, but update for consistency
-            self.table.setItem(row_index, 1, QTableWidgetItem(result.title))
+            self.table.setItem(row_index, COL_ORIGINAL_TITLE, QTableWidgetItem(result.title))
+            self.table.setItem(row_index, COL_ORIGINAL_ARTISTS, QTableWidgetItem(result.artist or ""))
 
-            # Original Artists (column 2) - usually doesn't change, but update for consistency
-            self.table.setItem(row_index, 2, QTableWidgetItem(result.artist or ""))
-
-            # Beatport Title (column 3)
             beatport_title = result.beatport_title or ""
-            self.table.setItem(row_index, 3, QTableWidgetItem(beatport_title))
+            self.table.setItem(row_index, COL_BEATPORT_TITLE, QTableWidgetItem(beatport_title))
 
-            # Beatport Artists (column 4)
             beatport_artists = result.beatport_artists or ""
-            self.table.setItem(row_index, 4, QTableWidgetItem(beatport_artists))
+            self.table.setItem(row_index, COL_BEATPORT_ARTISTS, QTableWidgetItem(beatport_artists))
 
-            # Key (column 5)
             key_text = result.beatport_key or ""
-            self.table.setItem(row_index, 5, QTableWidgetItem(key_text))
+            self.table.setItem(row_index, COL_KEY, QTableWidgetItem(key_text))
 
-            # Camelot Key (column 6)
             camelot_key_text = result.beatport_key_camelot or ""
-            self.table.setItem(row_index, 6, QTableWidgetItem(camelot_key_text))
+            self.table.setItem(row_index, COL_CAMELOT_KEY, QTableWidgetItem(camelot_key_text))
 
-            # Release Year (column 7)
             year_text = result.beatport_year or ""
-            self.table.setItem(row_index, 7, QTableWidgetItem(year_text))
+            self.table.setItem(row_index, COL_RELEASE_YEAR, QTableWidgetItem(year_text))
 
-            # Matched status (column 8)
-            matched_item = QTableWidgetItem("✓" if result.matched else "✗")
+            label_text = result.beatport_label or ""
+            self.table.setItem(row_index, COL_LABEL, QTableWidgetItem(label_text))
+
+            matched_text = (
+                "Not found"
+                if getattr(result, "error", None) == FILE_NOT_FOUND_ERROR
+                else ("✓" if result.matched else "✗")
+            )
+            matched_item = QTableWidgetItem(matched_text)
             matched_item.setTextAlignment(Qt.AlignCenter)
             if result.matched:
                 matched_item.setForeground(Qt.darkGreen)
             else:
                 matched_item.setForeground(Qt.darkRed)
-            self.table.setItem(row_index, 8, matched_item)
+            if getattr(result, "file_path", None) and matched_text == "Not found":
+                matched_item.setToolTip(result.file_path)
+            self.table.setItem(row_index, COL_MATCHED, matched_item)
 
-            # Score (column 9)
             score_text = (
                 f"{result.match_score:.1f}" if result.match_score is not None else "N/A"
             )
             score_item = QTableWidgetItem(score_text)
             score_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.table.setItem(row_index, 9, score_item)
+            self.table.setItem(row_index, COL_SCORE, score_item)
 
-            # Confidence (column 10)
             confidence_text = result.confidence or ""
             confidence_item = QTableWidgetItem(
                 confidence_text.capitalize() if confidence_text else ""
             )
-            self.table.setItem(row_index, 10, confidence_item)
+            self.table.setItem(row_index, COL_CONFIDENCE, confidence_item)
 
-            # BPM (column 11)
             bpm_text = result.beatport_bpm or ""
-            self.table.setItem(row_index, 11, QTableWidgetItem(bpm_text))
+            self.table.setItem(row_index, COL_BPM, QTableWidgetItem(bpm_text))
+
+            # Restore Write checkbox (column 0); set unmatched role for delegate
+            is_file_not_found = getattr(result, "error", None) == FILE_NOT_FOUND_ERROR
+            new_write_item = QTableWidgetItem()
+            new_write_item.setFlags(new_write_item.flags() | Qt.ItemIsUserCheckable)
+            new_write_item.setCheckState(
+                Qt.CheckState.Unchecked
+                if is_file_not_found
+                else check_state
+            )
+            if is_file_not_found:
+                new_write_item.setFlags(new_write_item.flags() & ~Qt.ItemIsEnabled)
+            new_write_item.setTextAlignment(Qt.AlignCenter)
+            self.table.setItem(row_index, COL_WRITE, new_write_item)
+
+            if not result.matched:
+                for col in range(self.table.columnCount()):
+                    it = self.table.item(row_index, col)
+                    if it:
+                        it.setData(UNMATCHED_ROW_ROLE, True)
 
             # Process events to keep UI responsive
             from PySide6.QtWidgets import QApplication
@@ -1536,82 +1688,90 @@ class ResultsView(QWidget):
         table.setRowCount(len(filtered))
 
         for row, result in enumerate(filtered):
-            # Index - display as number, sort numerically (1, 2, 3, ..., 10, 11, 12)
+            # Write - checkbox (unchecked and disabled for "file not found" entries)
+            write_item = QTableWidgetItem()
+            write_item.setFlags(write_item.flags() | Qt.ItemIsUserCheckable)
+            is_file_not_found = getattr(result, "error", None) == FILE_NOT_FOUND_ERROR
+            write_item.setCheckState(
+                Qt.CheckState.Unchecked if is_file_not_found else Qt.CheckState.Checked
+            )
+            if is_file_not_found:
+                write_item.setFlags(write_item.flags() & ~Qt.ItemIsEnabled)
+            write_item.setTextAlignment(Qt.AlignCenter)
+            table.setItem(row, COL_WRITE, write_item)
+
+            # Index
             index_item = QTableWidgetItem(str(result.playlist_index))
-            index_item.setData(
-                Qt.EditRole, result.playlist_index
-            )  # Store numeric value for proper numeric sorting
+            index_item.setData(Qt.EditRole, result.playlist_index)
+            index_item.setData(Qt.UserRole, result.playlist_index)
             index_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            table.setItem(row, 0, index_item)
+            table.setItem(row, COL_INDEX, index_item)
 
-            # Original Title
-            table.setItem(row, 1, QTableWidgetItem(result.title))
+            table.setItem(row, COL_ORIGINAL_TITLE, QTableWidgetItem(result.title))
+            table.setItem(row, COL_ORIGINAL_ARTISTS, QTableWidgetItem(result.artist or ""))
 
-            # Original Artists
-            table.setItem(row, 2, QTableWidgetItem(result.artist or ""))
-
-            # Beatport Title
             beatport_title = result.beatport_title or ""
-            table.setItem(row, 3, QTableWidgetItem(beatport_title))
-
-            # Beatport Artists
+            table.setItem(row, COL_BEATPORT_TITLE, QTableWidgetItem(beatport_title))
             beatport_artists = result.beatport_artists or ""
-            table.setItem(row, 4, QTableWidgetItem(beatport_artists))
+            table.setItem(row, COL_BEATPORT_ARTISTS, QTableWidgetItem(beatport_artists))
 
-            # Key (regular key)
             key_text = result.beatport_key or ""
-            table.setItem(row, 5, QTableWidgetItem(key_text))
-
-            # Camelot Key
+            table.setItem(row, COL_KEY, QTableWidgetItem(key_text))
             camelot_key_text = result.beatport_key_camelot or ""
-            table.setItem(row, 6, QTableWidgetItem(camelot_key_text))
+            table.setItem(row, COL_CAMELOT_KEY, QTableWidgetItem(camelot_key_text))
 
-            # Release Year
             year_text = result.beatport_year or ""
-            table.setItem(row, 7, QTableWidgetItem(year_text))
+            table.setItem(row, COL_RELEASE_YEAR, QTableWidgetItem(year_text))
+            label_text = result.beatport_label or ""
+            table.setItem(row, COL_LABEL, QTableWidgetItem(label_text))
 
-            # Matched status
-            matched_item = QTableWidgetItem("✓" if result.matched else "✗")
+            matched_text = (
+                "Not found"
+                if getattr(result, "error", None) == FILE_NOT_FOUND_ERROR
+                else ("✓" if result.matched else "✗")
+            )
+            matched_item = QTableWidgetItem(matched_text)
             matched_item.setTextAlignment(Qt.AlignCenter)
             if result.matched:
                 matched_item.setForeground(Qt.darkGreen)
             else:
                 matched_item.setForeground(Qt.darkRed)
-            table.setItem(row, 8, matched_item)
+            if getattr(result, "file_path", None) and matched_text == "Not found":
+                matched_item.setToolTip(result.file_path)
+            table.setItem(row, COL_MATCHED, matched_item)
 
-            # Score
             score_text = (
                 f"{result.match_score:.1f}" if result.match_score is not None else "N/A"
             )
             score_item = QTableWidgetItem(score_text)
             score_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            table.setItem(row, 9, score_item)
+            table.setItem(row, COL_SCORE, score_item)
 
-            # Confidence
             confidence_text = result.confidence or ""
             confidence_item = QTableWidgetItem(
                 confidence_text.capitalize() if confidence_text else ""
             )
-            table.setItem(row, 10, confidence_item)
+            table.setItem(row, COL_CONFIDENCE, confidence_item)
 
-            # BPM
             bpm_text = str(result.beatport_bpm) if result.beatport_bpm else ""
-            table.setItem(row, 11, QTableWidgetItem(bpm_text))
+            table.setItem(row, COL_BPM, QTableWidgetItem(bpm_text))
+
+            if not result.matched:
+                for col in range(table.columnCount()):
+                    it = table.item(row, col)
+                    if it:
+                        it.setData(UNMATCHED_ROW_ROLE, True)
 
         # Re-enable sorting
         table.setSortingEnabled(True)
 
-        # Always default to Index column (column 0) in ascending order
-        # Only restore user's sort if they sorted by a different column
-        if sort_column >= 0 and sort_column != 0 and sort_order is not None:
-            # User sorted by a different column, restore that
+        # Default sort by Index column (column 1)
+        if sort_column >= 0 and sort_column != COL_INDEX and sort_order is not None:
             table.sortItems(sort_column, sort_order)
         else:
-            # Default: sort by Index column (column 0) in ascending order
-            # Clear any previous sort indicator first
             table.horizontalHeader().setSortIndicator(-1, Qt.AscendingOrder)
-            table.sortItems(0, Qt.AscendingOrder)
-            table.horizontalHeader().setSortIndicator(0, Qt.AscendingOrder)
+            table.sortItems(COL_INDEX, Qt.AscendingOrder)
+            table.horizontalHeader().setSortIndicator(COL_INDEX, Qt.AscendingOrder)
 
         # Keep table tall enough to show ~10 rows when space allows
         self._ensure_table_min_rows(table, 10)
@@ -1845,7 +2005,7 @@ class ResultsView(QWidget):
                     "candidate_title": c.title,
                     "candidate_artists": c.artists,
                     "candidate_key": c.key or "",
-                    "candidate_key_camelot": c.key or "",
+                    "candidate_key_camelot": _camelot_key(c.key) if c.key else "",
                     "candidate_year": str(c.release_year) if c.release_year else "",
                     "candidate_bpm": c.bpm or "",
                     "candidate_label": c.label or "",
@@ -1929,11 +2089,19 @@ class ResultsView(QWidget):
         except (ValueError, TypeError):
             result.artist_sim = None
 
-        # Update other fields
-        result.beatport_key = candidate.get("beatport_key", "")
-        result.beatport_key_camelot = candidate.get("beatport_key_camelot", "")
-        result.beatport_bpm = candidate.get("beatport_bpm", "")
-        result.beatport_year = candidate.get("beatport_year", "")
+        # Update other fields (dialog emits candidate_* keys)
+        result.beatport_key = candidate.get(
+            "candidate_key", candidate.get("beatport_key", "")
+        )
+        result.beatport_key_camelot = candidate.get(
+            "candidate_key_camelot", candidate.get("beatport_key_camelot", "")
+        )
+        result.beatport_bpm = candidate.get(
+            "candidate_bpm", candidate.get("beatport_bpm", "")
+        )
+        result.beatport_year = candidate.get(
+            "candidate_year", candidate.get("beatport_year", "")
+        )
 
         # Mark as matched
         result.matched = True
@@ -2094,7 +2262,8 @@ class ResultsView(QWidget):
             return
 
         # Step 8: Preview outputs before writing (Design 8.9)
-        base_filename = f"{self.playlist_name.replace(' ', '_')}.csv"
+        name_for_file = playlist_path_for_display(self.playlist_name or "")
+        base_filename = f"{name_for_file.replace(' ', '_')}.csv"
         preview_paths = preview_csv_output_paths(
             base_filename, output_dir, ",", results=self.results
         )
@@ -2279,7 +2448,7 @@ class ResultsView(QWidget):
                     "candidate_title": c.title,
                     "candidate_artists": c.artists,
                     "candidate_key": c.key or "",
-                    "candidate_key_camelot": c.key or "",
+                    "candidate_key_camelot": _camelot_key(c.key) if c.key else "",
                     "candidate_year": str(c.release_year) if c.release_year else "",
                     "candidate_bpm": c.bpm or "",
                     "candidate_label": c.label or "",
@@ -2459,9 +2628,12 @@ class ResultsView(QWidget):
         self.results = []
         self.filtered_results = []
         self.output_files = {}
+        self.batch_results = {}
+        self.is_batch_mode = False
         self.table.setRowCount(0)
         self.summary_label.setText(EmptyState.NO_RESULTS_TITLE)
         self.search_box.clear()
         self.confidence_filter.setCurrentIndex(0)  # Reset to "All"
         self.result_count_label.setText("0 results")
         self.filter_status_label.setText("")
+        self._update_transfer_to_rekordbox_button()

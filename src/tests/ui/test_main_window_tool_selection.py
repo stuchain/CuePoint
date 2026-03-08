@@ -26,25 +26,24 @@ def test_main_window_has_tool_selection_page(main_window):
 def test_main_window_shows_tool_selection_initially(main_window):
     """Test that MainWindow shows tool selection page initially"""
     assert main_window.current_page == "tool_selection"
-    # Check that central widget is tool selection page
-    central_widget = main_window.centralWidget()
-    assert central_widget == main_window.tool_selection_page
+    # Central widget is the stack; current page is tool selection
+    assert main_window.centralWidget() == main_window._stack
+    assert main_window._stack.currentWidget() == main_window.tool_selection_page
 
 
 def test_main_window_show_tool_selection_page(main_window):
     """Test show_tool_selection_page method"""
     main_window.show_tool_selection_page()
     assert main_window.current_page == "tool_selection"
-    central_widget = main_window.centralWidget()
-    assert central_widget == main_window.tool_selection_page
+    assert main_window._stack.currentWidget() == main_window.tool_selection_page
 
 
 def test_main_window_show_main_interface(main_window):
-    """Test show_main_interface method"""
+    """Test show_main_interface method (inKey: back button + tabs wrapper)."""
     main_window.show_main_interface()
     assert main_window.current_page == "main"
-    central_widget = main_window.centralWidget()
-    assert central_widget == main_window.tabs
+    assert main_window._stack.currentWidget() == main_window._inkey_wrapper
+    assert main_window.tabs is not None
 
 
 def test_main_window_on_tool_selected_inkey(main_window):
@@ -55,10 +54,10 @@ def test_main_window_on_tool_selected_inkey(main_window):
     # Select inkey tool
     main_window.on_tool_selected("inkey")
 
-    # Should now be on main interface
+    # Should now be on main interface (inKey wrapper with back button + tabs)
     assert main_window.current_page == "main"
-    central_widget = main_window.centralWidget()
-    assert central_widget == main_window.tabs
+    assert main_window._stack.currentWidget() == main_window._inkey_wrapper
+    assert main_window.tabs is not None
 
     # Should be on Main tab
     assert main_window.tabs.currentIndex() == 0
@@ -76,11 +75,11 @@ def test_main_window_tool_selection_workflow(main_window, qapp):
     # Should now be on main interface
     assert main_window.current_page == "main"
 
-    # Verify tabs widget exists and is set as central widget
+    # Verify inKey wrapper is the current stack page
     assert main_window.tabs is not None
-    assert main_window.centralWidget() == main_window.tabs
+    assert main_window._stack.currentWidget() == main_window._inkey_wrapper
 
     # Verify we can switch back (for testing)
     main_window.show_tool_selection_page()
     assert main_window.current_page == "tool_selection"
-    assert main_window.centralWidget() == main_window.tool_selection_page
+    assert main_window._stack.currentWidget() == main_window.tool_selection_page

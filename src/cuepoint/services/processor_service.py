@@ -15,7 +15,7 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from cuepoint.core.mix_parser import (
     _extract_generic_parenthetical_phrases,
@@ -23,17 +23,18 @@ from cuepoint.core.mix_parser import (
 )
 from cuepoint.core.query_generator import make_search_queries
 from cuepoint.core.text_processing import sanitize_title_for_search
+from cuepoint.data.playlist_file import parse_m3u, read_title_artist_from_file
 from cuepoint.data.rekordbox import (
     extract_artists_from_title,
     inspect_rekordbox_xml,
     is_readable,
     is_writable,
-    parse_rekordbox,
+    parse_playlist_tree,
     read_playlist_index,
 )
 from cuepoint.models.config import SETTINGS
 from cuepoint.models.preflight import PreflightIssue, PreflightResult
-from cuepoint.models.result import TrackResult
+from cuepoint.models.result import FILE_NOT_FOUND_ERROR, TrackResult
 from cuepoint.models.track import Track
 from cuepoint.services.checkpoint_service import (
     CheckpointData,
@@ -281,6 +282,8 @@ class ProcessorService(IProcessorService):
 
             # Build candidates_data list (for backward compatibility with export and UI)
             # This format matches what CandidateDialog and export functions expect
+            from cuepoint.core.matcher import _camelot_key
+
             candidates_data = []
             for cand in all_candidates:
                 candidates_data.append(
@@ -292,8 +295,7 @@ class ProcessorService(IProcessorService):
                         "candidate_title": cand.title,
                         "candidate_artists": cand.artists,
                         "candidate_key": cand.key or "",
-                        "candidate_key_camelot": cand.key
-                        or "",  # TODO: convert to Camelot
+                        "candidate_key_camelot": _camelot_key(cand.key) if cand.key else "",
                         "candidate_year": str(cand.release_year)
                         if cand.release_year
                         else "",
@@ -330,8 +332,6 @@ class ProcessorService(IProcessorService):
                 )
 
             # Convert key to Camelot notation
-            from cuepoint.core.matcher import _camelot_key
-
             camelot_key = _camelot_key(best.key) if best.key else None
 
             return TrackResult(
@@ -366,6 +366,7 @@ class ProcessorService(IProcessorService):
                 processing_time=dur / 1000.0,  # Convert ms to seconds
                 candidates_data=candidates_data,  # Dict format for export compatibility
                 queries_data=queries_data,  # Dict format for export compatibility
+                file_path=track.file_path,
             )
         else:
             # No match found
@@ -375,6 +376,8 @@ class ProcessorService(IProcessorService):
 
             # Build candidates_data list even when no match (for export and UI)
             # This ensures candidates are saved even when no match is found
+            from cuepoint.core.matcher import _camelot_key
+
             candidates_data = []
             for cand in all_candidates:
                 candidates_data.append(
@@ -386,8 +389,7 @@ class ProcessorService(IProcessorService):
                         "candidate_title": cand.title,
                         "candidate_artists": cand.artists,
                         "candidate_key": cand.key or "",
-                        "candidate_key_camelot": cand.key
-                        or "",  # TODO: convert to Camelot
+                        "candidate_key_camelot": _camelot_key(cand.key) if cand.key else "",
                         "candidate_year": str(cand.release_year)
                         if cand.release_year
                         else "",
@@ -437,6 +439,7 @@ class ProcessorService(IProcessorService):
                 processing_time=dur / 1000.0,  # Convert ms to seconds
                 candidates_data=candidates_data,  # Dict format for export compatibility
                 queries_data=queries_data,  # Dict format for export compatibility
+                file_path=track.file_path,
             )
 
     def process_playlist(
@@ -468,6 +471,241 @@ class ProcessorService(IProcessorService):
             results.append(result)
 
         return results
+
+    def process_playlist_from_m3u(
+        self,
+        m3u_path: str,
+        settings: Optional[Dict[str, Any]] = None,
+        progress_callback: Optional[ProgressCallback] = None,
+        controller: Optional[ProcessingController] = None,
+    ) -> Tuple[List[TrackResult], Optional[str]]:
+        """Process tracks from an M3U/M3U8 playlist file.
+
+        Uses the same pipeline as collection mode: same config (including
+        TRACK_WORKERS for parallel processing), same process_track() and matcher.
+        Parses the playlist file, uses #EXTINF/file tags for title/artist,
+        and runs matching (parallel when TRACK_WORKERS > 1). Missing paths
+        are included as "file not found" results. Returns results with
+        file_path set for sync.
+
+        Args:
+            m3u_path: Path to the .m3u or .m3u8 file.
+            settings: Optional settings override dictionary.
+            progress_callback: Optional callback for progress updates.
+            controller: Optional controller for cancellation support.
+
+        Returns:
+            Tuple of (list of TrackResult, optional warning message).
+        """
+        from cuepoint.ui.gui_interface import ReliabilityState
+
+        processing_start_time = time.perf_counter()
+        effective_settings = (
+            settings
+            if settings is not None
+            else {
+                key: self.config_service.get(key, SETTINGS.get(key))
+                for key in SETTINGS.keys()
+            }
+        )
+
+        # Same progress throttle/guardrail config as process_playlist_from_xml
+        throttle_ms = 200
+        eta_every_n = 50
+        runtime_max_minutes = 120
+        memory_max_mb = 2048
+        try:
+            throttle_ms = int(
+                self.config_service.get("performance.progress_throttle_ms", 200)
+            )
+            eta_every_n = int(
+                self.config_service.get("performance.eta_update_every_tracks", 50)
+            )
+            runtime_max_minutes = int(
+                self.config_service.get("performance.runtime_max_minutes", 120)
+            )
+        except (TypeError, ValueError):
+            pass
+        if progress_callback:
+            if throttle_ms > 0:
+                progress_callback = _throttled_progress_callback(
+                    progress_callback, throttle_ms=throttle_ms, eta_every_n=eta_every_n
+                )
+            runtime_max_sec = runtime_max_minutes * 60 if runtime_max_minutes > 0 else 0
+            progress_callback = _guardrail_progress_callback(
+                progress_callback,
+                controller,
+                runtime_max_sec,
+                memory_max_mb,
+                self.logging_service,
+            )
+
+        entries = parse_m3u(m3u_path)
+        if not entries:
+            return ([], None)
+
+        warning_msg: Optional[str] = None
+        total = len(entries)
+
+        # Build inputs (existing files only) and file-not-found results (same as collection pipeline)
+        inputs: List[Tuple[int, Track]] = []
+        not_found_by_idx: Dict[int, TrackResult] = {}
+        for idx, (path, title, artist) in enumerate(entries, 1):
+            if os.path.exists(path):
+                if title is None and artist is None:
+                    title, artist = read_title_artist_from_file(path)
+                title = (title or "").strip() or "Unknown"
+                artist = (artist or "").strip() or "Unknown"
+                inputs.append((idx, Track(title=title, artist=artist, file_path=path)))
+            else:
+                title_display = (title or os.path.basename(path) or "Unknown").strip() or "Unknown"
+                artist_display = (artist or "—").strip() or "—"
+                not_found_by_idx[idx] = TrackResult(
+                    playlist_index=idx,
+                    title=title_display,
+                    artist=artist_display,
+                    matched=False,
+                    error=FILE_NOT_FOUND_ERROR,
+                    file_path=path,
+                )
+        existing_count = sum(1 for p, _, _ in entries if os.path.exists(p))
+        if existing_count < total:
+            warning_msg = f"{existing_count} of {total} files found"
+            self.logging_service.warning("[m3u] %s", warning_msg)
+
+        def _merge_results_in_order(
+            processed: Dict[int, TrackResult],
+        ) -> List[TrackResult]:
+            return [
+                processed.get(i) or not_found_by_idx[i]
+                for i in range(1, total + 1)
+            ]
+
+        # TRACK_WORKERS and cap (same as process_playlist_from_xml)
+        def _safe_int(val: Any, fallback: int) -> int:
+            try:
+                return int(val)
+            except (TypeError, ValueError):
+                return fallback
+
+        track_workers = _safe_int(
+            effective_settings.get("TRACK_WORKERS", SETTINGS.get("TRACK_WORKERS", 1)),
+            SETTINGS.get("TRACK_WORKERS", 1),
+        )
+        perf_max = self.config_service.get("performance.max_workers", 8)
+        if isinstance(perf_max, (int, float)) and perf_max >= 1:
+            track_workers = min(track_workers, int(perf_max))
+
+        matched_count = 0
+        unmatched_count = len(not_found_by_idx)
+        progress_lock = threading.Lock()
+        results_dict: Dict[int, TrackResult] = dict(not_found_by_idx)
+
+        if track_workers > 1 and inputs:
+            self.logging_service.info(
+                f"[m3u] Using parallel processing with {track_workers} workers for {len(inputs)} tracks"
+            )
+            try:
+                with ThreadPoolExecutor(max_workers=track_workers) as ex:
+                    future_to_args = {
+                        ex.submit(
+                            self.process_track,
+                            idx,
+                            track,
+                            effective_settings,
+                        ): (idx, track)
+                        for idx, track in inputs
+                    }
+                    for future in as_completed(future_to_args):
+                        if controller and controller.is_cancelled():
+                            for f in future_to_args:
+                                if not f.done():
+                                    f.cancel()
+                            break
+                        try:
+                            result = future.result()
+                            results_dict[result.playlist_index] = result
+                            with progress_lock:
+                                if result.matched:
+                                    matched_count += 1
+                                else:
+                                    unmatched_count += 1
+                                if progress_callback:
+                                    try:
+                                        progress_callback(
+                                            ProgressInfo(
+                                                completed_tracks=len(results_dict),
+                                                total_tracks=total,
+                                                matched_count=matched_count,
+                                                unmatched_count=unmatched_count,
+                                                current_track={
+                                                    "title": result.title,
+                                                    "artists": result.artist or "",
+                                                },
+                                                elapsed_time=time.perf_counter()
+                                                - processing_start_time,
+                                                reliability_state=ReliabilityState.RUNNING,
+                                            )
+                                        )
+                                    except Exception:
+                                        pass
+                        except Exception as e:
+                            self.logging_service.warning(
+                                "[m3u] Track task failed: %s", e
+                            )
+                results = _merge_results_in_order(results_dict)
+            except Exception as e:
+                self.logging_service.warning(
+                    "[m3u] Parallel processing failed, falling back to sequential: %s",
+                    e,
+                )
+                results_dict = dict(not_found_by_idx)
+                matched_count = 0
+                unmatched_count = len(not_found_by_idx)
+                track_workers = 1
+                results = None
+        else:
+            results = None
+
+        if track_workers <= 1 or results is None:
+            if inputs and not results:
+                self.logging_service.info(
+                    f"[m3u] Using sequential processing (TRACK_WORKERS={track_workers})"
+                )
+            results_dict = dict(not_found_by_idx)
+            matched_count = 0
+            unmatched_count = len(not_found_by_idx)
+            for idx, track in inputs:
+                if controller and controller.is_cancelled():
+                    break
+                result = self.process_track(idx, track, effective_settings)
+                results_dict[idx] = result
+                if result.matched:
+                    matched_count += 1
+                else:
+                    unmatched_count += 1
+                if progress_callback:
+                    try:
+                        progress_callback(
+                            ProgressInfo(
+                                completed_tracks=len(results_dict),
+                                total_tracks=total,
+                                matched_count=matched_count,
+                                unmatched_count=unmatched_count,
+                                current_track={
+                                    "title": track.title,
+                                    "artists": track.artist or "",
+                                },
+                                elapsed_time=time.perf_counter()
+                                - processing_start_time,
+                                reliability_state=ReliabilityState.RUNNING,
+                            )
+                        )
+                    except Exception:
+                        pass
+            results = _merge_results_in_order(results_dict)
+
+        return (results, warning_msg)
 
     def run_preflight(
         self,
@@ -1006,7 +1244,8 @@ class ProcessorService(IProcessorService):
             collector.start_run()
             collector.start_stage(STAGE_PARSE_XML)
         try:
-            playlists = parse_rekordbox(xml_path)
+            # Use path-keyed playlists so selection from UI (full path e.g. ROOT/TEST/to split test) matches
+            _, playlists = parse_playlist_tree(xml_path)
         except FileNotFoundError:
             raise ProcessingError(
                 error_type=ErrorType.FILE_NOT_FOUND,

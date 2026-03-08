@@ -144,3 +144,16 @@ class TestProcessorServiceErrorHandling:
         assert err.error_type == ErrorType.FILE_NOT_FOUND
         combined = f"{err.message} {err.details or ''}".lower()
         assert "not found" in combined
+
+    def test_process_playlist_from_m3u_missing_file_raises_file_not_found(self):
+        """When M3U file does not exist, process_playlist_from_m3u raises FileNotFoundError."""
+        with pytest.raises(FileNotFoundError, match="not found"):
+            self.processor_service.process_playlist_from_m3u("/nonexistent/path/list.m3u")
+
+    def test_process_playlist_from_m3u_empty_file_returns_empty_results(self, tmp_path):
+        """When M3U file exists but has no track entries, returns ([], None)."""
+        m3u = tmp_path / "empty.m3u"
+        m3u.write_text("#EXTM3U\n", encoding="utf-8")
+        results, warning = self.processor_service.process_playlist_from_m3u(str(m3u))
+        assert results == []
+        assert warning is None

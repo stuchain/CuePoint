@@ -4,15 +4,17 @@ import logging
 from datetime import date, datetime, timedelta
 from typing import Any, Callable, List, Optional
 
-from PySide6.QtCore import QObject, Qt, QThread, Signal
+from PySide6.QtCore import QObject, Qt, QSize, QThread, Signal
 from PySide6.QtWidgets import (
     QDialog,
+    QHBoxLayout,
     QLabel,
     QListWidget,
     QListWidgetItem,
     QMessageBox,
     QPushButton,
     QScrollArea,
+    QStyle,
     QTabWidget,
     QVBoxLayout,
     QWidget,
@@ -221,9 +223,26 @@ class IncratePage(QWidget):
 
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)
-        back_btn = QPushButton("← Back to tools")
+        back_row = QHBoxLayout()
+        back_row.setContentsMargins(8, 6, 0, 4)
+        back_btn = QPushButton()
+        back_btn.setToolTip("Back to tool selection")
+        back_btn.setFixedHeight(28)
+        back_btn.setFixedWidth(32)
+        back_btn.setFocusPolicy(Qt.StrongFocus)
+        style = self.style()
+        if style:
+            icon = style.standardIcon(QStyle.StandardPixmap.SP_ArrowBack)
+            back_btn.setIcon(icon)
+            back_btn.setIconSize(QSize(20, 20))
         back_btn.clicked.connect(self.back_to_tools_requested.emit)
-        layout.addWidget(back_btn)
+        back_btn.setStyleSheet(
+            "QPushButton { border: none; background: transparent; }"
+            " QPushButton:hover { background-color: rgba(255,255,255,0.1); border-radius: 4px; }"
+        )
+        back_row.addWidget(back_btn)
+        back_row.addStretch()
+        layout.addLayout(back_row)
 
         self.tabs = QTabWidget()
         # Workflow tab: Import, Discover, Results, Playlist (scrollable)

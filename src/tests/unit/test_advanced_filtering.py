@@ -52,6 +52,7 @@ class TestAdvancedFiltering(unittest.TestCase):
                 beatport_key_camelot=None,
                 beatport_bpm="128",
                 beatport_year="2020",
+                beatport_label="Label A",
             ),
             MockTrackResult(
                 playlist_index=2,
@@ -66,6 +67,7 @@ class TestAdvancedFiltering(unittest.TestCase):
                 beatport_key_camelot=None,
                 beatport_bpm="130",
                 beatport_year="2023",
+                beatport_label="Label B",
             ),
             MockTrackResult(
                 playlist_index=3,
@@ -80,6 +82,7 @@ class TestAdvancedFiltering(unittest.TestCase):
                 beatport_key_camelot=None,
                 beatport_bpm="125",
                 beatport_year="2015",
+                beatport_label="Label C",
             ),
             MockTrackResult(
                 playlist_index=4,
@@ -94,6 +97,7 @@ class TestAdvancedFiltering(unittest.TestCase):
                 beatport_key_camelot=None,
                 beatport_bpm=None,
                 beatport_year=None,
+                beatport_label=None,
             ),
         ]
         # Use set_results to properly initialize the controller

@@ -909,6 +909,7 @@ def best_beatport_match(
 
         # Adaptive max results: more results for specific queries, fewer for generic
         mr = _pick_max_results_for_query(q)
+        mr = min(mr, 25)  # Cap max candidates per query at 25
 
         # Fetch candidate URLs using unified search (DuckDuckGo or direct Beatport)
         # track_urls() automatically chooses the best search method based on query type

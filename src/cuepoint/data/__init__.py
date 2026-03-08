@@ -12,3 +12,25 @@ Modules:
     rekordbox: Rekordbox XML parsing utilities
     providers: Search provider interface and registry
 """
+
+from cuepoint.data.rekordbox import (
+    build_rekordbox_updates,
+    build_rekordbox_updates_batch,
+    get_track_locations,
+    playlist_path_for_display,
+    write_key_comment_year_to_playlist_tracks,
+    write_key_comment_year_to_playlist_tracks_batch,
+    write_tags_to_paths,
+    write_updated_collection_xml,
+)
+
+__all__ = [
+    "build_rekordbox_updates",
+    "build_rekordbox_updates_batch",
+    "get_track_locations",
+    "playlist_path_for_display",
+    "write_key_comment_year_to_playlist_tracks",
+    "write_key_comment_year_to_playlist_tracks_batch",
+    "write_tags_to_paths",
+    "write_updated_collection_xml",
+]

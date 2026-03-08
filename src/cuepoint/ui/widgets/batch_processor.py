@@ -5,27 +5,36 @@
 Batch Processor Widget Module
 
 This module contains the BatchProcessorWidget class for processing multiple playlists.
+Supports hierarchical tree (folders + playlists) with tri-state folder checkboxes,
+search filter, and Select All / Deselect All / Expand All / Collapse All.
 """
 
 import time
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QListWidget,
     QListWidgetItem,
     QMessageBox,
     QProgressBar,
     QPushButton,
+    QTreeWidget,
+    QTreeWidgetItem,
     QVBoxLayout,
     QWidget,
 )
 
+from cuepoint.data.rekordbox import playlist_path_for_display
 from cuepoint.models.result import TrackResult
 from cuepoint.ui.gui_interface import ProcessingError, ProgressInfo
+
+# Role for storing playlist path on leaf items (same as playlist_selector)
+_PATH_ROLE = Qt.ItemDataRole.UserRole
 
 
 class BatchProcessorWidget(QWidget):
@@ -40,6 +49,10 @@ class BatchProcessorWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.playlists: List[str] = []
+        self._tree_roots: List[Dict[str, Any]] = []
+        self._playlists_by_path: Dict[str, Any] = {}
+        self._ignore_item_changed: bool = False  # Block recursive itemChanged
+        self._filter_text: str = ""
         self.results: Dict[
             str, List[TrackResult]
         ] = {}  # playlist_name -> List[TrackResult]
@@ -59,17 +72,28 @@ class BatchProcessorWidget(QWidget):
         layout.setSpacing(10)
         layout.setContentsMargins(10, 10, 10, 10)
 
-        # Playlist selection
+        # Playlist selection: search + tree + buttons
         playlist_group = QGroupBox("Select Playlists")
         playlist_layout = QVBoxLayout()
 
-        self.playlist_list = QListWidget()
-        self.playlist_list.setSelectionMode(
-            QListWidget.NoSelection
-        )  # Use checkboxes instead
-        playlist_layout.addWidget(self.playlist_list)
+        self.search_edit = QLineEdit()
+        self.search_edit.setPlaceholderText("Search playlists...")
+        self.search_edit.setClearButtonEnabled(True)
+        self.search_edit.setStyleSheet(
+            "QLineEdit { color: #e0e0e0; font-size: 11px; }"
+            " QLineEdit::placeholder { color: #888; }"
+        )
+        self.search_edit.textChanged.connect(self._on_search_changed)
+        playlist_layout.addWidget(self.search_edit)
 
-        # Select all/none buttons
+        self.playlist_tree = QTreeWidget()
+        self.playlist_tree.setHeaderHidden(True)
+        self.playlist_tree.setStyleSheet("font-size: 11px; color: #e0e0e0;")
+        self.playlist_tree.setIndentation(16)
+        self.playlist_tree.itemChanged.connect(self._on_tree_item_changed)
+        playlist_layout.addWidget(self.playlist_tree)
+
+        # Select all / Deselect all / Expand all / Collapse all
         btn_layout = QHBoxLayout()
         self.select_all_btn = QPushButton("Select All")
         self.select_all_btn.clicked.connect(self.select_all_playlists)
@@ -78,6 +102,14 @@ class BatchProcessorWidget(QWidget):
         self.deselect_all_btn = QPushButton("Deselect All")
         self.deselect_all_btn.clicked.connect(self.deselect_all_playlists)
         btn_layout.addWidget(self.deselect_all_btn)
+
+        self.expand_all_btn = QPushButton("Expand All")
+        self.expand_all_btn.clicked.connect(self.expand_all_playlists)
+        btn_layout.addWidget(self.expand_all_btn)
+
+        self.collapse_all_btn = QPushButton("Collapse All")
+        self.collapse_all_btn.clicked.connect(self.collapse_all_playlists)
+        btn_layout.addWidget(self.collapse_all_btn)
 
         btn_layout.addStretch()
         playlist_layout.addLayout(btn_layout)
@@ -165,34 +197,226 @@ class BatchProcessorWidget(QWidget):
         layout.addStretch()
 
     def set_playlists(self, playlists: List[str]):
-        """Set available playlists"""
+        """Set available playlists (flat list). Empty list clears the tree."""
         self.playlists = playlists
-        self.playlist_list.clear()
+        self._tree_roots = []
+        self._playlists_by_path = {}
+        self.playlist_tree.clear()
+        self.search_edit.clear()
 
-        for playlist in playlists:
-            item = QListWidgetItem(playlist)
-            item.setCheckState(Qt.Checked)
-            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
-            self.playlist_list.addItem(item)
+    def set_playlist_tree(
+        self,
+        tree_roots: List[Dict[str, Any]],
+        playlists_by_path: Dict[str, Any],
+    ) -> None:
+        """Build hierarchical tree from folder/playlist structure (same as single mode)."""
+        self._tree_roots = tree_roots
+        self._playlists_by_path = playlists_by_path
+        self.playlists = list(playlists_by_path.keys()) if playlists_by_path else []
+        self._filter_text = ""
+        self._ignore_item_changed = True
+        try:
+            self.playlist_tree.clear()
+            self.search_edit.clear()
+            self._add_nodes(tree_roots, None)
+            self._refresh_folder_states()
+        finally:
+            self._ignore_item_changed = False
+
+    def _add_nodes(
+        self,
+        nodes: List[Dict[str, Any]],
+        parent: Optional[QTreeWidgetItem],
+    ) -> None:
+        for node in nodes:
+            name = node.get("name", "Unnamed")
+            path = node.get("path", name)
+            node_type = node.get("type", "playlist")
+            if node_type == "playlist":
+                display = playlist_path_for_display(path) or name
+                label = f"{display} ({node.get('track_count', 0)})"
+                item = QTreeWidgetItem([label])
+                item.setData(0, _PATH_ROLE, path)
+                item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+                item.setCheckState(0, Qt.CheckState.Unchecked)
+                if parent:
+                    parent.addChild(item)
+                else:
+                    self.playlist_tree.addTopLevelItem(item)
+            else:
+                if name.upper() == "ROOT":
+                    self._add_nodes(node.get("children", []), parent)
+                    continue
+                folder_item = QTreeWidgetItem([name])
+                folder_item.setData(0, _PATH_ROLE, None)  # No path = folder
+                folder_item.setFlags(folder_item.flags() | Qt.ItemIsUserCheckable)
+                folder_item.setCheckState(0, Qt.CheckState.Unchecked)
+                if parent:
+                    parent.addChild(folder_item)
+                else:
+                    self.playlist_tree.addTopLevelItem(folder_item)
+                self._add_nodes(node.get("children", []), folder_item)
+
+    def _refresh_folder_states(self) -> None:
+        """Recompute folder tri-state from leaf check states."""
+        def count_leaves(item: QTreeWidgetItem) -> tuple:
+            """Return (checked_count, total_leaf_count) for this subtree."""
+            path = item.data(0, _PATH_ROLE)
+            if path is not None:
+                return (1 if item.checkState(0) == Qt.CheckState.Checked else 0, 1)
+            checked, total = 0, 0
+            for i in range(item.childCount()):
+                c = item.child(i)
+                ch, tot = count_leaves(c)
+                checked += ch
+                total += tot
+            if total > 0:
+                if checked == 0:
+                    item.setCheckState(0, Qt.CheckState.Unchecked)
+                elif checked == total:
+                    item.setCheckState(0, Qt.CheckState.Checked)
+                else:
+                    item.setCheckState(0, Qt.CheckState.PartiallyChecked)
+            return (checked, total)
+        for i in range(self.playlist_tree.topLevelItemCount()):
+            count_leaves(self.playlist_tree.topLevelItem(i))
+
+    def _on_tree_item_changed(self, item: QTreeWidgetItem, column: int) -> None:
+        if self._ignore_item_changed or column != 0:
+            return
+        path = item.data(0, _PATH_ROLE)
+        state = item.checkState(0)
+        self._ignore_item_changed = True
+        try:
+            if path is not None:
+                # Leaf: update parent folder states
+                self._refresh_folder_states()
+            else:
+                # Folder: set all descendant playlist leaves to this state
+                def set_leaves_only(parent_item: QTreeWidgetItem, checked: bool) -> None:
+                    for i in range(parent_item.childCount()):
+                        c = parent_item.child(i)
+                        if c.data(0, _PATH_ROLE) is not None:
+                            c.setCheckState(0, Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
+                        else:
+                            set_leaves_only(c, checked)
+                set_leaves_only(item, state == Qt.CheckState.Checked)
+                self._refresh_folder_states()
+        finally:
+            self._ignore_item_changed = False
+
+    def _on_search_changed(self, text: str) -> None:
+        self._filter_text = (text or "").strip().lower()
+        self._apply_filter()
+
+    def _apply_filter(self) -> None:
+        if not getattr(self, "_filter_text", None):
+            self._set_all_visible_collapsed()
+            return
+        self._filter_visible()
+
+    def _set_all_visible_collapsed(self) -> None:
+        def _walk(item: QTreeWidgetItem) -> None:
+            item.setHidden(False)
+            for i in range(item.childCount()):
+                _walk(item.child(i))
+            if item.childCount() > 0:
+                item.setExpanded(False)
+        for i in range(self.playlist_tree.topLevelItemCount()):
+            _walk(self.playlist_tree.topLevelItem(i))
+
+    def _filter_visible(self) -> None:
+        ft = getattr(self, "_filter_text", "") or ""
+
+        def _filter(item: QTreeWidgetItem) -> bool:
+            path = item.data(0, _PATH_ROLE)
+            name = item.text(0)
+            is_leaf = path is not None
+            match = ft in (path or "").lower() or ft in name.lower()
+            if is_leaf:
+                item.setHidden(not match)
+                return match
+            any_child = False
+            for i in range(item.childCount()):
+                if _filter(item.child(i)):
+                    any_child = True
+            item.setHidden(not any_child)
+            if any_child:
+                item.setExpanded(True)
+            return any_child
+
+        for i in range(self.playlist_tree.topLevelItemCount()):
+            _filter(self.playlist_tree.topLevelItem(i))
 
     def get_selected_playlists(self) -> List[str]:
-        """Get list of selected playlists"""
-        selected = []
-        for i in range(self.playlist_list.count()):
-            item = self.playlist_list.item(i)
-            if item.checkState() == Qt.Checked:
-                selected.append(item.text())
+        """Get list of selected playlist paths (leaves only)."""
+        selected: List[str] = []
+
+        def walk(item: QTreeWidgetItem) -> None:
+            path = item.data(0, _PATH_ROLE)
+            if path is not None and item.checkState(0) == Qt.CheckState.Checked:
+                selected.append(path)
+            for i in range(item.childCount()):
+                walk(item.child(i))
+
+        for i in range(self.playlist_tree.topLevelItemCount()):
+            walk(self.playlist_tree.topLevelItem(i))
         return selected
 
-    def select_all_playlists(self):
-        """Select all playlists"""
-        for i in range(self.playlist_list.count()):
-            self.playlist_list.item(i).setCheckState(Qt.Checked)
+    def select_all_playlists(self) -> None:
+        def set_leaves(item: QTreeWidgetItem, checked: bool) -> None:
+            if item.data(0, _PATH_ROLE) is not None:
+                item.setCheckState(0, Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
+            for i in range(item.childCount()):
+                set_leaves(item.child(i), checked)
+        for i in range(self.playlist_tree.topLevelItemCount()):
+            set_leaves(self.playlist_tree.topLevelItem(i), True)
+        self._ignore_item_changed = True
+        try:
+            self._refresh_folder_states()
+        finally:
+            self._ignore_item_changed = False
 
-    def deselect_all_playlists(self):
-        """Deselect all playlists"""
-        for i in range(self.playlist_list.count()):
-            self.playlist_list.item(i).setCheckState(Qt.Unchecked)
+    def deselect_all_playlists(self) -> None:
+        def set_leaves(item: QTreeWidgetItem, checked: bool) -> None:
+            if item.data(0, _PATH_ROLE) is not None:
+                item.setCheckState(0, Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
+            for i in range(item.childCount()):
+                set_leaves(item.child(i), checked)
+        for i in range(self.playlist_tree.topLevelItemCount()):
+            set_leaves(self.playlist_tree.topLevelItem(i), False)
+        self._ignore_item_changed = True
+        try:
+            self._refresh_folder_states()
+        finally:
+            self._ignore_item_changed = False
+
+    def expand_all_playlists(self) -> None:
+        def _expand(item: QTreeWidgetItem) -> None:
+            if item.childCount() > 0:
+                item.setExpanded(True)
+                for i in range(item.childCount()):
+                    _expand(item.child(i))
+        for i in range(self.playlist_tree.topLevelItemCount()):
+            _expand(self.playlist_tree.topLevelItem(i))
+
+    def collapse_all_playlists(self) -> None:
+        def _collapse(item: QTreeWidgetItem) -> None:
+            if item.childCount() > 0:
+                item.setExpanded(False)
+                for i in range(item.childCount()):
+                    _collapse(item.child(i))
+        for i in range(self.playlist_tree.topLevelItemCount()):
+            _collapse(self.playlist_tree.topLevelItem(i))
+
+    def _set_playlist_selection_enabled(self, enabled: bool) -> None:
+        """Enable or disable tree, search, and selection buttons during/after processing."""
+        self.playlist_tree.setEnabled(enabled)
+        self.search_edit.setEnabled(enabled)
+        self.select_all_btn.setEnabled(enabled)
+        self.deselect_all_btn.setEnabled(enabled)
+        self.expand_all_btn.setEnabled(enabled)
+        self.collapse_all_btn.setEnabled(enabled)
 
     def _on_start_batch(self):
         """Handle start batch button click"""
@@ -290,9 +514,7 @@ class BatchProcessorWidget(QWidget):
         self.remaining_label.setText("Remaining: --")
 
         # Disable playlist selection during processing
-        for i in range(self.playlist_list.count()):
-            item = self.playlist_list.item(i)
-            item.setFlags(item.flags() & ~Qt.ItemIsEnabled)
+        self._set_playlist_selection_enabled(False)
 
         # Emit signal to start batch processing
         self.batch_started.emit(playlist_names)
@@ -323,9 +545,7 @@ class BatchProcessorWidget(QWidget):
         self.current_playlist_label.setText("Batch processing cancelled")
 
         # Re-enable playlist selection
-        for i in range(self.playlist_list.count()):
-            item = self.playlist_list.item(i)
-            item.setFlags(item.flags() | Qt.ItemIsEnabled)
+        self._set_playlist_selection_enabled(True)
 
         # Emit cancel signal
         self.batch_cancelled.emit()
@@ -527,9 +747,7 @@ class BatchProcessorWidget(QWidget):
         self.current_playlist_label.setText("Batch processing complete!")
 
         # Re-enable playlist selection
-        for i in range(self.playlist_list.count()):
-            item = self.playlist_list.item(i)
-            item.setFlags(item.flags() | Qt.ItemIsEnabled)
+        self._set_playlist_selection_enabled(True)
 
         # Show batch summary dialog
         self._show_batch_summary()

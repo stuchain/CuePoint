@@ -18,11 +18,14 @@ The MainWindow coordinates between various UI components and the
 GUIController for processing operations.
 """
 
+import json
 import os
 import platform
 import subprocess
 import sys
+import xml.etree.ElementTree as ET
 from datetime import datetime
+from pathlib import Path
 
 # For update system (Step 5)
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
@@ -30,7 +33,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 if TYPE_CHECKING:
     pass
 
-from PySide6.QtCore import QSettings, Qt, QTimer
+from PySide6.QtCore import QSettings, Qt, QSize, QTimer
 from PySide6.QtGui import (
     QAction,
     QDragEnterEvent,
@@ -54,12 +57,21 @@ from PySide6.QtWidgets import (
     QPushButton,
     QRadioButton,
     QScrollArea,
+    QStackedWidget,
     QStyle,
     QTabWidget,
     QVBoxLayout,
     QWidget,
 )
 
+from cuepoint.data import (
+    build_rekordbox_updates,
+    get_track_locations,
+    playlist_path_for_display,
+    write_key_comment_year_to_playlist_tracks,
+    write_key_comment_year_to_playlist_tracks_batch,
+    write_tags_to_paths,
+)
 from cuepoint.models.result import TrackResult
 from cuepoint.services.output_writer import write_csv_files
 from cuepoint.ui.controllers.config_controller import ConfigController
@@ -75,9 +87,11 @@ from cuepoint.ui.gui_interface import (
 from cuepoint.ui.strings import EmptyState
 from cuepoint.ui.widgets.batch_processor import BatchProcessorWidget
 from cuepoint.ui.widgets.config_panel import ConfigPanel
+from cuepoint.ui.dialogs import SyncCompleteDialog, SyncTagsDialog
 from cuepoint.ui.widgets.dialogs import AboutDialog, ErrorDialog, UserGuideDialog
 from cuepoint.ui.widgets.file_selector import FileSelector
 from cuepoint.ui.widgets.history_view import HistoryView
+from cuepoint.ui.widgets.playlist_file_selector import PlaylistFileSelector
 from cuepoint.ui.widgets.performance_view import PerformanceView
 from cuepoint.ui.widgets.playlist_selector import PlaylistSelector
 
@@ -209,7 +223,7 @@ class MainWindow(QMainWindow):
             # Playlist selector
             if hasattr(self, "playlist_selector"):
                 if hasattr(self.playlist_selector, "combo"):
-                    tab_order.append(self.playlist_selector.combo)
+                    tab_order.append(self.playlist_selector._trigger_edit)
 
             # Start button
             if hasattr(self, "start_button"):
@@ -354,43 +368,8 @@ class MainWindow(QMainWindow):
             return
 
     def _schedule_beatport_token_check_if_needed(self) -> None:
-        """If Beatport token is missing, show get-token dialog after window is ready."""
-        if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get(
-            "CUEPOINT_DISABLE_ONBOARDING"
-        ):
-            return
-
-        def show_beatport_token_dialog_if_missing():
-            try:
-                token = (os.environ.get("BEATPORT_ACCESS_TOKEN") or "").strip()
-                if not token and self._config_service:
-                    token = (
-                        self._config_service.get("incrate.beatport_access_token") or ""
-                    ).strip()
-                if token:
-                    return
-                from PySide6.QtWidgets import QApplication
-
-                self.show()
-                self.raise_()
-                QApplication.processEvents()
-                from cuepoint.ui.dialogs.beatport_token_dialog import BeatportTokenDialog
-
-                dialog = BeatportTokenDialog(parent=self, initial_token="")
-                if dialog.exec() == QDialog.DialogCode.Accepted:
-                    new_token = dialog.get_token()
-                    if new_token and self._config_service:
-                        self._config_service.set(
-                            "incrate.beatport_access_token", new_token
-                        )
-                        try:
-                            self._config_service.save()
-                        except Exception:
-                            pass
-            except Exception:
-                pass
-
-        QTimer.singleShot(600, show_beatport_token_dialog_if_missing)
+        # Beatport API token dialog is shown only when entering inCrate (_show_incrate_page)
+        pass
 
     def init_ui(self) -> None:
         """Initialize all UI components and layout.
@@ -416,15 +395,17 @@ class MainWindow(QMainWindow):
         # Create menu bar
         self.create_menu_bar()
 
-        # Create tool selection page
+        # Create tool selection page and stack (so switching views never deletes pages)
         self.tool_selection_page = ToolSelectionPage()
         self.tool_selection_page.tool_selected.connect(self.on_tool_selected)
+        self._stack = QStackedWidget()
+        self._stack.addWidget(self.tool_selection_page)
+        self.setCentralWidget(self._stack)
+        self._stack.setCurrentWidget(self.tool_selection_page)
+        self.current_page = "tool_selection"
 
         # Create tab widget
         self.tabs = QTabWidget()
-
-        # Initially show tool selection page
-        self.show_tool_selection_page()
 
         # Main tab (scrollable): keeps table scrollable AND allows whole-window scroll if needed
         main_tab_content = QWidget()
@@ -436,21 +417,49 @@ class MainWindow(QMainWindow):
         row1 = QHBoxLayout()
         row1.setSpacing(10)
 
-        # BOX 1: Collection
-        self.file_box = QGroupBox("Collection")
+        # BOX 1: Source choice (Collection or Playlist file) - two buttons only
+        self.file_box = QGroupBox("Source")
         self.file_box.setObjectName("panelBox")
-        self.file_box.setFixedHeight(75)
+        self.file_box.setFixedHeight(90)
         file_layout = QHBoxLayout(self.file_box)
         file_layout.setContentsMargins(0, 0, 0, 0)
+        self.source_collection_btn = QPushButton("Collection")
+        self.source_collection_btn.setObjectName("sourceModeButton")
+        self.source_collection_btn.setCheckable(True)
+        self.source_collection_btn.setChecked(True)  # Default
+        self.source_collection_btn.clicked.connect(self._on_source_collection_clicked)
+        self.source_playlist_file_btn = QPushButton("Playlist file")
+        self.source_playlist_file_btn.setObjectName("sourceModeButton")
+        self.source_playlist_file_btn.setCheckable(True)
+        self.source_playlist_file_btn.clicked.connect(self._on_source_playlist_file_clicked)
+        file_layout.addWidget(self.source_collection_btn)
+        file_layout.addWidget(self.source_playlist_file_btn)
+        file_layout.addStretch()
+        row1.addWidget(self.file_box, 1)  # Equal stretch
+
+        # Second box: XML picker or M3U picker (hidden until user clicks Collection or Playlist file)
+        self.source_content_stack = QStackedWidget()
         self.file_selector = FileSelector()
         self.file_selector.file_selected.connect(self.on_file_selected)
-        file_layout.addWidget(self.file_selector)
-        row1.addWidget(self.file_box, 1)  # Equal stretch
+        self.source_content_stack.addWidget(self.file_selector)
+        self.playlist_file_selector = PlaylistFileSelector()
+        self.playlist_file_selector.playlist_file_selected.connect(
+            self.on_playlist_file_selected
+        )
+        self.source_content_stack.addWidget(self.playlist_file_selector)
+        self.source_content_box = QGroupBox("File")
+        self.source_content_box.setFixedHeight(90)
+        self.source_content_box.setObjectName("panelBox")
+        source_content_layout = QVBoxLayout(self.source_content_box)
+        source_content_layout.setContentsMargins(0, 0, 0, 0)
+        source_content_layout.addWidget(self.source_content_stack)
+        self.source_content_box.setVisible(False)  # Hidden by default
+        self._source_mode = "collection"
 
         # BOX 2: Mode
         self.mode_box = QGroupBox("Mode")
         self.mode_box.setObjectName("panelBox")
-        self.mode_box.setFixedHeight(75)
+        self.mode_box.setFixedHeight(90)
         mode_layout = QHBoxLayout(self.mode_box)
         mode_layout.setContentsMargins(0, 0, 0, 0)
         mode_layout.setSpacing(15)
@@ -516,20 +525,35 @@ class MainWindow(QMainWindow):
         self.mode_group = self.mode_box
         row1.addWidget(self.mode_box, 1)  # Equal stretch
 
-        # BOX 3: Playlist
+        # BOX 3: Playlist (tree for Collection, or filename label for Playlist file)
         self.playlist_box = QGroupBox("Playlist")
         self.playlist_box.setObjectName("panelBox")
-        self.playlist_box.setFixedHeight(75)
+        self.playlist_box.setFixedHeight(90)
         playlist_layout = QHBoxLayout(self.playlist_box)
         playlist_layout.setContentsMargins(0, 0, 0, 0)
         self.playlist_selector = PlaylistSelector()
         self.playlist_selector.playlist_selected.connect(self.on_playlist_selected)
-        playlist_layout.addWidget(self.playlist_selector)
+        self.playlist_filename_label = QLabel("")
+        self.playlist_filename_label.setStyleSheet("font-size: 12px; color: #ccc;")
+        self.playlist_filename_label.setObjectName("playlistFilenameLabel")
+        playlist_stack = QStackedWidget()
+        playlist_stack.addWidget(self.playlist_selector)
+        playlist_stack.addWidget(self.playlist_filename_label)
+        self.playlist_stack = playlist_stack
+        playlist_layout.addWidget(playlist_stack)
         self.playlist_box.setVisible(False)
         self.single_playlist_group = self.playlist_box
         row1.addWidget(self.playlist_box, 1)  # Equal stretch
 
         main_layout.addLayout(row1)
+
+        # === ROW 2: Content box (XML or M3U picker) directly below Source, same size ===
+        row2 = QHBoxLayout()
+        row2.setSpacing(10)
+        row2.addWidget(self.source_content_box, 1)  # Same stretch as Source box
+        row2.addStretch(1)  # Empty under Mode
+        row2.addStretch(1)  # Empty under Playlist
+        main_layout.addLayout(row2)
 
         # === Empty state hint (Step 9.4) ===
         self.empty_state_hint = QWidget()
@@ -539,30 +563,30 @@ class MainWindow(QMainWindow):
         hint_layout.setSpacing(10)
         hint_layout.setAlignment(Qt.AlignCenter)
 
-        hint_title = QLabel(EmptyState.GET_STARTED_TITLE)
-        hint_title.setAlignment(Qt.AlignCenter)
-        hint_title.setStyleSheet("font-size: 14px; font-weight: bold;")
-        hint_layout.addWidget(hint_title)
+        self.hint_title = QLabel(EmptyState.GET_STARTED_TITLE)
+        self.hint_title.setAlignment(Qt.AlignCenter)
+        self.hint_title.setStyleSheet("font-size: 14px; font-weight: bold;")
+        hint_layout.addWidget(self.hint_title)
 
-        hint_body = QLabel(EmptyState.GET_STARTED_BODY)
-        hint_body.setAlignment(Qt.AlignCenter)
-        hint_body.setWordWrap(True)
-        hint_body.setStyleSheet("font-size: 12px; color: #ccc;")
-        hint_layout.addWidget(hint_body)
+        self.hint_body = QLabel(EmptyState.GET_STARTED_BODY)
+        self.hint_body.setAlignment(Qt.AlignCenter)
+        self.hint_body.setWordWrap(True)
+        self.hint_body.setStyleSheet("font-size: 12px; color: #ccc;")
+        hint_layout.addWidget(self.hint_body)
 
         hint_buttons = QHBoxLayout()
         hint_buttons.addStretch(1)
 
-        browse_hint_btn = QPushButton(EmptyState.BROWSE_FOR_XML)
-        browse_hint_btn.setObjectName("secondaryActionButton")
-        browse_hint_btn.clicked.connect(self.on_file_open)
-        browse_hint_btn.setAccessibleName(EmptyState.NO_XML_ACTION)
-        hint_buttons.addWidget(browse_hint_btn)
+        self.browse_hint_btn = QPushButton(EmptyState.BROWSE_FOR_XML)
+        self.browse_hint_btn.setObjectName("secondaryActionButton")
+        self.browse_hint_btn.clicked.connect(self.on_file_open)
+        self.browse_hint_btn.setAccessibleName(EmptyState.NO_XML_ACTION)
+        hint_buttons.addWidget(self.browse_hint_btn)
 
-        instructions_hint_btn = QPushButton(EmptyState.VIEW_INSTRUCTIONS)
-        instructions_hint_btn.setObjectName("secondaryActionButton")
-        instructions_hint_btn.clicked.connect(self.file_selector.show_instructions)
-        hint_buttons.addWidget(instructions_hint_btn)
+        self.instructions_hint_btn = QPushButton(EmptyState.VIEW_INSTRUCTIONS)
+        self.instructions_hint_btn.setObjectName("secondaryActionButton")
+        self.instructions_hint_btn.clicked.connect(self._on_empty_state_instructions)
+        hint_buttons.addWidget(self.instructions_hint_btn)
 
         hint_buttons.addStretch(1)
         hint_layout.addLayout(hint_buttons)
@@ -609,6 +633,9 @@ class MainWindow(QMainWindow):
         start_layout.addStretch()
         self.start_button_container.setVisible(False)
         main_layout.addWidget(self.start_button_container)
+
+        # Set default mode after playlist_box, start_button, and batch_processor exist so on_mode_changed can use them
+        self.single_mode_radio.setChecked(True)  # Default to Single mode (not Batch)
 
         # Backward compat
         self.start_row = self.start_button
@@ -720,6 +747,9 @@ class MainWindow(QMainWindow):
             results_controller=self.results_controller,
             export_controller=self.export_controller,
         )
+        self.results_view.write_to_track_tags_requested.connect(
+            self.on_write_to_track_tags_requested
+        )
         results_layout.addWidget(self.results_view)
         self.results_group.setVisible(False)
         main_layout.addWidget(self.results_group, 1)  # Takes remaining space
@@ -740,6 +770,10 @@ class MainWindow(QMainWindow):
         )
         self.history_view = HistoryView(export_controller=self.export_controller)
         self.history_view.rerun_requested.connect(self.on_rerun_requested)
+        self.history_view.rerun_m3u_requested.connect(self.on_rerun_m3u_requested)
+        self.history_view.write_to_track_tags_requested.connect(
+            self.on_write_to_track_tags_from_history
+        )
         history_layout.addWidget(self.history_view)
 
         history_scroll = QScrollArea()
@@ -758,6 +792,35 @@ class MainWindow(QMainWindow):
         # Add tabs (Settings tab removed - now accessible via menu)
         self.tabs.addTab(main_scroll, "Main")
         self.tabs.addTab(history_scroll, "Past Searches")
+
+        # inKey wrapper: back button (top-left) + tabs, so we can show back when on main interface
+        self._inkey_wrapper = QWidget()
+        inkey_layout = QVBoxLayout(self._inkey_wrapper)
+        inkey_layout.setContentsMargins(0, 0, 0, 0)
+        inkey_layout.setSpacing(0)
+        back_row = QHBoxLayout()
+        back_row.setContentsMargins(8, 6, 0, 4)
+        self._inkey_back_btn = QPushButton()
+        self._inkey_back_btn.setToolTip("Back to tool selection")
+        self._inkey_back_btn.setFixedHeight(28)
+        self._inkey_back_btn.setFixedWidth(32)
+        self._inkey_back_btn.setFocusPolicy(Qt.StrongFocus)
+        style = self.style()
+        if style:
+            icon = style.standardIcon(QStyle.StandardPixmap.SP_ArrowBack)
+            self._inkey_back_btn.setIcon(icon)
+            self._inkey_back_btn.setIconSize(QSize(20, 20))
+        self._inkey_back_btn.clicked.connect(self.show_tool_selection_page)
+        self._inkey_back_btn.setStyleSheet(
+            "QPushButton { border: none; background: transparent; }"
+            " QPushButton:hover { background-color: rgba(255,255,255,0.1); border-radius: 4px; }"
+        )
+        back_row.addWidget(self._inkey_back_btn)
+        back_row.addStretch()
+        inkey_layout.addLayout(back_row)
+        inkey_layout.addWidget(self.tabs, 1)
+
+        self._stack.addWidget(self._inkey_wrapper)
 
         # Performance monitoring view (created but not added to tabs yet)
         self.performance_view = PerformanceView()
@@ -975,17 +1038,59 @@ class MainWindow(QMainWindow):
 
     def show_tool_selection_page(self) -> None:
         """Show the tool selection page"""
-        if self.tool_selection_page:
-            self.setCentralWidget(self.tool_selection_page)
+        if self.tool_selection_page and hasattr(self, "_stack"):
+            self._stack.setCurrentWidget(self.tool_selection_page)
             self.current_page = "tool_selection"
             self.menuBar().show()
 
+    def _restore_source_from_config(self) -> None:
+        """Restore last source (Collection vs Playlist file) and path from config."""
+        if not getattr(self, "_config_service", None):
+            return
+        last_source = (
+            self._config_service.get("product.last_source") or "collection"
+        ).strip().lower()
+        if last_source == "playlist_file":
+            self.source_collection_btn.setChecked(False)
+            self.source_playlist_file_btn.setChecked(True)
+            self._source_mode = "playlist_file"
+            self.source_content_box.setVisible(True)
+            self.source_content_stack.setCurrentIndex(1)
+            self.batch_mode_radio.setVisible(False)
+            self.batch_mode_radio.setEnabled(False)
+            self.playlist_stack.setCurrentIndex(1)
+            last_m3u = (
+                self._config_service.get("product.last_m3u_path") or ""
+            ).strip()
+            if last_m3u and os.path.exists(last_m3u):
+                self.playlist_file_selector.set_file(last_m3u)
+                self.on_playlist_file_selected(last_m3u)
+            else:
+                if last_m3u:
+                    self.playlist_file_selector.clear()
+                self._hide_mode_playlist_boxes()
+                self.start_button_container.setVisible(False)
+                self._set_start_enabled(False)
+        else:
+            self.source_playlist_file_btn.setChecked(False)
+            self.source_collection_btn.setChecked(True)
+            self._source_mode = "collection"
+            self.source_content_box.setVisible(True)
+            self.source_content_stack.setCurrentIndex(0)
+            self.batch_mode_radio.setVisible(True)
+            self.batch_mode_radio.setEnabled(True)
+            self.batch_mode_radio.setToolTip("")
+            self.playlist_stack.setCurrentIndex(0)
+            # last_xml_path is restored elsewhere (e.g. recent files or onboarding)
+        self._update_empty_state_hint()
+
     def show_main_interface(self) -> None:
-        """Show the main interface (existing tabs)"""
-        self.setCentralWidget(self.tabs)
+        """Show the main interface (inKey: back button + tabs)"""
+        self._stack.setCurrentWidget(self._inkey_wrapper)
         self.menuBar().show()
-        self.tabs.show()  # Ensure tabs are visible
+        self._inkey_wrapper.show()
         self.current_page = "main"
+        self._restore_source_from_config()
 
     def _show_incrate_page(self) -> None:
         """Show the inCrate page (lazy-create with DI services)."""
@@ -997,9 +1102,43 @@ class MainWindow(QMainWindow):
             )
             return
         if self._incrate_page is not None:
-            self.setCentralWidget(self._incrate_page)
+            if self._incrate_page.parent() is None:
+                self._stack.addWidget(self._incrate_page)
+            self._stack.setCurrentWidget(self._incrate_page)
             self.current_page = "incrate"
             self.menuBar().show()
+            # Show Beatport API token dialog only when entering inCrate (if token missing)
+            QTimer.singleShot(0, self._maybe_show_beatport_token_dialog)
+
+    def _maybe_show_beatport_token_dialog(self) -> None:
+        """If Beatport API token is missing, show get-token dialog (only called when entering inCrate)."""
+        if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get(
+            "CUEPOINT_DISABLE_ONBOARDING"
+        ):
+            return
+        try:
+            token = (os.environ.get("BEATPORT_ACCESS_TOKEN") or "").strip()
+            if not token and self._config_service:
+                token = (
+                    self._config_service.get("incrate.beatport_access_token") or ""
+                ).strip()
+            if token:
+                return
+            from cuepoint.ui.dialogs.beatport_token_dialog import BeatportTokenDialog
+
+            dialog = BeatportTokenDialog(parent=self, initial_token="")
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                new_token = dialog.get_token()
+                if new_token and self._config_service:
+                    self._config_service.set(
+                        "incrate.beatport_access_token", new_token
+                    )
+                    try:
+                        self._config_service.save()
+                    except Exception:
+                        pass
+        except Exception:
+            pass
 
     def _ensure_incrate_page_created(self) -> bool:
         """Create inCrate page if not yet created (so it loads with current config/token). Does not switch UI."""
@@ -1089,6 +1228,177 @@ class MainWindow(QMainWindow):
             self.results_view.show_export_dialog()
         else:
             self.statusBar().showMessage("No results to export", 2000)
+
+    def on_write_to_track_tags_requested(self) -> None:
+        """Handle Sync with Rekordbox: write selected tags into audio files."""
+        if not hasattr(self, "results_view"):
+            return
+        single_list, batch_dict, playlist_name = (
+            self.results_view.get_results_selected_for_tag_write()
+        )
+        if self.results_view.is_batch_mode:
+            if not batch_dict:
+                self.statusBar().showMessage(
+                    "No tracks selected for writing. Tick the Write box for tracks you want to update.",
+                    5000,
+                )
+                return
+        else:
+            if not single_list:
+                self.statusBar().showMessage(
+                    "No tracks selected for writing. Tick the Write box for tracks you want to update.",
+                    5000,
+                )
+                return
+        sync_dialog = SyncTagsDialog(self)
+        if sync_dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        opts = sync_dialog.get_options_dict()
+        if not opts:
+            return
+
+        if getattr(self, "_source_mode", "collection") == "playlist_file":
+            written, failed, errors = write_tags_to_paths(single_list, sync_options=opts)
+        else:
+            if not hasattr(self, "file_selector"):
+                return
+            xml_path = self.file_selector.get_file_path()
+            if not xml_path or not self.file_selector.validate_file(xml_path):
+                self.statusBar().showMessage("Select a Rekordbox XML file first.", 4000)
+                return
+            try:
+                locations = get_track_locations(xml_path)
+            except (ValueError, FileNotFoundError, ET.ParseError) as e:
+                QMessageBox.warning(
+                    self,
+                    "Sync with Rekordbox",
+                    f"Could not read XML: {e}",
+                )
+                return
+            if not locations:
+                self.statusBar().showMessage(
+                    "No file paths in this XML. Rekordbox export must include file paths (Location).",
+                    6000,
+                )
+                return
+            if self.results_view.is_batch_mode:
+                written, failed, errors = write_key_comment_year_to_playlist_tracks_batch(
+                    xml_path, batch_dict, sync_options=opts
+                )
+            else:
+                written, failed, errors = write_key_comment_year_to_playlist_tracks(
+                    xml_path,
+                    playlist_name or "",
+                    single_list,
+                    sync_options=opts,
+                )
+
+        if written == 0 and failed == 0:
+            if errors:
+                self.statusBar().showMessage(errors[0], 5000)
+            else:
+                self.statusBar().showMessage("No matched tracks to write.", 5000)
+            return
+        SyncCompleteDialog(written, failed, errors, self).exec()
+
+    def on_write_to_track_tags_from_history(
+        self, csv_rows: List[Dict[str, Any]], playlist_name: str
+    ) -> None:
+        """Write Key, Comment, Year (and Label) to audio files from a past search CSV.
+
+        For M3U runs (rows have file_path), uses path-based write without XML.
+        For Collection runs, requires XML and uses write_key_comment_year_to_playlist_tracks.
+        """
+        # Convert CSV rows to TrackResult list (playlist order; matched from beatport data)
+        results: List[TrackResult] = []
+        for i, row in enumerate(csv_rows):
+            title = (row.get("original_title") or "").strip() or "Unknown"
+            artist = (row.get("original_artists") or "").strip() or "Unknown"
+            pi = row.get("playlist_index")
+            try:
+                playlist_index = int(pi) if pi not in (None, "") else (i + 1)
+            except (TypeError, ValueError):
+                playlist_index = i + 1
+            if playlist_index < 1:
+                playlist_index = i + 1
+            key_s = (str(row.get("beatport_key") or "")).strip()
+            title_s = (str(row.get("beatport_title") or "")).strip()
+            matched = bool(key_s or title_s)
+            d = dict(row)
+            d["playlist_index"] = playlist_index
+            d["original_title"] = title
+            d["original_artists"] = artist
+            d["matched"] = matched
+            try:
+                results.append(TrackResult.from_dict(d))
+            except Exception:
+                results.append(
+                    TrackResult(
+                        playlist_index=playlist_index,
+                        title=title,
+                        artist=artist,
+                        matched=matched,
+                        beatport_key=str(row.get("beatport_key") or "").strip() or None,
+                        beatport_key_camelot=(
+                            str(row.get("beatport_key_camelot") or "").strip() or None
+                        ),
+                        beatport_year=str(row.get("beatport_year") or "").strip() or None,
+                        beatport_label=str(row.get("beatport_label") or "").strip() or None,
+                    )
+                )
+        if not results:
+            self.statusBar().showMessage("No rows to write.", 4000)
+            return
+        sync_dialog = SyncTagsDialog(self)
+        if sync_dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        opts = sync_dialog.get_options_dict()
+        if not opts:
+            return
+
+        # M3U run: path-based write (no XML); rows have file_path
+        if any(getattr(r, "file_path", None) for r in results):
+            written, failed, errors = write_tags_to_paths(results, sync_options=opts)
+        else:
+            if not hasattr(self, "file_selector"):
+                return
+            xml_path = self.file_selector.get_file_path()
+            if not xml_path or not self.file_selector.validate_file(xml_path):
+                self.statusBar().showMessage(
+                    "Select a Rekordbox XML file on the main tab first.", 5000
+                )
+                return
+            try:
+                locations = get_track_locations(xml_path)
+            except (ValueError, FileNotFoundError, ET.ParseError) as e:
+                QMessageBox.warning(
+                    self,
+                    "Sync with Rekordbox",
+                    f"Could not read XML: {e}",
+                )
+                return
+            if not locations:
+                self.statusBar().showMessage(
+                    "No file paths in this XML. Rekordbox export must include file paths (Location).",
+                    6000,
+                )
+                return
+            written, failed, errors = write_key_comment_year_to_playlist_tracks(
+                xml_path,
+                playlist_name or "Playlist",
+                results,
+                sync_options=opts,
+            )
+
+        if written == 0 and failed == 0:
+            if errors:
+                self.statusBar().showMessage(errors[0], 5000)
+            else:
+                self.statusBar().showMessage(
+                    "No matched tracks to write. Rows need Beatport key/title data.", 5000
+                )
+            return
+        SyncCompleteDialog(written, failed, errors, self).exec()
 
     def on_open_settings(self) -> None:
         """Open the Settings dialog via menu or keyboard shortcut (Ctrl+,).
@@ -1375,9 +1685,90 @@ class MainWindow(QMainWindow):
     def on_file_open(self) -> None:
         """Handle File > Open menu action.
 
-        Opens the file browser dialog to select an XML file for processing.
+        Opens the file browser for the current source (Collection XML or Playlist file).
         """
-        self.file_selector.browse_file()
+        if getattr(self, "_source_mode", "collection") == "playlist_file":
+            self.playlist_file_selector.browse_file()
+        else:
+            self.file_selector.browse_file()
+
+    def _on_source_collection_clicked(self) -> None:
+        """Switch to Collection source; show XML picker; keep M3U path when switching."""
+        self.source_playlist_file_btn.setChecked(False)
+        self.source_collection_btn.setChecked(True)
+        self._source_mode = "collection"
+        self.source_content_box.setVisible(True)
+        self.source_content_stack.setCurrentIndex(0)
+        self.batch_mode_radio.setVisible(True)
+        self.batch_mode_radio.setEnabled(True)
+        self.batch_mode_radio.setToolTip("")
+        self.playlist_stack.setCurrentIndex(0)
+        if self._config_service:
+            try:
+                self._config_service.set("product.last_source", "collection")
+                self._config_service.save()
+            except Exception:
+                pass
+        xml_path = self.file_selector.get_file_path()
+        if xml_path and self.file_selector.validate_file(xml_path):
+            self.on_file_selected(xml_path)
+        else:
+            self._hide_mode_playlist_boxes()
+            self.start_button_container.setVisible(False)
+            self._set_start_enabled(False)
+        self._update_empty_state_hint()
+
+    def _on_source_playlist_file_clicked(self) -> None:
+        """Switch to Playlist file source; show M3U picker; keep XML path when switching."""
+        self.source_collection_btn.setChecked(False)
+        self.source_playlist_file_btn.setChecked(True)
+        self._source_mode = "playlist_file"
+        self.source_content_box.setVisible(True)
+        self.source_content_stack.setCurrentIndex(1)
+        self.batch_mode_radio.setVisible(False)
+        self.batch_mode_radio.setEnabled(False)
+        self.playlist_stack.setCurrentIndex(1)
+        if self._config_service:
+            try:
+                self._config_service.set("product.last_source", "playlist_file")
+                self._config_service.save()
+            except Exception:
+                pass
+        m3u_path = self.playlist_file_selector.get_file_path()
+        if m3u_path and self.playlist_file_selector.validate_file(m3u_path):
+            self.on_playlist_file_selected(m3u_path)
+        else:
+            self._hide_mode_playlist_boxes()
+            self.start_button_container.setVisible(False)
+            self._set_start_enabled(False)
+        self._update_empty_state_hint()
+
+    def on_playlist_file_selected(self, file_path: str) -> None:
+        """Handle playlist file (M3U/M3U8) selection. Show mode (Single only), playlist filename, enable Start."""
+        if self.playlist_file_selector.validate_file(file_path):
+            self.mode_box.setVisible(True)
+            self.single_mode_radio.setChecked(True)
+            self.batch_mode_radio.setVisible(False)
+            self.batch_mode_radio.setEnabled(False)
+            self.playlist_box.setVisible(True)
+            self.playlist_stack.setCurrentIndex(1)
+            self.playlist_filename_label.setText(f"Playlist: {os.path.basename(file_path)}")
+            self.start_button_container.setVisible(True)
+            self.start_button.setVisible(True)
+            self._set_start_enabled(True)
+            self.statusBar().showMessage(f"Playlist file loaded: {os.path.basename(file_path)}")
+            if self._config_service:
+                try:
+                    self._config_service.set("product.last_m3u_path", file_path)
+                    self._config_service.save()
+                except Exception:
+                    pass
+        else:
+            self._hide_mode_playlist_boxes()
+            self.start_button_container.setVisible(False)
+            self._set_start_enabled(False)
+            self.statusBar().showMessage(f"Invalid file: {file_path}")
+        self._update_empty_state_hint()
 
     def on_file_selected(self, file_path: str) -> None:
         """Handle file selection from FileSelector widget.
@@ -1401,13 +1792,19 @@ class MainWindow(QMainWindow):
                     f"File loaded: {playlist_count} playlists found"
                 )
 
-                # Update batch processor with playlists
-                self.batch_processor.set_playlists(
-                    list(self.playlist_selector.playlists.keys())
-                )
+                # Update batch processor with tree (same hierarchy as single mode)
+                if self.playlist_selector.playlists and self.playlist_selector.get_tree_roots():
+                    self.batch_processor.set_playlist_tree(
+                        self.playlist_selector.get_tree_roots(),
+                        self.playlist_selector.playlists,
+                    )
+                else:
+                    self.batch_processor.set_playlists([])
 
-                # SHOW MODE BOX (progressive disclosure)
+                # SHOW MODE BOX (progressive disclosure); Batch is available for Collection
                 self.mode_box.setVisible(True)
+                self.batch_mode_radio.setVisible(True)
+                self.batch_mode_radio.setEnabled(True)
 
                 # Update status bar with file path
                 self._update_status_file_path(file_path)
@@ -1463,15 +1860,53 @@ class MainWindow(QMainWindow):
         self.start_button.setVisible(False)
         self._update_empty_state_hint()
 
+    def _on_empty_state_instructions(self) -> None:
+        """Open instructions for current source (Collection XML or Playlist file export)."""
+        if getattr(self, "_source_mode", "collection") == "playlist_file":
+            self.playlist_file_selector.show_instructions()
+        else:
+            self.file_selector.show_instructions()
+
     def _update_empty_state_hint(self) -> None:
-        """Show/hide the onboarding-style empty hint based on current state."""
+        """Show/hide the onboarding-style empty hint based on current state and source."""
         try:
             if not hasattr(self, "empty_state_hint") or not hasattr(
                 self, "file_selector"
             ):
                 return
-            file_path = self.file_selector.get_file_path()
-            show = not file_path or not self.file_selector.validate_file(file_path)
+            source = getattr(self, "_source_mode", "collection")
+            if source == "playlist_file":
+                path = self.playlist_file_selector.get_file_path()
+                valid = path and self.playlist_file_selector.validate_file(path)
+                # Show "Get started" only the first time (persisted flag)
+                already_seen = bool(
+                    self._config_service.get("product.playlist_file_get_started_seen", False)
+                    if getattr(self, "_config_service", None) else False
+                )
+                show = not valid and not already_seen
+                if hasattr(self, "hint_title"):
+                    self.hint_title.setText("Get started")
+                if hasattr(self, "hint_body"):
+                    self.hint_body.setText(
+                        "Select a playlist file (.m3u or .m3u8) to process tracks without loading the full collection."
+                    )
+                if hasattr(self, "browse_hint_btn"):
+                    self.browse_hint_btn.setText("Select playlist file...")
+                if show and getattr(self, "_config_service", None):
+                    try:
+                        self._config_service.set("product.playlist_file_get_started_seen", True)
+                        self._config_service.save()
+                    except Exception:
+                        pass
+            else:
+                file_path = self.file_selector.get_file_path()
+                show = not file_path or not self.file_selector.validate_file(file_path)
+                if hasattr(self, "hint_title"):
+                    self.hint_title.setText(EmptyState.GET_STARTED_TITLE)
+                if hasattr(self, "hint_body"):
+                    self.hint_body.setText(EmptyState.GET_STARTED_BODY)
+                if hasattr(self, "browse_hint_btn"):
+                    self.browse_hint_btn.setText(EmptyState.BROWSE_FOR_XML)
             self.empty_state_hint.setVisible(show)
         except Exception:
             # Never let hint logic break the UI.
@@ -1502,14 +1937,25 @@ class MainWindow(QMainWindow):
             # Batch mode - button enabled by batch processor
             pass
         else:
-            # Single mode - button will be enabled when playlist is selected
-            # (handled in on_playlist_selected)
-            self._set_start_enabled(False)  # Disable until playlist is selected
+            # Single mode - enable when playlist is selected (Collection) or when M3U is set (Playlist file)
+            if getattr(self, "_source_mode", "collection") == "playlist_file":
+                m3u = getattr(self, "playlist_file_selector", None)
+                if m3u and m3u.get_file_path() and m3u.validate_file(m3u.get_file_path()):
+                    self._set_start_enabled(True)
+                else:
+                    self._set_start_enabled(False)
+            else:
+                self._set_start_enabled(False)  # Disable until playlist is selected
 
         # Update batch processor with playlists if file is already loaded
         if is_batch_mode and hasattr(self.playlist_selector, "playlists"):
-            playlists = list(self.playlist_selector.playlists.keys())
-            self.batch_processor.set_playlists(playlists)
+            if self.playlist_selector.playlists and self.playlist_selector.get_tree_roots():
+                self.batch_processor.set_playlist_tree(
+                    self.playlist_selector.get_tree_roots(),
+                    self.playlist_selector.playlists,
+                )
+            else:
+                self.batch_processor.set_playlists([])
 
         # Update status bar
         mode_text = "Multiple Playlists" if is_batch_mode else "Single Playlist"
@@ -3566,25 +4012,33 @@ class MainWindow(QMainWindow):
         )
 
     def _auto_save_results(
-        self, results: List[TrackResult], playlist_name: str
+        self,
+        results: List[TrackResult],
+        playlist_name: str,
+        source_type: str = "collection",
+        m3u_path: Optional[str] = None,
     ) -> Optional[Dict[str, str]]:
         """Automatically save results to CSV file after processing.
 
         Creates a sanitized filename from the playlist name and saves
-        results to the output directory. Updates the history view to
-        show the new file.
+        results to the output directory. For M3U runs, writes a .meta.json
+        with source and m3u_path so rerun and sync from history work.
 
         Args:
             results: List of TrackResult objects to save.
             playlist_name: Name of the playlist for file naming.
+            source_type: "collection" or "playlist_file".
+            m3u_path: Path to M3U file when source_type is playlist_file.
         """
         if not results:
             return None
 
         try:
+            # Use display name (no ROOT prefix) so filenames are "Untitled Playlist", not "ROOTUntitled Playlist"
+            name_for_file = playlist_path_for_display(playlist_name or "")
             # Sanitize playlist name for filename (remove invalid characters)
             safe_playlist_name = "".join(
-                c for c in playlist_name if c.isalnum() or c in (" ", "-", "_")
+                c for c in name_for_file if c.isalnum() or c in (" ", "-", "_")
             ).strip()
             if not safe_playlist_name:
                 safe_playlist_name = "playlist"
@@ -3592,11 +4046,12 @@ class MainWindow(QMainWindow):
             # Create base filename (write_csv_files will add timestamp)
             base_filename = f"{safe_playlist_name}.csv"
 
-            # Use the single, consistent output directory (Step 8: autosave last-used)
-            last_out = ""
-            if self._config_service:
-                last_out = self._config_service.get("product.last_output_dir", "") or ""
-            output_dir = get_output_directory(last_out if last_out else None)
+            # Always save to exports_dir so Past Searches (HistoryView) sees the file.
+            from cuepoint.utils.paths import AppPaths
+
+            exports_dir = AppPaths.exports_dir()
+            exports_dir.mkdir(parents=True, exist_ok=True)
+            output_dir = str(exports_dir)
             if self._config_service:
                 try:
                     self._config_service.set("product.last_output_dir", output_dir)
@@ -3606,6 +4061,16 @@ class MainWindow(QMainWindow):
 
             # Write CSV files (this will add timestamp automatically)
             output_files = write_csv_files(results, base_filename, output_dir)
+
+            # For M3U runs, write .meta.json so Past Searches can rerun and sync without the M3U file
+            if source_type == "playlist_file" and m3u_path and output_files.get("main"):
+                main_path = output_files["main"]
+                meta_path = os.path.splitext(main_path)[0] + ".meta.json"
+                try:
+                    with open(meta_path, "w", encoding="utf-8") as f:
+                        json.dump({"source": "playlist_file", "m3u_path": m3u_path}, f)
+                except Exception:
+                    pass
 
             # Show success message in status bar
             if output_files.get("main"):
@@ -3673,17 +4138,23 @@ class MainWindow(QMainWindow):
             self._set_start_enabled(False)
 
     def start_processing(self) -> None:
-        """Start processing the selected playlist.
+        """Start processing the selected playlist or M3U file.
 
-        Validates inputs (XML file and playlist), resets progress widget,
+        Validates inputs (XML + playlist or M3U path), resets progress widget,
         shows progress section, disables start button, and starts processing
         via the controller. Handles performance monitoring tab if enabled.
         """
-        # Get file path and playlist name
+        settings = self.config_panel.get_settings()
+        auto_research = self.config_panel.get_auto_research()
+
+        if getattr(self, "_source_mode", "collection") == "playlist_file":
+            self._start_processing_from_m3u(settings)
+            return
+
+        # Collection path
         xml_path = self.file_selector.get_file_path()
         playlist_name = self.playlist_selector.get_selected_playlist()
 
-        # Validate inputs
         if not xml_path or not self.file_selector.validate_file(xml_path):
             self.statusBar().showMessage("Please select a valid XML file")
             return
@@ -3692,36 +4163,61 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("Please select a playlist")
             return
 
-        # Get settings from config panel
-        settings = self.config_panel.get_settings()
-        auto_research = self.config_panel.get_auto_research()
-
-        # Preflight validation (show dialog if issues found)
         if not self._run_preflight_checks(xml_path, playlist_name, settings):
             return
 
-        # Reset progress widget
-        self._reset_progress()
+        self._start_processing_common_ui()
+        self.statusBar().showMessage(f"Starting processing: {playlist_name}...")
 
-        # Show progress section, hide results
+        self._start_processing_performance_tab(settings)
+        self._processing_start_time = datetime.now()
+        self._emit_run_start_telemetry()
+        checkpoint_service, resume_checkpoint = self._get_checkpoint_for_run(
+            xml_path, playlist_name
+        )
+
+        self.controller.start_processing(
+            xml_path=xml_path,
+            playlist_name=playlist_name,
+            settings=settings,
+            auto_research=auto_research,
+            checkpoint_service=checkpoint_service,
+            resume_checkpoint=resume_checkpoint,
+        )
+
+    def _start_processing_from_m3u(self, settings: Dict[str, Any]) -> None:
+        """Start processing from the selected M3U/M3U8 file."""
+        m3u_path = self.playlist_file_selector.get_file_path()
+        if not m3u_path or not self.playlist_file_selector.validate_file(m3u_path):
+            self.statusBar().showMessage("Please select a valid playlist file (.m3u or .m3u8)")
+            return
+
+        import os
+
+        self._last_m3u_playlist_name = os.path.basename(m3u_path)
+        self._last_m3u_path_for_save = m3u_path
+        self._start_processing_common_ui()
+        self.statusBar().showMessage(
+            f"Starting processing: {self._last_m3u_playlist_name}..."
+        )
+        self._start_processing_performance_tab(settings)
+        self._processing_start_time = datetime.now()
+        self._emit_run_start_telemetry()
+        self.controller.start_processing_from_m3u(m3u_path=m3u_path, settings=settings)
+
+    def _start_processing_common_ui(self) -> None:
+        """Reset progress, show progress section, disable Start, enable Cancel/Pause."""
+        self._reset_progress()
         self.progress_group.setVisible(True)
         self.results_group.setVisible(False)
-
-        # Disable start button during processing
         self._set_start_enabled(False)
-
-        # Enable cancel and pause buttons (Design 5.12)
         self.cancel_button.setEnabled(True)
         self.pause_button.setEnabled(True)
         self.pause_button.setText("Pause")
 
-        # Update status
-        self.statusBar().showMessage(f"Starting processing: {playlist_name}...")
-
-        # Handle performance monitoring tab
+    def _start_processing_performance_tab(self, settings: Dict[str, Any]) -> None:
+        """Show or hide performance tab based on settings."""
         track_performance = settings.get("track_performance", False)
-        print(f"[DEBUG] track_performance setting: {track_performance}")  # Debug output
-
         if track_performance:
             # Add performance tab if not already added
             if self.performance_tab_index is None:
@@ -3753,10 +4249,7 @@ class MainWindow(QMainWindow):
                 self.tabs.removeTab(self.performance_tab_index)
                 self.performance_tab_index = None
 
-        # Track processing start time for cancel confirmation
-        self._processing_start_time = datetime.now()
-
-        # Step 14: run_start telemetry
+    def _emit_run_start_telemetry(self) -> None:
         try:
             from cuepoint.utils.run_context import get_current_run_id
             from cuepoint.utils.telemetry_helper import get_telemetry
@@ -3768,9 +4261,10 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
 
-        # Design 5.47, 5.48: Check for incomplete run and offer resume (Resume / Discard)
-        checkpoint_service = None
-        resume_checkpoint = None
+    def _get_checkpoint_for_run(
+        self, xml_path: str, playlist_name: str
+    ) -> tuple:
+        """Return (checkpoint_service, resume_checkpoint) for Collection runs."""
         try:
             from cuepoint.services.checkpoint_service import (
                 CheckpointService,
@@ -3796,19 +4290,9 @@ class MainWindow(QMainWindow):
             else:
                 resume_checkpoint = None
                 checkpoint_service = None
+            return (checkpoint_service, resume_checkpoint)
         except Exception:
-            checkpoint_service = None
-            resume_checkpoint = None
-
-        # Start processing via controller
-        self.controller.start_processing(
-            xml_path=xml_path,
-            playlist_name=playlist_name,
-            settings=settings,
-            auto_research=auto_research,
-            checkpoint_service=checkpoint_service,
-            resume_checkpoint=resume_checkpoint,
-        )
+            return (None, None)
 
     def _run_preflight_checks(
         self, xml_path: str, playlist_name: str, settings: Dict[str, Any]
@@ -4177,8 +4661,16 @@ class MainWindow(QMainWindow):
         if hasattr(self, "_processing_start_time"):
             self._processing_start_time = None
 
-        # Get playlist name for file naming
-        playlist_name = self.playlist_selector.get_selected_playlist() or "playlist"
+        # Get playlist name for file naming (M3U: use stored basename)
+        if getattr(self, "_source_mode", "collection") == "playlist_file":
+            playlist_name = (
+                getattr(self, "_last_m3u_playlist_name", None) or "playlist"
+            )
+            worker = getattr(self.controller, "current_worker", None)
+            if worker and getattr(worker, "warning_message", None):
+                self.statusBar().showMessage(worker.warning_message, 8000)
+        else:
+            playlist_name = self.playlist_selector.get_selected_playlist() or "playlist"
 
         # Update results view with results
         if results:
@@ -4194,7 +4686,13 @@ class MainWindow(QMainWindow):
             self.results_view.repaint()
 
             # Automatically save results to CSV so they appear in Past Searches
-            output_files = self._auto_save_results(results, playlist_name)
+            source_type = getattr(self, "_source_mode", "collection")
+            m3u_path_for_save = getattr(self, "_last_m3u_path_for_save", None)
+            output_files = self._auto_save_results(
+                results, playlist_name,
+                source_type=source_type,
+                m3u_path=m3u_path_for_save,
+            )
 
             # Step 14: run_complete and export_complete telemetry
             try:
@@ -4419,6 +4917,57 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.warning(
                 self, "Re-run Error", f"Error loading file for re-run:\n{str(e)}"
+            )
+
+    def on_rerun_m3u_requested(self, m3u_path: str) -> None:
+        """Handle re-run from Past Searches for an M3U run.
+
+        Switches UI to Playlist file source, clears Collection path,
+        sets M3U path, then starts processing from the M3U file.
+        """
+        try:
+            if (
+                hasattr(self, "tool_selection_page")
+                and self.tool_selection_page.isVisible()
+            ):
+                self.show_main_interface()
+
+            self._source_mode = "playlist_file"
+            self.source_playlist_file_btn.setChecked(True)
+            self.source_collection_btn.setChecked(False)
+            self.source_content_stack.setCurrentIndex(1)
+            self.source_content_box.setVisible(True)
+            self.file_selector.clear()
+            self.playlist_file_selector.set_file(m3u_path)
+            if m3u_path and self.playlist_file_selector.validate_file(m3u_path):
+                self.playlist_filename_label.setText(
+                    f"Playlist: {os.path.basename(m3u_path)}"
+                )
+                self.playlist_stack.setCurrentIndex(1)
+                self.mode_box.setVisible(True)
+                self.batch_mode_radio.setVisible(False)
+                self.batch_mode_radio.setEnabled(False)
+                self.playlist_box.setVisible(True)
+                self.start_button_container.setVisible(True)
+                self._set_start_enabled(True)
+                self._last_m3u_playlist_name = os.path.basename(m3u_path)
+                self._last_m3u_path_for_save = m3u_path
+                self.start_processing()
+            else:
+                self.statusBar().showMessage(
+                    f"M3U file not found: {m3u_path}. Select a playlist file to re-run.",
+                    6000,
+                )
+
+            self.tabs.setCurrentIndex(0)
+            self.statusBar().showMessage(
+                f"Re-run: Playlist file {os.path.basename(m3u_path)}", 5000
+            )
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                "Re-run Error",
+                f"Error loading playlist file for re-run:\n{str(e)}",
             )
 
     def _select_playlist_after_load(self, playlist_name: str) -> None:

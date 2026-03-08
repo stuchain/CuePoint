@@ -105,9 +105,12 @@ def test_processing_mode_appears_after_xml_selected(main_window, sample_xml_file
 
     def mock_load_xml_file(xml_path):
         main_window.playlist_selector.playlists = {"Test Playlist": mock_playlist}
-        main_window.playlist_selector.combo.clear()
-        main_window.playlist_selector.combo.addItem("Test Playlist")
-        main_window.playlist_selector.combo.setEnabled(True)
+        main_window.playlist_selector._tree_roots = [
+            {"type": "playlist", "name": "Test Playlist", "path": "Test Playlist"}
+        ]
+        main_window.playlist_selector._trigger_edit.setEnabled(True)
+        main_window.playlist_selector._arrow_btn.setEnabled(True)
+        main_window.playlist_selector.set_selected_playlist("Test Playlist")
 
     main_window.playlist_selector.load_xml_file = mock_load_xml_file
 
@@ -157,9 +160,12 @@ def test_playlist_selection_appears_after_mode_selected(
 
     def mock_load_xml_file(xml_path):
         main_window.playlist_selector.playlists = {"Test Playlist": mock_playlist}
-        main_window.playlist_selector.combo.clear()
-        main_window.playlist_selector.combo.addItem("Test Playlist")
-        main_window.playlist_selector.combo.setEnabled(True)
+        main_window.playlist_selector._tree_roots = [
+            {"type": "playlist", "name": "Test Playlist", "path": "Test Playlist"}
+        ]
+        main_window.playlist_selector._trigger_edit.setEnabled(True)
+        main_window.playlist_selector._arrow_btn.setEnabled(True)
+        main_window.playlist_selector.set_selected_playlist("Test Playlist")
 
     main_window.playlist_selector.load_xml_file = mock_load_xml_file
 
@@ -201,9 +207,12 @@ def test_start_button_enabled_after_playlist_selected(
 
     def mock_load_xml_file(xml_path):
         main_window.playlist_selector.playlists = {"Test Playlist": mock_playlist}
-        main_window.playlist_selector.combo.clear()
-        main_window.playlist_selector.combo.addItem("Test Playlist")
-        main_window.playlist_selector.combo.setEnabled(True)
+        main_window.playlist_selector._tree_roots = [
+            {"type": "playlist", "name": "Test Playlist", "path": "Test Playlist"}
+        ]
+        main_window.playlist_selector._trigger_edit.setEnabled(True)
+        main_window.playlist_selector._arrow_btn.setEnabled(True)
+        main_window.playlist_selector.set_selected_playlist("Test Playlist")
 
     main_window.playlist_selector.load_xml_file = mock_load_xml_file
 
@@ -251,9 +260,12 @@ def test_progressive_disclosure_workflow(main_window, sample_xml_file, qapp):
 
     def mock_load_xml_file(xml_path):
         main_window.playlist_selector.playlists = {"Test Playlist": mock_playlist}
-        main_window.playlist_selector.combo.clear()
-        main_window.playlist_selector.combo.addItem("Test Playlist")
-        main_window.playlist_selector.combo.setEnabled(True)
+        main_window.playlist_selector._tree_roots = [
+            {"type": "playlist", "name": "Test Playlist", "path": "Test Playlist"}
+        ]
+        main_window.playlist_selector._trigger_edit.setEnabled(True)
+        main_window.playlist_selector._arrow_btn.setEnabled(True)
+        main_window.playlist_selector.set_selected_playlist("Test Playlist")
 
     main_window.playlist_selector.load_xml_file = mock_load_xml_file
 
@@ -306,9 +318,12 @@ def test_batch_mode_shows_batch_processor(main_window, sample_xml_file, qapp):
 
     def mock_load_xml_file(xml_path):
         main_window.playlist_selector.playlists = {"Test Playlist": mock_playlist}
-        main_window.playlist_selector.combo.clear()
-        main_window.playlist_selector.combo.addItem("Test Playlist")
-        main_window.playlist_selector.combo.setEnabled(True)
+        main_window.playlist_selector._tree_roots = [
+            {"type": "playlist", "name": "Test Playlist", "path": "Test Playlist"}
+        ]
+        main_window.playlist_selector._trigger_edit.setEnabled(True)
+        main_window.playlist_selector._arrow_btn.setEnabled(True)
+        main_window.playlist_selector.set_selected_playlist("Test Playlist")
 
     main_window.playlist_selector.load_xml_file = mock_load_xml_file
 
@@ -344,9 +359,12 @@ def test_invalid_file_resets_progressive_disclosure(main_window, sample_xml_file
 
     def mock_load_xml_file(xml_path):
         main_window.playlist_selector.playlists = {"Test Playlist": mock_playlist}
-        main_window.playlist_selector.combo.clear()
-        main_window.playlist_selector.combo.addItem("Test Playlist")
-        main_window.playlist_selector.combo.setEnabled(True)
+        main_window.playlist_selector._tree_roots = [
+            {"type": "playlist", "name": "Test Playlist", "path": "Test Playlist"}
+        ]
+        main_window.playlist_selector._trigger_edit.setEnabled(True)
+        main_window.playlist_selector._arrow_btn.setEnabled(True)
+        main_window.playlist_selector.set_selected_playlist("Test Playlist")
 
     main_window.playlist_selector.load_xml_file = mock_load_xml_file
 

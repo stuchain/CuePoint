@@ -221,6 +221,76 @@ class ProcessingWorker(QThread):
         return self.controller.is_paused()
 
 
+class ProcessingWorkerM3U(QThread):
+    """Worker thread for processing tracks from an M3U/M3U8 playlist file."""
+
+    progress_updated = Signal(object)
+    processing_complete = Signal(list)
+    error_occurred = Signal(object)
+
+    def __init__(
+        self,
+        m3u_path: str,
+        settings: Optional[Dict[str, Any]] = None,
+        parent: Optional[QObject] = None,
+    ):
+        super().__init__(parent)
+        self.m3u_path = m3u_path
+        self.settings = settings
+        self.controller = ProcessingController()
+        self.warning_message: Optional[str] = None
+
+    def run(self) -> None:
+        try:
+            container = get_container()
+            processor_service: IProcessorService = container.resolve(IProcessorService)
+
+            def progress_callback(progress_info: ProgressInfo):
+                try:
+                    self.progress_updated.emit(progress_info)
+                except Exception:
+                    try:
+                        from PySide6.QtCore import QMetaObject, Qt
+
+                        QMetaObject.invokeMethod(
+                            self, "progress_updated", Qt.QueuedConnection, progress_info
+                        )
+                    except Exception:
+                        pass
+
+            results, self.warning_message = processor_service.process_playlist_from_m3u(
+                m3u_path=self.m3u_path,
+                settings=self.settings,
+                progress_callback=progress_callback,
+                controller=self.controller,
+            )
+            self.processing_complete.emit(results)
+        except ProcessingError as e:
+            self.error_occurred.emit(e)
+        except Exception as e:
+            self.error_occurred.emit(
+                ProcessingError(
+                    error_type=ErrorType.PROCESSING_ERROR,
+                    message=f"Unexpected error: {str(e)}",
+                    details="",
+                    suggestions=["Check the playlist file path", "Try again"],
+                    recoverable=True,
+                )
+            )
+
+    def cancel(self) -> None:
+        self.controller.cancel()
+
+    def request_pause(self) -> None:
+        self.controller.request_pause()
+
+    def resume(self) -> None:
+        self.controller.resume()
+
+    def is_paused(self) -> bool:
+        return self.controller.is_paused()
+
+
 class GUIController(QObject):
     """Controller bridging GUI and core processing logic.
 
@@ -321,6 +391,25 @@ class GUIController(QObject):
         self.current_worker.error_occurred.connect(self.error_occurred.emit)
 
         # Start worker thread
+        self.current_worker.start()
+
+    def start_processing_from_m3u(
+        self,
+        m3u_path: str,
+        settings: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Start processing from an M3U/M3U8 playlist file in a background thread."""
+        if self.current_worker and self.current_worker.isRunning():
+            self.cancel_processing()
+
+        self.current_worker = ProcessingWorkerM3U(
+            m3u_path=m3u_path,
+            settings=settings,
+            parent=self,
+        )
+        self.current_worker.progress_updated.connect(self.progress_updated.emit)
+        self.current_worker.processing_complete.connect(self.processing_complete.emit)
+        self.current_worker.error_occurred.connect(self.error_occurred.emit)
         self.current_worker.start()
 
     def request_pause(self) -> None:

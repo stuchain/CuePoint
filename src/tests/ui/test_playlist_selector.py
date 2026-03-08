@@ -8,6 +8,7 @@ Test script for PlaylistSelector widget with real XML file
 import os
 import sys
 
+import pytest
 from PySide6.QtWidgets import QApplication, QLabel, QPushButton, QVBoxLayout, QWidget
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
@@ -25,11 +26,7 @@ def test_playlist_selector():
     if not os.path.exists(xml_path):
         xml_path = os.path.join("..", "collection.xml")
         if not os.path.exists(xml_path):
-            print(
-                "ERROR: collection.xml not found in current directory or parent directory"
-            )
-            print("Please ensure collection.xml exists to test PlaylistSelector")
-            return 1
+            pytest.skip("collection.xml not found - run with XML to test PlaylistSelector")
 
     # Create test window
     window = QWidget()
@@ -97,9 +94,6 @@ def test_playlist_selector():
     print("  - Signal is emitted when playlist is selected")
 
     # This is a manual UI test - skip for automated testing
-    # The test opens a window and requires manual interaction
-    import pytest
-
     pytest.skip("Manual UI test - requires user interaction and cannot be automated")
 
 

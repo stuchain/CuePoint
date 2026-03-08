@@ -12,6 +12,9 @@ from typing import Any, Dict, List, Optional
 
 from cuepoint.models.beatport_candidate import BeatportCandidate
 
+# Error string for playlist entries whose file path does not exist on disk
+FILE_NOT_FOUND_ERROR = "File not found"
+
 
 @dataclass
 class TrackResult:
@@ -50,6 +53,7 @@ class TrackResult:
         error: Error message if processing failed (optional).
         candidates_data: List of candidate dictionaries for export (optional).
         queries_data: List of query dictionaries for export (optional).
+        file_path: Path to audio file when source is M3U/M3U8 playlist file (optional).
     """
 
     playlist_index: int
@@ -81,6 +85,7 @@ class TrackResult:
     error: Optional[str] = None
     candidates_data: List[Dict[str, Any]] = field(default_factory=list)
     queries_data: List[Dict[str, Any]] = field(default_factory=list)
+    file_path: Optional[str] = None  # Set when source is M3U/M3U8 for path-based sync
 
     def __post_init__(self) -> None:
         """Validate result data."""
@@ -112,7 +117,7 @@ class TrackResult:
         Returns:
             Dictionary representation matching old format for backward compatibility.
         """
-        return {
+        out: Dict[str, Any] = {
             "playlist_index": str(self.playlist_index),
             "original_title": self.title,
             "original_artists": self.artist,
@@ -138,6 +143,9 @@ class TrackResult:
             "search_stop_query_index": self.search_stop_query_index or "0",
             "candidate_index": self.candidate_index or "0",
         }
+        if self.file_path is not None:
+            out["file_path"] = self.file_path
+        return out
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TrackResult":
@@ -201,6 +209,7 @@ class TrackResult:
             error=data.get("error"),
             candidates_data=data.get("candidates", []),
             queries_data=data.get("queries", []),
+            file_path=data.get("file_path"),
         )
 
     def is_successful(self) -> bool:

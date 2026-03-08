@@ -281,6 +281,29 @@ def get_base_stylesheet() -> str:
         QPushButton#secondaryActionButton:pressed {{
             background-color: rgba(255, 255, 255, 0.18);
         }}
+
+        /* Source mode toggle (Collection / Playlist file) - selected state visible */
+        QPushButton#sourceModeButton {{
+            background-color: rgba(255, 255, 255, 0.08);
+            color: {Colors.TEXT_PRIMARY};
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 6px;
+            padding: 5px 12px;
+            font-weight: bold;
+            min-height: 24px;
+        }}
+        QPushButton#sourceModeButton:hover {{
+            background-color: rgba(255, 255, 255, 0.14);
+            border-color: rgba(255, 255, 255, 0.28);
+        }}
+        QPushButton#sourceModeButton:checked {{
+            background-color: rgba(0, 122, 255, 0.28);
+            border: 1px solid {Colors.PRIMARY};
+        }}
+        QPushButton#sourceModeButton:checked:hover {{
+            background-color: rgba(0, 122, 255, 0.35);
+            border-color: {Colors.PRIMARY};
+        }}
         
         QPushButton:pressed {{
             background-color: {Colors.PRIMARY};

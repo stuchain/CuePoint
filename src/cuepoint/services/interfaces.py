@@ -320,3 +320,17 @@ class IProcessorService(ABC):
                 errors occur.
         """
         pass
+
+    def process_playlist_from_m3u(
+        self,
+        m3u_path: str,
+        settings: Optional[Dict[str, Any]] = None,
+        progress_callback: Optional[ProgressCallback] = None,
+        controller: Optional[ProcessingController] = None,
+    ) -> Tuple[List[TrackResult], Optional[str]]:
+        """Process tracks from an M3U/M3U8 playlist file.
+
+        Returns:
+            Tuple of (list of TrackResult, optional warning message e.g. 'X of Y files found').
+        """
+        ...

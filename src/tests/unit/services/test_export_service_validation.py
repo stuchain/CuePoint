@@ -43,6 +43,19 @@ class TestExportServiceValidation:
             assert error_msg is None
             assert os.path.exists(new_dir)
 
+    def test_validate_export_path_invalid_characters(self):
+        """Test validation fails when filename contains invalid characters (e.g. <>:\"|?*)."""
+        service = ExportService()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for bad_name in ["test<file>.csv", "out:put.csv", "file|name.csv"]:
+                filepath = os.path.join(tmpdir, bad_name)
+                is_valid, error_msg = service._validate_export_path(
+                    filepath, 1, overwrite=False
+                )
+                assert not is_valid, f"Expected invalid for {bad_name}"
+                assert "invalid" in error_msg.lower() or "character" in error_msg.lower()
+
     def test_validate_export_path_existing_file_no_overwrite(self):
         """Test validation fails if file exists and overwrite is False."""
         service = ExportService()
@@ -140,6 +153,19 @@ class TestExportServiceValidation:
                     service.export_to_csv([sample_track_result], filepath)
 
                 assert exc_info.value.error_code == "EXPORT_CSV_ERROR"
+
+    def test_export_to_csv_invalid_path_raises_export_error(self, sample_track_result):
+        """Test CSV export with invalid path characters raises ExportError."""
+        service = ExportService()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "invalid<>file.csv")
+
+            with pytest.raises(ExportError) as exc_info:
+                service.export_to_csv([sample_track_result], filepath)
+
+            assert exc_info.value.error_code == "EXPORT_CSV_ERROR"
+            assert "invalid" in str(exc_info.value).lower() or "character" in str(exc_info.value).lower()
 
     def test_export_to_json_empty_results(self):
         """Test JSON export allows empty results (writes empty array)."""

@@ -11,6 +11,8 @@ import csv
 import gzip
 import json
 import os
+import platform
+import subprocess
 import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -43,6 +45,11 @@ from cuepoint.services.output_writer import read_csv_skip_comments
 from cuepoint.ui.controllers.export_controller import ExportController
 from cuepoint.ui.dialogs.export_dialog import ExportDialog
 from cuepoint.ui.widgets.candidate_dialog import CandidateDialog
+from cuepoint.ui.widgets.results_view import (
+    UNMATCHED_ROW_BG,
+    UNMATCHED_ROW_ROLE,
+    UnmatchedRowDelegate,
+)
 from cuepoint.utils.utils import get_output_directory
 
 try:
@@ -57,8 +64,12 @@ except ImportError:
 class HistoryView(QWidget):
     """Widget for viewing past search results from CSV files"""
 
-    # Signal emitted when re-run is requested
+    # Signal emitted when re-run is requested (Collection: XML + playlist)
     rerun_requested = Signal(str, str)  # xml_path, playlist_name
+    # Signal emitted when re-run is requested for an M3U run
+    rerun_m3u_requested = Signal(str)  # m3u_path
+    # Signal emitted when Write to track tags is requested from past search CSV
+    write_to_track_tags_requested = Signal(list, str)  # csv_rows, playlist_name
 
     def __init__(
         self, export_controller: Optional[ExportController] = None, parent=None
@@ -318,18 +329,49 @@ class HistoryView(QWidget):
         self.rerun_btn.setEnabled(False)  # Disabled until file is loaded
         status_layout.addWidget(self.rerun_btn)
 
+        # Sync with Rekordbox first (plan: Sync first, then Export, Export All, Open Folder)
+        self.write_to_track_tags_btn = QPushButton("Sync with Rekordbox")
+        self.write_to_track_tags_btn.setObjectName("syncWithRekordboxButton")
+        self.write_to_track_tags_btn.setToolTip(
+            "Write Key, Comment, Year and Label from this CSV to the audio files. "
+            "Select the same Rekordbox XML and playlist on the main tab first."
+        )
+        self.write_to_track_tags_btn.clicked.connect(self._on_write_to_track_tags_clicked)
+        self.write_to_track_tags_btn.setEnabled(False)  # Disabled until file is loaded
+        self.write_to_track_tags_btn.setStyleSheet(
+            "QPushButton#syncWithRekordboxButton { background-color: #2196F3; color: white; }"
+            " QPushButton#syncWithRekordboxButton:hover { background-color: #1976D2; }"
+            " QPushButton#syncWithRekordboxButton:pressed { background-color: #0D47A1; }"
+        )
+        status_layout.addWidget(self.write_to_track_tags_btn)
+
         # Export button
         self.export_btn = QPushButton("Export...")
         self.export_btn.clicked.connect(self.show_export_dialog)
         self.export_btn.setEnabled(False)  # Disabled until file is loaded
         status_layout.addWidget(self.export_btn)
 
+        # Export All CSV Files (for current loaded past search)
+        self.export_all_btn = QPushButton("Export All CSV Files")
+        self.export_all_btn.setToolTip(
+            "Export all CSV types for the currently loaded past search"
+        )
+        self.export_all_btn.clicked.connect(self._on_export_all_clicked)
+        self.export_all_btn.setEnabled(False)
+        status_layout.addWidget(self.export_all_btn)
+
+        # Open Output Folder
+        self.open_folder_btn = QPushButton("Open Output Folder")
+        self.open_folder_btn.setToolTip("Open the output folder in file explorer")
+        self.open_folder_btn.clicked.connect(self._on_open_output_folder_clicked)
+        status_layout.addWidget(self.open_folder_btn)
+
         results_layout.addLayout(status_layout)
 
         # Results table (reuse same structure as ResultsView)
         self.table = QTableWidget()
         self.table.setSortingEnabled(True)
-        self.table.setAlternatingRowColors(True)
+        self.table.setAlternatingRowColors(False)  # so unmatched-row red background is visible
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
@@ -337,6 +379,8 @@ class HistoryView(QWidget):
         self.table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self._show_context_menu)
         self.table.doubleClicked.connect(self._on_row_double_clicked)
+
+        self.table.setItemDelegate(UnmatchedRowDelegate(self.table, UNMATCHED_ROW_BG))
 
         # Note: filter_layout, summary_label, advanced_filters_group, and status_layout
         # are already added to results_layout above, so don't add them again
@@ -395,6 +439,103 @@ class HistoryView(QWidget):
             # Refresh the list to remove missing files
             self.refresh_recent_files()
 
+    def _playlist_name_from_csv_path(self, file_path: Optional[str]) -> str:
+        """Derive playlist name from CSV filename (e.g. 'My Playlist (04-01-24 12-00).csv' -> 'My Playlist')."""
+        if not file_path:
+            return ""
+        basename = os.path.basename(file_path)
+        if " (" in basename and ")" in basename:
+            return basename[: basename.rfind(" (")].strip()
+        return basename.replace(".csv", "").replace(".CSV", "").strip()
+
+    def _on_write_to_track_tags_clicked(self) -> None:
+        """Emit write_to_track_tags_requested with selected (Write-checked) rows and playlist name."""
+        if not self.csv_rows:
+            QMessageBox.warning(
+                self,
+                "Sync with Rekordbox",
+                "Load a past search CSV first.",
+            )
+            return
+        # Collect rows that have the Write checkbox checked (column 0)
+        selected_rows = []
+        for i in range(self.table.rowCount()):
+            item = self.table.item(i, 0)
+            if item and item.checkState() == Qt.CheckState.Checked:
+                if i < len(self.filtered_rows):
+                    selected_rows.append(self.filtered_rows[i])
+        if not selected_rows:
+            QMessageBox.warning(
+                self,
+                "Sync with Rekordbox",
+                "Select at least one row (check the Write box) to sync.",
+            )
+            return
+        playlist_name = self._playlist_name_from_csv_path(self.current_csv_path)
+        self.write_to_track_tags_requested.emit(selected_rows, playlist_name or "Playlist")
+
+    def _on_export_all_clicked(self) -> None:
+        """Export current loaded past search to CSV, JSON, and Excel in output directory."""
+        if not self.csv_rows:
+            QMessageBox.warning(
+                self,
+                "No Results",
+                "Load a past search CSV first.",
+            )
+            return
+        output_dirs = self._get_output_dirs()
+        output_dir = output_dirs[0] if output_dirs else get_output_directory()
+        from pathlib import Path
+
+        base_name = "past_search"
+        if self.current_csv_path:
+            base_name = Path(self.current_csv_path).stem
+        safe_name = "".join(c if c.isalnum() or c in " _-" else "_" for c in base_name)
+        try:
+            exported = []
+            rows = self.filtered_rows if self.filtered_rows else self.csv_rows
+            csv_path = os.path.join(output_dir, f"{safe_name}.csv")
+            self._export_to_csv(rows, csv_path, {"delimiter": ",", "include_metadata": True})
+            exported.append(csv_path)
+            json_path = os.path.join(output_dir, f"{safe_name}.json")
+            self._export_to_json(rows, json_path, {})
+            exported.append(json_path)
+            try:
+                excel_path = os.path.join(output_dir, f"{safe_name}.xlsx")
+                self._export_to_excel(rows, excel_path, {})
+                exported.append(excel_path)
+            except Exception as excel_err:
+                exported.append(f"(Excel skipped: {excel_err})")
+            QMessageBox.information(
+                self,
+                "Export All",
+                f"Exported to:\n" + "\n".join(exported),
+            )
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Export All",
+                f"Error exporting: {e}",
+            )
+
+    def _on_open_output_folder_clicked(self) -> None:
+        """Open the app output folder in file explorer."""
+        output_dir = get_output_directory()
+        os.makedirs(output_dir, exist_ok=True)
+        try:
+            if platform.system() == "Windows":
+                subprocess.Popen(f'explorer "{output_dir}"')
+            elif platform.system() == "Darwin":
+                subprocess.Popen(["open", output_dir])
+            else:
+                subprocess.Popen(["xdg-open", output_dir])
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                "Open Output Folder",
+                f"Could not open folder: {e}",
+            )
+
     def load_csv_file(self, file_path: str):
         """Load and display CSV file contents"""
         try:
@@ -420,10 +561,14 @@ class HistoryView(QWidget):
             self.current_csv_path = file_path
             self.file_path_label.setText(f"Loaded: {os.path.basename(file_path)}")
 
-            # Enable export and re-run buttons
+            # Enable export, re-run, Sync, Export All, Open Folder buttons
             self.export_btn.setEnabled(True)
             if hasattr(self, "rerun_btn"):
                 self.rerun_btn.setEnabled(True)
+            if hasattr(self, "write_to_track_tags_btn"):
+                self.write_to_track_tags_btn.setEnabled(True)
+            if hasattr(self, "export_all_btn"):
+                self.export_all_btn.setEnabled(True)
 
             # Update summary
             total = len(rows)
@@ -517,6 +662,20 @@ class HistoryView(QWidget):
             # Store rows for potential updates
             self.csv_rows = rows
             self.filtered_rows = rows.copy()
+
+            # Load run metadata for M3U runs (source + m3u_path for rerun/sync from history)
+            self._run_source = "collection"
+            self._run_m3u_path = ""
+            meta_path = os.path.splitext(file_path)[0] + ".meta.json"
+            if os.path.exists(meta_path):
+                try:
+                    with open(meta_path, "r", encoding="utf-8") as f:
+                        meta = json.load(f)
+                    if meta.get("source") == "playlist_file":
+                        self._run_source = "playlist_file"
+                        self._run_m3u_path = meta.get("m3u_path") or ""
+                except Exception:
+                    pass
 
             # Populate table
             self.apply_filters()
@@ -799,14 +958,14 @@ class HistoryView(QWidget):
             if col not in used_columns:
                 ordered_columns.append(col)
 
-        # Update columns list
-        columns = ordered_columns
+        # Write column first (checkbox per row for Sync with Rekordbox), then data columns
+        columns = ["Write"] + ordered_columns
 
-        # Find index column
+        # Find index column (in data columns: col_idx 1 is first data column)
         index_col = -1
-        for col_idx, col_name in enumerate(columns):
+        for col_idx, col_name in enumerate(ordered_columns):
             if "index" in col_name.lower() or "playlist_index" in col_name.lower():
-                index_col = col_idx
+                index_col = col_idx + 1  # +1 because column 0 is Write
                 break
 
         # Set up table with reordered columns
@@ -816,6 +975,13 @@ class HistoryView(QWidget):
         # Populate rows
         for row_idx, row_data in enumerate(rows):
             for col_idx, col_name in enumerate(columns):
+                if col_name == "Write":
+                    write_item = QTableWidgetItem()
+                    write_item.setFlags(write_item.flags() | Qt.ItemIsUserCheckable)
+                    write_item.setCheckState(Qt.CheckState.Checked)
+                    write_item.setTextAlignment(Qt.AlignCenter)
+                    self.table.setItem(row_idx, col_idx, write_item)
+                    continue
                 value = row_data.get(col_name, "")
                 # Index column - display as number, sort numerically
                 if col_idx == index_col:
@@ -834,6 +1000,17 @@ class HistoryView(QWidget):
                 else:
                     item = QTableWidgetItem(str(value))
                 self.table.setItem(row_idx, col_idx, item)
+
+            # Unmatched row: set role so delegate paints faded red background
+            matched = bool(
+                row_data.get("beatport_url", "").strip()
+                or row_data.get("beatport_title", "").strip()
+            )
+            if not matched:
+                for col_idx in range(len(columns)):
+                    it = self.table.item(row_idx, col_idx)
+                    if it:
+                        it.setData(UNMATCHED_ROW_ROLE, True)
 
         # Re-enable sorting
         self.table.setSortingEnabled(True)
@@ -1161,6 +1338,17 @@ class HistoryView(QWidget):
                     else:
                         item = QTableWidgetItem(str(value))
                         self.table.setItem(row, col, item)
+
+            # Unmatched row: set role so delegate paints faded red background
+            matched = bool(
+                csv_row.get("beatport_url", "").strip()
+                or csv_row.get("beatport_title", "").strip()
+            )
+            if not matched:
+                for c in range(self.table.columnCount()):
+                    it = self.table.item(row, c)
+                    if it:
+                        it.setData(UNMATCHED_ROW_ROLE, True)
 
             # Update summary
             try:
@@ -2007,9 +2195,16 @@ class HistoryView(QWidget):
             return False
 
     def on_rerun_processing(self):
-        """Handle re-run request - load original XML file and playlist"""
+        """Handle re-run request - load original XML file and playlist, or M3U path."""
         if not self.current_csv_path or not self.csv_rows:
             QMessageBox.warning(self, "No File Loaded", "Please load a CSV file first.")
+            return
+
+        # M3U run: emit so main window switches to Playlist file and runs from m3u_path
+        if getattr(self, "_run_source", "collection") == "playlist_file" and getattr(
+            self, "_run_m3u_path", ""
+        ):
+            self.rerun_m3u_requested.emit(self._run_m3u_path)
             return
 
         # Try to get XML file path and playlist name from CSV metadata
@@ -2072,5 +2267,4 @@ class HistoryView(QWidget):
                 return
 
         # Emit signal to main window
-        self.rerun_requested.emit(xml_path, playlist_name)
         self.rerun_requested.emit(xml_path, playlist_name)
