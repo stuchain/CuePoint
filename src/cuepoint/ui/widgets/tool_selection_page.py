@@ -94,35 +94,9 @@ class ToolSelectionPage(QWidget):
         inkey_desc.setStyleSheet("font-size: 14px; color: #888; margin-top: 10px;")
         tools_layout.addWidget(inkey_desc)
 
-        # inCrate button
-        incrate_button = QPushButton("inCrate")
-        incrate_button.setObjectName("inCrate")
-        incrate_button.setMinimumSize(300, 80)
-        incrate_button.setStyleSheet(
-            """
-            QPushButton {
-                font-size: 24px;
-                font-weight: bold;
-                background-color: #2E7D32;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                padding: 20px;
-            }
-            QPushButton:hover {
-                background-color: #1B5E20;
-            }
-            QPushButton:pressed {
-                background-color: #0D3D10;
-            }
-            """
-        )
-        incrate_button.clicked.connect(lambda: self.tool_selected.emit("incrate"))
-        tools_layout.addWidget(incrate_button)
-        incrate_desc = QLabel("Charts & new releases")
-        incrate_desc.setAlignment(Qt.AlignCenter)
-        incrate_desc.setStyleSheet("font-size: 14px; color: #888; margin-top: 10px;")
-        tools_layout.addWidget(incrate_desc)
+        # inCrate button hidden for release (re-enable when feature is ready)
+        # incrate_button = QPushButton("inCrate")
+        # ...
 
         layout.addLayout(tools_layout)
         layout.addStretch()
