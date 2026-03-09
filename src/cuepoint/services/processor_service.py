@@ -31,6 +31,7 @@ from cuepoint.data.rekordbox import (
     is_writable,
     parse_playlist_tree,
     read_playlist_index,
+    resolve_playlist_key,
 )
 from cuepoint.models.config import SETTINGS
 from cuepoint.models.preflight import PreflightIssue, PreflightResult
@@ -1298,8 +1299,9 @@ class ProcessorService(IProcessorService):
             collector.start_stage(STAGE_SEARCH_CANDIDATES)
             collector.sample_memory()
 
-        # Validate that requested playlist exists in the XML
-        if playlist_name not in playlists:
+        # Resolve user-provided name (e.g. "My Playlist") to path key (e.g. "ROOT/My Playlist")
+        resolved_key = resolve_playlist_key(playlist_name, playlists)
+        if resolved_key is None:
             available_playlists = sorted(playlists.keys())
             raise ProcessingError(
                 error_type=ErrorType.PLAYLIST_NOT_FOUND,
@@ -1316,6 +1318,7 @@ class ProcessorService(IProcessorService):
                 ],
                 recoverable=True,
             )
+        playlist_name = resolved_key
 
         # Get the requested playlist (already contains Track objects)
         playlist = playlists[playlist_name]

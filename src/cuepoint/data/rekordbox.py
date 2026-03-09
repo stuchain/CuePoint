@@ -401,6 +401,51 @@ def parse_playlist_tree(
     return (tree_roots, playlists_by_path)
 
 
+def resolve_playlist_key(
+    playlist_name: str, playlists_by_path: Dict[str, Playlist]
+) -> Optional[str]:
+    """Resolve a user-provided playlist name to the path key used in playlists_by_path.
+
+    Accepts full path (e.g. ROOT/My Playlist), short name (My Playlist), or
+    path without ROOT prefix. Returns the key to use for lookup, or None if not found.
+
+    Args:
+        playlist_name: Name or path provided by user/CLI.
+        playlists_by_path: Dict from parse_playlist_tree (path -> Playlist).
+
+    Returns:
+        The key to use in playlists_by_path, or None.
+    """
+    if not playlist_name or not playlists_by_path:
+        return None
+    if playlist_name in playlists_by_path:
+        return playlist_name
+    path_without_root = playlist_name.strip()
+    if path_without_root.upper().startswith("ROOT/"):
+        path_without_root = path_without_root[5:].lstrip()
+    elif path_without_root.upper().startswith("ROOT"):
+        path_without_root = path_without_root[4:].lstrip()
+    if path_without_root and path_without_root in playlists_by_path:
+        return path_without_root
+    if path_without_root:
+        canonical = f"ROOT/{path_without_root}"
+        if canonical in playlists_by_path:
+            return canonical
+    name_only = (
+        path_without_root
+        if path_without_root
+        else (
+            playlist_name.split("/")[-1].strip()
+            if "/" in playlist_name
+            else playlist_name
+        )
+    )
+    for path, pl in playlists_by_path.items():
+        if pl.name == playlist_name or pl.name == name_only:
+            return path
+    return None
+
+
 def extract_artists_from_title(title: str) -> Optional[Tuple[str, str]]:
     """Extract artist names from title if title follows "Artists - Title" format.
 
