@@ -75,6 +75,8 @@ class TestWorkerManager:
         worker = manager.start_worker(task)
         assert isinstance(worker, Worker)
         assert worker in manager.workers
+        # Wait for thread to finish so it does not hang later (no event loop to process finished signal)
+        worker.wait(2000)
 
     def test_cancel_all(self):
         """Test canceling all workers."""
@@ -87,6 +89,8 @@ class TestWorkerManager:
         worker = manager.start_worker(task)
         manager.cancel_all()
         assert worker._cancelled is True
+        # Wait for terminated thread to be reaped (avoid hang at exit / next test)
+        worker.wait(2000)
 
 
 class TestUIThreadHelper:
