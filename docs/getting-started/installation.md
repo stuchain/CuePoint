@@ -24,7 +24,7 @@
 
 ## System Requirements
 
-- **macOS**: 10.15 (Catalina) or later
+- **macOS**: macOS 12+ (Monterey or later)
 - **Windows**: Windows 10 or later
 - **Linux**: Modern Linux distribution with GTK support
 - **RAM**: 4GB minimum, 8GB recommended

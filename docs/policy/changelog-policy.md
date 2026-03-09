@@ -4,7 +4,7 @@ How to update the changelog.
 
 ## Location
 
-`docs/release/changelog.md`
+`docs/release/CHANGELOG.md`
 
 ## Format
 

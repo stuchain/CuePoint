@@ -41,6 +41,8 @@ For contributors: setup, architecture, extending the codebase.
 | [Common Dev Errors](development/common-errors.md) | Dev environment troubleshooting |
 | [Coding Standards](development/coding-standards.md) | Formatting, linting, typing |
 | [Remediation notes](development/remediation-notes.md) | Archive of one-off fix notes |
+| [Feature designs (inCrate)](feature/README.md) | inCrate: inventory, discovery, Beatport playlists — spec and implementation order |
+| [inCrate spec](incrate-spec.md) | inCrate requirements and decisions |
 
 ---
 
@@ -74,4 +76,4 @@ Release and ops docs (checklists, runbooks, changelog policy, signing guides): [
 
 ---
 
-*Last updated: 2026-02-03*
+*Last updated: 2026-03-09*

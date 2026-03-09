@@ -23,8 +23,12 @@ file://.*/docs/policy/telemetry\.md
 file://.*/docs/release/link
 file://.*/docs/security/Security_Incident_Response\.md
 file://.*/docs/operations/Release/
+# Exported Beatport API HTML (local asset paths from export, not repo paths)
+file:///S:/static/
+file:///S:/v4/
 
-# Beatport external URLs: timeout in CI or example/placeholder URLs that 404
+# Beatport external URLs: timeout in CI or example/placeholder URLs that 404/403
 https://accounts.beatport.com/developer/request-api-key
 https://beatport.com/track/x/1
 https://api.beatport.com/v4
+https://support.beatport.com/hc/en-us/articles/4414997837716-Terms-and-Conditions#api

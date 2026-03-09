@@ -4,12 +4,12 @@ This document explains how CuePoint works under the hood. It is written for tech
 
 ## High-level architecture
 
-CuePoint is a shared core pipeline surfaced through two interfaces:
+CuePoint exposes **two tools** from the start screen:
 
-- **Core pipeline**: parsing, query generation, search, scoring, and export.
-- **Interfaces**: GUI and CLI both call the same services (`ProcessorService`).
+- **inKey** — Rekordbox playlist → Beatport metadata enrichment. Shared core pipeline (parsing, query generation, search, scoring, export) surfaced through GUI and CLI. Both call the same services (`ProcessorService`).
+- **inCrate** — Inventory from full Rekordbox collection, discovery (Beatport genre charts from library artists, new releases from labels), and Beatport playlist creation. Orchestration: `InventoryService`, `IncrateDiscoveryService`, and `src/cuepoint/incrate/` (inventory DB, discovery, playlist writer, enrichment).
 
-Primary orchestration happens in `src/cuepoint/services/processor_service.py`, which:
+Primary orchestration for **inKey** happens in `src/cuepoint/services/processor_service.py`, which:
 
 1. Normalizes track inputs.
 2. Generates search queries.
@@ -174,7 +174,7 @@ Settings are mapped from nested YAML into a flat `SETTINGS` dict and are read by
 
 **CLI**
 
-- Entry point in `main.py`, with CLI logic in `src/cuepoint/cli/cli_processor.py`.
+- Entry point: run from project root as `python main.py` (root `main.py` delegates to `src/main.py`). CLI logic in `src/cuepoint/cli/cli_processor.py`.
 - Accepts `--xml`, `--playlist`, `--out`, and other flags.
 - Writes outputs to the configured output directory.
 

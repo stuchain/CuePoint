@@ -1,5 +1,14 @@
 # Features
 
+## Two tools
+
+CuePoint offers two tools from the start screen:
+
+- **inKey** — Beatport metadata enrichment for Rekordbox playlists. Load an XML export, match tracks to Beatport, and export clean metadata (key, BPM, label, genre, etc.) with a full audit trail. This is the main flow described in the rest of this page.
+- **inCrate** — Music digging workflow: build an **inventory** from your full Rekordbox collection, discover **Beatport genre charts** from artists in your library and **new releases** from your labels (last 30 days), and add tracks to a **Beatport playlist** (e.g. one playlist per run).
+
+For inCrate requirements and implementation details, see [inCrate spec](../incrate-spec.md) and [Feature implementation designs (inCrate)](../feature/README.md).
+
 ## Core Features
 
 ### XML Import

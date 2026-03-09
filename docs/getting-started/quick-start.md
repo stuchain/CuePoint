@@ -2,6 +2,8 @@
 
 Get started with CuePoint in 5 minutes!
 
+Open CuePoint and choose **inKey** for Rekordbox metadata enrichment (or **inCrate** for inventory and Beatport discovery). This guide covers **inKey**.
+
 ## Step 1: Import Your Collection
 
 1. Open CuePoint

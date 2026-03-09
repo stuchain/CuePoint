@@ -42,7 +42,7 @@ When a release is broken (critical bug, security issue, or failed installs), fol
 - [ ] Create hotfix branch from the **last good** release tag (e.g. `git checkout -b hotfix/1.2.4 v1.2.3`).
 - [ ] Apply the minimal fix; run tests.
 - [ ] Bump version (e.g. to `1.2.4`) in `src/cuepoint/version.py` and sync (e.g. `scripts/sync_version.py`).
-- [ ] Update `docs/release/changelog.md` with the fix and version.
+- [ ] Update `docs/release/CHANGELOG.md` with the fix and version.
 - [ ] Create and push tag (e.g. `v1.2.4`).
 - [ ] Let CI build, sign, and run release workflow.
 - [ ] After release is published, regenerate appcast so the new version is the latest entry.

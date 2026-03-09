@@ -11,7 +11,7 @@
 ## Docs
 
 - [ ] Docs updated for user-facing changes
-- [ ] Changelog updated in `docs/release/changelog.md` (if notable)
+- [ ] Changelog updated in `docs/release/CHANGELOG.md` (if notable)
 
 ## Checklist
 

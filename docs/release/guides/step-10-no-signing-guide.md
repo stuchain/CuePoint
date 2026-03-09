@@ -201,7 +201,7 @@ python scripts/check_performance.py
 - Verify these files exist:
   - ✅ README.md
   - ✅ PRIVACY_NOTICE.md
-  - ✅ CHANGELOG.md
+  - ✅ docs/release/CHANGELOG.md
   - ✅ THIRD_PARTY_LICENSES.txt
 
 ---
@@ -236,8 +236,8 @@ python scripts/check_performance.py
 **Status**: Already created (automated)
 
 **What you do**:
-- Verify CHANGELOG.md exists and is updated
-- Run: `python scripts/validate_release_notes.py --file CHANGELOG.md`
+- Verify docs/release/CHANGELOG.md exists and is updated
+- Run: `python scripts/validate_release_notes.py --file docs/release/CHANGELOG.md`
 
 **Expected**: Validation passes
 
@@ -318,12 +318,12 @@ python scripts/check_performance.py
      git push origin main
      ```
 
-3. **Update CHANGELOG.md**:
+3. **Update docs/release/CHANGELOG.md**:
    - Move items from `[Unreleased]` to `[1.0.0]`
    - Add release date: `## [1.0.0] - 2024-12-16`
    - Commit:
      ```bash
-     git add CHANGELOG.md
+     git add docs/release/CHANGELOG.md
      git commit -m "Update CHANGELOG for v1.0.0"
      git push origin main
      ```

@@ -71,6 +71,7 @@
   <li><strong>Caching</strong>: request caching to speed up repeated runs</li>
   <li><strong>Audit logging</strong>: query and candidate logs for verification</li>
   <li><strong>GUI + CLI</strong>: run via desktop UI or command line</li>
+  <li><strong>inCrate</strong>: inventory from Rekordbox, discover Beatport genre charts and new releases from labels, build a Beatport playlist</li>
 </ul>
 
 <h2>How to run</h2>

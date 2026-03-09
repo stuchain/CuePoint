@@ -26,7 +26,7 @@ This runbook provides step-by-step instructions for deploying a CuePoint release
 
 ### 1. Prepare Release Notes
 
-- Update `docs/release/changelog.md` with all changes
+- Update `docs/release/CHANGELOG.md` with all changes
 - Use [Release Notes Template](release-notes-template.md)
 - Include: highlights, fixes, known issues
 

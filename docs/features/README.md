@@ -30,3 +30,4 @@ This folder documents **all** features of the CuePoint app—large and small. Ea
 | CLI | [cli-and-arguments.md](cli-and-arguments.md) | CLI processor, all arguments, migrate |
 | Reliability | [reliability-and-performance.md](reliability-and-performance.md) | Retry, circuit breaker, guardrails |
 | Support | [support-and-diagnostics.md](support-and-diagnostics.md) | Support bundle, log viewer, crash handler |
+| inCrate | [incrate.md](incrate.md) | Inventory, discovery (charts + new releases), Beatport playlist |

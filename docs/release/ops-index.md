@@ -44,7 +44,7 @@ This index links to all operational documentation for CuePoint post-launch suppo
 | --- | --- |
 | [Release Strategy](release-strategy.md) | Release types and cadence |
 | [Release Schedule](release-schedule.md) | Planned release dates |
-| [Changelog](changelog.md) | Version history |
+| [Changelog](CHANGELOG.md) | Version history |
 | [Release Notes Template](release-notes-template.md) | Template for release notes |
 | [Release Announcement Template](release-announcement-template.md) | Template for announcements |
 

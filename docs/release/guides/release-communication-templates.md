@@ -38,7 +38,7 @@ Templates for communicating releases to users and stakeholders.
 {Any special upgrade instructions}
 
 ### Full Changelog
-See [CHANGELOG.md](https://github.com/StuChain/CuePoint/blob/main/CHANGELOG.md) for complete list of changes.
+See [CHANGELOG.md](https://github.com/stuchain/CuePoint/blob/main/docs/release/CHANGELOG.md) for complete list of changes.
 
 ---
 
@@ -75,7 +75,7 @@ If you have CuePoint installed, the app will automatically check for updates on 
 
 ## Feedback
 
-We'd love to hear your feedback! Please report any issues or suggestions on our [GitHub Issues](https://github.com/StuChain/CuePoint/issues) page.
+We'd love to hear your feedback! Please report any issues or suggestions on our [GitHub Issues](https://github.com/stuchain/CuePoint/issues) page.
 
 ---
 

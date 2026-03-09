@@ -4,6 +4,8 @@
 
 This document outlines the planned release schedule for CuePoint. The schedule is subject to change based on development progress, critical issues, and user feedback.
 
+For the current release plan and dates, see [Release Strategy](release-strategy.md) and [GitHub Releases](https://github.com/stuchain/CuePoint/releases). The 2025 schedule below is kept for reference; 2026 schedule TBD.
+
 ## 2025 Release Schedule
 
 ### Q1 2025
@@ -271,7 +273,7 @@ The release schedule may be adjusted based on:
 - [Release Strategy](release-strategy.md)
 - [Release Deployment Runbook](release-deployment-runbook.md)
 - [Rollback](rollback.md)
-- [Changelog](changelog.md)
+- [Changelog](CHANGELOG.md)
 
 ## Last Updated
 

@@ -10,7 +10,7 @@ Use one of the paths below depending on how you want to run CuePoint.
 
 ## Build locally
 
-1. Install Python 3.8+.
+1. Install Python 3.11+.
 2. Install dependencies:
 
 ```bash
@@ -18,7 +18,7 @@ pip install -r requirements.txt
 playwright install chromium
 ```
 
-3. Run the CLI:
+3. Run the CLI (from project root):
 
 ```bash
 python main.py --xml collection.xml --playlist "My Playlist" --auto-research

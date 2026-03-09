@@ -57,7 +57,7 @@ Thank you to all contributors who made this release possible:
 
 ## Full Changelog
 
-For a complete list of changes, see the [changelog](changelog.md).
+For a complete list of changes, see the [changelog](CHANGELOG.md).
 
 ## Download
 

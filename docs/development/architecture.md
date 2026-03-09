@@ -60,10 +60,11 @@ Input (Rekordbox XML) → Parse → Query Generation → Search → Match/Score 
 
 ## Code Reading Guide
 
-1. Start at `src/main.py` (CLI) or `src/gui_app.py` (GUI)
-2. Follow `CLIProcessor` or GUI controller into `ProcessorService`
-3. Trace `ProcessorService.process_track()` → `MatcherService.find_best_match()` → `core/matcher.best_beatport_match()`
-4. For Beatport data flow: `beatport_service.fetch_track_data()` → `data/beatport.parse_track_page()`
+1. **Entry points**: CLI is run from **project root** as `python main.py` (root `main.py` delegates to `src/main.py`). GUI: `src/gui_app.py` or `run_gui.bat` / `run_gui.command` / `run_gui.sh` from root.
+2. Start at `src/main.py` (CLI) or `src/gui_app.py` (GUI).
+3. Follow `CLIProcessor` or GUI controller into `ProcessorService`.
+4. Trace `ProcessorService.process_track()` → `MatcherService.find_best_match()` → `core/matcher.best_beatport_match()`.
+5. For Beatport data flow: `BeatportService` (in `services/beatport_service.py`) uses `data/beatport.py` and `data/beatport_search.py`; `beatport_service.fetch_track_data()` → `data/beatport.parse_track_page()`.
 
 ## Related Docs
 

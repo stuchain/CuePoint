@@ -124,7 +124,7 @@ python3 -c "from PySide6.QtWidgets import QApplication; print('✓ PySide6 OK')"
 ```bash
 python3 --version
 ```
-PySide6 requires Python 3.8+. If you have an older version, update Python.
+PySide6 requires Python 3.11+. If you have an older version, update Python.
 
 ### Check which Python pip is using:
 ```bash

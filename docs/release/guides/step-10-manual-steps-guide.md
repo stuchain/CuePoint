@@ -646,13 +646,13 @@ This guide provides detailed, step-by-step instructions for all manual steps in 
      git push origin main
      ```
 
-3. **Update CHANGELOG.md**
-   - Edit `CHANGELOG.md`
+3. **Update docs/release/CHANGELOG.md**
+   - Edit `docs/release/CHANGELOG.md`
    - Move items from `[Unreleased]` to `[1.0.0]`
    - Add release date
    - Commit:
      ```bash
-     git add CHANGELOG.md
+     git add docs/release/CHANGELOG.md
      git commit -m "Update CHANGELOG for v1.0.0"
      git push origin main
      ```

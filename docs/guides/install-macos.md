@@ -63,7 +63,7 @@ linked against **OpenSSL** (recommended for a proper, distributable app environm
 
 ## Prerequisites
 
-### Python 3.7 or later
+### Python 3.11 or later
 
 **Check if Python is installed:**
 ```bash
@@ -74,7 +74,7 @@ python3 --version
 
 #### Method 1: Official Python Installer
 1. Visit https://www.python.org/downloads/
-2. Download Python 3.x for macOS
+2. Download Python 3.11 or newer for macOS
 3. Run the installer
 4. Make sure to check "Add Python to PATH" during installation
 
@@ -145,10 +145,9 @@ After installation, you can run the GUI:
 ### Option 1: Double-click `run_gui.command`
 (Make it executable first: `chmod +x run_gui.command`)
 
-### Option 2: From Terminal
+### Option 2: From Terminal (from project root)
 ```bash
-cd src
-python3 gui_app.py
+python3 src/gui_app.py
 ```
 
 ### Option 3: Using the shell script
@@ -163,7 +162,7 @@ python3 gui_app.py
 - Make sure Python is in your PATH
 
 ### "pip3: command not found"
-- Python 3.4+ should include pip3
+- Python 3.11+ includes pip3
 - Try: `python3 -m ensurepip --upgrade`
 
 ### "Permission denied" errors

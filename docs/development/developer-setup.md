@@ -70,8 +70,8 @@ python scripts/run_tests.py --unit
 # Run all tests (unit, integration, system)
 python scripts/run_tests.py --all
 
-# Run CLI with sample XML
-python src/main.py --xml src/tests/fixtures/rekordbox/minimal.xml --playlist "Test Playlist" --out test
+# Run CLI with sample XML (from project root)
+python main.py --xml src/tests/fixtures/rekordbox/minimal.xml --playlist "Test Playlist" --out test
 
 # Run GUI
 python src/gui_app.py

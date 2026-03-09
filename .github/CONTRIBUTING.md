@@ -40,7 +40,7 @@ Before opening a PR, ensure:
 - [ ] **Docs**: Updated for user-facing changes
 - [ ] **Lint**: `ruff check src/` passes
 - [ ] **Types**: `mypy src/ --ignore-missing-imports` passes (or known issues documented)
-- [ ] **Changelog**: Updated in `docs/release/changelog.md` for notable changes
+- [ ] **Changelog**: Updated in `docs/release/CHANGELOG.md` for notable changes
 
 ## Coding Standards
 
@@ -51,12 +51,18 @@ Before opening a PR, ensure:
 
 See [Coding Standards](https://github.com/stuchain/CuePoint/blob/main/docs/development/coding-standards.md).
 
+**Documentation:** [docs/README.md](https://github.com/stuchain/CuePoint/blob/main/docs/README.md) — single entry point for all docs.
+
 ## Contribution Flow
 
 1. Fork the repo
 2. Create a branch (`git checkout -b feature/your-feature`)
 3. Implement changes
 4. Run tests: `python scripts/run_tests.py --all`
-5. Open a PR with the checklist above## Documentation- **Start here**: [docs/README.md](https://github.com/stuchain/CuePoint/blob/main/docs/README.md)
+5. Open a PR with the checklist above
+
+## Documentation
+
+- **Start here**: [docs/README.md](https://github.com/stuchain/CuePoint/blob/main/docs/README.md)
 - **Architecture**: [docs/development/architecture.md](https://github.com/stuchain/CuePoint/blob/main/docs/development/architecture.md)
 - **Match rules**: [docs/development/match-rules-and-scoring.md](https://github.com/stuchain/CuePoint/blob/main/docs/development/match-rules-and-scoring.md)
