@@ -1,17 +1,18 @@
 """Unit tests for HistoryView playlist name resolution for Sync with Rekordbox from past searches."""
 
+import csv
 import json
 import os
+import sys
 import tempfile
 import unittest
 
 from PySide6.QtWidgets import QApplication
-import sys
+
+from cuepoint.ui.widgets.history_view import HistoryView
 
 if not QApplication.instance():
     app = QApplication(sys.argv)
-
-from cuepoint.ui.widgets.history_view import HistoryView
 
 
 class TestHistoryViewPlaylistName(unittest.TestCase):
@@ -54,8 +55,7 @@ class TestHistoryViewPlaylistName(unittest.TestCase):
             # Load CSV (HistoryView loads and reads .meta.json)
             self.view.current_csv_path = csv_path
             with open(csv_path, "r", encoding="utf-8") as f:
-                import csv as csv_module
-                reader = csv_module.DictReader(f)
+                reader = csv.DictReader(f)
                 self.view.csv_rows = list(reader)
             self.view.filtered_rows = self.view.csv_rows.copy()
             # Simulate what load does: read .meta.json
