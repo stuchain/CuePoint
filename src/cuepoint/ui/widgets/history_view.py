@@ -482,7 +482,15 @@ class HistoryView(QWidget):
                 "Select at least one row (check the Write box) to sync.",
             )
             return
-        playlist_name = self._playlist_name_from_csv_path(self.current_csv_path)
+        # Prefer playlist name from .meta.json (exact Rekordbox key), then CSV row, then filename
+        playlist_name = getattr(self, "_run_playlist_name", None) or ""
+        if not playlist_name and self.csv_rows:
+            first_row = self.csv_rows[0]
+            playlist_name = (
+                first_row.get("playlist_name") or first_row.get("playlist") or ""
+            )
+        if not playlist_name:
+            playlist_name = self._playlist_name_from_csv_path(self.current_csv_path)
         self.write_to_track_tags_requested.emit(
             selected_rows, playlist_name or "Playlist"
         )
@@ -678,9 +686,11 @@ class HistoryView(QWidget):
             self.csv_rows = rows
             self.filtered_rows = rows.copy()
 
-            # Load run metadata for M3U runs (source + m3u_path for rerun/sync from history)
+            # Load run metadata for rerun/sync from history (M3U: m3u_path; collection: playlist_name + xml_path)
             self._run_source = "collection"
             self._run_m3u_path = ""
+            self._run_playlist_name = ""
+            self._run_xml_path = ""
             meta_path = os.path.splitext(file_path)[0] + ".meta.json"
             if os.path.exists(meta_path):
                 try:
@@ -689,6 +699,9 @@ class HistoryView(QWidget):
                     if meta.get("source") == "playlist_file":
                         self._run_source = "playlist_file"
                         self._run_m3u_path = meta.get("m3u_path") or ""
+                    else:
+                        self._run_playlist_name = meta.get("playlist_name") or ""
+                        self._run_xml_path = meta.get("xml_path") or ""
                 except Exception:
                     pass
 
@@ -2222,26 +2235,27 @@ class HistoryView(QWidget):
             self.rerun_m3u_requested.emit(self._run_m3u_path)
             return
 
-        # Try to get XML file path and playlist name from CSV metadata
-        # Check first row for metadata fields
-        first_row = self.csv_rows[0] if self.csv_rows else {}
+        # Prefer XML path and playlist name from .meta.json (saved at export), then CSV row, then filename
+        xml_path = getattr(self, "_run_xml_path", None) or ""
+        playlist_name = getattr(self, "_run_playlist_name", None) or ""
 
-        # Try various possible field names
-        xml_path = (
-            first_row.get("xml_file_path")
-            or first_row.get("source_file")
-            or first_row.get("xml_path")
-            or ""
-        )
+        if not xml_path or not playlist_name:
+            first_row = self.csv_rows[0] if self.csv_rows else {}
+            if not xml_path:
+                xml_path = (
+                    first_row.get("xml_file_path")
+                    or first_row.get("source_file")
+                    or first_row.get("xml_path")
+                    or ""
+                )
+            if not playlist_name:
+                playlist_name = (
+                    first_row.get("playlist_name") or first_row.get("playlist") or ""
+                )
 
-        playlist_name = (
-            first_row.get("playlist_name") or first_row.get("playlist") or ""
-        )
-
-        # If not in CSV, try to infer from filename
+        # If still not in CSV, try to infer playlist name from filename
         if not playlist_name and self.current_csv_path:
             basename = os.path.basename(self.current_csv_path)
-            # Remove timestamp and extension
             if "(" in basename:
                 playlist_name = basename[: basename.rfind("(")].strip()
             else:

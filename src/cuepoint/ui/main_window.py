@@ -4042,9 +4042,18 @@ class MainWindow(QMainWindow):
             self.pause_button.setEnabled(False)
 
         # Automatically save results for each playlist
+        xml_path_for_save = (
+            self.file_selector.get_file_path()
+            if hasattr(self, "file_selector")
+            else None
+        )
         for playlist_name, results in filtered_dict.items():
             if results:  # Only save if there are results
-                self._auto_save_results(results, playlist_name)
+                self._auto_save_results(
+                    results,
+                    playlist_name,
+                    xml_path=xml_path_for_save,
+                )
 
         # Update results view with batch results (separate table per playlist)
         self.results_view.set_batch_results(filtered_dict)
@@ -4068,18 +4077,23 @@ class MainWindow(QMainWindow):
         playlist_name: str,
         source_type: str = "collection",
         m3u_path: Optional[str] = None,
+        xml_path: Optional[str] = None,
     ) -> Optional[Dict[str, str]]:
         """Automatically save results to CSV file after processing.
 
         Creates a sanitized filename from the playlist name and saves
         results to the output directory. For M3U runs, writes a .meta.json
         with source and m3u_path so rerun and sync from history work.
+        For collection runs, writes a .meta.json with playlist_name and
+        xml_path so Sync with Rekordbox from Past Searches uses the correct
+        playlist key.
 
         Args:
             results: List of TrackResult objects to save.
-            playlist_name: Name of the playlist for file naming.
+            playlist_name: Name/path of the playlist (for file naming and .meta.json).
             source_type: "collection" or "playlist_file".
             m3u_path: Path to M3U file when source_type is playlist_file.
+            xml_path: Path to Rekordbox XML when source_type is collection.
         """
         if not results:
             return None
@@ -4113,13 +4127,21 @@ class MainWindow(QMainWindow):
             # Write CSV files (this will add timestamp automatically)
             output_files = write_csv_files(results, base_filename, output_dir)
 
-            # For M3U runs, write .meta.json so Past Searches can rerun and sync without the M3U file
-            if source_type == "playlist_file" and m3u_path and output_files.get("main"):
+            # Write .meta.json so Past Searches can rerun and sync with correct playlist/XML
+            if output_files.get("main"):
                 main_path = output_files["main"]
                 meta_path = os.path.splitext(main_path)[0] + ".meta.json"
                 try:
+                    if source_type == "playlist_file" and m3u_path:
+                        meta = {"source": "playlist_file", "m3u_path": m3u_path}
+                    else:
+                        meta = {
+                            "source": "collection",
+                            "playlist_name": playlist_name or "",
+                            "xml_path": xml_path or "",
+                        }
                     with open(meta_path, "w", encoding="utf-8") as f:
-                        json.dump({"source": "playlist_file", "m3u_path": m3u_path}, f)
+                        json.dump(meta, f)
                 except Exception:
                     pass
 
@@ -4737,11 +4759,17 @@ class MainWindow(QMainWindow):
             # Automatically save results to CSV so they appear in Past Searches
             source_type = getattr(self, "_source_mode", "collection")
             m3u_path_for_save = getattr(self, "_last_m3u_path_for_save", None)
+            xml_path_for_save = (
+                self.file_selector.get_file_path()
+                if hasattr(self, "file_selector")
+                else None
+            )
             output_files = self._auto_save_results(
                 results,
                 playlist_name,
                 source_type=source_type,
                 m3u_path=m3u_path_for_save,
+                xml_path=xml_path_for_save,
             )
 
             # Step 14: run_complete and export_complete telemetry
