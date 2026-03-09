@@ -492,7 +492,11 @@ def get_track_locations(xml_path: str) -> Dict[str, str]:
         location = unquote(location)
         prefix = "file://localhost"
         if location.lower().startswith(prefix):
-            location = location[len(prefix) :].lstrip("/")
+            location = location[len(prefix) :]
+            # On Windows, Rekordbox uses file://localhost/D:/Music → strip leading slash.
+            # On Unix, file://localhost/var/... must stay /var/... (absolute path).
+            if os.name == "nt":
+                location = location.lstrip("/")
         if not location:
             continue
         path = Path(location.replace("/", os.sep))

@@ -321,6 +321,7 @@ class IProcessorService(ABC):
         """
         pass
 
+    @abstractmethod
     def process_playlist_from_m3u(
         self,
         m3u_path: str,
