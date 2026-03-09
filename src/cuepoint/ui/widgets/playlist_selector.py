@@ -118,6 +118,7 @@ class _PlaylistPopup(QFrame):
                 _walk(item.child(i))
             if item.childCount() > 0:
                 item.setExpanded(False)
+
         for i in range(self._tree.topLevelItemCount()):
             _walk(self._tree.topLevelItem(i))
 
@@ -141,6 +142,7 @@ class _PlaylistPopup(QFrame):
             if any_child:
                 item.setExpanded(True)
             return any_child
+
         for i in range(self._tree.topLevelItemCount()):
             _filter(self._tree.topLevelItem(i))
 
@@ -214,7 +216,7 @@ class PlaylistSelector(QWidget):
             self._arrow_btn.setIcon(icon)
             self._arrow_btn.setIconSize(self._arrow_btn.iconSize())
         else:
-            self._arrow_btn.setText("\u25BC")
+            self._arrow_btn.setText("\u25bc")
         self._arrow_btn.clicked.connect(self._open_popup)
         layout.addWidget(self._arrow_btn)
 

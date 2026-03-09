@@ -53,17 +53,28 @@ def _mock_parse_track_page_label_two(url: str):
 class TestEnrichLabelsForEmpty:
     """Test enrich_labels_for_empty (inKey matching flow)."""
 
-    @patch("cuepoint.core.matcher.parse_track_page", side_effect=_mock_parse_track_page_defected)
-    @patch("cuepoint.core.matcher.track_urls", return_value=["https://www.beatport.com/track/track-one/12345"])
+    @patch(
+        "cuepoint.core.matcher.parse_track_page",
+        side_effect=_mock_parse_track_page_defected,
+    )
+    @patch(
+        "cuepoint.core.matcher.track_urls",
+        return_value=["https://www.beatport.com/track/track-one/12345"],
+    )
     def test_enrich_labels_for_empty_updates_row(
-        self, mock_track_urls: Mock, mock_parse: Mock, initialized_db: str,
+        self,
+        mock_track_urls: Mock,
+        mock_parse: Mock,
+        initialized_db: str,
     ):
         """DB has 1 row with NULL label; inKey matcher returns match -> row updated."""
         _insert_row(initialized_db, 1, "1", "Artist A", "Track One", label=None)
         url = "https://www.beatport.com/track/track-one/12345"
         mock_bp = Mock()
         updated = enrichment.enrich_labels_for_empty(
-            initialized_db, mock_bp, delay_seconds=0,
+            initialized_db,
+            mock_bp,
+            delay_seconds=0,
         )
         assert updated == 1
         conn = inventory_db.get_connection(initialized_db)
@@ -78,20 +89,26 @@ class TestEnrichLabelsForEmpty:
             conn.close()
 
     def test_enrich_labels_for_empty_skips_row_with_label(
-        self, initialized_db: str,
+        self,
+        initialized_db: str,
     ):
         """DB has 1 row with label set -> no matching calls."""
         _insert_row(initialized_db, 1, "1", "Artist A", "Track One", label="Existing")
         mock_bp = Mock()
         updated = enrichment.enrich_labels_for_empty(
-            initialized_db, mock_bp, delay_seconds=0,
+            initialized_db,
+            mock_bp,
+            delay_seconds=0,
         )
         assert updated == 0
 
     @patch("cuepoint.core.matcher.parse_track_page")
     @patch("cuepoint.core.matcher.track_urls", return_value=[])
     def test_enrich_labels_for_empty_calls_progress_callback(
-        self, mock_track_urls: Mock, mock_parse: Mock, initialized_db: str,
+        self,
+        mock_track_urls: Mock,
+        mock_parse: Mock,
+        initialized_db: str,
     ):
         """Progress callback invoked with (current, total)."""
         _insert_row(initialized_db, 1, "1", "A", "T1", label=None)
@@ -99,7 +116,10 @@ class TestEnrichLabelsForEmpty:
         mock_bp = Mock()
         progress = Mock()
         enrichment.enrich_labels_for_empty(
-            initialized_db, mock_bp, progress_callback=progress, delay_seconds=0,
+            initialized_db,
+            mock_bp,
+            progress_callback=progress,
+            delay_seconds=0,
         )
         assert progress.call_count >= 3
         calls = progress.call_args_list
@@ -110,20 +130,29 @@ class TestEnrichLabelsForEmpty:
         assert calls[2][0][0] == 2
         assert calls[2][0][1] == 2
 
-    @patch("cuepoint.core.matcher.parse_track_page", side_effect=_mock_parse_track_page_label_two)
+    @patch(
+        "cuepoint.core.matcher.parse_track_page",
+        side_effect=_mock_parse_track_page_label_two,
+    )
     @patch(
         "cuepoint.core.matcher.track_urls",
-        side_effect=[Exception("Rate limit")] + [["https://www.beatport.com/track/t2/99999"]] * 50,
+        side_effect=[Exception("Rate limit")]
+        + [["https://www.beatport.com/track/t2/99999"]] * 50,
     )
     def test_enrich_labels_for_empty_continues_on_beatport_error(
-        self, mock_track_urls: Mock, mock_parse: Mock, initialized_db: str,
+        self,
+        mock_track_urls: Mock,
+        mock_parse: Mock,
+        initialized_db: str,
     ):
         """First row raises (track_urls); second row still processed."""
         _insert_row(initialized_db, 1, "1", "A", "T1", label=None)
         _insert_row(initialized_db, 2, "2", "B", "T2", label=None)
         mock_bp = Mock()
         updated = enrichment.enrich_labels_for_empty(
-            initialized_db, mock_bp, delay_seconds=0,
+            initialized_db,
+            mock_bp,
+            delay_seconds=0,
         )
         assert updated == 1
         conn = inventory_db.get_connection(initialized_db)
@@ -136,7 +165,9 @@ class TestEnrichLabelsForEmpty:
         finally:
             conn.close()
 
-    def test_enrich_labels_for_empty_uses_processor_when_provided(self, initialized_db: str):
+    def test_enrich_labels_for_empty_uses_processor_when_provided(
+        self, initialized_db: str
+    ):
         """When processor_service and config_service provided, uses process_track (same as inKey)."""
         from cuepoint.models.result import TrackResult
         from cuepoint.models.beatport_candidate import BeatportCandidate
@@ -182,7 +213,13 @@ class TestEnrichLabelsForEmpty:
         mock_processor = Mock()
         mock_processor.process_track.return_value = mock_result
         mock_config = Mock()
-        mock_config.get.side_effect = lambda k, d=None: 1 if k == "processing.track_workers" else (8 if k == "performance.max_workers" else (d if d is not None else None))
+        mock_config.get.side_effect = lambda k, d=None: (
+            1
+            if k == "processing.track_workers"
+            else (
+                8 if k == "performance.max_workers" else (d if d is not None else None)
+            )
+        )
         updated = enrichment.enrich_labels_for_empty(
             initialized_db,
             beatport_service=Mock(),

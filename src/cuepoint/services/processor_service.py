@@ -295,7 +295,9 @@ class ProcessorService(IProcessorService):
                         "candidate_title": cand.title,
                         "candidate_artists": cand.artists,
                         "candidate_key": cand.key or "",
-                        "candidate_key_camelot": _camelot_key(cand.key) if cand.key else "",
+                        "candidate_key_camelot": _camelot_key(cand.key)
+                        if cand.key
+                        else "",
                         "candidate_year": str(cand.release_year)
                         if cand.release_year
                         else "",
@@ -389,7 +391,9 @@ class ProcessorService(IProcessorService):
                         "candidate_title": cand.title,
                         "candidate_artists": cand.artists,
                         "candidate_key": cand.key or "",
-                        "candidate_key_camelot": _camelot_key(cand.key) if cand.key else "",
+                        "candidate_key_camelot": _camelot_key(cand.key)
+                        if cand.key
+                        else "",
                         "candidate_year": str(cand.release_year)
                         if cand.release_year
                         else "",
@@ -558,7 +562,9 @@ class ProcessorService(IProcessorService):
                 artist = (artist or "").strip() or "Unknown"
                 inputs.append((idx, Track(title=title, artist=artist, file_path=path)))
             else:
-                title_display = (title or os.path.basename(path) or "Unknown").strip() or "Unknown"
+                title_display = (
+                    title or os.path.basename(path) or "Unknown"
+                ).strip() or "Unknown"
                 artist_display = (artist or "—").strip() or "—"
                 not_found_by_idx[idx] = TrackResult(
                     playlist_index=idx,
@@ -577,8 +583,7 @@ class ProcessorService(IProcessorService):
             processed: Dict[int, TrackResult],
         ) -> List[TrackResult]:
             return [
-                processed.get(i) or not_found_by_idx[i]
-                for i in range(1, total + 1)
+                processed.get(i) or not_found_by_idx[i] for i in range(1, total + 1)
             ]
 
         # TRACK_WORKERS and cap (same as process_playlist_from_xml)

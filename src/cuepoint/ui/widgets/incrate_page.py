@@ -31,10 +31,15 @@ from cuepoint.incrate.beatport_oauth import (
 )
 from cuepoint.incrate.beatport_playlist_browser import add_to_playlist_via_browser
 from cuepoint.incrate.playlist_name import default_playlist_name
-from cuepoint.incrate.playlist_writer import PlaylistResult, create_playlist_and_add_tracks
+from cuepoint.incrate.playlist_writer import (
+    PlaylistResult,
+    create_playlist_and_add_tracks,
+)
 from cuepoint.services.beatport_api import BeatportApi
 from cuepoint.services.beatport_api_client import BeatportApiClient
-from cuepoint.ui.dialogs.beatport_playlist_signin_dialog import BeatportPlaylistSignInDialog
+from cuepoint.ui.dialogs.beatport_playlist_signin_dialog import (
+    BeatportPlaylistSignInDialog,
+)
 from cuepoint.ui.widgets.incrate_discover_section import IncrateDiscoverSection
 from cuepoint.ui.widgets.incrate_import_section import IncrateImportSection
 from cuepoint.ui.widgets.incrate_inventory_section import IncrateInventorySection
@@ -62,7 +67,13 @@ class ImportThread(QThread):
     progress_range = Signal(int, int)  # current, total (0,0 = indeterminate)
     error = Signal(str)
 
-    def __init__(self, inventory_service: Any, xml_path: str, enrich: bool = True, parent: Optional[QObject] = None):
+    def __init__(
+        self,
+        inventory_service: Any,
+        xml_path: str,
+        enrich: bool = True,
+        parent: Optional[QObject] = None,
+    ):
         super().__init__(parent)
         self._inventory = inventory_service
         self._path = xml_path
@@ -71,7 +82,9 @@ class ImportThread(QThread):
     def run(self) -> None:
         """Runs in worker thread; guaranteed to execute when thread starts."""
         try:
-            _logger.info("inCrate import: thread run() started, emitting initial Parsing XML...")
+            _logger.info(
+                "inCrate import: thread run() started, emitting initial Parsing XML..."
+            )
             self.progress.emit("Parsing XML...")
             self.progress_range.emit(0, 0)
 
@@ -95,7 +108,12 @@ class ImportThread(QThread):
                     self.progress_range.emit(0, 0)
                     return
                 msg = f"Enriching {current}/{total}..."
-                if current == 0 or current == 1 or current % 50 == 0 or current == total:
+                if (
+                    current == 0
+                    or current == 1
+                    or current % 50 == 0
+                    or current == total
+                ):
                     _logger.info("inCrate import: progress_cb(enrich) -> %s", msg)
                 self.progress.emit(msg)
                 self.progress_range.emit(current, total)
@@ -161,11 +179,23 @@ class DiscoveryThread(QThread):
 
             def progress_cb(stage: str, current: int, total: int) -> None:
                 if stage == "charts":
-                    msg = f"Charts: {current}/{total} genres" if total > 0 else "Charts..."
+                    msg = (
+                        f"Charts: {current}/{total} genres"
+                        if total > 0
+                        else "Charts..."
+                    )
                 elif stage == "resolving":
-                    msg = f"Resolving labels: {current}/{total}" if total > 0 else "Resolving labels..."
+                    msg = (
+                        f"Resolving labels: {current}/{total}"
+                        if total > 0
+                        else "Resolving labels..."
+                    )
                 elif stage == "releases":
-                    msg = f"New releases: {current}/{total} labels" if total > 0 else "New releases..."
+                    msg = (
+                        f"New releases: {current}/{total} labels"
+                        if total > 0
+                        else "New releases..."
+                    )
                 else:
                     msg = f"{stage}: {current}/{total}"
                 _logger.info("inCrate discovery: progress_cb -> %s", msg)
@@ -181,7 +211,9 @@ class DiscoveryThread(QThread):
                 library_artist_names=self._artist_names,
                 library_label_names=self._label_names,
             )
-            _logger.info("inCrate discovery: finished — %s tracks", len(result) if result else 0)
+            _logger.info(
+                "inCrate discovery: finished — %s tracks", len(result) if result else 0
+            )
             self.finished_result.emit(result)
         except Exception as e:
             _logger.exception("inCrate discovery: thread run() failed")
@@ -288,12 +320,18 @@ class IncratePage(QWidget):
         # Past results tab: list of saved runs + results table
         past_widget = QWidget()
         past_layout = QVBoxLayout(past_widget)
-        past_layout.addWidget(QLabel("Saved discovery runs (most recent first). Select one to view or use in Workflow."))
+        past_layout.addWidget(
+            QLabel(
+                "Saved discovery runs (most recent first). Select one to view or use in Workflow."
+            )
+        )
         self.past_runs_list = QListWidget()
         self.past_runs_list.currentRowChanged.connect(self._on_past_run_selected)
         past_layout.addWidget(self.past_runs_list)
         self.past_use_btn = QPushButton("Use in Workflow")
-        self.past_use_btn.setToolTip("Copy this result set to Workflow tab so you can add to playlist")
+        self.past_use_btn.setToolTip(
+            "Copy this result set to Workflow tab so you can add to playlist"
+        )
         self.past_use_btn.clicked.connect(self._on_use_past_in_workflow)
         self.past_use_btn.setEnabled(False)
         past_layout.addWidget(self.past_use_btn)
@@ -319,7 +357,9 @@ class IncratePage(QWidget):
         """User confirmed reset: clear inventory DB and refresh stats."""
         self._inventory.reset_database()
         self._refresh_stats()
-        self.import_section.set_progress("Inventory cleared. Import a collection.xml when ready.")
+        self.import_section.set_progress(
+            "Inventory cleared. Import a collection.xml when ready."
+        )
         self._load_inventory_tab()
 
     def _on_tab_changed(self, index: int) -> None:
@@ -394,13 +434,19 @@ class IncratePage(QWidget):
             self.import_section.set_stats(total, artists, labels)
             saved_artists = self._get_saved_discover_artist_names()
             saved_labels = self._get_saved_discover_label_names()
-            self.discover_section.set_artists(library_artists, selected_names=saved_artists)
-            self.discover_section.set_labels(library_labels, selected_names=saved_labels)
+            self.discover_section.set_artists(
+                library_artists, selected_names=saved_artists
+            )
+            self.discover_section.set_labels(
+                library_labels, selected_names=saved_labels
+            )
             self._load_saved_discover_period()
             token = ""
             if self._config:
                 try:
-                    token = (self._config.get("incrate.beatport_access_token") or "").strip()
+                    token = (
+                        self._config.get("incrate.beatport_access_token") or ""
+                    ).strip()
                 except (TypeError, AttributeError):
                     pass
             if total == 0:
@@ -408,7 +454,9 @@ class IncratePage(QWidget):
                 self.discover_section.set_progress("Import Rekordbox XML first.")
             elif not token:
                 self.discover_section.set_discover_enabled(False)
-                self.discover_section.set_progress("Configure Beatport API token in Settings.")
+                self.discover_section.set_progress(
+                    "Configure Beatport API token in Settings."
+                )
             else:
                 self.discover_section.set_discover_enabled(True)
                 self.discover_section.set_progress("")
@@ -422,7 +470,13 @@ class IncratePage(QWidget):
         raw = self._config.get("incrate.discover_genre_ids")
         if not isinstance(raw, list):
             return []
-        return [int(x) for x in raw if x is not None and str(x).strip() != "" and (isinstance(x, int) or str(x).isdigit())]
+        return [
+            int(x)
+            for x in raw
+            if x is not None
+            and str(x).strip() != ""
+            and (isinstance(x, int) or str(x).isdigit())
+        ]
 
     def _get_saved_discover_artist_names(self) -> List[str]:
         if not self._config:
@@ -510,7 +564,11 @@ class IncratePage(QWidget):
 
     def _load_genres(self) -> None:
         try:
-            api = self._get_beatport_api() if self._get_beatport_api else self._beatport_api
+            api = (
+                self._get_beatport_api()
+                if self._get_beatport_api
+                else self._beatport_api
+            )
             genres = api.list_genres()
             saved_ids = self._get_saved_discover_genre_ids()
             self.discover_section.set_genres(
@@ -597,7 +655,9 @@ class IncratePage(QWidget):
         self._last_discovery_genre_ids = list(genre_ids)
         self._last_discovery_artist_names = list(artist_names)
         self._last_discovery_label_names = list(label_names)
-        self._save_discover_selection(genre_ids, artist_names, label_names, from_date, to_date, new_releases_days)
+        self._save_discover_selection(
+            genre_ids, artist_names, label_names, from_date, to_date, new_releases_days
+        )
         _logger.info(
             "inCrate discovery: user clicked Discover — genres=%s, artists=%s, labels=%s, from=%s, to=%s, days=%s",
             len(genre_ids),
@@ -673,7 +733,9 @@ class IncratePage(QWidget):
     def _on_add_to_playlist(self, name: str) -> None:
         tracks = self.results_section.get_tracks()
         if not tracks:
-            self.playlist_section.set_status("No tracks to add. Run Discover first.", is_error=True)
+            self.playlist_section.set_status(
+                "No tracks to add. Run Discover first.", is_error=True
+            )
             return
         self.playlist_section.set_adding(True)
         track_list = list(tracks)
@@ -683,7 +745,9 @@ class IncratePage(QWidget):
             self._apply_playlist_result(result)
         else:
             self._apply_playlist_result(result)
-            self._show_playlist_signin_and_retry(name, track_list, result.error or "Add to playlist failed.")
+            self._show_playlist_signin_and_retry(
+                name, track_list, result.error or "Add to playlist failed."
+            )
 
     def _do_add_to_playlist(
         self,
@@ -696,11 +760,17 @@ class IncratePage(QWidget):
     ) -> PlaylistResult:
         if not username and not password and self._config:
             try:
-                username = (self._config.get("incrate.beatport_username") or "").strip() or None
-                password = (self._config.get("incrate.beatport_password") or "").strip() or None
+                username = (
+                    self._config.get("incrate.beatport_username") or ""
+                ).strip() or None
+                password = (
+                    self._config.get("incrate.beatport_password") or ""
+                ).strip() or None
             except (TypeError, AttributeError):
                 pass
-        api = api_client or (self._get_beatport_api() if self._get_beatport_api else self._beatport_api)
+        api = api_client or (
+            self._get_beatport_api() if self._get_beatport_api else self._beatport_api
+        )
         return create_playlist_and_add_tracks(
             name,
             tracks,
@@ -717,12 +787,24 @@ class IncratePage(QWidget):
                 + (f" {result.playlist_url}" if result.playlist_url else "")
             )
         else:
-            self.playlist_section.set_status(result.error or "Add to playlist failed.", is_error=True)
+            self.playlist_section.set_status(
+                result.error or "Add to playlist failed.", is_error=True
+            )
 
-    def _show_playlist_signin_and_retry(self, name: str, tracks: list, first_error: str) -> None:
+    def _show_playlist_signin_and_retry(
+        self, name: str, tracks: list, first_error: str
+    ) -> None:
         """Show sign-in dialog; on accept, try password grant and retry add to playlist."""
-        username = (self._config.get("incrate.beatport_username") or "").strip() if self._config else ""
-        password = (self._config.get("incrate.beatport_password") or "").strip() if self._config else ""
+        username = (
+            (self._config.get("incrate.beatport_username") or "").strip()
+            if self._config
+            else ""
+        )
+        password = (
+            (self._config.get("incrate.beatport_password") or "").strip()
+            if self._config
+            else ""
+        )
         dialog = BeatportPlaylistSignInDialog(
             parent=self,
             initial_username=username,
@@ -734,7 +816,9 @@ class IncratePage(QWidget):
         u = dialog.get_username()
         p = dialog.get_password()
         if not u or not p:
-            self.playlist_section.set_status("Enter email and password to sign in.", is_error=True)
+            self.playlist_section.set_status(
+                "Enter email and password to sign in.", is_error=True
+            )
             return
         if dialog.get_remember() and self._config:
             try:
@@ -753,24 +837,42 @@ class IncratePage(QWidget):
                 base_url = "https://api.beatport.com/v4"
                 if self._config:
                     try:
-                        base_url = (self._config.get("incrate.beatport_api_base_url") or base_url).strip() or base_url
+                        base_url = (
+                            self._config.get("incrate.beatport_api_base_url")
+                            or base_url
+                        ).strip() or base_url
                     except Exception:
                         pass
-                client = BeatportApiClient(base_url=base_url, access_token=token, timeout=30)
+                client = BeatportApiClient(
+                    base_url=base_url, access_token=token, timeout=30
+                )
                 api = BeatportApi(client=client, cache_service=None)
-                result = self._do_add_to_playlist(name, tracks, api_client=api, username=u, password=p, show_signin_on_fail=False)
+                result = self._do_add_to_playlist(
+                    name,
+                    tracks,
+                    api_client=api,
+                    username=u,
+                    password=p,
+                    show_signin_on_fail=False,
+                )
                 self._apply_playlist_result(result)
             except Exception as e:
                 err = str(e)
                 if "401" in err or "Unauthorized" in err:
-                    self.playlist_section.set_status("Sign-in failed: wrong email or password.", is_error=True)
+                    self.playlist_section.set_status(
+                        "Sign-in failed: wrong email or password.", is_error=True
+                    )
                 else:
-                    self.playlist_section.set_status(f"Sign-in failed: {err}", is_error=True)
+                    self.playlist_section.set_status(
+                        f"Sign-in failed: {err}", is_error=True
+                    )
             finally:
                 self.playlist_section.set_adding(False)
         else:
             # No OAuth credentials: try browser automation with email/password
-            self.playlist_section.set_status("Opening browser to sign in and add tracks…", is_error=False)
+            self.playlist_section.set_status(
+                "Opening browser to sign in and add tracks…", is_error=False
+            )
             self.playlist_section.set_adding(True)
             try:
                 result = self._do_add_to_playlist(name, tracks, username=u, password=p)

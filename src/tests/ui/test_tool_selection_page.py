@@ -79,7 +79,12 @@ def test_tool_selection_page_ui_elements(tool_selection_page):
 def test_incrate_button_exists(tool_selection_page):
     """Phase 5: Tool selection page has inCrate button."""
     from PySide6.QtWidgets import QPushButton
-    buttons = [c for c in tool_selection_page.findChildren(QPushButton) if c.text() == "inCrate"]
+
+    buttons = [
+        c
+        for c in tool_selection_page.findChildren(QPushButton)
+        if c.text() == "inCrate"
+    ]
     assert len(buttons) >= 1
     assert buttons[0].text() == "inCrate"
 
@@ -95,7 +100,12 @@ def test_incrate_button_emits_tool_selected(tool_selection_page, qapp):
     from PySide6.QtWidgets import QPushButton
     from PySide6.QtTest import QTest
     from PySide6.QtCore import Qt
-    buttons = [c for c in tool_selection_page.findChildren(QPushButton) if c.text() == "inCrate"]
+
+    buttons = [
+        c
+        for c in tool_selection_page.findChildren(QPushButton)
+        if c.text() == "inCrate"
+    ]
     assert len(buttons) >= 1
     QTest.mouseClick(buttons[0], Qt.MouseButton.LeftButton)
     qapp.processEvents()

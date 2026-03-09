@@ -72,7 +72,12 @@ class IncrateDiscoverSection(QWidget):
         )
         group_layout = QVBoxLayout(group)
         group_layout.setSpacing(GROUP_SPACING)
-        group_layout.setContentsMargins(GROUP_CONTENT_MARGIN, GROUP_CONTENT_MARGIN + 8, GROUP_CONTENT_MARGIN, GROUP_CONTENT_MARGIN)
+        group_layout.setContentsMargins(
+            GROUP_CONTENT_MARGIN,
+            GROUP_CONTENT_MARGIN + 8,
+            GROUP_CONTENT_MARGIN,
+            GROUP_CONTENT_MARGIN,
+        )
 
         # Period: charts date range + new releases days
         period_row = QHBoxLayout()
@@ -82,7 +87,9 @@ class IncrateDiscoverSection(QWidget):
         self.charts_from.setDisplayFormat("yyyy-MM-dd")
         today = date.today()
         from_default = today - timedelta(days=31)
-        self.charts_from.setDate(QDate(from_default.year, from_default.month, from_default.day))
+        self.charts_from.setDate(
+            QDate(from_default.year, from_default.month, from_default.day)
+        )
         period_row.addWidget(self.charts_from)
         period_row.addWidget(QLabel("to"))
         self.charts_to = QDateEdit()
@@ -102,7 +109,9 @@ class IncrateDiscoverSection(QWidget):
 
         # ---- Genres ----
         genre_box = QGroupBox("Genres")
-        genre_box.setStyleSheet("QGroupBox { font-weight: 500; font-size: 12px; border: 1px solid palette(mid); border-radius: 6px; margin-top: 8px; padding-top: 2px; } QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 4px; }")
+        genre_box.setStyleSheet(
+            "QGroupBox { font-weight: 500; font-size: 12px; border: 1px solid palette(mid); border-radius: 6px; margin-top: 8px; padding-top: 2px; } QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 4px; }"
+        )
         genre_box_layout = QVBoxLayout(genre_box)
         genre_box_layout.setContentsMargins(12, 16, 12, 12)
         genre_box_layout.setSpacing(10)
@@ -132,7 +141,9 @@ class IncrateDiscoverSection(QWidget):
 
         # ---- Artists ----
         artist_box = QGroupBox("Artists (empty = all)")
-        artist_box.setStyleSheet("QGroupBox { font-weight: 500; font-size: 12px; border: 1px solid palette(mid); border-radius: 6px; margin-top: 8px; padding-top: 2px; } QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 4px; }")
+        artist_box.setStyleSheet(
+            "QGroupBox { font-weight: 500; font-size: 12px; border: 1px solid palette(mid); border-radius: 6px; margin-top: 8px; padding-top: 2px; } QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 4px; }"
+        )
         artist_box_layout = QVBoxLayout(artist_box)
         artist_box_layout.setContentsMargins(12, 16, 12, 12)
         artist_box_layout.setSpacing(10)
@@ -148,7 +159,9 @@ class IncrateDiscoverSection(QWidget):
         artist_scroll.setStyleSheet(LIST_BOX_STYLE)
         artist_scroll.setMinimumHeight(LIST_VIEWPORT_HEIGHT)
         artist_scroll.setMinimumWidth(SCROLL_MIN_WIDTH)
-        artist_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        artist_scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
         artist_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.artist_inner = QWidget()
         self.artist_layout = QVBoxLayout(self.artist_inner)
@@ -162,7 +175,9 @@ class IncrateDiscoverSection(QWidget):
 
         # ---- Labels ----
         label_box = QGroupBox("Labels (empty = all)")
-        label_box.setStyleSheet("QGroupBox { font-weight: 500; font-size: 12px; border: 1px solid palette(mid); border-radius: 6px; margin-top: 8px; padding-top: 2px; } QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 4px; }")
+        label_box.setStyleSheet(
+            "QGroupBox { font-weight: 500; font-size: 12px; border: 1px solid palette(mid); border-radius: 6px; margin-top: 8px; padding-top: 2px; } QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 4px; }"
+        )
         label_box_layout = QVBoxLayout(label_box)
         label_box_layout.setContentsMargins(12, 16, 12, 12)
         label_box_layout.setSpacing(10)
@@ -217,7 +232,10 @@ class IncrateDiscoverSection(QWidget):
                 gid = w.property("genre_id")
                 if gid is not None:
                     checked_ids.add(int(gid))
-        if not checked_ids and getattr(self, "_initial_checked_genre_ids", None) is not None:
+        if (
+            not checked_ids
+            and getattr(self, "_initial_checked_genre_ids", None) is not None
+        ):
             checked_ids = set(self._initial_checked_genre_ids)
         _clear_layout(self.genre_layout)
         for g in self._genres:
@@ -241,12 +259,19 @@ class IncrateDiscoverSection(QWidget):
                 n = w.property("artist_name")
                 if n is not None:
                     checked.add(str(n).strip())
-        if not checked and getattr(self, "_initial_checked_artist_names", None) is not None:
+        if (
+            not checked
+            and getattr(self, "_initial_checked_artist_names", None) is not None
+        ):
             checked = set(self._initial_checked_artist_names)
         _clear_layout(self.artist_layout)
         if not self._artists:
-            placeholder = QLabel("Import a Rekordbox XML to see artists from your library.")
-            placeholder.setStyleSheet("color: palette(mid); font-style: italic; padding: 8px;")
+            placeholder = QLabel(
+                "Import a Rekordbox XML to see artists from your library."
+            )
+            placeholder.setStyleSheet(
+                "color: palette(mid); font-style: italic; padding: 8px;"
+            )
             placeholder.setWordWrap(True)
             self.artist_layout.addWidget(placeholder)
             self._update_list_inner_height(self.artist_inner, self.artist_layout)
@@ -271,12 +296,19 @@ class IncrateDiscoverSection(QWidget):
                 n = w.property("label_name")
                 if n is not None:
                     checked.add(str(n).strip())
-        if not checked and getattr(self, "_initial_checked_label_names", None) is not None:
+        if (
+            not checked
+            and getattr(self, "_initial_checked_label_names", None) is not None
+        ):
             checked = set(self._initial_checked_label_names)
         _clear_layout(self.label_layout)
         if not self._labels:
-            placeholder = QLabel("Import a Rekordbox XML to see labels from your library.")
-            placeholder.setStyleSheet("color: palette(mid); font-style: italic; padding: 8px;")
+            placeholder = QLabel(
+                "Import a Rekordbox XML to see labels from your library."
+            )
+            placeholder.setStyleSheet(
+                "color: palette(mid); font-style: italic; padding: 8px;"
+            )
             placeholder.setWordWrap(True)
             self.label_layout.addWidget(placeholder)
             self._update_list_inner_height(self.label_inner, self.label_layout)
@@ -308,28 +340,40 @@ class IncrateDiscoverSection(QWidget):
         inner.setMinimumWidth(SCROLL_MIN_WIDTH - 30)
         inner.updateGeometry()
 
-    def set_genres(self, genres: List[dict], selected_ids: Optional[List[int]] = None) -> None:
+    def set_genres(
+        self, genres: List[dict], selected_ids: Optional[List[int]] = None
+    ) -> None:
         """Set genre list; each item is dict with id and name. Optionally restore checked state from selected_ids."""
         self._genres = list(genres)
         if selected_ids is not None:
             self._initial_checked_genre_ids = list(selected_ids)
         self._apply_genre_filter()
 
-    def set_artists(self, names: List[str], selected_names: Optional[List[str]] = None) -> None:
+    def set_artists(
+        self, names: List[str], selected_names: Optional[List[str]] = None
+    ) -> None:
         """Set artist list from library (display names). Optionally restore checked state from selected_names."""
         self._artists = sorted(names or [], key=lambda s: (s or "").lower())
         if selected_names is not None:
-            self._initial_checked_artist_names = [str(n).strip() for n in selected_names if n and str(n).strip()]
+            self._initial_checked_artist_names = [
+                str(n).strip() for n in selected_names if n and str(n).strip()
+            ]
         self._apply_artist_filter()
 
-    def set_labels(self, names: List[str], selected_names: Optional[List[str]] = None) -> None:
+    def set_labels(
+        self, names: List[str], selected_names: Optional[List[str]] = None
+    ) -> None:
         """Set label list from library (display names). Optionally restore checked state from selected_names."""
         self._labels = sorted(names or [], key=lambda s: (s or "").lower())
         if selected_names is not None:
-            self._initial_checked_label_names = [str(n).strip() for n in selected_names if n and str(n).strip()]
+            self._initial_checked_label_names = [
+                str(n).strip() for n in selected_names if n and str(n).strip()
+            ]
         self._apply_label_filter()
 
-    def set_period(self, from_date: date, to_date: date, new_releases_days: int) -> None:
+    def set_period(
+        self, from_date: date, to_date: date, new_releases_days: int
+    ) -> None:
         """Set charts date range and new releases days (e.g. when restoring saved selection)."""
         self.charts_from.setDate(QDate(from_date.year, from_date.month, from_date.day))
         self.charts_to.setDate(QDate(to_date.year, to_date.month, to_date.day))

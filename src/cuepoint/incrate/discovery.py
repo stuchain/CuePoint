@@ -30,7 +30,9 @@ def _parse_track_artists(artists_str: str) -> Set[str]:
     return {_normalize_artist(p) for p in parts if (p or "").strip()}
 
 
-def _track_matches_library_artists(track_artists_str: str, library_artists: Set[str]) -> bool:
+def _track_matches_library_artists(
+    track_artists_str: str, library_artists: Set[str]
+) -> bool:
     """True if library_artists is empty (no filter) or any track artist is in library."""
     if not library_artists:
         return True
@@ -45,7 +47,9 @@ def _chart_author_in_library(
     library_artists: Set[str],
 ) -> bool:
     """True if the chart's curator/author is in library_artists."""
-    author = (detail.author_name if detail else None) or (getattr(chart, "author_name", None) or "")
+    author = (detail.author_name if detail else None) or (
+        getattr(chart, "author_name", None) or ""
+    )
     if not author and chart and detail is None:
         try:
             d = beatport_api.get_chart(chart.id)
@@ -109,13 +113,21 @@ def _charts_branch(
             try:
                 detail = beatport_api.get_chart(chart.id)
             except Exception as e:
-                _logger.warning("inCrate discovery: get_chart(%s) failed: %s", chart.id, e)
+                _logger.warning(
+                    "inCrate discovery: get_chart(%s) failed: %s", chart.id, e
+                )
                 continue
             if not detail:
-                _logger.info("inCrate discovery: get_chart(%s) returned no detail", chart.id)
+                _logger.info(
+                    "inCrate discovery: get_chart(%s) returned no detail", chart.id
+                )
                 continue
-            author = (detail.author_name or "").strip() or (getattr(chart, "author_name", None) or "")
-            if not _chart_author_in_library(chart, detail, beatport_api, library_artists):
+            author = (detail.author_name or "").strip() or (
+                getattr(chart, "author_name", None) or ""
+            )
+            if not _chart_author_in_library(
+                chart, detail, beatport_api, library_artists
+            ):
                 _logger.info(
                     "inCrate discovery: chart %s (%r) skipped — author %r not in selected artists",
                     chart.id,
@@ -163,7 +175,9 @@ def _charts_branch(
             genre_id,
         )
         try:
-            charts = beatport_api.list_charts(genre_id, charts_from_date, charts_to_date)
+            charts = beatport_api.list_charts(
+                genre_id, charts_from_date, charts_to_date
+            )
             _logger.info(
                 "inCrate discovery: list_charts(genre_id=%s, from=%s, to=%s) returned %s charts",
                 genre_id,
@@ -172,7 +186,9 @@ def _charts_branch(
                 len(charts) if charts else 0,
             )
         except Exception as e:
-            _logger.warning("inCrate discovery: list_charts failed for genre %s: %s", genre_id, e)
+            _logger.warning(
+                "inCrate discovery: list_charts failed for genre %s: %s", genre_id, e
+            )
             if progress_callback:
                 progress_callback("charts", idx_genre + 1, total_genres)
             continue
@@ -186,14 +202,18 @@ def _charts_branch(
             "inCrate discovery: 0 tracks from genre charts; trying fallback list_charts(genre_id=0, limit=200)"
         )
         try:
-            charts_all = beatport_api.list_charts(0, charts_from_date, charts_to_date, limit=200)
+            charts_all = beatport_api.list_charts(
+                0, charts_from_date, charts_to_date, limit=200
+            )
             _logger.info(
                 "inCrate discovery: charts fallback (no genre) — list_charts returned %s charts",
                 len(charts_all) if charts_all else 0,
             )
             _process_charts(charts_all, "fallback")
         except Exception as e:
-            _logger.warning("inCrate discovery: charts fallback (genre_id=0) failed: %s", e)
+            _logger.warning(
+                "inCrate discovery: charts fallback (genre_id=0) failed: %s", e
+            )
     _logger.info("inCrate discovery: charts branch done — %s tracks", len(result))
     return result
 
@@ -214,7 +234,9 @@ def _new_releases_branch(
         library_labels = inventory_service.get_library_labels()
         if library_label_names is not None and len(library_label_names) > 0:
             allowed = {(n or "").strip().lower() for n in library_label_names}
-            library_labels = [n for n in library_labels if (n or "").strip().lower() in allowed]
+            library_labels = [
+                n for n in library_labels if (n or "").strip().lower() in allowed
+            ]
         _logger.info(
             "inCrate discovery: library labels count = %s, names = %s",
             len(library_labels) if library_labels else 0,
@@ -242,7 +264,9 @@ def _new_releases_branch(
         try:
             label_id = beatport_api.search_label_by_name(label_name.strip())
         except Exception as e:
-            _logger.warning("inCrate discovery: search_label_by_name(%r) failed: %s", label_name, e)
+            _logger.warning(
+                "inCrate discovery: search_label_by_name(%r) failed: %s", label_name, e
+            )
             continue
         if label_id is not None:
             label_ids[label_name] = label_id
@@ -282,7 +306,11 @@ def _new_releases_branch(
         try:
             releases = beatport_api.get_label_releases(label_id, from_date, to_date)
         except Exception as e:
-            _logger.warning("inCrate discovery: get_label_releases(label_id=%s) failed: %s", label_id, e)
+            _logger.warning(
+                "inCrate discovery: get_label_releases(label_id=%s) failed: %s",
+                label_id,
+                e,
+            )
             if progress_callback:
                 progress_callback("releases", idx + 1, total_labels)
             continue
@@ -293,7 +321,9 @@ def _new_releases_branch(
             canonical_id = _CANONICAL_LABEL_IDS.get(label_name.strip().lower())
             if canonical_id is not None and canonical_id != label_id:
                 try:
-                    releases = beatport_api.get_label_releases(canonical_id, from_date, to_date)
+                    releases = beatport_api.get_label_releases(
+                        canonical_id, from_date, to_date
+                    )
                     n_releases = len(releases)
                     n_tracks = sum(len(r.tracks) for r in releases)
                     if n_tracks > 0:
@@ -304,7 +334,9 @@ def _new_releases_branch(
                             n_tracks,
                         )
                 except Exception as e:
-                    _logger.debug("get_label_releases(canonical %s) failed: %s", canonical_id, e)
+                    _logger.debug(
+                        "get_label_releases(canonical %s) failed: %s", canonical_id, e
+                    )
         total_releases_seen += n_releases
         _logger.info(
             "inCrate discovery: label %r (id=%s) — %s releases, %s tracks",
@@ -328,7 +360,9 @@ def _new_releases_branch(
                 len(rel.tracks) if rel.tracks else 0,
             )
         if len(releases) > 10:
-            _logger.info("inCrate discovery:   ... and %s more releases", len(releases) - 10)
+            _logger.info(
+                "inCrate discovery:   ... and %s more releases", len(releases) - 10
+            )
         for release in releases:
             for t in release.tracks:
                 result.append(
@@ -447,6 +481,9 @@ def run_discovery(
     if deduped:
         _logger.info(
             "inCrate discovery: sample tracks: %s",
-            [(t.beatport_track_id, (t.title or "")[:30], (t.artists or "")[:30]) for t in deduped[:5]],
+            [
+                (t.beatport_track_id, (t.title or "")[:30], (t.artists or "")[:30])
+                for t in deduped[:5]
+            ],
         )
     return deduped

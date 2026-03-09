@@ -60,9 +60,7 @@ class TestParseM3u:
     def test_encoding_fallback_latin1(self, tmp_path):
         """Non-UTF-8 (Latin-1) content uses fallback encoding."""
         m3u = tmp_path / "latin1.m3u"
-        m3u.write_bytes(
-            b"#EXTM3U\n#EXTINF:0,Artiste - Titre\n/track.mp3\n"
-        )
+        m3u.write_bytes(b"#EXTM3U\n#EXTINF:0,Artiste - Titre\n/track.mp3\n")
         result = parse_m3u(str(m3u))
         assert len(result) == 1
         assert result[0][0].replace("\\", "/").endswith("/track.mp3")
@@ -71,7 +69,9 @@ class TestParseM3u:
         """When UTF-8 and Latin-1 both raise, cp1252 fallback is used and parsing succeeds."""
         m3u = tmp_path / "cp1252.m3u"
         content = "#EXTM3U\n#EXTINF:0,Artist - Title\n/track.mp3\n"
-        m3u.write_text(content, encoding="utf-8")  # ensure file exists with valid content
+        m3u.write_text(
+            content, encoding="utf-8"
+        )  # ensure file exists with valid content
 
         def read_text_side_effect(self, encoding=None, **kwargs):
             if encoding == "utf-8":
@@ -111,7 +111,9 @@ class TestParseM3u:
         m3u.write_text("#EXTM3U\n/track.mp3\n", encoding="utf-8")
         result = parse_m3u(str(m3u))
         assert len(result) == 1
-        assert result[0][0].endswith("track.mp3") or "/track.mp3" in result[0][0].replace("\\", "/")
+        assert result[0][0].endswith("track.mp3") or "/track.mp3" in result[0][
+            0
+        ].replace("\\", "/")
         assert result[0][1] is None
         assert result[0][2] is None
 

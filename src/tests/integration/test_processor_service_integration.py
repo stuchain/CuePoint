@@ -155,9 +155,9 @@ class TestProcessorServiceIntegration:
 
         try:
             # _mock_track_urls fixture already patches track_urls to return []
-            # Process playlist from XML
+            # Process playlist from XML (use full path: parse_playlist_tree keys by path e.g. ROOT/Name)
             results = processor_service.process_playlist_from_xml(
-                xml_path, "Test Playlist"
+                xml_path, "ROOT/Test Playlist"
             )
 
             # Verify results
@@ -367,10 +367,13 @@ class TestProcessorServiceIntegration:
 
         try:
             # Process playlist from XML - should raise ProcessingError for empty playlist
+            # Use full path: parse_playlist_tree keys by path (ROOT/Name)
             with pytest.raises(ProcessingError) as exc_info:
-                processor_service.process_playlist_from_xml(xml_path, "Empty Playlist")
+                processor_service.process_playlist_from_xml(
+                    xml_path, "ROOT/Empty Playlist"
+                )
 
-            # Verify error type (details may be "Playlist is empty" or "The playlist contains no valid tracks.")
+            # Verify error type (empty playlist raises VALIDATION_ERROR)
             assert exc_info.value.error_type == ErrorType.VALIDATION_ERROR
             details = exc_info.value.details or ""
             assert "empty" in details or "no valid tracks" in details, (
@@ -456,9 +459,11 @@ class TestProcessorServiceIntegration:
                 progress_calls.append(progress_info)
 
             # _mock_track_urls fixture already patches track_urls to return []
-            # Process playlist from XML with progress callback
+            # Process playlist from XML with progress callback (use full path: ROOT/Name)
             processor_service.process_playlist_from_xml(
-                xml_path, "Test Playlist", progress_callback=progress_callback
+                xml_path,
+                "ROOT/Test Playlist",
+                progress_callback=progress_callback,
             )
 
             # Verify progress callback was called

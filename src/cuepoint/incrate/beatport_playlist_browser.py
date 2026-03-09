@@ -32,7 +32,9 @@ def _do_beatport_login(page, username: str, password: str) -> Optional[str]:
         page.wait_for_load_state("domcontentloaded", timeout=t)
         # If the "Create Account or Log In" modal is shown, click the "Log In" button inside the dialog first
         try:
-            modal_log_in = page.locator('[role="dialog"]').get_by_role("button", name=re.compile(r"log\s*in", re.I))
+            modal_log_in = page.locator('[role="dialog"]').get_by_role(
+                "button", name=re.compile(r"log\s*in", re.I)
+            )
             modal_log_in.first.click(timeout=5000)
             page.wait_for_timeout(1200)
             page.wait_for_load_state("domcontentloaded", timeout=t)
@@ -59,7 +61,9 @@ def _do_beatport_login(page, username: str, password: str) -> Optional[str]:
             try:
                 pass_input.first.wait_for(state="visible", timeout=5000)
             except Exception:
-                pass_input = page.locator('input[type="password"], input[name="password"]')
+                pass_input = page.locator(
+                    'input[type="password"], input[name="password"]'
+                )
                 pass_input.first.wait_for(state="visible", timeout=5000)
         pass_input.first.fill(password, timeout=5000)
         page.wait_for_timeout(300)
@@ -69,7 +73,9 @@ def _do_beatport_login(page, username: str, password: str) -> Optional[str]:
         login_btn.first.scroll_into_view_if_needed(timeout=5000)
         # Click and wait for navigation so login completes before caller continues to create playlist
         try:
-            with page.expect_navigation(timeout=NAV_TIMEOUT, wait_until="domcontentloaded"):
+            with page.expect_navigation(
+                timeout=NAV_TIMEOUT, wait_until="domcontentloaded"
+            ):
                 login_btn.first.click(timeout=5000)
         except Exception:
             # No navigation (e.g. client-side redirect); caller will wait for playlist form
@@ -112,7 +118,10 @@ def add_to_playlist_via_browser(
             error=None,
         )
     try:
-        from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+        from playwright.sync_api import (
+            sync_playwright,
+            TimeoutError as PlaywrightTimeoutError,
+        )
     except ImportError:
         return PlaylistResult(
             success=False,
@@ -133,13 +142,16 @@ def add_to_playlist_via_browser(
             page.set_default_navigation_timeout(NAV_TIMEOUT)
 
             try:
+
                 def _not_on_login(url: Union[str, object]) -> bool:
                     u = getattr(url, "path", None) or str(url)
                     return "/account/login" not in u
 
                 if username and password:
                     # 1a) Go to playlist-create page first; Beatport shows "Create Account or Log In" modal there
-                    _logger.info("Beatport browser: opening playlist page (login modal will appear)")
+                    _logger.info(
+                        "Beatport browser: opening playlist page (login modal will appear)"
+                    )
                     page.goto(PLAYLIST_NEW_URL, wait_until="domcontentloaded")
                     page.wait_for_load_state("domcontentloaded", timeout=NAV_TIMEOUT)
                     page.wait_for_timeout(2500)
@@ -171,9 +183,13 @@ def add_to_playlist_via_browser(
                     # If still on a page with login, or modal just closed, wait for playlist name field
                     name_sel = 'input[placeholder*="name" i], input[name="name"], input[id*="name" i]'
                     try:
-                        page.wait_for_selector(name_sel, state="visible", timeout=NAV_TIMEOUT)
+                        page.wait_for_selector(
+                            name_sel, state="visible", timeout=NAV_TIMEOUT
+                        )
                     except Exception:
-                        if "/account/login" in (getattr(page.url, "path", None) or str(page.url)):
+                        if "/account/login" in (
+                            getattr(page.url, "path", None) or str(page.url)
+                        ):
                             return PlaylistResult(
                                 success=False,
                                 playlist_url=None,
@@ -184,7 +200,9 @@ def add_to_playlist_via_browser(
                     page.wait_for_timeout(1500)
                 else:
                     # 1b) No stored credentials: open login page and wait for manual login
-                    _logger.info("Beatport browser: opening login page — log in manually in the browser window")
+                    _logger.info(
+                        "Beatport browser: opening login page — log in manually in the browser window"
+                    )
                     page.goto(LOGIN_URL, wait_until="domcontentloaded")
                     page.wait_for_timeout(1500)
                     try:
@@ -209,11 +227,15 @@ def add_to_playlist_via_browser(
                 name_loc = page.locator(name_sel)
                 if name_loc.count() == 0:
                     # Maybe we're on a "Create playlist" button page first (login modal may be blocking)
-                    create_btn = page.get_by_role("link", name=re.compile(r"create\s*playlist", re.I))
+                    create_btn = page.get_by_role(
+                        "link", name=re.compile(r"create\s*playlist", re.I)
+                    )
                     if create_btn.count() > 0:
                         # Wait for any dialog/overlay to close so the link is clickable
                         try:
-                            page.locator('[role="dialog"]').wait_for(state="hidden", timeout=8000)
+                            page.locator('[role="dialog"]').wait_for(
+                                state="hidden", timeout=8000
+                            )
                         except Exception:
                             pass
                         try:
@@ -232,7 +254,9 @@ def add_to_playlist_via_browser(
                     )
                 name_loc.first.fill(name)
                 page.wait_for_timeout(300)
-                save_btn = page.get_by_role("button", name=re.compile(r"save|create", re.I))
+                save_btn = page.get_by_role(
+                    "button", name=re.compile(r"save|create", re.I)
+                )
                 if save_btn.count() == 0:
                     save_btn = page.locator('button[type="submit"]')
                 if save_btn.count() > 0:
@@ -248,7 +272,10 @@ def add_to_playlist_via_browser(
                 page.wait_for_load_state("networkidle", timeout=NAV_TIMEOUT)
                 page.wait_for_timeout(1500)
                 playlist_url = page.url
-                if "/library/playlists" not in playlist_url and "/playlist/" not in playlist_url:
+                if (
+                    "/library/playlists" not in playlist_url
+                    and "/playlist/" not in playlist_url
+                ):
                     playlist_url = PLAYLISTS_URL
 
                 # 3) Add each track: go to track page, click Add to playlist, select our playlist
@@ -261,9 +288,17 @@ def add_to_playlist_via_browser(
                         track_id=getattr(track, "beatport_track_id", None),
                     )
                     if not url or "/track/" not in url:
-                        _logger.warning("Track %s has no track URL, skipping", getattr(track, "title", i))
+                        _logger.warning(
+                            "Track %s has no track URL, skipping",
+                            getattr(track, "title", i),
+                        )
                         continue
-                    _logger.info("Beatport browser: adding track %s/%s %s", i + 1, len(tracks), url)
+                    _logger.info(
+                        "Beatport browser: adding track %s/%s %s",
+                        i + 1,
+                        len(tracks),
+                        url,
+                    )
                     page.goto(url, wait_until="domcontentloaded")
                     try:
                         page.wait_for_load_state("networkidle", timeout=8000)
@@ -283,15 +318,23 @@ def add_to_playlist_via_browser(
                     page.wait_for_timeout(800)
                     safe_name = name.replace('"', '\\"')[:80]
                     # Find row containing playlist name, then click its select button (button.select or icon-checkbox)
-                    playlist_row = page.locator('.item-row').filter(has_text=re.compile(re.escape(safe_name), re.I))
+                    playlist_row = page.locator(".item-row").filter(
+                        has_text=re.compile(re.escape(safe_name), re.I)
+                    )
                     if playlist_row.count() == 0:
-                        playlist_row = page.locator('[role="row"]').filter(has_text=re.compile(re.escape(safe_name), re.I))
+                        playlist_row = page.locator('[role="row"]').filter(
+                            has_text=re.compile(re.escape(safe_name), re.I)
+                        )
                     if playlist_row.count() == 0:
                         playlist_row = page.get_by_text(safe_name, exact=False)
                     if playlist_row.count() == 0:
-                        _logger.warning("Playlist %r not found in modal for %s", name, url)
+                        _logger.warning(
+                            "Playlist %r not found in modal for %s", name, url
+                        )
                     else:
-                        select_btn = playlist_row.first.locator('button.select, [data-testid="icon-checkbox"]')
+                        select_btn = playlist_row.first.locator(
+                            'button.select, [data-testid="icon-checkbox"]'
+                        )
                         if select_btn.count() > 0:
                             select_btn.first.click()
                         else:
@@ -300,12 +343,17 @@ def add_to_playlist_via_browser(
                         # Click the modal's "Add to Playlist" confirm button (has name="Add to Playlist")
                         confirm_btn = page.locator('button[name="Add to Playlist"]')
                         if confirm_btn.count() == 0:
-                            confirm_btn = page.get_by_role("button", name=re.compile(r"add\s*to\s*playlist", re.I))
+                            confirm_btn = page.get_by_role(
+                                "button", name=re.compile(r"add\s*to\s*playlist", re.I)
+                            )
                         if confirm_btn.count() > 0:
                             confirm_btn.first.click()
                             added += 1
                         else:
-                            _logger.warning("Add to Playlist confirm button not found in modal for %s", url)
+                            _logger.warning(
+                                "Add to Playlist confirm button not found in modal for %s",
+                                url,
+                            )
                     page.wait_for_timeout(AFTER_ACTION_DELAY)
 
                 browser.close()
@@ -332,7 +380,10 @@ def add_to_playlist_via_browser(
         )
     except Exception as e:
         err_msg = str(e) or "Browser automation failed"
-        if "Target page, context or browser has been closed" in err_msg or "TargetClosedError" in type(e).__name__:
+        if (
+            "Target page, context or browser has been closed" in err_msg
+            or "TargetClosedError" in type(e).__name__
+        ):
             _logger.warning("Beatport browser: page/context closed: %s", e)
             return PlaylistResult(
                 success=False,

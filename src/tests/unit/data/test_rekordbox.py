@@ -518,10 +518,12 @@ class TestParseCollection:
 
     def test_parse_collection_returns_iterator(self):
         """parse_collection(xml_path) returns iterator yielding (track_id, title, artist, remix_version, label)."""
-        xml = self._collection_xml([
-            {"TrackID": "1", "Name": "Track One", "Artist": "Artist A"},
-            {"TrackID": "2", "Name": "Track Two", "Artist": "Artist B"},
-        ])
+        xml = self._collection_xml(
+            [
+                {"TrackID": "1", "Name": "Track One", "Artist": "Artist A"},
+                {"TrackID": "2", "Name": "Track Two", "Artist": "Artist B"},
+            ]
+        )
         with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
             f.write(xml)
             f.flush()
@@ -539,15 +541,17 @@ class TestParseCollection:
 
     def test_parse_collection_reads_label_and_remixer(self):
         """TRACK with Label and Remixer attrs yields tuple with label and remix_version."""
-        xml = self._collection_xml([
-            {
-                "TrackID": "1",
-                "Name": "Track One",
-                "Artist": "Artist A",
-                "Label": "Defected",
-                "Remixer": "DJ X",
-            },
-        ])
+        xml = self._collection_xml(
+            [
+                {
+                    "TrackID": "1",
+                    "Name": "Track One",
+                    "Artist": "Artist A",
+                    "Label": "Defected",
+                    "Remixer": "DJ X",
+                },
+            ]
+        )
         with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
             f.write(xml)
             f.flush()
@@ -556,7 +560,7 @@ class TestParseCollection:
             rows = list(parse_collection(xml_path))
             assert len(rows) == 1
             assert rows[0][4] == "Defected"  # label
-            assert rows[0][3] == "DJ X"      # remix_version
+            assert rows[0][3] == "DJ X"  # remix_version
         finally:
             os.unlink(xml_path)
 
@@ -588,10 +592,12 @@ class TestParseCollection:
 
     def test_parse_collection_skips_missing_title(self):
         """TRACK without Name/Title is skipped."""
-        xml = self._collection_xml([
-            {"TrackID": "1", "Name": "", "Artist": "Artist A"},
-            {"TrackID": "2", "Name": "Valid Title", "Artist": "Artist B"},
-        ])
+        xml = self._collection_xml(
+            [
+                {"TrackID": "1", "Name": "", "Artist": "Artist A"},
+                {"TrackID": "2", "Name": "Valid Title", "Artist": "Artist B"},
+            ]
+        )
         with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
             f.write(xml)
             f.flush()
@@ -622,9 +628,11 @@ class TestParseCollection:
 
     def test_parse_collection_oversized_xml(self):
         """File larger than MAX_XML_SIZE_BYTES raises ValueError with 'too large'."""
-        xml = self._collection_xml([
-            {"TrackID": "1", "Name": "Track", "Artist": "Artist"},
-        ])
+        xml = self._collection_xml(
+            [
+                {"TrackID": "1", "Name": "Track", "Artist": "Artist"},
+            ]
+        )
         with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
             f.write(xml)
             f.flush()
@@ -638,14 +646,16 @@ class TestParseCollection:
 
     def test_parse_collection_remix_from_title_when_remixer_empty(self):
         """When Remixer is empty, remix_version is derived from title via mix_parser."""
-        xml = self._collection_xml([
-            {
-                "TrackID": "1",
-                "Name": "Song (Artist Remix)",
-                "Artist": "Artist A",
-                "Remixer": "",
-            },
-        ])
+        xml = self._collection_xml(
+            [
+                {
+                    "TrackID": "1",
+                    "Name": "Song (Artist Remix)",
+                    "Artist": "Artist A",
+                    "Remixer": "",
+                },
+            ]
+        )
         with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
             f.write(xml)
             f.flush()
@@ -654,15 +664,19 @@ class TestParseCollection:
             rows = list(parse_collection(xml_path))
             assert len(rows) == 1
             # remix_version (index 3) should be derived from title; mix_parser returns list, joined as ", "
-            assert rows[0][3] == "Artist"  # _extract_remixer_names_from_title("Song (Artist Remix)") -> ["Artist"]
+            assert (
+                rows[0][3] == "Artist"
+            )  # _extract_remixer_names_from_title("Song (Artist Remix)") -> ["Artist"]
         finally:
             os.unlink(xml_path)
 
     def test_parse_collection_alternative_attributes(self):
         """XML using Key instead of TrackID, Artists instead of Artist still yields."""
-        xml = self._collection_xml([
-            {"TrackID": "1", "Name": "Track 1", "Artist": "Artist 1"},
-        ])
+        xml = self._collection_xml(
+            [
+                {"TrackID": "1", "Name": "Track 1", "Artist": "Artist 1"},
+            ]
+        )
         # Override: use ID and Title and Artists
         root = ET.fromstring(xml)
         coll = root.find(".//COLLECTION")
@@ -702,12 +716,16 @@ class TestParseCollection:
             xml_path = f.name
         try:
             progress_calls = []
+
             def progress(current: int, total: int) -> None:
                 progress_calls.append((current, total))
+
             rows = list(parse_collection(xml_path, progress_callback=progress))
             assert len(rows) == 150
             assert (1, -1) in progress_calls, "Expected (1, -1) after first track"
             assert (100, -1) in progress_calls, "Expected (100, -1) at 100 tracks"
-            assert all(t == -1 for _, t in progress_calls), "Total should be -1 during parse"
+            assert all(t == -1 for _, t in progress_calls), (
+                "Total should be -1 during parse"
+            )
         finally:
             os.unlink(xml_path)

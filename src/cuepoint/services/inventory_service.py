@@ -70,7 +70,9 @@ class InventoryService:
     def reset_database(self) -> None:
         """Clear all inventory rows. Use when switching to a different collection.xml."""
         inventory_db.reset_db(self._db_path)
-        _logger.info("inCrate: inventory database reset (user can re-import another collection)")
+        _logger.info(
+            "inCrate: inventory database reset (user can re-import another collection)"
+        )
 
     def import_from_xml(
         self,
@@ -90,7 +92,9 @@ class InventoryService:
         """
         result: Dict[str, Any] = {"imported": 0, "enriched": 0, "errors": []}
         inventory_db.init_db(self._db_path)
-        _logger.info("inCrate import: starting import from %s (enrich=%s)", xml_path, enrich)
+        _logger.info(
+            "inCrate import: starting import from %s (enrich=%s)", xml_path, enrich
+        )
 
         try:
             tracks = list(
@@ -98,7 +102,9 @@ class InventoryService:
                     xml_path, progress_callback=progress_callback
                 )
             )
-            _logger.info("inCrate import: parsed %s tracks, writing to database", len(tracks))
+            _logger.info(
+                "inCrate import: parsed %s tracks, writing to database", len(tracks)
+            )
         except FileNotFoundError as e:
             result["errors"].append(str(e))
             raise
@@ -111,10 +117,7 @@ class InventoryService:
         _logger.info("inCrate import: upserting %s records to DB", len(tracks))
 
         now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        records = [
-            collection_parser.to_inventory_record(ct, now_iso)
-            for ct in tracks
-        ]
+        records = [collection_parser.to_inventory_record(ct, now_iso) for ct in tracks]
         conn = inventory_db.get_connection(self._db_path)
         try:
             cur = conn.cursor()
@@ -123,7 +126,9 @@ class InventoryService:
             result["imported"] = len(records)
         finally:
             conn.close()
-        _logger.info("inCrate import: DB write complete, imported=%s", result["imported"])
+        _logger.info(
+            "inCrate import: DB write complete, imported=%s", result["imported"]
+        )
 
         if enrich and (self._processor is not None or self._beatport is not None):
             delay = 0.5
@@ -143,8 +148,14 @@ class InventoryService:
                 processor_service=self._processor,
                 config_service=self._config,
             )
-            _logger.info("inCrate import: enrichment complete, enriched=%s", result["enriched"])
-        _logger.info("inCrate import: done — imported=%s, enriched=%s", result["imported"], result["enriched"])
+            _logger.info(
+                "inCrate import: enrichment complete, enriched=%s", result["enriched"]
+            )
+        _logger.info(
+            "inCrate import: done — imported=%s, enriched=%s",
+            result["imported"],
+            result["enriched"],
+        )
         return result
 
     def get_library_artists(self) -> List[str]:
@@ -187,6 +198,8 @@ class InventoryService:
         """Return inventory rows for UI (artist, title, label, beatport_url, etc.)."""
         conn = inventory_db.get_connection(self._db_path)
         try:
-            return inventory_db.get_all_inventory(conn.cursor(), limit=limit, search=search)
+            return inventory_db.get_all_inventory(
+                conn.cursor(), limit=limit, search=search
+            )
         finally:
             conn.close()

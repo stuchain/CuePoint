@@ -76,7 +76,9 @@ class TestUpsert:
             cur = conn.cursor()
             upsert(cur, record)
             conn.commit()
-            cur.execute("SELECT track_key, artist, title, label FROM inventory WHERE track_key='1'")
+            cur.execute(
+                "SELECT track_key, artist, title, label FROM inventory WHERE track_key='1'"
+            )
             row = cur.fetchone()
             assert row is not None
             assert row[0] == "1"
@@ -94,17 +96,41 @@ class TestUpsert:
         conn = get_connection(initialized_db)
         try:
             cur = conn.cursor()
-            upsert(cur, InventoryRecord(
-                track_key="1", track_id="1", artist="A", title="T1", remix_version="", label=None,
-                beatport_track_id=None, beatport_url=None, created_at=created, updated_at=updated1,
-            ))
+            upsert(
+                cur,
+                InventoryRecord(
+                    track_key="1",
+                    track_id="1",
+                    artist="A",
+                    title="T1",
+                    remix_version="",
+                    label=None,
+                    beatport_track_id=None,
+                    beatport_url=None,
+                    created_at=created,
+                    updated_at=updated1,
+                ),
+            )
             conn.commit()
-            upsert(cur, InventoryRecord(
-                track_key="1", track_id="1", artist="A", title="T1", remix_version="", label="Defected",
-                beatport_track_id=None, beatport_url=None, created_at=created, updated_at=updated2,
-            ))
+            upsert(
+                cur,
+                InventoryRecord(
+                    track_key="1",
+                    track_id="1",
+                    artist="A",
+                    title="T1",
+                    remix_version="",
+                    label="Defected",
+                    beatport_track_id=None,
+                    beatport_url=None,
+                    created_at=created,
+                    updated_at=updated2,
+                ),
+            )
             conn.commit()
-            cur.execute("SELECT label, created_at, updated_at FROM inventory WHERE track_key='1'")
+            cur.execute(
+                "SELECT label, created_at, updated_at FROM inventory WHERE track_key='1'"
+            )
             row = cur.fetchone()
             assert row is not None
             assert row[0] == "Defected"
@@ -167,7 +193,12 @@ class TestHasArtist:
         conn = get_connection(initialized_db)
         try:
             cur = conn.cursor()
-            upsert(cur, InventoryRecord("1", "1", "Charlotte de Witte", "T", "", None, None, None, now, now))
+            upsert(
+                cur,
+                InventoryRecord(
+                    "1", "1", "Charlotte de Witte", "T", "", None, None, None, now, now
+                ),
+            )
             conn.commit()
             assert has_artist(cur, "Charlotte de Witte") is True
         finally:
@@ -188,7 +219,12 @@ class TestHasArtist:
         conn = get_connection(initialized_db)
         try:
             cur = conn.cursor()
-            upsert(cur, InventoryRecord("1", "1", "Artist A", "T", "", None, None, None, now, now))
+            upsert(
+                cur,
+                InventoryRecord(
+                    "1", "1", "Artist A", "T", "", None, None, None, now, now
+                ),
+            )
             conn.commit()
             assert has_artist(cur, "artist a") is True
         finally:
@@ -240,10 +276,17 @@ class TestResetDb:
         conn = get_connection(initialized_db)
         try:
             cur = conn.cursor()
-            upsert_batch(cur, [
-                InventoryRecord("1", "1", "Artist A", "T1", "", "Label X", None, None, now, now),
-                InventoryRecord("2", "2", "Artist B", "T2", "", "Label Y", None, None, now, now),
-            ])
+            upsert_batch(
+                cur,
+                [
+                    InventoryRecord(
+                        "1", "1", "Artist A", "T1", "", "Label X", None, None, now, now
+                    ),
+                    InventoryRecord(
+                        "2", "2", "Artist B", "T2", "", "Label Y", None, None, now, now
+                    ),
+                ],
+            )
             conn.commit()
         finally:
             conn.close()
@@ -269,7 +312,10 @@ class TestGetAllInventory:
         conn = get_connection(initialized_db)
         try:
             cur = conn.cursor()
-            upsert(cur, InventoryRecord("1", "1", "A", "T1", "", "L1", None, None, now, now))
+            upsert(
+                cur,
+                InventoryRecord("1", "1", "A", "T1", "", "L1", None, None, now, now),
+            )
             conn.commit()
             rows = get_all_inventory(cur, limit=10)
             assert len(rows) == 1
@@ -287,10 +333,35 @@ class TestGetAllInventory:
         conn = get_connection(initialized_db)
         try:
             cur = conn.cursor()
-            upsert_batch(cur, [
-                InventoryRecord("1", "1", "Artist One", "Track Alpha", "", "Label X", None, None, now, now),
-                InventoryRecord("2", "2", "Artist Two", "Track Beta", "", "Label Y", None, None, now, now),
-            ])
+            upsert_batch(
+                cur,
+                [
+                    InventoryRecord(
+                        "1",
+                        "1",
+                        "Artist One",
+                        "Track Alpha",
+                        "",
+                        "Label X",
+                        None,
+                        None,
+                        now,
+                        now,
+                    ),
+                    InventoryRecord(
+                        "2",
+                        "2",
+                        "Artist Two",
+                        "Track Beta",
+                        "",
+                        "Label Y",
+                        None,
+                        None,
+                        now,
+                        now,
+                    ),
+                ],
+            )
             conn.commit()
             rows = get_all_inventory(cur, limit=10, search="Alpha")
             assert len(rows) == 1

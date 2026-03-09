@@ -66,8 +66,12 @@ class IncrateInventorySection(QWidget):
         group_layout.addWidget(self.count_label)
 
         self.table = QTableWidget(0, 5)
-        self.table.setHorizontalHeaderLabels(["Artist", "Title", "Label", "Beatport URL", "Updated"])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.setHorizontalHeaderLabels(
+            ["Artist", "Title", "Label", "Beatport URL", "Updated"]
+        )
+        self.table.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Stretch
+        )
         self.table.setColumnWidth(3, 120)
         self.table.cellDoubleClicked.connect(self._on_cell_double_clicked)
         group_layout.addWidget(self.table)
@@ -87,7 +91,10 @@ class IncrateInventorySection(QWidget):
             url = str(row.get("beatport_url") or "")
             self.table.setItem(r, 3, QTableWidgetItem(url))
             self.table.setItem(r, 4, QTableWidgetItem(str(row.get("updated_at") or "")))
-        self.count_label.setText(f"{len(self._rows)} rows" + (" (max 5000)" if len(self._rows) >= 5000 else ""))
+        self.count_label.setText(
+            f"{len(self._rows)} rows"
+            + (" (max 5000)" if len(self._rows) >= 5000 else "")
+        )
 
     def get_search_text(self) -> str:
         return (self.search_edit.text() or "").strip()
@@ -106,6 +113,7 @@ class IncrateInventorySection(QWidget):
             QMessageBox.information(self, "Export", "No rows to export.")
             return
         from PySide6.QtWidgets import QFileDialog
+
         path, _ = QFileDialog.getSaveFileName(
             self,
             "Export inventory to CSV",
@@ -118,12 +126,21 @@ class IncrateInventorySection(QWidget):
             with open(path, "w", newline="", encoding="utf-8") as f:
                 w = csv.DictWriter(
                     f,
-                    fieldnames=["artist", "title", "label", "beatport_url", "track_id", "updated_at"],
+                    fieldnames=[
+                        "artist",
+                        "title",
+                        "label",
+                        "beatport_url",
+                        "track_id",
+                        "updated_at",
+                    ],
                     extrasaction="ignore",
                 )
                 w.writeheader()
                 for row in self._rows:
                     w.writerow({k: (v or "") for k, v in row.items()})
-            QMessageBox.information(self, "Export", f"Exported {len(self._rows)} rows to {path}")
+            QMessageBox.information(
+                self, "Export", f"Exported {len(self._rows)} rows to {path}"
+            )
         except Exception as e:
             QMessageBox.warning(self, "Export failed", str(e))

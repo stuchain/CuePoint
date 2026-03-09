@@ -136,7 +136,9 @@ def _enrich_with_processor(
     if progress_callback:
         progress_callback(0, total_inputs)
 
-    def _update_row(row_id: int, label: str, beatport_track_id: Optional[str], url: str) -> None:
+    def _update_row(
+        row_id: int, label: str, beatport_track_id: Optional[str], url: str
+    ) -> None:
         nonlocal updated
         updated_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         conn = inventory_db.get_connection(db_path)
@@ -171,26 +173,50 @@ def _enrich_with_processor(
                         continue
                     try:
                         result = future.result()
-                        if result.matched and result.best_match and result.best_match.label and result.best_match.url:
+                        if (
+                            result.matched
+                            and result.best_match
+                            and result.best_match.label
+                            and result.best_match.url
+                        ):
                             label = (result.best_match.label or "").strip() or None
                             if label:
                                 bid = _extract_track_id_from_url(result.best_match.url)
                                 _update_row(row_id, label, bid, result.best_match.url)
                     except Exception as e:
-                        _logger.warning("Enrichment failed for row id=%s: %s", row_id, e, exc_info=True)
+                        _logger.warning(
+                            "Enrichment failed for row id=%s: %s",
+                            row_id,
+                            e,
+                            exc_info=True,
+                        )
                     with progress_lock:
                         completed += 1
                         if progress_callback:
                             progress_callback(completed, total_inputs)
         except Exception as e:
-            _logger.warning("Enrichment parallel run failed, falling back to sequential: %s", e)
+            _logger.warning(
+                "Enrichment parallel run failed, falling back to sequential: %s", e
+            )
             updated = _run_sequential(
-                inputs, idx_to_row_id, processor_service, db_path, progress_callback, total_inputs,
+                inputs,
+                idx_to_row_id,
+                processor_service,
+                db_path,
+                progress_callback,
+                total_inputs,
             )
     else:
-        _logger.info("inCrate enrichment: sequential processing for %s tracks", len(inputs))
+        _logger.info(
+            "inCrate enrichment: sequential processing for %s tracks", len(inputs)
+        )
         updated = _run_sequential(
-            inputs, idx_to_row_id, processor_service, db_path, progress_callback, total_inputs,
+            inputs,
+            idx_to_row_id,
+            processor_service,
+            db_path,
+            progress_callback,
+            total_inputs,
         )
 
     return updated
@@ -208,7 +234,12 @@ def _run_sequential(
     for completed, (row_id, idx, track) in enumerate(inputs, 1):
         try:
             result = processor_service.process_track(idx, track)
-            if result.matched and result.best_match and result.best_match.label and result.best_match.url:
+            if (
+                result.matched
+                and result.best_match
+                and result.best_match.label
+                and result.best_match.url
+            ):
                 label = (result.best_match.label or "").strip() or None
                 if label:
                     bid = _extract_track_id_from_url(result.best_match.url)
@@ -225,7 +256,9 @@ def _run_sequential(
                     finally:
                         conn.close()
         except Exception as e:
-            _logger.warning("Enrichment failed for row id=%s: %s", row_id, e, exc_info=True)
+            _logger.warning(
+                "Enrichment failed for row id=%s: %s", row_id, e, exc_info=True
+            )
         if progress_callback:
             progress_callback(completed, total_inputs)
     return updated
@@ -307,14 +340,22 @@ def _enrich_fallback(
                         cur = conn.cursor()
                         cur.execute(
                             "UPDATE inventory SET label = ?, beatport_track_id = ?, beatport_url = ?, updated_at = ? WHERE id = ?",
-                            (best_label, beatport_track_id, best.url, updated_at, row_id),
+                            (
+                                best_label,
+                                beatport_track_id,
+                                best.url,
+                                updated_at,
+                                row_id,
+                            ),
                         )
                         conn.commit()
                         updated += 1
                     finally:
                         conn.close()
         except Exception as e:
-            _logger.warning("Enrichment failed for row id=%s: %s", row_id, e, exc_info=True)
+            _logger.warning(
+                "Enrichment failed for row id=%s: %s", row_id, e, exc_info=True
+            )
 
         if progress_callback:
             progress_callback(i + 1, total)

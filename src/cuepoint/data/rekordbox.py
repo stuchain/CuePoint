@@ -110,7 +110,9 @@ def parse_collection(
         if parsed_count == 0:
             return
         if parsed_count == 1 or parsed_count % _PARSE_PROGRESS_INTERVAL == 0:
-            _logger.info("inCrate import: parsing progress — %s tracks so far", parsed_count)
+            _logger.info(
+                "inCrate import: parsing progress — %s tracks so far", parsed_count
+            )
             progress_callback(parsed_count, -1)
 
     context = ET.iterparse(xml_path, events=("start", "end"))
@@ -122,7 +124,9 @@ def parse_collection(
                 continue
             # event == "end"
             if elem.tag == "TRACK" and in_collection:
-                tid = (elem.get("TrackID") or elem.get("ID") or elem.get("Key") or "").strip()
+                tid = (
+                    elem.get("TrackID") or elem.get("ID") or elem.get("Key") or ""
+                ).strip()
                 if not tid:
                     _logger.debug(
                         "[reliability] Skipping TRACK with missing TrackID in %s",
@@ -370,10 +374,24 @@ def parse_playlist_tree(
                         tracks.append(track)
                 pl = Playlist(name=name, tracks=tracks)
                 playlists_by_path[full_path] = pl
-                nodes.append({"type": "playlist", "name": name, "path": full_path, "track_count": len(track_ids)})
+                nodes.append(
+                    {
+                        "type": "playlist",
+                        "name": name,
+                        "path": full_path,
+                        "track_count": len(track_ids),
+                    }
+                )
             else:
                 children = _parse_nodes(node_elem, full_path)
-                nodes.append({"type": "folder", "name": name, "path": full_path, "children": children})
+                nodes.append(
+                    {
+                        "type": "folder",
+                        "name": name,
+                        "path": full_path,
+                        "children": children,
+                    }
+                )
         return nodes
 
     playlists_root = root.find(".//PLAYLISTS")
@@ -580,7 +598,9 @@ def get_playlist_track_ids(xml_path: str, playlist_name: str) -> List[str]:
     """
     _, playlists_by_path = parse_playlist_tree(xml_path)
     if playlist_name in playlists_by_path:
-        return [t.track_id for t in playlists_by_path[playlist_name].tracks if t.track_id]
+        return [
+            t.track_id for t in playlists_by_path[playlist_name].tracks if t.track_id
+        ]
     # Try path without ROOT prefix (with or without slash; some callers pass "ROOTUntitled" or "ROOT/Untitled")
     path_without_root = playlist_name.strip()
     if path_without_root.upper().startswith("ROOT/"):
@@ -588,14 +608,28 @@ def get_playlist_track_ids(xml_path: str, playlist_name: str) -> List[str]:
     elif path_without_root.upper().startswith("ROOT"):
         path_without_root = path_without_root[4:].lstrip()
     if path_without_root and path_without_root in playlists_by_path:
-        return [t.track_id for t in playlists_by_path[path_without_root].tracks if t.track_id]
+        return [
+            t.track_id
+            for t in playlists_by_path[path_without_root].tracks
+            if t.track_id
+        ]
     # Try canonical path with slash (ROOT/Name) when input had no slash (e.g. from CSV filename)
     if path_without_root:
         canonical = f"ROOT/{path_without_root}"
         if canonical in playlists_by_path:
-            return [t.track_id for t in playlists_by_path[canonical].tracks if t.track_id]
+            return [
+                t.track_id for t in playlists_by_path[canonical].tracks if t.track_id
+            ]
     # Fallback: resolve by playlist name (last path segment or exact name)
-    name_only = path_without_root if path_without_root else (playlist_name.split("/")[-1].strip() if "/" in playlist_name else playlist_name)
+    name_only = (
+        path_without_root
+        if path_without_root
+        else (
+            playlist_name.split("/")[-1].strip()
+            if "/" in playlist_name
+            else playlist_name
+        )
+    )
     for path, pl in playlists_by_path.items():
         if pl.name == playlist_name or pl.name == name_only:
             return [t.track_id for t in pl.tracks if t.track_id]
@@ -638,7 +672,9 @@ def write_updated_collection_xml(
     collection = root.find(".//COLLECTION")
     if collection is not None:
         for elem in collection.findall("TRACK"):
-            tid = (elem.get("TrackID") or elem.get("ID") or elem.get("Key") or "").strip()
+            tid = (
+                elem.get("TrackID") or elem.get("ID") or elem.get("Key") or ""
+            ).strip()
             if tid in updates:
                 for attr_name, attr_value in updates[tid].items():
                     elem.set(attr_name, attr_value)
@@ -678,6 +714,7 @@ def _short_key(key: Optional[str]) -> str:
     if not key:
         return ""
     import re
+
     s = (key or "").strip()
     s = s.replace("\u266d", "b").replace("\u266f", "#")  # Unicode flat/sharp
     s = re.sub(r"\s+", " ", s)
@@ -725,7 +762,9 @@ def build_rekordbox_updates(
     opts = sync_options
     if opts is None:
         key_fmt = "camelot" if use_camelot_key else "normal"
-        write_key = write_year = write_bpm = write_label = write_genre = write_comment = True
+        write_key = write_year = write_bpm = write_label = write_genre = (
+            write_comment
+        ) = True
         comment_text = "ok"
     else:
         key_fmt = (opts.get("key_format") or "normal").lower()
@@ -754,9 +793,9 @@ def build_rekordbox_updates(
             updates[tid]["Comment"] = comment_text
         if write_key:
             if key_fmt == "camelot":
-                key_val = (r.beatport_key_camelot and str(r.beatport_key_camelot).strip()) or (
-                    _camelot_key(r.beatport_key) if r.beatport_key else ""
-                )
+                key_val = (
+                    r.beatport_key_camelot and str(r.beatport_key_camelot).strip()
+                ) or (_camelot_key(r.beatport_key) if r.beatport_key else "")
             elif key_fmt == "short":
                 key_val = _short_key(r.beatport_key) if r.beatport_key else ""
                 if not key_val and r.beatport_key:
@@ -772,14 +811,18 @@ def build_rekordbox_updates(
         if write_bpm and r.beatport_bpm is not None:
             try:
                 bpm_val = float(r.beatport_bpm)
-                updates[tid]["BPM"] = str(int(bpm_val)) if bpm_val == int(bpm_val) else f"{bpm_val:.1f}"
+                updates[tid]["BPM"] = (
+                    str(int(bpm_val)) if bpm_val == int(bpm_val) else f"{bpm_val:.1f}"
+                )
             except (TypeError, ValueError):
                 updates[tid]["BPM"] = str(r.beatport_bpm)
         if write_label and r.beatport_label and str(r.beatport_label).strip():
             updates[tid]["Label"] = str(r.beatport_label).strip()
         if write_genre and r.beatport_genres and str(r.beatport_genres).strip():
             genres = str(r.beatport_genres).strip()
-            updates[tid]["Genre"] = genres.split(",")[0].strip() if "," in genres else genres
+            updates[tid]["Genre"] = (
+                genres.split(",")[0].strip() if "," in genres else genres
+            )
     return updates
 
 
@@ -973,7 +1016,9 @@ def write_tags_to_paths(
     opts = sync_options
     if opts is None:
         key_fmt = "normal"
-        write_key = write_year = write_bpm = write_label = write_genre = write_comment = True
+        write_key = write_year = write_bpm = write_label = write_genre = (
+            write_comment
+        ) = True
         comment_text = "ok"
     else:
         key_fmt = (opts.get("key_format") or "normal").lower()
@@ -1001,9 +1046,9 @@ def write_tags_to_paths(
         key_val = None
         if write_key:
             if key_fmt == "camelot":
-                key_val = (r.beatport_key_camelot and str(r.beatport_key_camelot).strip()) or (
-                    _camelot_key(r.beatport_key) if r.beatport_key else ""
-                )
+                key_val = (
+                    r.beatport_key_camelot and str(r.beatport_key_camelot).strip()
+                ) or (_camelot_key(r.beatport_key) if r.beatport_key else "")
             elif key_fmt == "short":
                 key_val = _short_key(r.beatport_key) if r.beatport_key else ""
                 if not key_val and r.beatport_key:
@@ -1012,7 +1057,9 @@ def write_tags_to_paths(
                 key_val = (r.beatport_key and str(r.beatport_key).strip()) or ""
             if not key_val:
                 key_val = None
-        year_val = _normalize_year(r.beatport_year) if write_year and r.beatport_year else None
+        year_val = (
+            _normalize_year(r.beatport_year) if write_year and r.beatport_year else None
+        )
         bpm_val = None
         if write_bpm and r.beatport_bpm is not None:
             try:
@@ -1020,7 +1067,11 @@ def write_tags_to_paths(
                 bpm_val = str(int(b)) if b == int(b) else f"{b:.1f}"
             except (TypeError, ValueError):
                 bpm_val = str(r.beatport_bpm)
-        label_val = (r.beatport_label and str(r.beatport_label).strip()) if write_label else None
+        label_val = (
+            (r.beatport_label and str(r.beatport_label).strip())
+            if write_label
+            else None
+        )
         genre_val = None
         if write_genre and r.beatport_genres and str(r.beatport_genres).strip():
             g = str(r.beatport_genres).strip()

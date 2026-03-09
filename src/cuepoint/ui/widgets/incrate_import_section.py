@@ -21,7 +21,9 @@ class IncrateImportSection(QWidget):
 
     import_done = Signal(dict)  # result from import_from_xml
     import_progress = Signal(str)  # status text
-    reset_requested = Signal()  # user wants to clear inventory so they can import another collection
+    reset_requested = (
+        Signal()
+    )  # user wants to clear inventory so they can import another collection
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -49,7 +51,9 @@ class IncrateImportSection(QWidget):
         btn_row.addWidget(self.import_btn)
         self.reset_db_btn = QPushButton("Reset database")
         self.reset_db_btn.setObjectName("incrate_reset_db")
-        self.reset_db_btn.setToolTip("Clear all inventory so you can import a different collection.xml")
+        self.reset_db_btn.setToolTip(
+            "Clear all inventory so you can import a different collection.xml"
+        )
         self.reset_db_btn.clicked.connect(self._on_reset_db_clicked)
         btn_row.addWidget(self.reset_db_btn)
         btn_row.addStretch()
@@ -75,6 +79,7 @@ class IncrateImportSection(QWidget):
 
     def _on_reset_db_clicked(self) -> None:
         from PySide6.QtWidgets import QMessageBox
+
         reply = QMessageBox.question(
             self,
             "Reset inventory",
@@ -130,7 +135,9 @@ class IncrateImportSection(QWidget):
         if total == 0:
             self.stats_label.setText("No inventory yet. Import Rekordbox XML first.")
         else:
-            self.stats_label.setText(f"{total} tracks, {artists} artists, {labels} labels")
+            self.stats_label.setText(
+                f"{total} tracks, {artists} artists, {labels} labels"
+            )
 
     def show_error(self, message: str) -> None:
         self.stats_label.setText(message)

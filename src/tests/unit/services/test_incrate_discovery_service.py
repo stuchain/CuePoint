@@ -36,7 +36,9 @@ class TestRunDiscoveryUsesConfigDates:
         api = Mock()
         api.list_charts.return_value = []
         config = Mock()
-        config.get.side_effect = lambda k, d=None: 30 if k == "incrate.new_releases_days" else (d if d is not None else [])
+        config.get.side_effect = lambda k, d=None: (
+            30 if k == "incrate.new_releases_days" else (d if d is not None else [])
+        )
         service = IncrateDiscoveryService(inv, api, config_service=config)
         to_date = date.today()
         from_date = to_date - timedelta(days=30)

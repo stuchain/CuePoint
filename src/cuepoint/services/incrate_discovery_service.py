@@ -48,9 +48,7 @@ class IncrateDiscoveryService:
         from_date = charts_from_date or (to_date - timedelta(days=30))
         if genre_ids is None and self._config is not None:
             try:
-                genre_ids = list(
-                    self._config.get("incrate.discovery_genre_ids") or []
-                )
+                genre_ids = list(self._config.get("incrate.discovery_genre_ids") or [])
             except (TypeError, AttributeError):
                 genre_ids = []
         if genre_ids is None:

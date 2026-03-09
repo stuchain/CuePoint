@@ -41,7 +41,10 @@ class BeatportApiClient:
             "Beatport API request: %s %s params=%s",
             method,
             path,
-            {k: (str(v)[:80] if v is not None else v) for k, v in list(params.items())[:5]},
+            {
+                k: (str(v)[:80] if v is not None else v)
+                for k, v in list(params.items())[:5]
+            },
         )
         resp = self._session.request(method, url, **kwargs)
         try:
@@ -54,7 +57,9 @@ class BeatportApiClient:
                 body_len,
             )
         except Exception:
-            _logger.info("Beatport API response: %s %s -> %s", method, path, resp.status_code)
+            _logger.info(
+                "Beatport API response: %s %s -> %s", method, path, resp.status_code
+            )
         if resp.status_code == 401:
             _logger.warning("Beatport API 401: invalid or expired token")
             raise BeatportAPIError(

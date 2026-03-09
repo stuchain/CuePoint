@@ -97,9 +97,7 @@ class UnmatchedRowDelegate(QStyledItemDelegate):
         super().__init__(parent)
         self._bg_color = bg_color
 
-    def paint(
-        self, painter: QPainter, option, index
-    ):
+    def paint(self, painter: QPainter, option, index):
         if index.data(UNMATCHED_ROW_ROLE):
             painter.fillRect(option.rect, self._bg_color)
         super().paint(painter, option, index)
@@ -637,7 +635,9 @@ class ResultsView(QWidget):
         self.write_to_track_tags_btn = QPushButton("Sync with Rekordbox")
         self.write_to_track_tags_btn.setObjectName("syncWithRekordboxButton")
         self.write_to_track_tags_btn.setFixedHeight(30 if is_macos() else 32)
-        self.write_to_track_tags_btn.clicked.connect(self.write_to_track_tags_requested.emit)
+        self.write_to_track_tags_btn.clicked.connect(
+            self.write_to_track_tags_requested.emit
+        )
         self.write_to_track_tags_btn.setToolTip(
             "Write Key, Comment, Year and Label into audio files. In Rekordbox right-click tracks and choose Reload Tags."
         )
@@ -844,9 +844,8 @@ class ResultsView(QWidget):
 
     def _update_transfer_to_rekordbox_button(self) -> None:
         """Enable Sync with Rekordbox when there are results."""
-        has_results = (
-            (not self.is_batch_mode and bool(self.results))
-            or (self.is_batch_mode and bool(self.batch_results))
+        has_results = (not self.is_batch_mode and bool(self.results)) or (
+            self.is_batch_mode and bool(self.batch_results)
         )
         if hasattr(self, "write_to_track_tags_btn"):
             self.write_to_track_tags_btn.setEnabled(has_results)
@@ -1081,7 +1080,9 @@ class ResultsView(QWidget):
             ]
         )
         table.setSortingEnabled(True)
-        table.setAlternatingRowColors(False)  # so unmatched-row red background is visible
+        table.setAlternatingRowColors(
+            False
+        )  # so unmatched-row red background is visible
         table.setSelectionBehavior(QTableWidget.SelectRows)
         table.setEditTriggers(QTableWidget.NoEditTriggers)
         table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
@@ -1250,15 +1251,21 @@ class ResultsView(QWidget):
             self.table.setItem(row, COL_ORIGINAL_TITLE, QTableWidgetItem(result.title))
 
             # Original Artists
-            self.table.setItem(row, COL_ORIGINAL_ARTISTS, QTableWidgetItem(result.artist or ""))
+            self.table.setItem(
+                row, COL_ORIGINAL_ARTISTS, QTableWidgetItem(result.artist or "")
+            )
 
             # Beatport Title
             beatport_title = result.beatport_title or ""
-            self.table.setItem(row, COL_BEATPORT_TITLE, QTableWidgetItem(beatport_title))
+            self.table.setItem(
+                row, COL_BEATPORT_TITLE, QTableWidgetItem(beatport_title)
+            )
 
             # Beatport Artists
             beatport_artists = result.beatport_artists or ""
-            self.table.setItem(row, COL_BEATPORT_ARTISTS, QTableWidgetItem(beatport_artists))
+            self.table.setItem(
+                row, COL_BEATPORT_ARTISTS, QTableWidgetItem(beatport_artists)
+            )
 
             # Key (regular key)
             key_text = result.beatport_key or ""
@@ -1372,25 +1379,36 @@ class ResultsView(QWidget):
             # Preserve Write checkbox (column 0) state when updating
             write_item = self.table.item(row_index, COL_WRITE)
             check_state = (
-                write_item.checkState() if write_item and write_item.flags() & Qt.ItemIsUserCheckable
+                write_item.checkState()
+                if write_item and write_item.flags() & Qt.ItemIsUserCheckable
                 else Qt.CheckState.Checked
             )
 
             # Update only the cells that may have changed
-            self.table.setItem(row_index, COL_ORIGINAL_TITLE, QTableWidgetItem(result.title))
-            self.table.setItem(row_index, COL_ORIGINAL_ARTISTS, QTableWidgetItem(result.artist or ""))
+            self.table.setItem(
+                row_index, COL_ORIGINAL_TITLE, QTableWidgetItem(result.title)
+            )
+            self.table.setItem(
+                row_index, COL_ORIGINAL_ARTISTS, QTableWidgetItem(result.artist or "")
+            )
 
             beatport_title = result.beatport_title or ""
-            self.table.setItem(row_index, COL_BEATPORT_TITLE, QTableWidgetItem(beatport_title))
+            self.table.setItem(
+                row_index, COL_BEATPORT_TITLE, QTableWidgetItem(beatport_title)
+            )
 
             beatport_artists = result.beatport_artists or ""
-            self.table.setItem(row_index, COL_BEATPORT_ARTISTS, QTableWidgetItem(beatport_artists))
+            self.table.setItem(
+                row_index, COL_BEATPORT_ARTISTS, QTableWidgetItem(beatport_artists)
+            )
 
             key_text = result.beatport_key or ""
             self.table.setItem(row_index, COL_KEY, QTableWidgetItem(key_text))
 
             camelot_key_text = result.beatport_key_camelot or ""
-            self.table.setItem(row_index, COL_CAMELOT_KEY, QTableWidgetItem(camelot_key_text))
+            self.table.setItem(
+                row_index, COL_CAMELOT_KEY, QTableWidgetItem(camelot_key_text)
+            )
 
             year_text = result.beatport_year or ""
             self.table.setItem(row_index, COL_RELEASE_YEAR, QTableWidgetItem(year_text))
@@ -1434,9 +1452,7 @@ class ResultsView(QWidget):
             new_write_item = QTableWidgetItem()
             new_write_item.setFlags(new_write_item.flags() | Qt.ItemIsUserCheckable)
             new_write_item.setCheckState(
-                Qt.CheckState.Unchecked
-                if is_file_not_found
-                else check_state
+                Qt.CheckState.Unchecked if is_file_not_found else check_state
             )
             if is_file_not_found:
                 new_write_item.setFlags(new_write_item.flags() & ~Qt.ItemIsEnabled)
@@ -1729,7 +1745,9 @@ class ResultsView(QWidget):
             table.setItem(row, COL_INDEX, index_item)
 
             table.setItem(row, COL_ORIGINAL_TITLE, QTableWidgetItem(result.title))
-            table.setItem(row, COL_ORIGINAL_ARTISTS, QTableWidgetItem(result.artist or ""))
+            table.setItem(
+                row, COL_ORIGINAL_ARTISTS, QTableWidgetItem(result.artist or "")
+            )
 
             beatport_title = result.beatport_title or ""
             table.setItem(row, COL_BEATPORT_TITLE, QTableWidgetItem(beatport_title))

@@ -15,7 +15,10 @@ from cuepoint.services.beatport_api_client import BeatportApiClient
 from cuepoint.services.beatport_service import BeatportService
 from cuepoint.services.cache_service import CacheService
 from cuepoint.services.incrate_discovery_service import IncrateDiscoveryService
-from cuepoint.services.inventory_service import InventoryService, default_inventory_db_path
+from cuepoint.services.inventory_service import (
+    InventoryService,
+    default_inventory_db_path,
+)
 from cuepoint.services.config_service import ConfigService
 from cuepoint.services.export_service import ExportService
 from cuepoint.services.interfaces import (
@@ -68,10 +71,18 @@ def bootstrap_services() -> None:
     # inCrate Phase 2: Beatport API client for charts/labels (discovery)
     def create_beatport_api() -> BeatportApi:
         cfg = config_service
-        base_url = (cfg.get("incrate.beatport_api_base_url") or "https://api.beatport.com/v4").strip()
-        token = (os.environ.get("BEATPORT_ACCESS_TOKEN") or cfg.get("incrate.beatport_access_token") or "").strip()
+        base_url = (
+            cfg.get("incrate.beatport_api_base_url") or "https://api.beatport.com/v4"
+        ).strip()
+        token = (
+            os.environ.get("BEATPORT_ACCESS_TOKEN")
+            or cfg.get("incrate.beatport_access_token")
+            or ""
+        ).strip()
         timeout = int(cfg.get("incrate.beatport_api_timeout") or 30)
-        client = BeatportApiClient(base_url=base_url, access_token=token, timeout=timeout)
+        client = BeatportApiClient(
+            base_url=base_url, access_token=token, timeout=timeout
+        )
         return BeatportApi(client=client, cache_service=cache_service)
 
     container.register_factory(BeatportApi, create_beatport_api)
@@ -98,7 +109,9 @@ def bootstrap_services() -> None:
             config_service=config_service,
         )
 
-    container.register_factory(IncrateDiscoveryService, create_incrate_discovery_service)
+    container.register_factory(
+        IncrateDiscoveryService, create_incrate_discovery_service
+    )
 
     # Register processor service (depends on beatport, matcher, logging, config)
     def create_processor_service() -> IProcessorService:

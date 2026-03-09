@@ -59,17 +59,34 @@ class TestRunDiscoveryE2eMocked:
             ChartSummary(1, "Chart One", 5, "house", None, "Artist A", "2025-02-01", 1),
         ]
         api.get_chart.return_value = ChartDetail(
-            1, "Chart One", "Artist A", "2025-02-01",
+            1,
+            "Chart One",
+            "Artist A",
+            "2025-02-01",
             tracks=[
-                ChartTrack(100, "Chart Track", "Artist A", "https://beatport.com/track/ct/100", 1),
+                ChartTrack(
+                    100,
+                    "Chart Track",
+                    "Artist A",
+                    "https://beatport.com/track/ct/100",
+                    1,
+                ),
             ],
         )
         api.search_label_by_name.return_value = 10
         api.get_label_releases.return_value = [
             LabelRelease(
-                1, "Release One", "2025-02-01",
+                1,
+                "Release One",
+                "2025-02-01",
                 tracks=[
-                    LabelReleaseTrack(101, "Release Track", "Artist B", "https://beatport.com/track/rt/101", "2025-02-01"),
+                    LabelReleaseTrack(
+                        101,
+                        "Release Track",
+                        "Artist B",
+                        "https://beatport.com/track/rt/101",
+                        "2025-02-01",
+                    ),
                 ],
             ),
         ]
@@ -94,7 +111,10 @@ class TestRunDiscoveryE2eMocked:
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(not _live_token(), reason="BEATPORT_ACCESS_TOKEN not set (set it to run discovery against live API)")
+@pytest.mark.skipif(
+    not _live_token(),
+    reason="BEATPORT_ACCESS_TOKEN not set (set it to run discovery against live API)",
+)
 class TestRunDiscoveryLive:
     """Run discovery against the real Beatport API. Verifies full flow: inventory -> charts + new releases -> dedupe.
 
@@ -119,7 +139,9 @@ class TestRunDiscoveryLive:
         inventory.import_from_xml(str(xml_path), enrich=False)
         assert "Defected" in inventory.get_library_labels()
 
-        base_url = os.environ.get("BEATPORT_API_BASE_URL", "https://api.beatport.com/v4")
+        base_url = os.environ.get(
+            "BEATPORT_API_BASE_URL", "https://api.beatport.com/v4"
+        )
         client = BeatportApiClient(
             base_url=base_url,
             access_token=_live_token(),
@@ -178,8 +200,12 @@ class TestRunDiscoveryLive:
         inventory.import_from_xml(str(xml_path), enrich=False)
         assert len(inventory.get_library_labels()) >= 1
 
-        base_url = os.environ.get("BEATPORT_API_BASE_URL", "https://api.beatport.com/v4")
-        client = BeatportApiClient(base_url=base_url, access_token=_live_token(), timeout=30)
+        base_url = os.environ.get(
+            "BEATPORT_API_BASE_URL", "https://api.beatport.com/v4"
+        )
+        client = BeatportApiClient(
+            base_url=base_url, access_token=_live_token(), timeout=30
+        )
         api = BeatportApi(client, cache_service=None)
 
         to_date = date.today()
@@ -199,7 +225,9 @@ class TestRunDiscoveryLive:
         assert isinstance(result, list)
         resolving = [p for p in progress_calls if p[0] == "resolving"]
         releases = [p for p in progress_calls if p[0] == "releases"]
-        assert len(resolving) >= 1 or len(releases) >= 1, "resolving or releases progress should be reported"
+        assert len(resolving) >= 1 or len(releases) >= 1, (
+            "resolving or releases progress should be reported"
+        )
 
     def test_run_discovery_live_afro_house_artists_labels(self, tmp_path: Path):
         """Live API: genre Afro House, artists Jimi Jules/Marasi/Diass/Yamil, labels Nothing But/Kompakt."""
@@ -227,8 +255,12 @@ class TestRunDiscoveryLive:
         assert "Nothing But" in labels
         assert "Kompakt" in labels
 
-        base_url = os.environ.get("BEATPORT_API_BASE_URL", "https://api.beatport.com/v4")
-        client = BeatportApiClient(base_url=base_url, access_token=_live_token(), timeout=30)
+        base_url = os.environ.get(
+            "BEATPORT_API_BASE_URL", "https://api.beatport.com/v4"
+        )
+        client = BeatportApiClient(
+            base_url=base_url, access_token=_live_token(), timeout=30
+        )
         api = BeatportApi(client, cache_service=None)
 
         genres = api.list_genres()
@@ -261,8 +293,12 @@ class TestRunDiscoveryLive:
         assert len(progress_calls) >= 1
 
         # Print results so you can see what discovery pulled (visible with -s or when test fails)
-        print("\n--- Discovery results (Afro House, artists: Jimi Jules/Marasi/Diass/Yamil, labels: Nothing But/Kompakt) ---")
-        print(f"Total tracks: {len(result)} (charts: {len(chart_tracks)}, label_release: {len(release_tracks)})")
+        print(
+            "\n--- Discovery results (Afro House, artists: Jimi Jules/Marasi/Diass/Yamil, labels: Nothing But/Kompakt) ---"
+        )
+        print(
+            f"Total tracks: {len(result)} (charts: {len(chart_tracks)}, label_release: {len(release_tracks)})"
+        )
         for i, t in enumerate(result[:50], 1):
             line = f"  {i}. [{t.source_type}] {t.title} — {t.artists} ({t.source_name})"
             try:
@@ -278,7 +314,9 @@ class TestRunDiscoveryLive:
                 charts = api.list_charts(genre_ids[0], from_date, to_date, limit=50)
                 print(f"  list_charts(Afro House): {len(charts)} charts")
                 charts_all = api.list_charts(0, from_date, to_date, limit=200)
-                print(f"  list_charts(0 = all): {len(charts_all)} charts, 881292 in list: {881292 in [c.id for c in (charts_all or [])]}")
+                print(
+                    f"  list_charts(0 = all): {len(charts_all)} charts, 881292 in list: {881292 in [c.id for c in (charts_all or [])]}"
+                )
             except Exception as e:
                 print(f"  list_charts error: {e}")
             try:
@@ -286,14 +324,20 @@ class TestRunDiscoveryLive:
                 print(f"  search_label_by_name('Nothing But'): {label_id}")
                 if label_id:
                     rels = api.get_label_releases(label_id, from_date, to_date)
-                    print(f"  get_label_releases({label_id}): {len(rels)} releases, {sum(len(r.tracks) for r in rels)} tracks")
+                    print(
+                        f"  get_label_releases({label_id}): {len(rels)} releases, {sum(len(r.tracks) for r in rels)} tracks"
+                    )
                 rels43219 = api.get_label_releases(43219, from_date, to_date)
-                print(f"  get_label_releases(43219): {len(rels43219)} releases, {sum(len(r.tracks) for r in rels43219)} tracks")
+                print(
+                    f"  get_label_releases(43219): {len(rels43219)} releases, {sum(len(r.tracks) for r in rels43219)} tracks"
+                )
             except Exception as e:
                 print(f"  label lookup/releases error: {e}")
             try:
                 detail = api.get_chart(881292)
-                print(f"  get_chart(881292) Yamil: {detail.name if detail else None} tracks={len(detail.tracks) if detail else 0}")
+                print(
+                    f"  get_chart(881292) Yamil: {detail.name if detail else None} tracks={len(detail.tracks) if detail else 0}"
+                )
             except Exception as e:
                 print(f"  get_chart(881292) error: {e}")
         print("---")

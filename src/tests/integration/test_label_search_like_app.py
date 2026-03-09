@@ -34,14 +34,18 @@ def _live_token() -> str:
     return token
 
 
-def _make_page_response(page: int, per_page: int, total_count: int, results: list) -> dict:
+def _make_page_response(
+    page: int, per_page: int, total_count: int, results: list
+) -> dict:
     """Same shape as Beatport API: { count, page, per_page, results }."""
     return {
         "count": total_count,
         "page": page,
         "per_page": per_page,
         "results": results,
-        "next": f"http://api/catalog/labels?page={page + 1}" if page * per_page < total_count else None,
+        "next": f"http://api/catalog/labels?page={page + 1}"
+        if page * per_page < total_count
+        else None,
         "previous": f"http://api/catalog/labels?page={page - 1}" if page > 1 else None,
     }
 
@@ -53,7 +57,9 @@ class TestLabelSearchLikeAppMocked:
         """App flow: search_label_by_name finds match via /catalog/search (tried first) or /catalog/labels."""
         client = Mock(spec=BeatportApiClient)
         # API now tries /catalog/search first; return a search-style response so we resolve from it
-        client.get.return_value = {"labels": [{"id": 42, "name": "Defected", "slug": "defected"}]}
+        client.get.return_value = {
+            "labels": [{"id": 42, "name": "Defected", "slug": "defected"}]
+        }
         api = BeatportApi(client, cache_service=None)
         out = api.search_label_by_name("Defected")
         assert out == 42
@@ -69,17 +75,24 @@ class TestLabelSearchLikeAppMocked:
             page=1,
             per_page=50,
             total_count=100,
-            results=[{"id": i, "name": f"Other Label {i}", "slug": f"other-label-{i}"} for i in range(1, 51)],
+            results=[
+                {"id": i, "name": f"Other Label {i}", "slug": f"other-label-{i}"}
+                for i in range(1, 51)
+            ],
         )
         page2 = _make_page_response(
             page=2,
             per_page=50,
             total_count=100,
             results=[
-                {"id": i, "name": f"Other Label {i}", "slug": f"other-label-{i}"} for i in range(51, 55)
+                {"id": i, "name": f"Other Label {i}", "slug": f"other-label-{i}"}
+                for i in range(51, 55)
             ]
             + [{"id": 12345, "name": "Defected", "slug": "defected"}]
-            + [{"id": i, "name": f"Other Label {i}", "slug": f"other-label-{i}"} for i in range(56, 101)],
+            + [
+                {"id": i, "name": f"Other Label {i}", "slug": f"other-label-{i}"}
+                for i in range(56, 101)
+            ],
         )
 
         def get_side_effect(path, params=None, **kwargs):
@@ -100,12 +113,20 @@ class TestLabelSearchLikeAppMocked:
     def test_search_label_nothing_but_on_page_3(self):
         """App flow: 'Nothing But' on page 3 — we keep paginating until match."""
         client = Mock(spec=BeatportApiClient)
+
         def make_other_page(page: int):
             return _make_page_response(
                 page=page,
                 per_page=50,
                 total_count=200,
-                results=[{"id": (page - 1) * 50 + i, "name": f"Label {(page-1)*50+i}", "slug": f"label-{(page-1)*50+i}"} for i in range(1, 51)],
+                results=[
+                    {
+                        "id": (page - 1) * 50 + i,
+                        "name": f"Label {(page - 1) * 50 + i}",
+                        "slug": f"label-{(page - 1) * 50 + i}",
+                    }
+                    for i in range(1, 51)
+                ],
             )
 
         def get_side_effect(path, params=None, **kwargs):
@@ -113,10 +134,26 @@ class TestLabelSearchLikeAppMocked:
                 return None
             page = (params or {}).get("page", 1)
             if page == 3:
-                res = [{"id": (page - 1) * 50 + i, "name": f"Label {(page-1)*50+i}", "slug": f"label-{(page-1)*50+i}"} for i in range(1, 21)]
+                res = [
+                    {
+                        "id": (page - 1) * 50 + i,
+                        "name": f"Label {(page - 1) * 50 + i}",
+                        "slug": f"label-{(page - 1) * 50 + i}",
+                    }
+                    for i in range(1, 21)
+                ]
                 res.append({"id": 43219, "name": "Nothing But", "slug": "nothing-but"})
-                res += [{"id": (page - 1) * 50 + i, "name": f"Label {(page-1)*50+i}", "slug": f"label-{(page-1)*50+i}"} for i in range(22, 51)]
-                return _make_page_response(page=3, per_page=50, total_count=200, results=res)
+                res += [
+                    {
+                        "id": (page - 1) * 50 + i,
+                        "name": f"Label {(page - 1) * 50 + i}",
+                        "slug": f"label-{(page - 1) * 50 + i}",
+                    }
+                    for i in range(22, 51)
+                ]
+                return _make_page_response(
+                    page=3, per_page=50, total_count=200, results=res
+                )
             return make_other_page(page)
 
         client.get.side_effect = get_side_effect
@@ -132,7 +169,10 @@ class TestLabelSearchLikeAppMocked:
             page=1,
             per_page=50,
             total_count=50,
-            results=[{"id": i, "name": f"Other {i}", "slug": f"other-{i}"} for i in range(1, 51)],
+            results=[
+                {"id": i, "name": f"Other {i}", "slug": f"other-{i}"}
+                for i in range(1, 51)
+            ],
         )
         api = BeatportApi(client, cache_service=None)
         out = api.search_label_by_name("Defected")
@@ -140,7 +180,9 @@ class TestLabelSearchLikeAppMocked:
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(not _live_token(), reason="BEATPORT_ACCESS_TOKEN (or beatporttoken.txt) not set")
+@pytest.mark.skipif(
+    not _live_token(), reason="BEATPORT_ACCESS_TOKEN (or beatporttoken.txt) not set"
+)
 class TestLabelSearchLiveLikeApp:
     """Calls the real API exactly as the app does. Run until this passes to confirm the fix."""
 

@@ -25,6 +25,7 @@ class TestWriteToTrackTagsIntegration:
         """Small XML with Location pointing to temp MP3s; run write; assert tags and counts."""
         pytest.importorskip("mutagen")
         from mutagen.id3 import ID3
+
         temp_dir = tempfile.mkdtemp()
         try:
             track1_path = os.path.join(temp_dir, "track1.mp3")
@@ -103,6 +104,7 @@ class TestWriteToTrackTagsIntegration:
         """When XML points to two files but only one exists, written=1, failed=1, errors list contains missing path."""
         pytest.importorskip("mutagen")
         from mutagen.id3 import ID3
+
         temp_dir = tempfile.mkdtemp()
         try:
             track1_path = os.path.join(temp_dir, "track1.mp3")
@@ -153,7 +155,9 @@ class TestWriteToTrackTagsIntegration:
             assert written == 1
             assert failed == 1
             assert len(errors) >= 1
-            assert any("not found" in e.lower() or "track2" in e.lower() for e in errors)
+            assert any(
+                "not found" in e.lower() or "track2" in e.lower() for e in errors
+            )
         finally:
             for f in Path(temp_dir).glob("*"):
                 try:
@@ -188,8 +192,20 @@ class TestWriteToTrackTagsIntegration:
             with open(xml_path, "w", encoding="utf-8") as f:
                 f.write(xml_content)
             results = [
-                TrackResult(playlist_index=1, title="A", artist="B", matched=True, beatport_key="Am"),
-                TrackResult(playlist_index=2, title="C", artist="D", matched=True, beatport_key="Cm"),
+                TrackResult(
+                    playlist_index=1,
+                    title="A",
+                    artist="B",
+                    matched=True,
+                    beatport_key="Am",
+                ),
+                TrackResult(
+                    playlist_index=2,
+                    title="C",
+                    artist="D",
+                    matched=True,
+                    beatport_key="Cm",
+                ),
             ]
             written, failed, errors = write_key_comment_year_to_playlist_tracks(
                 xml_path, "P", results

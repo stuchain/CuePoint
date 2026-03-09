@@ -47,16 +47,22 @@ class _BeatportTokenTestWorker(QObject):
     def run(self) -> None:
         try:
             import requests
+
             # Use an endpoint that requires a valid token (same as Discover/genres)
             url = f"{self._base_url}/catalog/genres"
-            headers = {"Authorization": f"Bearer {self._token}", "Content-Type": "application/json"}
+            headers = {
+                "Authorization": f"Bearer {self._token}",
+                "Content-Type": "application/json",
+            }
             r = requests.get(url, headers=headers, timeout=15)
             if r.status_code == 200:
                 self.result_ready.emit(True, "Token OK")
             elif r.status_code == 401:
                 self.result_ready.emit(False, "Invalid or expired token.")
             elif r.status_code == 403:
-                self.result_ready.emit(False, "Access forbidden (token invalid or insufficient scope).")
+                self.result_ready.emit(
+                    False, "Access forbidden (token invalid or insufficient scope)."
+                )
             else:
                 self.result_ready.emit(False, f"API returned {r.status_code}.")
         except Exception as e:
@@ -146,7 +152,9 @@ class ConfigPanel(QWidget):
         self.incrate_playlist_format.addItem("Short (e.g. feb26)", "short")
         self.incrate_playlist_format.addItem("ISO (e.g. 2025-02-26)", "iso")
         incrate_layout.addWidget(self.incrate_playlist_format)
-        incrate_layout.addWidget(QLabel("Beatport username (browser fallback, optional):"))
+        incrate_layout.addWidget(
+            QLabel("Beatport username (browser fallback, optional):")
+        )
         self.incrate_username_edit = QLineEdit()
         self.incrate_username_edit.setPlaceholderText("Optional")
         incrate_layout.addWidget(self.incrate_username_edit)
@@ -157,7 +165,9 @@ class ConfigPanel(QWidget):
         incrate_layout.addWidget(self.incrate_password_edit)
         incrate_test_row = QHBoxLayout()
         self.incrate_test_btn = QPushButton("Test connection")
-        self.incrate_test_btn.setToolTip("Verify the API token with a single request (catalog/genres).")
+        self.incrate_test_btn.setToolTip(
+            "Verify the API token with a single request (catalog/genres)."
+        )
         self.incrate_test_btn.clicked.connect(self._on_incrate_test_connection)
         incrate_test_row.addWidget(self.incrate_test_btn)
         incrate_test_row.addStretch()
@@ -554,10 +564,26 @@ class ConfigPanel(QWidget):
 
     def get_persisted_snapshot(self) -> tuple:
         """Return a comparable snapshot of persisted settings for change detection."""
-        incrate_token = self.incrate_token_edit.text().strip() if hasattr(self, "incrate_token_edit") else ""
-        incrate_fmt = self.incrate_playlist_format.currentData() or "short" if hasattr(self, "incrate_playlist_format") else "short"
-        incrate_user = self.incrate_username_edit.text().strip() if hasattr(self, "incrate_username_edit") else ""
-        incrate_pass = self.incrate_password_edit.text().strip() if hasattr(self, "incrate_password_edit") else ""
+        incrate_token = (
+            self.incrate_token_edit.text().strip()
+            if hasattr(self, "incrate_token_edit")
+            else ""
+        )
+        incrate_fmt = (
+            self.incrate_playlist_format.currentData() or "short"
+            if hasattr(self, "incrate_playlist_format")
+            else "short"
+        )
+        incrate_user = (
+            self.incrate_username_edit.text().strip()
+            if hasattr(self, "incrate_username_edit")
+            else ""
+        )
+        incrate_pass = (
+            self.incrate_password_edit.text().strip()
+            if hasattr(self, "incrate_password_edit")
+            else ""
+        )
         return (
             self.preflight_check.isChecked(),
             self.checkpoint_every_spin.value(),
@@ -656,10 +682,22 @@ class ConfigPanel(QWidget):
         try:
             cs = getattr(self.config_controller, "config_service", None)
             if cs is not None and hasattr(self, "incrate_token_edit"):
-                cs.set("incrate.beatport_access_token", self.incrate_token_edit.text().strip())
-                cs.set("incrate.playlist_name_format", self.incrate_playlist_format.currentData() or "short")
-                cs.set("incrate.beatport_username", self.incrate_username_edit.text().strip())
-                cs.set("incrate.beatport_password", self.incrate_password_edit.text().strip())
+                cs.set(
+                    "incrate.beatport_access_token",
+                    self.incrate_token_edit.text().strip(),
+                )
+                cs.set(
+                    "incrate.playlist_name_format",
+                    self.incrate_playlist_format.currentData() or "short",
+                )
+                cs.set(
+                    "incrate.beatport_username",
+                    self.incrate_username_edit.text().strip(),
+                )
+                cs.set(
+                    "incrate.beatport_password",
+                    self.incrate_password_edit.text().strip(),
+                )
                 try:
                     cs.save()
                 except Exception:
@@ -670,7 +708,11 @@ class ConfigPanel(QWidget):
 
     def _on_incrate_get_token(self) -> None:
         """Open get-token dialog; on Save, set token in edit and persist."""
-        current = (self.incrate_token_edit.text() or "").strip() if hasattr(self, "incrate_token_edit") else ""
+        current = (
+            (self.incrate_token_edit.text() or "").strip()
+            if hasattr(self, "incrate_token_edit")
+            else ""
+        )
         dialog = BeatportTokenDialog(parent=self, initial_token=current)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             token = dialog.get_token()
@@ -680,10 +722,16 @@ class ConfigPanel(QWidget):
 
     def _on_incrate_test_connection(self) -> None:
         """Test Beatport API token in a background thread."""
-        token = self.incrate_token_edit.text().strip() if hasattr(self, "incrate_token_edit") else ""
+        token = (
+            self.incrate_token_edit.text().strip()
+            if hasattr(self, "incrate_token_edit")
+            else ""
+        )
         if not token:
             self.incrate_test_result_label.setText("Enter a token first.")
-            self.incrate_test_result_label.setStyleSheet("color: #c62828; font-size: 12px;")
+            self.incrate_test_result_label.setStyleSheet(
+                "color: #c62828; font-size: 12px;"
+            )
             return
         self.incrate_test_btn.setEnabled(False)
         self.incrate_test_result_label.setText("Testing...")
@@ -692,7 +740,9 @@ class ConfigPanel(QWidget):
         try:
             cs = getattr(self.config_controller, "config_service", None)
             if cs is not None:
-                base_url = (cs.get("incrate.beatport_api_base_url") or base_url).strip() or base_url
+                base_url = (
+                    cs.get("incrate.beatport_api_base_url") or base_url
+                ).strip() or base_url
         except Exception:
             pass
         self._incrate_test_thread = QThread(self)
@@ -707,12 +757,16 @@ class ConfigPanel(QWidget):
         self.incrate_test_btn.setEnabled(True)
         self.incrate_test_result_label.setText(message)
         if success:
-            self.incrate_test_result_label.setStyleSheet("color: #2e7d32; font-size: 12px;")
+            self.incrate_test_result_label.setStyleSheet(
+                "color: #2e7d32; font-size: 12px;"
+            )
             # Persist current token so inCrate page refresh uses it
             self._on_incrate_changed()
             self.token_test_succeeded.emit()
         else:
-            self.incrate_test_result_label.setStyleSheet("color: #c62828; font-size: 12px;")
+            self.incrate_test_result_label.setStyleSheet(
+                "color: #c62828; font-size: 12px;"
+            )
 
     def apply_and_persist(self) -> None:
         """Explicitly persist all current settings to config (e.g. when Apply clicked)."""

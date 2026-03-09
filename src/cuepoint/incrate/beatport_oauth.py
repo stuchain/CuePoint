@@ -23,7 +23,9 @@ def get_oauth_client_credentials(
     if config_get:
         try:
             cid = cid or (config_get("incrate.beatport_client_id") or "").strip()
-            csecret = csecret or (config_get("incrate.beatport_client_secret") or "").strip()
+            csecret = (
+                csecret or (config_get("incrate.beatport_client_secret") or "").strip()
+            )
             if cid and csecret:
                 return (cid, csecret)
         except Exception:

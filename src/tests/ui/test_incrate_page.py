@@ -17,7 +17,9 @@ def mock_services():
     api.list_genres.return_value = []
     discovery = MagicMock()
     config = MagicMock()
-    config.get.side_effect = lambda k, d=None: "short" if k == "incrate.playlist_name_format" else (d if d is not None else "")
+    config.get.side_effect = lambda k, d=None: (
+        "short" if k == "incrate.playlist_name_format" else (d if d is not None else "")
+    )
     return {"inv": inv, "api": api, "discovery": discovery, "config": config}
 
 
@@ -53,4 +55,20 @@ def test_playlist_name_default(incrate_page):
     assert text or placeholder
     # Short format is like "feb24" or "jan15" - month abbrev + day
     combined = (text or placeholder).lower()
-    assert any(m in combined for m in ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"])
+    assert any(
+        m in combined
+        for m in [
+            "jan",
+            "feb",
+            "mar",
+            "apr",
+            "may",
+            "jun",
+            "jul",
+            "aug",
+            "sep",
+            "oct",
+            "nov",
+            "dec",
+        ]
+    )

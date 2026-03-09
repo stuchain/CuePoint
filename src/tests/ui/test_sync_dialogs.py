@@ -49,7 +49,9 @@ class TestSyncCompleteDialog:
 
     def test_sync_complete_dialog_with_errors(self, qapp):
         """SyncCompleteDialog can be created with error list."""
-        dlg = SyncCompleteDialog(written=1, failed=1, errors=["/path/to/file: File not found"])
+        dlg = SyncCompleteDialog(
+            written=1, failed=1, errors=["/path/to/file: File not found"]
+        )
         assert dlg is not None
         dlg.close()
 

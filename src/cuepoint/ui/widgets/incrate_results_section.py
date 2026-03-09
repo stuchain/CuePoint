@@ -79,7 +79,9 @@ class IncrateResultsSection(QWidget):
 
     def _on_export_csv(self) -> None:
         if not self._tracks:
-            QMessageBox.information(self, "Export", "No tracks to export. Run Discover first.")
+            QMessageBox.information(
+                self, "Export", "No tracks to export. Run Discover first."
+            )
             return
         path, _ = QFileDialog.getSaveFileName(
             self,
@@ -96,9 +98,14 @@ class IncrateResultsSection(QWidget):
                 for t in self._tracks:
                     title = getattr(t, "title", str(t))
                     artists = getattr(t, "artists", "")
-                    src = self._format_source_text(t) or f"{getattr(t, 'source_type', '')} {getattr(t, 'source_name', '')}".strip()
+                    src = (
+                        self._format_source_text(t)
+                        or f"{getattr(t, 'source_type', '')} {getattr(t, 'source_name', '')}".strip()
+                    )
                     w.writerow([title, artists, src])
-            QMessageBox.information(self, "Export", f"Exported {len(self._tracks)} tracks to {path}")
+            QMessageBox.information(
+                self, "Export", f"Exported {len(self._tracks)} tracks to {path}"
+            )
         except Exception as e:
             QMessageBox.warning(self, "Export failed", str(e))
 
@@ -109,8 +116,13 @@ class IncrateResultsSection(QWidget):
         for row, t in enumerate(self._tracks):
             title = getattr(t, "title", str(t))
             artists = getattr(t, "artists", "")
-            src_text = self._format_source_text(t) or f"{getattr(t, 'source_type', '')} {getattr(t, 'source_name', '')}".strip()
-            url = getattr(t, "source_url", None) or getattr(t, "beatport_url", None) or ""
+            src_text = (
+                self._format_source_text(t)
+                or f"{getattr(t, 'source_type', '')} {getattr(t, 'source_name', '')}".strip()
+            )
+            url = (
+                getattr(t, "source_url", None) or getattr(t, "beatport_url", None) or ""
+            )
             self.table.setItem(row, 0, QTableWidgetItem(title))
             self.table.setItem(row, 1, QTableWidgetItem(artists))
             src_item = QTableWidgetItem(src_text)

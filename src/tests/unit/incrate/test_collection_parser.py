@@ -36,9 +36,17 @@ class TestCollectionTracksFromXml:
 
     def test_collection_tracks_from_xml_yields_collection_track(self):
         """One track in XML yields one CollectionTrack with fields matching XML."""
-        xml = _minimal_collection_xml([
-            {"TrackID": "42", "Name": "My Track", "Artist": "My Artist", "Label": "My Label", "Remixer": "Remixer X"},
-        ])
+        xml = _minimal_collection_xml(
+            [
+                {
+                    "TrackID": "42",
+                    "Name": "My Track",
+                    "Artist": "My Artist",
+                    "Label": "My Label",
+                    "Remixer": "Remixer X",
+                },
+            ]
+        )
         with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
             f.write(xml)
             f.flush()
@@ -62,7 +70,9 @@ class TestTrackKey:
 
     def test_track_key_is_track_id(self):
         """track_key(record) returns record.track_id."""
-        ct = CollectionTrack(track_id="123", title="T", artist="A", remix_version="", label=None)
+        ct = CollectionTrack(
+            track_id="123", title="T", artist="A", remix_version="", label=None
+        )
         assert track_key(ct) == "123"
 
 
@@ -71,7 +81,9 @@ class TestToInventoryRecord:
 
     def test_to_inventory_record_has_created_updated_at(self):
         """to_inventory_record sets created_at and updated_at to now_iso."""
-        ct = CollectionTrack(track_id="1", title="T", artist="A", remix_version="", label=None)
+        ct = CollectionTrack(
+            track_id="1", title="T", artist="A", remix_version="", label=None
+        )
         now_iso = "2025-02-26T12:00:00Z"
         record = to_inventory_record(ct, now_iso)
         assert record.created_at == now_iso

@@ -54,7 +54,9 @@ class TestExportServiceValidation:
                     filepath, 1, overwrite=False
                 )
                 assert not is_valid, f"Expected invalid for {bad_name}"
-                assert "invalid" in error_msg.lower() or "character" in error_msg.lower()
+                assert (
+                    "invalid" in error_msg.lower() or "character" in error_msg.lower()
+                )
 
     def test_validate_export_path_existing_file_no_overwrite(self):
         """Test validation fails if file exists and overwrite is False."""
@@ -165,7 +167,10 @@ class TestExportServiceValidation:
                 service.export_to_csv([sample_track_result], filepath)
 
             assert exc_info.value.error_code == "EXPORT_CSV_ERROR"
-            assert "invalid" in str(exc_info.value).lower() or "character" in str(exc_info.value).lower()
+            assert (
+                "invalid" in str(exc_info.value).lower()
+                or "character" in str(exc_info.value).lower()
+            )
 
     def test_export_to_json_empty_results(self):
         """Test JSON export allows empty results (writes empty array)."""

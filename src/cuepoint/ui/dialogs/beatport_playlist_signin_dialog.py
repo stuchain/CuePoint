@@ -66,7 +66,9 @@ class BeatportPlaylistSignInDialog(QDialog):
 
         self.remember_check = QCheckBox("Remember in Settings")
         self.remember_check.setChecked(True)
-        self.remember_check.setToolTip("Save username and password in app settings for next time.")
+        self.remember_check.setToolTip(
+            "Save username and password in app settings for next time."
+        )
         layout.addWidget(self.remember_check)
 
         buttons = QDialogButtonBox(

@@ -159,6 +159,7 @@ def _read_vorbis_title_artist(path: str) -> Tuple[Optional[str], Optional[str]]:
 def _read_mutagen_auto_title_artist(path: str) -> Tuple[Optional[str], Optional[str]]:
     try:
         import mutagen
+
         audio = mutagen.File(path)
     except Exception:
         return (None, None)

@@ -3,7 +3,10 @@
 from unittest.mock import Mock
 
 from cuepoint.incrate.beatport_api_models import DiscoveredTrack
-from cuepoint.incrate.playlist_writer import PlaylistResult, create_playlist_and_add_tracks
+from cuepoint.incrate.playlist_writer import (
+    PlaylistResult,
+    create_playlist_and_add_tracks,
+)
 
 
 def _track(track_id: int = 100, title: str = "Track", artists: str = "Artist"):
@@ -38,7 +41,9 @@ class TestCreatePlaylistAndAddTracksApiSuccess:
 
 
 class TestCreatePlaylistAndAddTracksApiFailureFallsBack:
-    def test_create_playlist_and_add_tracks_api_failure_tries_browser_when_credentials_given(self):
+    def test_create_playlist_and_add_tracks_api_failure_tries_browser_when_credentials_given(
+        self,
+    ):
         """When API fails and credentials + browser callable are provided, we try the browser fallback."""
         api = Mock()
         api.create_playlist.side_effect = Exception("API error")
@@ -65,7 +70,9 @@ class TestCreatePlaylistAndAddTracksApiFailureFallsBack:
         assert result.added_count == 1
         assert result.playlist_url == "https://www.beatport.com/playlist/xyz"
 
-    def test_create_playlist_and_add_tracks_api_failure_no_browser_when_no_callable(self):
+    def test_create_playlist_and_add_tracks_api_failure_no_browser_when_no_callable(
+        self,
+    ):
         """When API fails and no browser callable, we do not call browser and return API error."""
         api = Mock()
         api.create_playlist.side_effect = Exception("API error")
@@ -98,4 +105,8 @@ class TestPlaylistResultOnApiError:
         assert result.success is False
         assert result.added_count == 0
         assert result.error is not None
-        assert "playlist" in result.error.lower() or "401" in result.error.lower() or "unauthorized" in result.error.lower()
+        assert (
+            "playlist" in result.error.lower()
+            or "401" in result.error.lower()
+            or "unauthorized" in result.error.lower()
+        )

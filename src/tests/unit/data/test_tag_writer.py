@@ -69,9 +69,7 @@ class TestWriteKeyCommentYearToFile:
             path = f.name
         try:
             ID3().save(path)
-            status, err = write_key_comment_year_to_file(
-                path, "Am", "ok", "2024"
-            )
+            status, err = write_key_comment_year_to_file(path, "Am", "ok", "2024")
             assert status == STATUS_OK, err
             assert err is None
             audio = ID3(path)
@@ -142,9 +140,7 @@ class TestWriteKeyCommentYearToFile:
     def test_directory_path_returns_error_without_raising(self):
         """Passing a directory path returns a non-OK status (WRITE_ERROR or UNSUPPORTED_FORMAT) and does not raise."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            status, msg = write_key_comment_year_to_file(
-                tmpdir, "Am", "ok", "2024"
-            )
+            status, msg = write_key_comment_year_to_file(tmpdir, "Am", "ok", "2024")
             assert status in (STATUS_WRITE_ERROR, STATUS_UNSUPPORTED_FORMAT)
             assert status != STATUS_OK
             assert msg is not None
@@ -160,7 +156,9 @@ class TestWriteKeyCommentYearToFile:
         try:
             ID3().save(path)
             with patch("mutagen.id3.ID3") as mock_id3:
-                mock_id3.return_value.save.side_effect = OSError(13, "Permission denied")
+                mock_id3.return_value.save.side_effect = OSError(
+                    13, "Permission denied"
+                )
                 status, msg = write_key_comment_year_to_file(path, "Am", "ok", "2024")
                 assert status == STATUS_WRITE_ERROR
                 assert msg is not None

@@ -47,7 +47,9 @@ def _try_api_path(
                 add_track(playlist_id, t.beatport_track_id)
                 added += 1
             except Exception as e:
-                _logger.warning("Add track %s to playlist failed: %s", t.beatport_track_id, e)
+                _logger.warning(
+                    "Add track %s to playlist failed: %s", t.beatport_track_id, e
+                )
         playlist_url = getattr(api_client, "playlist_url", None)
         url = playlist_url(playlist_id) if callable(playlist_url) else None
         return PlaylistResult(
@@ -85,7 +87,9 @@ def _try_browser_path(
     tracks: List[DiscoveredTrack],
     username: Optional[str],
     password: Optional[str],
-    browser_add_to_playlist: Optional[Callable[[str, List[DiscoveredTrack], str, str], PlaylistResult]],
+    browser_add_to_playlist: Optional[
+        Callable[[str, List[DiscoveredTrack], str, str], PlaylistResult]
+    ],
 ) -> PlaylistResult:
     """Use browser automation (manual login in window, then create playlist and add tracks)."""
     if not callable(browser_add_to_playlist):
@@ -113,7 +117,9 @@ def create_playlist_and_add_tracks(
     name: str,
     tracks: List[DiscoveredTrack],
     api_client: Optional[Any] = None,
-    browser_add_to_playlist: Optional[Callable[[str, List[DiscoveredTrack], str, str], PlaylistResult]] = None,
+    browser_add_to_playlist: Optional[
+        Callable[[str, List[DiscoveredTrack], str, str], PlaylistResult]
+    ] = None,
     beatport_username: Optional[str] = None,
     beatport_password: Optional[str] = None,
 ) -> PlaylistResult:

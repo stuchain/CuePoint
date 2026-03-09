@@ -162,7 +162,9 @@ class SyncTagsDialog(QDialog):
         comment_row.addWidget(self._comment_edit)
         layout.addLayout(comment_row)
 
-        btn = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        btn = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
         btn.accepted.connect(self._on_accept)
         btn.rejected.connect(self.reject)
         layout.addWidget(btn)
@@ -187,7 +189,11 @@ class SyncTagsDialog(QDialog):
         )
 
     def _on_accept(self) -> None:
-        key_format = "camelot" if self._camelot_rb.isChecked() else ("short" if self._short_rb.isChecked() else "normal")
+        key_format = (
+            "camelot"
+            if self._camelot_rb.isChecked()
+            else ("short" if self._short_rb.isChecked() else "normal")
+        )
         comment_text = (self._comment_edit.text() or "").strip() or "ok"
         self._options = SyncOptions(
             key_format=key_format,

@@ -143,7 +143,16 @@ def get_all_inventory(
             (limit,),
         )
     columns = [
-        "id", "track_key", "track_id", "artist", "title", "remix_version",
-        "label", "beatport_track_id", "beatport_url", "created_at", "updated_at",
+        "id",
+        "track_key",
+        "track_id",
+        "artist",
+        "title",
+        "remix_version",
+        "label",
+        "beatport_track_id",
+        "beatport_url",
+        "created_at",
+        "updated_at",
     ]
     return [dict(zip(columns, row)) for row in cursor.fetchall()]

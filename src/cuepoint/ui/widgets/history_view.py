@@ -336,7 +336,9 @@ class HistoryView(QWidget):
             "Write Key, Comment, Year and Label from this CSV to the audio files. "
             "Select the same Rekordbox XML and playlist on the main tab first."
         )
-        self.write_to_track_tags_btn.clicked.connect(self._on_write_to_track_tags_clicked)
+        self.write_to_track_tags_btn.clicked.connect(
+            self._on_write_to_track_tags_clicked
+        )
         self.write_to_track_tags_btn.setEnabled(False)  # Disabled until file is loaded
         self.write_to_track_tags_btn.setStyleSheet(
             "QPushButton#syncWithRekordboxButton { background-color: #2196F3; color: white; }"
@@ -371,7 +373,9 @@ class HistoryView(QWidget):
         # Results table (reuse same structure as ResultsView)
         self.table = QTableWidget()
         self.table.setSortingEnabled(True)
-        self.table.setAlternatingRowColors(False)  # so unmatched-row red background is visible
+        self.table.setAlternatingRowColors(
+            False
+        )  # so unmatched-row red background is visible
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
@@ -479,7 +483,9 @@ class HistoryView(QWidget):
             )
             return
         playlist_name = self._playlist_name_from_csv_path(self.current_csv_path)
-        self.write_to_track_tags_requested.emit(selected_rows, playlist_name or "Playlist")
+        self.write_to_track_tags_requested.emit(
+            selected_rows, playlist_name or "Playlist"
+        )
 
     def _on_export_all_clicked(self) -> None:
         """Export current loaded past search to CSV, JSON, and Excel in output directory."""
@@ -502,7 +508,9 @@ class HistoryView(QWidget):
             exported = []
             rows = self.filtered_rows if self.filtered_rows else self.csv_rows
             csv_path = os.path.join(output_dir, f"{safe_name}.csv")
-            self._export_to_csv(rows, csv_path, {"delimiter": ",", "include_metadata": True})
+            self._export_to_csv(
+                rows, csv_path, {"delimiter": ",", "include_metadata": True}
+            )
             exported.append(csv_path)
             json_path = os.path.join(output_dir, f"{safe_name}.json")
             self._export_to_json(rows, json_path, {})

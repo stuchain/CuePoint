@@ -430,7 +430,9 @@ class MainWindow(QMainWindow):
         self.source_playlist_file_btn = QPushButton("Playlist file")
         self.source_playlist_file_btn.setObjectName("sourceModeButton")
         self.source_playlist_file_btn.setCheckable(True)
-        self.source_playlist_file_btn.clicked.connect(self._on_source_playlist_file_clicked)
+        self.source_playlist_file_btn.clicked.connect(
+            self._on_source_playlist_file_clicked
+        )
         file_layout.addWidget(self.source_collection_btn)
         file_layout.addWidget(self.source_playlist_file_btn)
         file_layout.addStretch()
@@ -759,7 +761,9 @@ class MainWindow(QMainWindow):
         # Create config panel (but don't add to tabs - it will be in Settings dialog)
         # Keep it accessible for getting settings during processing
         self.config_panel = ConfigPanel(config_controller=self.config_controller)
-        self.config_panel.token_test_succeeded.connect(self._on_incrate_token_test_succeeded)
+        self.config_panel.token_test_succeeded.connect(
+            self._on_incrate_token_test_succeeded
+        )
 
         # History tab (Past Searches)
         history_tab_content = QWidget()
@@ -1054,8 +1058,10 @@ class MainWindow(QMainWindow):
         if not getattr(self, "_config_service", None):
             return
         last_source = (
-            self._config_service.get("product.last_source") or "collection"
-        ).strip().lower()
+            (self._config_service.get("product.last_source") or "collection")
+            .strip()
+            .lower()
+        )
         if last_source == "playlist_file":
             self.source_collection_btn.setChecked(False)
             self.source_playlist_file_btn.setChecked(True)
@@ -1065,9 +1071,7 @@ class MainWindow(QMainWindow):
             self.batch_mode_radio.setVisible(False)
             self.batch_mode_radio.setEnabled(False)
             self.playlist_stack.setCurrentIndex(1)
-            last_m3u = (
-                self._config_service.get("product.last_m3u_path") or ""
-            ).strip()
+            last_m3u = (self._config_service.get("product.last_m3u_path") or "").strip()
             if last_m3u and os.path.exists(last_m3u):
                 self.playlist_file_selector.set_file(last_m3u)
                 self.on_playlist_file_selected(last_m3u)
@@ -1136,9 +1140,7 @@ class MainWindow(QMainWindow):
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 new_token = dialog.get_token()
                 if new_token and self._config_service:
-                    self._config_service.set(
-                        "incrate.beatport_access_token", new_token
-                    )
+                    self._config_service.set("incrate.beatport_access_token", new_token)
                     try:
                         self._config_service.save()
                     except Exception:
@@ -1264,7 +1266,9 @@ class MainWindow(QMainWindow):
             return
 
         if getattr(self, "_source_mode", "collection") == "playlist_file":
-            written, failed, errors = write_tags_to_paths(single_list, sync_options=opts)
+            written, failed, errors = write_tags_to_paths(
+                single_list, sync_options=opts
+            )
         else:
             if not hasattr(self, "file_selector"):
                 return
@@ -1288,8 +1292,10 @@ class MainWindow(QMainWindow):
                 )
                 return
             if self.results_view.is_batch_mode:
-                written, failed, errors = write_key_comment_year_to_playlist_tracks_batch(
-                    xml_path, batch_dict, sync_options=opts
+                written, failed, errors = (
+                    write_key_comment_year_to_playlist_tracks_batch(
+                        xml_path, batch_dict, sync_options=opts
+                    )
                 )
             else:
                 written, failed, errors = write_key_comment_year_to_playlist_tracks(
@@ -1348,8 +1354,10 @@ class MainWindow(QMainWindow):
                         beatport_key_camelot=(
                             str(row.get("beatport_key_camelot") or "").strip() or None
                         ),
-                        beatport_year=str(row.get("beatport_year") or "").strip() or None,
-                        beatport_label=str(row.get("beatport_label") or "").strip() or None,
+                        beatport_year=str(row.get("beatport_year") or "").strip()
+                        or None,
+                        beatport_label=str(row.get("beatport_label") or "").strip()
+                        or None,
                     )
                 )
         if not results:
@@ -1410,7 +1418,8 @@ class MainWindow(QMainWindow):
                 self.statusBar().showMessage(errors[0], 5000)
             else:
                 self.statusBar().showMessage(
-                    "No matched tracks to write. Rows need Beatport key/title data.", 5000
+                    "No matched tracks to write. Rows need Beatport key/title data.",
+                    5000,
                 )
             return
         SyncCompleteDialog(written, failed, errors, self).exec()
@@ -1767,11 +1776,15 @@ class MainWindow(QMainWindow):
             self.batch_mode_radio.setEnabled(False)
             self.playlist_box.setVisible(True)
             self.playlist_stack.setCurrentIndex(1)
-            self.playlist_filename_label.setText(f"Playlist: {os.path.basename(file_path)}")
+            self.playlist_filename_label.setText(
+                f"Playlist: {os.path.basename(file_path)}"
+            )
             self.start_button_container.setVisible(True)
             self.start_button.setVisible(True)
             self._set_start_enabled(True)
-            self.statusBar().showMessage(f"Playlist file loaded: {os.path.basename(file_path)}")
+            self.statusBar().showMessage(
+                f"Playlist file loaded: {os.path.basename(file_path)}"
+            )
             if self._config_service:
                 try:
                     self._config_service.set("product.last_m3u_path", file_path)
@@ -1808,7 +1821,10 @@ class MainWindow(QMainWindow):
                 )
 
                 # Update batch processor with tree (same hierarchy as single mode)
-                if self.playlist_selector.playlists and self.playlist_selector.get_tree_roots():
+                if (
+                    self.playlist_selector.playlists
+                    and self.playlist_selector.get_tree_roots()
+                ):
                     self.batch_processor.set_playlist_tree(
                         self.playlist_selector.get_tree_roots(),
                         self.playlist_selector.playlists,
@@ -1895,8 +1911,11 @@ class MainWindow(QMainWindow):
                 valid = path and self.playlist_file_selector.validate_file(path)
                 # Show "Get started" only the first time (persisted flag)
                 already_seen = bool(
-                    self._config_service.get("product.playlist_file_get_started_seen", False)
-                    if getattr(self, "_config_service", None) else False
+                    self._config_service.get(
+                        "product.playlist_file_get_started_seen", False
+                    )
+                    if getattr(self, "_config_service", None)
+                    else False
                 )
                 show = not valid and not already_seen
                 if hasattr(self, "hint_title"):
@@ -1909,7 +1928,9 @@ class MainWindow(QMainWindow):
                     self.browse_hint_btn.setText("Select playlist file...")
                 if show and getattr(self, "_config_service", None):
                     try:
-                        self._config_service.set("product.playlist_file_get_started_seen", True)
+                        self._config_service.set(
+                            "product.playlist_file_get_started_seen", True
+                        )
                         self._config_service.save()
                     except Exception:
                         pass
@@ -1961,7 +1982,11 @@ class MainWindow(QMainWindow):
             # Single mode - enable when playlist is selected (Collection) or when M3U is set (Playlist file)
             if getattr(self, "_source_mode", "collection") == "playlist_file":
                 m3u = getattr(self, "playlist_file_selector", None)
-                if m3u and m3u.get_file_path() and m3u.validate_file(m3u.get_file_path()):
+                if (
+                    m3u
+                    and m3u.get_file_path()
+                    and m3u.validate_file(m3u.get_file_path())
+                ):
                     self._set_start_enabled(True)
                 else:
                     self._set_start_enabled(False)
@@ -1970,7 +1995,11 @@ class MainWindow(QMainWindow):
 
         # Update batch processor with playlists if file is already loaded
         playlist_selector = getattr(self, "playlist_selector", None)
-        if is_batch_mode and playlist_selector is not None and hasattr(playlist_selector, "playlists"):
+        if (
+            is_batch_mode
+            and playlist_selector is not None
+            and hasattr(playlist_selector, "playlists")
+        ):
             if playlist_selector.playlists and playlist_selector.get_tree_roots():
                 batch_processor.set_playlist_tree(
                     playlist_selector.get_tree_roots(),
@@ -4211,7 +4240,9 @@ class MainWindow(QMainWindow):
         """Start processing from the selected M3U/M3U8 file."""
         m3u_path = self.playlist_file_selector.get_file_path()
         if not m3u_path or not self.playlist_file_selector.validate_file(m3u_path):
-            self.statusBar().showMessage("Please select a valid playlist file (.m3u or .m3u8)")
+            self.statusBar().showMessage(
+                "Please select a valid playlist file (.m3u or .m3u8)"
+            )
             return
 
         import os
@@ -4283,9 +4314,7 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
 
-    def _get_checkpoint_for_run(
-        self, xml_path: str, playlist_name: str
-    ) -> tuple:
+    def _get_checkpoint_for_run(self, xml_path: str, playlist_name: str) -> tuple:
         """Return (checkpoint_service, resume_checkpoint) for Collection runs."""
         try:
             from cuepoint.services.checkpoint_service import (
@@ -4685,9 +4714,7 @@ class MainWindow(QMainWindow):
 
         # Get playlist name for file naming (M3U: use stored basename)
         if getattr(self, "_source_mode", "collection") == "playlist_file":
-            playlist_name = (
-                getattr(self, "_last_m3u_playlist_name", None) or "playlist"
-            )
+            playlist_name = getattr(self, "_last_m3u_playlist_name", None) or "playlist"
             worker = getattr(self.controller, "current_worker", None)
             if worker and getattr(worker, "warning_message", None):
                 self.statusBar().showMessage(worker.warning_message, 8000)
@@ -4711,7 +4738,8 @@ class MainWindow(QMainWindow):
             source_type = getattr(self, "_source_mode", "collection")
             m3u_path_for_save = getattr(self, "_last_m3u_path_for_save", None)
             output_files = self._auto_save_results(
-                results, playlist_name,
+                results,
+                playlist_name,
                 source_type=source_type,
                 m3u_path=m3u_path_for_save,
             )

@@ -31,7 +31,8 @@ class TestRunDiscoveryEmptyInventory:
         inv = _mk_inventory(artists=[], labels=[])
         api = _mk_api()
         result = run_discovery(
-            inv, api,
+            inv,
+            api,
             genre_ids=[],
             charts_from_date=date(2025, 1, 1),
             charts_to_date=date(2025, 1, 31),
@@ -50,14 +51,30 @@ class TestRunDiscoveryChartsBranch:
             ChartSummary(1, "Chart 1", 5, "house", None, "Artist A", "2025-02-01", 2),
         ]
         api.get_chart.return_value = ChartDetail(
-            1, "Chart 1", "Artist A", "2025-02-01",
+            1,
+            "Chart 1",
+            "Artist A",
+            "2025-02-01",
             tracks=[
-                ChartTrack(100, "Track One", "Artist A", "https://beatport.com/track/one/100", 1),
-                ChartTrack(101, "Track Two", "Artist 2", "https://beatport.com/track/two/101", 2),
+                ChartTrack(
+                    100,
+                    "Track One",
+                    "Artist A",
+                    "https://beatport.com/track/one/100",
+                    1,
+                ),
+                ChartTrack(
+                    101,
+                    "Track Two",
+                    "Artist 2",
+                    "https://beatport.com/track/two/101",
+                    2,
+                ),
             ],
         )
         result = run_discovery(
-            inv, api,
+            inv,
+            api,
             genre_ids=[5],
             charts_from_date=date(2025, 1, 1),
             charts_to_date=date(2025, 2, 28),
@@ -73,16 +90,28 @@ class TestRunDiscoveryChartsBranch:
         inv = _mk_inventory(artists=["Artist A"], labels=[])
         api = _mk_api()
         api.list_charts.return_value = [
-            ChartSummary(1, "Chart 1", 5, "house", None, "Unknown Author", "2025-02-01", 1),
+            ChartSummary(
+                1, "Chart 1", 5, "house", None, "Unknown Author", "2025-02-01", 1
+            ),
         ]
         api.get_chart.return_value = ChartDetail(
-            1, "Chart 1", "Unknown Author", "2025-02-01",
+            1,
+            "Chart 1",
+            "Unknown Author",
+            "2025-02-01",
             tracks=[
-                ChartTrack(100, "Track One", "Artist 1", "https://beatport.com/track/one/100", 1),
+                ChartTrack(
+                    100,
+                    "Track One",
+                    "Artist 1",
+                    "https://beatport.com/track/one/100",
+                    1,
+                ),
             ],
         )
         result = run_discovery(
-            inv, api,
+            inv,
+            api,
             genre_ids=[5],
             charts_from_date=date(2025, 1, 1),
             charts_to_date=date(2025, 2, 28),
@@ -99,7 +128,8 @@ class TestRunDiscoveryChartsBranch:
         ]
         api.get_chart.return_value = None
         result = run_discovery(
-            inv, api,
+            inv,
+            api,
             genre_ids=[5],
             charts_from_date=date(2025, 1, 1),
             charts_to_date=date(2025, 2, 28),
@@ -117,15 +147,30 @@ class TestRunDiscoveryNewReleasesBranch:
         api.search_label_by_name.return_value = 5
         api.get_label_releases.return_value = [
             LabelRelease(
-                10, "Release One", "2025-02-01",
+                10,
+                "Release One",
+                "2025-02-01",
                 tracks=[
-                    LabelReleaseTrack(200, "R Track A", "Art A", "https://beatport.com/track/ra/200", "2025-02-01"),
-                    LabelReleaseTrack(201, "R Track B", "Art B", "https://beatport.com/track/rb/201", "2025-02-01"),
+                    LabelReleaseTrack(
+                        200,
+                        "R Track A",
+                        "Art A",
+                        "https://beatport.com/track/ra/200",
+                        "2025-02-01",
+                    ),
+                    LabelReleaseTrack(
+                        201,
+                        "R Track B",
+                        "Art B",
+                        "https://beatport.com/track/rb/201",
+                        "2025-02-01",
+                    ),
                 ],
             ),
         ]
         result = run_discovery(
-            inv, api,
+            inv,
+            api,
             genre_ids=[],
             charts_from_date=date(2025, 1, 1),
             charts_to_date=date(2025, 1, 31),
@@ -140,7 +185,8 @@ class TestRunDiscoveryNewReleasesBranch:
         api = _mk_api()
         api.search_label_by_name.return_value = None
         result = run_discovery(
-            inv, api,
+            inv,
+            api,
             genre_ids=[],
             charts_from_date=date(2025, 1, 1),
             charts_to_date=date(2025, 1, 31),
@@ -160,17 +206,34 @@ class TestRunDiscoveryDedupe:
             ChartSummary(1, "C1", 5, "house", None, "Artist A", "2025-02-01", 1),
         ]
         api.get_chart.return_value = ChartDetail(
-            1, "C1", "Artist A", "2025-02-01",
-            tracks=[ChartTrack(99, "Same", "Art", "https://beatport.com/track/same/99", 1)],
+            1,
+            "C1",
+            "Artist A",
+            "2025-02-01",
+            tracks=[
+                ChartTrack(99, "Same", "Art", "https://beatport.com/track/same/99", 1)
+            ],
         )
         api.search_label_by_name.return_value = 1
         api.get_label_releases.return_value = [
-            LabelRelease(1, "R1", "2025-02-01", tracks=[
-                LabelReleaseTrack(99, "Same", "Art", "https://beatport.com/track/same/99", "2025-02-01"),
-            ]),
+            LabelRelease(
+                1,
+                "R1",
+                "2025-02-01",
+                tracks=[
+                    LabelReleaseTrack(
+                        99,
+                        "Same",
+                        "Art",
+                        "https://beatport.com/track/same/99",
+                        "2025-02-01",
+                    ),
+                ],
+            ),
         ]
         result = run_discovery(
-            inv, api,
+            inv,
+            api,
             genre_ids=[5],
             charts_from_date=date(2025, 1, 1),
             charts_to_date=date(2025, 2, 28),
@@ -189,10 +252,13 @@ class TestRunDiscoveryProgressCallback:
         api.list_charts.return_value = [
             ChartSummary(1, "C1", 5, "house", None, "Artist A", "2025-02-01", 0),
         ]
-        api.get_chart.return_value = ChartDetail(1, "C1", "Artist A", "2025-02-01", tracks=[])
+        api.get_chart.return_value = ChartDetail(
+            1, "C1", "Artist A", "2025-02-01", tracks=[]
+        )
         progress = Mock()
         run_discovery(
-            inv, api,
+            inv,
+            api,
             genre_ids=[5, 12],
             charts_from_date=date(2025, 1, 1),
             charts_to_date=date(2025, 2, 28),
@@ -212,7 +278,8 @@ class TestRunDiscoveryDateFilter:
         api = _mk_api()
         api.list_charts.return_value = []
         run_discovery(
-            inv, api,
+            inv,
+            api,
             genre_ids=[5],
             charts_from_date=date(2025, 1, 1),
             charts_to_date=date(2025, 1, 31),
@@ -237,15 +304,28 @@ class TestRunDiscoveryArtistLabelFilter:
             ChartSummary(2, "C2", 5, "", None, "Other", "2025-02-01", 1),
         ]
         api.get_chart.side_effect = [
-            ChartDetail(1, "C1", "Jimi Jules", "2025-02-01", [
-                ChartTrack(10, "T1", "Jimi Jules", "https://b.com/10", 1),
-            ]),
-            ChartDetail(2, "C2", "Other", "2025-02-01", [
-                ChartTrack(20, "T2", "Other", "https://b.com/20", 1),
-            ]),
+            ChartDetail(
+                1,
+                "C1",
+                "Jimi Jules",
+                "2025-02-01",
+                [
+                    ChartTrack(10, "T1", "Jimi Jules", "https://b.com/10", 1),
+                ],
+            ),
+            ChartDetail(
+                2,
+                "C2",
+                "Other",
+                "2025-02-01",
+                [
+                    ChartTrack(20, "T2", "Other", "https://b.com/20", 1),
+                ],
+            ),
         ]
         result = run_discovery(
-            inv, api,
+            inv,
+            api,
             genre_ids=[5],
             charts_from_date=date(2025, 1, 1),
             charts_to_date=date(2025, 2, 28),
@@ -260,19 +340,40 @@ class TestRunDiscoveryArtistLabelFilter:
 
     def test_run_discovery_label_filter_only_uses_selected_labels(self):
         """When library_label_names is set, only those labels are fetched for releases."""
-        inv = _mk_inventory(artists=[], labels=["Nothing But", "Kompakt", "Other Label"])
+        inv = _mk_inventory(
+            artists=[], labels=["Nothing But", "Kompakt", "Other Label"]
+        )
         api = _mk_api()
         api.search_label_by_name.side_effect = [43219, 100, 200]
         api.get_label_releases.side_effect = [
-            [LabelRelease(1, "R1", "2025-02-01", [
-                LabelReleaseTrack(1, "T1", "A1", "https://b.com/1", "2025-02-01"),
-            ])],
-            [LabelRelease(2, "R2", "2025-02-01", [
-                LabelReleaseTrack(2, "T2", "A2", "https://b.com/2", "2025-02-01"),
-            ])],
+            [
+                LabelRelease(
+                    1,
+                    "R1",
+                    "2025-02-01",
+                    [
+                        LabelReleaseTrack(
+                            1, "T1", "A1", "https://b.com/1", "2025-02-01"
+                        ),
+                    ],
+                )
+            ],
+            [
+                LabelRelease(
+                    2,
+                    "R2",
+                    "2025-02-01",
+                    [
+                        LabelReleaseTrack(
+                            2, "T2", "A2", "https://b.com/2", "2025-02-01"
+                        ),
+                    ],
+                )
+            ],
         ]
         result = run_discovery(
-            inv, api,
+            inv,
+            api,
             genre_ids=[],
             charts_from_date=date(2025, 1, 1),
             charts_to_date=date(2025, 2, 28),

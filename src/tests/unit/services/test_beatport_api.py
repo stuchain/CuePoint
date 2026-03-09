@@ -44,11 +44,27 @@ class TestBeatportApiListCharts:
         """list_charts returns only charts with published_date in range."""
         client = Mock(spec=BeatportApiClient)
         client.get.return_value = [
-            {"id": 100, "name": "Jan Chart", "genre_id": 5, "author": {"name": "DJ"}, "published_date": "2025-01-15", "track_count": 10},
-            {"id": 101, "name": "Mar Chart", "genre_id": 5, "author": {"name": "DJ"}, "published_date": "2025-03-01", "track_count": 20},
+            {
+                "id": 100,
+                "name": "Jan Chart",
+                "genre_id": 5,
+                "author": {"name": "DJ"},
+                "published_date": "2025-01-15",
+                "track_count": 10,
+            },
+            {
+                "id": 101,
+                "name": "Mar Chart",
+                "genre_id": 5,
+                "author": {"name": "DJ"},
+                "published_date": "2025-03-01",
+                "track_count": 20,
+            },
         ]
         api = BeatportApi(client, cache_service=None)
-        result = api.list_charts(genre_id=5, from_date=date(2025, 1, 1), to_date=date(2025, 1, 31))
+        result = api.list_charts(
+            genre_id=5, from_date=date(2025, 1, 1), to_date=date(2025, 1, 31)
+        )
         assert len(result) == 1
         assert result[0].published_date == "2025-01-15"
 
@@ -65,7 +81,13 @@ class TestBeatportApiGetChart:
             "author": {"id": 1, "name": "Artist Name"},
             "published_date": "2025-02-15",
             "tracks": [
-                {"id": 100, "title": "Track A", "artists": [{"name": "Artist 1"}], "url": "https://beatport.com/track/a/100", "position": 1},
+                {
+                    "id": 100,
+                    "title": "Track A",
+                    "artists": [{"name": "Artist 1"}],
+                    "url": "https://beatport.com/track/a/100",
+                    "position": 1,
+                },
             ],
         }
         api = BeatportApi(client, cache_service=None)
@@ -79,7 +101,13 @@ class TestBeatportApiGetChart:
     def test_get_chart_caches(self):
         """get_chart twice with cache: client.get called once."""
         client = Mock(spec=BeatportApiClient)
-        client.get.return_value = {"id": 1, "name": "C", "author": {"name": "X"}, "published_date": "2025-01-01", "tracks": []}
+        client.get.return_value = {
+            "id": 1,
+            "name": "C",
+            "author": {"name": "X"},
+            "published_date": "2025-01-01",
+            "tracks": [],
+        }
         cache = Mock()
         cache.get.side_effect = [None, ChartDetail(1, "C", "X", "2025-01-01", [])]
         api = BeatportApi(client, cache_service=cache)
@@ -103,7 +131,11 @@ class TestBeatportApiLabelReleases:
             # Label releases list: return the two releases
             if "/labels/" in path and "/releases" in path and "/tracks" not in path:
                 return releases_payload
-            if "/catalog/labels/" in path and "/releases" in path and "/tracks" not in path:
+            if (
+                "/catalog/labels/" in path
+                and "/releases" in path
+                and "/tracks" not in path
+            ):
                 return releases_payload
             # Per-release tracks or label tracks fallback: return empty so we don't replace with virtual release
             if "/tracks" in path:
@@ -112,7 +144,9 @@ class TestBeatportApiLabelReleases:
 
         client.get.side_effect = get_side_effect
         api = BeatportApi(client, cache_service=None)
-        result = api.get_label_releases(label_id=1, from_date=date(2025, 1, 1), to_date=date(2025, 1, 31))
+        result = api.get_label_releases(
+            label_id=1, from_date=date(2025, 1, 1), to_date=date(2025, 1, 31)
+        )
         assert len(result) == 1
         assert result[0].release_date == "2025-01-10"
 

@@ -56,6 +56,8 @@ class TestLabelRelease:
             beatport_url="https://example.com",
             release_date="2025-01-01",
         )
-        r = LabelRelease(release_id=10, title="Release", release_date="2025-01-01", tracks=[t])
+        r = LabelRelease(
+            release_id=10, title="Release", release_date="2025-01-01", tracks=[t]
+        )
         assert len(r.tracks) == 1
         assert r.tracks[0].title == "T"

@@ -77,7 +77,9 @@ def _should_drop_sentry_event(event: dict) -> bool:
     for exc in exc_values:
         exc_type = (exc.get("type") or "").strip()
         exc_value = (exc.get("value") or "").strip()
-        if "BeatportAPIError" in exc_type and ("401" in exc_value or "invalid or expired" in exc_value.lower()):
+        if "BeatportAPIError" in exc_type and (
+            "401" in exc_value or "invalid or expired" in exc_value.lower()
+        ):
             return True
     return False
 

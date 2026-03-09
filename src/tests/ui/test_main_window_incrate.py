@@ -25,6 +25,7 @@ def test_on_tool_selected_incrate_shows_incrate_page(main_window, qapp):
 
     with patch("cuepoint.utils.di_container.get_container") as m_get:
         container = MagicMock()
+
         def resolve(cls):
             if "InventoryService" in cls.__name__:
                 return mock_inventory
@@ -33,6 +34,7 @@ def test_on_tool_selected_incrate_shows_incrate_page(main_window, qapp):
             if "IncrateDiscoveryService" in cls.__name__:
                 return mock_discovery
             raise KeyError(cls)
+
         container.resolve.side_effect = resolve
         m_get.return_value = container
         main_window.on_tool_selected("incrate")
@@ -55,6 +57,7 @@ def test_back_to_tools_shows_tool_selection(main_window, qapp):
 
     with patch("cuepoint.utils.di_container.get_container") as m_get:
         container = MagicMock()
+
         def resolve(cls):
             if "InventoryService" in cls.__name__:
                 return mock_inventory
@@ -63,6 +66,7 @@ def test_back_to_tools_shows_tool_selection(main_window, qapp):
             if "IncrateDiscoveryService" in cls.__name__:
                 return mock_discovery
             raise KeyError(cls)
+
         container.resolve.side_effect = resolve
         m_get.return_value = container
         main_window.on_tool_selected("incrate")

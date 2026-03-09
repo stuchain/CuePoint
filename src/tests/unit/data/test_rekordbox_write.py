@@ -217,7 +217,9 @@ class TestWriteUpdatedCollectionXml:
             collection = root.find(".//COLLECTION")
             assert collection is not None
             tracks = collection.findall("TRACK")
-            track1 = next((t for t in tracks if (t.get("TrackID") or t.get("Key")) == "1"), None)
+            track1 = next(
+                (t for t in tracks if (t.get("TrackID") or t.get("Key")) == "1"), None
+            )
             assert track1 is not None
             assert track1.get("Key") == "Cm"
             assert track1.get("Comment") == "ok"
@@ -238,7 +240,7 @@ class TestWriteUpdatedCollectionXml:
             write_updated_collection_xml(str(minimal_xml), updates, output_path)
             raw = Path(output_path).read_text(encoding="utf-8")
             assert raw.strip().startswith("<?xml ")
-            assert "encoding=\"utf-8\"" in raw or "encoding='utf-8'" in raw
+            assert 'encoding="utf-8"' in raw or "encoding='utf-8'" in raw
         finally:
             Path(output_path).unlink(missing_ok=True)
 
@@ -328,7 +330,10 @@ class TestWriteUpdatedCollectionXml:
         ) as f:
             output_path = f.name
         try:
-            with patch("cuepoint.data.rekordbox.ET.ElementTree.write", side_effect=OSError(13, "Permission denied")):
+            with patch(
+                "cuepoint.data.rekordbox.ET.ElementTree.write",
+                side_effect=OSError(13, "Permission denied"),
+            ):
                 with pytest.raises(OSError):
                     write_updated_collection_xml(
                         str(minimal_xml), {"1": {"Comment": "ok"}}, output_path
@@ -391,8 +396,20 @@ class TestWriteKeyCommentYearToPlaylistTracks:
             xml_path = f.name
         try:
             results = [
-                TrackResult(playlist_index=1, title="A", artist="B", matched=True, beatport_key="Am"),
-                TrackResult(playlist_index=2, title="C", artist="D", matched=True, beatport_key="Cm"),
+                TrackResult(
+                    playlist_index=1,
+                    title="A",
+                    artist="B",
+                    matched=True,
+                    beatport_key="Am",
+                ),
+                TrackResult(
+                    playlist_index=2,
+                    title="C",
+                    artist="D",
+                    matched=True,
+                    beatport_key="Cm",
+                ),
             ]
             written, failed, errors = write_key_comment_year_to_playlist_tracks(
                 xml_path, "P", results
@@ -444,14 +461,28 @@ class TestWriteKeyCommentYearToPlaylistTracks:
             xml_path = f.name
         try:
             results = [
-                TrackResult(playlist_index=1, title="A", artist="B", matched=True, beatport_key="Am"),
-                TrackResult(playlist_index=2, title="C", artist="D", matched=True, beatport_key="Cm"),
+                TrackResult(
+                    playlist_index=1,
+                    title="A",
+                    artist="B",
+                    matched=True,
+                    beatport_key="Am",
+                ),
+                TrackResult(
+                    playlist_index=2,
+                    title="C",
+                    artist="D",
+                    matched=True,
+                    beatport_key="Cm",
+                ),
             ]
             # Use full path so playlist is found regardless of get_playlist_track_ids lookup order
             written, failed, errors = write_key_comment_year_to_playlist_tracks(
                 xml_path, "ROOT/P", results
             )
-            assert written == 1, f"expected written=1, got written={written}, failed={failed}, errors={errors}"
+            assert written == 1, (
+                f"expected written=1, got written={written}, failed={failed}, errors={errors}"
+            )
             assert failed == 1
             assert any("no path in XML" in e for e in errors)
         finally:
@@ -473,7 +504,9 @@ class TestWriteTagsToPaths:
         """Results with all matched=False or no file_path yield (0, 0, [])."""
         results = [
             TrackResult(playlist_index=1, title="A", artist="B", matched=False),
-            TrackResult(playlist_index=2, title="C", artist="D", matched=True, file_path=None),
+            TrackResult(
+                playlist_index=2, title="C", artist="D", matched=True, file_path=None
+            ),
         ]
         written, failed, errors = write_tags_to_paths(results)
         assert written == 0

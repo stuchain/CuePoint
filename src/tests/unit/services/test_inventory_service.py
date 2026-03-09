@@ -4,7 +4,10 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from cuepoint.services.inventory_service import InventoryService, default_inventory_db_path
+from cuepoint.services.inventory_service import (
+    InventoryService,
+    default_inventory_db_path,
+)
 
 
 def _minimal_collection_xml(tracks):
@@ -27,9 +30,11 @@ class TestInventoryServiceImport:
 
     def test_import_from_xml_upserts_and_returns_count(self, tmp_path: Path):
         """import_from_xml with enrich=False returns imported count and get_library_artists works."""
-        xml = _minimal_collection_xml([
-            {"TrackID": "1", "Name": "Track One", "Artist": "Artist A"},
-        ])
+        xml = _minimal_collection_xml(
+            [
+                {"TrackID": "1", "Name": "Track One", "Artist": "Artist A"},
+            ]
+        )
         xml_path = tmp_path / "test.xml"
         xml_path.write_text(xml, encoding="utf-8")
         db_path = str(tmp_path / "inventory.sqlite")
@@ -41,11 +46,15 @@ class TestInventoryServiceImport:
         assert "Artist A" in artists
 
     @patch("cuepoint.core.matcher.track_urls", return_value=[])
-    def test_import_from_xml_with_enrich_calls_enrichment(self, mock_track_urls: Mock, tmp_path: Path):
+    def test_import_from_xml_with_enrich_calls_enrichment(
+        self, mock_track_urls: Mock, tmp_path: Path
+    ):
         """When enrich=True and beatport_service provided, enrichment runs (inKey path; no URLs -> enriched=0)."""
-        xml = _minimal_collection_xml([
-            {"TrackID": "1", "Name": "T", "Artist": "A"},
-        ])
+        xml = _minimal_collection_xml(
+            [
+                {"TrackID": "1", "Name": "T", "Artist": "A"},
+            ]
+        )
         xml_path = tmp_path / "test.xml"
         xml_path.write_text(xml, encoding="utf-8")
         db_path = str(tmp_path / "inventory.sqlite")
@@ -61,9 +70,11 @@ class TestInventoryServiceGetters:
 
     def test_get_library_artists_after_import(self, tmp_path: Path):
         """After import, get_library_artists returns artists from XML."""
-        xml = _minimal_collection_xml([
-            {"TrackID": "1", "Name": "T1", "Artist": "Artist One"},
-        ])
+        xml = _minimal_collection_xml(
+            [
+                {"TrackID": "1", "Name": "T1", "Artist": "Artist One"},
+            ]
+        )
         xml_path = tmp_path / "test.xml"
         xml_path.write_text(xml, encoding="utf-8")
         service = InventoryService(db_path=str(tmp_path / "inv.sqlite"))
@@ -73,11 +84,13 @@ class TestInventoryServiceGetters:
 
     def test_get_inventory_stats_after_import(self, tmp_path: Path):
         """Import 3 tracks -> get_inventory_stats returns total=3."""
-        xml = _minimal_collection_xml([
-            {"TrackID": "1", "Name": "T1", "Artist": "A"},
-            {"TrackID": "2", "Name": "T2", "Artist": "A"},
-            {"TrackID": "3", "Name": "T3", "Artist": "B"},
-        ])
+        xml = _minimal_collection_xml(
+            [
+                {"TrackID": "1", "Name": "T1", "Artist": "A"},
+                {"TrackID": "2", "Name": "T2", "Artist": "A"},
+                {"TrackID": "3", "Name": "T3", "Artist": "B"},
+            ]
+        )
         xml_path = tmp_path / "test.xml"
         xml_path.write_text(xml, encoding="utf-8")
         service = InventoryService(db_path=str(tmp_path / "inv.sqlite"))
@@ -98,10 +111,17 @@ class TestListInventory:
 
     def test_list_inventory_after_import(self, tmp_path: Path):
         """After import, list_inventory returns rows with artist, title, label."""
-        xml = _minimal_collection_xml([
-            {"TrackID": "1", "Name": "Track One", "Artist": "Artist A"},
-            {"TrackID": "2", "Name": "Track Two", "Artist": "Artist B", "Label": "Defected"},
-        ])
+        xml = _minimal_collection_xml(
+            [
+                {"TrackID": "1", "Name": "Track One", "Artist": "Artist A"},
+                {
+                    "TrackID": "2",
+                    "Name": "Track Two",
+                    "Artist": "Artist B",
+                    "Label": "Defected",
+                },
+            ]
+        )
         xml_path = tmp_path / "test.xml"
         xml_path.write_text(xml, encoding="utf-8")
         service = InventoryService(db_path=str(tmp_path / "inv.sqlite"))
@@ -117,10 +137,17 @@ class TestListInventory:
 
     def test_list_inventory_search_filters(self, tmp_path: Path):
         """list_inventory with search= filters by artist, title, or label."""
-        xml = _minimal_collection_xml([
-            {"TrackID": "1", "Name": "Alpha Track", "Artist": "DJ One"},
-            {"TrackID": "2", "Name": "Beta Track", "Artist": "DJ Two", "Label": "LabelX"},
-        ])
+        xml = _minimal_collection_xml(
+            [
+                {"TrackID": "1", "Name": "Alpha Track", "Artist": "DJ One"},
+                {
+                    "TrackID": "2",
+                    "Name": "Beta Track",
+                    "Artist": "DJ Two",
+                    "Label": "LabelX",
+                },
+            ]
+        )
         xml_path = tmp_path / "test.xml"
         xml_path.write_text(xml, encoding="utf-8")
         service = InventoryService(db_path=str(tmp_path / "inv.sqlite"))

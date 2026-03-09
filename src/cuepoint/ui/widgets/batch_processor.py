@@ -257,6 +257,7 @@ class BatchProcessorWidget(QWidget):
 
     def _refresh_folder_states(self) -> None:
         """Recompute folder tri-state from leaf check states."""
+
         def count_leaves(item: QTreeWidgetItem) -> tuple:
             """Return (checked_count, total_leaf_count) for this subtree."""
             path = item.data(0, _PATH_ROLE)
@@ -276,6 +277,7 @@ class BatchProcessorWidget(QWidget):
                 else:
                     item.setCheckState(0, Qt.CheckState.PartiallyChecked)
             return (checked, total)
+
         for i in range(self.playlist_tree.topLevelItemCount()):
             count_leaves(self.playlist_tree.topLevelItem(i))
 
@@ -291,13 +293,21 @@ class BatchProcessorWidget(QWidget):
                 self._refresh_folder_states()
             else:
                 # Folder: set all descendant playlist leaves to this state
-                def set_leaves_only(parent_item: QTreeWidgetItem, checked: bool) -> None:
+                def set_leaves_only(
+                    parent_item: QTreeWidgetItem, checked: bool
+                ) -> None:
                     for i in range(parent_item.childCount()):
                         c = parent_item.child(i)
                         if c.data(0, _PATH_ROLE) is not None:
-                            c.setCheckState(0, Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
+                            c.setCheckState(
+                                0,
+                                Qt.CheckState.Checked
+                                if checked
+                                else Qt.CheckState.Unchecked,
+                            )
                         else:
                             set_leaves_only(c, checked)
+
                 set_leaves_only(item, state == Qt.CheckState.Checked)
                 self._refresh_folder_states()
         finally:
@@ -320,6 +330,7 @@ class BatchProcessorWidget(QWidget):
                 _walk(item.child(i))
             if item.childCount() > 0:
                 item.setExpanded(False)
+
         for i in range(self.playlist_tree.topLevelItemCount()):
             _walk(self.playlist_tree.topLevelItem(i))
 
@@ -364,9 +375,12 @@ class BatchProcessorWidget(QWidget):
     def select_all_playlists(self) -> None:
         def set_leaves(item: QTreeWidgetItem, checked: bool) -> None:
             if item.data(0, _PATH_ROLE) is not None:
-                item.setCheckState(0, Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
+                item.setCheckState(
+                    0, Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked
+                )
             for i in range(item.childCount()):
                 set_leaves(item.child(i), checked)
+
         for i in range(self.playlist_tree.topLevelItemCount()):
             set_leaves(self.playlist_tree.topLevelItem(i), True)
         self._ignore_item_changed = True
@@ -378,9 +392,12 @@ class BatchProcessorWidget(QWidget):
     def deselect_all_playlists(self) -> None:
         def set_leaves(item: QTreeWidgetItem, checked: bool) -> None:
             if item.data(0, _PATH_ROLE) is not None:
-                item.setCheckState(0, Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
+                item.setCheckState(
+                    0, Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked
+                )
             for i in range(item.childCount()):
                 set_leaves(item.child(i), checked)
+
         for i in range(self.playlist_tree.topLevelItemCount()):
             set_leaves(self.playlist_tree.topLevelItem(i), False)
         self._ignore_item_changed = True
@@ -395,6 +412,7 @@ class BatchProcessorWidget(QWidget):
                 item.setExpanded(True)
                 for i in range(item.childCount()):
                     _expand(item.child(i))
+
         for i in range(self.playlist_tree.topLevelItemCount()):
             _expand(self.playlist_tree.topLevelItem(i))
 
@@ -404,6 +422,7 @@ class BatchProcessorWidget(QWidget):
                 item.setExpanded(False)
                 for i in range(item.childCount()):
                     _collapse(item.child(i))
+
         for i in range(self.playlist_tree.topLevelItemCount()):
             _collapse(self.playlist_tree.topLevelItem(i))
 

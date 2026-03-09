@@ -26,7 +26,9 @@ def test_playlist_selector():
     if not os.path.exists(xml_path):
         xml_path = os.path.join("..", "collection.xml")
         if not os.path.exists(xml_path):
-            pytest.skip("collection.xml not found - run with XML to test PlaylistSelector")
+            pytest.skip(
+                "collection.xml not found - run with XML to test PlaylistSelector"
+            )
 
     # Create test window
     window = QWidget()
