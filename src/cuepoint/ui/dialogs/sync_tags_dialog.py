@@ -19,6 +19,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from cuepoint.ui.widgets.styles import Colors
+
 _SETTINGS_GROUP = "SyncWithRekordbox"
 _KEY_FORMAT = "key_format"
 _WRITE_KEY = "write_key"
@@ -101,16 +103,19 @@ class SyncTagsDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setObjectName("syncTagsDialog")
         self.setWindowTitle("Sync with Rekordbox")
         self._saved = _load_saved_options()
         self._options: SyncOptions | None = None
         self._init_ui()
+        self._apply_key_format_style()
 
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setSpacing(12)
 
         key_group = QGroupBox("Key format")
+        key_group.setObjectName("keyFormatGroup")
         key_layout = QVBoxLayout(key_group)
         self._normal_rb = QRadioButton("Normal (e.g. A Minor, G Major)")
         self._camelot_rb = QRadioButton("Camelot (e.g. 8A, 12B)")
@@ -161,6 +166,25 @@ class SyncTagsDialog(QDialog):
         btn.accepted.connect(self._on_accept)
         btn.rejected.connect(self.reject)
         layout.addWidget(btn)
+
+    def _apply_key_format_style(self) -> None:
+        """Make the selected key format radio button clearly visible (background + border)."""
+        self.setStyleSheet(
+            f"""
+            QDialog#syncTagsDialog QGroupBox#keyFormatGroup QRadioButton {{
+                padding: 6px 10px;
+                border-radius: 4px;
+                border: 1px solid transparent;
+            }}
+            QDialog#syncTagsDialog QGroupBox#keyFormatGroup QRadioButton:checked {{
+                background-color: {Colors.SURFACE};
+                color: {Colors.TEXT_PRIMARY};
+                border: 1px solid {Colors.BORDER};
+                border-left: 3px solid {Colors.PRIMARY};
+                font-weight: bold;
+            }}
+            """
+        )
 
     def _on_accept(self) -> None:
         key_format = "camelot" if self._camelot_rb.isChecked() else ("short" if self._short_rb.isChecked() else "normal")

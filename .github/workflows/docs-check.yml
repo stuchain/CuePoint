@@ -3,10 +3,10 @@ name: Docs Check
 
 on:
   push:
-    branches: ['main', 'main_deprecated']
+    branches: ['main', 'main_deprecated', 'feature']
     paths: ['docs/**', '.github/**', '.lycheeignore']
   pull_request:
-    branches: ['main', 'main_deprecated']
+    branches: ['main', 'main_deprecated', 'feature']
     paths: ['docs/**', '.github/**', '.lycheeignore']
 
 jobs:

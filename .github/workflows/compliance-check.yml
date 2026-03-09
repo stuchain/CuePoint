@@ -2,9 +2,9 @@ name: Compliance Check
 
 on:
   push:
-    branches: [main, ship_v1.0, v1]
+    branches: [main, ship_v1.0, v1, feature]
   pull_request:
-    branches: [main, ship_v1.0, v1]
+    branches: [main, ship_v1.0, v1, feature]
   schedule:
     - cron: '0 0 * * 0'  # weekly
 
