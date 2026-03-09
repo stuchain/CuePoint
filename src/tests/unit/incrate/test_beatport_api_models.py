@@ -1,7 +1,5 @@
 """Unit tests for Beatport API models."""
 
-import pytest
-
 from cuepoint.incrate.beatport_api_models import (
     ChartDetail,
     ChartTrack,

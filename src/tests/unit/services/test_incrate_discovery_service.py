@@ -3,8 +3,6 @@
 from datetime import date, timedelta
 from unittest.mock import Mock
 
-import pytest
-
 from cuepoint.incrate.beatport_api_models import DiscoveredTrack
 from cuepoint.services.incrate_discovery_service import IncrateDiscoveryService
 
@@ -46,8 +44,9 @@ class TestRunDiscoveryUsesConfigDates:
         api.list_charts.assert_not_called()
         api.get_label_releases.assert_not_called()
         service.run_discovery(genre_ids=[5])
-        api.list_charts.assert_called_once()
-        args, _ = api.list_charts.call_args
-        assert args[0] == 5
-        assert args[2] == to_date
-        assert args[1] == from_date
+        # list_charts is called for genre 5; when 0 tracks, fallback calls list_charts(0, ..., limit=200)
+        assert api.list_charts.call_count >= 1
+        first_call_args, first_call_kw = api.list_charts.call_args_list[0]
+        assert first_call_args[0] == 5
+        assert first_call_args[2] == to_date
+        assert first_call_args[1] == from_date

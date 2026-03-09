@@ -5,7 +5,7 @@ import logging
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import List, Optional
 from uuid import uuid4
 
 from cuepoint.incrate.beatport_api_models import DiscoveredTrack

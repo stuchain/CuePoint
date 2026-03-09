@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from cuepoint.ui.main_window import MainWindow
+from cuepoint.ui.widgets.incrate_page import IncratePage
 
 
 @pytest.fixture
@@ -14,8 +15,6 @@ def main_window(qapp):
 
 def test_on_tool_selected_incrate_shows_incrate_page(main_window, qapp):
     """Selecting incrate shows inCrate page when DI provides services."""
-    from cuepoint.ui.widgets.incrate_page import IncratePage
-
     mock_inventory = MagicMock()
     mock_inventory.get_inventory_stats.return_value = {"total": 0}
     mock_inventory.get_library_artists.return_value = []
@@ -46,8 +45,6 @@ def test_on_tool_selected_incrate_shows_incrate_page(main_window, qapp):
 
 def test_back_to_tools_shows_tool_selection(main_window, qapp):
     """Triggering back_to_tools from inCrate shows tool selection page."""
-    from cuepoint.ui.widgets.incrate_page import IncratePage
-
     mock_inventory = MagicMock()
     mock_inventory.get_inventory_stats.return_value = {"total": 0}
     mock_inventory.get_library_artists.return_value = []

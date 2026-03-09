@@ -4,8 +4,6 @@ import os
 import tempfile
 import xml.etree.ElementTree as ET
 
-import pytest
-
 from cuepoint.incrate.collection_parser import (
     collection_tracks_from_xml,
     to_inventory_record,

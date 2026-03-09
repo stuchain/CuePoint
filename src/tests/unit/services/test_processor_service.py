@@ -263,7 +263,7 @@ class TestProcessorService:
             xml_path = f.name
 
         try:
-            results = service.process_playlist_from_xml(xml_path, "Test Playlist")
+            results = service.process_playlist_from_xml(xml_path, "ROOT/Test Playlist")
 
             assert len(results) == 1
             assert results[0].title == "Test Track"
@@ -341,7 +341,7 @@ class TestProcessorService:
 
         try:
             with pytest.raises(ProcessingError) as exc_info:
-                service.process_playlist_from_xml(xml_path, "Nonexistent Playlist")
+                service.process_playlist_from_xml(xml_path, "ROOT/Nonexistent Playlist")
 
             assert exc_info.value.error_type == ErrorType.PLAYLIST_NOT_FOUND
             err_text = (
@@ -404,7 +404,7 @@ class TestProcessorService:
 
         try:
             results = service.process_playlist_from_xml(
-                xml_path, "Test Playlist", progress_callback=progress_callback
+                xml_path, "ROOT/Test Playlist", progress_callback=progress_callback
             )
 
             assert len(results) == 2
@@ -465,7 +465,7 @@ class TestProcessorService:
 
         try:
             results = service.process_playlist_from_xml(
-                xml_path, "Test Playlist", controller=controller
+                xml_path, "ROOT/Test Playlist", controller=controller
             )
 
             # Should return partial results due to cancellation
@@ -516,7 +516,7 @@ class TestProcessorService:
 
         try:
             with pytest.raises(ProcessingError) as exc_info:
-                service.process_playlist_from_xml(xml_path, "Empty Playlist")
+                service.process_playlist_from_xml(xml_path, "ROOT/Empty Playlist")
 
             assert exc_info.value.error_type == ErrorType.VALIDATION_ERROR
             err_text = (
@@ -1256,7 +1256,7 @@ class TestProcessorService:
 
         try:
             results = service.process_playlist_from_xml(
-                xml_path, "Test Playlist", auto_research=True
+                xml_path, "ROOT/Test Playlist", auto_research=True
             )
 
             # Should have 2 results
@@ -1322,7 +1322,7 @@ class TestProcessorService:
         try:
             # Should not raise exception, should continue processing
             results = service.process_playlist_from_xml(
-                xml_path, "Test Playlist", progress_callback=failing_callback
+                xml_path, "ROOT/Test Playlist", progress_callback=failing_callback
             )
 
             # Should still process all tracks

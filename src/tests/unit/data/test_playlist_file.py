@@ -1,6 +1,5 @@
 """Unit tests for playlist_file.parse_m3u and read_title_artist_from_file."""
 
-import tempfile
 from pathlib import Path
 from unittest.mock import patch
 

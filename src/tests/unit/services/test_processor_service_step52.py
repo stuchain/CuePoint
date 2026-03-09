@@ -107,7 +107,7 @@ class TestProcessorServiceProcessPlaylistFromXML:
             # Test
             results = service.process_playlist_from_xml(
                 xml_path=xml_path,
-                playlist_name="Test Playlist",
+                playlist_name="ROOT/Test Playlist",
             )
 
             # Verify
@@ -139,7 +139,7 @@ class TestProcessorServiceProcessPlaylistFromXML:
         with pytest.raises(ProcessingError) as exc_info:
             service.process_playlist_from_xml(
                 xml_path="/nonexistent/file.xml",
-                playlist_name="Test Playlist",
+                playlist_name="ROOT/Test Playlist",
             )
 
         # Verify (message or details indicate file not found)
@@ -257,7 +257,7 @@ class TestProcessorServiceProcessPlaylistFromXML:
             with pytest.raises(ProcessingError) as exc_info:
                 service.process_playlist_from_xml(
                     xml_path=xml_path,
-                    playlist_name="Empty Playlist",
+                    playlist_name="ROOT/Empty Playlist",
                 )
 
             # Verify (message or details indicate empty playlist)
@@ -328,7 +328,7 @@ class TestProcessorServiceProcessPlaylistFromXML:
             # Test
             results = service.process_playlist_from_xml(
                 xml_path=xml_path,
-                playlist_name="Test Playlist",
+                playlist_name="ROOT/Test Playlist",
                 progress_callback=progress_callback,
             )
 
@@ -403,7 +403,7 @@ class TestProcessorServiceProcessPlaylistFromXML:
             # Test
             results = service.process_playlist_from_xml(
                 xml_path=xml_path,
-                playlist_name="Test Playlist",
+                playlist_name="ROOT/Test Playlist",
                 progress_callback=progress_callback,
                 controller=controller,
             )
@@ -496,7 +496,7 @@ class TestProcessorServiceProcessPlaylistFromXML:
             # Test
             results = service.process_playlist_from_xml(
                 xml_path=xml_path,
-                playlist_name="Test Playlist",
+                playlist_name="ROOT/Test Playlist",
                 auto_research=True,
             )
 
@@ -551,7 +551,7 @@ class TestProcessorServiceProcessPlaylistFromXML:
 
             results = service.process_playlist_from_xml(
                 xml_path=xml_path,
-                playlist_name="Test Playlist",
+                playlist_name="ROOT/Test Playlist",
                 settings=custom_settings,
             )
 

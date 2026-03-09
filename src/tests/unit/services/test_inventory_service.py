@@ -1,12 +1,8 @@
 """Unit tests for InventoryService."""
 
-import os
-import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest.mock import Mock, patch
-
-import pytest
 
 from cuepoint.services.inventory_service import InventoryService, default_inventory_db_path
 

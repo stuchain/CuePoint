@@ -23,3 +23,8 @@ file://.*/docs/policy/telemetry\.md
 file://.*/docs/release/link
 file://.*/docs/security/Security_Incident_Response\.md
 file://.*/docs/operations/Release/
+
+# Beatport external URLs: timeout in CI or example/placeholder URLs that 404
+https://accounts.beatport.com/developer/request-api-key
+https://beatport.com/track/x/1
+https://api.beatport.com/v4

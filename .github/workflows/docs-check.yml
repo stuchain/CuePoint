@@ -18,7 +18,7 @@ jobs:
       - name: Lychee link check
         uses: lycheeverse/lychee-action@v2
         with:
-          args: 'docs/ .github/ --no-progress --root-dir ${{ github.workspace }}'
+          args: 'docs/ .github/ --no-progress --root-dir ${{ github.workspace }} --exclude-path "docs/feature/beatport-docs-export"'
           fail: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

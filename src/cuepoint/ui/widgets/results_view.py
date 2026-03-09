@@ -47,12 +47,27 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from PySide6.QtGui import QBrush, QColor, QPainter
+from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QStyledItemDelegate
 
 from cuepoint.core.matcher import _camelot_key
 from cuepoint.data.rekordbox import playlist_path_for_display
 from cuepoint.models.result import FILE_NOT_FOUND_ERROR, TrackResult
+from cuepoint.services.output_writer import (
+    preview_csv_output_paths,
+    write_csv_files,
+    write_excel_file,
+    write_json_file,
+)
+from cuepoint.ui.controllers.export_controller import ExportController
+from cuepoint.ui.controllers.results_controller import ResultsController
+from cuepoint.ui.dialogs.export_dialog import ExportDialog
+from cuepoint.ui.strings import EmptyState, ExportCopy, TooltipCopy
+from cuepoint.ui.widgets.candidate_dialog import CandidateDialog
+from cuepoint.ui.widgets.shortcut_manager import ShortcutContext, ShortcutManager
+from cuepoint.ui.widgets.styles import Colors, is_macos
+from cuepoint.utils.run_context import get_current_run_id
+from cuepoint.utils.utils import with_timestamp
 
 # Column indices: Write=0, Index=1, then Title, Artists, Beatport Title, etc. through BPM=13
 COL_WRITE = 0
@@ -89,22 +104,6 @@ class UnmatchedRowDelegate(QStyledItemDelegate):
             painter.fillRect(option.rect, self._bg_color)
         super().paint(painter, option, index)
 
-
-from cuepoint.services.output_writer import (
-    preview_csv_output_paths,
-    write_csv_files,
-    write_excel_file,
-    write_json_file,
-)
-from cuepoint.ui.controllers.export_controller import ExportController
-from cuepoint.ui.controllers.results_controller import ResultsController
-from cuepoint.ui.dialogs.export_dialog import ExportDialog
-from cuepoint.ui.strings import EmptyState, ExportCopy, TooltipCopy
-from cuepoint.ui.widgets.candidate_dialog import CandidateDialog
-from cuepoint.ui.widgets.shortcut_manager import ShortcutContext, ShortcutManager
-from cuepoint.ui.widgets.styles import Colors, is_macos
-from cuepoint.utils.run_context import get_current_run_id
-from cuepoint.utils.utils import with_timestamp
 
 try:
     from performance import performance_collector

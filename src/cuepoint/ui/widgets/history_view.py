@@ -516,7 +516,7 @@ class HistoryView(QWidget):
             QMessageBox.information(
                 self,
                 "Export All",
-                f"Exported to:\n" + "\n".join(exported),
+                "Exported to:\n" + "\n".join(exported),
             )
         except Exception as e:
             QMessageBox.critical(

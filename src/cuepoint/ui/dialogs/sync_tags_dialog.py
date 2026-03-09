@@ -6,7 +6,7 @@
 from dataclasses import dataclass
 from typing import Any, Dict
 
-from PySide6.QtCore import QSettings, Qt
+from PySide6.QtCore import QSettings
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,

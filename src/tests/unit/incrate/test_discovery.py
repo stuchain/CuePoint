@@ -1,15 +1,12 @@
 """Unit tests for discovery.run_discovery (Phase 3)."""
 
-from datetime import date, timedelta
+from datetime import date
 from unittest.mock import Mock
-
-import pytest
 
 from cuepoint.incrate.beatport_api_models import (
     ChartDetail,
     ChartSummary,
     ChartTrack,
-    DiscoveredTrack,
     LabelRelease,
     LabelReleaseTrack,
 )
@@ -223,7 +220,7 @@ class TestRunDiscoveryDateFilter:
         )
         # Genre charts first, then fallback (genre_id=0) when 0 tracks
         assert api.list_charts.call_count >= 1
-        args, kwargs = api.list_charts.call_args_list[0][0], api.list_charts.call_args_list[0][1]
+        args, _ = api.list_charts.call_args_list[0]
         assert args[1] == date(2025, 1, 1)
         assert args[2] == date(2025, 1, 31)
 

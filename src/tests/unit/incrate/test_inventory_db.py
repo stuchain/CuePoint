@@ -1,6 +1,5 @@
 """Unit tests for incrate inventory_db."""
 
-import sqlite3
 from pathlib import Path
 
 import pytest

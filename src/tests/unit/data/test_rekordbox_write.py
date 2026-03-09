@@ -447,10 +447,11 @@ class TestWriteKeyCommentYearToPlaylistTracks:
                 TrackResult(playlist_index=1, title="A", artist="B", matched=True, beatport_key="Am"),
                 TrackResult(playlist_index=2, title="C", artist="D", matched=True, beatport_key="Cm"),
             ]
+            # Use full path so playlist is found regardless of get_playlist_track_ids lookup order
             written, failed, errors = write_key_comment_year_to_playlist_tracks(
-                xml_path, "P", results
+                xml_path, "ROOT/P", results
             )
-            assert written == 1
+            assert written == 1, f"expected written=1, got written={written}, failed={failed}, errors={errors}"
             assert failed == 1
             assert any("no path in XML" in e for e in errors)
         finally:

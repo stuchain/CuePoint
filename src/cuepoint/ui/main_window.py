@@ -25,7 +25,6 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 from datetime import datetime
-from pathlib import Path
 
 # For update system (Step 5)
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
@@ -66,7 +65,6 @@ from PySide6.QtWidgets import (
 )
 
 from cuepoint.data import (
-    build_rekordbox_updates,
     get_track_locations,
     playlist_path_for_display,
     write_key_comment_year_to_playlist_tracks,

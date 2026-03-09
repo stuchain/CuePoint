@@ -62,7 +62,7 @@ class TestWriteKeyCommentYearToFile:
     def test_mp3_writes_key_comment_year(self):
         """Write to MP3 then reload with mutagen; Key, Comment, Year match."""
         try:
-            from mutagen.id3 import ID3, COMM, TKEY, TYER
+            from mutagen.id3 import ID3
         except ImportError:
             pytest.skip("mutagen not installed")
         with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
@@ -89,7 +89,7 @@ class TestWriteKeyCommentYearToFile:
     def test_mp3_year_normalized_from_float_string(self):
         """Year written as '2023.0' is stored as 4-digit '2023' in file."""
         try:
-            from mutagen.id3 import ID3, TYER
+            from mutagen.id3 import ID3
         except ImportError:
             pytest.skip("mutagen not installed")
         with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
@@ -111,7 +111,7 @@ class TestWriteKeyCommentYearToFile:
     def test_mp3_writes_label_when_provided(self):
         """Write with label; TPUB (publisher/label) is set on MP3."""
         try:
-            from mutagen.id3 import ID3, TPUB
+            from mutagen.id3 import ID3
         except ImportError:
             pytest.skip("mutagen not installed")
         with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:

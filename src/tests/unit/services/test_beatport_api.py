@@ -3,9 +3,7 @@
 from datetime import date
 from unittest.mock import Mock
 
-import pytest
-
-from cuepoint.incrate.beatport_api_models import ChartDetail, ChartTrack, Genre
+from cuepoint.incrate.beatport_api_models import ChartDetail, Genre
 from cuepoint.services.beatport_api import BeatportApi
 from cuepoint.services.beatport_api_client import BeatportApiClient
 
@@ -103,9 +101,9 @@ class TestBeatportApiLabelReleases:
 
         def get_side_effect(path, params=None):
             # Label releases list: return the two releases
-            if f"/labels/" in path and "/releases" in path and "/tracks" not in path:
+            if "/labels/" in path and "/releases" in path and "/tracks" not in path:
                 return releases_payload
-            if f"/catalog/labels/" in path and "/releases" in path and "/tracks" not in path:
+            if "/catalog/labels/" in path and "/releases" in path and "/tracks" not in path:
                 return releases_payload
             # Per-release tracks or label tracks fallback: return empty so we don't replace with virtual release
             if "/tracks" in path:

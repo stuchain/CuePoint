@@ -6,11 +6,6 @@ import re
 from datetime import date
 from typing import Any, Dict, List, Optional
 
-# Web track URL format: https://www.beatport.com/track/{slug}/{id} or /track/t/{id}
-BEATPORT_WEB_TRACK_BASE = "https://www.beatport.com/track"
-# API returns URLs like https://api.beatport.com/v4/catalog/tracks/23332107/
-_API_TRACK_ID_RE = re.compile(r"/catalog/tracks/(\d+)/?$")
-
 from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError
 from cuepoint.incrate.beatport_api_models import (
     ChartDetail,
@@ -21,6 +16,11 @@ from cuepoint.incrate.beatport_api_models import (
     LabelReleaseTrack,
 )
 from cuepoint.services.beatport_api_client import BeatportApiClient
+
+# Web track URL format: https://www.beatport.com/track/{slug}/{id} or /track/t/{id}
+BEATPORT_WEB_TRACK_BASE = "https://www.beatport.com/track"
+# API returns URLs like https://api.beatport.com/v4/catalog/tracks/23332107/
+_API_TRACK_ID_RE = re.compile(r"/catalog/tracks/(\d+)/?$")
 
 _logger = logging.getLogger(__name__)
 

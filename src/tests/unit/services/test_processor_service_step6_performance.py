@@ -161,7 +161,7 @@ class TestProcessorPerformanceCollector:
             mock_net.is_online.return_value = True
             results = service.process_playlist_from_xml(
                 str(minimal_xml),
-                "Test",
+                "ROOT/Test",
                 performance_collector=collector,
             )
 

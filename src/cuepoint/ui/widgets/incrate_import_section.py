@@ -1,8 +1,8 @@
 """inCrate Import section: XML path, Browse, Import button, progress, stats (Phase 5)."""
 
-from typing import Any, Optional
+from typing import Optional
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QFileDialog,
     QGroupBox,

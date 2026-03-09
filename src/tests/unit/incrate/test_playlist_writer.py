@@ -2,8 +2,6 @@
 
 from unittest.mock import Mock
 
-import pytest
-
 from cuepoint.incrate.beatport_api_models import DiscoveredTrack
 from cuepoint.incrate.playlist_writer import PlaylistResult, create_playlist_and_add_tracks
 

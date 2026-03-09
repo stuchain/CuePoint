@@ -2,8 +2,6 @@
 
 from datetime import date
 
-import pytest
-
 from cuepoint.incrate.playlist_name import default_playlist_name
 
 
