@@ -34,14 +34,16 @@ MAIN_CSV_HEADERS_BASE = [
     "search_query_index",
     "search_stop_query_index",
     "candidate_index",
+    "file_path",
 ]
 
-MAIN_CSV_HEADERS_WITH_METADATA = MAIN_CSV_HEADERS_BASE + [
+MAIN_CSV_HEADERS_WITH_METADATA = MAIN_CSV_HEADERS_BASE[:-1] + [
     "beatport_label",
     "beatport_genres",
     "beatport_release",
     "beatport_release_date",
     "beatport_track_id",
+    "file_path",
 ]
 
 
@@ -156,3 +158,39 @@ def test_write_csv_files_main_schema(tmp_path: Path) -> None:
     fieldnames, rows = read_csv_skip_comments(str(main_path))
     assert fieldnames == MAIN_CSV_HEADERS_WITH_METADATA
     assert len(rows) == 3
+
+
+@pytest.mark.unit
+def test_file_path_round_trip_for_m3u_past_search(tmp_path: Path) -> None:
+    """CSV export includes file_path; round-trip via TrackResult.from_dict preserves it (M3U sync-from-history)."""
+    results = [
+        TrackResult(
+            playlist_index=1,
+            title="Track A",
+            artist="Artist A",
+            matched=True,
+            beatport_key="Am",
+            file_path="/music/track_a.mp3",
+        ),
+        TrackResult(
+            playlist_index=2,
+            title="Track B",
+            artist="Artist B",
+            matched=False,
+            file_path="/music/track_b.mp3",
+        ),
+    ]
+    write_main_csv(
+        results,
+        "m3u_style.csv",
+        output_dir=str(tmp_path),
+        include_metadata=True,
+    )
+    path = tmp_path / "m3u_style.csv"
+    assert path.exists()
+    fieldnames, rows = read_csv_skip_comments(str(path))
+    assert "file_path" in fieldnames
+    assert len(rows) == 2
+    for i, row in enumerate(rows):
+        restored = TrackResult.from_dict(row)
+        assert restored.file_path == results[i].file_path

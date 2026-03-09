@@ -1122,7 +1122,11 @@ def best_beatport_match(
             )
 
         with ThreadPoolExecutor(max_workers=SETTINGS["CANDIDATE_WORKERS"]) as ex:
-            futures = [ex.submit(fetch, u) for u in to_fetch]
+            try:
+                futures = [ex.submit(fetch, u) for u in to_fetch]
+            except RuntimeError:
+                # Interpreter shutting down (e.g. "cannot schedule new futures after interpreter shutdown")
+                return (None, [], queries_audit, last_q_processed)
 
             if SETTINGS.get("RUN_ALL_QUERIES"):
                 for fut in as_completed(futures) if futures else []:

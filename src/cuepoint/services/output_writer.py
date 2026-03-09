@@ -469,6 +469,8 @@ def _main_csv_fieldnames(include_metadata: bool) -> List[str]:
                 "beatport_track_id",
             ]
         )
+    # Optional: set when source is M3U/M3U8 so sync-from-history can use path-based write
+    fieldnames.append("file_path")
     return fieldnames
 
 

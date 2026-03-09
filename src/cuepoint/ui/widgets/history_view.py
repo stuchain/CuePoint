@@ -445,8 +445,15 @@ class HistoryView(QWidget):
             return ""
         basename = os.path.basename(file_path)
         if " (" in basename and ")" in basename:
-            return basename[: basename.rfind(" (")].strip()
-        return basename.replace(".csv", "").replace(".CSV", "").strip()
+            name = basename[: basename.rfind(" (")].strip()
+        else:
+            name = basename.replace(".csv", "").replace(".CSV", "").strip()
+        # Strip M3U extension so "Untitled Playlist.m3u8" -> "Untitled Playlist"
+        if name.endswith(".m3u8"):
+            name = name[:-5].strip()
+        elif name.endswith(".m3u"):
+            name = name[:-4].strip()
+        return name
 
     def _on_write_to_track_tags_clicked(self) -> None:
         """Emit write_to_track_tags_requested with selected (Write-checked) rows and playlist name."""

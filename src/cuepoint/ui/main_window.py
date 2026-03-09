@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     pass
 
 from PySide6.QtCore import QSettings, Qt, QSize, QTimer
+from shiboken6 import isValid as _is_valid_widget
 from PySide6.QtGui import (
     QAction,
     QDragEnterEvent,
@@ -1038,10 +1039,17 @@ class MainWindow(QMainWindow):
 
     def show_tool_selection_page(self) -> None:
         """Show the tool selection page"""
-        if self.tool_selection_page and hasattr(self, "_stack"):
-            self._stack.setCurrentWidget(self.tool_selection_page)
-            self.current_page = "tool_selection"
-            self.menuBar().show()
+        if not hasattr(self, "_stack") or self._stack is None:
+            return
+        page = getattr(self, "tool_selection_page", None)
+        if page is None or not _is_valid_widget(page):
+            self.tool_selection_page = ToolSelectionPage()
+            self.tool_selection_page.tool_selected.connect(self.on_tool_selected)
+            self._stack.addWidget(self.tool_selection_page)
+            page = self.tool_selection_page
+        self._stack.setCurrentWidget(page)
+        self.current_page = "tool_selection"
+        self.menuBar().show()
 
     def _restore_source_from_config(self) -> None:
         """Restore last source (Collection vs Playlist file) and path from config."""
@@ -1383,12 +1391,21 @@ class MainWindow(QMainWindow):
                     6000,
                 )
                 return
-            written, failed, errors = write_key_comment_year_to_playlist_tracks(
-                xml_path,
-                playlist_name or "Playlist",
-                results,
-                sync_options=opts,
-            )
+            try:
+                written, failed, errors = write_key_comment_year_to_playlist_tracks(
+                    xml_path,
+                    playlist_name or "Playlist",
+                    results,
+                    sync_options=opts,
+                )
+            except ValueError as e:
+                QMessageBox.warning(
+                    self,
+                    "Sync with Rekordbox",
+                    f"Playlist not found in this XML: {e}\n\n"
+                    "Make sure the Rekordbox export includes this playlist.",
+                )
+                return
 
         if written == 0 and failed == 0:
             if errors:
@@ -1914,23 +1931,29 @@ class MainWindow(QMainWindow):
 
     def on_mode_changed(self) -> None:
         """Handle processing mode change between single and batch modes."""
+        playlist_box = getattr(self, "playlist_box", None)
+        start_button = getattr(self, "start_button", None)
+        batch_processor = getattr(self, "batch_processor", None)
+        if playlist_box is None or start_button is None or batch_processor is None:
+            return
+
         is_batch_mode = self.batch_mode_radio.isChecked()
         is_single_mode = self.single_mode_radio.isChecked()
 
         if not is_batch_mode and not is_single_mode:
-            self.playlist_box.setVisible(False)
-            self.start_button.setVisible(False)
-            self.batch_processor.setVisible(False)
+            playlist_box.setVisible(False)
+            start_button.setVisible(False)
+            batch_processor.setVisible(False)
             return
 
         if is_single_mode:
-            self.playlist_box.setVisible(True)
-            self.start_button.setVisible(True)
-            self.batch_processor.setVisible(False)
+            playlist_box.setVisible(True)
+            start_button.setVisible(True)
+            batch_processor.setVisible(False)
         else:
-            self.playlist_box.setVisible(False)
-            self.start_button.setVisible(False)
-            self.batch_processor.setVisible(True)
+            playlist_box.setVisible(False)
+            start_button.setVisible(False)
+            batch_processor.setVisible(True)
 
         # ENABLE START BUTTON if mode is selected (but it will be enabled/disabled based on playlist selection)
         if is_batch_mode:
@@ -1948,14 +1971,15 @@ class MainWindow(QMainWindow):
                 self._set_start_enabled(False)  # Disable until playlist is selected
 
         # Update batch processor with playlists if file is already loaded
-        if is_batch_mode and hasattr(self.playlist_selector, "playlists"):
-            if self.playlist_selector.playlists and self.playlist_selector.get_tree_roots():
-                self.batch_processor.set_playlist_tree(
-                    self.playlist_selector.get_tree_roots(),
-                    self.playlist_selector.playlists,
+        playlist_selector = getattr(self, "playlist_selector", None)
+        if is_batch_mode and playlist_selector is not None and hasattr(playlist_selector, "playlists"):
+            if playlist_selector.playlists and playlist_selector.get_tree_roots():
+                batch_processor.set_playlist_tree(
+                    playlist_selector.get_tree_roots(),
+                    playlist_selector.playlists,
                 )
             else:
-                self.batch_processor.set_playlists([])
+                batch_processor.set_playlists([])
 
         # Update status bar
         mode_text = "Multiple Playlists" if is_batch_mode else "Single Playlist"

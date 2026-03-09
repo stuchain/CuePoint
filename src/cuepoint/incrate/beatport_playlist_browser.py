@@ -113,7 +113,7 @@ def add_to_playlist_via_browser(
             error=None,
         )
     try:
-        from playwright.sync_api import sync_playwright
+        from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
     except ImportError:
         return PlaylistResult(
             success=False,
@@ -209,10 +209,18 @@ def add_to_playlist_via_browser(
                 name_sel = 'input[placeholder*="name" i], input[name="name"], input[id*="name" i]'
                 name_loc = page.locator(name_sel)
                 if name_loc.count() == 0:
-                    # Maybe we're on a "Create playlist" button page first
+                    # Maybe we're on a "Create playlist" button page first (login modal may be blocking)
                     create_btn = page.get_by_role("link", name=re.compile(r"create\s*playlist", re.I))
                     if create_btn.count() > 0:
-                        create_btn.first.click()
+                        # Wait for any dialog/overlay to close so the link is clickable
+                        try:
+                            page.locator('[role="dialog"]').wait_for(state="hidden", timeout=8000)
+                        except Exception:
+                            pass
+                        try:
+                            create_btn.first.click(timeout=15000)
+                        except Exception:
+                            create_btn.first.click(force=True, timeout=5000)
                         page.wait_for_timeout(1500)
                     name_loc = page.locator(name_sel)
                 if name_loc.count() == 0:
@@ -314,12 +322,31 @@ def add_to_playlist_via_browser(
                     browser.close()
                 except Exception:
                     pass
+    except PlaywrightTimeoutError as e:
+        _logger.warning("Beatport browser: operation timed out: %s", e)
+        return PlaylistResult(
+            success=False,
+            playlist_url=None,
+            playlist_id=None,
+            added_count=0,
+            error="Operation timed out. A modal or overlay may be blocking the page—close it and try again.",
+        )
     except Exception as e:
+        err_msg = str(e) or "Browser automation failed"
+        if "Target page, context or browser has been closed" in err_msg or "TargetClosedError" in type(e).__name__:
+            _logger.warning("Beatport browser: page/context closed: %s", e)
+            return PlaylistResult(
+                success=False,
+                playlist_url=None,
+                playlist_id=None,
+                added_count=0,
+                error="Browser or tab was closed before the operation completed.",
+            )
         _logger.exception("Beatport browser playlist failed")
         return PlaylistResult(
             success=False,
             playlist_url=None,
             playlist_id=None,
             added_count=0,
-            error=str(e) or "Browser automation failed",
+            error=err_msg,
         )

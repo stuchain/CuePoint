@@ -40,6 +40,48 @@ def _consent_allowed() -> bool:
         return False
 
 
+# Substrings that indicate expected/noisy log messages to avoid sending to Sentry
+_SENTRY_DROP_MESSAGE_SUBSTRINGS = (
+    "Beatport API 401",
+    "BEATPORT_API_AUTH",
+    "No match found",
+    "files found",  # with "[m3u]" in same message
+    "Add to playlist button not found",
+    "no track URL, skipping",
+    "invalid or expired token",
+)
+
+
+def _should_drop_sentry_event(event: dict) -> bool:
+    """Return True if this event should be dropped to reduce noise."""
+    # Log events: message in "message" (string) or logentry.message
+    msg = event.get("message")
+    if isinstance(msg, dict):
+        msg = msg.get("formatted") or msg.get("message") or ""
+    logentry = event.get("logentry") or {}
+    if isinstance(logentry, dict) and not msg:
+        msg = logentry.get("message") or ""
+    if msg is None:
+        msg = ""
+    if not isinstance(msg, str):
+        msg = str(msg)
+    if msg:
+        msg_lower = msg.lower()
+        if "[m3u]" in msg and "files found" in msg_lower:
+            return True
+        for sub in _SENTRY_DROP_MESSAGE_SUBSTRINGS:
+            if sub.lower() in msg_lower:
+                return True
+    # Exception events: drop BeatportAPIError 401
+    exc_values = (event.get("exception") or {}).get("values") or []
+    for exc in exc_values:
+        exc_type = (exc.get("type") or "").strip()
+        exc_value = (exc.get("value") or "").strip()
+        if "BeatportAPIError" in exc_type and ("401" in exc_value or "invalid or expired" in exc_value.lower()):
+            return True
+    return False
+
+
 def _get_analytic_context() -> tuple[dict, dict]:
     """Return (tags, extra) for full analytic context on every Sentry event."""
     tags = {
@@ -106,6 +148,8 @@ def init_sentry_early() -> bool:
 
     def before_send(event, hint):
         if not _consent_allowed():
+            return None
+        if _should_drop_sentry_event(event):
             return None
         tags, extra = _get_analytic_context()
         if event.get("tags") is None:
@@ -181,6 +225,8 @@ def init_sentry(
     )
 
     def before_send_with_context(event, hint):
+        if _should_drop_sentry_event(event):
+            return None
         tags, extra = _get_analytic_context()
         if event.get("tags") is None:
             event["tags"] = {}

@@ -102,7 +102,7 @@ from cuepoint.ui.dialogs.export_dialog import ExportDialog
 from cuepoint.ui.strings import EmptyState, ExportCopy, TooltipCopy
 from cuepoint.ui.widgets.candidate_dialog import CandidateDialog
 from cuepoint.ui.widgets.shortcut_manager import ShortcutContext, ShortcutManager
-from cuepoint.ui.widgets.styles import is_macos
+from cuepoint.ui.widgets.styles import Colors, is_macos
 from cuepoint.utils.run_context import get_current_run_id
 from cuepoint.utils.utils import with_timestamp
 
@@ -598,6 +598,28 @@ class ResultsView(QWidget):
 
         # Batch mode - Tab widget for multiple playlists (hidden in single mode)
         self.batch_tabs = QTabWidget()
+        self.batch_tabs.setObjectName("batchPlaylistTabs")
+        self.batch_tabs.setStyleSheet(
+            f"""
+            QTabWidget#batchPlaylistTabs QTabBar::tab {{
+                background-color: {Colors.SURFACE};
+                color: {Colors.TEXT_SECONDARY};
+                border: 1px solid {Colors.BORDER};
+                border-bottom: none;
+                padding: 8px 16px;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+                margin-right: 2px;
+            }}
+            QTabWidget#batchPlaylistTabs QTabBar::tab:selected {{
+                background-color: {Colors.BACKGROUND};
+                color: {Colors.TEXT_PRIMARY};
+                border: 1px solid {Colors.BORDER};
+                border-bottom: 2px solid {Colors.PRIMARY};
+                margin-bottom: -1px;
+            }}
+            """
+        )
         self.batch_tabs.setVisible(False)
 
         # Create bottom widget for batch mode
