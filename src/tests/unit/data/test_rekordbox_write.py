@@ -9,6 +9,7 @@ import pytest
 
 from cuepoint.data.rekordbox import (
     MAX_XML_SIZE_BYTES,
+    _rekordbox_classic_key,
     build_rekordbox_updates,
     build_rekordbox_updates_batch,
     get_playlist_track_ids,
@@ -24,6 +25,43 @@ from cuepoint.models.result import TrackResult
 
 def _fixtures_dir() -> Path:
     return Path(__file__).resolve().parent.parent.parent / "fixtures" / "rekordbox"
+
+
+class TestRekordboxClassicKey:
+    """Direct unit tests for _rekordbox_classic_key (Rekordbox Classic key format)."""
+
+    def test_minor_keys_add_m_suffix(self):
+        """Minor keys become note + 'm': Am, C#m, Dbm."""
+        assert _rekordbox_classic_key("A Minor") == "Am"
+        assert _rekordbox_classic_key("E Minor") == "Em"
+        assert _rekordbox_classic_key("C# Minor") == "C#m"
+        assert _rekordbox_classic_key("Db Minor") == "Dbm"
+        assert _rekordbox_classic_key("G# Minor") == "G#m"
+        assert _rekordbox_classic_key("Bb Minor") == "Bbm"
+
+    def test_major_keys_note_only(self):
+        """Major keys are note only: G, C, F#, Db."""
+        assert _rekordbox_classic_key("G Major") == "G"
+        assert _rekordbox_classic_key("C Major") == "C"
+        assert _rekordbox_classic_key("F# Major") == "F#"
+        assert _rekordbox_classic_key("Db Major") == "Db"
+        assert _rekordbox_classic_key("Bb Major") == "Bb"
+        assert _rekordbox_classic_key("E Major") == "E"
+
+    def test_empty_and_none_return_empty(self):
+        assert _rekordbox_classic_key("") == ""
+        assert _rekordbox_classic_key(None) == ""
+
+    def test_invalid_key_returns_empty(self):
+        assert _rekordbox_classic_key("Am") == ""  # already short, no Major/Minor
+        assert _rekordbox_classic_key("8A") == ""
+        assert _rekordbox_classic_key("invalid") == ""
+
+    def test_whitespace_and_lowercase_quality_accepted(self):
+        """Leading/trailing space and lowercase 'major'/'minor' are accepted; note letter must be A-G."""
+        assert _rekordbox_classic_key("  A Minor  ") == "Am"
+        assert _rekordbox_classic_key("G major") == "G"
+        assert _rekordbox_classic_key("C# minor") == "C#m"
 
 
 class TestGetPlaylistTrackIds:
@@ -113,6 +151,25 @@ class TestBuildRekordboxUpdates:
         assert updates["1"]["Key"] == "Am"
         assert updates["1"]["BPM"] == "128"
 
+    def test_default_normal_format_converts_full_key_to_classic(self):
+        """With no sync_options, key_fmt is 'normal'; full keys become Rekordbox Classic."""
+        small_xml = _fixtures_dir() / "small.xml"
+        if not small_xml.exists():
+            pytest.skip("fixtures/rekordbox/small.xml not found")
+        results = [
+            TrackResult(
+                playlist_index=1,
+                title="Track 1",
+                artist="Artist 1",
+                matched=True,
+                beatport_key="A Minor",
+                beatport_bpm="128",
+            ),
+        ]
+        updates = build_rekordbox_updates(str(small_xml), "My Playlist", results)
+        assert "1" in updates
+        assert updates["1"]["Key"] == "Am"
+
     def test_unmatched_track_not_in_updates(self):
         """Unmatched track does not appear in updates."""
         small_xml = _fixtures_dir() / "small.xml"
@@ -128,6 +185,164 @@ class TestBuildRekordboxUpdates:
         ]
         updates = build_rekordbox_updates(str(small_xml), "My Playlist", results)
         assert len(updates) == 0
+
+    def test_normal_key_format_writes_rekordbox_classic_notation(self):
+        """With key_format=normal, Key is Rekordbox Classic: minor -> Am, major -> G (note only)."""
+        small_xml = _fixtures_dir() / "small.xml"
+        if not small_xml.exists():
+            pytest.skip("fixtures/rekordbox/small.xml not found")
+        results = [
+            TrackResult(
+                playlist_index=1,
+                title="Track 1",
+                artist="Artist 1",
+                matched=True,
+                beatport_key="A Minor",
+                beatport_bpm="128",
+            ),
+            TrackResult(
+                playlist_index=2,
+                title="Track 2",
+                artist="Artist 2",
+                matched=True,
+                beatport_key="G Major",
+                beatport_bpm="124",
+            ),
+            TrackResult(
+                playlist_index=3,
+                title="Track 3",
+                artist="Artist 3",
+                matched=True,
+                beatport_key="C# Minor",
+                beatport_bpm="120",
+            ),
+        ]
+        updates = build_rekordbox_updates(
+            str(small_xml),
+            "My Playlist",
+            results,
+            sync_options={"key_format": "normal", "write_key": True},
+        )
+        assert updates["1"]["Key"] == "Am"
+        assert updates["2"]["Key"] == "G"
+        assert updates["3"]["Key"] == "C#m"
+
+    def test_normal_format_converts_camelot_input_to_classic(self):
+        """When key_format=normal and beatport_key is Camelot (e.g. 8A), output is Rekordbox Classic (Am)."""
+        small_xml = _fixtures_dir() / "small.xml"
+        if not small_xml.exists():
+            pytest.skip("fixtures/rekordbox/small.xml not found")
+        results = [
+            TrackResult(
+                playlist_index=1,
+                title="Track 1",
+                artist="Artist 1",
+                matched=True,
+                beatport_key="8A",  # Camelot stored in key field
+                beatport_bpm="128",
+            ),
+            TrackResult(
+                playlist_index=2,
+                title="Track 2",
+                artist="Artist 2",
+                matched=True,
+                beatport_key="9B",
+                beatport_bpm="124",
+            ),
+        ]
+        updates = build_rekordbox_updates(
+            str(small_xml),
+            "My Playlist",
+            results,
+            sync_options={"key_format": "normal", "write_key": True},
+        )
+        assert updates["1"]["Key"] == "Am"
+        assert updates["2"]["Key"] == "G"
+
+    def test_normal_format_to_split_test_playlist_collection_pc_xml(self):
+        """With collection-pc.xml and playlist 'to split test', normal format yields Rekordbox Classic only."""
+        xml_path = Path(r"s:\Downloads\collection-pc.xml")
+        if not xml_path.exists():
+            pytest.skip("s:\\Downloads\\collection-pc.xml not found")
+        try:
+            track_ids = get_playlist_track_ids(str(xml_path), "to split test")
+        except ValueError:
+            pytest.skip("playlist 'to split test' not found in collection-pc.xml")
+        if len(track_ids) < 3:
+            pytest.skip("playlist 'to split test' has fewer than 3 tracks")
+        results = [
+            TrackResult(
+                playlist_index=1,
+                title="Track 1",
+                artist="Artist 1",
+                matched=True,
+                beatport_key="E Minor",
+                beatport_bpm="128",
+            ),
+            TrackResult(
+                playlist_index=2,
+                title="Track 2",
+                artist="Artist 2",
+                matched=True,
+                beatport_key="8A",
+                beatport_bpm="124",
+            ),
+            TrackResult(
+                playlist_index=3,
+                title="Track 3",
+                artist="Artist 3",
+                matched=True,
+                beatport_key="G Major",
+                beatport_bpm="120",
+            ),
+        ]
+        updates = build_rekordbox_updates(
+            str(xml_path),
+            "to split test",
+            results,
+            sync_options={"key_format": "normal", "write_key": True},
+        )
+        tid1, tid2, tid3 = track_ids[0], track_ids[1], track_ids[2]
+        assert updates[tid1]["Key"] == "Em"
+        assert updates[tid2]["Key"] == "Am"
+        assert updates[tid3]["Key"] == "G"
+        # Tonality set for Rekordbox XML display
+        assert updates[tid1].get("Tonality") == "Em"
+        assert updates[tid2].get("Tonality") == "Am"
+        assert updates[tid3].get("Tonality") == "G"
+
+    def test_normal_format_never_outputs_camelot_shaped_keys(self):
+        """With key_format=normal, no Key value in updates matches Camelot pattern (e.g. 8A, 12B)."""
+        import re
+
+        small_xml = _fixtures_dir() / "small.xml"
+        if not small_xml.exists():
+            pytest.skip("fixtures/rekordbox/small.xml not found")
+        camelot_pattern = re.compile(r"^([1-9]|1[0-2])[AB]$")
+        results = [
+            TrackResult(
+                playlist_index=i,
+                title=f"Track {i}",
+                artist="Artist",
+                matched=True,
+                beatport_key=key,
+                beatport_bpm="120",
+            )
+            for i, key in enumerate(
+                ["A Minor", "8A", "G Major", "12B", "E Minor", "C# Minor"], 1
+            )
+        ]
+        updates = build_rekordbox_updates(
+            str(small_xml),
+            "My Playlist",
+            results,
+            sync_options={"key_format": "normal", "write_key": True},
+        )
+        for tid, attrs in updates.items():
+            key_val = attrs.get("Key", "")
+            assert not camelot_pattern.match(key_val), (
+                f"Normal format must not output Camelot key; got Key={key_val!r} for track {tid}"
+            )
 
     def test_use_camelot_key_writes_camelot_notation(self):
         """With use_camelot_key=True, Key is Camelot (e.g. 8A) from beatport_key_camelot or conversion."""
@@ -411,8 +626,8 @@ class TestWriteKeyCommentYearToPlaylistTracks:
                     beatport_key="Cm",
                 ),
             ]
-            written, failed, errors = write_key_comment_year_to_playlist_tracks(
-                xml_path, "P", results
+            written, failed, errors, wav_skipped = (
+                write_key_comment_year_to_playlist_tracks(xml_path, "P", results)
             )
             assert written == 0
             assert failed == 0
@@ -477,8 +692,8 @@ class TestWriteKeyCommentYearToPlaylistTracks:
                 ),
             ]
             # Use full path so playlist is found regardless of get_playlist_track_ids lookup order
-            written, failed, errors = write_key_comment_year_to_playlist_tracks(
-                xml_path, "ROOT/P", results
+            written, failed, errors, wav_skipped = (
+                write_key_comment_year_to_playlist_tracks(xml_path, "ROOT/P", results)
             )
             assert written == 1, (
                 f"expected written=1, got written={written}, failed={failed}, errors={errors}"
@@ -495,7 +710,7 @@ class TestWriteTagsToPaths:
 
     def test_empty_results_returns_zero_counts(self):
         """Empty results list returns (0, 0, [])."""
-        written, failed, errors = write_tags_to_paths([])
+        written, failed, errors, wav_skipped = write_tags_to_paths([])
         assert written == 0
         assert failed == 0
         assert errors == []
@@ -508,7 +723,7 @@ class TestWriteTagsToPaths:
                 playlist_index=2, title="C", artist="D", matched=True, file_path=None
             ),
         ]
-        written, failed, errors = write_tags_to_paths(results)
+        written, failed, errors, wav_skipped = write_tags_to_paths(results)
         assert written == 0
         assert failed == 0
         assert errors == []
@@ -541,7 +756,7 @@ class TestWriteTagsToPaths:
                     beatport_key="Cm",
                 ),
             ]
-            written, failed, errors = write_tags_to_paths(results)
+            written, failed, errors, wav_skipped = write_tags_to_paths(results)
             assert written == 1
             assert failed == 1
             assert any("not found" in e.lower() for e in errors)
@@ -581,7 +796,7 @@ class TestWriteTagsToPaths:
                     beatport_year="2023",
                 ),
             ]
-            written, failed, errors = write_tags_to_paths(results)
+            written, failed, errors, wav_skipped = write_tags_to_paths(results)
             assert written == 2, errors
             assert failed == 0
             a1 = ID3(path1)
@@ -616,7 +831,7 @@ class TestWriteTagsToPaths:
                     beatport_key="Am",
                 ),
             ]
-            written, failed, errors = write_tags_to_paths(
+            written, failed, errors, wav_skipped = write_tags_to_paths(
                 results,
                 sync_options={"write_comment": False, "write_key": True},
             )
@@ -626,5 +841,37 @@ class TestWriteTagsToPaths:
             assert audio.get("TKEY") and audio["TKEY"].text == ["Am"]
             comm = audio.getall("COMM")
             assert not any(c.text == ["ok"] for c in comm) if comm else True
+        finally:
+            Path(path).unlink(missing_ok=True)
+
+    def test_sync_options_normal_key_format_writes_classic_to_file(self):
+        """With sync_options key_format=normal, full key 'G Major' is written as 'G' (TKEY)."""
+        try:
+            from mutagen.id3 import ID3
+        except ImportError:
+            pytest.skip("mutagen not installed")
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+            path = f.name
+        try:
+            ID3().save(path)
+            results = [
+                TrackResult(
+                    playlist_index=1,
+                    title="Track",
+                    artist="Artist",
+                    matched=True,
+                    file_path=path,
+                    beatport_key="G Major",
+                ),
+            ]
+            written, failed, errors, wav_skipped = write_tags_to_paths(
+                results,
+                sync_options={"key_format": "normal", "write_key": True},
+            )
+            assert written == 1, errors
+            assert failed == 0
+            audio = ID3(path)
+            assert audio.get("TKEY") is not None
+            assert audio["TKEY"].text == ["G"]
         finally:
             Path(path).unlink(missing_ok=True)

@@ -1258,15 +1258,21 @@ class MainWindow(QMainWindow):
                     5000,
                 )
                 return
+        self.results_view.set_show_wav_row_highlight(True)
         sync_dialog = SyncTagsDialog(self)
         if sync_dialog.exec() != QDialog.DialogCode.Accepted:
             return
         opts = sync_dialog.get_options_dict()
         if not opts:
             return
+        import logging
+
+        logging.getLogger(__name__).info(
+            "Sync with Rekordbox: key_format=%s", opts.get("key_format")
+        )
 
         if getattr(self, "_source_mode", "collection") == "playlist_file":
-            written, failed, errors = write_tags_to_paths(
+            written, failed, errors, wav_skipped = write_tags_to_paths(
                 single_list, sync_options=opts
             )
         else:
@@ -1292,17 +1298,19 @@ class MainWindow(QMainWindow):
                 )
                 return
             if self.results_view.is_batch_mode:
-                written, failed, errors = (
+                written, failed, errors, wav_skipped = (
                     write_key_comment_year_to_playlist_tracks_batch(
                         xml_path, batch_dict, sync_options=opts
                     )
                 )
             else:
-                written, failed, errors = write_key_comment_year_to_playlist_tracks(
-                    xml_path,
-                    playlist_name or "",
-                    single_list,
-                    sync_options=opts,
+                written, failed, errors, wav_skipped = (
+                    write_key_comment_year_to_playlist_tracks(
+                        xml_path,
+                        playlist_name or "",
+                        single_list,
+                        sync_options=opts,
+                    )
                 )
 
         if written == 0 and failed == 0:
@@ -1311,7 +1319,9 @@ class MainWindow(QMainWindow):
             else:
                 self.statusBar().showMessage("No matched tracks to write.", 5000)
             return
-        SyncCompleteDialog(written, failed, errors, self).exec()
+        SyncCompleteDialog(
+            written, failed, errors, self, wav_skipped=wav_skipped
+        ).exec()
 
     def on_write_to_track_tags_from_history(
         self, csv_rows: List[Dict[str, Any]], playlist_name: str
@@ -1363,16 +1373,24 @@ class MainWindow(QMainWindow):
         if not results:
             self.statusBar().showMessage("No rows to write.", 4000)
             return
+        self.history_view.set_show_wav_row_highlight(True)
         sync_dialog = SyncTagsDialog(self)
         if sync_dialog.exec() != QDialog.DialogCode.Accepted:
             return
         opts = sync_dialog.get_options_dict()
         if not opts:
             return
+        import logging
+
+        logging.getLogger(__name__).info(
+            "Sync with Rekordbox (from history): key_format=%s", opts.get("key_format")
+        )
 
         # M3U run: path-based write (no XML); rows have file_path
         if any(getattr(r, "file_path", None) for r in results):
-            written, failed, errors = write_tags_to_paths(results, sync_options=opts)
+            written, failed, errors, wav_skipped = write_tags_to_paths(
+                results, sync_options=opts
+            )
         else:
             if not hasattr(self, "file_selector"):
                 return
@@ -1398,11 +1416,13 @@ class MainWindow(QMainWindow):
                 )
                 return
             try:
-                written, failed, errors = write_key_comment_year_to_playlist_tracks(
-                    xml_path,
-                    playlist_name or "Playlist",
-                    results,
-                    sync_options=opts,
+                written, failed, errors, wav_skipped = (
+                    write_key_comment_year_to_playlist_tracks(
+                        xml_path,
+                        playlist_name or "Playlist",
+                        results,
+                        sync_options=opts,
+                    )
                 )
             except ValueError as e:
                 QMessageBox.warning(
@@ -1422,7 +1442,9 @@ class MainWindow(QMainWindow):
                     5000,
                 )
             return
-        SyncCompleteDialog(written, failed, errors, self).exec()
+        SyncCompleteDialog(
+            written, failed, errors, self, wav_skipped=wav_skipped
+        ).exec()
 
     def on_open_settings(self) -> None:
         """Open the Settings dialog via menu or keyboard shortcut (Ctrl+,).

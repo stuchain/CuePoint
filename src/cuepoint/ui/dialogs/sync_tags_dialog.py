@@ -47,7 +47,7 @@ class SyncOptions:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "key_format": self.key_format,
+            "key_format": _normalize_key_format(self.key_format),
             "write_key": self.write_key,
             "write_year": self.write_year,
             "write_bpm": self.write_bpm,
@@ -58,12 +58,22 @@ class SyncOptions:
         }
 
 
+_VALID_KEY_FORMATS = ("normal", "camelot", "short")
+
+
+def _normalize_key_format(value: Any) -> str:
+    """Return a valid key_format: normal, camelot, or short; default normal."""
+    raw = value or "normal"
+    key_format = str(raw).strip().lower()
+    if key_format not in _VALID_KEY_FORMATS:
+        return "normal"
+    return key_format
+
+
 def _load_saved_options() -> SyncOptions:
     s = QSettings()
     s.beginGroup(_SETTINGS_GROUP)
-    key_format = s.value(_KEY_FORMAT, "normal", type=str) or "normal"
-    if key_format not in ("normal", "camelot", "short"):
-        key_format = "normal"
+    key_format = _normalize_key_format(s.value(_KEY_FORMAT, "normal", type=str))
     write_key = s.value(_WRITE_KEY, True, type=bool)
     write_year = s.value(_WRITE_YEAR, True, type=bool)
     write_bpm = s.value(_WRITE_BPM, False, type=bool)
@@ -117,7 +127,10 @@ class SyncTagsDialog(QDialog):
         key_group = QGroupBox("Key format")
         key_group.setObjectName("keyFormatGroup")
         key_layout = QVBoxLayout(key_group)
-        self._normal_rb = QRadioButton("Normal (e.g. A Minor, G Major)")
+        self._normal_rb = QRadioButton("Normal (e.g. Am, G, C#m)")
+        self._normal_rb.setToolTip(
+            "Writes keys as Rekordbox Classic (Am, G, C#m). Use this so Rekordbox shows keys in Classic mode."
+        )
         self._camelot_rb = QRadioButton("Camelot (e.g. 8A, 12B)")
         self._short_rb = QRadioButton("Short (e.g. Amin, Gmaj, G#min)")
         key_layout.addWidget(self._normal_rb)
@@ -194,6 +207,7 @@ class SyncTagsDialog(QDialog):
             if self._camelot_rb.isChecked()
             else ("short" if self._short_rb.isChecked() else "normal")
         )
+        key_format = _normalize_key_format(key_format)
         comment_text = (self._comment_edit.text() or "").strip() or "ok"
         self._options = SyncOptions(
             key_format=key_format,

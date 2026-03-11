@@ -562,8 +562,19 @@ def get_track_locations(xml_path: str) -> Dict[str, str]:
                 location = location.lstrip("/")
         if not location:
             continue
-        path = Path(location.replace("/", os.sep))
-        result[tid] = str(path)
+        # Strip query string or fragment (e.g. ?version=1) so suffix is correct
+        if "?" in location:
+            location = location.split("?")[0]
+        if "#" in location:
+            location = location.split("#")[0]
+        # On Windows, normalize so DriveLetter:\ is consistent (e.g. S:/ or /S:/ -> S:\)
+        normalized = location.replace("/", os.sep)
+        normalized = os.path.normpath(normalized)
+        path = Path(normalized)
+        try:
+            result[tid] = str(path.resolve())
+        except (OSError, RuntimeError):
+            result[tid] = str(path)
     return result
 
 
@@ -750,6 +761,88 @@ def write_updated_collection_xml(
         raise
 
 
+def _rekordbox_classic_key(key: Optional[str]) -> str:
+    """Convert full key to Rekordbox Classic format: 'A Minor' -> 'Am', 'G Major' -> 'G'.
+
+    Major = note only (C, G, F#). Minor = note + 'm' (Am, C#m). Matches Rekordbox display.
+    Returns empty string if key is invalid or not parseable.
+    """
+    if not key:
+        return ""
+    import re
+
+    s = (key or "").strip()
+    s = s.replace("\u266d", "b").replace("\u266f", "#")  # Unicode flat/sharp
+    s = re.sub(r"\s+", " ", s)
+    s = re.sub(r"(?i)\bmaj(?:or)?\b", "Major", s)
+    s = re.sub(r"(?i)\bmin(?:or)?\b", "Minor", s)
+    m = re.match(r"^\s*([A-G])\s*(#|b)?\s*(Major|Minor)\s*$", s)
+    if not m:
+        return ""
+    letter = m.group(1).upper()
+    acc = m.group(2) or ""
+    qual = m.group(3)
+    note = letter + acc
+    if qual == "Minor":
+        return note + "m"
+    return note
+
+
+# Camelot code -> Rekordbox Classic (inverse of _camelot_key in matcher)
+_CAMELOT_TO_CLASSIC: Dict[str, str] = {
+    "1A": "Abm",
+    "1B": "B",
+    "2A": "Ebm",
+    "2B": "F#",
+    "3A": "Bbm",
+    "3B": "Db",
+    "4A": "Fm",
+    "4B": "Ab",
+    "5A": "Cm",
+    "5B": "Eb",
+    "6A": "Gm",
+    "6B": "Bb",
+    "7A": "Dm",
+    "7B": "F",
+    "8A": "Am",
+    "8B": "C",
+    "9A": "Em",
+    "9B": "G",
+    "10A": "Bm",
+    "10B": "D",
+    "11A": "F#m",
+    "11B": "A",
+    "12A": "C#m",
+    "12B": "E",
+}
+
+
+def _camelot_to_classic(camelot: Optional[str]) -> str:
+    """Convert Camelot code to Rekordbox Classic (e.g. 8A -> Am, 9B -> G). Returns '' if invalid."""
+    if not camelot:
+        return ""
+    s = str(camelot).strip().upper()
+    # Accept "8A" or "8a"
+    if re.match(r"^([1-9]|1[0-2])[AB]$", s):
+        return _CAMELOT_TO_CLASSIC.get(s, "")
+    return ""
+
+
+def _normal_key_value(r: "TrackResult") -> str:
+    """Get Rekordbox Classic key for a track (normal format). Prefers full key, then Camelot."""
+    key = (r.beatport_key or "").strip()
+    if not key:
+        return ""
+    classic = _rekordbox_classic_key(key)
+    if classic:
+        return classic
+    # Key may be stored as Camelot (e.g. 8A); convert to Classic so Normal always outputs Am/G/etc.
+    classic = _camelot_to_classic(key)
+    if classic:
+        return classic
+    return key
+
+
 def _short_key(key: Optional[str]) -> str:
     """Convert normal key to short format: 'A Minor' -> 'Amin', 'G Major' -> 'Gmaj'.
 
@@ -812,7 +905,10 @@ def build_rekordbox_updates(
         ) = True
         comment_text = "ok"
     else:
-        key_fmt = (opts.get("key_format") or "normal").lower()
+        raw = opts.get("key_format") or "normal"
+        key_fmt = str(raw).strip().lower()
+        if key_fmt not in ("normal", "camelot", "short"):
+            key_fmt = "normal"
         write_key = opts.get("write_key", True)
         write_year = opts.get("write_year", True)
         write_bpm = opts.get("write_bpm", False)
@@ -846,9 +942,11 @@ def build_rekordbox_updates(
                 if not key_val and r.beatport_key:
                     key_val = str(r.beatport_key).strip()
             else:
-                key_val = (r.beatport_key and str(r.beatport_key).strip()) or ""
+                key_val = _normal_key_value(r)
             if key_val:
                 updates[tid]["Key"] = key_val
+                # Rekordbox XML uses Tonality for key display; set both for XML write path
+                updates[tid]["Tonality"] = key_val
         if write_year:
             year_val = _normalize_year(r.beatport_year)
             if year_val:
@@ -916,12 +1014,12 @@ def write_key_comment_year_to_playlist_tracks(
     results: List[TrackResult],
     use_camelot_key: bool = False,
     sync_options: Optional[Dict[str, Any]] = None,
-) -> Tuple[int, int, List[str]]:
+) -> Tuple[int, int, List[str], List[str]]:
     """Write selected tags to audio files for matched tracks (single playlist).
 
     Uses Location from the Rekordbox XML to find each track's file path, then
-    writes tags via the tag_writer module. When sync_options is provided, only
-    selected fields are written (Key, Comment, Year, Label, BPM, Genre).
+    writes tags via the tag_writer module. WAV files are skipped (Rekordbox cannot
+    read tags from WAV) and listed in the fourth return value.
 
     Args:
         xml_path: Path to Rekordbox XML export file.
@@ -931,7 +1029,7 @@ def write_key_comment_year_to_playlist_tracks(
         sync_options: Optional dict with key_format, write_* flags, comment_text.
 
     Returns:
-        Tuple of (written_count, failed_count, list_of_error_messages).
+        Tuple of (written_count, failed_count, list_of_error_messages, wav_skipped_paths).
     """
     from cuepoint.data.tag_writer import (
         STATUS_OK,
@@ -947,16 +1045,21 @@ def write_key_comment_year_to_playlist_tracks(
     )
     locations = get_track_locations(xml_path)
     if not locations:
-        return (0, 0, ["No file paths (Location) in this XML."])
+        return (0, 0, ["No file paths (Location) in this XML."], [])
     written = 0
     failed = 0
     errors: List[str] = []
+    wav_skipped: List[str] = []
     for tid, attrs in updates.items():
         if tid not in locations:
             failed += 1
             errors.append(f"Track {tid}: no path in XML")
             continue
         path = locations[tid]
+        if str(path).strip().lower().endswith(".wav"):
+            wav_skipped.append(path)
+            failed += 1
+            continue
         status, err = write_key_comment_year_to_file(
             path,
             attrs.get("Key"),
@@ -971,7 +1074,7 @@ def write_key_comment_year_to_playlist_tracks(
         else:
             failed += 1
             errors.append(f"{path}: {err or status}")
-    return (written, failed, errors)
+    return (written, failed, errors, wav_skipped)
 
 
 def write_key_comment_year_to_playlist_tracks_batch(
@@ -979,10 +1082,11 @@ def write_key_comment_year_to_playlist_tracks_batch(
     results_dict: Dict[str, List[TrackResult]],
     use_camelot_key: bool = False,
     sync_options: Optional[Dict[str, Any]] = None,
-) -> Tuple[int, int, List[str]]:
+) -> Tuple[int, int, List[str], List[str]]:
     """Write selected tags to audio files for matched tracks (batch).
 
     Merges all playlists and writes each track at most once (last wins).
+    WAV files are skipped and listed in the fourth return value.
 
     Args:
         xml_path: Path to Rekordbox XML export file.
@@ -991,7 +1095,7 @@ def write_key_comment_year_to_playlist_tracks_batch(
         sync_options: Optional sync options dict.
 
     Returns:
-        Tuple of (written_count, failed_count, list_of_error_messages).
+        Tuple of (written_count, failed_count, list_of_error_messages, wav_skipped_paths).
     """
     updates = build_rekordbox_updates_batch(
         xml_path,
@@ -1001,7 +1105,7 @@ def write_key_comment_year_to_playlist_tracks_batch(
     )
     locations = get_track_locations(xml_path)
     if not locations:
-        return (0, 0, ["No file paths (Location) in this XML."])
+        return (0, 0, ["No file paths (Location) in this XML."], [])
     from cuepoint.data.tag_writer import (
         STATUS_OK,
         write_key_comment_year_to_file,
@@ -1010,12 +1114,17 @@ def write_key_comment_year_to_playlist_tracks_batch(
     written = 0
     failed = 0
     errors: List[str] = []
+    wav_skipped: List[str] = []
     for tid, attrs in updates.items():
         if tid not in locations:
             failed += 1
             errors.append(f"Track {tid}: no path in XML")
             continue
         path = locations[tid]
+        if str(path).strip().lower().endswith(".wav"):
+            wav_skipped.append(path)
+            failed += 1
+            continue
         status, err = write_key_comment_year_to_file(
             path,
             attrs.get("Key"),
@@ -1030,18 +1139,17 @@ def write_key_comment_year_to_playlist_tracks_batch(
         else:
             failed += 1
             errors.append(f"{path}: {err or status}")
-    return (written, failed, errors)
+    return (written, failed, errors, wav_skipped)
 
 
 def write_tags_to_paths(
     results: List[TrackResult],
     sync_options: Optional[Dict[str, Any]] = None,
-) -> Tuple[int, int, List[str]]:
+) -> Tuple[int, int, List[str], List[str]]:
     """Write selected tags to audio files by path (for M3U/M3U8 playlist file source).
 
-    Only matched results with file_path set are written. sync_options has the same
-    structure as for write_key_comment_year_to_playlist_tracks (key_format, write_*,
-    comment_text). Does not require Rekordbox XML.
+    Only matched results with file_path set are written. WAV files are skipped
+    (Rekordbox cannot read tags from WAV) and listed in the fourth return value.
 
     Args:
         results: List of TrackResult; only those with file_path and matched=True are written.
@@ -1049,7 +1157,7 @@ def write_tags_to_paths(
             write_label, write_genre, write_comment (bool), comment_text (str).
 
     Returns:
-        Tuple of (written_count, failed_count, list_of_error_messages).
+        Tuple of (written_count, failed_count, list_of_error_messages, wav_skipped_display).
     """
     from cuepoint.core.matcher import _camelot_key
     from cuepoint.data.tag_writer import (
@@ -1066,7 +1174,10 @@ def write_tags_to_paths(
         ) = True
         comment_text = "ok"
     else:
-        key_fmt = (opts.get("key_format") or "normal").lower()
+        raw = opts.get("key_format") or "normal"
+        key_fmt = str(raw).strip().lower()
+        if key_fmt not in ("normal", "camelot", "short"):
+            key_fmt = "normal"
         write_key = opts.get("write_key", True)
         write_year = opts.get("write_year", True)
         write_bpm = opts.get("write_bpm", False)
@@ -1080,10 +1191,17 @@ def write_tags_to_paths(
     written = 0
     failed = 0
     errors: List[str] = []
+    wav_skipped: List[str] = []
     for r in results:
         if not r.matched or not r.file_path:
             continue
         path = r.file_path
+        if str(path).strip().lower().endswith(".wav"):
+            wav_skipped.append(
+                f"{r.title} – {r.artist}" if (r.title or r.artist) else path
+            )
+            failed += 1
+            continue
         if not os.path.exists(path):
             failed += 1
             errors.append(f"{path}: File not found")
@@ -1099,7 +1217,7 @@ def write_tags_to_paths(
                 if not key_val and r.beatport_key:
                     key_val = str(r.beatport_key).strip()
             else:
-                key_val = (r.beatport_key and str(r.beatport_key).strip()) or ""
+                key_val = _normal_key_value(r)
             if not key_val:
                 key_val = None
         year_val = (
@@ -1135,7 +1253,7 @@ def write_tags_to_paths(
         else:
             failed += 1
             errors.append(f"{path}: {err or status}")
-    return (written, failed, errors)
+    return (written, failed, errors, wav_skipped)
 
 
 def is_readable(path: Path) -> bool:

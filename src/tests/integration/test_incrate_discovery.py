@@ -7,6 +7,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError
 from cuepoint.incrate.beatport_api_models import (
     ChartDetail,
     ChartSummary,
@@ -149,7 +150,14 @@ class TestRunDiscoveryLive:
         )
         api = BeatportApi(client, cache_service=None)
 
-        genres = api.list_genres()
+        try:
+            genres = api.list_genres()
+        except BeatportAPIError as e:
+            if "BEATPORT_API_AUTH" in str(e) or "401" in str(e):
+                pytest.skip(
+                    "Invalid or expired Beatport API token (set valid BEATPORT_ACCESS_TOKEN to run)"
+                )
+            raise
         genre_ids = [g.id for g in genres[:2]] if genres else [5]
 
         to_date = date.today()
@@ -263,7 +271,14 @@ class TestRunDiscoveryLive:
         )
         api = BeatportApi(client, cache_service=None)
 
-        genres = api.list_genres()
+        try:
+            genres = api.list_genres()
+        except BeatportAPIError as e:
+            if "BEATPORT_API_AUTH" in str(e) or "401" in str(e):
+                pytest.skip(
+                    "Invalid or expired Beatport API token (set valid BEATPORT_ACCESS_TOKEN to run)"
+                )
+            raise
         afro_house = next(
             (g for g in genres if g.name and "afro house" in g.name.lower()),
             None,

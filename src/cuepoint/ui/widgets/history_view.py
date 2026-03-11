@@ -48,6 +48,8 @@ from cuepoint.ui.widgets.candidate_dialog import CandidateDialog
 from cuepoint.ui.widgets.results_view import (
     UNMATCHED_ROW_BG,
     UNMATCHED_ROW_ROLE,
+    WAV_ROW_BG,
+    WAV_ROW_ROLE,
     UnmatchedRowDelegate,
 )
 from cuepoint.utils.utils import get_output_directory
@@ -85,7 +87,14 @@ class HistoryView(QWidget):
         self._filter_debounce_timer = QTimer(self)
         self._filter_debounce_timer.setSingleShot(True)
         self._filter_debounce_timer.timeout.connect(self._apply_filters_debounced)
+        self._show_wav_row_highlight = False
         self.init_ui()
+
+    def set_show_wav_row_highlight(self, value: bool) -> None:
+        """Show or hide WAV row (faded yellow) styling. Once True, typically left on for the session."""
+        self._show_wav_row_highlight = value
+        if hasattr(self, "table"):
+            self.table.viewport().update()
 
     def _ensure_table_min_rows(self, table: QTableWidget, rows: int = 10) -> None:
         """Ensure the table has enough visible height to show N rows (when space allows)."""
@@ -384,7 +393,17 @@ class HistoryView(QWidget):
         self.table.customContextMenuRequested.connect(self._show_context_menu)
         self.table.doubleClicked.connect(self._on_row_double_clicked)
 
-        self.table.setItemDelegate(UnmatchedRowDelegate(self.table, UNMATCHED_ROW_BG))
+        self.table.setItemDelegate(
+            UnmatchedRowDelegate(
+                self.table,
+                UNMATCHED_ROW_BG,
+                wav_bg_color=WAV_ROW_BG,
+                wav_role=WAV_ROW_ROLE,
+                show_wav_highlight_getter=lambda: getattr(
+                    self, "_show_wav_row_highlight", False
+                ),
+            )
+        )
 
         # Note: filter_layout, summary_label, advanced_filters_group, and status_layout
         # are already added to results_layout above, so don't add them again
@@ -1029,12 +1048,19 @@ class HistoryView(QWidget):
                     item = QTableWidgetItem(str(value))
                 self.table.setItem(row_idx, col_idx, item)
 
-            # Unmatched row: set role so delegate paints faded red background
+            # WAV row: faded orange; unmatched row: faded red
+            path = (row_data.get("file_path") or row_data.get("Location") or "").strip()
+            is_wav = bool(path) and path.lower().endswith(".wav")
             matched = bool(
                 row_data.get("beatport_url", "").strip()
                 or row_data.get("beatport_title", "").strip()
             )
-            if not matched:
+            if is_wav:
+                for col_idx in range(len(columns)):
+                    it = self.table.item(row_idx, col_idx)
+                    if it:
+                        it.setData(WAV_ROW_ROLE, True)
+            elif not matched:
                 for col_idx in range(len(columns)):
                     it = self.table.item(row_idx, col_idx)
                     if it:
@@ -1367,12 +1393,19 @@ class HistoryView(QWidget):
                         item = QTableWidgetItem(str(value))
                         self.table.setItem(row, col, item)
 
-            # Unmatched row: set role so delegate paints faded red background
+            # WAV row: faded orange; unmatched row: faded red
+            path = (csv_row.get("file_path") or csv_row.get("Location") or "").strip()
+            is_wav = bool(path) and path.lower().endswith(".wav")
             matched = bool(
                 csv_row.get("beatport_url", "").strip()
                 or csv_row.get("beatport_title", "").strip()
             )
-            if not matched:
+            if is_wav:
+                for c in range(self.table.columnCount()):
+                    it = self.table.item(row, c)
+                    if it:
+                        it.setData(WAV_ROW_ROLE, True)
+            elif not matched:
                 for c in range(self.table.columnCount()):
                     it = self.table.item(row, c)
                     if it:

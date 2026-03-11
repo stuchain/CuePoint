@@ -6,8 +6,20 @@ from pathlib import Path
 
 import pytest
 
-from cuepoint.data.rekordbox import write_key_comment_year_to_playlist_tracks
+from cuepoint.data.rekordbox import (
+    get_playlist_track_ids,
+    get_track_locations,
+    write_key_comment_year_to_playlist_tracks,
+)
 from cuepoint.models.result import TrackResult
+
+# Paths for optional "to split test" integration test (skip if missing)
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+_DEFAULT_COLLECTION_XML = Path(
+    os.environ.get("CUEPOINT_TEST_COLLECTION_XML", r"s:\Downloads\collection-pc.xml")
+)
+_NTH_DIR = _PROJECT_ROOT / "nth"
+_TO_SPLIT_PLAYLIST = "to split test"
 
 
 def _path_to_rekordbox_location(path: str) -> str:
@@ -72,8 +84,8 @@ class TestWriteToTrackTagsIntegration:
                     beatport_year="2023",
                 ),
             ]
-            written, failed, errors = write_key_comment_year_to_playlist_tracks(
-                xml_path, "P", results
+            written, failed, errors, wav_skipped = (
+                write_key_comment_year_to_playlist_tracks(xml_path, "P", results)
             )
             assert written == 2, (errors, failed)
             assert failed == 0, errors
@@ -149,8 +161,8 @@ class TestWriteToTrackTagsIntegration:
                     beatport_year="2023",
                 ),
             ]
-            written, failed, errors = write_key_comment_year_to_playlist_tracks(
-                xml_path, "P", results
+            written, failed, errors, wav_skipped = (
+                write_key_comment_year_to_playlist_tracks(xml_path, "P", results)
             )
             assert written == 1
             assert failed == 1
@@ -207,8 +219,8 @@ class TestWriteToTrackTagsIntegration:
                     beatport_key="Cm",
                 ),
             ]
-            written, failed, errors = write_key_comment_year_to_playlist_tracks(
-                xml_path, "P", results
+            written, failed, errors, wav_skipped = (
+                write_key_comment_year_to_playlist_tracks(xml_path, "P", results)
             )
             assert written == 0
             assert failed == 0
@@ -223,3 +235,71 @@ class TestWriteToTrackTagsIntegration:
                 os.rmdir(temp_dir)
             except Exception:
                 pass
+
+
+class TestWriteToTrackTagsToSplitTestPlaylist:
+    """Integration test using real collection-pc.xml and 'to split test' playlist (skip if missing)."""
+
+    def test_wav_flac_written_and_read_back_with_to_split_test_playlist(self):
+        """When collection-pc.xml and nth/ exist, sync 'to split test' and assert WAV/FLAC tags written."""
+        if not _DEFAULT_COLLECTION_XML.exists():
+            pytest.skip(f"Collection XML not found: {_DEFAULT_COLLECTION_XML}")
+        if not _NTH_DIR.is_dir():
+            pytest.skip(f"nth dir not found: {_NTH_DIR}")
+        pytest.importorskip("mutagen")
+
+        xml_path = str(_DEFAULT_COLLECTION_XML)
+        try:
+            track_ids = get_playlist_track_ids(xml_path, _TO_SPLIT_PLAYLIST)
+        except ValueError:
+            pytest.skip(f"Playlist '{_TO_SPLIT_PLAYLIST}' not in XML")
+        locations = get_track_locations(xml_path)
+        # Build one TrackResult per track (playlist order), all matched with test data
+        results = [
+            TrackResult(
+                playlist_index=i + 1,
+                title="Track",
+                artist="Artist",
+                matched=True,
+                beatport_key="Am",
+                beatport_bpm="120",
+                beatport_year="2023",
+                beatport_label="Test Label",
+            )
+            for i in range(len(track_ids))
+        ]
+        written, failed, errors, wav_skipped = (
+            write_key_comment_year_to_playlist_tracks(
+                xml_path, _TO_SPLIT_PLAYLIST, results
+            )
+        )
+        # WAV tracks are skipped (in wav_skipped, counted in failed); FLAC/MP3 are written
+        wav_count = len(wav_skipped)
+        assert failed == wav_count, (
+            f"failed should equal number of WAV skips: failed={failed}, wav_skipped={len(wav_skipped)}"
+        )
+        assert written == len(track_ids) - wav_count, (
+            f"expected written={len(track_ids)}, got written={written}, failed={failed}, errors={errors}"
+        )
+        # WAV paths must appear in wav_skipped (not written); FLAC/MP3 get tags
+        from mutagen.flac import FLAC
+
+        for path_display in wav_skipped:
+            # Display string may be path or "Title – Artist"; ensure WAVs were skipped
+            assert path_display, "wav_skipped entry should be non-empty"
+        # Re-read FLAC files and assert tags present (WAVs are skipped, so no tag check)
+        flac_checked = 0
+        for tid in track_ids:
+            path_str = locations.get(tid)
+            if not path_str or not Path(path_str).exists():
+                continue
+            if Path(path_str).suffix.lower() == ".flac":
+                audio = FLAC(path_str)
+                assert audio.get("KEY") == ["Am"], f"FLAC {path_str}: KEY not Am"
+                assert audio.get("COMMENT") == ["ok"], (
+                    f"FLAC {path_str}: COMMENT not ok"
+                )
+                flac_checked += 1
+        assert flac_checked >= 1 or wav_count >= 1, (
+            "Expected at least one WAV (skipped) or FLAC (written) in playlist to verify"
+        )

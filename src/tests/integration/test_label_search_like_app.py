@@ -16,6 +16,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError
 from cuepoint.services.beatport_api import BeatportApi
 from cuepoint.services.beatport_api_client import BeatportApiClient
 
@@ -206,7 +207,14 @@ class TestLabelSearchLiveLikeApp:
         Re-run after each change until it passes.
         """
         # Same call path as discovery._resolve_library_labels_to_ids -> beatport_api.search_label_by_name
-        defected_id = api.search_label_by_name("Defected")
+        try:
+            defected_id = api.search_label_by_name("Defected")
+        except BeatportAPIError as e:
+            if "BEATPORT_API_AUTH" in str(e) or "401" in str(e):
+                pytest.skip(
+                    "Invalid or expired Beatport API token (set valid BEATPORT_ACCESS_TOKEN to run)"
+                )
+            raise
         nothing_but_id = api.search_label_by_name("Nothing But")
 
         assert defected_id is not None, (

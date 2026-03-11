@@ -21,7 +21,7 @@ import os
 import platform
 import subprocess
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
@@ -88,18 +88,43 @@ COL_BPM = 13
 UNMATCHED_ROW_BG = QColor(0x5C, 0x2E, 0x2E)
 # Role for delegate to paint unmatched row background (stylesheets override setBackground)
 UNMATCHED_ROW_ROLE = Qt.ItemDataRole.UserRole + 1
+# Faded yellow/amber for WAV rows (same approach as red; Rekordbox cannot read tags from WAV)
+WAV_ROW_BG = QColor(0x5C, 0x52, 0x2E)
+WAV_ROW_ROLE = Qt.ItemDataRole.UserRole + 2
 
 
 class UnmatchedRowDelegate(QStyledItemDelegate):
-    """Paints unmatched rows with a faded red background so they show despite QTableView::item stylesheet."""
+    """Paints unmatched rows (red) and WAV rows (orange) so they show despite QTableView::item stylesheet."""
 
-    def __init__(self, parent: QWidget, bg_color: QColor):
+    def __init__(
+        self,
+        parent: QWidget,
+        unmatched_bg_color: QColor,
+        wav_bg_color: Optional[QColor] = None,
+        wav_role: Optional[int] = None,
+        show_wav_highlight_getter: Optional[Callable[[], bool]] = None,
+    ):
         super().__init__(parent)
-        self._bg_color = bg_color
+        self._unmatched_bg = unmatched_bg_color
+        self._wav_bg = wav_bg_color
+        self._wav_role = wav_role
+        self._show_wav_highlight_getter = show_wav_highlight_getter
 
     def paint(self, painter: QPainter, option, index):
-        if index.data(UNMATCHED_ROW_ROLE):
-            painter.fillRect(option.rect, self._bg_color)
+        show_wav = (
+            self._show_wav_highlight_getter()
+            if self._show_wav_highlight_getter
+            else True
+        )
+        if (
+            self._wav_bg is not None
+            and self._wav_role is not None
+            and index.data(self._wav_role)
+            and show_wav
+        ):
+            painter.fillRect(option.rect, self._wav_bg)
+        elif index.data(UNMATCHED_ROW_ROLE):
+            painter.fillRect(option.rect, self._unmatched_bg)
         super().paint(painter, option, index)
 
 
@@ -178,10 +203,19 @@ class ResultsView(QWidget):
         self._filter_debounce_timer = QTimer()
         self._filter_debounce_timer.setSingleShot(True)
         self._filter_debounce_timer.timeout.connect(self._apply_filters_debounced)
+        self._show_wav_row_highlight = False
         # Create shortcut manager
         self.shortcut_manager = ShortcutManager(self)
         self.init_ui()
         self.setup_shortcuts()
+
+    def set_show_wav_row_highlight(self, value: bool) -> None:
+        """Show or hide WAV row (faded yellow) styling. Once True, typically left on for the session."""
+        self._show_wav_row_highlight = value
+        if hasattr(self, "table"):
+            self.table.viewport().update()
+        for table in getattr(self, "playlist_tables", {}).values():
+            table.viewport().update()
 
     def _ensure_table_min_rows(self, table: QTableWidget, rows: int = 10) -> None:
         """Ensure the table has enough visible height to show N rows (when space allows)."""
@@ -577,8 +611,18 @@ class ResultsView(QWidget):
         # Enable double-click to view candidates
         self.table.doubleClicked.connect(self._on_row_double_clicked)
 
-        # Delegate paints unmatched row background (works despite QTableView::item stylesheet)
-        self.table.setItemDelegate(UnmatchedRowDelegate(self.table, UNMATCHED_ROW_BG))
+        # Delegate paints unmatched row (red) and WAV row (orange) backgrounds
+        self.table.setItemDelegate(
+            UnmatchedRowDelegate(
+                self.table,
+                UNMATCHED_ROW_BG,
+                wav_bg_color=WAV_ROW_BG,
+                wav_role=WAV_ROW_ROLE,
+                show_wav_highlight_getter=lambda: getattr(
+                    self, "_show_wav_row_highlight", False
+                ),
+            )
+        )
 
         single_table_layout.addWidget(self.table, 1)  # Give table stretch priority
         self.single_table_group.setLayout(single_table_layout)
@@ -1089,7 +1133,17 @@ class ResultsView(QWidget):
         table.verticalHeader().setDefaultSectionSize(26 if is_macos() else 28)
         self._ensure_table_min_rows(table, 10)
 
-        table.setItemDelegate(UnmatchedRowDelegate(table, UNMATCHED_ROW_BG))
+        table.setItemDelegate(
+            UnmatchedRowDelegate(
+                table,
+                UNMATCHED_ROW_BG,
+                wav_bg_color=WAV_ROW_BG,
+                wav_role=WAV_ROW_ROLE,
+                show_wav_highlight_getter=lambda: getattr(
+                    self, "_show_wav_row_highlight", False
+                ),
+            )
+        )
 
         # Enable context menu and double-click
         table.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -1317,8 +1371,17 @@ class ResultsView(QWidget):
             bpm_text = result.beatport_bpm or ""
             self.table.setItem(row, COL_BPM, QTableWidgetItem(bpm_text))
 
-            # Unmatched row: set role so delegate paints faded red background
-            if not result.matched:
+            # WAV row: faded orange (Rekordbox cannot read tags from WAV)
+            # Unmatched row: faded red
+            is_wav = bool(getattr(result, "file_path", None)) and str(
+                result.file_path
+            ).strip().lower().endswith(".wav")
+            if is_wav:
+                for col in range(self.table.columnCount()):
+                    item = self.table.item(row, col)
+                    if item:
+                        item.setData(WAV_ROW_ROLE, True)
+            elif not result.matched:
                 for col in range(self.table.columnCount()):
                     item = self.table.item(row, col)
                     if item:
@@ -1459,7 +1522,21 @@ class ResultsView(QWidget):
             new_write_item.setTextAlignment(Qt.AlignCenter)
             self.table.setItem(row_index, COL_WRITE, new_write_item)
 
-            if not result.matched:
+            # Clear row roles then set WAV (orange) or unmatched (red)
+            for col in range(self.table.columnCount()):
+                it = self.table.item(row_index, col)
+                if it:
+                    it.setData(WAV_ROW_ROLE, None)
+                    it.setData(UNMATCHED_ROW_ROLE, None)
+            is_wav = bool(getattr(result, "file_path", None)) and str(
+                result.file_path
+            ).strip().lower().endswith(".wav")
+            if is_wav:
+                for col in range(self.table.columnCount()):
+                    it = self.table.item(row_index, col)
+                    if it:
+                        it.setData(WAV_ROW_ROLE, True)
+            elif not result.matched:
                 for col in range(self.table.columnCount()):
                     it = self.table.item(row_index, col)
                     if it:
@@ -1795,7 +1872,15 @@ class ResultsView(QWidget):
             bpm_text = str(result.beatport_bpm) if result.beatport_bpm else ""
             table.setItem(row, COL_BPM, QTableWidgetItem(bpm_text))
 
-            if not result.matched:
+            is_wav = bool(getattr(result, "file_path", None)) and str(
+                result.file_path
+            ).strip().lower().endswith(".wav")
+            if is_wav:
+                for col in range(table.columnCount()):
+                    it = table.item(row, col)
+                    if it:
+                        it.setData(WAV_ROW_ROLE, True)
+            elif not result.matched:
                 for col in range(table.columnCount()):
                     it = table.item(row, col)
                     if it:

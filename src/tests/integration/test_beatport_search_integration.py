@@ -1,8 +1,8 @@
 """Integration tests for beatport_search.py data module with real parsing logic."""
 
+import builtins
 import sys
 from unittest.mock import MagicMock, Mock, patch
-
 
 from cuepoint.data.beatport_search import (
     _extract_track_ids_from_next_data,
@@ -11,6 +11,9 @@ from cuepoint.data.beatport_search import (
     beatport_search_hybrid,
     beatport_search_via_api,
 )
+
+# Capture real __import__ for use in tests that mock it (so patch() can still resolve names)
+_real_import = builtins.__import__
 
 
 class TestBeatportSearchIntegration:
@@ -686,7 +689,7 @@ class TestBeatportSearchIntegration:
         def import_side_effect(name, *args, **kwargs):
             if "playwright" in name:
                 raise ImportError("No module named 'playwright'")
-            return __import__(name, *args, **kwargs)
+            return _real_import(name, *args, **kwargs)
 
         mock_import.side_effect = import_side_effect
 
@@ -714,7 +717,7 @@ class TestBeatportSearchIntegration:
         def import_side_effect(name, *args, **kwargs):
             if "playwright" in name:
                 return mock_playwright
-            return __import__(name, *args, **kwargs)
+            return _real_import(name, *args, **kwargs)
 
         mock_import.side_effect = import_side_effect
 
@@ -738,7 +741,7 @@ class TestBeatportSearchIntegration:
         def import_side_effect(name, *args, **kwargs):
             if "playwright" in name:
                 raise ImportError("No module named 'playwright'")
-            return __import__(name, *args, **kwargs)
+            return _real_import(name, *args, **kwargs)
 
         mock_import.side_effect = import_side_effect
 
@@ -768,7 +771,7 @@ class TestBeatportSearchIntegration:
         def import_side_effect(name, *args, **kwargs):
             if "playwright" in name:
                 raise ImportError("No module named 'playwright'")
-            return __import__(name, *args, **kwargs)
+            return _real_import(name, *args, **kwargs)
 
         mock_import.side_effect = import_side_effect
 
@@ -796,7 +799,7 @@ class TestBeatportSearchIntegration:
         def import_side_effect(name, *args, **kwargs):
             if "playwright" in name or "selenium" in name:
                 raise ImportError("No module")
-            return __import__(name, *args, **kwargs)
+            return _real_import(name, *args, **kwargs)
 
         mock_import.side_effect = import_side_effect
 
@@ -814,7 +817,7 @@ class TestBeatportSearchIntegration:
         def import_side_effect(name, *args, **kwargs):
             if "playwright" in name:
                 raise ImportError("No module named 'playwright'")
-            return __import__(name, *args, **kwargs)
+            return _real_import(name, *args, **kwargs)
 
         mock_import.side_effect = import_side_effect
 

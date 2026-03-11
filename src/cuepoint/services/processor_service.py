@@ -26,6 +26,7 @@ from cuepoint.core.text_processing import sanitize_title_for_search
 from cuepoint.data.playlist_file import parse_m3u, read_title_artist_from_file
 from cuepoint.data.rekordbox import (
     extract_artists_from_title,
+    get_track_locations,
     inspect_rekordbox_xml,
     is_readable,
     is_writable,
@@ -1323,6 +1324,17 @@ class ProcessorService(IProcessorService):
         # Get the requested playlist (already contains Track objects)
         playlist = playlists[playlist_name]
         tracks = playlist.tracks
+
+        # Set file_path on each track from XML Location so table can show WAV styling
+        try:
+            locations = get_track_locations(xml_path)
+            for track in tracks:
+                if track.track_id and track.track_id in locations:
+                    track.file_path = locations[track.track_id]
+        except Exception as loc_err:
+            self.logging_service.debug(
+                "Could not attach file paths to tracks for WAV styling: %s", loc_err
+            )
 
         if not tracks:
             raise ProcessingError(
