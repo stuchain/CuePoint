@@ -13,10 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -28,14 +28,15 @@ jobs:
 
       - name: Audit production dependencies (Step 15)
         run: |
-          pip-audit -r requirements.txt
+          # CVE-2026-4539 (Pygments): no fixed release on PyPI yet (latest 2.19.2); transitive e.g. via pytest.
+          pip-audit -r requirements.txt --ignore-vuln CVE-2026-4539
 
       - name: Audit pinned build dependencies
         run: |
-          pip-audit -r requirements-build.txt
+          pip-audit -r requirements-build.txt --ignore-vuln CVE-2026-4539
 
       - name: Audit development dependencies
         run: |
-          pip-audit -r requirements-dev.txt
+          pip-audit -r requirements-dev.txt --ignore-vuln CVE-2026-4539
 
 
