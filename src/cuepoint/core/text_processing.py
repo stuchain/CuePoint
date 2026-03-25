@@ -106,6 +106,9 @@ def normalize_text(s: str) -> str:
         s,
     )
     s = re.sub(r"(?i)(originalmix|extendedmix|radioedit|clubmix)$", " ", s)
+    # Mix-keyword replacements can leave whitespace-only strings; strip so
+    # normalize(normalize(s)) == normalize(s) (e.g. "vip" alone → "" not " ").
+    s = re.sub(r"\s+", " ", s).strip()
     return s
 
 

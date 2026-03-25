@@ -48,6 +48,12 @@ class TestNormalizeText:
         assert normalize_text("") == ""
         assert normalize_text(None) == ""
 
+    def test_normalize_text_idempotent_after_mix_keyword_strip(self) -> None:
+        """Regression (Design 3.16): lone token 'vip' must not normalize to a bare space."""
+        # NFKD + lower → "vip"; \\bvip\\b replacement leaves whitespace only → final strip → "".
+        once = normalize_text("vÌP")
+        assert normalize_text(once) == once
+
     @pytest.mark.unit
     @pytest.mark.skipif(
         sys.platform == "win32",
