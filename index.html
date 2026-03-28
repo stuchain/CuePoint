@@ -2,14 +2,66 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <script>document.documentElement.classList.add('js-reveal');</script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Consent Mode defaults (before gtag.js); restored choice from localStorage if any -->
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    (function () {
+      var key = 'cuepoint_ga_consent';
+      var stored = null;
+      try { stored = localStorage.getItem(key); } catch (e) {}
+      gtag('consent', 'default', {
+        ad_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        analytics_storage: 'denied',
+        wait_for_update: 500
+      });
+      if (stored === 'granted') {
+        gtag('consent', 'update', {
+          ad_storage: 'granted',
+          ad_user_data: 'granted',
+          ad_personalization: 'granted',
+          analytics_storage: 'granted'
+        });
+      }
+    })();
+  </script>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-4QM1M6Q2ZT"></script>
+  <script>
+    gtag('js', new Date());
+    gtag('config', 'G-4QM1M6Q2ZT');
+  </script>
   <title>CuePoint – Accurate metadata for Rekordbox</title>
-  <link rel="icon" href="https://stuchain.github.io/CuePoint/logo.png" type="image/svg+xml">
-  <link rel="shortcut icon" href="https://stuchain.github.io/CuePoint/logo.png" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="https://stuchain.github.io/CuePoint/logo.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
+  <meta name="description" content="Match Rekordbox tracks to Beatport for key, BPM, label, genre, and release date. Desktop app for Windows and macOS with a full audit trail.">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta name="theme-color" content="#0d1117">
+  <link rel="canonical" href="https://stuchain.github.io/CuePoint/">
+  <meta property="og:title" content="CuePoint – Accurate metadata for Rekordbox">
+  <meta property="og:description" content="Match Rekordbox tracks to Beatport for key, BPM, label, genre, and release date. Desktop app for Windows and macOS with a full audit trail.">
+  <meta property="og:url" content="https://stuchain.github.io/CuePoint/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="CuePoint">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:image" content="https://stuchain.github.io/CuePoint/logo.png">
+  <meta property="og:image:width" content="120">
+  <meta property="og:image:height" content="120">
+  <meta property="og:image:alt" content="CuePoint logo">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="CuePoint – Accurate metadata for Rekordbox">
+  <meta name="twitter:description" content="Match Rekordbox tracks to Beatport for key, BPM, label, genre, and release date. Desktop app for Windows and macOS with a full audit trail.">
+  <meta name="twitter:image" content="https://stuchain.github.io/CuePoint/logo.png">
+  <link rel="icon" href="logo.png" type="image/png">
+  <link rel="shortcut icon" href="logo.png" type="image/png">
+  <link rel="apple-touch-icon" href="logo.png">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@graph":[
+    {"@type":"WebSite","name":"CuePoint","url":"https://stuchain.github.io/CuePoint/","description":"Match Rekordbox tracks to Beatport for key, BPM, label, genre, and release date. Desktop app for Windows and macOS with a full audit trail."},
+    {"@type":"SoftwareApplication","name":"CuePoint","url":"https://stuchain.github.io/CuePoint/","applicationCategory":"DesktopApplication","operatingSystem":"Windows, macOS","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"downloadUrl":"https://github.com/stuchain/CuePoint/releases/latest"}
+  ]}
+  </script>
   <style>
     :root {
       --bg: #0d1117;
@@ -24,11 +76,15 @@
       --radius: 12px;
       --radius-sm: 8px;
       --transition: 0.25s ease;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
     body {
-      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: var(--font);
       line-height: 1.6;
       color: var(--text);
       background: var(--bg);
@@ -41,8 +97,24 @@
     /* Layout */
     .page { max-width: 960px; margin: 0 auto; padding: 0 1.5rem; }
     section { padding: 4rem 0; }
-    section.reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
-    section.reveal.visible { opacity: 1; transform: translateY(0); }
+    html.js-reveal section.reveal,
+    html.js-reveal footer.reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    html.js-reveal section.reveal.visible,
+    html.js-reveal footer.reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html.js-reveal section.reveal,
+      html.js-reveal footer.reveal {
+        transform: translateY(8px);
+        transition: opacity 0.2s ease, transform 0.2s ease;
+      }
+    }
 
     /* Hero */
     .hero {
@@ -65,6 +137,9 @@
     .hero .logo-wrap {
       margin-bottom: 1.5rem;
       animation: logoFloat 4s ease-in-out infinite;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .hero .logo-wrap { animation: none; }
     }
     @keyframes logoFloat {
       0%, 100% { transform: translateY(0); }
@@ -108,7 +183,7 @@
       border: none;
       cursor: pointer;
     }
-    .btn:hover {
+    .btn:hover:not([aria-disabled="true"]) {
       background: var(--accent-hover);
       transform: translateY(-1px);
     }
@@ -117,12 +192,18 @@
       color: var(--text) !important;
       border: 1px solid var(--border);
     }
-    .btn-secondary:hover {
+    .btn-secondary:hover:not([aria-disabled="true"]) {
       background: #21262d;
       border-color: var(--muted);
     }
+    a.btn[aria-disabled="true"] {
+      opacity: 0.55;
+      pointer-events: none;
+      cursor: not-allowed;
+    }
 
     /* Intro */
+    .intro .section-title { margin-bottom: 1rem; }
     .intro .lead {
       font-size: 1.25rem;
       color: var(--muted);
@@ -134,7 +215,17 @@
       text-align: center;
       color: var(--muted);
       font-size: 0.95rem;
+      margin: 0 0 1rem;
     }
+    .intro .tools-line {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.95rem;
+      max-width: 560px;
+      margin: 0 auto;
+      line-height: 1.55;
+    }
+    .intro .tools-line strong { color: var(--text); font-weight: 600; }
 
     /* Features */
     .features-grid {
@@ -151,6 +242,9 @@
       opacity: 0;
       transform: translateY(12px);
       transition: opacity 0.4s ease, transform 0.4s ease, border-color var(--transition), box-shadow var(--transition);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .feature-card { transition: opacity 0.2s ease, transform 0.2s ease, border-color var(--transition), box-shadow var(--transition); }
     }
     section.visible .feature-card { opacity: 1; transform: translateY(0); }
     section.visible .feature-card:nth-child(1) { transition-delay: 0.05s; }
@@ -185,6 +279,42 @@
       margin: 0 auto;
     }
 
+    /* How it works */
+    .how-steps {
+      list-style: none;
+      padding: 0;
+      margin: 2rem 0 0;
+      display: grid;
+      gap: 1rem;
+      max-width: 640px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .how-steps li {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 1rem 1.25rem;
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+    .how-steps .step-num {
+      flex-shrink: 0;
+      width: 1.75rem;
+      height: 1.75rem;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
     /* Download block */
     .download-section {
       background: var(--surface);
@@ -196,8 +326,21 @@
     .download-section h2 {
       font-size: 1.25rem;
       font-weight: 600;
+      margin: 0 0 0.35rem;
+    }
+    .download-version {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin: 0 0 0.75rem;
+      min-height: 1.35em;
+    }
+    .download-version:empty { margin: 0; min-height: 0; }
+    .download-status {
+      color: var(--muted);
+      font-size: 0.9rem;
       margin: 0 0 1rem;
     }
+    .download-status.is-hidden { display: none; }
     .downloads {
       display: flex;
       flex-direction: row;
@@ -234,7 +377,56 @@
       font-size: 0.9rem;
     }
     footer a:hover { color: var(--link-hover); text-decoration: underline; }
-    footer .links { display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; }
+    footer .links { display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1.25rem; }
+    .footer-disclaimer {
+      font-size: 0.75rem;
+      color: var(--muted);
+      max-width: 520px;
+      margin: 0 auto;
+      line-height: 1.5;
+    }
+
+    /* Cookie / analytics consent (Consent Mode + EEA guidance) */
+    .consent-banner {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 9999;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 1rem 1.25rem;
+      box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.35);
+      display: none;
+    }
+    .consent-banner.is-visible { display: block; }
+    .consent-inner {
+      max-width: 960px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .consent-banner p { margin: 0; font-size: 0.875rem; color: var(--text); flex: 1 1 240px; line-height: 1.5; }
+    .consent-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      justify-content: flex-end;
+    }
+    .consent-actions a {
+      color: var(--link);
+      font-size: 0.8125rem;
+      text-decoration: none;
+      margin-right: 0.25rem;
+    }
+    .consent-actions a:hover { color: var(--link-hover); text-decoration: underline; }
+    .consent-actions .btn { padding: 0.45rem 0.9rem; font-size: 0.8125rem; border: none; cursor: pointer; }
+    .consent-actions .btn-secondary { background: var(--border); color: var(--text); }
+    .consent-actions .btn-secondary:hover { background: #484f58; color: var(--text); }
   </style>
 </head>
 <body>
@@ -246,78 +438,190 @@
     <p class="tagline">Accurate music metadata for Rekordbox libraries, from Beatport.</p>
     <div class="cta">
       <a href="#download" class="btn">Download</a>
-      <a href="https://github.com/stuchain/CuePoint#readme" class="btn btn-secondary">GitHub</a>
+      <a href="https://github.com/stuchain/CuePoint#readme" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">GitHub</a>
     </div>
   </header>
 
-  <section class="intro reveal">
-    <div class="page">
-      <p class="lead">Match your Rekordbox tracks to Beatport and get key, BPM, label, genre, and release date without manual lookup.</p>
-      <p class="sub">Export from Rekordbox → run CuePoint → review or re-import. Full audit trail for every match.</p>
-    </div>
-  </section>
+  <main>
+    <section class="intro reveal" aria-labelledby="intro-heading">
+      <div class="page">
+        <h2 id="intro-heading" class="section-title">About CuePoint</h2>
+        <p class="lead">Match your Rekordbox tracks to Beatport and get key, BPM, label, genre, and release date without manual lookup.</p>
+        <p class="sub">Export from Rekordbox → run CuePoint → review or re-import. Full audit trail for every match.</p>
+        <p class="tools-line">CuePoint includes <strong>inKey</strong> (Beatport metadata for Rekordbox playlists) and <strong>inCrate</strong> (inventory, charts, new releases, and Beatport playlists from your collection).</p>
+      </div>
+    </section>
 
-  <section class="reveal">
-    <div class="page">
-      <h2 class="section-title">Why CuePoint</h2>
-      <p class="section-desc">Clean metadata, traceable decisions, and built to handle large libraries.</p>
-      <div class="features-grid">
-        <div class="feature-card">
-          <h3>Clean metadata</h3>
-          <p>Key, BPM, label, genre, release date: consistent and reviewable.</p>
-        </div>
-        <div class="feature-card">
-          <h3>Auditable matches</h3>
-          <p>Every query and candidate is logged so you can verify decisions.</p>
-        </div>
-        <div class="feature-card">
-          <h3>Built for scale</h3>
-          <p>Handles large libraries with parallel search and configurable time budgets.</p>
+    <section class="reveal">
+      <div class="page">
+        <h2 class="section-title">Why CuePoint</h2>
+        <p class="section-desc">Clean metadata, traceable decisions, and built to handle large libraries.</p>
+        <div class="features-grid">
+          <div class="feature-card">
+            <h3>Clean metadata</h3>
+            <p>Key, BPM, label, genre, release date: consistent and reviewable.</p>
+          </div>
+          <div class="feature-card">
+            <h3>Auditable matches</h3>
+            <p>Every query and candidate is logged so you can verify decisions.</p>
+          </div>
+          <div class="feature-card">
+            <h3>Built for scale</h3>
+            <p>Handles large libraries with parallel search and configurable time budgets.</p>
+          </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <section id="download" class="reveal">
-    <div class="page">
-      <div class="download-section">
-        <h2>Download</h2>
-        <p class="section-desc" style="margin-bottom: 1rem;">Windows and macOS. Pick your platform.</p>
-        <div class="downloads">
-          <a class="btn" id="win-dl" href="#">Windows</a>
-          <a class="btn" id="mac-dl" href="#">macOS</a>
-        </div>
-        <a class="releases" href="https://github.com/stuchain/CuePoint/releases">All releases</a>
+    <section class="reveal" aria-labelledby="how-heading">
+      <div class="page">
+        <h2 id="how-heading" class="section-title">How it works</h2>
+        <p class="section-desc">Three steps from library export to updated metadata.</p>
+        <ul class="how-steps">
+          <li><span class="step-num" aria-hidden="true">1</span><span>Export playlists from Rekordbox as XML.</span></li>
+          <li><span class="step-num" aria-hidden="true">2</span><span>Open them in CuePoint and match tracks to Beatport.</span></li>
+          <li><span class="step-num" aria-hidden="true">3</span><span>Review results and re-import or apply metadata in Rekordbox.</span></li>
+        </ul>
       </div>
-    </div>
-  </section>
+    </section>
+
+    <section id="download" class="reveal">
+      <div class="page">
+        <div class="download-section">
+          <h2>Download</h2>
+          <p id="dl-version" class="download-version" aria-live="polite"></p>
+          <p class="section-desc" style="margin-bottom: 1rem;">Windows and macOS. Pick your platform.</p>
+          <p id="dl-status" class="download-status">Loading…</p>
+          <div class="downloads">
+            <a class="btn" id="win-dl" href="#" aria-disabled="true">Windows</a>
+            <a class="btn" id="mac-dl" href="#" aria-disabled="true">macOS</a>
+          </div>
+          <a class="releases" href="https://github.com/stuchain/CuePoint/releases" target="_blank" rel="noopener noreferrer">All releases</a>
+        </div>
+      </div>
+    </section>
+  </main>
 
   <footer class="reveal">
     <div class="page">
       <div class="links">
-        <a href="https://github.com/stuchain/CuePoint">GitHub</a>
-        <a href="https://github.com/stuchain/CuePoint/releases">Releases</a>
+        <a href="https://github.com/stuchain/CuePoint" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="https://github.com/stuchain/CuePoint/releases" target="_blank" rel="noopener noreferrer">Releases</a>
+        <a href="https://github.com/stuchain/CuePoint/issues" target="_blank" rel="noopener noreferrer">Issues</a>
+        <a href="https://github.com/stuchain/CuePoint/blob/main/docs/getting-started/quick-start.md" target="_blank" rel="noopener noreferrer">Documentation</a>
       </div>
+      <p class="footer-disclaimer">Not affiliated with third-party brands named on this page.</p>
     </div>
   </footer>
 
+  <div id="consent-banner" class="consent-banner" role="dialog" aria-labelledby="consent-heading" aria-describedby="consent-desc" hidden>
+    <div class="consent-inner">
+      <p id="consent-desc"><strong id="consent-heading">Analytics</strong> — We use Google Analytics to understand traffic to this page. You can accept measurement cookies or decline; the site works either way.</p>
+      <div class="consent-actions">
+        <a href="https://github.com/stuchain/CuePoint/blob/main/PRIVACY_NOTICE.md" target="_blank" rel="noopener noreferrer">Privacy notice</a>
+        <button type="button" class="btn btn-secondary" id="consent-decline">Decline</button>
+        <button type="button" class="btn" id="consent-accept">Accept</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     (function () {
+      var key = 'cuepoint_ga_consent';
+      var banner = document.getElementById('consent-banner');
+      if (!banner) return;
+      var stored = null;
+      try { stored = localStorage.getItem(key); } catch (e) {}
+      if (stored !== null) return;
+      banner.removeAttribute('hidden');
+      banner.classList.add('is-visible');
+      function hide() {
+        banner.classList.remove('is-visible');
+        banner.setAttribute('hidden', '');
+      }
+      document.getElementById('consent-accept').addEventListener('click', function () {
+        try { localStorage.setItem(key, 'granted'); } catch (e) {}
+        if (typeof gtag === 'function') {
+          gtag('consent', 'update', {
+            ad_storage: 'granted',
+            ad_user_data: 'granted',
+            ad_personalization: 'granted',
+            analytics_storage: 'granted'
+          });
+        }
+        hide();
+      });
+      document.getElementById('consent-decline').addEventListener('click', function () {
+        try { localStorage.setItem(key, 'declined'); } catch (e) {}
+        hide();
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var LATEST = 'https://github.com/stuchain/CuePoint/releases/latest';
       var winEl = document.getElementById('win-dl');
       var macEl = document.getElementById('mac-dl');
-      // GitHub releases/latest returns the latest non-prerelease, non-draft release only.
+      var statusEl = document.getElementById('dl-status');
+      var versionEl = document.getElementById('dl-version');
+
+      function trackDownloadClick(el, fileExtension) {
+        if (typeof gtag !== 'function') return;
+        var href = el.getAttribute('href');
+        if (!href || href === '#') return;
+        gtag('event', 'file_download', {
+          link_url: href,
+          link_text: el.textContent.trim(),
+          file_extension: fileExtension
+        });
+      }
+      winEl.addEventListener('click', function () { trackDownloadClick(winEl, 'exe'); });
+      macEl.addEventListener('click', function () { trackDownloadClick(macEl, 'dmg'); });
+
+      function finishLoading() {
+        statusEl.classList.add('is-hidden');
+        winEl.removeAttribute('aria-disabled');
+        macEl.removeAttribute('aria-disabled');
+      }
+
+      function setFallback() {
+        winEl.href = macEl.href = LATEST;
+      }
+
       fetch('https://api.github.com/repos/stuchain/CuePoint/releases/latest')
-        .then(function (r) { return r.json(); })
+        .then(function (r) {
+          if (!r.ok) throw new Error('release fetch failed');
+          return r.json();
+        })
         .then(function (release) {
-          if (release.prerelease || !release.assets || !release.assets.length) return;
+          if (release.tag_name) {
+            versionEl.textContent = 'Latest release: ' + release.tag_name;
+          }
+          if (release.prerelease || !release.assets || !release.assets.length) {
+            setFallback();
+            finishLoading();
+            return;
+          }
+          var winUrl = '';
+          var macUrl = '';
           release.assets.forEach(function (asset) {
             var name = asset.name.toLowerCase();
-            if (name.endsWith('.exe')) winEl.href = asset.browser_download_url;
-            else if (name.includes('macos') && name.endsWith('.dmg')) macEl.href = asset.browser_download_url;
+            if (name.endsWith('.exe')) winUrl = asset.browser_download_url;
+            else if (name.includes('macos') && name.endsWith('.dmg')) macUrl = asset.browser_download_url;
           });
+          if (!winUrl || !macUrl) {
+            setFallback();
+          } else {
+            winEl.href = winUrl;
+            macEl.href = macUrl;
+          }
+          finishLoading();
         })
         .catch(function () {
-          winEl.href = macEl.href = 'https://github.com/stuchain/CuePoint/releases/latest';
+          setFallback();
+          versionEl.textContent = '';
+          finishLoading();
         });
 
       var observer = new IntersectionObserver(function (entries) {
@@ -325,7 +629,7 @@
           if (e.isIntersecting) e.target.classList.add('visible');
         });
       }, { rootMargin: '0px 0px -60px 0px', threshold: 0.1 });
-      document.querySelectorAll('section.reveal').forEach(function (el) { observer.observe(el); });
+      document.querySelectorAll('section.reveal, footer.reveal').forEach(function (el) { observer.observe(el); });
     })();
   </script>
 </body>
