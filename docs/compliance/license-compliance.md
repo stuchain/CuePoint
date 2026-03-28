@@ -2,6 +2,8 @@
 
 ## Overview
 
+CuePoint’s own source code is licensed under the **Apache License, Version 2.0** (`LICENSE` at the repository root). Dependencies and bundled libraries must use terms **compatible** with that license.
+
 This document outlines the license compliance process for CuePoint, ensuring all third-party dependencies are properly licensed and documented.
 
 ## Compliance Process

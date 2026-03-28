@@ -9,7 +9,7 @@ By using CuePoint, you agree to these terms. CuePoint is provided as open-source
 
 ## Usage Conditions
 
-1. **License**: CuePoint and its source code are made available under the terms specified in the repository and in `THIRD_PARTY_LICENSES.txt`
+1. **License**: CuePoint and its source code are licensed under the **Apache License, Version 2.0**. The full license text is in the `LICENSE` file at the repository root (and in distributed copies of the project as applicable). **`THIRD_PARTY_LICENSES.txt`** is separate: it contains notices for **bundled third-party** libraries only, not the license for CuePoint itself.
 2. **Local Use**: You may use CuePoint locally on your devices for personal or commercial use.
 3. **Third-Party Services**: When you use features that require external services (e.g., Beatport lookups), you are subject to those services’ own terms and privacy policies.
 

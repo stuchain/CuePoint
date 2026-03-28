@@ -19,7 +19,7 @@ See [CONTRIBUTING.md](../../.github/CONTRIBUTING.md) for detailed setup and work
 
 1. **Code of Conduct**: All contributors must adhere to the [Code of Conduct](code-of-conduct.md).
 2. **Quality**: Follow the contributor checklist (tests, docs, lint, changelog) in CONTRIBUTING.md.
-3. **License**: By contributing, you agree that your contributions will be licensed under the same terms as the project.
+3. **License**: By contributing, you agree that your contributions will be licensed under the **Apache License, Version 2.0**, the same terms as the project (`LICENSE` at the repository root).
 
 ## Maintainer Expectations
 
@@ -38,7 +38,7 @@ See [CONTRIBUTING.md](../../.github/CONTRIBUTING.md) for detailed setup and work
 
 ## Intellectual Property
 
-- Contributions are made under the project's license.
+- Contributions are made under the **Apache License, Version 2.0**.
 - You retain copyright; by submitting a PR, you grant the project a license to use, modify, and distribute your contribution.
 
 ## Related Documents

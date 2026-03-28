@@ -8,6 +8,7 @@ This index lists all legal, compliance, and policy documents for CuePoint.
 
 | Policy | Document | Description |
 | --- | --- | --- |
+| Software license | [LICENSE](../../LICENSE) (Apache-2.0) | License for CuePoint source code |
 | Privacy Notice | [privacy-notice.md](privacy-notice.md) | Data collection, storage, and handling |
 | Terms of Use | [terms-of-use.md](terms-of-use.md) | Usage conditions and disclaimer |
 | Acceptable Use | [acceptable-use.md](acceptable-use.md) | Permitted and prohibited use |

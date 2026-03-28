@@ -96,7 +96,7 @@ def generate_version_info():
         StringStruct('FileDescription', 'CuePoint - Rekordbox Metadata Enrichment Tool'),
         StringStruct('FileVersion', '{__version__}.{build}'),
         StringStruct('InternalName', 'CuePoint'),
-        StringStruct('LegalCopyright', 'Copyright (C) 2024 StuChain. All rights reserved.'),
+        StringStruct('LegalCopyright', 'Copyright (C) 2026 StuChain. Licensed under the Apache License, Version 2.0.'),
         StringStruct('OriginalFilename', 'CuePoint.exe'),
         StringStruct('ProductName', 'CuePoint'),
         StringStruct('ProductVersion', '{__version__}.{build}')

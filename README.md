@@ -15,7 +15,7 @@
   </p>
   <p>
     <img alt="platforms" src="https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-222"/>
-    <img alt="license" src="https://img.shields.io/badge/license-Third--Party%20Notices-222"/>
+    <img alt="license" src="https://img.shields.io/badge/License-Apache%202.0-blue.svg"/>
     <img alt="release" src="https://img.shields.io/github/v/release/stuchain/CuePoint?display_name=tag"/>
     <img alt="build" src="https://img.shields.io/badge/build-release%20ready-2ea44f"/>
   </p>
@@ -179,7 +179,14 @@ flowchart LR
 </ul>
 
 <h2>License</h2>
-<p>See <code>THIRD_PARTY_LICENSES.txt</code> and repository notices.</p>
+<p>
+  CuePoint is licensed under the <strong>Apache License, Version 2.0</strong>.
+  See the <a href="LICENSE"><code>LICENSE</code></a> file in the repository root for the full text.
+</p>
+<p>
+  Third-party libraries bundled with the application are listed in <code>THIRD_PARTY_LICENSES.txt</code>
+  (and in-app <strong>Help → Third-Party Licenses</strong>).
+</p>
 
 <hr/>
 
