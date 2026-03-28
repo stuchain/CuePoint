@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://stuchain.github.io/CuePoint/sitemap.xml

@@ -12,7 +12,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 
 
 def run_command(cmd: list, cwd: Path = None) -> tuple:
@@ -89,6 +89,7 @@ def publish_feeds(
     print("Saving generated appcast content before branch checkout...")
     saved_index_content: Optional[str] = None
     saved_logo_bytes: Optional[bytes] = None
+    saved_seo_static: Dict[str, str] = {}
     if index_path:
         index_file = Path(index_path)
         if not index_file.is_absolute():
@@ -100,6 +101,14 @@ def publish_feeds(
             if logo_file.exists():
                 saved_logo_bytes = logo_file.read_bytes()
                 print(f"  Saved logo from: {logo_file.relative_to(repo_root)} ({len(saved_logo_bytes)} bytes)")
+            for static_name in ("robots.txt", "sitemap.xml"):
+                static_path = index_file.parent / static_name
+                if static_path.exists():
+                    saved_seo_static[static_name] = static_path.read_text(encoding="utf-8")
+                    print(
+                        f"  Saved {static_name} from: {static_path.relative_to(repo_root)} "
+                        f"({len(saved_seo_static[static_name])} bytes)"
+                    )
         else:
             print(f"  Warning: Index file not found: {index_path}", file=sys.stderr)
     generated_appcast_content = {}
@@ -226,7 +235,13 @@ def publish_feeds(
         print(f"  Restored logo: {logo_dest.relative_to(repo_root)}")
         run_command(["git", "add", "logo.png"], cwd=repo_root)
         print("  Added logo.png to git")
-    
+    for static_name, static_content in saved_seo_static.items():
+        static_dest = repo_root / static_name
+        static_dest.write_text(static_content, encoding="utf-8")
+        print(f"  Restored {static_name}: {static_dest.relative_to(repo_root)}")
+        run_command(["git", "add", static_name], cwd=repo_root)
+        print(f"  Added {static_name} to git")
+
     # Copy appcast files to repository
     for appcast_file in appcast_files:
         appcast_path = Path(appcast_file)
