@@ -46,18 +46,21 @@ def publish_feeds(
     remote: str = "origin",
     github_token: Optional[str] = None,
     index_path: Optional[str] = None,
+    site_only: bool = False,
 ) -> bool:
     """
     Publish appcast files to GitHub Pages branch.
-    
+
     Args:
-        appcast_files: List of appcast file paths to publish
+        appcast_files: List of appcast file paths to publish (ignored when site_only is True)
         branch: Branch name (default: gh-pages)
         message: Commit message
         remote: Remote name (default: origin)
         github_token: Optional GitHub token for authentication (for CI/CD)
         index_path: Optional path to index.html for the Pages root (e.g. gh-pages-root/index.html)
-        
+        site_only: If True, publish only index/logo/robots/sitemap from index_path's directory;
+            do not require or modify appcast files (existing appcasts on gh-pages are preserved).
+
     Returns:
         True if successful, False otherwise
     """
@@ -86,7 +89,7 @@ def publish_feeds(
     # CRITICAL: Save generated appcast content (and optional index) BEFORE checking out gh-pages
     # When we checkout gh-pages, it will overwrite our generated files with old content
     # So we need to preserve the generated content and restore it after checkout
-    print("Saving generated appcast content before branch checkout...")
+    print("Saving content before branch checkout...")
     saved_index_content: Optional[str] = None
     saved_logo_bytes: Optional[bytes] = None
     saved_seo_static: Dict[str, str] = {}
@@ -121,8 +124,15 @@ def publish_feeds(
             print(f"  Saved content from: {appcast_path.relative_to(repo_root)} ({len(generated_appcast_content[str(appcast_path)])} bytes)")
         else:
             print(f"  Warning: Generated appcast not found: {appcast_path}", file=sys.stderr)
-    
-    if not generated_appcast_content:
+
+    if site_only:
+        if not index_path:
+            print("Error: --site-only requires --index (e.g. gh-pages-root/index.html)", file=sys.stderr)
+            return False
+        if saved_index_content is None:
+            print("Error: --site-only requires an existing index file at the --index path", file=sys.stderr)
+            return False
+    elif not generated_appcast_content:
         print("Error: No appcast files found to publish!", file=sys.stderr)
         return False
     
@@ -188,9 +198,9 @@ def publish_feeds(
             # Remove all files in orphan branch
             run_command(['git', 'rm', '-rf', '.'], cwd=repo_root)
     
-    # Restore generated appcast content after checkout
+    # Restore generated appcast content after checkout (skipped when site_only with no appcasts)
     # The checkout may have overwritten our generated files with old content from gh-pages
-    print("Restoring generated appcast content after branch checkout...")
+    print("Restoring appcast content after branch checkout...")
     for saved_path, saved_content in generated_appcast_content.items():
         appcast_path = Path(saved_path)
         # Write the saved content back (this overwrites what checkout may have put there)
@@ -586,8 +596,14 @@ def main():
     )
     parser.add_argument(
         'appcasts',
-        nargs='+',
-        help='Appcast files to publish'
+        nargs='*',
+        default=[],
+        help='Appcast files to publish (not used with --site-only)'
+    )
+    parser.add_argument(
+        '--site-only',
+        action='store_true',
+        help='Publish only site files from --index directory (index, logo.png, robots.txt, sitemap.xml); no appcasts',
     )
     parser.add_argument(
         '--branch',
@@ -624,8 +640,13 @@ def main():
     # Get token from environment if not provided (for CI/CD)
     github_token = args.github_token or os.environ.get('GITHUB_TOKEN')
     
+    if args.site_only and args.appcasts:
+        print("Note: --site-only ignores appcast path arguments", file=sys.stderr)
+
     if args.dry_run:
         print("Dry run mode - no changes will be made")
+        if args.site_only:
+            print("Would run site-only publish with --index:", args.index or "(not set)")
         for appcast in args.appcasts:
             appcast_path = Path(appcast)
             if appcast_path.exists():
@@ -633,14 +654,18 @@ def main():
             else:
                 print(f"Warning: File not found: {appcast}")
         return 0
-    
+
+    if args.site_only and not args.index:
+        parser.error("--site-only requires --index (e.g. gh-pages-root/index.html)")
+
     success = publish_feeds(
-        args.appcasts,
+        [] if args.site_only else args.appcasts,
         args.branch,
         args.message,
         args.remote,
         github_token,
         args.index,
+        site_only=args.site_only,
     )
     
     return 0 if success else 1

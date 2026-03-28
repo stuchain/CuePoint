@@ -1,0 +1,41 @@
+# Publish the static GitHub Pages site (landing page, robots.txt, sitemap.xml, logo)
+# from gh-pages-root/ without creating a release tag. Appcast feeds under updates/
+# on gh-pages are left unchanged.
+
+name: Publish GitHub Pages site
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'gh-pages-root/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish-site:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Publish site files to gh-pages branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python scripts/publish_feeds.py \
+            --site-only \
+            --branch gh-pages \
+            --message "Update GitHub Pages site from main (${{ github.sha }})" \
+            --github-token "${GITHUB_TOKEN}" \
+            --index gh-pages-root/index.html

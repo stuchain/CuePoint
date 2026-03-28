@@ -146,10 +146,13 @@
       50% { transform: translateY(-6px); }
     }
     .hero .logo {
-      width: 120px;
-      height: 120px;
       display: block;
       margin: 0 auto;
+      width: auto;
+      height: auto;
+      max-width: 120px;
+      max-height: 120px;
+      object-fit: contain;
     }
     .hero h1 {
       font-size: clamp(1.75rem, 4vw, 2.25rem);
@@ -432,7 +435,7 @@
 <body>
   <header class="hero">
     <div class="logo-wrap">
-      <img class="logo" src="logo.png" alt="CuePoint" width="120" height="120">
+      <img class="logo" src="logo.png" alt="CuePoint" decoding="async">
     </div>
     <h1>CuePoint</h1>
     <p class="tagline">Accurate music metadata for Rekordbox libraries, from Beatport.</p>
