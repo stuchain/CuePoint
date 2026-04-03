@@ -338,3 +338,5 @@ build/version_info.txt
 bp_cache.sqlite*
 
 scripts/delete_all_releases.py
+# UI overhaul docs (excluded from version control)
+docs/ui-overhaul/
