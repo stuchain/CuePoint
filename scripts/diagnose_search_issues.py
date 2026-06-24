@@ -51,14 +51,14 @@ def check_ddgs_engines():
         try:
             __import__(engine)
             available.append(engine)
-            print(f"✓ {engine}")
+            print(f"OK {engine}")
         except ImportError as e:
             missing.append(engine)
-            print(f"✗ {engine} - {e}")
+            print(f"FAIL {engine} - {e}")
     
     print(f"\nSummary: {len(available)}/{len(engines_to_check)} engines available")
     if missing:
-        print(f"⚠️  Missing engines: {missing}")
+        print(f"WARN  Missing engines: {missing}")
         return False
     return True
 
@@ -71,7 +71,7 @@ def check_fake_useragent():
     
     try:
         import fake_useragent
-        print(f"✓ fake_useragent imported")
+        print(f"OK fake_useragent imported")
         
         # Check if data files are available
         try:
@@ -79,13 +79,13 @@ def check_fake_useragent():
             ua = UserAgent()
             # Try to get a user agent (this will fail if data is missing)
             test_ua = ua.random
-            print(f"✓ fake_useragent data available (test UA: {test_ua[:50]}...)")
+            print(f"OK fake_useragent data available (test UA: {test_ua[:50]}...)")
             return True
         except Exception as e:
-            print(f"✗ fake_useragent data missing: {e}")
+            print(f"FAIL fake_useragent data missing: {e}")
             return False
     except ImportError as e:
-        print(f"✗ fake_useragent not available: {e}")
+        print(f"FAIL fake_useragent not available: {e}")
         return False
 
 
@@ -107,21 +107,21 @@ def check_duckduckgo_search_shim():
             shim_path = Path('src') / 'duckduckgo_search.py'
         
         if shim_path.exists():
-            print(f"✓ Compatibility shim found: {shim_path}")
+            print(f"OK Compatibility shim found: {shim_path}")
         else:
-            print(f"✗ Compatibility shim not found: {shim_path}")
+            print(f"FAIL Compatibility shim not found: {shim_path}")
             return False
         
         # Try to import it
         try:
             import duckduckgo_search
-            print(f"✓ duckduckgo_search imported successfully")
+            print(f"OK duckduckgo_search imported successfully")
             return True
         except ImportError as e:
-            print(f"✗ Could not import duckduckgo_search: {e}")
+            print(f"FAIL Could not import duckduckgo_search: {e}")
             return False
     except Exception as e:
-        print(f"✗ Error checking shim: {e}")
+        print(f"FAIL Error checking shim: {e}")
         return False
 
 
@@ -135,27 +135,27 @@ def test_ddgs_search():
         # Try to import DDGS
         try:
             from duckduckgo_search import DDGS
-            print("✓ Using duckduckgo_search.DDGS")
+            print("OK Using duckduckgo_search.DDGS")
         except ImportError:
             try:
                 from ddgs import DDGS
-                print("✓ Using ddgs.DDGS")
+                print("OK Using ddgs.DDGS")
             except ImportError as e:
-                print(f"✗ Could not import DDGS: {e}")
+                print(f"FAIL Could not import DDGS: {e}")
                 return False
         
         # Try a test search
         with DDGS() as ddgs:
             results = list(ddgs.text("site:beatport.com test", max_results=3))
             if results:
-                print(f"✓ Search works: found {len(results)} results")
+                print(f"OK Search works: found {len(results)} results")
                 print(f"  First result: {results[0].get('href', 'N/A')[:80]}")
                 return True
             else:
-                print("⚠️  Search returned no results (might be network issue)")
+                print("WARN  Search returned no results (might be network issue)")
                 return False
     except Exception as e:
-        print(f"✗ Search test failed: {e}")
+        print(f"FAIL Search test failed: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -170,10 +170,10 @@ def check_network_connectivity():
     try:
         import requests
         response = requests.get("https://www.beatport.com", timeout=10)
-        print(f"✓ Beatport accessible (status: {response.status_code})")
+        print(f"OK Beatport accessible (status: {response.status_code})")
         return True
     except Exception as e:
-        print(f"✗ Network test failed: {e}")
+        print(f"FAIL Network test failed: {e}")
         return False
 
 
@@ -186,18 +186,18 @@ def check_ssl_certificates():
     try:
         import certifi
         cert_path = certifi.where()
-        print(f"✓ certifi found: {cert_path}")
+        print(f"OK certifi found: {cert_path}")
         
         import os
         if os.path.exists(cert_path):
             size = os.path.getsize(cert_path)
-            print(f"✓ Certificate file exists ({size:,} bytes)")
+            print(f"OK Certificate file exists ({size:,} bytes)")
             return True
         else:
-            print(f"✗ Certificate file not found: {cert_path}")
+            print(f"FAIL Certificate file not found: {cert_path}")
             return False
     except Exception as e:
-        print(f"✗ certifi check failed: {e}")
+        print(f"FAIL certifi check failed: {e}")
         return False
 
 
@@ -226,16 +226,16 @@ def main():
     print("SUMMARY")
     print("=" * 60)
     for check, passed in results.items():
-        status = "✓ PASS" if passed else "✗ FAIL"
+        status = "OK PASS" if passed else "FAIL FAIL"
         print(f"{check:30} {status}")
     
     all_passed = all(results.values())
     print("=" * 60)
     if all_passed:
-        print("✓ All checks passed!")
+        print("OK All checks passed!")
         return 0
     else:
-        print("✗ Some checks failed - this may explain why track matching is limited")
+        print("FAIL Some checks failed - this may explain why track matching is limited")
         print("\nRecommendations:")
         if not results['ddgs_engines']:
             print("  - Rebuild with updated pyinstaller.spec to include all ddgs engines")
