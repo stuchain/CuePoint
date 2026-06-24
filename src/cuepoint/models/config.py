@@ -38,6 +38,7 @@ Example config.yaml structure:
 """
 
 import os
+import sys
 
 import requests  # type: ignore[import-untyped]
 
@@ -104,7 +105,7 @@ SETTINGS = {
     "USE_DIRECT_SEARCH_FOR_REMIXES": True,  # Use direct Beatport website search for remix queries
     # More reliable than DuckDuckGo for finding remix variants
     # Direct search queries Beatport's own search API
-    "PREFER_DIRECT_SEARCH": False,  # If True, prefer direct Beatport search over DuckDuckGo
+    "PREFER_DIRECT_SEARCH": True,  # Prefer direct Beatport search (reliable; DDG often blocked)
     # for ALL queries (not just remixes)
     # Direct search is slower but more accurate
     "USE_BROWSER_AUTOMATION": True,  # Use browser automation (Playwright/Selenium) as fallback
@@ -315,6 +316,10 @@ SETTINGS = {
     # If title similarity >= 96 but phrase doesn't match, reject candidate
     # Prevents high-similarity false positives that lack the special phrase
 }
+
+# Installed builds do not bundle Playwright; avoid slow/failing Selenium fallback loops.
+if getattr(sys, "frozen", False):
+    SETTINGS["USE_BROWSER_AUTOMATION"] = False
 
 # ========================================================================
 # HTTP CONFIGURATION

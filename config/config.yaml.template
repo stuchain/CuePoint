@@ -74,7 +74,8 @@ search:
   # Timeout for browser automation operations in seconds (default: 30)
   browser_timeout_sec: 30
 
-# DuckDuckGo (DDGS) Settings (legacy flat keys)
+# Prefer direct Beatport search when DDG is blocked/slow (recommended default).
+PREFER_DIRECT_SEARCH: true
 # If DDG is blocked/slow on your network, set DDG_ENABLED: false to avoid timeouts.
 DDG_ENABLED: true
 DDG_TIMEOUT_SEC: 6

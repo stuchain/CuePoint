@@ -51,6 +51,66 @@ def _attr_str(val: str | list | None) -> str:
     return val[0] if val else ""
 
 
+def _slug_from_track_name(name: str) -> str:
+    """Build a Beatport-style URL slug from a track title."""
+    s = (name or "").strip().lower()
+    s = re.sub(r"[^\w\s-]", "", s)
+    s = re.sub(r"[\s_]+", "-", s)
+    return re.sub(r"-+", "-", s).strip("-")
+
+
+def _normalize_track_list(tracks: Any) -> List[dict]:
+    """Unwrap Beatport search payloads: list or paginated ``{data: [...]}``."""
+    if isinstance(tracks, list):
+        return [t for t in tracks if isinstance(t, dict)]
+    if isinstance(tracks, dict):
+        data = tracks.get("data")
+        if isinstance(data, list):
+            return [t for t in data if isinstance(t, dict)]
+    return []
+
+
+def _track_dict_to_url(track: dict) -> str | None:
+    """Build a Beatport track URL from a search/API track object."""
+    track_id = track.get("id") or track.get("track_id")
+    if track_id is None:
+        return None
+    track_id_str = str(track_id).strip()
+    if not track_id_str.isdigit():
+        return None
+
+    slug = track.get("slug") if isinstance(track.get("slug"), str) else None
+    if not slug:
+        for key in ("track_name", "name", "title"):
+            val = track.get(key)
+            if val and isinstance(val, str):
+                slug = _slug_from_track_name(val)
+                break
+    if not slug:
+        for url_field in ("url", "href", "link", "canonical_url", "web_url"):
+            track_url = track.get(url_field)
+            if isinstance(track_url, str) and "/track/" in track_url:
+                slug_match = re.search(r"/track/([^/]+)/", track_url)
+                if slug_match:
+                    slug = slug_match.group(1)
+                    break
+
+    if not slug:
+        return None
+    return f"{BASE_URL}/track/{slug}/{track_id_str}"
+
+
+def _append_track_url(
+    track: dict, seen: set, urls: List[str], max_results: int
+) -> bool:
+    """Append one track URL; return True when max_results is reached."""
+    url = _track_dict_to_url(track)
+    if url and is_track_url(url) and url not in seen:
+        seen.add(url)
+        urls.append(url)
+    return len(urls) >= max_results
+
+
 def _extract_track_ids_from_next_data(
     data: Any, seen: set, urls: List[str], max_results: int
 ) -> None:
@@ -70,176 +130,73 @@ def _extract_track_ids_from_next_data(
         This function modifies the `seen` and `urls` parameters in-place.
         Stops early if max_results is reached or recursion depth exceeds 25.
     """
-    # First, try common Next.js patterns
+    # Pattern 1: props.pageProps.dehydratedState.queries (React Query)
     if isinstance(data, dict):
-        # Pattern 1: props.pageProps.dehydratedState.queries (React Query)
         page_props = data.get("props", {})
         if isinstance(page_props, dict):
             dehydrated = page_props.get("pageProps", {}).get("dehydratedState", {})
             if isinstance(dehydrated, dict):
                 queries = dehydrated.get("queries", [])
                 for q in queries if isinstance(queries, list) else []:
-                    if isinstance(q, dict):
-                        state = q.get("state", {})
-                        if isinstance(state, dict):
-                            data_val = state.get("data", {})
-                            if isinstance(data_val, dict):
-                                # Look for tracks array or direct track objects
-                                tracks = (
-                                    data_val.get("tracks")
-                                    or data_val.get("results")
-                                    or data_val.get("items")
-                                    or []
-                                )
-                                # Also check if data_val itself is a list of tracks
-                                if isinstance(data_val, list):
-                                    tracks = data_val
-                                if isinstance(tracks, list):
-                                    for track in tracks:
-                                        if isinstance(track, dict):
-                                            track_id = track.get("id")
-                                            slug = track.get("slug")
-                                            # Also check for slug in various formats
-                                            if not slug:
-                                                slug = track.get("name") or track.get(
-                                                    "title"
-                                                )
-                                                # Try to extract slug from URL if present
-                                                track_url = (
-                                                    track.get("url")
-                                                    or track.get("href")
-                                                    or track.get("link")
-                                                )
-                                                if track_url and "/track/" in track_url:
-                                                    slug_match = re.search(
-                                                        r"/track/([^/]+)/", track_url
-                                                    )
-                                                    if slug_match:
-                                                        slug = slug_match.group(1)
+                    if not isinstance(q, dict):
+                        continue
+                    state = q.get("state", {})
+                    if not isinstance(state, dict):
+                        continue
+                    data_val = state.get("data", {})
+                    if isinstance(data_val, list):
+                        for track in data_val:
+                            if isinstance(track, dict) and _append_track_url(
+                                track, seen, urls, max_results
+                            ):
+                                return
+                        continue
+                    if not isinstance(data_val, dict):
+                        continue
+                    for key in ("tracks", "results", "items"):
+                        for track in _normalize_track_list(data_val.get(key)):
+                            if _append_track_url(track, seen, urls, max_results):
+                                return
+                    for key in ("releases",):
+                        for release in _normalize_track_list(data_val.get(key)):
+                            for track in _normalize_track_list(release.get("tracks")):
+                                if _append_track_url(track, seen, urls, max_results):
+                                    return
 
-                                            if track_id and slug:
-                                                url = f"{BASE_URL}/track/{slug}/{track_id}"
-                                                if (
-                                                    is_track_url(url)
-                                                    and url not in seen
-                                                ):
-                                                    seen.add(url)
-                                                    urls.append(url)
-                                                    if len(urls) >= max_results:
-                                                        return
-
-                                            # Also check if track has a direct URL field
-                                            for url_field in [
-                                                "url",
-                                                "href",
-                                                "link",
-                                                "canonical_url",
-                                                "web_url",
-                                            ]:
-                                                if url_field in track:
-                                                    track_url = track[url_field]
-                                                    if (
-                                                        isinstance(track_url, str)
-                                                        and "beatport.com/track/"
-                                                        in track_url
-                                                    ):
-                                                        if (
-                                                            is_track_url(track_url)
-                                                            and track_url not in seen
-                                                        ):
-                                                            seen.add(track_url)
-                                                            urls.append(track_url)
-                                                            if len(urls) >= max_results:
-                                                                return
-
-                        # Also check queryKey and queryHash for direct data
-                        query_data = (
-                            state.get("data") if isinstance(state, dict) else None
-                        )
-                        if isinstance(query_data, list):
-                            for item in query_data:
-                                if isinstance(item, dict):
-                                    track_id = item.get("id")
-                                    slug = item.get("slug")
-                                    if track_id and slug:
-                                        url = f"{BASE_URL}/track/{slug}/{track_id}"
-                                        if is_track_url(url) and url not in seen:
-                                            seen.add(url)
-                                            urls.append(url)
-                                            if len(urls) >= max_results:
-                                                return
-
-    # Fallback: General recursive traversal
-    def traverse(obj: Any, depth: int = 0, path: str = "") -> None:
-        """Recursively traverse data structure to find track objects.
-
-        Args:
-            obj: The object to traverse (dict, list, or primitive).
-            depth: Current recursion depth (stops at 25).
-            path: Current path in the data structure (for debugging).
-        """
+    # Fallback: general recursive traversal
+    def traverse(obj: Any, depth: int = 0) -> None:
         if depth > 25 or len(urls) >= max_results:
             return
-
         if isinstance(obj, dict):
-            # Look for track objects - they often have id, slug, or url fields
-            if "id" in obj and "slug" in obj:
-                track_id = obj.get("id")
-                slug = obj.get("slug")
-                # Make sure it's a numeric ID (track IDs are numeric)
-                if (
-                    track_id
-                    and slug
-                    and isinstance(track_id, (int, str))
-                    and str(track_id).isdigit()
-                ):
-                    # Construct URL
-                    url = f"{BASE_URL}/track/{slug}/{track_id}"
-                    if is_track_url(url) and url not in seen:
-                        seen.add(url)
-                        urls.append(url)
-                        if len(urls) >= max_results:
-                            return
-
-            # Also check for direct URL fields
-            for key in [
+            if ("id" in obj or "track_id" in obj) and _append_track_url(
+                obj, seen, urls, max_results
+            ):
+                return
+            for url_field in (
                 "url",
                 "href",
                 "link",
                 "canonical_url",
                 "web_url",
                 "trackUrl",
-                "slug",
-            ]:
-                if key in obj:
-                    val = obj[key]
-                    if isinstance(val, str):
-                        if "beatport.com/track/" in val:
-                            if is_track_url(val) and val not in seen:
-                                seen.add(val)
-                                urls.append(val)
-                                if len(urls) >= max_results:
-                                    return
-                        elif key == "slug" and "id" in obj:
-                            # Construct from slug + id
-                            track_id = obj.get("id")
-                            if track_id:
-                                url = f"{BASE_URL}/track/{val}/{track_id}"
-                                if is_track_url(url) and url not in seen:
-                                    seen.add(url)
-                                    urls.append(url)
-                                    if len(urls) >= max_results:
-                                        return
-
-            # Recurse into all values
-            for k, v in obj.items():
-                traverse(v, depth + 1, f"{path}.{k}" if path else k)
-
+            ):
+                val = obj.get(url_field)
+                if (
+                    isinstance(val, str)
+                    and "beatport.com/track/" in val
+                    and is_track_url(val)
+                    and val not in seen
+                ):
+                    seen.add(val)
+                    urls.append(val)
+                    if len(urls) >= max_results:
+                        return
+            for v in obj.values():
+                traverse(v, depth + 1)
         elif isinstance(obj, list):
-            for i, item in enumerate(obj):
-                traverse(item, depth + 1, f"{path}[{i}]" if path else f"[{i}]")
+            for item in obj:
+                traverse(item, depth + 1)
 
-    # Run traversal
     traverse(data)
 
 

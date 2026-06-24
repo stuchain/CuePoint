@@ -1,12 +1,15 @@
 """Unit tests for beatport_search module."""
 
 import sys
+from pathlib import Path
 
 import pytest
 from unittest.mock import patch
 
 from cuepoint.data.beatport_search import (
     _extract_track_ids_from_next_data,
+    _slug_from_track_name,
+    _track_dict_to_url,
     beatport_search_direct,
     beatport_search_via_api,
 )
@@ -85,6 +88,69 @@ class TestExtractTrackIdsFromNextData:
         _extract_track_ids_from_next_data(data, seen, urls, max_results=10)
 
         assert len(urls) == 0
+
+    def test_slug_from_track_name(self):
+        assert _slug_from_track_name("The Night is Blue") == "the-night-is-blue"
+
+    def test_track_dict_to_url_track_id_and_track_name(self):
+        url = _track_dict_to_url(
+            {"track_id": 17873711, "track_name": "The Night is Blue"}
+        )
+        assert url == "https://www.beatport.com/track/the-night-is-blue/17873711"
+
+    def test_extract_track_ids_paginated_tracks_data(self):
+        """Beatport search (2024+) uses tracks: {data: [{track_id, track_name, ...}]}."""
+        data = {
+            "props": {
+                "pageProps": {
+                    "dehydratedState": {
+                        "queries": [
+                            {
+                                "state": {
+                                    "data": {
+                                        "tracks": {
+                                            "data": [
+                                                {
+                                                    "track_id": 17873711,
+                                                    "track_name": "The Night is Blue",
+                                                },
+                                                {
+                                                    "track_id": 19364241,
+                                                    "track_name": "The Sirens",
+                                                },
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+        seen: set = set()
+        urls: list = []
+        _extract_track_ids_from_next_data(data, seen, urls, max_results=10)
+        assert len(urls) == 2
+        assert "the-night-is-blue/17873711" in urls[0]
+
+    def test_extract_track_ids_from_saved_fixture(self):
+        fixture = (
+            Path(__file__).resolve().parents[2]
+            / "fixtures"
+            / "beatport"
+            / "search_next_data_sample.json"
+        )
+        if not fixture.exists():
+            pytest.skip("search_next_data_sample.json not captured yet")
+        import json
+
+        data = json.loads(fixture.read_text(encoding="utf-8"))
+        seen: set = set()
+        urls: list = []
+        _extract_track_ids_from_next_data(data, seen, urls, max_results=20)
+        assert len(urls) >= 10
+        assert any("the-night-is-blue" in u for u in urls)
 
     def test_extract_track_ids_max_results_limit(self):
         """Test that max_results limits extraction."""

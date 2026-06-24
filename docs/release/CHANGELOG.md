@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.3] - 2026-06-24
+
+### Fixed
+- Beatport search: parse current `__NEXT_DATA__` format (`tracks.data[]` with `track_id`/`track_name`) so direct search returns track URLs again
+- Prefer direct Beatport search by default; disable browser automation fallback in packaged builds
+
 ### Added
 - Step 10 implementation: Final Configuration & Release Readiness
 - Comprehensive Step 10 validation script
