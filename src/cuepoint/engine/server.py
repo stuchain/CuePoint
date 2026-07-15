@@ -21,6 +21,7 @@ from cuepoint.engine.config_api import (
 from cuepoint.engine.job_events import iter_job_events
 from cuepoint.engine.export_api import parse_export_body, run_export
 from cuepoint.engine.sync_tags_api import parse_sync_tags_body, run_sync_tags
+from cuepoint.engine.support_bundle_api import parse_support_bundle_body, run_support_bundle
 from cuepoint.engine.history_api import list_recent_history, load_history_csv
 from cuepoint.engine.incrate_api import (
     demo_inventory_snapshot,
@@ -83,7 +84,11 @@ class EngineConfig:
 
 
 def health_payload() -> dict:
-    return {"status": "ok", "version": __version__}
+    payload = {"status": "ok", "version": __version__}
+    session_id = os.environ.get("CUEPOINT_SESSION_ID", "").strip()
+    if session_id:
+        payload["session_id"] = session_id
+    return payload
 
 
 def error_payload(code: str, message: str) -> dict:
@@ -336,6 +341,19 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
                     return
                 except Exception as exc:  # noqa: BLE001 — surface to API client
                     self._send_json(500, error_payload("SYNC_TAGS_FAILED", str(exc)))
+                    return
+                self._send_json(200, payload)
+                return
+
+            if path == "/api/v1/support/bundle":
+                try:
+                    body = parse_support_bundle_body(self._read_body())
+                    payload = run_support_bundle(body)
+                except ValueError as exc:
+                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                    return
+                except Exception as exc:  # noqa: BLE001 — surface to API client
+                    self._send_json(500, error_payload("SUPPORT_BUNDLE_FAILED", str(exc)))
                     return
                 self._send_json(200, payload)
                 return

@@ -73,6 +73,18 @@ class TestSupportBundleRedaction:
         result = SupportBundleGenerator._sanitize_log_content(content)
         assert "/Users/" not in result or "~" in result
 
+    def test_sanitize_log_content_redacts_bearer_token(self):
+        content = "Auth failed: Bearer super-secret-token-value"
+        result = SupportBundleGenerator._sanitize_log_content(content)
+        assert "super-secret-token-value" not in result
+        assert "Bearer [REDACTED]" in result
+
+    def test_sanitize_log_content_redacts_token_query_param(self):
+        content = "Redirect to https://api.example.com?token=abc123&foo=bar"
+        result = SupportBundleGenerator._sanitize_log_content(content)
+        assert "abc123" not in result
+        assert "token=[REDACTED]" in result
+
 
 class TestSupportBundleContents:
     """Test support bundle contains required files (Design 7.60)."""

@@ -40,6 +40,20 @@ def test_health_endpoint_returns_ok():
         thread.join(timeout=2)
 
 
+def test_health_includes_session_id_from_env(monkeypatch):
+    port = _free_port()
+    monkeypatch.setenv("CUEPOINT_SESSION_ID", "session-abc-123")
+    config = EngineConfig(host="127.0.0.1", port=port, token="test-token")
+    server, thread = start_engine_thread(config)
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=2) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        assert data.get("session_id") == "session-abc-123"
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+
+
 def test_status_requires_bearer_token():
     port = _free_port()
     config = EngineConfig(host="127.0.0.1", port=port, token="secret")

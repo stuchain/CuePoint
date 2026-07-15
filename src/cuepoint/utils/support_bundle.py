@@ -263,6 +263,11 @@ Contents:
                 line = line.replace("C:\\Users\\", "~\\")
             if "/Users/" in line and "~" not in line[: line.find("/Users/")]:
                 line = line.replace("/Users/", "~/")
+            if "Bearer " in line:
+                line = line.split("Bearer ", 1)[0] + "Bearer [REDACTED]"
+            if "token=" in line.lower():
+                parts = line.split("token=", 1)
+                line = parts[0] + "token=[REDACTED]"
             sanitized_lines.append(line)
 
         return "\n".join(sanitized_lines)
