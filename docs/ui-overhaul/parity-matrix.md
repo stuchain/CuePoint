@@ -6,9 +6,9 @@ Maps **production Qt** surfaces to **Electron lab** routes for Phase 6 cutover. 
 
 | Surface | Qt source | Lab route | Priority | Status | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Tool picker | [`tool_selection_page.py`](../../src/cuepoint/ui/widgets/tool_selection_page.py) | `/` | P0 | Lab stub | Qt hides inCrate button; lab enables route stub |
-| inKey main | [`main_window.py`](../../src/cuepoint/ui/main_window.py) (Main tab) | `/match` | P0 | Lab wired | Demo/real jobs via engine |
-| inKey past searches | Main window tab | — | P1 | Not in lab | Add lab tab or route later |
+| Tool picker | [`tool_selection_page.py`](../../src/cuepoint/ui/widgets/tool_selection_page.py) | `/` | P0 | Lab wired | Centered landing + inKey primary CTA |
+| inKey main | [`main_window.py`](../../src/cuepoint/ui/main_window.py) (Main tab) | `/match` | P0 | Lab wired | Demo/real XML + M3U jobs via engine |
+| inKey past searches | Main window tab | `/match` (Past searches tab) | P1 | Lab wired | Engine history API + XML/M3U re-run |
 | Results table | [`results_view.py`](../../src/cuepoint/ui/widgets/results_view.py) | `/results` | P0 | Wired | Engine results + export |
 | Settings / export | [`settings_dialog.py`](../../src/cuepoint/ui/dialogs/settings_dialog.py) | `/settings` | P1 | Lab wired | Export + Beatport token via engine |
 | inCrate page shell | [`incrate_page.py`](../../src/cuepoint/ui/widgets/incrate_page.py) | `/incrate` | P1 | Lab wired | Import, discover, playlist via engine |
@@ -17,8 +17,8 @@ Maps **production Qt** surfaces to **Electron lab** routes for Phase 6 cutover. 
 | inCrate discover | [`incrate_discover_section.py`](../../src/cuepoint/ui/widgets/incrate_discover_section.py) | `/incrate#discover` | P1 | Lab wired | Engine discover API |
 | inCrate results | [`incrate_results_section.py`](../../src/cuepoint/ui/widgets/incrate_results_section.py) | `/incrate` (panel) | P1 | Lab wired | Discovery results list |
 | inCrate playlist | [`incrate_playlist_section.py`](../../src/cuepoint/ui/widgets/incrate_playlist_section.py) | `/incrate#playlist` | P1 | Lab wired | Engine playlist API |
-| Batch results tabs | `results_view.py` batch mode | — | P1 | Not in lab | Multi-playlist tabs |
-| Candidate / review dialogs | Qt dialogs | — | P1 | Not in lab | Phase 6 |
+| Batch results tabs | `results_view.py` batch mode | `/results` (batch mode) | P1 | Lab wired | Demo batch job + playlist tabs |
+| Candidate / review dialogs | Qt dialogs | `/results` | P1 | Lab wired | Candidate dialog + Needs review filter |
 | Onboarding / updates | Qt | — | P2 | Not in lab | Phase 6+ |
 
 ## Column index parity (Results)

@@ -8,7 +8,7 @@ import re
 import threading
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Optional, Tuple, Type
+from typing import Any, Dict, Optional, Tuple, Type
 from urllib.parse import parse_qs, urlparse
 
 from cuepoint.engine.config_api import (
@@ -20,6 +20,7 @@ from cuepoint.engine.config_api import (
 )
 from cuepoint.engine.job_events import iter_job_events
 from cuepoint.engine.export_api import parse_export_body, run_export
+from cuepoint.engine.history_api import list_recent_history, load_history_csv
 from cuepoint.engine.incrate_api import (
     demo_inventory_snapshot,
     get_discover_options,
@@ -31,8 +32,14 @@ from cuepoint.engine.incrate_api import (
     run_incrate_import,
     run_playlist_create,
 )
-from cuepoint.engine.jobs import JobStore, cancel_match_job, parse_match_job_body, start_match_job
-from cuepoint.engine.jobs import track_result_to_dict
+from cuepoint.engine.xml_api import list_xml_playlists
+from cuepoint.engine.jobs import (
+    JobStore,
+    cancel_match_job,
+    parse_match_job_body,
+    start_match_job,
+    track_result_to_dict,
+)
 from cuepoint.version import __version__
 
 ALLOWED_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
@@ -147,14 +154,17 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
                 self._stream_job_events(job_id)
                 return
             if suffix == "results":
-                self._send_json(
-                    200,
-                    {
-                        "id": job.id,
-                        "state": job.state.value,
-                        "results": [track_result_to_dict(r) for r in job.results],
-                    },
-                )
+                payload: Dict[str, Any] = {
+                    "id": job.id,
+                    "state": job.state.value,
+                    "results": [track_result_to_dict(r) for r in job.results],
+                }
+                if job.batch_results:
+                    payload["batch_results"] = {
+                        name: [track_result_to_dict(r) for r in rows]
+                        for name, rows in job.batch_results.items()
+                    }
+                self._send_json(200, payload)
                 return
             self._send_json(200, job.to_status_dict())
 
@@ -209,6 +219,63 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
                 return
             if path.startswith("/api/v1/incrate/"):
                 self._handle_incrate_get(path, parsed.query)
+                return
+            if path == "/api/v1/history/recent":
+                if not self._authorized():
+                    self._send_json(401, error_payload("UNAUTHORIZED", "Missing or invalid token"))
+                    return
+                params = parse_qs(parsed.query)
+                limit_raw = params.get("limit", ["50"])[0]
+                try:
+                    limit = int(limit_raw)
+                except ValueError:
+                    self._send_json(400, error_payload("INVALID_REQUEST", "limit must be an integer"))
+                    return
+                self._send_json(200, list_recent_history(max_files=max(1, min(limit, 200))))
+                return
+            if path == "/api/v1/history/load":
+                if not self._authorized():
+                    self._send_json(401, error_payload("UNAUTHORIZED", "Missing or invalid token"))
+                    return
+                params = parse_qs(parsed.query)
+                csv_path = params.get("path", [""])[0]
+                if not csv_path:
+                    self._send_json(400, error_payload("INVALID_REQUEST", "path query parameter required"))
+                    return
+                try:
+                    payload = load_history_csv(csv_path)
+                except FileNotFoundError as exc:
+                    self._send_json(404, error_payload("FILE_NOT_FOUND", str(exc)))
+                    return
+                except ValueError as exc:
+                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                    return
+                except Exception as exc:  # noqa: BLE001 — surface to API client
+                    self._send_json(500, error_payload("HISTORY_LOAD_FAILED", str(exc)))
+                    return
+                self._send_json(200, payload)
+                return
+            if path == "/api/v1/xml/playlists":
+                if not self._authorized():
+                    self._send_json(401, error_payload("UNAUTHORIZED", "Missing or invalid token"))
+                    return
+                params = parse_qs(parsed.query)
+                xml_path = params.get("path", [""])[0]
+                if not xml_path:
+                    self._send_json(400, error_payload("INVALID_REQUEST", "path query parameter required"))
+                    return
+                try:
+                    payload = list_xml_playlists(xml_path)
+                except FileNotFoundError as exc:
+                    self._send_json(404, error_payload("FILE_NOT_FOUND", str(exc)))
+                    return
+                except ValueError as exc:
+                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                    return
+                except Exception as exc:  # noqa: BLE001 — surface to API client
+                    self._send_json(500, error_payload("XML_PARSE_FAILED", str(exc)))
+                    return
+                self._send_json(200, payload)
                 return
             if path == "/api/v1/config/beatport-token":
                 if not self._authorized():

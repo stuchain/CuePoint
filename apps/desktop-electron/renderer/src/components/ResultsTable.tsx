@@ -24,6 +24,7 @@ export interface ResultsTableProps {
   rows: TrackResult[];
   selectedIndex?: number | null;
   onSelectRow?: (playlistIndex: number) => void;
+  onRowDoubleClick?: (row: TrackResult) => void;
 }
 
 type SortDir = "asc" | "desc";
@@ -98,7 +99,12 @@ function useColumnLayoutPersistence(scale: number) {
   return { columnWidths, setColumnWidths };
 }
 
-export function ResultsTable({ rows, selectedIndex = null, onSelectRow }: ResultsTableProps) {
+export function ResultsTable({
+  rows,
+  selectedIndex = null,
+  onSelectRow,
+  onRowDoubleClick,
+}: ResultsTableProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { scale } = useScale();
   const [sortCol, setSortCol] = useState(DEFAULT_SORT_COLUMN);
@@ -229,6 +235,7 @@ export function ResultsTable({ rows, selectedIndex = null, onSelectRow }: Result
                 }}
                 role="row"
                 onClick={() => onSelectRow?.(row.playlist_index)}
+                onDoubleClick={() => onRowDoubleClick?.(row)}
               >
                 {RESULTS_COLUMNS.map((col, colIndex) => (
                   <div

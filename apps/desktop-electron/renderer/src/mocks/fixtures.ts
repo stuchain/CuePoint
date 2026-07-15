@@ -1,4 +1,4 @@
-import type { ProgressInfo, ToolOption, TrackResult } from "./types";
+import type { MatchCandidate, TrackResult } from "./types";
 
 export const toolOptions: ToolOption[] = [
   {
@@ -59,6 +59,39 @@ const titles = [
 
 const labels = ["Anjunabeats", "Toolroom", "Defected", "Drumcode", "Spinnin"];
 
+function demoCandidates(index: number, primaryScore = 88): MatchCandidate[] {
+  return [
+    {
+      candidate_title: titles[index % titles.length][0],
+      candidate_artists: titles[index % titles.length][1],
+      candidate_url: `https://www.beatport.com/track/fixture/${index}`,
+      candidate_key: ["Am", "Em", "Dm", "G"][index % 4],
+      candidate_key_camelot: ["8A", "9A", "7A", "6A"][index % 4],
+      candidate_year: String(2018 + (index % 7)),
+      candidate_bpm: String(120 + (index % 15)),
+      candidate_label: labels[index % labels.length],
+      final_score: primaryScore,
+      match_score: primaryScore,
+      title_sim: 95,
+      artist_sim: 90,
+    },
+    {
+      candidate_title: `Alt ${titles[index % titles.length][0]}`,
+      candidate_artists: "Other Artist",
+      candidate_url: `https://www.beatport.com/track/fixture-alt/${index}`,
+      candidate_key: "Em",
+      candidate_key_camelot: "9A",
+      candidate_year: "2017",
+      candidate_bpm: "124",
+      candidate_label: "Alt Records",
+      final_score: 71,
+      match_score: 71,
+      title_sim: 78,
+      artist_sim: 62,
+    },
+  ];
+}
+
 export function generateTrackResults(count = 120): TrackResult[] {
   return Array.from({ length: count }, (_, i) => {
     const [title, artist] = titles[i % titles.length];
@@ -77,10 +110,78 @@ export function generateTrackResults(count = 120): TrackResult[] {
       beatport_label: matched ? labels[i % labels.length] : undefined,
       beatport_bpm: matched ? String(120 + (i % 15)) : undefined,
       match_score: matched ? 85 + (i % 14) : undefined,
+      title_sim: matched ? 94 : undefined,
+      artist_sim: matched ? 88 : undefined,
       confidence: matched ? (["high", "medium", "low"] as const)[i % 3] : undefined,
       beatport_url: matched ? `https://www.beatport.com/track/x/${1000 + i}` : undefined,
+      candidates: matched && i % 2 === 0 ? demoCandidates(i) : undefined,
     };
   });
 }
 
 export const sampleResults = generateTrackResults(120);
+
+export const sampleBatchResults: Record<string, TrackResult[]> = {
+  "Warm Up": generateTrackResults(8).map((row, index) => ({
+    ...row,
+    playlist_index: index + 1,
+    title: `Warm Up ${row.title}`,
+  })),
+  "Peak Time": generateTrackResults(8).map((row, index) => ({
+    ...row,
+    playlist_index: index + 1,
+    title: `Peak ${row.title}`,
+  })),
+};
+
+export const mockXmlPlaylists = [
+  { path: "Warm Up", name: "Warm Up", display_name: "Warm Up", track_count: 24 },
+  { path: "Peak Time", name: "Peak Time", display_name: "Peak Time", track_count: 18 },
+  { path: "Closing/Afterhours", name: "Afterhours", display_name: "Closing / Afterhours", track_count: 12 },
+];
+
+export const mockPastHistoryFiles = [
+  {
+    file_path: "mock://weekend-set.csv",
+    file_name: "weekend-set.csv",
+    modified_at: new Date(Date.now() - 86400000).toISOString(),
+    size_bytes: 48_000,
+    playlist_name: "Weekend Set",
+    xml_path: "C:\\Music\\collection.xml",
+    preview: generateTrackResults(8).map((row, index) => ({
+      ...row,
+      playlist_index: index + 1,
+      candidates: index % 2 === 0 ? demoCandidates(index) : undefined,
+    })),
+    rerun: {
+      source: "collection",
+      xml_path: "C:\\Music\\collection.xml",
+      playlist_name: "Weekend Set",
+      xml_exists: false,
+      can_rerun: false,
+    },
+    related_files: {
+      review_candidates_csv: "mock://weekend-set_review_candidates.csv",
+    },
+  },
+  {
+    file_path: "mock://warmup-tracks.csv",
+    file_name: "warmup-tracks.csv",
+    modified_at: new Date(Date.now() - 86400000 * 4).toISOString(),
+    size_bytes: 31_200,
+    playlist_name: "Warm Up",
+    preview: generateTrackResults(5).map((row, index) => ({
+      ...row,
+      playlist_index: index + 1,
+      title: `Warm ${row.title}`,
+      match_score: index === 2 ? 62 : row.match_score,
+    })),
+    rerun: {
+      source: "collection",
+      xml_path: "C:\\Music\\collection.xml",
+      playlist_name: "Warm Up",
+      xml_exists: false,
+      can_rerun: false,
+    },
+  },
+];

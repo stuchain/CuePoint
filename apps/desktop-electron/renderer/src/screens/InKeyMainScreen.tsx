@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Badge,
@@ -10,24 +10,33 @@ import {
   ToolbarIcon,
   useToast,
 } from "../components";
+import type { InKeyRerunRequest } from "../api/cuepointBridge.types";
 import { hasEngineBridge } from "../api/cuepointBridge.types";
 import { idleProgress } from "../mocks/fixtures";
-import { useMatchJob, type FileSource } from "../hooks/useMatchJob";
+import { useMatchJob, type FileSource, type MatchInputSource } from "../hooks/useMatchJob";
+import { useXmlPlaylists } from "../hooks/useXmlPlaylists";
+import { BatchPlaylistPicker } from "./BatchPlaylistPicker";
+import { PastSearchesPanel } from "./PastSearchesPanel";
 import "./screens.css";
+
+type ProcessingMode = "single" | "batch";
 
 export function InKeyMainScreen() {
   const navigate = useNavigate();
   const { push } = useToast();
   const [tab, setTab] = useState("main");
+  const [processingMode, setProcessingMode] = useState<ProcessingMode>("single");
+  const [inputSource, setInputSource] = useState<MatchInputSource>("collection");
   const [filePath, setFilePath] = useState("");
   const [fileSource, setFileSource] = useState<FileSource>("none");
   const [playlistName, setPlaylistName] = useState("My Playlist");
+  const [selectedBatchPaths, setSelectedBatchPaths] = useState<string[]>([]);
   const engineAvailable = hasEngineBridge();
 
   const { running, cancelling, progress, startMatch, cancelMatch } = useMatchJob({
     onComplete: () => {
       push(
-        engineAvailable ? "Batch complete — review results." : "Batch complete (mock).",
+        engineAvailable ? "Processing complete — review results." : "Processing complete (mock).",
         "success",
       );
     },
@@ -35,7 +44,42 @@ export function InKeyMainScreen() {
     onError: (message) => push(message, "warning"),
   });
 
+  const {
+    loading: playlistsLoading,
+    playlists,
+    error: playlistsError,
+  } = useXmlPlaylists(filePath, inputSource === "collection" ? fileSource : "none");
+
+  useEffect(() => {
+    setSelectedBatchPaths([]);
+  }, [filePath, processingMode, inputSource]);
+
+  const handleInputSourceChange = (source: MatchInputSource) => {
+    setInputSource(source);
+    setFilePath("");
+    setFileSource("none");
+    if (source === "playlist_file") {
+      setProcessingMode("single");
+    }
+  };
+
   const handleBrowse = async () => {
+    if (inputSource === "playlist_file") {
+      if (window.cuepoint?.openM3uFileDialog) {
+        const result = await window.cuepoint.openM3uFileDialog();
+        if (result.canceled) return;
+        setFilePath(result.filePath);
+        setFileSource("native");
+        push("Playlist file selected.", "success");
+        return;
+      }
+
+      setFilePath("C:\\Music\\set.m3u");
+      setFileSource("mock");
+      push("Playlist file selected (mock).", "success");
+      return;
+    }
+
     if (window.cuepoint?.openXmlFileDialog) {
       const result = await window.cuepoint.openXmlFileDialog();
       if (result.canceled) return;
@@ -51,8 +95,37 @@ export function InKeyMainScreen() {
   };
 
   const handleStart = () => {
+    if (inputSource === "playlist_file") {
+      if (!filePath) {
+        push("Select an M3U playlist file first.", "warning");
+        return;
+      }
+      void startMatch(filePath, fileSource, playlistName, { inputSource: "playlist_file" });
+      if (engineAvailable && fileSource === "native") {
+        push("M3U match job started.", "info");
+      } else {
+        push("Processing started (mock).", "info");
+      }
+      return;
+    }
+
     if (!engineAvailable && !filePath) {
       push("Select a Rekordbox XML file first.", "warning");
+      return;
+    }
+
+    if (processingMode === "batch") {
+      if (engineAvailable && fileSource === "native") {
+        if (selectedBatchPaths.length === 0) {
+          push("Select at least one playlist for batch processing.", "warning");
+          return;
+        }
+        void startMatch(filePath, fileSource, playlistName, { playlistNames: selectedBatchPaths });
+        push(`Batch job started (${selectedBatchPaths.length} playlists).`, "info");
+        return;
+      }
+      void startMatch(filePath, fileSource, playlistName, { demoBatch: true });
+      push("Batch demo job started.", "info");
       return;
     }
 
@@ -64,7 +137,49 @@ export function InKeyMainScreen() {
     }
   };
 
+  const handleStartBatchDemo = () => {
+    if (!engineAvailable) {
+      push("Batch demo requires the Electron engine.", "warning");
+      return;
+    }
+    void startMatch(filePath, fileSource, playlistName, { demoBatch: true });
+    push("Batch demo job started.", "info");
+  };
+
+  const applyRerun = useCallback(
+    (request: InKeyRerunRequest) => {
+      setTab("main");
+      setProcessingMode("single");
+      if (request.source === "playlist_file" && request.m3uPath) {
+        setInputSource("playlist_file");
+        setFilePath(request.m3uPath);
+        setFileSource("native");
+        if (request.autoStart) {
+          void startMatch(request.m3uPath, "native", "", { inputSource: "playlist_file" });
+          push("Re-run M3U match job started.", "info");
+        }
+        return;
+      }
+      setInputSource("collection");
+      if (request.playlistName) {
+        setPlaylistName(request.playlistName);
+      }
+      if (request.xmlPath) {
+        setFilePath(request.xmlPath);
+        setFileSource("native");
+      }
+      if (request.autoStart && request.xmlPath && request.playlistName) {
+        void startMatch(request.xmlPath, "native", request.playlistName, {
+          inputSource: "collection",
+        });
+        push("Re-run match job started.", "info");
+      }
+    },
+    [push, startMatch],
+  );
+
   const displayProgress = running || progress.reliability_state !== "idle" ? progress : idleProgress;
+  const canStartBatchReal = engineAvailable && fileSource === "native" && selectedBatchPaths.length > 0;
 
   return (
     <div className="screen screen--stack">
@@ -91,79 +206,166 @@ export function InKeyMainScreen() {
       />
 
       {tab === "main" ? (
-        <div className="match-layout">
-          <Panel title="Input" badge={<Badge variant="info">XML</Badge>}>
-            <div className="drop-zone">
-              <p>Drop Rekordbox collection XML here</p>
-              <p className="drop-zone__hint">
-                {engineAvailable ? "Browse opens a native file dialog" : "or use Browse (mock)"}
-              </p>
-              <div className="drop-zone__actions">
-                <Button variant="secondary" onClick={() => void handleBrowse()}>
-                  Browse…
-                </Button>
-                {filePath && <Badge variant="success">{filePath.split(/[/\\]/).pop()}</Badge>}
-              </div>
-            </div>
-            <TextField
-              label="Playlist name"
-              value={playlistName}
-              onChange={(event) => setPlaylistName(event.target.value)}
-              hint={
-                engineAvailable
-                  ? "Required for real XML jobs; demo jobs ignore this field."
-                  : "Used when wired to the engine."
-              }
-            />
-          </Panel>
+        <>
+          <div className="match-mode-toggle">
+            <Button
+              className="match-mode-toggle__btn"
+              variant={inputSource === "collection" ? "primary" : "secondary"}
+              onClick={() => handleInputSourceChange("collection")}
+            >
+              Collection (XML)
+            </Button>
+            <Button
+              className="match-mode-toggle__btn"
+              variant={inputSource === "playlist_file" ? "primary" : "secondary"}
+              onClick={() => handleInputSourceChange("playlist_file")}
+            >
+              Playlist file (M3U)
+            </Button>
+          </div>
 
-          <Panel title="Processing" badge={<Badge>{displayProgress.reliability_state ?? "idle"}</Badge>}>
-            <ProgressBar
-              value={displayProgress.percentage}
-              label={
-                displayProgress.status_message ??
-                (filePath || engineAvailable ? "Ready to process" : "Waiting for input file")
-              }
-            />
-            <dl className="stats-grid">
-              <div>
-                <dt>Matched</dt>
-                <dd>{displayProgress.matched_count}</dd>
-              </div>
-              <div>
-                <dt>Unmatched</dt>
-                <dd>{displayProgress.unmatched_count}</dd>
-              </div>
-              <div>
-                <dt>Current</dt>
-                <dd>
-                  {displayProgress.current_track.title
-                    ? `${displayProgress.current_track.title} — ${displayProgress.current_track.artists}`
-                    : "—"}
-                </dd>
-              </div>
-            </dl>
-            <div className="match-actions">
-              <Button variant="primary" loading={running && !cancelling} onClick={handleStart}>
-                {running ? (cancelling ? "Cancelling…" : "Processing…") : engineAvailable && fileSource !== "native" ? "Start demo job" : "Start matching"}
-              </Button>
-              <Button variant="secondary" disabled={!running} loading={cancelling} onClick={() => void cancelMatch()}>
-                Cancel
+          {inputSource === "collection" && (
+            <div className="match-mode-toggle">
+              <Button
+                className="match-mode-toggle__btn"
+                variant={processingMode === "single" ? "primary" : "secondary"}
+                onClick={() => setProcessingMode("single")}
+              >
+                Single playlist
               </Button>
               <Button
-                variant="secondary"
-                disabled={running}
-                onClick={() => navigate("/results")}
+                className="match-mode-toggle__btn"
+                variant={processingMode === "batch" ? "primary" : "secondary"}
+                onClick={() => setProcessingMode("batch")}
               >
-                Open results
+                Batch
               </Button>
             </div>
-          </Panel>
-        </div>
+          )}
+
+          <div className="match-layout">
+            <Panel
+              title="Input"
+              badge={
+                <Badge variant="info">{inputSource === "playlist_file" ? "M3U" : "XML"}</Badge>
+              }
+            >
+              <div className="drop-zone">
+                <p>
+                  {inputSource === "playlist_file"
+                    ? "Drop M3U / M3U8 playlist file here"
+                    : "Drop Rekordbox collection XML here"}
+                </p>
+                <p className="drop-zone__hint">
+                  {engineAvailable ? "Browse opens a native file dialog" : "or use Browse (mock)"}
+                </p>
+                <div className="drop-zone__actions">
+                  <Button variant="secondary" onClick={() => void handleBrowse()}>
+                    Browse…
+                  </Button>
+                  {filePath && <Badge variant="success">{filePath.split(/[/\\]/).pop()}</Badge>}
+                </div>
+              </div>
+
+              {inputSource === "collection" && processingMode === "single" ? (
+                <TextField
+                  label="Playlist name"
+                  value={playlistName}
+                  onChange={(event) => setPlaylistName(event.target.value)}
+                  hint={
+                    engineAvailable
+                      ? "Required for real XML jobs; demo jobs ignore this field."
+                      : "Used when wired to the engine."
+                  }
+                />
+              ) : inputSource === "collection" ? (
+                <BatchPlaylistPicker
+                  playlists={playlists}
+                  selectedPaths={selectedBatchPaths}
+                  loading={playlistsLoading}
+                  error={playlistsError}
+                  onChange={setSelectedBatchPaths}
+                />
+              ) : (
+                <p className="screen__muted">
+                  Tracks are read directly from the playlist file. Batch mode is not available for
+                  M3U sources.
+                </p>
+              )}
+            </Panel>
+
+            <Panel title="Processing" badge={<Badge>{displayProgress.reliability_state ?? "idle"}</Badge>}>
+              <ProgressBar
+                value={displayProgress.percentage}
+                label={
+                  displayProgress.status_message ??
+                  (filePath || engineAvailable
+                    ? inputSource === "playlist_file"
+                      ? "Ready to process playlist file"
+                      : "Ready to process"
+                    : "Waiting for input file")
+                }
+              />
+              <dl className="stats-grid">
+                <div>
+                  <dt>Matched</dt>
+                  <dd>{displayProgress.matched_count}</dd>
+                </div>
+                <div>
+                  <dt>Unmatched</dt>
+                  <dd>{displayProgress.unmatched_count}</dd>
+                </div>
+                <div>
+                  <dt>Current</dt>
+                  <dd>
+                    {displayProgress.current_track.title
+                      ? `${displayProgress.current_track.title} — ${displayProgress.current_track.artists}`
+                      : "—"}
+                  </dd>
+                </div>
+              </dl>
+              <div className="match-actions">
+                <Button variant="primary" loading={running && !cancelling} onClick={handleStart}>
+                  {running
+                    ? cancelling
+                      ? "Cancelling…"
+                      : "Processing…"
+                    : processingMode === "batch" && inputSource === "collection"
+                      ? canStartBatchReal
+                        ? `Start batch (${selectedBatchPaths.length})`
+                        : engineAvailable
+                          ? "Start batch demo"
+                          : "Start batch (mock)"
+                      : inputSource === "playlist_file"
+                        ? engineAvailable && fileSource === "native"
+                          ? "Start M3U matching"
+                          : "Start matching (mock)"
+                        : engineAvailable && fileSource !== "native"
+                          ? "Start demo job"
+                          : "Start matching"}
+                </Button>
+                {engineAvailable && processingMode === "single" && inputSource === "collection" && (
+                  <Button
+                    variant="secondary"
+                    disabled={running}
+                    loading={running && !cancelling}
+                    onClick={handleStartBatchDemo}
+                  >
+                    Start batch demo
+                  </Button>
+                )}
+                <Button variant="secondary" disabled={!running} loading={cancelling} onClick={() => void cancelMatch()}>
+                  Cancel
+                </Button>
+                <Button variant="secondary" disabled={running} onClick={() => navigate("/results")}>
+                  Open results
+                </Button>
+              </div>
+            </Panel>
+          </div>
+        </>
       ) : (
-        <Panel title="Past searches">
-          <p className="screen__muted">History list will mirror Qt Past Searches tab in parity phase.</p>
-        </Panel>
+        <PastSearchesPanel onRerun={applyRerun} />
       )}
     </div>
   );

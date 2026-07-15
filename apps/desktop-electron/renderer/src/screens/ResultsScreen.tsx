@@ -1,40 +1,137 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { Link } from "react-router-dom";
-import { Badge, Button, ExportResultsButton, Panel, ResultsTable, Select, ToolbarIcon } from "../components";
+import { Link, useSearchParams } from "react-router-dom";
+import {
+  Badge,
+  Button,
+  CandidateDialog,
+  ExportResultsButton,
+  Panel,
+  ResultsTable,
+  Select,
+  Tabs,
+  ToolbarIcon,
+  useToast,
+} from "../components";
 import { useResultsFrameLayout } from "../components/useResultsFrameLayout";
+import { applyCandidateToResult, hasCandidates } from "../api/candidateUtils";
+import { needsReviewTrack } from "../api/reviewUtils";
 import { hasEngineBridge } from "../api/cuepointBridge.types";
-import { sampleResults } from "../mocks/fixtures";
+import { sampleBatchResults, sampleResults } from "../mocks/fixtures";
 import { useMatchResults } from "../context/MatchResultsContext";
 import { useScale } from "../tokens/ScaleContext";
+import type { TrackResult } from "../mocks/types";
 import "./screens.css";
 
 export function ResultsScreen() {
   const { scale } = useScale();
-  const { results: engineResults, source } = useMatchResults();
-  const [filter, setFilter] = useState<"all" | "matched" | "unmatched">("all");
+  const { push } = useToast();
+  const [searchParams] = useSearchParams();
+  const {
+    mode,
+    results: engineResults,
+    batchResults,
+    activePlaylist,
+    source,
+    setActivePlaylist,
+    updateTrackResult,
+  } = useMatchResults();
+  const [filter, setFilter] = useState<"all" | "matched" | "unmatched" | "needs_review">("all");
   const [selected, setSelected] = useState<number | null>(null);
+  const [candidateRow, setCandidateRow] = useState<TrackResult | null>(null);
   const { frameRef, frameWidth, frameHeight, isSized, startFrameResize, resetFrameSize } =
     useResultsFrameLayout(scale);
 
   const engineAvailable = hasEngineBridge();
-  const allRows =
-    source === "engine" ? engineResults : engineAvailable ? [] : sampleResults;
+  const playlistNames = useMemo(() => Object.keys(batchResults), [batchResults]);
+
+  const activeRows = useMemo(() => {
+    if (mode === "batch") {
+      if (source === "engine") {
+        return activePlaylist ? (batchResults[activePlaylist] ?? []) : [];
+      }
+      return activePlaylist ? (sampleBatchResults[activePlaylist] ?? []) : [];
+    }
+    return source === "engine" ? engineResults : engineAvailable ? [] : sampleResults;
+  }, [activePlaylist, batchResults, engineAvailable, engineResults, mode, source]);
+
+  useEffect(() => {
+    const urlFilter = searchParams.get("filter");
+    if (urlFilter === "needs_review") {
+      setFilter("needs_review");
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     document.body.classList.toggle("results-page-scrollable", isSized);
     return () => document.body.classList.remove("results-page-scrollable");
   }, [isSized]);
 
+  useEffect(() => {
+    if (mode !== "batch") return;
+    if (source === "engine" && playlistNames.length > 0 && !activePlaylist) {
+      setActivePlaylist(playlistNames[0]!);
+      return;
+    }
+    if (source === "fixtures" && !activePlaylist) {
+      setActivePlaylist(Object.keys(sampleBatchResults)[0] ?? null);
+    }
+  }, [activePlaylist, mode, playlistNames, setActivePlaylist, source]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Enter" || selected == null) return;
+      const row = activeRows.find((entry) => entry.playlist_index === selected);
+      if (row && hasCandidates(row)) {
+        event.preventDefault();
+        setCandidateRow(row);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [activeRows, selected]);
+
   const rows = useMemo(() => {
-    if (filter === "matched") return allRows.filter((r) => r.matched);
-    if (filter === "unmatched") return allRows.filter((r) => !r.matched);
-    return allRows;
-  }, [allRows, filter]);
+    if (filter === "matched") return activeRows.filter((r) => r.matched);
+    if (filter === "unmatched") return activeRows.filter((r) => !r.matched);
+    if (filter === "needs_review") return activeRows.filter(needsReviewTrack);
+    return activeRows;
+  }, [activeRows, filter]);
+
+  const exportPlaylistName =
+    mode === "batch" && activePlaylist ? activePlaylist : "match-results";
+
+  const handleOpenCandidates = (row: TrackResult) => {
+    if (!hasCandidates(row)) {
+      push("No candidates available for this track.", "info");
+      return;
+    }
+    setCandidateRow(row);
+  };
+
+  const handleSelectCandidate = (candidate: Parameters<typeof applyCandidateToResult>[1]) => {
+    if (!candidateRow) return;
+    updateTrackResult(
+      mode === "batch" ? activePlaylist : null,
+      candidateRow.playlist_index,
+      (row) => applyCandidateToResult(row, candidate),
+    );
+    push("Candidate applied to result row.", "success");
+  };
 
   const frameStyle = {
     ...(frameWidth != null ? { width: `${frameWidth}px`, maxWidth: "var(--results-frame-max-width)" } : {}),
     ...(frameHeight != null ? { height: `${frameHeight}px` } : {}),
   } as CSSProperties;
+
+  const batchTabs =
+    mode === "batch"
+      ? (source === "engine" ? playlistNames : Object.keys(sampleBatchResults)).map((name) => ({
+          id: name,
+          label: name,
+        }))
+      : [];
+
+  const matchedCount = rows.filter((r) => r.matched).length;
 
   return (
     <div className={`screen screen--stack screen--fill ${isSized ? "screen--scrollable" : ""}`}>
@@ -44,12 +141,20 @@ export function ResultsScreen() {
         </Link>
         <div className="screen-toolbar__actions">
           <ToolbarIcon label="Filter" glyph="☰" active />
-          <ExportResultsButton rows={rows} playlistName="match-results" label="Export" />
+          <ExportResultsButton rows={rows} playlistName={exportPlaylistName} label="Export" />
           <Link to="/settings">
             <Button variant="secondary">Settings</Button>
           </Link>
         </div>
       </header>
+
+      {mode === "batch" && batchTabs.length > 0 && (
+        <Tabs
+          tabs={batchTabs}
+          activeId={activePlaylist ?? batchTabs[0]!.id}
+          onChange={setActivePlaylist}
+        />
+      )}
 
       <div
         ref={frameRef}
@@ -61,8 +166,9 @@ export function ResultsScreen() {
           title="Results"
           badge={
             <Badge variant="info">
-              {rows.length} tracks · {rows.filter((r) => r.matched).length} matched
+              {rows.length} tracks · {matchedCount} matched
               {source === "engine" ? " · live" : ""}
+              {mode === "batch" && activePlaylist ? ` · ${activePlaylist}` : ""}
             </Badge>
           }
         >
@@ -76,14 +182,25 @@ export function ResultsScreen() {
                   { value: "all", label: "All tracks" },
                   { value: "matched", label: "Matched only" },
                   { value: "unmatched", label: "Unmatched only" },
+                  { value: "needs_review", label: "Needs review" },
                 ]}
               />
+              {selected != null && (
+                <Button variant="secondary" onClick={() => {
+                  const row = rows.find((entry) => entry.playlist_index === selected);
+                  if (row) handleOpenCandidates(row);
+                }}>
+                  View candidates
+                </Button>
+              )}
             </div>
 
             {rows.length === 0 ? (
               <p className="screen__muted">
                 {source === "engine"
-                  ? "No match results yet. Run a job from inKey to populate this table."
+                  ? mode === "batch"
+                    ? "No batch results yet. Run a batch demo job from inKey."
+                    : "No match results yet. Run a job from inKey to populate this table."
                   : engineAvailable
                     ? "No results loaded."
                     : "Sample data is shown in browser-only mode."}
@@ -93,6 +210,7 @@ export function ResultsScreen() {
                 rows={rows}
                 selectedIndex={selected}
                 onSelectRow={setSelected}
+                onRowDoubleClick={handleOpenCandidates}
               />
             )}
           </div>
@@ -112,6 +230,13 @@ export function ResultsScreen() {
           }}
         />
       </div>
+
+      <CandidateDialog
+        open={candidateRow != null}
+        row={candidateRow}
+        onClose={() => setCandidateRow(null)}
+        onSelectCandidate={handleSelectCandidate}
+      />
     </div>
   );
 }

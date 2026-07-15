@@ -183,6 +183,18 @@ export class EngineSupervisor {
     return this.client().testBeatportToken(body);
   }
 
+  async getHistoryRecent(params?: { limit?: number }) {
+    return this.client().getHistoryRecent(params);
+  }
+
+  async loadHistoryCsv(csvPath: string) {
+    return this.client().loadHistoryCsv(csvPath);
+  }
+
+  async getXmlPlaylists(xmlPath: string) {
+    return this.client().getXmlPlaylists(xmlPath);
+  }
+
   subscribeJobEvents(jobId: string, senderId: number, sender: WebContents): () => void {
     const key = `${senderId}:${jobId}`;
     this.unsubscribeJobEvents(jobId, senderId);

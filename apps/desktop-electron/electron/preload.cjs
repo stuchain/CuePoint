@@ -15,6 +15,9 @@ contextBridge.exposeInMainWorld("cuepoint", {
   getBeatportTokenStatus: () => ipcRenderer.invoke("engine:getBeatportTokenStatus"),
   setBeatportToken: (token) => ipcRenderer.invoke("engine:setBeatportToken", token),
   testBeatportToken: (body) => ipcRenderer.invoke("engine:testBeatportToken", body),
+  getHistoryRecent: (params) => ipcRenderer.invoke("engine:getHistoryRecent", params),
+  loadHistoryCsv: (csvPath) => ipcRenderer.invoke("engine:loadHistoryCsv", csvPath),
+  getXmlPlaylists: (xmlPath) => ipcRenderer.invoke("engine:getXmlPlaylists", xmlPath),
   subscribeJobEvents: (jobId, onEvent) => {
     const eventHandler = (_event, payload) => {
       if (payload?.jobId === jobId) onEvent(payload.event);
@@ -34,5 +37,7 @@ contextBridge.exposeInMainWorld("cuepoint", {
     };
   },
   openXmlFileDialog: () => ipcRenderer.invoke("dialog:openXml"),
+  openCsvFileDialog: () => ipcRenderer.invoke("dialog:openCsv"),
+  openM3uFileDialog: () => ipcRenderer.invoke("dialog:openM3u"),
   saveExportFileDialog: (options) => ipcRenderer.invoke("dialog:saveExport", options),
 });

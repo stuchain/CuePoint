@@ -59,7 +59,11 @@ This folder captures **decisions, layout rules, and implementation details** pro
 | Spike S1 | Engine `/health` + Electron spawn | Done |
 | Lab `/incrate` stub | Route + inventory/import wiring | Done |
 | **Milestone 6 (Phase E + parity slices)** | Token, discover, playlist, match layout, sticky cols | **Done** |
-| **Next** | Phase 6 candidate dialogs + batch tabs | See [next-milestone.md](next-milestone.md) |
+| **Milestone 7** | Candidate dialog + batch results tabs | **Done** |
+| **Milestone 8** | Tool picker + past searches | **Done** |
+| **Milestone 9** | History rerun + review workflow | **Done** |
+| **Milestone 10** | Real XML batch matching | **Done** |
+| **Next** | M3U rerun, sync tags, Qt batch polish | See [next-milestone.md](next-milestone.md) |
 | Phase 6 | Full GUI parity + inCrate | In progress (matrix) |
 
 Update this table as each slice lands in the main app.

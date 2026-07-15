@@ -1,3 +1,4 @@
+export { CandidateDialog } from "./CandidateDialog";
 export { ExportResultsButton, ExportResultsModal } from "./ExportResultsModal";
 export { ResultsTable } from "./ResultsTable";
 export { Badge } from "./Badge";

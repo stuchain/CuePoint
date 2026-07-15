@@ -35,8 +35,10 @@ export class EngineClient {
 
   async startMatchJob(body: {
     demo?: boolean;
+    demo_batch?: boolean;
     xml_path?: string;
     playlist_name?: string;
+    playlist_names?: string[];
   }): Promise<{ id: string; state: string }> {
     const res = await fetch(this.url("/api/v1/jobs/match"), {
       method: "POST",
@@ -180,6 +182,51 @@ export class EngineClient {
       method: "POST",
       headers: this.headers(),
       body: JSON.stringify(body ?? {}),
+    });
+    return readJson(res);
+  }
+
+  async getHistoryRecent(params?: { limit?: number }): Promise<{
+    directory: string;
+    files: Array<{
+      file_path: string;
+      file_name: string;
+      modified_at: string;
+      size_bytes: number;
+      playlist_name?: string | null;
+    }>;
+    count: number;
+  }> {
+    const query = new URLSearchParams();
+    if (params?.limit != null) query.set("limit", String(params.limit));
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    const res = await fetch(this.url(`/api/v1/history/recent${suffix}`), {
+      headers: this.headers(),
+    });
+    return readJson(res);
+  }
+
+  async loadHistoryCsv(csvPath: string): Promise<Record<string, unknown>> {
+    const query = new URLSearchParams({ path: csvPath });
+    const res = await fetch(this.url(`/api/v1/history/load?${query.toString()}`), {
+      headers: this.headers(),
+    });
+    return readJson(res);
+  }
+
+  async getXmlPlaylists(xmlPath: string): Promise<{
+    xml_path: string;
+    playlists: Array<{
+      path: string;
+      name: string;
+      display_name: string;
+      track_count: number;
+    }>;
+    count: number;
+  }> {
+    const query = new URLSearchParams({ path: xmlPath });
+    const res = await fetch(this.url(`/api/v1/xml/playlists?${query.toString()}`), {
+      headers: this.headers(),
     });
     return readJson(res);
   }

@@ -10,6 +10,14 @@ const POLL_INTERVAL_MS = 300;
 
 export type FileSource = "none" | "mock" | "native";
 
+export type MatchInputSource = "collection" | "playlist_file";
+
+interface StartMatchOptions {
+  demoBatch?: boolean;
+  playlistNames?: string[];
+  inputSource?: MatchInputSource;
+}
+
 interface UseMatchJobOptions {
   onComplete?: () => void;
   onCancelled?: () => void;
@@ -17,7 +25,7 @@ interface UseMatchJobOptions {
 }
 
 export function useMatchJob({ onComplete, onCancelled, onError }: UseMatchJobOptions = {}) {
-  const { setEngineResults } = useMatchResults();
+  const { setEngineResults, setEngineBatchResults } = useMatchResults();
   const [running, setRunning] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [progress, setProgress] = useState<ProgressInfo>(idleProgress);
@@ -73,10 +81,22 @@ export function useMatchJob({ onComplete, onCancelled, onError }: UseMatchJobOpt
       const bridge = window.cuepoint;
       if (!bridge?.getJobResults) return;
       const payload = await bridge.getJobResults(jobId);
-      setEngineResults(payload.results, jobId);
+      if (payload.batch_results && Object.keys(payload.batch_results).length > 0) {
+        setEngineBatchResults(payload.batch_results, jobId);
+      } else {
+        setEngineResults(payload.results, jobId);
+      }
       onComplete?.();
     },
-    [clearEventSubscription, clearPollTimer, onCancelled, onComplete, onError, setEngineResults],
+    [
+      clearEventSubscription,
+      clearPollTimer,
+      onCancelled,
+      onComplete,
+      onError,
+      setEngineBatchResults,
+      setEngineResults,
+    ],
   );
 
   const handleJobEvent = useCallback(
@@ -149,12 +169,23 @@ export function useMatchJob({ onComplete, onCancelled, onError }: UseMatchJobOpt
   }, [onComplete]);
 
   const startMatch = useCallback(
-    async (filePath: string, fileSource: FileSource, playlistName: string) => {
+    async (
+      filePath: string,
+      fileSource: FileSource,
+      playlistName: string,
+      options?: StartMatchOptions,
+    ) => {
       if (running) return;
+
+      const inputSource = options?.inputSource ?? "collection";
 
       if (!hasEngineBridge()) {
         if (!filePath) {
-          onError?.("Select a Rekordbox XML file first.");
+          onError?.(
+            inputSource === "playlist_file"
+              ? "Select an M3U playlist file first."
+              : "Select a Rekordbox XML file first.",
+          );
           return;
         }
         startMockRun();
@@ -162,22 +193,49 @@ export function useMatchJob({ onComplete, onCancelled, onError }: UseMatchJobOpt
       }
 
       const bridge = window.cuepoint!;
+      const playlistNames = options?.playlistNames?.filter((name) => name.trim().length > 0) ?? [];
+      const useRealM3u =
+        inputSource === "playlist_file" && fileSource === "native" && filePath.trim().length > 0;
+      const useRealBatch =
+        inputSource === "collection" &&
+        fileSource === "native" &&
+        filePath.trim().length > 0 &&
+        playlistNames.length > 0;
       const useRealJob =
-        fileSource === "native" && filePath.trim().length > 0 && playlistName.trim().length > 0;
+        inputSource === "collection" &&
+        fileSource === "native" &&
+        filePath.trim().length > 0 &&
+        playlistName.trim().length > 0 &&
+        !useRealBatch;
+      const demoBatch = Boolean(options?.demoBatch);
 
       setRunning(true);
       setCancelling(false);
       setProgress({
         ...idleProgress,
         reliability_state: "preflight",
-        status_message: useRealJob ? "Starting match job…" : "Starting demo job…",
+        status_message: useRealM3u
+          ? "Starting M3U match job…"
+          : useRealBatch
+            ? `Starting batch job (${playlistNames.length} playlists)…`
+            : useRealJob
+              ? "Starting match job…"
+              : demoBatch
+                ? "Starting batch demo job…"
+                : "Starting demo job…",
       });
 
       try {
         const started = await bridge.startMatchJob(
-          useRealJob
-            ? { xml_path: filePath, playlist_name: playlistName.trim() }
-            : { demo: true },
+          useRealM3u
+            ? { m3u_path: filePath.trim() }
+            : useRealBatch
+              ? { xml_path: filePath, playlist_names: playlistNames }
+              : useRealJob
+                ? { xml_path: filePath, playlist_name: playlistName.trim() }
+                : demoBatch
+                  ? { demo: true, demo_batch: true }
+                  : { demo: true },
         );
         activeJobIdRef.current = started.id;
         await pollJob(started.id);

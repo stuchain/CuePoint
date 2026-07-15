@@ -1,18 +1,17 @@
 # Next milestone
 
-**Gate:** Milestone 6 complete — inCrate discover/playlist, Qt match layout, sticky columns.
+**Gate:** Milestone 11 complete — M3U match + history re-run.
 
 ---
 
-## Completed (Milestone 6)
+## Completed (Milestone 11)
 
 | Slice | Status |
 | --- | --- |
-| Beatport token via engine config | Done |
-| Results empty state (no mock when engine connected) | Done |
-| inCrate discover + playlist engine API + Electron UI | Done |
-| Qt Input \| Processing equal-height panels | Done |
-| Qt frozen Write + Index columns | Done |
+| M3U match job (`m3u_path`) | Done |
+| inKey Collection / M3U source toggle | Done |
+| History M3U re-run + browse fallback | Done |
+| Electron `openM3uFileDialog` | Done |
 
 ---
 
@@ -20,10 +19,8 @@
 
 | Priority | Scope |
 | --- | --- |
-| Batch results tabs in Electron lab | Parity matrix row |
-| inCrate Discover/Playlist in Qt (already in `incrate_page.py`) | Electron parity achieved |
-| Candidate / review dialogs | Phase 6 |
+| Sync tags from history CSV | Qt parity |
 | Sticky columns for batch-mode Qt tables | Optional polish |
 | Phase 10 Qt removal | Post full parity |
 
-See [parity-matrix.md](parity-matrix.md) and [tracking/milestone-6-all-slices.md](tracking/milestone-6-all-slices.md).
+See [tracking/milestone-11-m3u-rerun.md](tracking/milestone-11-m3u-rerun.md).

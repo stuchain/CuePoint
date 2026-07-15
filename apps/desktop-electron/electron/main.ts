@@ -27,6 +27,9 @@ function registerIpcHandlers(): void {
   ipcMain.handle("engine:getBeatportTokenStatus", () => engine.getBeatportTokenStatus());
   ipcMain.handle("engine:setBeatportToken", (_event, token: string) => engine.setBeatportToken(token));
   ipcMain.handle("engine:testBeatportToken", (_event, body) => engine.testBeatportToken(body));
+  ipcMain.handle("engine:getHistoryRecent", (_event, params) => engine.getHistoryRecent(params));
+  ipcMain.handle("engine:loadHistoryCsv", (_event, csvPath: string) => engine.loadHistoryCsv(csvPath));
+  ipcMain.handle("engine:getXmlPlaylists", (_event, xmlPath: string) => engine.getXmlPlaylists(xmlPath));
   ipcMain.handle("engine:subscribeJobEvents", (event, jobId: string) => {
     engine.subscribeJobEvents(jobId, event.sender.id, event.sender);
     return { ok: true };
@@ -40,6 +43,28 @@ function registerIpcHandlers(): void {
     const result = await dialog.showOpenDialog(win ?? undefined, {
       properties: ["openFile"],
       filters: [{ name: "Rekordbox XML", extensions: ["xml"] }],
+    });
+    if (result.canceled || result.filePaths.length === 0) {
+      return { canceled: true as const };
+    }
+    return { canceled: false as const, filePath: result.filePaths[0] };
+  });
+  ipcMain.handle("dialog:openCsv", async () => {
+    const win = BrowserWindow.getFocusedWindow();
+    const result = await dialog.showOpenDialog(win ?? undefined, {
+      properties: ["openFile"],
+      filters: [{ name: "CuePoint CSV", extensions: ["csv"] }],
+    });
+    if (result.canceled || result.filePaths.length === 0) {
+      return { canceled: true as const };
+    }
+    return { canceled: false as const, filePath: result.filePaths[0] };
+  });
+  ipcMain.handle("dialog:openM3u", async () => {
+    const win = BrowserWindow.getFocusedWindow();
+    const result = await dialog.showOpenDialog(win ?? undefined, {
+      properties: ["openFile"],
+      filters: [{ name: "Playlist", extensions: ["m3u", "m3u8"] }],
     });
     if (result.canceled || result.filePaths.length === 0) {
       return { canceled: true as const };

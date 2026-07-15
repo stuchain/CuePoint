@@ -38,7 +38,34 @@ export interface TrackResult {
   beatport_label?: string;
   beatport_bpm?: string;
   match_score?: number;
+  title_sim?: number;
+  artist_sim?: number;
   confidence?: "high" | "medium" | "low";
+  candidates?: MatchCandidate[];
+}
+
+/** Alternative Beatport match row (engine/Qt candidate dict shape). */
+export interface MatchCandidate {
+  candidate_title?: string;
+  beatport_title?: string;
+  candidate_artists?: string;
+  beatport_artists?: string;
+  candidate_url?: string;
+  beatport_url?: string;
+  candidate_key?: string;
+  beatport_key?: string;
+  candidate_key_camelot?: string;
+  beatport_key_camelot?: string;
+  candidate_year?: string;
+  beatport_year?: string;
+  candidate_bpm?: string;
+  beatport_bpm?: string;
+  candidate_label?: string;
+  beatport_label?: string;
+  final_score?: number | string;
+  match_score?: number | string;
+  title_sim?: number | string;
+  artist_sim?: number | string;
 }
 
 export type ErrorType =
