@@ -21,7 +21,7 @@ This folder captures **decisions, layout rules, and implementation details** pro
 | [Parity matrix](parity-matrix.md) | inKey + inCrate Qt ↔ lab route map |
 | [Implementation reference](implementation-reference.md) | Files, CSS tokens, `localStorage` keys |
 | [Rollout phases](rollout-phases.md) | Suggested order to land in production |
-| [Next milestone](next-milestone.md) | Phase A (Qt scroll) + Phase 3 API sketch |
+| [Phase 6–10 roadmap](phase-6-10-roadmap.md) | Remaining work to Electron cutover |
 | [Tracking](tracking/README.md) | Workstream issue templates |
 
 ---
@@ -64,9 +64,10 @@ This folder captures **decisions, layout rules, and implementation details** pro
 | **Milestone 9** | History rerun + review workflow | **Done** |
 | **Milestone 10** | Real XML batch matching | **Done** |
 | **Milestone 11** | M3U match + history re-run | **Done** |
-| **Milestone 12** | Sync tags with Rekordbox | **Done** (uncommitted) |
-| **Milestone 13** | inCrate import parity | **Done** (uncommitted) |
-| **Milestone 14** | Drop zones + lab RC matrix | **Done** (uncommitted) |
+| **Milestone 12** | Sync tags with Rekordbox | **Done** |
+| **Milestone 13** | inCrate import parity | **Done** |
+| **Milestone 14** | Drop zones + lab RC matrix | **Done** |
+| **Phase 6–10** | Full cutover (parity verify, CI, Qt removal) | **In progress** — see [phase-6-10-roadmap.md](phase-6-10-roadmap.md) |
 | Phase 6 | Full GUI parity + inCrate | In progress (matrix) |
 
 Update this table as each slice lands in the main app.
