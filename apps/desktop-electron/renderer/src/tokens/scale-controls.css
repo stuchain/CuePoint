@@ -1,0 +1,10 @@
+.lab-controls {
+  position: fixed;
+  top: var(--space-md);
+  right: var(--space-md);
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-xs);
+}

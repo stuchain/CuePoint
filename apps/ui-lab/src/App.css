@@ -1,0 +1,23 @@
+.app-lab-nav {
+  position: fixed;
+  left: var(--space-md);
+  bottom: var(--space-md);
+  z-index: 900;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  padding: var(--space-xs);
+  background: rgba(0, 0, 0, 0.45);
+  border: calc(1px * var(--scale)) solid var(--border-muted);
+}
+
+.app-lab-nav a {
+  padding: var(--space-xs) var(--space-sm);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  text-decoration: none;
+}
+
+.app-lab-nav a:hover {
+  color: var(--fg-primary);
+}

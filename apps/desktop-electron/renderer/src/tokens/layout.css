@@ -1,0 +1,50 @@
+/**
+ * Layout tokens — content width, safe areas for lab chrome, responsive spacing.
+ */
+:root {
+  --content-max-width: min(1200px, 100%);
+  --content-narrow-width: min(480px, 100%);
+
+  /* Symmetric screen padding; extra bottom clearance for lab route nav */
+  --safe-top: var(--screen-padding);
+  --safe-right: var(--screen-padding);
+  --safe-bottom: calc(var(--screen-padding) + 48px);
+  --safe-left: var(--screen-padding);
+
+  --screen-padding: var(--space-xl);
+  --results-min-rows: 10;
+  --row-height: calc(var(--hit-min) * 0.75);
+  --row-unmatched-bg: #5c2e2e;
+  --results-frame-max-width: 80vw;
+
+  /* Breakpoints (reference values for JS/docs; media queries use literals) */
+  --bp-sm: 600px;
+  --bp-md: 900px;
+  --bp-lg: 1200px;
+
+  /* Results table — Qt 80px column minimums (scaled) */
+  --results-col-min: calc(80px * var(--scale));
+  --results-col-write: var(--results-col-min);
+  --results-table-min-width: calc(14 * 80px * var(--scale));
+
+  /* Write, Index, Key, Camelot, Year, Matched, Score, Confidence, BPM = 80px min; text cols wider */
+  --results-grid-columns: var(--results-col-min) var(--results-col-min)
+    minmax(calc(120px * var(--scale)), 1fr) minmax(calc(120px * var(--scale)), 1fr)
+    minmax(calc(140px * var(--scale)), 1.2fr) minmax(calc(120px * var(--scale)), 1fr)
+    var(--results-col-min) var(--results-col-min) var(--results-col-min)
+    minmax(calc(120px * var(--scale)), 1fr) var(--results-col-min) var(--results-col-min)
+    var(--results-col-min) var(--results-col-min);
+}
+
+@media (max-width: 900px) {
+  :root {
+    --screen-padding: var(--space-lg);
+  }
+}
+
+@media (max-width: 600px) {
+  :root {
+    --screen-padding: var(--space-md);
+    --safe-bottom: calc(var(--screen-padding) + 40px);
+  }
+}

@@ -1,0 +1,27 @@
+.cp-toolbar-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--hit-min);
+  height: var(--hit-min);
+  padding: 0;
+  border: var(--border-width) solid var(--border-outline);
+  background: var(--bg-toolbar);
+  color: var(--fg-primary);
+  box-shadow: var(--shadow-bevel-sm);
+  cursor: pointer;
+}
+
+.cp-toolbar-icon:hover {
+  filter: brightness(1.1);
+}
+
+.cp-toolbar-icon--active {
+  background: var(--accent-secondary-hover);
+  outline: var(--focus-ring-width) solid var(--accent-info);
+}
+
+.cp-toolbar-icon__glyph {
+  font-size: var(--font-size-lg);
+  line-height: 1;
+}

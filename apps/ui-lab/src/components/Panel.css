@@ -1,0 +1,33 @@
+.cp-panel {
+  background: var(--bg-panel);
+  border: calc(2px * var(--scale)) solid var(--border-outline);
+  box-shadow:
+    inset calc(2px * var(--scale)) calc(2px * var(--scale)) 0 var(--border-light),
+    inset calc(-2px * var(--scale)) calc(-2px * var(--scale)) 0 var(--border-shadow),
+    var(--shadow-panel);
+}
+
+.cp-panel--alt {
+  background: var(--bg-panel-alt);
+}
+
+.cp-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: calc(2px * var(--scale)) solid var(--border-outline);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.cp-panel__title {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--fg-primary);
+}
+
+.cp-panel__body {
+  padding: var(--space-lg);
+}

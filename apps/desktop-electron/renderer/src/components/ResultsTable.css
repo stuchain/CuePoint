@@ -1,0 +1,190 @@
+.results-table {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  border: var(--border-width) solid var(--border-outline);
+  background: var(--bg-input);
+}
+
+.results-table__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  position: relative;
+  padding-bottom: calc(10px * var(--scale));
+  scrollbar-color: var(--border-muted) var(--bg-toolbar);
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+}
+
+.results-table__scroll::-webkit-scrollbar {
+  width: calc(10px * var(--scale));
+  height: calc(10px * var(--scale));
+}
+
+.results-table__scroll::-webkit-scrollbar-track {
+  background: var(--bg-toolbar);
+}
+
+.results-table__scroll::-webkit-scrollbar-thumb {
+  background: var(--border-muted);
+  border: calc(1px * var(--scale)) solid var(--border-outline);
+}
+
+.results-table__header {
+  display: grid;
+  grid-template-columns: var(--results-grid-columns);
+  min-width: var(--results-table-min-width);
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--bg-toolbar);
+  border-bottom: var(--border-width) solid var(--border-outline);
+}
+
+.results-table__header-cell-wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.results-table__header-cell-wrap--sticky {
+  position: sticky;
+  z-index: 4;
+  background: var(--bg-toolbar);
+}
+
+.results-table__header-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: var(--row-height);
+  padding: 0 calc(var(--space-sm) + 6px) 0 var(--space-sm);
+  border: none;
+  border-right: calc(1px * var(--scale)) solid var(--border-muted);
+  background: inherit;
+  color: var(--fg-muted);
+  font-family: var(--font-pixel);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.results-table__header-cell:disabled {
+  cursor: default;
+}
+
+.results-table__header-cell:not(:disabled):hover {
+  color: var(--fg-primary);
+  background: color-mix(in srgb, var(--bg-panel) 30%, var(--bg-toolbar));
+}
+
+.results-table__col-resizer {
+  position: absolute;
+  top: 0;
+  right: calc(-4px * var(--scale));
+  z-index: 5;
+  width: calc(8px * var(--scale));
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: col-resize;
+}
+
+.results-table__col-resizer:hover,
+.results-table__col-resizer:focus-visible {
+  background: color-mix(in srgb, var(--accent-info) 35%, transparent);
+}
+
+.results-table__sort {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+}
+
+.results-table__body {
+  position: relative;
+  min-width: var(--results-table-min-width);
+}
+
+.results-table__row {
+  display: grid;
+  grid-template-columns: var(--results-grid-columns);
+  align-items: stretch;
+  box-sizing: border-box;
+  position: absolute;
+  left: 0;
+  width: 100%;
+  background: var(--bg-input);
+  border-bottom: calc(1px * var(--scale)) solid var(--border-muted);
+  cursor: default;
+  overflow: hidden;
+}
+
+.results-table__row:hover {
+  background: color-mix(in srgb, var(--bg-panel) 35%, var(--bg-input));
+}
+
+.results-table__row--unmatched {
+  background: var(--row-unmatched-bg);
+}
+
+.results-table__row--unmatched:hover {
+  background: color-mix(in srgb, var(--row-unmatched-bg) 85%, var(--bg-panel));
+}
+
+.results-table__row--selected {
+  box-shadow: inset 0 0 0 var(--focus-ring-width) var(--accent-info);
+  z-index: 1;
+}
+
+.results-table__cell {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-width: 0;
+  height: 100%;
+  padding: 0 var(--space-sm);
+  font-size: var(--font-size-xs);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-right: calc(1px * var(--scale)) solid var(--border-muted);
+}
+
+.results-table__cell--sticky {
+  position: sticky;
+  z-index: 2;
+  background: inherit;
+}
+
+.results-table__cell[data-col="0"] {
+  justify-content: center;
+}
+
+.results-table__row--unmatched .results-table__cell--sticky {
+  background: var(--row-unmatched-bg);
+}
+
+body.results-table--resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+@media (max-width: 600px) {
+  .results-table__scroll {
+    min-height: calc(8 * var(--row-height));
+  }
+}

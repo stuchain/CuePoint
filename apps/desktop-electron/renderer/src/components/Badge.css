@@ -1,0 +1,35 @@
+.cp-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: calc(var(--space-xs) * 0.75) var(--space-sm);
+  border: var(--border-width) solid var(--border-outline);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: var(--shadow-badge);
+}
+
+.cp-badge--default {
+  background: var(--bg-panel-alt);
+  color: var(--fg-primary);
+}
+
+.cp-badge--success {
+  background: var(--accent-success);
+  color: var(--fg-inverse);
+}
+
+.cp-badge--warning {
+  background: var(--accent-warning);
+  color: var(--fg-inverse);
+}
+
+.cp-badge--danger {
+  background: var(--accent-danger);
+  color: var(--fg-primary);
+}
+
+.cp-badge--info {
+  background: var(--accent-info);
+  color: var(--fg-inverse);
+}

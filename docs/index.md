@@ -9,5 +9,6 @@ Quick links:
 - [Getting started](getting-started/quick-start.md)
 - [User guide](user-guide/getting-started.md)
 - [Feature implementation designs](feature/README.md) (inCrate and others)
+- [UI overhaul](ui-overhaul/README.md) (lab layout → production rollout)
 - [Contributing](https://github.com/stuchain/CuePoint/blob/main/.github/CONTRIBUTING.md)
 - [Support](https://github.com/stuchain/CuePoint/issues)

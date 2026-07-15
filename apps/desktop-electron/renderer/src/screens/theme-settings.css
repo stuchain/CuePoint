@@ -1,0 +1,107 @@
+.theme-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  max-width: var(--content-narrow-width);
+  width: 100%;
+}
+
+@media (max-width: 600px) {
+  .theme-settings {
+    max-width: 100%;
+  }
+}
+
+.theme-settings__actions {
+  display: flex;
+  gap: var(--space-md);
+}
+
+.theme-settings__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.theme-settings__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border: var(--border-width) solid var(--border-outline);
+  background: var(--bg-input);
+  box-shadow: var(--shadow-bevel-sm);
+}
+
+.theme-settings__swatches {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.theme-settings__swatch {
+  width: calc(20px * var(--scale));
+  height: calc(20px * var(--scale));
+  border: var(--border-width) solid var(--border-outline);
+}
+
+.theme-settings__name {
+  flex: 1;
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+}
+
+.theme-settings__row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.theme-settings__hint {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.theme-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.theme-editor__colors {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-md);
+}
+
+.theme-color-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.theme-color-field__label {
+  flex: 1;
+  font-size: var(--font-size-xs);
+  color: var(--fg-muted);
+}
+
+.theme-color-field__input {
+  width: calc(44px * var(--scale));
+  height: calc(32px * var(--scale));
+  padding: 0;
+  border: var(--border-width) solid var(--border-outline);
+  cursor: pointer;
+  background: transparent;
+}
+
+.theme-color-field__hex {
+  font-size: var(--font-size-xs);
+  color: var(--fg-muted);
+  min-width: calc(64px * var(--scale));
+}

@@ -1,0 +1,34 @@
+/* Club / DJ neon — near-black, magenta + cyan accents */
+[data-theme="clubNeon"] {
+  --bg-app: #0a0a0f;
+  --bg-panel: #14141f;
+  --bg-panel-alt: #1a1a28;
+  --bg-input: #0a0a0f;
+  --bg-toolbar: #101018;
+
+  --border-highlight: #5a5a80;
+  --border-shadow: #050508;
+  --border-outline: #000000;
+  --border-light: #00e5ff;
+  --border-muted: #2a2a40;
+  --bevel-highlight: #5a5a80;
+  --bevel-shadow: #050508;
+
+  --fg-primary: #f0f0ff;
+  --fg-muted: #9090b0;
+  --fg-disabled: #606080;
+  --fg-inverse: #0a0a0f;
+
+  --accent-primary: #e040fb;
+  --accent-primary-hover: #ea80fc;
+  --accent-primary-pressed: #c2185b;
+  --accent-secondary: #1a1a28;
+  --accent-secondary-hover: #252538;
+  --accent-success: #00e676;
+  --accent-warning: #ffea00;
+  --accent-danger: #ff1744;
+  --accent-info: #00e5ff;
+
+  --overlay-header: rgba(0, 0, 0, 0.2);
+  --overlay-backdrop: rgba(0, 0, 0, 0.78);
+}

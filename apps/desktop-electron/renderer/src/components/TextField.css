@@ -1,0 +1,44 @@
+.cp-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.cp-field__label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--fg-muted);
+}
+
+.cp-field__input {
+  min-height: var(--hit-min);
+  padding: var(--space-sm) var(--space-md);
+  border: var(--border-width) solid var(--border-outline);
+  background: var(--bg-input);
+  color: var(--fg-primary);
+  font-family: var(--font-pixel);
+  font-size: var(--font-size-sm);
+  box-shadow: var(--shadow-inset-deep);
+}
+
+.cp-field__input:focus {
+  outline: var(--focus-ring-width) solid var(--accent-info);
+  outline-offset: calc(1px * var(--scale));
+}
+
+.cp-field__input--error {
+  border-color: var(--accent-danger);
+}
+
+.cp-field__hint,
+.cp-field__error {
+  font-size: var(--font-size-xs);
+}
+
+.cp-field__hint {
+  color: var(--fg-muted);
+}
+
+.cp-field__error {
+  color: var(--accent-danger);
+}

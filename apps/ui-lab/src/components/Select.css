@@ -1,0 +1,27 @@
+.cp-select {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.cp-select__label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--fg-muted);
+}
+
+.cp-select__control {
+  min-height: var(--hit-min);
+  padding: var(--space-sm) var(--space-md);
+  border: calc(2px * var(--scale)) solid var(--border-outline);
+  background: var(--bg-input);
+  color: var(--fg-primary);
+  font-family: var(--font-pixel);
+  font-size: var(--font-size-sm);
+  box-shadow: var(--shadow-panel);
+  cursor: pointer;
+}
+
+.cp-select__control:focus {
+  outline: calc(2px * var(--scale)) solid var(--accent-info);
+}

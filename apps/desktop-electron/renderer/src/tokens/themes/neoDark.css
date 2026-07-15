@@ -1,0 +1,34 @@
+/* Neo-dark SaaS — zinc base, violet accent */
+[data-theme="neoDark"] {
+  --bg-app: #18181b;
+  --bg-panel: #27272a;
+  --bg-panel-alt: #3f3f46;
+  --bg-input: #18181b;
+  --bg-toolbar: #1f1f23;
+
+  --border-highlight: #71717a;
+  --border-shadow: #09090b;
+  --border-outline: #000000;
+  --border-light: #a1a1aa;
+  --border-muted: #52525b;
+  --bevel-highlight: #71717a;
+  --bevel-shadow: #09090b;
+
+  --fg-primary: #fafafa;
+  --fg-muted: #a1a1aa;
+  --fg-disabled: #71717a;
+  --fg-inverse: #fafafa;
+
+  --accent-primary: #8b5cf6;
+  --accent-primary-hover: #a78bfa;
+  --accent-primary-pressed: #7c3aed;
+  --accent-secondary: #3f3f46;
+  --accent-secondary-hover: #52525b;
+  --accent-success: #22c55e;
+  --accent-warning: #eab308;
+  --accent-danger: #ef4444;
+  --accent-info: #6366f1;
+
+  --overlay-header: rgba(0, 0, 0, 0.25);
+  --overlay-backdrop: rgba(0, 0, 0, 0.72);
+}

@@ -1,0 +1,54 @@
+.cp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  min-height: var(--hit-min);
+  min-width: calc(var(--hit-min) * 1.5);
+  padding: var(--space-sm) var(--space-lg);
+  border: var(--border-width) solid var(--border-outline);
+  box-shadow: var(--shadow-bevel), var(--shadow-panel);
+  font-family: var(--font-pixel);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 50ms ease, box-shadow 50ms ease;
+}
+
+.cp-btn--primary {
+  background: var(--accent-primary);
+  color: var(--fg-inverse);
+}
+
+.cp-btn--secondary {
+  background: var(--accent-secondary);
+  color: var(--fg-primary);
+}
+
+.cp-btn--danger {
+  background: var(--accent-danger);
+  color: var(--fg-primary);
+}
+
+.cp-btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.cp-btn:active:not(:disabled),
+.cp-btn--loading {
+  transform: translate(calc(1px * var(--scale)), calc(1px * var(--scale)));
+  box-shadow: var(--shadow-bevel-pressed);
+}
+
+.cp-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  color: var(--fg-disabled);
+}
+
+.cp-btn__icon {
+  display: inline-flex;
+  font-size: var(--font-size-md);
+  line-height: 1;
+}

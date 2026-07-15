@@ -1,0 +1,12 @@
+{
+  "name": "@cuepoint/desktop-electron",
+  "private": true,
+  "version": "0.0.0",
+  "description": "CuePoint Electron shell workspace (renderer + main process stub)",
+  "scripts": {
+    "dev:renderer": "npm run dev --prefix renderer",
+    "build:renderer": "npm run build --prefix renderer",
+    "storybook": "npm run storybook --prefix renderer",
+    "dev": "npm run dev:renderer"
+  }
+}

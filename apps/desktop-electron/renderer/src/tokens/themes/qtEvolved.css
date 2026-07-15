@@ -1,0 +1,34 @@
+/* Qt evolved — matches shipping PySide6 dark theme */
+[data-theme="qtEvolved"] {
+  --bg-app: #1e1e1e;
+  --bg-panel: #252526;
+  --bg-panel-alt: #2d2d2d;
+  --bg-input: #1e1e1e;
+  --bg-toolbar: #333333;
+
+  --border-highlight: #5a5a5a;
+  --border-shadow: #141414;
+  --border-outline: #000000;
+  --border-light: #6a6a6a;
+  --border-muted: #3c3c3c;
+  --bevel-highlight: #5a5a5a;
+  --bevel-shadow: #141414;
+
+  --fg-primary: #ffffff;
+  --fg-muted: #888888;
+  --fg-disabled: #666666;
+  --fg-inverse: #ffffff;
+
+  --accent-primary: #0078d4;
+  --accent-primary-hover: #106ebe;
+  --accent-primary-pressed: #005a9e;
+  --accent-secondary: #3c3c3c;
+  --accent-secondary-hover: #4a4a4a;
+  --accent-success: #4caf50;
+  --accent-warning: #ff9800;
+  --accent-danger: #f44336;
+  --accent-info: #2196f3;
+
+  --overlay-header: rgba(0, 0, 0, 0.2);
+  --overlay-backdrop: rgba(0, 0, 0, 0.68);
+}

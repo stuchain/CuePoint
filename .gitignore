@@ -149,6 +149,12 @@ src/output/
 *.xlsx
 *.xls
 
+# Frontend app manifests (exception to user-output *.json above)
+!apps/**/package.json
+!apps/**/package-lock.json
+!apps/**/tsconfig*.json
+!apps/**/.oxlintrc.json
+
 # Test files
 test_output/
 test_results/
@@ -337,9 +343,13 @@ build/version_info.txt
 *.sqlite
 bp_cache.sqlite*
 
+# Node / frontend
+node_modules/
+dist/
+storybook-static/
+*.tsbuildinfo
+
 scripts/delete_all_releases.py
-# UI overhaul docs (excluded from version control)
-docs/ui-overhaul/
 
 # Local test data (not for version control)
 collection-january.xml

@@ -1,0 +1,340 @@
+.screen {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
+}
+
+.screen--center {
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xl);
+  margin: 0 auto;
+}
+
+.screen--stack {
+  align-items: stretch;
+  gap: var(--space-lg);
+  margin: 0 auto;
+}
+
+.screen--stack:not(.screen--fill):not(.screen--scroll) {
+  flex: 0 1 auto;
+  justify-content: center;
+}
+
+.screen--stack.screen--scroll {
+  flex: none;
+  justify-content: flex-start;
+  align-items: stretch;
+  min-height: auto;
+  width: 100%;
+  max-width: var(--content-max-width);
+  padding-bottom: calc(var(--safe-bottom) + var(--space-xl));
+}
+
+.screen--fill {
+  flex: 1;
+  align-items: center;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+.screen--fill.screen--scrollable {
+  flex: none;
+  height: auto;
+  min-height: auto;
+  overflow: visible;
+  width: 100%;
+  max-width: 100%;
+}
+
+.screen--fill .screen-toolbar,
+.results-frame {
+  width: 100%;
+  max-width: var(--results-frame-max-width);
+}
+
+.screen--scrollable .screen-toolbar {
+  box-sizing: border-box;
+}
+
+.screen__hero {
+  text-align: center;
+}
+
+.screen__title {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  letter-spacing: 0.04em;
+}
+
+.screen__subtitle,
+.screen__muted {
+  color: var(--fg-muted);
+  font-size: var(--font-size-sm);
+}
+
+.screen-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  width: 100%;
+  padding: var(--space-md);
+  background: var(--bg-toolbar);
+  border: var(--border-width) solid var(--border-outline);
+  box-shadow: var(--shadow-panel);
+}
+
+.screen-toolbar__brand {
+  color: var(--fg-primary);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: var(--font-size-sm);
+}
+
+.screen-toolbar__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-lg);
+  width: 100%;
+}
+
+.tool-card__desc {
+  margin: 0 0 var(--space-lg);
+  color: var(--fg-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.match-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: stretch;
+  gap: var(--space-lg);
+  width: 100%;
+}
+
+.match-layout .cp-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+@media (max-width: 900px) {
+  .match-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.drop-zone {
+  border: var(--border-width) dashed var(--border-light);
+  padding: var(--space-xl);
+  min-height: calc(var(--hit-min) * 3);
+  box-sizing: border-box;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.drop-zone__hint {
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.drop-zone__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  justify-content: center;
+  margin-top: var(--space-lg);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+  row-gap: var(--space-sm);
+  margin: var(--space-lg) 0 var(--space-xl);
+}
+
+.stats-grid dt {
+  font-size: var(--font-size-xs);
+  color: var(--fg-muted);
+}
+
+.stats-grid dd {
+  margin: var(--space-xs) 0 0;
+  font-weight: 700;
+}
+
+.match-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-top: auto;
+  padding-top: var(--space-md);
+}
+
+.results-panel-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+}
+
+.results-frame {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+}
+
+.results-frame--sized {
+  flex: none;
+  align-self: center;
+  max-width: var(--results-frame-max-width);
+}
+
+.results-frame .cp-panel--in-frame {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.results-frame__resizer {
+  position: absolute;
+  right: calc(-2px * var(--scale));
+  bottom: calc(-2px * var(--scale));
+  z-index: 6;
+  width: calc(16px * var(--scale));
+  height: calc(16px * var(--scale));
+  padding: 0;
+  border: var(--border-width) solid var(--border-outline);
+  background: var(--bg-toolbar);
+  box-shadow: var(--shadow-bevel-sm);
+  cursor: nwse-resize;
+}
+
+.results-frame__resizer:hover,
+.results-frame__resizer:focus-visible {
+  background: var(--accent-primary);
+}
+
+.results-frame__resizer::after {
+  content: "";
+  position: absolute;
+  inset: calc(4px * var(--scale));
+  border-right: calc(2px * var(--scale)) solid var(--fg-muted);
+  border-bottom: calc(2px * var(--scale)) solid var(--fg-muted);
+}
+
+body.app-page-scroll,
+body.results-page-scrollable {
+  overflow-y: auto;
+  height: auto;
+  min-height: 100%;
+}
+
+html:has(body.app-page-scroll),
+html:has(body.results-page-scrollable) {
+  height: auto;
+  min-height: 100%;
+  overflow-y: auto;
+}
+
+body.app-page-scroll #root,
+body.results-page-scrollable #root {
+  height: auto;
+  min-height: 100vh;
+}
+
+body.app-page-scroll .app-main,
+body.results-page-scrollable .app-main {
+  overflow: visible;
+  flex: none;
+  min-height: auto;
+  justify-content: flex-start;
+  align-items: center;
+  width: 100%;
+}
+
+body.app-page-scroll .app-main .screen,
+body.results-page-scrollable .app-main .screen {
+  max-width: var(--content-max-width);
+  width: 100%;
+}
+
+body.results-page-scrollable .app-main .screen--fill {
+  flex: none;
+  min-height: auto;
+  align-self: center;
+  align-items: center;
+}
+
+body.results-frame--resizing {
+  cursor: nwse-resize;
+  user-select: none;
+}
+
+.results-toolbar {
+  flex-shrink: 0;
+  max-width: 220px;
+  margin-bottom: 0;
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  max-width: var(--content-narrow-width);
+  width: 100%;
+}
+
+.screen--scroll .theme-settings {
+  max-width: 100%;
+}
+
+@media (max-width: 899px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .screen-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .screen-toolbar__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-form {
+    max-width: 100%;
+  }
+}

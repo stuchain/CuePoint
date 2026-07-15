@@ -42,6 +42,7 @@ For contributors: setup, architecture, extending the codebase.
 | [Coding Standards](development/coding-standards.md) | Formatting, linting, typing |
 | [Remediation notes](development/remediation-notes.md) | Archive of one-off fix notes |
 | [Feature designs (inCrate)](feature/README.md) | inCrate: inventory, discovery, Beatport playlists — spec and implementation order |
+| [UI overhaul (lab → production)](ui-overhaul/README.md) | Layout, Results table, Settings scroll, rollout phases from UI Lab |
 | [inCrate spec](incrate-spec.md) | inCrate requirements and decisions |
 
 ---

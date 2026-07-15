@@ -1,0 +1,33 @@
+.cp-progress {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-xs) var(--space-md);
+  align-items: center;
+}
+
+.cp-progress__label {
+  grid-column: 1 / -1;
+  font-size: var(--font-size-xs);
+  color: var(--fg-muted);
+}
+
+.cp-progress__track {
+  height: calc(var(--space-md) + var(--space-xs));
+  border: var(--border-width) solid var(--border-outline);
+  background: var(--bg-input);
+  box-shadow: var(--shadow-inset-deep);
+  overflow: hidden;
+}
+
+.cp-progress__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-primary), var(--accent-warning));
+  transition: width 200ms ease;
+}
+
+.cp-progress__pct {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  min-width: calc(36px * var(--scale));
+  text-align: right;
+}

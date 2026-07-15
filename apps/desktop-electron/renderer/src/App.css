@@ -1,0 +1,49 @@
+.app-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+.app-main .screen {
+  width: 100%;
+  max-width: var(--content-max-width);
+}
+
+.app-main .screen--fill {
+  align-self: stretch;
+  flex: 1;
+  justify-content: flex-start;
+  min-height: 0;
+}
+
+.app-lab-nav {
+  position: fixed;
+  left: 50%;
+  bottom: var(--space-md);
+  z-index: 900;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  padding: var(--space-xs);
+  background: var(--bg-toolbar);
+  border: var(--border-width) solid var(--border-outline);
+  box-shadow: var(--shadow-panel);
+}
+
+.app-lab-nav a {
+  padding: var(--space-xs) var(--space-sm);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  text-decoration: none;
+}
+
+.app-lab-nav a:hover {
+  color: var(--fg-primary);
+}

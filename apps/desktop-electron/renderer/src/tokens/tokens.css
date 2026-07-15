@@ -1,0 +1,75 @@
+/**
+ * CuePoint design tokens — structure + classic pixel-art chrome.
+ * Color values live in themes/*.css (data-theme on html).
+ */
+:root {
+  --scale: 2;
+  --unit: calc(4px * var(--scale));
+
+  /* Pixel-art chrome (structural) */
+  --border-width: calc(2px * var(--scale));
+  --border-width-heavy: calc(3px * var(--scale));
+  --bevel-size: calc(2px * var(--scale));
+  --bevel-size-sm: calc(1px * var(--scale));
+  --focus-ring-width: calc(2px * var(--scale));
+  --radius-sm: 0;
+
+  --shadow-bevel: inset var(--bevel-size) var(--bevel-size) 0 var(--bevel-highlight),
+    inset calc(-1 * var(--bevel-size)) calc(-1 * var(--bevel-size)) 0 var(--bevel-shadow);
+  --shadow-bevel-panel: inset var(--bevel-size) var(--bevel-size) 0 var(--border-light),
+    inset calc(-1 * var(--bevel-size)) calc(-1 * var(--bevel-size)) 0 var(--bevel-shadow);
+  --shadow-bevel-sm: inset var(--bevel-size-sm) var(--bevel-size-sm) 0 var(--bevel-highlight),
+    inset calc(-1 * var(--bevel-size-sm)) calc(-1 * var(--bevel-size-sm)) 0 var(--bevel-shadow);
+  --shadow-bevel-pressed: inset calc(-1 * var(--bevel-size-sm)) calc(-1 * var(--bevel-size-sm)) 0
+      var(--bevel-highlight),
+    inset var(--bevel-size-sm) var(--bevel-size-sm) 0 var(--bevel-shadow);
+  --shadow-panel: calc(4px * var(--scale)) calc(4px * var(--scale)) 0 var(--border-shadow);
+  --shadow-modal: calc(8px * var(--scale)) calc(8px * var(--scale)) 0 var(--border-shadow);
+  --shadow-badge: calc(2px * var(--scale)) calc(2px * var(--scale)) 0 var(--border-shadow);
+  --shadow-inset-deep: inset var(--bevel-size) var(--bevel-size) 0 rgba(0, 0, 0, 0.35);
+
+  /* Spacing */
+  --space-xs: calc(var(--unit) * 1);
+  --space-sm: calc(var(--unit) * 1.5);
+  --space-md: calc(var(--unit) * 2);
+  --space-lg: calc(var(--unit) * 3);
+  --space-xl: calc(var(--unit) * 4);
+
+  /* Typography */
+  --font-pixel: "Pixelify Sans", "Segoe UI", sans-serif;
+  --font-size-xs: calc(10px * var(--scale));
+  --font-size-sm: calc(12px * var(--scale));
+  --font-size-md: calc(14px * var(--scale));
+  --font-size-lg: calc(18px * var(--scale));
+  --font-size-xl: calc(24px * var(--scale));
+
+  /* Hit targets */
+  --hit-min: calc(44px * var(--scale));
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+body {
+  background: var(--bg-app);
+  color: var(--fg-primary);
+  font-family: var(--font-pixel);
+  font-size: var(--font-size-md);
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.pixel-canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
