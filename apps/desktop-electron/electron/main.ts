@@ -20,6 +20,7 @@ function registerIpcHandlers(): void {
   ipcMain.handle("engine:exportResults", (_event, body) => engine.exportResults(body));
   ipcMain.handle("engine:getIncrateInventory", (_event, params) => engine.getIncrateInventory(params));
   ipcMain.handle("engine:importIncrateXml", (_event, body) => engine.importIncrateXml(body));
+  ipcMain.handle("engine:resetIncrateInventory", () => engine.resetIncrateInventory());
   ipcMain.handle("engine:getIncrateDiscoverOptions", () => engine.getIncrateDiscoverOptions());
   ipcMain.handle("engine:runIncrateDiscover", (_event, body) => engine.runIncrateDiscover(body));
   ipcMain.handle("engine:createIncratePlaylist", (_event, body) => engine.createIncratePlaylist(body));

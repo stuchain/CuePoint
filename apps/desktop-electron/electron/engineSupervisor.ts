@@ -142,6 +142,10 @@ export class EngineSupervisor {
     return this.client().importIncrateXml(body);
   }
 
+  async resetIncrateInventory() {
+    return this.client().resetIncrateInventory();
+  }
+
   async getIncrateDiscoverOptions(): Promise<Record<string, unknown>> {
     return this.client().getIncrateDiscoverOptions();
   }

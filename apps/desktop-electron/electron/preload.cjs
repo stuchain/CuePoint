@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld("cuepoint", {
   exportResults: (body) => ipcRenderer.invoke("engine:exportResults", body),
   getIncrateInventory: (params) => ipcRenderer.invoke("engine:getIncrateInventory", params),
   importIncrateXml: (body) => ipcRenderer.invoke("engine:importIncrateXml", body),
+  resetIncrateInventory: () => ipcRenderer.invoke("engine:resetIncrateInventory"),
   getIncrateDiscoverOptions: () => ipcRenderer.invoke("engine:getIncrateDiscoverOptions"),
   runIncrateDiscover: (body) => ipcRenderer.invoke("engine:runIncrateDiscover", body),
   createIncratePlaylist: (body) => ipcRenderer.invoke("engine:createIncratePlaylist", body),

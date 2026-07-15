@@ -263,6 +263,7 @@ export interface CuePointBridge {
   openXmlFileDialog: () => Promise<OpenXmlDialogResult>;
   openCsvFileDialog: () => Promise<OpenCsvDialogResult>;
   openM3uFileDialog: () => Promise<OpenM3uDialogResult>;
+  resolveDroppedFilePath?: (file: File) => string | null;
   saveExportFileDialog: (options: {
     defaultPath?: string;
     format: ExportFormat;

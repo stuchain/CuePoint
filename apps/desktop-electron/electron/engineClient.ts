@@ -114,6 +114,15 @@ export class EngineClient {
     return readJson(res);
   }
 
+  async resetIncrateInventory(): Promise<{ ok: boolean; stats: { total: number } }> {
+    const res = await fetch(this.url("/api/v1/incrate/reset"), {
+      method: "POST",
+      headers: this.headers(),
+      body: "{}",
+    });
+    return readJson(res);
+  }
+
   async getIncrateDiscoverOptions(): Promise<Record<string, unknown>> {
     const res = await fetch(this.url("/api/v1/incrate/discover/options"), {
       headers: this.headers(),
