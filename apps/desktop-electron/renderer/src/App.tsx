@@ -1,7 +1,10 @@
 import { useEffect } from "react";
 import { BrowserRouter, Link, Route, Routes, useLocation } from "react-router-dom";
 import { ToastProvider } from "./components";
+import { EngineStatusBanner } from "./components/EngineStatusBanner";
+import { MatchResultsProvider } from "./context/MatchResultsContext";
 import {
+  InCrateMainScreen,
   InKeyMainScreen,
   ResultsScreen,
   SettingsExportScreen,
@@ -25,9 +28,11 @@ function AppShell() {
 
   return (
     <>
+      <EngineStatusBanner />
       <nav className="app-lab-nav" aria-label="Lab routes">
         <Link to="/">Tools</Link>
         <Link to="/match">inKey</Link>
+        <Link to="/incrate">inCrate</Link>
         <Link to="/results">Results</Link>
         <Link to="/settings">Settings</Link>
       </nav>
@@ -35,6 +40,7 @@ function AppShell() {
         <Routes>
           <Route path="/" element={<ToolSelectionScreen />} />
           <Route path="/match" element={<InKeyMainScreen />} />
+          <Route path="/incrate" element={<InCrateMainScreen />} />
           <Route path="/results" element={<ResultsScreen />} />
           <Route path="/settings" element={<SettingsExportScreen />} />
         </Routes>
@@ -49,7 +55,9 @@ export default function App() {
       <ThemeProvider>
         <ScaleProvider>
           <ToastProvider>
-            <AppShell />
+            <MatchResultsProvider>
+              <AppShell />
+            </MatchResultsProvider>
           </ToastProvider>
         </ScaleProvider>
       </ThemeProvider>

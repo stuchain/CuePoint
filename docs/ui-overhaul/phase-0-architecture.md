@@ -83,9 +83,9 @@ flowchart LR
 
 | ID | Title | Decision | Status |
 |----|--------|----------|--------|
-| ADR-001 | Desktop shell runtime | Use Electron for the packaged shell | Proposed |
-| ADR-002 | Engine packaging | PyInstaller one-dir per platform | Proposed |
-| ADR-003 | IPC style | HTTP JSON API + streaming channel | Proposed |
+| ADR-001 | Desktop shell runtime | Use Electron for the packaged shell | Accepted — [001-electron-shell.md](adr/001-electron-shell.md) |
+| ADR-002 | Engine packaging | PyInstaller one-dir per platform | Accepted — [002-engine-packaging.md](adr/002-engine-packaging.md) |
+| ADR-003 | IPC style | HTTP JSON API + streaming channel | Accepted — [003-http-ipc.md](adr/003-http-ipc.md) |
 | ADR-004 | Renderer ↔ main bridge | contextBridge with explicit typed surface | Proposed |
 | ADR-005 | Parity strategy | Full GUI parity then remove Qt | Proposed |
 

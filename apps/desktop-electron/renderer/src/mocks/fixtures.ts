@@ -11,7 +11,7 @@ export const toolOptions: ToolOption[] = [
     id: "incrate",
     name: "inCrate",
     description: "Discover and organize crate workflows (preview).",
-    available: false,
+    available: true,
   },
 ];
 

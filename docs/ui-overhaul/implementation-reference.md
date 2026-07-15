@@ -17,6 +17,7 @@ Where each lab behavior lives in the codebase. Use when cherry-picking into prod
 | --- | --- | --- |
 | `/` | `ToolSelectionScreen.tsx` | `screen--center` |
 | `/match` | `InKeyMainScreen.tsx` | `screen--stack`, `match-layout` |
+| `/incrate` | `InCrateMainScreen.tsx` | `screen--scroll` (stub) |
 | `/results` | `ResultsScreen.tsx` | `screen--fill`, `results-frame` |
 | `/settings` | `SettingsExportScreen.tsx` | `screen--scroll`, `app-page-scroll` body |
 
@@ -103,8 +104,18 @@ Production should use app settings / QSettings equivalents — same JSON shape i
 | Lab type / column | Qt / Python source |
 | --- | --- |
 | `TrackResult` | `cuepoint/ui/gui_interface.py` |
-| Column indices | `results_view.py` `COL_*` |
+| Column indices | `results_view.py` `COL_*` + `results_column_layout.py` |
+| Engine health | `cuepoint/engine/server.py` — `python -m cuepoint.engine` |
 | Min visible rows | Qt results view (~10 rows) |
+
+## Electron shell
+
+| Path | Role |
+| --- | --- |
+| `apps/desktop-electron/electron/main.ts` | Window + engine supervisor |
+| `apps/desktop-electron/electron/engineSupervisor.ts` | Spawn Python, poll `/health` |
+| `apps/desktop-electron/electron/preload.cjs` | `window.cuepoint.getEngineStatus()` |
+| `apps/desktop-electron/package.json` | `npm run electron:dev` |
 
 ## Commands
 

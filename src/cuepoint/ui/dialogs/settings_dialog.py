@@ -44,10 +44,12 @@ class SettingsDialog(QDialog):
         scroll_area.setWidgetResizable(True)
         scroll_area.setFrameShape(QFrame.Shape.NoFrame)
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         scroll_content = QWidget()
         scroll_layout = QVBoxLayout(scroll_content)
         scroll_layout.setContentsMargins(0, 0, 0, 0)
         scroll_layout.setSpacing(10)
+        scroll_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # Add config panel
         self.config_panel = ConfigPanel(config_controller=self.config_controller)
@@ -72,6 +74,7 @@ class SettingsDialog(QDialog):
         scroll_layout.addLayout(reset_row)
 
         scroll_area.setWidget(scroll_content)
+        self._scroll_area = scroll_area
         layout.addWidget(scroll_area)
 
         # Add button box
@@ -119,6 +122,14 @@ class SettingsDialog(QDialog):
             self.config_panel.incrate_password_edit.textChanged.connect(
                 self._update_apply_button
             )
+
+    def showEvent(self, event) -> None:
+        """Scroll to top when opening settings (Rollout Phase A)."""
+        super().showEvent(event)
+        if hasattr(self, "_scroll_area"):
+            bar = self._scroll_area.verticalScrollBar()
+            if bar is not None:
+                bar.setValue(0)
 
     def _open_privacy_dialog(self) -> None:
         from cuepoint.ui.dialogs.privacy_dialog import PrivacyDialog

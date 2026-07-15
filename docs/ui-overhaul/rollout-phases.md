@@ -37,16 +37,16 @@ Suggested order to land lab work in the **shipping app** without a big-bang UI r
 
 **Goal:** Qt results view matches lab column behavior.
 
-| Task | Lab source | Production target |
-| --- | --- | --- |
-| 14 columns, same indices | `resultsColumns.ts` | `results_view.py` |
-| Sticky Write + Index | `ResultsTable.css` | Frozen columns or equivalent |
-| Per-column min widths | `minWidthPx` map | `QHeaderView` minimumSectionSize per column |
-| Column drag resize | `startColumnResize` | `QHeaderView` interactive resize |
-| Double-click reset column | ResultsTable handler | Header double-click slot |
-| Persist column widths | `cuepoint-ui-lab-results-layout` | QSettings / user prefs |
-| Unmatched row styling | `--row-unmatched-bg` | Delegate / alternating color |
-| Default sort Index asc | `DEFAULT_SORT_COLUMN` | Verify match Qt |
+| Task | Lab source | Production target | Status |
+| --- | --- | --- | --- |
+| 14 columns, same indices | `resultsColumns.ts` | `results_view.py` | Done |
+| Per-column min widths | `minWidthPx` map | `results_column_layout.py` | Done |
+| Column drag resize | `startColumnResize` | `QHeaderView.Interactive` | Done |
+| Double-click reset column | ResultsTable handler | `sectionHandleDoubleClicked` | Done |
+| Persist column widths | `cuepoint-ui-lab-results-layout` | `QSettings` `results/columnWidths` | Done |
+| Sticky Write + Index | `ResultsTable.css` | Deferred (frozen columns) | Not started |
+| Unmatched row styling | `--row-unmatched-bg` | Existing delegate | Done |
+| Default sort Index asc | `DEFAULT_SORT_COLUMN` | Existing Qt behavior | Done |
 
 **Exit criteria:** User can narrow Index below old 80px floor; layout restores on restart.
 

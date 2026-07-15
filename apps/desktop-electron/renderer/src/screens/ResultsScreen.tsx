@@ -3,15 +3,19 @@ import { Link } from "react-router-dom";
 import { Badge, Button, Panel, ResultsTable, Select, ToolbarIcon } from "../components";
 import { useResultsFrameLayout } from "../components/useResultsFrameLayout";
 import { sampleResults } from "../mocks/fixtures";
+import { useMatchResults } from "../context/MatchResultsContext";
 import { useScale } from "../tokens/ScaleContext";
 import "./screens.css";
 
 export function ResultsScreen() {
   const { scale } = useScale();
+  const { results: engineResults, source } = useMatchResults();
   const [filter, setFilter] = useState<"all" | "matched" | "unmatched">("all");
   const [selected, setSelected] = useState<number | null>(null);
   const { frameRef, frameWidth, frameHeight, isSized, startFrameResize, resetFrameSize } =
     useResultsFrameLayout(scale);
+
+  const allRows = source === "engine" && engineResults.length > 0 ? engineResults : sampleResults;
 
   useEffect(() => {
     document.body.classList.toggle("results-page-scrollable", isSized);
@@ -19,10 +23,10 @@ export function ResultsScreen() {
   }, [isSized]);
 
   const rows = useMemo(() => {
-    if (filter === "matched") return sampleResults.filter((r) => r.matched);
-    if (filter === "unmatched") return sampleResults.filter((r) => !r.matched);
-    return sampleResults;
-  }, [filter]);
+    if (filter === "matched") return allRows.filter((r) => r.matched);
+    if (filter === "unmatched") return allRows.filter((r) => !r.matched);
+    return allRows;
+  }, [allRows, filter]);
 
   const frameStyle = {
     ...(frameWidth != null ? { width: `${frameWidth}px`, maxWidth: "var(--results-frame-max-width)" } : {}),
@@ -55,6 +59,7 @@ export function ResultsScreen() {
           badge={
             <Badge variant="info">
               {rows.length} tracks · {rows.filter((r) => r.matched).length} matched
+              {source === "engine" ? " · live" : ""}
             </Badge>
           }
         >

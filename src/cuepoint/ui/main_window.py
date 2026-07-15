@@ -791,10 +791,12 @@ class MainWindow(QMainWindow):
         main_scroll.setFrameShape(QFrame.NoFrame)
         main_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         main_scroll.setWidget(main_tab_content)
+        self._main_tab_scroll = main_scroll
 
         # Add tabs (Settings tab removed - now accessible via menu)
         self.tabs.addTab(main_scroll, "Main")
         self.tabs.addTab(history_scroll, "Past Searches")
+        self._history_tab_scroll = history_scroll
 
         # inKey wrapper: back button (top-left) + tabs, so we can show back when on main interface
         self._inkey_wrapper = QWidget()
@@ -824,6 +826,8 @@ class MainWindow(QMainWindow):
         inkey_layout.addWidget(self.tabs, 1)
 
         self._stack.addWidget(self._inkey_wrapper)
+        self._stack.currentChanged.connect(self._on_stack_page_changed)
+        self.tabs.currentChanged.connect(self._on_tab_changed)
 
         # Performance monitoring view (created but not added to tabs yet)
         self.performance_view = PerformanceView()
@@ -1038,6 +1042,26 @@ class MainWindow(QMainWindow):
             "Shortcut Conflict",
             f"Shortcut conflict detected between '{action_id1}' and '{action_id2}'",
         )
+
+    def _reset_scroll_area(self, scroll_area: Optional[QScrollArea]) -> None:
+        """Reset a scroll area to the top (Rollout Phase A)."""
+        if scroll_area is None:
+            return
+        bar = scroll_area.verticalScrollBar()
+        if bar is not None:
+            bar.setValue(0)
+
+    def _on_stack_page_changed(self, _index: int) -> None:
+        """Reset nested scroll positions when switching tools/pages."""
+        self._reset_scroll_area(getattr(self, "_main_tab_scroll", None))
+        self._reset_scroll_area(getattr(self, "_history_tab_scroll", None))
+
+    def _on_tab_changed(self, _index: int) -> None:
+        """Reset inKey tab scroll when switching Main / Past Searches."""
+        if self.tabs.currentWidget() is getattr(self, "_main_tab_scroll", None):
+            self._reset_scroll_area(self._main_tab_scroll)
+        elif self.tabs.currentWidget() is getattr(self, "_history_tab_scroll", None):
+            self._reset_scroll_area(self._history_tab_scroll)
 
     def show_tool_selection_page(self) -> None:
         """Show the tool selection page"""

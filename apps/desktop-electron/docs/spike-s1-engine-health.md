@@ -1,6 +1,6 @@
 # Spike S1 — Engine health from Electron shell
 
-**Phase 0 spike** | **Status:** Planned (stub)  
+**Phase 0 spike** | **Status:** Done (2026-07-15)  
 **Prerequisite ADRs:** ADR-001 (Electron), ADR-002 (PyInstaller), ADR-003 (HTTP IPC)
 
 ## Goal

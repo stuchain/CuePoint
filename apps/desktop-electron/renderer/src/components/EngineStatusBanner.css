@@ -1,0 +1,21 @@
+.engine-status {
+  position: fixed;
+  top: var(--space-md);
+  right: var(--space-md);
+  z-index: 850;
+  padding: var(--space-xs) var(--space-sm);
+  border: var(--border-width) solid var(--border-outline);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  box-shadow: var(--shadow-panel);
+}
+
+.engine-status--ok {
+  background: var(--accent-success);
+  color: var(--fg-inverse);
+}
+
+.engine-status--error {
+  background: var(--accent-danger);
+  color: var(--fg-primary);
+}

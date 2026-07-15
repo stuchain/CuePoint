@@ -27,6 +27,14 @@ Suggested first commits:
 - `docs(adr): add adr template for ui overhaul`
 - `docs(adr): accept adr-001 electron shell decision` (when ready)
 
+## Accepted ADRs
+
+| ID | File | Summary |
+| --- | --- | --- |
+| ADR-001 | [001-electron-shell.md](001-electron-shell.md) | Electron shell + React renderer |
+| ADR-002 | [002-engine-packaging.md](002-engine-packaging.md) | PyInstaller one-dir; dev module for spikes |
+| ADR-003 | [003-http-ipc.md](003-http-ipc.md) | HTTP on loopback + session token |
+
 ## ADR quality bar (analytical)
 
 Each ADR SHOULD quantify **when superseded**: list **signals** (e.g. “Electron bundle size > X MB sustained for two releases”). Link to **Phase 0** drivers if tradeoff touches correctness, security, or parity.

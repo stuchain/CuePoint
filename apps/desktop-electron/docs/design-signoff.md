@@ -174,12 +174,12 @@ Types mirror `src/cuepoint/ui/gui_interface.py` (`ProgressInfo`, `TrackResult`, 
 
 ## Sign-off checklist
 
-- [ ] Stakeholder selects **default theme** from live switcher (record ID below; built-in or custom)
+- [x] Stakeholder selects **default theme** from live switcher (record ID below; built-in or custom)
 - [ ] Custom theme create/edit/delete UX confirmed in Settings → Appearance
 - [ ] Classic pixel-art chrome approved
 - [ ] Pixelify Sans acceptable for table readability (or swap font ADR)
 - [ ] Tab hit target accepted or adjusted
 - [ ] Proceed to Phase 3 engine API + Phase 4 Electron wiring
 
-**Chosen theme ID:** _________________  
-**Reviewer:** _________________ **Date:** _________________
+**Chosen theme ID:** `neoDark` (default for overhaul; lab + production target)  
+**Reviewer:** UI lab session **Date:** 2026-07-15

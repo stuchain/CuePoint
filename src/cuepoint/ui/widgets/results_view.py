@@ -64,6 +64,7 @@ from cuepoint.ui.controllers.results_controller import ResultsController
 from cuepoint.ui.dialogs.export_dialog import ExportDialog
 from cuepoint.ui.strings import EmptyState, ExportCopy, TooltipCopy
 from cuepoint.ui.widgets.candidate_dialog import CandidateDialog
+from cuepoint.ui.widgets.results_column_layout import ResultsColumnLayoutManager
 from cuepoint.ui.widgets.shortcut_manager import ShortcutContext, ShortcutManager
 from cuepoint.ui.widgets.styles import Colors, is_macos
 from cuepoint.utils.run_context import get_current_run_id
@@ -204,6 +205,7 @@ class ResultsView(QWidget):
         self._filter_debounce_timer.setSingleShot(True)
         self._filter_debounce_timer.timeout.connect(self._apply_filters_debounced)
         self._show_wav_row_highlight = False
+        self._column_layout = ResultsColumnLayoutManager()
         # Create shortcut manager
         self.shortcut_manager = ShortcutManager(self)
         self.init_ui()
@@ -594,7 +596,7 @@ class ResultsView(QWidget):
         self.table.setAlternatingRowColors(False)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self._column_layout.configure_table(self.table)
         # Ensure "10 tracks visible" when possible (table remains scrollable)
         self.table.verticalHeader().setDefaultSectionSize(26 if is_macos() else 28)
         self._ensure_table_min_rows(self.table, 10)
@@ -1129,7 +1131,7 @@ class ResultsView(QWidget):
         )  # so unmatched-row red background is visible
         table.setSelectionBehavior(QTableWidget.SelectRows)
         table.setEditTriggers(QTableWidget.NoEditTriggers)
-        table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self._column_layout.configure_table(table)
         table.verticalHeader().setDefaultSectionSize(26 if is_macos() else 28)
         self._ensure_table_min_rows(table, 10)
 
@@ -1398,13 +1400,7 @@ class ResultsView(QWidget):
             self.table.sortItems(COL_INDEX, Qt.AscendingOrder)
             self.table.horizontalHeader().setSortIndicator(COL_INDEX, Qt.AscendingOrder)
 
-        # Resize columns to content
-        self.table.resizeColumnsToContents()
-
-        # Set minimum column widths
-        for col in range(self.table.columnCount()):
-            current_width = self.table.columnWidth(col)
-            self.table.setColumnWidth(col, max(current_width, 80))
+        self._column_layout.ensure_minimums(self.table)
 
         # Keep table tall enough to show ~10 rows when space allows
         self._ensure_table_min_rows(self.table, 10)
