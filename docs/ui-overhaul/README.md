@@ -54,10 +54,12 @@ This folder captures **decisions, layout rules, and implementation details** pro
 | **Milestone 5** | Job cancel + SSE progress | **Done** |
 | **Rollout Phase C (Qt)** | Results frame 80vw + resize grip | **Done** |
 | **Rollout Phase D (Qt)** | Theme/scale in Settings | **Done** |
+| **Milestone 6 (Phase E)** | Beatport token + Results empty state | **Done** |
 | Rollout Phase B (Qt) | Results column mins + QSettings persistence | Done |
 | Spike S1 | Engine `/health` + Electron spawn | Done |
 | Lab `/incrate` stub | Route + inventory/import wiring | Done |
-| **Next** | Phase 6 parity / Electron cutover slices | See [parity-matrix.md](parity-matrix.md) |
+| **Milestone 6 (Phase E + parity slices)** | Token, discover, playlist, match layout, sticky cols | **Done** |
+| **Next** | Phase 6 candidate dialogs + batch tabs | See [next-milestone.md](next-milestone.md) |
 | Phase 6 | Full GUI parity + inCrate | In progress (matrix) |
 
 Update this table as each slice lands in the main app.

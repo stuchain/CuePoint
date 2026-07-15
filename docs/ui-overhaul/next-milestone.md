@@ -1,29 +1,29 @@
 # Next milestone
 
-**Gate:** Rollout Phase D complete — theme and UI scale live in Qt Settings only.
+**Gate:** Milestone 6 complete — inCrate discover/playlist, Qt match layout, sticky columns.
 
 ---
 
-## Rollout Phase D — Appearance (done)
+## Completed (Milestone 6)
 
-- **Appearance** section at top of Settings dialog (`AppearanceSettingsWidget`)
-- Five built-in themes (default **neoDark**) + custom theme CRUD
-- UI scale **1× / 2× / 3×** (default **2×**) with integer pixel scaling
-- QSettings: `appearance/theme`, `appearance/uiScale`, `appearance/customThemes`
-- Applied on startup via `init_appearance()` in `gui_app.py`
+| Slice | Status |
+| --- | --- |
+| Beatport token via engine config | Done |
+| Results empty state (no mock when engine connected) | Done |
+| inCrate discover + playlist engine API + Electron UI | Done |
+| Qt Input \| Processing equal-height panels | Done |
+| Qt frozen Write + Index columns | Done |
 
 ---
 
-## Next slices
+## Next slices (Phase 6 parity)
 
 | Priority | Scope |
 | --- | --- |
-| Phase 6 | Full GUI parity checklist ([parity-matrix.md](parity-matrix.md)) |
-| Phase E | Electron renderer wiring for remaining screens |
-| Phase 10 | Qt removal (post-parity) |
+| Batch results tabs in Electron lab | Parity matrix row |
+| inCrate Discover/Playlist in Qt (already in `incrate_page.py`) | Electron parity achieved |
+| Candidate / review dialogs | Phase 6 |
+| Sticky columns for batch-mode Qt tables | Optional polish |
+| Phase 10 Qt removal | Post full parity |
 
----
-
-## Engine / Electron (stable)
-
-Phase 3 P1 complete (jobs, export, inCrate, cancel, SSE). See [tracking/milestone-5.md](tracking/milestone-5.md).
+See [parity-matrix.md](parity-matrix.md) and [tracking/milestone-6-all-slices.md](tracking/milestone-6-all-slices.md).

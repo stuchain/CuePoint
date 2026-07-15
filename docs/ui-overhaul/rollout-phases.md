@@ -27,7 +27,7 @@ Suggested order to land lab work in the **shipping app** without a big-bang UI r
 | Bottom safe-area for nav/toolbars | `--safe-bottom` | Main window layout |
 | Document scroll for long settings | `app-page-scroll` pattern | Settings stack widget / scroll area |
 | Route / page scroll reset | `App.tsx` | Stack index change handler |
-| Match equal-height panels | `match-layout` CSS | inKey page grid layout |
+| Match equal-height panels | `match-layout` CSS | `main_window.py` Input \| Processing | Done |
 
 **Exit criteria:** Settings page fully scrollable at 2×; no clipped headers; scroll resets on section change.
 
@@ -44,7 +44,7 @@ Suggested order to land lab work in the **shipping app** without a big-bang UI r
 | Column drag resize | `startColumnResize` | `QHeaderView.Interactive` | Done |
 | Double-click reset column | ResultsTable handler | `sectionHandleDoubleClicked` | Done |
 | Persist column widths | `cuepoint-ui-lab-results-layout` | `QSettings` `results/columnWidths` | Done |
-| Sticky Write + Index | `ResultsTable.css` | Deferred (frozen columns) | Not started |
+| Sticky Write + Index | `ResultsTable.css` | `ResultsFrozenTableHost` | Done |
 | Unmatched row styling | `--row-unmatched-bg` | Existing delegate | Done |
 | Default sort Index asc | `DEFAULT_SORT_COLUMN` | Existing Qt behavior | Done |
 
@@ -94,11 +94,11 @@ QSettings keys: `appearance/theme`, `appearance/uiScale`, `appearance/customThem
 
 Depends on Phase 3 engine API from design sign-off. Not part of current layout pass.
 
-| Task | Notes |
-| --- | --- |
-| IPC for real `TrackResult[]` | Replace `mocks/fixtures.ts` |
-| Real export flow | Wire Export modal to engine |
-| Beatport token field | Real secure storage |
+| Task | Notes | Status |
+| --- | --- | --- |
+| IPC for real `TrackResult[]` | Replace `mocks/fixtures.ts` when no engine results | Done |
+| Real export flow | Wire Export modal to engine | Done |
+| Beatport token field | Real secure storage via engine config API | Done |
 
 ---
 

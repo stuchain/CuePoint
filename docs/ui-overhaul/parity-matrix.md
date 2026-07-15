@@ -10,13 +10,13 @@ Maps **production Qt** surfaces to **Electron lab** routes for Phase 6 cutover. 
 | inKey main | [`main_window.py`](../../src/cuepoint/ui/main_window.py) (Main tab) | `/match` | P0 | Lab wired | Demo/real jobs via engine |
 | inKey past searches | Main window tab | — | P1 | Not in lab | Add lab tab or route later |
 | Results table | [`results_view.py`](../../src/cuepoint/ui/widgets/results_view.py) | `/results` | P0 | Wired | Engine results + export |
-| Settings / export | [`settings_dialog.py`](../../src/cuepoint/ui/dialogs/settings_dialog.py) | `/settings` | P1 | Lab wired | Export via engine API |
-| inCrate page shell | [`incrate_page.py`](../../src/cuepoint/ui/widgets/incrate_page.py) | `/incrate` | P1 | Lab stub | Tabbed sections in Qt |
+| Settings / export | [`settings_dialog.py`](../../src/cuepoint/ui/dialogs/settings_dialog.py) | `/settings` | P1 | Lab wired | Export + Beatport token via engine |
+| inCrate page shell | [`incrate_page.py`](../../src/cuepoint/ui/widgets/incrate_page.py) | `/incrate` | P1 | Lab wired | Import, discover, playlist via engine |
 | inCrate import | [`incrate_import_section.py`](../../src/cuepoint/ui/widgets/incrate_import_section.py) | `/incrate#import` | P1 | Lab stub | Collection XML import |
 | inCrate inventory | [`incrate_inventory_section.py`](../../src/cuepoint/ui/widgets/incrate_inventory_section.py) | `/incrate` (panel) | P1 | Lab wired | Engine GET inventory + import |
-| inCrate discover | [`incrate_discover_section.py`](../../src/cuepoint/ui/widgets/incrate_discover_section.py) | `/incrate#discover` | P1 | Lab stub | Charts / new releases |
-| inCrate results | [`incrate_results_section.py`](../../src/cuepoint/ui/widgets/incrate_results_section.py) | `/incrate` (panel) | P1 | Not started | Discovery run results |
-| inCrate playlist | [`incrate_playlist_section.py`](../../src/cuepoint/ui/widgets/incrate_playlist_section.py) | `/incrate#playlist` | P1 | Lab stub | Beatport playlist build |
+| inCrate discover | [`incrate_discover_section.py`](../../src/cuepoint/ui/widgets/incrate_discover_section.py) | `/incrate#discover` | P1 | Lab wired | Engine discover API |
+| inCrate results | [`incrate_results_section.py`](../../src/cuepoint/ui/widgets/incrate_results_section.py) | `/incrate` (panel) | P1 | Lab wired | Discovery results list |
+| inCrate playlist | [`incrate_playlist_section.py`](../../src/cuepoint/ui/widgets/incrate_playlist_section.py) | `/incrate#playlist` | P1 | Lab wired | Engine playlist API |
 | Batch results tabs | `results_view.py` batch mode | — | P1 | Not in lab | Multi-playlist tabs |
 | Candidate / review dialogs | Qt dialogs | — | P1 | Not in lab | Phase 6 |
 | Onboarding / updates | Qt | — | P2 | Not in lab | Phase 6+ |

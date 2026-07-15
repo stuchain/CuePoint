@@ -75,5 +75,5 @@ Wire to real engine storage when porting.
 - [x] Move theme + scale to app Settings (remove duplicate chrome elsewhere)
 - [ ] Long settings pages use top-aligned document scroll
 - [x] Custom theme CRUD + derivation pipeline
-- [ ] Beatport token + export path → real persistence
+- [x] Beatport token + export path → real persistence (token via engine config API)
 - [ ] Scroll reset when switching main window sections
