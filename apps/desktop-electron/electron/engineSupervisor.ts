@@ -1,10 +1,12 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import crypto from "node:crypto";
+import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { WebContents } from "electron";
 import { EngineClient } from "./engineClient";
+import { getBundledEnginePath, shouldUseBundledEngine } from "./engineLaunch";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /** Repo root: works from source (`electron/`) and bundle (`electron-dist/`). */
@@ -13,6 +15,7 @@ const REPO_ROOT = path.resolve(__dirname, "../../..");
 export interface EngineStatus {
   connected: boolean;
   version?: string;
+  sessionId?: string;
   error?: string;
 }
 
@@ -20,6 +23,7 @@ export class EngineSupervisor {
   private child: ChildProcess | null = null;
   private port: number | null = null;
   private token: string | null = null;
+  private sessionId: string = crypto.randomUUID();
   private version: string | undefined;
   private jobStreamAborts = new Map<string, AbortController>();
 
@@ -32,20 +36,38 @@ export class EngineSupervisor {
     this.port = await this.pickPort();
     this.token = crypto.randomBytes(24).toString("hex");
 
-    const python = process.env.CUEPOINT_PYTHON ?? "python";
-    const env = {
+    const baseEnv = {
       ...process.env,
       CUEPOINT_HOST: "127.0.0.1",
       CUEPOINT_PORT: String(this.port),
       CUEPOINT_TOKEN: this.token,
-      PYTHONPATH: path.join(REPO_ROOT, "src"),
+      CUEPOINT_SESSION_ID: this.sessionId,
     };
 
-    this.child = spawn(python, ["-m", "cuepoint.engine"], {
-      cwd: REPO_ROOT,
-      env,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
+    if (shouldUseBundledEngine()) {
+      const enginePath = getBundledEnginePath();
+      if (!fs.existsSync(enginePath)) {
+        return {
+          connected: false,
+          error: `Bundled engine not found: ${enginePath}`,
+        };
+      }
+      this.child = spawn(enginePath, [], {
+        cwd: path.dirname(enginePath),
+        env: baseEnv,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+    } else {
+      const python = process.env.CUEPOINT_PYTHON ?? "python";
+      this.child = spawn(python, ["-m", "cuepoint.engine"], {
+        cwd: REPO_ROOT,
+        env: {
+          ...baseEnv,
+          PYTHONPATH: path.join(REPO_ROOT, "src"),
+        },
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+    }
 
     this.child.on("exit", () => {
       this.child = null;
@@ -86,6 +108,7 @@ export class EngineSupervisor {
     return {
       connected: true,
       version: this.version,
+      sessionId: this.sessionId,
     };
   }
 
@@ -93,7 +116,7 @@ export class EngineSupervisor {
     if (!this.port || !this.token) {
       throw new Error("Engine not running");
     }
-    return new EngineClient(this.port, this.token);
+    return new EngineClient(this.port, this.token, this.sessionId);
   }
 
   async startMatchJob(body: {
@@ -201,6 +224,15 @@ export class EngineSupervisor {
 
   async syncTags(body: Record<string, unknown>) {
     return this.client().syncTags(body);
+  }
+
+  async exportSupportBundle(body: {
+    output_dir: string;
+    include_logs?: boolean;
+    include_config?: boolean;
+    sanitize?: boolean;
+  }) {
+    return this.client().exportSupportBundle(body);
   }
 
   subscribeJobEvents(jobId: string, senderId: number, sender: WebContents): () => void {

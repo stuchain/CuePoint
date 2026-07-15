@@ -20,6 +20,8 @@ contextBridge.exposeInMainWorld("cuepoint", {
   loadHistoryCsv: (csvPath) => ipcRenderer.invoke("engine:loadHistoryCsv", csvPath),
   getXmlPlaylists: (xmlPath) => ipcRenderer.invoke("engine:getXmlPlaylists", xmlPath),
   syncTags: (body) => ipcRenderer.invoke("engine:syncTags", body),
+  exportSupportBundle: (options) => ipcRenderer.invoke("support:exportBundle", options ?? {}),
+  showItemInFolder: (filePath) => ipcRenderer.invoke("shell:showItemInFolder", filePath),
   subscribeJobEvents: (jobId, onEvent) => {
     const eventHandler = (_event, payload) => {
       if (payload?.jobId === jobId) onEvent(payload.event);

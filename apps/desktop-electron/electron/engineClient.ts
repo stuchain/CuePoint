@@ -20,6 +20,7 @@ export class EngineClient {
   constructor(
     private readonly port: number,
     private readonly token: string,
+    private readonly sessionId?: string,
   ) {}
 
   private url(path: string): string {
@@ -27,10 +28,14 @@ export class EngineClient {
   }
 
   private headers(): HeadersInit {
-    return {
+    const headers: Record<string, string> = {
       Authorization: `Bearer ${this.token}`,
       "Content-Type": "application/json",
     };
+    if (this.sessionId) {
+      headers["X-Session-Id"] = this.sessionId;
+    }
+    return headers;
   }
 
   async startMatchJob(body: {
@@ -249,6 +254,20 @@ export class EngineClient {
     wav_skipped_count?: number;
   }> {
     const res = await fetch(this.url("/api/v1/tags/sync"), {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify(body),
+    });
+    return readJson(res);
+  }
+
+  async exportSupportBundle(body: {
+    output_dir: string;
+    include_logs?: boolean;
+    include_config?: boolean;
+    sanitize?: boolean;
+  }): Promise<{ bundle_path: string; file_name: string; size_bytes: number }> {
+    const res = await fetch(this.url("/api/v1/support/bundle"), {
       method: "POST",
       headers: this.headers(),
       body: JSON.stringify(body),

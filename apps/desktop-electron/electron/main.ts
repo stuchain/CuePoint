@@ -1,7 +1,7 @@
 /**
  * Electron main process — Spike S1: spawn engine and expose status to renderer.
  */
-import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { EngineSupervisor, resolvePreloadPath } from "./engineSupervisor";
@@ -32,6 +32,29 @@ function registerIpcHandlers(): void {
   ipcMain.handle("engine:loadHistoryCsv", (_event, csvPath: string) => engine.loadHistoryCsv(csvPath));
   ipcMain.handle("engine:getXmlPlaylists", (_event, xmlPath: string) => engine.getXmlPlaylists(xmlPath));
   ipcMain.handle("engine:syncTags", (_event, body) => engine.syncTags(body));
+  ipcMain.handle(
+    "support:exportBundle",
+    async (_event, options: { include_logs?: boolean; include_config?: boolean; sanitize?: boolean }) => {
+      const win = BrowserWindow.getFocusedWindow();
+      const pick = await dialog.showOpenDialog(win ?? undefined, {
+        properties: ["openDirectory", "createDirectory"],
+        title: "Choose folder for support bundle",
+      });
+      if (pick.canceled || pick.filePaths.length === 0) {
+        return { canceled: true as const };
+      }
+      const payload = await engine.exportSupportBundle({
+        output_dir: pick.filePaths[0],
+        include_logs: options?.include_logs ?? true,
+        include_config: options?.include_config ?? true,
+        sanitize: options?.sanitize ?? true,
+      });
+      return { canceled: false as const, ...payload };
+    },
+  );
+  ipcMain.handle("shell:showItemInFolder", (_event, filePath: string) => {
+    shell.showItemInFolder(filePath);
+  });
   ipcMain.handle("engine:subscribeJobEvents", (event, jobId: string) => {
     engine.subscribeJobEvents(jobId, event.sender.id, event.sender);
     return { ok: true };

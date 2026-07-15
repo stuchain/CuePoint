@@ -3,6 +3,7 @@ import type { ProgressInfo, TrackResult } from "../mocks/types";
 export interface EngineStatus {
   connected: boolean;
   version?: string;
+  sessionId?: string;
   error?: string;
 }
 
@@ -197,6 +198,13 @@ export interface SyncTagsRequest {
   batch_results?: Record<string, TrackResult[]>;
 }
 
+export interface SupportBundleExportResult {
+  canceled: boolean;
+  bundle_path?: string;
+  file_name?: string;
+  size_bytes?: number;
+}
+
 export interface InKeyRerunRequest {
   xmlPath?: string;
   playlistName?: string;
@@ -257,6 +265,12 @@ export interface CuePointBridge {
   loadHistoryCsv: (csvPath: string) => Promise<HistoryLoadResponse>;
   getXmlPlaylists: (xmlPath: string) => Promise<XmlPlaylistsResponse>;
   syncTags: (body: SyncTagsRequest) => Promise<SyncTagsResponse>;
+  exportSupportBundle?: (options?: {
+    include_logs?: boolean;
+    include_config?: boolean;
+    sanitize?: boolean;
+  }) => Promise<SupportBundleExportResult>;
+  showItemInFolder?: (filePath: string) => Promise<void>;
   subscribeJobEvents: (
     jobId: string,
     onEvent: (event: MatchJobStatus & { type?: string }) => void,
