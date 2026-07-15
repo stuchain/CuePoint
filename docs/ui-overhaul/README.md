@@ -49,12 +49,15 @@ This folder captures **decisions, layout rules, and implementation details** pro
 | Lab layout pass | Shell, Results, Settings scroll/resize | Done in renderer |
 | **Milestone 1 (hybrid start)** | ADRs, parity matrix, Qt Results cols, Spike S1 | **Done** |
 | **Milestone 2** | Phase A scroll + Phase 3 P0 job API | **Done** |
+| **Milestone 3** | Renderer inKey → engine job IPC | **Done** |
+| **Milestone 4** | Phase 3 P1 export + inCrate inventory | **Done** |
+| **Milestone 5** | Job cancel + SSE progress | **Done** |
+| **Rollout Phase C (Qt)** | Results frame 80vw + resize grip | **Done** |
+| **Rollout Phase D (Qt)** | Theme/scale in Settings | **Done** |
 | Rollout Phase B (Qt) | Results column mins + QSettings persistence | Done |
 | Spike S1 | Engine `/health` + Electron spawn | Done |
-| Lab `/incrate` stub | Route + section panels | Done |
-| **Next** | Renderer job API wiring + Phase 3 P1 | See [next-milestone.md](next-milestone.md) |
-| Rollout Phase C | Results frame 80vw in Qt | Not started |
-| Rollout Phase D | Settings appearance in Qt | Not started |
+| Lab `/incrate` stub | Route + inventory/import wiring | Done |
+| **Next** | Phase 6 parity / Electron cutover slices | See [parity-matrix.md](parity-matrix.md) |
 | Phase 6 | Full GUI parity + inCrate | In progress (matrix) |
 
 Update this table as each slice lands in the main app.

@@ -72,8 +72,8 @@ Wire to real engine storage when porting.
 
 ## Production port checklist
 
-- [ ] Move theme + scale to app Settings (remove duplicate chrome elsewhere)
+- [x] Move theme + scale to app Settings (remove duplicate chrome elsewhere)
 - [ ] Long settings pages use top-aligned document scroll
-- [ ] Custom theme CRUD + derivation pipeline
+- [x] Custom theme CRUD + derivation pipeline
 - [ ] Beatport token + export path → real persistence
 - [ ] Scroll reset when switching main window sections

@@ -56,14 +56,16 @@ Suggested order to land lab work in the **shipping app** without a big-bang UI r
 
 **Goal:** Large-monitor behavior — centered panel, max 80vw, optional outer resize.
 
-| Task | Lab source | Production target |
-| --- | --- | --- |
-| Centered results container | `results-frame--sized` | Wrapper widget alignment |
-| 80vw max width | `clampFrameWidth` | Max width on results dock/panel |
-| Outer resize handle | `useResultsFrameLayout` | Splitter or corner grip |
-| Document scroll when oversized | `results-page-scrollable` | Main window scroll vs inner scroll policy |
+| Task | Lab source | Production target | Status |
+| --- | --- | --- | --- |
+| Centered results container | `results-frame--sized` | `ResultsFrameHost` | Done |
+| 80vw max width | `clampFrameWidth` | `results_frame_layout.py` | Done |
+| Outer resize handle | `useResultsFrameLayout` | `_FrameResizeGrip` | Done |
+| Document scroll when oversized | `results-page-scrollable` | Parent `QScrollArea` horizontal policy | Done |
 
 **Exit criteria:** Resizing panel wider than viewport scrolls the window; panel never exceeds 80% screen width.
+
+Modules: [`results_frame_layout.py`](../../src/cuepoint/ui/widgets/results_frame_layout.py), [`results_frame_host.py`](../../src/cuepoint/ui/widgets/results_frame_host.py)
 
 ---
 
@@ -71,14 +73,18 @@ Suggested order to land lab work in the **shipping app** without a big-bang UI r
 
 **Goal:** Single settings location for theme and scale (lab decision).
 
-| Task | Lab source | Production target |
-| --- | --- | --- |
-| Remove duplicate theme/scale chrome | Removed from `App.tsx` | Remove extra menus/toolbars |
-| Settings → Appearance section | `ThemeSettingsPanel` | Settings dialog page |
-| Custom themes | `ThemeContext` + derivation | Persist + apply stylesheet |
-| Default scale 2× | `scale.ts` default | App default / first-run |
+| Task | Lab source | Production target | Status |
+| --- | --- | --- | --- |
+| Remove duplicate theme/scale chrome | Removed from `App.tsx` | No extra Qt chrome (none existed) | Done |
+| Settings → Appearance section | `ThemeSettingsPanel` | `AppearanceSettingsWidget` in Settings dialog | Done |
+| Custom themes | `ThemeContext` + derivation | QSettings JSON + 8-color editor | Done |
+| Default scale 2× | `scale.ts` default | `appearance/uiScale` QSettings default | Done |
 
 **Exit criteria:** No theme picker outside Settings; scale change updates entire app crisply.
+
+Modules: [`appearance/`](../../src/cuepoint/ui/appearance/), [`appearance_settings.py`](../../src/cuepoint/ui/widgets/appearance_settings.py)
+
+QSettings keys: `appearance/theme`, `appearance/uiScale`, `appearance/customThemes`
 
 ---
 
