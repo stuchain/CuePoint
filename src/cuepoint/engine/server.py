@@ -31,6 +31,7 @@ from cuepoint.engine.incrate_api import (
     parse_playlist_body,
     run_discover,
     run_incrate_import,
+    run_incrate_reset,
     run_playlist_create,
 )
 from cuepoint.engine.xml_api import list_xml_playlists
@@ -351,6 +352,22 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
                     return
                 except Exception as exc:  # noqa: BLE001 — surface to API client
                     self._send_json(500, error_payload("INCRATE_IMPORT_FAILED", str(exc)))
+                    return
+                self._send_json(200, payload)
+                return
+
+            if path == "/api/v1/incrate/reset":
+                try:
+                    raw = self._read_body()
+                    body = json.loads(raw.decode("utf-8")) if raw else {}
+                    if not isinstance(body, dict):
+                        raise ValueError("JSON body must be an object")
+                    payload = run_incrate_reset(body)
+                except ValueError as exc:
+                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                    return
+                except Exception as exc:  # noqa: BLE001 — surface to API client
+                    self._send_json(500, error_payload("INCRATE_RESET_FAILED", str(exc)))
                     return
                 self._send_json(200, payload)
                 return

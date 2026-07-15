@@ -52,3 +52,27 @@ def test_incrate_inventory_live_empty_db():
     finally:
         server.shutdown()
         thread.join(timeout=2)
+
+
+def test_incrate_reset_endpoint():
+    port = _free_port()
+    token = "incrate-test-token"
+    config = EngineConfig(host="127.0.0.1", port=port, token=token)
+    server, thread = start_engine_thread(config)
+    try:
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{port}/api/v1/incrate/reset",
+            data=b"{}",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+        assert payload["ok"] is True
+        assert payload["stats"]["total"] == 0
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)

@@ -281,6 +281,17 @@ def run_incrate_import(body: Dict[str, Any]) -> Dict[str, Any]:
     return service.import_from_xml(body["xml_path"], enrich=body["enrich"])
 
 
+def run_incrate_reset(body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Clear inCrate inventory so a different collection can be imported."""
+    db_path = None
+    if body:
+        db_path = body.get("db_path")
+    service = _get_inventory_service(db_path)
+    service.reset_database()
+    stats = service.get_inventory_stats()
+    return {"ok": True, "stats": stats}
+
+
 def demo_inventory_snapshot() -> Dict[str, Any]:
     """Static demo payload when no DB rows exist (Electron dev)."""
     return {
