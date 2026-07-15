@@ -8,6 +8,7 @@
   min-width: 0;
   overflow: hidden;
   width: 100%;
+  padding-top: calc(var(--space-xl) + var(--space-md));
 }
 
 .app-main .screen {

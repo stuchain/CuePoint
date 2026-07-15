@@ -1,0 +1,37 @@
+.shortcuts-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.shortcuts-dialog__table-wrap {
+  max-height: 20rem;
+  overflow: auto;
+  border: var(--border-width) solid var(--border-outline);
+}
+
+.shortcuts-dialog__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-xs);
+}
+
+.shortcuts-dialog__table th,
+.shortcuts-dialog__table td {
+  padding: var(--space-xs) var(--space-sm);
+  text-align: left;
+  border-bottom: var(--border-width) solid var(--border-outline);
+}
+
+.shortcuts-dialog__table th {
+  background: var(--bg-toolbar);
+  position: sticky;
+  top: 0;
+}
+
+.shortcuts-dialog kbd {
+  padding: 0 var(--space-xs);
+  border: var(--border-width) solid var(--border-outline);
+  background: var(--bg-panel);
+  font-family: inherit;
+}

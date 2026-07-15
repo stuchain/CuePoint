@@ -1,6 +1,16 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { BrowserRouter, Link, Route, Routes, useLocation } from "react-router-dom";
-import { ToastProvider } from "./components";
+import {
+  AboutDialog,
+  AppMenuBar,
+  DiagnosticsDialog,
+  OnboardingDialog,
+  PrivacyDialog,
+  RekordboxInstructionsDialog,
+  ShortcutsDialog,
+  SupportBundleDialog,
+  ToastProvider,
+} from "./components";
 import { EngineStatusBanner } from "./components/EngineStatusBanner";
 import { MatchResultsProvider } from "./context/MatchResultsContext";
 import {
@@ -12,13 +22,21 @@ import {
 } from "./screens";
 import { ScaleProvider } from "./tokens/ScaleContext";
 import { ThemeProvider } from "./tokens/ThemeContext";
+import { shouldShowOnboarding } from "./components/OnboardingDialog";
 import "./App.css";
 
 function AppShell() {
   const location = useLocation();
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(() => shouldShowOnboarding());
+  const [rekordboxOpen, setRekordboxOpen] = useState(false);
 
   useEffect(() => {
-    document.title = "CuePoint UI Lab";
+    document.title = "CuePoint";
   }, []);
 
   useEffect(() => {
@@ -26,10 +44,36 @@ function AppShell() {
     document.querySelector(".app-main")?.scrollTo(0, 0);
   }, [location.pathname]);
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "F1") {
+        event.preventDefault();
+        setShortcutsOpen(true);
+      }
+      if (event.ctrlKey && (event.key === "?" || (event.shiftKey && event.key === "/"))) {
+        event.preventDefault();
+        setShortcutsOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  const menuActions = {
+    onOpenSupport: () => setSupportOpen(true),
+    onOpenShortcuts: () => setShortcutsOpen(true),
+    onOpenPrivacy: () => setPrivacyOpen(true),
+    onOpenAbout: () => setAboutOpen(true),
+    onOpenDiagnostics: () => setDiagnosticsOpen(true),
+    onShowOnboarding: () => setOnboardingOpen(true),
+    onOpenRekordboxInstructions: () => setRekordboxOpen(true),
+  };
+
   return (
     <>
+      <AppMenuBar {...menuActions} />
       <EngineStatusBanner />
-      <nav className="app-lab-nav" aria-label="Lab routes">
+      <nav className="app-lab-nav" aria-label="Main navigation">
         <Link to="/">Tools</Link>
         <Link to="/match">inKey</Link>
         <Link to="/incrate">inCrate</Link>
@@ -45,6 +89,13 @@ function AppShell() {
           <Route path="/settings" element={<SettingsExportScreen />} />
         </Routes>
       </main>
+      <SupportBundleDialog open={supportOpen} onClose={() => setSupportOpen(false)} />
+      <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <PrivacyDialog open={privacyOpen} onClose={() => setPrivacyOpen(false)} />
+      <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
+      <DiagnosticsDialog open={diagnosticsOpen} onClose={() => setDiagnosticsOpen(false)} />
+      <OnboardingDialog open={onboardingOpen} onComplete={() => setOnboardingOpen(false)} />
+      <RekordboxInstructionsDialog open={rekordboxOpen} onClose={() => setRekordboxOpen(false)} />
     </>
   );
 }

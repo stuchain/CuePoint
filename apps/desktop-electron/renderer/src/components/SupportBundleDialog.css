@@ -1,0 +1,17 @@
+.support-bundle-dialog p {
+  margin: 0 0 var(--space-sm);
+  color: var(--fg-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.support-bundle-dialog__list {
+  margin: 0;
+  padding-left: var(--space-md);
+  color: var(--fg-primary);
+  font-size: var(--font-size-sm);
+}
+
+.support-bundle-dialog__list li + li {
+  margin-top: var(--space-xs);
+}

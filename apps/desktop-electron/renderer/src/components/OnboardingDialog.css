@@ -1,0 +1,30 @@
+.onboarding-dialog__title {
+  margin: 0 0 var(--space-sm);
+  font-size: var(--font-size-md);
+}
+
+.onboarding-dialog__body {
+  margin: 0 0 var(--space-md);
+  color: var(--fg-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.onboarding-dialog__step {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--fg-muted);
+}
+
+.about-dialog p {
+  margin: 0 0 var(--space-sm);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.about-dialog ul {
+  margin: 0;
+  padding-left: var(--space-md);
+  font-size: var(--font-size-xs);
+  color: var(--fg-muted);
+}

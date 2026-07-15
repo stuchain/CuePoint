@@ -1,0 +1,9 @@
+.diagnostics-dialog__output {
+  margin: 0;
+  padding: var(--space-sm);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  background: var(--bg-toolbar);
+  border: var(--border-width) solid var(--border-outline);
+}

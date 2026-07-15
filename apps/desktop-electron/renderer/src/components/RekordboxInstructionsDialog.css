@@ -1,0 +1,17 @@
+.rekordbox-instructions p {
+  margin: 0 0 var(--space-sm);
+  font-size: var(--font-size-sm);
+  color: var(--fg-muted);
+  line-height: 1.5;
+}
+
+.rekordbox-instructions ol {
+  margin: 0;
+  padding-left: var(--space-md);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+}
+
+.rekordbox-instructions li + li {
+  margin-top: var(--space-xs);
+}

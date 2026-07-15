@@ -1,6 +1,16 @@
+export { AboutDialog } from "./AboutDialog";
+export { AppMenuBar } from "./AppMenuBar";
+export type { AppMenuActions } from "./AppMenuBar";
 export { CandidateDialog } from "./CandidateDialog";
+export { DiagnosticsDialog } from "./DiagnosticsDialog";
+export { OnboardingDialog, shouldShowOnboarding } from "./OnboardingDialog";
+export { PrivacyDialog } from "./PrivacyDialog";
+export { RekordboxInstructionsDialog } from "./RekordboxInstructionsDialog";
+export { RunSummaryDialog } from "./RunSummaryDialog";
+export { ShortcutsDialog } from "./ShortcutsDialog";
 export { SyncCompleteDialog } from "./SyncCompleteDialog";
 export { SyncTagsDialog } from "./SyncTagsDialog";
+export { SupportBundleDialog } from "./SupportBundleDialog";
 export { ExportResultsButton, ExportResultsModal } from "./ExportResultsModal";
 export { ResultsTable } from "./ResultsTable";
 export { Badge } from "./Badge";
