@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import type { WebContents } from "electron";
 import { EngineClient } from "./engineClient";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -20,6 +21,7 @@ export class EngineSupervisor {
   private port: number | null = null;
   private token: string | null = null;
   private version: string | undefined;
+  private jobStreamAborts = new Map<string, AbortController>();
 
   getRepoRoot(): string {
     return REPO_ROOT;
@@ -112,6 +114,74 @@ export class EngineSupervisor {
     results: Record<string, unknown>[];
   }> {
     return this.client().getJobResults(jobId);
+  }
+
+  async exportResults(body: {
+    format: "csv" | "json" | "excel" | "xlsx";
+    file_path: string;
+    job_id?: string;
+    results?: Record<string, unknown>[];
+    playlist_name?: string;
+    overwrite?: boolean;
+  }): Promise<{ file_path: string; format: string; count: number }> {
+    return this.client().exportResults(body);
+  }
+
+  async getIncrateInventory(params?: {
+    limit?: number;
+    search?: string;
+    demo?: boolean;
+  }): Promise<Record<string, unknown>> {
+    return this.client().getIncrateInventory(params);
+  }
+
+  async importIncrateXml(body: {
+    xml_path: string;
+    enrich?: boolean;
+  }): Promise<Record<string, unknown>> {
+    return this.client().importIncrateXml(body);
+  }
+
+  async cancelMatchJob(jobId: string): Promise<{ id: string; state: string }> {
+    return this.client().cancelMatchJob(jobId);
+  }
+
+  subscribeJobEvents(jobId: string, senderId: number, sender: WebContents): () => void {
+    const key = `${senderId}:${jobId}`;
+    this.unsubscribeJobEvents(jobId, senderId);
+
+    const abort = new AbortController();
+    this.jobStreamAborts.set(key, abort);
+
+    void this.client()
+      .streamJobEvents(jobId, abort.signal, (event) => {
+        if (!sender.isDestroyed()) {
+          sender.send("engine:jobEvent", { jobId, event });
+        }
+      })
+      .then(() => {
+        if (!sender.isDestroyed()) {
+          sender.send("engine:jobEventEnd", { jobId });
+        }
+      })
+      .catch(() => {
+        if (!sender.isDestroyed()) {
+          sender.send("engine:jobEventEnd", { jobId });
+        }
+      })
+      .finally(() => {
+        this.jobStreamAborts.delete(key);
+      });
+
+    return () => this.unsubscribeJobEvents(jobId, senderId);
+  }
+
+  unsubscribeJobEvents(jobId: string, senderId: number): void {
+    const key = `${senderId}:${jobId}`;
+    const abort = this.jobStreamAborts.get(key);
+    if (!abort) return;
+    abort.abort();
+    this.jobStreamAborts.delete(key);
   }
 
   private pickPort(): Promise<number> {

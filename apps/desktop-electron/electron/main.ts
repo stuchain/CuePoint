@@ -17,6 +17,18 @@ function registerIpcHandlers(): void {
   ipcMain.handle("engine:startMatchJob", (_event, body) => engine.startMatchJob(body));
   ipcMain.handle("engine:getJob", (_event, jobId: string) => engine.getJob(jobId));
   ipcMain.handle("engine:getJobResults", (_event, jobId: string) => engine.getJobResults(jobId));
+  ipcMain.handle("engine:exportResults", (_event, body) => engine.exportResults(body));
+  ipcMain.handle("engine:getIncrateInventory", (_event, params) => engine.getIncrateInventory(params));
+  ipcMain.handle("engine:importIncrateXml", (_event, body) => engine.importIncrateXml(body));
+  ipcMain.handle("engine:cancelMatchJob", (_event, jobId: string) => engine.cancelMatchJob(jobId));
+  ipcMain.handle("engine:subscribeJobEvents", (event, jobId: string) => {
+    engine.subscribeJobEvents(jobId, event.sender.id, event.sender);
+    return { ok: true };
+  });
+  ipcMain.handle("engine:unsubscribeJobEvents", (event, jobId: string) => {
+    engine.unsubscribeJobEvents(jobId, event.sender.id);
+    return { ok: true };
+  });
   ipcMain.handle("dialog:openXml", async () => {
     const win = BrowserWindow.getFocusedWindow();
     const result = await dialog.showOpenDialog(win ?? undefined, {
@@ -28,6 +40,27 @@ function registerIpcHandlers(): void {
     }
     return { canceled: false as const, filePath: result.filePaths[0] };
   });
+  ipcMain.handle(
+    "dialog:saveExport",
+    async (_event, options: { defaultPath?: string; format: string }) => {
+      const win = BrowserWindow.getFocusedWindow();
+      const format = options.format.toLowerCase();
+      const filters =
+        format === "json"
+          ? [{ name: "JSON", extensions: ["json"] }]
+          : format === "xlsx" || format === "excel"
+            ? [{ name: "Excel", extensions: ["xlsx"] }]
+            : [{ name: "CSV", extensions: ["csv"] }];
+      const result = await dialog.showSaveDialog(win ?? undefined, {
+        defaultPath: options.defaultPath,
+        filters,
+      });
+      if (result.canceled || !result.filePath) {
+        return { canceled: true as const };
+      }
+      return { canceled: false as const, filePath: result.filePath };
+    },
+  );
 }
 
 async function createWindow(): Promise<void> {
