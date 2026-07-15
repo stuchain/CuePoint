@@ -67,6 +67,9 @@ def track_result_to_dict(result: TrackResult) -> Dict[str, Any]:
     }
     if result.candidates:
         payload["candidates"] = result.candidates
+    file_path = getattr(result, "file_path", None)
+    if file_path:
+        payload["file_path"] = file_path
     return payload
 
 

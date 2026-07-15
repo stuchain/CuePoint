@@ -20,6 +20,7 @@ from cuepoint.engine.config_api import (
 )
 from cuepoint.engine.job_events import iter_job_events
 from cuepoint.engine.export_api import parse_export_body, run_export
+from cuepoint.engine.sync_tags_api import parse_sync_tags_body, run_sync_tags
 from cuepoint.engine.history_api import list_recent_history, load_history_csv
 from cuepoint.engine.incrate_api import (
     demo_inventory_snapshot,
@@ -321,6 +322,19 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
                     return
                 except Exception as exc:  # noqa: BLE001 — surface to API client
                     self._send_json(500, error_payload("EXPORT_FAILED", str(exc)))
+                    return
+                self._send_json(200, payload)
+                return
+
+            if path == "/api/v1/tags/sync":
+                try:
+                    body = parse_sync_tags_body(self._read_body())
+                    payload = run_sync_tags(body)
+                except ValueError as exc:
+                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                    return
+                except Exception as exc:  # noqa: BLE001 — surface to API client
+                    self._send_json(500, error_payload("SYNC_TAGS_FAILED", str(exc)))
                     return
                 self._send_json(200, payload)
                 return

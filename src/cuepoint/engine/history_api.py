@@ -65,7 +65,7 @@ def _csv_row_to_track_result(row: Dict[str, str]) -> Dict[str, Any]:
     if confidence not in ("high", "medium", "low"):
         confidence = None
 
-    return {
+    result: Dict[str, Any] = {
         "playlist_index": _parse_int(row.get("playlist_index")),
         "title": title,
         "artist": artist,
@@ -84,6 +84,10 @@ def _csv_row_to_track_result(row: Dict[str, str]) -> Dict[str, Any]:
         "confidence": confidence,
         "write": False,
     }
+    file_path = (row.get("file_path") or row.get("source_file") or "").strip()
+    if file_path:
+        result["file_path"] = file_path
+    return result
 
 
 def _candidate_row_to_dict(row: Dict[str, str]) -> Dict[str, Any]:
