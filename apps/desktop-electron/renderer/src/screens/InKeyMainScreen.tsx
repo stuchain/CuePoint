@@ -5,6 +5,7 @@ import {
   Button,
   Panel,
   ProgressBar,
+  RunSummaryDialog,
   Tabs,
   TextField,
   ToolbarIcon,
@@ -12,6 +13,11 @@ import {
 } from "../components";
 import type { InKeyRerunRequest } from "../api/cuepointBridge.types";
 import { hasEngineBridge } from "../api/cuepointBridge.types";
+import {
+  buildBatchRunSummary,
+  buildRunSummary,
+  type RunSummaryView,
+} from "../api/runSummaryUtils";
 import { idleProgress } from "../mocks/fixtures";
 import { useMatchJob, type FileSource, type MatchInputSource } from "../hooks/useMatchJob";
 import { useFileDrop } from "../hooks/useFileDrop";
@@ -35,9 +41,17 @@ export function InKeyMainScreen() {
   const [selectedBatchPaths, setSelectedBatchPaths] = useState<string[]>([]);
   const engineAvailable = hasEngineBridge();
   const { setMatchMeta } = useMatchResults();
+  const [runSummary, setRunSummary] = useState<RunSummaryView | null>(null);
 
   const { running, cancelling, progress, startMatch, cancelMatch } = useMatchJob({
-    onComplete: () => {
+    onComplete: (payload) => {
+      if (payload?.batchResults && Object.keys(payload.batchResults).length > 0) {
+        setRunSummary(buildBatchRunSummary(payload.batchResults, payload.durationSec));
+      } else if (payload?.results.length) {
+        setRunSummary(
+          buildRunSummary(payload.results, playlistName, payload.durationSec),
+        );
+      }
       push(
         engineAvailable ? "Processing complete — review results." : "Processing complete (mock).",
         "success",
@@ -406,6 +420,15 @@ export function InKeyMainScreen() {
       ) : (
         <PastSearchesPanel onRerun={applyRerun} />
       )}
+      <RunSummaryDialog
+        open={runSummary != null}
+        summary={runSummary}
+        onClose={() => setRunSummary(null)}
+        onViewResults={() => {
+          setRunSummary(null);
+          navigate("/results");
+        }}
+      />
     </div>
   );
 }

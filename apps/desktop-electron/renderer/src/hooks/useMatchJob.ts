@@ -3,7 +3,7 @@ import type { MatchJobStatus } from "../api/cuepointBridge.types";
 import { hasEngineBridge } from "../api/cuepointBridge.types";
 import { isTerminalJobState, progressFromJobStatus } from "../api/matchJobUtils";
 import { idleProgress, sampleProgress } from "../mocks/fixtures";
-import type { ProgressInfo } from "../mocks/types";
+import type { ProgressInfo, TrackResult } from "../mocks/types";
 import { useMatchResults } from "../context/MatchResultsContext";
 
 const POLL_INTERVAL_MS = 300;
@@ -12,6 +12,13 @@ export type FileSource = "none" | "mock" | "native";
 
 export type MatchInputSource = "collection" | "playlist_file";
 
+export interface MatchJobCompletePayload {
+  jobId: string;
+  results: TrackResult[];
+  batchResults?: Record<string, TrackResult[]>;
+  durationSec: number;
+}
+
 interface StartMatchOptions {
   demoBatch?: boolean;
   playlistNames?: string[];
@@ -19,7 +26,7 @@ interface StartMatchOptions {
 }
 
 interface UseMatchJobOptions {
-  onComplete?: () => void;
+  onComplete?: (payload?: MatchJobCompletePayload) => void;
   onCancelled?: () => void;
   onError?: (message: string) => void;
 }
@@ -33,6 +40,7 @@ export function useMatchJob({ onComplete, onCancelled, onError }: UseMatchJobOpt
   const unsubscribeEventsRef = useRef<(() => void) | null>(null);
   const mockTimerRef = useRef<number | null>(null);
   const activeJobIdRef = useRef<string | null>(null);
+  const jobStartedAtRef = useRef<number | null>(null);
 
   const clearPollTimer = useCallback(() => {
     if (pollTimerRef.current != null) {
@@ -81,12 +89,26 @@ export function useMatchJob({ onComplete, onCancelled, onError }: UseMatchJobOpt
       const bridge = window.cuepoint;
       if (!bridge?.getJobResults) return;
       const payload = await bridge.getJobResults(jobId);
+      const durationSec =
+        jobStartedAtRef.current != null
+          ? Math.max(0.1, (Date.now() - jobStartedAtRef.current) / 1000)
+          : 0;
       if (payload.batch_results && Object.keys(payload.batch_results).length > 0) {
         setEngineBatchResults(payload.batch_results, jobId);
+        onComplete?.({
+          jobId,
+          results: [],
+          batchResults: payload.batch_results,
+          durationSec,
+        });
       } else {
         setEngineResults(payload.results, jobId);
+        onComplete?.({
+          jobId,
+          results: payload.results,
+          durationSec,
+        });
       }
-      onComplete?.();
     },
     [
       clearEventSubscription,
@@ -153,6 +175,7 @@ export function useMatchJob({ onComplete, onCancelled, onError }: UseMatchJobOpt
   );
 
   const startMockRun = useCallback(() => {
+    jobStartedAtRef.current = Date.now();
     setRunning(true);
     setProgress(sampleProgress);
     mockTimerRef.current = window.setTimeout(() => {
@@ -164,7 +187,11 @@ export function useMatchJob({ onComplete, onCancelled, onError }: UseMatchJobOpt
         reliability_state: "completed",
         status_message: "Complete",
       });
-      onComplete?.();
+      const durationSec =
+        jobStartedAtRef.current != null
+          ? Math.max(0.1, (Date.now() - jobStartedAtRef.current) / 1000)
+          : 2.5;
+      onComplete?.({ jobId: "mock", results: [], durationSec });
     }, 2500);
   }, [onComplete]);
 
@@ -209,6 +236,7 @@ export function useMatchJob({ onComplete, onCancelled, onError }: UseMatchJobOpt
         !useRealBatch;
       const demoBatch = Boolean(options?.demoBatch);
 
+      jobStartedAtRef.current = Date.now();
       setRunning(true);
       setCancelling(false);
       setProgress({

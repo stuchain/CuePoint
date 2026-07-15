@@ -1,0 +1,18 @@
+.run-summary-dialog__stats {
+  margin: 0 0 var(--space-sm);
+  font-size: var(--font-size-sm);
+  color: var(--fg-primary);
+}
+
+.run-summary-dialog__playlist {
+  margin: 0 0 var(--space-sm);
+  font-size: var(--font-size-xs);
+  color: var(--fg-muted);
+}
+
+.run-summary-dialog__hint {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--fg-muted);
+  line-height: 1.5;
+}
