@@ -1,0 +1,32 @@
+.sync-complete-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sync-complete-dialog__hint {
+  color: var(--text-muted, #aaa);
+  font-size: 0.9rem;
+}
+
+.sync-complete-dialog__section {
+  margin-top: 0.25rem;
+}
+
+.sync-complete-dialog__label {
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.sync-complete-dialog__list {
+  margin: 0;
+  padding-left: 1.25rem;
+  max-height: 12rem;
+  overflow: auto;
+  font-size: 0.85rem;
+}
+
+.sync-complete-dialog__muted {
+  color: var(--text-muted, #aaa);
+  font-size: 0.85rem;
+}

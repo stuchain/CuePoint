@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   Badge,
@@ -8,6 +8,8 @@ import {
   Panel,
   ResultsTable,
   Select,
+  SyncCompleteDialog,
+  SyncTagsDialog,
   Tabs,
   ToolbarIcon,
   useToast,
@@ -15,9 +17,17 @@ import {
 import { useResultsFrameLayout } from "../components/useResultsFrameLayout";
 import { applyCandidateToResult, hasCandidates } from "../api/candidateUtils";
 import { needsReviewTrack } from "../api/reviewUtils";
+import {
+  filterWriteRows,
+  selectedWriteRows,
+  syncSummaryMessage,
+  type SyncTagsOptions,
+  type SyncTagsResponse,
+} from "../api/syncTagsUtils";
 import { hasEngineBridge } from "../api/cuepointBridge.types";
 import { sampleBatchResults, sampleResults } from "../mocks/fixtures";
 import { useMatchResults } from "../context/MatchResultsContext";
+import { useSyncTags } from "../hooks/useSyncTags";
 import { useScale } from "../tokens/ScaleContext";
 import type { TrackResult } from "../mocks/types";
 import "./screens.css";
@@ -34,10 +44,16 @@ export function ResultsScreen() {
     source,
     setActivePlaylist,
     updateTrackResult,
+    matchMeta,
+    batchResults: allBatchResults,
   } = useMatchResults();
   const [filter, setFilter] = useState<"all" | "matched" | "unmatched" | "needs_review">("all");
   const [selected, setSelected] = useState<number | null>(null);
   const [candidateRow, setCandidateRow] = useState<TrackResult | null>(null);
+  const [syncDialogOpen, setSyncDialogOpen] = useState(false);
+  const [syncCompleteOpen, setSyncCompleteOpen] = useState(false);
+  const [syncResult, setSyncResult] = useState<SyncTagsResponse | null>(null);
+  const { syncing, runSync } = useSyncTags({ onError: (message) => push(message, "warning") });
   const { frameRef, frameWidth, frameHeight, isSized, startFrameResize, resetFrameSize } =
     useResultsFrameLayout(scale);
 
@@ -118,6 +134,77 @@ export function ResultsScreen() {
     push("Candidate applied to result row.", "success");
   };
 
+  const handleToggleWrite = (playlistIndex: number) => {
+    updateTrackResult(mode === "batch" ? activePlaylist : null, playlistIndex, (row) => ({
+      ...row,
+      write: !row.write,
+    }));
+  };
+
+  const syncSourceRows = useMemo(() => {
+    if (mode === "batch" && source === "engine") {
+      return Object.values(allBatchResults).flat();
+    }
+    return source === "engine" ? engineResults : [];
+  }, [allBatchResults, engineResults, mode, source]);
+
+  const canSync = engineAvailable && source === "engine" && syncSourceRows.length > 0;
+
+  const handleOpenSync = () => {
+    if (!canSync) {
+      push("Run a real match job before syncing tags.", "warning");
+      return;
+    }
+    if (!selectedWriteRows(syncSourceRows)) {
+      push("Select at least one track (Write column) to sync.", "warning");
+      return;
+    }
+    setSyncDialogOpen(true);
+  };
+
+  const handleConfirmSync = async (options: SyncTagsOptions) => {
+    setSyncDialogOpen(false);
+    const meta = matchMeta ?? {
+      source: syncSourceRows.some((row) => row.file_path) ? "playlist_file" as const : "collection",
+    };
+
+    if (mode === "batch") {
+      const batchPayload: Record<string, Record<string, unknown>[]> = {};
+      for (const [playlistName, playlistRows] of Object.entries(allBatchResults)) {
+        const selected = filterWriteRows(playlistRows);
+        if (selected.length > 0) {
+          batchPayload[playlistName] = selected;
+        }
+      }
+      const response = await runSync({
+        options,
+        meta,
+        mode: "batch",
+        batchResults: batchPayload,
+      });
+      if (response) {
+        setSyncResult(response);
+        setSyncCompleteOpen(true);
+        push(syncSummaryMessage(response), response.failed > 0 ? "warning" : "success");
+      }
+      return;
+    }
+
+    const selected = filterWriteRows(engineResults);
+    const response = await runSync({
+      options,
+      meta,
+      mode: "single",
+      results: selected,
+      playlistName: exportPlaylistName,
+    });
+    if (response) {
+      setSyncResult(response);
+      setSyncCompleteOpen(true);
+      push(syncSummaryMessage(response), response.failed > 0 ? "warning" : "success");
+    }
+  };
+
   const frameStyle = {
     ...(frameWidth != null ? { width: `${frameWidth}px`, maxWidth: "var(--results-frame-max-width)" } : {}),
     ...(frameHeight != null ? { height: `${frameHeight}px` } : {}),
@@ -141,6 +228,9 @@ export function ResultsScreen() {
         </Link>
         <div className="screen-toolbar__actions">
           <ToolbarIcon label="Filter" glyph="☰" active />
+          <Button variant="secondary" disabled={!canSync || syncing} loading={syncing} onClick={handleOpenSync}>
+            Sync with Rekordbox
+          </Button>
           <ExportResultsButton rows={rows} playlistName={exportPlaylistName} label="Export" />
           <Link to="/settings">
             <Button variant="secondary">Settings</Button>
@@ -211,6 +301,7 @@ export function ResultsScreen() {
                 selectedIndex={selected}
                 onSelectRow={setSelected}
                 onRowDoubleClick={handleOpenCandidates}
+                onToggleWrite={source === "engine" ? handleToggleWrite : undefined}
               />
             )}
           </div>
@@ -236,6 +327,17 @@ export function ResultsScreen() {
         row={candidateRow}
         onClose={() => setCandidateRow(null)}
         onSelectCandidate={handleSelectCandidate}
+      />
+      <SyncTagsDialog
+        open={syncDialogOpen}
+        onClose={() => setSyncDialogOpen(false)}
+        onConfirm={(options) => void handleConfirmSync(options)}
+        loading={syncing}
+      />
+      <SyncCompleteDialog
+        open={syncCompleteOpen}
+        result={syncResult}
+        onClose={() => setSyncCompleteOpen(false)}
       />
     </div>
   );

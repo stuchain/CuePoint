@@ -14,6 +14,8 @@ import type { InKeyRerunRequest } from "../api/cuepointBridge.types";
 import { hasEngineBridge } from "../api/cuepointBridge.types";
 import { idleProgress } from "../mocks/fixtures";
 import { useMatchJob, type FileSource, type MatchInputSource } from "../hooks/useMatchJob";
+import { useFileDrop } from "../hooks/useFileDrop";
+import { useMatchResults } from "../context/MatchResultsContext";
 import { useXmlPlaylists } from "../hooks/useXmlPlaylists";
 import { BatchPlaylistPicker } from "./BatchPlaylistPicker";
 import { PastSearchesPanel } from "./PastSearchesPanel";
@@ -32,6 +34,7 @@ export function InKeyMainScreen() {
   const [playlistName, setPlaylistName] = useState("My Playlist");
   const [selectedBatchPaths, setSelectedBatchPaths] = useState<string[]>([]);
   const engineAvailable = hasEngineBridge();
+  const { setMatchMeta } = useMatchResults();
 
   const { running, cancelling, progress, startMatch, cancelMatch } = useMatchJob({
     onComplete: () => {
@@ -94,12 +97,35 @@ export function InKeyMainScreen() {
     push("File selected (mock).", "success");
   };
 
+  const applyDroppedFile = useCallback(
+    (path: string) => {
+      setFilePath(path);
+      setFileSource(engineAvailable ? "native" : "mock");
+      push(
+        inputSource === "playlist_file" ? "Playlist file dropped." : "XML file dropped.",
+        "success",
+      );
+    },
+    [engineAvailable, inputSource, push],
+  );
+
+  const { dragOver, dropHandlers } = useFileDrop({
+    kind: inputSource === "playlist_file" ? "m3u" : "xml",
+    onFile: applyDroppedFile,
+    onError: (message) => push(message, "warning"),
+  });
+
   const handleStart = () => {
     if (inputSource === "playlist_file") {
       if (!filePath) {
         push("Select an M3U playlist file first.", "warning");
         return;
       }
+      setMatchMeta({
+        source: "playlist_file",
+        m3uPath: filePath,
+        playlistName: filePath.split(/[/\\]/).pop(),
+      });
       void startMatch(filePath, fileSource, playlistName, { inputSource: "playlist_file" });
       if (engineAvailable && fileSource === "native") {
         push("M3U match job started.", "info");
@@ -120,6 +146,11 @@ export function InKeyMainScreen() {
           push("Select at least one playlist for batch processing.", "warning");
           return;
         }
+        setMatchMeta({
+          source: "collection",
+          xmlPath: filePath,
+          playlistName: selectedBatchPaths[0],
+        });
         void startMatch(filePath, fileSource, playlistName, { playlistNames: selectedBatchPaths });
         push(`Batch job started (${selectedBatchPaths.length} playlists).`, "info");
         return;
@@ -129,6 +160,11 @@ export function InKeyMainScreen() {
       return;
     }
 
+    setMatchMeta({
+      source: "collection",
+      xmlPath: fileSource === "native" ? filePath : undefined,
+      playlistName,
+    });
     void startMatch(filePath, fileSource, playlistName);
     if (engineAvailable) {
       push(fileSource === "native" ? "Match job started." : "Demo job started.", "info");
@@ -250,7 +286,10 @@ export function InKeyMainScreen() {
                 <Badge variant="info">{inputSource === "playlist_file" ? "M3U" : "XML"}</Badge>
               }
             >
-              <div className="drop-zone">
+              <div
+                className={`drop-zone ${dragOver ? "drop-zone--active" : ""}`}
+                {...dropHandlers}
+              >
                 <p>
                   {inputSource === "playlist_file"
                     ? "Drop M3U / M3U8 playlist file here"

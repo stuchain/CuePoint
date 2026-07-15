@@ -29,6 +29,8 @@ export interface TrackResult {
   artist: string;
   matched: boolean;
   write?: boolean;
+  file_path?: string;
+  error?: string;
   beatport_url?: string;
   beatport_title?: string;
   beatport_artists?: string;

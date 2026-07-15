@@ -25,6 +25,7 @@ export interface ResultsTableProps {
   selectedIndex?: number | null;
   onSelectRow?: (playlistIndex: number) => void;
   onRowDoubleClick?: (row: TrackResult) => void;
+  onToggleWrite?: (playlistIndex: number) => void;
 }
 
 type SortDir = "asc" | "desc";
@@ -104,6 +105,7 @@ export function ResultsTable({
   selectedIndex = null,
   onSelectRow,
   onRowDoubleClick,
+  onToggleWrite,
 }: ResultsTableProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { scale } = useScale();
@@ -243,9 +245,29 @@ export function ResultsTable({
                     className={`results-table__cell ${col.sticky ? "results-table__cell--sticky" : ""}`}
                     style={col.sticky ? { left: stickyLeftOffset(columnWidths, colIndex) } : undefined}
                     data-col={col.colIndex}
-                    title={cellValue(row, col)}
+                    title={col.id === "write" ? "Include when syncing tags" : cellValue(row, col)}
+                    onClick={
+                      col.id === "write"
+                        ? (event) => {
+                            event.stopPropagation();
+                            if (row.error === "FILE_NOT_FOUND") return;
+                            onToggleWrite?.(row.playlist_index);
+                          }
+                        : undefined
+                    }
                   >
-                    {cellValue(row, col)}
+                    {col.id === "write" ? (
+                      <input
+                        type="checkbox"
+                        checked={Boolean(row.write)}
+                        disabled={row.error === "FILE_NOT_FOUND"}
+                        aria-label={`Write tags for track ${row.playlist_index}`}
+                        onChange={() => onToggleWrite?.(row.playlist_index)}
+                        onClick={(event) => event.stopPropagation()}
+                      />
+                    ) : (
+                      cellValue(row, col)
+                    )}
                   </div>
                 ))}
               </div>

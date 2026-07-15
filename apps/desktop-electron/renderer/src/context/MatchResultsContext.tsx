@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import type { TrackResult } from "../mocks/types";
+import { withDefaultWriteFlags } from "../api/syncTagsUtils";
+import type { MatchMeta } from "../api/syncTagsUtils";
 
 export type ResultsSource = "fixtures" | "engine";
 export type ResultsMode = "single" | "batch";
@@ -11,10 +13,12 @@ interface MatchResultsContextValue {
   activePlaylist: string | null;
   source: ResultsSource;
   jobId: string | null;
+  matchMeta: MatchMeta | null;
   setEngineResults: (results: TrackResult[], jobId: string) => void;
   setEngineBatchResults: (batchResults: Record<string, TrackResult[]>, jobId: string) => void;
   clearEngineResults: () => void;
   setActivePlaylist: (playlistName: string) => void;
+  setMatchMeta: (meta: MatchMeta | null) => void;
   updateTrackResult: (
     playlistName: string | null,
     playlistIndex: number,
@@ -31,9 +35,10 @@ export function MatchResultsProvider({ children }: { children: ReactNode }) {
   const [jobId, setJobId] = useState<string | null>(null);
   const [source, setSource] = useState<ResultsSource>("fixtures");
   const [mode, setMode] = useState<ResultsMode>("single");
+  const [matchMeta, setMatchMeta] = useState<MatchMeta | null>(null);
 
   const setEngineResults = useCallback((nextResults: TrackResult[], nextJobId: string) => {
-    setResults(nextResults);
+    setResults(withDefaultWriteFlags(nextResults));
     setBatchResults({});
     setActivePlaylist(null);
     setJobId(nextJobId);
@@ -44,8 +49,11 @@ export function MatchResultsProvider({ children }: { children: ReactNode }) {
   const setEngineBatchResults = useCallback(
     (nextBatchResults: Record<string, TrackResult[]>, nextJobId: string) => {
       const playlistNames = Object.keys(nextBatchResults);
+      const normalized = Object.fromEntries(
+        Object.entries(nextBatchResults).map(([name, rows]) => [name, withDefaultWriteFlags(rows)]),
+      );
       setResults([]);
-      setBatchResults(nextBatchResults);
+      setBatchResults(normalized);
       setActivePlaylist(playlistNames[0] ?? null);
       setJobId(nextJobId);
       setSource("engine");
@@ -61,6 +69,7 @@ export function MatchResultsProvider({ children }: { children: ReactNode }) {
     setJobId(null);
     setSource("fixtures");
     setMode("single");
+    setMatchMeta(null);
   }, []);
 
   const updateTrackResult = useCallback(
@@ -98,10 +107,12 @@ export function MatchResultsProvider({ children }: { children: ReactNode }) {
       activePlaylist,
       source,
       jobId,
+      matchMeta,
       setEngineResults,
       setEngineBatchResults,
       clearEngineResults,
       setActivePlaylist,
+      setMatchMeta,
       updateTrackResult,
     }),
     [
@@ -111,6 +122,7 @@ export function MatchResultsProvider({ children }: { children: ReactNode }) {
       activePlaylist,
       source,
       jobId,
+      matchMeta,
       setEngineResults,
       setEngineBatchResults,
       clearEngineResults,
