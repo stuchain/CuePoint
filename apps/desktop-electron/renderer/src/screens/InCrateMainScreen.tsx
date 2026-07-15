@@ -7,6 +7,7 @@ import type {
   IncrateInventoryResponse,
 } from "../api/cuepointBridge.types";
 import { hasEngineBridge } from "../api/cuepointBridge.types";
+import { useFileDrop } from "../hooks/useFileDrop";
 import "./screens.css";
 
 export function InCrateMainScreen() {
@@ -18,6 +19,10 @@ export function InCrateMainScreen() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [xmlPath, setXmlPath] = useState("");
+  const [enrichLabels, setEnrichLabels] = useState(true);
+  const [importStatus, setImportStatus] = useState<string | null>(null);
   const [discovering, setDiscovering] = useState(false);
   const [creatingPlaylist, setCreatingPlaylist] = useState(false);
   const [preferLive, setPreferLive] = useState(false);
@@ -84,33 +89,109 @@ export function InCrateMainScreen() {
     }
   }, [engineAvailable, loadDiscoverOptions, loadInventory]);
 
-  const handleImport = async () => {
-    if (!window.cuepoint?.openXmlFileDialog || !window.cuepoint.importIncrateXml) {
-      push("Import requires the Electron app with engine connected.", "warning");
+  const handleBrowse = async () => {
+    if (!window.cuepoint?.openXmlFileDialog) {
+      push("Browse requires the Electron app.", "warning");
       return;
     }
     const picked = await window.cuepoint.openXmlFileDialog();
     if (picked.canceled) return;
+    setXmlPath(picked.filePath);
+    setImportStatus(null);
+  };
+
+  const handleImport = async () => {
+    if (!window.cuepoint?.importIncrateXml) {
+      push("Import requires the Electron app with engine connected.", "warning");
+      return;
+    }
+    if (!xmlPath.trim()) {
+      push("Select a Rekordbox XML file first.", "warning");
+      return;
+    }
 
     setImporting(true);
+    setImportStatus("Parsing XML and importing tracks…");
     try {
       const result = await window.cuepoint.importIncrateXml({
-        xml_path: picked.filePath,
-        enrich: false,
+        xml_path: xmlPath.trim(),
+        enrich: enrichLabels,
       });
-      push(
-        `Imported ${result.imported ?? 0} tracks${result.enriched ? `, enriched ${result.enriched}` : ""}.`,
-        "success",
-      );
+      const errors = result.errors ?? [];
+      if (errors.length > 0) {
+        setImportStatus(errors[0] ?? "Import completed with errors.");
+        push(errors[0] ?? "Import completed with errors.", "warning");
+      } else {
+        const summary = `Imported ${result.imported ?? 0} tracks${
+          enrichLabels && result.enriched ? `, enriched ${result.enriched} labels` : ""
+        }.`;
+        setImportStatus(summary);
+        push(summary, "success");
+      }
       setPreferLive(true);
       await loadInventory(true);
       await loadDiscoverOptions();
     } catch (error) {
-      push(error instanceof Error ? error.message : "Import failed", "warning");
+      const message = error instanceof Error ? error.message : "Import failed";
+      setImportStatus(message);
+      push(message, "warning");
     } finally {
       setImporting(false);
     }
   };
+
+  const handleResetInventory = async () => {
+    if (!window.cuepoint?.resetIncrateInventory) {
+      push("Reset requires the Electron app with engine connected.", "warning");
+      return;
+    }
+    const confirmed = window.confirm(
+      "Clear all inCrate inventory? You can then import a different collection.xml.",
+    );
+    if (!confirmed) return;
+
+    setResetting(true);
+    try {
+      await window.cuepoint.resetIncrateInventory();
+      setDiscovered([]);
+      setPlaylistStatus(null);
+      setImportStatus("Inventory cleared.");
+      setPreferLive(true);
+      await loadInventory(true);
+      await loadDiscoverOptions();
+      push("Inventory reset.", "info");
+    } catch (error) {
+      push(error instanceof Error ? error.message : "Reset failed", "warning");
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  const inventoryStatsLabel = useMemo(() => {
+    if (options && options.inventory_stats.total > 0) {
+      return `${options.inventory_stats.total} tracks · ${options.artists.length} artists · ${options.labels.length} labels`;
+    }
+    if (inventory?.demo) {
+      return "Demo inventory loaded — import a collection for live data.";
+    }
+    return "No inventory yet. Import Rekordbox XML first.";
+  }, [inventory?.demo, options]);
+
+  const applyDroppedXml = useCallback(
+    (path: string) => {
+      setXmlPath(path);
+      setImportStatus(null);
+      push("Collection XML dropped.", "success");
+    },
+    [push],
+  );
+
+  const { dragOver: importDragOver, dropHandlers: importDropHandlers } = useFileDrop({
+    kind: "xml",
+    onFile: applyDroppedXml,
+    onError: (message) => push(message, "warning"),
+    disabled: importing,
+  });
 
   const toggleGenre = (genreId: number) => {
     setSelectedGenreIds((current) =>
@@ -210,9 +291,45 @@ export function InCrateMainScreen() {
 
       <Panel title="Import" id="import">
         <p className="screen__muted">Load Rekordbox collection XML into the inCrate inventory database.</p>
+        <div
+          className={`drop-zone drop-zone--compact ${importDragOver ? "drop-zone--active" : ""}`}
+          {...importDropHandlers}
+        >
+          <p>Drop Rekordbox collection XML here</p>
+        </div>
+        <TextField
+          label="Collection XML"
+          value={xmlPath}
+          onChange={(event) => setXmlPath(event.target.value)}
+          hint="Browse or paste the path to your Rekordbox export."
+        />
+        <label className="incrate-import-option">
+          <input
+            type="checkbox"
+            checked={enrichLabels}
+            onChange={(event) => setEnrichLabels(event.target.checked)}
+          />
+          Enrich empty labels via Beatport (requires token in Settings)
+        </label>
         <div className="match-actions">
-          <Button variant="primary" loading={importing} onClick={() => void handleImport()}>
-            Import collection XML…
+          <Button variant="secondary" disabled={importing} onClick={() => void handleBrowse()}>
+            Browse…
+          </Button>
+          <Button
+            variant="primary"
+            loading={importing}
+            disabled={!xmlPath.trim()}
+            onClick={() => void handleImport()}
+          >
+            Import
+          </Button>
+          <Button
+            variant="secondary"
+            loading={resetting}
+            disabled={importing}
+            onClick={() => void handleResetInventory()}
+          >
+            Reset database
           </Button>
           <Button
             variant="secondary"
@@ -225,6 +342,12 @@ export function InCrateMainScreen() {
             Refresh inventory
           </Button>
         </div>
+        {importing ? (
+          <p className="screen__muted">{importStatus ?? "Importing…"}</p>
+        ) : importStatus ? (
+          <p className="screen__muted">{importStatus}</p>
+        ) : null}
+        <p className="screen__muted">{inventoryStatsLabel}</p>
       </Panel>
 
       <Panel
@@ -239,7 +362,7 @@ export function InCrateMainScreen() {
         }
       >
         <p className="screen__muted">
-          Charts and new releases from Beatport via <code>POST /api/v1/incrate/discover</code>.
+          Charts and new releases from Beatport. Requires imported inventory and Beatport token.
         </p>
         {options ? (
           <div className="settings-form">
