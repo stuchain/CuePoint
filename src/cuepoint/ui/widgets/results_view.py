@@ -65,6 +65,7 @@ from cuepoint.ui.dialogs.export_dialog import ExportDialog
 from cuepoint.ui.strings import EmptyState, ExportCopy, TooltipCopy
 from cuepoint.ui.widgets.candidate_dialog import CandidateDialog
 from cuepoint.ui.widgets.results_column_layout import ResultsColumnLayoutManager
+from cuepoint.ui.widgets.results_frame_host import ResultsFrameHost
 from cuepoint.ui.widgets.shortcut_manager import ShortcutContext, ShortcutManager
 from cuepoint.ui.widgets.styles import Colors, is_macos
 from cuepoint.utils.run_context import get_current_run_id
@@ -634,10 +635,6 @@ class ResultsView(QWidget):
         single_table_widget_layout = QVBoxLayout(self.single_table_widget)
         single_table_widget_layout.setContentsMargins(0, 0, 0, 0)
         single_table_widget_layout.addWidget(self.single_table_group)
-        splitter.addWidget(self.single_table_widget)
-
-        # Set initial splitter sizes (30% top with collapsed advanced filters, 70% bottom)
-        splitter.setSizes([300, 700])
 
         # Batch mode - Tab widget for multiple playlists (hidden in single mode)
         self.batch_tabs = QTabWidget()
@@ -665,12 +662,24 @@ class ResultsView(QWidget):
         )
         self.batch_tabs.setVisible(False)
 
-        # Create bottom widget for batch mode
         self.batch_widget = QWidget()
         batch_widget_layout = QVBoxLayout(self.batch_widget)
         batch_widget_layout.setContentsMargins(0, 0, 0, 0)
         batch_widget_layout.addWidget(self.batch_tabs)
-        splitter.addWidget(self.batch_widget)
+        self.batch_widget.setVisible(False)
+
+        self._results_bottom = QWidget()
+        results_bottom_layout = QVBoxLayout(self._results_bottom)
+        results_bottom_layout.setContentsMargins(0, 0, 0, 0)
+        results_bottom_layout.setSpacing(0)
+        results_bottom_layout.addWidget(self.single_table_widget)
+        results_bottom_layout.addWidget(self.batch_widget)
+
+        self._results_frame_host = ResultsFrameHost(self._results_bottom)
+        splitter.addWidget(self._results_frame_host)
+
+        # Set initial splitter sizes (30% top with collapsed advanced filters, 70% bottom)
+        splitter.setSizes([300, 700])
 
         # Add splitter to main layout (advanced filters is now part of top_widget)
         layout.addWidget(splitter, 1)  # Give splitter stretch priority
@@ -843,6 +852,10 @@ class ResultsView(QWidget):
         # Switch to single mode UI
         if hasattr(self, "single_table_group"):
             self.single_table_group.setVisible(True)
+        if hasattr(self, "single_table_widget"):
+            self.single_table_widget.setVisible(True)
+        if hasattr(self, "batch_widget"):
+            self.batch_widget.setVisible(False)
         if hasattr(self, "batch_tabs"):
             self.batch_tabs.setVisible(False)
 
@@ -867,6 +880,10 @@ class ResultsView(QWidget):
         # Switch to batch mode UI
         if hasattr(self, "single_table_group"):
             self.single_table_group.setVisible(False)
+        if hasattr(self, "single_table_widget"):
+            self.single_table_widget.setVisible(False)
+        if hasattr(self, "batch_widget"):
+            self.batch_widget.setVisible(True)
         if hasattr(self, "batch_tabs"):
             self.batch_tabs.setVisible(True)
 
