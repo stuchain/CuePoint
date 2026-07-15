@@ -96,6 +96,20 @@ def save_column_widths(widths: List[int]) -> None:
     settings.setValue(SETTINGS_KEY, ",".join(str(clamp_column_width(i, w)) for i, w in enumerate(widths)))
 
 
+FROZEN_COLUMN_COUNT = 2
+SCROLL_COLUMN_OFFSET = FROZEN_COLUMN_COUNT
+
+
+def sticky_left_offset(widths: list[int], column_index: int) -> int:
+    """Pixel offset for sticky column (lab resultsTableLayout parity)."""
+    if column_index <= 0:
+        return 0
+    total = 0
+    for index in range(min(column_index, len(widths))):
+        total += widths[index]
+    return total
+
+
 class ResultsColumnLayoutManager:
     """Apply interactive resize, persistence, and double-click reset to results tables."""
 

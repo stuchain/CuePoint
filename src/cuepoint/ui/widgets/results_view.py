@@ -66,6 +66,7 @@ from cuepoint.ui.strings import EmptyState, ExportCopy, TooltipCopy
 from cuepoint.ui.widgets.candidate_dialog import CandidateDialog
 from cuepoint.ui.widgets.results_column_layout import ResultsColumnLayoutManager
 from cuepoint.ui.widgets.results_frame_host import ResultsFrameHost
+from cuepoint.ui.widgets.results_frozen_table import ResultsFrozenTableHost
 from cuepoint.ui.widgets.shortcut_manager import ShortcutContext, ShortcutManager
 from cuepoint.ui.widgets.styles import Colors, is_macos
 from cuepoint.utils.run_context import get_current_run_id
@@ -571,36 +572,27 @@ class ResultsView(QWidget):
         status_layout.addWidget(self.filter_status_label)
         single_table_layout.addLayout(status_layout)
 
-        # Create table with key columns
-        self.table = QTableWidget()
-        self.table.setColumnCount(14)
-        self.table.setHorizontalHeaderLabels(
-            [
-                "Write",
-                "Index",
-                "Original Title",
-                "Original Artists",
-                "Beatport Title",
-                "Beatport Artists",
-                "Key",
-                "Camelot Key",
-                "Release Year",
-                "Label",
-                "Matched",
-                "Score",
-                "Confidence",
-                "BPM",
-            ]
-        )
+        # Create table with key columns (frozen Write + Index)
+        header_labels = [
+            "Write",
+            "Index",
+            "Original Title",
+            "Original Artists",
+            "Beatport Title",
+            "Beatport Artists",
+            "Key",
+            "Camelot Key",
+            "Release Year",
+            "Label",
+            "Matched",
+            "Score",
+            "Confidence",
+            "BPM",
+        ]
+        self.table = ResultsFrozenTableHost(self._column_layout, header_labels)
         self.table.setSortingEnabled(True)
-        # Disable alternating row colors so unmatched-row red background is visible
-        self.table.setAlternatingRowColors(False)
-        self.table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self._column_layout.configure_table(self.table)
-        # Ensure "10 tracks visible" when possible (table remains scrollable)
         self.table.verticalHeader().setDefaultSectionSize(26 if is_macos() else 28)
-        self._ensure_table_min_rows(self.table, 10)
+        self._ensure_table_min_rows(self.table.scroll_table, 10)
 
         # Connect sort signal to update visual indicators
         self.table.horizontalHeader().sectionClicked.connect(self._on_column_sorted)
@@ -615,17 +607,26 @@ class ResultsView(QWidget):
         self.table.doubleClicked.connect(self._on_row_double_clicked)
 
         # Delegate paints unmatched row (red) and WAV row (orange) backgrounds
-        self.table.setItemDelegate(
-            UnmatchedRowDelegate(
-                self.table,
-                UNMATCHED_ROW_BG,
-                wav_bg_color=WAV_ROW_BG,
-                wav_role=WAV_ROW_ROLE,
-                show_wav_highlight_getter=lambda: getattr(
-                    self, "_show_wav_row_highlight", False
-                ),
-            )
+        scroll_delegate = UnmatchedRowDelegate(
+            self.table.scroll_table,
+            UNMATCHED_ROW_BG,
+            wav_bg_color=WAV_ROW_BG,
+            wav_role=WAV_ROW_ROLE,
+            show_wav_highlight_getter=lambda: getattr(
+                self, "_show_wav_row_highlight", False
+            ),
         )
+        frozen_delegate = UnmatchedRowDelegate(
+            self.table.frozen_table,
+            UNMATCHED_ROW_BG,
+            wav_bg_color=WAV_ROW_BG,
+            wav_role=WAV_ROW_ROLE,
+            show_wav_highlight_getter=lambda: getattr(
+                self, "_show_wav_row_highlight", False
+            ),
+        )
+        self.table.scroll_table.setItemDelegate(scroll_delegate)
+        self.table.frozen_table.setItemDelegate(frozen_delegate)
 
         single_table_layout.addWidget(self.table, 1)  # Give table stretch priority
         self.single_table_group.setLayout(single_table_layout)
@@ -1417,7 +1418,7 @@ class ResultsView(QWidget):
             self.table.sortItems(COL_INDEX, Qt.AscendingOrder)
             self.table.horizontalHeader().setSortIndicator(COL_INDEX, Qt.AscendingOrder)
 
-        self._column_layout.ensure_minimums(self.table)
+        self.table.ensure_minimums()
 
         # Keep table tall enough to show ~10 rows when space allows
         self._ensure_table_min_rows(self.table, 10)

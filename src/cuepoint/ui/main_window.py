@@ -57,6 +57,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QRadioButton,
     QScrollArea,
+    QSizePolicy,
     QStackedWidget,
     QStyle,
     QTabWidget,
@@ -412,6 +413,19 @@ class MainWindow(QMainWindow):
         main_layout.setSpacing(8)
         main_layout.setContentsMargins(10, 10, 10, 10)
 
+        # Rollout Phase A: equal-height Input | Processing panels (lab match-layout)
+        input_panel = QGroupBox("Input")
+        input_panel.setObjectName("panelBox")
+        input_panel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        input_layout = QVBoxLayout(input_panel)
+        input_layout.setSpacing(8)
+
+        processing_panel = QGroupBox("Processing")
+        processing_panel.setObjectName("panelBox")
+        processing_panel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        processing_layout = QVBoxLayout(processing_panel)
+        processing_layout.setSpacing(8)
+
         # === ROW 1: Three equal boxes filling full width ===
         row1 = QHBoxLayout()
         row1.setSpacing(10)
@@ -546,7 +560,7 @@ class MainWindow(QMainWindow):
         self.single_playlist_group = self.playlist_box
         row1.addWidget(self.playlist_box, 1)  # Equal stretch
 
-        main_layout.addLayout(row1)
+        input_layout.addLayout(row1)
 
         # === ROW 2: Content box (XML or M3U picker) directly below Source, same size ===
         row2 = QHBoxLayout()
@@ -554,7 +568,7 @@ class MainWindow(QMainWindow):
         row2.addWidget(self.source_content_box, 1)  # Same stretch as Source box
         row2.addStretch(1)  # Empty under Mode
         row2.addStretch(1)  # Empty under Playlist
-        main_layout.addLayout(row2)
+        input_layout.addLayout(row2)
 
         # === Empty state hint (Step 9.4) ===
         self.empty_state_hint = QWidget()
@@ -592,12 +606,13 @@ class MainWindow(QMainWindow):
         hint_buttons.addStretch(1)
         hint_layout.addLayout(hint_buttons)
 
-        main_layout.addWidget(self.empty_state_hint)
+        input_layout.addWidget(self.empty_state_hint)
 
         # === Batch processor (shown only in batch mode) ===
         self.batch_processor = BatchProcessorWidget()
         self.batch_processor.setVisible(False)
-        main_layout.addWidget(self.batch_processor)
+        input_layout.addWidget(self.batch_processor)
+        input_layout.addStretch()
 
         # === ROW 3: Start button ===
         self.start_button_container = QWidget()
@@ -633,7 +648,7 @@ class MainWindow(QMainWindow):
         start_layout.addWidget(self.start_button)
         start_layout.addStretch()
         self.start_button_container.setVisible(False)
-        main_layout.addWidget(self.start_button_container)
+        processing_layout.addWidget(self.start_button_container)
 
         # Set default mode after playlist_box, start_button, and batch_processor exist so on_mode_changed can use them
         self.single_mode_radio.setChecked(True)  # Default to Single mode (not Batch)
@@ -737,7 +752,14 @@ class MainWindow(QMainWindow):
         self.progress_container.setVisible(False)
         self.progress_group = self.progress_container
         self.progress_widget = None
-        main_layout.addWidget(self.progress_container)
+        processing_layout.addWidget(self.progress_container)
+        processing_layout.addStretch()
+
+        match_row = QHBoxLayout()
+        match_row.setSpacing(10)
+        match_row.addWidget(input_panel, 1)
+        match_row.addWidget(processing_panel, 1)
+        main_layout.addLayout(match_row, 0)
 
         # === ROW 5: Results (takes remaining space) ===
         self.results_group = QWidget()
@@ -754,9 +776,6 @@ class MainWindow(QMainWindow):
         results_layout.addWidget(self.results_view)
         self.results_group.setVisible(False)
         main_layout.addWidget(self.results_group, 1)  # Takes remaining space
-
-        # Add stretch at end to push everything to top when results hidden
-        main_layout.addStretch()
 
         # Create config panel (but don't add to tabs - it will be in Settings dialog)
         # Keep it accessible for getting settings during processing
