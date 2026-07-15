@@ -67,6 +67,44 @@ export interface IncrateInventoryResponse {
   demo?: boolean;
 }
 
+export interface IncrateDiscoverTrack {
+  beatport_track_id: number;
+  beatport_url: string;
+  title: string;
+  artists: string;
+  source_type: string;
+  source_name: string;
+  source_label_name?: string | null;
+  source_url?: string | null;
+}
+
+export interface IncrateDiscoverOptions {
+  inventory_stats: { total: number; with_label?: number };
+  artists: { name: string }[];
+  labels: { name: string }[];
+  genres: { id: number; name: string; slug: string }[];
+  token_configured: boolean;
+  defaults: {
+    charts_from: string;
+    charts_to: string;
+    new_releases_days: number;
+  };
+}
+
+export interface IncrateDiscoverResponse {
+  tracks: IncrateDiscoverTrack[];
+  count: number;
+  demo?: boolean;
+}
+
+export interface IncratePlaylistResponse {
+  success: boolean;
+  playlist_url?: string | null;
+  playlist_id?: string | null;
+  added_count: number;
+  error?: string | null;
+}
+
 export type OpenXmlDialogResult =
   | { canceled: true }
   | { canceled: false; filePath: string };
@@ -74,6 +112,16 @@ export type OpenXmlDialogResult =
 export type SaveExportDialogResult =
   | { canceled: true }
   | { canceled: false; filePath: string };
+
+export interface BeatportTokenStatus {
+  configured: boolean;
+  masked: string | null;
+}
+
+export interface BeatportTokenTestResult {
+  ok: boolean;
+  message: string;
+}
 
 export interface CuePointBridge {
   getEngineStatus: () => Promise<EngineStatus>;
@@ -90,7 +138,24 @@ export interface CuePointBridge {
     xml_path: string;
     enrich?: boolean;
   }) => Promise<{ imported: number; enriched: number; errors: string[] }>;
+  getIncrateDiscoverOptions: () => Promise<IncrateDiscoverOptions>;
+  runIncrateDiscover: (body: {
+    demo?: boolean;
+    genre_ids?: number[];
+    charts_from?: string;
+    charts_to?: string;
+    new_releases_days?: number;
+    artist_names?: string[];
+    label_names?: string[];
+  }) => Promise<IncrateDiscoverResponse>;
+  createIncratePlaylist: (body: {
+    name: string;
+    tracks: IncrateDiscoverTrack[];
+  }) => Promise<IncratePlaylistResponse>;
   cancelMatchJob: (jobId: string) => Promise<{ id: string; state: string }>;
+  getBeatportTokenStatus: () => Promise<BeatportTokenStatus>;
+  setBeatportToken: (token: string) => Promise<BeatportTokenStatus>;
+  testBeatportToken: (body?: { token?: string }) => Promise<BeatportTokenTestResult>;
   subscribeJobEvents: (
     jobId: string,
     onEvent: (event: MatchJobStatus & { type?: string }) => void,

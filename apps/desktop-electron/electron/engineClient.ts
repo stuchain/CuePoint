@@ -112,11 +112,74 @@ export class EngineClient {
     return readJson(res);
   }
 
+  async getIncrateDiscoverOptions(): Promise<Record<string, unknown>> {
+    const res = await fetch(this.url("/api/v1/incrate/discover/options"), {
+      headers: this.headers(),
+    });
+    return readJson(res);
+  }
+
+  async runIncrateDiscover(body: {
+    demo?: boolean;
+    genre_ids?: number[];
+    charts_from?: string;
+    charts_to?: string;
+    new_releases_days?: number;
+    artist_names?: string[];
+    label_names?: string[];
+  }): Promise<{ tracks: Record<string, unknown>[]; count: number; demo?: boolean }> {
+    const res = await fetch(this.url("/api/v1/incrate/discover"), {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify(body),
+    });
+    return readJson(res);
+  }
+
+  async createIncratePlaylist(body: {
+    name: string;
+    tracks: Record<string, unknown>[];
+  }): Promise<Record<string, unknown>> {
+    const res = await fetch(this.url("/api/v1/incrate/playlist"), {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify(body),
+    });
+    return readJson(res);
+  }
+
   async cancelMatchJob(jobId: string): Promise<{ id: string; state: string }> {
     const res = await fetch(this.url(`/api/v1/jobs/${jobId}/cancel`), {
       method: "POST",
       headers: this.headers(),
       body: "{}",
+    });
+    return readJson(res);
+  }
+
+  async getBeatportTokenStatus(): Promise<{ configured: boolean; masked: string | null }> {
+    const res = await fetch(this.url("/api/v1/config/beatport-token"), {
+      headers: this.headers(),
+    });
+    return readJson(res);
+  }
+
+  async setBeatportToken(token: string): Promise<{ configured: boolean; masked: string | null }> {
+    const res = await fetch(this.url("/api/v1/config/beatport-token"), {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify({ token }),
+    });
+    return readJson(res);
+  }
+
+  async testBeatportToken(body?: {
+    token?: string;
+  }): Promise<{ ok: boolean; message: string }> {
+    const res = await fetch(this.url("/api/v1/config/beatport-token/test"), {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify(body ?? {}),
     });
     return readJson(res);
   }

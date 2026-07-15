@@ -142,8 +142,45 @@ export class EngineSupervisor {
     return this.client().importIncrateXml(body);
   }
 
+  async getIncrateDiscoverOptions(): Promise<Record<string, unknown>> {
+    return this.client().getIncrateDiscoverOptions();
+  }
+
+  async runIncrateDiscover(body: {
+    demo?: boolean;
+    genre_ids?: number[];
+    charts_from?: string;
+    charts_to?: string;
+    new_releases_days?: number;
+    artist_names?: string[];
+    label_names?: string[];
+  }): Promise<{ tracks: Record<string, unknown>[]; count: number; demo?: boolean }> {
+    return this.client().runIncrateDiscover(body);
+  }
+
+  async createIncratePlaylist(body: {
+    name: string;
+    tracks: Record<string, unknown>[];
+  }): Promise<Record<string, unknown>> {
+    return this.client().createIncratePlaylist(body);
+  }
+
   async cancelMatchJob(jobId: string): Promise<{ id: string; state: string }> {
     return this.client().cancelMatchJob(jobId);
+  }
+
+  async getBeatportTokenStatus(): Promise<{ configured: boolean; masked: string | null }> {
+    return this.client().getBeatportTokenStatus();
+  }
+
+  async setBeatportToken(token: string): Promise<{ configured: boolean; masked: string | null }> {
+    return this.client().setBeatportToken(token);
+  }
+
+  async testBeatportToken(body?: {
+    token?: string;
+  }): Promise<{ ok: boolean; message: string }> {
+    return this.client().testBeatportToken(body);
   }
 
   subscribeJobEvents(jobId: string, senderId: number, sender: WebContents): () => void {

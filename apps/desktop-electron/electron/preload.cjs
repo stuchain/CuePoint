@@ -8,7 +8,13 @@ contextBridge.exposeInMainWorld("cuepoint", {
   exportResults: (body) => ipcRenderer.invoke("engine:exportResults", body),
   getIncrateInventory: (params) => ipcRenderer.invoke("engine:getIncrateInventory", params),
   importIncrateXml: (body) => ipcRenderer.invoke("engine:importIncrateXml", body),
+  getIncrateDiscoverOptions: () => ipcRenderer.invoke("engine:getIncrateDiscoverOptions"),
+  runIncrateDiscover: (body) => ipcRenderer.invoke("engine:runIncrateDiscover", body),
+  createIncratePlaylist: (body) => ipcRenderer.invoke("engine:createIncratePlaylist", body),
   cancelMatchJob: (jobId) => ipcRenderer.invoke("engine:cancelMatchJob", jobId),
+  getBeatportTokenStatus: () => ipcRenderer.invoke("engine:getBeatportTokenStatus"),
+  setBeatportToken: (token) => ipcRenderer.invoke("engine:setBeatportToken", token),
+  testBeatportToken: (body) => ipcRenderer.invoke("engine:testBeatportToken", body),
   subscribeJobEvents: (jobId, onEvent) => {
     const eventHandler = (_event, payload) => {
       if (payload?.jobId === jobId) onEvent(payload.event);

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { Badge, Button, ExportResultsButton, Panel, ResultsTable, Select, ToolbarIcon } from "../components";
 import { useResultsFrameLayout } from "../components/useResultsFrameLayout";
+import { hasEngineBridge } from "../api/cuepointBridge.types";
 import { sampleResults } from "../mocks/fixtures";
 import { useMatchResults } from "../context/MatchResultsContext";
 import { useScale } from "../tokens/ScaleContext";
@@ -15,7 +16,9 @@ export function ResultsScreen() {
   const { frameRef, frameWidth, frameHeight, isSized, startFrameResize, resetFrameSize } =
     useResultsFrameLayout(scale);
 
-  const allRows = source === "engine" && engineResults.length > 0 ? engineResults : sampleResults;
+  const engineAvailable = hasEngineBridge();
+  const allRows =
+    source === "engine" ? engineResults : engineAvailable ? [] : sampleResults;
 
   useEffect(() => {
     document.body.classList.toggle("results-page-scrollable", isSized);
@@ -77,11 +80,21 @@ export function ResultsScreen() {
               />
             </div>
 
-            <ResultsTable
-              rows={rows}
-              selectedIndex={selected}
-              onSelectRow={setSelected}
-            />
+            {rows.length === 0 ? (
+              <p className="screen__muted">
+                {source === "engine"
+                  ? "No match results yet. Run a job from inKey to populate this table."
+                  : engineAvailable
+                    ? "No results loaded."
+                    : "Sample data is shown in browser-only mode."}
+              </p>
+            ) : (
+              <ResultsTable
+                rows={rows}
+                selectedIndex={selected}
+                onSelectRow={setSelected}
+              />
+            )}
           </div>
         </Panel>
         <button

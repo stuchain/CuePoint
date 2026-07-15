@@ -1,36 +1,32 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Badge, Button, Panel, TextField, useToast } from "../components";
-import type { IncrateInventoryResponse } from "../api/cuepointBridge.types";
+import type {
+  IncrateDiscoverOptions,
+  IncrateDiscoverTrack,
+  IncrateInventoryResponse,
+} from "../api/cuepointBridge.types";
 import { hasEngineBridge } from "../api/cuepointBridge.types";
 import "./screens.css";
-
-const SECTIONS = [
-  {
-    id: "import",
-    title: "Import",
-    description: "Load Rekordbox collection XML into the inCrate inventory database.",
-  },
-  {
-    id: "discover",
-    title: "Discover",
-    description: "Charts and new releases from Beatport (not wired yet).",
-  },
-  {
-    id: "playlist",
-    title: "Playlist",
-    description: "Create Beatport playlist from discovery results (not wired yet).",
-  },
-] as const;
 
 export function InCrateMainScreen() {
   const { push } = useToast();
   const engineAvailable = hasEngineBridge();
   const [inventory, setInventory] = useState<IncrateInventoryResponse | null>(null);
+  const [options, setOptions] = useState<IncrateDiscoverOptions | null>(null);
+  const [discovered, setDiscovered] = useState<IncrateDiscoverTrack[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [discovering, setDiscovering] = useState(false);
+  const [creatingPlaylist, setCreatingPlaylist] = useState(false);
   const [preferLive, setPreferLive] = useState(false);
+  const [selectedGenreIds, setSelectedGenreIds] = useState<number[]>([]);
+  const [chartsFrom, setChartsFrom] = useState("");
+  const [chartsTo, setChartsTo] = useState("");
+  const [newReleasesDays, setNewReleasesDays] = useState("30");
+  const [playlistName, setPlaylistName] = useState("feb26");
+  const [playlistStatus, setPlaylistStatus] = useState<string | null>(null);
 
   useEffect(() => {
     document.body.classList.add("app-page-scroll");
@@ -39,18 +35,18 @@ export function InCrateMainScreen() {
   }, []);
 
   const loadInventory = useCallback(
-    async (options?: { live?: boolean }) => {
+    async (live?: boolean) => {
       if (!window.cuepoint?.getIncrateInventory) {
         setInventory(null);
         return;
       }
-      const live = options?.live ?? preferLive;
+      const useLive = live ?? preferLive;
       setLoading(true);
       try {
         const payload = await window.cuepoint.getIncrateInventory({
           limit: 25,
           search: search.trim() || undefined,
-          demo: !search.trim() && !live,
+          demo: !search.trim() && !useLive,
         });
         setInventory(payload);
       } catch (error) {
@@ -62,11 +58,31 @@ export function InCrateMainScreen() {
     [preferLive, push, search],
   );
 
+  const loadDiscoverOptions = useCallback(async () => {
+    if (!window.cuepoint?.getIncrateDiscoverOptions) {
+      setOptions(null);
+      return;
+    }
+    try {
+      const payload = await window.cuepoint.getIncrateDiscoverOptions();
+      setOptions(payload);
+      setChartsFrom(payload.defaults.charts_from);
+      setChartsTo(payload.defaults.charts_to);
+      setNewReleasesDays(String(payload.defaults.new_releases_days));
+      if (payload.genres.length > 0 && selectedGenreIds.length === 0) {
+        setSelectedGenreIds([payload.genres[0].id]);
+      }
+    } catch (error) {
+      push(error instanceof Error ? error.message : "Failed to load discover options", "warning");
+    }
+  }, [push, selectedGenreIds.length]);
+
   useEffect(() => {
     if (engineAvailable) {
       void loadInventory();
+      void loadDiscoverOptions();
     }
-  }, [engineAvailable, loadInventory]);
+  }, [engineAvailable, loadDiscoverOptions, loadInventory]);
 
   const handleImport = async () => {
     if (!window.cuepoint?.openXmlFileDialog || !window.cuepoint.importIncrateXml) {
@@ -87,13 +103,99 @@ export function InCrateMainScreen() {
         "success",
       );
       setPreferLive(true);
-      await loadInventory({ live: true });
+      await loadInventory(true);
+      await loadDiscoverOptions();
     } catch (error) {
       push(error instanceof Error ? error.message : "Import failed", "warning");
     } finally {
       setImporting(false);
     }
   };
+
+  const toggleGenre = (genreId: number) => {
+    setSelectedGenreIds((current) =>
+      current.includes(genreId) ? current.filter((id) => id !== genreId) : [...current, genreId],
+    );
+  };
+
+  const handleDiscover = async (demo = false) => {
+    if (!window.cuepoint?.runIncrateDiscover) {
+      push("Discover requires the Electron app with engine connected.", "warning");
+      return;
+    }
+    setDiscovering(true);
+    setPlaylistStatus(null);
+    try {
+      const payload = await window.cuepoint.runIncrateDiscover(
+        demo
+          ? { demo: true }
+          : {
+              genre_ids: selectedGenreIds,
+              charts_from: chartsFrom,
+              charts_to: chartsTo,
+              new_releases_days: Number.parseInt(newReleasesDays, 10) || 30,
+            },
+      );
+      setDiscovered(payload.tracks);
+      push(
+        demo
+          ? `Loaded ${payload.count} demo discovery tracks.`
+          : `Discovery found ${payload.count} tracks.`,
+        "success",
+      );
+    } catch (error) {
+      push(error instanceof Error ? error.message : "Discovery failed", "warning");
+    } finally {
+      setDiscovering(false);
+    }
+  };
+
+  const handleCreatePlaylist = async () => {
+    if (!window.cuepoint?.createIncratePlaylist) {
+      push("Playlist creation requires the Electron app with engine connected.", "warning");
+      return;
+    }
+    if (!discovered.length) {
+      push("Run discovery first.", "warning");
+      return;
+    }
+    const name = playlistName.trim();
+    if (!name) {
+      push("Enter a playlist name.", "warning");
+      return;
+    }
+    setCreatingPlaylist(true);
+    setPlaylistStatus(null);
+    try {
+      const result = await window.cuepoint.createIncratePlaylist({
+        name,
+        tracks: discovered,
+      });
+      if (result.success) {
+        const message = result.playlist_url
+          ? `Added ${result.added_count} tracks. ${result.playlist_url}`
+          : `Added ${result.added_count} tracks to playlist.`;
+        setPlaylistStatus(message);
+        push(message, "success");
+      } else {
+        const message = result.error ?? "Playlist creation failed.";
+        setPlaylistStatus(message);
+        push(message, "warning");
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Playlist creation failed.";
+      setPlaylistStatus(message);
+      push(message, "warning");
+    } finally {
+      setCreatingPlaylist(false);
+    }
+  };
+
+  const canDiscover = useMemo(() => {
+    if (!engineAvailable) return false;
+    if (!options) return true;
+    return options.inventory_stats.total > 0 || inventory?.demo;
+  }, [engineAvailable, inventory?.demo, options]);
 
   return (
     <div className="screen screen--stack screen--scroll">
@@ -106,33 +208,105 @@ export function InCrateMainScreen() {
         </Badge>
       </header>
 
-      <p className="screen__muted">
-        Parity target: Qt <code>incrate_page.py</code> sections. Inventory loads from{" "}
-        <code>GET /api/v1/incrate/inventory</code>.
-      </p>
+      <Panel title="Import" id="import">
+        <p className="screen__muted">Load Rekordbox collection XML into the inCrate inventory database.</p>
+        <div className="match-actions">
+          <Button variant="primary" loading={importing} onClick={() => void handleImport()}>
+            Import collection XML…
+          </Button>
+          <Button
+            variant="secondary"
+            loading={loading}
+            onClick={() => {
+              setPreferLive(true);
+              void loadInventory(true);
+            }}
+          >
+            Refresh inventory
+          </Button>
+        </div>
+      </Panel>
 
-      {SECTIONS.map((section) => (
-        <Panel key={section.id} title={section.title} id={section.id}>
-          <p className="screen__muted">{section.description}</p>
-          {section.id === "import" && (
-            <div className="match-actions">
-              <Button variant="primary" loading={importing} onClick={() => void handleImport()}>
-                Import collection XML…
-              </Button>
-              <Button
-                variant="secondary"
-                loading={loading}
-                onClick={() => {
-                  setPreferLive(true);
-                  void loadInventory({ live: true });
-                }}
-              >
-                Refresh inventory
-              </Button>
-            </div>
-          )}
-        </Panel>
-      ))}
+      <Panel
+        title="Discover"
+        id="discover"
+        badge={
+          options ? (
+            <Badge variant={options.token_configured ? "success" : "warning"}>
+              {options.token_configured ? "Token configured" : "Token missing"}
+            </Badge>
+          ) : undefined
+        }
+      >
+        <p className="screen__muted">
+          Charts and new releases from Beatport via <code>POST /api/v1/incrate/discover</code>.
+        </p>
+        {options ? (
+          <div className="settings-form">
+            <TextField label="Charts from" value={chartsFrom} onChange={(e) => setChartsFrom(e.target.value)} />
+            <TextField label="Charts to" value={chartsTo} onChange={(e) => setChartsTo(e.target.value)} />
+            <TextField
+              label="New releases (days)"
+              value={newReleasesDays}
+              onChange={(e) => setNewReleasesDays(e.target.value)}
+            />
+            {options.genres.length > 0 ? (
+              <div>
+                <p className="screen__muted">Genres</p>
+                <div className="match-actions">
+                  {options.genres.slice(0, 8).map((genre) => (
+                    <Button
+                      key={genre.id}
+                      variant={selectedGenreIds.includes(genre.id) ? "primary" : "secondary"}
+                      onClick={() => toggleGenre(genre.id)}
+                    >
+                      {genre.name}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="screen__muted">Configure Beatport token in Settings to load genres.</p>
+            )}
+          </div>
+        ) : null}
+        <div className="match-actions">
+          <Button
+            variant="primary"
+            loading={discovering}
+            disabled={!canDiscover}
+            onClick={() => void handleDiscover(false)}
+          >
+            Run discovery
+          </Button>
+          <Button variant="secondary" loading={discovering} onClick={() => void handleDiscover(true)}>
+            Demo discovery
+          </Button>
+        </div>
+      </Panel>
+
+      <Panel title="Playlist" id="playlist">
+        <p className="screen__muted">Create a Beatport playlist from discovery results.</p>
+        <div className="settings-form">
+          <TextField
+            label="Playlist name"
+            value={playlistName}
+            onChange={(event) => setPlaylistName(event.target.value)}
+            placeholder="feb26"
+          />
+        </div>
+        <div className="match-actions">
+          <Button
+            variant="primary"
+            loading={creatingPlaylist}
+            disabled={!discovered.length}
+            onClick={() => void handleCreatePlaylist()}
+          >
+            Add to playlist
+          </Button>
+        </div>
+        {playlistStatus ? <p className="screen__muted">{playlistStatus}</p> : null}
+      </Panel>
 
       <Panel
         title="Inventory preview"
@@ -170,6 +344,26 @@ export function InCrateMainScreen() {
           </>
         ) : (
           <p className="screen__muted">Open in Electron to load inventory from the engine.</p>
+        )}
+      </Panel>
+
+      <Panel
+        title="Discovery results"
+        badge={
+          discovered.length ? <Badge variant="info">{discovered.length} tracks</Badge> : undefined
+        }
+      >
+        {discovered.length ? (
+          <ul className="incrate-inventory-list">
+            {discovered.map((track) => (
+              <li key={`${track.beatport_track_id}-${track.title}`}>
+                <strong>{track.artists}</strong> — {track.title}
+                <span className="screen__muted"> · {track.source_type}: {track.source_name}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="screen__muted">Run discovery to populate tracks for playlist creation.</p>
         )}
       </Panel>
     </div>
