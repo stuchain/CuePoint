@@ -118,6 +118,53 @@ class ThemeTokens:
     FOCUS_RING = "rgba(0, 122, 255, 0.65)" if is_macos() else "rgba(0, 120, 212, 0.65)"
 
 
+_ui_scale_factor = 1
+
+
+def get_ui_scale_factor() -> int:
+    """Current UI scale factor (1, 2, or 3)."""
+    return _ui_scale_factor
+
+
+def set_ui_scale_factor(scale: int) -> None:
+    """Store scale factor used when generating stylesheets."""
+    global _ui_scale_factor
+    _ui_scale_factor = max(1, min(3, int(scale)))
+
+
+def apply_theme_tokens(tokens: dict[str, str]) -> None:
+    """Apply lab theme tokens to the mutable Colors palette used by stylesheets."""
+    primary = tokens.get("accent-primary", Colors.PRIMARY)
+    Colors.PRIMARY = primary
+    Colors.SECONDARY = tokens.get("accent-secondary", Colors.SECONDARY)
+    Colors.BACKGROUND = tokens.get("bg-app", Colors.BACKGROUND)
+    Colors.SURFACE = tokens.get("bg-panel", Colors.SURFACE)
+    Colors.TEXT_PRIMARY = tokens.get("fg-primary", Colors.TEXT_PRIMARY)
+    Colors.TEXT_SECONDARY = tokens.get("fg-muted", Colors.TEXT_SECONDARY)
+    Colors.BORDER = tokens.get("border-muted", Colors.BORDER)
+    Colors.ACCENT = tokens.get("accent-success", Colors.ACCENT)
+    Colors.GROUP_HEADER = tokens.get("fg-primary", Colors.GROUP_HEADER)
+    Colors.BUTTON_PRIMARY_BG = primary
+    Colors.BUTTON_PRIMARY_TEXT = tokens.get("fg-inverse", "#ffffff")
+    Colors.BUTTON_HOVER = tokens.get("accent-primary-hover", Colors.BUTTON_HOVER)
+    Colors.SUCCESS = tokens.get("accent-success", Colors.SUCCESS)
+    Colors.ERROR = tokens.get("accent-danger", Colors.ERROR)
+    Colors.WARNING = tokens.get("accent-warning", Colors.WARNING)
+    Colors.INFO = tokens.get("accent-info", Colors.INFO)
+    ThemeTokens.FOCUS_RING = _focus_ring_from_primary(primary)
+
+
+def _focus_ring_from_primary(primary_hex: str) -> str:
+    """Build a semi-transparent focus ring from the accent color."""
+    value = primary_hex.strip()
+    if value.startswith("#") and len(value) == 7:
+        r = int(value[1:3], 16)
+        g = int(value[3:5], 16)
+        b = int(value[5:7], 16)
+        return f"rgba({r}, {g}, {b}, 0.65)"
+    return ThemeTokens.FOCUS_RING
+
+
 def _panel_groupbox_styles() -> str:
     """Special group box style used for the compact 'panel' boxes in the UI.
 

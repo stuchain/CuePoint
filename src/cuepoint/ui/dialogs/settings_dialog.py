@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 )
 
 from cuepoint.ui.controllers.config_controller import ConfigController
+from cuepoint.ui.widgets.appearance_settings import AppearanceSettingsWidget
 from cuepoint.ui.widgets.config_panel import ConfigPanel
 from cuepoint.ui.widgets.privacy_settings import PrivacySettingsWidget
 
@@ -51,6 +52,11 @@ class SettingsDialog(QDialog):
         scroll_layout.setSpacing(10)
         scroll_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
+        # Rollout Phase D: Appearance (theme + UI scale) at top of Settings
+        self.appearance_settings = AppearanceSettingsWidget(self)
+        self.appearance_settings.appearance_changed.connect(self._update_apply_button)
+        scroll_layout.addWidget(self.appearance_settings)
+
         # Add config panel
         self.config_panel = ConfigPanel(config_controller=self.config_controller)
         scroll_layout.addWidget(self.config_panel)
@@ -82,13 +88,14 @@ class SettingsDialog(QDialog):
             QDialogButtonBox.Ok | QDialogButtonBox.Cancel | QDialogButtonBox.Apply
         )
         button_box.accepted.connect(self._on_ok)
-        button_box.rejected.connect(self.reject)
+        button_box.rejected.connect(self._on_cancel)
 
         # Apply button - enabled only when there are unsaved changes
         self._apply_button = button_box.button(QDialogButtonBox.Apply)
         self._apply_button.clicked.connect(self.apply_settings)
         self._apply_button.setEnabled(False)
         self._last_applied_snapshot = self._get_full_snapshot()
+        self._entry_appearance_snapshot = self.appearance_settings.get_snapshot()
 
         layout.addWidget(button_box)
 
@@ -126,10 +133,33 @@ class SettingsDialog(QDialog):
     def showEvent(self, event) -> None:
         """Scroll to top when opening settings (Rollout Phase A)."""
         super().showEvent(event)
+        self.appearance_settings.reload_from_store()
+        self._entry_appearance_snapshot = self.appearance_settings.get_snapshot()
+        self._last_applied_snapshot = self._get_full_snapshot()
+        self._apply_button.setEnabled(False)
         if hasattr(self, "_scroll_area"):
             bar = self._scroll_area.verticalScrollBar()
             if bar is not None:
                 bar.setValue(0)
+
+    def _on_cancel(self) -> None:
+        """Revert live appearance preview and close."""
+        entry_theme, entry_scale = self._entry_appearance_snapshot
+        current = self.appearance_settings.get_snapshot()
+        if current != self._entry_appearance_snapshot:
+            from PySide6.QtWidgets import QApplication
+
+            from cuepoint.ui.appearance.appearance_manager import apply_appearance
+
+            app = QApplication.instance()
+            if app is not None:
+                apply_appearance(
+                    app,
+                    theme_id=entry_theme,
+                    scale=entry_scale,
+                    persist=True,
+                )
+        self.reject()
 
     def _open_privacy_dialog(self) -> None:
         from cuepoint.ui.dialogs.privacy_dialog import PrivacyDialog
@@ -145,6 +175,7 @@ class SettingsDialog(QDialog):
     def _get_full_snapshot(self):
         """Get comparable snapshot of all settings that trigger Apply."""
         return (
+            self.appearance_settings.get_snapshot(),
             self.config_panel.get_persisted_snapshot(),
             self.privacy_settings.get_snapshot(),
         )
@@ -156,9 +187,12 @@ class SettingsDialog(QDialog):
 
     def apply_settings(self):
         """Apply settings without closing dialog"""
+        self.appearance_settings.persist()
+        self.appearance_settings.preview_current()
         self.config_panel.apply_and_persist()
         # Privacy settings save on change; update snapshot so Apply disables
         self._last_applied_snapshot = self._get_full_snapshot()
+        self._entry_appearance_snapshot = self.appearance_settings.get_snapshot()
         self._apply_button.setEnabled(False)
 
     def get_settings(self):

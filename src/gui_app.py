@@ -152,7 +152,6 @@ if __name__ == "__main__":
 
 from cuepoint.services.bootstrap import bootstrap_services
 from cuepoint.ui.main_window import MainWindow
-from cuepoint.ui.widgets.styles import get_stylesheet
 from cuepoint.utils.i18n import I18nManager
 from cuepoint.utils.logger import CuePointLogger
 from cuepoint.utils.paths import AppPaths, PathMigration
@@ -307,6 +306,11 @@ def main():
         # Step 9.3: localization readiness (English-only unless `.qm` files are present)
         I18nManager.setup_translations(app)
 
+        # Rollout Phase D: theme + UI scale from Settings (default neoDark @ 2×)
+        from cuepoint.ui.appearance import init_appearance
+
+        init_appearance(app)
+
         # Check system requirements
         meets_requirements, errors = SystemRequirements.check_all()
         if not meets_requirements:
@@ -323,9 +327,6 @@ def main():
             msg.exec()
 
             sys.exit(1)
-
-        # Apply platform-specific styling
-        app.setStyleSheet(get_stylesheet())
 
         # Create and show main window
         window = MainWindow()
