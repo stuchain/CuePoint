@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld("cuepoint", {
   getHistoryRecent: (params) => ipcRenderer.invoke("engine:getHistoryRecent", params),
   loadHistoryCsv: (csvPath) => ipcRenderer.invoke("engine:loadHistoryCsv", csvPath),
   getXmlPlaylists: (xmlPath) => ipcRenderer.invoke("engine:getXmlPlaylists", xmlPath),
+  syncTags: (body) => ipcRenderer.invoke("engine:syncTags", body),
   subscribeJobEvents: (jobId, onEvent) => {
     const eventHandler = (_event, payload) => {
       if (payload?.jobId === jobId) onEvent(payload.event);

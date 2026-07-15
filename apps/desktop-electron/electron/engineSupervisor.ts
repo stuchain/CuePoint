@@ -195,6 +195,10 @@ export class EngineSupervisor {
     return this.client().getXmlPlaylists(xmlPath);
   }
 
+  async syncTags(body: Record<string, unknown>) {
+    return this.client().syncTags(body);
+  }
+
   subscribeJobEvents(jobId: string, senderId: number, sender: WebContents): () => void {
     const key = `${senderId}:${jobId}`;
     this.unsubscribeJobEvents(jobId, senderId);

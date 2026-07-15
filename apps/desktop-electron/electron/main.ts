@@ -30,6 +30,7 @@ function registerIpcHandlers(): void {
   ipcMain.handle("engine:getHistoryRecent", (_event, params) => engine.getHistoryRecent(params));
   ipcMain.handle("engine:loadHistoryCsv", (_event, csvPath: string) => engine.loadHistoryCsv(csvPath));
   ipcMain.handle("engine:getXmlPlaylists", (_event, xmlPath: string) => engine.getXmlPlaylists(xmlPath));
+  ipcMain.handle("engine:syncTags", (_event, body) => engine.syncTags(body));
   ipcMain.handle("engine:subscribeJobEvents", (event, jobId: string) => {
     engine.subscribeJobEvents(jobId, event.sender.id, event.sender);
     return { ok: true };

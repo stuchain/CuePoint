@@ -178,6 +178,25 @@ export interface HistoryLoadResponse {
   };
 }
 
+export interface SyncTagsResponse {
+  written: number;
+  failed: number;
+  errors: string[];
+  errors_truncated?: boolean;
+  wav_skipped: string[];
+  wav_skipped_count?: number;
+}
+
+export interface SyncTagsRequest {
+  sync_options: Record<string, unknown>;
+  source?: "collection" | "playlist_file";
+  mode?: "single" | "batch" | "paths";
+  xml_path?: string;
+  playlist_name?: string;
+  results?: TrackResult[];
+  batch_results?: Record<string, TrackResult[]>;
+}
+
 export interface InKeyRerunRequest {
   xmlPath?: string;
   playlistName?: string;
@@ -236,6 +255,7 @@ export interface CuePointBridge {
   getHistoryRecent: (params?: { limit?: number }) => Promise<HistoryRecentResponse>;
   loadHistoryCsv: (csvPath: string) => Promise<HistoryLoadResponse>;
   getXmlPlaylists: (xmlPath: string) => Promise<XmlPlaylistsResponse>;
+  syncTags: (body: SyncTagsRequest) => Promise<SyncTagsResponse>;
   subscribeJobEvents: (
     jobId: string,
     onEvent: (event: MatchJobStatus & { type?: string }) => void,

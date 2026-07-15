@@ -231,6 +231,22 @@ export class EngineClient {
     return readJson(res);
   }
 
+  async syncTags(body: Record<string, unknown>): Promise<{
+    written: number;
+    failed: number;
+    errors: string[];
+    errors_truncated?: boolean;
+    wav_skipped: string[];
+    wav_skipped_count?: number;
+  }> {
+    const res = await fetch(this.url("/api/v1/tags/sync"), {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify(body),
+    });
+    return readJson(res);
+  }
+
   async streamJobEvents(
     jobId: string,
     signal: AbortSignal,
