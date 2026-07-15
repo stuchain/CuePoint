@@ -234,6 +234,7 @@ export interface CuePointBridge {
     xml_path: string;
     enrich?: boolean;
   }) => Promise<{ imported: number; enriched: number; errors: string[] }>;
+  resetIncrateInventory: () => Promise<{ ok: boolean; stats: { total: number; with_label?: number } }>;
   getIncrateDiscoverOptions: () => Promise<IncrateDiscoverOptions>;
   runIncrateDiscover: (body: {
     demo?: boolean;

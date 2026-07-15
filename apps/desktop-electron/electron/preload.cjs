@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer, webUtils } = require("electron");
 
 contextBridge.exposeInMainWorld("cuepoint", {
   getEngineStatus: () => ipcRenderer.invoke("engine:status"),
@@ -41,5 +41,12 @@ contextBridge.exposeInMainWorld("cuepoint", {
   openXmlFileDialog: () => ipcRenderer.invoke("dialog:openXml"),
   openCsvFileDialog: () => ipcRenderer.invoke("dialog:openCsv"),
   openM3uFileDialog: () => ipcRenderer.invoke("dialog:openM3u"),
+  resolveDroppedFilePath: (file) => {
+    try {
+      return webUtils.getPathForFile(file);
+    } catch {
+      return null;
+    }
+  },
   saveExportFileDialog: (options) => ipcRenderer.invoke("dialog:saveExport", options),
 });

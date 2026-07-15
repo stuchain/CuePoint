@@ -316,6 +316,17 @@
   background: rgba(0, 0, 0, 0.15);
 }
 
+.drop-zone--compact {
+  min-height: calc(var(--hit-min) * 2);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-md);
+}
+
+.drop-zone--active {
+  border-color: var(--accent, #6cf);
+  background: rgba(102, 204, 255, 0.08);
+}
+
 .drop-zone__hint {
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
@@ -353,6 +364,23 @@
   gap: var(--space-md);
   margin-top: auto;
   padding-top: var(--space-md);
+}
+
+.incrate-import-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin: var(--space-md) 0;
+  cursor: pointer;
+}
+
+.incrate-inventory-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
 }
 
 .results-panel-body {
