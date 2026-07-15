@@ -1,14 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Button, Modal, Panel, Select, TextField } from "../components";
-import { useToast } from "../components";
+import { Panel, TextField } from "../components";
+import { ExportResultsButton } from "../components/ExportResultsModal";
+import { hasEngineBridge } from "../api/cuepointBridge.types";
 import { ThemeSettingsPanel } from "./ThemeSettingsPanel";
+import { useMatchResults } from "../context/MatchResultsContext";
+import { sampleResults } from "../mocks/fixtures";
 import "./screens.css";
 
 export function SettingsExportScreen() {
-  const { push } = useToast();
-  const [exportOpen, setExportOpen] = useState(false);
-  const [format, setFormat] = useState("csv");
+  const { results: engineResults, source } = useMatchResults();
+  const exportRows = source === "engine" && engineResults.length > 0 ? engineResults : sampleResults;
+  const engineAvailable = hasEngineBridge();
 
   useEffect(() => {
     document.body.classList.add("app-page-scroll");
@@ -29,50 +32,16 @@ export function SettingsExportScreen() {
       <Panel title="Settings">
         <div className="settings-form">
           <TextField label="Beatport token" type="password" placeholder="••••••••" hint="Stored locally in engine (mock)." />
-          <Select
-            label="Default export folder"
-            value="downloads"
-            options={[
-              { value: "downloads", label: "Downloads" },
-              { value: "desktop", label: "Desktop" },
-              { value: "custom", label: "Custom…" },
-            ]}
-          />
         </div>
       </Panel>
 
       <Panel title="Export">
-        <p className="screen__muted">Export matched metadata to CSV, JSON, or Excel.</p>
-        <Button variant="primary" onClick={() => setExportOpen(true)}>
-          Export results…
-        </Button>
+        <p className="screen__muted">
+          Export matched metadata to CSV, JSON, or Excel
+          {engineAvailable ? " via the Python engine." : " (mock in browser)."}
+        </p>
+        <ExportResultsButton rows={exportRows} playlistName="cuepoint-export" variant="primary" />
       </Panel>
-
-      <Modal
-        open={exportOpen}
-        title="Export results"
-        onClose={() => setExportOpen(false)}
-        secondaryAction={{ label: "Cancel", onClick: () => setExportOpen(false) }}
-        primaryAction={{
-          label: "Export",
-          onClick: () => {
-            push(`Exported as ${format.toUpperCase()} (mock).`, "success");
-            setExportOpen(false);
-          },
-        }}
-      >
-        <Select
-          label="Format"
-          value={format}
-          onChange={(e) => setFormat(e.target.value)}
-          options={[
-            { value: "csv", label: "CSV" },
-            { value: "json", label: "JSON" },
-            { value: "xlsx", label: "Excel (.xlsx)" },
-          ]}
-        />
-        <TextField label="Filename prefix" defaultValue="cuepoint-export" />
-      </Modal>
     </div>
   );
 }

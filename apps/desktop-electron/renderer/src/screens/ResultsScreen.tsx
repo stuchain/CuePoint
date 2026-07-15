@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
-import { Badge, Button, Panel, ResultsTable, Select, ToolbarIcon } from "../components";
+import { Badge, Button, ExportResultsButton, Panel, ResultsTable, Select, ToolbarIcon } from "../components";
 import { useResultsFrameLayout } from "../components/useResultsFrameLayout";
 import { sampleResults } from "../mocks/fixtures";
 import { useMatchResults } from "../context/MatchResultsContext";
@@ -41,7 +41,7 @@ export function ResultsScreen() {
         </Link>
         <div className="screen-toolbar__actions">
           <ToolbarIcon label="Filter" glyph="☰" active />
-          <ToolbarIcon label="Export CSV" glyph="⬇" />
+          <ExportResultsButton rows={rows} playlistName="match-results" label="Export" />
           <Link to="/settings">
             <Button variant="secondary">Settings</Button>
           </Link>

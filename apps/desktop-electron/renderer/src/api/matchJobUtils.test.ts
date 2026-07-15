@@ -57,6 +57,7 @@ describe("isTerminalJobState", () => {
   it("detects terminal states", () => {
     expect(isTerminalJobState("succeeded")).toBe(true);
     expect(isTerminalJobState("failed")).toBe(true);
+    expect(isTerminalJobState("cancelled")).toBe(true);
     expect(isTerminalJobState("running")).toBe(false);
   });
 });

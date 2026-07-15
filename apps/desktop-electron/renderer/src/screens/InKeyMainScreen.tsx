@@ -24,13 +24,14 @@ export function InKeyMainScreen() {
   const [playlistName, setPlaylistName] = useState("My Playlist");
   const engineAvailable = hasEngineBridge();
 
-  const { running, progress, startMatch } = useMatchJob({
+  const { running, cancelling, progress, startMatch, cancelMatch } = useMatchJob({
     onComplete: () => {
       push(
         engineAvailable ? "Batch complete — review results." : "Batch complete (mock).",
         "success",
       );
     },
+    onCancelled: () => push("Processing cancelled.", "info"),
     onError: (message) => push(message, "warning"),
   });
 
@@ -143,10 +144,10 @@ export function InKeyMainScreen() {
               </div>
             </dl>
             <div className="match-actions">
-              <Button variant="primary" loading={running} onClick={handleStart}>
-                {running ? "Processing…" : engineAvailable && fileSource !== "native" ? "Start demo job" : "Start matching"}
+              <Button variant="primary" loading={running && !cancelling} onClick={handleStart}>
+                {running ? (cancelling ? "Cancelling…" : "Processing…") : engineAvailable && fileSource !== "native" ? "Start demo job" : "Start matching"}
               </Button>
-              <Button variant="secondary" disabled={!running}>
+              <Button variant="secondary" disabled={!running} loading={cancelling} onClick={() => void cancelMatch()}>
                 Cancel
               </Button>
               <Button

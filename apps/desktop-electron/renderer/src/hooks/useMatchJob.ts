@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { MatchJobStatus } from "../api/cuepointBridge.types";
 import { hasEngineBridge } from "../api/cuepointBridge.types";
 import { isTerminalJobState, progressFromJobStatus } from "../api/matchJobUtils";
 import { idleProgress, sampleProgress } from "../mocks/fixtures";
@@ -11,14 +12,18 @@ export type FileSource = "none" | "mock" | "native";
 
 interface UseMatchJobOptions {
   onComplete?: () => void;
+  onCancelled?: () => void;
   onError?: (message: string) => void;
 }
 
-export function useMatchJob({ onComplete, onError }: UseMatchJobOptions = {}) {
+export function useMatchJob({ onComplete, onCancelled, onError }: UseMatchJobOptions = {}) {
   const { setEngineResults } = useMatchResults();
   const [running, setRunning] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [progress, setProgress] = useState<ProgressInfo>(idleProgress);
   const pollTimerRef = useRef<number | null>(null);
+  const unsubscribeEventsRef = useRef<(() => void) | null>(null);
+  const mockTimerRef = useRef<number | null>(null);
   const activeJobIdRef = useRef<string | null>(null);
 
   const clearPollTimer = useCallback(() => {
@@ -28,7 +33,65 @@ export function useMatchJob({ onComplete, onError }: UseMatchJobOptions = {}) {
     }
   }, []);
 
-  useEffect(() => () => clearPollTimer(), [clearPollTimer]);
+  const clearEventSubscription = useCallback(() => {
+    if (unsubscribeEventsRef.current) {
+      unsubscribeEventsRef.current();
+      unsubscribeEventsRef.current = null;
+    }
+  }, []);
+
+  useEffect(
+    () => () => {
+      clearPollTimer();
+      clearEventSubscription();
+      if (mockTimerRef.current != null) {
+        window.clearTimeout(mockTimerRef.current);
+      }
+    },
+    [clearEventSubscription, clearPollTimer],
+  );
+
+  const finishJob = useCallback(
+    async (status: MatchJobStatus, jobId: string) => {
+      clearPollTimer();
+      clearEventSubscription();
+      activeJobIdRef.current = null;
+      setRunning(false);
+      setCancelling(false);
+      setProgress(progressFromJobStatus(status));
+
+      if (status.state === "cancelled") {
+        onCancelled?.();
+        return;
+      }
+
+      if (status.state === "failed") {
+        onError?.(status.error?.message ?? "Match job failed");
+        return;
+      }
+
+      const bridge = window.cuepoint;
+      if (!bridge?.getJobResults) return;
+      const payload = await bridge.getJobResults(jobId);
+      setEngineResults(payload.results, jobId);
+      onComplete?.();
+    },
+    [clearEventSubscription, clearPollTimer, onCancelled, onComplete, onError, setEngineResults],
+  );
+
+  const handleJobEvent = useCallback(
+    (jobId: string, event: MatchJobStatus & { type?: string }) => {
+      if (event.type === "error") {
+        onError?.(typeof event.error?.message === "string" ? event.error.message : "Job stream failed");
+        return;
+      }
+      setProgress(progressFromJobStatus(event));
+      if (isTerminalJobState(event.state)) {
+        void finishJob(event, jobId);
+      }
+    },
+    [finishJob, onError],
+  );
 
   const pollJob = useCallback(
     async (jobId: string) => {
@@ -37,36 +100,42 @@ export function useMatchJob({ onComplete, onError }: UseMatchJobOptions = {}) {
 
       try {
         const status = await bridge.getJob(jobId);
-        setProgress(progressFromJobStatus(status));
-
-        if (!isTerminalJobState(status.state)) return;
-
-        clearPollTimer();
-        activeJobIdRef.current = null;
-        setRunning(false);
-
-        if (status.state === "failed") {
-          onError?.(status.error?.message ?? "Match job failed");
-          return;
-        }
-
-        const payload = await bridge.getJobResults(jobId);
-        setEngineResults(payload.results, jobId);
-        onComplete?.();
+        handleJobEvent(jobId, status);
       } catch (error) {
         clearPollTimer();
+        clearEventSubscription();
         activeJobIdRef.current = null;
         setRunning(false);
+        setCancelling(false);
         onError?.(error instanceof Error ? error.message : "Match job failed");
       }
     },
-    [clearPollTimer, onComplete, onError, setEngineResults],
+    [clearEventSubscription, clearPollTimer, handleJobEvent, onError],
+  );
+
+  const subscribeToJob = useCallback(
+    (jobId: string) => {
+      const bridge = window.cuepoint;
+      if (bridge?.subscribeJobEvents) {
+        clearEventSubscription();
+        unsubscribeEventsRef.current = bridge.subscribeJobEvents(jobId, (event) => {
+          handleJobEvent(jobId, event);
+        });
+        return;
+      }
+
+      clearPollTimer();
+      pollTimerRef.current = window.setInterval(() => {
+        void pollJob(jobId);
+      }, POLL_INTERVAL_MS);
+    },
+    [clearEventSubscription, clearPollTimer, handleJobEvent, pollJob],
   );
 
   const startMockRun = useCallback(() => {
     setRunning(true);
     setProgress(sampleProgress);
-    window.setTimeout(() => {
+    mockTimerRef.current = window.setTimeout(() => {
       setRunning(false);
       setProgress({
         ...sampleProgress,
@@ -97,6 +166,7 @@ export function useMatchJob({ onComplete, onError }: UseMatchJobOptions = {}) {
         fileSource === "native" && filePath.trim().length > 0 && playlistName.trim().length > 0;
 
       setRunning(true);
+      setCancelling(false);
       setProgress({
         ...idleProgress,
         reliability_state: "preflight",
@@ -111,21 +181,50 @@ export function useMatchJob({ onComplete, onError }: UseMatchJobOptions = {}) {
         );
         activeJobIdRef.current = started.id;
         await pollJob(started.id);
-        pollTimerRef.current = window.setInterval(() => {
-          void pollJob(started.id);
-        }, POLL_INTERVAL_MS);
+        subscribeToJob(started.id);
       } catch (error) {
         setRunning(false);
+        setCancelling(false);
         setProgress(idleProgress);
         onError?.(error instanceof Error ? error.message : "Failed to start match job");
       }
     },
-    [onComplete, onError, pollJob, running, startMockRun],
+    [onError, pollJob, running, startMockRun, subscribeToJob],
   );
+
+  const cancelMatch = useCallback(async () => {
+    const jobId = activeJobIdRef.current;
+    if (!running || !jobId) return;
+
+    if (!window.cuepoint?.cancelMatchJob) {
+      if (mockTimerRef.current != null) {
+        window.clearTimeout(mockTimerRef.current);
+        mockTimerRef.current = null;
+      }
+      setRunning(false);
+      setProgress({
+        ...idleProgress,
+        reliability_state: "failed",
+        status_message: "Cancelled",
+      });
+      onCancelled?.();
+      return;
+    }
+
+    setCancelling(true);
+    try {
+      await window.cuepoint.cancelMatchJob(jobId);
+    } catch (error) {
+      setCancelling(false);
+      onError?.(error instanceof Error ? error.message : "Failed to cancel job");
+    }
+  }, [onCancelled, onError, running]);
 
   return {
     running,
+    cancelling,
     progress,
     startMatch,
+    cancelMatch,
   };
 }

@@ -31,15 +31,15 @@ export function normalizeProgress(raw: Partial<ProgressInfo> | undefined | null)
 }
 
 export function isTerminalJobState(state: JobState | string): boolean {
-  return state === "succeeded" || state === "failed";
+  return state === "succeeded" || state === "failed" || state === "cancelled";
 }
 
 export function progressFromJobStatus(job: MatchJobStatus): ProgressInfo {
-  if (job.state === "failed") {
+  if (job.state === "failed" || job.state === "cancelled") {
     return {
       ...idleProgress,
       reliability_state: "failed",
-      status_message: job.error?.message ?? "Job failed",
+      status_message: job.error?.message ?? (job.state === "cancelled" ? "Cancelled" : "Job failed"),
     };
   }
   if (job.state === "succeeded" && job.progress) {
