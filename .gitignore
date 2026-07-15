@@ -348,6 +348,9 @@ node_modules/
 dist/
 storybook-static/
 *.tsbuildinfo
+apps/desktop-electron/resources/engine/
+apps/desktop-electron/release/
+cuepoint-engine.exe
 
 scripts/delete_all_releases.py
 
