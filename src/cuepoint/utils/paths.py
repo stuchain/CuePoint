@@ -17,9 +17,59 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from PySide6.QtCore import QStandardPaths
-
 from cuepoint.utils.platform import is_macos, is_windows
+
+
+def _standard_path(location: str) -> Path:
+    """Resolve a Qt QStandardPaths-style writable location (Qt optional)."""
+    try:
+        from PySide6.QtCore import QStandardPaths
+
+        mapping = {
+            "AppConfigLocation": QStandardPaths.AppConfigLocation,  # type: ignore[attr-defined]
+            "AppLocalDataLocation": QStandardPaths.AppLocalDataLocation,  # type: ignore[attr-defined]
+            "CacheLocation": QStandardPaths.CacheLocation,  # type: ignore[attr-defined]
+            "DocumentsLocation": QStandardPaths.DocumentsLocation,  # type: ignore[attr-defined]
+        }
+        return Path(QStandardPaths.writableLocation(mapping[location]))  # type: ignore[attr-defined]
+    except ImportError:
+        return _standard_path_fallback(location)
+
+
+def _standard_path_fallback(location: str) -> Path:
+    """Headless fallback when PySide6 is unavailable (Electron engine sidecar)."""
+    home = Path.home()
+    if is_windows():
+        appdata = Path(os.environ.get("APPDATA", home / "AppData" / "Roaming"))
+        local = Path(os.environ.get("LOCALAPPDATA", home / "AppData" / "Local"))
+        documents = Path(os.environ.get("USERPROFILE", home)) / "Documents"
+        if location == "AppConfigLocation":
+            return appdata
+        if location == "AppLocalDataLocation":
+            return local
+        if location == "CacheLocation":
+            return local
+        if location == "DocumentsLocation":
+            return documents
+    elif is_macos():
+        if location == "AppConfigLocation":
+            return home / "Library" / "Application Support"
+        if location == "AppLocalDataLocation":
+            return home / "Library" / "Application Support"
+        if location == "CacheLocation":
+            return home / "Library" / "Caches"
+        if location == "DocumentsLocation":
+            return home / "Documents"
+    else:
+        if location == "AppConfigLocation":
+            return home / ".config"
+        if location == "AppLocalDataLocation":
+            return home / ".local" / "share"
+        if location == "CacheLocation":
+            return home / ".cache"
+        if location == "DocumentsLocation":
+            return home / "Documents"
+    raise ValueError(f"Unknown standard path location: {location}")
 
 
 class AppPaths:
@@ -72,12 +122,7 @@ class AppPaths:
         Returns:
             Path to configuration directory.
         """
-        path = (
-            Path(
-                QStandardPaths.writableLocation(QStandardPaths.AppConfigLocation)  # type: ignore[attr-defined]
-            )
-            / "CuePoint"
-        )
+        path = _standard_path("AppConfigLocation") / "CuePoint"
         return AppPaths._ensure_dir(path)
 
     @staticmethod
@@ -101,12 +146,7 @@ class AppPaths:
         Returns:
             Path to data directory.
         """
-        path = (
-            Path(
-                QStandardPaths.writableLocation(QStandardPaths.AppLocalDataLocation)  # type: ignore[attr-defined]
-            )
-            / "CuePoint"
-        )
+        path = _standard_path("AppLocalDataLocation") / "CuePoint"
         return AppPaths._ensure_dir(path)
 
     @staticmethod
@@ -121,14 +161,7 @@ class AppPaths:
         Returns:
             Path to cache directory.
         """
-        path = (
-            Path(
-                QStandardPaths.writableLocation(
-                    QStandardPaths.CacheLocation  # type: ignore[attr-defined]
-                )
-            )
-            / "CuePoint"
-        )
+        path = _standard_path("CacheLocation") / "CuePoint"
         return AppPaths._ensure_dir(path)
 
     @staticmethod
@@ -154,9 +187,7 @@ class AppPaths:
         Returns:
             Path to exports directory.
         """
-        documents = Path(
-            QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation)  # type: ignore[attr-defined]
-        )
+        documents = _standard_path("DocumentsLocation")
         exports = documents / "CuePoint_Output"
         return AppPaths._ensure_dir(exports)
 

@@ -15,8 +15,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 
-from PySide6.QtCore import QSettings
-
 from cuepoint.utils.cache_manager import CacheManager
 from cuepoint.utils.history_manager import HistoryManager
 from cuepoint.utils.paths import AppPaths
@@ -145,17 +143,21 @@ class DiagnosticCollector:
         Returns:
             Dictionary with configuration information.
         """
-        settings = QSettings()
+        settings_block: Dict[str, Any] = {}
+        try:
+            from PySide6.QtCore import QSettings
+
+            settings = QSettings()
+            settings_block = {
+                "output_directory": str(settings.value("output_directory", "")),
+                "cache_enabled": settings.value("cache_enabled", True, type=bool),
+                "auto_update_check": settings.value("auto_update_check", True, type=bool),
+            }
+        except ImportError:
+            settings_block = {"source": "headless", "note": "Qt settings unavailable"}
+
         config_file = AppPaths.config_file()
-
-        config = {}
-
-        # Read settings (non-sensitive only)
-        config["settings"] = {
-            "output_directory": str(settings.value("output_directory", "")),
-            "cache_enabled": settings.value("cache_enabled", True, type=bool),
-            "auto_update_check": settings.value("auto_update_check", True, type=bool),
-        }
+        config: Dict[str, Any] = {"settings": settings_block}
 
         # Read config file if exists
         if config_file.exists():
