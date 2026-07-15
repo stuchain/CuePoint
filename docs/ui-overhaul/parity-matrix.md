@@ -7,12 +7,12 @@ Maps **production Qt** surfaces to **Electron lab** routes for Phase 6 cutover. 
 | Surface | Qt source | Lab route | Priority | Status | Notes |
 | --- | --- | --- | --- | --- | --- |
 | Tool picker | [`tool_selection_page.py`](../../src/cuepoint/ui/widgets/tool_selection_page.py) | `/` | P0 | Lab wired | Centered landing + inKey primary CTA |
-| inKey main | [`main_window.py`](../../src/cuepoint/ui/main_window.py) (Main tab) | `/match` | P0 | Lab wired | Demo/real XML + M3U jobs via engine |
-| inKey past searches | Main window tab | `/match` (Past searches tab) | P1 | Lab wired | Engine history API + XML/M3U re-run |
-| Results table | [`results_view.py`](../../src/cuepoint/ui/widgets/results_view.py) | `/results` | P0 | Wired | Engine results + export |
+| inKey main | [`main_window.py`](../../src/cuepoint/ui/main_window.py) (Main tab) | `/match` | P0 | Lab wired | XML/M3U jobs + drag-drop |
+| inKey past searches | Main window tab | `/match` (Past searches tab) | P1 | Lab wired | History + XML/M3U re-run + tag sync |
+| Results table | [`results_view.py`](../../src/cuepoint/ui/widgets/results_view.py) | `/results` | P0 | Wired | Engine results + export + tag sync |
 | Settings / export | [`settings_dialog.py`](../../src/cuepoint/ui/dialogs/settings_dialog.py) | `/settings` | P1 | Lab wired | Export + Beatport token via engine |
 | inCrate page shell | [`incrate_page.py`](../../src/cuepoint/ui/widgets/incrate_page.py) | `/incrate` | P1 | Lab wired | Import, discover, playlist via engine |
-| inCrate import | [`incrate_import_section.py`](../../src/cuepoint/ui/widgets/incrate_import_section.py) | `/incrate#import` | P1 | Lab stub | Collection XML import |
+| inCrate import | [`incrate_import_section.py`](../../src/cuepoint/ui/widgets/incrate_import_section.py) | `/incrate#import` | P1 | Lab wired | Browse, enrich, reset, stats |
 | inCrate inventory | [`incrate_inventory_section.py`](../../src/cuepoint/ui/widgets/incrate_inventory_section.py) | `/incrate` (panel) | P1 | Lab wired | Engine GET inventory + import |
 | inCrate discover | [`incrate_discover_section.py`](../../src/cuepoint/ui/widgets/incrate_discover_section.py) | `/incrate#discover` | P1 | Lab wired | Engine discover API |
 | inCrate results | [`incrate_results_section.py`](../../src/cuepoint/ui/widgets/incrate_results_section.py) | `/incrate` (panel) | P1 | Lab wired | Discovery results list |

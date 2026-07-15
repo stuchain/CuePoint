@@ -1,26 +1,28 @@
 # Next milestone
 
-**Gate:** Milestone 11 complete — M3U match + history re-run.
+**Gate:** Milestone 14 complete — drop zones + lab RC matrix.
 
 ---
 
-## Completed (Milestone 11)
+## Completed (Milestone 14)
 
 | Slice | Status |
 | --- | --- |
-| M3U match job (`m3u_path`) | Done |
-| inKey Collection / M3U source toggle | Done |
-| History M3U re-run + browse fallback | Done |
-| Electron `openM3uFileDialog` | Done |
+| inKey XML/M3U drop zones | Done |
+| inCrate import drop zone | Done |
+| Lab RC manual test matrix | Done |
 
 ---
 
-## Next slices (Phase 6 parity)
+## Next slices
 
 | Priority | Scope |
 | --- | --- |
-| Sync tags from history CSV | Qt parity |
-| Sticky columns for batch-mode Qt tables | Optional polish |
-| Phase 10 Qt removal | Post full parity |
+| Commit M12–M14 batch | Git hygiene |
+| Playwright Electron smoke | Phase 8 |
+| Manual RC pass (3 OS) | Phase 8 sign-off |
+| Phase 10 Qt cutover planning | Post parity |
 
-See [tracking/milestone-11-m3u-rerun.md](tracking/milestone-11-m3u-rerun.md).
+See [tracking/milestone-14-drop-zones-rc.md](tracking/milestone-14-drop-zones-rc.md).
+
+**Uncommitted locally:** Milestones 12–14 (sync tags, inCrate import, drop zones).

@@ -63,7 +63,10 @@ This folder captures **decisions, layout rules, and implementation details** pro
 | **Milestone 8** | Tool picker + past searches | **Done** |
 | **Milestone 9** | History rerun + review workflow | **Done** |
 | **Milestone 10** | Real XML batch matching | **Done** |
-| **Next** | M3U rerun, sync tags, Qt batch polish | See [next-milestone.md](next-milestone.md) |
+| **Milestone 11** | M3U match + history re-run | **Done** |
+| **Milestone 12** | Sync tags with Rekordbox | **Done** (uncommitted) |
+| **Milestone 13** | inCrate import parity | **Done** (uncommitted) |
+| **Milestone 14** | Drop zones + lab RC matrix | **Done** (uncommitted) |
 | Phase 6 | Full GUI parity + inCrate | In progress (matrix) |
 
 Update this table as each slice lands in the main app.
