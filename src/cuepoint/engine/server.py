@@ -9,14 +9,23 @@ import threading
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Optional, Tuple, Type
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
-from cuepoint.engine.jobs import JobStore, parse_match_job_body, start_match_job
+from cuepoint.engine.job_events import iter_job_events
+from cuepoint.engine.export_api import parse_export_body, run_export
+from cuepoint.engine.incrate_api import (
+    demo_inventory_snapshot,
+    get_inventory_snapshot,
+    parse_incrate_import_body,
+    run_incrate_import,
+)
+from cuepoint.engine.jobs import JobStore, cancel_match_job, parse_match_job_body, start_match_job
 from cuepoint.engine.jobs import track_result_to_dict
 from cuepoint.version import __version__
 
 ALLOWED_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
-JOB_ID_PATH = re.compile(r"^/api/v1/jobs/([^/]+)(/results)?$")
+JOB_ROUTE = re.compile(r"^/api/v1/jobs/([^/]+)(?:/(results|events))?$")
+JOB_CANCEL_ROUTE = re.compile(r"^/api/v1/jobs/([^/]+)/cancel$")
 
 # Shared job store for process lifetime
 _JOB_STORE = JobStore()
@@ -92,20 +101,40 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
                 return b""
             return self.rfile.read(length)
 
-        def _handle_job_get(self, path: str) -> None:
-            if not self._authorized():
-                self._send_json(401, error_payload("UNAUTHORIZED", "Missing or invalid token"))
-                return
-            match = JOB_ID_PATH.match(path)
-            if not match:
-                self._send_json(404, error_payload("NOT_FOUND", "Unknown path"))
-                return
-            job_id, results_suffix = match.group(1), match.group(2)
+        def _stream_job_events(self, job_id: str) -> None:
             job = job_store.get(job_id)
             if job is None:
                 self._send_json(404, error_payload("JOB_NOT_FOUND", f"Job {job_id} not found"))
                 return
-            if results_suffix:
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Connection", "keep-alive")
+            self.end_headers()
+            try:
+                for frame in iter_job_events(job_store, job_id):
+                    self.wfile.write(frame)
+                    self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                return
+
+        def _handle_job_get(self, path: str) -> None:
+            if not self._authorized():
+                self._send_json(401, error_payload("UNAUTHORIZED", "Missing or invalid token"))
+                return
+            match = JOB_ROUTE.match(path)
+            if not match:
+                self._send_json(404, error_payload("NOT_FOUND", "Unknown path"))
+                return
+            job_id, suffix = match.group(1), match.group(2)
+            job = job_store.get(job_id)
+            if job is None:
+                self._send_json(404, error_payload("JOB_NOT_FOUND", f"Job {job_id} not found"))
+                return
+            if suffix == "events":
+                self._stream_job_events(job_id)
+                return
+            if suffix == "results":
                 self._send_json(
                     200,
                     {
@@ -117,8 +146,35 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
                 return
             self._send_json(200, job.to_status_dict())
 
+        def _handle_incrate_get(self, path: str, query: str) -> None:
+            if path != "/api/v1/incrate/inventory":
+                self._send_json(404, error_payload("NOT_FOUND", "Unknown path"))
+                return
+            if not self._authorized():
+                self._send_json(401, error_payload("UNAUTHORIZED", "Missing or invalid token"))
+                return
+            params = parse_qs(query)
+            limit_raw = params.get("limit", ["100"])[0]
+            search = params.get("search", [""])[0] or None
+            demo = params.get("demo", ["false"])[0].lower() in ("1", "true", "yes")
+            try:
+                limit = int(limit_raw)
+            except ValueError:
+                self._send_json(400, error_payload("INVALID_REQUEST", "limit must be an integer"))
+                return
+            try:
+                if demo:
+                    payload = demo_inventory_snapshot()
+                else:
+                    payload = get_inventory_snapshot(limit=limit, search=search)
+            except Exception as exc:  # noqa: BLE001 — surface to API client
+                self._send_json(500, error_payload("INCRATE_FAILED", str(exc)))
+                return
+            self._send_json(200, payload)
+
         def do_GET(self) -> None:  # noqa: N802
-            path = urlparse(self.path).path
+            parsed = urlparse(self.path)
+            path = parsed.path
             if path == "/health":
                 self._send_json(200, health_payload())
                 return
@@ -131,23 +187,68 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
             if path.startswith("/api/v1/jobs/"):
                 self._handle_job_get(path)
                 return
+            if path.startswith("/api/v1/incrate/"):
+                self._handle_incrate_get(path, parsed.query)
+                return
             self._send_json(404, error_payload("NOT_FOUND", "Unknown path"))
 
         def do_POST(self) -> None:  # noqa: N802
             path = urlparse(self.path).path
-            if path != "/api/v1/jobs/match":
-                self._send_json(404, error_payload("NOT_FOUND", "Unknown path"))
-                return
             if not self._authorized():
                 self._send_json(401, error_payload("UNAUTHORIZED", "Missing or invalid token"))
                 return
-            try:
-                body = parse_match_job_body(self._read_body())
-                job = start_match_job(job_store, body)
-            except ValueError as exc:
-                self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+
+            if path == "/api/v1/jobs/match":
+                try:
+                    body = parse_match_job_body(self._read_body())
+                    job = start_match_job(job_store, body)
+                except ValueError as exc:
+                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                    return
+                self._send_json(202, {"id": job.id, "state": job.state.value})
                 return
-            self._send_json(202, {"id": job.id, "state": job.state.value})
+
+            cancel_match = JOB_CANCEL_ROUTE.match(path)
+            if cancel_match:
+                job_id = cancel_match.group(1)
+                job = job_store.get(job_id)
+                if job is None:
+                    self._send_json(404, error_payload("JOB_NOT_FOUND", f"Job {job_id} not found"))
+                    return
+                cancelled = cancel_match_job(job_store, job_id)
+                self._send_json(200, {"id": cancelled.id, "state": cancelled.state.value})
+                return
+
+            if path == "/api/v1/export":
+                try:
+                    body = parse_export_body(self._read_body())
+                    payload = run_export(body, job_store)
+                except ValueError as exc:
+                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                    return
+                except Exception as exc:  # noqa: BLE001 — surface to API client
+                    self._send_json(500, error_payload("EXPORT_FAILED", str(exc)))
+                    return
+                self._send_json(200, payload)
+                return
+
+            if path == "/api/v1/incrate/import":
+                try:
+                    body = parse_incrate_import_body(self._read_body())
+                    payload = run_incrate_import(body)
+                except ValueError as exc:
+                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                    return
+                except FileNotFoundError as exc:
+                    self._send_json(404, error_payload("FILE_NOT_FOUND", str(exc)))
+                    return
+                except Exception as exc:  # noqa: BLE001 — surface to API client
+                    self._send_json(500, error_payload("INCRATE_IMPORT_FAILED", str(exc)))
+                    return
+                self._send_json(200, payload)
+                return
+
+            self._send_json(404, error_payload("NOT_FOUND", "Unknown path"))
 
     return EngineHandler
 

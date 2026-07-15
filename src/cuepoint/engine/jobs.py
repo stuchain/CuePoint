@@ -22,6 +22,7 @@ class JobState(str, Enum):
     RUNNING = "running"
     SUCCEEDED = "succeeded"
     FAILED = "failed"
+    CANCELLED = "cancelled"
 
 
 def _utc_now() -> str:
@@ -72,6 +73,7 @@ class MatchJob:
     results: List[TrackResult] = field(default_factory=list)
     error: Optional[Dict[str, str]] = None
     demo: bool = False
+    cancel_requested: bool = False
 
     def to_status_dict(self) -> Dict[str, Any]:
         payload: Dict[str, Any] = {
@@ -94,6 +96,33 @@ class JobStore:
     def __init__(self) -> None:
         self._jobs: Dict[str, MatchJob] = {}
         self._lock = threading.Lock()
+        self._controllers: Dict[str, Any] = {}
+
+    def register_controller(self, job_id: str, controller: Any) -> None:
+        with self._lock:
+            self._controllers[job_id] = controller
+
+    def unregister_controller(self, job_id: str) -> None:
+        with self._lock:
+            self._controllers.pop(job_id, None)
+
+    def request_cancel(self, job_id: str) -> MatchJob:
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if job is None:
+                raise KeyError(job_id)
+            if job.state in (
+                JobState.SUCCEEDED,
+                JobState.FAILED,
+                JobState.CANCELLED,
+            ):
+                return job
+            job.cancel_requested = True
+            job.updated_at = _utc_now()
+            controller = self._controllers.get(job_id)
+        if controller is not None:
+            controller.cancel()
+        return job
 
     def create_match_job(
         self,
@@ -124,6 +153,23 @@ class JobStore:
         self._update(job, state=JobState.RUNNING)
         try:
             runner(job)
+            with self._lock:
+                if job.state in (
+                    JobState.FAILED,
+                    JobState.SUCCEEDED,
+                    JobState.CANCELLED,
+                ):
+                    return
+                if job.cancel_requested:
+                    self._update(
+                        job,
+                        state=JobState.CANCELLED,
+                        error={
+                            "code": "JOB_CANCELLED",
+                            "message": "Cancelled by user",
+                        },
+                    )
+                    return
             if job.state not in (JobState.FAILED, JobState.SUCCEEDED):
                 self._update(job, state=JobState.SUCCEEDED)
         except Exception as exc:  # noqa: BLE001 — surface to API client
@@ -132,6 +178,8 @@ class JobStore:
                 state=JobState.FAILED,
                 error={"code": "JOB_FAILED", "message": str(exc)},
             )
+        finally:
+            self.unregister_controller(job.id)
 
     def _update(
         self,
@@ -170,6 +218,22 @@ def run_demo_match_job(job: MatchJob, store: JobStore) -> None:
     total = 5
     results: List[TrackResult] = []
     for i in range(1, total + 1):
+        if job.cancel_requested:
+            store._update(
+                job,
+                progress=ProgressInfo(
+                    completed_tracks=max(0, i - 1),
+                    total_tracks=total,
+                    matched_count=len([r for r in results if r.matched]),
+                    unmatched_count=len([r for r in results if not r.matched]),
+                    status_message="Cancelled",
+                    reliability_state="failed",
+                ),
+                results=results,
+                state=JobState.CANCELLED,
+                error={"code": "JOB_CANCELLED", "message": "Cancelled by user"},
+            )
+            return
         time.sleep(0.05)
         progress = ProgressInfo(
             completed_tracks=i,
@@ -220,6 +284,7 @@ def run_real_match_job(
 
     processor = get_container().resolve(IProcessorService)
     controller = ProcessingController()
+    store.register_controller(job.id, controller)
 
     def on_progress(info: ProgressInfo) -> None:
         store._update(job, progress=info)
@@ -230,6 +295,22 @@ def run_real_match_job(
         progress_callback=on_progress,
         controller=controller,
     )
+    if controller.is_cancelled() or job.cancel_requested:
+        store._update(
+            job,
+            results=results,
+            progress=ProgressInfo(
+                completed_tracks=len(results),
+                total_tracks=len(results),
+                matched_count=sum(1 for r in results if r.matched),
+                unmatched_count=sum(1 for r in results if not r.matched),
+                status_message="Cancelled",
+                reliability_state="failed",
+            ),
+            state=JobState.CANCELLED,
+            error={"code": "JOB_CANCELLED", "message": "Cancelled by user"},
+        )
+        return
     store._update(
         job,
         results=results,
@@ -279,3 +360,7 @@ def start_match_job(store: JobStore, body: Dict[str, Any]) -> MatchJob:
         demo=False,
         runner=runner,
     )
+
+
+def cancel_match_job(store: JobStore, job_id: str) -> MatchJob:
+    return store.request_cancel(job_id)
