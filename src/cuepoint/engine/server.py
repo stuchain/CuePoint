@@ -11,13 +11,25 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Optional, Tuple, Type
 from urllib.parse import parse_qs, urlparse
 
+from cuepoint.engine.config_api import (
+    get_beatport_token_status,
+    parse_beatport_token_body,
+    parse_beatport_token_test_body,
+    set_beatport_token,
+    test_beatport_token,
+)
 from cuepoint.engine.job_events import iter_job_events
 from cuepoint.engine.export_api import parse_export_body, run_export
 from cuepoint.engine.incrate_api import (
     demo_inventory_snapshot,
+    get_discover_options,
     get_inventory_snapshot,
+    parse_discover_body,
     parse_incrate_import_body,
+    parse_playlist_body,
+    run_discover,
     run_incrate_import,
+    run_playlist_create,
 )
 from cuepoint.engine.jobs import JobStore, cancel_match_job, parse_match_job_body, start_match_job
 from cuepoint.engine.jobs import track_result_to_dict
@@ -147,11 +159,19 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
             self._send_json(200, job.to_status_dict())
 
         def _handle_incrate_get(self, path: str, query: str) -> None:
-            if path != "/api/v1/incrate/inventory":
-                self._send_json(404, error_payload("NOT_FOUND", "Unknown path"))
-                return
             if not self._authorized():
                 self._send_json(401, error_payload("UNAUTHORIZED", "Missing or invalid token"))
+                return
+            if path == "/api/v1/incrate/discover/options":
+                try:
+                    payload = get_discover_options()
+                except Exception as exc:  # noqa: BLE001 — surface to API client
+                    self._send_json(500, error_payload("INCRATE_FAILED", str(exc)))
+                    return
+                self._send_json(200, payload)
+                return
+            if path != "/api/v1/incrate/inventory":
+                self._send_json(404, error_payload("NOT_FOUND", "Unknown path"))
                 return
             params = parse_qs(query)
             limit_raw = params.get("limit", ["100"])[0]
@@ -189,6 +209,12 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
                 return
             if path.startswith("/api/v1/incrate/"):
                 self._handle_incrate_get(path, parsed.query)
+                return
+            if path == "/api/v1/config/beatport-token":
+                if not self._authorized():
+                    self._send_json(401, error_payload("UNAUTHORIZED", "Missing or invalid token"))
+                    return
+                self._send_json(200, get_beatport_token_status())
                 return
             self._send_json(404, error_payload("NOT_FOUND", "Unknown path"))
 
@@ -246,6 +272,52 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
                     self._send_json(500, error_payload("INCRATE_IMPORT_FAILED", str(exc)))
                     return
                 self._send_json(200, payload)
+                return
+
+            if path == "/api/v1/incrate/discover":
+                try:
+                    body = parse_discover_body(self._read_body())
+                    payload = run_discover(body)
+                except ValueError as exc:
+                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                    return
+                except Exception as exc:  # noqa: BLE001 — surface to API client
+                    self._send_json(500, error_payload("INCRATE_DISCOVER_FAILED", str(exc)))
+                    return
+                self._send_json(200, payload)
+                return
+
+            if path == "/api/v1/incrate/playlist":
+                try:
+                    body = parse_playlist_body(self._read_body())
+                    payload = run_playlist_create(body)
+                except ValueError as exc:
+                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                    return
+                except Exception as exc:  # noqa: BLE001 — surface to API client
+                    self._send_json(500, error_payload("INCRATE_PLAYLIST_FAILED", str(exc)))
+                    return
+                self._send_json(200, payload)
+                return
+
+            if path == "/api/v1/config/beatport-token":
+                try:
+                    body = parse_beatport_token_body(self._read_body())
+                    payload = set_beatport_token(body["token"])
+                except ValueError as exc:
+                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                    return
+                self._send_json(200, payload)
+                return
+
+            if path == "/api/v1/config/beatport-token/test":
+                try:
+                    body = parse_beatport_token_test_body(self._read_body())
+                    ok, message = test_beatport_token(body.get("token"))
+                except ValueError as exc:
+                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                    return
+                self._send_json(200, {"ok": ok, "message": message})
                 return
 
             self._send_json(404, error_payload("NOT_FOUND", "Unknown path"))
