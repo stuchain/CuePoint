@@ -4,19 +4,61 @@
   "version": "0.0.0",
   "type": "module",
   "description": "CuePoint Electron shell workspace (renderer + main process)",
+  "cuepoint": {
+    "engineVersion": "1.0.0-feb1"
+  },
   "main": "electron-dist/main.mjs",
   "scripts": {
     "dev:renderer": "npm run dev --prefix renderer",
     "build:renderer": "npm run build --prefix renderer",
     "build:electron": "esbuild electron/main.ts --bundle --platform=node --packages=external --format=esm --outfile=electron-dist/main.mjs",
+    "build": "npm run build:renderer && npm run build:electron",
+    "build:engine-sidecar": "python ../../scripts/build_engine_sidecar.py",
+    "pack:full": "npm run build:engine-sidecar && npm run pack",
     "storybook": "npm run storybook --prefix renderer",
     "dev": "npm run dev:renderer",
     "electron:dev": "npm run build:electron && cross-env NODE_ENV=development electron .",
-    "electron:start": "npm run build:electron && cross-env NODE_ENV=production electron ."
+    "electron:start": "npm run build:electron && cross-env NODE_ENV=production electron .",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install chromium",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder"
+  },
+  "build": {
+    "appId": "com.cuepoint.desktop",
+    "productName": "CuePoint",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron-dist/**/*",
+      "renderer/dist/**/*",
+      "electron/preload.cjs",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/engine/${os}",
+        "to": "engine",
+        "filter": ["**/*"]
+      }
+    ],
+    "asar": true,
+    "win": {
+      "target": ["dir"]
+    },
+    "mac": {
+      "target": ["dir"]
+    },
+    "linux": {
+      "target": ["dir"]
+    }
   },
   "devDependencies": {
+    "@playwright/test": "^1.52.0",
     "cross-env": "^7.0.3",
     "electron": "^34.5.8",
+    "electron-builder": "^25.1.8",
     "esbuild": "^0.25.0",
     "tsx": "^4.19.3",
     "typescript": "~5.7.3"
