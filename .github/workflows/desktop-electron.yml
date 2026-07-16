@@ -56,6 +56,9 @@ jobs:
       - name: Build engine sidecar (packaged smoke)
         run: python scripts/build_engine_sidecar.py
 
+      - name: Verify no Qt imports in core packages
+        run: python scripts/check_no_qt_in_core.py
+
       - name: Engine unit tests (HTTP API)
         env:
           PYTHONPATH: src

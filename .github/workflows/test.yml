@@ -43,6 +43,9 @@ jobs:
           pip install bandit
           bandit -r src -ll -x src/tests || true
 
+      - name: Verify no Qt imports in core packages
+        run: python scripts/check_no_qt_in_core.py
+
       - name: Run tests (unit, integration, system)
         run: |
           python scripts/run_tests.py --all --coverage --no-slow
