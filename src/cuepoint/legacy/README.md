@@ -59,20 +59,20 @@ cli_processor.process_playlist(xml_path, playlist_name, out_csv_base)
 ### `gui/` (Directory)
 
 **Status**: ❌ Deprecated  
-**Replaced by**: `cuepoint.ui.*` (new GUI structure)
+**Replaced by**: `apps/desktop-electron/` for the shipped desktop UI, with
+Qt code preserved only as a temporary fallback during Phase 10.
 
 **What it was**: Old GUI implementation with widgets and controllers in `src/gui/` directory.
 
 **Why it was moved**: 
 - Used legacy processor (`gui_controller.py` used `legacy.processor`)
 - Not using Phase 5 architecture
-- Replaced by new GUI structure in `cuepoint.ui.*`
-- Not used by `gui_app.py` (which uses new GUI)
+- Replaced by the Electron desktop shell plus a shrinking legacy Qt package
+- No longer the product-default desktop path
 
 **Migration path**:
-- For main window: Use `cuepoint.ui.main_window.MainWindow`
-- For controllers: Use `cuepoint.ui.controllers.main_controller.GUIController`
-- For widgets: Use `cuepoint.ui.widgets.*` (file_selector, results_view, etc.)
+- For desktop UI work: use `apps/desktop-electron/`
+- For legacy Qt fallback only: use `cuepoint.ui.*`
 
 **Example migration**:
 ```python
@@ -80,9 +80,9 @@ cli_processor.process_playlist(xml_path, playlist_name, out_csv_base)
 from gui.main_window import MainWindow
 from gui_controller import GUIController
 
-# NEW (Phase 5 - recommended):
-from cuepoint.ui.main_window import MainWindow
-from cuepoint.ui.controllers.main_controller import GUIController
+# NEW (current product direction):
+# Desktop shell lives in apps/desktop-electron/
+# Qt fallback remains only for legacy maintenance during Phase 10
 ```
 
 ### `gui_controller.py`

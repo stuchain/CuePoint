@@ -139,48 +139,48 @@ if "--test-search-dependencies" in sys.argv:
 
             sys.exit(1)
 
-if "--electron" in sys.argv or os.environ.get("CUEPOINT_DESKTOP") == "electron":
+def _use_legacy_qt() -> bool:
+    """Return True when the deprecated PySide6 GUI should start."""
+    if "--legacy-qt" in sys.argv:
+        return True
+    return bool(getattr(sys, "frozen", False))
+
+
+def _launch_electron() -> int:
+    """Start the Electron desktop shell (development default)."""
+    import subprocess
+
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    electron_dir = os.path.join(project_root, "apps", "desktop-electron")
+    package_json = os.path.join(electron_dir, "package.json")
+    if not os.path.exists(package_json):
+        print(
+            "Electron desktop shell not found (missing apps/desktop-electron/package.json)."
+        )
+        print("Install Node.js dependencies: cd apps/desktop-electron && npm install")
+        return 1
+
+    print("Launching Electron desktop shell…")
     try:
-        import subprocess
-
-        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        electron_dir = os.path.join(project_root, "apps", "desktop-electron")
-        if os.path.exists(os.path.join(electron_dir, "package.json")):
-            print("Launching Electron desktop shell…")
-            proc = subprocess.run(
-                ["npm", "run", "electron:dev"],
-                cwd=electron_dir,
-                check=False,
-            )
-            if proc.returncode == 0:
-                raise SystemExit(0)
-            print(
-                f"Electron shell exited with code {proc.returncode}; falling back to Qt GUI."
-            )
-        else:
-            print(
-                "Electron desktop shell not found (missing apps/desktop-electron); falling back to Qt GUI."
-            )
+        proc = subprocess.run(
+            ["npm", "run", "electron:dev"],
+            cwd=electron_dir,
+            check=False,
+        )
     except FileNotFoundError as exc:
-        print(f"Electron launch skipped ({exc}); falling back to Qt GUI.")
+        print(f"Electron launch failed ({exc}). Install Node.js/npm and retry.")
+        return 1
 
-from PySide6.QtGui import QIcon
+    if proc.returncode != 0:
+        print(f"Electron shell exited with code {proc.returncode}.")
+    return proc.returncode
 
-# Import Qt widgets early (needed for icon function and main)
-from PySide6.QtWidgets import QApplication, QMessageBox
 
 # Add src to path if needed (for imports)
 if __name__ == "__main__":
     src_path = os.path.dirname(os.path.abspath(__file__))
     if src_path not in sys.path:
         sys.path.insert(0, src_path)
-
-from cuepoint.services.bootstrap import bootstrap_services
-from cuepoint.ui.main_window import MainWindow
-from cuepoint.utils.i18n import I18nManager
-from cuepoint.utils.logger import CuePointLogger
-from cuepoint.utils.paths import AppPaths, PathMigration
-from cuepoint.utils.system_check import SystemRequirements
 
 
 def _set_application_icon(app) -> None:
@@ -190,6 +190,8 @@ def _set_application_icon(app) -> None:
         app: QApplication instance
     """
     from pathlib import Path
+
+    from PySide6.QtGui import QIcon
 
     icon_path = None
 
@@ -244,7 +246,16 @@ def _set_application_icon(app) -> None:
 
 
 def main():
-    """Main entry point for GUI application"""
+    """Main entry point for the legacy PySide6 GUI application."""
+    from PySide6.QtWidgets import QApplication, QMessageBox
+
+    from cuepoint.services.bootstrap import bootstrap_services
+    from cuepoint.ui.main_window import MainWindow
+    from cuepoint.utils.i18n import I18nManager
+    from cuepoint.utils.logger import CuePointLogger
+    from cuepoint.utils.paths import AppPaths, PathMigration
+    from cuepoint.utils.system_check import SystemRequirements
+
     try:
         # Initialize application paths (Step 6.1)
         # Must be done before any file operations
@@ -431,8 +442,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
-
-
-if __name__ == "__main__":
-    main()
+    if _use_legacy_qt():
+        main()
+    else:
+        raise SystemExit(_launch_electron())

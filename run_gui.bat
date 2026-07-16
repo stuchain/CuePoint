@@ -8,6 +8,6 @@ if errorlevel 1 (
 echo Ensuring Chromium for Playwright...
 python -m playwright install chromium
 cd src
-python gui_app.py --electron
+python gui_app.py
 pause
 

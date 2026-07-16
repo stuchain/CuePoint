@@ -43,7 +43,7 @@ cd "$SCRIPT_DIR/src" || {
 
 # Run the GUI application
 echo "Starting CuePoint GUI..."
-"$PY" gui_app.py --electron
+"$PY" gui_app.py
 
 # Capture exit code
 EXIT_CODE=$?

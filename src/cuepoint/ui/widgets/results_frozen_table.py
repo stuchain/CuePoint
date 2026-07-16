@@ -33,6 +33,7 @@ class _UnifiedHorizontalHeader:
 
     def __init__(self, host: "ResultsFrozenTableHost") -> None:
         self._host = host
+        self._section_clicked_signal = _MergedSignal(host)
 
     def sortIndicatorSection(self) -> int:
         frozen_col = self._host._frozen.horizontalHeader().sortIndicatorSection()
@@ -59,8 +60,9 @@ class _UnifiedHorizontalHeader:
             )
             self._host._frozen.horizontalHeader().setSortIndicator(-1, Qt.AscendingOrder)
 
-    def sectionClicked(self):
-        return _MergedSignal(self._host)
+    @property
+    def sectionClicked(self) -> "_MergedSignal":
+        return self._section_clicked_signal
 
     def __getattr__(self, name: str):
         return getattr(self._host._scroll.horizontalHeader(), name)
@@ -274,7 +276,8 @@ class ResultsFrozenTableHost(QWidget):
     def _update_frozen_width(self) -> None:
         total = sum(self._frozen.columnWidth(col) for col in range(FROZEN_COLUMN_COUNT))
         total += self._frozen.verticalHeader().width() if self._frozen.verticalHeader().isVisible() else 0
-        total += self.frameWidth() * 2
+        frame_border = getattr(self._frozen, "frameWidth", lambda: 0)()
+        total += frame_border * 2
         self._frozen.setFixedWidth(max(total, 80))
 
     def _all_column_widths(self) -> List[int]:

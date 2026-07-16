@@ -5,7 +5,7 @@ This package contains controllers that separate business logic from UI presentat
 """
 
 from cuepoint.ui.controllers.config_controller import ConfigController
-from cuepoint.ui.controllers.export_controller import ExportController
+from cuepoint.compat.export_controller import ExportController
 from cuepoint.ui.controllers.results_controller import ResultsController
 
 __all__ = [
