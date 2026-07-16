@@ -47,15 +47,15 @@ Plan the **switch** of the default desktop entry from **PySide6** to **Electron*
 
 ## Cutover checklist
 
-| Step | Action |
-|------|--------|
-| 1 | Tag **release candidate** with Electron + engine |
-| 2 | **Manual** parity sign-off on **Win / macOS / Linux** |
-| 3 | Update download links and **install** docs |
-| 4 | Remove `gui_app.py` entry or repoint to Electron launcher |
-| 5 | Remove `src/cuepoint/ui/` Qt code (or move to `legacy/` archive branch if policy requires) |
-| 6 | Remove PySide6 **dependencies** from packaging where unused |
-| 7 | Run **full** Python test suite; fix imports |
+| Step | Action | Status |
+|------|--------|--------|
+| 1 | Tag **release candidate** with Electron + engine | Pending |
+| 2 | **Manual** parity sign-off on **Win / macOS / Linux** | Pending |
+| 3 | Update download links and **install** docs | Partial (`docs/how-to-run.md`) |
+| 4 | Remove `gui_app.py` entry or repoint to Electron launcher | Done (Electron default; `--legacy-qt` retained) |
+| 5 | Remove `src/cuepoint/ui/` Qt code (or move to `legacy/` archive branch if policy requires) | Quarantined; not deleted |
+| 6 | Remove PySide6 **dependencies** from packaging where unused | Done (`requirements-qt.txt` optional) |
+| 7 | Run **full** Python test suite; fix imports | Done (compat migration); Qt tests gated |
 
 ---
 
@@ -85,8 +85,9 @@ Plan the **switch** of the default desktop entry from **PySide6** to **Electron*
 | 10.1 | Add Phase 10 doc | `docs(ui-overhaul): add phase 10 cutover and qt removal` | |
 | 10.2 | Document cutover checklist in release notes template | `docs: add desktop cutover checklist to release template` | |
 | 10.3 | Remove Qt UI modules (future) | `refactor!: remove pyside6 gui in favor of electron shell` | Tests pass |
-| 10.4 | Update how-to-run for Electron (future) | `docs: update how-to-run for electron desktop` | |
-| 10.5 | Remove PySide6 from dependencies (future) | `chore: drop pyside6 dependency` | CI |
+| 10.4 | Update how-to-run for Electron (future) | `docs: update how-to-run for electron desktop` | Done |
+| 10.5 | Remove PySide6 from dependencies (future) | `chore: drop pyside6 dependency` | Done (`requirements-qt.txt`) |
+| 10.6 | Gate legacy Qt tests in CI | `test: skip Qt UI tests without requirements-qt.txt` | CI |
 
 ---
 

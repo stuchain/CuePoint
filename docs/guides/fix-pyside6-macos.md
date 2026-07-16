@@ -1,11 +1,13 @@
 # Fixing PySide6 Installation on macOS
 
+> **Note:** The shipped desktop app uses **Electron**. PySide6 is only needed for the
+> deprecated Qt UI (`python src/gui_app.py --legacy-qt`) or legacy Qt tests during
+> Phase 10 removal. Install optional Qt deps from `requirements-qt.txt`.
+
 ## Quick Fix
 
-PySide6 is now added to `requirements.txt`. Install it with:
-
 ```bash
-pip3 install -r requirements.txt
+pip3 install -r requirements-qt.txt
 ```
 
 Or install PySide6 directly:
