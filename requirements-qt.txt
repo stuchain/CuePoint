@@ -1,0 +1,8 @@
+# Optional legacy Qt dependencies.
+#
+# Install this only if you are working on the deprecated Qt desktop code or
+# running Qt-specific UI tests during the Phase 10 transition.
+
+PySide6==6.10.1
+pytest-qt==4.5.0
+

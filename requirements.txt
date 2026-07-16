@@ -1,8 +1,9 @@
 # CuePoint - Rekordbox → Beatport Metadata Enricher
 # Required dependencies for core functionality
 
-# GUI Framework (required for GUI application)
-PySide6==6.10.1
+# Desktop UI note
+# Electron is the default desktop shell. Legacy Qt-specific dependencies live in
+# requirements-qt.txt for optional UI tests / fallback development only.
 
 # HTTP requests and web scraping
 requests==2.33.0

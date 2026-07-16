@@ -135,9 +135,10 @@ def main() -> None:
         print("     .venv\\Scripts\\activate")
     else:
         print("     source .venv/bin/activate")
-    print("  2. Run GUI:  python src/gui_app.py")
-    print("  3. Run CLI:  python src/main.py --help")
-    print("  4. Run tests: python scripts/run_tests.py --all")
+    print("  2. Install desktop deps: cd apps/desktop-electron && npm ci && npm ci --prefix renderer")
+    print("  3. Run desktop app: cd apps/desktop-electron && npm run electron:dev")
+    print("  4. Run CLI:  python src/main.py --help")
+    print("  5. Run tests: python scripts/run_tests.py --all")
     print("\nDocs: docs/README.md | Contributing: .github/CONTRIBUTING.md")
 
 

@@ -9,8 +9,9 @@
 # IMPORTANT: This file must include ALL runtime dependencies from requirements.txt
 # (excluding test dependencies) to ensure the packaged app works correctly.
 
-# GUI Framework (required for GUI application)
-PySide6==6.10.1
+# Desktop UI note
+# Electron is the shipped desktop shell. Legacy Qt-specific dependencies are no
+# longer required for engine-sidecar release packaging.
 
 # HTTP requests and web scraping
 requests==2.33.0
