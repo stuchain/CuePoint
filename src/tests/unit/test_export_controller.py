@@ -7,7 +7,7 @@ Unit tests for ExportController
 
 import pytest
 import os
-from cuepoint.ui.controllers.export_controller import ExportController
+from cuepoint.compat.export_controller import ExportController
 from cuepoint.models.result import TrackResult
 
 

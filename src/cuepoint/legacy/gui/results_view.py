@@ -48,14 +48,14 @@ import subprocess
 import platform
 import time
 
-from cuepoint.ui.gui_interface import TrackResult
+from cuepoint.compat.gui_types import TrackResult
 from cuepoint.legacy.gui.candidate_dialog import CandidateDialog
 from cuepoint.legacy.gui.export_dialog import ExportDialog
 from cuepoint.legacy.gui.shortcut_manager import ShortcutManager, ShortcutContext
 from output_writer import write_csv_files, write_json_file, write_excel_file
 from utils import with_timestamp
 from cuepoint.ui.controllers.results_controller import ResultsController
-from cuepoint.ui.controllers.export_controller import ExportController
+from cuepoint.compat.export_controller import ExportController
 
 try:
     from performance import performance_collector

@@ -11,7 +11,7 @@ import pytest
 
 from cuepoint.models.result import TrackResult
 from cuepoint.ui.controllers.main_controller import GUIController, ProcessingWorker
-from cuepoint.ui.gui_interface import ErrorType, ProcessingError
+from cuepoint.compat.gui_types import ErrorType, ProcessingError
 
 
 @pytest.fixture

@@ -4,7 +4,7 @@ import time
 from unittest.mock import patch
 
 from cuepoint.engine.jobs import JobStore, start_match_job
-from cuepoint.ui.gui_interface import ProgressInfo, TrackResult
+from cuepoint.compat.gui_types import ProgressInfo, TrackResult
 
 
 def test_start_m3u_match_job_with_mock_processor(tmp_path):

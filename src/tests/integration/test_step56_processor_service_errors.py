@@ -19,7 +19,7 @@ from cuepoint.services.config_service import ConfigService
 from cuepoint.services.logging_service import LoggingService
 from cuepoint.services.matcher_service import MatcherService
 from cuepoint.services.processor_service import ProcessorService
-from cuepoint.ui.gui_interface import ErrorType, ProcessingError
+from cuepoint.compat.gui_types import ErrorType, ProcessingError
 
 
 class TestProcessorServiceErrorHandling:

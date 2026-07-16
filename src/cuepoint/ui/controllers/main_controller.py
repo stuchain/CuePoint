@@ -21,7 +21,7 @@ from PySide6.QtCore import QObject, QThread, Signal
 
 from cuepoint.models.result import TrackResult
 from cuepoint.services.interfaces import IProcessorService
-from cuepoint.ui.gui_interface import (
+from cuepoint.compat.gui_types import (
     ErrorType,
     ProcessingController,
     ProcessingError,

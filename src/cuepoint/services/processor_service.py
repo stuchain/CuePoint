@@ -55,7 +55,7 @@ from cuepoint.services.output_writer import (
     load_processed_track_keys,
     write_csv_files,
 )
-from cuepoint.ui.gui_interface import (
+from cuepoint.compat.gui_types import (
     ErrorType,
     ProcessingController,
     ProcessingError,
@@ -503,7 +503,7 @@ class ProcessorService(IProcessorService):
         Returns:
             Tuple of (list of TrackResult, optional warning message).
         """
-        from cuepoint.ui.gui_interface import ReliabilityState
+        from cuepoint.compat.gui_types import ReliabilityState
 
         processing_start_time = time.perf_counter()
         effective_settings = (

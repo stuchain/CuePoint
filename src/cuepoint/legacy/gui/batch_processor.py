@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, Signal, QTimer
 from typing import List, Dict, Optional
 import time
-from cuepoint.ui.gui_interface import TrackResult, ProgressInfo, ProcessingError
+from cuepoint.compat.gui_types import ProcessingError, ProgressInfo, TrackResult
 
 
 class BatchProcessorWidget(QWidget):

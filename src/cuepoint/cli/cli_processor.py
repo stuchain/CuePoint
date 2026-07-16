@@ -31,7 +31,7 @@ from cuepoint.services.output_writer import (
     write_review_candidates_csv,
     write_review_queries_csv,
 )
-from cuepoint.ui.gui_interface import ErrorType, ProcessingController, ProgressInfo
+from cuepoint.compat.gui_types import ErrorType, ProcessingController, ProgressInfo
 from cuepoint.utils.errors import (
     error_file_not_found,
     error_playlist_not_found,

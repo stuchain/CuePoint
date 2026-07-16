@@ -10,7 +10,7 @@ from cuepoint.models.beatport_candidate import BeatportCandidate
 from cuepoint.models.result import TrackResult
 from cuepoint.models.track import Track
 from cuepoint.services.processor_service import ProcessorService
-from cuepoint.ui.gui_interface import ErrorType, ProcessingController, ProcessingError
+from cuepoint.compat.gui_types import ErrorType, ProcessingController, ProcessingError
 
 
 class TestProcessorService:

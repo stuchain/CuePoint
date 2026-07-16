@@ -25,7 +25,7 @@ running processing in a background thread and emitting Qt signals for GUI update
 from PySide6.QtCore import QObject, Signal, QThread
 from typing import Optional, Dict, Any, List
 
-from cuepoint.ui.gui_interface import (
+from cuepoint.compat.gui_types import (
     ProgressInfo,
     TrackResult,
     ProcessingController,

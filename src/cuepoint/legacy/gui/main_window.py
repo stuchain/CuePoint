@@ -45,7 +45,7 @@ from cuepoint.legacy.gui.dialogs import (
 )
 from cuepoint.legacy.gui.shortcut_manager import ShortcutManager, ShortcutContext
 from cuepoint.legacy.gui_controller import GUIController
-from cuepoint.ui.gui_interface import ProcessingError
+from cuepoint.compat.gui_types import ProcessingError
 from cuepoint.services.output_writer import write_csv_files
 from cuepoint.legacy.gui.performance_view import PerformanceView
 

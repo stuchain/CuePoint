@@ -347,7 +347,7 @@ class TestCLIMigration:
 
     def test_error_scenarios_file_not_found(self):
         """Test error handling for file not found."""
-        from cuepoint.ui.gui_interface import ErrorType, ProcessingError
+        from cuepoint.compat.gui_types import ErrorType, ProcessingError
 
         processor_service = self.container.resolve(IProcessorService)  # type: ignore
         export_service = self.container.resolve(IExportService)  # type: ignore
@@ -382,7 +382,7 @@ class TestCLIMigration:
 
     def test_error_scenarios_playlist_not_found(self):
         """Test error handling for playlist not found."""
-        from cuepoint.ui.gui_interface import ErrorType, ProcessingError
+        from cuepoint.compat.gui_types import ErrorType, ProcessingError
 
         processor_service = self.container.resolve(IProcessorService)  # type: ignore
         export_service = self.container.resolve(IExportService)  # type: ignore
@@ -433,7 +433,7 @@ class TestCLIMigration:
         callback = cli_processor._create_progress_callback()
 
         # Test callback with progress info
-        from cuepoint.ui.gui_interface import ProgressInfo
+        from cuepoint.compat.gui_types import ProgressInfo
 
         progress_info = ProgressInfo(
             total_tracks=10,

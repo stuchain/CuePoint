@@ -30,7 +30,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from cuepoint.ui.gui_interface import ProcessingError
+from cuepoint.compat.gui_types import ProcessingError
 from cuepoint.ui.strings import ErrorCopy
 from cuepoint.ui.widgets.shortcut_manager import ShortcutContext, ShortcutManager
 from cuepoint.ui.widgets.styles import Colors

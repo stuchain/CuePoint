@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, List
 if TYPE_CHECKING:
     from cuepoint.data.beatport import BeatportCandidate as OldBeatportCandidate
     from cuepoint.data.rekordbox import RBTrack
-    from cuepoint.ui.gui_interface import TrackResult as OldTrackResult
+    from cuepoint.compat.gui_types import TrackResult as OldTrackResult
 
 from cuepoint.models.beatport_candidate import BeatportCandidate
 from cuepoint.models.result import TrackResult
@@ -116,13 +116,13 @@ def track_result_from_old(old: "OldTrackResult") -> TrackResult:
     the original dict format in `candidates_data`.
 
     Args:
-        old: Old TrackResult from cuepoint.ui.gui_interface.
+        old: Old TrackResult from cuepoint.compat.gui_types.
 
     Returns:
         New TrackResult instance with validation.
 
     Example:
-        >>> from cuepoint.ui.gui_interface import TrackResult as Old
+        >>> from cuepoint.compat.gui_types import TrackResult as Old
         >>> old = Old(playlist_index=1, title="Test", artist="Artist", matched=True)
         >>> new = track_result_from_old(old)
         >>> new.title == old.title
@@ -371,7 +371,7 @@ def track_result_from_old(old: "OldTrackResult") -> TrackResult:
 
 def track_result_to_old(new: TrackResult) -> "OldTrackResult":
     # Lazy import to avoid circular dependency
-    from cuepoint.ui.gui_interface import TrackResult as OldTrackResult
+    from cuepoint.compat.gui_types import TrackResult as OldTrackResult
 
     """Convert new TrackResult back to old model (for backward compatibility).
 

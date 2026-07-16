@@ -16,7 +16,7 @@ import pytest
 from cuepoint.cli.cli_processor import CLIProcessor
 from cuepoint.models.preflight import PreflightResult
 from cuepoint.models.result import TrackResult
-from cuepoint.ui.gui_interface import ProgressInfo, ProcessingError, ErrorType
+from cuepoint.compat.gui_types import ErrorType, ProcessingError, ProgressInfo
 from cuepoint.services.interfaces import (
     IProcessorService,
     IExportService,

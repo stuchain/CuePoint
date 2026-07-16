@@ -75,7 +75,7 @@ from cuepoint.services.output_writer import (
     write_review_queries_csv,
 )
 from cuepoint.models.result import TrackResult
-from cuepoint.ui.gui_interface import (
+from cuepoint.compat.gui_types import (
     ErrorType,
     ProcessingController,
     ProcessingError,

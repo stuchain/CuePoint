@@ -10,7 +10,7 @@ import pytest
 from cuepoint.engine.jobs import JobStore, start_match_job
 from cuepoint.engine.server import EngineConfig, start_engine_thread
 from cuepoint.engine.xml_api import list_xml_playlists
-from cuepoint.ui.gui_interface import TrackResult
+from cuepoint.compat.gui_types import TrackResult
 
 SAMPLE_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <DJ_PLAYLISTS Version="1.0.0">
@@ -87,7 +87,7 @@ def test_start_batch_match_job_with_mock_processor(tmp_path):
     def fake_process(xml_path_arg, playlist_name, progress_callback=None, controller=None):
         assert xml_path_arg == str(xml_path)
         if progress_callback:
-            from cuepoint.ui.gui_interface import ProgressInfo
+            from cuepoint.compat.gui_types import ProgressInfo
 
             progress_callback(
                 ProgressInfo(

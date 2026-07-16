@@ -20,7 +20,7 @@ from cuepoint.models.compat import (
 )
 from cuepoint.models.result import TrackResult
 from cuepoint.models.track import Track
-from cuepoint.ui.gui_interface import TrackResult as OldTrackResult
+from cuepoint.compat.gui_types import TrackResult as OldTrackResult
 
 
 class TestTrackFromRBTrack:

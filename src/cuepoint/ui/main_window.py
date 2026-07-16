@@ -75,10 +75,10 @@ from cuepoint.data import (
 from cuepoint.models.result import TrackResult
 from cuepoint.services.output_writer import write_csv_files
 from cuepoint.ui.controllers.config_controller import ConfigController
-from cuepoint.ui.controllers.export_controller import ExportController
+from cuepoint.compat.export_controller import ExportController
 from cuepoint.ui.controllers.main_controller import GUIController
 from cuepoint.ui.controllers.results_controller import ResultsController
-from cuepoint.ui.gui_interface import (
+from cuepoint.compat.gui_types import (
     ErrorType,
     ProcessingError,
     ProgressInfo,

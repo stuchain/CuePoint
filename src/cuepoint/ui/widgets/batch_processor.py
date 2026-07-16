@@ -29,7 +29,7 @@ from PySide6.QtWidgets import (
 
 from cuepoint.data.rekordbox import playlist_path_for_display
 from cuepoint.models.result import TrackResult
-from cuepoint.ui.gui_interface import ProcessingError, ProgressInfo
+from cuepoint.compat.gui_types import ProcessingError, ProgressInfo
 
 # Role for storing playlist path on leaf items (same as playlist_selector)
 _PATH_ROLE = Qt.ItemDataRole.UserRole

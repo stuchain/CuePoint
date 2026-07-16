@@ -59,7 +59,7 @@ from cuepoint.services.output_writer import (
     write_excel_file,
     write_json_file,
 )
-from cuepoint.ui.controllers.export_controller import ExportController
+from cuepoint.compat.export_controller import ExportController
 from cuepoint.ui.controllers.results_controller import ResultsController
 from cuepoint.ui.dialogs.export_dialog import ExportDialog
 from cuepoint.ui.strings import EmptyState, ExportCopy, TooltipCopy

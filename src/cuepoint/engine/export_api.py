@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from cuepoint.engine.jobs import JobStore
 from cuepoint.models.result import TrackResult as ModelTrackResult
-from cuepoint.ui.controllers.export_controller import ExportController
+from cuepoint.compat.export_controller import ExportController
 
 _services_bootstrapped = False
 

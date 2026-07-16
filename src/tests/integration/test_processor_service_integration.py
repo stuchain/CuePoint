@@ -343,7 +343,7 @@ class TestProcessorServiceIntegration:
 
     def test_process_playlist_from_xml_empty_playlist(self, processor_service):
         """Test process_playlist_from_xml with empty playlist - should raise ProcessingError."""
-        from cuepoint.ui.gui_interface import ErrorType, ProcessingError
+        from cuepoint.compat.gui_types import ErrorType, ProcessingError
 
         # Create test XML with empty playlist
         xml_content = """<?xml version="1.0" encoding="UTF-8"?>
@@ -384,7 +384,7 @@ class TestProcessorServiceIntegration:
 
     def test_process_playlist_from_xml_file_not_found(self, processor_service):
         """Test process_playlist_from_xml with file not found."""
-        from cuepoint.ui.gui_interface import ErrorType, ProcessingError
+        from cuepoint.compat.gui_types import ErrorType, ProcessingError
 
         # Try to process non-existent file
         with pytest.raises(ProcessingError) as exc_info:
@@ -401,7 +401,7 @@ class TestProcessorServiceIntegration:
 
     def test_process_playlist_from_xml_malformed_xml(self, processor_service):
         """Test process_playlist_from_xml with malformed XML."""
-        from cuepoint.ui.gui_interface import ProcessingError
+        from cuepoint.compat.gui_types import ProcessingError
 
         # Create malformed XML
         xml_content = """<?xml version="1.0" encoding="UTF-8"?>
@@ -426,7 +426,7 @@ class TestProcessorServiceIntegration:
 
     def test_process_playlist_from_xml_progress_callback(self, processor_service):
         """Test process_playlist_from_xml with progress callback."""
-        from cuepoint.ui.gui_interface import ProgressInfo
+        from cuepoint.compat.gui_types import ProgressInfo
 
         # Create test XML
         xml_content = """<?xml version="1.0" encoding="UTF-8"?>

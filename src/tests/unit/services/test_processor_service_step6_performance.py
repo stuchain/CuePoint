@@ -9,7 +9,7 @@ from cuepoint.services.processor_service import (
     _guardrail_progress_callback,
     _throttled_progress_callback,
 )
-from cuepoint.ui.gui_interface import ProcessingController, ProgressInfo
+from cuepoint.compat.gui_types import ProcessingController, ProgressInfo
 
 
 class TestThrottledProgressCallback:

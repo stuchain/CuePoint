@@ -14,7 +14,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from cuepoint.models.preflight import PreflightResult
 from cuepoint.models.result import TrackResult
 from cuepoint.models.track import Track
-from cuepoint.ui.gui_interface import ProcessingController, ProgressCallback
+from cuepoint.compat.gui_types import ProcessingController, ProgressCallback
 
 
 class ILoggingService(ABC):

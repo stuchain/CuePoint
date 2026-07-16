@@ -12,7 +12,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-from cuepoint.ui.gui_interface import ProgressInfo, TrackResult
+from cuepoint.compat.gui_types import ProgressInfo, TrackResult
 
 _services_bootstrapped = False
 _bootstrap_lock = threading.Lock()
@@ -423,7 +423,7 @@ def run_real_batch_match_job(
     _ensure_services()
     from cuepoint.data.rekordbox import parse_playlist_tree
     from cuepoint.services.interfaces import IProcessorService
-    from cuepoint.ui.gui_interface import ProcessingController, ProgressInfo
+    from cuepoint.compat.gui_types import ProcessingController, ProgressInfo
     from cuepoint.utils.di_container import get_container
 
     if not playlist_names:
@@ -576,7 +576,7 @@ def run_real_match_job(
 ) -> None:
     _ensure_services()
     from cuepoint.services.interfaces import IProcessorService
-    from cuepoint.ui.gui_interface import ProcessingController
+    from cuepoint.compat.gui_types import ProcessingController
     from cuepoint.utils.di_container import get_container
 
     processor = get_container().resolve(IProcessorService)
@@ -627,7 +627,7 @@ def run_real_m3u_match_job(job: MatchJob, store: JobStore, m3u_path: str) -> Non
     """Process tracks from an M3U/M3U8 playlist file."""
     _ensure_services()
     from cuepoint.services.interfaces import IProcessorService
-    from cuepoint.ui.gui_interface import ProcessingController
+    from cuepoint.compat.gui_types import ProcessingController
     from cuepoint.utils.di_container import get_container
 
     processor = get_container().resolve(IProcessorService)

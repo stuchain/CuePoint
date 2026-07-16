@@ -29,7 +29,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from cuepoint.ui.controllers.export_controller import ExportController
+from cuepoint.compat.export_controller import ExportController
 from cuepoint.utils.paths import AppPaths
 
 
