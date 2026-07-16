@@ -1,6 +1,6 @@
 # Milestone — Phase 6 Help dialogs
 
-**Status:** Done (local)
+**Status:** Done
 
 ## Scope
 
@@ -11,15 +11,16 @@
 | `onboarding_dialog.py` | `OnboardingDialog.tsx` (first-run) |
 | `dialogs.py` About | `AboutDialog.tsx` |
 | `rekordbox_instructions_dialog.py` | `RekordboxInstructionsDialog.tsx` (Help menu) |
+| `playlist_export_instructions_dialog.py` | `PlaylistExportInstructionsDialog.tsx` (Help menu + inKey hint) |
+| `log_viewer.py` | `LogViewerDialog.tsx` (Help menu) |
 
 ## Verification
 
 - Help menu opens each dialog
 - First launch shows onboarding until completed
-- `npm test` — `keyboardShortcuts.test.ts`
+- `npm test` — renderer unit tests (e.g. keyboard shortcuts)
+- `pytest src/tests/unit/engine/test_engine_logs.py` — logs + clear endpoints
 
 ## Remaining
 
-- Wire privacy clear cache/logs to engine
 - Full shortcut customization
-- Playlist export instruction dialog (M3U)
