@@ -1,8 +1,10 @@
-# Optional legacy Qt dependencies.
-#
-# Install this only if you are working on the deprecated Qt desktop code or
-# running Qt-specific UI tests during the Phase 10 transition.
+# Optional legacy Qt dependencies
+
+The shipped desktop app is Electron. PySide6 sources were archived to
+`archive/legacy-pyside6-ui/` and are not on the import path.
+
+Install this file only if you are restoring that archive for historical
+debugging (not supported for product work).
 
 PySide6==6.10.1
 pytest-qt==4.5.0
-

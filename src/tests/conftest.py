@@ -42,6 +42,10 @@ _QT_TEST_PATH_FRAGMENTS = (
     "test_step8_ux_accessibility.py",
     "test_advanced_filtering.py",
     "test_onboarding_service.py",
+    "test_step52_main_controller_di.py",
+    "test_step52_full_integration.py",
+    "test_export_dialog_import.py",
+    "verify_export_dialog.py",
 )
 
 
@@ -54,6 +58,15 @@ def _is_qt_legacy_test_path(path: str) -> bool:
     return any(fragment in normalized for fragment in _QT_TEST_PATH_FRAGMENTS)
 
 
+def _cuepoint_ui_available() -> bool:
+    try:
+        import cuepoint.ui  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
+
+
 def _pyside6_available() -> bool:
     try:
         import PySide6  # noqa: F401
@@ -64,23 +77,26 @@ def _pyside6_available() -> bool:
 
 
 def pytest_ignore_collect(collection_path, config):
-    """Skip legacy Qt test modules when PySide6 is not installed."""
-    if _pyside6_available():
+    """Skip legacy Qt test modules when the Qt UI package is unavailable."""
+    if _cuepoint_ui_available() and _pyside6_available():
         return False
     return _is_qt_legacy_test_path(str(collection_path))
 
 
 def pytest_collection_modifyitems(config, items):
-    """Tag legacy Qt tests and skip when PySide6 is unavailable."""
-    qt_available = _pyside6_available()
+    """Tag legacy Qt tests and skip when Qt UI is unavailable."""
+    qt_ready = _cuepoint_ui_available() and _pyside6_available()
     skip_qt = pytest.mark.skip(
-        reason="PySide6 not installed (pip install -r requirements-qt.txt)"
+        reason=(
+            "Legacy Qt UI archived (see archive/legacy-pyside6-ui); "
+            "optional restore via requirements-qt.txt"
+        )
     )
     for item in items:
         if not _is_qt_legacy_test_path(str(item.path)):
             continue
         item.add_marker(pytest.mark.ui)
-        if not qt_available:
+        if not qt_ready:
             item.add_marker(skip_qt)
 
 

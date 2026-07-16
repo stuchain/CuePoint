@@ -2,7 +2,7 @@
 
 Tracks remaining work to finish the full UI overhaul per `docs/ui-overhaul/`.
 
-**Current gate:** Phase 8 manual RC sign-off; Phase 10 final Qt deletion.
+**Current gate:** Phase 8 manual RC sign-off only (code cutover complete).
 
 ---
 
@@ -60,7 +60,7 @@ See [phase-8-testing.md](phase-8-testing.md).
 | Done | Shell ↔ engine version coupling check |
 | Done | `electron-builder` dist on 3 OSes |
 | Done | Installers + SHA256SUMS artifact upload |
-| Pending | Code signing / notarization placeholders → real keys |
+| Pending | Code signing / notarization (needs signing keys) |
 
 See [phase-9-ci-release.md](phase-9-ci-release.md).
 
@@ -72,20 +72,18 @@ See [phase-9-ci-release.md](phase-9-ci-release.md).
 |--------|------|
 | Done | `cuepoint.compat` extracted; engine/services off `cuepoint.ui` |
 | Done | PySide6 moved to `requirements-qt.txt` |
-| Done | `gui_app.py` defaults to Electron; `--legacy-qt` for PySide6 |
-| Done | `cuepoint.ui` quarantined with README |
-| In progress | CI excludes legacy Qt tests unless `requirements-qt.txt` installed |
+| Done | `gui_app.py` is Electron-only (no PySide6) |
+| Done | `src/cuepoint/ui/` archived to `archive/legacy-pyside6-ui/` |
+| Done | Legacy Qt tests gated / archived |
 | Pending | RC tag + burn-in |
-| Pending | Win / macOS / Linux manual sign-off |
-| Pending | Delete `src/cuepoint/ui/` |
-| Pending | Remove `gui_app.py` Qt path entirely |
+| Pending | Win / macOS / Linux manual sign-off → mark parity `verified` |
 
 See [phase-10-cutover-remove-qt.md](phase-10-cutover-remove-qt.md).
 
 ---
 
-## Suggested commit order (remaining)
+## Suggested remaining work
 
 1. Phase 8 manual RC sign-off (human)
-2. Phase 6 parity matrix verification pass
-3. Phase 10 delete `cuepoint.ui` + retire `--legacy-qt`
+2. Phase 6 parity matrix `verified` after RC
+3. Phase 9 code signing when certs are available

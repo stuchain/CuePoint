@@ -59,20 +59,20 @@ cli_processor.process_playlist(xml_path, playlist_name, out_csv_base)
 ### `gui/` (Directory)
 
 **Status**: ❌ Deprecated  
-**Replaced by**: `apps/desktop-electron/` for the shipped desktop UI, with
-Qt code preserved only as a temporary fallback during Phase 10.
+**Replaced by**: `apps/desktop-electron/` for the shipped desktop UI.
+Qt sources live under `archive/legacy-pyside6-ui/` (not importable).
 
 **What it was**: Old GUI implementation with widgets and controllers in `src/gui/` directory.
 
 **Why it was moved**: 
 - Used legacy processor (`gui_controller.py` used `legacy.processor`)
 - Not using Phase 5 architecture
-- Replaced by the Electron desktop shell plus a shrinking legacy Qt package
-- No longer the product-default desktop path
+- Replaced by the Electron desktop shell
+- No longer on the product path
 
 **Migration path**:
 - For desktop UI work: use `apps/desktop-electron/`
-- For legacy Qt fallback only: use `cuepoint.ui.*`
+- Historical Qt sources: `archive/legacy-pyside6-ui/`
 
 **Example migration**:
 ```python
@@ -80,25 +80,25 @@ Qt code preserved only as a temporary fallback during Phase 10.
 from gui.main_window import MainWindow
 from gui_controller import GUIController
 
-# NEW (current product direction):
+# NEW (current product):
 # Desktop shell lives in apps/desktop-electron/
-# Qt fallback remains only for legacy maintenance during Phase 10
+# python src/gui_app.py  # launches Electron
 ```
 
 ### `gui_controller.py`
 
 **Status**: ❌ Deprecated  
-**Replaced by**: `cuepoint.ui.controllers.main_controller.GUIController`
+**Replaced by**: Electron shell + engine HTTP APIs (`apps/desktop-electron`)
 
 **What it was**: Old GUI controller that used legacy processor.
 
 **Why it was moved**: 
 - Used `legacy.processor` instead of `ProcessorService`
 - Part of old GUI structure
-- Replaced by new controller in Phase 5
+- Replaced by new controller in Phase 5, then Electron
 
 **Migration path**:
-- Use `cuepoint.ui.controllers.main_controller.GUIController`
+- Use Electron + engine APIs
 - New controller uses `ProcessorService` via DI container
 
 ## Removal Plan

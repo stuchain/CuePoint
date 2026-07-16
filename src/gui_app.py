@@ -1,166 +1,107 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-GUI Application Entry Point
+"""Desktop application entry point — launches the Electron shell.
 
-This is the main entry point for the CuePoint GUI application.
-Run this file to launch the graphical user interface.
+The legacy Qt desktop GUI has been removed from the product path (Phase 10).
+Use ``apps/desktop-electron`` for development and packaged releases.
 """
+
+from __future__ import annotations
 
 import os
+import subprocess
 import sys
 
-# If a project-local virtualenv exists, re-exec into it so `python3 gui_app.py`
-# works without manual activation and uses a consistent, ship-ready runtime.
-if __name__ == "__main__":
+
+def _project_root() -> str:
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _ensure_src_on_path() -> None:
+    src_path = os.path.dirname(os.path.abspath(__file__))
+    if src_path not in sys.path:
+        sys.path.insert(0, src_path)
+
+
+def _maybe_reexec_venv() -> None:
+    """Re-exec into project .venv on Unix when not already in a venv."""
     try:
-        if sys.prefix == sys.base_prefix:  # not already in a venv
-            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            venv_python = os.path.join(project_root, ".venv", "bin", "python")
+        if sys.prefix == sys.base_prefix:
+            venv_python = os.path.join(_project_root(), ".venv", "bin", "python")
             if os.path.exists(venv_python) and os.access(venv_python, os.X_OK):
                 os.execv(venv_python, [venv_python] + sys.argv)
     except Exception:
-        # Never block startup due to venv detection; fall back to current interpreter.
         pass
 
-# Check for command-line flags before importing Qt
-if "--test-search-dependencies" in sys.argv:
-    # Run the test script directly without starting GUI
+
+def _run_search_dependency_test() -> int:
     import argparse
     import io
     import traceback
 
-    # Parse arguments to handle the flag
-    parser = argparse.ArgumentParser(description="CuePoint GUI Application")
+    parser = argparse.ArgumentParser(description="CuePoint desktop launcher")
     parser.add_argument(
         "--test-search-dependencies",
         action="store_true",
         help="Test search dependencies and exit",
     )
-    args, unknown = parser.parse_known_args()
+    args, _unknown = parser.parse_known_args()
+    if not args.test_search_dependencies:
+        return -1
 
-    if args.test_search_dependencies:
-        # Import and run the test script
-        try:
-            # Add scripts directory to path
-            # Handle both development and packaged environments
-            if getattr(sys, "frozen", False):
-                # Packaged app - scripts might be in the same directory or in a scripts subdirectory
-                if hasattr(sys, "_MEIPASS"):
-                    # PyInstaller temporary directory
-                    base_path = sys._MEIPASS
-                else:
-                    base_path = os.path.dirname(sys.executable)
-            else:
-                # Development - use project root
-                base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    try:
+        if getattr(sys, "frozen", False):
+            base_path = getattr(sys, "_MEIPASS", os.path.dirname(sys.executable))
+        else:
+            base_path = _project_root()
 
-            scripts_path = os.path.join(base_path, "scripts")
-            if scripts_path not in sys.path and os.path.exists(scripts_path):
+        for scripts_path in (
+            os.path.join(base_path, "scripts"),
+            os.path.join(_project_root(), "scripts"),
+        ):
+            if os.path.exists(scripts_path) and scripts_path not in sys.path:
                 sys.path.insert(0, scripts_path)
 
-            # Also try importing from the project root scripts directory
-            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            project_scripts = os.path.join(project_root, "scripts")
-            if project_scripts not in sys.path and os.path.exists(project_scripts):
-                sys.path.insert(0, project_scripts)
+        output_buffer = io.StringIO()
+        old_stdout = sys.stdout
+        sys.stdout = output_buffer
+        try:
+            from test_search_dependencies import test_imports
 
-            # Capture output for GUI display if needed
-            output_buffer = io.StringIO()
+            print("Testing search dependencies...")
+            print(f"Python version: {sys.version}")
+            print(f"Frozen (packaged): {getattr(sys, 'frozen', False)}")
+            print(f"Executable: {sys.executable}")
+            print("=" * 60 + "\n")
+            success = test_imports()
+            output_text = output_buffer.getvalue()
+        finally:
+            sys.stdout = old_stdout
 
-            # Redirect stdout to capture output
-            old_stdout = sys.stdout
-            sys.stdout = output_buffer
-
-            try:
-                # Import and run the test
-                from test_search_dependencies import test_imports
-
-                print("Testing search dependencies...")
-                print(f"Python version: {sys.version}")
-                print(f"Frozen (packaged): {getattr(sys, 'frozen', False)}")
-                print(f"Executable: {sys.executable}")
-                print("=" * 60 + "\n")
-
-                success = test_imports()
-
-                # Get the output
-                output_text = output_buffer.getvalue()
-
-                # Restore stdout
-                sys.stdout = old_stdout
-
-                # Print output
-                # For frozen executables (console=False), always print to stderr
-                # so it can be captured by subprocess.run() in tests
-                if getattr(sys, "frozen", False):
-                    # In frozen mode, print to stderr so tests can capture it
-                    print(output_text, file=sys.stderr)
-                else:
-                    # In development, print to stdout
-                    print(output_text)
-
-                sys.exit(0 if success else 1)
-            finally:
-                # Always restore stdout
-                sys.stdout = old_stdout
-
-        except ImportError as e:
-            error_msg = f"Error: Could not import test script: {e}\nMake sure scripts/test_search_dependencies.py exists"
-            print(error_msg, file=sys.stderr)
-            traceback.print_exc()
-
-            # Show error in message box if in packaged app
-            if getattr(sys, "frozen", False):
-                try:
-                    from PySide6.QtWidgets import QApplication, QMessageBox
-
-                    _ = QApplication(sys.argv)
-                    QMessageBox.critical(None, "Test Error", error_msg)
-                except Exception:
-                    pass
-
-            sys.exit(1)
-        except Exception as e:
-            error_msg = f"Error running test: {e}"
-            print(error_msg, file=sys.stderr)
-            traceback.print_exc()
-
-            # Show error in message box if in packaged app
-            if getattr(sys, "frozen", False):
-                try:
-                    from PySide6.QtWidgets import QApplication, QMessageBox
-
-                    _ = QApplication(sys.argv)
-                    QMessageBox.critical(None, "Test Error", error_msg)
-                except Exception:
-                    pass
-
-            sys.exit(1)
-
-def _use_legacy_qt() -> bool:
-    """Return True when the deprecated PySide6 GUI should start."""
-    if "--legacy-qt" in sys.argv:
-        return True
-    return bool(getattr(sys, "frozen", False))
+        stream = sys.stderr if getattr(sys, "frozen", False) else sys.stdout
+        print(output_text, file=stream)
+        return 0 if success else 1
+    except Exception as exc:
+        print(f"Error running search dependency test: {exc}", file=sys.stderr)
+        traceback.print_exc()
+        return 1
 
 
-def _launch_electron() -> int:
-    """Start the Electron desktop shell (development default)."""
-    import subprocess
-
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    electron_dir = os.path.join(project_root, "apps", "desktop-electron")
+def launch_electron() -> int:
+    """Start the Electron desktop shell."""
+    electron_dir = os.path.join(_project_root(), "apps", "desktop-electron")
     package_json = os.path.join(electron_dir, "package.json")
     if not os.path.exists(package_json):
         print(
-            "Electron desktop shell not found (missing apps/desktop-electron/package.json)."
+            "Electron desktop shell not found "
+            "(missing apps/desktop-electron/package.json)."
         )
         print("Install Node.js dependencies: cd apps/desktop-electron && npm install")
         return 1
 
     print("Launching Electron desktop shell…")
+    print("Tip: for a packaged build, use the installer from GitHub Releases.")
     try:
         proc = subprocess.run(
             ["npm", "run", "electron:dev"],
@@ -176,273 +117,26 @@ def _launch_electron() -> int:
     return proc.returncode
 
 
-# Add src to path if needed (for imports)
-if __name__ == "__main__":
-    src_path = os.path.dirname(os.path.abspath(__file__))
-    if src_path not in sys.path:
-        sys.path.insert(0, src_path)
+def main() -> int:
+    """CLI entry for the desktop app."""
+    if "--legacy-qt" in sys.argv:
+        print(
+            "The legacy Qt desktop GUI has been removed from the product path.\n"
+            "Use the Electron desktop app:\n"
+            "  cd apps/desktop-electron && npm install && npm run electron:dev\n"
+            "Or run: python src/gui_app.py",
+            file=sys.stderr,
+        )
+        return 2
 
+    dep_code = _run_search_dependency_test()
+    if dep_code >= 0:
+        return dep_code
 
-def _set_application_icon(app) -> None:
-    """Set the application icon for taskbar/dock.
-
-    Args:
-        app: QApplication instance
-    """
-    from pathlib import Path
-
-    from PySide6.QtGui import QIcon
-
-    icon_path = None
-
-    # Determine icon path based on platform and environment
-    if getattr(sys, "frozen", False):
-        # Running as packaged app - use platform-specific icons for taskbar/dock
-        if hasattr(sys, "_MEIPASS"):
-            base_path = Path(sys._MEIPASS)
-        else:
-            import os
-
-            base_path = Path(os.path.dirname(sys.executable))
-        # Prefer .ico (Windows) and .icns (macOS) for taskbar/dock - bundled by PyInstaller
-        if sys.platform == "win32":
-            ico = base_path / "icon.ico"
-            icon_path = (
-                ico if ico.exists() else base_path / "assets" / "icons" / "logo.png"
-            )
-        elif sys.platform == "darwin":
-            icns = base_path / "icon.icns"
-            icon_path = (
-                icns if icns.exists() else base_path / "assets" / "icons" / "logo.png"
-            )
-        else:
-            icon_path = base_path / "assets" / "icons" / "logo.png"
-    else:
-        # Running as script - try build directory first (for development)
-        project_root = Path(__file__).resolve().parent.parent
-        if sys.platform == "win32":
-            build_icon = project_root / "build" / "icon.ico"
-            if build_icon.exists():
-                icon_path = build_icon
-        elif sys.platform == "darwin":
-            build_icon = project_root / "build" / "icon.icns"
-            if build_icon.exists():
-                icon_path = build_icon
-
-        # Fallback to PNG logo if build icons don't exist
-        if icon_path is None or not icon_path.exists():
-            base_path = Path(__file__).resolve().parent / "cuepoint" / "ui"
-            icon_path = base_path / "assets" / "icons" / "logo.png"
-
-    # Set icon if found
-    if icon_path and icon_path.exists():
-        try:
-            icon = QIcon(str(icon_path))
-            if not icon.isNull():
-                app.setWindowIcon(icon)
-        except Exception:
-            # Icon loading failed, continue without icon
-            pass
-
-
-def main():
-    """Main entry point for the legacy PySide6 GUI application."""
-    from PySide6.QtWidgets import QApplication, QMessageBox
-
-    from cuepoint.services.bootstrap import bootstrap_services
-    from cuepoint.ui.main_window import MainWindow
-    from cuepoint.utils.i18n import I18nManager
-    from cuepoint.utils.logger import CuePointLogger
-    from cuepoint.utils.paths import AppPaths, PathMigration
-    from cuepoint.utils.system_check import SystemRequirements
-
-    try:
-        # Initialize application paths (Step 6.1)
-        # Must be done before any file operations
-        AppPaths.initialize_all()
-
-        # Configure logging (Step 6.2)
-        # Must be done early to capture all logs
-        CuePointLogger.configure()
-
-        # Install crash handler (Step 6.3)
-        from cuepoint.utils.crash_handler import CrashHandler, ThreadExceptionHandler
-
-        CrashHandler()
-        ThreadExceptionHandler.install_thread_exception_handler()
-
-        # Initialize Sentry as early as possible (captures import/startup errors)
-        # Consent is enforced in before_send once QApplication exists
-        try:
-            from cuepoint.utils.sentry_init import init_sentry_early
-
-            init_sentry_early()
-        except Exception:
-            pass
-
-        # Check for path migration (Step 6.1.4)
-        if PathMigration.detect_migration_needed():
-            # Perform migration silently (user can be notified if needed)
-            success, error = PathMigration.migrate_paths()
-            if not success:
-                # Log error but don't block startup
-                import logging
-
-                logging.getLogger(__name__).warning(f"Path migration failed: {error}")
-
-        # Bootstrap services (dependency injection setup)
-        bootstrap_services()
-
-        # Step 8: High-DPI scaling (Design 8.129) - enable before QApplication
-        try:
-            from PySide6.QtCore import Qt
-
-            # Qt 6 uses high-DPI scaling by default; ensure pixmaps scale on mixed-DPI displays
-            if hasattr(Qt, "AA_UseHighDpiPixmaps"):
-                QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
-        except Exception:
-            pass
-
-        # Create QApplication (needed for message boxes)
-        app = QApplication(sys.argv)
-        # Set organization and application name BEFORE creating any QSettings
-        # This ensures QSettings uses the correct location for all settings
-        app.setOrganizationName("StuChain")
-        app.setOrganizationDomain("stuchain.com")
-        app.setApplicationName("CuePoint")
-        # Get version from version.py (single source of truth)
-        from cuepoint.version import get_version
-
-        app.setApplicationVersion(get_version())
-
-        # Initialize error reporter (Step 11.2)
-        try:
-            from cuepoint.utils.error_reporter import init_error_reporter
-            from cuepoint.utils.error_reporting_prefs import ErrorReportingPrefs
-
-            prefs = ErrorReportingPrefs()
-            if prefs.is_enabled() and prefs.has_user_consented():
-                # Get GitHub repo from environment or use default
-                github_repo = os.getenv("CUEPOINT_GITHUB_REPO", "stuchain/CuePoint")
-                github_token = os.getenv(
-                    "GITHUB_TOKEN"
-                )  # Optional, can be None for public repos
-                init_error_reporter(github_repo, github_token, enabled=True)
-        except Exception as e:
-            # Don't block startup if error reporter fails to initialize
-            import logging
-
-            logging.getLogger(__name__).warning(
-                f"Failed to initialize error reporter: {e}"
-            )
-
-        # Set application icon (for taskbar/dock)
-        _set_application_icon(app)
-
-        # Step 9.3: localization readiness (English-only unless `.qm` files are present)
-        I18nManager.setup_translations(app)
-
-        # Rollout Phase D: theme + UI scale from Settings (default neoDark @ 2×)
-        from cuepoint.ui.appearance import init_appearance
-
-        init_appearance(app)
-
-        # Check system requirements
-        meets_requirements, errors = SystemRequirements.check_all()
-        if not meets_requirements:
-            error_message = (
-                "Your system does not meet the minimum requirements:\n\n"
-                + "\n".join(f"• {error}" for error in errors)
-                + "\n\nPlease upgrade your system and try again."
-            )
-
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Critical)
-            msg.setWindowTitle("System Requirements Not Met")
-            msg.setText(error_message)
-            msg.exec()
-
-            sys.exit(1)
-
-        # Create and show main window
-        window = MainWindow()
-        window.show()
-        # First-run: ask once for error-reporting consent
-        try:
-            from cuepoint.ui.dialogs.first_run_error_reporting_dialog import (
-                show_if_first_run,
-            )
-
-            show_if_first_run(parent=window)
-        except Exception:
-            pass
-        # Step 14: app_start telemetry (GUI)
-        try:
-            from cuepoint.utils.telemetry_helper import get_telemetry
-
-            get_telemetry().track("app_start", {"channel": "gui"})
-        except Exception:
-            pass
-        # Ensure window is raised and activated immediately
-        window.raise_()
-        window.activateWindow()
-        # Process events to ensure window is actually visible
-        QApplication.processEvents()
-
-        # Apply dark title bar on Windows (after window is shown)
-        # Use QTimer to ensure window handle is fully initialized
-        from cuepoint.utils.platform import apply_windows_dark_title_bar, is_windows
-
-        if is_windows():
-            from PySide6.QtCore import QTimer
-
-            # Apply immediately
-            apply_windows_dark_title_bar(window)
-            # Also apply after a short delay to ensure it sticks
-            QTimer.singleShot(100, lambda: apply_windows_dark_title_bar(window))
-
-        # Run event loop
-        sys.exit(app.exec())
-
-    except Exception as e:
-        # Send to Sentry so startup failures are reported
-        try:
-            import sentry_sdk
-
-            sentry_sdk.capture_exception(e)
-        except Exception:
-            pass
-
-        # Handle startup errors gracefully
-        error_msg = f"Failed to start CuePoint GUI:\n\n{str(e)}"
-
-        # Try to show error in a message box
-        # Always import here to avoid scoping issues
-        try:
-            # Import fresh to avoid any scoping issues
-            from PySide6.QtWidgets import QApplication as QtApp
-
-            # Check if QApplication instance already exists
-            existing_app = QtApp.instance()
-            if existing_app:
-                QMessageBox.critical(None, "Startup Error", error_msg)
-            else:
-                # Create a temporary QApplication for the error dialog
-                _ = QtApp(sys.argv)
-                QMessageBox.critical(None, "Startup Error", error_msg)
-        except Exception as gui_error:
-            # Fallback to console output if GUI error display fails
-            print(error_msg, file=sys.stderr)
-            print(f"Also failed to show GUI error dialog: {gui_error}", file=sys.stderr)
-            import traceback
-
-            traceback.print_exc()
-
-        sys.exit(1)
+    return launch_electron()
 
 
 if __name__ == "__main__":
-    if _use_legacy_qt():
-        main()
-    else:
-        raise SystemExit(_launch_electron())
+    _maybe_reexec_venv()
+    _ensure_src_on_path()
+    raise SystemExit(main())

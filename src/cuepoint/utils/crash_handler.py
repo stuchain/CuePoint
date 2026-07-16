@@ -142,22 +142,24 @@ class CrashHandler(QObject):
             crash_log: Path to crash log file.
             crash_report_path: Path to crash report JSON.
         """
-        # Use QApplication to show dialog
-        from PySide6.QtWidgets import QApplication
+        # Use QApplication to show dialog when Qt is available
+        try:
+            from PySide6.QtWidgets import QApplication
+        except ImportError:
+            print(
+                f"Fatal error (no GUI): {type(exception).__name__}: {exception}\n"
+                f"Crash log: {crash_log}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
 
         app = QApplication.instance()
         if app is None:
             # No GUI available, just exit
             sys.exit(1)
 
-        # Import here to avoid circular dependencies
+        # Prefer a simple message box when Qt is available (legacy crash dialog archived)
         try:
-            from cuepoint.ui.dialogs.crash_dialog import CrashDialog
-
-            dialog = CrashDialog(exception, traceback_str, crash_log, crash_report_path)
-            dialog.exec()
-        except ImportError:
-            # Crash dialog not available, show simple message box
             from PySide6.QtWidgets import QMessageBox
 
             msg = QMessageBox()
@@ -170,6 +172,12 @@ class CrashHandler(QObject):
                 f"The application will now exit."
             )
             msg.exec()
+        except Exception:
+            print(
+                f"Fatal error: {type(exception).__name__}: {exception}\n"
+                f"Crash log: {crash_log}",
+                file=sys.stderr,
+            )
 
     def restore_handler(self):
         """Restore original exception handler."""

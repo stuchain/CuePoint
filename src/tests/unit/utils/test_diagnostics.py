@@ -77,7 +77,7 @@ class TestDiagnosticCollector:
         assert "os_version" in system_info
         assert system_info["platform"] == "macos"
 
-    @patch("cuepoint.utils.diagnostics.QSettings")
+    @patch("PySide6.QtCore.QSettings")
     @patch("cuepoint.utils.diagnostics.AppPaths")
     def test_collect_config_info(self, mock_paths, mock_settings):
         """Test collecting configuration information."""

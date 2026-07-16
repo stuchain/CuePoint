@@ -39,9 +39,5 @@ cd apps/desktop-electron
 npm install
 ```
 
-The legacy PySide6 GUI is deprecated. To run it for debugging only:
-
-```bash
-pip install -r requirements-qt.txt
-python src/gui_app.py --legacy-qt
-```
+The PySide6 GUI has been removed from the product path (archived under
+`archive/legacy-pyside6-ui/`).

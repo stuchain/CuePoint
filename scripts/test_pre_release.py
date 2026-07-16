@@ -12,6 +12,7 @@ Usage:
 """
 
 import argparse
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -466,43 +467,52 @@ def test_workflow_files():
 
 
 def test_gui_app_version():
-    """Test that gui_app.py uses version from version.py"""
-    print_header("Testing GUI App Version Usage")
+    """Test that gui_app.py is the Electron launcher (no hardcoded Qt version)."""
+    print_header("Testing GUI App Entry Point")
     results = []
-    
+
     gui_app_path = Path("src/gui_app.py")
     if not gui_app_path.exists():
         results.append(TestResult("gui_app.py exists", False))
         return results
-    
+
     results.append(TestResult("gui_app.py exists", True))
-    
-    content = gui_app_path.read_text(encoding='utf-8')
-    
-    # Check for hardcoded version
-    if '"1.0.0"' in content or "'1.0.0'" in content:
-        # Check if it's in a comment or string literal that's not the actual version
-        if 'setApplicationVersion("1.0.0")' in content:
-            results.append(TestResult(
+
+    content = gui_app_path.read_text(encoding="utf-8")
+
+    if 'setApplicationVersion("1.0.0")' in content:
+        results.append(
+            TestResult(
                 "No hardcoded version in setApplicationVersion",
                 False,
-                "Found hardcoded '1.0.0' in setApplicationVersion"
-            ))
-        else:
-            results.append(TestResult("No hardcoded version in setApplicationVersion", True))
+                "Found hardcoded '1.0.0' in setApplicationVersion",
+            )
+        )
     else:
         results.append(TestResult("No hardcoded version in setApplicationVersion", True))
-    
-    # Check for get_version() usage
-    if "get_version()" in content:
-        results.append(TestResult("Uses get_version() from version.py", True))
+
+    if "launch_electron" in content or "electron:dev" in content:
+        results.append(TestResult("gui_app launches Electron desktop shell", True))
     else:
-        results.append(TestResult(
-            "Uses get_version() from version.py",
-            False,
-            "Not using get_version() - may be using hardcoded version"
-        ))
-    
+        results.append(
+            TestResult(
+                "gui_app launches Electron desktop shell",
+                False,
+                "Expected Electron launch helper in gui_app.py",
+            )
+        )
+
+    if re.search(r"^\s*(?:from|import)\s+PySide6\b", content, re.M):
+        results.append(
+            TestResult(
+                "gui_app has no PySide6 dependency",
+                False,
+                "PySide6 imports remain in gui_app.py",
+            )
+        )
+    else:
+        results.append(TestResult("gui_app has no PySide6 dependency", True))
+
     return results
 
 

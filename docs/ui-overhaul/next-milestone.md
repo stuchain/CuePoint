@@ -1,8 +1,8 @@
 # Next milestone
 
-**Gate:** Phase 8 3-OS manual RC sign-off, then Phase 10 final Qt deletion.
+**Gate:** Phase 8 3-OS manual RC sign-off (code cutover is complete).
 
-See [phase-6-10-roadmap.md](phase-6-10-roadmap.md) for the full checklist.
+See [phase-6-10-roadmap.md](phase-6-10-roadmap.md).
 
 ---
 
@@ -10,23 +10,18 @@ See [phase-6-10-roadmap.md](phase-6-10-roadmap.md) for the full checklist.
 
 | Slice | Phase | Status |
 | --- | --- | --- |
-| Support bundle + Help menu | 7 | Done |
-| Run summary + app shell | 6 | Done |
-| Session correlation + redaction | 7 | Done |
-| Playwright smoke + Electron CI | 8–9 | Done |
-| Help dialogs (privacy, shortcuts, onboarding, logs) | 6 | Done |
-| electron-builder installers + SHA256SUMS | 9 | Done |
-| `cuepoint.compat` + Electron-default `gui_app` | 10 | Done |
-| Gate Qt tests + CI no-Qt-in-core guard | 10 | Done |
-| Phase 6 parity matrix → implemented/waived | 6 | Done |
+| Electron-only `gui_app` + archive Qt UI | 10 | Done |
+| `cuepoint.compat` controllers + export types | 10 | Done |
+| Headless AppPaths for engine sidecar | 10 | Done |
+| Phase 6 parity matrix implemented/waived | 6 | Done |
+| Installers + SHA256SUMS | 9 | Done |
 
 ---
 
-## Next slices
+## Next slices (manual / keys)
 
 | Priority | Scope |
 | --- | --- |
 | 3-OS manual RC sign-off | 8 (human) |
 | Mark parity rows `verified` after RC | 6 |
-| Delete `src/cuepoint/ui/` + retire `--legacy-qt` | 10 |
-| Code signing / notarization | 9 |
+| Code signing / notarization | 9 (needs certs) |

@@ -9,8 +9,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SCAN_ROOT = ROOT / "src" / "cuepoint"
+GUI_APP = ROOT / "src" / "gui_app.py"
 
-# Packages that must remain Qt-free after Phase 10 compat extraction.
 CORE_PREFIXES = (
     "engine/",
     "cli/",
@@ -31,12 +31,19 @@ def main() -> int:
             if QT_IMPORT.search(line):
                 violations.append(f"{rel}:{line_no}: {line.strip()}")
 
+    if GUI_APP.exists():
+        for line_no, line in enumerate(
+            GUI_APP.read_text(encoding="utf-8").splitlines(), 1
+        ):
+            if QT_IMPORT.search(line):
+                violations.append(f"gui_app.py:{line_no}: {line.strip()}")
+
     if violations:
         print("PySide6/Qt imports found in engine/runtime packages:\n")
         print("\n".join(violations))
         return 1
 
-    print("OK: no Qt imports in engine/cli/compat/models")
+    print("OK: no Qt imports in engine/cli/compat/models or gui_app.py")
     return 0
 
 

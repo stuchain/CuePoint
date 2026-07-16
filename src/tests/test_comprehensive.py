@@ -112,15 +112,15 @@ def test_all_imports():
         errors.append(f"UI gui_interface: {e}")
         print(f"[FAIL] UI gui_interface: {e}")
 
-    # Test UI imports that require Qt (may fail if Qt not installed, but should not fail on import)
+    # Legacy Qt UI is archived; Electron is the desktop path
     try:
         from cuepoint.ui.main_window import MainWindow  # noqa: F401
 
         print("[OK] UI main_window imports")
     except ImportError as e:
-        if "PySide6" in str(e) or "PyQt" in str(e):
+        if "PySide6" in str(e) or "PyQt" in str(e) or "cuepoint.ui" in str(e):
             print(
-                "[SKIP] UI main_window (Qt not available, but import path is correct)"
+                "[SKIP] UI main_window (legacy Qt UI archived; Electron is the desktop path)"
             )
         else:
             errors.append(f"UI main_window: {e}")
@@ -128,6 +128,14 @@ def test_all_imports():
     except Exception as e:
         errors.append(f"UI main_window: {e}")
         print(f"[FAIL] UI main_window: {e}")
+
+    try:
+        from cuepoint.compat.gui_types import ProgressInfo  # noqa: F401
+
+        print("[OK] cuepoint.compat imports")
+    except Exception as e:
+        errors.append(f"compat: {e}")
+        print(f"[FAIL] compat: {e}")
 
     print("\n" + "=" * 80)
     if errors:
