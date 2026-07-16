@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Signal, Qt
 from typing import Dict, Any
 from config import SETTINGS
-from cuepoint.ui.controllers.config_controller import ConfigController
+from cuepoint.compat.config_controller import ConfigController
 
 
 class ConfigPanel(QWidget):

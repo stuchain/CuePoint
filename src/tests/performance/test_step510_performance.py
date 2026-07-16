@@ -277,7 +277,7 @@ class TestFilterPerformance:
 
         Target: < 100ms for filtering 1000 results
         """
-        from cuepoint.ui.controllers.results_controller import ResultsController
+        from cuepoint.compat.results_controller import ResultsController
         from cuepoint.models.result import TrackResult
 
         # Create test results

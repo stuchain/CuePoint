@@ -7,7 +7,7 @@ Unit tests for ConfigController
 
 import pytest
 from unittest.mock import Mock
-from cuepoint.ui.controllers.config_controller import ConfigController
+from cuepoint.compat.config_controller import ConfigController
 from cuepoint.services.interfaces import IConfigService
 
 

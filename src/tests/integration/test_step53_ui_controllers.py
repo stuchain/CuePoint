@@ -13,9 +13,9 @@ import pytest
 from PySide6.QtWidgets import QApplication
 
 from cuepoint.models.result import TrackResult
-from cuepoint.ui.controllers.config_controller import ConfigController
+from cuepoint.compat.config_controller import ConfigController
 from cuepoint.compat.export_controller import ExportController
-from cuepoint.ui.controllers.results_controller import ResultsController
+from cuepoint.compat.results_controller import ResultsController
 from cuepoint.ui.dialogs.export_dialog import ExportDialog
 from cuepoint.ui.widgets.config_panel import ConfigPanel
 from cuepoint.ui.widgets.results_view import ResultsView

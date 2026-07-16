@@ -24,7 +24,7 @@ from cuepoint.services import (
     matcher_service,
     processor_service,
 )
-from cuepoint.ui.controllers import (
+from cuepoint.compat import (
     export_controller,
     results_controller,
 )

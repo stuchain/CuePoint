@@ -6,7 +6,7 @@ Unit tests for ResultsController
 """
 
 import pytest
-from cuepoint.ui.controllers.results_controller import ResultsController
+from cuepoint.compat.results_controller import ResultsController
 from cuepoint.models.result import TrackResult
 
 

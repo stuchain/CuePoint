@@ -19,10 +19,9 @@ from cuepoint.services import (
     matcher_service,
     processor_service,
 )
-from cuepoint.ui.controllers import (
+from cuepoint.compat import (
     config_controller,
     export_controller,
-    main_controller,
     results_controller,
 )
 
@@ -226,8 +225,6 @@ class TestDocstrings:
         assert results_controller.ResultsController.__doc__ is not None
         assert export_controller.ExportController.__doc__ is not None
         assert config_controller.ConfigController.__doc__ is not None
-        assert main_controller.GUIController.__doc__ is not None
-        assert main_controller.ProcessingWorker.__doc__ is not None
 
     @pytest.mark.unit
     def test_module_docstrings(self):
