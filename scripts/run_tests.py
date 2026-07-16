@@ -5,11 +5,12 @@
 Run test suites by layer. Design 3.34.
 
 Usage:
-    python scripts/run_tests.py              # run unit + integration
+    python scripts/run_tests.py              # run unit + integration (excludes legacy Qt UI)
     python scripts/run_tests.py --unit       # unit only
     python scripts/run_tests.py --integration
     python scripts/run_tests.py --system     # system/CLI smoke
     python scripts/run_tests.py --all        # unit, integration, system
+    python scripts/run_tests.py --with-qt    # include legacy Qt UI tests (requirements-qt.txt)
 """
 
 import argparse
@@ -58,6 +59,11 @@ def main() -> None:
     parser.add_argument("--all", action="store_true", help="Run unit, then integration, then system")
     parser.add_argument("--coverage", action="store_true", help="Report coverage (with --unit or --all)")
     parser.add_argument("--no-slow", action="store_true", help="Exclude @slow tests")
+    parser.add_argument(
+        "--with-qt",
+        action="store_true",
+        help="Include legacy Qt UI tests (requires requirements-qt.txt)",
+    )
     args = parser.parse_args()
 
     if not any([args.unit, args.integration, args.system, args.all]):
@@ -68,9 +74,13 @@ def main() -> None:
     extra = []
     if args.coverage:
         extra.extend(["--cov=src/cuepoint", "--cov-report=term", "--cov-report=xml"])
+    marker_parts = []
     if args.no_slow:
-        extra.append("-m")
-        extra.append("not slow")
+        marker_parts.append("not slow")
+    if not args.with_qt:
+        marker_parts.append("not ui")
+    if marker_parts:
+        extra.extend(["-m", " and ".join(marker_parts)])
 
     # Run by path so all tests in each layer run (Design 3.34, 3.35, 3.17)
     paths = {
@@ -84,8 +94,13 @@ def main() -> None:
         for name, path in paths.items():
             print(f"\n--- {name} ---")
             ex = []
+            marker_parts = []
             if args.no_slow:
-                ex.extend(["-m", "not slow"])
+                marker_parts.append("not slow")
+            if not args.with_qt:
+                marker_parts.append("not ui")
+            if marker_parts:
+                ex.extend(["-m", " and ".join(marker_parts)])
             if args.coverage and name == "unit":
                 ex.extend(["--cov=src/cuepoint", "--cov-report=term", "--cov-report=xml"])
             exit_code = run_pytest(path, by_path=True, extra=ex)
