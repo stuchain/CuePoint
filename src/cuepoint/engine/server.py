@@ -22,6 +22,8 @@ from cuepoint.engine.job_events import iter_job_events
 from cuepoint.engine.export_api import parse_export_body, run_export
 from cuepoint.engine.sync_tags_api import parse_sync_tags_body, run_sync_tags
 from cuepoint.engine.support_bundle_api import parse_support_bundle_body, run_support_bundle
+from cuepoint.engine.logs_api import get_cuepoint_log_text, get_cuepoint_logs_dir
+from cuepoint.engine.privacy_api import clear_cache_now, clear_logs_now
 from cuepoint.engine.history_api import list_recent_history, load_history_csv
 from cuepoint.engine.incrate_api import (
     demo_inventory_snapshot,
@@ -221,6 +223,44 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
                     return
                 self._send_json(200, {"ready": True, **health_payload()})
                 return
+            if path == "/api/v1/logs/dir":
+                if not self._authorized():
+                    self._send_json(401, error_payload("UNAUTHORIZED", "Missing or invalid token"))
+                    return
+                self._send_json(200, {"logs_dir": get_cuepoint_logs_dir()})
+                return
+            if path == "/api/v1/logs/cuepoint":
+                if not self._authorized():
+                    self._send_json(401, error_payload("UNAUTHORIZED", "Missing or invalid token"))
+                    return
+                params = parse_qs(parsed.query)
+                level = params.get("level", ["All"])[0] or None
+                search = params.get("search", [""])[0] or None
+                tail_lines_raw = params.get("tail_lines", ["10000"])[0]
+                max_bytes_raw = params.get("max_bytes", ["5000000"])[0]
+                try:
+                    tail_lines = int(tail_lines_raw)
+                except ValueError:
+                    self._send_json(400, error_payload("INVALID_REQUEST", "tail_lines must be an integer"))
+                    return
+                try:
+                    max_bytes = int(max_bytes_raw)
+                except ValueError:
+                    self._send_json(400, error_payload("INVALID_REQUEST", "max_bytes must be an integer"))
+                    return
+                try:
+                    payload = get_cuepoint_log_text(
+                        level=level,
+                        search=search,
+                        tail_lines=tail_lines,
+                        max_bytes=max_bytes,
+                        sanitize=True,
+                    )
+                except Exception as exc:  # noqa: BLE001 — surface to API client
+                    self._send_json(500, error_payload("LOGS_READ_FAILED", str(exc)))
+                    return
+                self._send_json(200, payload)
+                return
             if path.startswith("/api/v1/jobs/"):
                 self._handle_job_get(path)
                 return
@@ -296,6 +336,22 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
             path = urlparse(self.path).path
             if not self._authorized():
                 self._send_json(401, error_payload("UNAUTHORIZED", "Missing or invalid token"))
+                return
+            if path == "/api/v1/privacy/clear-logs":
+                try:
+                    payload = clear_logs_now()
+                except Exception as exc:  # noqa: BLE001 — surface to API client
+                    self._send_json(500, error_payload("PRIVACY_CLEAR_LOGS_FAILED", str(exc)))
+                    return
+                self._send_json(200, payload)
+                return
+            if path == "/api/v1/privacy/clear-cache":
+                try:
+                    payload = clear_cache_now()
+                except Exception as exc:  # noqa: BLE001 — surface to API client
+                    self._send_json(500, error_payload("PRIVACY_CLEAR_CACHE_FAILED", str(exc)))
+                    return
+                self._send_json(200, payload)
                 return
 
             if path == "/api/v1/jobs/match":
