@@ -45,13 +45,13 @@
     ],
     "asar": true,
     "win": {
-      "target": ["dir"]
+      "target": ["nsis"]
     },
     "mac": {
-      "target": ["dir"]
+      "target": ["dmg"]
     },
     "linux": {
-      "target": ["dir"]
+      "target": ["AppImage"]
     }
   },
   "devDependencies": {

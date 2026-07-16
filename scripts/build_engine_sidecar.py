@@ -103,6 +103,14 @@ def main() -> int:
     shutil.copy2(built_exe, dest_exe)
     print(f"Copied sidecar to {dest_exe}")
 
+    if sys.platform != "win32":
+        # shutil.copy2 can preserve mode, but on some runners it may not.
+        # Ensure the copied binary is executable for smoke tests.
+        try:
+            dest_exe.chmod(dest_exe.stat().st_mode | 0o111)
+        except OSError:
+            pass
+
     _smoke_test_executable(dest_exe)
     return 0
 

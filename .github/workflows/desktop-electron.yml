@@ -79,3 +79,17 @@ jobs:
       - name: Playwright Electron smoke
         working-directory: apps/desktop-electron
         run: npm run test:e2e
+
+      - name: Build Electron installers + artifacts
+        working-directory: apps/desktop-electron
+        run: npm run dist
+
+      - name: Generate SHA256SUMS
+        working-directory: apps/desktop-electron
+        run: python ../../scripts/generate_sha256_sums.py release
+
+      - name: Upload Electron artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-electron-${{ matrix.os }}
+          path: apps/desktop-electron/release/**
