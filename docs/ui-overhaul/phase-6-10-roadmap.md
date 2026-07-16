@@ -17,7 +17,8 @@ Tracks remaining work to finish the full UI overhaul per `docs/ui-overhaul/`.
 | Done | Onboarding, privacy, shortcuts, about, diagnostics dialogs |
 | Done | Playlist export instructions + Rekordbox help dialogs |
 | Done | Log viewer (renderer) + engine logs/privacy clear endpoints |
-| Pending | Mark matrix rows `implemented` → `verified` |
+| Done | Parity matrix rows marked `implemented` / `waived` (Electron mapping) |
+| Pending | Mark matrix rows `implemented` → `verified` (after Phase 8 RC) |
 
 See [phase-6-gui-parity.md](phase-6-gui-parity.md).
 
