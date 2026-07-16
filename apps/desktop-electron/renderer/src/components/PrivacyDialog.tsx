@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Modal } from "./index";
+import { Button, Modal, useToast } from "./index";
 import "./PrivacyDialog.css";
 
 const STORAGE_CLEAR_CACHE = "cuepoint-privacy-clear-cache-on-exit";
@@ -20,7 +20,8 @@ Local storage:
 - Beatport token stored locally when configured
 - Logs and cache for debugging (can be cleared)
 
-You can adjust exit preferences below. Clearing cache or logs from Settings may be added in a future update.`;
+You can adjust exit preferences below. You can clear cache/logs now, and optionally
+clear them automatically on exit.`;
 
 interface PrivacyDialogProps {
   open: boolean;
@@ -30,6 +31,8 @@ interface PrivacyDialogProps {
 export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
   const [clearCacheOnExit, setClearCacheOnExit] = useState(false);
   const [clearLogsOnExit, setClearLogsOnExit] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const { push } = useToast();
 
   useEffect(() => {
     if (!open) return;
@@ -41,6 +44,36 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
     localStorage.setItem(STORAGE_CLEAR_CACHE, clearCacheOnExit ? "1" : "0");
     localStorage.setItem(STORAGE_CLEAR_LOGS, clearLogsOnExit ? "1" : "0");
     onClose();
+  };
+
+  const handleClearCacheNow = async () => {
+    if (!window.cuepoint?.clearCuepointCache) return;
+    const ok = window.confirm("Clear cache now? This may improve privacy at the cost of performance.");
+    if (!ok) return;
+    setClearing(true);
+    try {
+      await window.cuepoint.clearCuepointCache();
+      push("Cache cleared.", "success");
+    } catch (e) {
+      push(e instanceof Error ? e.message : "Failed to clear cache.", "warning");
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  const handleClearLogsNow = async () => {
+    if (!window.cuepoint?.clearCuepointLogs) return;
+    const ok = window.confirm("Clear logs now? This cannot be undone.");
+    if (!ok) return;
+    setClearing(true);
+    try {
+      await window.cuepoint.clearCuepointLogs();
+      push("Logs cleared.", "success");
+    } catch (e) {
+      push(e instanceof Error ? e.message : "Failed to clear logs.", "warning");
+    } finally {
+      setClearing(false);
+    }
   };
 
   return (
@@ -72,6 +105,25 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
             Clear logs on exit
           </label>
         </fieldset>
+
+        <div className="privacy-dialog__actions">
+          <Button
+            variant="secondary"
+            loading={clearing}
+            disabled={clearing}
+            onClick={() => void handleClearCacheNow()}
+          >
+            Clear cache now
+          </Button>
+          <Button
+            variant="secondary"
+            loading={clearing}
+            disabled={clearing}
+            onClick={() => void handleClearLogsNow()}
+          >
+            Clear logs now
+          </Button>
+        </div>
       </div>
     </Modal>
   );

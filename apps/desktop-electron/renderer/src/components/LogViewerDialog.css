@@ -1,0 +1,69 @@
+.log-viewer-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.log-viewer-dialog__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-lg);
+  align-items: flex-end;
+}
+
+.log-viewer-dialog__search {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 240px;
+}
+
+.log-viewer-dialog__search-label {
+  font-size: var(--font-size-sm);
+  color: var(--fg-muted);
+}
+
+.log-viewer-dialog__search-input {
+  width: 100%;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 10px;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.log-viewer-dialog__auto {
+  display: flex;
+  gap: var(--space-xs);
+  align-items: center;
+  font-size: var(--font-size-sm);
+  color: var(--fg);
+}
+
+.log-viewer-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.log-viewer-dialog__error {
+  margin: 0;
+  color: var(--danger);
+}
+
+.log-viewer-dialog__output {
+  margin: 0;
+  max-height: 420px;
+  overflow: auto;
+  padding: var(--space-sm);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+

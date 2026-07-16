@@ -8,8 +8,10 @@ export interface AppMenuActions {
   onOpenPrivacy: () => void;
   onOpenAbout: () => void;
   onOpenDiagnostics: () => void;
+  onOpenLogViewer: () => void;
   onShowOnboarding: () => void;
   onOpenRekordboxInstructions: () => void;
+  onOpenPlaylistExportInstructions: () => void;
 }
 
 export function AppMenuBar({
@@ -18,8 +20,10 @@ export function AppMenuBar({
   onOpenPrivacy,
   onOpenAbout,
   onOpenDiagnostics,
+  onOpenLogViewer,
   onShowOnboarding,
   onOpenRekordboxInstructions,
+  onOpenPlaylistExportInstructions,
 }: AppMenuActions) {
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -76,8 +80,22 @@ export function AppMenuBar({
                 </button>
               </li>
               <li role="none">
+                <button type="button" role="menuitem" onClick={() => run(onOpenLogViewer)}>
+                  Log Viewer…
+                </button>
+              </li>
+              <li role="none">
                 <button type="button" role="menuitem" onClick={() => run(onOpenRekordboxInstructions)}>
                   Rekordbox XML export…
+                </button>
+              </li>
+              <li role="none">
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => run(onOpenPlaylistExportInstructions)}
+                >
+                  Playlist (M3U) export instructions…
                 </button>
               </li>
               <li role="none">

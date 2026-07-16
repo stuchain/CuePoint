@@ -28,3 +28,10 @@
 .privacy-dialog__prefs label:first-of-type {
   margin-top: 0;
 }
+
+.privacy-dialog__actions {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  margin-top: var(--space-sm);
+}

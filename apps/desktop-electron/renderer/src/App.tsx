@@ -4,9 +4,11 @@ import {
   AboutDialog,
   AppMenuBar,
   DiagnosticsDialog,
+  LogViewerDialog,
   OnboardingDialog,
   PrivacyDialog,
   RekordboxInstructionsDialog,
+  PlaylistExportInstructionsDialog,
   ShortcutsDialog,
   SupportBundleDialog,
   ToastProvider,
@@ -34,6 +36,8 @@ function AppShell() {
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(() => shouldShowOnboarding());
   const [rekordboxOpen, setRekordboxOpen] = useState(false);
+  const [logViewerOpen, setLogViewerOpen] = useState(false);
+  const [playlistExportInstructionsOpen, setPlaylistExportInstructionsOpen] = useState(false);
 
   useEffect(() => {
     document.title = "CuePoint";
@@ -65,8 +69,10 @@ function AppShell() {
     onOpenPrivacy: () => setPrivacyOpen(true),
     onOpenAbout: () => setAboutOpen(true),
     onOpenDiagnostics: () => setDiagnosticsOpen(true),
+    onOpenLogViewer: () => setLogViewerOpen(true),
     onShowOnboarding: () => setOnboardingOpen(true),
     onOpenRekordboxInstructions: () => setRekordboxOpen(true),
+    onOpenPlaylistExportInstructions: () => setPlaylistExportInstructionsOpen(true),
   };
 
   return (
@@ -83,7 +89,10 @@ function AppShell() {
       <main className="app-main">
         <Routes>
           <Route path="/" element={<ToolSelectionScreen />} />
-          <Route path="/match" element={<InKeyMainScreen />} />
+          <Route
+            path="/match"
+            element={<InKeyMainScreen onOpenPlaylistExportInstructions={() => setPlaylistExportInstructionsOpen(true)} />}
+          />
           <Route path="/incrate" element={<InCrateMainScreen />} />
           <Route path="/results" element={<ResultsScreen />} />
           <Route path="/settings" element={<SettingsExportScreen />} />
@@ -96,6 +105,11 @@ function AppShell() {
       <DiagnosticsDialog open={diagnosticsOpen} onClose={() => setDiagnosticsOpen(false)} />
       <OnboardingDialog open={onboardingOpen} onComplete={() => setOnboardingOpen(false)} />
       <RekordboxInstructionsDialog open={rekordboxOpen} onClose={() => setRekordboxOpen(false)} />
+      <LogViewerDialog open={logViewerOpen} onClose={() => setLogViewerOpen(false)} />
+      <PlaylistExportInstructionsDialog
+        open={playlistExportInstructionsOpen}
+        onClose={() => setPlaylistExportInstructionsOpen(false)}
+      />
     </>
   );
 }

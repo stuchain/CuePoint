@@ -6,6 +6,8 @@ export { DiagnosticsDialog } from "./DiagnosticsDialog";
 export { OnboardingDialog, shouldShowOnboarding } from "./OnboardingDialog";
 export { PrivacyDialog } from "./PrivacyDialog";
 export { RekordboxInstructionsDialog } from "./RekordboxInstructionsDialog";
+export { LogViewerDialog } from "./LogViewerDialog";
+export { PlaylistExportInstructionsDialog } from "./PlaylistExportInstructionsDialog";
 export { RunSummaryDialog } from "./RunSummaryDialog";
 export { ShortcutsDialog } from "./ShortcutsDialog";
 export { SyncCompleteDialog } from "./SyncCompleteDialog";

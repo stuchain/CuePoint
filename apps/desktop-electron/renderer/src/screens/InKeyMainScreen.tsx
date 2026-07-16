@@ -29,7 +29,11 @@ import "./screens.css";
 
 type ProcessingMode = "single" | "batch";
 
-export function InKeyMainScreen() {
+export function InKeyMainScreen({
+  onOpenPlaylistExportInstructions,
+}: {
+  onOpenPlaylistExportInstructions?: () => void;
+}) {
   const navigate = useNavigate();
   const { push } = useToast();
   const [tab, setTab] = useState("main");
@@ -316,6 +320,14 @@ export function InKeyMainScreen() {
                   <Button variant="secondary" onClick={() => void handleBrowse()}>
                     Browse…
                   </Button>
+                  {inputSource === "playlist_file" ? (
+                    <Button
+                      variant="secondary"
+                      onClick={() => onOpenPlaylistExportInstructions?.()}
+                    >
+                      How to export M3U…
+                    </Button>
+                  ) : null}
                   {filePath && <Badge variant="success">{filePath.split(/[/\\]/).pop()}</Badge>}
                 </div>
               </div>
