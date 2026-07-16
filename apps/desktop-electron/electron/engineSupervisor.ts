@@ -42,6 +42,7 @@ export class EngineSupervisor {
       CUEPOINT_PORT: String(this.port),
       CUEPOINT_TOKEN: this.token,
       CUEPOINT_SESSION_ID: this.sessionId,
+      CUEPOINT_HEADLESS: "1",
     };
 
     if (shouldUseBundledEngine()) {

@@ -21,7 +21,14 @@ from cuepoint.utils.platform import is_macos, is_windows
 
 
 def _standard_path(location: str) -> Path:
-    """Resolve a Qt QStandardPaths-style writable location (Qt optional)."""
+    """Resolve a Qt QStandardPaths-style writable location (Qt optional).
+
+    Prefer the headless fallback when ``CUEPOINT_HEADLESS`` is set (Electron
+    engine sidecar / CI) so path resolution never depends on PySide6.
+    """
+    headless = os.environ.get("CUEPOINT_HEADLESS", "").strip().lower()
+    if headless in {"1", "true", "yes"}:
+        return _standard_path_fallback(location)
     try:
         from PySide6.QtCore import QStandardPaths
 

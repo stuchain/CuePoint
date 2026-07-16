@@ -18,3 +18,15 @@ def test_standard_path_fallback_without_qt(monkeypatch):
     config = paths._standard_path_fallback("AppConfigLocation")
     assert isinstance(config, Path)
     assert config.name in {"Roaming", ".config", "Application Support"}
+
+
+def test_standard_path_respects_cuepoint_headless(monkeypatch):
+    """CUEPOINT_HEADLESS forces fallback even when PySide6 is installed."""
+    monkeypatch.setenv("CUEPOINT_HEADLESS", "1")
+
+    paths = importlib.import_module("cuepoint.utils.paths")
+    importlib.reload(paths)
+
+    resolved = paths._standard_path("AppConfigLocation")
+    fallback = paths._standard_path_fallback("AppConfigLocation")
+    assert resolved == fallback

@@ -37,6 +37,7 @@ def _smoke_test_executable(exe: Path) -> None:
     env["CUEPOINT_HOST"] = "127.0.0.1"
     env["CUEPOINT_PORT"] = str(port)
     env["CUEPOINT_TOKEN"] = token
+    env["CUEPOINT_HEADLESS"] = "1"
 
     proc = subprocess.Popen(
         [str(exe)],
