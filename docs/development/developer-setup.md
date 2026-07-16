@@ -23,8 +23,9 @@ python scripts/dev_setup.py
 # 3. Activate venv (macOS/Linux)
 source .venv/bin/activate
 
-# 4. Run app
-python src/gui_app.py
+# 4. Run desktop app
+cd apps/desktop-electron && npm ci && npm ci --prefix renderer
+npm run electron:dev
 ```
 
 ## Manual Setup
@@ -34,6 +35,8 @@ python -m venv .venv
 .venv\Scripts\activate          # Windows
 # source .venv/bin/activate      # macOS/Linux
 pip install -r requirements.txt -r requirements-dev.txt
+# Optional legacy Qt UI / Qt-specific tests only:
+# pip install -r requirements-qt.txt
 ```
 
 ## Verify Setup
@@ -41,9 +44,9 @@ pip install -r requirements.txt -r requirements-dev.txt
 | Check | Command |
 | --- | --- |
 | Python OK | `python --version` (3.11+) |
-| Dependencies | `pip list \| grep -E "PySide6|pytest"` |
+| Dependencies | `pip list \| grep -E "pytest|playwright"` |
 | Tests | `python scripts/run_tests.py --unit --no-slow` |
-| App runs | `python src/gui_app.py` |
+| App runs | `cd apps/desktop-electron && npm run electron:dev` |
 
 ## Developer Tooling
 
@@ -73,8 +76,8 @@ python scripts/run_tests.py --all
 # Run CLI with sample XML (from project root)
 python main.py --xml src/tests/fixtures/rekordbox/minimal.xml --playlist "Test Playlist" --out test
 
-# Run GUI
-python src/gui_app.py
+# Run desktop shell
+cd apps/desktop-electron && npm run electron:dev
 ```
 
 ## Optional: Playwright (Browser Search)

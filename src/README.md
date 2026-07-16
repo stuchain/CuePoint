@@ -7,7 +7,7 @@ This directory contains the source code for the CuePoint application.
 ```
 src/
 ├── __init__.py              # Package initialization
-├── gui_app.py               # GUI application entry point
+├── gui_app.py               # Legacy Qt fallback entry point
 ├── main.py                  # CLI application entry point
 ├── cuepoint/                # Main application package
 │   ├── cli/                 # CLI components
@@ -29,7 +29,7 @@ src/
 
 ## Entry Points
 
-- **GUI Application**: Run `python gui_app.py` or use `run_gui.bat`/`run_gui.sh` from project root
+- **Desktop Application**: Run `cd apps/desktop-electron && npm run electron:dev`
 - **CLI Application**: Run `python main.py` with appropriate arguments
 
 ## Main Application Code
@@ -38,7 +38,7 @@ All working application code is in the `cuepoint/` package:
 - `cuepoint/core/` - Core business logic (matcher, query generator, text processing)
 - `cuepoint/data/` - Data access (Beatport, Rekordbox)
 - `cuepoint/services/` - Service layer (processor, matcher, export, config)
-- `cuepoint/ui/` - User interface components
+- `cuepoint/ui/` - Legacy Qt user interface components (Phase 10 removal)
 - `cuepoint/models/` - Data models
 - `cuepoint/utils/` - Utility functions
 - `cuepoint/cli/` - CLI processor

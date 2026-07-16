@@ -37,8 +37,8 @@ python src/main.py --xml src/tests/fixtures/rekordbox/minimal.xml --playlist "Te
 
 ## Running GUI with Sample Data
 
-1. Launch GUI: `python src/gui_app.py`
-2. File > Import XML
+1. Launch desktop shell: `cd apps/desktop-electron && npm run electron:dev`
+2. Import XML from the in-app flow
 3. Select `src/tests/fixtures/rekordbox/minimal.xml` (or `small.xml`)
 4. Choose a playlist from the dropdown
 5. Process and review results

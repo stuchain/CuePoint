@@ -147,7 +147,10 @@ After installation, you can run the GUI:
 
 ### Option 2: From Terminal (from project root)
 ```bash
-python3 src/gui_app.py
+cd apps/desktop-electron
+npm ci
+npm ci --prefix renderer
+npm run electron:dev
 ```
 
 ### Option 3: Using the shell script
@@ -201,7 +204,7 @@ playwright --version
 
 1. ✅ Install requirements
 2. ✅ Install Playwright browsers
-3. ✅ Run the GUI: `./run_gui.command` or `python3 src/gui_app.py`
+3. ✅ Run the desktop app: `./run_gui.command` or `cd apps/desktop-electron && npm run electron:dev`
 4. 🎉 Start using CuePoint!
 
 ## Need Help?

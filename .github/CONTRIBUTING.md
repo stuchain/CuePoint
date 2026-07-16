@@ -19,7 +19,7 @@ Thanks for helping improve CuePoint. Design 10.41.
 2. **Activate venv**:
    - Windows: `.venv\Scripts\activate`
    - macOS/Linux: `source .venv/bin/activate`
-3. **Run the app**: `python src/gui_app.py`
+3. **Run the app**: `cd apps/desktop-electron && npm run electron:dev`
 4. **Run tests**: `python scripts/run_tests.py --unit`
 
 See [Developer Setup](https://github.com/stuchain/CuePoint/blob/main/docs/development/developer-setup.md) for details.
@@ -30,6 +30,8 @@ See [Developer Setup](https://github.com/stuchain/CuePoint/blob/main/docs/develo
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt -r requirements-dev.txt
+# Optional legacy Qt UI / Qt-specific tests only:
+# pip install -r requirements-qt.txt
 ```
 
 ## Contributor Checklist (PR Quality Gates)

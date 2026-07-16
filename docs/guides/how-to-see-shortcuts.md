@@ -5,13 +5,13 @@
 ### 1. Launch the Application
 
 ```bash
-cd src
-python gui_app.py
+cd apps/desktop-electron
+npm run electron:dev
 ```
 
 Or if you have a launcher script:
 ```bash
-python src/gui_app.py
+./run_gui.sh
 ```
 
 ---

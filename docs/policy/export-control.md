@@ -16,7 +16,7 @@ CuePoint is open-source software. This document describes our distribution polic
 ## Export Control Compliance
 
 - CuePoint does not contain encryption or controlled technology beyond standard open-source libraries.
-- Dependencies are common Python packages (e.g., requests, PySide6) with permissive licenses.
+- Dependencies are common open-source packages (for example requests, Playwright, and Electron-side tooling) with permissive licenses.
 - If you are in a jurisdiction that restricts software import/export, please verify compliance with your local regulations before downloading or using CuePoint.
 
 ## Embargoed Regions

@@ -29,11 +29,13 @@ python src/main.py --help
 
 ### "No module named 'PySide6'" or missing deps
 
-**Cause**: Dependencies not installed.
+**Cause**: You are trying to run legacy Qt-only code/tests without the optional Qt dependencies installed.
 
 **Fix**:
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
+# Optional only for legacy Qt UI/tests:
+pip install -r requirements-qt.txt
 ```
 
 ### Import error for `ddgs` or `duckduckgo_search`
@@ -95,7 +97,7 @@ mypy src/ --ignore-missing-imports
 
 **Fix**:
 ```bash
-pip install --force-reinstall PySide6
+pip install --force-reinstall -r requirements-qt.txt
 ```
 
 ### GUI crashes on launch
