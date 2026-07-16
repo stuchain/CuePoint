@@ -44,6 +44,16 @@ function AppShell() {
   }, []);
 
   useEffect(() => {
+    const clearCacheOnExit = localStorage.getItem(
+      "cuepoint-privacy-clear-cache-on-exit",
+    ) === "1";
+    const clearLogsOnExit = localStorage.getItem(
+      "cuepoint-privacy-clear-logs-on-exit",
+    ) === "1";
+    void window.cuepoint?.setPrivacyExitPrefs?.({ clearCacheOnExit, clearLogsOnExit });
+  }, []);
+
+  useEffect(() => {
     window.scrollTo(0, 0);
     document.querySelector(".app-main")?.scrollTo(0, 0);
   }, [location.pathname]);

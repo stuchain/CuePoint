@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld("cuepoint", {
   getCuepointLog: (options) => ipcRenderer.invoke("engine:getCuepointLog", options ?? {}),
   clearCuepointLogs: () => ipcRenderer.invoke("engine:clearCuepointLogs"),
   clearCuepointCache: () => ipcRenderer.invoke("engine:clearCuepointCache"),
+  setPrivacyExitPrefs: (prefs) => ipcRenderer.invoke("privacy:setExitPrefs", prefs),
   subscribeJobEvents: (jobId, onEvent) => {
     const eventHandler = (_event, payload) => {
       if (payload?.jobId === jobId) onEvent(payload.event);

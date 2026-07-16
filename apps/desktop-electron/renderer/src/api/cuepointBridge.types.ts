@@ -219,6 +219,11 @@ export interface ClearOkResponse {
   ok: boolean;
 }
 
+export interface PrivacyExitPrefs {
+  clearCacheOnExit: boolean;
+  clearLogsOnExit: boolean;
+}
+
 export interface InKeyRerunRequest {
   xmlPath?: string;
   playlistName?: string;
@@ -295,6 +300,7 @@ export interface CuePointBridge {
   }) => Promise<CuepointLogResponse>;
   clearCuepointLogs?: () => Promise<ClearOkResponse>;
   clearCuepointCache?: () => Promise<ClearOkResponse>;
+  setPrivacyExitPrefs?: (prefs: PrivacyExitPrefs) => Promise<{ ok: boolean }>;
   subscribeJobEvents: (
     jobId: string,
     onEvent: (event: MatchJobStatus & { type?: string }) => void,

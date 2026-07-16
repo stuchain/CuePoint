@@ -43,6 +43,10 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
   const handleSave = () => {
     localStorage.setItem(STORAGE_CLEAR_CACHE, clearCacheOnExit ? "1" : "0");
     localStorage.setItem(STORAGE_CLEAR_LOGS, clearLogsOnExit ? "1" : "0");
+    void window.cuepoint?.setPrivacyExitPrefs?.({
+      clearCacheOnExit,
+      clearLogsOnExit,
+    });
     onClose();
   };
 

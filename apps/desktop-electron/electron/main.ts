@@ -11,6 +11,10 @@ const isDev = process.env.NODE_ENV === "development";
 const DEV_URL = process.env.CUEPOINT_RENDERER_URL ?? "http://localhost:5173";
 
 const engine = new EngineSupervisor();
+let privacyExitPrefs = {
+  clearCacheOnExit: false,
+  clearLogsOnExit: false,
+};
 
 function registerIpcHandlers(): void {
   ipcMain.handle("engine:status", () => engine.getStatus());
@@ -36,6 +40,13 @@ function registerIpcHandlers(): void {
   ipcMain.handle("engine:getCuepointLog", (_event, body) => engine.getCuepointLog(body));
   ipcMain.handle("engine:clearCuepointLogs", () => engine.clearCuepointLogs());
   ipcMain.handle("engine:clearCuepointCache", () => engine.clearCuepointCache());
+  ipcMain.handle("privacy:setExitPrefs", (_event, prefs: { clearCacheOnExit?: boolean; clearLogsOnExit?: boolean }) => {
+    privacyExitPrefs = {
+      clearCacheOnExit: Boolean(prefs?.clearCacheOnExit),
+      clearLogsOnExit: Boolean(prefs?.clearLogsOnExit),
+    };
+    return { ok: true as const };
+  });
   ipcMain.handle(
     "support:exportBundle",
     async (_event, options: { include_logs?: boolean; include_config?: boolean; sanitize?: boolean }) => {
@@ -153,13 +164,17 @@ app.whenReady().then(() => {
 });
 
 app.on("window-all-closed", () => {
-  void engine.stop().finally(() => {
-    if (process.platform !== "darwin") app.quit();
-  });
+  if (process.platform !== "darwin") app.quit();
 });
 
-app.on("before-quit", () => {
-  void engine.stop();
+app.on("before-quit", async () => {
+  const tasks: Array<Promise<unknown>> = [];
+  if (privacyExitPrefs.clearCacheOnExit) tasks.push(engine.clearCuepointCache());
+  if (privacyExitPrefs.clearLogsOnExit) tasks.push(engine.clearCuepointLogs());
+  if (tasks.length > 0) {
+    await Promise.allSettled(tasks);
+  }
+  await engine.stop();
 });
 
 app.on("activate", () => {
