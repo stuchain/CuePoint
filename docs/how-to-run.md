@@ -29,3 +29,5 @@ python main.py --xml collection.xml --playlist "My Playlist" --auto-research
 - Windows: `run_gui.bat`
 - macOS: `run_gui.command`
 - Linux: `run_gui.sh`
+
+These scripts **prefer the Electron desktop shell**. If Electron isn’t available (e.g. missing `node`/`npm` dependencies), they fall back to the legacy Qt GUI (`src/gui_app.py`).

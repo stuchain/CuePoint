@@ -6,4 +6,4 @@
 
 The UI lab was promoted to `desktop-electron/renderer/`. Run `npm run dev` from `desktop-electron/` or `desktop-electron/renderer/`.
 
-Legacy Qt GUI remains at `src/gui_app.py` until Phase 10 cutover.
+Legacy Qt GUI remains at `src/gui_app.py` as a fallback until Phase 10 cutover.

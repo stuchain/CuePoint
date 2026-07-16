@@ -139,6 +139,31 @@ if "--test-search-dependencies" in sys.argv:
 
             sys.exit(1)
 
+if "--electron" in sys.argv or os.environ.get("CUEPOINT_DESKTOP") == "electron":
+    try:
+        import subprocess
+
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        electron_dir = os.path.join(project_root, "apps", "desktop-electron")
+        if os.path.exists(os.path.join(electron_dir, "package.json")):
+            print("Launching Electron desktop shell…")
+            proc = subprocess.run(
+                ["npm", "run", "electron:dev"],
+                cwd=electron_dir,
+                check=False,
+            )
+            if proc.returncode == 0:
+                raise SystemExit(0)
+            print(
+                f"Electron shell exited with code {proc.returncode}; falling back to Qt GUI."
+            )
+        else:
+            print(
+                "Electron desktop shell not found (missing apps/desktop-electron); falling back to Qt GUI."
+            )
+    except FileNotFoundError as exc:
+        print(f"Electron launch skipped ({exc}); falling back to Qt GUI.")
+
 from PySide6.QtGui import QIcon
 
 # Import Qt widgets early (needed for icon function and main)
