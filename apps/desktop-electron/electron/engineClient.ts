@@ -275,6 +275,51 @@ export class EngineClient {
     return readJson(res);
   }
 
+  async getLogsDir(): Promise<{ logs_dir: string }> {
+    const res = await fetch(this.url("/api/v1/logs/dir"), {
+      headers: this.headers(),
+    });
+    return readJson(res);
+  }
+
+  async getCuepointLog(body?: {
+    level?: string;
+    search?: string;
+    tailLines?: number;
+    maxBytes?: number;
+    sanitize?: boolean;
+  }): Promise<{ logs_dir: string; cuepoint_log: string; size_bytes: number }> {
+    const query = new URLSearchParams();
+    if (body?.level) query.set("level", body.level);
+    if (body?.search) query.set("search", body.search);
+    if (body?.tailLines != null) query.set("tail_lines", String(body.tailLines));
+    if (body?.maxBytes != null) query.set("max_bytes", String(body.maxBytes));
+    if (body?.sanitize != null) query.set("sanitize", body.sanitize ? "1" : "0");
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    const res = await fetch(this.url(`/api/v1/logs/cuepoint${suffix}`), {
+      headers: this.headers(),
+    });
+    return readJson(res);
+  }
+
+  async clearCuepointLogs(): Promise<{ ok: boolean }> {
+    const res = await fetch(this.url("/api/v1/privacy/clear-logs"), {
+      method: "POST",
+      headers: this.headers(),
+      body: "{}",
+    });
+    return readJson(res);
+  }
+
+  async clearCuepointCache(): Promise<{ ok: boolean }> {
+    const res = await fetch(this.url("/api/v1/privacy/clear-cache"), {
+      method: "POST",
+      headers: this.headers(),
+      body: "{}",
+    });
+    return readJson(res);
+  }
+
   async streamJobEvents(
     jobId: string,
     signal: AbortSignal,

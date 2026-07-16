@@ -205,6 +205,20 @@ export interface SupportBundleExportResult {
   size_bytes?: number;
 }
 
+export interface LogsDirResponse {
+  logs_dir: string;
+}
+
+export interface CuepointLogResponse {
+  logs_dir: string;
+  cuepoint_log: string;
+  size_bytes: number;
+}
+
+export interface ClearOkResponse {
+  ok: boolean;
+}
+
 export interface InKeyRerunRequest {
   xmlPath?: string;
   playlistName?: string;
@@ -271,6 +285,16 @@ export interface CuePointBridge {
     sanitize?: boolean;
   }) => Promise<SupportBundleExportResult>;
   showItemInFolder?: (filePath: string) => Promise<void>;
+  getLogsDir?: () => Promise<LogsDirResponse>;
+  getCuepointLog?: (options?: {
+    level?: string;
+    search?: string;
+    tailLines?: number;
+    maxBytes?: number;
+    sanitize?: boolean;
+  }) => Promise<CuepointLogResponse>;
+  clearCuepointLogs?: () => Promise<ClearOkResponse>;
+  clearCuepointCache?: () => Promise<ClearOkResponse>;
   subscribeJobEvents: (
     jobId: string,
     onEvent: (event: MatchJobStatus & { type?: string }) => void,

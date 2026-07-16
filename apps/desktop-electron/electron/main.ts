@@ -32,6 +32,10 @@ function registerIpcHandlers(): void {
   ipcMain.handle("engine:loadHistoryCsv", (_event, csvPath: string) => engine.loadHistoryCsv(csvPath));
   ipcMain.handle("engine:getXmlPlaylists", (_event, xmlPath: string) => engine.getXmlPlaylists(xmlPath));
   ipcMain.handle("engine:syncTags", (_event, body) => engine.syncTags(body));
+  ipcMain.handle("engine:getLogsDir", () => engine.getLogsDir());
+  ipcMain.handle("engine:getCuepointLog", (_event, body) => engine.getCuepointLog(body));
+  ipcMain.handle("engine:clearCuepointLogs", () => engine.clearCuepointLogs());
+  ipcMain.handle("engine:clearCuepointCache", () => engine.clearCuepointCache());
   ipcMain.handle(
     "support:exportBundle",
     async (_event, options: { include_logs?: boolean; include_config?: boolean; sanitize?: boolean }) => {

@@ -22,6 +22,10 @@ contextBridge.exposeInMainWorld("cuepoint", {
   syncTags: (body) => ipcRenderer.invoke("engine:syncTags", body),
   exportSupportBundle: (options) => ipcRenderer.invoke("support:exportBundle", options ?? {}),
   showItemInFolder: (filePath) => ipcRenderer.invoke("shell:showItemInFolder", filePath),
+  getLogsDir: () => ipcRenderer.invoke("engine:getLogsDir"),
+  getCuepointLog: (options) => ipcRenderer.invoke("engine:getCuepointLog", options ?? {}),
+  clearCuepointLogs: () => ipcRenderer.invoke("engine:clearCuepointLogs"),
+  clearCuepointCache: () => ipcRenderer.invoke("engine:clearCuepointCache"),
   subscribeJobEvents: (jobId, onEvent) => {
     const eventHandler = (_event, payload) => {
       if (payload?.jobId === jobId) onEvent(payload.event);

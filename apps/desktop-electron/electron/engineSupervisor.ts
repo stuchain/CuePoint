@@ -235,6 +235,28 @@ export class EngineSupervisor {
     return this.client().exportSupportBundle(body);
   }
 
+  async getLogsDir(): Promise<{ logs_dir: string }> {
+    return this.client().getLogsDir();
+  }
+
+  async getCuepointLog(body?: {
+    level?: string;
+    search?: string;
+    tailLines?: number;
+    maxBytes?: number;
+    sanitize?: boolean;
+  }) {
+    return this.client().getCuepointLog(body);
+  }
+
+  async clearCuepointLogs(): Promise<{ ok: boolean }> {
+    return this.client().clearCuepointLogs();
+  }
+
+  async clearCuepointCache(): Promise<{ ok: boolean }> {
+    return this.client().clearCuepointCache();
+  }
+
   subscribeJobEvents(jobId: string, senderId: number, sender: WebContents): () => void {
     const key = `${senderId}:${jobId}`;
     this.unsubscribeJobEvents(jobId, senderId);
