@@ -1,10 +1,7 @@
-# Optional legacy Qt dependencies
+# Optional Qt compatibility dependencies
 
-The shipped desktop app is Electron. PySide6 sources were archived to
-`archive/legacy-pyside6-ui/` and are not on the import path.
-
-Install this file only if you are restoring that archive for historical
-debugging (not supported for product work).
+# The shipped desktop app is Electron. Install this file only when running the
+# remaining Qt-dependent compatibility and update-system tests.
 
 PySide6==6.10.1
 pytest-qt==4.5.0

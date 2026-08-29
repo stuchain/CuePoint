@@ -82,12 +82,13 @@ def main():
             )
             if diff_output:
                 # Show first 20 lines of diff
-                lines = diff_output.split('\n')[:20]
+                diff_lines = diff_output.splitlines()
+                lines = diff_lines[:20]
                 print(f"  Diff preview (first 20 lines):")
                 for line in lines:
                     print(f"    {line}")
-                if len(diff_output.split('\n')) > 20:
-                    print(f"    ... ({len(diff_output.split('\n')) - 20} more lines)")
+                if len(diff_lines) > 20:
+                    print(f"    ... ({len(diff_lines) - 20} more lines)")
             
             # Count lines
             local_lines = len(local_content.split('\n'))

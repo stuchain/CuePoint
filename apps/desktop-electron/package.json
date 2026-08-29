@@ -18,7 +18,7 @@
     "storybook": "npm run storybook --prefix renderer",
     "dev": "npm run dev:renderer",
     "electron:dev": "npm run build:electron && cross-env NODE_ENV=development electron .",
-    "electron:start": "npm run build:electron && cross-env NODE_ENV=production electron .",
+    "electron:start": "npm run build && cross-env NODE_ENV=production electron .",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium",
     "pack": "npm run build && electron-builder --dir",

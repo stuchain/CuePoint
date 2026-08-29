@@ -1,19 +1,19 @@
-# CuePoint desktop shell (Electron + renderer)
+# CuePoint desktop app
 
-Monorepo entry for the **Electron + React** UI overhaul. The pixel-art renderer lives in `renderer/` (canonical; `apps/ui-lab/` is legacy duplicate).
+Electron shell and React renderer for the CuePoint desktop application.
 
 ## Layout
 
 ```
 apps/desktop-electron/
-  electron/          # Main process + preload (Spike S1)
+  electron/          # Main process and preload
   electron-dist/     # Built main bundle (gitignored)
   renderer/          # Vite + React UI
-  docs/              # Design sign-off, spikes
+  docs/              # Desktop design and implementation notes
   package.json       # Dev orchestration
 ```
 
-## Quick start (renderer only — browser lab)
+## Renderer development
 
 ```bash
 cd apps/desktop-electron/renderer
@@ -22,7 +22,7 @@ npm run dev          # http://localhost:5173
 npm run storybook    # http://localhost:6006
 ```
 
-## Electron + Python engine (Spike S1)
+## Electron and Python engine
 
 Terminal 1 — renderer:
 
@@ -39,15 +39,16 @@ npm install
 npm run electron:dev
 ```
 
-Requires **Python on PATH** and repo `src/` on `PYTHONPATH` (set automatically by main process). A green **Engine connected** banner appears when `/health` succeeds.
+Python must be available on `PATH`. The main process configures `PYTHONPATH` for
+the repository and starts the engine automatically.
 
-## Routes (mock screens)
+## Routes
 
 | Route | Screen |
 |-------|--------|
 | `/` | Tool selection |
 | `/match` | inKey main workflow |
-| `/incrate` | inCrate stub (import / discover / playlist) |
+| `/incrate` | inCrate workflow |
 | `/results` | Virtualized results table |
 | `/settings` | Settings + export modal |
 

@@ -53,7 +53,7 @@ Plan the **switch** of the default desktop entry from **PySide6** to **Electron*
 | 2 | **Manual** parity sign-off on **Win / macOS / Linux** | Pending |
 | 3 | Update download links and **install** docs | Partial (`docs/how-to-run.md`) |
 | 4 | Remove `gui_app.py` entry or repoint to Electron launcher | Done (Electron-only; no PySide6) |
-| 5 | Remove `src/cuepoint/ui/` Qt code (or move to `legacy/` archive branch if policy requires) | Done (`archive/legacy-pyside6-ui/`) |
+| 5 | Remove `src/cuepoint/ui/` Qt code | Done |
 | 6 | Remove PySide6 **dependencies** from packaging where unused | Done (`requirements-qt.txt` optional only) |
 | 7 | Run **full** Python test suite; fix imports | Done (Qt tests gated/archived) |
 

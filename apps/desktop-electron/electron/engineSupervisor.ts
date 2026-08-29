@@ -12,6 +12,18 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /** Repo root: works from source (`electron/`) and bundle (`electron-dist/`). */
 const REPO_ROOT = path.resolve(__dirname, "../../..");
 
+function resolveDevelopmentPython(): string {
+  if (process.env.CUEPOINT_PYTHON) return process.env.CUEPOINT_PYTHON;
+
+  const localPython =
+    process.platform === "win32"
+      ? path.join(REPO_ROOT, ".venv", "Scripts", "python.exe")
+      : path.join(REPO_ROOT, ".venv", "bin", "python");
+  if (fs.existsSync(localPython)) return localPython;
+
+  return process.platform === "win32" ? "python" : "python3";
+}
+
 export interface EngineStatus {
   connected: boolean;
   version?: string;
@@ -59,7 +71,7 @@ export class EngineSupervisor {
         stdio: ["ignore", "pipe", "pipe"],
       });
     } else {
-      const python = process.env.CUEPOINT_PYTHON ?? "python";
+      const python = resolveDevelopmentPython();
       this.child = spawn(python, ["-m", "cuepoint.engine"], {
         cwd: REPO_ROOT,
         env: {

@@ -191,6 +191,10 @@ config/secrets.yml
 # Documentation builds
 docs/_build/
 docs/.doctrees/
+docs/feature/beatport-docs-export/
+
+# Local test transcripts
+test_run_summary*.txt
 
 # Jupyter Notebook
 .ipynb_checkpoints

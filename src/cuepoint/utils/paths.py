@@ -38,7 +38,7 @@ def _standard_path(location: str) -> Path:
             "CacheLocation": QStandardPaths.CacheLocation,  # type: ignore[attr-defined]
             "DocumentsLocation": QStandardPaths.DocumentsLocation,  # type: ignore[attr-defined]
         }
-        return Path(QStandardPaths.writableLocation(mapping[location]))  # type: ignore[attr-defined]
+        return Path(QStandardPaths.writableLocation(mapping[location]))
     except ImportError:
         return _standard_path_fallback(location)
 
@@ -268,8 +268,8 @@ class AppPaths:
 
         return filename
 
-    @staticmethod
-    def initialize_all() -> None:
+    @classmethod
+    def initialize_all(cls) -> None:
         """Initialize all standard paths.
 
         Creates all directories if they don't exist.
@@ -279,18 +279,18 @@ class AppPaths:
             PermissionError: If any directory cannot be created.
             OSError: If directory creation fails.
         """
-        if AppPaths._initialized:
+        if cls._initialized:
             return
 
         try:
             # Initialize all paths (creates directories)
-            AppPaths.config_dir()
-            AppPaths.data_dir()
-            AppPaths.cache_dir()
-            AppPaths.logs_dir()
-            AppPaths.exports_dir()
-            AppPaths.temp_dir()
-            AppPaths._initialized = True
+            cls.config_dir()
+            cls.data_dir()
+            cls.cache_dir()
+            cls.logs_dir()
+            cls.exports_dir()
+            cls.temp_dir()
+            cls._initialized = True
         except Exception as e:
             raise RuntimeError(f"Failed to initialize application paths: {e}") from e
 

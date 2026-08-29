@@ -102,10 +102,13 @@ def launch_electron() -> int:
 
     print("Launching Electron desktop shell…")
     print("Tip: for a packaged build, use the installer from GitHub Releases.")
+    electron_env = os.environ.copy()
+    electron_env.pop("ELECTRON_RUN_AS_NODE", None)
     try:
         proc = subprocess.run(
-            ["npm", "run", "electron:dev"],
+            ["npm", "run", "electron:start"],
             cwd=electron_dir,
+            env=electron_env,
             check=False,
         )
     except FileNotFoundError as exc:
@@ -123,7 +126,7 @@ def main() -> int:
         print(
             "The legacy Qt desktop GUI has been removed from the product path.\n"
             "Use the Electron desktop app:\n"
-            "  cd apps/desktop-electron && npm install && npm run electron:dev\n"
+            "  cd apps/desktop-electron && npm install && npm run electron:start\n"
             "Or run: python src/gui_app.py",
             file=sys.stderr,
         )

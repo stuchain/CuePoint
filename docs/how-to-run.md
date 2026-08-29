@@ -30,7 +30,7 @@ python main.py --xml collection.xml --playlist "My Playlist" --auto-research
 - macOS: `run_gui.command`
 - Linux: `run_gui.sh`
 
-These scripts launch the **Electron desktop shell** via `src/gui_app.py`.
+These scripts launch the Electron desktop shell via `src/gui_app.py`.
 
 Prerequisites for local Electron dev:
 
@@ -38,6 +38,3 @@ Prerequisites for local Electron dev:
 cd apps/desktop-electron
 npm install
 ```
-
-The PySide6 GUI has been removed from the product path (archived under
-`archive/legacy-pyside6-ui/`).

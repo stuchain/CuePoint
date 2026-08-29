@@ -73,7 +73,7 @@ See [phase-9-ci-release.md](phase-9-ci-release.md).
 | Done | `cuepoint.compat` extracted; engine/services off `cuepoint.ui` |
 | Done | PySide6 moved to `requirements-qt.txt` |
 | Done | `gui_app.py` is Electron-only (no PySide6) |
-| Done | `src/cuepoint/ui/` archived to `archive/legacy-pyside6-ui/` |
+| Done | `src/cuepoint/ui/` removed from the product tree |
 | Done | Legacy Qt tests gated / archived |
 | Pending | RC tag + burn-in |
 | Pending | Win / macOS / Linux manual sign-off → mark parity `verified` |

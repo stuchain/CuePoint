@@ -36,7 +36,7 @@ def check_branch():
 
 def check_large_files():
     """Check for large files"""
-    result = subprocess.run(['python', 'scripts/check_large_files.py'], 
+    result = subprocess.run([sys.executable, 'scripts/check_large_files.py'],
                           capture_output=True, text=True, timeout=60)
     if result.returncode != 0:
         print("ERROR: Large files detected")
@@ -66,7 +66,7 @@ def check_secrets():
     ]
     
     # Only check tracked files
-    result = subprocess.run(['git', 'grep', '-i', '|'.join(patterns)], 
+    result = subprocess.run(['git', 'grep', '-i', '|'.join(patterns)],
                           capture_output=True, text=True, timeout=30)
     
     # Filter out false positives (comments, documentation)

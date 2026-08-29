@@ -1,10 +1,10 @@
-# CuePoint apps
+# Applications
 
-| App | Purpose |
-|-----|---------|
-| [desktop-electron](desktop-electron/) | Electron shell + React pixel UI renderer (UI overhaul) |
+`desktop-electron/` contains the CuePoint desktop shell and its React renderer.
 
-The UI lab was promoted to `desktop-electron/renderer/`. Run `npm run dev` from `desktop-electron/` or `desktop-electron/renderer/`.
-
-Legacy Qt GUI remains at `src/gui_app.py` only as a temporary fallback during
-Phase 10 removal work. New desktop UI changes should target `desktop-electron/`.
+```bash
+cd desktop-electron
+npm install
+npm install --prefix renderer
+npm run electron:start
+```

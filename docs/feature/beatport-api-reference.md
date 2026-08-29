@@ -9,7 +9,7 @@ This document pulls together all Beatport API v4 information used by CuePoint’
 - **Docs URL:** [https://api.beatport.com/v4/docs/](https://api.beatport.com/v4/docs/)
 - **OpenAPI spec URL (requires auth):** `https://api.beatport.com/v4/swagger-ui/json/` — the docs SPA fetches this; with a logged-in session you can save it.
 - **Status:** Login required. A simple HTTP GET returns only the portal shell, not the full API reference or OpenAPI spec.
-- **Local export:** After logging in and saving browser state with `scripts/save_beatport_docs_state.py`, run `scripts/download_beatport_docs.py` to download the main docs HTML and the OpenAPI spec. Output is in `docs/feature/beatport-docs-export/` (including `beatport-openapi.json`).
+- **Local export:** After logging in and saving browser state with `scripts/save_beatport_docs_state.py`, run `scripts/download_beatport_docs.py`. Generated files are written to `docs/feature/beatport-docs-export/` and are intentionally not committed.
 - **To download manually:** Open the docs in a browser, log in, DevTools → Network → find the request to `/v4/swagger-ui/json/` → copy/save the response as JSON.
 
 ---

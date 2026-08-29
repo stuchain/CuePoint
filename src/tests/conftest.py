@@ -86,12 +86,7 @@ def pytest_ignore_collect(collection_path, config):
 def pytest_collection_modifyitems(config, items):
     """Tag legacy Qt tests and skip when Qt UI is unavailable."""
     qt_ready = _cuepoint_ui_available() and _pyside6_available()
-    skip_qt = pytest.mark.skip(
-        reason=(
-            "Legacy Qt UI archived (see archive/legacy-pyside6-ui); "
-            "optional restore via requirements-qt.txt"
-        )
-    )
+    skip_qt = pytest.mark.skip(reason="Qt UI is not part of the current application")
     for item in items:
         if not _is_qt_legacy_test_path(str(item.path)):
             continue
