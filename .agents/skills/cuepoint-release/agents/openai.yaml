@@ -1,0 +1,4 @@
+interface:
+  display_name: "CuePoint Release"
+  short_description: "Prepare and validate CuePoint releases safely"
+  default_prompt: "Use $cuepoint-release to prepare and validate this CuePoint release without publishing until authorized."

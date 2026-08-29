@@ -1,0 +1,4 @@
+interface:
+  display_name: "CuePoint Matching Pipeline"
+  short_description: "Diagnose and change matching behavior safely"
+  default_prompt: "Use $cuepoint-matching-pipeline to diagnose this matching case and add focused regression coverage."

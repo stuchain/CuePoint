@@ -1,0 +1,4 @@
+interface:
+  display_name: "CuePoint Desktop Contract"
+  short_description: "Maintain engine, Electron, and renderer contracts"
+  default_prompt: "Use $cuepoint-desktop-contract to implement this desktop change across every affected contract layer."
