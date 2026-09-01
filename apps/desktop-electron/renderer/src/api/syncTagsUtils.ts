@@ -1,24 +1,16 @@
-export type SyncKeyFormat = "normal" | "camelot" | "short";
+import type {
+  SyncKeyFormat,
+  SyncTagsOptions,
+  SyncTagsRequest,
+  SyncTagsResponse,
+} from "./cuepointBridge.types";
+import type { TrackResult } from "../mocks/types";
 
-export interface SyncTagsOptions {
-  key_format: SyncKeyFormat;
-  write_key: boolean;
-  write_year: boolean;
-  write_bpm: boolean;
-  write_label: boolean;
-  write_genre: boolean;
-  write_comment: boolean;
-  comment_text: string;
-}
-
-export interface SyncTagsResponse {
-  written: number;
-  failed: number;
-  errors: string[];
-  errors_truncated?: boolean;
-  wav_skipped: string[];
-  wav_skipped_count?: number;
-}
+// The sync contract lives with the rest of the bridge types; this module owns
+// the behaviour around it. `SyncTagsResponse` used to be declared here as well
+// as there, two identical copies free to drift apart. Re-exported so the UI can
+// keep importing these from the module it already uses.
+export type { SyncKeyFormat, SyncTagsOptions, SyncTagsRequest, SyncTagsResponse };
 
 export interface MatchMeta {
   source: "collection" | "playlist_file";
@@ -96,48 +88,63 @@ export function filterWriteRows<T extends { write?: boolean }>(rows: T[]): T[] {
   return rows.filter((row) => row.write);
 }
 
-export function usesPathBasedSync(rows: { file_path?: string | null }[]): boolean {
+export function usesPathBasedSync<Row extends { file_path?: string | null }>(
+  rows: Row[],
+): boolean {
   return rows.some((row) => Boolean(row.file_path?.trim()));
 }
 
+/**
+ * Build the engine request for a tag sync.
+ *
+ * Rows were typed `Record<string, unknown>[]` here, which could not accept the
+ * `TrackResult[]` every caller actually passes: an interface has no implicit
+ * index signature, so the assignment never type-checked. The request type the
+ * bridge already declares is the honest one.
+ */
 export function buildSyncRequest(params: {
   options: SyncTagsOptions;
   meta: MatchMeta;
   mode: "single" | "batch";
-  results?: Record<string, unknown>[];
-  batchResults?: Record<string, Record<string, unknown>[]>;
+  results?: TrackResult[];
+  batchResults?: Record<string, TrackResult[]>;
   playlistName?: string;
-}): Record<string, unknown> {
+}): SyncTagsRequest {
   const { options, meta, mode } = params;
-  const payload: Record<string, unknown> = { sync_options: options };
-
   const singleRows = params.results ?? [];
-  const pathBased =
-    meta.source === "playlist_file" || usesPathBasedSync(singleRows as { file_path?: string }[]);
 
-  if (pathBased) {
-    payload.source = "playlist_file";
-    payload.mode = "paths";
-    payload.results = singleRows;
-    return payload;
+  if (meta.source === "playlist_file" || usesPathBasedSync(singleRows)) {
+    return {
+      sync_options: options,
+      source: "playlist_file",
+      mode: "paths",
+      results: singleRows,
+    };
   }
 
-  payload.source = "collection";
   if (!meta.xmlPath?.trim()) {
     throw new Error("Select a Rekordbox XML file for collection sync.");
   }
-  payload.xml_path = meta.xmlPath.trim();
+  const xmlPath = meta.xmlPath.trim();
 
   if (mode === "batch" && params.batchResults) {
-    payload.mode = "batch";
-    payload.batch_results = params.batchResults;
-    return payload;
+    return {
+      sync_options: options,
+      source: "collection",
+      mode: "batch",
+      xml_path: xmlPath,
+      batch_results: params.batchResults,
+    };
   }
 
-  payload.mode = "single";
-  payload.playlist_name = params.playlistName ?? meta.playlistName ?? "Playlist";
-  payload.results = singleRows;
-  return payload;
+  return {
+    sync_options: options,
+    source: "collection",
+    mode: "single",
+    xml_path: xmlPath,
+    playlist_name: params.playlistName ?? meta.playlistName ?? "Playlist",
+    results: singleRows,
+  };
 }
 
 export function syncSummaryMessage(response: SyncTagsResponse): string {

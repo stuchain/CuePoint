@@ -1,4 +1,4 @@
-import type { MatchCandidate, TrackResult } from "./types";
+import type { MatchCandidate, ProgressInfo, ToolOption, TrackResult } from "./types";
 
 export const toolOptions: ToolOption[] = [
   {

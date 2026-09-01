@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import type { SyncTagsOptions, SyncTagsResponse } from "../api/syncTagsUtils";
+import type { TrackResult } from "../mocks/types";
 import { buildSyncRequest } from "../api/syncTagsUtils";
 import { hasEngineBridge } from "../api/cuepointBridge.types";
 
@@ -7,8 +8,8 @@ interface RunSyncParams {
   options: SyncTagsOptions;
   meta: import("../api/syncTagsUtils").MatchMeta;
   mode: "single" | "batch";
-  results?: Record<string, unknown>[];
-  batchResults?: Record<string, Record<string, unknown>[]>;
+  results?: TrackResult[];
+  batchResults?: Record<string, TrackResult[]>;
   playlistName?: string;
 }
 

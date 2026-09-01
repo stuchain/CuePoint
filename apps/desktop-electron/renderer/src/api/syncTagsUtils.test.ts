@@ -6,6 +6,7 @@ import {
   saveSyncOptions,
   usesPathBasedSync,
 } from "./syncTagsUtils";
+import type { TrackResult } from "../mocks/types";
 
 describe("syncTagsUtils", () => {
   it("defaults write checkbox for matched rows", () => {
@@ -15,8 +16,19 @@ describe("syncTagsUtils", () => {
   });
 
   it("detects path-based sync rows", () => {
-    expect(usesPathBasedSync([{ file_path: "C:\\a.mp3" }])).toBe(true);
-    expect(usesPathBasedSync([{ title: "x" }])).toBe(false);
+    // Real rows, as the callers pass. The bare `{ title: "x" }` this used
+    // to check is not a sync row at all.
+    const row = (extra: Partial<TrackResult>): TrackResult => ({
+      playlist_index: 1,
+      title: "A",
+      artist: "B",
+      matched: true,
+      ...extra,
+    });
+
+    expect(usesPathBasedSync([row({ file_path: "C:\\a.mp3" })])).toBe(true);
+    expect(usesPathBasedSync([row({})])).toBe(false);
+    expect(usesPathBasedSync([row({ file_path: "   " })])).toBe(false);
   });
 
   it("builds collection single sync request", () => {
@@ -50,6 +62,34 @@ describe("syncTagsUtils", () => {
     });
     expect(body.source).toBe("playlist_file");
     expect(body.mode).toBe("paths");
+  });
+
+  it("builds a batch sync request", () => {
+    const body = buildSyncRequest({
+      options: loadSyncOptions(),
+      meta: { source: "collection", xmlPath: "C:\collection.xml" },
+      mode: "batch",
+      batchResults: {
+        "Warm Up": [{ playlist_index: 1, title: "A", artist: "B", matched: true, write: true }],
+      },
+    });
+
+    expect(body.mode).toBe("batch");
+    expect(body.source).toBe("collection");
+    expect(body.xml_path).toBe("C:\collection.xml");
+    expect(Object.keys(body.batch_results ?? {})).toEqual(["Warm Up"]);
+    expect(body.results).toBeUndefined();
+  });
+
+  it("refuses a collection sync with no XML path", () => {
+    expect(() =>
+      buildSyncRequest({
+        options: loadSyncOptions(),
+        meta: { source: "collection" },
+        mode: "single",
+        results: [{ playlist_index: 1, title: "A", artist: "B", matched: true }],
+      }),
+    ).toThrow(/Rekordbox XML/);
   });
 
   it("persists sync options", () => {

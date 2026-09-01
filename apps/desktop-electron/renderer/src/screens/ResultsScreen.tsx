@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   Badge,
@@ -169,7 +169,7 @@ export function ResultsScreen() {
     };
 
     if (mode === "batch") {
-      const batchPayload: Record<string, Record<string, unknown>[]> = {};
+      const batchPayload: Record<string, TrackResult[]> = {};
       for (const [playlistName, playlistRows] of Object.entries(allBatchResults)) {
         const selected = filterWriteRows(playlistRows);
         if (selected.length > 0) {

@@ -188,8 +188,26 @@ export interface SyncTagsResponse {
   wav_skipped_count?: number;
 }
 
+export type SyncKeyFormat = "normal" | "camelot" | "short";
+
+/**
+ * Tag-writing options. Part of the bridge contract because they travel to the
+ * engine inside `SyncTagsRequest`; `syncTagsUtils` owns loading and persisting
+ * them and re-exports this type for the UI.
+ */
+export interface SyncTagsOptions {
+  key_format: SyncKeyFormat;
+  write_key: boolean;
+  write_year: boolean;
+  write_bpm: boolean;
+  write_label: boolean;
+  write_genre: boolean;
+  write_comment: boolean;
+  comment_text: string;
+}
+
 export interface SyncTagsRequest {
-  sync_options: Record<string, unknown>;
+  sync_options: SyncTagsOptions;
   source?: "collection" | "playlist_file";
   mode?: "single" | "batch" | "paths";
   xml_path?: string;
