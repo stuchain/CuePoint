@@ -1,12 +1,14 @@
 """SQLite persistence for inCrate inventory."""
 
 import sqlite3
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from cuepoint.incrate.models import InventoryRecord
 
-_SCHEMA_PATH = Path(__file__).resolve().parent / "schema.sql"
+_SCHEMA_FILENAME = "schema.sql"
+_SCHEMA_PATH = Path(__file__).resolve().parent / _SCHEMA_FILENAME
 
 _UPSERT_SQL = """
 INSERT INTO inventory (track_key, track_id, artist, title, remix_version, label, beatport_track_id, beatport_url, created_at, updated_at)
@@ -22,8 +24,35 @@ ON CONFLICT(track_key) DO UPDATE SET
 """
 
 
+def _resolve_schema_path() -> Path:
+    """Locate schema.sql, in a source checkout or a PyInstaller bundle.
+
+    In a frozen build the package's ``__file__`` points inside the bundle, where
+    data files are laid out mirroring the package structure. Falling back to
+    ``sys._MEIPASS`` keeps this working even if that layout changes.
+    """
+    if _SCHEMA_PATH.exists():
+        return _SCHEMA_PATH
+
+    bundle_root = getattr(sys, "_MEIPASS", None)
+    if bundle_root:
+        bundled = Path(bundle_root) / "cuepoint" / "incrate" / _SCHEMA_FILENAME
+        if bundled.exists():
+            return bundled
+
+    return _SCHEMA_PATH
+
+
 def _load_schema() -> str:
-    return _SCHEMA_PATH.read_text(encoding="utf-8")
+    schema_path = _resolve_schema_path()
+    try:
+        return schema_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise FileNotFoundError(
+            f"inCrate schema file not found at {schema_path}. In a packaged "
+            "build this means schema.sql was not bundled; see "
+            "build/engine-sidecar.spec."
+        ) from exc
 
 
 def init_db(db_path: str) -> None:

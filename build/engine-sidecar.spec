@@ -18,6 +18,14 @@ logging_yaml = project_root / "config" / "logging.yaml"
 if logging_yaml.exists():
     datas.append((str(logging_yaml), "config"))
 
+# Package data files must be listed explicitly; PyInstaller only follows the
+# module graph. inCrate reads this at runtime to create its inventory tables,
+# so omitting it makes inCrate fail in packaged builds only.
+# src/tests/unit/scripts/test_engine_sidecar_datas.py guards this.
+incrate_schema = src_root / "cuepoint" / "incrate" / "schema.sql"
+if incrate_schema.exists():
+    datas.append((str(incrate_schema), "cuepoint/incrate"))
+
 try:
     datas.extend(collect_data_files("fake_useragent"))
 except Exception:
