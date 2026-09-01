@@ -18,10 +18,10 @@ jobs:
         python-version: ['3.11', '3.12']
     
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       
@@ -73,10 +73,10 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       
@@ -169,43 +169,9 @@ jobs:
           python scripts/check_file_sizes.py
         continue-on-error: false
 
-  build-gates:
-    name: Build Gates
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-latest, windows-latest]
-    
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-      
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
-      
-      - name: Build application
-        run: |
-          python build.py || echo "Build script not found - skipping"
-        continue-on-error: true
-      
-      - name: Verify build artifacts
-        run: |
-          python scripts/verify_artifacts.py || echo "No artifacts to verify"
-        continue-on-error: true
-      
-      - name: Upload artifacts
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-artifacts-${{ matrix.os }}
-          path: dist/
-          retention-days: 7
-          if-no-files-found: ignore
-
+  # The "Build Gates" job was removed here. It ran `python build.py`, a script
+  # that does not exist in this repository, behind `|| echo "Build script not
+  # found - skipping"` and `continue-on-error: true` — so it could not fail, and
+  # its green tick meant nothing. Real packaging is covered by
+  # desktop-electron.yml (PyInstaller sidecar + electron-builder) and the
+  # build-windows.yml / build-macos.yml release workflows.

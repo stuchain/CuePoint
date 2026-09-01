@@ -7,6 +7,7 @@ Detects files exceeding size limits and prevents accidental commits
 """
 
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -69,24 +70,63 @@ def should_exclude(path):
     return False
 
 
+def _git_ignored(root_path):
+    """Return paths git ignores, so build output is not reported as committed.
+
+    This check is about what would enter the repository, but it walks the
+    filesystem, so on a developer machine it flagged local build artifacts —
+    an 80 MB PyInstaller sidecar under apps/desktop-electron/resources/ — that
+    git never tracks. In CI the checkout is clean, so the check passed there and
+    failed only for developers, which is the fastest way to teach people that a
+    gate is noise.
+
+    Returns an empty set when git is unavailable, leaving the previous
+    filesystem-only behaviour intact.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "ls-files", "--others", "--ignored", "--exclude-standard"],
+            cwd=str(root_path),
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return set()
+
+    if result.returncode != 0:
+        return set()
+
+    return {
+        (root_path / line.strip()).resolve()
+        for line in result.stdout.splitlines()
+        if line.strip()
+    }
+
+
 def check_large_files(root_dir='.'):
     """Check for large files in repository"""
     large_files = []
     total_size = 0
-    
+
     root_path = Path(root_dir).resolve()
-    
+    ignored = _git_ignored(root_path)
+
     for root, dirs, files in os.walk(root_path):
         # Filter out excluded directories
         dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS]
-        
+
         for file in files:
             file_path = Path(root) / file
-            
+
             # Skip excluded paths
             if should_exclude(str(file_path)):
                 continue
-            
+
+            # Skip anything git ignores: it is not going to be committed.
+            if file_path.resolve() in ignored:
+                continue
+
             try:
                 size = file_path.stat().st_size
                 total_size += size

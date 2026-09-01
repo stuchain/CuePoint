@@ -3,6 +3,11 @@ name: Test
 on:
   push:
     branches: ['main', 'main_deprecated', 'phase_*', 'feature']
+  # Without this, a pull request ran no Python tests at all: every gate lived on
+  # push-to-branch workflows, so a PR could be reviewed and merged green having
+  # never had the suite run against it.
+  pull_request:
+    branches: ['main', 'feature']
 
 jobs:
   test:
@@ -28,20 +33,21 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
 
-      - name: Run linter
-        run: |
-          pylint src/ --disable=all --enable=errors || true
-          mypy src/ --ignore-missing-imports || true
+      # Enforced, not "|| true". These previously ran with their exit codes
+      # discarded, so a lint or type error produced a green tick and no signal
+      # — worse than not running them, because the check looked covered.
+      - name: Lint
+        run: ruff check src/
 
-      - name: Security – dependency audit (Design 4.82, 4.133)
-        run: |
-          pip install pip-audit
-          pip-audit -r requirements.txt -r requirements-dev.txt || true
+      - name: Check formatting
+        run: ruff format --check src/
 
-      - name: Security – static analysis (Design 4.133)
-        run: |
-          pip install bandit
-          bandit -r src -ll -x src/tests || true
+      - name: Type check
+        run: python -m pytest src/tests/integration/test_step55_mypy_validation.py -q -p no:pytest-qt
+
+      # Dependency and static-analysis scanning lives in security-scan.yml,
+      # which runs on push, PR and a weekly schedule. Duplicating it here with
+      # discarded exit codes added CI time and no coverage.
 
       - name: Verify no Qt imports in core packages
         run: python scripts/check_no_qt_in_core.py

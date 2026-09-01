@@ -21,7 +21,13 @@ types-PyYAML
 types-tqdm
 
 # Code quality
-ruff>=0.8.0
+# Pinned, not >=. CI enforces `ruff check src/` and `ruff format --check src/`
+# as hard gates, and this project has no [tool.ruff] config, so it runs on
+# ruff's defaults. Those defaults change between releases: 0.16 expanded them
+# and reports thousands of violations against this codebase, which would fail
+# the gate on an unrelated PR with no code change. Upgrade deliberately, with
+# the resulting lint fixes, rather than by surprise.
+ruff==0.14.0
 black==26.3.1
 pylint==4.0.4
 mypy==1.19.1

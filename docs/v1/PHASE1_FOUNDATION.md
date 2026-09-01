@@ -1018,7 +1018,58 @@ preferred at implementation time — not required to be one PR.
 
 ---
 
-## FOUNDATION-13 — CI Quality Gates
+## FOUNDATION-13 — CI Quality Gates ✅ IMPLEMENTED 2026-09-01
+
+**Outcome**: Complete. Four gaps closed; each was a check that either did not run or could not
+fail.
+
+**1. Pull requests now run the Python suite.** `test.yml` triggered on push only, so a PR could be
+reviewed and merged green having never had the tests run against it. Added a `pull_request`
+trigger for `main` and `feature`.
+
+**2. Soft-failed checks made real.** `test.yml` ran `pylint ... || true` and `mypy ... || true`,
+discarding their exit codes — a lint or type error produced a green tick, which is worse than not
+running them because the check looks covered. Replaced with enforced `ruff check src/`,
+`ruff format --check src/` and the same mypy gate `release-gates.yml` uses. The duplicated
+`pip-audit`/`bandit` steps (also `|| true`) were removed: `security-scan.yml` already runs both on
+push, PR and a weekly schedule.
+
+**3. Ruff pinned.** `requirements-dev.txt` specified `ruff>=0.8.0` with no upper bound while every
+other dependency in the file is pinned exactly, and the project has no `[tool.ruff]` config, so
+the gate runs on ruff's defaults. Ruff 0.16 expanded those defaults and reports thousands of
+violations against this codebase — meaning the lint gate would fail on an unrelated PR with no
+code change. Pinned to `ruff==0.14.0`, which is clean on both lint and format, with a comment
+explaining why the bound matters. **Upgrading ruff is now a deliberate task** (bump plus the
+resulting fixes), not something that happens by surprise.
+
+**4. The fake build gate removed.** `release-gates.yml`'s "Build Gates" job ran `python build.py`
+— a script that does not exist in this repository — behind `|| echo "Build script not found"` and
+`continue-on-error: true`. It could not fail, and its green tick meant nothing. Removed, with a
+comment recording where real packaging actually happens (`desktop-electron.yml` for the
+PyInstaller sidecar and electron-builder; `build-windows.yml`/`build-macos.yml` for releases).
+
+**Also fixed: a gate that cried wolf.** `check_large_files.py` walks the filesystem, so it flagged
+an 80 MB PyInstaller sidecar under `apps/desktop-electron/resources/` that git *ignores* and has
+never tracked. It passed in CI (clean checkout) and failed only on developer machines that had
+built the app — the fastest way to teach people a gate is noise. It now skips anything
+`git ls-files --others --ignored` reports, and falls back to the previous behaviour when git is
+unavailable. Verified both directions: the ignored artifact no longer trips it, and a committable
+51 MB file still does.
+
+**Action version drift** in `release-gates.yml` closed: `actions/checkout@v3` → `@v4`,
+`actions/setup-python@v4` → `@v5` (3 occurrences each).
+
+**Verification**: every gate command run locally exactly as CI invokes it — all pass. Gate
+*failure* was proven rather than assumed: a planted lint error and a badly formatted file each
+produce **exit code 1**, and exit 0 once removed. All 12 workflow files parse. 2091 unit tests
+passing.
+
+**Deliberately not done**: the codebase has pre-existing lint debt under newer ruff defaults;
+adopting them is a large mechanical change that belongs in its own commit, not in the step that
+fixes the gate. `large-file-check.yml` still triggers only on `phase_*` branches (a stale pattern)
+and duplicates a check `test.yml` now runs — left alone as it is inert rather than wrong.
+
+---
 
 **Objective**: Close the audit's CI gaps: ensure a plain feature PR is actually gated by the
 Python test suite (today `test.yml` triggers on push only, not `pull_request`); resolve the
