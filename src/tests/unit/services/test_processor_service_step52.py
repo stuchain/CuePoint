@@ -9,6 +9,7 @@ Tests the process_playlist_from_xml method and DI integration.
 
 import os
 import tempfile
+import threading
 
 import pytest
 
@@ -411,6 +412,148 @@ class TestProcessorServiceProcessPlaylistFromXML:
             # Verify - should only process first track before cancellation
             assert len(results) == 1
             mock_logging_service.info.assert_called()
+
+        finally:
+            os.unlink(xml_path)
+
+    def test_process_playlist_from_xml_parallel_cancellation_does_not_error(
+        self,
+        mock_beatport_service,
+        mock_logging_service,
+        mock_config_service,
+        mock_matcher_service,
+    ):
+        """Regression test for Sentry PYTHON-1C/PYTHON-1D.
+
+        Cancelling a *parallel* run (TRACK_WORKERS > 1) leaves some futures
+        still queued when the as_completed loop breaks out. Resolving those
+        futures must not call result() on an already-cancelled future (which
+        raises CancelledError) nor log it at warning/error level - both are
+        expected outcomes of a user cancelling a run, not anomalies, and the
+        app's Sentry logging integration turns any warning/error log into a
+        reported issue.
+        """
+        num_tracks = 8
+        tracks_xml = "\n".join(
+            f'        <TRACK TrackID="{i}" Name="Track {i}" Artist="Artist {i}"/>'
+            for i in range(1, num_tracks + 1)
+        )
+        keys_xml = "\n".join(
+            f'                <TRACK Key="{i}"/>' for i in range(1, num_tracks + 1)
+        )
+        xml_content = f"""<?xml version="1.0" encoding="UTF-8"?>
+<DJ_PLAYLISTS>
+    <COLLECTION>
+{tracks_xml}
+    </COLLECTION>
+    <PLAYLISTS>
+        <NODE Name="ROOT">
+            <NODE Type="1" Name="Test Playlist">
+{keys_xml}
+            </NODE>
+        </NODE>
+    </PLAYLISTS>
+</DJ_PLAYLISTS>"""
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".xml", delete=False, encoding="utf-8"
+        ) as f:
+            f.write(xml_content)
+            xml_path = f.name
+
+        try:
+            from cuepoint.models.config import SETTINGS
+
+            def config_get(key, default=None):
+                # Parallel mode with only 2 workers: tracks 3-8 stay queued
+                # (never dequeued) until tracks 1-2 are released below, so
+                # they're guaranteed to still be cancellable when the
+                # controller is cancelled.
+                if key == "TRACK_WORKERS" or key == "performance.max_workers":
+                    return 2
+                return SETTINGS.get(key, default)
+
+            mock_config_service.get.side_effect = config_get
+            mock_matcher_service.find_best_match.return_value = (None, [], [], 1)
+
+            service = ProcessorService(
+                beatport_service=mock_beatport_service,
+                matcher_service=mock_matcher_service,
+                logging_service=mock_logging_service,
+                config_service=mock_config_service,
+            )
+
+            controller = ProcessingController()
+            entered_1 = threading.Event()
+            release_1 = threading.Event()
+            # Track 2's worker is deliberately kept busy (blocked) for a
+            # bounded time so it can never race to dequeue a queued track.
+            # Combined with track 1 being released only after cancellation,
+            # at most *one* of tracks 3-8 can possibly be dequeued before
+            # the recovery loop runs (by whichever worker frees first) -
+            # guaranteeing the rest are still genuinely PENDING (and thus
+            # actually cancellable) when the production code processes them.
+            hold = threading.Event()
+
+            def fake_process_track(idx, track, settings):
+                if idx == 1:
+                    entered_1.set()
+                    release_1.wait(timeout=5)
+                else:
+                    hold.wait(timeout=0.5)
+                return TrackResult(
+                    playlist_index=idx,
+                    title=track.title,
+                    artist=track.artist or "",
+                    matched=True,
+                )
+
+            service.process_track = fake_process_track
+
+            def orchestrate():
+                # Wait until track 1's worker is busy (and track 2's worker
+                # is occupied blocking on `hold`) before cancelling, so
+                # tracks 3-8 are still queued (never dequeued) at that point.
+                entered_1.wait(timeout=5)
+                controller.cancel()
+                release_1.set()
+
+            orchestrator = threading.Thread(target=orchestrate)
+            orchestrator.start()
+            try:
+                results = service.process_playlist_from_xml(
+                    xml_path=xml_path,
+                    playlist_name="ROOT/Test Playlist",
+                    controller=controller,
+                )
+            finally:
+                orchestrator.join(timeout=5)
+
+            # No track should be missing a result, regardless of exactly
+            # which ones raced past cancellation vs. got cancelled.
+            assert len(results) == num_tracks
+
+            cancelled = [
+                r for r in results if r.error == "Processing cancelled by user"
+            ]
+            # Tracks 4-8 are deterministically still PENDING (never
+            # dequeued) when cancellation is processed: track 2's worker is
+            # blocked on `hold` for the whole window, so only track 1's
+            # freed worker could possibly race to steal one queued track
+            # (track 3, at most) before the recovery loop cancels the rest.
+            assert len(cancelled) >= 5
+
+            # The real bug: a warning/error-level log for a cancelled future
+            # gets reported to Sentry as if it were a genuine error.
+            logged_messages = [
+                str(call)
+                for call in (
+                    mock_logging_service.warning.call_args_list
+                    + mock_logging_service.error.call_args_list
+                )
+            ]
+            for message in logged_messages:
+                assert "should not happen" not in message.lower()
+                assert "CancelledError" not in message
 
         finally:
             os.unlink(xml_path)

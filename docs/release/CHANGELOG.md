@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Parallel playlist processing: cancelling a run no longer calls `result()` on
+  already-cancelled track futures (which raised `CancelledError`) nor logs the
+  expected "futures left over after cancellation" case at warning/error level,
+  eliminating spurious Sentry issues (PYTHON-1C, PYTHON-1D) on every user
+  cancellation of a parallel (`TRACK_WORKERS > 1`) run
+
 ## [0.0.3] - 2026-06-24
 
 ### Fixed

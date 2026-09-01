@@ -12,7 +12,7 @@ import shutil
 import threading
 import time
 import uuid
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import CancelledError, ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -1471,6 +1471,27 @@ class ProcessorService(IProcessorService):
                     ] = {}  # Store results by index for ordering
                     processed_futures = set()  # Track which futures we've processed
 
+                    def _record_cancelled_future(future) -> None:
+                        # A cancelled future's result() always raises CancelledError;
+                        # calling it is pointless and (since it's logged at warning/
+                        # error level) pollutes Sentry with "errors" for what is
+                        # normal behavior when a user cancels a run.
+                        nonlocal unmatched_count
+                        idx, track = future_to_args[future]
+                        processed_futures.add(future)
+                        self.logging_service.info(
+                            f"Track {idx} '{track.title}' was cancelled and will not be processed."
+                        )
+                        results_dict[idx] = TrackResult(
+                            playlist_index=idx,
+                            title=track.title,
+                            artist=track.artist or "",
+                            matched=False,
+                            error="Processing cancelled by user",
+                        )
+                        with progress_lock:
+                            unmatched_count += 1
+
                     self.logging_service.info(
                         f"Submitted {len(future_to_args)} tasks to ThreadPoolExecutor, waiting for completion..."
                     )
@@ -1670,6 +1691,9 @@ class ProcessorService(IProcessorService):
                         # Process any remaining futures that weren't handled
                         for future in future_to_args.keys():
                             if future not in processed_futures:
+                                if future.cancelled():
+                                    _record_cancelled_future(future)
+                                    continue
                                 try:
                                     if future.done():
                                         result = future.result(
@@ -1687,6 +1711,10 @@ class ProcessorService(IProcessorService):
                                         )
                                         result = future.result(timeout=timeout_sec)
                                         results_dict[result.playlist_index] = result
+                                except CancelledError:
+                                    # Defensive: future could be cancelled between the
+                                    # cancelled() check above and result() being called.
+                                    _record_cancelled_future(future)
                                 except TimeoutError:
                                     # Future timed out - likely due to DuckDuckGo search hanging
                                     idx, track = future_to_args[future]
@@ -1727,15 +1755,27 @@ class ProcessorService(IProcessorService):
                         f for f in future_to_args.keys() if f not in processed_futures
                     ]
                     if remaining_futures:
-                        self.logging_service.warning(
-                            f"as_completed loop exited early! Processing {len(remaining_futures)} remaining futures "
-                            f"that weren't handled in the loop. This should not happen - investigating..."
-                        )
+                        if controller and controller.is_cancelled():
+                            # Expected: the as_completed loop breaks out immediately
+                            # once cancellation is detected, leaving unstarted/running
+                            # futures "remaining" by design. Not an anomaly.
+                            self.logging_service.info(
+                                f"Processing cancelled; resolving {len(remaining_futures)} "
+                                f"remaining futures as cancelled."
+                            )
+                        else:
+                            self.logging_service.warning(
+                                f"as_completed loop exited early! Processing {len(remaining_futures)} remaining futures "
+                                f"that weren't handled in the loop. This should not happen - investigating..."
+                            )
                         self.logging_service.info(
                             f"Processed futures: {len(processed_futures)}, Remaining: {len(remaining_futures)}, "
                             f"Total: {len(future_to_args)}"
                         )
                         for future in remaining_futures:
+                            if future.cancelled():
+                                _record_cancelled_future(future)
+                                continue
                             try:
                                 # Wait for future to complete (with timeout to avoid hanging)
                                 # CRITICAL: In packaged apps, DuckDuckGo timeouts can cause futures to hang
@@ -1769,6 +1809,10 @@ class ProcessorService(IProcessorService):
                                             matched_count += 1
                                         else:
                                             unmatched_count += 1
+                            except CancelledError:
+                                # Defensive: future could be cancelled between the
+                                # cancelled() check above and result() being called.
+                                _record_cancelled_future(future)
                             except TimeoutError:
                                 # Future timed out - this can happen if DuckDuckGo searches hang
                                 processed_futures.add(future)
