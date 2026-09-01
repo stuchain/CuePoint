@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from cuepoint.engine.jobs import JobStore
 from cuepoint.models.result import TrackResult as ModelTrackResult
@@ -55,7 +55,9 @@ def _dict_to_track_result(item: Dict[str, Any]) -> ModelTrackResult:
     )
 
 
-def resolve_export_results(body: Dict[str, Any], job_store: JobStore) -> List[ModelTrackResult]:
+def resolve_export_results(
+    body: Dict[str, Any], job_store: JobStore
+) -> List[ModelTrackResult]:
     job_id = body.get("job_id")
     if job_id:
         job = job_store.get(str(job_id))

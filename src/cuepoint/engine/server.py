@@ -21,7 +21,10 @@ from cuepoint.engine.config_api import (
 from cuepoint.engine.job_events import iter_job_events
 from cuepoint.engine.export_api import parse_export_body, run_export
 from cuepoint.engine.sync_tags_api import parse_sync_tags_body, run_sync_tags
-from cuepoint.engine.support_bundle_api import parse_support_bundle_body, run_support_bundle
+from cuepoint.engine.support_bundle_api import (
+    parse_support_bundle_body,
+    run_support_bundle,
+)
 from cuepoint.engine.logs_api import get_cuepoint_log_text, get_cuepoint_logs_dir
 from cuepoint.engine.privacy_api import clear_cache_now, clear_logs_now
 from cuepoint.engine.history_api import list_recent_history, load_history_csv
@@ -101,7 +104,9 @@ def get_job_store() -> JobStore:
     return _JOB_STORE
 
 
-def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type[BaseHTTPRequestHandler]:
+def make_handler(
+    config: EngineConfig, store: Optional[JobStore] = None
+) -> Type[BaseHTTPRequestHandler]:
     job_store = store or _JOB_STORE
 
     class EngineHandler(BaseHTTPRequestHandler):
@@ -132,7 +137,9 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
         def _stream_job_events(self, job_id: str) -> None:
             job = job_store.get(job_id)
             if job is None:
-                self._send_json(404, error_payload("JOB_NOT_FOUND", f"Job {job_id} not found"))
+                self._send_json(
+                    404, error_payload("JOB_NOT_FOUND", f"Job {job_id} not found")
+                )
                 return
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream; charset=utf-8")
@@ -148,7 +155,9 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
 
         def _handle_job_get(self, path: str) -> None:
             if not self._authorized():
-                self._send_json(401, error_payload("UNAUTHORIZED", "Missing or invalid token"))
+                self._send_json(
+                    401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                )
                 return
             match = JOB_ROUTE.match(path)
             if not match:
@@ -157,7 +166,9 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
             job_id, suffix = match.group(1), match.group(2)
             job = job_store.get(job_id)
             if job is None:
-                self._send_json(404, error_payload("JOB_NOT_FOUND", f"Job {job_id} not found"))
+                self._send_json(
+                    404, error_payload("JOB_NOT_FOUND", f"Job {job_id} not found")
+                )
                 return
             if suffix == "events":
                 self._stream_job_events(job_id)
@@ -179,7 +190,9 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
 
         def _handle_incrate_get(self, path: str, query: str) -> None:
             if not self._authorized():
-                self._send_json(401, error_payload("UNAUTHORIZED", "Missing or invalid token"))
+                self._send_json(
+                    401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                )
                 return
             if path == "/api/v1/incrate/discover/options":
                 try:
@@ -199,7 +212,9 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
             try:
                 limit = int(limit_raw)
             except ValueError:
-                self._send_json(400, error_payload("INVALID_REQUEST", "limit must be an integer"))
+                self._send_json(
+                    400, error_payload("INVALID_REQUEST", "limit must be an integer")
+                )
                 return
             try:
                 if demo:
@@ -219,19 +234,25 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
                 return
             if path == "/api/v1/status":
                 if not self._authorized():
-                    self._send_json(401, error_payload("UNAUTHORIZED", "Missing or invalid token"))
+                    self._send_json(
+                        401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                    )
                     return
                 self._send_json(200, {"ready": True, **health_payload()})
                 return
             if path == "/api/v1/logs/dir":
                 if not self._authorized():
-                    self._send_json(401, error_payload("UNAUTHORIZED", "Missing or invalid token"))
+                    self._send_json(
+                        401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                    )
                     return
                 self._send_json(200, {"logs_dir": get_cuepoint_logs_dir()})
                 return
             if path == "/api/v1/logs/cuepoint":
                 if not self._authorized():
-                    self._send_json(401, error_payload("UNAUTHORIZED", "Missing or invalid token"))
+                    self._send_json(
+                        401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                    )
                     return
                 params = parse_qs(parsed.query)
                 level = params.get("level", ["All"])[0] or None
@@ -241,12 +262,22 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
                 try:
                     tail_lines = int(tail_lines_raw)
                 except ValueError:
-                    self._send_json(400, error_payload("INVALID_REQUEST", "tail_lines must be an integer"))
+                    self._send_json(
+                        400,
+                        error_payload(
+                            "INVALID_REQUEST", "tail_lines must be an integer"
+                        ),
+                    )
                     return
                 try:
                     max_bytes = int(max_bytes_raw)
                 except ValueError:
-                    self._send_json(400, error_payload("INVALID_REQUEST", "max_bytes must be an integer"))
+                    self._send_json(
+                        400,
+                        error_payload(
+                            "INVALID_REQUEST", "max_bytes must be an integer"
+                        ),
+                    )
                     return
                 try:
                     payload = get_cuepoint_log_text(
@@ -269,25 +300,39 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
                 return
             if path == "/api/v1/history/recent":
                 if not self._authorized():
-                    self._send_json(401, error_payload("UNAUTHORIZED", "Missing or invalid token"))
+                    self._send_json(
+                        401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                    )
                     return
                 params = parse_qs(parsed.query)
                 limit_raw = params.get("limit", ["50"])[0]
                 try:
                     limit = int(limit_raw)
                 except ValueError:
-                    self._send_json(400, error_payload("INVALID_REQUEST", "limit must be an integer"))
+                    self._send_json(
+                        400,
+                        error_payload("INVALID_REQUEST", "limit must be an integer"),
+                    )
                     return
-                self._send_json(200, list_recent_history(max_files=max(1, min(limit, 200))))
+                self._send_json(
+                    200, list_recent_history(max_files=max(1, min(limit, 200)))
+                )
                 return
             if path == "/api/v1/history/load":
                 if not self._authorized():
-                    self._send_json(401, error_payload("UNAUTHORIZED", "Missing or invalid token"))
+                    self._send_json(
+                        401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                    )
                     return
                 params = parse_qs(parsed.query)
                 csv_path = params.get("path", [""])[0]
                 if not csv_path:
-                    self._send_json(400, error_payload("INVALID_REQUEST", "path query parameter required"))
+                    self._send_json(
+                        400,
+                        error_payload(
+                            "INVALID_REQUEST", "path query parameter required"
+                        ),
+                    )
                     return
                 try:
                     payload = load_history_csv(csv_path)
@@ -304,12 +349,19 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
                 return
             if path == "/api/v1/xml/playlists":
                 if not self._authorized():
-                    self._send_json(401, error_payload("UNAUTHORIZED", "Missing or invalid token"))
+                    self._send_json(
+                        401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                    )
                     return
                 params = parse_qs(parsed.query)
                 xml_path = params.get("path", [""])[0]
                 if not xml_path:
-                    self._send_json(400, error_payload("INVALID_REQUEST", "path query parameter required"))
+                    self._send_json(
+                        400,
+                        error_payload(
+                            "INVALID_REQUEST", "path query parameter required"
+                        ),
+                    )
                     return
                 try:
                     payload = list_xml_playlists(xml_path)
@@ -326,7 +378,9 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
                 return
             if path == "/api/v1/config/beatport-token":
                 if not self._authorized():
-                    self._send_json(401, error_payload("UNAUTHORIZED", "Missing or invalid token"))
+                    self._send_json(
+                        401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                    )
                     return
                 self._send_json(200, get_beatport_token_status())
                 return
@@ -335,13 +389,17 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
         def do_POST(self) -> None:  # noqa: N802
             path = urlparse(self.path).path
             if not self._authorized():
-                self._send_json(401, error_payload("UNAUTHORIZED", "Missing or invalid token"))
+                self._send_json(
+                    401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                )
                 return
             if path == "/api/v1/privacy/clear-logs":
                 try:
                     payload = clear_logs_now()
                 except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(500, error_payload("PRIVACY_CLEAR_LOGS_FAILED", str(exc)))
+                    self._send_json(
+                        500, error_payload("PRIVACY_CLEAR_LOGS_FAILED", str(exc))
+                    )
                     return
                 self._send_json(200, payload)
                 return
@@ -349,7 +407,9 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
                 try:
                     payload = clear_cache_now()
                 except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(500, error_payload("PRIVACY_CLEAR_CACHE_FAILED", str(exc)))
+                    self._send_json(
+                        500, error_payload("PRIVACY_CLEAR_CACHE_FAILED", str(exc))
+                    )
                     return
                 self._send_json(200, payload)
                 return
@@ -369,10 +429,14 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
                 job_id = cancel_match.group(1)
                 job = job_store.get(job_id)
                 if job is None:
-                    self._send_json(404, error_payload("JOB_NOT_FOUND", f"Job {job_id} not found"))
+                    self._send_json(
+                        404, error_payload("JOB_NOT_FOUND", f"Job {job_id} not found")
+                    )
                     return
                 cancelled = cancel_match_job(job_store, job_id)
-                self._send_json(200, {"id": cancelled.id, "state": cancelled.state.value})
+                self._send_json(
+                    200, {"id": cancelled.id, "state": cancelled.state.value}
+                )
                 return
 
             if path == "/api/v1/export":
@@ -409,7 +473,9 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
                     self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
                     return
                 except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(500, error_payload("SUPPORT_BUNDLE_FAILED", str(exc)))
+                    self._send_json(
+                        500, error_payload("SUPPORT_BUNDLE_FAILED", str(exc))
+                    )
                     return
                 self._send_json(200, payload)
                 return
@@ -425,7 +491,9 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
                     self._send_json(404, error_payload("FILE_NOT_FOUND", str(exc)))
                     return
                 except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(500, error_payload("INCRATE_IMPORT_FAILED", str(exc)))
+                    self._send_json(
+                        500, error_payload("INCRATE_IMPORT_FAILED", str(exc))
+                    )
                     return
                 self._send_json(200, payload)
                 return
@@ -441,7 +509,9 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
                     self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
                     return
                 except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(500, error_payload("INCRATE_RESET_FAILED", str(exc)))
+                    self._send_json(
+                        500, error_payload("INCRATE_RESET_FAILED", str(exc))
+                    )
                     return
                 self._send_json(200, payload)
                 return
@@ -454,7 +524,9 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
                     self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
                     return
                 except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(500, error_payload("INCRATE_DISCOVER_FAILED", str(exc)))
+                    self._send_json(
+                        500, error_payload("INCRATE_DISCOVER_FAILED", str(exc))
+                    )
                     return
                 self._send_json(200, payload)
                 return
@@ -467,7 +539,9 @@ def make_handler(config: EngineConfig, store: Optional[JobStore] = None) -> Type
                     self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
                     return
                 except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(500, error_payload("INCRATE_PLAYLIST_FAILED", str(exc)))
+                    self._send_json(
+                        500, error_payload("INCRATE_PLAYLIST_FAILED", str(exc))
+                    )
                     return
                 self._send_json(200, payload)
                 return

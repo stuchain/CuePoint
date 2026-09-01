@@ -89,8 +89,10 @@ def set_beatport_token(token: str) -> Dict[str, Any]:
 def _resolve_base_url() -> str:
     service = _get_config_service()
     return (
-        str(service.get("incrate.beatport_api_base_url") or "https://api.beatport.com/v4")
-        .strip()
+        str(
+            service.get("incrate.beatport_api_base_url")
+            or "https://api.beatport.com/v4"
+        ).strip()
         or "https://api.beatport.com/v4"
     )
 

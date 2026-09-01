@@ -151,7 +151,9 @@ class DiagnosticCollector:
             settings_block = {
                 "output_directory": str(settings.value("output_directory", "")),
                 "cache_enabled": settings.value("cache_enabled", True, type=bool),
-                "auto_update_check": settings.value("auto_update_check", True, type=bool),
+                "auto_update_check": settings.value(
+                    "auto_update_check", True, type=bool
+                ),
             }
         except ImportError:
             settings_block = {"source": "headless", "note": "Qt settings unavailable"}

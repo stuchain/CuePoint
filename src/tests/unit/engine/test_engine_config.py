@@ -16,7 +16,9 @@ def _free_port() -> int:
         return sock.getsockname()[1]
 
 
-def _auth_request(url: str, token: str, *, data: bytes | None = None, method: str = "GET"):
+def _auth_request(
+    url: str, token: str, *, data: bytes | None = None, method: str = "GET"
+):
     headers = {"Authorization": f"Bearer {token}"}
     if data is not None:
         headers["Content-Type"] = "application/json"
@@ -33,7 +35,9 @@ def test_beatport_token_get_set_and_test(tmp_path: Path):
     config_file = tmp_path / "config.yaml"
     port = _free_port()
     token = "config-test-token"
-    server, thread = start_engine_thread(EngineConfig(host="127.0.0.1", port=port, token=token))
+    server, thread = start_engine_thread(
+        EngineConfig(host="127.0.0.1", port=port, token=token)
+    )
     base = f"http://127.0.0.1:{port}"
 
     with patch("cuepoint.engine.config_api._get_config_service") as mock_get_service:

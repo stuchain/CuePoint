@@ -96,7 +96,9 @@ class TrackResult:
             "beatport_url": self.beatport_url or "",
             "title_sim": str(self.title_sim) if self.title_sim is not None else "0",
             "artist_sim": str(self.artist_sim) if self.artist_sim is not None else "0",
-            "match_score": f"{self.match_score:.1f}" if self.match_score is not None else "0.0",
+            "match_score": f"{self.match_score:.1f}"
+            if self.match_score is not None
+            else "0.0",
             "confidence": self.confidence or "low",
             "search_query_index": self.search_query_index or "0",
             "search_stop_query_index": self.search_stop_query_index or "0",
@@ -170,4 +172,3 @@ class ProcessingError(Exception):
 
     def __str__(self) -> str:
         return self.message
-

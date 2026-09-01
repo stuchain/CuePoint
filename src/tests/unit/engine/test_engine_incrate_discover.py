@@ -14,7 +14,9 @@ def _free_port() -> int:
         return sock.getsockname()[1]
 
 
-def _auth_request(url: str, token: str, *, data: bytes | None = None, method: str = "GET"):
+def _auth_request(
+    url: str, token: str, *, data: bytes | None = None, method: str = "GET"
+):
     headers = {"Authorization": f"Bearer {token}"}
     if data is not None:
         headers["Content-Type"] = "application/json"
@@ -25,7 +27,9 @@ def _auth_request(url: str, token: str, *, data: bytes | None = None, method: st
 def test_incrate_discover_options_endpoint():
     port = _free_port()
     token = "incrate-discover-token"
-    server, thread = start_engine_thread(EngineConfig(host="127.0.0.1", port=port, token=token))
+    server, thread = start_engine_thread(
+        EngineConfig(host="127.0.0.1", port=port, token=token)
+    )
     base = f"http://127.0.0.1:{port}"
     try:
         with _auth_request(f"{base}/api/v1/incrate/discover/options", token) as resp:
@@ -41,7 +45,9 @@ def test_incrate_discover_options_endpoint():
 def test_incrate_discover_demo_endpoint():
     port = _free_port()
     token = "incrate-discover-token"
-    server, thread = start_engine_thread(EngineConfig(host="127.0.0.1", port=port, token=token))
+    server, thread = start_engine_thread(
+        EngineConfig(host="127.0.0.1", port=port, token=token)
+    )
     base = f"http://127.0.0.1:{port}"
     try:
         with _auth_request(
@@ -62,7 +68,9 @@ def test_incrate_discover_demo_endpoint():
 def test_incrate_playlist_requires_name():
     port = _free_port()
     token = "incrate-discover-token"
-    server, thread = start_engine_thread(EngineConfig(host="127.0.0.1", port=port, token=token))
+    server, thread = start_engine_thread(
+        EngineConfig(host="127.0.0.1", port=port, token=token)
+    )
     base = f"http://127.0.0.1:{port}"
     try:
         try:

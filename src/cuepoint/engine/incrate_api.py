@@ -7,7 +7,10 @@ from datetime import date, timedelta
 from typing import Any, Dict, List, Optional
 
 from cuepoint.incrate.beatport_api_models import DiscoveredTrack
-from cuepoint.incrate.playlist_writer import PlaylistResult, create_playlist_and_add_tracks
+from cuepoint.incrate.playlist_writer import (
+    PlaylistResult,
+    create_playlist_and_add_tracks,
+)
 
 _services_bootstrapped = False
 
@@ -85,7 +88,9 @@ def get_discover_options(*, db_path: Optional[str] = None) -> Dict[str, Any]:
     stats = inventory.get_inventory_stats()
     artists = inventory.get_library_artists() or []
     labels = inventory.get_library_labels() or []
-    token = str(_get_config_service().get("incrate.beatport_access_token") or "").strip()
+    token = str(
+        _get_config_service().get("incrate.beatport_access_token") or ""
+    ).strip()
     genres: List[Dict[str, Any]] = []
     if token:
         try:
@@ -104,7 +109,9 @@ def get_discover_options(*, db_path: Optional[str] = None) -> Dict[str, Any]:
         "defaults": {
             "charts_from": (date.today() - timedelta(days=30)).isoformat(),
             "charts_to": date.today().isoformat(),
-            "new_releases_days": int(_get_config_service().get("incrate.new_releases_days") or 30),
+            "new_releases_days": int(
+                _get_config_service().get("incrate.new_releases_days") or 30
+            ),
         },
     }
 

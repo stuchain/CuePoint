@@ -15,4 +15,3 @@ def clear_logs_now() -> Dict[str, object]:
 def clear_cache_now() -> Dict[str, object]:
     DataDeletionManager.clear_cache()
     return {"ok": True}
-

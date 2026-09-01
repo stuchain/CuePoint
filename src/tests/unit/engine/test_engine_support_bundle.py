@@ -55,7 +55,12 @@ def test_support_bundle_generates_zip():
             url = f"http://127.0.0.1:{port}/api/v1/support/bundle"
             payload = _post_json(
                 url,
-                {"output_dir": tmp, "include_logs": True, "include_config": True, "sanitize": True},
+                {
+                    "output_dir": tmp,
+                    "include_logs": True,
+                    "include_config": True,
+                    "sanitize": True,
+                },
                 "secret",
             )
             bundle_path = Path(payload["bundle_path"])

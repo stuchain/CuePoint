@@ -30,7 +30,9 @@ def test_health_endpoint_returns_ok():
     config = EngineConfig(host="127.0.0.1", port=port, token="test-token")
     server, thread = start_engine_thread(config)
     try:
-        with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=2) as resp:
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{port}/health", timeout=2
+        ) as resp:
             assert resp.status == 200
             data = json.loads(resp.read().decode("utf-8"))
         assert data["status"] == "ok"
@@ -46,7 +48,9 @@ def test_health_includes_session_id_from_env(monkeypatch):
     config = EngineConfig(host="127.0.0.1", port=port, token="test-token")
     server, thread = start_engine_thread(config)
     try:
-        with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=2) as resp:
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{port}/health", timeout=2
+        ) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         assert data.get("session_id") == "session-abc-123"
     finally:

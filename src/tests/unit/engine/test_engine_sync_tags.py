@@ -45,9 +45,12 @@ def test_run_sync_tags_paths_mode():
 def test_run_sync_tags_xml_single(tmp_path):
     xml_path = tmp_path / "collection.xml"
     xml_path.write_text("<root/>", encoding="utf-8")
-    with patch("cuepoint.engine.sync_tags_api.get_track_locations") as mock_locations, patch(
-        "cuepoint.engine.sync_tags_api.write_key_comment_year_to_playlist_tracks"
-    ) as mock_write:
+    with (
+        patch("cuepoint.engine.sync_tags_api.get_track_locations") as mock_locations,
+        patch(
+            "cuepoint.engine.sync_tags_api.write_key_comment_year_to_playlist_tracks"
+        ) as mock_write,
+    ):
         mock_locations.return_value = {"1": str(tmp_path / "a.mp3")}
         mock_write.return_value = (2, 0, [], [])
         payload = run_sync_tags(
@@ -74,9 +77,12 @@ def test_run_sync_tags_xml_single(tmp_path):
 def test_run_sync_tags_xml_batch(tmp_path):
     xml_path = tmp_path / "collection.xml"
     xml_path.write_text("<root/>", encoding="utf-8")
-    with patch("cuepoint.engine.sync_tags_api.get_track_locations") as mock_locations, patch(
-        "cuepoint.engine.sync_tags_api.write_key_comment_year_to_playlist_tracks_batch"
-    ) as mock_write:
+    with (
+        patch("cuepoint.engine.sync_tags_api.get_track_locations") as mock_locations,
+        patch(
+            "cuepoint.engine.sync_tags_api.write_key_comment_year_to_playlist_tracks_batch"
+        ) as mock_write,
+    ):
         mock_locations.return_value = {"1": str(tmp_path / "a.mp3")}
         mock_write.return_value = (3, 1, ["err"], ["skip.wav"])
         payload = run_sync_tags(

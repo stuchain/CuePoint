@@ -85,9 +85,7 @@ def get_cuepoint_log_text(
     if len(lines) > tail_lines:
         text = "\n".join(lines[-tail_lines:])
 
-    text = _filter_lines(
-        text, level=_normalize_level(level), search=search
-    )
+    text = _filter_lines(text, level=_normalize_level(level), search=search)
 
     if sanitize:
         text = SupportBundleGenerator._sanitize_log_content(text)
@@ -97,4 +95,3 @@ def get_cuepoint_log_text(
         "cuepoint_log": text,
         "size_bytes": size_bytes,
     }
-

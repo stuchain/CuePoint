@@ -73,7 +73,9 @@ def track_result_to_dict(result: TrackResult) -> Dict[str, Any]:
     return payload
 
 
-def _demo_candidates(track_num: int, *, primary_score: float = 88.0) -> List[Dict[str, Any]]:
+def _demo_candidates(
+    track_num: int, *, primary_score: float = 88.0
+) -> List[Dict[str, Any]]:
     """Sample candidate rows for Electron dev and tests."""
     return [
         {
@@ -302,7 +304,9 @@ def run_demo_match_job(job: MatchJob, store: JobStore) -> None:
                 matched=matched,
                 beatport_title=f"Beatport Demo {i}" if matched else None,
                 beatport_artists="BP Artist" if matched else None,
-                beatport_url=f"https://www.beatport.com/track/demo/{i}" if matched else None,
+                beatport_url=f"https://www.beatport.com/track/demo/{i}"
+                if matched
+                else None,
                 beatport_key="Am" if matched else None,
                 beatport_key_camelot="8A" if matched else None,
                 beatport_year="2020" if matched else None,
@@ -359,15 +363,23 @@ def run_demo_batch_match_job(job: MatchJob, store: JobStore) -> None:
                 return
             time.sleep(0.04)
             matched = offset % 2 == 0
-            candidates = _demo_candidates(completed, primary_score=86.0 + offset) if matched else []
+            candidates = (
+                _demo_candidates(completed, primary_score=86.0 + offset)
+                if matched
+                else []
+            )
             track = TrackResult(
                 playlist_index=offset,
                 title=f"{playlist_name} Track {offset}",
                 artist="Batch Artist",
                 matched=matched,
-                beatport_title=f"Beatport {playlist_name} {offset}" if matched else None,
+                beatport_title=f"Beatport {playlist_name} {offset}"
+                if matched
+                else None,
                 beatport_artists="BP Artist" if matched else None,
-                beatport_url=f"https://www.beatport.com/track/batch/{completed}" if matched else None,
+                beatport_url=f"https://www.beatport.com/track/batch/{completed}"
+                if matched
+                else None,
                 beatport_key="Dm" if matched else None,
                 beatport_key_camelot="7A" if matched else None,
                 beatport_year="2021" if matched else None,
@@ -476,7 +488,9 @@ def run_real_batch_match_job(
 
         playlist_completed = 0
 
-        def on_progress(info: ProgressInfo, *, _playlist_name: str = playlist_name) -> None:
+        def on_progress(
+            info: ProgressInfo, *, _playlist_name: str = playlist_name
+        ) -> None:
             nonlocal playlist_completed
             playlist_completed = info.completed_tracks
             completed = completed_global + playlist_completed
@@ -708,11 +722,15 @@ def start_match_job(store: JobStore, body: Dict[str, Any]) -> MatchJob:
     playlist_names_raw = body.get("playlist_names")
     playlist_names: List[str] = []
     if isinstance(playlist_names_raw, list):
-        playlist_names = [str(name).strip() for name in playlist_names_raw if str(name).strip()]
+        playlist_names = [
+            str(name).strip() for name in playlist_names_raw if str(name).strip()
+        ]
 
     has_real_m3u = bool(m3u_path and str(m3u_path).strip())
     has_real_xml = bool(xml_path and str(xml_path).strip())
-    has_real_single = has_real_xml and bool(playlist_name and str(playlist_name).strip())
+    has_real_single = has_real_xml and bool(
+        playlist_name and str(playlist_name).strip()
+    )
     has_real_batch = has_real_xml and bool(playlist_names)
 
     if demo or not (has_real_m3u or has_real_single or has_real_batch):

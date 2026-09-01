@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from cuepoint.data.rekordbox import (
     get_track_locations,
@@ -118,7 +118,9 @@ def run_sync_tags(body: Dict[str, Any]) -> Dict[str, Any]:
         results = _parse_results(body.get("results"))
         if not any(getattr(r, "file_path", None) for r in results):
             raise ValueError("M3U sync requires file_path on result rows")
-        written, failed, errors, wav_skipped = write_tags_to_paths(results, sync_options=sync_options)
+        written, failed, errors, wav_skipped = write_tags_to_paths(
+            results, sync_options=sync_options
+        )
         return _result_payload(written, failed, errors, wav_skipped)
 
     xml_path = str(body.get("xml_path") or "").strip()
@@ -136,21 +138,25 @@ def run_sync_tags(body: Dict[str, Any]) -> Dict[str, Any]:
 
     if mode == "batch":
         batch_results = _parse_batch_results(body.get("batch_results"))
-        written, failed, errors, wav_skipped = write_key_comment_year_to_playlist_tracks_batch(
-            xml_path,
-            batch_results,
-            sync_options=sync_options,
+        written, failed, errors, wav_skipped = (
+            write_key_comment_year_to_playlist_tracks_batch(
+                xml_path,
+                batch_results,
+                sync_options=sync_options,
+            )
         )
         return _result_payload(written, failed, errors, wav_skipped)
 
     results = _parse_results(body.get("results"))
     playlist_name = str(body.get("playlist_name") or "Playlist").strip() or "Playlist"
     try:
-        written, failed, errors, wav_skipped = write_key_comment_year_to_playlist_tracks(
-            xml_path,
-            playlist_name,
-            results,
-            sync_options=sync_options,
+        written, failed, errors, wav_skipped = (
+            write_key_comment_year_to_playlist_tracks(
+                xml_path,
+                playlist_name,
+                results,
+                sync_options=sync_options,
+            )
         )
     except ValueError as exc:
         raise ValueError(f"Playlist not found in XML: {exc}") from exc

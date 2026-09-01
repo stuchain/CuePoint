@@ -18,7 +18,9 @@ def _free_port() -> int:
         return sock.getsockname()[1]
 
 
-def _auth_request(url: str, token: str, *, data: bytes | None = None, method: str = "GET"):
+def _auth_request(
+    url: str, token: str, *, data: bytes | None = None, method: str = "GET"
+):
     headers = {"Authorization": f"Bearer {token}"}
     if data is not None:
         headers["Content-Type"] = "application/json"

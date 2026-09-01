@@ -2,7 +2,6 @@
 
 import json
 import socket
-import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -20,7 +19,9 @@ def _free_port() -> int:
         return sock.getsockname()[1]
 
 
-def _auth_request(url: str, token: str, *, data: bytes | None = None, method: str = "GET"):
+def _auth_request(
+    url: str, token: str, *, data: bytes | None = None, method: str = "GET"
+):
     headers = {"Authorization": f"Bearer {token}"}
     if data is not None:
         headers["Content-Type"] = "application/json"
@@ -63,7 +64,9 @@ def test_export_job_results_to_csv(tmp_path: Path):
                 "overwrite": True,
             }
         ).encode("utf-8")
-        with _auth_request(f"{base}/api/v1/export", token, data=payload, method="POST") as resp:
+        with _auth_request(
+            f"{base}/api/v1/export", token, data=payload, method="POST"
+        ) as resp:
             assert resp.status == 200
             exported = json.loads(resp.read().decode("utf-8"))
         assert exported["count"] == 5
@@ -81,7 +84,9 @@ def test_export_inline_results_requires_non_empty_array():
     config = EngineConfig(host="127.0.0.1", port=port, token=token)
     server, thread = start_engine_thread(config)
     try:
-        payload = json.dumps({"format": "csv", "file_path": "x.csv", "results": []}).encode("utf-8")
+        payload = json.dumps(
+            {"format": "csv", "file_path": "x.csv", "results": []}
+        ).encode("utf-8")
         with pytest.raises(urllib.error.HTTPError) as exc:
             _auth_request(
                 f"http://127.0.0.1:{port}/api/v1/export",

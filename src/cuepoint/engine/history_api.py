@@ -60,7 +60,9 @@ def _csv_row_to_track_result(row: Dict[str, str]) -> Dict[str, Any]:
     beatport_url = (row.get("beatport_url") or "").strip()
     beatport_title = (row.get("beatport_title") or "").strip()
     match_score = _parse_float(row.get("match_score"))
-    matched = bool(beatport_url or beatport_title or (match_score is not None and match_score > 0))
+    matched = bool(
+        beatport_url or beatport_title or (match_score is not None and match_score > 0)
+    )
     confidence = (row.get("confidence") or "").strip().lower()
     if confidence not in ("high", "medium", "low"):
         confidence = None
@@ -128,7 +130,8 @@ def _related_sidecar_paths(csv_path: Path) -> Dict[str, Optional[str]]:
         "candidates_csv": base.with_name(f"{base.name}_candidates.csv"),
     }
     return {
-        key: str(path.resolve()) if path.is_file() else None for key, path in sidecars.items()
+        key: str(path.resolve()) if path.is_file() else None
+        for key, path in sidecars.items()
     }
 
 
@@ -151,7 +154,9 @@ def _merge_candidates(
 
 
 def _infer_playlist_name(csv_path: Path, first_row: Dict[str, str]) -> str:
-    playlist_name = (first_row.get("playlist_name") or first_row.get("playlist") or "").strip()
+    playlist_name = (
+        first_row.get("playlist_name") or first_row.get("playlist") or ""
+    ).strip()
     if playlist_name:
         return playlist_name
     basename = csv_path.name
@@ -260,7 +265,9 @@ def load_history_csv(csv_path: str) -> Dict[str, Any]:
         grouped = _load_candidates_grouped(Path(candidate_source))
         _merge_candidates(results, grouped)
 
-    review_indices: Set[int] = {row["playlist_index"] for row in results if _needs_review(row)}
+    review_indices: Set[int] = {
+        row["playlist_index"] for row in results if _needs_review(row)
+    }
     review_count = len(review_indices)
 
     return {

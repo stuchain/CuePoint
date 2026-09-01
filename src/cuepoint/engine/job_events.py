@@ -8,9 +8,7 @@ from typing import Any, Dict, Iterator, Optional
 
 from cuepoint.engine.jobs import JobState, JobStore, progress_to_dict
 
-TERMINAL_STATES = frozenset(
-    {JobState.SUCCEEDED, JobState.FAILED, JobState.CANCELLED}
-)
+TERMINAL_STATES = frozenset({JobState.SUCCEEDED, JobState.FAILED, JobState.CANCELLED})
 
 
 def job_event_payload(job) -> Dict[str, Any]:
@@ -50,7 +48,11 @@ def iter_job_events(
         job = store.get(job_id)
         if job is None:
             yield format_sse_event(
-                {"type": "error", "code": "JOB_NOT_FOUND", "message": f"Job {job_id} not found"},
+                {
+                    "type": "error",
+                    "code": "JOB_NOT_FOUND",
+                    "message": f"Job {job_id} not found",
+                },
                 event="error",
             )
             return
@@ -69,7 +71,11 @@ def iter_job_events(
 
         if now - started >= max_wait_s:
             yield format_sse_event(
-                {"type": "error", "code": "TIMEOUT", "message": "Job event stream timed out"},
+                {
+                    "type": "error",
+                    "code": "TIMEOUT",
+                    "message": "Job event stream timed out",
+                },
                 event="error",
             )
             return

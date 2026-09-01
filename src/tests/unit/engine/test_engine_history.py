@@ -20,7 +20,9 @@ def _free_port() -> int:
         return sock.getsockname()[1]
 
 
-def _auth_request(url: str, token: str, *, data: bytes | None = None, method: str = "GET"):
+def _auth_request(
+    url: str, token: str, *, data: bytes | None = None, method: str = "GET"
+):
     headers = {"Authorization": f"Bearer {token}"}
     if data is not None:
         headers["Content-Type"] = "application/json"
@@ -109,7 +111,12 @@ def test_history_load_merges_review_candidates(monkeypatch, tmp_path):
     with open(candidates_path, "w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(
             handle,
-            fieldnames=["playlist_index", "candidate_title", "final_score", "candidate_url"],
+            fieldnames=[
+                "playlist_index",
+                "candidate_title",
+                "final_score",
+                "candidate_url",
+            ],
         )
         writer.writeheader()
         writer.writerow(

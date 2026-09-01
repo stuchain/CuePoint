@@ -37,7 +37,10 @@ class ExportController:
         if format_type == "csv":
             delimiter = options.get("delimiter", ",")
             if delimiter not in [",", ";", "\t", "|"]:
-                return False, f"Invalid delimiter: {delimiter}. Must be one of: , ; \\t |"
+                return (
+                    False,
+                    f"Invalid delimiter: {delimiter}. Must be one of: , ; \\t |",
+                )
 
         return True, None
 
@@ -91,9 +94,7 @@ class ExportController:
 
     def get_default_output_directory(self) -> str:
         current_file = os.path.abspath(__file__)
-        src_dir = os.path.dirname(
-            os.path.dirname(os.path.dirname(current_file))
-        )
+        src_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_file)))
         output_dir = os.path.join(src_dir, "output")
         return os.path.abspath(output_dir)
 
@@ -103,4 +104,3 @@ class ExportController:
         safe_name = self.sanitize_filename(playlist_name) or "playlist"
         extension = self.get_export_file_extension(format_type, options)
         return f"{safe_name}{extension}"
-

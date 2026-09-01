@@ -5,7 +5,6 @@ import socket
 import urllib.request
 from unittest.mock import patch
 
-import pytest
 
 from cuepoint.engine.jobs import JobStore, start_match_job
 from cuepoint.engine.server import EngineConfig, start_engine_thread
@@ -38,7 +37,9 @@ def _free_port() -> int:
         return sock.getsockname()[1]
 
 
-def _auth_request(url: str, token: str, *, data: bytes | None = None, method: str = "GET"):
+def _auth_request(
+    url: str, token: str, *, data: bytes | None = None, method: str = "GET"
+):
     headers = {"Authorization": f"Bearer {token}"}
     if data is not None:
         headers["Content-Type"] = "application/json"
@@ -84,7 +85,9 @@ def test_start_batch_match_job_with_mock_processor(tmp_path):
     assert len(playlists) >= 2
     selected = [playlists[0]["path"], playlists[1]["path"]]
 
-    def fake_process(xml_path_arg, playlist_name, progress_callback=None, controller=None):
+    def fake_process(
+        xml_path_arg, playlist_name, progress_callback=None, controller=None
+    ):
         assert xml_path_arg == str(xml_path)
         if progress_callback:
             from cuepoint.compat.gui_types import ProgressInfo

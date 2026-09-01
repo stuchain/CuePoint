@@ -172,4 +172,3 @@ def test_logs_requires_auth(monkeypatch):
         finally:
             server.shutdown()
             thread.join(timeout=2)
-
