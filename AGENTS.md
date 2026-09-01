@@ -94,6 +94,8 @@ it. Do not claim a check passed unless it ran; report skipped checks and why.
 ## Change quality
 
 - Make the smallest coherent change; search callers before deletion or rename.
+- Keep shared skill instructions synchronized between `.agents/skills/` (Codex) and
+  `.claude/skills/` (Claude Code); `agents/openai.yaml` metadata is Codex-only.
 - Add unit tests for logic, a regression test for bugs, and integration/E2E coverage for changed
   boundaries.
 - Never commit secrets, signing material, personal paths, or unsanitized user data.

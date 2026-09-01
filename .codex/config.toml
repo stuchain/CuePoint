@@ -1,0 +1,18 @@
+# Project-scoped MCP servers for Codex CLI.
+# Only loaded for projects marked trusted in the user's ~/.codex/config.toml
+# ([projects."<path>"] trust_level = "trusted").
+
+[mcp_servers.sentry]
+url = "https://mcp.sentry.dev/mcp"
+auth = "oauth"
+
+[mcp_servers.github]
+url = "https://api.githubcopilot.com/mcp/"
+bearer_token_env_var = "GITHUB_TOKEN"
+
+[mcp_servers.electron]
+command = "npx"
+args = ["-y", "@laststance/electron-mcp-server@latest"]
+
+[mcp_servers.electron.env]
+SECURITY_LEVEL = "balanced"
