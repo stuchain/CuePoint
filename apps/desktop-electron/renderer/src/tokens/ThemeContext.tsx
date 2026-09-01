@@ -46,6 +46,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setCustomThemes(listCustomThemes());
   }, []);
 
+  // `getAllThemeOptions` reads the stored custom themes rather than taking them
+  // as an argument, so `customThemes` is the signal that they changed. Without
+  // it the option list goes stale as soon as one is added or deleted.
+  // oxlint-disable-next-line react-hooks/exhaustive-deps
   const themeOptions = useMemo(() => getAllThemeOptions(), [customThemes]);
 
   const setTheme = useCallback((themeId: ThemeId) => {

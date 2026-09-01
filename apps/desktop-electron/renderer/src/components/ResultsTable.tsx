@@ -123,6 +123,10 @@ export function ResultsTable({
     return [...rows].sort((a, b) => compareRows(a, b, col, sortDir));
   }, [rows, sortCol, sortDir]);
 
+  // `scale` looks unused here, but `readRowHeight` reads the `--row-height`
+  // CSS variable, which derives from `--scale`. The dependency is what re-reads
+  // it after a scale change; drop it and virtualized rows keep the old height.
+  // oxlint-disable-next-line react-hooks/exhaustive-deps
   const rowHeight = useMemo(() => readRowHeight(), [scale]);
 
   const virtualizer = useVirtualizer({

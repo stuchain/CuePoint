@@ -47,7 +47,13 @@ jobs:
 
       - name: Lint and unit test renderer
         working-directory: apps/desktop-electron/renderer
-        run: npm test
+        run: |
+          npm run lint
+          npm test
+
+      - name: Typecheck renderer
+        working-directory: apps/desktop-electron/renderer
+        run: npm run typecheck
 
       - name: Build desktop shell
         working-directory: apps/desktop-electron

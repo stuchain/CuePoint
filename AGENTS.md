@@ -58,8 +58,9 @@ python scripts/check_no_qt_in_core.py
 
 # Renderer (from apps/desktop-electron/renderer)
 npm test
-npm run lint
-npm run build:check
+npm run lint        # oxlint -D correctness; fails the build, not just warns
+npm run typecheck   # tsc -b, the gate CI runs
+npm run build:check # typecheck + production build
 
 # Engine/desktop integration (from repository root unless command changes directory)
 python -m pytest src/tests/unit/engine/ -q --tb=short

@@ -1165,6 +1165,43 @@ Not fixed here: that is renderer type debt, not test infrastructure, and adding 
 CI would fail immediately. It is the same shape as the ruff finding in FOUNDATION-13 — a gate that
 exists but is never run — and wants its own change: fix the types, then enforce the script.
 
+> **Resolved 2026-09-01.** All 9 errors fixed and both renderer gates wired into
+> `desktop-electron.yml`. Details below.
+
+#### Follow-up: renderer typecheck and lint gates
+
+The nine errors were three problems, not nine:
+
+1. **`fixtures.ts` used `ProgressInfo` and `ToolOption` without importing them** (3 errors). Both
+   exist in `mocks/types.ts`; the import line simply omitted them.
+2. **The sync request was typed as `Record<string, unknown>`** (5 errors). No caller could satisfy
+   it: every one passes `TrackResult[]`, and a TypeScript *interface* has no implicit index
+   signature, so `TrackResult` is not assignable to `Record<string, unknown>` — the annotation
+   could never type-check against its only real input. `SyncTagsRequest` in
+   `cuepointBridge.types.ts` already declared `results?: TrackResult[]`, so the honest type was
+   sitting next door. `buildSyncRequest` now takes and returns those types; the emitted payload is
+   field for field what it was. Two identical copies of `SyncTagsResponse` also existed, one per
+   file and free to drift, so the sync options moved next to the request that carries them and
+   `syncTagsUtils` re-exports both — no consumer import changed.
+3. **An unused `useCallback` import** (1 error).
+
+**A gate that cannot fail is worse than no gate**, so both were checked by planting violations:
+`npm run typecheck` exits 2 on a type error and 0 clean; `npm run lint` exits 1 on a hook
+dependency violation and 0 clean.
+
+That check exposed a second dead gate. **`npm run lint` was bare `oxlint`, which reports
+everything — `eval` and `debugger` included — as a warning and exits 0.** Adding it to CI as-is
+would have been decoration. It is now `oxlint -D correctness`, and CI's step named "Lint and unit
+test renderer" finally lints, which it never did.
+
+Turning that on surfaced two `exhaustive-deps` errors that are **both false positives, where
+obeying the linter would introduce real bugs**: `readRowHeight()` reads the `--row-height` CSS
+variable derived from `--scale`, so the `scale` dependency is what re-reads it after a scale
+change; and `getAllThemeOptions()` reads stored themes, so `customThemes` is the signal they
+changed. Removing either dependency leaves virtualized row heights or the theme list stale. Both
+are now suppressed with a comment explaining why the dependency is deliberate — worth having
+regardless, since the next reader would otherwise "fix" them.
+
 ---
 
 ## FOUNDATION-12 — Test Infrastructure (original plan)
