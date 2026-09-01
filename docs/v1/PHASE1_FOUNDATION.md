@@ -797,7 +797,45 @@ than the code integration).
 
 ---
 
-## FOUNDATION-15 — Qt Updater Removal
+## FOUNDATION-15 — Qt Updater Removal ✅ IMPLEMENTED 2026-09-01 (scope amended)
+
+**Outcome**: Complete, but **narrower than this spec assumed**. The spec (and DEC-019) described
+`src/cuepoint/update/` as a fully-orphaned Qt stack. It wasn't: only 4 of 12 files touched Qt, and
+the rest is Qt-free logic actively used by release tooling, `SecurityService`, and two passing
+test files. See the DEC-019 amendment in `DECISIONS.md`.
+
+**Removed** (12 files): `update_manager.py`, `update_ui.py`, `update_downloader.py`,
+`update_installer.py` (Qt-free, but only reachable from the deleted UI and dependent on the
+deleted launchers), `update_launcher.py`/`.bat`/`.ps1`, and 5 obsolete GUI-driving scripts
+(`scripts/test_update_dialog_comprehensive.py`, `test_update_dialog_download_button.py`,
+`test_update_dialog_interactive.py`, `test_update_download_install.py`,
+`test_update_integration.py`).
+
+**Kept**: `update_checker.py`, `version_utils.py`, `security.py`, `signature_verifier.py`,
+`update_preferences.py` — the appcast/versioning/verification logic that
+`scripts/inspect_appcast.py`, `scripts/generate_appcast.py`, `scripts/test_pre_release.py`,
+`services/security_service.py` and `src/tests/unit/update/` depend on.
+
+**Also**: `update/__init__.py` rewritten (dropped deleted exports, documents current status);
+`docs/features/update-system.md` rewritten to state CuePoint ships without in-app updates instead
+of describing a flow that could not run; `docs/release/known-issues.md` entry reworded from "update
+fails on some Windows 10 configurations" to "no in-app updates" with the real cause; two stale
+`mypy.ini` sections removed.
+
+**Coverage note**: 5 tests were removed with `UpdateManager` (the "effective channel" rule that a
+test build must fetch the test feed regardless of user preference). That rule is a real past bug
+fix — it is now documented in `docs/features/update-system.md` and in the remaining test file's
+docstring so a future Electron-native updater reimplements it rather than rediscovering it.
+
+**Bonus**: `update/` is now Qt-free, so it was added to `check_no_qt_in_core.py`'s scanned
+prefixes. Only `utils/` (7 files, optional try-guarded imports with headless fallbacks) remains
+outside the guard.
+
+**Verification**: 1811 unit (= 1816 minus the 5 deliberately removed) + 313 integration passing;
+`ruff check`/`format` clean; Qt guard passes across 9 packages; engine health smoke and version
+coupling pass; no mypy errors in any changed file.
+
+---
 
 **Objective**: Per DEC-019, remove the orphaned Qt/Sparkle update subsystem
 (`src/cuepoint/update/`, ~8 files) that the audit found disconnected from the Electron product,

@@ -354,7 +354,8 @@ existing in-repo precedent for persisting UI layout state.
 
 ## DEC-019 — Orphaned Qt Updater's Fate
 
-**Status**: Approved
+**Status**: Approved, then **amended 2026-09-01** (see amendment note at the end of this entry —
+implementation showed the original premise was only partly true)
 
 **Decision**: Formally deprecate and remove the Qt-era `src/cuepoint/update/` code now, as a
 standalone cleanup independent of the phased roadmap. A real Electron-native auto-updater (e.g.
@@ -373,5 +374,31 @@ of describing dead functionality; removes the `known-issues.md` entry once the f
 rather than "fixed." This is a small, independently schedulable cleanup — it does not need to wait
 for FOUNDATION-01, but isn't implemented yet either (still design-only mode; needs its own
 "Implement" instruction like any other step).
+
+**Decided with**: User · **Date**: 2026-09-01
+
+### Amendment (2026-09-01) — scope narrowed to the Qt-dependent modules only
+
+**What implementation found**: the premise above ("a fully-built Sparkle/PySide6 update stack,
+orphaned") was only about one third true. Of the 12 files in `src/cuepoint/update/`, **only 4
+touched Qt** (`update_manager.py` 25 refs, `update_ui.py` 7, `update_downloader.py` 3,
+`update_launcher.py` 1). The rest is Qt-free and **actively used**: `version_utils.py` by
+`scripts/inspect_appcast.py` and `scripts/test_pre_release.py`, `security.py` by
+`services/security_service.py`, and both by two real passing tests in `src/tests/unit/update/`.
+Deleting the package wholesale would have destroyed working, tested release tooling and broken
+the appcast pipeline.
+
+**Amended decision**: delete only the dead Qt update *flow* — `update_manager.py`, `update_ui.py`,
+`update_downloader.py`, `update_installer.py` (Qt-free, but only reachable from the deleted UI and
+dependent on the deleted launchers), `update_launcher.py`/`.bat`/`.ps1`, plus the 5 obsolete
+`scripts/test_update_dialog*.py` / `test_update_download_install.py` / `test_update_integration.py`
+GUI-driving scripts. **Keep** the appcast/version/security logic (`update_checker.py`,
+`version_utils.py`, `security.py`, `signature_verifier.py`, `update_preferences.py`) that release
+tooling and `SecurityService` depend on.
+
+**Unchanged from the original decision**: CuePoint ships without in-app updates; an
+Electron-native updater remains a future, unscheduled item; `docs/features/update-system.md` and
+`docs/release/known-issues.md` now describe the real situation instead of a feature that could not
+run.
 
 **Decided with**: User · **Date**: 2026-09-01
