@@ -45,6 +45,31 @@ def progress_to_dict(progress: ProgressInfo) -> Dict[str, Any]:
     }
 
 
+def _candidate_rows(result: Any) -> List[Dict[str, Any]]:
+    """Return JSON-serializable candidate rows for a result.
+
+    Two result shapes reach this function. Results from the real matching
+    pipeline (``cuepoint.models.result.TrackResult``) hold ``BeatportCandidate``
+    *objects* in ``candidates`` and renderer-shaped dicts in ``candidates_data``.
+    Demo and legacy results hold dicts directly in ``candidates``.
+
+    Only dicts can be serialized: putting ``BeatportCandidate`` objects into the
+    payload made ``GET /api/v1/jobs/{id}/results`` fail with a TypeError for
+    every real match run that produced candidates.
+
+    ``candidates_data`` is preferred because it already uses the field names the
+    renderer reads (``candidate_title``, ``candidate_url``, ``final_score``);
+    ``BeatportCandidate.to_dict()`` uses different names and would silently
+    render blank rows.
+    """
+    data = getattr(result, "candidates_data", None)
+    if data:
+        return [row for row in data if isinstance(row, dict)]
+
+    candidates = getattr(result, "candidates", None) or []
+    return [row for row in candidates if isinstance(row, dict)]
+
+
 def track_result_to_dict(result: TrackResult) -> Dict[str, Any]:
     payload: Dict[str, Any] = {
         "playlist_index": result.playlist_index,
@@ -65,8 +90,9 @@ def track_result_to_dict(result: TrackResult) -> Dict[str, Any]:
         "confidence": result.confidence,
         "write": False,
     }
-    if result.candidates:
-        payload["candidates"] = result.candidates
+    candidates = _candidate_rows(result)
+    if candidates:
+        payload["candidates"] = candidates
     file_path = getattr(result, "file_path", None)
     if file_path:
         payload["file_path"] = file_path
