@@ -97,7 +97,9 @@ it. Do not claim a check passed unless it ran; report skipped checks and why.
 - Keep shared skill instructions synchronized between `.agents/skills/` (Codex) and
   `.claude/skills/` (Claude Code); `agents/openai.yaml` metadata is Codex-only.
 - Add unit tests for logic, a regression test for bugs, and integration/E2E coverage for changed
-  boundaries.
+  boundaries. For regression tests see `src/tests/regression/README.md` (write it so it fails on
+  the unfixed code first). Renderer component tests use Testing Library and live beside the
+  component as `*.test.tsx`.
 - Never commit secrets, signing material, personal paths, or unsanitized user data.
 - Do not hand-edit `.venv/`, `node_modules/`, `build/`, `dist/`, `electron-dist/`, `release/`,
   coverage, caches, logs, or `output/`. Update tracked lockfiles only through intentional npm

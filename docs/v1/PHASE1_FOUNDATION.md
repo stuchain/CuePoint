@@ -1113,7 +1113,61 @@ DB with unsaved changes) explicitly, not just the happy path.
 
 ---
 
-## FOUNDATION-12 — Test Infrastructure
+## FOUNDATION-12 — Test Infrastructure ✅ IMPLEMENTED 2026-09-01
+
+**Outcome**: Complete. All three gaps closed before the UI surface grows.
+
+**1. Renderer component testing now exists.** The suite covered only pure utility modules, and
+`.test.tsx` files were not even collected: `vite.config.ts` set `environment: "node"` and
+`include: ["src/**/*.test.ts"]`. Added jsdom, Testing Library and a shared setup file that unmounts
+between tests, and widened collection to `.test.tsx`. `Button.test.tsx` is the first rendering
+test and the template for the components Library and Player will bring — it asserts what a user
+would notice (a disabled button not firing, a loading button hiding its label) rather than markup,
+so it survives restyling.
+
+**Verified the test can fail.** A component test that cannot fail is theatre, so this was checked
+rather than assumed: removing the `loading → disabled` logic the way a careless refactor would
+makes the suite go red, and restoring it green. These run in CI already, via `npm test`.
+
+**2. Two of the three zero-coverage `incrate/` modules now have real tests.**
+`past_results_storage.py` (15 tests) pins the tolerance that matters — a corrupt or partial
+history file degrades to "no history" instead of breaking discovery, and saving over a corrupt
+file still works. `beatport_oauth.py` (17 tests) pins credential precedence, including that a
+half-configured environment does not mask the file's secret, that a password is *not* trimmed
+while a username is, and that the token request carries a timeout. `models.py`, listed in the
+audit, has since gained coverage elsewhere.
+
+**`beatport_playlist_browser.py` deliberately did not get unit tests**, and that is the honest
+answer rather than a gap. Almost all of its 402 lines drive a Playwright page; unit-testing it
+would mean asserting against an elaborate fake page — verifying the mock, not the code, and
+raising a coverage number while catching nothing. It has cheap real guards instead: that it
+imports without a browser installed (the engine sidecar imports inCrate modules at start-up), and
+that its endpoints are HTTPS Beatport URLs. Its behaviour is genuinely verified by using it.
+
+**3. Regression-test convention documented.** `src/tests/regression/README.md` explains when a bug
+belongs there versus beside the code, the layout, and the rule that matters most: write the test
+so it *fails on the unfixed code first*, since a regression test that has never failed may be
+asserting the wrong thing entirely. It cites three bugs found during this phase and where each was
+pinned. Referenced from AGENTS.md where regression tests are asked for.
+
+**Verification**: 32 new Python tests and 9 renderer tests. 2191 Python unit (was 2148) + 47
+renderer tests passing; ruff clean.
+
+### Finding: the renderer typecheck is not run anywhere
+
+`npm run build:check` (`tsc -b && vite build`) fails with **9 pre-existing TypeScript errors**,
+mostly `TrackResult` not being assignable to `Record<string, unknown>` in `ResultsScreen.tsx`.
+Confirmed pre-existing: the count is identical with my changes stashed. CI runs `npm test` and
+`npm run build` — and `vite build` transpiles *without* typechecking — so nothing has ever failed
+on these, which is how nine of them accumulated.
+
+Not fixed here: that is renderer type debt, not test infrastructure, and adding `build:check` to
+CI would fail immediately. It is the same shape as the ruff finding in FOUNDATION-13 — a gate that
+exists but is never run — and wants its own change: fix the types, then enforce the script.
+
+---
+
+## FOUNDATION-12 — Test Infrastructure (original plan)
 
 **Objective**: Close the audit's identified coverage gaps as an infrastructure investment before
 the UI surface grows in Phase 2 onward: renderer component-testing setup (currently zero
