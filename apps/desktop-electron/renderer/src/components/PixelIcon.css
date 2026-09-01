@@ -1,0 +1,11 @@
+.cp-pixel-icon {
+  /*
+   * A 12-unit viewBox drawn into 24px means one grid cell is exactly 2 CSS
+   * pixels at 1x, 4 at 2x, 6 at 3x — always a whole number, so cell edges
+   * never land mid-pixel.
+   */
+  width: var(--icon-size);
+  height: var(--icon-size);
+  display: block;
+  flex: none;
+}

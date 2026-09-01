@@ -45,6 +45,9 @@
 
   /* Hit targets */
   --hit-min: calc(44px * var(--scale));
+
+  /* Pixel icons: a multiple of the 12px grid, so cells stay whole pixels */
+  --icon-size: calc(24px * var(--scale));
 }
 
 html,

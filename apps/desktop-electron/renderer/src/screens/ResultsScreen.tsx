@@ -227,7 +227,7 @@ export function ResultsScreen() {
           ← Back to inKey
         </Link>
         <div className="screen-toolbar__actions">
-          <ToolbarIcon label="Filter" glyph="☰" active />
+          <ToolbarIcon label="Filter" icon="filter" active />
           <Button variant="secondary" disabled={!canSync || syncing} loading={syncing} onClick={handleOpenSync}>
             Sync with Rekordbox
           </Button>

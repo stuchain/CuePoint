@@ -10,5 +10,6 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = { args: { label: "Settings", glyph: "⚙" } };
-export const Active: Story = { args: { label: "Filter", glyph: "☰", active: true } };
+export const Default: Story = { args: { label: "Settings", icon: "settings" } };
+export const Active: Story = { args: { label: "Filter", icon: "filter", active: true } };
+export const UnicodeGlyph: Story = { args: { label: "Help", glyph: "?" } };

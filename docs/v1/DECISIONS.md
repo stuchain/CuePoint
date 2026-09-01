@@ -206,6 +206,13 @@ icon-set production before there's a stable feature surface to design icons agai
 `docs/ui-overhaul/phase-1-pixel-design-system.md` (DS-3) but never built would need to be stood up
 for this small icon set, not a full application-wide asset pass.
 
+**Amended 2026-09-01 (mechanism only — the decision above is unchanged)**: implementation found
+DS-3 is about 9-slice *panels and buttons*, not icons, so there was no icon pipeline to stand up;
+and a baked-colour PNG cannot follow five themes that disagree about `--fg-primary` without one
+copy per icon per theme. The icons are instead authored as pixel grids and rendered as SVG
+rectangles inheriting `currentColor`. Still hand-placed pixels and still 5–10 icons; only the
+production and delivery mechanism differs. See FOUNDATION-14's outcome in `PHASE1_FOUNDATION.md`.
+
 **Decided with**: User · **Date**: 2026-09-01
 
 ---

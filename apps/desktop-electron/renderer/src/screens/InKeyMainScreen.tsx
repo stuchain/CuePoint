@@ -242,8 +242,8 @@ export function InKeyMainScreen({
           ← CuePoint / inKey
         </Link>
         <div className="screen-toolbar__actions">
-          <ToolbarIcon label="Settings" glyph="⚙" />
-          <ToolbarIcon label="Export" glyph="⬇" />
+          <ToolbarIcon label="Settings" icon="settings" />
+          <ToolbarIcon label="Export" icon="export" />
           <Link to="/results">
             <Button variant="secondary">View results</Button>
           </Link>

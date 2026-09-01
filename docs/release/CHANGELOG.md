@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Pixel-art icons for the toolbar. Settings, Export and Filter are now drawn as
+  pixel artwork instead of Unicode glyphs, joined by transport (play/pause/next/
+  previous) and navigation (home/library/activity) icons for upcoming screens.
+  The artwork inherits the active theme's colour, so all five themes are covered
+  by one drawing, and it stays sharp at every interface scale
+
 ### Fixed
 - `PrivacyService` and `OnboardingService` no longer import PySide6. Both had an
   unguarded module-level `from PySide6.QtCore import QSettings`, which raised

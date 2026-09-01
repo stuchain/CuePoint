@@ -1294,7 +1294,97 @@ their own follow-up PR(s), tracked separately rather than blocking this step.
 
 ---
 
-## FOUNDATION-14 — Pixel-Art Design System Foundation
+## FOUNDATION-14 — Pixel-Art Design System Foundation ✅ IMPLEMENTED 2026-09-01 (mechanism amended)
+
+**Outcome**: Complete. Ten pixel icons drawn, a rendering path added alongside the glyph path, and
+the three icons the toolbar actually shows converted. Crispness verified empirically across all 5
+themes and 3 scales rather than assumed.
+
+### Deviation: pixel grids rendered as SVG, not Aseprite PNG sprites
+
+This step called for the "9-slice/Aseprite pipeline (DS-3)". Two things about that turned out to
+be wrong, and the mechanism changed as a result. **DEC-010's decision is unchanged** — hybrid,
+5–10 real pixel icons, glyphs retained elsewhere; only the production mechanism named in its
+*implications* differs.
+
+1. **DS-3 is not an icon pipeline.** In `docs/ui-overhaul/phase-1-pixel-design-system.md`, DS-3
+   reads "**9-slice** for panels/buttons — resize without distorting corners". That is about
+   stretchable chrome, not icons. There was no specced icon pipeline to stand up.
+2. **A baked-colour bitmap cannot follow the themes.** The five themes disagree about
+   `--fg-primary` (`#e0fbfc`, `#e8eaed`, `#f0f0ff`, `#fafafa`, `#ffffff`) and far more strongly
+   about accents. A PNG needs one copy per icon per theme — 50 assets today, +10 for every theme
+   added, and each one silently wrong if a token changes.
+
+So the artwork is authored as a 12×12 character grid (`#` on, `.` off) in
+`renderer/src/components/pixelIcons.ts` and rendered as SVG rectangles filled with
+`currentColor`. The grid is still genuine pixel art — hand-placed pixels, no antialiasing — but
+it themes for free, is reviewable in a diff (you can see the icon in the source), needs no build
+step, and carries none of the packaging risk that bundling data files has already cost this
+project once (`incrate/schema.sql`, FOUNDATION-02). Adjacent lit pixels are merged into single
+rectangles, cutting a worst-case 144 DOM nodes to a few dozen.
+
+### Scope: which ten icons, and a correction to this step's premise
+
+This step promised icons "wherever they're already used today (the current toolbar/nav)", but the
+icons it listed (nav, transport, status) have **no call sites at all** — the nav shell is Phase 2
+and the player is Phase 5. The only three live `ToolbarIcon` usages were Settings, Export and
+Filter, none of which appear in this step's list. Building the listed set exactly would have
+produced zero user-visible change, contradicting "the first visible product change of Phase 1".
+
+The ten built are therefore: **settings, export, filter** (live today — these are the visible
+change), **play, pause, next, previous** (transport; universal shapes, no design risk), and
+**home, library, activity** (nav; conventional shapes).
+
+**Deliberately not built**: `clean`, `discover`, `prepare` have no conventional icon and their
+meaning is still being designed — drawing them now is guessing. The status badges
+(matched/unmatched/needs-review) are rendered today as text `Badge`s, which carry the state more
+legibly at 12px than any glyph would. Both are cheap to add once there is a screen to design them
+against, which is the caution DEC-010 was expressing.
+
+### Verification: measured, not eyeballed
+
+A Playwright harness rendered the real artwork against the real theme CSS at every
+theme × scale combination, then decoded the screenshots pixel by pixel. **Antialiasing shows up
+as blend colours between the artwork and the background, so crisp pixel art contains exactly two
+colours.** All 15 combinations returned exactly 2, with lit-pixel counts scaling exactly
+×4 and ×9 across 1×/2×/3× — no rounding drift — and a different foreground colour per theme,
+confirming `currentColor` follows the themes.
+
+Checking that the harness could actually fail exposed something worth recording: at
+`devicePixelRatio` 1 the result is identical with `shape-rendering` set to `auto`, because the
+geometry is already exact. **The crispness comes from integer geometry, not from the attribute.**
+A grid cell is `2 × scale` CSS pixels, so it stays sharp whenever `2 × scale × DPR` is a whole
+number:
+
+| DPR | Result |
+|---|---|
+| 1, 1.5, 2, 3 | Exact at every scale |
+| **1.25** (Windows 125%) | Exact at scale 2, the default; scales 1 and 3 blend ~1% of pixels |
+
+At DPR 1.25 `shape-rendering="crispEdges"` cuts the blended pixels from 74 to 10 (of 900), so it
+earns its place, but it cannot fully fix fractional device pixels — and neither could a PNG,
+which faces the same mapping. Worth knowing before anyone reports "the icons look soft": it is
+125% display scaling at a non-default zoom, and it is inherent, not a defect in the artwork.
+
+### Looking at them changed two of them
+
+Rendering the set and actually viewing it caught what no assertion would have. The gear read as a
+**dumbbell** — a thick square body with full-height side teeth — and Library ("books on a shelf")
+was three vertical bars on a baseline, very nearly identical to Activity. Both were redrawn: the
+gear as a rounded body with short nubs at the compass points and an open bore, Library as records
+standing in a crate, which also suits the product better. Neither would have been caught by tests.
+
+**Tests**: 66 renderer tests added (113 total, from 47). Artwork is guarded for grid dimensions —
+a row one character short silently shifts the drawing and is invisible in review — for staying in
+bounds, and for uniqueness. Three planted breaks confirmed the suite fails: a short row, a removed
+`crispEdges`, and a hard-coded fill in place of `currentColor`.
+
+**Zero new TypeScript errors** (9 at HEAD, 9 after — the pre-existing set from FOUNDATION-12);
+lint clean; no e2e selector referenced the replaced glyphs.
+
+---
+
+## FOUNDATION-14 — Pixel-Art Design System Foundation (original plan)
 
 **Objective**: Per DEC-010, build real pixel sprite icons for the 5–10 highest-visibility
 recurring icons — nav items (Home/Library/Clean/Discover/Prepare/Activity, anticipating Phase 2's
