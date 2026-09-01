@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- `PrivacyService` and `OnboardingService` no longer import PySide6. Both had an
+  unguarded module-level `from PySide6.QtCore import QSettings`, which raised
+  `ImportError` in the shipped Electron engine sidecar (PySide6 is not in the
+  default requirements). Both now persist through `ConfigService`
+  (`~/.cuepoint/config.yaml`), restoring the AGENTS.md invariant that Qt must not
+  enter core, engine, CLI, or services
 - Parallel playlist processing: cancelling a run no longer calls `result()` on
   already-cancelled track futures (which raised `CancelledError`) nor logs the
   expected "futures left over after cancellation" case at warning/error level,

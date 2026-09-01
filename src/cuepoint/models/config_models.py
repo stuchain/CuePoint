@@ -104,6 +104,18 @@ class ProductConfig:
 
 
 @dataclass
+class PrivacyConfig:
+    """Privacy preferences (Step 8.4).
+
+    Persisted via ConfigService (``~/.cuepoint/config.yaml``). These control
+    optional data deletion performed when the application exits.
+    """
+
+    clear_cache_on_exit: bool = False
+    clear_logs_on_exit: bool = False
+
+
+@dataclass
 class RunSummaryConfig:
     """Run summary configuration."""
 
@@ -201,6 +213,7 @@ class AppConfig:
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     ui: UIConfig = field(default_factory=UIConfig)
     product: ProductConfig = field(default_factory=ProductConfig)
+    privacy: PrivacyConfig = field(default_factory=PrivacyConfig)
     run_summary: RunSummaryConfig = field(default_factory=RunSummaryConfig)
     matching: MatchingConfig = field(default_factory=MatchingConfig)
     reliability: ReliabilityConfig = field(default_factory=ReliabilityConfig)
@@ -286,6 +299,10 @@ class AppConfig:
                 "redact_paths_in_logs": self.product.redact_paths_in_logs,
                 "verify_updates": self.product.verify_updates,
                 "enforce_https": self.product.enforce_https,
+            },
+            "privacy": {
+                "clear_cache_on_exit": self.privacy.clear_cache_on_exit,
+                "clear_logs_on_exit": self.privacy.clear_logs_on_exit,
             },
             "run_summary": {
                 "write_json": self.run_summary.write_json,
@@ -496,6 +513,17 @@ class AppConfig:
                 ),
                 enforce_https=product_data.get(
                     "enforce_https", config.product.enforce_https
+                ),
+            )
+
+        if "privacy" in data:
+            privacy_data = data["privacy"]
+            config.privacy = PrivacyConfig(
+                clear_cache_on_exit=privacy_data.get(
+                    "clear_cache_on_exit", config.privacy.clear_cache_on_exit
+                ),
+                clear_logs_on_exit=privacy_data.get(
+                    "clear_logs_on_exit", config.privacy.clear_logs_on_exit
                 ),
             )
 

@@ -41,7 +41,6 @@ _QT_TEST_PATH_FRAGMENTS = (
     "test_export_integration.py",
     "test_step8_ux_accessibility.py",
     "test_advanced_filtering.py",
-    "test_onboarding_service.py",
     "test_step52_main_controller_di.py",
     "test_step52_full_integration.py",
     "test_export_dialog_import.py",

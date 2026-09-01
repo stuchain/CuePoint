@@ -16,6 +16,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from cuepoint.services.interfaces import ICheckpointService
+
 # Design 5.69: Keep checkpoints for 7 days
 CHECKPOINT_MAX_AGE_DAYS = 7
 
@@ -89,7 +91,7 @@ def get_checkpoint_dir() -> Path:
         return Path.home() / ".cuepoint" / "data"
 
 
-class CheckpointService:
+class CheckpointService(ICheckpointService):
     """Save/load and validate checkpoints (Design 5.27, 5.29, 5.30)."""
 
     def __init__(

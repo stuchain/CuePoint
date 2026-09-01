@@ -7,8 +7,12 @@ Onboarding Service
 Implements SHIP v1.0 Step 9.4: Onboarding (first-run detection + persistence).
 
 This module is intentionally lightweight:
-- Stores onboarding state in QSettings (per-user, persistent).
+- Stores onboarding state via ConfigService (``~/.cuepoint/config.yaml``,
+  ``product.onboarding_*`` keys), per-user and persistent.
 - Supports "don't show again" and versioned onboarding.
+
+This module must remain free of any GUI-toolkit dependency: it runs inside the
+headless engine sidecar, where PySide6 is not installed.
 """
 
 from __future__ import annotations
@@ -16,9 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-from PySide6.QtCore import QSettings
-
-from cuepoint.services.interfaces import IConfigService
+from cuepoint.services.interfaces import IConfigService, IOnboardingService
 from cuepoint.version import get_version
 
 
@@ -31,50 +33,40 @@ class OnboardingState:
     onboarding_version: Optional[str]
 
 
-class OnboardingService:
+class OnboardingService(IOnboardingService):
     """Manages onboarding state and first-run detection."""
 
-    SETTINGS_GROUP = "Onboarding"
-    KEY_FIRST_RUN_COMPLETE = "first_run_complete"
-    KEY_ONBOARDING_DISMISSED = "onboarding_dismissed"
-    KEY_ONBOARDING_VERSION = "onboarding_version"
+    KEY_FIRST_RUN_COMPLETE = "product.onboarding_seen"
+    KEY_ONBOARDING_DISMISSED = "product.onboarding_dismissed"
+    KEY_ONBOARDING_VERSION = "product.onboarding_version"
 
-    def __init__(
-        self,
-        settings: Optional[QSettings] = None,
-        config_service: Optional[IConfigService] = None,
-    ) -> None:
-        # Allow injecting QSettings in tests.
-        self._settings = settings or QSettings()
-        self._config_service = config_service
+    def __init__(self, config_service: Optional[IConfigService] = None) -> None:
+        """Initialize the service.
 
-    def _begin(self) -> None:
-        self._settings.beginGroup(self.SETTINGS_GROUP)
+        Args:
+            config_service: Configuration service used for persistence. When
+                omitted, a default :class:`ConfigService` is created, which reads
+                and writes the user's ``~/.cuepoint/config.yaml``.
+        """
+        if config_service is None:
+            # Imported lazily to avoid a circular import at module load time.
+            from cuepoint.services.config_service import ConfigService
 
-    def _end(self) -> None:
-        self._settings.endGroup()
+            config_service = ConfigService()
+        self._config_service: IConfigService = config_service
 
     def get_state(self) -> OnboardingState:
         """Get current persisted onboarding state."""
-        config_state = self._get_state_from_config()
-        if config_state is not None:
-            if (
-                config_state.first_run_complete
-                or config_state.onboarding_dismissed
-                or config_state.onboarding_version
-            ):
-                return config_state
-
-        settings_state = self._get_state_from_settings()
-        if config_state is not None:
-            # Migrate legacy settings into config if present.
-            if (
-                settings_state.first_run_complete
-                or settings_state.onboarding_dismissed
-                or settings_state.onboarding_version
-            ):
-                self._set_state_in_config(settings_state)
-        return settings_state
+        version = self._config_service.get(self.KEY_ONBOARDING_VERSION, None)
+        return OnboardingState(
+            first_run_complete=bool(
+                self._config_service.get(self.KEY_FIRST_RUN_COMPLETE, False)
+            ),
+            onboarding_dismissed=bool(
+                self._config_service.get(self.KEY_ONBOARDING_DISMISSED, False)
+            ),
+            onboarding_version=str(version) if version else None,
+        )
 
     def is_first_run(self) -> bool:
         """Return True if onboarding has never been completed."""
@@ -115,56 +107,6 @@ class OnboardingService:
             onboarding_version=None,
         )
 
-    def _get_state_from_settings(self) -> OnboardingState:
-        self._begin()
-        try:
-            return OnboardingState(
-                first_run_complete=self._settings.value(
-                    self.KEY_FIRST_RUN_COMPLETE, False, type=bool
-                ),
-                onboarding_dismissed=self._settings.value(
-                    self.KEY_ONBOARDING_DISMISSED, False, type=bool
-                ),
-                onboarding_version=self._settings.value(
-                    self.KEY_ONBOARDING_VERSION, None, type=str
-                ),
-            )
-        finally:
-            self._end()
-
-    def _get_state_from_config(self) -> Optional[OnboardingState]:
-        if not self._config_service:
-            return None
-        return OnboardingState(
-            first_run_complete=bool(
-                self._config_service.get("product.onboarding_seen", False)
-            ),
-            onboarding_dismissed=bool(
-                self._config_service.get("product.onboarding_dismissed", False)
-            ),
-            onboarding_version=self._config_service.get(
-                "product.onboarding_version", None
-            ),
-        )
-
-    def _set_state_in_config(self, state: OnboardingState) -> None:
-        if not self._config_service:
-            return
-        try:
-            self._config_service.set(
-                "product.onboarding_seen", state.first_run_complete
-            )
-            self._config_service.set(
-                "product.onboarding_dismissed", state.onboarding_dismissed
-            )
-            self._config_service.set(
-                "product.onboarding_version", state.onboarding_version
-            )
-            self._config_service.save()
-        except Exception:
-            # Config persistence is best-effort; fall back to QSettings.
-            pass
-
     def _set_state(
         self,
         *,
@@ -172,20 +114,14 @@ class OnboardingService:
         onboarding_dismissed: bool,
         onboarding_version: Optional[str],
     ) -> None:
-        # Persist to QSettings for backward compatibility.
-        self._begin()
-        try:
-            self._settings.setValue(self.KEY_FIRST_RUN_COMPLETE, first_run_complete)
-            self._settings.setValue(self.KEY_ONBOARDING_DISMISSED, onboarding_dismissed)
-            self._settings.setValue(self.KEY_ONBOARDING_VERSION, onboarding_version)
-            self._settings.sync()
-        finally:
-            self._end()
+        """Persist onboarding state.
 
-        self._set_state_in_config(
-            OnboardingState(
-                first_run_complete=first_run_complete,
-                onboarding_dismissed=onboarding_dismissed,
-                onboarding_version=onboarding_version,
-            )
-        )
+        Raises:
+            ConfigurationError: If the configuration file cannot be written.
+                Persistence failures are surfaced rather than swallowed, so
+                onboarding state is never silently lost.
+        """
+        self._config_service.set(self.KEY_FIRST_RUN_COMPLETE, first_run_complete)
+        self._config_service.set(self.KEY_ONBOARDING_DISMISSED, onboarding_dismissed)
+        self._config_service.set(self.KEY_ONBOARDING_VERSION, onboarding_version)
+        self._config_service.save()

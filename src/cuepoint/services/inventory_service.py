@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from cuepoint.incrate import collection_parser, enrichment, inventory_db
+from cuepoint.services.interfaces import IInventoryService
 
 _logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ def default_inventory_db_path() -> str:
     return str(path)
 
 
-class InventoryService:
+class InventoryService(IInventoryService):
     """Facade for inCrate inventory: import, enrich, and query."""
 
     def __init__(

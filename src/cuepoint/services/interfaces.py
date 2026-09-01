@@ -9,12 +9,24 @@ These interfaces enable dependency injection and testability.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from datetime import date
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 from cuepoint.models.preflight import PreflightResult
 from cuepoint.models.result import TrackResult
 from cuepoint.models.track import Track
 from cuepoint.compat.gui_types import ProcessingController, ProgressCallback
+
+if TYPE_CHECKING:
+    # Imported for typing only: these modules import their interface from this
+    # module, so a runtime import here would create a circular import.
+    # Annotations referencing them are quoted forward references.
+    from cuepoint.incrate.beatport_api_models import DiscoveredTrack
+    from cuepoint.services.checkpoint_service import CheckpointData
+    from cuepoint.services.onboarding_service import OnboardingState
+    from cuepoint.services.privacy_service import PrivacyPreferences
+    from cuepoint.services.security_service import SecurityCheckResult
 
 
 class ILoggingService(ABC):
@@ -334,4 +346,209 @@ class IProcessorService(ABC):
         Returns:
             Tuple of (list of TrackResult, optional warning message e.g. 'X of Y files found').
         """
+        ...
+
+
+class IPrivacyService(ABC):
+    """Interface for privacy preferences and privacy actions (Step 8.4)."""
+
+    @abstractmethod
+    def get_preferences(self) -> "PrivacyPreferences":
+        """Return the currently persisted privacy preferences."""
+        ...
+
+    @abstractmethod
+    def set_preferences(self, prefs: "PrivacyPreferences") -> None:
+        """Persist the given privacy preferences."""
+        ...
+
+    @abstractmethod
+    def set_clear_cache_on_exit(self, enabled: bool) -> None:
+        """Enable/disable clearing the cache when the application exits."""
+        ...
+
+    @abstractmethod
+    def set_clear_logs_on_exit(self, enabled: bool) -> None:
+        """Enable/disable clearing logs when the application exits."""
+        ...
+
+    @abstractmethod
+    def apply_exit_policies(self) -> None:
+        """Apply configured privacy policies on exit (best-effort; never raises)."""
+        ...
+
+
+class IOnboardingService(ABC):
+    """Interface for onboarding state and first-run detection (Step 9.4)."""
+
+    @abstractmethod
+    def get_state(self) -> "OnboardingState":
+        """Get current persisted onboarding state."""
+        ...
+
+    @abstractmethod
+    def is_first_run(self) -> bool:
+        """Return True if onboarding has never been completed."""
+        ...
+
+    @abstractmethod
+    def should_show_onboarding(self) -> bool:
+        """Return True if onboarding should be shown now."""
+        ...
+
+    @abstractmethod
+    def mark_first_run_complete(
+        self, *, onboarding_version: Optional[str] = None
+    ) -> None:
+        """Mark onboarding as completed (does not set dismissed)."""
+        ...
+
+    @abstractmethod
+    def dismiss_onboarding(self, *, dont_show_again: bool) -> None:
+        """Dismiss onboarding, optionally never show again."""
+        ...
+
+    @abstractmethod
+    def reset_onboarding(self) -> None:
+        """Reset onboarding state."""
+        ...
+
+
+class IInventoryService(ABC):
+    """Interface for the inCrate inventory facade (import, enrich, query)."""
+
+    @property
+    @abstractmethod
+    def db_path(self) -> str:
+        """Path to the SQLite inventory database."""
+        ...
+
+    @abstractmethod
+    def reset_database(self) -> None:
+        """Clear all inventory rows."""
+        ...
+
+    @abstractmethod
+    def import_from_xml(
+        self,
+        xml_path: str,
+        enrich: bool = True,
+        progress_callback: Optional[Any] = None,
+    ) -> Dict[str, Any]:
+        """Import COLLECTION from Rekordbox XML and optionally enrich empty labels.
+
+        Returns:
+            Dict with imported (int), enriched (int), errors (list).
+        """
+        ...
+
+    @abstractmethod
+    def get_library_artists(self) -> List[str]:
+        """Return distinct library artist names, sorted."""
+        ...
+
+    @abstractmethod
+    def get_library_labels(self) -> List[str]:
+        """Return distinct library labels, sorted."""
+        ...
+
+    @abstractmethod
+    def has_artist(self, name: str) -> bool:
+        """Return True if any track has the given artist (case-insensitive)."""
+        ...
+
+    @abstractmethod
+    def get_inventory_stats(self) -> Dict[str, int]:
+        """Return total and with_label counts."""
+        ...
+
+    @abstractmethod
+    def list_inventory(
+        self, limit: int = 5000, search: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Return inventory rows for UI."""
+        ...
+
+
+class IIncrateDiscoveryService(ABC):
+    """Interface for inCrate discovery (charts + label new releases)."""
+
+    @abstractmethod
+    def run_discovery(
+        self,
+        genre_ids: Optional[List[int]] = None,
+        charts_from_date: Optional[date] = None,
+        charts_to_date: Optional[date] = None,
+        new_releases_days: Optional[int] = None,
+        progress_callback: Optional[Callable[[str, int, int], None]] = None,
+        library_artist_names: Optional[List[str]] = None,
+        library_label_names: Optional[List[str]] = None,
+    ) -> List["DiscoveredTrack"]:
+        """Run discovery; use config for defaults when args are None.
+
+        Returns:
+            Deduplicated list of DiscoveredTrack.
+        """
+        ...
+
+
+class ISecurityService(ABC):
+    """Interface for security checks and invariants (Step 8.1-8.3)."""
+
+    @abstractmethod
+    def validate_https_url(self, url: str) -> "SecurityCheckResult":
+        """Validate that the given URL uses HTTPS."""
+        ...
+
+    @abstractmethod
+    def validate_system_ssl(self) -> "SecurityCheckResult":
+        """Check that a default SSL context can be created."""
+        ...
+
+
+class ICheckpointService(ABC):
+    """Interface for run checkpointing and resume (Design 5.27, 5.29, 5.30)."""
+
+    @abstractmethod
+    def checkpoint_path(self) -> Path:
+        """Return the path of the checkpoint file."""
+        ...
+
+    @abstractmethod
+    def save(
+        self,
+        run_id: str,
+        playlist: str,
+        xml_path: str,
+        xml_hash: str,
+        last_track_index: int,
+        last_track_id: str,
+        output_paths: Dict[str, str],
+    ) -> None:
+        """Write checkpoint to disk (atomic write via temp file)."""
+        ...
+
+    @abstractmethod
+    def load(self) -> Optional["CheckpointData"]:
+        """Load checkpoint from disk. Returns None if missing or invalid."""
+        ...
+
+    @abstractmethod
+    def can_resume(self, checkpoint: "CheckpointData", xml_path: str) -> bool:
+        """Return True if the checkpoint is valid for the given XML."""
+        ...
+
+    @abstractmethod
+    def validate_and_load(self, xml_path: str) -> Optional["CheckpointData"]:
+        """Load a checkpoint only if it is resumable for the given XML."""
+        ...
+
+    @abstractmethod
+    def discard(self) -> None:
+        """Delete the checkpoint file."""
+        ...
+
+    @abstractmethod
+    def exists(self) -> bool:
+        """Return True if a checkpoint file exists."""
         ...

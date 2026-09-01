@@ -17,6 +17,7 @@ import ssl
 from dataclasses import dataclass
 from typing import Optional
 
+from cuepoint.services.interfaces import ISecurityService
 from cuepoint.update.security import FeedIntegrityVerifier
 
 
@@ -26,8 +27,13 @@ class SecurityCheckResult:
     error: Optional[str] = None
 
 
-class SecurityService:
-    """Central place for security checks and invariants."""
+class SecurityService(ISecurityService):
+    """Central place for security checks and invariants.
+
+    Methods remain ``staticmethod`` for backward compatibility with existing
+    class-level call sites; they also satisfy the instance-based
+    :class:`ISecurityService` contract.
+    """
 
     @staticmethod
     def validate_https_url(url: str) -> SecurityCheckResult:

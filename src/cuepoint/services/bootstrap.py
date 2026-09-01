@@ -26,13 +26,19 @@ from cuepoint.services.interfaces import (
     ICacheService,
     IConfigService,
     IExportService,
+    IIncrateDiscoveryService,
+    IInventoryService,
     ILoggingService,
     IMatcherService,
+    IOnboardingService,
+    IPrivacyService,
     IProcessorService,
     ITelemetryService,
 )
 from cuepoint.services.logging_service import LoggingService
 from cuepoint.services.matcher_service import MatcherService
+from cuepoint.services.onboarding_service import OnboardingService
+from cuepoint.services.privacy_service import PrivacyService
 from cuepoint.services.processor_service import ProcessorService
 from cuepoint.services.telemetry_service import TelemetryService
 from cuepoint.utils.di_container import get_container
@@ -99,7 +105,10 @@ def bootstrap_services() -> None:
             processor_service=container.resolve(IProcessorService),
         )
 
+    # Registered under both the interface and the concrete class: existing
+    # callers (e.g. engine/incrate_api.py) resolve by concrete class.
     container.register_factory(InventoryService, create_inventory_service)
+    container.register_factory(IInventoryService, create_inventory_service)
 
     # inCrate Phase 3: Discovery (charts + label releases)
     def create_incrate_discovery_service() -> IncrateDiscoveryService:
@@ -111,6 +120,9 @@ def bootstrap_services() -> None:
 
     container.register_factory(
         IncrateDiscoveryService, create_incrate_discovery_service
+    )
+    container.register_factory(
+        IIncrateDiscoveryService, create_incrate_discovery_service
     )
 
     # Register processor service (depends on beatport, matcher, logging, config)
@@ -138,6 +150,18 @@ def bootstrap_services() -> None:
         )
 
     container.register_factory(ITelemetryService, create_telemetry_service)
+
+    # Step 8.4 / 9.4: Privacy preferences and onboarding state.
+    # Both persist through ConfigService (no GUI toolkit dependency).
+    def create_privacy_service() -> IPrivacyService:
+        return PrivacyService(config_service=container.resolve(IConfigService))
+
+    container.register_factory(IPrivacyService, create_privacy_service)
+
+    def create_onboarding_service() -> IOnboardingService:
+        return OnboardingService(config_service=container.resolve(IConfigService))
+
+    container.register_factory(IOnboardingService, create_onboarding_service)
 
     # Design 7: Opt-in alerting for repeated failures
     try:

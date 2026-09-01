@@ -5,9 +5,10 @@ from typing import Any, Callable, List, Optional
 
 from cuepoint.incrate.beatport_api_models import DiscoveredTrack
 from cuepoint.incrate.discovery import run_discovery as discovery_run_discovery
+from cuepoint.services.interfaces import IIncrateDiscoveryService
 
 
-class IncrateDiscoveryService:
+class IncrateDiscoveryService(IIncrateDiscoveryService):
     """Facade for discovery: uses InventoryService and BeatportApi; reads config for dates and genres."""
 
     def __init__(
