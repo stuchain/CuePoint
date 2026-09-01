@@ -32,6 +32,7 @@ from cuepoint.services.interfaces import (
     IInventoryService,
     ILoggingService,
     IMatcherService,
+    IMigrationRunner,
     IOnboardingService,
     IPrivacyService,
     IProcessorService,
@@ -39,6 +40,7 @@ from cuepoint.services.interfaces import (
 )
 from cuepoint.services.logging_service import LoggingService
 from cuepoint.services.matcher_service import MatcherService
+from cuepoint.services.migration_runner import MigrationRunner
 from cuepoint.services.onboarding_service import OnboardingService
 from cuepoint.services.privacy_service import PrivacyService
 from cuepoint.services.processor_service import ProcessorService
@@ -68,6 +70,13 @@ def bootstrap_services() -> None:
     container.register_singleton(
         IDatabaseService, DatabaseService(config_service=config_service)
     )
+
+    # Schema migrations. Resolving the runner discovers migrations but does not
+    # apply them or open the database; callers invoke migrate() explicitly.
+    def create_migration_runner() -> IMigrationRunner:
+        return MigrationRunner(database_service=container.resolve(IDatabaseService))
+
+    container.register_factory(IMigrationRunner, create_migration_runner)
 
     # Register matcher service (no dependencies)
     matcher_service = MatcherService()

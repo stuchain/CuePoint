@@ -28,6 +28,7 @@ from cuepoint.services.interfaces import (
     IInventoryService,
     ILoggingService,
     IMatcherService,
+    IMigrationRunner,
     IOnboardingService,
     IPrivacyService,
     IProcessorService,
@@ -140,11 +141,16 @@ class TestBootstrapRegistration:
             IPrivacyService,
             IOnboardingService,
             IDatabaseService,
+            IMigrationRunner,
         ],
         ids=lambda v: v.__name__,
     )
     def test_interface_is_registered(self, container, interface):
         assert container.is_registered(interface)
+
+    def test_migration_runner_resolves_with_shipped_migrations(self, container):
+        runner = container.resolve(IMigrationRunner)
+        assert runner.target_version >= 1
 
     def test_database_service_is_a_shared_singleton(self, container):
         """One connection pool per process, not a new one per resolution."""

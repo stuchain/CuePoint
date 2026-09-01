@@ -296,7 +296,55 @@ assumption.
 
 ---
 
-## FOUNDATION-03 — Schema Migration Infrastructure
+## FOUNDATION-03 — Schema Migration Infrastructure ✅ IMPLEMENTED 2026-09-01
+
+**Outcome**: Complete. `cuepoint/migrations/` holds the migrations,
+`services/migration_runner.py` applies them, `schema_version` records what ran.
+
+**Verification task answered**: the existing `services/schema_migration.py` (the audit guessed the
+name as `schema_migration_service.py`) migrates **exported CSV files** between output-schema
+versions. Unrelated to database schema — the name is a coincidence. Not reused; the new runner's
+docstring points this out so the two are not confused.
+
+**Migrations are Python modules, not `.sql` data files.** While checking packaging, I found that
+`incrate/schema.sql` is **absent from the packaged engine sidecar** — `build/engine-sidecar.spec`
+lists no `.sql` in `datas`, and the built TOC confirms it. Data files need explicit spec entries
+and that has already been missed once here. Python modules are followed automatically via the
+module graph, so migrations cannot go missing in a shipped build. (The inCrate bug is real and
+pre-existing — reported separately, not fixed here.)
+
+**Two real bugs found and fixed during implementation**, both caught by tests rather than review:
+
+1. **`executescript()` broke migration atomicity.** It issues an implicit `COMMIT` before
+   executing, so a migration's DDL was committed *outside* the runner's transaction — a failure
+   left the schema changed but unrecorded, the exact corruption migrations exist to prevent.
+   Fixed by splitting the script and executing statement by statement inside the transaction,
+   using `sqlite3.complete_statement` so semicolons in string literals and `CREATE TRIGGER`
+   bodies are handled correctly. A first attempt split line by line, which silently joined two
+   statements sharing a line (`execute()` accepts only one) — also fixed and covered.
+
+2. **Concurrent first-launch opens failed with "database is locked"** (a FOUNDATION-02 bug this
+   step's testing surfaced). Switching a database to WAL takes a brief exclusive lock, and SQLite
+   returns `SQLITE_BUSY` for a contended `PRAGMA journal_mode` *without consulting the busy
+   handler* — and `busy_timeout` was being set after `journal_mode` anyway. In production the
+   engine's request and job threads all reach for the database at once on first launch. Fixed by
+   setting `busy_timeout` first and serializing connection opening; WAL persists in the file, so
+   later opens are a no-op. Reproduced 3 runs in 5 before the fix, 8 clean runs after.
+
+**Guarantees now tested**: migrations apply in order and exactly once; a failure rolls back that
+migration only and the upgrade resumes after a fix; a database from a newer CuePoint is refused
+with `DB_SCHEMA_TOO_NEW` rather than damaged; duplicate versions, sequence gaps, malformed modules
+and filename/VERSION mismatches fail loudly at discovery.
+
+**Not wired to startup yet, deliberately**: `migrate()` is invoked explicitly, not from
+`connect()`. Auto-migrating on every connection would be surprising and slow, and there is no
+schema worth migrating until the Track model lands. The call site belongs with the first real
+consumer.
+
+**Verification**: 37 new tests (31 runner/splitting, 6 discovery validation). 1902 unit (was
+1862) + 313 integration passing; ruff and mypy clean.
+
+---
 
 **Objective**: Deliver versioned, numbered schema migrations for the new `cuepoint.db`, with a
 `schema_version` tracking table and an apply-on-startup routine wired into `DatabaseService`

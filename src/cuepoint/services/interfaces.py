@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     # module, so a runtime import here would create a circular import.
     # Annotations referencing them are quoted forward references.
     from cuepoint.incrate.beatport_api_models import DiscoveredTrack
+    from cuepoint.migrations import Migration
     from cuepoint.services.checkpoint_service import CheckpointData
     from cuepoint.services.onboarding_service import OnboardingState
     from cuepoint.services.privacy_service import PrivacyPreferences
@@ -393,6 +394,31 @@ class IDatabaseService(ABC):
     @abstractmethod
     def close_all(self) -> None:
         """Close every connection opened by this service, across all threads."""
+        ...
+
+
+class IMigrationRunner(ABC):
+    """Interface for applying library database schema migrations."""
+
+    @property
+    @abstractmethod
+    def target_version(self) -> int:
+        """Schema version this build of CuePoint expects."""
+        ...
+
+    @abstractmethod
+    def current_version(self) -> int:
+        """Return the database's schema version (0 if no migration applied)."""
+        ...
+
+    @abstractmethod
+    def pending_migrations(self) -> List["Migration"]:
+        """Return migrations not yet applied, in order."""
+        ...
+
+    @abstractmethod
+    def migrate(self) -> List["Migration"]:
+        """Apply all pending migrations, returning those applied."""
         ...
 
 

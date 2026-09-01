@@ -310,10 +310,16 @@ class TestFailureHandling:
 class TestConcurrency:
     def test_each_thread_gets_its_own_connection(self, service):
         connections = []
+        errors: list[BaseException] = []
         lock = threading.Lock()
 
         def worker():
-            conn = service.connect()
+            try:
+                conn = service.connect()
+            except BaseException as exc:  # noqa: BLE001 - surfaced via assert
+                with lock:
+                    errors.append(exc)
+                return
             with lock:
                 connections.append(conn)
 
@@ -321,10 +327,54 @@ class TestConcurrency:
         for t in threads:
             t.start()
         for t in threads:
-            t.join()
+            t.join(timeout=30)
 
+        assert not any(t.is_alive() for t in threads), "a worker thread hung"
+        # Reported before the count assertion so a failure names the cause
+        # rather than just showing a short list.
+        assert not errors, f"connect() failed in a worker thread: {errors!r}"
         assert len(connections) == 4
+        # Compared by object identity; every connection is still strongly
+        # referenced here, so identity is stable for the whole assertion.
         assert len({id(c) for c in connections}) == 4, "connections were shared"
+
+    def test_many_threads_open_a_fresh_database_simultaneously(self, tmp_path):
+        """First launch: several threads reach for a brand-new database at once.
+
+        Regression guard: switching a database to WAL takes a brief exclusive
+        lock, and SQLite returns SQLITE_BUSY for a contended
+        "PRAGMA journal_mode" without consulting the busy handler. Opening
+        concurrently used to fail intermittently with "database is locked".
+        """
+        service = DatabaseService(db_path=tmp_path / "fresh.db")
+        errors: list[BaseException] = []
+        opened: list[object] = []
+        lock = threading.Lock()
+        start = threading.Barrier(8)
+
+        def worker():
+            try:
+                start.wait(timeout=10)  # maximize contention
+                conn = service.connect()
+                with lock:
+                    opened.append(conn)
+            except BaseException as exc:  # noqa: BLE001 - surfaced via assert
+                with lock:
+                    errors.append(exc)
+
+        threads = [threading.Thread(target=worker) for _ in range(8)]
+        try:
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join(timeout=30)
+
+            assert not errors, (
+                f"opening a fresh database concurrently failed: {errors!r}"
+            )
+            assert len(opened) == 8
+        finally:
+            service.close_all()
 
     def test_concurrent_writes_from_many_threads(self, service):
         """Mirrors the real workload: several threads writing at once."""

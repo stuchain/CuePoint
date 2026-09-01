@@ -121,10 +121,19 @@ class DatabaseService(IDatabaseService):
         if existing is not None:
             return existing
 
-        connection = self._open_connection()
-        self._local.connection = connection
+        # Opening is serialized across threads. Switching a database to WAL
+        # needs a brief exclusive lock, and SQLite reports SQLITE_BUSY for a
+        # contended "PRAGMA journal_mode" without consulting the busy handler.
+        # Several threads opening a fresh database at once would otherwise race
+        # and one would fail with "database is locked" — which is exactly what
+        # happens on first launch, when engine request and job threads all reach
+        # for the database together. Opening is rare, so serializing costs
+        # nothing; once WAL is set it persists in the file and later opens are a
+        # no-op.
         with self._lock:
+            connection = self._open_connection()
             self._connections.append(connection)
+        self._local.connection = connection
         return connection
 
     def _open_connection(self) -> sqlite3.Connection:
@@ -159,11 +168,13 @@ class DatabaseService(IDatabaseService):
 
         try:
             connection.row_factory = sqlite3.Row
-            connection.execute("PRAGMA journal_mode=WAL")
-            connection.execute("PRAGMA foreign_keys=ON")
+            # busy_timeout first, so the busy handler is armed before anything
+            # that can contend for a lock.
             connection.execute(
                 f"PRAGMA busy_timeout={int(self._busy_timeout_seconds * 1000)}"
             )
+            connection.execute("PRAGMA journal_mode=WAL")
+            connection.execute("PRAGMA foreign_keys=ON")
             # Surfaces a corrupt or non-database file here, with context, rather
             # than at some arbitrary later query.
             connection.execute("SELECT count(*) FROM sqlite_master").fetchone()
