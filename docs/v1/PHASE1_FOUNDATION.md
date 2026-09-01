@@ -668,7 +668,56 @@ bootstrap paths; a round-trip test (create via repository → read via service) 
 
 ---
 
-## FOUNDATION-07 — Background Job Architecture
+## FOUNDATION-07 — Background Job Architecture ✅ IMPLEMENTED 2026-09-01
+
+**Outcome**: Complete. Job records now survive an engine restart (DEC-007), with the in-memory
+store still the hot path.
+
+**Extended, not replaced.** `JobStore` keeps its in-memory dict; a `JobRepository` is written
+through behind it. `job_repository` is optional, so `JobStore()` still means purely in-memory —
+which is why **all 47 existing engine tests pass with zero modifications**, the hard bar this step
+set itself.
+
+**Migration 0003** adds `jobs`, with `type` as a discriminator so future import/artwork/waveform/
+analysis jobs share one lifecycle table. Results are deliberately not stored: a match run's
+results are thousands of candidate rows, and DEC-007 chose durable job *records*, not resumable
+job *state*.
+
+**Progress is sampled, state transitions never are.** Progress ticks arrive per track, so writing
+each one would mean thousands of database writes per run for information superseded moments later.
+Progress persists at most once a second; any state change or error is forced through immediately,
+because a dropped terminal state would misreport forever.
+
+**Measured, not assumed** (4,000 progress updates, i.e. a 4,000-track run):
+
+| | in-memory only | with persistence |
+| --- | --- | --- |
+| progress updates | 2.1 µs each (8.3 ms) | 2.8 µs each (11.2 ms) |
+| status-polling reads | 1.1 ms | 1.1 ms |
+
+Total overhead across a whole run is ~3 ms, and polling is untouched because it never reaches the
+database.
+
+**Persistence is best-effort throughout.** A failing repository, a failing provider, or an
+unserializable payload leaves the job running normally — tested explicitly. A job record must
+never be the reason a run fails.
+
+**Interrupted jobs**: the engine closes out anything still marked queued or running at startup,
+since the process that owned it is gone. They become `failed` with `JOB_INTERRUPTED` rather than a
+new state value, so the renderer's existing state handling keeps working.
+
+**Fixed along the way**: FOUNDATION-04's schema test hardcoded version `2`, so adding migration
+0003 broke it for no real reason. It now asserts against `target_version`.
+
+**Verification**: 28 new tests; 2046 unit (was 2016) + 313 integration passing across three
+consecutive runs; ruff, Qt guard, mypy and engine health smoke clean.
+
+**Noted, not diagnosed**: one full-suite run showed two failures in
+`test_step13_ops.py::TestExportSupportBundleCLI` (subprocess CLI tests). They reference nothing
+this step touched, pass 5/5 in isolation, and did not recur across three later full runs — an
+intermittent that predates this work, not a regression from it.
+
+---
 
 **Objective**: Generalize `engine/jobs.py::JobStore` beyond match-only jobs, and persist job
 records (status, progress, timestamps — not full resumability, per DEC-007) to the new DB.

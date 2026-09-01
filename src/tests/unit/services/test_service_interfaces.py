@@ -26,6 +26,7 @@ from cuepoint.services.interfaces import (
     IExportService,
     IIncrateDiscoveryService,
     IInventoryService,
+    IJobRepository,
     ILoggingService,
     IMatcherService,
     IMigrationRunner,
@@ -164,6 +165,16 @@ class TestBootstrapRegistration:
 
     def test_track_repository_is_registered(self, container):
         assert container.is_registered(ITrackRepository)
+
+    def test_job_repository_is_registered(self, container):
+        assert container.is_registered(IJobRepository)
+
+    def test_job_repository_is_usable_immediately(self, container, tmp_path):
+        """Resolving applies migrations, so the jobs table exists."""
+        container.resolve(IConfigService).set(
+            "database.path", str(tmp_path / "jobs.db")
+        )
+        assert container.resolve(IJobRepository).count() == 0
 
     def test_resolving_repository_migrates_the_database(self, container, tmp_path):
         """A repository must never be handed out against an unmigrated database."""

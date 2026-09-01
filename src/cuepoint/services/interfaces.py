@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from cuepoint.incrate.beatport_api_models import DiscoveredTrack
     from cuepoint.migrations import Migration
     from cuepoint.models.library_track import IdentityMatch, LibraryTrack
+    from cuepoint.persistence.job_repository import JobRecord
     from cuepoint.services.library_service import LibraryStats
     from cuepoint.services.checkpoint_service import CheckpointData
     from cuepoint.services.onboarding_service import OnboardingState
@@ -405,6 +406,35 @@ class IDatabaseService(ABC):
     @abstractmethod
     def close_all(self) -> None:
         """Close every connection opened by this service, across all threads."""
+        ...
+
+
+class IJobRepository(ABC):
+    """Interface for durable background-job records (DEC-007)."""
+
+    @abstractmethod
+    def save(self, record: "JobRecord") -> None:
+        """Insert or update a job record."""
+        ...
+
+    @abstractmethod
+    def get(self, job_id: str) -> Optional["JobRecord"]:
+        """Return a job record by id, or None."""
+        ...
+
+    @abstractmethod
+    def list_recent(self, limit: int = 50) -> List["JobRecord"]:
+        """Return the most recent job records, newest first."""
+        ...
+
+    @abstractmethod
+    def count(self) -> int:
+        """Return the number of stored job records."""
+        ...
+
+    @abstractmethod
+    def mark_interrupted(self, updated_at: str) -> int:
+        """Close out jobs left running by a previous process."""
         ...
 
 

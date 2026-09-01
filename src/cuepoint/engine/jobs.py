@@ -163,13 +163,93 @@ class MatchJob:
         return payload
 
 
-class JobStore:
-    """Thread-safe job registry."""
+# Progress ticks arrive per track; a run over a few thousand tracks would mean
+# a few thousand database writes for information that is superseded moments
+# later. State transitions are always persisted; progress is sampled.
+_PROGRESS_PERSIST_INTERVAL_SECONDS = 1.0
 
-    def __init__(self) -> None:
+
+class JobStore:
+    """Thread-safe job registry.
+
+    In-memory state is the hot path that status polling and SSE read. When a
+    job repository is available, records are also written through to the
+    database so job history survives an engine restart (DEC-007). Persistence
+    is best-effort: a database problem must never fail a running job.
+    """
+
+    def __init__(
+        self,
+        job_repository: Optional[Any] = None,
+        job_repository_provider: Optional[Callable[[], Any]] = None,
+    ) -> None:
+        """Initialize the store.
+
+        Args:
+            job_repository: Repository for durable job records. Optional —
+                without one the store is purely in-memory, which is what tests
+                and any non-persistent embedding get.
+            job_repository_provider: Resolved on first use. The engine's job
+                store is built at import time, before services are
+                bootstrapped, so the repository cannot be passed in directly.
+        """
         self._jobs: Dict[str, MatchJob] = {}
         self._lock = threading.Lock()
         self._controllers: Dict[str, Any] = {}
+        self._repository = job_repository
+        self._repository_provider = job_repository_provider
+        self._repository_resolved = job_repository is not None
+        self._last_progress_persist: Dict[str, float] = {}
+
+    def _get_repository(self) -> Optional[Any]:
+        """Return the repository, resolving it once if a provider was given."""
+        if self._repository_resolved:
+            return self._repository
+        self._repository_resolved = True
+        if self._repository_provider is not None:
+            try:
+                self._repository = self._repository_provider()
+            except Exception:  # noqa: BLE001 — persistence is best-effort
+                self._repository = None
+        return self._repository
+
+    def _persist(self, job: MatchJob, *, force: bool) -> None:
+        """Write a job record through to the database, best-effort.
+
+        Args:
+            force: Persist regardless of the progress sampling interval. Set
+                for state transitions, which must never be dropped.
+        """
+        repository = self._get_repository()
+        if repository is None:
+            return
+
+        if not force:
+            now = time.monotonic()
+            last = self._last_progress_persist.get(job.id, 0.0)
+            if now - last < _PROGRESS_PERSIST_INTERVAL_SECONDS:
+                return
+            self._last_progress_persist[job.id] = now
+
+        try:
+            from cuepoint.persistence.job_repository import JobRecord
+
+            repository.save(
+                JobRecord(
+                    id=job.id,
+                    type="match",
+                    state=job.state.value,
+                    demo=job.demo,
+                    progress=progress_to_dict(job.progress)
+                    if job.progress is not None
+                    else None,
+                    error=job.error,
+                    created_at=job.created_at,
+                    updated_at=job.updated_at,
+                )
+            )
+        except Exception:  # noqa: BLE001 — a job record must not fail a job
+            return
 
     def register_controller(self, job_id: str, controller: Any) -> None:
         with self._lock:
@@ -193,6 +273,7 @@ class JobStore:
             job.cancel_requested = True
             job.updated_at = _utc_now()
             controller = self._controllers.get(job_id)
+        self._persist(job, force=True)
         if controller is not None:
             controller.cancel()
         return job
@@ -208,6 +289,7 @@ class JobStore:
         job = MatchJob(id=str(uuid.uuid4()), demo=demo)
         with self._lock:
             self._jobs[job.id] = job
+        self._persist(job, force=True)
 
         thread = threading.Thread(
             target=self._run_job,
@@ -276,6 +358,10 @@ class JobStore:
             if error is not None:
                 job.error = error
             job.updated_at = _utc_now()
+
+        # Outside the lock: the in-memory update is what callers wait on, and a
+        # database write must not hold up status polling or SSE.
+        self._persist(job, force=state is not None or error is not None)
 
 
 def _ensure_services() -> None:

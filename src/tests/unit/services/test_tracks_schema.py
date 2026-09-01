@@ -165,12 +165,19 @@ class TestIdentityLookupsUseIndexes:
 
 @pytest.mark.unit
 class TestMigrationSequence:
-    def test_tracks_arrives_at_version_two(self, tmp_path):
+    def test_migrating_reaches_the_shipped_target_version(self, tmp_path):
+        """Asserted against the target rather than a literal.
+
+        Hardcoding "2" here meant adding the next migration broke this test for
+        no real reason; what matters is that migrating leaves the database at
+        whatever version this build ships.
+        """
         service = DatabaseService(db_path=tmp_path / "seq.db")
         try:
             runner = MigrationRunner(service)
             runner.migrate()
-            assert runner.current_version() == 2
+            assert runner.current_version() == runner.target_version
+            assert runner.target_version >= 2, "tracks table arrives in migration 2"
         finally:
             service.close_all()
 

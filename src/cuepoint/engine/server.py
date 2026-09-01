@@ -7,6 +7,7 @@ import os
 import re
 import threading
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Dict, Optional, Tuple, Type
 from urllib.parse import parse_qs, urlparse
@@ -54,8 +55,33 @@ ALLOWED_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 JOB_ROUTE = re.compile(r"^/api/v1/jobs/([^/]+)(?:/(results|events))?$")
 JOB_CANCEL_ROUTE = re.compile(r"^/api/v1/jobs/([^/]+)/cancel$")
 
+
+def _resolve_job_repository() -> Optional[Any]:
+    """Resolve the job repository, or None if persistence is unavailable.
+
+    The job store is built at import time, before services are bootstrapped, so
+    the repository is resolved lazily on first use. Job records are a
+    convenience: if the database cannot be reached the engine still runs jobs,
+    it just cannot report on them after a restart.
+    """
+    try:
+        from cuepoint.services.interfaces import IJobRepository
+        from cuepoint.utils.di_container import get_container
+
+        repository = get_container().resolve(IJobRepository)
+    except Exception:  # noqa: BLE001 — persistence is best-effort
+        return None
+
+    try:
+        # Anything still marked running belongs to a process that is gone.
+        repository.mark_interrupted(datetime.now(timezone.utc).isoformat())
+    except Exception:  # noqa: BLE001
+        pass
+    return repository
+
+
 # Shared job store for process lifetime
-_JOB_STORE = JobStore()
+_JOB_STORE = JobStore(job_repository_provider=_resolve_job_repository)
 
 
 @dataclass(frozen=True)

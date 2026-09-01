@@ -29,6 +29,7 @@ from cuepoint.services.interfaces import (
     IDatabaseService,
     IExportService,
     IIncrateDiscoveryService,
+    IJobRepository,
     ILibraryService,
     IInventoryService,
     ILoggingService,
@@ -45,6 +46,7 @@ from cuepoint.services.matcher_service import MatcherService
 from cuepoint.services.migration_runner import MigrationRunner
 from cuepoint.services.onboarding_service import OnboardingService
 from cuepoint.services.privacy_service import PrivacyService
+from cuepoint.persistence.job_repository import JobRepository
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.library_service import LibraryService
 from cuepoint.services.processor_service import ProcessorService
@@ -99,6 +101,14 @@ def bootstrap_services() -> None:
         return LibraryService(track_repository=container.resolve(ITrackRepository))
 
     container.register_factory(ILibraryService, create_library_service)
+
+    # Durable job records (DEC-007). Like the track repository, resolving this
+    # applies migrations first, so the jobs table is guaranteed to exist.
+    def create_job_repository() -> IJobRepository:
+        container.resolve(IMigrationRunner).migrate()
+        return JobRepository(database_service=container.resolve(IDatabaseService))
+
+    container.register_factory(IJobRepository, create_job_repository)
 
     # Register matcher service (no dependencies)
     matcher_service = MatcherService()
