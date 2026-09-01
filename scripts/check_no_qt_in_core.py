@@ -16,10 +16,8 @@ GUI_APP = ROOT / "src" / "gui_app.py"
 # so a Qt import in any of these raises ImportError in the shipped Electron
 # engine sidecar.
 #
-# Deliberately excluded: "utils/" and "update/" still contain Qt imports.
-# Those in utils/ are optional/try-guarded with headless fallbacks; update/ is
-# the orphaned Qt updater slated for removal (see docs/v1/PHASE1_FOUNDATION.md,
-# FOUNDATION-15). Add them here once those are resolved.
+# Deliberately excluded: "utils/", whose 7 Qt imports are optional and
+# try-guarded with headless fallbacks. Add it here once those are resolved.
 CORE_PREFIXES = (
     "core/",
     "data/",
@@ -29,6 +27,7 @@ CORE_PREFIXES = (
     "cli/",
     "compat/",
     "models/",
+    "update/",
 )
 
 QT_IMPORT = re.compile(r"^\s*(?:from|import)\s+(?:PySide6|PyQt6|PyQt5)\b")

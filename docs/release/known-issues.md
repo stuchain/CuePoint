@@ -18,12 +18,15 @@ Each entry follows:
 
 ## Current Known Issues
 
-### Update fails on some Windows 10 configurations
+### No in-app updates
 
-- **Symptom**: Auto-update reports failure or hangs
-- **Cause**: Appcast or signature verification may fail on older Windows 10 builds
-- **Workaround**: Download installer manually from [Releases](https://github.com/stuchain/CuePoint/releases)
-- **Fix**: Under investigation
+- **Symptom**: There is no "Check for updates" action; the app never offers a new version
+- **Cause**: The previous update flow was built on PySide6/Qt and was never wired into the
+  Electron shell, so it could not run in the shipped app. That dead code has been removed rather
+  than left in place appearing to work
+- **Workaround**: Download the latest installer from [Releases](https://github.com/stuchain/CuePoint/releases)
+- **Fix**: An Electron-native updater reusing the existing appcast feed is planned, not yet
+  scheduled. See [update-system.md](../features/update-system.md)
 
 ### Large XML exports may be slow
 

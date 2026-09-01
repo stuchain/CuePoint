@@ -4,89 +4,21 @@
 """
 Unit tests for two-appcast-feeds (stable vs test) design.
 
-Verifies FR1, FR2, I2: effective channel is "test" when version is test,
-otherwise from preferences; UpdateChecker builds correct feed URL for test channel.
-"""
+Verifies that UpdateChecker builds the correct feed URL per channel and that
+test-version detection behaves as designed.
 
-import tempfile
-from pathlib import Path
-from unittest.mock import patch
+Note: the "effective channel" tests that exercised UpdateManager were removed
+along with the Qt update flow. The rule they protected still matters and must be
+reimplemented by any future (Electron-native) updater: **a test build must fetch
+the test feed regardless of the user's channel preference**, otherwise test
+builds check the stable feed and never see test releases. See
+docs/features/update-system.md.
+"""
 
 import pytest
 
 from cuepoint.update.update_checker import UpdateChecker
-from cuepoint.update.update_manager import UpdateManager
-from cuepoint.update.update_preferences import UpdatePreferences
 from cuepoint.update.version_utils import is_test_version
-
-
-@pytest.mark.unit
-class TestEffectiveChannel:
-    """UpdateManager must use effective_channel: test when version is test, else preference."""
-
-    def test_test_version_uses_test_channel_ignores_preference(self):
-        """FR1, I2: Test version => channel "test" even if preference is stable or beta."""
-        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
-            prefs_path = f.name
-        try:
-            prefs = UpdatePreferences(preferences_file=Path(prefs_path))
-            prefs.set_channel(UpdatePreferences.CHANNEL_STABLE)
-            manager = UpdateManager(
-                current_version="1.0.3-test1",
-                feed_url="https://example.com/updates",
-                preferences=prefs,
-            )
-            assert manager.checker.channel == "test"
-        finally:
-            Path(prefs_path).unlink(missing_ok=True)
-
-    def test_test_version_uses_test_channel_when_preference_beta(self):
-        """FR1, I2: Test version => channel "test" when preference is beta."""
-        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
-            prefs_path = f.name
-        try:
-            prefs = UpdatePreferences(preferences_file=Path(prefs_path))
-            prefs.set_channel(UpdatePreferences.CHANNEL_BETA)
-            manager = UpdateManager(
-                current_version="1.0.4-test4",
-                feed_url="https://example.com/updates",
-                preferences=prefs,
-            )
-            assert manager.checker.channel == "test"
-        finally:
-            Path(prefs_path).unlink(missing_ok=True)
-
-    def test_non_test_version_uses_stable_from_preference(self):
-        """FR2: Non-test version => channel from preferences (stable)."""
-        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
-            prefs_path = f.name
-        try:
-            prefs = UpdatePreferences(preferences_file=Path(prefs_path))
-            prefs.set_channel(UpdatePreferences.CHANNEL_STABLE)
-            manager = UpdateManager(
-                current_version="1.0.0",
-                feed_url="https://example.com/updates",
-                preferences=prefs,
-            )
-            assert manager.checker.channel == "stable"
-        finally:
-            Path(prefs_path).unlink(missing_ok=True)
-
-    def test_non_test_version_uses_beta_from_preference(self):
-        """FR2: Non-test version => channel from preferences (beta)."""
-        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
-            prefs_path = f.name
-        try:
-            prefs = UpdatePreferences(preferences_file=Path(prefs_path))
-            prefs.set_channel(UpdatePreferences.CHANNEL_BETA)
-            manager = UpdateManager(
-                current_version="1.0.0-alpha",
-                feed_url="https://example.com/updates",
-                preferences=prefs,
-            )
-            assert manager.checker.channel == "beta"
-        finally:
-            Path(prefs_path).unlink(missing_ok=True)
 
 
 @pytest.mark.unit
@@ -159,34 +91,6 @@ class TestIsTestVersionEdgeCases:
 @pytest.mark.unit
 class TestTestToTestUpdateReturnsDownloadUrl:
     """Test build updating to newer test build gets a valid download_url (no 404 after publishing test releases)."""
-
-    def test_thread_path_keeps_test_channel_for_test_build(self):
-        """_do_check (thread path, used on Windows) must not overwrite test channel with preference.
-
-        Bug: channel was set from preferences.get_channel() so test builds fetched stable feed.
-        """
-        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
-            prefs_path = f.name
-        try:
-            prefs = UpdatePreferences(preferences_file=Path(prefs_path))
-            prefs.set_channel(UpdatePreferences.CHANNEL_STABLE)
-            manager = UpdateManager(
-                current_version="0.0.1-test",
-                feed_url="https://example.com/updates",
-                preferences=prefs,
-            )
-            assert manager.checker.channel == "test"
-            feed_url_before = manager.checker.get_feed_url("windows")
-            assert "/test/" in feed_url_before
-
-            with patch.object(manager.checker, "check_for_updates", return_value=None):
-                manager._do_check()
-
-            assert manager.checker.channel == "test"
-            feed_url_after = manager.checker.get_feed_url("windows")
-            assert "/test/" in feed_url_after
-        finally:
-            Path(prefs_path).unlink(missing_ok=True)
 
     def test_test_version_sees_newer_test_in_appcast_with_download_url(self):
         """0.0.3-test sees 0.0.4-test in appcast and gets update with HTTPS download_url."""

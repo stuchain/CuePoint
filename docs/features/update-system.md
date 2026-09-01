@@ -1,41 +1,52 @@
 # Update System
 
-## What it is (high-level)
+## Current status
 
-CuePoint can **check for updates** (e.g. on startup or via Help → Check for updates), show an **“Update Available”** dialog with version and download size, and let the user **download** and **install** the update:
+**CuePoint does not currently ship in-app updates.** Users update by downloading a new
+installer from [Releases](https://github.com/stuchain/CuePoint/releases).
 
-- **Check**: fetch an **appcast** (Sparkle-style XML) from a configurable URL; parse items (version, shortVersionString, enclosure url, length, sparkle:edSignature, sparkle:sha256). Compare **base version** (X.Y.Z) with current app version; only offer an update when the appcast’s base version is **newer** (e.g. 1.0.2 offered when current is 1.0.0; 1.0.0-feb10 not offered when current is 1.0.0-feb1). Prerelease vs stable channel can be supported (e.g. different appcast URL).
-- **Download**: when the user clicks “Download” (or “Update Now”), the app downloads the installer (DMG on macOS, EXE on Windows) via HTTPS, with a **progress dialog**. Optionally **checksum** (sparkle:sha256) is verified after download; if the appcast has no checksum, the user can still choose “Update manually” (open folder) or “Install anyway” with a warning.
-- **Install**: on **Windows**, a PowerShell launcher (or direct run) closes the app and runs the installer (visible, not silent). On **macOS**, the app uses **hdiutil** (full path `/usr/bin/hdiutil` so it works with minimal PATH in a packaged app) to mount the DMG, copy the .app to `/Applications`, unmount, and launch the new app. If automatic install is not supported (e.g. hdiutil not found), a dialog shows **“Update manually”** with a button to **open the folder** containing the downloaded DMG and **Cancel** (no path shown in message).
-- **Preferences**: “skip this version” and “check on startup” are stored (update_preferences); appcast URL and channel may be configurable.
+The previous in-app update flow (check → "Update Available" dialog → download → install) was
+built on PySide6/Qt. When the desktop app moved to Electron, that flow was never wired into the
+Electron shell, and PySide6 was dropped from the default requirements — so the code could not run
+at all in the shipped application. The Qt update manager, dialogs, downloader, installer and
+platform launchers have been removed rather than left in place describing a feature that did not
+work.
 
-## How it is implemented (code)
+An Electron-native replacement (for example `electron-updater` against the existing appcast) is
+planned but not yet scheduled.
 
-- **Update checker**  
-  - **File:** `src/cuepoint/update/update_checker.py` — fetches appcast URL (HTTPS), parses XML (Sparkle namespace), finds enclosure, reads version, shortVersionString, url, length, sparkle:edSignature, sparkle:dsaSignature, **sparkle:sha256** (checksum). Builds list of items; sorts by short_version (semantic); filters to “newer than current” using **base version** comparison (version_utils). Returns latest update dict (version, download_url, file_size, checksum, release_notes_url, etc.).  
-  - **File:** `src/cuepoint/update/version_utils.py` — parse_version, base version comparison (only offer update when base X.Y.Z is strictly greater).
+## What still exists
 
-- **Update manager**  
-  - **File:** `src/cuepoint/update/update_manager.py` — orchestrates check (on main thread with QNetworkAccessManager on macOS frozen app to avoid crashes; certifi for SSL). Emits signals (no-arg) when update available or check complete; UI reads update info via `get_update_info()` / `has_update()` / `_last_check_error`. Runs check on startup (if enabled) and when user clicks “Check for updates”.
+The Qt-free appcast and versioning logic was **kept**, because release tooling and tests depend
+on it:
 
-- **Update UI**  
-  - **File:** `src/cuepoint/update/update_ui.py` — “Checking for updates” dialog with current version, status (Update available / No update / Error), and **Download** (renamed from “Download & Install”) and Close buttons; connects to update_manager and main_window for download/install.
+| File | Role |
+| --- | --- |
+| `src/cuepoint/update/update_checker.py` | Fetches an appcast over HTTPS, parses the Sparkle-namespace XML (version, shortVersionString, enclosure url, length, `sparkle:edSignature`, `sparkle:sha256`), and reports whether a newer **base version** (X.Y.Z) is available |
+| `src/cuepoint/update/version_utils.py` | Version parsing and comparison. Only a strictly greater base version counts as an update, so `1.0.0-feb10` is not offered over `1.0.0-feb1` |
+| `src/cuepoint/update/security.py` | `FeedIntegrityVerifier` (HTTPS-only feed enforcement) and `PackageIntegrityVerifier` (SHA-256 checksum verification) |
+| `src/cuepoint/update/signature_verifier.py` | Package signature/checksum verification helpers |
+| `src/cuepoint/update/update_preferences.py` | Update preference storage (skip version, check on startup) |
 
-- **Download**  
-  - **File:** `src/cuepoint/update/update_downloader.py` — `UpdateDownloader` uses QNetworkAccessManager (or fallback) to download the enclosure URL; progress signals; returns path to downloaded file.  
-  - **File:** `src/cuepoint/ui/dialogs/download_progress_dialog.py` — progress dialog during download.
+Consumers:
 
-- **Install**  
-  - **File:** `src/cuepoint/update/update_installer.py` — `UpdateInstaller.can_install()`: on Windows returns True; on macOS runs `/usr/bin/hdiutil -version` (full path). `install(installer_path)`: Windows launches PowerShell script or installer; macOS mounts DMG with hdiutil, copies .app to /Applications, unmounts, launches new app, exits.  
-  - **File:** `src/cuepoint/ui/main_window.py` — after download, verifies checksum if present (`PackageIntegrityVerifier.verify_checksum`); if no checksum, shows warning with “Install anyway” or “Update manually”. Then `_install_update(path)`: if not `can_install()`, shows **manual install dialog** (message without path, **Cancel** left, **Update manually** right — opens folder via `_open_installer_folder()`). If can_install, confirms then calls `installer.install()`.
+- `scripts/generate_appcast.py` — generates the Sparkle XML feed published to gh-pages by the
+  release workflow, including `sparkle:sha256` computed from the artifact
+- `scripts/inspect_appcast.py` — inspects a published appcast
+- `scripts/test_pre_release.py` — pre-release validation
+- `src/cuepoint/services/security_service.py` — HTTPS URL validation via `FeedIntegrityVerifier`
+- `src/tests/unit/update/` — appcast channel and checksum/HTTPS verification tests
 
-- **Security**  
-  - **File:** `src/cuepoint/update/security.py` — `PackageIntegrityVerifier.verify_checksum(file_path, expected_checksum)` (SHA256). Feed integrity (HTTPS only for appcast and download URL) in update_checker.
+## Appcast generation and channels
 
-- **Preferences**  
-  - **File:** `src/cuepoint/update/update_preferences.py` — ignore version list, check on startup, etc.; persisted.
+Appcast generation is unchanged and still part of the release pipeline. See
+[design-two-appcast-feeds-test-stable.md](../release/design-two-appcast-feeds-test-stable.md) for
+the test/stable channel split, and [checksum-signing.md](../release/checksum-signing.md) for how
+artifact checksums are produced and optionally signed.
 
-- **Appcast generation**  
-  - **File:** `scripts/generate_appcast.py` — generates Sparkle XML with enclosure, version, shortVersionString, length, edSignature/dsaSignature, and **sparkle:sha256** (computed from DMG file). Release workflow uses this to publish appcast to gh-pages.
+## When in-app updates return
 
-So: **what the feature is** = “check appcast, compare base version, download with optional checksum verify, install (Windows EXE / macOS DMG) or open folder for manual install”; **how it’s implemented** = update_checker + version_utils + update_manager + update_ui + update_downloader + update_installer + main_window (verify, manual dialog, open folder) + security + update_preferences + generate_appcast.
+A future Electron-native updater should reuse the existing appcast feed and the verification
+helpers above rather than reintroducing a parallel implementation. The security properties to
+preserve are: HTTPS-only feed and download URLs, and SHA-256 verification of the downloaded
+artifact before it is executed.
