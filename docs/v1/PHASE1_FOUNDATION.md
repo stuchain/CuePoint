@@ -167,7 +167,48 @@ src/cuepoint/services/` returns nothing.
 
 ---
 
-## FOUNDATION-02 — Persistent Database Infrastructure
+## FOUNDATION-02 — Persistent Database Infrastructure ✅ IMPLEMENTED 2026-09-01
+
+**Outcome**: Complete. `services/database_service.py` (`DatabaseService`/`IDatabaseService`)
+provides the connection layer; no application schema yet, as planned (that is FOUNDATION-03/04).
+
+**Delivered**:
+- `default_database_path()` → `~/.cuepoint/cuepoint.db`, beside `config.yaml`, so all CuePoint
+  state lives in one directory (which also makes FOUNDATION-11's backup a single-directory copy).
+  Overridable via a new `database.path` config key.
+- **One connection per thread** (`threading.local`), matching the codebase's thread-based model
+  (`ThreadPoolExecutor`, thread-per-job, `ThreadingHTTPServer`). A registry lets `close_all()`
+  reach connections opened on other threads for shutdown/teardown.
+- **WAL journal mode** — verified by test that a reader is not blocked by an open write
+  transaction, which is the property engine job threads and API request threads actually need.
+- **`foreign_keys=ON` per connection** (SQLite defaults it off and does not persist it), verified
+  by a test that an actual FK violation raises, not just that the pragma reports as on.
+- **`busy_timeout`** configurable via `database.busy_timeout_seconds` (default 5s).
+- `transaction()` context manager: commits on success, rolls back on exception, and **rejects
+  nesting** with `DB_NESTED_TRANSACTION` rather than silently committing partial work (SQLite has
+  no nested transactions).
+- `execute_script()` for FOUNDATION-03's migrations.
+- New `DatabaseError` exception carrying `error_code` and the db path, so a corrupt or
+  non-database file produces an actionable message instead of a raw `sqlite3` error. The file is
+  probed at open time (`SELECT count(*) FROM sqlite_master`) so corruption surfaces immediately
+  rather than at an arbitrary later query.
+- Registered as a **DI singleton** (one connection pool per process). Construction performs no
+  disk I/O, so bootstrap stays cheap for CLI runs that never touch the database.
+
+**Deviations from this spec**: none of substance. The spec suggested `services/database_service.py`
+"or `core/db.py`"; the services module was chosen to match the existing DI pattern.
+
+**Verification**: 51 new tests (36 database service, 8 config, 7 interface/DI). Full suite
+1862 unit (was 1811) + 313 integration passing; `ruff check`/`format` clean; no mypy errors in
+changed files; engine health smoke passes. Cross-platform and scale concerns from this spec are
+covered: a Unicode-path test, a 6-thread × 25-transaction concurrent-write test, and a
+20,000-row bulk insert.
+
+**Note for FOUNDATION-11 (backups)**: WAL means the database is not a single file at rest —
+`-wal` and `-shm` sidecars exist. A backup that copies only `cuepoint.db` can lose recent commits.
+Use SQLite's backup API or checkpoint WAL before copying.
+
+---
 
 **Objective**: Stand up the SQLite engine and connection-management plumbing CuePoint's
 persistent library will live on (per DEC-001). No application schema yet — that's

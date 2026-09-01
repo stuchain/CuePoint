@@ -78,6 +78,17 @@ class CacheError(CuePointException):
     pass
 
 
+class DatabaseError(CuePointException):
+    """Error opening or using the CuePoint library database.
+
+    Raised instead of surfacing a raw ``sqlite3`` error, so callers can present
+    an actionable message (the database is user data: it holds the library,
+    tags, ratings and history).
+    """
+
+    pass
+
+
 class ReliabilityError(CuePointException):
     """Error during reliability/recovery operations (Design 5.18)."""
 

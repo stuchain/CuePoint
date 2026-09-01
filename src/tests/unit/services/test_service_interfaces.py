@@ -15,12 +15,14 @@ import inspect
 import pytest
 
 from cuepoint.services.checkpoint_service import CheckpointService
+from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.incrate_discovery_service import IncrateDiscoveryService
 from cuepoint.services.interfaces import (
     IBeatportService,
     ICacheService,
     ICheckpointService,
     IConfigService,
+    IDatabaseService,
     IExportService,
     IIncrateDiscoveryService,
     IInventoryService,
@@ -45,6 +47,7 @@ _NEW_INTERFACE_PAIRS = [
     (IncrateDiscoveryService, IIncrateDiscoveryService),
     (SecurityService, ISecurityService),
     (CheckpointService, ICheckpointService),
+    (DatabaseService, IDatabaseService),
 ]
 
 
@@ -136,11 +139,30 @@ class TestBootstrapRegistration:
             IIncrateDiscoveryService,
             IPrivacyService,
             IOnboardingService,
+            IDatabaseService,
         ],
         ids=lambda v: v.__name__,
     )
     def test_interface_is_registered(self, container, interface):
         assert container.is_registered(interface)
+
+    def test_database_service_is_a_shared_singleton(self, container):
+        """One connection pool per process, not a new one per resolution."""
+        assert container.resolve(IDatabaseService) is container.resolve(
+            IDatabaseService
+        )
+
+    def test_database_service_resolves_to_implementation(self, container):
+        assert isinstance(container.resolve(IDatabaseService), DatabaseService)
+
+    def test_database_path_honours_configuration(self, container, tmp_path):
+        """A configured path must win, so tests and installs can relocate the DB."""
+        configured = tmp_path / "configured.db"
+        container.resolve(IConfigService).set("database.path", str(configured))
+        assert (
+            DatabaseService(config_service=container.resolve(IConfigService)).db_path
+            == configured
+        )
 
     @pytest.fixture
     def container_with_temp_inventory(self, container, tmp_path):

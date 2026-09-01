@@ -104,6 +104,20 @@ class ProductConfig:
 
 
 @dataclass
+class DatabaseConfig:
+    """CuePoint library database configuration.
+
+    The library database is the persistent store for tracks, playlists, match
+    decisions and CuePoint-owned metadata.
+    """
+
+    # None = use the platform default (~/.cuepoint/cuepoint.db)
+    path: Optional[str] = None
+    # Seconds SQLite waits for a lock before raising "database is locked".
+    busy_timeout_seconds: float = 5.0
+
+
+@dataclass
 class PrivacyConfig:
     """Privacy preferences (Step 8.4).
 
@@ -213,6 +227,7 @@ class AppConfig:
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     ui: UIConfig = field(default_factory=UIConfig)
     product: ProductConfig = field(default_factory=ProductConfig)
+    database: DatabaseConfig = field(default_factory=DatabaseConfig)
     privacy: PrivacyConfig = field(default_factory=PrivacyConfig)
     run_summary: RunSummaryConfig = field(default_factory=RunSummaryConfig)
     matching: MatchingConfig = field(default_factory=MatchingConfig)
@@ -299,6 +314,10 @@ class AppConfig:
                 "redact_paths_in_logs": self.product.redact_paths_in_logs,
                 "verify_updates": self.product.verify_updates,
                 "enforce_https": self.product.enforce_https,
+            },
+            "database": {
+                "path": self.database.path,
+                "busy_timeout_seconds": self.database.busy_timeout_seconds,
             },
             "privacy": {
                 "clear_cache_on_exit": self.privacy.clear_cache_on_exit,
@@ -513,6 +532,17 @@ class AppConfig:
                 ),
                 enforce_https=product_data.get(
                     "enforce_https", config.product.enforce_https
+                ),
+            )
+
+        if "database" in data:
+            database_data = data["database"]
+            config.database = DatabaseConfig(
+                path=database_data.get("path", config.database.path),
+                busy_timeout_seconds=float(
+                    database_data.get(
+                        "busy_timeout_seconds", config.database.busy_timeout_seconds
+                    )
                 ),
             )
 

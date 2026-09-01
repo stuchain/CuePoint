@@ -8,7 +8,9 @@ Abstract base classes defining the contracts for all services.
 These interfaces enable dependency injection and testability.
 """
 
+import sqlite3
 from abc import ABC, abstractmethod
+from contextlib import AbstractContextManager
 from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
@@ -346,6 +348,51 @@ class IProcessorService(ABC):
         Returns:
             Tuple of (list of TrackResult, optional warning message e.g. 'X of Y files found').
         """
+        ...
+
+
+class IDatabaseService(ABC):
+    """Interface for the CuePoint library database.
+
+    Owns connection lifecycle for the persistent library store: tracks,
+    playlists, match decisions and CuePoint-owned metadata.
+    """
+
+    @property
+    @abstractmethod
+    def db_path(self) -> Path:
+        """Path to the SQLite database file."""
+        ...
+
+    @abstractmethod
+    def connect(self) -> "sqlite3.Connection":
+        """Return this thread's connection, opening it if needed.
+
+        The connection is owned by the service; callers must not close it.
+        """
+        ...
+
+    @abstractmethod
+    def transaction(self) -> "AbstractContextManager[sqlite3.Connection]":
+        """Context manager running a unit of work in a transaction.
+
+        Commits on success, rolls back on exception.
+        """
+        ...
+
+    @abstractmethod
+    def execute_script(self, script: str) -> None:
+        """Execute a multi-statement SQL script (used by migrations)."""
+        ...
+
+    @abstractmethod
+    def close(self) -> None:
+        """Close this thread's connection, if open."""
+        ...
+
+    @abstractmethod
+    def close_all(self) -> None:
+        """Close every connection opened by this service, across all threads."""
         ...
 
 

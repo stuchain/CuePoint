@@ -20,11 +20,13 @@ from cuepoint.services.inventory_service import (
     default_inventory_db_path,
 )
 from cuepoint.services.config_service import ConfigService
+from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.export_service import ExportService
 from cuepoint.services.interfaces import (
     IBeatportService,
     ICacheService,
     IConfigService,
+    IDatabaseService,
     IExportService,
     IIncrateDiscoveryService,
     IInventoryService,
@@ -59,6 +61,13 @@ def bootstrap_services() -> None:
     # Register cache service
     cache_service = CacheService()
     container.register_singleton(ICacheService, cache_service)
+
+    # Library database. Registered as a singleton so every consumer shares one
+    # connection pool; constructing it does not open the file, so this stays
+    # cheap for runs that never touch the database (e.g. plain CLI matching).
+    container.register_singleton(
+        IDatabaseService, DatabaseService(config_service=config_service)
+    )
 
     # Register matcher service (no dependencies)
     matcher_service = MatcherService()
