@@ -275,7 +275,7 @@ class TestTrackResultFromOld:
             search_stop_query_index="2",
             candidate_index="0",
             candidates=[],
-            queries=[],
+            queries_data=[],
         )
 
         new = track_result_from_old(old)
@@ -338,7 +338,7 @@ class TestTrackResultFromOld:
                     "is_winner": True,
                 }
             ],
-            queries=[],
+            queries_data=[],
         )
 
         new = track_result_from_old(old)
@@ -383,7 +383,7 @@ class TestTrackResultFromOld:
                 {"invalid": "data"},  # Invalid - missing required fields
                 {"url": "", "title": "Invalid"},  # Invalid - empty URL
             ],
-            queries=[],
+            queries_data=[],
         )
 
         new = track_result_from_old(old)

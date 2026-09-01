@@ -11,7 +11,9 @@ imports from the UI package.
 import threading
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional
+
+from cuepoint.models.result import TrackResult
 
 
 class ReliabilityState:
@@ -49,61 +51,23 @@ class ProgressInfo:
 ProgressCallback = Callable[[ProgressInfo], None]
 
 
-@dataclass
-class TrackResult:
-    playlist_index: int
-    title: str
-    artist: str
-    matched: bool
-    beatport_url: Optional[str] = None
-    beatport_title: Optional[str] = None
-    beatport_artists: Optional[str] = None
-    beatport_key: Optional[str] = None
-    beatport_key_camelot: Optional[str] = None
-    beatport_year: Optional[str] = None
-    beatport_bpm: Optional[str] = None
-    beatport_label: Optional[str] = None
-    beatport_genres: Optional[str] = None
-    beatport_release: Optional[str] = None
-    beatport_release_date: Optional[str] = None
-    beatport_track_id: Optional[str] = None
-    match_score: Optional[float] = None
-    title_sim: Optional[float] = None
-    artist_sim: Optional[float] = None
-    confidence: Optional[str] = None
-    search_query_index: Optional[str] = None
-    search_stop_query_index: Optional[str] = None
-    candidate_index: Optional[str] = None
-    candidates: List[Dict[str, Any]] = field(default_factory=list)
-    queries: List[Dict[str, Any]] = field(default_factory=list)
-
-    def to_dict(self) -> Dict[str, str]:
-        return {
-            "playlist_index": str(self.playlist_index),
-            "original_title": self.title,
-            "original_artists": self.artist,
-            "beatport_title": self.beatport_title or "",
-            "beatport_artists": self.beatport_artists or "",
-            "beatport_key": self.beatport_key or "",
-            "beatport_key_camelot": self.beatport_key_camelot or "",
-            "beatport_year": self.beatport_year or "",
-            "beatport_bpm": self.beatport_bpm or "",
-            "beatport_label": self.beatport_label or "",
-            "beatport_genres": self.beatport_genres or "",
-            "beatport_release": self.beatport_release or "",
-            "beatport_release_date": self.beatport_release_date or "",
-            "beatport_track_id": self.beatport_track_id or "",
-            "beatport_url": self.beatport_url or "",
-            "title_sim": str(self.title_sim) if self.title_sim is not None else "0",
-            "artist_sim": str(self.artist_sim) if self.artist_sim is not None else "0",
-            "match_score": f"{self.match_score:.1f}"
-            if self.match_score is not None
-            else "0.0",
-            "confidence": self.confidence or "low",
-            "search_query_index": self.search_query_index or "0",
-            "search_stop_query_index": self.search_stop_query_index or "0",
-            "candidate_index": self.candidate_index or "0",
-        }
+# Re-exported, not redefined. This module used to declare a second, slightly
+# different TrackResult: dicts instead of BeatportCandidate objects in
+# ``candidates``, a ``queries`` field instead of ``queries_data``, and no
+# validation. Engine code imported this one while the matching pipeline produced
+# the other, so the same name meant two shapes depending on the import — which
+# is how BeatportCandidate objects reached the JSON results payload and broke it.
+# ``models.result.TrackResult`` is the single definition; ``queries`` remains
+# available there as a read-only alias for ``queries_data``.
+__all__ = [
+    "ErrorType",
+    "ProcessingController",
+    "ProcessingError",
+    "ProgressCallback",
+    "ProgressInfo",
+    "ReliabilityState",
+    "TrackResult",
+]
 
 
 class ProcessingController:

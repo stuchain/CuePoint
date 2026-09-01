@@ -930,7 +930,11 @@ def write_json_file(
                         ),
                     }
 
-            # Add candidates if available
+            # Add candidates if available.
+            # Only dict-shaped candidates are readable here; results from the
+            # matching pipeline hold BeatportCandidate objects in .candidates
+            # (their dict form lives in .candidates_data under different keys),
+            # and calling .get() on those raised AttributeError.
             if include_candidates and result.candidates:
                 track_data["candidates"] = [
                     {
@@ -940,6 +944,7 @@ def write_json_file(
                         "score": c.get("match_score", 0),
                     }
                     for c in result.candidates[:10]  # Top 10 candidates
+                    if isinstance(c, dict)
                 ]
 
             # Add queries if requested

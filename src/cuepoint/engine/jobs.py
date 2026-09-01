@@ -342,7 +342,7 @@ def run_demo_match_job(job: MatchJob, store: JobStore) -> None:
                 title_sim=95.0 if matched else None,
                 artist_sim=90.0 if matched else None,
                 confidence="high" if matched else "low",
-                candidates=candidates,
+                candidates_data=candidates,
             )
         )
     store._update(
@@ -415,7 +415,7 @@ def run_demo_batch_match_job(job: MatchJob, store: JobStore) -> None:
                 title_sim=92.0 if matched else None,
                 artist_sim=88.0 if matched else None,
                 confidence="high" if matched else "low",
-                candidates=candidates,
+                candidates_data=candidates,
             )
             playlists[playlist_name].append(track)
             matched_count = sum(

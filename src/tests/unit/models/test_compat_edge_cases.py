@@ -289,7 +289,7 @@ class TestTrackResultFromOldEdgeCases:
             artist="Artist",
             matched=False,
             candidates=[],
-            queries=[],
+            queries_data=[],
         )
         new = track_result_from_old(old)
         assert len(new.candidates) == 0
@@ -303,7 +303,7 @@ class TestTrackResultFromOldEdgeCases:
             artist="Artist",
             matched=False,
             candidates=None,  # type: ignore
-            queries=None,  # type: ignore
+            queries_data=None,  # type: ignore
         )
         new = track_result_from_old(old)
         assert len(new.candidates) == 0
@@ -343,7 +343,7 @@ class TestTrackResultFromOldEdgeCases:
                     "is_winner": True,
                 },  # Valid
             ],
-            queries=[],
+            queries_data=[],
         )
         new = track_result_from_old(old)
         # Should only have 1 valid candidate
@@ -384,7 +384,7 @@ class TestTrackResultFromOldEdgeCases:
                     "is_winner": True,
                 }
             ],
-            queries=[],
+            queries_data=[],
         )
         # Should handle type conversion errors gracefully
         new = track_result_from_old(old)
@@ -423,7 +423,7 @@ class TestTrackResultFromOldEdgeCases:
                     "is_winner": "False",  # String boolean
                 }
             ],
-            queries=[],
+            queries_data=[],
         )
         new = track_result_from_old(old)
         # Should convert string numbers to proper types
@@ -474,7 +474,7 @@ class TestTrackResultFromOldEdgeCases:
             search_stop_query_index="2",
             candidate_index="0",
             candidates=[],
-            queries=[],
+            queries_data=[],
         )
         new = track_result_from_old(old)
         assert new.beatport_url == old.beatport_url

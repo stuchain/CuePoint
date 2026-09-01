@@ -212,6 +212,24 @@ class TrackResult:
             file_path=data.get("file_path"),
         )
 
+    @property
+    def queries(self) -> List[Dict[str, Any]]:
+        """Query audit rows.
+
+        Compatibility alias for :attr:`queries_data`. The former
+        ``cuepoint.compat.gui_types.TrackResult`` exposed this data as a field
+        named ``queries``; that class is now this one, and callers such as
+        ``output_writer.write_json_file`` still read ``.queries``.
+
+        ``queries_data`` is the field; this alias reads and writes it. Note it
+        cannot be passed to the constructor — use ``queries_data=`` there.
+        """
+        return self.queries_data
+
+    @queries.setter
+    def queries(self, value: List[Dict[str, Any]]) -> None:
+        self.queries_data = value
+
     def is_successful(self) -> bool:
         """Check if processing was successful.
 

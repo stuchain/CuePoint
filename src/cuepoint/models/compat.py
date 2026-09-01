@@ -424,5 +424,5 @@ def track_result_to_old(new: TrackResult) -> "OldTrackResult":
         search_stop_query_index=new.search_stop_query_index,
         candidate_index=new.candidate_index,
         candidates=candidates_dict,
-        queries=new.queries_data if new.queries_data else [],
+        queries_data=new.queries_data if new.queries_data else [],
     )
