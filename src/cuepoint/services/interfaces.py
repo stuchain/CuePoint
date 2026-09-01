@@ -36,6 +36,10 @@ if TYPE_CHECKING:
     from cuepoint.incrate.beatport_api_models import DiscoveredTrack
     from cuepoint.migrations import Migration
     from cuepoint.models.library_track import IdentityMatch, LibraryTrack
+    from cuepoint.persistence.activity_repository import (
+        ActivityEvent,
+        TrackFieldChange,
+    )
     from cuepoint.persistence.job_repository import JobRecord
     from cuepoint.services.library_service import LibraryStats
     from cuepoint.services.checkpoint_service import CheckpointData
@@ -406,6 +410,108 @@ class IDatabaseService(ABC):
     @abstractmethod
     def close_all(self) -> None:
         """Close every connection opened by this service, across all threads."""
+        ...
+
+
+class IActivityRepository(ABC):
+    """Interface for the activity feed and per-track field history.
+
+    Both are append-only: implementations expose no update or delete.
+    """
+
+    @abstractmethod
+    def add_event(self, event: "ActivityEvent") -> "ActivityEvent":
+        """Append an activity event."""
+        ...
+
+    @abstractmethod
+    def recent_events(
+        self, limit: int = 50, event_type: Optional[str] = None
+    ) -> List["ActivityEvent"]:
+        """Return recent activity, newest first."""
+        ...
+
+    @abstractmethod
+    def event_count(self) -> int:
+        """Return the number of recorded activity events."""
+        ...
+
+    @abstractmethod
+    def add_field_change(self, change: "TrackFieldChange") -> "TrackFieldChange":
+        """Append a field change to a track's history."""
+        ...
+
+    @abstractmethod
+    def history_for_track(
+        self, track_id: int, limit: Optional[int] = None
+    ) -> List["TrackFieldChange"]:
+        """Return a track's field history, newest first."""
+        ...
+
+    @abstractmethod
+    def get_field_change(self, change_id: int) -> Optional["TrackFieldChange"]:
+        """Return one recorded field change, or None."""
+        ...
+
+    @abstractmethod
+    def history_count(self, track_id: Optional[int] = None) -> int:
+        """Return the number of recorded field changes."""
+        ...
+
+
+class IActivityService(ABC):
+    """Interface for recording activity and reverting track fields (DEC-008)."""
+
+    @abstractmethod
+    def record_event(
+        self,
+        event_type: str,
+        summary: str,
+        detail: Optional[Dict[str, Any]] = None,
+    ) -> "ActivityEvent":
+        """Append a user-readable activity event."""
+        ...
+
+    @abstractmethod
+    def record_field_change(
+        self,
+        track_id: int,
+        field_name: str,
+        old_value: Any,
+        new_value: Any,
+        source: str = "cuepoint",
+    ) -> Optional["TrackFieldChange"]:
+        """Record a change to one track field."""
+        ...
+
+    @abstractmethod
+    def apply_field_change(
+        self,
+        track: "LibraryTrack",
+        field_name: str,
+        new_value: Any,
+        source: str = "cuepoint",
+    ) -> Optional["TrackFieldChange"]:
+        """Set a field on a track, persist it, and record the change."""
+        ...
+
+    @abstractmethod
+    def recent_events(
+        self, limit: int = 50, event_type: Optional[str] = None
+    ) -> List["ActivityEvent"]:
+        """Return recent activity, newest first."""
+        ...
+
+    @abstractmethod
+    def track_history(
+        self, track_id: int, limit: Optional[int] = None
+    ) -> List["TrackFieldChange"]:
+        """Return a track's field history, newest first."""
+        ...
+
+    @abstractmethod
+    def revert_field_change(self, change_id: int) -> "TrackFieldChange":
+        """Restore the value a field held before a recorded change."""
         ...
 
 

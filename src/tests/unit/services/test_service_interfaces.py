@@ -18,6 +18,8 @@ from cuepoint.services.checkpoint_service import CheckpointService
 from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.incrate_discovery_service import IncrateDiscoveryService
 from cuepoint.services.interfaces import (
+    IActivityRepository,
+    IActivityService,
     IBeatportService,
     ICacheService,
     ICheckpointService,
@@ -168,6 +170,17 @@ class TestBootstrapRegistration:
 
     def test_job_repository_is_registered(self, container):
         assert container.is_registered(IJobRepository)
+
+    def test_activity_registrations(self, container, tmp_path):
+        container.resolve(IConfigService).set(
+            "database.path", str(tmp_path / "activity.db")
+        )
+        assert container.is_registered(IActivityRepository)
+        assert container.is_registered(IActivityService)
+
+        service = container.resolve(IActivityService)
+        service.record_event("test_event", "wired up")
+        assert [e.summary for e in service.recent_events()] == ["wired up"]
 
     def test_job_repository_is_usable_immediately(self, container, tmp_path):
         """Resolving applies migrations, so the jobs table exists."""

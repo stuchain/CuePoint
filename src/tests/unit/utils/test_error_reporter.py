@@ -63,6 +63,10 @@ class TestErrorReporter:
             return temp_cache_dir
 
         monkeypatch.setattr("cuepoint.utils.error_reporter.Path.home", mock_home)
+        # ErrorReporter falls back to GITHUB_TOKEN from the environment, so a
+        # developer machine with that set would otherwise see this test fail for
+        # the wrong reason: "without token" has to mean without one.
+        monkeypatch.delenv("GITHUB_TOKEN", raising=False)
 
         reporter = ErrorReporter(
             github_repo="test/repo", github_token=None, enabled=True

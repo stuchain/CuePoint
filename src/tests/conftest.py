@@ -106,21 +106,34 @@ def pytest_sessionfinish(session, exitstatus):
         pass
 
 
+@pytest.fixture(scope="session")
+def _library_database_sandbox(tmp_path_factory):
+    """One temp location standing in for the user's real database directory.
+
+    Session-scoped deliberately. Creating a directory per test meant thousands
+    of them per run, which is pure filesystem churn on Windows and starves the
+    handful of tests that spawn subprocesses.
+    """
+    return tmp_path_factory.mktemp("cuepoint-db") / "cuepoint.db"
+
+
 @pytest.fixture(autouse=True)
-def _never_touch_the_real_library_database(tmp_path_factory, monkeypatch):
-    """Point the default library database at a temp file for every test.
+def _never_touch_the_real_library_database(_library_database_sandbox, monkeypatch):
+    """Point the default library database away from the user's for every test.
 
     The database holds the user's library, tags, ratings and match decisions.
     A test that resolves services from the DI container without overriding
     ``database.path`` would otherwise open ``~/.cuepoint/cuepoint.db`` and write
     to it — which has happened, so this is a guard rather than a precaution.
 
-    Tests that pass an explicit path are unaffected.
+    Tests that pass an explicit path are unaffected, and tests needing an empty
+    database of their own should pass one rather than relying on this sandbox.
     """
     from cuepoint.services import database_service
 
-    sandbox = tmp_path_factory.mktemp("cuepoint-db") / "cuepoint.db"
-    monkeypatch.setattr(database_service, "default_database_path", lambda: sandbox)
+    monkeypatch.setattr(
+        database_service, "default_database_path", lambda: _library_database_sandbox
+    )
     yield
 
 

@@ -23,6 +23,8 @@ from cuepoint.services.config_service import ConfigService
 from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.export_service import ExportService
 from cuepoint.services.interfaces import (
+    IActivityRepository,
+    IActivityService,
     IBeatportService,
     ICacheService,
     IConfigService,
@@ -46,8 +48,10 @@ from cuepoint.services.matcher_service import MatcherService
 from cuepoint.services.migration_runner import MigrationRunner
 from cuepoint.services.onboarding_service import OnboardingService
 from cuepoint.services.privacy_service import PrivacyService
+from cuepoint.persistence.activity_repository import ActivityRepository
 from cuepoint.persistence.job_repository import JobRepository
 from cuepoint.persistence.track_repository import TrackRepository
+from cuepoint.services.activity_service import ActivityService
 from cuepoint.services.library_service import LibraryService
 from cuepoint.services.processor_service import ProcessorService
 from cuepoint.services.telemetry_service import TelemetryService
@@ -109,6 +113,21 @@ def bootstrap_services() -> None:
         return JobRepository(database_service=container.resolve(IDatabaseService))
 
     container.register_factory(IJobRepository, create_job_repository)
+
+    # Activity feed and per-track field history (DEC-008).
+    def create_activity_repository() -> IActivityRepository:
+        container.resolve(IMigrationRunner).migrate()
+        return ActivityRepository(database_service=container.resolve(IDatabaseService))
+
+    container.register_factory(IActivityRepository, create_activity_repository)
+
+    def create_activity_service() -> IActivityService:
+        return ActivityService(
+            activity_repository=container.resolve(IActivityRepository),
+            track_repository=container.resolve(ITrackRepository),
+        )
+
+    container.register_factory(IActivityService, create_activity_service)
 
     # Register matcher service (no dependencies)
     matcher_service = MatcherService()

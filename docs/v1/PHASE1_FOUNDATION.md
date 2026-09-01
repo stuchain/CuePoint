@@ -769,7 +769,54 @@ mirror, not the other way around.
 
 ---
 
-## FOUNDATION-08 — Activity / Event Architecture
+## FOUNDATION-08 — Activity / Event Architecture ✅ IMPLEMENTED 2026-09-01
+
+**Outcome**: Complete. Migration 0004 adds `activity_events` (the user-readable feed) and
+`track_history` (per-field audit), with `ActivityRepository` and `ActivityService` over them.
+
+**Append-only, and enforced rather than documented.** A revert writes a *new* entry restoring the
+previous value; the original is never edited or deleted. `test_activity_append_only.py` fails if
+any code outside the migration issues UPDATE or DELETE against either table, and separately
+asserts the repository exposes no mutator methods. History that can be rewritten still looks
+authoritative, which makes it worse than no history.
+
+**Values are stored as JSON**, so reverting `bpm` restores `124.0` as a float rather than a string
+that has to be guessed back into a number.
+
+**Identity fields are not editable through history** (`rekordbox_track_id`, `normalized_path`,
+`id`): changing them would corrupt the DEC-002 rules a refresh depends on.
+
+**Foreign keys earn their keep**: `track_history` cascades on track delete, since DEC-003 removes
+tracks outright and history for a nonexistent track would be unreachable rows. This is the first
+schema to rely on FKs, and the cascade test confirms FOUNDATION-02's per-connection
+`foreign_keys=ON` actually bites rather than merely reporting as on.
+
+**A test-suite problem I caused in FOUNDATION-06, found and fixed here.** The autouse database
+sandbox called `mktemp` per test — thousands of directories per run. That filesystem churn was
+starving the handful of tests that spawn subprocesses, producing failures that moved around
+between runs (support-bundle CLI, then policy-flag CLI, then pylint). Making the sandbox
+session-scoped fixed it and cut suite runtime from ~120s to ~82s. The earlier note in
+FOUNDATION-07 calling those failures "a pre-existing intermittent" was wrong: they were mine.
+
+**Verification**: 41 new tests; 2091 unit + 313 integration passing; ruff, Qt guard and mypy clean.
+
+### Environment and CI findings (not fixed here)
+
+- **The venv had lost declared dev dependencies** (`hypothesis`, `pytest-benchmark` and others),
+  so the suite could not even collect. Restored from `requirements-dev.txt`.
+- **`test_error_reporter.py::test_init_without_token` fails on any machine with `GITHUB_TOKEN`
+  set**, because `ErrorReporter` falls back to that environment variable while the test asserts
+  "disabled without token" without isolating it. Fixed here (one-line `monkeypatch.delenv`) since
+  it blocked a clean suite.
+- **The ruff gate is version-fragile and probably already failing in CI.** `requirements-dev.txt`
+  specifies `ruff>=0.8.0` with no upper bound, there is no `[tool.ruff]` config, and CI installs
+  from that file. Ruff 0.16.5 expanded its default rule set, and under it `ruff check src/`
+  reports thousands of pre-existing violations codebase-wide (UP006/UP035/UP045/I001/RUF...).
+  Versions 0.12–0.14 are clean on both lint and format. Local ruff pinned to 0.14.0 to match the
+  state the repository was in; **the fix — pinning ruff and adding an explicit rule set — belongs
+  to FOUNDATION-13**, which exists for exactly this.
+
+---
 
 **Objective**: Build the queryable Activity feed (target spec §54) and the per-field
 change-history log with manual revert (DEC-008), both backed by the new DB.
