@@ -860,7 +860,55 @@ UI change.
 
 ---
 
-## FOUNDATION-09 — Settings Architecture Cleanup
+## FOUNDATION-09 — Settings Architecture Cleanup ✅ IMPLEMENTED 2026-09-01 (scope changed)
+
+**Outcome**: The planned cleanup was not what this step needed to do. Investigating it surfaced a
+live bug, and fixing that — with the user's agreement — became the step.
+
+**The plan's premise was wrong.** It assumed the flat `SETTINGS` dict held a few leftovers to fold
+into `AppConfig`, with only the three documented DDG keys remaining. In fact it holds **66 keys, 57
+of which are matching-engine tuning parameters with no `AppConfig` equivalent**, read directly as
+`SETTINGS[...]` in ~80 places across `core/matcher.py`, `core/query_generator.py`,
+`data/beatport.py` and `services/processor_service.py`. Migrating them would have meant rewriting
+the module the Phase 0 audit explicitly said to reuse rather than rebuild — an L/XL change filed
+as an "S/M" cleanup.
+
+**The bug**: `ConfigService.__init__` took `SETTINGS.copy()`, and nothing ever wrote back to the
+module dict. CLI speed presets (`--fast`, `--turbo`, `--myargs`) and `--config file.yaml` apply
+tuning *only* through `config_service.set(...)`, so every matcher-tuning value they set landed in
+a private dict the engine never read. The flags reported success, the config read back correctly,
+and **the matching engine ran on defaults regardless**. Verified before fixing: setting
+`TRACK_WORKERS` to 64 through the service left `SETTINGS["TRACK_WORKERS"]` at 12.
+
+**The fix** is one line plus its reasoning: the service now operates on the shared `SETTINGS` dict
+instead of a copy. An explicitly supplied settings dict is still copied, so callers that want
+isolation (chiefly tests) keep it.
+
+**This changes behaviour**, which is why it was the user's call rather than a refactor: presets and
+`--config` now actually retune the matcher, so match results can differ for anyone who used them.
+That is the bug being fixed, but it is a real change and is recorded here as such.
+
+**Test isolation added**: `SETTINGS` is genuinely process-wide now, so an autouse fixture snapshots
+and restores it around every test. Without it, one test setting `EARLY_EXIT_SCORE` would quietly
+retune the matcher for everything running after it, and the failure would surface somewhere
+unrelated. A pair of tests in the new file deliberately checks that guard works.
+
+**A claim of mine that was wrong, corrected**: I initially reported that `_map_to_legacy_key`
+pointed at a `performance.*` path `AppConfig` does not have. On checking, that table only maps
+flattened **YAML input** keys, never `AppConfig` lookups, and is working as intended. Nothing was
+changed there.
+
+**Deliberately not done**: the 57 tuning keys stay in the flat dict. They are the matching
+engine's configuration surface, not legacy debt, and moving them is a large refactor of the
+highest-value module for cosmetic gain. That option was considered and declined, not overlooked.
+
+**Verification**: 15 new tests; core/matcher suites green (272 passed) — the ones that matter most
+for a change to matcher inputs; 2106 unit (was 2091) + 313 integration passing across repeated
+runs; ruff, mypy, Qt guard, engine smoke and CLI startup all clean.
+
+---
+
+## FOUNDATION-09 — Settings Architecture Cleanup (original plan)
 
 **Objective**: Pay down the dual `AppConfig`/flat-`SETTINGS` surface the audit identified as
 acknowledged incomplete-migration debt — migrate remaining flat-dict-only settings into the

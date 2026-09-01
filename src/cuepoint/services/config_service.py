@@ -47,8 +47,20 @@ class ConfigService(IConfigService):
             config_file.parent.mkdir(parents=True, exist_ok=True)
 
         self.config_file = config_file
+        # The shared SETTINGS dict, not a copy of it.
+        #
+        # core/matcher.py, core/query_generator.py, data/beatport.py and
+        # services/processor_service.py read that module-level dict directly for
+        # matching-engine tuning (CANDIDATE_WORKERS, EARLY_EXIT_SCORE,
+        # MAX_QUERIES_PER_TRACK and ~50 others). Copying it here meant every
+        # legacy key written through this service landed in a private dict the
+        # engine never consulted, so `--config` files and the speed presets
+        # (--fast/--turbo/--myargs) silently had no effect on matching.
+        #
+        # An explicitly supplied dict is still copied: callers passing their own
+        # settings expect isolation, and tests rely on it.
         self._legacy_settings: Dict[str, Any] = (
-            settings.copy() if settings else SETTINGS.copy()
+            settings.copy() if settings is not None else SETTINGS
         )
         self.config = AppConfig.default()
 

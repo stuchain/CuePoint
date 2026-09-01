@@ -106,6 +106,25 @@ def pytest_sessionfinish(session, exitstatus):
         pass
 
 
+@pytest.fixture(autouse=True)
+def _restore_global_settings():
+    """Undo any change a test makes to the shared SETTINGS dict.
+
+    ConfigService writes legacy keys straight into ``cuepoint.models.config
+    .SETTINGS`` so the matching engine actually sees them. That dict is
+    process-wide, so without this a test that sets TRACK_WORKERS or
+    EARLY_EXIT_SCORE would silently retune the matcher for every test that runs
+    after it — and the resulting failures would land somewhere unrelated.
+    """
+    from cuepoint.models.config import SETTINGS
+
+    snapshot = dict(SETTINGS)
+    yield
+    if SETTINGS != snapshot:
+        SETTINGS.clear()
+        SETTINGS.update(snapshot)
+
+
 @pytest.fixture(scope="session")
 def _library_database_sandbox(tmp_path_factory):
     """One temp location standing in for the user's real database directory.
