@@ -407,7 +407,57 @@ relative to its line count.
 
 ---
 
-## FOUNDATION-04 — Core `Track` Domain Model
+## FOUNDATION-04 — Core `Track` Domain Model ✅ IMPLEMENTED 2026-09-01
+
+**Outcome**: Complete, in three commits (the spec planned two; investigating the unification
+uncovered a live bug that deserved its own).
+
+**A live production bug found first.** `GET /api/v1/jobs/{id}/results` returned a 500 for *any*
+real match run that produced candidates: the pipeline puts `BeatportCandidate` objects in
+`.candidates`, and `track_result_to_dict` passed them straight to `json.dumps`. It went unnoticed
+because every engine test constructs the *compat* `TrackResult` (dicts), so the tests exercised a
+shape the real pipeline never produces — precisely the hazard of two classes sharing one name.
+Fixed by serializing `candidates_data`, which already carries the field names the renderer reads
+(`candidate_title`, `final_score`); `BeatportCandidate.to_dict()` uses different keys and would
+have rendered blank rows instead.
+
+**Unification**: `compat.gui_types.TrackResult` is now a re-export; one definition remains. The
+two differed in three ways, each handled: `candidates` (dicts vs objects), `queries` vs
+`queries_data` (now a read/write property alias — note it cannot be passed to the constructor,
+since it is a property, not a field), and validation (compat had none). Nine test sites and one
+**production** site in `models/compat.py` constructed with `queries=` and were migrated.
+`output_writer.py`'s JSON export had the same latent crash, masked only because
+`include_candidates` defaults to False; it now skips non-dict candidates.
+
+**Persistent entity**: named **`LibraryTrack`**, not `Track`. `models/track.py::Track` already
+exists as the ephemeral per-run pipeline type, and adding a second `Track` would have recreated
+the exact duplicate-name hazard this step existed to remove.
+
+**Identity (DEC-002)** lives in `resolve_identity()`: Rekordbox TrackID first, normalized path as
+fallback, and an explicit `relinked` flag when the fallback matched a track Rekordbox has
+renumbered — reported rather than applied silently. `normalize_path()` is deliberately
+**platform-independent** (forward slashes, collapsed segments, case-folded) rather than using
+`os.path.normcase`, because the database is a single file users copy and restore between machines.
+The documented tradeoff: on a case-sensitive filesystem two files differing only in case compare
+equal — vanishingly rare, and only ever consulted after TrackID lookup has already missed.
+
+**Migration 0002** creates `tracks` with a UNIQUE index on `rekordbox_track_id` (two rows for one
+Rekordbox track would make a refresh ambiguous) and a non-unique index on `normalized_path` (paths
+can legitimately repeat, and the fallback must not full-scan the library). Both indexes are
+asserted via `EXPLAIN QUERY PLAN` against 2,000 rows, not assumed.
+
+**Deviation**: the spec said this step would add the first real `migrate()` call site. It does not
+— there is still no consumer of the schema, and wiring startup migration before anything reads the
+tables would be premature. That belongs with the repository layer.
+
+**Verification**: 1956 unit (was 1915) + 313 integration passing; ruff clean; **mypy errors fell
+50 → 46** against a HEAD baseline, since the duplicate type was itself causing type confusion.
+
+**Follow-up noted**: `models/compat.py`'s `track_result_from_old`/`track_result_to_old` are now
+largely degenerate — they convert a `TrackResult` to a `TrackResult`. Left alone to avoid scope
+creep; worth removing.
+
+---
 
 **Objective**: Two problems solved together: (1) unify the two parallel `TrackResult` dataclasses
 (`models/result.py` vs `compat/gui_types.py`) that the audit found coexisting under the same name
