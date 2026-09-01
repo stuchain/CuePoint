@@ -63,3 +63,32 @@ class TestDatabaseConfig:
         """YAML may yield a string for a numeric field."""
         config = AppConfig.from_dict({"database": {"busy_timeout_seconds": "7.5"}})
         assert config.database.busy_timeout_seconds == 7.5
+
+
+@pytest.mark.unit
+class TestBackupConfig:
+    def test_defaults(self):
+        from cuepoint.models.config_models import BackupConfig
+
+        cfg = BackupConfig()
+        assert cfg.enabled is True
+        assert cfg.keep == 5
+        assert cfg.directory is None, "None means <database dir>/backups"
+
+    def test_round_trip(self):
+        original = AppConfig.default()
+        original.backup.enabled = False
+        original.backup.keep = 12
+        original.backup.directory = "/var/backups/cuepoint"
+
+        restored = AppConfig.from_dict(original.to_dict())
+
+        assert restored.backup.enabled is False
+        assert restored.backup.keep == 12
+        assert restored.backup.directory == "/var/backups/cuepoint"
+
+    def test_missing_section_uses_defaults(self):
+        """Config files written before backups existed must still load."""
+        config = AppConfig.from_dict({"beatport": {"timeout": 45}})
+        assert config.backup.enabled is True
+        assert config.backup.keep == 5

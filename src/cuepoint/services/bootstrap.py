@@ -25,6 +25,7 @@ from cuepoint.services.export_service import ExportService
 from cuepoint.services.interfaces import (
     IActivityRepository,
     IActivityService,
+    IBackupService,
     IBeatportService,
     ICacheService,
     IConfigService,
@@ -52,6 +53,7 @@ from cuepoint.persistence.activity_repository import ActivityRepository
 from cuepoint.persistence.job_repository import JobRepository
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.activity_service import ActivityService
+from cuepoint.services.backup_service import BackupService
 from cuepoint.services.library_service import LibraryService
 from cuepoint.services.processor_service import ProcessorService
 from cuepoint.services.telemetry_service import TelemetryService
@@ -128,6 +130,16 @@ def bootstrap_services() -> None:
         )
 
     container.register_factory(IActivityService, create_activity_service)
+
+    # Library database backups (DEC-009). Resolving this does not open the
+    # database or write anything; backup_on_launch() is called explicitly.
+    def create_backup_service() -> IBackupService:
+        return BackupService(
+            database_service=container.resolve(IDatabaseService),
+            config_service=container.resolve(IConfigService),
+        )
+
+    container.register_factory(IBackupService, create_backup_service)
 
     # Register matcher service (no dependencies)
     matcher_service = MatcherService()

@@ -1022,7 +1022,50 @@ look at the existing privacy docs.
 
 ---
 
-## FOUNDATION-11 — Backup Infrastructure
+## FOUNDATION-11 — Backup Infrastructure ✅ IMPLEMENTED 2026-09-01
+
+**Outcome**: Complete. `BackupService` provides backup-on-launch, a retention cap, and manual
+backup/restore, per DEC-009.
+
+**The WAL caveat from FOUNDATION-02 was real, and worse than expected.** That note warned a
+file-copy backup "can lose recent commits". Measured: on a database whose writes had not yet been
+checkpointed, copying `cuepoint.db` produced a file where **the table did not exist at all** —
+schema and all 50 rows were still in the `-wal` sidecar. A file-copy backup would have produced
+silently useless backups, discovered only at restore, which is the worst possible moment. Backups
+therefore go through SQLite's `Connection.backup()` API, which resolves WAL content and is safe
+against a live database. The existing file-copy `BackupManager` in `utils/file_safety.py` is
+deliberately **not** reused for the database.
+
+**Restore is treated as the dangerous operation it is.** In order: verify the backup
+(`PRAGMA quick_check`) *before* touching anything, take a `pre-restore` safety copy of the current
+database, close connections, restore through SQLite rather than copying, then delete the stale
+`-wal`/`-shm` files — which describe the previous database and would otherwise be applied on top of
+the restored one. Pre-restore copies are exempt from pruning: they exist for the case where the
+restore itself was the mistake. Tested: a corrupt or missing backup is rejected with the live
+library intact, and a restore can be undone.
+
+**Backup-on-launch never raises** — a backup problem must not stop the app starting — and skips
+when nothing changed. Change detection reads the mtimes of the `-wal` and `-shm` sidecars as well
+as the main file, because commits land in the WAL and the main file's mtime can sit still while
+the database is actively changing.
+
+**A guard fired and was handled, not widened away.** FOUNDATION-05's persistence-boundary test
+flagged `backup_service.py` for touching the database outside `persistence/`. It is a genuine
+exception — backup/restore uses `.backup()` and `PRAGMA quick_check` on the database *as a whole*
+and never queries library tables, whereas the rule exists to stop *queries* spreading across the
+codebase. Allowlisted with that reasoning recorded, and the failure message now tells the next
+person what justification is required.
+
+**Verification**: 28 new tests (25 backup, 3 config). 2148 unit (was 2118) + 313 integration
+passing across repeated runs; ruff and mypy clean.
+
+**Not wired to startup yet**: `backup_on_launch()` is available and registered but nothing calls it,
+because CuePoint has no library to protect until Phase 3 imports one. The call site belongs with
+that work, alongside the Settings UI for manual backup/restore.
+
+---
+
+## FOUNDATION-11 — Backup Infrastructure (original plan)
 
 **Objective**: Automatic backup on launch (if the DB changed since the last backup), retention
 cap, plus manual "Back Up Now"/"Restore" — per DEC-009.

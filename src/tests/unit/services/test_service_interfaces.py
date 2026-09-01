@@ -20,6 +20,7 @@ from cuepoint.services.incrate_discovery_service import IncrateDiscoveryService
 from cuepoint.services.interfaces import (
     IActivityRepository,
     IActivityService,
+    IBackupService,
     IBeatportService,
     ICacheService,
     ICheckpointService,
@@ -170,6 +171,16 @@ class TestBootstrapRegistration:
 
     def test_job_repository_is_registered(self, container):
         assert container.is_registered(IJobRepository)
+
+    def test_backup_service_is_registered(self, container):
+        assert container.is_registered(IBackupService)
+
+    def test_backup_service_resolves_without_touching_disk(self, container, tmp_path):
+        """Resolving must not create a database or write a backup."""
+        container.resolve(IConfigService).set("database.path", str(tmp_path / "b.db"))
+        service = container.resolve(IBackupService)
+        assert service.list_backups() == []
+        assert not (tmp_path / "b.db").exists()
 
     def test_activity_registrations(self, container, tmp_path):
         container.resolve(IConfigService).set(

@@ -41,6 +41,7 @@ if TYPE_CHECKING:
         TrackFieldChange,
     )
     from cuepoint.persistence.job_repository import JobRecord
+    from cuepoint.services.backup_service import BackupInfo
     from cuepoint.services.library_service import LibraryStats
     from cuepoint.services.checkpoint_service import CheckpointData
     from cuepoint.services.onboarding_service import OnboardingState
@@ -410,6 +411,40 @@ class IDatabaseService(ABC):
     @abstractmethod
     def close_all(self) -> None:
         """Close every connection opened by this service, across all threads."""
+        ...
+
+
+class IBackupService(ABC):
+    """Interface for library database backup and restore (DEC-009)."""
+
+    @abstractmethod
+    def create_backup(self, reason: str = "manual") -> "BackupInfo":
+        """Write a consistent copy of the database and prune old ones."""
+        ...
+
+    @abstractmethod
+    def backup_on_launch(self) -> Optional["BackupInfo"]:
+        """Back up if enabled and the database changed since the last backup."""
+        ...
+
+    @abstractmethod
+    def list_backups(self) -> List["BackupInfo"]:
+        """Return backups, newest first."""
+        ...
+
+    @abstractmethod
+    def prune(self, keep: Optional[int] = None) -> int:
+        """Delete the oldest backups beyond the retention cap."""
+        ...
+
+    @abstractmethod
+    def verify_backup(self, backup_path: Path) -> None:
+        """Check a backup is a readable database before it is used."""
+        ...
+
+    @abstractmethod
+    def restore(self, backup_path: Path) -> "BackupInfo":
+        """Replace the library database with a backup."""
         ...
 
 

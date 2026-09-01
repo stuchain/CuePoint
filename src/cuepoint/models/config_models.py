@@ -118,6 +118,18 @@ class DatabaseConfig:
 
 
 @dataclass
+class BackupConfig:
+    """Library database backup configuration (DEC-009)."""
+
+    # Back up on launch when the database changed since the last backup.
+    enabled: bool = True
+    # How many backups to retain; older ones are pruned oldest-first.
+    keep: int = 5
+    # None = <database directory>/backups
+    directory: Optional[str] = None
+
+
+@dataclass
 class PrivacyConfig:
     """Privacy preferences (Step 8.4).
 
@@ -228,6 +240,7 @@ class AppConfig:
     ui: UIConfig = field(default_factory=UIConfig)
     product: ProductConfig = field(default_factory=ProductConfig)
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
+    backup: BackupConfig = field(default_factory=BackupConfig)
     privacy: PrivacyConfig = field(default_factory=PrivacyConfig)
     run_summary: RunSummaryConfig = field(default_factory=RunSummaryConfig)
     matching: MatchingConfig = field(default_factory=MatchingConfig)
@@ -318,6 +331,11 @@ class AppConfig:
             "database": {
                 "path": self.database.path,
                 "busy_timeout_seconds": self.database.busy_timeout_seconds,
+            },
+            "backup": {
+                "enabled": self.backup.enabled,
+                "keep": self.backup.keep,
+                "directory": self.backup.directory,
             },
             "privacy": {
                 "clear_cache_on_exit": self.privacy.clear_cache_on_exit,
@@ -544,6 +562,14 @@ class AppConfig:
                         "busy_timeout_seconds", config.database.busy_timeout_seconds
                     )
                 ),
+            )
+
+        if "backup" in data:
+            backup_data = data["backup"]
+            config.backup = BackupConfig(
+                enabled=backup_data.get("enabled", config.backup.enabled),
+                keep=int(backup_data.get("keep", config.backup.keep)),
+                directory=backup_data.get("directory", config.backup.directory),
             )
 
         if "privacy" in data:

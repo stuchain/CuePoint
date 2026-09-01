@@ -30,6 +30,12 @@ _ALLOWED = {
     "services/migration_runner.py",  # owns schema_version and migrations
     "services/interfaces.py",  # declares the contracts
     "services/bootstrap.py",  # wires them together
+    # Backup/restore operates on the database as a whole — SQLite's backup API
+    # and PRAGMA quick_check — and never queries library tables. The rule here
+    # is about queries against the schema being spread around, which is what
+    # makes a schema change unbounded; whole-file operations are a different
+    # concern. Anything added to this list must be able to say the same.
+    "services/backup_service.py",
 }
 _ALLOWED_PREFIXES = ("persistence/", "migrations/")
 
@@ -55,7 +61,9 @@ class TestPersistenceBoundary:
         )
         assert not offenders, (
             "these modules reach for the library database directly; queries "
-            f"belong in a repository under cuepoint/persistence/: {offenders}"
+            f"belong in a repository under cuepoint/persistence/: {offenders}. "
+            "If a module genuinely operates on the database as a file rather "
+            "than querying it, add it to _ALLOWED with that justification."
         )
 
     def test_package_path_resolves(self):
