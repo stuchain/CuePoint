@@ -13,7 +13,16 @@ from abc import ABC, abstractmethod
 from contextlib import AbstractContextManager
 from datetime import date
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+)
 
 from cuepoint.models.preflight import PreflightResult
 from cuepoint.models.result import TrackResult
@@ -26,6 +35,7 @@ if TYPE_CHECKING:
     # Annotations referencing them are quoted forward references.
     from cuepoint.incrate.beatport_api_models import DiscoveredTrack
     from cuepoint.migrations import Migration
+    from cuepoint.models.library_track import IdentityMatch, LibraryTrack
     from cuepoint.services.checkpoint_service import CheckpointData
     from cuepoint.services.onboarding_service import OnboardingState
     from cuepoint.services.privacy_service import PrivacyPreferences
@@ -394,6 +404,90 @@ class IDatabaseService(ABC):
     @abstractmethod
     def close_all(self) -> None:
         """Close every connection opened by this service, across all threads."""
+        ...
+
+
+class ITrackRepository(ABC):
+    """Interface for library track persistence.
+
+    Implementations own all SQL against the ``tracks`` table, including the
+    DEC-002 identity lookups a Rekordbox refresh depends on.
+    """
+
+    @abstractmethod
+    def add(self, track: "LibraryTrack") -> "LibraryTrack":
+        """Insert a track and return it with its assigned id."""
+        ...
+
+    @abstractmethod
+    def add_many(self, tracks: Iterable["LibraryTrack"]) -> int:
+        """Insert many tracks in one transaction; returns the count inserted."""
+        ...
+
+    @abstractmethod
+    def update(self, track: "LibraryTrack") -> "LibraryTrack":
+        """Persist changes to an existing track."""
+        ...
+
+    @abstractmethod
+    def delete(self, track_id: int) -> bool:
+        """Delete a track by id; True if a row was removed."""
+        ...
+
+    @abstractmethod
+    def delete_by_rekordbox_ids(self, rekordbox_track_ids: Iterable[str]) -> int:
+        """Delete tracks by Rekordbox TrackID; returns the count deleted."""
+        ...
+
+    @abstractmethod
+    def get(self, track_id: int) -> Optional["LibraryTrack"]:
+        """Return a track by primary key, or None."""
+        ...
+
+    @abstractmethod
+    def find_by_rekordbox_id(self, rekordbox_track_id: str) -> Optional["LibraryTrack"]:
+        """Return the track with this Rekordbox TrackID, or None."""
+        ...
+
+    @abstractmethod
+    def find_by_normalized_path(self, normalized: str) -> Optional["LibraryTrack"]:
+        """Return a track whose normalized path matches, or None."""
+        ...
+
+    @abstractmethod
+    def find_by_path(self, file_path: str) -> Optional["LibraryTrack"]:
+        """Return a track matching this path, normalizing it first."""
+        ...
+
+    @abstractmethod
+    def resolve_identity(
+        self, rekordbox_track_id: str, file_path: Optional[str]
+    ) -> Optional["IdentityMatch"]:
+        """Find the library track an incoming Rekordbox track refers to."""
+        ...
+
+    @abstractmethod
+    def list_all(
+        self, limit: Optional[int] = None, offset: int = 0
+    ) -> List["LibraryTrack"]:
+        """Return tracks ordered by artist then title."""
+        ...
+
+    @abstractmethod
+    def count(self) -> int:
+        """Return the number of tracks in the library."""
+        ...
+
+    @abstractmethod
+    def exists(self, rekordbox_track_id: str) -> bool:
+        """Return True if a track with this Rekordbox TrackID is stored."""
+        ...
+
+    @abstractmethod
+    def upsert_from_rekordbox(
+        self, track: "LibraryTrack"
+    ) -> Tuple["LibraryTrack", str, bool]:
+        """Insert or update an incoming Rekordbox track, applying DEC-002."""
         ...
 
 

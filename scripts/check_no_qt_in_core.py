@@ -22,6 +22,7 @@ CORE_PREFIXES = (
     "core/",
     "data/",
     "services/",
+    "persistence/",
     "incrate/",
     "engine/",
     "cli/",

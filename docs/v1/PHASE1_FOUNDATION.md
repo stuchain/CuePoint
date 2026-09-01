@@ -526,7 +526,47 @@ tests, once (1) is merged and stable.
 
 ---
 
-## FOUNDATION-05 — Repository / Data Access Layer
+## FOUNDATION-05 — Repository / Data Access Layer ✅ IMPLEMENTED 2026-09-01
+
+**Outcome**: Complete. `cuepoint/persistence/` holds `TrackRepository`, the only place that
+executes SQL against `cuepoint.db`.
+
+**New package, not `data/`**: `cuepoint.data` adapts *external* sources (Rekordbox XML, Beatport,
+audio tags); `cuepoint.persistence` owns CuePoint's own store. Added to
+`check_no_qt_in_core.py`'s scanned prefixes, so it is Qt-guarded like the rest of the runtime.
+
+**`migrate()` is now wired**, as promised in FOUNDATION-03. The repository's DI factory runs
+migrations before handing one out, so a repository can never be used against an unmigrated
+database. It is deliberately *not* in `DatabaseService.connect()`: that would make opening the
+database expensive for the many code paths that never touch it, and FOUNDATION-02's laziness is
+what keeps plain CLI matching runs from creating a database file at all. `migrate()` is a cheap
+version check once the schema is current.
+
+**Repository surface**: `add`, `add_many` (one transaction for a whole import — a failed batch
+leaves nothing behind, verified by test), `get`, `update`, `delete`, `delete_by_rekordbox_ids`
+(DEC-003 refresh removal), `find_by_rekordbox_id`, `find_by_normalized_path`, `find_by_path`,
+`resolve_identity`, `list_all` (paged), `count`, `exists`, and `upsert_from_rekordbox` — which
+applies DEC-002 end to end: a renumbered track is re-linked in place rather than duplicated, and
+`created_at` stays with the library row rather than being overwritten by the incoming export.
+
+**Two deliberate details**: `find_by_normalized_path` orders by id so a duplicated path resolves
+deterministically instead of by SQLite's row order; `list_all` sorts with `COLLATE NOCASE` so
+artist ordering is not case-split.
+
+**Architectural rule enforced, not documented**: `test_persistence_boundary.py` fails if any
+module outside the persistence layer reaches for the library database. Its own meta-test earned
+its keep immediately — it caught a wrong path depth in the guard that would have made it scan a
+nonexistent directory and pass vacuously forever.
+
+**Deviation**: the spec also called for a thin `PlaylistRepository` stub. Skipped — there is no
+playlists table yet, and a repository over a nonexistent table is exactly the "no fake
+implementation" the Definition of Done rules out. It belongs with the migration that creates the
+table, in Phase 3.
+
+**Verification**: 39 new tests; 1997 unit (was 1956) + 313 integration passing; ruff clean; no
+mypy errors in the new package.
+
+---
 
 **Objective**: Introduce repository classes as the single place SQL queries against the new DB
 live, enforcing the target spec's "no raw SQL scattered through services/widgets" principle

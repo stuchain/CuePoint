@@ -34,6 +34,7 @@ from cuepoint.services.interfaces import (
     IProcessorService,
     ISecurityService,
     ITelemetryService,
+    ITrackRepository,
 )
 from cuepoint.services.inventory_service import InventoryService
 from cuepoint.services.onboarding_service import OnboardingService
@@ -160,6 +161,20 @@ class TestBootstrapRegistration:
 
     def test_database_service_resolves_to_implementation(self, container):
         assert isinstance(container.resolve(IDatabaseService), DatabaseService)
+
+    def test_track_repository_is_registered(self, container):
+        assert container.is_registered(ITrackRepository)
+
+    def test_resolving_repository_migrates_the_database(self, container, tmp_path):
+        """A repository must never be handed out against an unmigrated database."""
+        container.resolve(IConfigService).set(
+            "database.path", str(tmp_path / "library.db")
+        )
+        repository = container.resolve(ITrackRepository)
+
+        # Usable immediately: the tracks table exists.
+        assert repository.count() == 0
+        assert container.resolve(IMigrationRunner).current_version() >= 2
 
     def test_database_path_honours_configuration(self, container, tmp_path):
         """A configured path must win, so tests and installs can relocate the DB."""

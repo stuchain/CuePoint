@@ -37,12 +37,14 @@ from cuepoint.services.interfaces import (
     IPrivacyService,
     IProcessorService,
     ITelemetryService,
+    ITrackRepository,
 )
 from cuepoint.services.logging_service import LoggingService
 from cuepoint.services.matcher_service import MatcherService
 from cuepoint.services.migration_runner import MigrationRunner
 from cuepoint.services.onboarding_service import OnboardingService
 from cuepoint.services.privacy_service import PrivacyService
+from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.processor_service import ProcessorService
 from cuepoint.services.telemetry_service import TelemetryService
 from cuepoint.utils.di_container import get_container
@@ -77,6 +79,17 @@ def bootstrap_services() -> None:
         return MigrationRunner(database_service=container.resolve(IDatabaseService))
 
     container.register_factory(IMigrationRunner, create_migration_runner)
+
+    # Repositories are the first thing that needs real tables, so this is where
+    # migrations run. Doing it here rather than inside DatabaseService.connect()
+    # keeps opening the database cheap for the many code paths that never touch
+    # it, while making it impossible to reach a repository against an
+    # unmigrated database. migrate() is a no-op once the schema is current.
+    def create_track_repository() -> ITrackRepository:
+        container.resolve(IMigrationRunner).migrate()
+        return TrackRepository(database_service=container.resolve(IDatabaseService))
+
+    container.register_factory(ITrackRepository, create_track_repository)
 
     # Register matcher service (no dependencies)
     matcher_service = MatcherService()
