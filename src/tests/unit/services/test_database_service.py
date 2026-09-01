@@ -71,7 +71,52 @@ class TestPathResolution:
             "database.busy_timeout_seconds": 5.0,
         }.get(key, default)
 
-        assert DatabaseService(config_service=config).db_path == default_database_path()
+        # Read through the module: the suite-wide fixture redirects the default
+        # away from the user's real database, and this must compare to that.
+        from cuepoint.services import database_service
+
+        assert (
+            DatabaseService(config_service=config).db_path
+            == database_service.default_database_path()
+        )
+
+    def test_config_set_after_construction_is_honoured(self, tmp_path):
+        """Configuration is read on first use, not captured at construction.
+
+        Regression: the path was resolved in __init__, so the container's
+        eagerly-built singleton captured the default and silently ignored a
+        ``database.path`` set later — which is how the CLI applies flags, and
+        how tests redirect away from the user's real database. Tests were
+        writing into ~/.cuepoint/cuepoint.db as a result.
+        """
+        config = Mock(spec=IConfigService)
+        config.get.return_value = None
+        service = DatabaseService(config_service=config)
+
+        configured = tmp_path / "set-later.db"
+        config.get.side_effect = lambda key, default=None: {
+            "database.path": str(configured),
+            "database.busy_timeout_seconds": 5.0,
+        }.get(key, default)
+
+        assert service.db_path == configured
+
+    def test_path_is_stable_once_resolved(self, tmp_path):
+        """Moving the database under open connections would orphan them."""
+        config = Mock(spec=IConfigService)
+        first = tmp_path / "first.db"
+        config.get.side_effect = lambda key, default=None: {
+            "database.path": str(first),
+            "database.busy_timeout_seconds": 5.0,
+        }.get(key, default)
+        service = DatabaseService(config_service=config)
+        assert service.db_path == first
+
+        config.get.side_effect = lambda key, default=None: {
+            "database.path": str(tmp_path / "second.db"),
+            "database.busy_timeout_seconds": 5.0,
+        }.get(key, default)
+        assert service.db_path == first, "path changed after it was resolved"
 
     def test_explicit_path_overrides_config(self, tmp_path):
         config = Mock(spec=IConfigService)

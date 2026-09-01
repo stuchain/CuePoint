@@ -106,6 +106,24 @@ def pytest_sessionfinish(session, exitstatus):
         pass
 
 
+@pytest.fixture(autouse=True)
+def _never_touch_the_real_library_database(tmp_path_factory, monkeypatch):
+    """Point the default library database at a temp file for every test.
+
+    The database holds the user's library, tags, ratings and match decisions.
+    A test that resolves services from the DI container without overriding
+    ``database.path`` would otherwise open ``~/.cuepoint/cuepoint.db`` and write
+    to it — which has happened, so this is a guard rather than a precaution.
+
+    Tests that pass an explicit path are unaffected.
+    """
+    from cuepoint.services import database_service
+
+    sandbox = tmp_path_factory.mktemp("cuepoint-db") / "cuepoint.db"
+    monkeypatch.setattr(database_service, "default_database_path", lambda: sandbox)
+    yield
+
+
 @pytest.fixture(scope="function")
 def di_container() -> Generator[DIContainer, None, None]:
     """Create a fresh DI container for each test."""

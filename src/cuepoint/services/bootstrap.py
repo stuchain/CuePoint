@@ -29,6 +29,7 @@ from cuepoint.services.interfaces import (
     IDatabaseService,
     IExportService,
     IIncrateDiscoveryService,
+    ILibraryService,
     IInventoryService,
     ILoggingService,
     IMatcherService,
@@ -45,6 +46,7 @@ from cuepoint.services.migration_runner import MigrationRunner
 from cuepoint.services.onboarding_service import OnboardingService
 from cuepoint.services.privacy_service import PrivacyService
 from cuepoint.persistence.track_repository import TrackRepository
+from cuepoint.services.library_service import LibraryService
 from cuepoint.services.processor_service import ProcessorService
 from cuepoint.services.telemetry_service import TelemetryService
 from cuepoint.utils.di_container import get_container
@@ -90,6 +92,13 @@ def bootstrap_services() -> None:
         return TrackRepository(database_service=container.resolve(IDatabaseService))
 
     container.register_factory(ITrackRepository, create_track_repository)
+
+    # Library entry point. Callers depend on this rather than on repositories,
+    # so persistence details stay behind the seam.
+    def create_library_service() -> ILibraryService:
+        return LibraryService(track_repository=container.resolve(ITrackRepository))
+
+    container.register_factory(ILibraryService, create_library_service)
 
     # Register matcher service (no dependencies)
     matcher_service = MatcherService()

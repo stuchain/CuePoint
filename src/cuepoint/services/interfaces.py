@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from cuepoint.incrate.beatport_api_models import DiscoveredTrack
     from cuepoint.migrations import Migration
     from cuepoint.models.library_track import IdentityMatch, LibraryTrack
+    from cuepoint.services.library_service import LibraryStats
     from cuepoint.services.checkpoint_service import CheckpointData
     from cuepoint.services.onboarding_service import OnboardingState
     from cuepoint.services.privacy_service import PrivacyPreferences
@@ -404,6 +405,46 @@ class IDatabaseService(ABC):
     @abstractmethod
     def close_all(self) -> None:
         """Close every connection opened by this service, across all threads."""
+        ...
+
+
+class ILibraryService(ABC):
+    """Interface for the persistent library entry point.
+
+    Engine handlers, the CLI and the renderer call this rather than reaching
+    for repositories directly.
+    """
+
+    @abstractmethod
+    def get_track(self, track_id: int) -> Optional["LibraryTrack"]:
+        """Return a track by its library id, or None."""
+        ...
+
+    @abstractmethod
+    def find_by_rekordbox_id(self, rekordbox_track_id: str) -> Optional["LibraryTrack"]:
+        """Return the track with this Rekordbox TrackID, or None."""
+        ...
+
+    @abstractmethod
+    def list_tracks(
+        self, limit: Optional[int] = None, offset: int = 0
+    ) -> List["LibraryTrack"]:
+        """Return tracks ordered by artist then title."""
+        ...
+
+    @abstractmethod
+    def track_count(self) -> int:
+        """Return the number of tracks in the library."""
+        ...
+
+    @abstractmethod
+    def is_empty(self) -> bool:
+        """Return True when no tracks have been imported yet."""
+        ...
+
+    @abstractmethod
+    def stats(self) -> "LibraryStats":
+        """Return a summary of the library."""
         ...
 
 

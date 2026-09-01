@@ -607,7 +607,35 @@ layer does).
 
 ---
 
-## FOUNDATION-06 — Application Service Layer
+## FOUNDATION-06 — Application Service Layer ✅ IMPLEMENTED 2026-09-01
+
+**Outcome**: Complete. `LibraryService`/`ILibraryService` is the entry point engine handlers, the
+CLI and later the renderer call; they do not reach for repositories directly. Registered through
+the existing `bootstrap_services()` pattern, so both entry points (`src/main.py` and
+`engine/jobs.py::_ensure_services`) get it.
+
+Intentionally thin: reads, counts and `stats()`. Rekordbox import and refresh belong to the
+Library phase, and stubbing them here would be the "no fake implementation" the Definition of Done
+rules out. `is_empty()` exists because first-launch flows must key off whether tracks were
+imported — a database *file* appears as soon as anything opens it, so its presence proves nothing.
+
+**A real bug found — and it had already caused harm.** `DatabaseService` resolved `database.path`
+in `__init__`, but the container builds it eagerly as a singleton, so a path configured *after*
+bootstrap was silently ignored. That is exactly how the CLI applies flags and how tests redirect
+the database. The symptom: this step's tests wrote two rows into the developer's **real**
+`~/.cuepoint/cuepoint.db`. Fixed by resolving path and busy-timeout lazily on first use (and
+caching once resolved, since moving the database under open connections would orphan them). The
+stray rows were removed from the real database; its schema was left intact.
+
+**Guard added**: an autouse fixture in `src/tests/conftest.py` redirects the default database path
+to a temp file for *every* test, so no test can reach the user's real library again regardless of
+how it builds its services. Verified by checking the real database's row count and mtime before
+and after a full suite run — both unchanged.
+
+**Verification**: 17 new tests; 2016 unit (was 1997) + 313 integration passing; ruff, Qt guard and
+mypy clean.
+
+---
 
 **Objective**: Introduce a `LibraryService` (or equivalently named) as the orchestration layer
 between repositories and future UI/engine-API consumers — the DI-registered service that

@@ -69,42 +69,66 @@ class DatabaseService(IDatabaseService):
                 ``database.busy_timeout_seconds``, else 5 seconds.
 
         Note:
-            Constructing the service does not open the database. The file is
-            created on first use, so nothing touches disk until a connection is
-            actually needed.
+            Constructing the service does not open the database, and does not
+            even resolve its path. Configuration is read on first use, so a
+            ``database.path`` set after the container is built — which is how
+            the CLI applies flags, and how tests redirect the database away from
+            the user's real one — is still honoured. Resolving eagerly meant
+            this service captured the default path at bootstrap and silently
+            ignored later configuration.
         """
-        resolved = db_path
-        if resolved is None and config_service is not None:
-            try:
-                configured = config_service.get("database.path")
-            except AttributeError:
-                configured = None
-            if configured and str(configured).strip():
-                resolved = str(configured).strip()
+        self._explicit_path = Path(db_path) if db_path is not None else None
+        self._explicit_timeout = busy_timeout_seconds
+        self._config = config_service
 
-        self._db_path = (
-            Path(resolved) if resolved is not None else default_database_path()
-        )
-
-        timeout = busy_timeout_seconds
-        if timeout is None and config_service is not None:
-            try:
-                timeout = float(
-                    config_service.get("database.busy_timeout_seconds") or 5.0
-                )
-            except (AttributeError, TypeError, ValueError):
-                timeout = None
-        self._busy_timeout_seconds = 5.0 if timeout is None else float(timeout)
+        self._resolved_path: Optional[Path] = None
+        self._resolved_timeout: Optional[float] = None
 
         # Connections are per-thread; the registry lets close_all() reach them.
         self._local = threading.local()
         self._connections: list[sqlite3.Connection] = []
         self._lock = threading.Lock()
 
+    def _resolve_path(self) -> Path:
+        if self._explicit_path is not None:
+            return self._explicit_path
+        if self._config is not None:
+            try:
+                configured = self._config.get("database.path")
+            except AttributeError:
+                configured = None
+            if configured and str(configured).strip():
+                return Path(str(configured).strip())
+        return default_database_path()
+
+    def _resolve_timeout(self) -> float:
+        if self._explicit_timeout is not None:
+            return float(self._explicit_timeout)
+        if self._config is not None:
+            try:
+                configured = self._config.get("database.busy_timeout_seconds")
+                if configured is not None:
+                    return float(configured)
+            except (AttributeError, TypeError, ValueError):
+                pass
+        return 5.0
+
     @property
     def db_path(self) -> Path:
-        """Path to the SQLite database file."""
-        return self._db_path
+        """Path to the SQLite database file.
+
+        Resolved once, on first access, and cached: moving the database while
+        connections are open would leave them pointing at the old file.
+        """
+        if self._resolved_path is None:
+            self._resolved_path = self._resolve_path()
+        return self._resolved_path
+
+    @property
+    def _busy_timeout_seconds(self) -> float:
+        if self._resolved_timeout is None:
+            self._resolved_timeout = self._resolve_timeout()
+        return self._resolved_timeout
 
     def connect(self) -> sqlite3.Connection:
         """Return this thread's connection, opening it if needed.
@@ -138,20 +162,20 @@ class DatabaseService(IDatabaseService):
 
     def _open_connection(self) -> sqlite3.Connection:
         try:
-            self._db_path.parent.mkdir(parents=True, exist_ok=True)
+            self.db_path.parent.mkdir(parents=True, exist_ok=True)
         except OSError as exc:
             raise DatabaseError(
                 message=(
                     f"Could not create the CuePoint data folder at "
-                    f"{self._db_path.parent}: {exc}"
+                    f"{self.db_path.parent}: {exc}"
                 ),
                 error_code="DB_DIR_CREATE_FAILED",
-                context={"db_path": str(self._db_path)},
+                context={"db_path": str(self.db_path)},
             ) from exc
 
         try:
             connection = sqlite3.connect(
-                str(self._db_path),
+                str(self.db_path),
                 timeout=self._busy_timeout_seconds,
                 # Connections are per-thread, so SQLite's own check is
                 # redundant; keeping it on would break the context manager
@@ -163,7 +187,7 @@ class DatabaseService(IDatabaseService):
             raise DatabaseError(
                 message=f"Could not open the CuePoint library database: {exc}",
                 error_code="DB_OPEN_FAILED",
-                context={"db_path": str(self._db_path)},
+                context={"db_path": str(self.db_path)},
             ) from exc
 
         try:
@@ -182,11 +206,11 @@ class DatabaseService(IDatabaseService):
             connection.close()
             raise DatabaseError(
                 message=(
-                    f"The CuePoint library database at {self._db_path} could not be "
+                    f"The CuePoint library database at {self.db_path} could not be "
                     f"read. It may be corrupt or not a database file: {exc}"
                 ),
                 error_code="DB_UNREADABLE",
-                context={"db_path": str(self._db_path)},
+                context={"db_path": str(self.db_path)},
             ) from exc
 
         return connection
@@ -207,7 +231,7 @@ class DatabaseService(IDatabaseService):
             raise DatabaseError(
                 message="A transaction is already active on this connection",
                 error_code="DB_NESTED_TRANSACTION",
-                context={"db_path": str(self._db_path)},
+                context={"db_path": str(self.db_path)},
             )
 
         connection.execute("BEGIN")
@@ -230,7 +254,7 @@ class DatabaseService(IDatabaseService):
             raise DatabaseError(
                 message=f"Could not save changes to the library database: {exc}",
                 error_code="DB_COMMIT_FAILED",
-                context={"db_path": str(self._db_path)},
+                context={"db_path": str(self.db_path)},
             ) from exc
 
     def execute_script(self, script: str) -> None:
@@ -250,7 +274,7 @@ class DatabaseService(IDatabaseService):
             raise DatabaseError(
                 message=f"Failed to execute database script: {exc}",
                 error_code="DB_SCRIPT_FAILED",
-                context={"db_path": str(self._db_path)},
+                context={"db_path": str(self.db_path)},
             ) from exc
 
     def close(self) -> None:
