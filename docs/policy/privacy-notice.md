@@ -34,12 +34,28 @@ We do not sell or rent personal information.
 ## What is stored on your device
 CuePoint may store the following **locally**:
 - **Configuration**: app settings and preferences.
+- **Library database**: your imported Rekordbox library — track details and file
+  paths — together with anything CuePoint records about it, such as tags,
+  ratings, notes, match decisions and change history. Stored at
+  `~/.cuepoint/cuepoint.db`.
 - **Cache**: cached responses/derived data to improve performance.
 - **Logs**: application logs (rotated; sanitized).
 - **Exports**: files you export (CSV/Excel/JSON) to a location you choose.
 
 You can manage and delete local data in the app:
 - **Help → Privacy**: clear cache/logs/config and set “clear on exit” options.
+  These do **not** touch the library database: clearing a cache should never
+  delete your library, tags or ratings. To remove it, delete
+  `~/.cuepoint/cuepoint.db` yourself.
+
+## Support bundles
+A support bundle (**Help → Export support bundle**) is a file you create and choose
+whether to share. It contains diagnostics, sanitized logs and your configuration
+with secrets redacted.
+
+It does **not** contain your library database. Bundles include only a summary of
+its shape — schema version, pending migrations and row counts — never track
+titles, artists, file paths, tags, ratings or notes.
 
 ## Your choices and controls
 - Clear cache/logs/config from **Help → Privacy**.

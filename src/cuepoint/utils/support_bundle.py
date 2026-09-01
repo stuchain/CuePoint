@@ -83,6 +83,16 @@ class SupportBundleGenerator:
                 zipf.writestr("diagnostics.json", diag_json)
                 total_size += len(diag_json.encode("utf-8"))
 
+                # Library database: shape only, never contents.
+                db_json = json.dumps(
+                    SupportBundleGenerator._collect_database_summary(),
+                    indent=2,
+                    default=str,
+                    ensure_ascii=False,
+                )
+                zipf.writestr("database.json", db_json)
+                total_size += len(db_json.encode("utf-8"))
+
                 # Log files
                 if include_logs:
                     log_dir = AppPaths.logs_dir()
@@ -190,6 +200,96 @@ Contents:
         except Exception as e:
             logger.error(f"Failed to generate support bundle: {e}")
             raise
+
+    @staticmethod
+    def _collect_database_summary() -> dict:
+        """Summarize the library database without exporting any of its contents.
+
+        The database itself is deliberately **not** bundled. It holds the user's
+        whole library — track titles, artists, file paths — plus their tags,
+        ratings, notes and history. File paths are precisely what
+        ``_sanitize_log_content`` works to strip out of logs before a bundle is
+        shared, so attaching the database would defeat that in one step.
+
+        What actually helps diagnose a database problem is its shape: which
+        schema version it is on, whether migrations are outstanding, whether the
+        expected pragmas are active, and roughly how much is in it. None of that
+        identifies anything.
+
+        Never raises: a support bundle is generated when something is already
+        wrong, so a failure here is reported as data, not as an exception.
+        """
+        summary: dict = {"included": False, "reason": "contents omitted by design"}
+
+        try:
+            from cuepoint.services.database_service import default_database_path
+
+            db_path = default_database_path()
+            summary["exists"] = db_path.exists()
+            if not db_path.exists():
+                summary["note"] = "no library database has been created yet"
+                return summary
+
+            summary["size_bytes"] = db_path.stat().st_size
+
+            import sqlite3
+
+            connection = sqlite3.connect(str(db_path))
+            try:
+                connection.row_factory = sqlite3.Row
+                # journal_mode is persisted in the file, so reading it here is
+                # meaningful. foreign_keys deliberately is not reported: it is a
+                # per-connection setting, so this throwaway connection would
+                # report 0 and imply the app runs without foreign keys when it
+                # enables them on every connection it opens.
+                summary["journal_mode"] = connection.execute(
+                    "PRAGMA journal_mode"
+                ).fetchone()[0]
+                summary["integrity_check"] = connection.execute(
+                    "PRAGMA quick_check"
+                ).fetchone()[0]
+
+                tables = [
+                    row["name"]
+                    for row in connection.execute(
+                        "SELECT name FROM sqlite_master WHERE type='table' "
+                        "AND name NOT LIKE 'sqlite_%' ORDER BY name"
+                    )
+                ]
+                # Row counts only — no column values are read.
+                summary["row_counts"] = {
+                    table: connection.execute(
+                        f"SELECT count(*) AS n FROM {table}"  # noqa: S608 - names from sqlite_master
+                    ).fetchone()["n"]
+                    for table in tables
+                }
+
+                if "schema_version" in tables:
+                    row = connection.execute(
+                        "SELECT MAX(version) AS v FROM schema_version"
+                    ).fetchone()
+                    summary["schema_version"] = row["v"] if row else None
+            finally:
+                connection.close()
+
+            try:
+                from cuepoint.migrations import discover_migrations
+
+                migrations = discover_migrations()
+                summary["expected_schema_version"] = (
+                    migrations[-1].version if migrations else 0
+                )
+                applied = summary.get("schema_version") or 0
+                summary["pending_migrations"] = [
+                    m.version for m in migrations if m.version > applied
+                ]
+            except Exception as exc:  # noqa: BLE001 - diagnostics must not fail
+                summary["migration_error"] = str(exc)
+
+        except Exception as exc:  # noqa: BLE001 - diagnostics must not fail
+            summary["error"] = str(exc)
+
+        return summary
 
     @staticmethod
     def _sanitize_diagnostics(diagnostics: dict) -> dict:

@@ -945,7 +945,48 @@ behavior shouldn't change; regression-test coverage matters more than usual here
 
 ---
 
-## FOUNDATION-10 — Logging / Diagnostics Alignment
+## FOUNDATION-10 — Logging / Diagnostics Alignment ✅ IMPLEMENTED 2026-09-01
+
+**Outcome**: Complete. The open privacy question this step was created to answer is now decided
+and enforced.
+
+**Decision: the database is never bundled.** A support bundle is meant to be shareable with a
+maintainer. The library database holds the user's entire library — titles, artists and **file
+paths** — plus tags, ratings, notes and history. File paths are precisely what the bundle's
+existing `_sanitize_log_content` strips out of logs, so attaching the database would undo that
+discipline in one step. Bundles now carry `database.json` describing only its *shape*: schema
+version, expected version, pending migrations, per-table row counts, journal mode and a
+`quick_check` integrity result. That is what actually diagnoses a database problem.
+
+The summary proved its worth immediately: run against the developer's real database it reported
+schema version 2 with migrations 3 and 4 pending — exactly the kind of state that produces
+confusing bug reports.
+
+**`foreign_keys` is deliberately not reported.** It is a per-connection pragma, so a throwaway
+diagnostic connection reads 0 and would tell a maintainer the app runs without foreign keys when
+it enables them on every connection it opens. A misleading diagnostic is worse than a missing one.
+
+**The privacy notice was out of date and is now corrected.** It enumerated Configuration, Cache,
+Logs and Exports as locally-stored data and did not mention the library database at all — the most
+personal thing CuePoint now stores. It lists it, says where it lives, states that the
+Help → Privacy clear actions deliberately do **not** touch it (clearing a cache must never delete
+someone's library), and documents what a support bundle does and does not contain.
+
+**Safety verified, not assumed**: `DataDeletionManager.clear_cache()` does `shutil.rmtree` on the
+cache directory. The database sits in `~/.cuepoint/` while cache and logs are under
+`AppData\Local`, so it is out of reach — now pinned by a test, since those paths could drift into
+each other later.
+
+**Activity versus debug logs**: already distinct by construction. Activity events live in the
+database as a queryable feed; debug logs remain rotated files. Nothing writes one into the other.
+
+**Verification**: 12 new tests, including a scan asserting that no library content — a distinctive
+title, artist and file path planted in the database — appears in *any* entry of a generated
+bundle. 2118 unit (was 2106) + 313 integration passing; ruff and mypy clean.
+
+---
+
+## FOUNDATION-10 — Logging / Diagnostics Alignment (original plan)
 
 **Objective**: Light-touch audit and adjustment of the already-working `LoggingService`,
 support-bundle export, and log-viewer (already wired to Electron via `/api/v1/logs/*` and
