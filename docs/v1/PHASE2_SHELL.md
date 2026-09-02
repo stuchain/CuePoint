@@ -1182,6 +1182,10 @@ Real items found along the way that belong to later work, recorded so they are n
   it was not needed to fix the live case, so it was not done.
 - **A job shorter than the status strip's 2s discovery poll is never seen.** Fine for real match
   runs, wrong for anything brief.
+- **Dead query parameters on the dev URL.** `main.ts` appends `?engine=…&engineVersion=…` when it
+  loads the renderer in development, and nothing reads them — `AboutDialog` gets the version
+  through the bridge. Found while checking what a hash router would break in SHELL-04; harmless,
+  and left rather than touched outside a step that has reason to.
 
 ## Deferred, with reasons
 

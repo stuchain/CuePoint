@@ -2,6 +2,10 @@
 
 ## Two tools
 
+CuePoint offers two tools from the start screen. For the window around them —
+navigation, search, the Track Inspector, the status strip and the keyboard
+shortcuts — see [The CuePoint window](the-window.md).
+
 CuePoint offers two tools from the start screen:
 
 - **inKey** — Beatport metadata enrichment for Rekordbox playlists. Load an XML export, match tracks to Beatport, and export clean metadata (key, BPM, label, genre, etc.) with a full audit trail. This is the main flow described in the rest of this page.
