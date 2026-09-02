@@ -1,8 +1,9 @@
 # CuePoint — Evolution Roadmap
 
 Status: **Phases 0, 1 and 2 complete; Decision Rounds 1–3 resolved (DEC-001…DEC-027).**
-Phase 2's ten steps are implemented and recorded in `PHASE2_SHELL.md`; Phase 3 is next and has no
-step specifications yet.
+Phase 2's ten steps are implemented and recorded in `PHASE2_SHELL.md`. Phase 3's step
+specifications are drafted in `PHASE3_LIBRARY.md` (LIBRARY-01…LIBRARY-12), unblocked by Decision
+Round 5 (DEC-030…DEC-037).
 Remaining deferred items (crossfade, audio-analysis scope, Smart Collection export/duplication
 behavior) will be resolved before the phases they affect actually start. This roadmap shows the
 shape of what's ahead; it is not a commitment to implement anything without an explicit
@@ -76,10 +77,18 @@ Toasts/dialogs already largely exist and get reused, not rebuilt. Step specifica
 ## Phase 3 — Persistent Rekordbox Library (LIBRARY-01 … LIBRARY-12) — next
 
 Builds on DEC-002 (TrackID+path identity), DEC-003 (delete-on-removal), and DEC-011 (refresh
-warns before deleting tracks referenced by a Collection/Set, silent otherwise — LIBRARY-09 must
-check references, not just diff track IDs). Turns the existing one-shot XML parse
-(`rekordbox.py`, already handles nested folders) into a persistent, differentially-refreshable
-library.
+warns before deleting tracks referenced by a Collection/Set — LIBRARY-08 builds that check as a
+seam that answers zero until Phase 6). Turns the existing one-shot XML parse (`rekordbox.py`,
+already handles nested folders) into a persistent, differentially-refreshable library.
+
+Round 5 settled the rest: playlists are mirrored read-only (DEC-031), refresh previews before it
+applies (DEC-032), import runs as a background job in the status strip (DEC-033), every useful
+Rekordbox field is captured now because backfilling one later needs a re-import (DEC-034), and the
+library remembers the file it came from (DEC-035). inKey and inCrate keep their own XML parsing
+until Phases 7 and 9 (DEC-036), and inCrate's separate inventory database coexists until Phase 9
+retires it (DEC-030) — two collection imports that can disagree, which the user docs must say.
+
+Step specifications: `PHASE3_LIBRARY.md`.
 
 ## Phase 4 — Library UI (LIBUI-01 … LIBUI-10)
 

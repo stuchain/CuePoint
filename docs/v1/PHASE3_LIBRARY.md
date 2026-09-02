@@ -1,0 +1,582 @@
+# CuePoint v1.0.0 — Phase 3: Persistent Rekordbox Library, Detailed Step Specifications
+
+Status: **Draft step specs, design-only mode.** No code has been written from this document.
+Implementation of any step below requires an explicit "Implement LIBRARY-NN" instruction, scoped to
+exactly that step, followed by tests, a completion report, and a stop before the next step.
+
+Depends on Phase 1 (`PHASE1_FOUNDATION.md`) and Phase 2 (`PHASE2_SHELL.md`), both complete, and on
+Decision Rounds 1–5 (`DECISIONS.md`, DEC-001…DEC-037). Phase 3's own decisions are DEC-030…DEC-037,
+alongside DEC-002 (identity), DEC-003 (delete on removal) and DEC-011 (warn when referenced).
+
+## What this phase is
+
+Today CuePoint reads a Rekordbox XML once per run and forgets it. This phase turns that into a
+library: imported once, stored, and refreshed differentially against the same file.
+
+**What this phase is not.** It builds no track table UI (Phase 4), no tags, ratings or Collections
+(Phase 6), no missing-file or duplicate detection (Phase 7, DEC-037), and no export (Phase 8). It
+does not move inKey or inCrate onto the library (DEC-036).
+
+## What Phase 1 already built
+
+The roadmap was written before Phase 1 landed and understates this. Read the code before writing
+any of it again:
+
+| Already exists | Where |
+| --- | --- |
+| DEC-002 identity resolution — TrackID, then normalized path, with a re-link flag | `models/library_track.py::resolve_identity` |
+| Insert-or-update by identity, returning `(track, action, relinked)` | `persistence/track_repository.py::upsert_from_rekordbox` |
+| `tracks` table, unique TrackID index, normalized-path index | `migrations/m0002_tracks.py` |
+| Batch insert, paged reads, counts, search | `TrackRepository`, `LibraryService` |
+| Durable job records with a `type` discriminator | `migrations/m0003_jobs.py`, `engine/jobs.py` |
+| Job progress over SSE, and a status strip that displays it | `engine/job_events.py`, `components/shell/StatusStrip.tsx` |
+| Activity feed and a panel that reads it | `services/activity_service.py`, `components/shell/ActivityPanel.tsx` |
+| Nested playlist-tree parsing | `data/rekordbox.py::parse_playlist_tree` |
+
+Phase 3 is the plumbing *around* these: parsing the rest of the XML, writing playlists, diffing,
+deleting, and driving it all from a job.
+
+## Decisions this phase implements
+
+| Decision | Substance | Step |
+| --- | --- | --- |
+| DEC-034 | Capture rating, play count, colour, date added, comment, total time, bitrate | LIBRARY-01, LIBRARY-02 |
+| DEC-035 | The library remembers the XML it was imported from | LIBRARY-01, LIBRARY-04 |
+| DEC-031 | Rekordbox playlists mirrored as read-only source data | LIBRARY-03 |
+| DEC-002 | TrackID identity with a normalized-path fallback, re-links reported | LIBRARY-04, LIBRARY-07 |
+| DEC-033 | Import and refresh run as background jobs | LIBRARY-05 |
+| DEC-032 | Refresh previews the diff and applies on confirmation | LIBRARY-07, LIBRARY-09 |
+| DEC-011 | Warn before deleting tracks a Collection or Set references | LIBRARY-08 |
+| DEC-003 | Tracks absent from a re-import are deleted | LIBRARY-09 |
+| DEC-030 | inCrate's inventory coexists, and the duplication is documented | LIBRARY-12 |
+
+## Sequencing
+
+```
+LIBRARY-01 (schema: fields + source record)
+      │
+      ├──────────────┐
+      ▼              ▼
+LIBRARY-02      LIBRARY-03
+(parse tracks)  (playlist schema + parse)
+      │              │
+      └──────┬───────┘
+             ▼
+      LIBRARY-04 (import service — first import)
+             │
+             ▼
+      LIBRARY-05 (import as a background job)
+             │
+             ▼
+      LIBRARY-06 (engine API + desktop contract)
+             │
+             ▼
+      LIBRARY-07 (compute a refresh diff)
+             │
+             ├── LIBRARY-08 (reference-check seam, DEC-011)
+             ▼
+      LIBRARY-09 (apply a refresh)
+             │
+             ▼
+      LIBRARY-10 (refresh API + contract)
+             │
+             ▼
+      LIBRARY-11 (Library page: import, refresh, preview)
+             │
+             ▼
+      LIBRARY-12 (scale verification and docs)
+```
+
+---
+
+## Before starting any step — four cross-cutting facts
+
+### 1. The desktop contract is six files, and it is enforced
+
+LIBRARY-06 and LIBRARY-10 add engine endpoints. Per the invariant, and the test that now enforces
+it (`renderer/src/api/desktopContract.test.ts`), each must move together:
+
+Python `*_api.py` + `engine/server.py` · `engineClient.ts` · **`engineSupervisor.ts`** ·
+`main.ts` · `preload.cjs` (the runtime preload) · `cuepointBridge.types.ts`.
+
+The supervisor is the one that bit in SHELL-04: `main.ts` calls `engine.X()` on a facade that
+forwards method by method, nothing type-checks the gap, and the failure appears only in the running
+app. The contract test catches it now — run it.
+
+### 2. Do not re-implement DEC-002
+
+`resolve_identity()` and `upsert_from_rekordbox()` exist, are tested, and return the re-link flag
+DEC-002 requires. A refresh diff must *use* them rather than write a second identity rule, or the
+two will drift and the drift will be invisible until someone's tags land on the wrong track.
+
+### 3. Two collection databases exist during this phase (DEC-030)
+
+inCrate keeps its own `inventory` table in a separate file. Phase 3 does not touch it, Phase 9
+retires it, and until then a user can import their collection in two places and get two answers.
+LIBRARY-12 is responsible for saying so in the user documentation rather than leaving it to be
+discovered.
+
+### 4. Fifty thousand tracks is the target, and it shapes the code
+
+Not a stress-test afterthought: it is the difference between an import that batches into one
+transaction and one that commits per row, and between progress sampled once a second
+(FOUNDATION-07's precedent, measured there) and thousands of database writes for numbers that are
+superseded immediately. Write it that way first; LIBRARY-12 verifies it.
+
+---
+
+## LIBRARY-01 — Track Fields and the Source Record
+
+**Objective**: Migration 0005. Extend `tracks` with the fields DEC-034 chose — rating, play count,
+colour, date added, comment, total time, bitrate — and add the `library_source` record DEC-035
+requires: the XML path, its modified time and size, when it was imported, and the counts that
+import produced.
+
+**User-visible result**: None yet.
+
+**Dependencies**: None.
+
+**Existing code reused**: `migrations/` and its runner, unchanged; `m0002_tracks.py` is the model
+for the migration's shape. `LibraryTrack` gains fields; `_COLUMNS` in `TrackRepository` gains
+entries, which is deliberately the only place the column list lives.
+
+**Schema**:
+
+- `tracks` gains `rating INTEGER`, `play_count INTEGER`, `colour TEXT`, `date_added TEXT`,
+  `comment TEXT`, `total_time INTEGER`, `bitrate INTEGER`. All nullable: Rekordbox omits them
+  freely, and a missing rating is not a zero rating.
+- `library_source` holds one row per library: `xml_path`, `xml_modified_at`, `xml_size_bytes`,
+  `imported_at`, `track_count`, `playlist_count`. One row, because DEC-035 makes the library
+  singular; a table rather than a config key so it can grow a history later without a migration
+  that moves data.
+
+**Tests**: Migration applies to an existing populated database without loss — the FOUNDATION-03
+guarantee, re-checked with real rows present. New columns are nullable and default null. The
+source record round-trips. `LibraryTrack.from_row` reads the new columns.
+
+**Backward compatibility**: Additive columns only. A database migrated from Phase 2 keeps its
+tracks; the new fields are null until a re-import populates them, which is exactly the cost
+DEC-034 paid to avoid.
+
+**Acceptance criteria / DoD**: Migration 0005 applies forward on an empty and a populated
+database; every new field survives a write-read cycle; `check_no_qt_in_core.py` and the migration
+tests pass.
+
+**Risks**: Low. The one real risk is forgetting that `_COLUMNS` drives both insert and update, so a
+column added to the schema and not to that tuple is silently never written.
+
+**Complexity**: **S**
+
+---
+
+## LIBRARY-02 — Parsing the Whole Collection
+
+**Objective**: Read every track in the `COLLECTION` element into `LibraryTrack` objects, including
+DEC-034's new fields, in a form that does not hold the whole XML in memory at once.
+
+**User-visible result**: None directly.
+
+**Dependencies**: LIBRARY-01.
+
+**Existing code reused**: `data/rekordbox.py` already parses TrackID, Name, Artist, Remixer, Label
+and Location, and already handles the attribute-name variations (`TrackID`/`ID`/`Key`,
+`Name`/`Title`, `Artist`/`Artists`). This step adds attributes to that existing extraction rather
+than writing a second parser. `normalize_path()` from FOUNDATION-04 produces `normalized_path`.
+
+**What is new**: a collection-level iterator — `iter_collection_tracks(xml_path)` yielding
+`LibraryTrack` — using `iterparse` with element clearing. `parse_rekordbox()` builds dictionaries of
+playlists in memory, which is right for a single playlist run and wrong for a 50,000-track import.
+
+**Field mapping** (Rekordbox attribute → column), to be confirmed against a real export at
+implementation time rather than trusted from here: `Rating` → `rating` (Rekordbox stores 0/51/102/
+153/204/255 for 0–5 stars; store the star count, not the raw value, and say so in the code),
+`PlayCount` → `play_count`, `Colour`/`Color` → `colour`, `DateAdded` → `date_added`,
+`Comments` → `comment`, `TotalTime` → `total_time`, `BitRate` → `bitrate`, `AverageBpm` → `bpm`,
+`Tonality` → `key`, `Genre`, `Album`, `Year`.
+
+**Tests**: A fixture XML exercising every field, a track missing every optional field, the
+attribute-name variants, a rating of each star value, malformed numbers (a `BitRate` of `""`), and
+non-ASCII paths and titles. Memory: parsing a generated 50,000-track XML does not accumulate — assert
+the iterator yields without the resident set growing linearly, or at minimum that elements are
+cleared.
+
+**Backward compatibility**: Purely additive. `parse_rekordbox()` and everything using it are
+untouched (DEC-036).
+
+**Acceptance criteria / DoD**: Every DEC-034 field is populated from a real Rekordbox export; a
+50,000-track file parses without loading the document into memory; existing parser tests still pass.
+
+**Risks**: Medium — Rekordbox's attribute naming is inconsistent across versions, and the rating
+encoding is a genuine trap. Verify against a real export, not the documentation.
+
+**Complexity**: **M**
+
+---
+
+## LIBRARY-03 — Playlists as Read-Only Source Data
+
+**Objective**: Persist the Rekordbox playlist tree and its membership (DEC-031).
+
+**User-visible result**: None yet; Phase 4 browses it.
+
+**Dependencies**: LIBRARY-01.
+
+**Existing code reused**: `parse_playlist_tree()` already returns the hierarchy with folders
+preserved, and `playlist_path_for_display()` already formats a path for humans. Neither changes.
+
+**Schema** (migration 0006): `rekordbox_playlists` — `id`, `rekordbox_path` (the
+`Folder/Sub/Playlist` key, unique), `name`, `parent_path`, `kind` (`folder` or `playlist`),
+`position`, `track_count`. `rekordbox_playlist_tracks` — `playlist_id`, `track_id`, `position`, with
+a foreign key to `tracks` cascading on delete, because DEC-003 deletes tracks and membership rows
+for a track that no longer exists are unreachable.
+
+**Read-only means read-only**: these tables are written by import and refresh and by nothing else.
+CuePoint's own Collections (Phase 6) are a different concept with a different table; a user editing
+a "playlist" in CuePoint must never write here, because the next refresh would silently overwrite
+it.
+
+**Tests**: A nested tree round-trips with its hierarchy intact; membership order is preserved
+(a DJ's playlist order is meaningful); deleting a track cascades its membership away; a playlist
+whose tracks reference an unknown TrackID does not fail the import.
+
+**Acceptance criteria / DoD**: A real export's tree is reconstructable from the database, including
+folders with the same name under different parents.
+
+**Risks**: Low-medium. The subtle one is ordering: Rekordbox playlist order is data, not
+presentation.
+
+**Complexity**: **M**
+
+---
+
+## LIBRARY-04 — The Import Service
+
+**Objective**: The first import. Parse, upsert every track, store the playlist tree, write the
+source record, and return a summary.
+
+**User-visible result**: None directly — LIBRARY-06 exposes it, LIBRARY-11 shows it.
+
+**Dependencies**: LIBRARY-02, LIBRARY-03.
+
+**Existing code reused**: `upsert_from_rekordbox()` for every track (fact 2 above),
+`add_many()` for the bulk path, `ILibraryService` as the entry point engine handlers call.
+
+**Behaviour**:
+- One transaction for the whole import, or explicit batches — not a commit per track.
+- Returns `ImportSummary`: inserted, updated, relinked, playlists, duration, and the source record.
+- Re-links are counted and listed (DEC-002 says they are reported, not silent).
+- Records an activity event on completion, following DEC-029's producers.
+
+**Tests**: Importing a fixture collection produces the expected counts; importing the same file
+twice is idempotent — second run reports zero inserted, N updated, and does not duplicate rows;
+a re-numbered TrackID with an unchanged path is reported as a re-link, not an insert and a delete;
+an XML with no `COLLECTION` element fails with a clear error rather than an empty library.
+
+**Backward compatibility**: New service surface; nothing existing changes.
+
+**Acceptance criteria / DoD**: A real export imports completely, twice, with correct counts and no
+duplicates; the source record matches the file.
+
+**Risks**: Medium. Idempotency is the property most likely to break subtly, and the one users
+notice last.
+
+**Complexity**: **M/L**
+
+---
+
+## LIBRARY-05 — Import as a Background Job
+
+**Objective**: Run import under the existing job infrastructure as a `library_import` job (DEC-033),
+with progress the status strip already knows how to display.
+
+**User-visible result**: A running import appears in the status strip, from anywhere in the app.
+
+**Dependencies**: LIBRARY-04.
+
+**Existing code reused**: `JobStore`, the `jobs` table's `type` discriminator, the SSE event stream,
+and SHELL-07's status strip — which reads `completed_tracks`/`total_tracks` and a percentage, so an
+import that reports the same shape needs no renderer change at all.
+
+**Expect the job store to resist.** `JobStore` is `MatchJob`-shaped: `create_match_job`, results
+lists, batch results, match-specific status payloads. FOUNDATION-07 chose the `type` column
+precisely so a second kind could share the table, but the in-memory side has not met one yet. This
+step generalizes the minimum needed and leaves the rest — it is not a rewrite of the job system.
+
+**Progress**: sampled, following FOUNDATION-07's measured precedent — persist at most once a second,
+force state transitions through immediately. Import ticks per track; 50,000 database writes for
+superseded numbers is the failure mode being avoided.
+
+**Tests**: A job is created, progresses and completes; its record survives a simulated engine
+restart (the DEC-007 guarantee, now with a second job type); cancelling an import mid-run leaves the
+library in a consistent state — either the import applied or it did not; existing match-job tests
+pass unchanged, which is the bar for "generalized, not rewritten".
+
+**Acceptance criteria / DoD**: An import runs as a job, reports progress the strip renders, and
+appears in `GET /api/v1/jobs` alongside match jobs; all pre-existing job tests still pass.
+
+**Risks**: **Medium-high** — the highest of the phase. Cancellation mid-write and the shared job
+store are where correctness problems hide.
+
+**Complexity**: **L**
+
+---
+
+## LIBRARY-06 — Import API and Desktop Contract
+
+**Objective**: Start an import from the app and follow it.
+
+**Dependencies**: LIBRARY-05.
+
+**API surface**:
+- `POST /api/v1/library/import` with `{ "xml_path": "…" }` → `{ "job_id": … }`.
+- `GET /api/v1/library/summary` → track count, playlist count, and the source record (path,
+  imported_at, whether the file is still there and whether it has changed since).
+
+Progress is read through the existing job endpoints and SSE; this step adds no second progress
+mechanism.
+
+**Contract**: all six files, per fact 1. `searchLibrary` (SHELL-04) is the worked example.
+
+**Tests**: Engine tests for auth, a missing file, a path that is not XML, and starting an import
+while one is running (reject with a clear code rather than corrupting state). A bridge-shape test,
+which is what the contract test exists for.
+
+**Acceptance criteria / DoD**: An import can be started and followed from the renderer; the summary
+endpoint reports an empty library honestly before any import.
+
+**Risks**: Low-medium, with the contract test carrying most of the risk that used to exist here.
+
+**Complexity**: **M**
+
+**PR breakdown**: Two — engine endpoints, then bridge plumbing.
+
+---
+
+## LIBRARY-07 — Computing a Refresh Diff
+
+**Objective**: Compare a re-read XML against the stored library and produce a diff, **writing
+nothing** (DEC-032).
+
+**Dependencies**: LIBRARY-04.
+
+**Existing code reused**: `resolve_identity()` decides what each incoming track *is* — fact 2. The
+diff classifies; it does not invent identity.
+
+**Output** — `RefreshDiff`: `added`, `changed` (with which fields changed, so the preview can say
+more than a number), `removed`, `relinked`, and the same for playlists. Counts plus enough detail
+for a preview, without materializing 50,000 rows twice.
+
+**What counts as changed** matters and should be decided here, not in the UI: a track whose only
+difference is `play_count` has changed in Rekordbox but is not interesting to report as an edit.
+The diff carries the field list; the preview decides what to show.
+
+**Tests**: An unchanged file diffs to nothing — the case that must be fast and must not report noise.
+Added, changed and removed are each classified correctly; a re-numbered TrackID at the same path is
+`relinked`, not `removed` + `added`, which is the DEC-002 failure that would silently destroy
+CuePoint-side data; a moved file with the same TrackID is `changed`, not removed.
+
+**Acceptance criteria / DoD**: Diffing a file against itself produces an empty diff; every category
+is exercised against a real export edited in known ways.
+
+**Risks**: Medium-high. The removed-versus-relinked distinction is where irreversible deletion meets
+identity, and it is worth a regression test written to fail first.
+
+**Complexity**: **L**
+
+---
+
+## LIBRARY-08 — The Reference-Check Seam (DEC-011)
+
+**Objective**: Answer "how many Collections or Sets reference these tracks?" — which is zero until
+Phase 6, and must be asked anyway.
+
+**Dependencies**: LIBRARY-07.
+
+**Why now**: DEC-011 requires the warning; DEC-032 chose to build the seam rather than change the
+refresh flow's shape later. A refresh that grows a confirmation step in Phase 6 is a refresh whose
+API, tests and UI all move again.
+
+**Behaviour**: `ILibraryService.references_for(track_ids) -> ReferenceSummary` returning zero
+counts, with the contract documented for Phase 6 to satisfy. The diff carries the summary; the
+preview reads it.
+
+**Tests**: The seam returns zero for any input today. A test that fails if a caller *skips* the
+check on the delete path — the point is that Phase 6 has one place to fill, not several to find.
+
+**Acceptance criteria / DoD**: Every deletion path consults the seam; Phase 6's work is implementing
+one method.
+
+**Risks**: Low, provided it is not quietly bypassed.
+
+**Complexity**: **S**
+
+---
+
+## LIBRARY-09 — Applying a Refresh
+
+**Objective**: Apply a computed diff: insert, update, delete (DEC-003), and update playlists and the
+source record, transactionally.
+
+**User-visible result**: The library matches the Rekordbox export again.
+
+**Dependencies**: LIBRARY-07, LIBRARY-08.
+
+**Behaviour**:
+- One transaction. A refresh that fails halfway must leave the library as it was, not half-applied.
+- Deletions cascade to playlist membership (LIBRARY-03's foreign key) and, from Phase 6, to whatever
+  else references a track — which is why LIBRARY-08 exists.
+- Records an activity event with the counts, so a destructive refresh is visible afterwards
+  (DEC-029's feed is the only durable record a user has).
+- Re-links are applied through `upsert_from_rekordbox` and reported.
+
+**Tests**: Applying a diff produces exactly the diff's counts; a failure mid-apply rolls back
+entirely — worth testing with an induced error, because this is the one operation that can destroy
+user data; deleted tracks take their playlist membership with them; applying the same diff twice is
+harmless.
+
+**Backward compatibility**: The first import path (LIBRARY-04) and the refresh path share the same
+writes, and should share the same code rather than diverge.
+
+**Acceptance criteria / DoD**: A real edited export refreshes correctly; an induced failure leaves
+the database untouched; the activity feed records what happened.
+
+**Risks**: **High** — the only irreversible operation in the phase.
+
+**Complexity**: **L**
+
+---
+
+## LIBRARY-10 — Refresh API and Contract
+
+**Objective**: Preview and apply, over the engine API.
+
+**Dependencies**: LIBRARY-09.
+
+**API surface**:
+- `POST /api/v1/library/refresh/preview` → a job that computes a diff and returns it as its result.
+- `POST /api/v1/library/refresh/apply` with the diff's id → a job that applies it.
+
+Two calls rather than one, because DEC-032 chose preview-then-confirm, and because a diff computed
+and applied in one request could not be confirmed by anyone.
+
+**A diff has a lifetime**, and this step must decide it: a preview computed against a file that
+changes before apply is stale, and applying it would delete based on a snapshot that no longer
+holds. Store the diff with the source file's modified time and refuse to apply a stale one.
+
+**Tests**: Preview returns a diff without writing — assert the library is byte-identical afterwards.
+Applying an unknown or stale diff id is refused with a clear code. Auth, as everywhere.
+
+**Acceptance criteria / DoD**: Preview never writes; a stale diff cannot be applied; both flows are
+reachable from the renderer.
+
+**Risks**: Medium. Diff staleness is the correctness question.
+
+**Complexity**: **M**
+
+---
+
+## LIBRARY-11 — The Library Page
+
+**Objective**: The first user-facing library surface: enable the `library` destination, show what
+the library holds, and drive import and refresh with DEC-032's preview.
+
+**User-visible result**: A Library page. Import a collection, see counts, refresh, and confirm a
+diff before it applies.
+
+**Dependencies**: LIBRARY-06, LIBRARY-10.
+
+**Existing code reused**: DEC-020's registry — enabling the destination is the one-line change
+SHELL-02 built it for, and SHELL-09 already drew the `library` icon. The status strip already
+reports the running import; this page does not build a second progress display. `Modal` for the
+preview, which SHELL-10 gave focus management and Escape.
+
+**Scope boundary**: **not** the track table. Phase 4 (LIBUI) builds the Universal Track Table,
+filters and browsing. This page shows counts, the source file, and the import/refresh controls. The
+temptation to start listing tracks here is the phase boundary being crossed.
+
+**Tests**: Empty state before any import that says what to do; import flow from file picker to
+completion; a refresh preview that reports counts and applies on confirm; a preview with removals
+that shows them prominently; the reference warning path (which shows zero until Phase 6, and should
+still be exercised).
+
+**Acceptance criteria / DoD**: A user can import a collection, see it, refresh it, and cancel a
+refresh at the preview without anything changing.
+
+**Risks**: Low-medium — mostly the pull toward Phase 4's scope.
+
+**Complexity**: **M**
+
+---
+
+## LIBRARY-12 — Scale, Verification and Documentation
+
+**Objective**: Prove the phase at the size it was designed for, and write down what a user needs to
+know — including what is confusing (DEC-030).
+
+**Dependencies**: Every other step.
+
+**Scope**:
+- **50,000 tracks, measured.** A generated collection of that size imports, refreshes and diffs;
+  record the timings and memory in the completion report. This is the number the design was built
+  against, and the only honest way to claim it is to run it.
+- **An unchanged refresh is fast.** The common case is re-importing a file that barely changed;
+  diffing 50,000 unchanged tracks should not feel like a fresh import.
+- **The duplication is documented.** Per DEC-030, user docs state that inCrate keeps its own
+  inventory, that importing in one does not import in the other, and that they converge in a later
+  release. Leaving this to be discovered is the failure this step prevents.
+- User documentation for import and refresh, including what a refresh deletes (DEC-003) and that
+  missing files are not detected yet (DEC-037).
+- `docs/release/CHANGELOG.md` under `Unreleased`.
+
+**Tests**: The scale run itself, plus an E2E covering import → summary → refresh preview → apply in
+the packaged app.
+
+**Acceptance criteria / DoD**: The 50,000-track numbers are recorded and acceptable; docs describe
+import, refresh, deletion and both limitations.
+
+**Risks**: Low, but this is the step most likely to be skipped when the phase "feels done" — and the
+scale claim is worthless unless someone runs it.
+
+**Complexity**: **M**
+
+---
+
+## Phase-level acceptance
+
+Phase 3 is complete when, in a **packaged build**:
+
+1. A real Rekordbox export imports completely, with every DEC-034 field and the full playlist tree.
+2. Re-importing the same file changes nothing and reports zero changes.
+3. An edited export produces a correct diff, previews it, and applies it on confirmation.
+4. A track re-numbered by Rekordbox is re-linked, not deleted and re-added.
+5. Removed tracks are deleted (DEC-003), the reference seam is consulted first (DEC-011), and the
+   activity feed records what happened.
+6. Import runs as a job and appears in the status strip from anywhere in the app.
+7. 50,000 tracks import and refresh within recorded, acceptable timings.
+8. Full Python suite, renderer gates, E2E, Qt guard, version coupling and the desktop-contract test
+   all pass.
+9. No decision in DEC-002, DEC-003, DEC-011 or DEC-030…DEC-037 is contradicted. Per the process, a
+   contradiction stops the work and gets raised rather than worked around.
+
+## Deferred, with reasons
+
+- **The track table, filters and browsing** — Phase 4. LIBRARY-11 shows counts, not rows.
+- **Tags, ratings, Collections** — Phase 6. Until then a deleted track takes nothing with it, which
+  is why DEC-003's risk is currently theoretical and will not stay that way.
+- **Missing-file and duplicate detection** — Phase 7 (DEC-037).
+- **Export** — Phase 8. The existing narrow attribute-patch writer is untouched.
+- **inKey and inCrate moving onto the library** — Phases 7 and 9 (DEC-036).
+- **Retiring inCrate's inventory** — Phase 9 (DEC-030).
+
+## Recommended First Step
+
+**LIBRARY-01**. Everything reads or writes the schema, the migration is small and well-precedented,
+and it settles DEC-034's field list before two other steps assume it.
+
+**LIBRARY-02 and LIBRARY-03 can then run in parallel** if wanted — one parses tracks, the other
+playlists, and they meet at LIBRARY-04.
+
+The step to schedule carefully is **LIBRARY-09**: it is the only irreversible operation in the
+phase, and it should not be written on the same day as the diff it applies.
+
+Waiting for an explicit "Implement LIBRARY-NN" before touching any code.

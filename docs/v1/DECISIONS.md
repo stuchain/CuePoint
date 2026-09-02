@@ -618,3 +618,146 @@ list, which already exists and means the same thing to a user.
 together.
 
 **Decided with**: User · **Date**: 2026-09-02
+
+---
+
+## DEC-030 — inCrate's Inventory and the Library
+
+**Status**: Approved
+
+**Decision**: Phase 3 builds the persistent library beside inCrate's existing inventory database.
+The two coexist until Phase 9 re-homes inCrate behind Discover, at which point inCrate reads from
+the library and its own inventory is retired.
+
+**Reason**: Converging now would rewrite a working feature's data layer inside a phase about
+import. Coexistence is the smaller change, provided the duplication is stated rather than hidden.
+
+**Implications**:
+- Two collection imports exist meanwhile, and can disagree. User documentation must say so.
+- Phase 9 inherits a migration: inCrate's Beatport ids belong in a table keyed on the library
+  track, not in a second copy of the collection.
+
+**Decided with**: User · **Date**: 2026-09-02
+
+---
+
+## DEC-031 — Rekordbox Playlists Are Mirrored, Read-Only
+
+**Status**: Approved
+
+**Decision**: The library persists the Rekordbox playlist tree and its membership as read-only
+source data, refreshed with the collection. CuePoint's own Collections (Phase 6) remain a separate,
+editable concept.
+
+**Reason**: The parser already reads nested folders; Phase 4's Library UI browses by playlist and
+Phase 8's export needs the tree. Storing them later would mean a second pass over import and
+refresh.
+
+**Implications**: Two new tables, and refresh must diff playlist membership as well as tracks.
+
+**Decided with**: User · **Date**: 2026-09-02
+
+---
+
+## DEC-032 — Refresh Previews Before It Applies
+
+**Status**: Approved
+
+**Decision**: A refresh computes the diff, reports it ("N new, M changed, K removed") and applies
+only on confirmation. The first import applies directly. DEC-011's Collection/Set reference check is
+built now as a seam that returns zero references until Phase 6 fills it.
+
+**Reason**: DEC-003 deletes removed tracks irreversibly. A preview is what makes that a decision
+rather than a surprise, and building the reference seam now means the flow does not change shape
+when Collections arrive.
+
+**Implications**: The refresh is two operations — compute a diff, apply a diff — which shapes both
+the engine API and the eventual UI.
+
+**Decided with**: User · **Date**: 2026-09-02
+
+---
+
+## DEC-033 — Import Runs as a Background Job
+
+**Status**: Approved
+
+**Decision**: Import and refresh run as background jobs of a new `library_import` type, reporting
+progress through the existing job infrastructure and the SHELL-07 status strip.
+
+**Reason**: FOUNDATION-07 gave the `jobs` table a type discriminator for exactly this, and the
+status strip already displays running jobs with live progress. A synchronous import would block a
+request for the length of a 50,000-track parse and duplicate progress reporting that exists.
+
+**Implications**: `JobStore`'s match-specific assumptions have to give way to a second job type.
+
+**Decided with**: User · **Date**: 2026-09-02
+
+---
+
+## DEC-034 — Capture Every Useful Rekordbox Field Now
+
+**Status**: Approved
+
+**Decision**: Import captures rating, play count, colour, date added, comments, total time and
+bitrate in addition to today's fields, in one migration.
+
+**Reason**: Adding a column later is cheap; backfilling it is not — it requires every user to
+re-import their collection. These are the fields Phase 4 sorts and filters by and Phase 6 organizes
+with.
+
+**Implications**: Migration 0005 extends `tracks`; the parser gains one pass over the new
+attributes.
+
+**Decided with**: User · **Date**: 2026-09-02
+
+---
+
+## DEC-035 — The Library Remembers Its Source File
+
+**Status**: Approved
+
+**Decision**: The imported XML's path and modified time are stored with the import. Refresh re-reads
+that file without asking, and reports clearly when it has moved, vanished, or is unchanged.
+
+**Reason**: A refresh has to know what to re-read. Asking every time turns routine refreshing into a
+file dialog and lets a different export silently replace the library; watching the file would mean a
+background watcher and unprompted interruptions.
+
+**Implications**: A small `library_source` record, and a "source missing" state in the refresh flow.
+
+**Decided with**: User · **Date**: 2026-09-02
+
+---
+
+## DEC-036 — inKey and inCrate Are Not Moved onto the Library Yet
+
+**Status**: Approved
+
+**Decision**: Both keep parsing an XML per run through Phase 3. Phase 7 switches inKey when it
+becomes Clean; Phase 9 switches inCrate when it becomes Discover.
+
+**Reason**: DEC-021 already assigned those moves to those phases. Rewriting a mature flow inside a
+phase about persistence would put unrelated risk into both.
+
+**Implications**: Three code paths read Rekordbox XML during Phase 3. That is temporary and
+tracked, not accidental.
+
+**Decided with**: User · **Date**: 2026-09-02
+
+---
+
+## DEC-037 — Missing Audio Files Are Not Checked at Import
+
+**Status**: Approved
+
+**Decision**: Import records the path Rekordbox provides and does not check whether the file exists.
+Missing-file detection belongs to Phase 7, with duplicates and library health.
+
+**Reason**: Checking 50,000 paths against disk is a slow scan with its own progress, failure modes
+and caching questions, and Phase 7 is already scoped to do it properly.
+
+**Implications**: The library can contain tracks whose files are gone; nothing in Phase 3 or 4
+claims otherwise.
+
+**Decided with**: User · **Date**: 2026-09-02

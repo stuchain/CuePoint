@@ -672,6 +672,153 @@ rather than waiting for the phases that own each action?
 
 ---
 
+## DECISION ROUND 5 — PERSISTENT LIBRARY ✅ Resolved 2026-09-02
+
+Asked before writing Phase 3's step specifications. Three of these came out of reading the code
+rather than the roadmap: Phase 1 had already built more of DEC-002 than the roadmap assumed,
+inCrate turned out to keep its own persistent copy of the collection, and DEC-011's reference check
+has nothing to check until Phase 6. Outcomes are DEC-030…DEC-037 in `DECISIONS.md`.
+
+---
+
+### Q-030 — inCrate's inventory and the new library
+
+**Status**: Resolved → DEC-030 (Option A chosen: coexist now, converge in Phase 9)
+
+**Question**: `incrate/inventory_db.py` already keeps a persistent copy of the collection — an
+`inventory` table in a separate database under `%APPDATA%`, built from the same Rekordbox XML.
+Phase 3 builds a second one, and two "import your collection" flows can disagree.
+
+- **Option A — Coexist, converge in Phase 9.** Phase 3 stays focused; inCrate keeps its inventory
+  until the phase that re-homes it behind Discover.
+- **Option B — Converge now.** One source of truth immediately, at the cost of rewriting a working
+  feature's data layer inside a phase about import.
+- **Option C — Separate permanently.** Two collection imports become a permanent product feature.
+
+**Recommendation**: **A**, with the duplication stated plainly in the docs meanwhile.
+
+---
+
+### Q-031 — Do Rekordbox playlists get persisted
+
+**Status**: Resolved → DEC-031 (Option A chosen: mirror as read-only source data)
+
+**Question**: `parse_playlist_tree()` already reads nested folders. Does the library store them?
+
+- **Option A — Mirror the tree and membership, read-only.** Phase 4 browses by playlist, Phase 8
+  exports them, and CuePoint's own Collections (Phase 6) stay a separate concept.
+- **Option B — Tracks only.** Smallest Phase 3, at the cost of a second pass over import and
+  refresh later.
+- **Option C — Only selected playlists.** Less data, but the selection becomes state a refresh has
+  to reconcile.
+
+**Recommendation**: **A**.
+
+---
+
+### Q-032 — How a refresh applies its changes
+
+**Status**: Resolved → DEC-032 (Option A chosen: preview, then apply on confirm)
+
+**Question**: DEC-003 deletes tracks that vanish from the XML, and DEC-011's warning depends on
+Collection references that do not exist until Phase 6. What does a refresh actually do?
+
+- **Option A — Preview the diff and wait for confirmation**; the first import applies directly
+  because there is nothing to lose. DEC-011's reference check is built now as a seam that returns
+  zero until Phase 6.
+- **Option B — Apply immediately, summarise after.** Fewer steps, but deletion is irreversible and
+  the user learns about it afterwards.
+- **Option C — Preview only when something would be deleted.** Closest to DEC-011's letter, at the
+  cost of a flow that behaves differently between runs.
+
+**Recommendation**: **A**.
+
+---
+
+### Q-033 — How the import runs
+
+**Status**: Resolved → DEC-033 (Option A chosen: background job, reported in the status strip)
+
+**Question**: A 50,000-track import parses a large XML and writes thousands of rows. Foreground or
+background?
+
+- **Option A — A background job.** FOUNDATION-07's `jobs` table already carries a `type`
+  discriminator for exactly this, and SHELL-07's status strip already displays running jobs with
+  progress.
+- **Option B — Synchronous with its own progress endpoint.** Simpler, but blocks the request and
+  duplicates progress reporting.
+- **Option C — Background with no progress.** Cheapest, and shows nothing during the slowest
+  operation in the app.
+
+**Recommendation**: **A**.
+
+---
+
+### Q-034 — Which Rekordbox fields to capture
+
+**Status**: Resolved → DEC-034 (Option A chosen: capture them all now)
+
+**Question**: The parser reads none of Rating, PlayCount, Colour, DateAdded or Comments, and the
+schema has no columns for them. Adding columns later is easy; backfilling needs a full re-import.
+
+- **Option A — All of them now**, plus total time and bitrate.
+- **Option B — Only rating and date added.**
+- **Option C — None.**
+
+**Recommendation**: **A**. One migration and one parser pass now, against asking every user to
+re-import later.
+
+---
+
+### Q-035 — Where the XML comes from on a refresh
+
+**Status**: Resolved → DEC-035 (Option A chosen: remember the path, re-read it)
+
+**Question**: A refresh has to know which file to re-read.
+
+- **Option A — Store the path and modified time with the import**, re-read on refresh, and say so
+  when the file has moved or vanished.
+- **Option B — Ask every time.** No staleness, but a file picker on every refresh, and nothing
+  stops a different export silently replacing the library.
+- **Option C — Watch the file and offer to refresh.** Convenient, but a background watcher and
+  prompts at moments the user did not choose.
+
+**Recommendation**: **A**.
+
+---
+
+### Q-036 — Whether inKey and inCrate move onto the library now
+
+**Status**: Resolved → DEC-036 (Option A chosen: leave them untouched)
+
+**Question**: Both parse an XML per run today, independently of any library.
+
+- **Option A — Leave them.** DEC-021 already assigns inKey to Phase 7 and inCrate to Phase 9;
+  those steps switch them over, with their own tests.
+- **Option B — Switch inKey now.** One import instead of two, at the cost of rewriting a mature
+  flow inside a phase about persistence.
+
+**Recommendation**: **A**.
+
+---
+
+### Q-037 — Missing audio files
+
+**Status**: Resolved → DEC-037 (Option A chosen: record the path, check later)
+
+**Question**: Rekordbox exports paths; files move and disappear. Does import check?
+
+- **Option A — No check in Phase 3.** Import stores the path Rekordbox gave. Phase 7 owns
+  missing-file detection alongside duplicates and health.
+- **Option B — Check on import.** Immediate answer, at the cost of a full filesystem scan on every
+  import and work duplicated with Phase 7.
+- **Option C — Check lazily when a track is used.** No import cost, but spreads file-existence
+  logic across screens before there is a player or Clean flow to own it.
+
+**Recommendation**: **A**.
+
+---
+
 ## Not yet asked (deferred to a later round)
 
 Per the spec's own guidance not to dump every question at once — these are real open items
