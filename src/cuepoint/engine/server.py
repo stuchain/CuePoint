@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import threading
@@ -50,6 +51,8 @@ from cuepoint.engine.jobs import (
     track_result_to_dict,
 )
 from cuepoint.version import __version__
+
+_logger = logging.getLogger(__name__)
 
 ALLOWED_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 JOB_ROUTE = re.compile(r"^/api/v1/jobs/([^/]+)(?:/(results|events))?$")
@@ -597,10 +600,42 @@ def make_handler(
     return EngineHandler
 
 
+def backup_library_on_launch() -> None:
+    """Take the DEC-009 launch backup, before anything migrates the database.
+
+    Ordering is the point. Repository factories apply migrations the first time
+    they are resolved, so taking the backup here — before a single repository is
+    touched — captures the database as it was *before* any schema change. That
+    is precisely the copy you want when the migration is what went wrong.
+
+    Resolving :class:`IBackupService` neither opens nor migrates the database,
+    so this does not itself create the thing it is backing up. On a fresh
+    install there is no database yet and this does nothing.
+
+    Never raises. A backup problem must not stop the engine starting, and
+    :meth:`BackupService.backup_on_launch` already logs its own failures; this
+    only has to catch a broken container or bootstrap.
+    """
+    try:
+        from cuepoint.services.bootstrap import bootstrap_services
+        from cuepoint.services.interfaces import IBackupService
+        from cuepoint.utils.di_container import get_container
+
+        bootstrap_services()
+        get_container().resolve(IBackupService).backup_on_launch()
+    except Exception as exc:  # noqa: BLE001 - startup must not depend on backups
+        _logger.warning("[backup] launch backup unavailable: %s", exc)
+
+
 def run_engine(config: Optional[EngineConfig] = None) -> None:
     cfg = config or EngineConfig.from_env()
     if cfg.host not in ALLOWED_HOSTS:
         raise ValueError(f"Refusing to bind engine to non-loopback host: {cfg.host}")
+    # Synchronous and before the server exists: a backup running concurrently
+    # with the first migration would lose the ordering guarantee above. It is
+    # skipped entirely when nothing changed since the last one, so the usual
+    # cost is a few stat() calls.
+    backup_library_on_launch()
     server = ThreadingHTTPServer((cfg.host, cfg.port), make_handler(cfg))
     try:
         server.serve_forever()

@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- The library database is now backed up automatically when the app starts, keeping
+  the five most recent copies in `~/.cuepoint/backups/`. The backup is taken before
+  any schema upgrade runs, so a copy of the previous state always exists, and is
+  skipped when nothing has changed since the last one. A backup failure never
+  prevents the app from starting
 - Pixel-art icons for the toolbar. Settings, Export and Filter are now drawn as
   pixel artwork instead of Unicode glyphs, joined by transport (play/pause/next/
   previous) and navigation (home/library/activity) icons for upcoming screens.
