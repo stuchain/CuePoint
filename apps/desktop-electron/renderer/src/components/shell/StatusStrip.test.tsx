@@ -118,6 +118,91 @@ describe("engine state", () => {
   });
 });
 
+describe("engine recovery (DEC-028)", () => {
+  it("says it is reconnecting rather than offline while restarts are in flight", async () => {
+    // The two mean different things to someone deciding whether to act.
+    getEngineStatus.mockResolvedValue({
+      connected: false,
+      reconnecting: true,
+      restartAttempts: 2,
+      error: "Reconnecting",
+    });
+
+    render(<StatusStrip />);
+
+    expect(await screen.findByText(/Reconnecting to engine/)).toBeInTheDocument();
+    expect(screen.queryByText(/Engine offline/)).not.toBeInTheDocument();
+  });
+
+  it("shows how many attempts have been made", async () => {
+    getEngineStatus.mockResolvedValue({
+      connected: false,
+      reconnecting: true,
+      restartAttempts: 2,
+    });
+
+    render(<StatusStrip />);
+
+    expect(await screen.findByText(/\(2\/3\)/)).toBeInTheDocument();
+  });
+
+  it("offers no restart control while reconnecting", async () => {
+    getEngineStatus.mockResolvedValue({ connected: false, reconnecting: true });
+    bridge({ restartEngine: vi.fn() });
+
+    render(<StatusStrip />);
+    await screen.findByText(/Reconnecting/);
+
+    expect(screen.queryByRole("button", { name: /restart engine/i })).not.toBeInTheDocument();
+  });
+
+  it("offers the restart control once the attempts have given up", async () => {
+    getEngineStatus.mockResolvedValue({
+      connected: false,
+      reconnecting: false,
+      error: "Engine not running",
+    });
+    bridge({ restartEngine: vi.fn() });
+
+    render(<StatusStrip />);
+
+    expect(
+      await screen.findByRole("button", { name: /restart engine/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("offers no restart control when the engine is healthy", async () => {
+    bridge({ restartEngine: vi.fn() });
+    render(<StatusStrip />);
+    await screen.findByText(/Engine connected/);
+
+    expect(screen.queryByRole("button", { name: /restart engine/i })).not.toBeInTheDocument();
+  });
+
+  it("restarts the engine when the control is pressed", async () => {
+    const restartEngine = vi.fn().mockResolvedValue({ connected: true });
+    getEngineStatus.mockResolvedValue({ connected: false, reconnecting: false });
+    bridge({ restartEngine });
+
+    render(<StatusStrip />);
+    const button = await screen.findByRole("button", { name: /restart engine/i });
+    button.click();
+
+    await waitFor(() => expect(restartEngine).toHaveBeenCalledTimes(1));
+  });
+
+  it("offers nothing when the bridge cannot restart", async () => {
+    // An older preload, or the renderer in a browser tab.
+    getEngineStatus.mockResolvedValue({ connected: false, reconnecting: false });
+    bridge({ restartEngine: undefined });
+
+    render(<StatusStrip />);
+    await screen.findByText(/Engine offline/);
+
+    expect(screen.queryByRole("button", { name: /restart engine/i })).not.toBeInTheDocument();
+  });
+});
+
 describe("jobs", () => {
   it("says so when nothing is running", async () => {
     render(<StatusStrip />);

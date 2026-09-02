@@ -5,6 +5,9 @@ export interface EngineStatus {
   version?: string;
   sessionId?: string;
   error?: string;
+  /** True while a bounded auto-restart is in progress (DEC-028). */
+  reconnecting?: boolean;
+  restartAttempts?: number;
 }
 
 export type JobState = "queued" | "running" | "succeeded" | "failed" | "cancelled";
@@ -333,6 +336,7 @@ export interface EngineJobList {
 
 export interface CuePointBridge {
   getEngineStatus: () => Promise<EngineStatus>;
+  restartEngine?: () => Promise<EngineStatus>;
   startMatchJob: (body: StartMatchJobRequest) => Promise<StartMatchJobResponse>;
   getJob: (jobId: string) => Promise<MatchJobStatus>;
   getJobResults: (jobId: string) => Promise<JobResultsResponse>;

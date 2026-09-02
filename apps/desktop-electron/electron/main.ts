@@ -18,6 +18,7 @@ let privacyExitPrefs = {
 
 function registerIpcHandlers(): void {
   ipcMain.handle("engine:status", () => engine.getStatus());
+  ipcMain.handle("engine:restart", () => engine.restart());
   ipcMain.handle("engine:startMatchJob", (_event, body) => engine.startMatchJob(body));
   ipcMain.handle("engine:searchLibrary", (_event, params) => engine.searchLibrary(params));
   ipcMain.handle("engine:listJobs", (_event, params) => engine.listJobs(params));

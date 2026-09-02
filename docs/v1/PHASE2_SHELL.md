@@ -1172,11 +1172,14 @@ tests, 8 E2E, 75/75 on the layout matrix across 5 themes × 3 scales × 5 screen
 
 Real items found along the way that belong to later work, recorded so they are not lost:
 
-- **The engine never restarts.** `EngineSupervisor` spawns it once at startup; after a crash the
-  status strip correctly reports offline forever and the app must be restarted. Reporting is the
-  strip's job, respawning is the supervisor's.
-- **Nothing records activity events.** `record_event` has no callers, so the Activity panel is
-  empty in normal use. The steps that perform backups, imports and edits should record them.
+- ~~**The engine never restarts.**~~ **Fixed 2026-09-02 (DEC-028).** Bounded auto-restart — three
+  attempts with backoff, "Reconnecting…" in the strip — then a "Restart engine" control when they
+  are exhausted. Verified in the running app by killing the engine process: the full sequence
+  connected → 1/3 → 2/3 → 3/3 → offline with the control → connected again was observed.
+- ~~**Nothing records activity events.**~~ **Fixed 2026-09-02 (DEC-029).** The launch backup and
+  every engine start are recorded. Verified in the packaged app: two engine starts on different
+  ports appeared in the panel after a crash, alongside the launch backup. Imports and edits remain
+  for the phases that own them.
 - **`Modal` renders where it is mounted.** SHELL-08 hit a dialog inheriting `white-space: nowrap`
   from the status strip. Portalling to `document.body` would make that class of bug impossible;
   it was not needed to fix the live case, so it was not done.

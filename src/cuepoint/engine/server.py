@@ -10,6 +10,7 @@ import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Type
 from urllib.parse import parse_qs, urlparse
 
@@ -704,7 +705,7 @@ def make_handler(
     return EngineHandler
 
 
-def backup_library_on_launch() -> None:
+def backup_library_on_launch() -> Optional[Any]:
     """Take the DEC-009 launch backup, before anything migrates the database.
 
     Ordering is the point. Repository factories apply migrations the first time
@@ -719,6 +720,12 @@ def backup_library_on_launch() -> None:
     Never raises. A backup problem must not stop the engine starting, and
     :meth:`BackupService.backup_on_launch` already logs its own failures; this
     only has to catch a broken container or bootstrap.
+
+    Returns the backup taken, or None when one was not needed. Recording the
+    activity event is deliberately left to the caller: resolving the activity
+    service resolves a repository, and repository factories migrate on first
+    use — which would make this a *post*-migration copy and destroy the whole
+    point of taking it here.
     """
     try:
         from cuepoint.services.bootstrap import bootstrap_services
@@ -726,9 +733,30 @@ def backup_library_on_launch() -> None:
         from cuepoint.utils.di_container import get_container
 
         bootstrap_services()
-        get_container().resolve(IBackupService).backup_on_launch()
+        return get_container().resolve(IBackupService).backup_on_launch()
     except Exception as exc:  # noqa: BLE001 - startup must not depend on backups
         _logger.warning("[backup] launch backup unavailable: %s", exc)
+        return None
+
+
+def record_activity(
+    event_type: str, summary: str, detail: Optional[Dict[str, Any]] = None
+) -> None:
+    """Record one activity event, or quietly do nothing (DEC-029).
+
+    Never raises. The activity feed is a record of what happened, not a
+    dependency of it: a database that cannot be written must not stop the
+    engine starting or a backup from counting as taken.
+    """
+    try:
+        from cuepoint.services.interfaces import IActivityService
+        from cuepoint.utils.di_container import get_container
+
+        get_container().resolve(IActivityService).record_event(
+            event_type=event_type, summary=summary, detail=detail or {}
+        )
+    except Exception as exc:  # noqa: BLE001 — the feed is best-effort
+        _logger.debug("[activity] could not record %s: %s", event_type, exc)
 
 
 def run_engine(config: Optional[EngineConfig] = None) -> None:
@@ -739,7 +767,26 @@ def run_engine(config: Optional[EngineConfig] = None) -> None:
     # with the first migration would lose the ordering guarantee above. It is
     # skipped entirely when nothing changed since the last one, so the usual
     # cost is a few stat() calls.
-    backup_library_on_launch()
+    backup = backup_library_on_launch()
+
+    # Both events are recorded here, after the backup has been taken: resolving
+    # the activity service migrates the database, and doing that any earlier
+    # would turn the launch backup into a copy of the migrated state.
+    if backup is not None:
+        # None means nothing had changed, and a skipped backup is not something
+        # a user needs telling about.
+        record_activity(
+            "backup.created",
+            "Library backed up",
+            {"file": Path(backup.path).name, "reason": "launch"},
+        )
+    # DEC-028/DEC-029: every start is recorded, so a restarting engine leaves a
+    # visible trail rather than healing silently.
+    record_activity(
+        "engine.started",
+        f"Engine started (v{__version__})",
+        {"version": __version__, "port": cfg.port},
+    )
     server = ThreadingHTTPServer((cfg.host, cfg.port), make_handler(cfg))
     try:
         server.serve_forever()

@@ -576,3 +576,45 @@ destination from a future phase (or a removed Tools entry per DEC-021) degrades 
 than routing to a blank page.
 
 **Decided with**: User · **Date**: 2026-09-02
+
+---
+
+## DEC-028 — Engine Recovery
+
+**Status**: Approved
+
+**Decision**: When the engine process exits unexpectedly, `EngineSupervisor` restarts it up to
+three times with increasing backoff, reporting "Reconnecting…" while it tries. When those attempts
+are exhausted it stops and the status strip offers a "Restart engine" control. Every engine start
+is recorded as an activity event.
+
+**Reason**: Doing nothing was the state SHELL-07 exposed — a permanently offline strip and no way
+back without quitting. Unlimited restarts would hide a crash-looping engine behind a flickering
+status; auto-restart without a control leaves the same dead end one step later. Bounding the
+attempts and recording each start keeps a repeated failure visible rather than silently healed.
+
+**Implications**:
+- `EngineSupervisor` owns the restart policy; the status strip reports it and offers the control.
+- Adds one desktop-contract channel, which moves all six files per the Phase 2 preamble.
+
+**Decided with**: User · **Date**: 2026-09-02
+
+---
+
+## DEC-029 — First Activity Producers
+
+**Status**: Approved
+
+**Decision**: The launch backup and every engine start are recorded as activity events. Match job
+events are deliberately not recorded. Later phases add their own producers as they build the
+actions worth recording.
+
+**Reason**: FOUNDATION-08's feed and SHELL-08's panel both shipped with nothing writing to them, so
+the feature reads as broken rather than empty. These two producers already happen on every launch
+and cost a line each. Job events were considered and rejected as duplicating the past-searches
+list, which already exists and means the same thing to a user.
+
+**Implications**: DEC-028's restart trail depends on the engine-start producer, so the two land
+together.
+
+**Decided with**: User · **Date**: 2026-09-02

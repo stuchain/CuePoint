@@ -34,7 +34,25 @@ export interface EngineStatus {
   version?: string;
   sessionId?: string;
   error?: string;
+  /**
+   * True while a bounded auto-restart is in progress (DEC-028), so the status
+   * strip can say "reconnecting" rather than "offline" — they mean different
+   * things to someone deciding whether to act.
+   */
+  reconnecting?: boolean;
+  /** Restart attempts made since the engine last ran healthily. */
+  restartAttempts?: number;
 }
+
+/**
+ * How hard CuePoint tries to bring a dead engine back (DEC-028).
+ *
+ * Bounded on purpose. Unlimited restarts would hide a crash-looping engine
+ * behind a flickering status; three attempts recover the transient case and
+ * then stop and say so, leaving the user a Restart engine control.
+ */
+export const MAX_RESTART_ATTEMPTS = 3;
+export const RESTART_BACKOFF_MS = [1000, 2000, 4000];
 
 export class EngineSupervisor {
   private child: ChildProcess | null = null;
@@ -43,13 +61,21 @@ export class EngineSupervisor {
   private sessionId: string = crypto.randomUUID();
   private version: string | undefined;
   private jobStreamAborts = new Map<string, AbortController>();
+  private restartAttempts = 0;
+  private reconnecting = false;
+  /** Set while `stop()` is deliberate, so quitting is not treated as a crash. */
+  private stopping = false;
+  private restartTimer: NodeJS.Timeout | null = null;
 
   getRepoRoot(): string {
     return REPO_ROOT;
   }
 
   async start(): Promise<EngineStatus> {
+    // `stop()` kills the current child; that exit is ours, not a crash.
+    this.stopping = true;
     await this.stop();
+    this.stopping = false;
     this.port = await this.pickPort();
     this.token = crypto.randomBytes(24).toString("hex");
 
@@ -89,6 +115,10 @@ export class EngineSupervisor {
 
     this.child.on("exit", () => {
       this.child = null;
+      // A deliberate stop is not a crash, and neither is an exit during a
+      // restart we are already running.
+      if (this.stopping || this.reconnecting) return;
+      void this.scheduleRestart();
     });
 
     const ok = await this.pollHealth();
@@ -99,6 +129,57 @@ export class EngineSupervisor {
       };
     }
     return this.getStatus();
+  }
+
+  /**
+   * Bring a crashed engine back, up to `MAX_RESTART_ATTEMPTS` times (DEC-028).
+   *
+   * Each attempt waits longer than the last: an engine that dies instantly on
+   * start would otherwise be respawned as fast as the machine allows.
+   */
+  private async scheduleRestart(): Promise<void> {
+    if (this.restartAttempts >= MAX_RESTART_ATTEMPTS) {
+      this.reconnecting = false;
+      return;
+    }
+    const delay = RESTART_BACKOFF_MS[this.restartAttempts] ?? 4000;
+    this.restartAttempts += 1;
+    this.reconnecting = true;
+
+    await new Promise<void>((resolve) => {
+      this.restartTimer = setTimeout(resolve, delay);
+    });
+    this.restartTimer = null;
+    if (this.stopping) {
+      this.reconnecting = false;
+      return;
+    }
+
+    const status = await this.start();
+    this.reconnecting = false;
+    if (status.connected) {
+      // Healthy again: the next crash gets a full set of attempts of its own,
+      // rather than inheriting the count from an unrelated failure.
+      this.restartAttempts = 0;
+    } else if (this.restartAttempts < MAX_RESTART_ATTEMPTS) {
+      void this.scheduleRestart();
+    }
+  }
+
+  /**
+   * Start the engine again at the user's request, from the status strip.
+   *
+   * Resets the attempt counter: this is a deliberate act, not a continuation
+   * of the automatic attempts that already gave up.
+   */
+  async restart(): Promise<EngineStatus> {
+    if (this.restartTimer) {
+      clearTimeout(this.restartTimer);
+      this.restartTimer = null;
+    }
+    this.restartAttempts = 0;
+    this.reconnecting = false;
+    return this.start();
   }
 
   async stop(): Promise<void> {
@@ -121,12 +202,19 @@ export class EngineSupervisor {
 
   getStatus(): EngineStatus {
     if (!this.port || !this.child) {
-      return { connected: false, error: "Engine not running" };
+      return {
+        connected: false,
+        error: this.reconnecting ? "Reconnecting" : "Engine not running",
+        reconnecting: this.reconnecting,
+        restartAttempts: this.restartAttempts,
+      };
     }
     return {
       connected: true,
       version: this.version,
       sessionId: this.sessionId,
+      reconnecting: false,
+      restartAttempts: this.restartAttempts,
     };
   }
 

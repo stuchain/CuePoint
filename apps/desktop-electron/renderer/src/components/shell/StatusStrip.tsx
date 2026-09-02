@@ -27,6 +27,24 @@ export function StatusStrip() {
 
   const percent = jobPercent(job);
   const connected = status?.connected === true;
+  const reconnecting = status?.reconnecting === true;
+  // Offered only once the automatic attempts have given up (DEC-028): a button
+  // competing with a restart already in flight helps nobody.
+  const canRestart =
+    status !== null &&
+    !connected &&
+    !reconnecting &&
+    Boolean(window.cuepoint?.restartEngine);
+  const [restarting, setRestarting] = useState(false);
+
+  const restart = async () => {
+    setRestarting(true);
+    try {
+      await window.cuepoint?.restartEngine?.();
+    } finally {
+      setRestarting(false);
+    }
+  };
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -48,15 +66,34 @@ export function StatusStrip() {
       <div className="cp-status" role="status" aria-live="polite">
         <span
           className={`cp-status__engine ${
-            connected ? "cp-status__engine--ok" : "cp-status__engine--error"
+            connected
+              ? "cp-status__engine--ok"
+              : reconnecting
+                ? "cp-status__engine--reconnecting"
+                : "cp-status__engine--error"
           }`}
         >
           {status === null
             ? "Engine status unknown"
             : connected
               ? `Engine connected${status.version ? ` · v${status.version}` : ""}`
-              : `Engine offline${status.error ? `: ${status.error}` : ""}`}
+              : reconnecting
+                ? `Reconnecting to engine…${
+                    status.restartAttempts ? ` (${status.restartAttempts}/3)` : ""
+                  }`
+                : `Engine offline${status.error ? `: ${status.error}` : ""}`}
         </span>
+
+        {canRestart && (
+          <button
+            type="button"
+            className="cp-status__restart"
+            onClick={() => void restart()}
+            disabled={restarting}
+          >
+            {restarting ? "Restarting…" : "Restart engine"}
+          </button>
+        )}
 
         {job ? (
           <span className="cp-status__job">

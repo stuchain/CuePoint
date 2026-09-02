@@ -55,10 +55,14 @@ arrive.
 ## The status strip
 
 The strip along the bottom always shows whether the CuePoint engine is
-connected. If the engine stops, the strip says so within a few seconds.
+connected.
 
-> **If the engine goes offline**, restart CuePoint. The engine does not
-> currently restart on its own.
+If the engine stops unexpectedly, CuePoint restarts it for you — the strip
+shows **Reconnecting to engine…** with the attempt count while it tries. After
+three failed attempts it stops trying and offers a **Restart engine** button,
+rather than retrying forever and hiding a real fault. Every start is listed in
+Activity, so an engine that keeps dying is visible rather than silently patched
+over.
 
 While a job is running — matching a playlist, for example — the strip shows its
 progress from wherever you are in the app, including a job that was already
@@ -67,12 +71,11 @@ running before the window was reloaded.
 ## Activity
 
 Click **Activity** in the status strip, or press **Ctrl+Shift+A**, for a list of
-what CuePoint has done: imports, backups and edits, newest first.
+what CuePoint has done, newest first. Today that means library backups and every
+engine start; imports and edits join it as those features arrive.
 
 This is not the same as **past searches**, which lists the result files from
 previous matching runs.
-
-Activity is empty until the features that record into it arrive.
 
 ## Keyboard shortcuts
 

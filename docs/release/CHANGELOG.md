@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   status chrome off-screen as those are added
 
 ### Added
+- CuePoint now restarts its engine if it stops unexpectedly, showing
+  "Reconnecting to engine…" while it tries. After three attempts it stops and
+  offers a Restart engine button instead of retrying indefinitely
+- The Activity panel now lists library backups and engine starts, so a
+  repeatedly crashing engine is visible rather than silently restarted
 - Keyboard shortcuts for the window: Ctrl+B collapses the navigation, Ctrl+I
   shows or hides the Track Inspector, and Ctrl+Shift+A opens Activity. Every
   part of the window can now be reached with Tab alone

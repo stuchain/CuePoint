@@ -623,6 +623,55 @@ until Phase 5. How literally?
 
 ---
 
+## DECISION ROUND 4 — ENGINE RECOVERY AND ACTIVITY PRODUCERS ✅ Resolved 2026-09-02
+
+Asked after Phase 2 completed, from its own findings rather than from the audit: SHELL-07 made a
+dead engine visible for the first time, and SHELL-08 shipped a feed with no producers. Outcomes are
+DEC-028 and DEC-029 in `DECISIONS.md`.
+
+---
+
+### Q-028 — What happens when the engine process dies
+
+**Status**: Resolved → DEC-028 (Option A chosen: bounded auto-restart plus a manual control)
+
+**Question**: `EngineSupervisor` spawns the engine once at startup and never again, so after a crash
+the status strip correctly reports "Engine offline" forever and the app has to be restarted.
+SHELL-07 made this visible; nothing yet makes it recoverable.
+
+- **Option A — Bounded auto-restart plus a manual button.** Respawn up to three times with backoff,
+  showing "Reconnecting…"; when those are exhausted, stop and offer "Restart engine". Each engine
+  start is recorded as an activity event, so repeated crashes are visible rather than silently
+  healed.
+- **Option B — Manual button only.** Smallest, nothing hidden, but a transient crash still
+  interrupts the user until they notice.
+- **Option C — Auto-restart only.** No user-facing control, so exhausted attempts leave today's
+  dead end, just later.
+- **Option D — Unlimited auto-restart.** Maximum resilience, but a crash-looping engine restarts
+  forever behind a flickering status, hiding a real fault.
+
+**Recommendation**: **A**.
+
+---
+
+### Q-029 — What should record activity events
+
+**Status**: Resolved → DEC-029 (backup-on-launch and engine start chosen)
+
+**Question**: FOUNDATION-08 built an append-only activity feed and SHELL-08 displays it, but
+`record_event` has no callers, so the panel is empty in normal use. What should produce events now,
+rather than waiting for the phases that own each action?
+
+- **Library backup on launch** — already happens every start; recording it is a line and a test.
+- **Engine start and restart** — gives a visible trail of crashes, which is what makes DEC-028's
+  bounded auto-restart honest rather than silent.
+- **Match jobs started and finished** — overlaps the existing past-searches list.
+- **Nothing else for now** — leave every producer to the phase that owns it.
+
+**Recommendation**: the first two. Job events were considered and left out as duplicative.
+
+---
+
 ## Not yet asked (deferred to a later round)
 
 Per the spec's own guidance not to dump every question at once — these are real open items

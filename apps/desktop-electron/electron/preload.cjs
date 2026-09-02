@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer, webUtils } = require("electron");
 
 contextBridge.exposeInMainWorld("cuepoint", {
   getEngineStatus: () => ipcRenderer.invoke("engine:status"),
+  restartEngine: () => ipcRenderer.invoke("engine:restart"),
   startMatchJob: (body) => ipcRenderer.invoke("engine:startMatchJob", body),
   searchLibrary: (params) => ipcRenderer.invoke("engine:searchLibrary", params),
   listJobs: (params) => ipcRenderer.invoke("engine:listJobs", params),
