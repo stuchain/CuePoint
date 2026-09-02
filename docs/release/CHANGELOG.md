@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- The window is now laid out as an application frame rather than a centered page.
+  Screens sit at the top of a content area that scrolls on its own, and the menu
+  bar occupies its own row instead of floating over the content. Previously long
+  screens scrolled the whole window, which would have carried the navigation and
+  status chrome off-screen as those are added
+
 ### Added
 - The library database is now backed up automatically when the app starts, keeping
   the five most recent copies in `~/.cuepoint/backups/`. The backup is taken before

@@ -14,6 +14,7 @@ import {
   ToastProvider,
 } from "./components";
 import { EngineStatusBanner } from "./components/EngineStatusBanner";
+import { AppShellLayout } from "./components/shell";
 import { MatchResultsProvider } from "./context/MatchResultsContext";
 import {
   InCrateMainScreen,
@@ -87,16 +88,13 @@ function AppShell() {
 
   return (
     <>
-      <AppMenuBar {...menuActions} />
-      <EngineStatusBanner />
-      <nav className="app-lab-nav" aria-label="Main navigation">
-        <Link to="/">Tools</Link>
-        <Link to="/match">inKey</Link>
-        <Link to="/incrate">inCrate</Link>
-        <Link to="/results">Results</Link>
-        <Link to="/settings">Settings</Link>
-      </nav>
-      <main className="app-main">
+      {/*
+        The menu bar is a shell region now. The engine-status banner and the
+        lab-era nav pill are both fixed-position overlays, so they stay outside
+        the grid: the banner gets its permanent home in the status strip in
+        SHELL-07, and the pill is deleted in SHELL-02.
+      */}
+      <AppShellLayout menuBar={<AppMenuBar {...menuActions} />}>
         <Routes>
           <Route path="/" element={<ToolSelectionScreen />} />
           <Route
@@ -107,7 +105,15 @@ function AppShell() {
           <Route path="/results" element={<ResultsScreen />} />
           <Route path="/settings" element={<SettingsExportScreen />} />
         </Routes>
-      </main>
+      </AppShellLayout>
+      <EngineStatusBanner />
+      <nav className="app-lab-nav" aria-label="Main navigation">
+        <Link to="/">Tools</Link>
+        <Link to="/match">inKey</Link>
+        <Link to="/incrate">inCrate</Link>
+        <Link to="/results">Results</Link>
+        <Link to="/settings">Settings</Link>
+      </nav>
       <SupportBundleDialog open={supportOpen} onClose={() => setSupportOpen(false)} />
       <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <PrivacyDialog open={privacyOpen} onClose={() => setPrivacyOpen(false)} />

@@ -1,0 +1,63 @@
+/**
+ * Application shell grid.
+ *
+ * Five rows, three columns. The sidebar and inspector columns and the menubar,
+ * header, player and status rows all size to `auto`, so a region that is not
+ * rendered contributes exactly zero pixels. There is deliberately no `gap`:
+ * a gap is drawn around empty tracks too, which would give an absent region
+ * visible space, and this design separates regions with the token border and
+ * offset-shadow chrome rather than with whitespace.
+ *
+ * `minmax(0, 1fr)` on the content track and row is what stops a wide child
+ * (the results table, notably) from forcing the whole grid wider than the
+ * window: a bare `1fr` track has an automatic minimum of its content's size.
+ */
+.app-shell {
+  display: grid;
+  grid-template-areas:
+    "menubar menubar   menubar"
+    "header  header    header"
+    "sidebar content   inspector"
+    "player  player    player"
+    "status  status    status";
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+}
+
+.app-shell__menubar {
+  grid-area: menubar;
+  min-width: 0;
+}
+
+.app-shell__header {
+  grid-area: header;
+  min-width: 0;
+}
+
+.app-shell__sidebar {
+  grid-area: sidebar;
+  min-height: 0;
+}
+
+.app-shell__content {
+  grid-area: content;
+}
+
+.app-shell__inspector {
+  grid-area: inspector;
+  min-height: 0;
+}
+
+.app-shell__player {
+  grid-area: player;
+  min-width: 0;
+}
+
+.app-shell__status {
+  grid-area: status;
+  min-width: 0;
+}

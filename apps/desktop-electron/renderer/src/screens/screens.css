@@ -442,46 +442,26 @@
   border-bottom: calc(2px * var(--scale)) solid var(--fg-muted);
 }
 
-body.app-page-scroll,
-body.results-page-scrollable {
-  overflow-y: auto;
-  height: auto;
-  min-height: 100%;
-}
-
-html:has(body.app-page-scroll),
-html:has(body.results-page-scrollable) {
-  height: auto;
-  min-height: 100%;
-  overflow-y: auto;
-}
-
-body.app-page-scroll #root,
-body.results-page-scrollable #root {
-  height: auto;
-  min-height: 100vh;
-}
-
-body.app-page-scroll .app-main,
-body.results-page-scrollable .app-main {
-  overflow: visible;
-  flex: none;
-  min-height: auto;
-  justify-content: flex-start;
-  align-items: center;
-  width: 100%;
-}
-
-body.app-page-scroll .app-main .screen,
-body.results-page-scrollable .app-main .screen {
-  max-width: var(--content-max-width);
-  width: 100%;
-}
-
+/*
+ * Tall screens used to scroll by growing the whole page: they added
+ * `app-page-scroll` to `<body>`, which let html, body and #root grow past the
+ * viewport and switched `.app-main` back to `overflow: visible`.
+ *
+ * That is incompatible with an application shell. Scrolling the document
+ * scrolls the frame with it, so the menu bar — and the sidebar, player and
+ * status strip that SHELL-02, SHELL-06 and SHELL-07 add — would scroll out of
+ * view, and DEC-018's Inspector could not persist beside a scrolled page.
+ * The shell's content region owns scrolling instead (see `.app-main` in
+ * `App.css`), so the page-growing rules are gone and `app-page-scroll` with
+ * them.
+ *
+ * `results-page-scrollable` survives because it does something different: when
+ * the user resizes the results frame, the Results screen stops filling the
+ * region and becomes an ordinary tall block that the content region scrolls.
+ */
 body.results-page-scrollable .app-main .screen--fill {
   flex: none;
   min-height: auto;
-  align-self: center;
   align-items: center;
 }
 

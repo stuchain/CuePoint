@@ -33,12 +33,6 @@ export function InCrateMainScreen() {
   const [playlistName, setPlaylistName] = useState("feb26");
   const [playlistStatus, setPlaylistStatus] = useState<string | null>(null);
 
-  useEffect(() => {
-    document.body.classList.add("app-page-scroll");
-    window.scrollTo(0, 0);
-    return () => document.body.classList.remove("app-page-scroll");
-  }, []);
-
   const loadInventory = useCallback(
     async (live?: boolean) => {
       if (!window.cuepoint?.getIncrateInventory) {

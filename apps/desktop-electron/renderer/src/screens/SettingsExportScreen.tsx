@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button, Panel, TextField } from "../components";
 import { ExportResultsButton } from "../components/ExportResultsModal";
@@ -24,12 +23,6 @@ export function SettingsExportScreen() {
     save,
     test,
   } = useBeatportToken();
-
-  useEffect(() => {
-    document.body.classList.add("app-page-scroll");
-    window.scrollTo(0, 0);
-    return () => document.body.classList.remove("app-page-scroll");
-  }, []);
 
   const tokenHint = engineAvailable
     ? status.configured

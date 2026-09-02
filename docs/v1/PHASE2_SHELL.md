@@ -85,21 +85,38 @@ is imported before `bootstrap_services()` runs. New endpoints resolve `ILibraryS
 check and fail with `error_payload(CODE, message)` — the envelope is an invariant, so no endpoint
 here invents its own error shape.
 
-### 2. A likely latent routing defect, which SHELL-03 must confirm before designing around it
+### 2. A routing defect — **CONFIRMED 2026-09-02**, fix owed by SHELL-03
 
 In production `main.ts:157` loads the renderer with `loadFile(.../renderer/dist/index.html)`, so
 `window.location.pathname` is a `file://` path ending in `/index.html`. `App.tsx` uses
-`BrowserRouter`, whose routes are all rooted at `/`. On that evidence no route should match on
-first paint in a packaged build, leaving the content area empty until the user clicks a nav link.
+`BrowserRouter`, whose routes are all rooted at `/`. No route matches, and the content area stays
+empty.
 
-It is consistent with this that the only E2E test (`e2e/smoke.spec.ts`) asserts the navigation
-element and the "inKey" link — both rendered *outside* `<Routes>` — and never asserts screen
-content, so a blank content area would pass it today.
+**Observed while implementing SHELL-01**, by launching the real packaged-mode app under Playwright:
 
-**This is reasoning from the code, not an observed failure.** **SHELL-03 owns confirming it and,
-if it is real, fixing it** — see that step's carried-in obligation for what it must do and prove.
-Either way DEC-027's restore must work by navigating after mount from the persisted destination,
-never by relying on the URL surviving a launch.
+```
+pathname:      /C:/Users/.../renderer/dist/index.html
+screens in main: 0        main text: ""        nav links: 5
+```
+
+Clicking a nav link does not recover it. `<Link to="/match">` resolves against the `file://`
+origin to `file:///C:/match`, whose pathname is `/C:/match` — still no match:
+
+```
+Tools -> file:///C:/    inKey -> file:///C:/match    inCrate -> file:///C:/incrate
+Results -> file:///C:/results    Settings -> file:///C:/settings
+```
+
+**The packaged app therefore renders chrome and no screen, on every route.** This was verified
+against `HEAD` with SHELL-01 stashed, and reproduces identically, so it long predates Phase 2.
+Development is unaffected — `npm run dev` serves over `http://localhost:5173`, where routing works
+— which is why it survived: all five screens render correctly over http, and the only E2E test
+asserts the navigation element and the "inKey" link, both rendered *outside* `<Routes>`.
+
+**SHELL-03 owns the fix** (its carried-in obligation). Nothing else in Phase 2 can be verified in
+a packaged build until it lands; steps before it verify over http against the same built assets.
+DEC-027's restore must still work by navigating after mount from the persisted destination, never
+by relying on the URL surviving a launch.
 
 ### 3. Storage-key naming
 
@@ -111,7 +128,50 @@ to a default, the way `loadResultsTableLayout()` already does.
 
 ---
 
-## SHELL-01 — Shell Layout Skeleton
+## SHELL-01 — Shell Layout Skeleton ✅ IMPLEMENTED 2026-09-02
+
+**Outcome**: Complete. `AppShellLayout` owns a five-row, three-column grid; regions that no step
+has filled yet are not rendered at all, so their tracks are zero-sized. The lab nav pill stays
+until SHELL-02, as planned.
+
+**The menu bar moved into the grid.** It was `position: fixed`, and `.app-main` cleared it with a
+guessed `padding-top: calc(var(--space-xl) + var(--space-md))`. It is now a grid row that reserves
+its real height, and keeps `position: relative` purely to preserve its `z-index: 950` — that is
+what keeps its dropdown over the content and its stacking order against the engine-status banner
+(850), modals (1000) and toasts (1100) unchanged.
+
+**One thing the plan got wrong: page scrolling.** The plan assumed tall screens simply could not
+scroll. They could — `InCrateMainScreen` and `SettingsExportScreen` added a `app-page-scroll`
+class to `<body>`, and `screens.css` used it to let html, body and `#root` grow past the viewport
+and to force `.app-main` back to `overflow: visible`. That mechanism is incompatible with a shell:
+scrolling the document scrolls the frame, so the menu bar — and the sidebar, player and status
+strip that SHELL-02, SHELL-06 and SHELL-07 add — would scroll out of view, and DEC-018's Inspector
+could not persist beside a scrolled page. The content region owns scrolling now, the page-growing
+rules are deleted, and the two `app-page-scroll` toggles went with them.
+`results-page-scrollable` survives: it does something different (the resized Results frame stops
+filling the region).
+
+**Verified in the running app, not only in jsdom.** A Playwright harness walked
+5 themes × 3 scales × 5 screens = **75 combinations**, asserting for each that the grid and
+content region exist, a screen renders inside it, nothing overflows horizontally (both
+`scrollWidth` and the widest right edge on the page), `main` starts at or below the menu bar's
+bottom edge, and no unfilled region rendered an element. **75/75 pass.** A scroll probe confirmed
+the content region really scrolls (Settings at 3×: 2541px of content in a 633px region, and
+`scrollTop` moves). Before/after screenshots against the stashed tree confirmed the one visible
+difference at 3× — the Results panel clipping — is pre-existing `screen--fill` behavior at large
+scale, identical on both sides.
+
+**Two environment findings, neither a repo defect.** `ELECTRON_RUN_AS_NODE=1` in the shell makes
+`electron.exe` run as plain Node, so the app and every E2E run die with an ESM loader error until
+it is unset. And the packaged build renders no screen at all — see preamble fact 2, now confirmed;
+the 75-combination matrix therefore ran over http against the same built assets.
+
+**Verification**: 135 renderer tests (20 new), lint, typecheck and `build:check` clean; E2E smoke
+passes; desktop version coupling passes. No Python changed, so no Python suite was run.
+
+---
+
+## SHELL-01 — Shell Layout Skeleton (original plan)
 
 **Objective**: Replace the centered-content-plus-floating-pill layout with a real application
 frame: a CSS-grid shell defining named regions for the menu bar, header, sidebar, content,
@@ -208,16 +268,17 @@ ordering rules) beyond a declarative list; keep it data, not logic.
 last-visited destination, falling back to home when the stored destination is unknown or not
 enabled.
 
-**Carried-in obligation — the `BrowserRouter`-under-`file://` question (preamble fact 2).** This
-step owns it end to end, and it is the **first task**, before any persistence work:
+**Carried-in obligation — the `BrowserRouter`-under-`file://` defect (preamble fact 2).**
+**Confirmed 2026-09-02 during SHELL-01**, with evidence recorded in that preamble: the packaged
+build matches no route, on first paint or after clicking any nav link, and renders no screen at
+all. Steps 1 and 2 (observe, record) are therefore done. What remains is the **first task** of
+this step, before any persistence work:
 
-1. Build and launch the packaged app (`npm run build`, then Electron with `NODE_ENV=production`,
-   the way `e2e/smoke.spec.ts` launches it) and observe whether a screen renders on first paint.
-2. Record the observation in the completion report either way — a refutation is as valuable as a
-   confirmation, and closes the question for good.
-3. If confirmed, **fix it in this step**: switch to `HashRouter` (or `createMemoryRouter` with the
-   shell driving navigation), and add the E2E assertion whose absence let it hide — screen
-   content, not just the nav element.
+- **Fix it**: switch to `HashRouter` (or `createMemoryRouter` with the shell driving navigation),
+  and add the E2E assertion whose absence let it hide — screen content, not just the nav element.
+- Re-run the SHELL-01 verification matrix against the **packaged** build once the fix lands; until
+  then every Phase 2 step is verified over http against the same built assets, which leaves
+  packaged-only behavior unproven.
 
 Deferring the fix to a later step is not an option here: DEC-027's restore is built on top of
 routing, so shipping restore over a router that does not resolve on first paint would build on a

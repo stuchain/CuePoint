@@ -1,8 +1,12 @@
+/*
+ * The menu bar is a row of the shell grid rather than a fixed overlay, so the
+ * layout reserves its height instead of the content region guessing at it with
+ * padding. It stays positioned, and keeps its z-index, so that its dropdown
+ * still paints over the content below and its stacking order against the
+ * engine-status banner (850), modals (1000) and toasts (1100) is unchanged.
+ */
 .app-menu-bar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+  position: relative;
   z-index: 950;
   display: flex;
   align-items: center;

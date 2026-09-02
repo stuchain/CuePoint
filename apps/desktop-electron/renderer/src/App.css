@@ -1,19 +1,41 @@
+/**
+ * The shell's content region.
+ *
+ * It no longer centers its screen vertically or horizontally, and no longer
+ * reserves top padding for a fixed menu bar: the menu bar is a grid row now, so
+ * the space is real rather than guessed at. Screens are anchored to the top of
+ * the region, which is what makes this read as an application rather than a
+ * centered lab page.
+ *
+ * `overflow: auto` makes this the scroll container. Tall screens previously
+ * scrolled the whole document instead, via a `body.app-page-scroll` class that
+ * let html, body and #root grow past the viewport (see the note in
+ * `screens.css`). A shell cannot scroll that way — the menu bar, and later the
+ * sidebar, player and status strip, would scroll out of view with it — so the
+ * content region scrolls and the frame stays put. This is also what makes
+ * `App.tsx`'s long-standing `.app-main.scrollTo(0, 0)` on navigation do
+ * something.
+ */
 .app-main {
   display: flex;
   flex: 1;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
   min-height: 0;
   min-width: 0;
-  overflow: hidden;
+  overflow: auto;
   width: 100%;
-  padding-top: calc(var(--space-xl) + var(--space-md));
 }
 
+/*
+ * `margin-inline: auto` replaces the centering that `align-items: center` used
+ * to provide. `.screen--center` and `.screen--stack` already carry `margin: 0
+ * auto`, but `.screen--fill` does not, and without this it would sit against
+ * the left edge whenever `--content-max-width` is narrower than the region.
+ */
 .app-main .screen {
   width: 100%;
   max-width: var(--content-max-width);
+  margin-inline: auto;
 }
 
 .app-main .screen--fill {
@@ -23,6 +45,11 @@
   min-height: 0;
 }
 
+/*
+ * Lab-era route pill. SHELL-01 leaves it in place so navigation keeps working;
+ * SHELL-02 deletes it, along with `--safe-bottom`'s 48px clearance for it, when
+ * the real sidebar replaces it.
+ */
 .app-lab-nav {
   position: fixed;
   left: 50%;
