@@ -56,7 +56,7 @@ journal mode, `foreign_keys=ON`, 4 migrations applying to 5 tables, `Connection.
 file copy), every foundation service registered in the DI container, and no TODO/FIXME left in
 Phase 1 code.
 
-**Five gaps were found. Four are fixed; one is a cost decision left open.**
+**Six gaps were found. Four are fixed; two need a decision and are left open.**
 
 ### 1. The mypy CI gate could not fail (fixed)
 
@@ -119,6 +119,23 @@ Not changed unilaterally, because it is a spend decision rather than a defect: t
 3-OS × 2-Python matrix running unit *and* integration tests, so adding PR runs means six heavy
 jobs per PR duplicating what `test.yml` already covers. The cheap alternative is to move just the
 "Code Quality Gates" job onto `pull_request` and leave the matrix on push.
+
+### 6. DEC-009's automatic backup never actually runs (open — needs a decision)
+
+`BackupService.backup_on_launch()` is implemented, tested, registered in the DI container — and
+**called by nothing outside its own tests**. `bootstrap.py`'s comment says "backup_on_launch() is
+called explicitly", but no such caller exists anywhere in the Python engine or the Electron shell.
+DEC-009 chose "automatic on launch + retention + manual restore"; the first third of that is
+capability without a trigger.
+
+This is not theoretical. `engine/server.py` resolves `IJobRepository` on startup, so the library
+database is live in production today and holds real job records — there is something to protect,
+and today nothing protects it.
+
+FOUNDATION-11's outcome says `BackupService` "provides backup-on-launch", which is true and was
+the wrong thing to check. Wiring it is roughly one call at engine startup, but it is a real
+behaviour change — it starts writing backup files into the user's directory on every launch — so
+it wants an explicit go-ahead rather than arriving inside an audit commit.
 
 ### Observations, not defects
 
