@@ -56,7 +56,8 @@ journal mode, `foreign_keys=ON`, 4 migrations applying to 5 tables, `Connection.
 file copy), every foundation service registered in the DI container, and no TODO/FIXME left in
 Phase 1 code.
 
-**Six gaps were found. Four are fixed; two need a decision and are left open.**
+**Six gaps were found. All six are fixed.** Two further findings are recorded at the end as
+accepted limitations rather than defects.
 
 ### 1. The mypy CI gate could not fail (fixed)
 
@@ -108,34 +109,62 @@ were added and not re-run after. Fixed to `"C:\\collection.xml"`; lint green.
 CI passes `PYTHONPATH: src`. Documented. (`check_desktop_version_coupling.py` was verified to work
 without it, so it is left alone.)
 
-### 5. `release-gates.yml` still has no `pull_request` trigger (open — your call)
+### 5. `release-gates.yml` never ran on a pull request (fixed)
 
-The roadmap named both `test.yml` and `release-gates.yml` as not triggering on PR. FOUNDATION-13
-fixed `test.yml` and did not record leaving the other. The substance is covered — a PR does now
-run the Python suite via `test.yml` — but the release-specific gates (version-sync R001, the
-coverage threshold) still never run on a PR.
+The roadmap named both `test.yml` and `release-gates.yml`; FOUNDATION-13 fixed only `test.yml` and
+did not record leaving the other. So the release gates — version sync, changelog, SBOM, licence
+bundle, lint, types, formatting, file sizes — ran only *after* merge.
 
-Not changed unilaterally, because it is a spend decision rather than a defect: the job is a
-3-OS × 2-Python matrix running unit *and* integration tests, so adding PR runs means six heavy
-jobs per PR duplicating what `test.yml` already covers. The cheap alternative is to move just the
-"Code Quality Gates" job onto `pull_request` and leave the matrix on push.
+Fixed without duplicating CI: the workflow now triggers on `pull_request`, and its heavy
+`test-gates` job (a 3-OS × 2-Python matrix running unit *and* integration tests) is restricted to
+non-PR events with `if: github.event_name != 'pull_request'`, because `test.yml` already runs the
+suite on PRs. A PR therefore gains the cheap single-runner release gates and is not charged six
+duplicate test jobs. `release-gates.yml` was also running the same non-failing mypy check as
+`test.yml`; it now runs the real foundation gate alongside it.
 
-### 6. DEC-009's automatic backup never actually runs (open — needs a decision)
+### 6. DEC-009's automatic backup never actually ran (fixed)
 
-`BackupService.backup_on_launch()` is implemented, tested, registered in the DI container — and
-**called by nothing outside its own tests**. `bootstrap.py`'s comment says "backup_on_launch() is
-called explicitly", but no such caller exists anywhere in the Python engine or the Electron shell.
-DEC-009 chose "automatic on launch + retention + manual restore"; the first third of that is
-capability without a trigger.
+`BackupService.backup_on_launch()` was implemented, tested and DI-registered — and called by
+nothing outside its own tests. `bootstrap.py` claimed it was "called explicitly"; no such caller
+existed. DEC-009 chose "automatic on launch + retention + manual restore" and the first third was
+capability without a trigger. Not theoretical: `engine/server.py` resolves `IJobRepository` at
+startup, so the library database is live in production and holds real job records.
 
-This is not theoretical. `engine/server.py` resolves `IJobRepository` on startup, so the library
-database is live in production today and holds real job records — there is something to protect,
-and today nothing protects it.
+`run_engine()` — the sidecar entry point behind `cuepoint/engine/__main__.py` — now calls
+`backup_library_on_launch()` before the HTTP server is constructed.
 
-FOUNDATION-11's outcome says `BackupService` "provides backup-on-launch", which is true and was
-the wrong thing to check. Wiring it is roughly one call at engine startup, but it is a real
-behaviour change — it starts writing backup files into the user's directory on every launch — so
-it wants an explicit go-ahead rather than arriving inside an audit commit.
+**Ordering is the design point, not an accident.** Repository factories apply migrations on first
+resolve, and resolving `IBackupService` neither opens nor migrates the database. Taking the backup
+before any repository is touched therefore captures the database *as it was before any schema
+change* — exactly the copy you want when a migration is what went wrong. A test pins this by
+spying on `MigrationRunner.migrate` and asserting it was not called.
+
+It is deliberately synchronous and ahead of the server: a backup racing the first migration would
+lose that guarantee. The cost is normally a few `stat()` calls, since an unchanged database is
+skipped.
+
+**Verified against the real thing, not only in unit tests.** The sidecar was launched via
+`python -m cuepoint.engine` against a sandboxed `HOME` holding a seeded database. It answered
+`/health`, and wrote `cuepoint-<timestamp>-launch.db` containing all five tables and the seeded
+row, with `PRAGMA quick_check` returning `ok`. A second launch against the unchanged database
+correctly wrote nothing.
+
+Seven tests cover it, each proven to fail: removing the call, moving it after the server, and
+making it resolve a repository (which would migrate first) each turn the suite red.
+
+### Two further findings, accepted rather than fixed
+
+- **Release gate R001 passes vacuously in CI.** `validate_version.py` compares `version.py`
+  against the latest git tag, but only *if a tag exists* — and `actions/checkout@v4` does a shallow
+  clone with no tags, so in CI it always finds none and skips the comparison. It fails locally,
+  where tags are present: `version.py` is `1.0.0-feb1` while the newest tag is `v0.0.3`. Making it
+  real means `fetch-depth: 0`, which would then fail legitimately, because leading the last tag is
+  the correct state for pre-1.0 development. It should be switched on as part of cutting the
+  v1.0.0 tag, not before.
+- **`check_file_sizes.py` crashed on Windows** — it printed a `✓` and a cp1252 console raised
+  `UnicodeEncodeError`, so the script exited 1 *after* passing its own check. Harmless in CI
+  (UTF-8 Linux), misleading on the primary development platform. Changed to ASCII; the other gate
+  scripts were scanned and are clean.
 
 ### Observations, not defects
 
@@ -1131,6 +1160,10 @@ look at the existing privacy docs.
 
 **Outcome**: Complete. `BackupService` provides backup-on-launch, a retention cap, and manual
 backup/restore, per DEC-009.
+
+> **Amended 2026-09-02.** "Provides backup-on-launch" was true and was the wrong thing to verify:
+> nothing called it, so the automatic half of DEC-009 never ran. `run_engine()` now invokes it at
+> startup, before any migration. See gap 6 in the completion audit at the top of this document.
 
 **The WAL caveat from FOUNDATION-02 was real, and worse than expected.** That note warned a
 file-copy backup "can lose recent commits". Measured: on a database whose writes had not yet been
