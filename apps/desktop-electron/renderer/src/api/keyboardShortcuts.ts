@@ -10,6 +10,8 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   { context: "Global", action: "Export results", shortcut: "Ctrl+E" },
   { context: "Global", action: "Search library", shortcut: "Ctrl+K" },
   { context: "Global", action: "Show or hide track inspector", shortcut: "Ctrl+I" },
+  { context: "Global", action: "Collapse or expand navigation", shortcut: "Ctrl+B" },
+  { context: "Global", action: "Open activity", shortcut: "Ctrl+Shift+A" },
   { context: "Global", action: "Show keyboard shortcuts", shortcut: "Ctrl+?" },
   { context: "Global", action: "Show help", shortcut: "F1" },
   { context: "Global", action: "Cancel operation", shortcut: "Esc" },

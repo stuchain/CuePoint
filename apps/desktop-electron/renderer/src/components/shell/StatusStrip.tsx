@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityPanel } from "./ActivityPanel";
 import { jobLabel, jobPercent, useActiveJob } from "./useActiveJob";
 import { useEngineStatus } from "./useEngineStatus";
@@ -27,6 +27,17 @@ export function StatusStrip() {
 
   const percent = jobPercent(job);
   const connected = status?.connected === true;
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "a") {
+        event.preventDefault();
+        setActivityOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   return (
     // The panel is a sibling of the strip, not a child of it. Rendered inside,

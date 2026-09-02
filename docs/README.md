@@ -16,6 +16,7 @@ For end users: installation, usage, troubleshooting.
 | [Installation](getting-started/installation.md) | Install on Windows, macOS |
 | [First Steps](getting-started/first-steps.md) | First-run guidance |
 | [User Guide](user-guide/getting-started.md) | Features, workflows, glossary |
+| [The CuePoint window](user-guide/the-window.md) | Navigation, search, Track Inspector, status strip, keyboard shortcuts |
 | [Workflows](user-guide/workflows.md) | Common workflows |
 | [Troubleshooting](user-guide/troubleshooting.md) | Common errors and fixes |
 | [Glossary](user-guide/glossary.md) | Terms (candidate, confidence, etc.) |

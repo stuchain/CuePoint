@@ -180,6 +180,88 @@ test.describe("Application shell navigation", () => {
     }
   });
 
+  test("remembers a collapsed sidebar across a restart (DEC-022)", async () => {
+    const first = await launch(userDataDir);
+    try {
+      const window = await first.firstWindow({ timeout: 60_000 });
+      await dismissOnboarding(window);
+      const nav = window.getByRole("navigation", { name: /main navigation/i });
+      await expect(nav).toHaveAttribute("data-collapsed", "false");
+
+      await window.getByRole("button", { name: /collapse navigation/i }).click();
+      await expect(nav).toHaveAttribute("data-collapsed", "true");
+    } finally {
+      await first.close();
+    }
+
+    const second = await launch(userDataDir);
+    try {
+      const window = await second.firstWindow({ timeout: 60_000 });
+      const nav = window.getByRole("navigation", { name: /main navigation/i });
+      await expect(nav).toHaveAttribute("data-collapsed", "true", { timeout: 30_000 });
+
+      // Every destination is still reachable with labels hidden — the state
+      // DEC-022 chose, where an icon is all there is to go on.
+      for (const label of ["Tools", "inKey", "inCrate", "Results", "Settings"]) {
+        await expect(nav.getByRole("link", { name: label, exact: true })).toBeVisible();
+      }
+    } finally {
+      await second.close();
+    }
+  });
+
+  test("the whole shell is operable from the keyboard (SHELL-10)", async () => {
+    const app = await launch(userDataDir);
+    try {
+      const window = await app.firstWindow({ timeout: 60_000 });
+      await dismissOnboarding(window);
+
+      // Tab from the top and record where focus goes. Every shell region has to
+      // appear, or some part of the app is mouse-only.
+      const reached: string[] = [];
+      for (let i = 0; i < 14; i += 1) {
+        await window.keyboard.press("Tab");
+        reached.push(
+          await window.evaluate(() => {
+            const el = document.activeElement;
+            if (!el || el === document.body) return "BODY";
+            return `${el.getAttribute("aria-label") ?? el.textContent?.trim().slice(0, 18) ?? ""}`;
+          }),
+        );
+      }
+      expect(reached).not.toContain("BODY");
+      expect(reached.join("|")).toMatch(/Search library/);
+      expect(reached.join("|")).toMatch(/navigation/);
+      expect(reached.join("|")).toMatch(/track inspector/i);
+      expect(reached.join("|")).toMatch(/Activity/);
+
+      // The bindings the shortcuts dialog promises.
+      await window.keyboard.press("Control+b");
+      await expect(
+        window.getByRole("navigation", { name: /main navigation/i }),
+      ).toHaveAttribute("data-collapsed", "true");
+      await window.keyboard.press("Control+b");
+
+      await window.keyboard.press("Control+i");
+      await expect(
+        window.getByRole("button", { name: /show track inspector/i }),
+      ).toBeVisible();
+      await window.keyboard.press("Control+i");
+
+      await window.keyboard.press("Control+k");
+      await expect(window.getByRole("combobox", { name: /search library/i })).toBeFocused();
+
+      await window.keyboard.press("Control+Shift+a");
+      const dialog = window.getByRole("dialog", { name: /activity/i });
+      await expect(dialog).toBeVisible();
+      // Escape closes it — nothing did before SHELL-10.
+      await window.keyboard.press("Escape");
+      await expect(dialog).toHaveCount(0);
+    } finally {
+      await app.close();
+    }
+  });
+
   test("reopens on the last-visited destination after a restart (DEC-027)", async () => {
     const first = await launch(userDataDir);
     try {

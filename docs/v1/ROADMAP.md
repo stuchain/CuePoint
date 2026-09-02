@@ -1,7 +1,8 @@
 # CuePoint — Evolution Roadmap
 
-Status: **Phase 0 and Phase 1 complete; Decision Rounds 1–3 resolved (DEC-001…DEC-027).**
-Phase 2 step-level detail is drafted in `PHASE2_SHELL.md` (SHELL-01…SHELL-10).
+Status: **Phases 0, 1 and 2 complete; Decision Rounds 1–3 resolved (DEC-001…DEC-027).**
+Phase 2's ten steps are implemented and recorded in `PHASE2_SHELL.md`; Phase 3 is next and has no
+step specifications yet.
 Remaining deferred items (crossfade, audio-analysis scope, Smart Collection export/duplication
 behavior) will be resolved before the phases they affect actually start. This roadmap shows the
 shape of what's ahead; it is not a commitment to implement anything without an explicit
@@ -51,7 +52,7 @@ The most important phase — everything else builds on it.
   it's a Foundation-appropriate cleanup and AGENTS.md already treats the Qt boundary as an
   invariant.
 
-## Phase 2 — Application Shell (SHELL-01 … SHELL-10) — next
+## Phase 2 — Application Shell ✅ Complete (2026-09-02)
 
 Real navigation shell replacing the floating `app-lab-nav` pill. Decided by Round 3:
 
@@ -72,7 +73,7 @@ Real navigation shell replacing the floating `app-lab-nav` pill. Decided by Roun
 Toasts/dialogs already largely exist and get reused, not rebuilt. Step specifications:
 `PHASE2_SHELL.md`.
 
-## Phase 3 — Persistent Rekordbox Library (LIBRARY-01 … LIBRARY-12)
+## Phase 3 — Persistent Rekordbox Library (LIBRARY-01 … LIBRARY-12) — next
 
 Builds on DEC-002 (TrackID+path identity), DEC-003 (delete-on-removal), and DEC-011 (refresh
 warns before deleting tracks referenced by a Collection/Set, silent otherwise — LIBRARY-09 must

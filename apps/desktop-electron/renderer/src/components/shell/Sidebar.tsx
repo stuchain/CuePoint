@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { PixelIcon } from "../PixelIcon";
 import { groupedDestinations, type NavDestination } from "./navRegistry";
@@ -45,12 +45,27 @@ function DestinationLink({ destination, collapsed }: {
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(loadSidebarCollapsed);
+  const toggleRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     saveSidebarCollapsed(collapsed);
   }, [collapsed]);
 
   const toggle = useCallback(() => setCollapsed((value) => !value), []);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === "b") {
+        event.preventDefault();
+        toggle();
+        // Keyboard users need somewhere to be after the rail changes width;
+        // the toggle is the one control that exists in both states.
+        toggleRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [toggle]);
 
   return (
     <nav
@@ -59,6 +74,7 @@ export function Sidebar() {
       data-collapsed={collapsed ? "true" : "false"}
     >
       <button
+        ref={toggleRef}
         type="button"
         className="cp-sidebar__toggle"
         onClick={toggle}

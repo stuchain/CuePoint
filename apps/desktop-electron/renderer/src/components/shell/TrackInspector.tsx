@@ -35,6 +35,11 @@ export function TrackInspector({ children }: TrackInspectorProps) {
   const [state, setState] = useState<InspectorState>(loadInspectorState);
   const [dragging, setDragging] = useState(false);
   const panelRef = useRef<HTMLElement>(null);
+  const hideRef = useRef<HTMLButtonElement>(null);
+  const revealRef = useRef<HTMLButtonElement>(null);
+  // Only move focus when the user toggled, never on the initial render: an app
+  // that steals focus on launch is worse than one that never moves it.
+  const toggled = useRef(false);
 
   useEffect(() => {
     saveInspectorState(state);
@@ -55,8 +60,18 @@ export function TrackInspector({ children }: TrackInspectorProps) {
   const width = clampInspectorWidth(state.width, windowWidth);
 
   const toggle = useCallback(() => {
+    toggled.current = true;
     setState((prev) => ({ ...prev, visible: !prev.visible }));
   }, []);
+
+  // The control the user pressed disappears when the panel toggles, and focus
+  // would land on <body> — a keyboard user would be back at the top of the tab
+  // order with no idea where they are. Move it to the control that replaced it.
+  useEffect(() => {
+    if (!toggled.current) return;
+    const next = state.visible ? hideRef.current : revealRef.current;
+    next?.focus();
+  }, [state.visible]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -108,6 +123,7 @@ export function TrackInspector({ children }: TrackInspectorProps) {
     return (
       <div className="cp-inspector cp-inspector--hidden">
         <button
+          ref={revealRef}
           type="button"
           className="cp-inspector__reveal"
           onClick={toggle}
@@ -160,6 +176,7 @@ export function TrackInspector({ children }: TrackInspectorProps) {
       <header className="cp-inspector__header">
         <h2 className="cp-inspector__title">Inspector</h2>
         <button
+          ref={hideRef}
           type="button"
           className="cp-inspector__hide"
           onClick={toggle}

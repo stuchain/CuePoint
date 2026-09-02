@@ -28,10 +28,14 @@ export interface AppShellLayoutProps {
  * "occupies no space until Phase 5" player slot depends on this property, so the
  * conditionals are load-bearing, not tidiness.
  *
- * Landmark roles beyond `main` are deliberately absent. `AppMenuBar` already
- * claims `role="banner"`, and a second banner here would be a duplicate
- * landmark; the rest arrive with the content each later step supplies, and
- * SHELL-10 does the accessibility pass over the finished shell.
+ * Landmarks (SHELL-10). `main` here, `search` on the header region and
+ * `contentinfo` on the status strip; `banner` stays on `AppMenuBar` and
+ * `navigation` and `complementary` come from the sidebar and Inspector, which
+ * own those elements. Nothing declares a landmark twice.
+ *
+ * The header and status roles live on the region wrappers rather than inside
+ * the components: the wrapper is the landmark, and a component that later ends
+ * up somewhere else should not carry the shell's semantics with it.
  *
  * The content element keeps its historical `app-main` class alongside the grid
  * class, because screen styling in `App.css` and `screens.css` is written
@@ -50,12 +54,18 @@ export function AppShellLayout({
   return (
     <div className="app-shell">
       {menuBar ? <div className="app-shell__menubar">{menuBar}</div> : null}
-      {header ? <div className="app-shell__header">{header}</div> : null}
+      {header ? (
+        <div className="app-shell__header" role="search">
+          {header}
+        </div>
+      ) : null}
       {sidebar ? <div className="app-shell__sidebar">{sidebar}</div> : null}
       <main className="app-shell__content app-main">{children}</main>
       {inspector ? <div className="app-shell__inspector">{inspector}</div> : null}
       {player ? <div className="app-shell__player">{player}</div> : null}
-      {statusBar ? <div className="app-shell__status">{statusBar}</div> : null}
+      {statusBar ? (
+        <footer className="app-shell__status">{statusBar}</footer>
+      ) : null}
     </div>
   );
 }

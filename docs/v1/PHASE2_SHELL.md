@@ -1,10 +1,10 @@
 # CuePoint v1.0.0 — Phase 2: Application Shell, Detailed Step Specifications
 
-Status: **SHELL-01 and SHELL-03 implemented (2026-09-02); the rest are draft step specs.**
-Implementation of any step below requires an explicit "Implement SHELL-NN" instruction, scoped to
-exactly that step, followed by tests, a completion report, and a stop before the next step per the
-evolution spec's process. SHELL-03 was taken before SHELL-02 to close the routing defect recorded
-in fact 2 below; the sequencing diagram shows the planned order, not the order taken.
+Status: **Phase 2 complete — SHELL-01 … SHELL-10 all implemented (2026-09-02).**
+Each step was implemented under its own explicit instruction, verified, and recorded below. The
+order taken was 01, 03, 02, 04, 05, 06, 07, 08, 09, 10: SHELL-03 was brought forward to close the
+routing defect in fact 2 below, which blocked packaged-build verification for every later step.
+The sequencing diagram shows the planned order, not the order taken.
 
 Depends on Phase 1 being complete (`PHASE1_FOUNDATION.md`, audited 2026-09-02) and on Decision
 Rounds 1–3 (`DECISIONS.md`, DEC-001…DEC-027). Builds on `CURRENT_ARCHITECTURE.md`,
@@ -1028,7 +1028,64 @@ cannot be made to read at 1× rather than shipping mud.
 
 ---
 
-## SHELL-10 — Shell Hardening
+## SHELL-10 — Shell Hardening ✅ IMPLEMENTED 2026-09-02
+
+**Outcome**: Complete, and Phase 2 with it.
+
+**The audit came first, and most of it already passed.** Walking the real app's tab order found
+every shell region reachable in visual order — search, navigation, page, Inspector, status strip —
+with a visible focus indicator on every control. Two landmarks were missing: the header region is
+`role="search"` now and the status strip is a `<footer>` (contentinfo). Both live on the shell's
+region wrappers rather than inside the components, so a component that later moves does not carry
+the shell's semantics with it.
+
+**Tab order follows the screen, not the plan.** The step description listed sidebar before
+header; the header spans above the sidebar, so tab order goes header first. Visual order wins.
+
+**Bindings chosen and implemented**: `Ctrl+B` collapses navigation, `Ctrl+Shift+A` opens Activity.
+With `Ctrl+K` (search) and `Ctrl+I` (Inspector) that completes the shell's keyboard model, and a
+test now asserts **no key carries two meanings** — the DoD condition that made SHELL-04 pick
+`Ctrl+K` rather than overloading `Ctrl+F`.
+
+**Focus no longer falls to `<body>`.** Hiding the Inspector removes the button the user just
+pressed; focus now moves to the control that replaced it, and `Ctrl+B` leaves focus on the sidebar
+toggle. Neither moves focus on first render — an app that grabs focus on launch is worse than one
+that never moves it.
+
+**Dialogs became usable by keyboard at all.** `Modal` had no focus management and no Escape
+handler: a keyboard user could open any dialog in the app and never reach it, and `aria-modal`
+promised a containment that did not exist. It now takes focus on open (the dialog itself, so the
+title is announced and the user does not start on the close button), keeps Tab inside, closes on
+Escape, and returns focus to whatever opened it. All twelve existing dialogs inherit this; none
+broke.
+
+**Two clipping defects, found by making the check general.** The parked 3× Results item turned out
+to be measurable and worse than "cut off": 480px of the screen was unreachable, because
+`.screen--fill` shrank to fit and clipped rather than letting anything scroll. Fixing it exposed a
+second one the same check caught — `.results-frame .cp-panel--in-frame` set `min-height: 0`, so at
+the **default** scale the Results panel was squeezed to 118px while holding 281px and its filter
+control was simply absent. Both fixed; the matrix now fails any combination where an element
+overflows something that cannot scroll.
+
+`min-height: min-content` on `.screen--fill` was tried first and did nothing — its children are
+themselves scroll containers, so its min-content collapses. That is recorded in the CSS because
+the next person will reach for the same thing.
+
+**E2E now covers the promises unit tests cannot.** Sidebar collapse and Inspector state across a
+real restart, and a keyboard walk asserting every region is reachable and each of the four
+bindings works, ending with Escape closing the Activity dialog.
+
+**Docs**: `docs/user-guide/the-window.md` describes the window, the shortcuts and the two honest
+limitations a user will meet — the engine does not restart itself, and Activity is empty until
+features record into it. Linked from both documentation indexes.
+
+**Verification**: 374 renderer tests (+24), 8 E2E, 75/75 on the packaged-build matrix with the new
+clipped-content check, full Python suite 2273 passed, ruff/format/Qt guard/version coupling clean,
+engine health smoke passes (with `PYTHONPATH=src`, as it has always needed).
+
+---
+
+## SHELL-10 — Shell Hardening (original plan)
 
 **Objective**: Close the phase: accessibility, keyboard model, E2E coverage of the new shell, and
 documentation. This is the step that makes the shell trustworthy rather than merely present.
@@ -1104,8 +1161,27 @@ Phase 2 is complete when, in a **packaged build** (not only `npm run dev`):
 7. No decision in DEC-018, DEC-020…DEC-027 is contradicted by the implementation. Per the process,
    a contradiction stops the work and gets raised rather than worked around.
 8. The three carried-in defects are closed, each by the step that owns it: the packaged build
-   renders a screen on first paint (SHELL-03 ✅ done), the status strip updates without a remount
-   (SHELL-07), and no keyboard shortcut has two meanings (SHELL-04 decides, SHELL-10 documents).
+   renders a screen on first paint (SHELL-03), the status strip updates without a remount
+   (SHELL-07), and no keyboard shortcut has two meanings (SHELL-04 decided, SHELL-10 documented
+   and now tests it).
+
+**All eight were met on 2026-09-02.** Verified in a packaged build: 2273 Python tests, 374 renderer
+tests, 8 E2E, 75/75 on the layout matrix across 5 themes × 3 scales × 5 screens.
+
+### Carried out of Phase 2
+
+Real items found along the way that belong to later work, recorded so they are not lost:
+
+- **The engine never restarts.** `EngineSupervisor` spawns it once at startup; after a crash the
+  status strip correctly reports offline forever and the app must be restarted. Reporting is the
+  strip's job, respawning is the supervisor's.
+- **Nothing records activity events.** `record_event` has no callers, so the Activity panel is
+  empty in normal use. The steps that perform backups, imports and edits should record them.
+- **`Modal` renders where it is mounted.** SHELL-08 hit a dialog inheriting `white-space: nowrap`
+  from the status strip. Portalling to `document.body` would make that class of bug impossible;
+  it was not needed to fix the live case, so it was not done.
+- **A job shorter than the status strip's 2s discovery poll is never seen.** Fine for real match
+  runs, wrong for anything brief.
 
 ## Deferred, with reasons
 

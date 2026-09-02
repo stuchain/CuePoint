@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   status chrome off-screen as those are added
 
 ### Added
+- Keyboard shortcuts for the window: Ctrl+B collapses the navigation, Ctrl+I
+  shows or hides the Track Inspector, and Ctrl+Shift+A opens Activity. Every
+  part of the window can now be reached with Tab alone
 - An Activity panel, opened from the status strip, listing what CuePoint has
   done — imports, backups and edits — newest first
 - A status strip along the bottom of the window shows whether the engine is
@@ -45,6 +48,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by one drawing, and it stays sharp at every interface scale
 
 ### Fixed
+- Dialogs can be used from the keyboard. They now take focus when they open,
+  keep Tab inside themselves, close on Escape, and return focus to whatever
+  opened them — previously a dialog could be opened and never reached
+- Parts of a page are no longer cut off with no way to reach them. At larger
+  interface scales the results page hid content below the fold, and its filter
+  control could be missing entirely even at the default scale
 - The engine connection indicator now updates. It previously read the engine's
   state once when the window opened and never again, so it could report a
   connection long after the engine had stopped

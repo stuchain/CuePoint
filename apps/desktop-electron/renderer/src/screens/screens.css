@@ -45,12 +45,26 @@
   padding-bottom: calc(var(--safe-bottom) + var(--space-xl));
 }
 
+/*
+ * `overflow-y: auto`, not `hidden`.
+ *
+ * This screen fills the region and lets its table scroll inside itself, which
+ * works while there is room. At 3x scale there is not: the Results screen held
+ * 849px of content in a 369px box and clipped 480px of it with no way to reach
+ * it — the region had nothing to scroll, because the screen had already shrunk
+ * to fit it.
+ *
+ * `min-height: min-content` was tried first and did nothing: the children are
+ * themselves scroll containers, so the screen's min-content height collapses.
+ * Letting the screen scroll is what actually reaches the content.
+ */
 .screen--fill {
   flex: 1;
   align-items: center;
   min-height: 0;
   width: 100%;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .screen--fill.screen--scrollable {
@@ -446,9 +460,21 @@
   max-width: var(--results-frame-max-width);
 }
 
+/*
+ * `min-height: min-content`, not 0.
+ *
+ * `flex: 1` makes the panel fill the frame, and `min-height: 0` let it shrink
+ * below its own content — which the panel then clipped, silently. At the
+ * default scale the Results panel was squeezed to 118px while holding 281px,
+ * and its filter control was simply absent from the screen.
+ *
+ * `min-content` still allows the panel to shrink when the table inside it can
+ * scroll, which is the case this rule was written for; it only refuses to go
+ * below what cannot scroll.
+ */
 .results-frame .cp-panel--in-frame {
   flex: 1;
-  min-height: 0;
+  min-height: min-content;
   width: 100%;
 }
 

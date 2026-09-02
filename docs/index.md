@@ -8,6 +8,7 @@ Quick links:
 
 - [Getting started](getting-started/quick-start.md)
 - [User guide](user-guide/getting-started.md)
+- [The CuePoint window](user-guide/the-window.md) (navigation, search, inspector, shortcuts)
 - [Feature implementation designs](feature/README.md) (inCrate and others)
 - [UI overhaul](ui-overhaul/README.md) (lab layout → production rollout)
 - [Contributing](https://github.com/stuchain/CuePoint/blob/main/.github/CONTRIBUTING.md)
