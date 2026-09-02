@@ -73,10 +73,15 @@ describe("App shell", () => {
     expect(container.querySelectorAll("main")).toHaveLength(1);
   });
 
+  it("renders the sidebar region", () => {
+    const { container } = render(<App />);
+
+    expect(container.querySelector(".app-shell__sidebar .cp-sidebar")).not.toBeNull();
+  });
+
   it("does not render the regions later steps fill", () => {
     const { container } = render(<App />);
 
-    expect(container.querySelector(".app-shell__sidebar")).toBeNull();
     expect(container.querySelector(".app-shell__inspector")).toBeNull();
     expect(container.querySelector(".app-shell__player")).toBeNull();
     expect(container.querySelector(".app-shell__status")).toBeNull();

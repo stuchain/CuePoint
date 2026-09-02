@@ -1,14 +1,18 @@
 export { AppShellLayout } from "./AppShellLayout";
+export { Sidebar } from "./Sidebar";
 export type { AppShellLayoutProps } from "./AppShellLayout";
 export {
   enabledDestinations,
+  groupedDestinations,
+  NAV_GROUPS,
+  NAV_GROUP_LABELS,
   findDestinationById,
   findDestinationByPath,
   homeDestination,
   HOME_DESTINATION_ID,
   NAV_DESTINATIONS,
 } from "./navRegistry";
-export type { NavDestination } from "./navRegistry";
+export type { NavDestination, NavGroup, NavGroupEntry } from "./navRegistry";
 export {
   destinationToRemember,
   LAST_DESTINATION_STORAGE_KEY,
@@ -17,3 +21,8 @@ export {
   saveLastDestinationId,
 } from "./lastDestination";
 export { applyLaunchDestination, useRememberDestination } from "./useNavigationState";
+export {
+  loadSidebarCollapsed,
+  saveSidebarCollapsed,
+  SIDEBAR_COLLAPSED_STORAGE_KEY,
+} from "./sidebarState";

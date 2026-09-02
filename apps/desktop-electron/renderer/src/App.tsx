@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { HashRouter, Link, Route, Routes, useLocation } from "react-router-dom";
+import { HashRouter, Route, Routes, useLocation } from "react-router-dom";
 import {
   AboutDialog,
   AppMenuBar,
@@ -19,6 +19,7 @@ import {
   AppShellLayout,
   enabledDestinations,
   HOME_DESTINATION_ID,
+  Sidebar,
   useRememberDestination,
 } from "./components/shell";
 import { MatchResultsProvider } from "./context/MatchResultsContext";
@@ -125,12 +126,11 @@ function AppShell() {
   return (
     <>
       {/*
-        The menu bar is a shell region now. The engine-status banner and the
-        lab-era nav pill are both fixed-position overlays, so they stay outside
-        the grid: the banner gets its permanent home in the status strip in
-        SHELL-07, and the pill is deleted in SHELL-02.
+        The engine-status banner is still a fixed-position overlay, so it stays
+        outside the grid until SHELL-07 gives it a permanent home in the status
+        strip.
       */}
-      <AppShellLayout menuBar={<AppMenuBar {...menuActions} />}>
+      <AppShellLayout menuBar={<AppMenuBar {...menuActions} />} sidebar={<Sidebar />}>
         <Routes>
           {enabledDestinations().map((destination) => (
             <Route
@@ -150,13 +150,6 @@ function AppShell() {
         </Routes>
       </AppShellLayout>
       <EngineStatusBanner />
-      <nav className="app-lab-nav" aria-label="Main navigation">
-        {enabledDestinations().map((destination) => (
-          <Link key={destination.id} to={destination.path}>
-            {destination.label}
-          </Link>
-        ))}
-      </nav>
       <SupportBundleDialog open={supportOpen} onClose={() => setSupportOpen(false)} />
       <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <PrivacyDialog open={privacyOpen} onClose={() => setPrivacyOpen(false)} />

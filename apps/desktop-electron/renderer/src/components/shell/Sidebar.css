@@ -1,0 +1,148 @@
+/**
+ * Primary navigation rail.
+ *
+ * Two widths, not a drag handle (DEC-022). Both are whole multiples of the
+ * scale unit, so at 1×/2×/3× the rail lands on whole pixels and the pixel-art
+ * icons inside it stay aligned to their grid.
+ *
+ * The collapsed width is the icon's own box plus symmetric padding, so the
+ * icon is optically centered in the rail rather than sitting where a hidden
+ * label left it.
+ */
+.cp-sidebar {
+  --cp-sidebar-pad: var(--space-sm);
+  /*
+   * Wide enough for the longest label the registry declares — "Collections" —
+   * plus its icon, gap and padding, so entries read as words rather than
+   * ellipses. It scales with the interface, but is capped as a share of the
+   * window: at 3x an uncapped 480px rail would take 38% of a 1280px window.
+   *
+   * `vw` is right here, unlike inside the content region: the sidebar is a
+   * child of the shell grid, so the window really is what it divides up.
+   */
+  --cp-sidebar-width: min(calc(160px * var(--scale)), 34vw);
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  width: var(--cp-sidebar-width);
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--cp-sidebar-pad);
+  background: var(--bg-toolbar);
+  border-right: var(--border-width) solid var(--border-outline);
+}
+
+.cp-sidebar--collapsed {
+  width: calc(var(--icon-size) + var(--cp-sidebar-pad) * 4);
+  align-items: center;
+}
+
+.cp-sidebar__toggle {
+  align-self: flex-end;
+  min-width: var(--icon-size);
+  min-height: var(--icon-size);
+  margin-bottom: var(--space-xs);
+  padding: 0 var(--space-xs);
+  background: var(--bg-panel);
+  border: var(--border-width) solid var(--border-outline);
+  color: var(--fg-muted);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.cp-sidebar--collapsed .cp-sidebar__toggle {
+  align-self: center;
+}
+
+.cp-sidebar__toggle:hover {
+  color: var(--fg-primary);
+  background: var(--bg-app);
+}
+
+.cp-sidebar__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding-bottom: var(--space-xs);
+}
+
+/* A separator between groups, but never a trailing rule under the last one. */
+.cp-sidebar__group:not(:last-child) {
+  border-bottom: var(--border-width) solid var(--border-outline);
+  margin-bottom: var(--space-xs);
+}
+
+.cp-sidebar--collapsed .cp-sidebar__group {
+  align-items: center;
+  align-self: stretch;
+}
+
+.cp-sidebar__group-label {
+  margin: 0;
+  padding: var(--space-xs) var(--space-xs) 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cp-sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  /*
+   * The full hit target height even when collapsed: a rail whose targets shrink
+   * with its width would be hardest to hit exactly when it is narrowest.
+   */
+  min-height: var(--hit-min);
+  padding: var(--space-xs) var(--space-sm);
+  border: var(--border-width) solid transparent;
+  color: var(--fg-muted);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+}
+
+.cp-sidebar--collapsed .cp-sidebar__link {
+  justify-content: center;
+  padding: var(--space-xs);
+}
+
+.cp-sidebar__link:hover {
+  color: var(--fg-primary);
+  background: var(--bg-panel);
+}
+
+.cp-sidebar__link--active {
+  color: var(--fg-primary);
+  background: var(--bg-panel);
+  border-color: var(--border-outline);
+  box-shadow: var(--shadow-bevel-sm);
+  font-weight: 700;
+}
+
+.cp-sidebar__link:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent-info);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+.cp-sidebar__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  flex: none;
+}
+
+.cp-sidebar__glyph {
+  font-size: var(--font-size-lg);
+  line-height: 1;
+}
+
+.cp-sidebar__label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

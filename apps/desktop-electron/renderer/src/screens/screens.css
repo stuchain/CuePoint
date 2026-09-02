@@ -6,10 +6,20 @@
   padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
 }
 
+/*
+ * `safe center` rather than `center`.
+ *
+ * Centering a flex column whose content is taller than the box pushes the
+ * overflow out of *both* ends, and the part above the top is unreachable —
+ * scroll offsets cannot go negative. At 3x scale the inKey screen's toolbar
+ * sat at top: -927px, entirely unreachable. `safe` falls back to flex-start
+ * exactly when that would happen, so tall content scrolls normally and short
+ * content still centers.
+ */
 .screen--center {
   flex: 1;
   align-items: center;
-  justify-content: center;
+  justify-content: safe center;
   gap: var(--space-xl);
   margin: 0 auto;
 }
@@ -22,7 +32,7 @@
 
 .screen--stack:not(.screen--fill):not(.screen--scroll) {
   flex: 0 1 auto;
-  justify-content: center;
+  justify-content: safe center;
 }
 
 .screen--stack.screen--scroll {
@@ -301,8 +311,35 @@
   height: 100%;
 }
 
-@media (max-width: 900px) {
+/*
+ * Grid items are `min-width: auto` by default, which means a grid refuses to
+ * shrink below its content and overflows its container instead. That is what
+ * happened when the sidebar arrived: at 3x this two-column layout needed
+ * ~1130px inside a 1048px region and ran 170px off-screen. `min-width: 0` makes
+ * the columns shrink rather than overflow, whatever the breakpoints do.
+ */
+.match-layout > * {
+  min-width: 0;
+}
+
+/*
+ * Collapsing to one column is measured against the content region, not the
+ * window: with the sidebar (and later the Inspector) taking space, a viewport
+ * query keeps two columns long after the region stopped fitting them.
+ *
+ * The threshold has to follow the interface scale, because the content scales
+ * with it — two columns need roughly 380px at 1x, 750px at 2x and 1130px at 3x.
+ * A container query cannot read `var(--scale)` in its condition, so the 3x case
+ * is its own rule, keyed on the attribute `applyScale()` already sets.
+ */
+@container content (max-width: 900px) {
   .match-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@container content (max-width: 1200px) {
+  :root[data-scale="3"] .match-layout {
     grid-template-columns: 1fr;
   }
 }
@@ -494,7 +531,7 @@ body.results-frame--resizing {
   }
 }
 
-@media (max-width: 600px) {
+@container content (max-width: 600px) {
   .screen-toolbar {
     flex-direction: column;
     align-items: stretch;

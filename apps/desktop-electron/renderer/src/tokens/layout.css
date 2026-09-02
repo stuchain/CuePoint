@@ -5,17 +5,26 @@
   --content-max-width: min(1200px, 100%);
   --content-narrow-width: min(480px, 100%);
 
-  /* Symmetric screen padding; extra bottom clearance for lab route nav */
+  /*
+   * Symmetric screen padding. The extra 48px of bottom clearance this used to
+   * carry existed for the floating lab nav pill, which SHELL-02 deleted; with
+   * the pill gone it was just dead space under every screen.
+   */
   --safe-top: var(--screen-padding);
   --safe-right: var(--screen-padding);
-  --safe-bottom: calc(var(--screen-padding) + 48px);
+  --safe-bottom: var(--screen-padding);
   --safe-left: var(--screen-padding);
 
   --screen-padding: var(--space-xl);
   --results-min-rows: 10;
   --row-height: calc(var(--hit-min) * 0.75);
   --row-unmatched-bg: #5c2e2e;
-  --results-frame-max-width: 80vw;
+  /*
+   * `cqw` is the content region's width, not the window's: with a sidebar the
+   * two differ, and a viewport-relative cap can exceed the space the frame
+   * actually has. `getFrameMaxWidth()` measures the same element in JS.
+   */
+  --results-frame-max-width: 80cqw;
 
   /* Breakpoints (reference values for JS/docs; media queries use literals) */
   --bp-sm: 600px;
@@ -45,6 +54,5 @@
 @media (max-width: 600px) {
   :root {
     --screen-padding: var(--space-md);
-    --safe-bottom: calc(var(--screen-padding) + 40px);
   }
 }

@@ -102,9 +102,27 @@ export const FRAME_MIN_HEIGHT = 280;
 export const FRAME_MAX_WIDTH_RATIO = 0.8;
 export const FRAME_MAX_HEIGHT = 4000;
 
+/**
+ * The widest the results frame may be.
+ *
+ * Measured against the shell's content region rather than the window, so the
+ * sidebar (and later the Inspector) reduce it. Falls back to the viewport when
+ * there is no shell — this renders in Storybook and in tests too. The CSS cap
+ * `--results-frame-max-width` uses `cqw` against the same element, so dragging
+ * cannot stop short of, or run past, the width the frame actually gets.
+ */
+function contentRegionWidth(): number {
+  if (typeof document !== "undefined") {
+    const main = document.querySelector(".app-main");
+    const width = main?.getBoundingClientRect().width ?? 0;
+    if (width > 0) return width;
+  }
+  return typeof window !== "undefined" ? window.innerWidth : 1200;
+}
+
 export function getFrameMaxWidth(viewportWidth?: number): number {
-  const vw = viewportWidth ?? (typeof window !== "undefined" ? window.innerWidth : 1200);
-  return Math.floor(vw * FRAME_MAX_WIDTH_RATIO);
+  const available = viewportWidth ?? contentRegionWidth();
+  return Math.floor(available * FRAME_MAX_WIDTH_RATIO);
 }
 
 export function clampFrameWidth(width: number, viewportWidth?: number): number {

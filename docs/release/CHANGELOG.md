@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   status chrome off-screen as those are added
 
 ### Added
+- A navigation sidebar replaces the floating row of links. It can be collapsed to
+  an icon-only rail and remembers that choice between sessions
 - The app reopens on the page you were last using. If that page is no longer
   available it opens on the tool picker rather than showing nothing
 - The library database is now backed up automatically when the app starts, keeping
@@ -29,6 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by one drawing, and it stays sharp at every interface scale
 
 ### Fixed
+- The top of a page is no longer unreachable when it is taller than the window.
+  Long pages were centred vertically, which pushed their top edge above the
+  scrollable area with no way to bring it back — the inKey screen lost its whole
+  toolbar this way at the default interface scale
 - Screens now render in the installed app. The window showed its menu bar and
   navigation but an empty content area on every page, because the app used a
   browser-style router while the installed build loads its files from disk —

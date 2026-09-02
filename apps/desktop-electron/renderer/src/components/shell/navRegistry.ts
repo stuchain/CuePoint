@@ -5,37 +5,72 @@
  * read this list, so adding or enabling a destination is a one-line change
  * rather than an edit in three files that can drift apart.
  *
- * SHELL-03 declares only the destinations that exist today. SHELL-02 owns the
- * rest of DEC-020: declaring the target information architecture (Library,
- * Collections, Prepare, Discover, Clean) with `enabled: false` until each
- * phase lands, and adding the grouping and icon fields the sidebar needs.
- * `enabled` exists already because DEC-027's fallback has to answer "is this
- * stored destination still reachable?", and a rule with no way to be false
- * cannot be tested.
+ * Per DEC-020 the whole target information architecture is declared here, and
+ * a destination that has not been built yet carries `enabled: false`. Nothing
+ * renders it and nothing routes to it until the phase that builds it flips one
+ * flag — which is the property this file exists to buy, so enabling a page is
+ * never a hunt through the sidebar, the router and the fallback rule.
+ *
+ * Today's screens keep their identity as the Tools group (DEC-021). Phase 7
+ * re-homes inKey into Clean and Phase 9 re-homes inCrate into Discover; until
+ * then they stay exactly where users expect them.
  *
  * This is data, deliberately. It holds no elements and no callbacks: `App.tsx`
  * maps an id to the element to render, because that is where the props and
  * dialog callbacks those screens need already live.
  */
+import type { PixelIconName } from "../pixelIcons";
 
-export interface NavDestination {
+/**
+ * Groups are rendered in this order, and the sidebar draws a divider between
+ * them. `workspace` is unlabelled — it is the app itself, not a category.
+ */
+export const NAV_GROUPS = ["workspace", "tools", "system"] as const;
+export type NavGroup = (typeof NAV_GROUPS)[number];
+
+export const NAV_GROUP_LABELS: Record<NavGroup, string | null> = {
+  workspace: null,
+  tools: "Tools",
+  system: null,
+};
+
+interface NavDestinationBase {
   /** Stable across path changes; this is what gets persisted. */
   id: string;
   label: string;
   path: string;
+  group: NavGroup;
   /** False for a destination declared but not yet built. */
   enabled: boolean;
 }
+
+/**
+ * Exactly one of `icon` and `glyph`, mirroring `ToolbarIcon`'s union so the
+ * sidebar can hand either straight through. DEC-010 drew only the highest
+ * -visibility icons; `clean`, `discover` and `prepare` stay Unicode glyphs
+ * until SHELL-09 draws them against this rail.
+ */
+export type NavDestination = NavDestinationBase &
+  ({ icon: PixelIconName; glyph?: never } | { glyph: string; icon?: never });
 
 /** Where the app falls back to when a stored destination cannot be honored. */
 export const HOME_DESTINATION_ID = "tools";
 
 export const NAV_DESTINATIONS: readonly NavDestination[] = [
-  { id: "tools", label: "Tools", path: "/", enabled: true },
-  { id: "match", label: "inKey", path: "/match", enabled: true },
-  { id: "incrate", label: "inCrate", path: "/incrate", enabled: true },
-  { id: "results", label: "Results", path: "/results", enabled: true },
-  { id: "settings", label: "Settings", path: "/settings", enabled: true },
+  // Not built yet (DEC-020). Each is enabled by the phase that builds it.
+  { id: "library", label: "Library", path: "/library", group: "workspace", icon: "library", enabled: false },
+  { id: "collections", label: "Collections", path: "/collections", group: "workspace", glyph: "▤", enabled: false },
+  { id: "clean", label: "Clean", path: "/clean", group: "workspace", glyph: "✧", enabled: false },
+  { id: "discover", label: "Discover", path: "/discover", group: "workspace", glyph: "◈", enabled: false },
+  { id: "prepare", label: "Prepare", path: "/prepare", group: "workspace", glyph: "▶", enabled: false },
+
+  // Today's screens, kept intact as Tools (DEC-021).
+  { id: "tools", label: "Tools", path: "/", group: "tools", icon: "home", enabled: true },
+  { id: "match", label: "inKey", path: "/match", group: "tools", glyph: "♪", enabled: true },
+  { id: "incrate", label: "inCrate", path: "/incrate", group: "tools", glyph: "▦", enabled: true },
+  { id: "results", label: "Results", path: "/results", group: "tools", icon: "filter", enabled: true },
+
+  { id: "settings", label: "Settings", path: "/settings", group: "system", icon: "settings", enabled: true },
 ];
 
 /**
@@ -69,6 +104,29 @@ export function findDestinationByPath(
   destinations: readonly NavDestination[] = NAV_DESTINATIONS,
 ): NavDestination | null {
   return destinations.find((destination) => destination.path === pathname) ?? null;
+}
+
+export interface NavGroupEntry {
+  group: NavGroup;
+  label: string | null;
+  destinations: NavDestination[];
+}
+
+/**
+ * Enabled destinations, in group order, with empty groups dropped.
+ *
+ * Dropping empty groups is what keeps the sidebar honest while the target IA
+ * is mostly disabled: the `workspace` group renders nothing at all today
+ * rather than an empty heading with a divider under it.
+ */
+export function groupedDestinations(
+  destinations: readonly NavDestination[] = NAV_DESTINATIONS,
+): NavGroupEntry[] {
+  return NAV_GROUPS.map((group) => ({
+    group,
+    label: NAV_GROUP_LABELS[group],
+    destinations: enabledDestinations(destinations).filter((d) => d.group === group),
+  })).filter((entry) => entry.destinations.length > 0);
 }
 
 export function homeDestination(

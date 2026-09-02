@@ -24,6 +24,21 @@
   min-width: 0;
   overflow: auto;
   width: 100%;
+
+  /*
+   * The content region is a query container, so the layout rules inside it can
+   * ask how much room *they* have. Before the shell, "narrow" and "narrow
+   * window" were the same question; with a sidebar — and later an Inspector —
+   * they are not, and a viewport media query keeps a two-column layout on
+   * screen long after the region stopped fitting it.
+   *
+   * Safe here specifically because `container-type` implies `contain: layout`,
+   * which would make this a containing block for fixed-position descendants:
+   * the three that exist (engine banner, modals, toasts) all render outside
+   * the shell grid.
+   */
+  container-type: inline-size;
+  container-name: content;
 }
 
 /*
@@ -43,35 +58,4 @@
   flex: 1;
   justify-content: flex-start;
   min-height: 0;
-}
-
-/*
- * Lab-era route pill. SHELL-01 leaves it in place so navigation keeps working;
- * SHELL-02 deletes it, along with `--safe-bottom`'s 48px clearance for it, when
- * the real sidebar replaces it.
- */
-.app-lab-nav {
-  position: fixed;
-  left: 50%;
-  bottom: var(--space-md);
-  z-index: 900;
-  transform: translateX(-50%);
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
-  padding: var(--space-xs);
-  background: var(--bg-toolbar);
-  border: var(--border-width) solid var(--border-outline);
-  box-shadow: var(--shadow-panel);
-}
-
-.app-lab-nav a {
-  padding: var(--space-xs) var(--space-sm);
-  color: var(--fg-muted);
-  font-size: var(--font-size-xs);
-  text-decoration: none;
-}
-
-.app-lab-nav a:hover {
-  color: var(--fg-primary);
 }

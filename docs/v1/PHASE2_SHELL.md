@@ -225,7 +225,60 @@ usual — budget real manual verification across themes and scales rather than t
 
 ---
 
-## SHELL-02 — Navigation Registry and Sidebar
+## SHELL-02 — Navigation Registry and Sidebar ✅ IMPLEMENTED 2026-09-02
+
+**Outcome**: Complete. The floating lab pill is gone; a real sidebar renders from the registry,
+collapses to an icon rail, and remembers which. The registry now declares the full target IA
+(Library, Collections, Clean, Discover, Prepare) with `enabled: false`, grouped `workspace` /
+`tools` / `system`. A group with nothing enabled is not rendered at all, so today the sidebar shows
+Tools and Settings rather than an empty heading with a divider under it.
+
+**The one-flag promise is tested, not just asserted.** A test enables `library` in a copy of the
+registry and checks the workspace group appears with it — the thing DEC-020 is actually buying.
+
+**Both inherited cleanups done.** `--safe-bottom` no longer reserves 48px for a pill that no longer
+exists. `--results-frame-max-width` moved from `80vw` to `80cqw`, and `getFrameMaxWidth()` now
+measures the content region instead of the window, so the CSS cap and the JS drag clamp agree.
+
+**The sidebar broke a layout, exactly where predicted.** At 3x the content region drops to 1048px
+while the window is still 1264px, and inKey's two-column grid needed ~1130px — it ran 170px
+off-screen, because its `@media (max-width: 900px)` collapse asks the *window* how wide it is. The
+content region is now a query container (`container-type: inline-size`), and the layout rules
+inside it are `@container` queries. Safe here specifically because `container-type` implies
+`contain: layout`, which would make the region a containing block for fixed-position descendants —
+the three that exist (engine banner, modals, toasts) all render outside the shell grid.
+
+Two further things were needed: grid items are `min-width: auto` by default, so a grid refuses to
+shrink below its content and overflows instead — `.match-layout > * { min-width: 0 }` makes it
+shrink whatever the breakpoints do. And the threshold has to follow the interface scale (two
+columns need ~380px at 1x, ~750px at 2x, ~1130px at 3x), which a container query cannot express
+with `var(--scale)`, so 3x gets its own rule keyed on the attribute `applyScale()` already sets.
+
+**A worse bug found by looking, then caught by measuring.** The 3x screenshot showed inKey missing
+its toolbar while `scrollTop` was 0 — contradictory, so I measured the geometry: the toolbar sat at
+`top: -927px`, above the content region and unreachable, because scroll offsets cannot go negative.
+Centering a flex column taller than its box (`justify-content: center` on `.screen--center` and
+`.screen--stack`) pushes the overflow out of *both* ends. `justify-content: safe center` falls back
+to flex-start exactly when that would happen.
+
+This is **not something the sidebar caused**: re-running the matrix against `HEAD` with SHELL-02
+stashed reproduces it at 2x and 3x, on every theme — 8px of Tools and 248px of inKey unreachable at
+the *default* scale. The SHELL-01 matrix never looked for it. It does now: the harness fails any
+combination with content above the region's top, and reverting `safe center` fails 6 combinations.
+
+**Verification**: 184 renderer tests (+23), including sidebar rendering, grouping, the disabled-
+destination rule, `aria-current` in both states, accessible names surviving the collapse, and
+persistence across a remount. 75/75 on the packaged-build matrix, now with two new checks
+(unreachable content, results-frame overflow). 4 E2E tests, lint, typecheck, `build:check` clean.
+No Python changed.
+
+**One judgement call worth flagging**: the expanded sidebar is sized for the longest label the
+registry declares ("Collections"), capped at 34vw. The first attempt sized the rail instead and
+truncated every label to two characters — caught by looking at a screenshot, not by any test.
+
+---
+
+## SHELL-02 — Navigation Registry and Sidebar (original plan)
 
 **Objective**: Implement DEC-020's registry, DEC-021's Tools grouping and DEC-022's two-state
 sidebar. A single declarative module lists every target destination — Library, Collections,

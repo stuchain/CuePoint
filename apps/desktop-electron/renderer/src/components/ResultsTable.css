@@ -183,7 +183,7 @@ body.results-table--resizing {
   user-select: none;
 }
 
-@media (max-width: 600px) {
+@container content (max-width: 600px) {
   .results-table__scroll {
     min-height: calc(8 * var(--row-height));
   }

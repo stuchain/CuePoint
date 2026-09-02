@@ -6,7 +6,7 @@
   width: 100%;
 }
 
-@media (max-width: 600px) {
+@container content (max-width: 600px) {
   .theme-settings {
     max-width: 100%;
   }

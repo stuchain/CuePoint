@@ -16,13 +16,13 @@ import {
   resolveLaunchDestination,
   saveLastDestinationId,
 } from "./lastDestination";
-import { HOME_DESTINATION_ID, NAV_DESTINATIONS, type NavDestination } from "./navRegistry";
+import { HOME_DESTINATION_ID, NAV_DESTINATIONS } from "./navRegistry";
 
-/** A registry with something disabled, which the real one does not have yet. */
-const WITH_DISABLED: readonly NavDestination[] = [
-  ...NAV_DESTINATIONS,
-  { id: "library", label: "Library", path: "/library", enabled: false },
-];
+/**
+ * The real registry now declares not-yet-built destinations (DEC-020), so the
+ * disabled cases below run against real data rather than a fixture.
+ */
+const DISABLED_ID = "library";
 
 afterEach(() => {
   localStorage.clear();
@@ -45,12 +45,12 @@ describe("resolveLaunchDestination", () => {
   it("falls back to home when the stored destination exists but is disabled", () => {
     // The case that actually happens: a downgrade, or a phase's flag turned
     // off, leaving a valid id pointing at something unreachable.
-    expect(resolveLaunchDestination("library", WITH_DISABLED).id).toBe(HOME_DESTINATION_ID);
+    expect(resolveLaunchDestination(DISABLED_ID).id).toBe(HOME_DESTINATION_ID);
   });
 
   it("never returns a destination that is not enabled", () => {
-    for (const destination of WITH_DISABLED) {
-      expect(resolveLaunchDestination(destination.id, WITH_DISABLED).enabled).toBe(true);
+    for (const destination of NAV_DESTINATIONS) {
+      expect(resolveLaunchDestination(destination.id).enabled).toBe(true);
     }
   });
 });
@@ -67,7 +67,7 @@ describe("destinationToRemember", () => {
   });
 
   it("does not remember a disabled destination", () => {
-    expect(destinationToRemember("/library", WITH_DISABLED)).toBeNull();
+    expect(destinationToRemember("/library")).toBeNull();
   });
 });
 
