@@ -852,7 +852,53 @@ banner relocation.
 
 ---
 
-## SHELL-08 — Activity Panel
+## SHELL-08 — Activity Panel ✅ IMPLEMENTED 2026-09-02
+
+**Outcome**: Complete. `GET /api/v1/activity/recent` reads FOUNDATION-08's append-only feed, and
+an Activity panel opens from the status strip. Phase 1 has been recording activity into that table
+since it was built; this is the first thing that reads it back out.
+
+**Nothing writes to the feed yet.** `record_event` has no callers anywhere in the codebase, so the
+panel is empty in normal use — which makes the empty state the *normal* state, as with search
+before Phase 3. The message says what will appear rather than leaving a blank box. Giving the feed
+producers (a backup event, an import event) belongs to the steps that perform those actions, not
+here; recorded as a follow-up rather than smuggled in.
+
+**Called Activity, never History — enforced, not just intended.** `/api/v1/history/*` already
+means past match runs, which are exported CSV files. Two tests pin the separation: the activity
+feed is not served under `/history`, and `/history/recent` still returns files rather than events.
+A renderer test asserts the panel never says "history" anywhere.
+
+**Read-only, deliberately.** DEC-008 supports reverting a field change, but nothing can edit a
+field yet, so a revert button would act on nothing. A test asserts there is no revert control, so
+adding one becomes a decision rather than an accident.
+
+**`event_count` was added to the service, not read from the repository.** Engine handlers call
+services; reaching past one to a repository would be the first exception to a seam FOUNDATION-06
+established.
+
+**Two bugs the running app found that the tests did not.** Both were invisible in jsdom, which has
+no layout:
+- *"1 fields"*. A field-change event usually carries exactly one key, so the plural was on screen
+  immediately. Fixed, with a test.
+- *Every summary refused to wrap, and the list scrolled sideways.* The panel was rendered inside
+  the status strip's `<div>`, so the dialog inherited `white-space: nowrap` from it — a dialog
+  silently taking the styling of whatever happened to render it. It is now a sibling of the strip.
+  The shared `Modal` also gained an optional `size="wide"`: 520px is right for a question and wrong
+  for a log.
+
+**Verified in the packaged app** against three events recorded through the real `ActivityService`
+into an isolated library: the panel listed all three newest-first, rendered detail readably
+(`count: 5 · source: rekordbox`), reported "3 events", showed no horizontal overflow anywhere, and
+reloaded on reopen.
+
+**Verification**: 12 new Python tests, 28 new renderer tests (308 total), 6 E2E, 75/75 on the
+packaged-build matrix, full Python suite 2273 passed, ruff/format/Qt guard clean, renderer
+lint/typecheck/`build:check` clean.
+
+---
+
+## SHELL-08 — Activity Panel (original plan)
 
 **Objective**: Second half of DEC-026 — surface FOUNDATION-08's `activity_events` feed in a panel
 opened from the status strip.

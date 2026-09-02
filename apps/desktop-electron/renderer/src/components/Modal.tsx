@@ -9,6 +9,11 @@ export interface ModalProps {
   onClose: () => void;
   primaryAction?: { label: string; onClick: () => void; loading?: boolean };
   secondaryAction?: { label: string; onClick: () => void };
+  /**
+   * `"wide"` for content that is a table or a log rather than a message or a
+   * form. The default 520px is right for a question and too narrow for rows.
+   */
+  size?: "default" | "wide";
 }
 
 export function Modal({
@@ -18,13 +23,14 @@ export function Modal({
   onClose,
   primaryAction,
   secondaryAction,
+  size = "default",
 }: ModalProps) {
   if (!open) return null;
 
   return (
     <div className="cp-modal__backdrop" role="presentation" onClick={onClose}>
       <div
-        className="cp-modal"
+        className={`cp-modal ${size === "wide" ? "cp-modal--wide" : ""}`.trim()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="cp-modal-title"

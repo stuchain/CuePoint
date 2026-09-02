@@ -4,6 +4,13 @@ export { GlobalSearch } from "./GlobalSearch";
 export { TrackInspector } from "./TrackInspector";
 export { PlayerRegion } from "./PlayerRegion";
 export { StatusStrip } from "./StatusStrip";
+export { ActivityPanel } from "./ActivityPanel";
+export {
+  formatEventDetail,
+  formatEventTime,
+  formatEventType,
+  sortNewestFirst,
+} from "./activityFormat";
 export { ENGINE_POLL_MS, useEngineStatus } from "./useEngineStatus";
 export { JOB_POLL_MS, jobLabel, jobPercent, useActiveJob } from "./useActiveJob";
 export type { ActiveJobState } from "./useActiveJob";

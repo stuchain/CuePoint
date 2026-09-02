@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { ActivityPanel } from "./ActivityPanel";
 import { jobLabel, jobPercent, useActiveJob } from "./useActiveJob";
 import { useEngineStatus } from "./useEngineStatus";
 import "./StatusStrip.css";
@@ -14,57 +16,74 @@ import "./StatusStrip.css";
  * and the floating banner is gone, so there is one place that reports engine
  * state rather than two that can disagree.
  *
- * The Activity panel this opens onto is SHELL-08's job; there is deliberately
- * no button for it yet, because a control that does nothing is worse than one
- * that is not there.
+ * Clicking through to the Activity panel is the other half of DEC-026: the
+ * strip is the only entry point to a feed that has been recorded since Phase 1
+ * and never shown.
  */
 export function StatusStrip() {
   const status = useEngineStatus();
   const { job, activeCount } = useActiveJob();
+  const [activityOpen, setActivityOpen] = useState(false);
 
   const percent = jobPercent(job);
   const connected = status?.connected === true;
 
   return (
-    <div className="cp-status" role="status" aria-live="polite">
-      <span
-        className={`cp-status__engine ${
-          connected ? "cp-status__engine--ok" : "cp-status__engine--error"
-        }`}
-      >
-        {status === null
-          ? "Engine status unknown"
-          : connected
-            ? `Engine connected${status.version ? ` · v${status.version}` : ""}`
-            : `Engine offline${status.error ? `: ${status.error}` : ""}`}
-      </span>
-
-      {job ? (
-        <span className="cp-status__job">
-          <span className="cp-status__job-label">{jobLabel(job)}</span>
-          {percent !== null && (
-            <>
-              {/*
-                A progress element rather than a styled div: it reports its own
-                value to assistive technology, which a bar drawn with CSS width
-                does not.
-              */}
-              <progress
-                className="cp-status__progress"
-                value={percent}
-                max={100}
-                aria-label="Job progress"
-              />
-              <span className="cp-status__percent">{percent}%</span>
-            </>
-          )}
-          {activeCount > 1 && (
-            <span className="cp-status__more">+{activeCount - 1} more</span>
-          )}
+    // The panel is a sibling of the strip, not a child of it. Rendered inside,
+    // it inherited the strip's `white-space: nowrap` and every event summary
+    // refused to wrap — a dialog silently picking up the styling of whatever
+    // happened to render it.
+    <>
+      <div className="cp-status" role="status" aria-live="polite">
+        <span
+          className={`cp-status__engine ${
+            connected ? "cp-status__engine--ok" : "cp-status__engine--error"
+          }`}
+        >
+          {status === null
+            ? "Engine status unknown"
+            : connected
+              ? `Engine connected${status.version ? ` · v${status.version}` : ""}`
+              : `Engine offline${status.error ? `: ${status.error}` : ""}`}
         </span>
-      ) : (
-        <span className="cp-status__idle">No jobs running</span>
-      )}
-    </div>
+
+        {job ? (
+          <span className="cp-status__job">
+            <span className="cp-status__job-label">{jobLabel(job)}</span>
+            {percent !== null && (
+              <>
+                {/*
+                  A progress element rather than a styled div: it reports its
+                  own value to assistive technology, which a bar drawn with CSS
+                  width does not.
+                */}
+                <progress
+                  className="cp-status__progress"
+                  value={percent}
+                  max={100}
+                  aria-label="Job progress"
+                />
+                <span className="cp-status__percent">{percent}%</span>
+              </>
+            )}
+            {activeCount > 1 && (
+              <span className="cp-status__more">+{activeCount - 1} more</span>
+            )}
+          </span>
+        ) : (
+          <span className="cp-status__idle">No jobs running</span>
+        )}
+
+        <button
+          type="button"
+          className="cp-status__activity"
+          onClick={() => setActivityOpen(true)}
+        >
+          Activity
+        </button>
+      </div>
+
+      <ActivityPanel open={activityOpen} onClose={() => setActivityOpen(false)} />
+    </>
   );
 }

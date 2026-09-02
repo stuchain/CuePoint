@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   status chrome off-screen as those are added
 
 ### Added
+- An Activity panel, opened from the status strip, listing what CuePoint has
+  done — imports, backups and edits — newest first
 - A status strip along the bottom of the window shows whether the engine is
   connected and the progress of any running job, wherever you are in the app —
   including a job that was already running before the window reloaded

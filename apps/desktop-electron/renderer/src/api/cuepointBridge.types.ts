@@ -298,6 +298,21 @@ export interface LibrarySearchResponse {
   library_empty: boolean;
 }
 
+export interface ActivityEvent {
+  id: number | null;
+  type: string;
+  summary: string;
+  detail: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface ActivityFeed {
+  events: ActivityEvent[];
+  /** Every event ever recorded, not the page length. */
+  total: number;
+  limit: number;
+}
+
 export interface EngineJobSummary {
   id: string;
   type: string;
@@ -350,6 +365,10 @@ export interface CuePointBridge {
   getBeatportTokenStatus: () => Promise<BeatportTokenStatus>;
   setBeatportToken: (token: string) => Promise<BeatportTokenStatus>;
   testBeatportToken: (body?: { token?: string }) => Promise<BeatportTokenTestResult>;
+  getRecentActivity?: (params?: {
+    limit?: number;
+    type?: string;
+  }) => Promise<ActivityFeed>;
   listJobs?: (params?: {
     state?: "active" | "all";
     limit?: number;

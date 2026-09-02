@@ -154,6 +154,15 @@ class ActivityService(IActivityService):
         """Return recent activity, newest first."""
         return self._activity.recent_events(limit=limit, event_type=event_type)
 
+    def event_count(self) -> int:
+        """Return how many activity events have been recorded in total.
+
+        Delegated rather than exposed from the repository directly: engine
+        handlers call this service, not repositories, and a caller showing one
+        page should be able to say how many events exist without a second seam.
+        """
+        return self._activity.event_count()
+
     def track_history(
         self, track_id: int, limit: Optional[int] = None
     ) -> List[TrackFieldChange]:

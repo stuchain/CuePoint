@@ -76,6 +76,29 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Pushed to the right: it is the strip's only action, not part of the status. */
+.cp-status__activity {
+  flex: none;
+  margin-left: auto;
+  min-height: var(--icon-size);
+  padding: 0 var(--space-sm);
+  background: var(--bg-panel);
+  border: var(--border-width) solid var(--border-outline);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.cp-status__activity:hover {
+  color: var(--fg-primary);
+  background: var(--bg-app);
+}
+
+.cp-status__activity:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent-info);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
 .cp-status__more {
   flex: none;
   padding: 0 var(--space-xs);

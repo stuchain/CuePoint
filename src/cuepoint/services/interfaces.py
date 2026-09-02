@@ -538,6 +538,11 @@ class IActivityService(ABC):
         ...
 
     @abstractmethod
+    def event_count(self) -> int:
+        """Return how many activity events have been recorded in total."""
+        ...
+
+    @abstractmethod
     def track_history(
         self, track_id: int, limit: Optional[int] = None
     ) -> List["TrackFieldChange"]:

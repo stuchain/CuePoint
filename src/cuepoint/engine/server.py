@@ -30,6 +30,11 @@ from cuepoint.engine.support_bundle_api import (
 from cuepoint.engine.logs_api import get_cuepoint_log_text, get_cuepoint_logs_dir
 from cuepoint.engine.privacy_api import clear_cache_now, clear_logs_now
 from cuepoint.engine.history_api import list_recent_history, load_history_csv
+from cuepoint.engine.activity_api import (
+    RECENT_LIMIT_DEFAULT,
+    ActivityUnavailableError,
+    recent_activity,
+)
 from cuepoint.engine.jobs_api import (
     LIST_LIMIT_DEFAULT,
     list_jobs,
@@ -359,6 +364,35 @@ def make_handler(
                     return
                 except Exception as exc:  # noqa: BLE001 — surface to API client
                     self._send_json(500, error_payload("SEARCH_FAILED", str(exc)))
+                    return
+                self._send_json(200, payload)
+                return
+            if path == "/api/v1/activity/recent":
+                if not self._authorized():
+                    self._send_json(
+                        401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                    )
+                    return
+                params = parse_qs(parsed.query)
+                try:
+                    limit = parse_int_param(
+                        params.get("limit", [None])[0],
+                        default=RECENT_LIMIT_DEFAULT,
+                        name="limit",
+                    )
+                except ValueError as exc:
+                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                    return
+                event_type = params.get("type", [None])[0] or None
+                try:
+                    payload = recent_activity(limit=limit, event_type=event_type)
+                except ActivityUnavailableError as exc:
+                    self._send_json(
+                        503, error_payload("ACTIVITY_UNAVAILABLE", str(exc))
+                    )
+                    return
+                except Exception as exc:  # noqa: BLE001 — surface to API client
+                    self._send_json(500, error_payload("ACTIVITY_FAILED", str(exc)))
                     return
                 self._send_json(200, payload)
                 return

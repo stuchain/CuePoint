@@ -21,6 +21,9 @@ function registerIpcHandlers(): void {
   ipcMain.handle("engine:startMatchJob", (_event, body) => engine.startMatchJob(body));
   ipcMain.handle("engine:searchLibrary", (_event, params) => engine.searchLibrary(params));
   ipcMain.handle("engine:listJobs", (_event, params) => engine.listJobs(params));
+  ipcMain.handle("engine:getRecentActivity", (_event, params) =>
+    engine.getRecentActivity(params),
+  );
   ipcMain.handle("engine:getJob", (_event, jobId: string) => engine.getJob(jobId));
   ipcMain.handle("engine:getJobResults", (_event, jobId: string) => engine.getJobResults(jobId));
   ipcMain.handle("engine:exportResults", (_event, body) => engine.exportResults(body));

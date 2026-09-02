@@ -11,6 +11,11 @@
 
 .cp-modal {
   width: min(520px, 100%);
+}
+
+/* For rows rather than sentences: a log at 520px clips every line. */
+.cp-modal--wide {
+  width: min(880px, 92vw);
   max-height: 90vh;
   overflow: auto;
   background: var(--bg-panel);

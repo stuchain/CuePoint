@@ -1,0 +1,90 @@
+/**
+ * Activity feed, inside the shared modal.
+ *
+ * A three-column grid rather than a table: rows are read top-to-bottom as a
+ * log, and the columns only exist so timestamps and types line up.
+ */
+/*
+ * Fills the dialog rather than demanding a width from it. An earlier version
+ * asked for 640px inside a 520px modal, which produced two horizontal
+ * scrollbars and clipped every summary.
+ */
+.cp-activity {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  width: 100%;
+  min-width: 0;
+  max-height: 60vh;
+}
+
+.cp-activity__note {
+  margin: 0;
+  padding: var(--space-md) var(--space-sm);
+  color: var(--fg-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.cp-activity__note--error {
+  color: var(--accent-danger);
+}
+
+.cp-activity__summary {
+  margin: 0;
+  padding: 0 var(--space-xs);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cp-activity__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  border: var(--border-width) solid var(--border-outline);
+}
+
+.cp-activity__row {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  min-width: 0;
+  gap: var(--space-sm);
+  align-items: baseline;
+  padding: var(--space-xs) var(--space-sm);
+  border-bottom: var(--border-width) solid var(--border-outline);
+  font-size: var(--font-size-sm);
+}
+
+.cp-activity__row:last-child {
+  border-bottom: none;
+}
+
+.cp-activity__time {
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cp-activity__type {
+  padding: 0 var(--space-xs);
+  border: var(--border-width) solid var(--border-outline);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
+/* Wraps rather than truncating: a summary is the point of the row. */
+.cp-activity__summary-text {
+  min-width: 0;
+  color: var(--fg-primary);
+  overflow-wrap: anywhere;
+}
+
+.cp-activity__detail {
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}

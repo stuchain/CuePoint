@@ -60,6 +60,21 @@ export interface EngineJobList {
   active_count: number;
 }
 
+export interface ActivityEvent {
+  id: number | null;
+  type: string;
+  summary: string;
+  detail: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface ActivityFeed {
+  events: ActivityEvent[];
+  /** Every event ever recorded, not the page length. */
+  total: number;
+  limit: number;
+}
+
 export class EngineClient {
   constructor(
     private readonly port: number,
@@ -113,6 +128,24 @@ export class EngineClient {
     if (params.limit != null) query.set("limit", String(params.limit));
     if (params.offset != null) query.set("offset", String(params.offset));
     const res = await fetch(this.url(`/api/v1/library/search?${query.toString()}`), {
+      headers: this.headers(),
+    });
+    return readJson(res);
+  }
+
+  /**
+   * Recent activity (SHELL-08). Not `/history`: that endpoint means past match
+   * runs, which are exported CSV files, and is a different thing entirely.
+   */
+  async getRecentActivity(params?: {
+    limit?: number;
+    type?: string;
+  }): Promise<ActivityFeed> {
+    const query = new URLSearchParams();
+    if (params?.limit != null) query.set("limit", String(params.limit));
+    if (params?.type) query.set("type", params.type);
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    const res = await fetch(this.url(`/api/v1/activity/recent${suffix}`), {
       headers: this.headers(),
     });
     return readJson(res);
