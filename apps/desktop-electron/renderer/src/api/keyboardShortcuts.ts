@@ -8,6 +8,7 @@ export interface KeyboardShortcutEntry {
 export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   { context: "Global", action: "Open XML file", shortcut: "Ctrl+O" },
   { context: "Global", action: "Export results", shortcut: "Ctrl+E" },
+  { context: "Global", action: "Search library", shortcut: "Ctrl+K" },
   { context: "Global", action: "Show keyboard shortcuts", shortcut: "Ctrl+?" },
   { context: "Global", action: "Show help", shortcut: "F1" },
   { context: "Global", action: "Cancel operation", shortcut: "Esc" },

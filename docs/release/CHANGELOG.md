@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   status chrome off-screen as those are added
 
 ### Added
+- Search your library from the header, or with Ctrl+K. It searches track titles,
+  artists, albums and labels, and says so plainly when no library has been
+  imported yet rather than reporting that nothing matched
 - A navigation sidebar replaces the floating row of links. It can be collapsed to
   an icon-only rail and remembers that choice between sessions
 - The app reopens on the page you were last using. If that page is no longer

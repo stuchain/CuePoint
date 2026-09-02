@@ -16,6 +16,32 @@ async function readJson<T>(res: Response): Promise<T> {
   return body;
 }
 
+export interface LibraryTrackRow {
+  id: number | null;
+  rekordbox_track_id: string;
+  title: string;
+  artist: string;
+  album: string | null;
+  label: string | null;
+  genre: string | null;
+  key: string | null;
+  bpm: number | null;
+  year: number | null;
+  duration_seconds: number | null;
+  file_path: string;
+}
+
+export interface LibrarySearchResponse {
+  query: string;
+  total: number;
+  limit: number;
+  offset: number;
+  tracks: LibraryTrackRow[];
+  /** True when nothing has been imported yet — a different problem from "no
+   *  matches", and one with a different answer in the UI. */
+  library_empty: boolean;
+}
+
 export class EngineClient {
   constructor(
     private readonly port: number,
@@ -49,6 +75,27 @@ export class EngineClient {
       method: "POST",
       headers: this.headers(),
       body: JSON.stringify(body),
+    });
+    return readJson(res);
+  }
+
+  /**
+   * Library search (DEC-023).
+   *
+   * The response shape is a public contract — Phase 4 extends this endpoint
+   * rather than adding a second search path — so it is typed here rather than
+   * returned as an opaque record.
+   */
+  async searchLibrary(params: {
+    q: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<LibrarySearchResponse> {
+    const query = new URLSearchParams({ q: params.q });
+    if (params.limit != null) query.set("limit", String(params.limit));
+    if (params.offset != null) query.set("offset", String(params.offset));
+    const res = await fetch(this.url(`/api/v1/library/search?${query.toString()}`), {
+      headers: this.headers(),
     });
     return readJson(res);
   }

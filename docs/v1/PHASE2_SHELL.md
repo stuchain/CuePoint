@@ -72,6 +72,11 @@ AGENTS.md invariant, each must move together in one change:
 
 - Python: a new `*_api.py` module plus its dispatch arm in `engine/server.py`
 - `apps/desktop-electron/electron/engineClient.ts` — the typed HTTP method
+- `apps/desktop-electron/electron/engineSupervisor.ts` — **the forwarding method**. This list
+  originally omitted it and SHELL-04 paid for the omission: `main.ts` calls `engine.X()` on an
+  `EngineSupervisor` facade that forwards to `EngineClient` one method at a time, so a client
+  method plus an IPC channel is not enough. Nothing type-checks the gap, and the failure appears
+  only in the running app as `engine.X is not a function`
 - `apps/desktop-electron/electron/main.ts` — the `ipcMain.handle("engine:…")` arm
 - `apps/desktop-electron/electron/preload.cjs` — **the runtime preload**; `preload.ts` is a
   placeholder and must not be mistaken for it
@@ -452,7 +457,64 @@ persistence work.
 
 ---
 
-## SHELL-04 — Global Search (Engine and UI)
+## SHELL-04 — Global Search (Engine and UI) ✅ IMPLEMENTED 2026-09-02
+
+**Outcome**: Complete, end to end. `GET /api/v1/library/search` runs a real query over the Phase 1
+`tracks` table; the shell header has a search field on `Ctrl+K`; and searching in the packaged app
+returns real rows from a real database.
+
+**Built exactly to the specified contract.** The response envelope, the field list, artist-then-
+title ordering, the blank-query rule and the server-side clamp (default 50, max 200) are as
+specified, with one addition: `library_empty`. Without it the renderer cannot tell "you have not
+imported anything yet" from "that track is not here" — the same zero-result payload, two different
+problems, two different answers. DEC-023 accepted that search finds nothing until the Library
+phase lands, which makes the empty case the *normal* case for now, so distinguishing it matters
+more here than it would later.
+
+**LIKE metacharacters are escaped, not just bound.** Parameter binding stops injection; it does not
+stop `%` and `_` being read as wildcards, and unescaped a search for `_` matches every track that
+has any character in that field. The escape character is `!` rather than backslash, so nothing
+between here and SQLite can eat it. Six tests cover it, including that the escape character itself
+is literal and that a `'; DROP TABLE tracks; --` query returns nothing and leaves the table intact.
+
+**A contract bug the type-checker could not see, found by running the app.** The first end-to-end
+run failed with `engine.searchLibrary is not a function`. The Python endpoint, the IPC channel, the
+preload method, the bridge types and `EngineClient` were all correct — but `main.ts` calls
+`engine.X()` on the `EngineSupervisor` facade, which forwards to the client method by method, and
+that forwarder was missing. `main.ts` compiles against whatever the supervisor happens to have, so
+this passed typecheck, lint and 220 renderer tests. Preamble fact 1 has been corrected: the
+contract is **six** files, not five.
+
+Two guards now exist, both verified to fail on the real bug: `desktopContract.test.ts` parses
+`main.ts`, `preload.cjs`, `engineClient.ts`, `engineSupervisor.ts` and the bridge types and checks
+they line up in both directions; and an E2E test types a query in the packaged app and asserts the
+panel resolves rather than showing "Search failed". The E2E assertion is deliberately data-
+independent — this machine's library may hold anything — so it checks that the round trip
+*completed*, not what it found.
+
+**Ctrl+K, as SHELL-04 decided.** `Ctrl+F` keeps its registered in-table meaning; the new binding is
+in `KEYBOARD_SHORTCUTS`, so the shortcuts dialog is not lying.
+
+**Verified against a seeded library, in the packaged app.** Launched with `USERPROFILE` pointed at
+a temporary home so the real `~/.cuepoint/cuepoint.db` was never touched, over a five-track
+database: "deadmau5" returned both its tracks in artist-then-title order; "Innervisions" matched on
+label; "zzzznope" reported no matches (not an empty library); `%%` returned nothing, proving the
+LIKE escaping holds through the whole stack; and Ctrl+K focused the field from another page.
+
+**Verification**: 42 new Python tests (25 repository/service, 17 engine) and 28 new renderer tests
+(222 total). Full Python unit suite green — 2243 passed, 45 skipped — run with all Python changes
+in place; the only Python edit after it was a `ruff format` pass. 5 E2E tests, renderer lint,
+typecheck and `build:check` clean, ruff and the Qt guard clean.
+
+**One caveat, and it is environmental**: the machine's C: drive reached 0 bytes free during the
+desktop half, after which pytest cannot create temporary directories and the full Python suite and
+the shell matrix cannot run. The failures that produces are `OSError: [Errno 28] No space left on
+device`, not test failures — the same tests pass individually once a little space is freed. The
+shell layout matrix was **not** re-run after this step for that reason.
+
+---
+
+## SHELL-04 — Global Search (Engine and UI) (original plan)
 
 **Objective**: Implement DEC-023 — a real search over the Phase 1 `tracks` table, reachable from a
 header search field. Returns nothing until Phase 3 imports a library; needs no rewrite when it

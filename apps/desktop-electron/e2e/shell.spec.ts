@@ -93,6 +93,38 @@ test.describe("Application shell navigation", () => {
     }
   });
 
+  test("global search reaches the engine and comes back (SHELL-04)", async () => {
+    const app = await launch(userDataDir);
+    try {
+      const window = await app.firstWindow({ timeout: 60_000 });
+      await dismissOnboarding(window);
+      // The engine sidecar starts asynchronously; searching before it is up
+      // would test the wrong thing.
+      await expect(window.locator(".engine-status--ok")).toBeVisible({ timeout: 60_000 });
+
+      await window.getByRole("combobox", { name: /search library/i }).fill("deadmau5");
+
+      // Deliberately data-independent: this machine's library may hold anything
+      // or nothing, so assert the round trip *resolved* rather than what it
+      // found. Any of these three is a working search; "Search failed" is not,
+      // and neither is being stuck on "Searching…".
+      const panel = window.locator(".cp-global-search__panel");
+      await expect(panel).toBeVisible({ timeout: 15_000 });
+      await expect(
+        panel.locator(
+          ".cp-global-search__summary, .cp-global-search__note",
+        ),
+      ).toHaveText(/result|No tracks match|No library yet/i, { timeout: 15_000 });
+
+      // The bug this test exists for: the IPC channel and the client method
+      // both existed, but `EngineSupervisor` never forwarded the call, so the
+      // whole path failed only in the running app.
+      await expect(window.getByText(/Search failed/i)).toHaveCount(0);
+    } finally {
+      await app.close();
+    }
+  });
+
   test("reopens on the last-visited destination after a restart (DEC-027)", async () => {
     const first = await launch(userDataDir);
     try {

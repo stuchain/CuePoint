@@ -1,5 +1,16 @@
 export { AppShellLayout } from "./AppShellLayout";
 export { Sidebar } from "./Sidebar";
+export { GlobalSearch } from "./GlobalSearch";
+export {
+  MIN_QUERY_LENGTH,
+  resultSummary,
+  SEARCH_DEBOUNCE_MS,
+  shouldSearch,
+  statusFor,
+  trackSubtitle,
+  useLibrarySearch,
+} from "./useLibrarySearch";
+export type { LibrarySearchState, SearchStatus } from "./useLibrarySearch";
 export type { AppShellLayoutProps } from "./AppShellLayout";
 export {
   enabledDestinations,

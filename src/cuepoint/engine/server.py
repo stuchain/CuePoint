@@ -30,6 +30,12 @@ from cuepoint.engine.support_bundle_api import (
 from cuepoint.engine.logs_api import get_cuepoint_log_text, get_cuepoint_logs_dir
 from cuepoint.engine.privacy_api import clear_cache_now, clear_logs_now
 from cuepoint.engine.history_api import list_recent_history, load_history_csv
+from cuepoint.engine.library_api import (
+    LibraryUnavailableError,
+    SEARCH_LIMIT_DEFAULT,
+    parse_int_param,
+    search_library,
+)
 from cuepoint.engine.incrate_api import (
     demo_inventory_snapshot,
     get_discover_options,
@@ -318,6 +324,37 @@ def make_handler(
                     )
                 except Exception as exc:  # noqa: BLE001 — surface to API client
                     self._send_json(500, error_payload("LOGS_READ_FAILED", str(exc)))
+                    return
+                self._send_json(200, payload)
+                return
+            if path == "/api/v1/library/search":
+                if not self._authorized():
+                    self._send_json(
+                        401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                    )
+                    return
+                params = parse_qs(parsed.query)
+                try:
+                    limit = parse_int_param(
+                        params.get("limit", [None])[0],
+                        default=SEARCH_LIMIT_DEFAULT,
+                        name="limit",
+                    )
+                    offset = parse_int_param(
+                        params.get("offset", [None])[0], default=0, name="offset"
+                    )
+                except ValueError as exc:
+                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                    return
+                try:
+                    payload = search_library(
+                        params.get("q", [""])[0], limit=limit, offset=offset
+                    )
+                except LibraryUnavailableError as exc:
+                    self._send_json(503, error_payload("LIBRARY_UNAVAILABLE", str(exc)))
+                    return
+                except Exception as exc:  # noqa: BLE001 — surface to API client
+                    self._send_json(500, error_payload("SEARCH_FAILED", str(exc)))
                     return
                 self._send_json(200, payload)
                 return

@@ -33,9 +33,16 @@
   min-width: 0;
 }
 
+/*
+ * A query container of its own: the header sits outside the content region, so
+ * `@container content` does not reach it, and its width tracks the whole shell
+ * rather than the page area.
+ */
 .app-shell__header {
   grid-area: header;
   min-width: 0;
+  container-type: inline-size;
+  container-name: header;
 }
 
 .app-shell__sidebar {

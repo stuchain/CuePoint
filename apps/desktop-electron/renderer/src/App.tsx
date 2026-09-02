@@ -18,6 +18,7 @@ import {
   applyLaunchDestination,
   AppShellLayout,
   enabledDestinations,
+  GlobalSearch,
   HOME_DESTINATION_ID,
   Sidebar,
   useRememberDestination,
@@ -130,7 +131,11 @@ function AppShell() {
         outside the grid until SHELL-07 gives it a permanent home in the status
         strip.
       */}
-      <AppShellLayout menuBar={<AppMenuBar {...menuActions} />} sidebar={<Sidebar />}>
+      <AppShellLayout
+        menuBar={<AppMenuBar {...menuActions} />}
+        header={<GlobalSearch />}
+        sidebar={<Sidebar />}
+      >
         <Routes>
           {enabledDestinations().map((destination) => (
             <Route

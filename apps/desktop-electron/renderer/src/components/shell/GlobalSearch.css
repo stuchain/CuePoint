@@ -1,0 +1,137 @@
+/**
+ * Global search, in the shell header.
+ *
+ * The results panel is absolutely positioned so opening it never reflows the
+ * page underneath — a header control that pushes the whole app down as you type
+ * is worse than one that overlays it.
+ */
+.cp-global-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg-toolbar);
+  border-bottom: var(--border-width) solid var(--border-outline);
+}
+
+.cp-global-search__field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin-inline: auto;
+}
+
+/* Present for screen readers; the placeholder carries it visually. */
+.cp-global-search__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.cp-global-search__input {
+  width: 100%;
+  min-height: var(--hit-min);
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg-app);
+  border: var(--border-width) solid var(--border-outline);
+  box-shadow: var(--shadow-bevel-sm);
+  color: var(--fg-primary);
+  font-size: var(--font-size-sm);
+}
+
+.cp-global-search__input:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent-info);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+.cp-global-search__panel {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 940;
+  width: min(var(--content-max-width), 100%);
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: var(--space-sm);
+  background: var(--bg-panel);
+  border: var(--border-width) solid var(--border-outline);
+  box-shadow: var(--shadow-panel);
+}
+
+.cp-global-search__note {
+  margin: 0;
+  padding: var(--space-sm);
+  color: var(--fg-muted);
+  font-size: var(--font-size-sm);
+}
+
+.cp-global-search__note--error {
+  color: var(--accent-danger);
+}
+
+.cp-global-search__summary {
+  margin: 0 0 var(--space-xs);
+  padding: 0 var(--space-xs);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cp-global-search__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cp-global-search__row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr) minmax(0, 2fr);
+  gap: var(--space-sm);
+  align-items: baseline;
+  min-height: var(--hit-min);
+  padding: var(--space-xs) var(--space-sm);
+  border-bottom: var(--border-width) solid var(--border-outline);
+}
+
+.cp-global-search__row:last-child {
+  border-bottom: none;
+}
+
+.cp-global-search__title {
+  color: var(--fg-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.cp-global-search__artist,
+.cp-global-search__meta {
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.cp-global-search__title,
+.cp-global-search__artist,
+.cp-global-search__meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* One column when the header is too narrow for three. */
+@container header (max-width: 700px) {
+  .cp-global-search__row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

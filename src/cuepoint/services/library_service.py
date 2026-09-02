@@ -40,6 +40,22 @@ class LibraryStats:
     is_empty: bool
 
 
+@dataclass(frozen=True)
+class LibrarySearchResult:
+    """One page of search results, plus how many matched in total.
+
+    ``total`` is the full match count rather than the length of ``tracks``, so a
+    caller can say "showing 20 of 340" without a second query — and so the
+    renderer never has to guess whether more results exist.
+    """
+
+    query: str
+    tracks: List[LibraryTrack]
+    total: int
+    limit: int
+    offset: int
+
+
 class LibraryService(ILibraryService):
     """Read access to the persistent library."""
 
@@ -63,6 +79,39 @@ class LibraryService(ILibraryService):
         large library materializes every row.
         """
         return self._tracks.list_all(limit=limit, offset=offset)
+
+    # Bounds for a search page. The maximum is a real limit, not a formality:
+    # 50,000 tracks is an explicit target, and an unbounded response would
+    # materialize every matching row into JSON.
+    SEARCH_LIMIT_DEFAULT = 50
+    SEARCH_LIMIT_MAX = 200
+
+    def search_tracks(
+        self, query: str, limit: int = SEARCH_LIMIT_DEFAULT, offset: int = 0
+    ) -> LibrarySearchResult:
+        """Return tracks matching ``query``, with the unpaged total.
+
+        A blank query returns nothing rather than the whole library: an empty
+        search box should not be a request to read everything.
+
+        ``limit`` and ``offset`` are clamped here rather than trusted, because
+        this is reached from an HTTP handler and "the caller validated it" is
+        not something a service should assume.
+        """
+        safe_limit = max(1, min(int(limit), self.SEARCH_LIMIT_MAX))
+        safe_offset = max(0, int(offset))
+        text = (query or "").strip()
+        if not text:
+            return LibrarySearchResult(
+                query=text, tracks=[], total=0, limit=safe_limit, offset=safe_offset
+            )
+        return LibrarySearchResult(
+            query=text,
+            tracks=self._tracks.search(text, limit=safe_limit, offset=safe_offset),
+            total=self._tracks.search_count(text),
+            limit=safe_limit,
+            offset=safe_offset,
+        )
 
     def track_count(self) -> int:
         """Return the number of tracks in the library."""

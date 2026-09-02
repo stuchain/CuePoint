@@ -264,6 +264,40 @@ export interface BeatportTokenTestResult {
   message: string;
 }
 
+/**
+ * Library search (DEC-023, SHELL-04).
+ *
+ * Mirrors the engine's `/api/v1/library/search` response. That shape is a
+ * public contract — Phase 4's Library UI extends the same endpoint rather than
+ * introducing another search path — so these types are kept in step with
+ * `library_api.py` and `engineClient.ts` deliberately, not incidentally.
+ */
+export interface LibraryTrackRow {
+  id: number | null;
+  rekordbox_track_id: string;
+  title: string;
+  artist: string;
+  album: string | null;
+  label: string | null;
+  genre: string | null;
+  key: string | null;
+  bpm: number | null;
+  year: number | null;
+  duration_seconds: number | null;
+  file_path: string;
+}
+
+export interface LibrarySearchResponse {
+  query: string;
+  total: number;
+  limit: number;
+  offset: number;
+  tracks: LibraryTrackRow[];
+  /** True when nothing has been imported yet — a different problem from "no
+   *  matches", and one the UI has to answer differently. */
+  library_empty: boolean;
+}
+
 export interface CuePointBridge {
   getEngineStatus: () => Promise<EngineStatus>;
   startMatchJob: (body: StartMatchJobRequest) => Promise<StartMatchJobResponse>;
@@ -298,6 +332,11 @@ export interface CuePointBridge {
   getBeatportTokenStatus: () => Promise<BeatportTokenStatus>;
   setBeatportToken: (token: string) => Promise<BeatportTokenStatus>;
   testBeatportToken: (body?: { token?: string }) => Promise<BeatportTokenTestResult>;
+  searchLibrary?: (params: {
+    q: string;
+    limit?: number;
+    offset?: number;
+  }) => Promise<LibrarySearchResponse>;
   getHistoryRecent: (params?: { limit?: number }) => Promise<HistoryRecentResponse>;
   loadHistoryCsv: (csvPath: string) => Promise<HistoryLoadResponse>;
   getXmlPlaylists: (xmlPath: string) => Promise<XmlPlaylistsResponse>;

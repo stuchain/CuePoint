@@ -42,7 +42,7 @@ if TYPE_CHECKING:
     )
     from cuepoint.persistence.job_repository import JobRecord
     from cuepoint.services.backup_service import BackupInfo
-    from cuepoint.services.library_service import LibraryStats
+    from cuepoint.services.library_service import LibraryStats, LibrarySearchResult
     from cuepoint.services.checkpoint_service import CheckpointData
     from cuepoint.services.onboarding_service import OnboardingState
     from cuepoint.services.privacy_service import PrivacyPreferences
@@ -604,6 +604,13 @@ class ILibraryService(ABC):
         ...
 
     @abstractmethod
+    def search_tracks(
+        self, query: str, limit: int = 50, offset: int = 0
+    ) -> "LibrarySearchResult":
+        """Return tracks matching a query, with the unpaged total."""
+        ...
+
+    @abstractmethod
     def track_count(self) -> int:
         """Return the number of tracks in the library."""
         ...
@@ -683,6 +690,18 @@ class ITrackRepository(ABC):
         self, limit: Optional[int] = None, offset: int = 0
     ) -> List["LibraryTrack"]:
         """Return tracks ordered by artist then title."""
+        ...
+
+    @abstractmethod
+    def search(
+        self, query: str, limit: int = 50, offset: int = 0
+    ) -> List["LibraryTrack"]:
+        """Return tracks matching a case-insensitive substring query."""
+        ...
+
+    @abstractmethod
+    def search_count(self, query: str) -> int:
+        """Return how many tracks match a query, ignoring paging."""
         ...
 
     @abstractmethod
