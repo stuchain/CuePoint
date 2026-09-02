@@ -42,8 +42,14 @@ jobs:
       - name: Check formatting
         run: ruff format --check src/
 
+      # test_step55_mypy_validation.py filters mypy's output through ignore
+      # lists broad enough to swallow every error category, so it cannot fail;
+      # it records legacy gradual-typing debt. test_mypy_foundation.py is the
+      # gate: any type error in the v1 foundation modules fails the build.
       - name: Type check
-        run: python -m pytest src/tests/integration/test_step55_mypy_validation.py -q -p no:pytest-qt
+        run: |
+          python -m pytest src/tests/integration/test_mypy_foundation.py -q -p no:pytest-qt
+          python -m pytest src/tests/integration/test_step55_mypy_validation.py -q -p no:pytest-qt
 
       # Dependency and static-analysis scanning lives in security-scan.yml,
       # which runs on push, PR and a weekly schedule. Duplicating it here with

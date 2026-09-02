@@ -1,9 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""Integration tests for Step 5.5: Mypy type checking validation.
+"""Legacy mypy smoke check for the gradually-typed packages.
 
-This module verifies that mypy can successfully type-check the codebase.
+**This is not a gate and cannot fail.** The ignore lists below cover
+``arg-type``, ``attr-defined``, ``assignment``, ``return-value``, ``misc``,
+``index``, ``union-attr`` and most remaining categories, and each pattern is
+matched as a substring against the whole output line — between them they
+swallow essentially every error mypy can produce. Verified: three blatant type
+errors planted in a service leave all five tests passing.
+
+It is kept because it documents which legacy modules carry which kinds of
+gradual-typing debt, which is genuinely useful when paying that debt down. It
+must not be relied on to catch a type error.
+
+The real gate is ``test_mypy_foundation.py``: any mypy error in the v1
+foundation modules fails the build. Widen that list as modules are cleaned up,
+rather than loosening it here.
 """
 
 import subprocess
