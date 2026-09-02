@@ -20,6 +20,7 @@ import {
   enabledDestinations,
   GlobalSearch,
   HOME_DESTINATION_ID,
+  PlayerRegion,
   Sidebar,
   TrackInspector,
   useRememberDestination,
@@ -137,6 +138,7 @@ function AppShell() {
         header={<GlobalSearch />}
         sidebar={<Sidebar />}
         inspector={<TrackInspector />}
+        player={<PlayerRegion />}
       >
         <Routes>
           {enabledDestinations().map((destination) => (

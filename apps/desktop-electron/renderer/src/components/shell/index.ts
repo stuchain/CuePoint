@@ -2,6 +2,8 @@ export { AppShellLayout } from "./AppShellLayout";
 export { Sidebar } from "./Sidebar";
 export { GlobalSearch } from "./GlobalSearch";
 export { TrackInspector } from "./TrackInspector";
+export { PlayerRegion } from "./PlayerRegion";
+export type { PlayerRegionProps } from "./PlayerRegion";
 export type { TrackInspectorProps } from "./TrackInspector";
 export {
   clampInspectorWidth,

@@ -99,10 +99,19 @@ describe("App shell", () => {
     expect(container.querySelector(".app-shell__inspector .cp-inspector")).toBe(before);
   });
 
+  it("mounts the player boundary without giving it any content (DEC-025)", () => {
+    // The region exists so Phase 5 fills it by editing PlayerRegion alone, and
+    // is empty so it occupies no space until then.
+    const { container } = render(<App />);
+
+    const player = container.querySelector(".app-shell__player");
+    expect(player).not.toBeNull();
+    expect(player).toBeEmptyDOMElement();
+  });
+
   it("does not render the regions later steps fill", () => {
     const { container } = render(<App />);
 
-    expect(container.querySelector(".app-shell__player")).toBeNull();
     expect(container.querySelector(".app-shell__status")).toBeNull();
   });
 

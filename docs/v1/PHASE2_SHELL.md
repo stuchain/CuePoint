@@ -672,7 +672,42 @@ straightforward.
 
 ---
 
-## SHELL-06 — Player Region Slot
+## SHELL-06 — Player Region Slot ✅ IMPLEMENTED 2026-09-02
+
+**Outcome**: Complete, and deliberately invisible. `PlayerRegion` is mounted between the content
+area and the status strip, spanning the full width beneath sidebar and inspector. It renders
+nothing and occupies nothing until Phase 5.
+
+**It returns `null`, not an empty `<div>`.** An element with a class is somewhere a border, a
+padding or a `min-height` can attach later, which is exactly how a region that should be invisible
+acquires a size. The wrapper `.app-shell__player` still exists — that is the boundary Phase 5 fills
+— but there is nothing inside it for the `auto` grid row to size to.
+
+**"Pixel-identical" was measured, not asserted.** The DoD asks that the shell with the region
+render identically to a build without it, so both builds were captured across 3 scales × 2 screens:
+every region's bounding box matched exactly, and all **six screenshots were byte-identical by
+SHA-256**.
+
+**The zero-height promise is now enforced on every run.** The layout matrix checks that the player
+region is empty and exactly 0px tall in all 75 combinations. Adding `min-height: 1px` to it fails
+all 75 — a single stray pixel is caught, which is the point: this is a regression nobody would ever
+notice by eye.
+
+**Both halves of the slot are tested.** Empty renders nothing; filled renders its content in the
+right place. Without the second, Phase 5 could mount a player into a region that never shows it,
+and the "it takes no space" test would happily keep passing.
+
+**Scope held.** DEC-025 rejected a visibly disabled transport, and the transport pixel icons from
+FOUNDATION-14 are still unused. No CSS file was added: styling belongs with the thing that fills
+the region, not with the hole it leaves.
+
+**Verification**: 7 new renderer tests (262 total), 6 E2E tests, 75/75 on the packaged-build matrix
+with the new zero-height check, byte-identical screenshot comparison against the previous build,
+lint/typecheck/`build:check` clean.
+
+---
+
+## SHELL-06 — Player Region Slot (original plan)
 
 **Objective**: Implement DEC-025 — define the player's layout region and component boundary,
 occupying no space and rendering nothing until Phase 5 fills it.
