@@ -16,6 +16,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import App from "./App";
+import { LAST_DESTINATION_STORAGE_KEY } from "./components/shell";
 
 /** Several screens also link to Settings, so navigation is driven from the nav. */
 function navLink(name: string): HTMLElement {
@@ -43,6 +44,10 @@ describe("App shell", () => {
     // The onboarding dialog would otherwise open over the shell on first run
     // and swallow the navigation clicks.
     localStorage.setItem("cuepoint-onboarding-complete", "1");
+    // The app uses a hash router, and jsdom keeps `location.hash` for the whole
+    // file. Clearing it is what makes each test start like a fresh launch
+    // rather than inheriting the previous test's route.
+    window.location.hash = "";
     // jsdom implements neither of these; without stubs they report through the
     // virtual console as errors and defeat the console assertion below.
     window.scrollTo = vi.fn();
@@ -99,5 +104,64 @@ describe("App shell", () => {
     }
 
     expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  describe("launch destination (DEC-027)", () => {
+    it("opens on home when nothing is stored", async () => {
+      render(<App />);
+
+      expect(await screen.findByText(/Select a tool to get started/i)).toBeInTheDocument();
+    });
+
+    it("reopens on the last-visited destination", async () => {
+      const user = userEvent.setup();
+      const first = render(<App />);
+      await user.click(navLink("Settings"));
+      await screen.findByText(/Beatport token/i);
+      first.unmount();
+
+      // A fresh mount stands in for a fresh launch: the router starts at "/"
+      // either way, and only what is stored can bring it back.
+      render(<App />);
+
+      expect(await screen.findByText(/Beatport token/i)).toBeInTheDocument();
+    });
+
+    it.each([
+      ["a destination that no longer exists", "a-page-that-was-removed"],
+      ["a malformed value", "{}"],
+      ["an empty value", ""],
+    ])("falls back to home given %s, without a blank content area", async (_case, stored) => {
+      localStorage.setItem(LAST_DESTINATION_STORAGE_KEY, stored);
+
+      const { container } = render(<App />);
+
+      expect(await screen.findByText(/Select a tool to get started/i)).toBeInTheDocument();
+      // The failure this step exists to fix is chrome with an empty content
+      // area, which "did it render home" alone would not catch.
+      expect(container.querySelector("main.app-main .screen")).not.toBeNull();
+      expect(consoleError).not.toHaveBeenCalled();
+    });
+
+    it("does not drag the user back to the restored page after navigating", async () => {
+      const user = userEvent.setup();
+      localStorage.setItem(LAST_DESTINATION_STORAGE_KEY, "settings");
+      render(<App />);
+      await screen.findByText(/Beatport token/i);
+
+      await user.click(navLink("inCrate"));
+
+      expect(await screen.findByText(/CuePoint \/ inCrate/i)).toBeInTheDocument();
+    });
+
+    it("remembers the destination it navigated to", async () => {
+      const user = userEvent.setup();
+      render(<App />);
+
+      await user.click(navLink("Results"));
+      await screen.findByText(/Sync with Rekordbox/i);
+
+      expect(localStorage.getItem(LAST_DESTINATION_STORAGE_KEY)).toBe("results");
+    });
   });
 });

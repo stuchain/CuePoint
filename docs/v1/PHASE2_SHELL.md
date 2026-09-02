@@ -1,9 +1,10 @@
 # CuePoint v1.0.0 — Phase 2: Application Shell, Detailed Step Specifications
 
-Status: **Draft step specs, design-only mode.** No code has been written from this document.
+Status: **SHELL-01 and SHELL-03 implemented (2026-09-02); the rest are draft step specs.**
 Implementation of any step below requires an explicit "Implement SHELL-NN" instruction, scoped to
 exactly that step, followed by tests, a completion report, and a stop before the next step per the
-evolution spec's process.
+evolution spec's process. SHELL-03 was taken before SHELL-02 to close the routing defect recorded
+in fact 2 below; the sequencing diagram shows the planned order, not the order taken.
 
 Depends on Phase 1 being complete (`PHASE1_FOUNDATION.md`, audited 2026-09-02) and on Decision
 Rounds 1–3 (`DECISIONS.md`, DEC-001…DEC-027). Builds on `CURRENT_ARCHITECTURE.md`,
@@ -85,7 +86,7 @@ is imported before `bootstrap_services()` runs. New endpoints resolve `ILibraryS
 check and fail with `error_payload(CODE, message)` — the envelope is an invariant, so no endpoint
 here invents its own error shape.
 
-### 2. A routing defect — **CONFIRMED 2026-09-02**, fix owed by SHELL-03
+### 2. A routing defect — **CONFIRMED and FIXED 2026-09-02 in SHELL-03**
 
 In production `main.ts:157` loads the renderer with `loadFile(.../renderer/dist/index.html)`, so
 `window.location.pathname` is a `file://` path ending in `/index.html`. `App.tsx` uses
@@ -113,10 +114,15 @@ Development is unaffected — `npm run dev` serves over `http://localhost:5173`,
 — which is why it survived: all five screens render correctly over http, and the only E2E test
 asserts the navigation element and the "inKey" link, both rendered *outside* `<Routes>`.
 
-**SHELL-03 owns the fix** (its carried-in obligation). Nothing else in Phase 2 can be verified in
-a packaged build until it lands; steps before it verify over http against the same built assets.
-DEC-027's restore must still work by navigating after mount from the persisted destination, never
-by relying on the URL surviving a launch.
+**Fixed in SHELL-03** by switching to `HashRouter`, so routes live in the fragment
+(`index.html#/match`) which `file://` leaves alone. A catch-all `*` route renders home, so no path
+can produce an empty content area again. The packaged build now renders on first paint, navigates,
+and survives a reload — and the SHELL-01 verification matrix was re-run against it: **75/75**.
+
+The gap that hid it is closed too: `e2e/shell.spec.ts` asserts screen *content* on first paint,
+after navigation, and after a restart. Reverting to `BrowserRouter` fails two of those three.
+(The first-paint test alone no longer discriminates, because the catch-all route independently
+prevents that symptom — the navigation and restart tests are the router's regression guard.)
 
 ### 3. Storage-key naming
 
@@ -160,6 +166,9 @@ the content region really scrolls (Settings at 3×: 2541px of content in a 633px
 `scrollTop` moves). Before/after screenshots against the stashed tree confirmed the one visible
 difference at 3× — the Results panel clipping — is pre-existing `screen--fill` behavior at large
 scale, identical on both sides.
+
+**Update after SHELL-03**: the matrix was re-run against the real packaged build once the router
+was fixed — **75/75 again**, so nothing here rested on the http workaround.
 
 **Two environment findings, neither a repo defect.** `ELECTRON_RUN_AS_NODE=1` in the shell makes
 `electron.exe` run as plain Node, so the app and every E2E run die with an ESM loader error until
@@ -228,6 +237,12 @@ icon-only rail and remembers that choice.
 
 **Dependencies**: SHELL-01 (needs the sidebar region).
 
+**Already partly built.** SHELL-03 ran first and created `navRegistry.ts` with today's five
+destinations, plus the `enabled` flag and the lookup helpers. This step adds the target IA
+(Library, Collections, Prepare, Discover, Clean) with `enabled: false`, the Tools grouping, the
+icon field, and the sidebar itself. The lab nav pill already renders from the registry, so this
+replaces a consumer rather than rewriting the source.
+
 **Existing code reused**: `PixelIcon`/`ToolbarIcon`'s existing icon-or-glyph union — destinations
 whose pixel icon does not exist yet (`clean`, `discover`, `prepare`) use the glyph path until
 SHELL-09 draws them, which is exactly what that union was built for. `home`, `library`, `activity`
@@ -262,7 +277,58 @@ ordering rules) beyond a declarative list; keep it data, not logic.
 
 ---
 
-## SHELL-03 — Routing and Navigation State
+## SHELL-03 — Routing and Navigation State ✅ IMPLEMENTED 2026-09-02 (taken before SHELL-02)
+
+**Outcome**: Complete. The router defect is fixed, routes come from a registry, and the app
+reopens where you left it.
+
+**Taken out of order, so the registry seam had to be drawn early.** SHELL-03 was specified to
+depend on SHELL-02, which owns the nav registry. Rather than duplicate the concept, this step
+created `navRegistry.ts` with the destinations that exist today (id, label, path, `enabled`) and
+left the rest of DEC-020 to SHELL-02: declaring the not-yet-built destinations with
+`enabled: false`, and adding the grouping and icon fields the sidebar needs. `enabled` exists now
+because DEC-027's fallback has to answer "is this still reachable?", and a rule that cannot be
+false cannot be tested. The lab nav pill renders from the same registry, so SHELL-02 replaces one
+consumer rather than rewriting the source.
+
+**The router: `HashRouter`.** Routes live in the fragment, which `file://` leaves alone.
+`MemoryRouter` would also have worked but loses the URL entirely, which makes debugging and
+reload worse for no gain. A catch-all `*` route renders home, so no path — a stray link, a future
+typo — can produce the empty content area this step exists to eliminate.
+
+**A second defect, found by a test that was written to be strict.** The first implementation
+restored the destination by navigating from a `useLayoutEffect` after mount, exactly as the plan
+said. It does not work: react-router subscribes to history in *its* layout effect, and a child's
+layout effect runs first, so the navigation is issued before anything is listening and is simply
+lost. The symptom is the worst kind — the URL becomes `#/settings` while the content area still
+shows home, so the app looks broken in a way the address bar denies. It survived the first test
+run only because a leftover `location.hash` from a previous test made the router start in the
+right place; resetting the hash per test exposed it. The fix resolves the destination and writes
+the URL **before the router mounts**, which also removes the frame of home that a passive effect
+would have painted. The stored id is still the source of truth; nothing depends on a URL surviving
+a launch.
+
+**Verification.** 26 new tests (161 renderer total): the three DEC-027 fallback cases — nothing
+stored, a destination that no longer exists, one that exists but is disabled — plus malformed and
+empty values, storage that throws, and an assertion that a fallback never leaves an empty content
+area. Two mutants confirm the tests bite: making restore ignore the stored value fails 2 tests,
+making the fallback ignore `enabled` fails 2 more. `e2e/shell.spec.ts` adds packaged-build
+coverage of first paint, navigation, and DEC-027 restore **across a real app restart**; reverting
+to `BrowserRouter` fails two of the three. The SHELL-01 matrix was re-run against the packaged
+build: 75/75. Dev mode was checked separately — `main.ts`'s `?engine=…` query survives the hash
+rewrite.
+
+**Two things cleaned up on the way.** The E2E suite now runs each launch in its own
+`--user-data-dir`: it previously used the real CuePoint profile, and the smoke test broke the
+moment stored state made the app open somewhere other than home (its `link: "inKey"` lookup is
+ambiguous on any screen with a "← Back to inKey" link, now scoped to the nav and exact).
+
+**Verification**: 161 renderer tests, lint, typecheck, `build:check`, 4 E2E tests, version
+coupling — all pass. No Python changed.
+
+---
+
+## SHELL-03 — Routing and Navigation State (original plan)
 
 **Objective**: Derive the route table from the nav registry, and implement DEC-027 — reopen on the
 last-visited destination, falling back to home when the stored destination is unknown or not
@@ -686,7 +752,7 @@ Phase 2 is complete when, in a **packaged build** (not only `npm run dev`):
 7. No decision in DEC-018, DEC-020…DEC-027 is contradicted by the implementation. Per the process,
    a contradiction stops the work and gets raised rather than worked around.
 8. The three carried-in defects are closed, each by the step that owns it: the packaged build
-   renders a screen on first paint (SHELL-03), the status strip updates without a remount
+   renders a screen on first paint (SHELL-03 ✅ done), the status strip updates without a remount
    (SHELL-07), and no keyboard shortcut has two meanings (SHELL-04 decides, SHELL-10 documents).
 
 ## Deferred, with reasons

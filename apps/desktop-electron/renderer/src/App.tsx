@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BrowserRouter, Link, Route, Routes, useLocation } from "react-router-dom";
+import { HashRouter, Link, Route, Routes, useLocation } from "react-router-dom";
 import {
   AboutDialog,
   AppMenuBar,
@@ -14,7 +14,13 @@ import {
   ToastProvider,
 } from "./components";
 import { EngineStatusBanner } from "./components/EngineStatusBanner";
-import { AppShellLayout } from "./components/shell";
+import {
+  applyLaunchDestination,
+  AppShellLayout,
+  enabledDestinations,
+  HOME_DESTINATION_ID,
+  useRememberDestination,
+} from "./components/shell";
 import { MatchResultsProvider } from "./context/MatchResultsContext";
 import {
   InCrateMainScreen,
@@ -74,6 +80,36 @@ function AppShell() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  useRememberDestination();
+
+  /**
+   * Maps a destination id to the screen that renders it.
+   *
+   * This lives here rather than in the registry because two of these screens
+   * need callbacks that open dialogs owned by this component; putting elements
+   * in the registry would drag that state into what is meant to stay data.
+   */
+  const screenFor = (id: string) => {
+    switch (id) {
+      case "tools":
+        return <ToolSelectionScreen />;
+      case "match":
+        return (
+          <InKeyMainScreen
+            onOpenPlaylistExportInstructions={() => setPlaylistExportInstructionsOpen(true)}
+          />
+        );
+      case "incrate":
+        return <InCrateMainScreen />;
+      case "results":
+        return <ResultsScreen />;
+      case "settings":
+        return <SettingsExportScreen />;
+      default:
+        return <ToolSelectionScreen />;
+    }
+  };
+
   const menuActions = {
     onOpenSupport: () => setSupportOpen(true),
     onOpenShortcuts: () => setShortcutsOpen(true),
@@ -96,23 +132,30 @@ function AppShell() {
       */}
       <AppShellLayout menuBar={<AppMenuBar {...menuActions} />}>
         <Routes>
-          <Route path="/" element={<ToolSelectionScreen />} />
-          <Route
-            path="/match"
-            element={<InKeyMainScreen onOpenPlaylistExportInstructions={() => setPlaylistExportInstructionsOpen(true)} />}
-          />
-          <Route path="/incrate" element={<InCrateMainScreen />} />
-          <Route path="/results" element={<ResultsScreen />} />
-          <Route path="/settings" element={<SettingsExportScreen />} />
+          {enabledDestinations().map((destination) => (
+            <Route
+              key={destination.id}
+              path={destination.path}
+              element={screenFor(destination.id)}
+            />
+          ))}
+          {/*
+            A path that matches no destination renders home rather than nothing.
+            This is the belt to the registry's braces: DEC-027's fallback keeps
+            a stale stored destination from landing here, and this keeps any
+            other unmatched path — a stray link, a future typo — from showing
+            an empty content area, which is the failure this step exists to fix.
+          */}
+          <Route path="*" element={screenFor(HOME_DESTINATION_ID)} />
         </Routes>
       </AppShellLayout>
       <EngineStatusBanner />
       <nav className="app-lab-nav" aria-label="Main navigation">
-        <Link to="/">Tools</Link>
-        <Link to="/match">inKey</Link>
-        <Link to="/incrate">inCrate</Link>
-        <Link to="/results">Results</Link>
-        <Link to="/settings">Settings</Link>
+        {enabledDestinations().map((destination) => (
+          <Link key={destination.id} to={destination.path}>
+            {destination.label}
+          </Link>
+        ))}
       </nav>
       <SupportBundleDialog open={supportOpen} onClose={() => setSupportOpen(false)} />
       <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
@@ -131,8 +174,12 @@ function AppShell() {
 }
 
 export default function App() {
+  // Before the router mounts, not after: see `applyLaunchDestination` for why
+  // restoring from an effect leaves the URL and the screen disagreeing.
+  useState(applyLaunchDestination);
+
   return (
-    <BrowserRouter>
+    <HashRouter>
       <ThemeProvider>
         <ScaleProvider>
           <ToastProvider>
@@ -142,6 +189,6 @@ export default function App() {
           </ToastProvider>
         </ScaleProvider>
       </ThemeProvider>
-    </BrowserRouter>
+    </HashRouter>
   );
 }

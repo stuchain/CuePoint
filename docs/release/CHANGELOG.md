@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   status chrome off-screen as those are added
 
 ### Added
+- The app reopens on the page you were last using. If that page is no longer
+  available it opens on the tool picker rather than showing nothing
 - The library database is now backed up automatically when the app starts, keeping
   the five most recent copies in `~/.cuepoint/backups/`. The backup is taken before
   any schema upgrade runs, so a copy of the previous state always exists, and is
@@ -27,6 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by one drawing, and it stays sharp at every interface scale
 
 ### Fixed
+- Screens now render in the installed app. The window showed its menu bar and
+  navigation but an empty content area on every page, because the app used a
+  browser-style router while the installed build loads its files from disk —
+  no page ever matched. Development builds were unaffected, which is why it went
+  unnoticed. Navigation, reloading and deep links all work now
 - `PrivacyService` and `OnboardingService` no longer import PySide6. Both had an
   unguarded module-level `from PySide6.QtCore import QSettings`, which raised
   `ImportError` in the shipped Electron engine sidecar (PySide6 is not in the
