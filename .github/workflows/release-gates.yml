@@ -5,11 +5,22 @@ on:
     branches:
       - main
       - feature
+  # The release gates proper (version sync, changelog, SBOM, licences, lint,
+  # types, formatting) are cheap and belong on every PR; before this they only
+  # ran after merge. The heavy matrix below stays on push — `test.yml` already
+  # runs the suite on PRs, and repeating it across 3 OSes x 2 Pythons would be
+  # six duplicate jobs per PR.
+  pull_request:
+    branches:
+      - main
+      - feature
   workflow_dispatch:
 
 jobs:
   test-gates:
     name: Test Gates
+    # Covered on pull requests by test.yml; see the trigger comment above.
+    if: github.event_name != 'pull_request'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -154,8 +165,12 @@ jobs:
           ruff check src/
         continue-on-error: false
       
+      # test_step55_mypy_validation.py cannot fail — its ignore lists cover
+      # every mypy error category — so it is a debt record, not a gate.
+      # test_mypy_foundation.py is the gate.
       - name: Run type checker
         run: |
+          python -m pytest src/tests/integration/test_mypy_foundation.py -v -p no:pytest-qt
           python -m pytest src/tests/integration/test_step55_mypy_validation.py -v -p no:pytest-qt
         continue-on-error: false
       
