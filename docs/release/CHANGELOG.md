@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   status chrome off-screen as those are added
 
 ### Added
+- A status strip along the bottom of the window shows whether the engine is
+  connected and the progress of any running job, wherever you are in the app —
+  including a job that was already running before the window reloaded
 - A Track Inspector panel docked to the right of the window. Drag its edge to
   resize it, or hide it with Ctrl+I; the width and whether it is showing are
   remembered between sessions. It stays put as you move between pages, and will
@@ -38,6 +41,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by one drawing, and it stays sharp at every interface scale
 
 ### Fixed
+- The engine connection indicator now updates. It previously read the engine's
+  state once when the window opened and never again, so it could report a
+  connection long after the engine had stopped
 - The top of a page is no longer unreachable when it is taller than the window.
   Long pages were centred vertically, which pushed their top edge above the
   scrollable area with no way to bring it back — the inKey screen lost its whole

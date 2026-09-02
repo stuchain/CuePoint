@@ -100,7 +100,7 @@ test.describe("Application shell navigation", () => {
       await dismissOnboarding(window);
       // The engine sidecar starts asynchronously; searching before it is up
       // would test the wrong thing.
-      await expect(window.locator(".engine-status--ok")).toBeVisible({ timeout: 60_000 });
+      await expect(window.locator(".cp-status__engine--ok")).toBeVisible({ timeout: 60_000 });
 
       await window.getByRole("combobox", { name: /search library/i }).fill("deadmau5");
 

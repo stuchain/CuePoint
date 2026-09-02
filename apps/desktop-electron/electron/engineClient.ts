@@ -42,6 +42,24 @@ export interface LibrarySearchResponse {
   library_empty: boolean;
 }
 
+export interface EngineJobSummary {
+  id: string;
+  type: string;
+  state: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+  created_at: string;
+  updated_at: string;
+  demo?: boolean;
+  /** The engine's `progress_to_dict` payload; the renderer owns its typing. */
+  progress?: Record<string, unknown>;
+  error?: { code?: string; message?: string };
+}
+
+export interface EngineJobList {
+  jobs: EngineJobSummary[];
+  /** Active jobs in total, regardless of the state filter or the limit. */
+  active_count: number;
+}
+
 export class EngineClient {
   constructor(
     private readonly port: number,
@@ -95,6 +113,25 @@ export class EngineClient {
     if (params.limit != null) query.set("limit", String(params.limit));
     if (params.offset != null) query.set("offset", String(params.offset));
     const res = await fetch(this.url(`/api/v1/library/search?${query.toString()}`), {
+      headers: this.headers(),
+    });
+    return readJson(res);
+  }
+
+  /**
+   * List jobs (SHELL-07). Unlike `getJob`, this needs no id, which is what
+   * lets the status strip report on a job it did not start — one begun before
+   * a renderer reload, or by another window.
+   */
+  async listJobs(params?: {
+    state?: "active" | "all";
+    limit?: number;
+  }): Promise<EngineJobList> {
+    const query = new URLSearchParams();
+    if (params?.state) query.set("state", params.state);
+    if (params?.limit != null) query.set("limit", String(params.limit));
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    const res = await fetch(this.url(`/api/v1/jobs${suffix}`), {
       headers: this.headers(),
     });
     return readJson(res);

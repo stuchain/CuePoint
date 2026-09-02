@@ -741,7 +741,54 @@ that feels more natural than a near-empty PR — worth deciding then, not now.
 
 ---
 
-## SHELL-07 — Engine and Job Status Strip
+## SHELL-07 — Engine and Job Status Strip ✅ IMPLEMENTED 2026-09-02
+
+**Outcome**: Complete. A status strip along the bottom of the shell reports engine state and the
+running job. Two things Phase 1 built and nothing displayed — durable job records (FOUNDATION-07)
+and engine status — are finally visible.
+
+**The carried-in obligation is discharged.** `EngineStatusBanner` read the status once on mount
+with no refresh path, so it reported whatever was true at first paint and then went stale in
+silence. It is **deleted**, not left alongside the strip: two reporters of the same state can
+disagree. Verified the way the obligation demanded — by killing the engine process with the app
+open, not by unit test: the strip went from "Engine connected · v1.0.0-feb1" to "Engine offline:
+Engine not running" **with no remount and no navigation**.
+
+**A gap that is real but not this step's to fix**: nothing brings the engine back. `EngineSupervisor`
+spawns it once at startup and has no restart path, so after a crash the strip correctly reports
+offline forever and the app must be restarted. The strip reports state faithfully; respawning is
+supervisor behavior. Recorded here as a candidate follow-up rather than smuggled into this step.
+
+**The new endpoint merges two sources.** `GET /api/v1/jobs?state=<active|all>&limit=<n>` combines
+the in-memory store, whose progress is live, with `IJobRepository`, which survives an engine
+restart. Neither alone answers "what is happening right now": persisted progress is sampled at
+most once a second by design, and the in-memory store forgets everything on restart. The live copy
+wins on conflict; the persisted `type` discriminator is preserved, since the in-memory job predates
+that column. `active_count` is returned separately from the page, so a strip showing one job can
+still say how many are running.
+
+**Discovery polls; progress does not.** A job can be started from another screen, another window,
+or a renderer that has since reloaded, and nothing broadcasts that — so the strip asks. Once a job
+is known, its ticks arrive over the existing SSE stream rather than by repeated asking. The poll is
+**2 seconds**, lowered from a first pass at 4: four is long enough that starting a match and
+glancing down looks broken. A consequence worth stating plainly: a job shorter than the interval
+can finish unseen — a demo run completes in ~300ms and is usually missed. That is acceptable, since
+the jobs worth reporting on are the ones that take long enough to want reporting on.
+
+**All three DoD items verified in the packaged app**, not only in jsdom:
+- engine down without a remount — killed `python.exe`, strip flipped to offline;
+- a job started on one destination visible from another — 20 sightings with live progress while
+  sitting on Settings;
+- a job still running after a renderer reload picked up — 10 sightings after a reload, of jobs
+  whose ids that renderer had never seen.
+
+**Verification**: 18 new Python tests, 17 new renderer tests (280 total), 6 E2E, 75/75 on the
+packaged-build matrix with a new "status strip present" check, full Python suite 2261 passed,
+ruff/format/Qt guard clean, renderer lint/typecheck/`build:check` clean.
+
+---
+
+## SHELL-07 — Engine and Job Status Strip (original plan)
 
 **Objective**: First half of DEC-026 — a persistent bottom status strip showing engine state and
 the progress of running jobs, giving FOUNDATION-07's durable job records their first UI and

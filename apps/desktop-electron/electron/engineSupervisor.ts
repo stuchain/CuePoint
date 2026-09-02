@@ -5,7 +5,7 @@ import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { WebContents } from "electron";
-import { EngineClient, type LibrarySearchResponse } from "./engineClient";
+import { EngineClient, type EngineJobList, type LibrarySearchResponse } from "./engineClient";
 import { getBundledEnginePath, shouldUseBundledEngine } from "./engineLaunch";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -146,6 +146,13 @@ export class EngineSupervisor {
     offset?: number;
   }): Promise<LibrarySearchResponse> {
     return this.client().searchLibrary(params);
+  }
+
+  async listJobs(params?: {
+    state?: "active" | "all";
+    limit?: number;
+  }): Promise<EngineJobList> {
+    return this.client().listJobs(params);
   }
 
   async getJob(jobId: string): Promise<Record<string, unknown>> {

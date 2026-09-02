@@ -3,6 +3,10 @@ export { Sidebar } from "./Sidebar";
 export { GlobalSearch } from "./GlobalSearch";
 export { TrackInspector } from "./TrackInspector";
 export { PlayerRegion } from "./PlayerRegion";
+export { StatusStrip } from "./StatusStrip";
+export { ENGINE_POLL_MS, useEngineStatus } from "./useEngineStatus";
+export { JOB_POLL_MS, jobLabel, jobPercent, useActiveJob } from "./useActiveJob";
+export type { ActiveJobState } from "./useActiveJob";
 export type { PlayerRegionProps } from "./PlayerRegion";
 export type { TrackInspectorProps } from "./TrackInspector";
 export {

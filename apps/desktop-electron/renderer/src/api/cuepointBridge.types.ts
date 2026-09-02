@@ -298,6 +298,24 @@ export interface LibrarySearchResponse {
   library_empty: boolean;
 }
 
+export interface EngineJobSummary {
+  id: string;
+  type: string;
+  state: JobState;
+  created_at: string;
+  updated_at: string;
+  demo?: boolean;
+  /** Same shape `progress_to_dict` sends for a running job. */
+  progress?: Partial<ProgressInfo>;
+  error?: { code?: string; message?: string };
+}
+
+export interface EngineJobList {
+  jobs: EngineJobSummary[];
+  /** Active jobs in total, regardless of the state filter or the limit. */
+  active_count: number;
+}
+
 export interface CuePointBridge {
   getEngineStatus: () => Promise<EngineStatus>;
   startMatchJob: (body: StartMatchJobRequest) => Promise<StartMatchJobResponse>;
@@ -332,6 +350,10 @@ export interface CuePointBridge {
   getBeatportTokenStatus: () => Promise<BeatportTokenStatus>;
   setBeatportToken: (token: string) => Promise<BeatportTokenStatus>;
   testBeatportToken: (body?: { token?: string }) => Promise<BeatportTokenTestResult>;
+  listJobs?: (params?: {
+    state?: "active" | "all";
+    limit?: number;
+  }) => Promise<EngineJobList>;
   searchLibrary?: (params: {
     q: string;
     limit?: number;

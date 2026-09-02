@@ -30,6 +30,10 @@ from cuepoint.engine.support_bundle_api import (
 from cuepoint.engine.logs_api import get_cuepoint_log_text, get_cuepoint_logs_dir
 from cuepoint.engine.privacy_api import clear_cache_now, clear_logs_now
 from cuepoint.engine.history_api import list_recent_history, load_history_csv
+from cuepoint.engine.jobs_api import (
+    LIST_LIMIT_DEFAULT,
+    list_jobs,
+)
 from cuepoint.engine.library_api import (
     LibraryUnavailableError,
     SEARCH_LIMIT_DEFAULT,
@@ -357,6 +361,35 @@ def make_handler(
                     self._send_json(500, error_payload("SEARCH_FAILED", str(exc)))
                     return
                 self._send_json(200, payload)
+                return
+            if path == "/api/v1/jobs":
+                if not self._authorized():
+                    self._send_json(
+                        401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                    )
+                    return
+                params = parse_qs(parsed.query)
+                try:
+                    limit = parse_int_param(
+                        params.get("limit", [None])[0],
+                        default=LIST_LIMIT_DEFAULT,
+                        name="limit",
+                    )
+                except ValueError as exc:
+                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                    return
+                state = params.get("state", ["active"])[0] or "active"
+                if state not in ("active", "all"):
+                    self._send_json(
+                        400,
+                        error_payload(
+                            "INVALID_REQUEST", "state must be 'active' or 'all'"
+                        ),
+                    )
+                    return
+                self._send_json(
+                    200, list_jobs(state=state, limit=limit, job_store=job_store)
+                )
                 return
             if path.startswith("/api/v1/jobs/"):
                 self._handle_job_get(path)

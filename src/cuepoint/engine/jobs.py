@@ -300,6 +300,15 @@ class JobStore:
         thread.start()
         return job
 
+    def list_all(self) -> List[MatchJob]:
+        """Return a snapshot of every job this process knows about.
+
+        A copy taken under the lock: callers iterate outside it, and a job
+        finishing mid-iteration must not change the list under them.
+        """
+        with self._lock:
+            return list(self._jobs.values())
+
     def get(self, job_id: str) -> Optional[MatchJob]:
         with self._lock:
             return self._jobs.get(job_id)

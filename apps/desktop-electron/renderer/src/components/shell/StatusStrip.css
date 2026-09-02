@@ -1,0 +1,84 @@
+/**
+ * Status strip, along the bottom of the shell.
+ *
+ * It spans the full width beneath the sidebar, content and inspector, so its
+ * height is the one thing every other region gives up. It stays a single line
+ * for that reason: no wrapping, ellipsis on anything long.
+ */
+.cp-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  min-height: var(--icon-size);
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg-toolbar);
+  border-top: var(--border-width) solid var(--border-outline);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.cp-status__engine {
+  flex: none;
+  padding: 0 var(--space-xs);
+  font-weight: 700;
+}
+
+/*
+ * Colour carries the same meaning the floating banner used, but as text on the
+ * strip's own background rather than a filled block: a permanently visible
+ * green bar reads as an alert that never clears.
+ */
+.cp-status__engine--ok {
+  color: var(--accent-success);
+}
+
+.cp-status__engine--error {
+  color: var(--accent-danger);
+}
+
+.cp-status__job,
+.cp-status__idle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+  color: var(--fg-muted);
+}
+
+.cp-status__job-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cp-status__progress {
+  flex: none;
+  width: calc(80px * var(--scale));
+  height: calc(6px * var(--scale));
+  border: var(--border-width) solid var(--border-outline);
+  background: var(--bg-app);
+  /* Square, like every other surface here. */
+  border-radius: 0;
+  appearance: none;
+}
+
+.cp-status__progress::-webkit-progress-bar {
+  background: var(--bg-app);
+}
+
+.cp-status__progress::-webkit-progress-value {
+  background: var(--accent-primary);
+}
+
+.cp-status__percent {
+  flex: none;
+  color: var(--fg-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.cp-status__more {
+  flex: none;
+  padding: 0 var(--space-xs);
+  border: var(--border-width) solid var(--border-outline);
+  color: var(--fg-muted);
+}

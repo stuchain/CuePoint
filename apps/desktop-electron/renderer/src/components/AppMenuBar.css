@@ -3,7 +3,9 @@
  * layout reserves its height instead of the content region guessing at it with
  * padding. It stays positioned, and keeps its z-index, so that its dropdown
  * still paints over the content below and its stacking order against the
- * engine-status banner (850), modals (1000) and toasts (1100) is unchanged.
+ * modals (1000) and toasts (1100) is unchanged. (The engine-status banner that
+ * also sat in this order was retired in SHELL-07; the status strip replaced it
+ * and sits in the shell grid rather than over it.)
  */
 .app-menu-bar {
   position: relative;

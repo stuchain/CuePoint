@@ -13,7 +13,6 @@ import {
   SupportBundleDialog,
   ToastProvider,
 } from "./components";
-import { EngineStatusBanner } from "./components/EngineStatusBanner";
 import {
   applyLaunchDestination,
   AppShellLayout,
@@ -22,6 +21,7 @@ import {
   HOME_DESTINATION_ID,
   PlayerRegion,
   Sidebar,
+  StatusStrip,
   TrackInspector,
   useRememberDestination,
 } from "./components/shell";
@@ -128,17 +128,13 @@ function AppShell() {
 
   return (
     <>
-      {/*
-        The engine-status banner is still a fixed-position overlay, so it stays
-        outside the grid until SHELL-07 gives it a permanent home in the status
-        strip.
-      */}
       <AppShellLayout
         menuBar={<AppMenuBar {...menuActions} />}
         header={<GlobalSearch />}
         sidebar={<Sidebar />}
         inspector={<TrackInspector />}
         player={<PlayerRegion />}
+        statusBar={<StatusStrip />}
       >
         <Routes>
           {enabledDestinations().map((destination) => (
@@ -158,7 +154,6 @@ function AppShell() {
           <Route path="*" element={screenFor(HOME_DESTINATION_ID)} />
         </Routes>
       </AppShellLayout>
-      <EngineStatusBanner />
       <SupportBundleDialog open={supportOpen} onClose={() => setSupportOpen(false)} />
       <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <PrivacyDialog open={privacyOpen} onClose={() => setPrivacyOpen(false)} />

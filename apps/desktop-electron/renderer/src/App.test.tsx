@@ -109,10 +109,19 @@ describe("App shell", () => {
     expect(player).toBeEmptyDOMElement();
   });
 
-  it("does not render the regions later steps fill", () => {
+  it("renders the status strip", () => {
     const { container } = render(<App />);
 
-    expect(container.querySelector(".app-shell__status")).toBeNull();
+    expect(container.querySelector(".app-shell__status .cp-status")).not.toBeNull();
+  });
+
+  it("reports engine state in one place, not two", () => {
+    // The floating banner was retired in SHELL-07 rather than left alongside
+    // the strip: two reporters of the same state can disagree.
+    const { container } = render(<App />);
+
+    expect(container.querySelector(".engine-status")).toBeNull();
+    expect(container.querySelectorAll(".cp-status__engine")).toHaveLength(1);
   });
 
   it.each(ROUTES)("renders the $link screen inside the content region", async ({ link, marker }) => {

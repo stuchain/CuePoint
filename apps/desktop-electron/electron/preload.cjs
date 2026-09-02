@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld("cuepoint", {
   getEngineStatus: () => ipcRenderer.invoke("engine:status"),
   startMatchJob: (body) => ipcRenderer.invoke("engine:startMatchJob", body),
   searchLibrary: (params) => ipcRenderer.invoke("engine:searchLibrary", params),
+  listJobs: (params) => ipcRenderer.invoke("engine:listJobs", params),
   getJob: (jobId) => ipcRenderer.invoke("engine:getJob", jobId),
   getJobResults: (jobId) => ipcRenderer.invoke("engine:getJobResults", jobId),
   exportResults: (body) => ipcRenderer.invoke("engine:exportResults", body),
