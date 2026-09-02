@@ -64,7 +64,7 @@ npm run build:check # typecheck + production build
 
 # Engine/desktop integration (from repository root unless command changes directory)
 python -m pytest src/tests/unit/engine/ -q --tb=short
-python scripts/smoke_engine_health.py
+PYTHONPATH=src python scripts/smoke_engine_health.py       # needs src on the path, as CI sets it
 python scripts/check_desktop_version_coupling.py
 cd apps/desktop-electron && npm run build
 ```

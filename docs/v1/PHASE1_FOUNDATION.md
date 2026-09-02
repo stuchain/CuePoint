@@ -46,6 +46,94 @@ FOUNDATION-14 (pixel icon set)     — independent, any time
 
 ---
 
+## Phase 1 completion audit — 2026-09-02
+
+All 15 steps re-verified against the code rather than against these notes. Full suite green:
+**2191 unit + 313 integration + 4 system passing, 45+12 skipped**; ruff check/format clean; Qt
+guard clean across 9 packages; renderer 115 tests, lint, typecheck and `build:check` clean; engine
+health smoke and version coupling pass; all 12 workflows parse. Functional smoke confirmed WAL
+journal mode, `foreign_keys=ON`, 4 migrations applying to 5 tables, `Connection.backup()` (not a
+file copy), every foundation service registered in the DI container, and no TODO/FIXME left in
+Phase 1 code.
+
+**Five gaps were found. Four are fixed; one is a cost decision left open.**
+
+### 1. The mypy CI gate could not fail (fixed)
+
+FOUNDATION-13 claimed it made the soft-failed checks real. For ruff that was true. For mypy it was
+not: the `|| true` was replaced by `test_step55_mypy_validation.py`, which filters mypy's output
+through ignore lists covering `arg-type`, `attr-defined`, `assignment`, `return-value`, `misc`,
+`index`, `union-attr`, `name-defined` and most other categories — matched as *substrings against
+the whole line*. Between them they swallow essentially every error mypy can produce. The step
+looked enforcing and enforced nothing, which is the exact failure FOUNDATION-13 existed to remove.
+
+Proven rather than argued: three blatant type errors planted in `backup_service.py` produce 8 mypy
+errors and leave all five tests passing.
+
+`mypy src/` reports 1124 errors across the legacy surface, so it cannot be turned on wholesale.
+But the foundation modules were written clean — **19 files, zero errors** — so they can be held to
+a real standard. `src/tests/integration/test_mypy_foundation.py` now fails the build on *any* mypy
+error in them, using `--follow-imports=silent` so the verdict is about those files rather than the
+legacy modules they import. Same planted bug: old check green, new check red. It also guards that
+every path in its list still exists, since a rename would otherwise shrink the gate to nothing
+while still reporting success.
+
+`test_step55_mypy_validation.py` is kept — it records which legacy modules carry which debt — with
+a docstring stating plainly that it is not a gate and cannot fail.
+
+### 2. A test file inside the shipped package that never ran (fixed)
+
+`src/cuepoint/update/test_update_system.py` — 3 passing tests living inside `cuepoint/`, which
+`testpaths = src/tests` meant pytest never collected. It was the only coverage of
+`update_preferences` and most of `version_utils`, both modules FOUNDATION-15 deliberately *kept*
+because release tooling depends on them. So two retained modules were effectively untested.
+FOUNDATION-15's spec listed deleting this file; its outcome block never mentioned it.
+
+Moved to `src/tests/unit/update/` (that directory goes 18 → 21 tests), stripped of its
+standalone-script runner and a `sys.path` hack that pointed at the wrong directory after the move.
+A stale `mypy.ini` section and two stale references in
+`docs/release/design-two-appcast-feeds-test-stable.md` were cleaned up with it.
+
+### 3. A lint regression in the immediately preceding commit (fixed)
+
+`f55a277` added two tests whose Windows path literal came out as `"C:\collection.xml"` — a single
+backslash, so `\c` is just `c` and the test asserted on `C:collection.xml`, which is not a path.
+It passed only because both sides of the assertion shared the same malformed literal, and it
+failed the very lint gate that commit introduced. The gates had been run *before* those two tests
+were added and not re-run after. Fixed to `"C:\\collection.xml"`; lint green.
+
+### 4. `AGENTS.md` documented a command that fails as written (fixed)
+
+`python scripts/smoke_engine_health.py` raises `ModuleNotFoundError` from the repository root;
+CI passes `PYTHONPATH: src`. Documented. (`check_desktop_version_coupling.py` was verified to work
+without it, so it is left alone.)
+
+### 5. `release-gates.yml` still has no `pull_request` trigger (open — your call)
+
+The roadmap named both `test.yml` and `release-gates.yml` as not triggering on PR. FOUNDATION-13
+fixed `test.yml` and did not record leaving the other. The substance is covered — a PR does now
+run the Python suite via `test.yml` — but the release-specific gates (version-sync R001, the
+coverage threshold) still never run on a PR.
+
+Not changed unilaterally, because it is a spend decision rather than a defect: the job is a
+3-OS × 2-Python matrix running unit *and* integration tests, so adding PR runs means six heavy
+jobs per PR duplicating what `test.yml` already covers. The cheap alternative is to move just the
+"Code Quality Gates" job onto `pull_request` and leave the matrix on push.
+
+### Observations, not defects
+
+- **Append-only is enforced by a source-scanning guard test**, not a database trigger. The regex
+  catches `UPDATE`/`DELETE` against `activity_events`/`track_history` in application code, which is
+  a deliberate, documented choice, but dynamic SQL would evade it. A trigger would be strictly
+  stronger if that log ever becomes load-bearing.
+- **`large-file-check.yml` still triggers only on `phase_*`**, a branch pattern not in use. Already
+  recorded as deliberate in FOUNDATION-13, and `test.yml` runs the same check, so it is inert
+  rather than wrong.
+- **The renderer carries 9 pre-existing lint warnings** (fast-refresh `only-export-components`),
+  which are warnings by explicit configuration and do not fail the correctness gate.
+
+---
+
 ## FOUNDATION-01 — Architecture Boundaries & Qt Cleanup ✅ IMPLEMENTED 2026-09-01
 
 **Outcome**: Complete. Both Qt violations removed, six interfaces added, guard widened, and
