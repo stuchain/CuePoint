@@ -252,6 +252,17 @@ and `settings` icons already exist and are used directly.
 path, group, `enabled`), `Sidebar.tsx` + `.css`. Collapse state persists under
 `cuepoint-ui-shell-sidebar-collapsed`.
 
+**Two cleanups this step inherits, both found during SHELL-01:**
+
+- **`--safe-bottom` still reserves 48px for the pill.** `layout.css` pads every screen's bottom
+  by `calc(var(--screen-padding) + 48px)`, commented "extra bottom clearance for lab route nav".
+  Deleting the pill without deleting that leaves every screen with dead space at the bottom.
+- **`--results-frame-max-width: 80vw` is measured against the viewport, not the content region.**
+  It predates the shell, when the content area *was* the window. Once a sidebar takes horizontal
+  space, 80vw can exceed the region and reintroduce the horizontal overflow the SHELL-01 matrix
+  checks for. Re-run that matrix after the sidebar lands; if it overflows, the fix is a
+  container-relative unit (`%` of the content region, or a container query), not a smaller `vw`.
+
 **Tests**: Registry unit tests (disabled destinations never render; group ordering is stable).
 Component tests for the sidebar: collapse toggle flips state, state survives a remount, the
 active destination is marked `aria-current="page"`, and every rail item keeps an accessible name
@@ -709,6 +720,13 @@ may appear twice in the dialog with two meanings.
   sidebar, toggle Inspector and open Activity (unbound in this document — choose them here, avoid
   the reserved set already in the registry, and add each to `KEYBOARD_SHORTCUTS` in the same
   change that implements it).
+- **Screens at 3× in a small window.** SHELL-01 measured, and screenshotted, the Results screen
+  being cut off at 3× scale at 1280×800: the toolbar wraps to two rows and `.screen--fill`'s
+  `overflow: hidden` clips what is left. It is **pre-existing** — before/after screenshots against
+  the un-shelled tree are identical, so SHELL-01 neither caused nor fixed it — and it is recorded
+  here because nothing else tracks it. Decide it deliberately: either accept it (the results table
+  scrolls internally once there are rows) or give `.screen--fill` a minimum height and let the
+  content region scroll.
 - E2E: extend `e2e/smoke.spec.ts` (or add a shell spec) to cover navigating between destinations,
   collapsing the sidebar, hiding the Inspector, and confirming both survive a restart — the
   persistence promises of DEC-022, DEC-024 and DEC-027 are exactly the kind of thing unit tests
