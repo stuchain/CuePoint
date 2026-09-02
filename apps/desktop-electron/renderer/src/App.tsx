@@ -21,6 +21,7 @@ import {
   GlobalSearch,
   HOME_DESTINATION_ID,
   Sidebar,
+  TrackInspector,
   useRememberDestination,
 } from "./components/shell";
 import { MatchResultsProvider } from "./context/MatchResultsContext";
@@ -135,6 +136,7 @@ function AppShell() {
         menuBar={<AppMenuBar {...menuActions} />}
         header={<GlobalSearch />}
         sidebar={<Sidebar />}
+        inspector={<TrackInspector />}
       >
         <Routes>
           {enabledDestinations().map((destination) => (

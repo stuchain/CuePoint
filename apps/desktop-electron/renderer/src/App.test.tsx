@@ -79,10 +79,29 @@ describe("App shell", () => {
     expect(container.querySelector(".app-shell__sidebar .cp-sidebar")).not.toBeNull();
   });
 
+  it("renders the inspector region", () => {
+    const { container } = render(<App />);
+
+    expect(container.querySelector(".app-shell__inspector .cp-inspector")).not.toBeNull();
+  });
+
+  it("keeps the inspector mounted across navigation (DEC-018)", async () => {
+    // The promise DEC-018 makes: the Inspector lives in the shell, not in a
+    // screen, so moving between destinations never unmounts it. Widths and
+    // selections survive navigation because of this, not in spite of it.
+    const user = userEvent.setup();
+    const { container } = render(<App />);
+    const before = container.querySelector(".app-shell__inspector .cp-inspector");
+
+    await user.click(navLink("Settings"));
+    await screen.findByText(/Beatport token/i);
+
+    expect(container.querySelector(".app-shell__inspector .cp-inspector")).toBe(before);
+  });
+
   it("does not render the regions later steps fill", () => {
     const { container } = render(<App />);
 
-    expect(container.querySelector(".app-shell__inspector")).toBeNull();
     expect(container.querySelector(".app-shell__player")).toBeNull();
     expect(container.querySelector(".app-shell__status")).toBeNull();
   });

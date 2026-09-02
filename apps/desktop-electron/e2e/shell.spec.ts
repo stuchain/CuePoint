@@ -125,6 +125,61 @@ test.describe("Application shell navigation", () => {
     }
   });
 
+  test("remembers the inspector's width and visibility across a restart (DEC-018)", async () => {
+    const first = await launch(userDataDir);
+    try {
+      const window = await first.firstWindow({ timeout: 60_000 });
+      await dismissOnboarding(window);
+
+      const panel = window.getByRole("complementary", { name: /track inspector/i });
+      await expect(panel).toBeVisible({ timeout: 15_000 });
+      const before = (await panel.boundingBox())!.width;
+
+      // Drag the handle 120px left. Only a real pointer proves this works: the
+      // component tests can exercise the keyboard path but not a drag.
+      const handle = window.getByRole("separator", { name: /resize track inspector/i });
+      const box = (await handle.boundingBox())!;
+      await window.mouse.move(box.x + box.width / 2, box.y + 100);
+      await window.mouse.down();
+      await window.mouse.move(box.x + box.width / 2 - 120, box.y + 100, { steps: 10 });
+      await window.mouse.up();
+
+      await expect
+        .poll(async () => Math.round((await panel.boundingBox())!.width))
+        .toBe(Math.round(before) + 120);
+    } finally {
+      await first.close();
+    }
+
+    // Same profile: only what was stored can bring the width back.
+    const second = await launch(userDataDir);
+    try {
+      const window = await second.firstWindow({ timeout: 60_000 });
+      const panel = window.getByRole("complementary", { name: /track inspector/i });
+      await expect(panel).toBeVisible({ timeout: 30_000 });
+      expect(Math.round((await panel.boundingBox())!.width)).toBe(440);
+
+      // Hiding gives the space back, and is remembered too.
+      await window.getByRole("button", { name: /hide track inspector/i }).click();
+      await expect(panel).toHaveCount(0);
+    } finally {
+      await second.close();
+    }
+
+    const third = await launch(userDataDir);
+    try {
+      const window = await third.firstWindow({ timeout: 60_000 });
+      await expect(
+        window.getByRole("button", { name: /show track inspector/i }),
+      ).toBeVisible({ timeout: 30_000 });
+      await expect(
+        window.getByRole("complementary", { name: /track inspector/i }),
+      ).toHaveCount(0);
+    } finally {
+      await third.close();
+    }
+  });
+
   test("reopens on the last-visited destination after a restart (DEC-027)", async () => {
     const first = await launch(userDataDir);
     try {

@@ -1,6 +1,20 @@
 export { AppShellLayout } from "./AppShellLayout";
 export { Sidebar } from "./Sidebar";
 export { GlobalSearch } from "./GlobalSearch";
+export { TrackInspector } from "./TrackInspector";
+export type { TrackInspectorProps } from "./TrackInspector";
+export {
+  clampInspectorWidth,
+  INSPECTOR_DEFAULT_STATE,
+  INSPECTOR_DEFAULT_WIDTH,
+  INSPECTOR_MAX_FRACTION,
+  INSPECTOR_MIN_WIDTH,
+  INSPECTOR_STORAGE_KEY,
+  inspectorMaxWidth,
+  loadInspectorState,
+  saveInspectorState,
+} from "./inspectorState";
+export type { InspectorState } from "./inspectorState";
 export {
   MIN_QUERY_LENGTH,
   resultSummary,

@@ -583,7 +583,54 @@ plumbing and header UI. Splitting keeps the contract PR reviewable on its own.
 
 ---
 
-## SHELL-05 — Track Inspector Container
+## SHELL-05 — Track Inspector Container ✅ IMPLEMENTED 2026-09-02
+
+**Outcome**: Complete. The Inspector is docked right, resizable by mouse or keyboard, hideable,
+and remembers its width and visibility. It holds an empty state and a documented slot; no track
+data is wired to it, per DEC-024.
+
+**It persists because it lives in the shell, not in a screen.** That is the whole of DEC-018, and
+a test asserts the stronger version: the Inspector element after navigating is the *same DOM node*,
+not merely another one that looks like it. Presence alone would pass against a component that
+remounts and silently loses whatever state a later phase puts in it.
+
+**Clamping is applied on read, never on write.** A width is stored in CSS pixels but the window it
+was chosen in is not, so a panel sized on a wide monitor can leave no room for content on a laptop.
+Storing the clamped value would shrink it permanently the first time that happened; clamping on
+read honors the original choice again when there is room. Verified in the app: a stored 4000px
+renders as 632px (half of a 1264px window) while 4000 stays in storage.
+
+**Bounds that cannot cross.** The maximum is half the window, the minimum 220px — below a ~440px
+window those invert, and a maximum that undercut the minimum would collapse the panel to nothing.
+`inspectorMaxWidth()` takes the larger of the two, with a test for it.
+
+**Resizable without a mouse.** The handle is a focusable `separator` with arrow-key resizing and
+`aria-valuenow`, and `Ctrl+I` toggles the panel (registered in `KEYBOARD_SHORTCUTS`, so the
+shortcuts dialog stays honest). Hiding leaves only a small reveal control, which is what actually
+returns the space to the content area — measured: 624px to 880px.
+
+**One layout bug, found by the matrix.** At 3x the uppercase "INSPECTOR" title would not shrink and
+pushed the hide button 6px past the window edge — the same flex `min-width: auto` trap as
+SHELL-02's grid. The title now truncates and the buttons never shrink: a control you cannot hit is
+worse than a word you cannot finish.
+
+**Verified in the packaged app, not just jsdom.** A real pointer drag widened the panel 320→440;
+the width survived navigation and two restarts; hiding persisted and survived a restart; `Ctrl+I`
+restored it; and an oversized stored width clamped without pushing content off-screen. The drag in
+particular is not something a component test can prove, so it is also covered by a new E2E test.
+
+**A harness lesson worth recording**: the first drag attempt appeared to do nothing. The cause was
+my verification script, not the app — it set the onboarding flag without reloading, so the dialog
+was still mounted and its backdrop swallowed the drag. When a pointer interaction "does nothing" in
+a test, suspect an overlay before suspecting the handler.
+
+**Verification**: 33 new renderer tests (255 total), 6 E2E tests, 75/75 on the packaged-build
+matrix with the Inspector present, lint/typecheck/`build:check` clean, Python engine and
+persistence suites green (188).
+
+---
+
+## SHELL-05 — Track Inspector Container (original plan)
 
 **Objective**: Implement DEC-018 and DEC-024 — a docked, user-resizable Inspector that persists
 across navigation, remembers its width, can be hidden, and holds an empty state. No track data is

@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   status chrome off-screen as those are added
 
 ### Added
+- A Track Inspector panel docked to the right of the window. Drag its edge to
+  resize it, or hide it with Ctrl+I; the width and whether it is showing are
+  remembered between sessions. It stays put as you move between pages, and will
+  fill with track details as those screens arrive
 - Search your library from the header, or with Ctrl+K. It searches track titles,
   artists, albums and labels, and says so plainly when no library has been
   imported yet rather than reporting that nothing matched
