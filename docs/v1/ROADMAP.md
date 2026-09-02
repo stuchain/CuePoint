@@ -1,11 +1,10 @@
 # CuePoint — Evolution Roadmap
 
-Status: **DRAFT — Phase 0 complete, Decision Rounds 1 and 2 resolved (DEC-001…DEC-019).** Phase
-sequencing below is no longer blocked by any answered question, but step-level detail (exact
-ADRs, full §97-format step specs) is still not final — remaining deferred items (crossfade,
-audio-analysis scope, Smart Collection export/duplication behavior, the `services/` Qt-boundary
-cleanup timing) will be resolved before the phases they affect actually start. This draft shows
-the shape of what's ahead; it is not a commitment to implement anything without an explicit
+Status: **Phase 0 and Phase 1 complete; Decision Rounds 1–3 resolved (DEC-001…DEC-027).**
+Phase 2 step-level detail is drafted in `PHASE2_SHELL.md` (SHELL-01…SHELL-10).
+Remaining deferred items (crossfade, audio-analysis scope, Smart Collection export/duplication
+behavior) will be resolved before the phases they affect actually start. This roadmap shows the
+shape of what's ahead; it is not a commitment to implement anything without an explicit
 "Implement <STEP-ID>" instruction.
 
 No implementation happens from this document alone — every phase step requires an explicit
@@ -18,7 +17,7 @@ No implementation happens from this document alone — every phase step requires
 Delivered: `CURRENT_ARCHITECTURE.md`, `GAP_ANALYSIS.md`, `PIXEL_DESIGN_SYSTEM.md`. No production
 code changed. CuePoint behaves identically to before this phase, as required.
 
-## Phase 1 — Foundation (candidate steps, unordered)
+## Phase 1 — Foundation ✅ Complete (2026-09-02)
 
 The most important phase — everything else builds on it.
 
@@ -52,12 +51,26 @@ The most important phase — everything else builds on it.
   it's a Foundation-appropriate cleanup and AGENTS.md already treats the Qt boundary as an
   invariant.
 
-## Phase 2 — Application Shell (SHELL-01 … SHELL-10)
+## Phase 2 — Application Shell (SHELL-01 … SHELL-10) — next
 
-Real navigation shell (sidebar/header/search) to replace the current floating lab-nav. Track
-Inspector container persists across pages and is user-resizable (DEC-018, same persistence
-pattern as `resultsTableLayout.ts`). Persistent player container (empty until Phase 5 lands);
-toasts/dialogs already largely exist and get reused, not rebuilt.
+Real navigation shell replacing the floating `app-lab-nav` pill. Decided by Round 3:
+
+- Nav destinations come from a registry declaring the full target IA, rendering only what has
+  landed (DEC-020); today's screens move under it intact as a "Tools" group, with inKey re-homed
+  into Clean in Phase 7 and inCrate into Discover in Phase 9 (DEC-021).
+- Sidebar has two states, expanded or icon-only rail, persisted (DEC-022) — which means drawing
+  the `clean`/`discover`/`prepare` icons FOUNDATION-14 deliberately deferred.
+- Global search is engine-backed over the Phase 1 `tracks` table from the start (DEC-023), so
+  this phase is a desktop-contract change, not a renderer-only one.
+- Track Inspector container persists across pages, is user-resizable, and is hideable; it holds
+  an empty state only in this phase (DEC-018, DEC-024).
+- Player region exists as a zero-height layout slot until Phase 5 (DEC-025).
+- A bottom status strip plus an Activity panel give FOUNDATION-07/08's job and activity data
+  their first UI, and `EngineStatusBanner` a permanent home (DEC-026).
+- The app reopens on the last-visited destination (DEC-027).
+
+Toasts/dialogs already largely exist and get reused, not rebuilt. Step specifications:
+`PHASE2_SHELL.md`.
 
 ## Phase 3 — Persistent Rekordbox Library (LIBRARY-01 … LIBRARY-12)
 

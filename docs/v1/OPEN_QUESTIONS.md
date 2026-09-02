@@ -448,17 +448,191 @@ rather than being squeezed into Foundation as an afterthought.
 
 ---
 
+
+## DECISION ROUND 3 — APPLICATION SHELL ✅ Resolved 2026-09-02
+
+Asked after Phase 1 completed (all 15 FOUNDATION steps implemented and audited 2026-09-02), to
+unblock the Phase 2 step specifications. Outcomes are recorded as DEC-020 through DEC-027 in
+`DECISIONS.md`.
+
+---
+
+### Q-020 — Navigation inventory for the v1 shell
+
+**Status**: Resolved → DEC-020 (Option A chosen: nav registry, render only what exists)
+
+**Question**: Today's navigation is the floating `app-lab-nav` pill in `App.tsx` with five routes.
+Most target destinations (Library, Collections, Prepare, Discover, Clean) do not exist until
+Phases 3–10. What does the new sidebar list at Phase 2 time?
+
+- **Option A — Declare the full target IA once in a nav registry, render only what has landed.**
+  Each later phase flips one flag on a pre-declared destination instead of restructuring the
+  shell. No dead-end placeholder pages; the shell is still built once.
+- **Option B — Full IA now with "coming in Phase N" placeholder pages.** Final shape visible
+  immediately, but the app advertises a lot it cannot do yet.
+- **Option C — Only what exists today**, adding destinations as phases land. Honest, but the IA
+  gets reshuffled repeatedly.
+
+**Recommendation**: **A**.
+
+**Blocks**: SHELL-01, SHELL-02.
+
+---
+
+### Q-021 — Fate of the existing lab screens
+
+**Status**: Resolved → DEC-021 (Option A chosen: keep as a Tools group, migrate per-phase)
+
+**Question**: What happens to `ToolSelectionScreen`, `InKeyMainScreen`, `InCrateMainScreen` and
+`ResultsScreen` when the real shell replaces the lab nav?
+
+- **Option A — Keep them intact, grouped as "Tools".** Phase 7 re-homes inKey into Clean, Phase 9
+  re-homes inCrate into Discover. Smallest coherent change; no feature work smuggled into Phase 2.
+- **Option B — Re-home into the target IA now** (inKey→Clean, inCrate→Discover, Results→Clean
+  review, drop the ToolSelection landing). Final IA sooner, but Phase 2 absorbs Phase 7 and 9 work.
+- **Option C — Re-parent unchanged as flat top-level entries.** Least work now, messiest IA.
+
+**Recommendation**: **A**.
+
+**Blocks**: SHELL-02.
+
+---
+
+### Q-022 — Sidebar behavior
+
+**Status**: Resolved → DEC-022 (Option A chosen: two-state expanded / icon rail, persisted)
+
+**Question**: Round 1 deferred this ("whether the collapsible-sidebar question needs its own
+decision beyond DEC-018's Inspector-specific answer"). It does. How does the sidebar behave?
+
+- **Option A — Two states: expanded with labels, or collapsed to an icon-only rail**, persisted
+  to `localStorage`. Predictable widths let the icon rail be designed at exact pixel sizes, which
+  matters for pixel art; only the Inspector gets a free-drag handle.
+- **Option B — Free-resize plus a collapse toggle.** Most flexible, but arbitrary widths fight
+  pixel-art icon rendering and add a second draggable edge alongside the Inspector's.
+- **Option C — Fixed width, always expanded.** Simplest; gives up horizontal space on small
+  windows, which matters once the Inspector is also docked.
+
+**Recommendation**: **A**.
+
+**Blocks**: SHELL-02, and the `clean`/`discover`/`prepare` icons FOUNDATION-14 deliberately left
+as Unicode glyphs "until there is a screen to draw them against".
+
+---
+
+### Q-023 — Global search in Phase 2
+
+**Status**: Resolved → DEC-023 (**Option A chosen: engine-backed search over the Phase 1 `tracks`
+table** — the user chose the more forward-looking option over the recommended inert-chrome answer)
+
+**Question**: No search exists anywhere in the renderer today. What does the header search do in
+Phase 2, before Phase 3 populates a library?
+
+- **Option A — Real engine-backed search over the Phase 1 SQLite `tracks` table.** Returns nothing
+  until Phase 3 imports a library, then works with no rewrite. Builds the real contract now.
+- **Option B — Client-side filter over whatever table is on screen.** Immediately useful, but a
+  different mechanism from the global search Phase 4 needs, so it gets replaced.
+- **Option C — Chrome only, disabled until Phase 4.** Locks the layout without committing to a
+  search contract; ships a visibly dead control for several phases.
+
+**Recommendation**: **B or C** — the user chose **A**.
+
+**Blocks**: SHELL-04. Note this makes Phase 2 a desktop-contract change, not a renderer-only one:
+a `/api/v1` search endpoint, `engineClient.ts`, runtime `preload.cjs`, bridge types and tests all
+have to move together per the AGENTS.md invariant.
+
+---
+
+### Q-024 — Track Inspector content in Phase 2
+
+**Status**: Resolved → DEC-024 (Option A chosen: container + empty state, hideable)
+
+**Question**: DEC-018 settled that the Inspector persists across pages and is resizable with its
+width remembered. What does it actually contain in Phase 2, and can it be hidden?
+
+- **Option A — Container, empty state, and a hide toggle with a keyboard shortcut.** Each later
+  phase contributes its own content; no track-data contract is invented before the library exists.
+- **Option B — Also wire it to `ResultsScreen` selection now.** Proves the container with real
+  content, but builds a panel against the old `TrackResult` shape Phase 4 will rework, and
+  overlaps `CandidateDialog`.
+- **Option C — Container, always visible, no hide toggle.** Simpler state model; costs horizontal
+  space on every page whether or not it has content.
+
+**Recommendation**: **A**.
+
+**Blocks**: SHELL-05.
+
+---
+
+### Q-025 — Player container before Phase 5
+
+**Status**: Resolved → DEC-025 (Option A chosen: zero-height layout slot)
+
+**Question**: The roadmap says the shell carries a persistent player container that stays empty
+until Phase 5. How literally?
+
+- **Option A — The grid region and component boundary exist but occupy no space and render
+  nothing.** Phase 5 fills it without touching shell layout; nothing dead is visible meanwhile.
+- **Option B — A visibly disabled transport bar** using the existing play/pause/next/previous
+  pixel icons. Locks visual proportions early; ships non-functional controls for several phases.
+- **Option C — Nothing at all until Phase 5**, which then re-opens the shell layout and its tests.
+
+**Recommendation**: **A**.
+
+**Blocks**: SHELL-06.
+
+---
+
+### Q-026 — Background activity surface
+
+**Status**: Resolved → DEC-026 (Option A chosen: status strip plus Activity panel)
+
+**Question**: FOUNDATION-07 (durable job records) and FOUNDATION-08 (`activity_events` +
+`track_history`) shipped with **no UI at all**. Does the shell surface them?
+
+- **Option A — A bottom status strip** showing engine state and running job progress, clicking
+  through to the activity feed. Gives Phase 1's infrastructure its first surface and gives
+  `EngineStatusBanner` a permanent home instead of a floating banner. The `activity` pixel icon
+  already exists for exactly this.
+- **Option B — A compact header indicator only**, with the full feed becoming its own page later.
+- **Option C — Defer to Phase 3**, the first phase that generates jobs. Keeps Phase 2 tight, but
+  leaves shipped infrastructure unobservable.
+
+**Recommendation**: **A**.
+
+**Blocks**: SHELL-07, SHELL-08.
+
+---
+
+### Q-027 — Launch page
+
+**Status**: Resolved → DEC-027 (Option A chosen: restore last-visited page)
+
+**Question**: Where does the app open on launch?
+
+- **Option A — Restore the last-visited destination**, persisted with the same `localStorage`
+  pattern as scale, theme and column widths, falling back to home when it no longer exists.
+- **Option B — Always a fixed home page.** Predictable and trivially testable; loses the user's
+  place between sessions.
+- **Option C — Restore within a session only** (survives reload, not restart) — in practice close
+  to B, since restarts are the common case.
+
+**Recommendation**: **A**.
+
+**Blocks**: SHELL-03.
+
+---
+
 ## Not yet asked (deferred to a later round)
 
 Per the spec's own guidance not to dump every question at once — these are real open items
-surfaced by the audit but held back until Round 1's foundational decisions are locked, since
-several depend on those answers:
+surfaced by the audit but held back until the decisions they depend on are locked:
 
 - Crossfade support (deferred — Round 2 covered double-click/queue/resume but not crossfade)
-- Whether the collapsible-sidebar question (part of the original shell-layout list) needs its own
-  decision beyond DEC-018's Inspector-specific answer
 - Audio analysis scope (which features are worth building at all — likely a Phase 12 conversation)
-- Whether to fix the `services/` Qt-boundary violation and CI-gap items as standalone quick
-  fixes now, or fold them into Foundation's CI-quality-gates step
 - Smart Collection export/duplication behavior (target spec §28 asks whether Smart Collections
   should be directly exportable and whether rule sets can be duplicated — not yet asked)
+
+**Resolved since first listed here**: the collapsible-sidebar question became Q-022/DEC-022 in
+Round 3. The `services/` Qt-boundary violation and the CI-gap items were folded into FOUNDATION-01
+and FOUNDATION-13 and are done.

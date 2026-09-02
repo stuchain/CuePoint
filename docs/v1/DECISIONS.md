@@ -409,3 +409,170 @@ Electron-native updater remains a future, unscheduled item; `docs/features/updat
 run.
 
 **Decided with**: User · **Date**: 2026-09-01
+
+---
+
+## DEC-020 — Navigation Inventory for the v1 Shell
+
+**Status**: Approved
+
+**Decision**: The full target information architecture is declared once in a navigation registry,
+but the sidebar renders only destinations whose feature has actually landed. Each later phase
+enables one pre-declared destination rather than restructuring the shell.
+
+**Reason**: Builds the shell once without advertising capabilities that do not exist, and avoids
+the repeated IA reshuffling that a grow-as-you-go nav would cause.
+
+**Implications**:
+- SHELL-01/SHELL-02 build a declarative nav registry, not a hardcoded list of links.
+- Every later phase's UI step includes "enable its destination in the nav registry" as part of
+  its own scope.
+
+**Decided with**: User · **Date**: 2026-09-02
+
+---
+
+## DEC-021 — Fate of the Existing Lab Screens
+
+**Status**: Approved
+
+**Decision**: `ToolSelectionScreen`, `InKeyMainScreen`, `InCrateMainScreen` and `ResultsScreen`
+move under the new shell intact, grouped as a "Tools" section. Phase 7 re-homes inKey into Clean;
+Phase 9 re-homes inCrate into Discover.
+
+**Reason**: Keeps Phase 2 structural. Re-homing them now would pull Phase 7 and Phase 9 product
+work into the shell phase, against the one-step-at-a-time process.
+
+**Implications**:
+- SHELL-02 re-parents the existing routes; it does not rewrite the screens.
+- CLEAN and DISCOVER phase specs inherit an explicit "retire the Tools entry" obligation.
+
+**Decided with**: User · **Date**: 2026-09-02
+
+---
+
+## DEC-022 — Sidebar Behavior
+
+**Status**: Approved
+
+**Decision**: The sidebar has two states — expanded with labels, or collapsed to an icon-only rail
+— toggled by the user, with the state persisted in `localStorage`. It is not freely resizable;
+the Inspector keeps the only drag handle.
+
+**Reason**: Two fixed widths let the icon rail be drawn at exact pixel sizes, which arbitrary
+drag-resize would undermine for pixel art. It also avoids two draggable vertical edges competing
+either side of the content area.
+
+**Implications**:
+- Resolves the collapsible-sidebar item Round 1 deferred; it is now decided independently of
+  DEC-018's Inspector-specific answer.
+- The icon rail requires the `clean`, `discover` and `prepare` icons FOUNDATION-14 deliberately
+  left as Unicode glyphs "until there is a screen to draw them against" — Phase 2 is that screen,
+  so drawing them belongs to a SHELL step.
+
+**Decided with**: User · **Date**: 2026-09-02
+
+---
+
+## DEC-023 — Global Search in Phase 2
+
+**Status**: Approved
+
+**Decision**: The shell's global search is backed by a real engine query over the Phase 1 SQLite
+`tracks` table from the start. It legitimately returns nothing until Phase 3 imports a library,
+and needs no rewrite when it does.
+
+**Reason**: User chose the forward-looking option over the recommended inert-chrome answer:
+building the real contract once is preferable to shipping a placeholder mechanism that Phase 4
+would replace.
+
+**Implications**:
+- Phase 2 is a **desktop-contract change, not a renderer-only one**. Per the AGENTS.md invariant,
+  SHELL-04 must move Python `*_api.py`/`server.py`, `engineClient.ts`, `main.ts`, the runtime
+  `preload.cjs`, renderer bridge types and consumers, and tests together.
+- The search response shape becomes a public API surface subject to the "preserve response
+  shapes" invariant, so it should be specified deliberately in SHELL-04 rather than grown ad hoc.
+- Phase 4's Library UI extends this endpoint (filters, scoping) rather than introducing a
+  different search path.
+
+**Decided with**: User · **Date**: 2026-09-02
+
+---
+
+## DEC-024 — Track Inspector Content in Phase 2
+
+**Status**: Approved
+
+**Decision**: Phase 2 delivers the Inspector container, its empty state, and a hide toggle with a
+keyboard shortcut. It is not wired to any track data yet; each later phase contributes its own
+Inspector content.
+
+**Reason**: Wiring it to `ResultsScreen` selection now would build a panel against the legacy
+`TrackResult` shape that Phase 4 will rework, and would duplicate `CandidateDialog`.
+
+**Implications**:
+- Extends DEC-018: alongside persisted width, the Inspector also has a persisted
+  visible/hidden state.
+- SHELL-05 owns the container and its persistence; it defines the slot later phases fill.
+
+**Decided with**: User · **Date**: 2026-09-02
+
+---
+
+## DEC-025 — Player Container Before Phase 5
+
+**Status**: Approved
+
+**Decision**: The shell defines the player's layout region and component boundary in Phase 2, but
+it occupies no space and renders nothing until Phase 5 fills it.
+
+**Reason**: Phase 5 gets a stable insertion point without Phase 2 shipping visibly dead transport
+controls, and without Phase 5 having to re-open shell layout and its tests.
+
+**Implications**: SHELL-06 is a layout-and-boundary step with no player behavior; PLAYER-phase
+steps mount into it.
+
+**Decided with**: User · **Date**: 2026-09-02
+
+---
+
+## DEC-026 — Background Activity Surface
+
+**Status**: Approved
+
+**Decision**: The shell gets a persistent bottom status strip showing engine state and running
+job progress, which opens an Activity panel over the FOUNDATION-08 activity feed.
+
+**Reason**: FOUNDATION-07 (durable job records) and FOUNDATION-08 (`activity_events`,
+`track_history`) shipped with no UI at all; the shell is where that infrastructure becomes
+observable. It also gives `EngineStatusBanner` a permanent home instead of a floating banner, and
+the `activity` pixel icon already exists for it.
+
+**Implications**:
+- SHELL-07 (status strip) and SHELL-08 (Activity panel) read existing engine job and activity
+  APIs; where those are not yet exposed over HTTP, exposing them is part of these steps and
+  carries the same desktop-contract synchronization obligation as DEC-023.
+- `EngineStatusBanner` is relocated, not duplicated.
+- Per-field revert (DEC-008) surfaces here eventually, but v1 scope for the panel is display;
+  revert affordances belong to the phases that produce editable fields.
+
+**Decided with**: User · **Date**: 2026-09-02
+
+---
+
+## DEC-027 — Launch Page
+
+**Status**: Approved
+
+**Decision**: The app reopens on the last-visited destination, persisted with the same
+`localStorage` pattern used for scale, theme and results-table column widths, falling back to the
+home destination when the stored one no longer exists or is not enabled in the nav registry.
+
+**Reason**: Consistent with DEC-018 and the existing UI-state-persistence precedent; preserves the
+user's place across restarts.
+
+**Implications**: SHELL-03 implements it; the fallback must consult DEC-020's registry so a stored
+destination from a future phase (or a removed Tools entry per DEC-021) degrades gracefully rather
+than routing to a blank page.
+
+**Decided with**: User · **Date**: 2026-09-02
