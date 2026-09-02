@@ -320,7 +320,7 @@ Tests are required to ensure FR1, FR2, I2, and script channel behavior. The foll
 
 | Test | Location | What it verifies |
 |------|----------|-------------------|
-| **is_test_version** | `src/cuepoint/update/test_update_system.py` and/or `src/tests/unit/update/` | `1.0.3-test1` → True; `1.0.0`, `1.0.0-alpha`, `1.0.0-beta.1` → False. Covers FR1/FR2 precondition. |
+| **is_test_version** | `src/tests/unit/update/` | `1.0.3-test1` → True; `1.0.0`, `1.0.0-alpha`, `1.0.0-beta.1` → False. Covers FR1/FR2 precondition. |
 | **effective_channel in UpdateManager** | `src/tests/unit/update/test_two_appcast_channels.py` (new) | When `current_version` is a test version (e.g. `1.0.3-test1`), `UpdateManager`’s internal `checker.channel` is `"test"` regardless of preferences. When `current_version` is not test (e.g. `1.0.0`), `checker.channel` equals preferences (e.g. `stable` or `beta`). Verifies FR1, FR2, I2. |
 | **UpdateChecker get_feed_url for channel "test"** | `src/tests/unit/update/test_two_appcast_channels.py` (new) | `UpdateChecker(feed_url, version, channel="test")` → `get_feed_url("macos")` and `get_feed_url("windows")` return URLs containing `/test/appcast.xml`. Verifies feed URL shape for test channel. |
 | **_find_latest_update test vs non-test** | `src/tests/unit/update/test_update_security.py` | Already present: non-test current does not see test item; test current sees test item and does not see non-test item. Ensures in-feed filtering remains correct when both feeds exist. |
@@ -347,7 +347,7 @@ Implementation note: Use temporary directories and minimal fake DMG/EXE files (e
 - Run all unit tests for update system and two-channel behavior:
   - `pytest src/tests/unit/update/ -v`
 - Run standalone update system script (version utils, preferences, checker init):
-  - `python src/cuepoint/update/test_update_system.py`
+  - `python -m pytest src/tests/unit/update/ -q`
 - Run script channel tests (after adding them):
   - `pytest src/tests/unit/scripts/test_appcast_channels.py -v`
 

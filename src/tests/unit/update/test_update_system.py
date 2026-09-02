@@ -1,17 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""Behaviour of the retained update/appcast utilities.
+
+This lived inside the package as ``cuepoint/update/test_update_system.py``,
+where ``testpaths = src/tests`` meant it was never collected: three passing
+tests that ran nowhere, and the only coverage ``update_preferences`` and most
+of ``version_utils`` had. Moved here so it actually runs.
 """
-Test script for update system components.
-
-This script tests the update system components to ensure they work correctly.
-"""
-
-import sys
-from pathlib import Path
-
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from cuepoint.update.update_checker import UpdateChecker
 from cuepoint.update.update_preferences import UpdatePreferences
@@ -125,37 +121,3 @@ def test_update_checker():
 
     print("[OK] Update checker initialization tests passed")
     print("  (Skipping network tests - requires valid feed URL)")
-
-
-def main():
-    """Run all tests."""
-    print("=" * 60)
-    print("Update System Tests")
-    print("=" * 60)
-    print()
-
-    try:
-        test_version_utils()
-        print()
-        test_update_preferences()
-        print()
-        test_update_checker()
-        print()
-        print("=" * 60)
-        print("All tests passed! [OK]")
-        print("=" * 60)
-        return 0
-
-    except AssertionError as e:
-        print(f"\n[FAIL] Test failed: {e}")
-        return 1
-    except Exception as e:
-        print(f"\n[ERROR] Unexpected error: {e}")
-        import traceback
-
-        traceback.print_exc()
-        return 1
-
-
-if __name__ == "__main__":
-    sys.exit(main())
