@@ -38,6 +38,30 @@ describe("pixel icon artwork", () => {
     );
   });
 
+  it("covers every navigation destination (SHELL-09)", () => {
+    // FOUNDATION-14 left the concept icons as Unicode glyphs "until there is a
+    // screen to draw them against". There is one now.
+    expect(PIXEL_ICON_NAMES).toEqual(
+      expect.arrayContaining([
+        "collections",
+        "clean",
+        "discover",
+        "prepare",
+        "match",
+        "incrate",
+      ]),
+    );
+  });
+
+  it.each(PIXEL_ICON_NAMES)("%s uses at least one stroke two cells wide", (name) => {
+    // At 1x a grid cell is 2 CSS pixels, so a drawing made only of single
+    // cells is a two-pixel scratch. Every icon needs some weight to survive
+    // the smallest scale.
+    const runs = pixelRunsFor(name);
+    expect(runs.some((run) => run.width >= 2)).toBe(true);
+  });
+
+
   it("has no duplicate artwork", () => {
     const seen = new Map<string, PixelIconName>();
     for (const name of PIXEL_ICON_NAMES) {

@@ -943,7 +943,50 @@ consumer.
 
 ---
 
-## SHELL-09 — Shell Iconography
+## SHELL-09 — Shell Iconography ✅ IMPLEMENTED 2026-09-02
+
+**Outcome**: Complete. Six icons drawn — `collections`, `clean`, `discover`, `prepare`, `match`,
+`incrate` — and every navigation destination now renders pixel artwork. No Unicode glyphs remain
+in the sidebar.
+
+**The set was confirmed against the code, not the plan.** The step description guessed at
+`search` and `inspector`; neither is needed — the header search field has no icon and the
+Inspector's controls are chevrons. What the registry actually still had as glyphs was `match` and
+`incrate`, which the plan did not list.
+
+**No new pipeline.** The existing 12×12 text-grid format was used unchanged, so each icon is
+readable and reviewable as a diff rather than a binary sprite.
+
+**Three of the six had to be redrawn after looking at them**, which is the whole substance of a
+step like this:
+- *discover* read as a letter **Q** — twice. The handle hung from the bottom of the ring like a
+  tail; it attaches at the lower-right corner on a 45° diagonal now.
+- *prepare* was mud, exactly as the plan predicted for it. A cue marker over a timeline is too
+  many parts for 12×12. It is a flag now: one shape, survives 1×.
+- *incrate* read as a minus sign — a plain box with a slot. The dividers are what make it a crate.
+- *match* had an eighth note's flag that blurred into a blob; a quarter note needs no flag.
+
+**Judged from a contact sheet, not from the code.** Every icon was rendered at 24/48/96px beside
+the existing set and inspected, then re-checked in the running sidebar: expanded and collapsed, at
+1×/2×/3×, in three themes. The collapsed rail — the DEC-022 case where an icon is the only thing
+identifying a destination — is comprehensible from icons alone.
+
+**A test I wrote and then deleted.** I added a rule that every icon must leave one clear edge, and
+it failed on the existing `settings` gear, which fills the grid deliberately and renders fine. The
+rule was mine, not the codebase's, so it went rather than being weakened until it passed.
+
+**Left as glyphs, deliberately**: the sidebar collapse chevrons and the Inspector's show/hide
+chevrons. They are controls, not destinations, and DEC-010 reserved the glyph path for exactly
+that. The `activity` icon drawn in FOUNDATION-14 is still unused — the status strip's entry point
+is a text button — and is left alone rather than forced into service.
+
+**Verification**: 350 renderer tests (+42, including a test that no destination is a glyph and one
+that every icon carries a stroke at least two cells wide, since a single cell is two pixels at 1×),
+6 E2E, 75/75 on the packaged-build matrix, lint/typecheck/`build:check` clean.
+
+---
+
+## SHELL-09 — Shell Iconography (original plan)
 
 **Objective**: Draw the pixel icons the shell needs that FOUNDATION-14 deliberately deferred.
 Its `pixelIcons.ts` says the concept icons "stay as Unicode glyphs until there is a screen to draw

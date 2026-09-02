@@ -59,15 +59,15 @@ export const HOME_DESTINATION_ID = "tools";
 export const NAV_DESTINATIONS: readonly NavDestination[] = [
   // Not built yet (DEC-020). Each is enabled by the phase that builds it.
   { id: "library", label: "Library", path: "/library", group: "workspace", icon: "library", enabled: false },
-  { id: "collections", label: "Collections", path: "/collections", group: "workspace", glyph: "▤", enabled: false },
-  { id: "clean", label: "Clean", path: "/clean", group: "workspace", glyph: "✧", enabled: false },
-  { id: "discover", label: "Discover", path: "/discover", group: "workspace", glyph: "◈", enabled: false },
-  { id: "prepare", label: "Prepare", path: "/prepare", group: "workspace", glyph: "▶", enabled: false },
+  { id: "collections", label: "Collections", path: "/collections", group: "workspace", icon: "collections", enabled: false },
+  { id: "clean", label: "Clean", path: "/clean", group: "workspace", icon: "clean", enabled: false },
+  { id: "discover", label: "Discover", path: "/discover", group: "workspace", icon: "discover", enabled: false },
+  { id: "prepare", label: "Prepare", path: "/prepare", group: "workspace", icon: "prepare", enabled: false },
 
   // Today's screens, kept intact as Tools (DEC-021).
   { id: "tools", label: "Tools", path: "/", group: "tools", icon: "home", enabled: true },
-  { id: "match", label: "inKey", path: "/match", group: "tools", glyph: "♪", enabled: true },
-  { id: "incrate", label: "inCrate", path: "/incrate", group: "tools", glyph: "▦", enabled: true },
+  { id: "match", label: "inKey", path: "/match", group: "tools", icon: "match", enabled: true },
+  { id: "incrate", label: "inCrate", path: "/incrate", group: "tools", icon: "incrate", enabled: true },
   { id: "results", label: "Results", path: "/results", group: "tools", icon: "filter", enabled: true },
 
   { id: "settings", label: "Settings", path: "/settings", group: "system", icon: "settings", enabled: true },

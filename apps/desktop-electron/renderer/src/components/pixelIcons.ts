@@ -190,11 +190,132 @@ const filter = [
 ];
 
 /**
- * The icon set built for v1, per DEC-010: the three icons the toolbar already
- * shows, the four transport shapes, and three navigation icons. Concept icons
- * whose meaning is still being designed (clean, discover, prepare) stay as
- * Unicode glyphs until there is a screen to draw them against.
+ * The icon set for v1.
+ *
+ * DEC-010 chose a small set: the toolbar icons, the transport shapes and the
+ * navigation icons. The concept icons — clean, discover, prepare — were left as
+ * Unicode glyphs "until there is a screen to draw them against"; SHELL-02's
+ * sidebar became that screen, and SHELL-09 drew them.
  */
+/**
+ * Collections: two stacked panels, offset so the layering reads at a glance.
+ * Deliberately unlike `library` (a shelf) — one is where tracks live, the
+ * other is how they are grouped.
+ */
+const collections = [
+  "............",
+  "...########.",
+  "...#......#.",
+  "...#......#.",
+  ".########.#.",
+  ".#......#.#.",
+  ".#......#.#.",
+  ".#......###.",
+  ".#......#...",
+  ".########...",
+  "............",
+  "............",
+];
+
+/** Clean: a check. The step's whole job is metadata that has been verified. */
+const clean = [
+  "............",
+  "............",
+  "..........##",
+  ".........##.",
+  "........##..",
+  ".##....##...",
+  ".##...##....",
+  "..##.##.....",
+  "...####.....",
+  "....##......",
+  "............",
+  "............",
+];
+
+/**
+ * Discover: a magnifier.
+ *
+ * Two earlier attempts read as a letter Q, because the handle hung from the
+ * bottom of the ring like a tail. It attaches at the lower-right corner and
+ * runs on a clear 45-degree diagonal now, which is the difference between a
+ * magnifier and a Q.
+ */
+const discover = [
+  "............",
+  "...####.....",
+  "..##..##....",
+  "..##..##....",
+  "..##..##....",
+  "...####.....",
+  ".....###....",
+  "......###...",
+  ".......###..",
+  "........###.",
+  ".........##.",
+  "............",
+];
+
+/**
+ * Prepare: a flag planted in a set.
+ *
+ * The first attempt drew a cue marker over a timeline and read as mud at every
+ * size — too many parts in 12x12. A flag is one shape, survives 1x, and says
+ * "being built" rather than "being played".
+ */
+const prepare = [
+  "............",
+  "..##........",
+  "..#########.",
+  "..#########.",
+  "..#########.",
+  "..#########.",
+  "..##........",
+  "..##........",
+  "..##........",
+  "..##........",
+  "..##........",
+  "............",
+];
+
+/**
+ * inKey: a quarter note. An eighth note's flag turned into a blob at 1x, and a
+ * note is recognizable without one.
+ */
+const match = [
+  "............",
+  ".......##...",
+  ".......##...",
+  ".......##...",
+  ".......##...",
+  ".......##...",
+  ".......##...",
+  ".......##...",
+  "..#######...",
+  ".#########..",
+  ".#########..",
+  "..#######...",
+];
+
+/**
+ * inCrate: records standing in a crate. The first attempt was a plain box with
+ * a slot, which read as a minus sign; the dividers are what make it a crate.
+ */
+const incrate = [
+  "............",
+  "............",
+  "############",
+  "#..........#",
+  "#.##.##.##.#",
+  "#.##.##.##.#",
+  "#.##.##.##.#",
+  "#.##.##.##.#",
+  "#..........#",
+  "############",
+  "............",
+  "............",
+];
+
 export const PIXEL_ICONS = {
   play,
   pause,
@@ -206,6 +327,14 @@ export const PIXEL_ICONS = {
   settings,
   export: exportIcon,
   filter,
+  // SHELL-09: the concept icons FOUNDATION-14 deferred "until there is a
+  // screen to draw them against". The sidebar is that screen.
+  collections,
+  clean,
+  discover,
+  prepare,
+  match,
+  incrate,
 } as const satisfies Record<string, readonly string[]>;
 
 export type PixelIconName = keyof typeof PIXEL_ICONS;

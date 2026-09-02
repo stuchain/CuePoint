@@ -40,6 +40,16 @@ describe("navRegistry", () => {
     }
   });
 
+  it("gives every destination a pixel icon, not a glyph (SHELL-09)", () => {
+    // The DoD for SHELL-09: no Unicode glyphs left in primary navigation. The
+    // icon-or-glyph union stays for secondary controls, which is what DEC-010
+    // reserved it for.
+    for (const destination of NAV_DESTINATIONS) {
+      expect(destination.glyph).toBeUndefined();
+      expect(destination.icon).toBeDefined();
+    }
+  });
+
   it("gives every destination exactly one of an icon or a glyph", () => {
     // The union makes "neither" a compile error, but "both" is expressible via
     // a cast and would render an icon while claiming a glyph.
