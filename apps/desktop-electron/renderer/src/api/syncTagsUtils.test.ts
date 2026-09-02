@@ -67,7 +67,7 @@ describe("syncTagsUtils", () => {
   it("builds a batch sync request", () => {
     const body = buildSyncRequest({
       options: loadSyncOptions(),
-      meta: { source: "collection", xmlPath: "C:\collection.xml" },
+      meta: { source: "collection", xmlPath: "C:\\collection.xml" },
       mode: "batch",
       batchResults: {
         "Warm Up": [{ playlist_index: 1, title: "A", artist: "B", matched: true, write: true }],
@@ -76,7 +76,7 @@ describe("syncTagsUtils", () => {
 
     expect(body.mode).toBe("batch");
     expect(body.source).toBe("collection");
-    expect(body.xml_path).toBe("C:\collection.xml");
+    expect(body.xml_path).toBe("C:\\collection.xml");
     expect(Object.keys(body.batch_results ?? {})).toEqual(["Warm Up"]);
     expect(body.results).toBeUndefined();
   });
