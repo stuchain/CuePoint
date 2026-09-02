@@ -502,15 +502,16 @@ label; "zzzznope" reported no matches (not an empty library); `%%` returned noth
 LIKE escaping holds through the whole stack; and Ctrl+K focused the field from another page.
 
 **Verification**: 42 new Python tests (25 repository/service, 17 engine) and 28 new renderer tests
-(222 total). Full Python unit suite green — 2243 passed, 45 skipped — run with all Python changes
-in place; the only Python edit after it was a `ruff format` pass. 5 E2E tests, renderer lint,
-typecheck and `build:check` clean, ruff and the Qt guard clean.
+(222 total). Full Python unit suite green — 2243 passed, 45 skipped. 5 E2E tests; the shell layout
+matrix re-run with the search header in place — 75/75 on the packaged build. Renderer lint,
+typecheck and `build:check` clean; ruff, ruff format, the Qt guard and version coupling clean.
 
-**One caveat, and it is environmental**: the machine's C: drive reached 0 bytes free during the
-desktop half, after which pytest cannot create temporary directories and the full Python suite and
-the shell matrix cannot run. The failures that produces are `OSError: [Errno 28] No space left on
-device`, not test failures — the same tests pass individually once a little space is freed. The
-shell layout matrix was **not** re-run after this step for that reason.
+**A note for the next person who sees a red suite here**: the machine's C: drive hit 0 bytes free
+during this step, and pytest then cannot create temporary directories. That produces
+`OSError: [Errno 28] No space left on device` and a wall of errors that look nothing like a disk
+problem — 89 failed, 219 errors, across tests that have nothing to do with each other. Check free
+space before believing a failure pattern like that. Everything above was re-run and passed once
+space was available.
 
 ---
 
