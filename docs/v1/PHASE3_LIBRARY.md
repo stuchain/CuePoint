@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 3: Persistent Rekordbox Library, Detailed Step Specifications
 
-Status: **In progress.** LIBRARY-01…LIBRARY-08 are implemented; LIBRARY-09…LIBRARY-12
+Status: **In progress.** LIBRARY-01…LIBRARY-09 are implemented; LIBRARY-10…LIBRARY-12
 remain draft step specs in design-only mode.
 Implementation of any step below requires an explicit "Implement LIBRARY-NN" instruction, scoped to
 exactly that step, followed by tests, a completion report, and a stop before the next step.
@@ -647,6 +647,12 @@ imported from a file, and because every track write is an upsert a retry converg
 duplicating. Two tests cover it, including one whose file passes the `COLLECTION` check and then
 fails while the tracks are being read.
 
+> **Superseded by LIBRARY-09.** A refresh deletes, so ordering was not enough for it, and
+> `DatabaseService.transaction(join_existing=True)` now lets the repositories write inside one
+> transaction the service opens. The import shares that write, so a failed import rolls back
+> entirely rather than leaving its tracks behind. The ordering above is still the order, but it is
+> no longer the atomicity story.
+
 **A file with no `COLLECTION` is refused before anything is written.** `has_collection_element()`
 stops at that element's start tag, so the check costs a few kilobytes — deliberately not
 `validate_xml_file()`, which builds the whole document and then counts every element in it. An
@@ -1116,7 +1122,7 @@ nowhere yet to show it.
 
 ---
 
-## LIBRARY-09 — Applying a Refresh
+## LIBRARY-09 — Applying a Refresh ✅ IMPLEMENTED 2026-09-03
 
 **Objective**: Apply a computed diff: insert, update, delete (DEC-003), and update playlists and the
 source record, transactionally.
@@ -1147,6 +1153,78 @@ the database untouched; the activity feed records what happened.
 **Risks**: **High** — the only irreversible operation in the phase.
 
 **Complexity**: **L**
+
+### ✅ IMPLEMENTED 2026-09-03
+
+**Outcome**: Complete. `LibraryImportService.apply_refresh(diff, confirm_references=False,
+on_progress=None, should_cancel=None) -> RefreshSummary` applies a preview inside one transaction:
+upsert, delete (DEC-003), replace the playlist mirror, write the source record. 29 new tests in
+`src/tests/unit/services/test_apply_refresh.py`.
+
+**One transaction, made possible rather than faked.** `DatabaseService.transaction()` refused to
+nest, for a good reason: an inner block that *committed* would make the outer block's rollback a
+lie. It now takes `join_existing`, which is the opposite of that and is why it is safe — when a
+transaction is already open the inner block yields the same connection and does nothing on the way
+out, no `BEGIN`, no `COMMIT`, no `ROLLBACK`, so the outer block still owns the outcome. The default
+is still to refuse, and its test still passes. Every repository write a refresh performs joins;
+`LibraryImportService` opens the one boundary, which is the only reason it appears in the
+persistence-boundary allow-list — it runs no SQL, it just knows those writes belong together.
+
+**The import and the refresh are one code path**, which is what the step's backward-compatibility
+requirement asked for. `_write_export()` is the whole write, and the only thing that differs is an
+argument: an import never deletes, a refresh does. The first import inherits atomicity for free,
+retiring LIBRARY-04's "source record written last" workaround — a test pins that a failed import
+now leaves zero tracks rather than leaving them behind.
+
+**The deletions are recomputed, not replayed.** `diff` names the file and carries the numbers a
+user was shown, but *which rows to delete* comes from the pass `apply_refresh` runs itself: it is
+whatever `upsert_many_from_rekordbox` reports as unclaimed, from a snapshot taken now. Replaying
+the diff's list would act on what was true when the preview was computed. A test re-exports between
+the preview and the apply, putting a "removed" track back, and asserts it survives — a replay would
+have deleted a track the export still contains, and DEC-003 makes that unrecoverable. Where nothing
+moved, the counts match the preview exactly, which every other test asserts.
+
+**The reference check happens before the delete, and the order is enforced.** Swapping the two
+still *passed* every behavioural test, because the transaction rolls the deletion back when the
+check refuses — which is exactly why it needed its own guard. Deleting cascades: if the delete ran
+first, the Collection membership Phase 6 will count would already have been cascaded away, the seam
+would answer zero on every refresh, and the refusal would be dead code nobody noticed until a user
+lost a Collection. `test_it_asks_while_the_tracks_are_still_there` has the seam look at the library
+at the moment it is asked. The refusal raises `LIBRARY_REFRESH_NEEDS_CONFIRMATION`;
+`confirm_references=True` clears it. Both paths are tested with a seam that answers non-zero, so
+Phase 6 inherits a flow that has been exercised rather than only written.
+
+`services/library_import_service.py` is now the single entry in
+`DELETION_CALLERS_ALLOWED` — the list LIBRARY-08 deliberately left empty for this step to fill.
+
+**Guards**: **7 of 7 fail when the thing they protect is broken**, every source restored
+byte-for-byte (verified by hash): removing the outer transaction; making `join_existing` commit on
+its own; a repository opening its own transaction instead of joining; skipping the deletions;
+running the reference check after the delete; and emptying either allow-list.
+
+**Verified on the real export.** Imported the 3,880-track January collection into a scratch
+database (3,880 tracks, 234 playlist nodes, 13,870 entries, 0.5s), edited a copy to drop 25 tracks,
+rename 10 and add 3, previewed `+3 ~10 -25` and confirmed the preview wrote nothing, then applied:
+`+3 -25`, exactly what was promised, 3,858 tracks and 13,717 entries — the 153 membership rows
+belonging to the deleted tracks cascaded away. `PRAGMA foreign_key_check` and `integrity_check`
+clean, no orphaned entries, and re-applying the same diff removed and added nothing.
+
+**Rollback verified at scale, not only on fixtures.** A second run deleted 500 tracks from the same
+export and induced a failure after the deletions and upserts had run: the library came back to a
+byte-identical fingerprint of every row in `tracks`, `rekordbox_playlists`,
+`rekordbox_playlist_tracks` and `library_source` — 3,880 tracks, nothing lost — and the retry then
+applied cleanly.
+
+**Verification**: `python scripts/run_tests.py --unit --no-slow` — 2,766 passed, 45 skipped;
+integration, regression and system — 330 passed, 13 skipped. `ruff check`/`ruff format --check`
+clean; `check_no_qt_in_core.py`, `check_desktop_version_coupling.py` and `smoke_engine_health.py`
+pass; `mypy src/` unchanged against the pre-change baseline (1,308 pre-existing
+`import-not-found` errors either side). The import path changed, and it is reachable in the real
+app, so `e2e/libraryImport.spec.ts` was re-run against the built desktop app — 4 passed. No
+renderer, Electron or engine API file was touched; `apply_refresh` reaches the app in LIBRARY-10,
+which is also where it and `compute_refresh_diff` join `ILibraryImportService`. `~/.cuepoint`
+untouched throughout (`cuepoint.db` and `config.yaml` hash-checked before and after). No
+`CHANGELOG` entry: nothing user-facing can call this yet.
 
 ---
 

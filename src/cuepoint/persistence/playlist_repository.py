@@ -101,7 +101,7 @@ class PlaylistRepository(IPlaylistRepository):
         entries = 0
         missing: List[str] = []
 
-        with self._db.transaction() as conn:
+        with self._db.transaction(join_existing=True) as conn:
             # Membership first: it references the nodes.
             conn.execute("DELETE FROM rekordbox_playlist_tracks")
             conn.execute("DELETE FROM rekordbox_playlists")
@@ -175,7 +175,7 @@ class PlaylistRepository(IPlaylistRepository):
 
     def clear(self) -> None:
         """Remove the whole mirror. Used when a library is reset."""
-        with self._db.transaction() as conn:
+        with self._db.transaction(join_existing=True) as conn:
             conn.execute("DELETE FROM rekordbox_playlist_tracks")
             conn.execute("DELETE FROM rekordbox_playlists")
 

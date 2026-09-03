@@ -44,16 +44,18 @@ _PACKAGE = Path(__file__).resolve().parents[3] / "cuepoint"
 #: which risks anything a user made. So a bare ``delete`` counts only when its
 #: receiver names tracks, which is what a real caller
 #: (``self._tracks.delete(...)``) looks like.
-DELETION_METHODS = ("delete_by_rekordbox_ids", "delete")
+DELETION_METHODS = ("delete_by_rekordbox_ids", "delete_many", "delete")
 
 #: Modules allowed to delete library tracks, and why.
 #:
-#: **Deliberately empty.** Nothing in this build deletes one — LIBRARY-09's
-#: refresh will be the first, and it will have to add itself here. Doing that is
-#: a claim that it consulted ``ILibraryService.references_for`` beforehand, which
-#: is the whole reason DEC-032 built the seam now: Phase 6 gets one method to
-#: implement and no callers to hunt for.
-DELETION_CALLERS_ALLOWED: set = set()
+#: One entry, which is the point: the list was written empty in LIBRARY-08 so
+#: that the first deletion path would have to declare itself, and this is it.
+#: The entry is a claim that ``LibraryImportService._check_references`` asks
+#: ``ILibraryService.references_for`` about exactly the ids it is about to
+#: delete, and refuses without confirmation when the answer is not zero —
+#: asserted by ``TestTheApplyAsksTheSeam`` in ``test_apply_refresh.py``, so this
+#: is not a claim taken on trust.
+DELETION_CALLERS_ALLOWED: set = {"services/library_import_service.py"}
 
 
 @pytest.fixture
@@ -176,6 +178,7 @@ class TestTheDiffCarriesTheSummary:
             TrackRepository(db),
             PlaylistRepository(db),
             LibrarySourceRepository(db),
+            db,
             library_service=library,
         )
 
@@ -219,7 +222,7 @@ class TestTheDiffCarriesTheSummary:
     ):
         """So a caller never sees two different answers for "nothing"."""
         service = LibraryImportService(
-            TrackRepository(db), PlaylistRepository(db), LibrarySourceRepository(db)
+            TrackRepository(db), PlaylistRepository(db), LibrarySourceRepository(db), db
         )
         service.import_rekordbox_xml(self._export(tmp_path, [1, 2, 3], "a.xml"))
 
@@ -249,7 +252,7 @@ def _deletion_calls(path: Path) -> list:
     for node in ast.walk(tree):
         if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
             continue
-        if node.func.attr == "delete_by_rekordbox_ids":
+        if node.func.attr in ("delete_by_rekordbox_ids", "delete_many"):
             found.append(ast.unparse(node.func))
         elif (
             node.func.attr == "delete"

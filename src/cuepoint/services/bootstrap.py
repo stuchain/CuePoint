@@ -134,6 +134,10 @@ def bootstrap_services() -> None:
             track_repository=container.resolve(ITrackRepository),
             playlist_repository=container.resolve(IPlaylistRepository),
             source_repository=container.resolve(ILibrarySourceRepository),
+            # The transaction boundary an import or a refresh runs inside. The
+            # same singleton the repositories hold, which is what lets them
+            # join it rather than open one of their own.
+            database_service=container.resolve(IDatabaseService),
             activity_service=container.resolve(IActivityService),
             # DEC-011's reference check. Resolved here so a refresh diff always
             # asks the real seam rather than falling back to a local zero.

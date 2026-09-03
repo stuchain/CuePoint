@@ -112,7 +112,7 @@ def playlists(db):
 
 @pytest.fixture
 def service(db, tracks, playlists):
-    return LibraryImportService(tracks, playlists, LibrarySourceRepository(db))
+    return LibraryImportService(tracks, playlists, LibrarySourceRepository(db), db)
 
 
 @pytest.fixture

@@ -36,6 +36,13 @@ _ALLOWED = {
     # makes a schema change unbounded; whole-file operations are a different
     # concern. Anything added to this list must be able to say the same.
     "services/backup_service.py",
+    # The import/refresh service runs no SQL: it opens one transaction and lets
+    # the repositories write inside it. It is on this list because it is the
+    # only place that knows a delete, an upsert, a playlist rewrite and a source
+    # record belong together — a refresh that committed some of those and then
+    # failed would be data loss (LIBRARY-09, DEC-003). It says the same thing
+    # backup_service does: it holds the database, it does not query it.
+    "services/library_import_service.py",
 }
 _ALLOWED_PREFIXES = ("persistence/", "migrations/")
 

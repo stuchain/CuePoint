@@ -60,7 +60,9 @@ def library(tmp_path):
     MigrationRunner(service).migrate()
     tracks = TrackRepository(service)
     playlists = PlaylistRepository(service)
-    importer = LibraryImportService(tracks, playlists, LibrarySourceRepository(service))
+    importer = LibraryImportService(
+        tracks, playlists, LibrarySourceRepository(service), service
+    )
     importer.import_rekordbox_xml(_export(tmp_path, "before.xml"))
     try:
         yield importer, tracks, playlists

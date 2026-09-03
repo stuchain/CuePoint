@@ -130,11 +130,17 @@ class BulkUpsertResult:
             it. Listed rather than counted because DEC-002 requires re-links to
             be reported: a user whose library was rebuilt should be able to see
             which tracks kept their tags and why.
+        unclaimed_track_ids: Library rows no incoming track matched — the tracks
+            that are no longer in the export. An import ignores them, because an
+            import only ever adds and updates. A refresh deletes them (DEC-003),
+            and taking them from the same pass that did the matching is what
+            keeps the two from ever disagreeing about which rows those are.
     """
 
     inserted: int = 0
     updated: int = 0
     relinked: Tuple[RelinkedTrack, ...] = ()
+    unclaimed_track_ids: Tuple[int, ...] = ()
 
     @property
     def total(self) -> int:
@@ -145,6 +151,11 @@ class BulkUpsertResult:
     def relinked_count(self) -> int:
         """How many tracks were matched by path after a renumbering."""
         return len(self.relinked)
+
+    @property
+    def unclaimed_count(self) -> int:
+        """How many library rows the export no longer contains."""
+        return len(self.unclaimed_track_ids)
 
 
 class TrackRepository(ITrackRepository):
@@ -169,7 +180,7 @@ class TrackRepository(ITrackRepository):
             sqlite3.IntegrityError: If a track with the same
                 ``rekordbox_track_id`` already exists.
         """
-        with self._db.transaction() as conn:
+        with self._db.transaction(join_existing=True) as conn:
             cursor = conn.execute(_INSERT_SQL, self._values(track))
             track.id = int(cursor.lastrowid or 0)
         return track
@@ -187,7 +198,7 @@ class TrackRepository(ITrackRepository):
         rows = [self._values(track) for track in tracks]
         if not rows:
             return 0
-        with self._db.transaction() as conn:
+        with self._db.transaction(join_existing=True) as conn:
             conn.executemany(_INSERT_SQL, rows)
         return len(rows)
 
@@ -200,15 +211,41 @@ class TrackRepository(ITrackRepository):
         if track.id is None:
             raise ValueError("Cannot update a track that has no id")
         track.touch()
-        with self._db.transaction() as conn:
+        with self._db.transaction(join_existing=True) as conn:
             conn.execute(_UPDATE_SQL, (*self._values(track), track.id))
         return track
 
     def delete(self, track_id: int) -> bool:
         """Delete a track by id. Returns True if a row was removed."""
-        with self._db.transaction() as conn:
+        with self._db.transaction(join_existing=True) as conn:
             cursor = conn.execute("DELETE FROM tracks WHERE id = ?", (track_id,))
             return cursor.rowcount > 0
+
+    def delete_many(self, track_ids: Iterable[int]) -> int:
+        """Delete tracks by library id, in one transaction.
+
+        The form a refresh needs: ``upsert_many_from_rekordbox`` reports the
+        rows it did not claim as ids, and those are exactly the tracks the
+        export no longer contains (DEC-003).
+
+        Deleting cascades — playlist membership goes with the track (LIBRARY-03),
+        its field history goes with it (FOUNDATION-08), and from Phase 6 so does
+        anything else that references it. That is why LIBRARY-08's seam must be
+        consulted first, and why this method is on the watched list in
+        ``tests/unit/services/test_reference_check_seam.py``.
+
+        Returns:
+            Number of tracks deleted.
+        """
+        ids = [int(value) for value in track_ids]
+        if not ids:
+            return 0
+        deleted = 0
+        with self._db.transaction(join_existing=True) as conn:
+            for track_id in ids:
+                cursor = conn.execute("DELETE FROM tracks WHERE id = ?", (track_id,))
+                deleted += cursor.rowcount
+        return deleted
 
     def delete_by_rekordbox_ids(self, rekordbox_track_ids: Iterable[str]) -> int:
         """Delete tracks by Rekordbox TrackID (DEC-003 refresh removal).
@@ -222,7 +259,7 @@ class TrackRepository(ITrackRepository):
         if not ids:
             return 0
         deleted = 0
-        with self._db.transaction() as conn:
+        with self._db.transaction(join_existing=True) as conn:
             for rekordbox_id in ids:
                 cursor = conn.execute(
                     "DELETE FROM tracks WHERE rekordbox_track_id = ?", (rekordbox_id,)
@@ -428,10 +465,18 @@ class TrackRepository(ITrackRepository):
             read them back; ``PlaylistRepository`` already does.
         """
         incoming = list(tracks)
-        if not incoming:
-            return BulkUpsertResult()
-
         by_rekordbox_id, by_path = self.identity_snapshot()
+        unclaimed = {
+            track.id: track
+            for track in by_rekordbox_id.values()
+            if track.id is not None
+        }
+        if not incoming:
+            # Still a real answer: an empty export claims nothing, so every row
+            # in the library is unclaimed. A refresh against an emptied
+            # collection has to be able to say that.
+            return BulkUpsertResult(unclaimed_track_ids=tuple(sorted(unclaimed)))
+
         claimed: set = set()
 
         inserted = 0
@@ -440,7 +485,7 @@ class TrackRepository(ITrackRepository):
         insert_rows: List[tuple] = []
         update_rows: List[tuple] = []
 
-        with self._db.transaction() as conn:
+        with self._db.transaction(join_existing=True) as conn:
             for track in incoming:
                 match = resolve_identity(
                     track.rekordbox_track_id,
@@ -454,6 +499,7 @@ class TrackRepository(ITrackRepository):
                     inserted += 1
                 else:
                     claimed.add(existing.id)
+                    unclaimed.pop(existing.id, None)
                     track.id = existing.id
                     # created_at belongs to the row, not to the incoming export.
                     track.created_at = existing.created_at
@@ -484,7 +530,10 @@ class TrackRepository(ITrackRepository):
                 conn.executemany(_UPDATE_SQL, update_rows)
 
         return BulkUpsertResult(
-            inserted=inserted, updated=updated, relinked=tuple(relinked)
+            inserted=inserted,
+            updated=updated,
+            relinked=tuple(relinked),
+            unclaimed_track_ids=tuple(sorted(unclaimed)),
         )
 
     def identity_snapshot(self) -> tuple:

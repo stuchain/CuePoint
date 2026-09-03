@@ -219,18 +219,43 @@ class DatabaseService(IDatabaseService):
         return connection
 
     @contextmanager
-    def transaction(self) -> Iterator[sqlite3.Connection]:
+    def transaction(self, join_existing: bool = False) -> Iterator[sqlite3.Connection]:
         """Run a unit of work in a transaction.
 
-        Commits on success and rolls back on exception. Nesting is not
-        supported: SQLite has no nested transactions, and pretending otherwise
-        would silently commit partial work.
+        Commits on success and rolls back on exception.
+
+        Opening one inside another is refused by default, and the reason is
+        worth keeping: an inner block that *committed* would make the outer
+        block's rollback a lie, having already written part of its work.
+
+        ``join_existing`` is the opposite of that, and is why it is safe. When a
+        transaction is already open the inner block yields the same connection
+        and does nothing on the way out — no BEGIN, no COMMIT, no ROLLBACK. The
+        outer block still owns the boundary, so a failure anywhere undoes
+        everything. When no transaction is open it behaves exactly as usual.
+
+        A caller wanting several repositories to succeed or fail together opens
+        one transaction and lets them join it. LIBRARY-09's refresh is the first:
+        it deletes tracks, upserts the rest, rewrites the playlist mirror and
+        records the source, and a half-applied version of that would be data
+        loss rather than an inconvenience.
+
+        Args:
+            join_existing: Participate in an already-open transaction instead of
+                refusing. The caller that opened it decides the outcome.
 
         Raises:
-            DatabaseError: If the transaction cannot be started or committed.
+            DatabaseError: If a transaction is already active and
+                ``join_existing`` is False, or if it cannot be started or
+                committed.
         """
         connection = self.connect()
         if connection.in_transaction:
+            if join_existing:
+                # Deliberately no commit and no rollback: the block that opened
+                # this transaction is responsible for both.
+                yield connection
+                return
             raise DatabaseError(
                 message="A transaction is already active on this connection",
                 error_code="DB_NESTED_TRANSACTION",

@@ -108,8 +108,8 @@ def activity(db):
 
 
 @pytest.fixture
-def service(tracks, playlists, sources, activity):
-    return LibraryImportService(tracks, playlists, sources, activity)
+def service(db, tracks, playlists, sources, activity):
+    return LibraryImportService(tracks, playlists, sources, db, activity)
 
 
 @pytest.fixture
@@ -534,13 +534,13 @@ class TestActivity:
         assert event.detail["xml_path"].endswith("collection.xml")
 
     def test_an_import_without_an_activity_service_still_works(
-        self, tracks, playlists, sources, export
+        self, db, tracks, playlists, sources, export
     ):
-        service = LibraryImportService(tracks, playlists, sources)
+        service = LibraryImportService(tracks, playlists, sources, db)
         assert service.import_rekordbox_xml(export).track_count == 3
 
     def test_a_failing_activity_feed_does_not_fail_the_import(
-        self, tracks, playlists, sources, export
+        self, db, tracks, playlists, sources, export
     ):
         """The feed records what happened; it is not a dependency of it."""
 
@@ -548,7 +548,7 @@ class TestActivity:
             def record_event(self, *args, **kwargs):
                 raise RuntimeError("feed is down")
 
-        service = LibraryImportService(tracks, playlists, sources, Broken())
+        service = LibraryImportService(tracks, playlists, sources, db, Broken())
         assert service.import_rekordbox_xml(export).track_count == 3
         assert tracks.count() == 3
 

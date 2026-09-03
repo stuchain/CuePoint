@@ -399,10 +399,19 @@ class IDatabaseService(ABC):
         ...
 
     @abstractmethod
-    def transaction(self) -> "AbstractContextManager[sqlite3.Connection]":
+    def transaction(
+        self, join_existing: bool = False
+    ) -> "AbstractContextManager[sqlite3.Connection]":
         """Context manager running a unit of work in a transaction.
 
         Commits on success, rolls back on exception.
+
+        Args:
+            join_existing: Participate in a transaction the caller already
+                opened rather than refusing, doing nothing on the way out so
+                that block still owns the commit or rollback. This is what lets
+                several repositories succeed or fail together — a refresh that
+                deletes tracks and then fails must undo the deletion.
         """
         ...
 
@@ -679,6 +688,11 @@ class ITrackRepository(ABC):
     @abstractmethod
     def delete_by_rekordbox_ids(self, rekordbox_track_ids: Iterable[str]) -> int:
         """Delete tracks by Rekordbox TrackID; returns the count deleted."""
+        ...
+
+    @abstractmethod
+    def delete_many(self, track_ids: Iterable[int]) -> int:
+        """Delete tracks by library id; returns the count deleted."""
         ...
 
     @abstractmethod

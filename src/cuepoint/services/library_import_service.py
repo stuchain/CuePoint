@@ -12,21 +12,27 @@ read service would give the engine's search endpoint a dependency on the parser,
 the playlist repository and the activity feed, and give the import job a
 dependency on search. Each caller resolves the one it needs.
 
-What an import does, in order:
+What writing an export does, in order:
 
 1. Refuse a file that has no ``COLLECTION`` element. It would otherwise import
    as a successful import of nothing, which is worse than an error.
 2. Upsert every track, applying DEC-002 identity and reporting re-links.
-3. Replace the mirrored playlist tree (DEC-031).
-4. Record where the library came from (DEC-035).
+3. Delete the library rows the export no longer claimed — **refresh only**
+   (DEC-003), and only once DEC-011's reference check has been consulted.
+4. Replace the mirrored playlist tree (DEC-031).
+5. Record where the library came from (DEC-035).
 
-The order is deliberate. There is no single transaction spanning all of it —
-``DatabaseService`` refuses nested transactions on purpose, since SQLite has no
-nested transaction and pretending otherwise would silently commit partial work —
-so the steps are explicit batches, and the **source record is written last**. An
-import that fails part way therefore leaves no source record, and the library
-correctly reports that it has not been imported from a file. Because every track
-write is an upsert, re-running the import converges rather than duplicating.
+An import and a refresh are the same pass differing only in step 3, and they run
+the same code (:meth:`LibraryImportService._write_export`) rather than two
+versions of it that can drift about what a write means.
+
+All of it happens **inside one transaction**. A refresh requires that, because
+it deletes: half of one would be a library missing tracks its owner never agreed
+to lose. The first import gets the same property for free. Repositories join the
+open transaction instead of opening their own — see
+``DatabaseService.transaction(join_existing=True)``, which participates without
+committing, so the outer block still decides the outcome. Every track write is
+an upsert, so re-running either converges rather than duplicating.
 """
 
 from __future__ import annotations
@@ -34,7 +40,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
-from typing import Callable, Iterator, Optional, Tuple
+from typing import Callable, Iterable, Iterator, Optional, Tuple
 
 from cuepoint.data.rekordbox import (
     collection_entry_count,
@@ -55,9 +61,13 @@ from cuepoint.models.refresh_diff import (
 )
 from cuepoint.models.references import NO_REFERENCES, ReferenceSummary
 from cuepoint.models.rekordbox_playlist import PlaylistTreeWriteResult
-from cuepoint.persistence.track_repository import RelinkedTrack
+from cuepoint.persistence.track_repository import (
+    BulkUpsertResult,
+    RelinkedTrack,
+)
 from cuepoint.services.interfaces import (
     IActivityService,
+    IDatabaseService,
     ILibraryImportService,
     ILibraryService,
     ILibrarySourceRepository,
@@ -69,6 +79,11 @@ _logger = logging.getLogger(__name__)
 
 #: Activity event recorded when an import finishes (DEC-029's pattern).
 EVENT_LIBRARY_IMPORTED = "library.imported"
+
+#: Recorded when a refresh finishes. Distinct from an import because a
+#: refresh can delete, and DEC-029's feed is the only durable record a user
+#: has that it did.
+EVENT_LIBRARY_REFRESHED = "library.refreshed"
 
 #: Phase names reported through ``on_progress``, for a status message.
 PHASE_TRACKS = "tracks"
@@ -140,14 +155,86 @@ class ImportSummary:
         return "Library imported — " + ", ".join(parts)
 
 
+@dataclass(frozen=True)
+class ExportWriteResult:
+    """What one pass over an export wrote.
+
+    Internal to this service: an import and a refresh each produce one, and each
+    turns it into the summary its own callers know.
+    """
+
+    tracks: BulkUpsertResult
+    playlists: PlaylistTreeWriteResult
+    source: LibrarySource
+    deleted: int = 0
+    references: ReferenceSummary = NO_REFERENCES
+
+
+@dataclass(frozen=True)
+class RefreshSummary:
+    """What one refresh did.
+
+    :class:`ImportSummary` plus the one thing an import never has: a count of
+    what was deleted. Reported on its own rather than folded into a total,
+    because DEC-003 makes that the irreversible part.
+
+    Attributes:
+        source: The DEC-035 record written by the refresh.
+        tracks_inserted: Tracks the export added.
+        tracks_updated: Tracks matched to an existing row and refreshed.
+        tracks_deleted: Tracks the export no longer contains, now gone along
+            with their tags, ratings, history and playlist membership.
+        relinked: Tracks matched by path because Rekordbox renumbered them.
+            Listed rather than counted, as DEC-002 requires.
+        playlists: What the mirrored playlist tree write produced.
+        references: What DEC-011's seam said about the deleted tracks, asked at
+            the moment they were deleted rather than when the diff was computed.
+        duration_seconds: Wall-clock time for the whole refresh.
+    """
+
+    source: LibrarySource
+    tracks_inserted: int
+    tracks_updated: int
+    tracks_deleted: int
+    relinked: Tuple[RelinkedTrack, ...]
+    playlists: PlaylistTreeWriteResult
+    references: ReferenceSummary
+    duration_seconds: float
+
+    @property
+    def track_count(self) -> int:
+        """Tracks the library holds after the refresh."""
+        return self.tracks_inserted + self.tracks_updated
+
+    @property
+    def relinked_count(self) -> int:
+        """How many tracks kept their CuePoint data through a renumbering."""
+        return len(self.relinked)
+
+    def summary_line(self) -> str:
+        """One line a user can read, for the activity feed."""
+        parts = []
+        if self.tracks_inserted:
+            parts.append(f"{self.tracks_inserted} added")
+        if self.tracks_updated:
+            parts.append(f"{self.tracks_updated} updated")
+        if self.tracks_deleted:
+            parts.append(f"{self.tracks_deleted} removed")
+        if self.relinked_count:
+            parts.append(f"{self.relinked_count} re-linked")
+        parts.append(f"{self.track_count} tracks now")
+        return "Library refreshed — " + ", ".join(parts)
+
+
 class LibraryImportService(ILibraryImportService):
-    """Imports a Rekordbox export into the persistent library."""
+    """Imports and refreshes a Rekordbox export into the persistent library."""
 
     def __init__(
         self,
         track_repository: ITrackRepository,
         playlist_repository: IPlaylistRepository,
         source_repository: ILibrarySourceRepository,
+        database_service: IDatabaseService,
         activity_service: Optional[IActivityService] = None,
         library_service: Optional[ILibraryService] = None,
     ) -> None:
@@ -157,6 +244,13 @@ class LibraryImportService(ILibraryImportService):
             track_repository: Owns the ``tracks`` table.
             playlist_repository: Owns the mirrored playlist tree.
             source_repository: Owns the DEC-035 source record.
+            database_service: Opens the one transaction a write runs inside.
+                Required rather than optional: a service built without it would
+                delete tracks in a transaction of their own and could then fail
+                with them already gone, which is the exact outcome this step
+                exists to make impossible. Nothing here runs SQL — the
+                repositories do — but this is the only place that knows those
+                writes belong together.
             activity_service: Records the completion event. Optional because the
                 feed is a record of what happened, not a dependency of it — the
                 same contract the engine's launch producers keep.
@@ -169,6 +263,7 @@ class LibraryImportService(ILibraryImportService):
         self._tracks = track_repository
         self._playlists = playlist_repository
         self._source = source_repository
+        self._db = database_service
         self._activity = activity_service
         self._library = library_service
 
@@ -187,15 +282,11 @@ class LibraryImportService(ILibraryImportService):
         the property most likely to break subtly, and the one a user notices
         last, so it is what the tests lean on hardest.
 
-        **Where cancellation is honoured, and where it stops being.** The check
-        runs before anything is written and then between tracks, inside the
-        upsert's transaction — so a cancel during the long phase rolls that
-        transaction back and leaves the library untouched. Once those tracks are
-        committed the import runs to completion: what remains is the playlist
-        mirror and the source record, together a small fraction of the work, and
-        stopping between them would leave a mirror that disagrees with the
-        tracks. The result either way is a library that is never half-imported,
-        and a source record that only ever describes an import that finished.
+        **Cancellation is all-or-nothing.** The check runs before anything is
+        written and then between tracks, inside the single transaction the whole
+        import runs in — so a cancel at any point rolls everything back and
+        leaves the library exactly as it was, source record included. That
+        record therefore only ever describes an import that finished.
 
         Args:
             xml_path: Path to the Rekordbox XML export.
@@ -221,33 +312,16 @@ class LibraryImportService(ILibraryImportService):
         if should_cancel is not None and should_cancel():
             raise ImportCancelled("Cancelled before the import began")
 
-        # Shared with the generator so the phase-transition tick below reports
-        # the total the track pass actually reached. Reporting `declared` here
-        # made a file that under-declares its Entries count jump backwards —
-        # 5/5 tracks, then 2/2 playlists.
-        observed = {"total": declared}
-        tracks = self._tracks.upsert_many_from_rekordbox(
-            self._observed_tracks(xml_path, observed, on_progress, should_cancel)
-        )
-        if on_progress is not None:
-            on_progress(observed["total"], observed["total"], PHASE_PLAYLISTS)
-        playlists = self._playlists.replace_tree(iter_playlist_nodes(xml_path))
-
-        source = self._source.replace(
-            source_for_import(
-                xml_path=xml_path,
-                imported_at=utc_now_iso(),
-                track_count=self._tracks.count(),
-                playlist_count=self._playlists.count(),
-            )
+        written = self._write_export(
+            xml_path, declared, on_progress, should_cancel, delete_unclaimed=False
         )
 
         summary = ImportSummary(
-            source=source,
-            tracks_inserted=tracks.inserted,
-            tracks_updated=tracks.updated,
-            relinked=tracks.relinked,
-            playlists=playlists,
+            source=written.source,
+            tracks_inserted=written.tracks.inserted,
+            tracks_updated=written.tracks.updated,
+            relinked=written.tracks.relinked,
+            playlists=written.playlists,
             duration_seconds=time.perf_counter() - started,
         )
         self._record_activity(summary)
@@ -325,6 +399,198 @@ class LibraryImportService(ILibraryImportService):
             error_code="LIBRARY_XML_NO_COLLECTION",
             context={"xml_path": str(xml_path)},
         )
+
+    # ------------------------------------------------------------------ apply
+
+    def apply_refresh(
+        self,
+        diff: RefreshDiff,
+        confirm_references: bool = False,
+        on_progress: Optional[ProgressCallback] = None,
+        should_cancel: Optional[CancelCheck] = None,
+    ) -> RefreshSummary:
+        """Make the library match the export the diff was computed against.
+
+        The only irreversible operation in this phase. DEC-003 deletes tracks
+        that have left Rekordbox, and their tags, ratings, history and playlist
+        membership go with them.
+
+        **One transaction, and that is the whole safety story.** Deleting,
+        upserting, rewriting the playlist mirror and recording the source all
+        happen inside a single block, so a failure at any point leaves the
+        library exactly as it was. A half-applied refresh would be a library
+        missing tracks nobody agreed to lose.
+
+        **The removals are recomputed, not replayed.** ``diff`` names the file
+        and carries the numbers a user was shown, but *which rows to delete*
+        comes from the pass this method runs — the same identity resolution,
+        against a snapshot taken now. Replaying the diff's list would act on what
+        was true when the preview was computed, and the file or the library may
+        have moved since. Where neither has, the counts match what the preview
+        promised, which is what the tests assert.
+
+        Args:
+            diff: The preview a user confirmed. Its ``xml_path`` is re-read.
+            confirm_references: Required when Collections or Sets hold tracks
+                that would be deleted (DEC-011). Always unnecessary today
+                because nothing in this build can reference a track; the gate
+                exists so Phase 6 fills in one method rather than reshaping
+                this flow.
+            on_progress: Called with ``(completed, total, phase)``.
+            should_cancel: Checked between tracks. Cancelling rolls the whole
+                transaction back, so nothing is applied.
+
+        Returns:
+            A :class:`RefreshSummary`.
+
+        Raises:
+            ValidationError: If the file has no ``COLLECTION`` element, or
+                references exist and were not confirmed.
+            FileNotFoundError: If the file is gone.
+            ImportCancelled: If ``should_cancel`` asked it to stop.
+        """
+        started = time.perf_counter()
+        xml_path = diff.xml_path
+        declared = self._require_collection(xml_path)
+
+        if should_cancel is not None and should_cancel():
+            raise ImportCancelled("Cancelled before the refresh began")
+
+        written = self._write_export(
+            xml_path,
+            declared,
+            on_progress,
+            should_cancel,
+            delete_unclaimed=True,
+            confirm_references=confirm_references,
+        )
+
+        summary = RefreshSummary(
+            source=written.source,
+            tracks_inserted=written.tracks.inserted,
+            tracks_updated=written.tracks.updated,
+            tracks_deleted=written.deleted,
+            relinked=written.tracks.relinked,
+            playlists=written.playlists,
+            references=written.references,
+            duration_seconds=time.perf_counter() - started,
+        )
+        self._record_refresh_activity(summary)
+        _logger.info(
+            "[library] Refreshed %s: %s inserted, %s updated, %s deleted, "
+            "%s re-linked, %s playlist nodes in %.2fs",
+            xml_path,
+            summary.tracks_inserted,
+            summary.tracks_updated,
+            summary.tracks_deleted,
+            summary.relinked_count,
+            summary.playlists.nodes,
+            summary.duration_seconds,
+        )
+        return summary
+
+    # --------------------------------------------------------- shared writing
+
+    def _write_export(
+        self,
+        xml_path: str,
+        declared: int,
+        on_progress: Optional[ProgressCallback],
+        should_cancel: Optional[CancelCheck],
+        *,
+        delete_unclaimed: bool,
+        confirm_references: bool = False,
+    ) -> ExportWriteResult:
+        """Write an export into the library — all of it, or none of it.
+
+        The one place an import and a refresh both go through, so the two cannot
+        drift on what a write means. They differ in exactly one thing, and it is
+        the argument: an import never deletes, a refresh does.
+
+        Which rows a refresh deletes is not decided here and not passed in. It
+        is whatever ``upsert_many_from_rekordbox`` reports as *unclaimed* —
+        the library rows this very pass failed to match to anything in the file.
+        Taking it from the pass that did the matching is what stops the deleting
+        and the matching from ever disagreeing.
+
+        Everything runs inside a single transaction. That is what makes a failed
+        refresh a no-op rather than a partly destroyed library, and it gives the
+        first import the same property for free: before this, an import that
+        failed after its tracks were committed left them behind.
+        """
+        # Shared with the generator so the phase-transition tick below reports
+        # the total the track pass actually reached. Reporting `declared` here
+        # made a file that under-declares its Entries count jump backwards —
+        # 5/5 tracks, then 2/2 playlists.
+        observed = {"total": declared}
+
+        with self._db.transaction():
+            tracks = self._tracks.upsert_many_from_rekordbox(
+                self._observed_tracks(xml_path, observed, on_progress, should_cancel)
+            )
+
+            deleted = 0
+            references = NO_REFERENCES
+            if delete_unclaimed and tracks.unclaimed_track_ids:
+                references = self._check_references(
+                    tracks.unclaimed_track_ids, confirm_references
+                )
+                deleted = self._tracks.delete_many(tracks.unclaimed_track_ids)
+
+            if on_progress is not None:
+                on_progress(observed["total"], observed["total"], PHASE_PLAYLISTS)
+            playlists = self._playlists.replace_tree(iter_playlist_nodes(xml_path))
+
+            source = self._source.replace(
+                source_for_import(
+                    xml_path=xml_path,
+                    imported_at=utc_now_iso(),
+                    track_count=self._tracks.count(),
+                    playlist_count=self._playlists.count(),
+                )
+            )
+
+        return ExportWriteResult(
+            tracks=tracks,
+            playlists=playlists,
+            source=source,
+            deleted=deleted,
+            references=references,
+        )
+
+    def _check_references(
+        self, track_ids: Iterable[int], confirmed: bool
+    ) -> ReferenceSummary:
+        """Consult DEC-011's seam before deleting, and refuse if it says wait.
+
+        Asked here rather than trusted from the diff: the preview may have been
+        computed some time ago, and this is the moment the tracks actually go.
+
+        The refusal is unreachable today — nothing in this build can reference a
+        track — which is exactly why the gate is written now. Phase 6 makes the
+        seam answer, and finds this flow, its error code and the confirmation
+        that clears it already in place.
+        """
+        if self._library is None:
+            return NO_REFERENCES
+
+        references = self._library.references_for(track_ids)
+        if references.has_references and not confirmed:
+            raise ValidationError(
+                message=(
+                    f"{references.referenced_track_count} tracks removed from "
+                    f"Rekordbox are used in {references.collection_count} "
+                    f"Collections and {references.set_count} Sets. Confirm to "
+                    "remove them and everything attached to them."
+                ),
+                error_code="LIBRARY_REFRESH_NEEDS_CONFIRMATION",
+                context={
+                    "collection_count": references.collection_count,
+                    "set_count": references.set_count,
+                    "referenced_track_count": references.referenced_track_count,
+                },
+            )
+        return references
 
     # ---------------------------------------------------------------- refresh
 
@@ -608,6 +874,34 @@ class LibraryImportService(ILibraryImportService):
                         track_count=node.track_count,
                     )
                 )
+
+    def _record_refresh_activity(self, summary: RefreshSummary) -> None:
+        """Record what a refresh did, or quietly do nothing.
+
+        DEC-029's feed is the only durable record a user has of a destructive
+        refresh, so it matters most here — but it still must not be able to fail
+        one that has already succeeded and committed.
+        """
+        if self._activity is None:
+            return
+        try:
+            self._activity.record_event(
+                EVENT_LIBRARY_REFRESHED,
+                summary.summary_line(),
+                {
+                    "xml_path": summary.source.xml_path,
+                    "inserted": summary.tracks_inserted,
+                    "updated": summary.tracks_updated,
+                    "deleted": summary.tracks_deleted,
+                    "relinked": summary.relinked_count,
+                    "playlists": summary.playlists.playlists,
+                    "folders": summary.playlists.folders,
+                    "entries": summary.playlists.entries,
+                    "duration_seconds": round(summary.duration_seconds, 3),
+                },
+            )
+        except Exception as exc:  # noqa: BLE001 — the feed is best-effort
+            _logger.debug("[activity] could not record the refresh: %s", exc)
 
     def _record_activity(self, summary: ImportSummary) -> None:
         """Record the completion event, or quietly do nothing.

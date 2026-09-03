@@ -48,7 +48,7 @@ class LibrarySourceRepository(ILibrarySourceRepository):
         the one a retry can act on.
         """
         data = source.to_dict()
-        with self._db.transaction() as conn:
+        with self._db.transaction(join_existing=True) as conn:
             conn.execute("DELETE FROM library_source")
             cursor = conn.execute(
                 _INSERT_SQL, tuple(data[column] for column in _COLUMNS)
@@ -79,5 +79,5 @@ class LibrarySourceRepository(ILibrarySourceRepository):
 
     def clear(self) -> None:
         """Forget where the library came from."""
-        with self._db.transaction() as conn:
+        with self._db.transaction(join_existing=True) as conn:
             conn.execute("DELETE FROM library_source")
