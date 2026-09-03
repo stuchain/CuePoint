@@ -126,8 +126,34 @@ def _restore_global_settings():
 
 
 @pytest.fixture(scope="session")
+def _cuepoint_home_sandbox(tmp_path_factory):
+    """One temp directory standing in for the user's real ~/.cuepoint."""
+    return tmp_path_factory.mktemp("cuepoint-home")
+
+
+@pytest.fixture(autouse=True)
+def _sandbox_cuepoint_home(_cuepoint_home_sandbox, monkeypatch):
+    """Redirect ``CUEPOINT_HOME`` so **subprocesses** are sandboxed too.
+
+    The other two guards monkeypatch functions, which a test that runs the CLI
+    with ``subprocess.run`` cannot inherit — and those tests write configuration
+    back. A full suite run was leaving ``--max-retries 2``,
+    ``--checkpoint-every 25`` and a pytest temporary directory in the real
+    ``~/.cuepoint/config.yaml`` of whoever ran it.
+
+    An environment variable is the only seam that crosses a process boundary, so
+    this is the half of the guard that the in-process patches structurally
+    cannot cover. Subprocesses inherit ``os.environ`` unless a test passes an
+    explicit ``env=``; those must build it at call time rather than snapshotting
+    ``os.environ`` at import, which happens before any fixture runs.
+    """
+    monkeypatch.setenv("CUEPOINT_HOME", str(_cuepoint_home_sandbox))
+    yield
+
+
+@pytest.fixture(scope="session")
 def _user_config_sandbox(tmp_path_factory):
-    """One temp location standing in for the user's real ~/.cuepoint."""
+    """One temp location standing in for the user's real config.yaml."""
     return tmp_path_factory.mktemp("cuepoint-config") / "config.yaml"
 
 

@@ -21,6 +21,7 @@ from cuepoint.exceptions.cuepoint_exceptions import ConfigurationError
 from cuepoint.models.config import SETTINGS
 from cuepoint.models.config_models import AppConfig
 from cuepoint.services.interfaces import IConfigService
+from cuepoint.utils.paths import cuepoint_home
 
 
 def default_config_file() -> Path:
@@ -33,7 +34,8 @@ def default_config_file() -> Path:
     ``database.path`` set there overrode the sandbox the suite installs — so
     tests ran against, and wrote to, the user's real library database.
     """
-    return Path.home() / ".cuepoint" / "config.yaml"
+    home: Path = cuepoint_home()
+    return home / "config.yaml"
 
 
 class ConfigService(IConfigService):

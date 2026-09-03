@@ -401,7 +401,23 @@ was never at risk, so a test of that would have passed throughout. Demonstrated 
 setting a `database.path` in the real config and watching the container resolve to it with the
 guard removed, and to the sandbox with it in place; the config file was restored byte-for-byte.
 
-**Verification** (re-run after DEC-038, the location fix and the isolation fix): 86 tests in
+**And a fourth, found by checking whether the third fix worked.** A full suite run still
+modified the real `~/.cuepoint/config.yaml` — `max_retries`, `checkpoint_every` and a pytest
+temporary directory left in a developer's saved settings. `test_cli_smoke.py` runs the CLI with
+`subprocess.run`, and a monkeypatch cannot cross a process boundary, so no fixture-based guard can
+ever cover it. `--config` does not help either: it merges settings *into* a `ConfigService` that
+`bootstrap.py` still builds bare, so saving goes to the real file regardless.
+
+Fixed with `CUEPOINT_HOME`, an environment override for the `~/.cuepoint` directory honoured by
+both `default_config_file()` and `default_database_path()` — the only seam that a subprocess
+inherits. The conftest guard sets it; `test_cli_smoke.py` now builds its subprocess environment at
+call time rather than snapshotting `os.environ` at import, which happens during collection before
+any fixture runs. Demonstrated by disabling the guard, running the real CLI test and watching the
+user's config change, then restoring it and watching it not. The variable is a developer and test
+seam (it also makes a second profile possible); it is documented on `cuepoint_home()` rather than
+announced as a user-facing feature, because the design has not made that promise.
+
+**Verification** (re-run after DEC-038, the location fix and both halves of the isolation fix): 86 tests in
 `test_rekordbox_library.py` including the `slow` 50,000-track case, and 7 in
 `src/tests/regression/`. `python scripts/run_tests.py --all --no-slow`. `src/tests/unit/engine`.
 Integration. `ruff check` and `ruff format --check` clean; `check_no_qt_in_core.py`,

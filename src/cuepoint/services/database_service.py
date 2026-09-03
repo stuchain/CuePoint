@@ -36,6 +36,7 @@ from typing import Iterator, Optional
 
 from cuepoint.exceptions.cuepoint_exceptions import DatabaseError
 from cuepoint.services.interfaces import IConfigService, IDatabaseService
+from cuepoint.utils.paths import cuepoint_home
 
 DATABASE_FILENAME = "cuepoint.db"
 
@@ -45,8 +46,10 @@ def default_database_path() -> Path:
 
     Kept alongside ``config.yaml`` so a user's CuePoint state lives in one
     place, which also makes the backup story simple: one directory to copy.
+    ``CUEPOINT_HOME`` moves both together.
     """
-    return Path.home() / ".cuepoint" / DATABASE_FILENAME
+    home: Path = cuepoint_home()
+    return home / DATABASE_FILENAME
 
 
 class DatabaseService(IDatabaseService):

@@ -18,6 +18,9 @@ run silently resolved to a 3,880-track library sitting outside the sandbox.
 
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -28,6 +31,7 @@ from cuepoint.services import database_service as database_service_module
 from cuepoint.services.config_service import ConfigService
 from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.interfaces import IConfigService
+from cuepoint.utils.paths import cuepoint_home
 
 
 def _real_cuepoint_home() -> Path:
@@ -76,6 +80,53 @@ class TestTheRealUserDirectoryIsOutOfReach:
             assert service.db_path == _library_database_sandbox
         finally:
             reset_container()
+
+
+@pytest.mark.unit
+class TestSubprocessesAreSandboxedToo:
+    """The half of the guard that monkeypatching structurally cannot cover.
+
+    A test that runs the CLI with ``subprocess.run`` gets a fresh interpreter,
+    so no patched function reaches it. ``CUEPOINT_HOME`` does, because
+    environment variables cross a process boundary.
+    """
+
+    def test_cuepoint_home_is_redirected_for_this_process(self, _cuepoint_home_sandbox):
+        assert Path(os.environ["CUEPOINT_HOME"]) == _cuepoint_home_sandbox
+
+    def test_a_subprocess_resolves_the_sandbox_not_the_real_home(
+        self, _cuepoint_home_sandbox
+    ):
+        """Run it for real rather than reasoning about inheritance."""
+        code = (
+            "from cuepoint.services.config_service import default_config_file;"
+            "from cuepoint.services.database_service import default_database_path;"
+            "print(default_config_file());print(default_database_path())"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True,
+            text=True,
+            cwd=str(Path(__file__).resolve().parents[3]),
+            env={**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[3])},
+            timeout=60,
+        )
+
+        assert result.returncode == 0, result.stderr
+        config_file, database = result.stdout.split()[-2:]
+        assert Path(config_file).parent == _cuepoint_home_sandbox
+        assert Path(database).parent == _cuepoint_home_sandbox
+
+    def test_the_override_is_honoured_when_it_names_another_directory(
+        self, tmp_path, monkeypatch
+    ):
+        monkeypatch.setenv("CUEPOINT_HOME", str(tmp_path / "profile-two"))
+        assert cuepoint_home() == tmp_path / "profile-two"
+
+    def test_a_blank_override_falls_back_to_the_real_home(self, monkeypatch):
+        """An empty variable is not a path; treating it as one would break launch."""
+        monkeypatch.setenv("CUEPOINT_HOME", "   ")
+        assert cuepoint_home() == _real_cuepoint_home()
 
 
 @pytest.mark.unit

@@ -15,8 +15,19 @@ from pathlib import Path
 
 import pytest
 
-# Env for subprocess: skip Beatport to avoid network timeouts in CI
-_SKIP_BEATPORT_ENV = {**os.environ, "CUEPOINT_SKIP_BEATPORT": "1"}
+
+def _subprocess_env() -> dict:
+    """Environment for a CLI subprocess.
+
+    Built per call, never snapshotted at import. Module level runs during
+    collection, before any fixture, so a constant here would miss
+    ``CUEPOINT_HOME`` — and these tests would go back to writing the real user's
+    configuration, which is what they used to do.
+
+    ``CUEPOINT_SKIP_BEATPORT`` avoids real network calls; tracks come through
+    unmatched and the CSV outputs are still produced.
+    """
+    return {**os.environ, "CUEPOINT_SKIP_BEATPORT": "1"}
 
 
 def tests_dir() -> Path:
@@ -56,7 +67,7 @@ def test_cli_smoke_small_xml(tmp_path: Path) -> None:
         capture_output=True,
         text=True,
         timeout=120,
-        env=_SKIP_BEATPORT_ENV,
+        env=_subprocess_env(),
     )
     assert result.returncode == 0, f"CLI failed: {result.stderr or result.stdout}"
     # At least main CSV should exist (with timestamp in name)
@@ -120,7 +131,7 @@ def test_cli_resume_and_reliability_flags(tmp_path: Path) -> None:
         capture_output=True,
         text=True,
         timeout=120,
-        env=_SKIP_BEATPORT_ENV,
+        env=_subprocess_env(),
     )
     assert result.returncode == 0, f"CLI failed: {result.stderr or result.stdout}"
 

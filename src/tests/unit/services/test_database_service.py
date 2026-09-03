@@ -46,7 +46,15 @@ class TestPathResolution:
     def test_implements_interface(self):
         assert issubclass(DatabaseService, IDatabaseService)
 
-    def test_default_path_is_in_cuepoint_home(self):
+    def test_default_path_is_in_cuepoint_home(self, monkeypatch):
+        """With no CUEPOINT_HOME set — which the suite sets for every test.
+
+        This asserts the fallback, so the override has to be cleared to see
+        it. Note the import at the top of this module binds the function
+        object directly, so the conftest patch of the module attribute does
+        not apply here either.
+        """
+        monkeypatch.delenv("CUEPOINT_HOME", raising=False)
         path = default_database_path()
         assert path.name == DATABASE_FILENAME
         assert path.parent == Path.home() / ".cuepoint"

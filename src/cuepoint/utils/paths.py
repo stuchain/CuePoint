@@ -20,6 +20,34 @@ from typing import Any, Dict, List, Optional, Tuple
 from cuepoint.utils.platform import is_macos, is_windows
 
 
+#: Overrides the directory holding the user's CuePoint state.
+CUEPOINT_HOME_ENV = "CUEPOINT_HOME"
+
+
+def cuepoint_home() -> Path:
+    """Return the directory holding the user's CuePoint state.
+
+    ``~/.cuepoint`` by default — config.yaml, the library database, backups and
+    logs live together so that "a user's CuePoint state" is one directory to
+    copy, back up or delete.
+
+    ``CUEPOINT_HOME`` overrides it. That matters beyond convenience: a test that
+    runs the CLI as a subprocess cannot be redirected by monkeypatching, so
+    without an environment seam those tests read and *wrote* the real user's
+    settings — the system CLI tests were leaving their ``--max-retries`` value
+    and a pytest temporary directory in a developer's saved configuration. It is
+    also what makes a second profile or a portable install possible.
+
+    This is deliberately separate from :meth:`AppPaths.config_dir`, which
+    resolves the platform's standard application-config location for other
+    purposes.
+    """
+    override = os.environ.get(CUEPOINT_HOME_ENV, "").strip()
+    if override:
+        return Path(override).expanduser()
+    return Path.home() / ".cuepoint"
+
+
 def _standard_path(location: str) -> Path:
     """Resolve a Qt QStandardPaths-style writable location (Qt optional).
 
