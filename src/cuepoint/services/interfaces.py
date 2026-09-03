@@ -37,9 +37,13 @@ if TYPE_CHECKING:
     from cuepoint.migrations import Migration
     from cuepoint.models.library_source import LibrarySource
     from cuepoint.models.references import ReferenceSummary
+    from cuepoint.models.refresh_diff import RefreshDiff
     from cuepoint.models.library_track import IdentityMatch, LibraryTrack
     from cuepoint.persistence.track_repository import BulkUpsertResult
-    from cuepoint.services.library_import_service import ImportSummary
+    from cuepoint.services.library_import_service import (
+        ImportSummary,
+        RefreshSummary,
+    )
     from cuepoint.models.rekordbox_playlist import (
         PlaylistTreeWriteResult,
         RekordboxPlaylist,
@@ -868,6 +872,18 @@ class ILibraryImportService(ABC):
     @abstractmethod
     def current_source(self) -> Optional["LibrarySource"]:
         """Return the file the library was imported from, or None."""
+        ...
+
+    @abstractmethod
+    def compute_refresh_diff(self, xml_path: Optional[str] = None) -> "RefreshDiff":
+        """Return what a refresh would change, having changed nothing (DEC-032)."""
+        ...
+
+    @abstractmethod
+    def apply_refresh(
+        self, diff: "RefreshDiff", confirm_references: bool = False
+    ) -> "RefreshSummary":
+        """Apply a previewed diff, deleting what the export dropped (DEC-003)."""
         ...
 
 

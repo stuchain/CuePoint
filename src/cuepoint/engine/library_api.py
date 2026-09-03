@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from cuepoint.models.library_track import LibraryTrack
 
@@ -251,3 +251,113 @@ def library_summary() -> Dict[str, Any]:
         "library_empty": service.is_empty(),
         "source": source_to_dict(source) if source is not None else None,
     }
+
+
+# ---------------------------------------------------------------------------
+# Refresh: preview and apply (LIBRARY-10, DEC-032)
+# ---------------------------------------------------------------------------
+
+
+def parse_refresh_preview_body(raw: bytes) -> Optional[str]:
+    """Return the optional ``xml_path`` a preview should read.
+
+    An empty body is valid and is the usual case: DEC-035 recorded where the
+    library came from precisely so a refresh does not have to ask. A path is
+    accepted for the other case — previewing a different export before deciding
+    to adopt it.
+
+    Raises:
+        ValueError: If the body is present but is not a JSON object, or carries
+            an ``xml_path`` that is not a usable string.
+    """
+    if not raw:
+        return None
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError("Invalid JSON body") from exc
+    if not isinstance(data, dict):
+        raise ValueError("JSON body must be an object")
+
+    raw_path = data.get("xml_path")
+    if raw_path is None:
+        return None
+    if not isinstance(raw_path, str) or not raw_path.strip():
+        raise ValueError("xml_path must be a non-empty string when given")
+    return raw_path.strip()
+
+
+def parse_refresh_apply_body(raw: bytes) -> Tuple[str, bool]:
+    """Return ``(diff_id, confirm_references)`` from an apply request.
+
+    ``diff_id`` is required and there is no default. An apply that fell back to
+    "the most recent preview" would delete tracks on the strength of a diff the
+    caller never named, which is the one shortcut this flow must not take.
+
+    Raises:
+        ValueError: If the body is missing, malformed, or carries no diff id.
+    """
+    if not raw:
+        raise ValueError("A JSON body with a diff_id is required")
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError("Invalid JSON body") from exc
+    if not isinstance(data, dict):
+        raise ValueError("JSON body must be an object")
+
+    diff_id = data.get("diff_id")
+    if diff_id is None or not str(diff_id).strip():
+        raise ValueError("diff_id is required; preview the refresh first")
+
+    confirm = data.get("confirm_references", False)
+    if not isinstance(confirm, bool):
+        raise ValueError("confirm_references must be true or false")
+    return str(diff_id).strip(), confirm
+
+
+def start_refresh_preview(xml_path: Optional[str], *, job_store: Any) -> Dict[str, Any]:
+    """Start a refresh preview as a background job (DEC-032, DEC-033).
+
+    A given path is checked the way an import's is, so an obviously wrong pick
+    is refused straight away rather than becoming a failed job. A *missing*
+    path is not checked here: the file to read is then the source record's, and
+    whether that still exists is the job's answer to give, with the same
+    ``LIBRARY_NOT_IMPORTED`` code a caller already handles.
+
+    Raises:
+        ValueError: If a given path cannot plausibly be read.
+        JobTypeBusyError: If any library job is already running.
+    """
+    from cuepoint.engine.library_refresh import start_refresh_preview_job
+
+    checked = validate_import_path(xml_path) if xml_path else None
+    job = start_refresh_preview_job(job_store, checked)
+    return {"job_id": job.id, "id": job.id, "state": job.state.value}
+
+
+def start_refresh_apply(
+    diff_id: str, confirm_references: bool, *, job_store: Any
+) -> Dict[str, Any]:
+    """Start applying a stored diff (DEC-032, DEC-003).
+
+    The diff is looked up and its freshness checked **before** the job is
+    created, so an unknown or stale id comes back as an immediate, specific
+    refusal rather than a job the caller has to watch fail. The job checks
+    again before writing; see ``run_refresh_apply_job`` for why both.
+
+    Raises:
+        DiffNotFoundError: If the id is unknown or has been forgotten.
+        DiffStaleError: If the file has changed since the preview.
+        JobTypeBusyError: If any library job is already running.
+    """
+    from cuepoint.engine.library_refresh import (
+        get_diff_store,
+        start_refresh_apply_job,
+    )
+
+    get_diff_store().require_fresh(diff_id)
+    job = start_refresh_apply_job(
+        job_store, diff_id, confirm_references=confirm_references
+    )
+    return {"job_id": job.id, "id": job.id, "state": job.state.value}

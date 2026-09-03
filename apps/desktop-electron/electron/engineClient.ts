@@ -74,6 +74,19 @@ export interface LibraryImportStarted {
   state: string;
 }
 
+/**
+ * A refresh preview or apply, started (LIBRARY-10).
+ *
+ * Same shape as an import's: both are background jobs, and the renderer follows
+ * either through the job endpoints it already uses. The diff a preview computed
+ * arrives as that job's `result`, from `getJobResults`.
+ */
+export interface LibraryRefreshStarted {
+  job_id: string;
+  id: string;
+  state: string;
+}
+
 export interface EngineJobSummary {
   id: string;
   type: string;
@@ -176,6 +189,47 @@ export class EngineClient {
     xml_path: string;
   }): Promise<LibraryImportStarted> {
     const res = await fetch(this.url("/api/v1/library/import"), {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify(params),
+    });
+    return readJson(res);
+  }
+
+  /**
+   * Compute a refresh diff without applying it (LIBRARY-10, DEC-032).
+   *
+   * Returns the job identity only. The diff itself arrives as the job's
+   * result, from `getJobResults` — it is far too large to put on the status
+   * payload that the shell polls for every job.
+   *
+   * `xml_path` is optional: with no path the engine re-reads the file the
+   * library was imported from, which is what DEC-035 recorded it for.
+   */
+  async startLibraryRefreshPreview(params?: {
+    xml_path?: string;
+  }): Promise<LibraryRefreshStarted> {
+    const res = await fetch(this.url("/api/v1/library/refresh/preview"), {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify(params ?? {}),
+    });
+    return readJson(res);
+  }
+
+  /**
+   * Apply a previewed diff (LIBRARY-10, DEC-003).
+   *
+   * `diff_id` comes from the preview's result and is required — there is no
+   * "apply the last one", because that would delete tracks on the strength of
+   * a diff the caller never named. A stale or unknown id is refused before any
+   * job starts.
+   */
+  async startLibraryRefreshApply(params: {
+    diff_id: string;
+    confirm_references?: boolean;
+  }): Promise<LibraryRefreshStarted> {
+    const res = await fetch(this.url("/api/v1/library/refresh/apply"), {
       method: "POST",
       headers: this.headers(),
       body: JSON.stringify(params),

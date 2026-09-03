@@ -32,6 +32,14 @@ describe("jobLabel", () => {
     expect(jobLabel(job({ type: "library_import" }))).toBe("Importing 3/10");
   });
 
+  it("tells the two halves of a refresh apart", () => {
+    // One reads and one deletes (DEC-003). A single verb for both would leave
+    // the only place the app reports background work unable to say whether the
+    // irreversible half had started.
+    expect(jobLabel(job({ type: "library_refresh_preview" }))).toBe("Checking 3/10");
+    expect(jobLabel(job({ type: "library_refresh_apply" }))).toBe("Refreshing 3/10");
+  });
+
   it("says queued before a job starts, whatever its type", () => {
     expect(jobLabel(job({ state: "queued" }))).toBe("Queued 3/10");
     expect(jobLabel(job({ type: "library_import", state: "queued" }))).toBe(

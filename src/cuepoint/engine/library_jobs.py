@@ -154,20 +154,30 @@ def start_library_import_job(
 
     Whether the file *parses* is decided inside the job: a rejected export
     should show up as a failed job with a message the user can act on, in the
-    same place every other job outcome appears. Whether another import is
+    same place every other job outcome appears. Whether another library job is
     already running is decided here, because two of them would interleave
     writes to the same tables — the track upsert resolves identity against a
     snapshot taken before it started, and the playlist mirror deletes before it
     rewrites.
 
     Raises:
-        JobTypeBusyError: If an import is already queued or running.
+        JobTypeBusyError: If any library job is already queued or running.
     """
+    # Imported here, not at module scope: ``library_refresh`` imports this
+    # module's job type to build that group, so importing it back at the top
+    # would be a cycle. The group lives there because that is where the second
+    # and third members of it are defined (LIBRARY-10).
+    from cuepoint.engine.library_refresh import LIBRARY_JOB_TYPES
+
     path = str(xml_path)
 
     def runner(job: Job) -> None:
         run_library_import_job(job, store, path)
 
     return store.create_job(
-        job_type=JOB_TYPE_LIBRARY_IMPORT, demo=demo, runner=runner, exclusive=True
+        job_type=JOB_TYPE_LIBRARY_IMPORT,
+        demo=demo,
+        runner=runner,
+        exclusive=True,
+        conflicts_with=LIBRARY_JOB_TYPES,
     )

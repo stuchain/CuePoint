@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 from cuepoint.compat.gui_types import ProgressInfo, TrackResult
 
@@ -167,6 +167,13 @@ class MatchJob:
     progress: Optional[ProgressInfo] = None
     results: List[TrackResult] = field(default_factory=list)
     batch_results: Dict[str, List[TrackResult]] = field(default_factory=dict)
+    #: What a job produced, for job types whose answer is not a list of matched
+    #: tracks. A refresh preview's diff is the first (LIBRARY-10). Deliberately
+    #: absent from :meth:`to_status_dict`: that payload is polled, and for every
+    #: job in the list, so a diff carrying hundreds of examples would be sent
+    #: over and over to render a progress bar. It is served from
+    #: ``GET /api/v1/jobs/{id}/results``, which a caller asks for once.
+    result: Optional[Dict[str, Any]] = None
     error: Optional[Dict[str, str]] = None
     demo: bool = False
     cancel_requested: bool = False
@@ -315,6 +322,7 @@ class JobStore:
         demo: bool = False,
         runner: Callable[[MatchJob], None],
         exclusive: bool = False,
+        conflicts_with: Sequence[str] = (),
     ) -> MatchJob:
         """Register a job of any type and start it on a background thread.
 
@@ -335,19 +343,28 @@ class JobStore:
                 asking the store and then creating would let two requests
                 arriving together both see an idle store, and two concurrent
                 imports would interleave their writes to the same tables.
+            conflicts_with: Other job types that must also not be active. Same
+                lock, same reason, one step further: mutual exclusion within a
+                type stops two imports, and does nothing about an import and a
+                refresh running together — which write the same tables just as
+                badly. Only consulted when ``exclusive``, because a job that
+                does not mind a twin has no business minding a cousin.
 
         Raises:
-            JobTypeBusyError: If ``exclusive`` and one is already active.
+            JobTypeBusyError: If ``exclusive`` and a job of this type or of a
+                conflicting type is already active. The error names the type
+                actually holding the library, not the one that was asked for.
         """
         job = MatchJob(id=str(uuid.uuid4()), type=job_type, demo=demo)
+        blocking = {job_type, *conflicts_with}
         with self._lock:
             if exclusive:
                 for existing in self._jobs.values():
                     if (
-                        existing.type == job_type
+                        existing.type in blocking
                         and existing.state.value in _ACTIVE_STATES
                     ):
-                        raise JobTypeBusyError(job_type, existing.id)
+                        raise JobTypeBusyError(existing.type, existing.id)
             self._jobs[job.id] = job
         self._persist(job, force=True)
 
@@ -437,14 +454,19 @@ class JobStore:
         *,
         state: JobState,
         error: Optional[Dict[str, str]] = None,
+        result: Optional[Dict[str, Any]] = None,
     ) -> None:
-        """Set a job's terminal state from its runner.
+        """Set a job's terminal state, and what it produced, from its runner.
 
         A runner that ends a job itself — an import that honoured a cancel, for
         instance — needs to say so before returning, because :meth:`_run_job`
         treats an unset state as success.
+
+        ``result`` is set in the same call rather than a second one so a caller
+        watching for the terminal state never sees it arrive before the answer
+        it is waiting for.
         """
-        self._update(job, state=state, error=error)
+        self._update(job, state=state, error=error, result=result)
 
     def _update(
         self,
@@ -455,6 +477,7 @@ class JobStore:
         results: Optional[List[TrackResult]] = None,
         batch_results: Optional[Dict[str, List[TrackResult]]] = None,
         error: Optional[Dict[str, str]] = None,
+        result: Optional[Dict[str, Any]] = None,
     ) -> None:
         with self._lock:
             if state is not None:
@@ -467,6 +490,8 @@ class JobStore:
                 job.batch_results = batch_results
             if error is not None:
                 job.error = error
+            if result is not None:
+                job.result = result
             job.updated_at = _utc_now()
 
         # Outside the lock: the in-memory update is what callers wait on, and a

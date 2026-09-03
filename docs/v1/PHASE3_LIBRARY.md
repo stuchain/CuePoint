@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 3: Persistent Rekordbox Library, Detailed Step Specifications
 
-Status: **In progress.** LIBRARY-01…LIBRARY-09 are implemented; LIBRARY-10…LIBRARY-12
+Status: **In progress.** LIBRARY-01…LIBRARY-10 are implemented; LIBRARY-11 and LIBRARY-12
 remain draft step specs in design-only mode.
 Implementation of any step below requires an explicit "Implement LIBRARY-NN" instruction, scoped to
 exactly that step, followed by tests, a completion report, and a stop before the next step.
@@ -1228,7 +1228,7 @@ untouched throughout (`cuepoint.db` and `config.yaml` hash-checked before and af
 
 ---
 
-## LIBRARY-10 — Refresh API and Contract
+## LIBRARY-10 — Refresh API and Contract ✅ IMPLEMENTED 2026-09-03
 
 **Objective**: Preview and apply, over the engine API.
 
@@ -1254,6 +1254,80 @@ reachable from the renderer.
 **Risks**: Medium. Diff staleness is the correctness question.
 
 **Complexity**: **M**
+
+### ✅ IMPLEMENTED 2026-09-03
+
+**Outcome**: Complete. `POST /api/v1/library/refresh/preview` (optional `xml_path`) and
+`POST /api/v1/library/refresh/apply` (`diff_id`, optional `confirm_references`) both answer 202 with
+a job identity. `engine/library_refresh.py` holds the diff store and the two runners. 31 new engine
+tests, 5 new E2E tests, 7 new renderer tests.
+
+**A diff lives until the file it describes changes.** That is the lifetime this step had to decide,
+and tying it to the file rather than to a clock is the whole of it: a preview read over lunch is
+still true if nothing moved, and one computed a second ago is already a lie if Rekordbox re-exported
+in between. A TTL would have added an expiry a user could hit while being right, and still not
+caught the case that matters. Staleness is measured the way DEC-035 measures it — modified time and
+size — and a file whose state cannot be read counts as stale, because "I cannot tell" and "it is the
+same" lead to opposite actions and only one of them deletes tracks.
+
+It is checked **twice**: at the endpoint, so an unknown id is a 404 and a stale one a 409 with the
+reason, immediately and without a job to go and read; and again inside the job just before the
+write, because a job is queued and a thread is scheduled in between and a re-export in that window
+would otherwise be applied. The first check is there to answer quickly, the second to be right.
+
+**The diff is a job result, and deliberately not a job status.** `Job` gained a generic
+`result` payload, served from `GET /api/v1/jobs/{id}/results` — a route a caller asks for once. It
+is kept off `to_status_dict()` because that payload is polled, for *every* job in the list, by the
+shell's status strip; a diff carrying hundreds of examples across seven categories would be sent
+over and over to draw a progress bar. A test asserts it is absent from both the status route and the
+job list.
+
+**One library job at a time, across types.** This step created a hole it also had to close: before
+it, only an import wrote, so per-type exclusion was enough. An import and a refresh apply write the
+same tables, and a preview running against a library being rewritten under it would describe a state
+that never existed. `create_job` gained `conflicts_with`, checked under the same lock that registers
+the job, and all three library job types name each other. Tests fire four simultaneous requests and
+assert exactly one is accepted — a check-then-create would have let several through.
+
+**`diff_id` is required and has no default.** An apply that fell back to "the most recent preview"
+would delete on the strength of a diff the caller never named. Guard-proved by giving it that
+fallback and watching the test fail.
+
+**The strip names the two halves apart** — "Checking" and "Refreshing", not one verb for both.
+One reads and one deletes, and the only place the app reports background work should be able to say
+which is running.
+
+`compute_refresh_diff` and `apply_refresh` are now on `ILibraryImportService`, which LIBRARY-07 and
+LIBRARY-09 both deferred to this step.
+
+**Guards**: **9 of 9 fail when the thing they protect is broken**, every source restored
+byte-for-byte (verified by hash): removing either staleness check; ignoring `conflicts_with`;
+disabling the diff store's eviction; not serving the result; leaking the diff onto the status
+payload; making the preview write; defaulting `diff_id`; and removing one preload method, which the
+six-file contract test catches twice over.
+
+**Verified on the real export, over real HTTP.** An engine on a scratch `CUEPOINT_HOME` imported the
+3,880-track January collection (234 nodes, 13,870 entries), previewed an edited copy at `+3 ~10 -25`
+in 0.5s and left the library byte-identical, refused the diff with `409
+LIBRARY_REFRESH_DIFF_STALE` once the file's mtime moved and changed nothing doing so, then previewed
+and applied for real: `+3 -25` — exactly what the preview promised — 3,858 tracks and 13,717
+entries, `foreign_key_check` and `integrity_check` clean, no orphaned membership, and
+`library.refreshed` in the activity feed.
+
+**Verification**: `python scripts/run_tests.py --unit --no-slow` — 2,797 passed, 45 skipped;
+integration, regression and system — 330 passed, 13 skipped. Renderer `npm test` 405 passed,
+`npm run typecheck`, `npm run lint` and `npm run build:check` clean. Both library E2E specs against
+the built desktop app — 9 passed. `ruff check`/`format --check`, `check_no_qt_in_core.py`,
+`check_desktop_version_coupling.py` and `smoke_engine_health.py` pass. `mypy src/` adds only the
+usual `import-not-found` noise for the two new files; its one real finding in `jobs.py` is
+pre-existing and unrelated. `~/.cuepoint` untouched (`cuepoint.db` and `config.yaml` hash-checked
+before and after). No `CHANGELOG` entry: there is still no button — LIBRARY-11 is what a user sees.
+
+**Also fixed in passing**: `engineSupervisor.ts` referenced `LibrarySummary` and
+`LibraryImportStarted` without importing them. `npm run build:electron` is esbuild, which does not
+type-check, so it built anyway; `npx tsc -p apps/desktop-electron/tsconfig.json` now reports nothing
+for that file. `main.ts` still has pre-existing `BrowserWindow | undefined` errors there, left
+alone.
 
 ---
 

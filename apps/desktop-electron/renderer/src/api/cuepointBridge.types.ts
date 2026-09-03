@@ -54,6 +54,12 @@ export interface JobResultsResponse {
   state: JobState;
   results: TrackResult[];
   batch_results?: Record<string, TrackResult[]>;
+  /**
+   * What a job produced when its answer is not a list of matched tracks — a
+   * refresh preview's diff, or what an apply did. Served here rather than on
+   * the status payload, which is polled for every job.
+   */
+  result?: RefreshDiff | RefreshApplied | Record<string, unknown>;
 }
 
 export type ExportFormat = "csv" | "json" | "xlsx";
@@ -348,6 +354,125 @@ export interface LibraryImportStarted {
   state: string;
 }
 
+/** A preview or an apply, both of which run as background jobs (DEC-033). */
+export interface LibraryRefreshStarted {
+  job_id: string;
+  id: string;
+  state: string;
+}
+
+/** One track in a diff, named well enough to show in a list. */
+export interface RefreshTrackSummary {
+  rekordbox_track_id: string;
+  title: string;
+  artist: string;
+  file_path: string;
+}
+
+/** A track whose Rekordbox fields differ, and which ones. */
+export interface RefreshTrackChange {
+  rekordbox_track_id: string;
+  title: string;
+  artist: string;
+  /** Field name to `{ from, to }`. */
+  fields: Record<string, { from: unknown; to: unknown }>;
+  /** False when every difference is incidental, e.g. only the play count. */
+  is_notable: boolean;
+}
+
+/** A track kept through a Rekordbox renumbering (DEC-002). */
+export interface RefreshRelinkedTrack {
+  rekordbox_track_id: string;
+  previous_rekordbox_track_id: string;
+  file_path: string;
+}
+
+export interface RefreshPlaylistSummary {
+  rekordbox_path: string;
+  kind: string;
+  track_count: number;
+}
+
+export interface RefreshPlaylistChange extends RefreshPlaylistSummary {
+  change: string;
+  previous_track_count: number;
+}
+
+/**
+ * An exact count with a bounded sample of what is in it.
+ *
+ * `count` is always the whole truth; `items` is capped so a diff over a large
+ * collection stays a payload rather than a second copy of the library.
+ * `truncated` says the two differ.
+ */
+export interface RefreshCategory<T> {
+  count: number;
+  items: T[];
+  truncated: boolean;
+}
+
+/** How many Collections or Sets hold the tracks a refresh would delete. */
+export interface RefreshReferences {
+  collection_count: number;
+  set_count: number;
+  referenced_track_count: number;
+  referenced_track_ids: number[];
+  has_references: boolean;
+}
+
+/**
+ * What a refresh would change, having changed nothing (DEC-032).
+ *
+ * Arrives as a preview job's `result`. `diff_id` is what an apply names, and
+ * it is only good while the file is untouched — the engine refuses a stale one
+ * rather than deleting on the strength of numbers that no longer hold.
+ */
+export interface RefreshDiff {
+  diff_id: string;
+  xml_path: string;
+  is_empty: boolean;
+  duration_seconds: number;
+  computed_at: string;
+  xml_modified_at: string | null;
+  xml_size_bytes: number | null;
+  tracks: {
+    added: RefreshCategory<RefreshTrackSummary>;
+    changed: RefreshCategory<RefreshTrackChange>;
+    /** The deletions DEC-003 makes irreversible, and the reason for the preview. */
+    removed: RefreshCategory<RefreshTrackSummary>;
+    relinked: RefreshCategory<RefreshRelinkedTrack>;
+    /** Changed tracks whose difference is more than incidental. A floor when truncated. */
+    notable_changed_count: number;
+  };
+  playlists: {
+    added: RefreshCategory<RefreshPlaylistSummary>;
+    changed: RefreshCategory<RefreshPlaylistChange>;
+    removed: RefreshCategory<RefreshPlaylistSummary>;
+  };
+  references: RefreshReferences | null;
+}
+
+/** What an apply did. Arrives as the apply job's `result`. */
+export interface RefreshApplied {
+  diff_id: string;
+  xml_path: string;
+  track_count: number;
+  tracks_inserted: number;
+  tracks_updated: number;
+  /** Reported on its own because it is the irreversible number (DEC-003). */
+  tracks_deleted: number;
+  relinked_count: number;
+  playlists: {
+    nodes: number;
+    playlists: number;
+    folders: number;
+    entries: number;
+  };
+  references: RefreshReferences;
+  duration_seconds: number;
+  summary_line: string;
+}
+
 export interface EngineJobSummary {
   id: string;
   type: string;
@@ -417,6 +542,13 @@ export interface CuePointBridge {
   startLibraryImport?: (params: {
     xml_path: string;
   }) => Promise<LibraryImportStarted>;
+  startLibraryRefreshPreview?: (params?: {
+    xml_path?: string;
+  }) => Promise<LibraryRefreshStarted>;
+  startLibraryRefreshApply?: (params: {
+    diff_id: string;
+    confirm_references?: boolean;
+  }) => Promise<LibraryRefreshStarted>;
   getLibrarySummary?: () => Promise<LibrarySummary>;
   getHistoryRecent: (params?: { limit?: number }) => Promise<HistoryRecentResponse>;
   loadHistoryCsv: (csvPath: string) => Promise<HistoryLoadResponse>;

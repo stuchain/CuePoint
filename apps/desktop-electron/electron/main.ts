@@ -24,6 +24,12 @@ function registerIpcHandlers(): void {
   ipcMain.handle("engine:startLibraryImport", (_event, params) =>
     engine.startLibraryImport(params),
   );
+  ipcMain.handle("engine:startLibraryRefreshPreview", (_event, params) =>
+    engine.startLibraryRefreshPreview(params),
+  );
+  ipcMain.handle("engine:startLibraryRefreshApply", (_event, params) =>
+    engine.startLibraryRefreshApply(params),
+  );
   ipcMain.handle("engine:getLibrarySummary", () => engine.getLibrarySummary());
   ipcMain.handle("engine:listJobs", (_event, params) => engine.listJobs(params));
   ipcMain.handle("engine:getRecentActivity", (_event, params) =>

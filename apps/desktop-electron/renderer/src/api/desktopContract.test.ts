@@ -150,4 +150,63 @@ describe("desktop contract", () => {
       expect(method).toContain('method: "POST"');
     });
   });
+
+  describe("refresh preview and apply (LIBRARY-10)", () => {
+    // Named the same way, for the same reason: the generic checks only compare
+    // the files against each other, so a method missing from all of them passes
+    // every one.
+    it("exposes both methods on the preload", () => {
+      expect(invokedChannels(preload)).toContain("engine:startLibraryRefreshPreview");
+      expect(invokedChannels(preload)).toContain("engine:startLibraryRefreshApply");
+    });
+
+    it("handles both channels in the main process", () => {
+      expect(handledChannels(main)).toContain("engine:startLibraryRefreshPreview");
+      expect(handledChannels(main)).toContain("engine:startLibraryRefreshApply");
+    });
+
+    it("has typed client methods hitting the documented paths", () => {
+      expect(engineClient).toContain("async startLibraryRefreshPreview(");
+      expect(engineClient).toContain("/api/v1/library/refresh/preview");
+      expect(engineClient).toContain("async startLibraryRefreshApply(");
+      expect(engineClient).toContain("/api/v1/library/refresh/apply");
+    });
+
+    it("forwards both through the supervisor", () => {
+      const declared = supervisorMethodsDeclared(supervisor);
+      expect(declared).toContain("startLibraryRefreshPreview");
+      expect(declared).toContain("startLibraryRefreshApply");
+    });
+
+    it("declares both on the renderer bridge type", () => {
+      expect(bridgeTypes).toContain("startLibraryRefreshPreview?:");
+      expect(bridgeTypes).toContain("startLibraryRefreshApply?:");
+      expect(bridgeTypes).toContain("interface RefreshDiff");
+      expect(bridgeTypes).toContain("interface RefreshApplied");
+      expect(bridgeTypes).toContain("interface LibraryRefreshStarted");
+    });
+
+    it("posts both, and sends the diff id on the apply", () => {
+      // A GET that applied a refresh would be retried by anything that retries
+      // GETs, and DEC-003's deletions do not come back.
+      const preview = engineClient.slice(
+        engineClient.indexOf("async startLibraryRefreshPreview("),
+        engineClient.indexOf("async startLibraryRefreshApply("),
+      );
+      const apply = engineClient.slice(
+        engineClient.indexOf("async startLibraryRefreshApply("),
+        engineClient.indexOf("async getLibrarySummary("),
+      );
+      expect(preview).toContain('method: "POST"');
+      expect(apply).toContain('method: "POST"');
+      expect(apply).toContain("diff_id");
+    });
+
+    it("carries a job result the renderer can read the diff from", () => {
+      // The diff is served from the results route, not the polled status one.
+      // A bridge type without `result` would type-check every consumer into
+      // believing a preview job answers nothing.
+      expect(bridgeTypes).toContain("result?: RefreshDiff | RefreshApplied");
+    });
+  });
 });

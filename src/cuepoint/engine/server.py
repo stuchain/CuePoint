@@ -46,8 +46,12 @@ from cuepoint.engine.library_api import (
     library_summary,
     parse_import_body,
     parse_int_param,
+    parse_refresh_apply_body,
+    parse_refresh_preview_body,
     search_library,
     start_import,
+    start_refresh_apply,
+    start_refresh_preview,
 )
 from cuepoint.engine.incrate_api import (
     demo_inventory_snapshot,
@@ -233,9 +237,87 @@ def make_handler(
                         name: [track_result_to_dict(r) for r in rows]
                         for name, rows in job.batch_results.items()
                     }
+                # A job whose answer is not a list of matched tracks puts it
+                # here (LIBRARY-10's refresh diff is the first). Served from
+                # this route rather than the status one, because status is
+                # polled and this is asked for once.
+                if job.result is not None:
+                    payload["result"] = job.result
                 self._send_json(200, payload)
                 return
             self._send_json(200, job.to_status_dict())
+
+        def _handle_refresh_post(self, path: str) -> None:
+            """Preview or apply a refresh (LIBRARY-10).
+
+            Both answer 202 with a job identity, because both do real work over
+            a whole export and neither belongs on an HTTP request's thread.
+            Everything that can be decided without reading the file is decided
+            here, so a caller learns about a bad diff id or a busy library at
+            once rather than by watching a job fail.
+            """
+            from cuepoint.engine.library_refresh import (
+                DiffNotFoundError,
+                DiffStaleError,
+            )
+
+            try:
+                if path.endswith("/preview"):
+                    payload = start_refresh_preview(
+                        parse_refresh_preview_body(self._read_body()),
+                        job_store=job_store,
+                    )
+                else:
+                    diff_id, confirm = parse_refresh_apply_body(self._read_body())
+                    payload = start_refresh_apply(diff_id, confirm, job_store=job_store)
+            except ValueError as exc:
+                self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                return
+            except DiffNotFoundError as exc:
+                # 404, not 400: the request was well formed, the thing it named
+                # is not here.
+                self._send_json(
+                    404,
+                    error_payload("LIBRARY_REFRESH_DIFF_NOT_FOUND", str(exc)),
+                )
+                return
+            except DiffStaleError as exc:
+                # 409: the request was fine and so was the diff, but the world
+                # moved. The reason goes back so the message can say what
+                # changed rather than only that something did.
+                self._send_json(
+                    409,
+                    {
+                        "error": {
+                            "code": "LIBRARY_REFRESH_DIFF_STALE",
+                            "message": str(exc),
+                            "diff_id": exc.diff_id,
+                            "xml_path": exc.xml_path,
+                        }
+                    },
+                )
+                return
+            except JobTypeBusyError as exc:
+                # 409, not 400: the request was fine, the library was busy. The
+                # running job's id and type go back, so a caller can follow it
+                # rather than only being told no — and the type matters here,
+                # because an import can be what is blocking a refresh.
+                self._send_json(
+                    409,
+                    {
+                        "error": {
+                            "code": "LIBRARY_BUSY",
+                            "message": str(exc),
+                            "job_id": exc.job_id,
+                            "job_type": exc.job_type,
+                        }
+                    },
+                )
+                return
+            except Exception as exc:  # noqa: BLE001 — surface to API client
+                self._send_json(500, error_payload("LIBRARY_REFRESH_FAILED", str(exc)))
+                return
+            self._send_json(202, payload)
 
         def _handle_incrate_get(self, path: str, query: str) -> None:
             if not self._authorized():
@@ -599,6 +681,12 @@ def make_handler(
                     )
                     return
                 self._send_json(202, payload)
+                return
+            if path in (
+                "/api/v1/library/refresh/preview",
+                "/api/v1/library/refresh/apply",
+            ):
+                self._handle_refresh_post(path)
                 return
             if path == "/api/v1/jobs/match":
                 try:

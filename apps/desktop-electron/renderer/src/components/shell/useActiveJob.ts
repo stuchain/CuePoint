@@ -52,10 +52,17 @@ export function jobPercent(job: EngineJobSummary | null): number | null {
  * the only kind. A Rekordbox import (DEC-033) shares the job store, the
  * progress shape and this strip, so the only thing that had to change to make
  * it read correctly was the verb.
+ *
+ * The two halves of a refresh are named apart on purpose (LIBRARY-10). One
+ * reads and one deletes, and a strip that called both "Refreshing" would give
+ * a user no way to tell, from the only place the app reports background work,
+ * whether the irreversible half had started.
  */
 const JOB_VERBS: Record<string, string> = {
   match: "Matching",
   library_import: "Importing",
+  library_refresh_preview: "Checking",
+  library_refresh_apply: "Refreshing",
 };
 
 /** A short description of what a job is doing, for the strip. */

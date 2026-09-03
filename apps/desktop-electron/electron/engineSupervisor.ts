@@ -9,7 +9,10 @@ import {
   EngineClient,
   type ActivityFeed,
   type EngineJobList,
+  type LibraryImportStarted,
+  type LibraryRefreshStarted,
   type LibrarySearchResponse,
+  type LibrarySummary,
 } from "./engineClient";
 import { getBundledEnginePath, shouldUseBundledEngine } from "./engineLaunch";
 
@@ -245,6 +248,19 @@ export class EngineSupervisor {
     xml_path: string;
   }): Promise<LibraryImportStarted> {
     return this.client().startLibraryImport(params);
+  }
+
+  async startLibraryRefreshPreview(params?: {
+    xml_path?: string;
+  }): Promise<LibraryRefreshStarted> {
+    return this.client().startLibraryRefreshPreview(params);
+  }
+
+  async startLibraryRefreshApply(params: {
+    diff_id: string;
+    confirm_references?: boolean;
+  }): Promise<LibraryRefreshStarted> {
+    return this.client().startLibraryRefreshApply(params);
   }
 
   async getLibrarySummary(): Promise<LibrarySummary> {

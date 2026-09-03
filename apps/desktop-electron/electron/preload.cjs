@@ -7,6 +7,10 @@ contextBridge.exposeInMainWorld("cuepoint", {
   searchLibrary: (params) => ipcRenderer.invoke("engine:searchLibrary", params),
   startLibraryImport: (params) =>
     ipcRenderer.invoke("engine:startLibraryImport", params),
+  startLibraryRefreshPreview: (params) =>
+    ipcRenderer.invoke("engine:startLibraryRefreshPreview", params),
+  startLibraryRefreshApply: (params) =>
+    ipcRenderer.invoke("engine:startLibraryRefreshApply", params),
   getLibrarySummary: () => ipcRenderer.invoke("engine:getLibrarySummary"),
   listJobs: (params) => ipcRenderer.invoke("engine:listJobs", params),
   getRecentActivity: (params) => ipcRenderer.invoke("engine:getRecentActivity", params),
