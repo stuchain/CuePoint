@@ -1718,6 +1718,49 @@ def _playlist_track_refs(elem: ET.Element) -> List[str]:
     return refs
 
 
+def collection_entry_count(xml_path: str) -> Optional[int]:
+    """Return the number of tracks a file's ``COLLECTION`` element declares.
+
+    ``None`` means there is no ``COLLECTION`` at all — a malformed export.
+    A present element with no usable ``Entries`` attribute answers 0, because
+    the element exists and the count is merely unknown.
+
+    Rekordbox writes ``<COLLECTION Entries="3880">``, so an import can show a
+    real percentage from its first track instead of counting up towards an
+    unknown total. The number is Rekordbox's claim rather than a fact — nothing
+    should trust it for more than a progress bar, and the caller clamps it.
+
+    Stops at the element's start tag, so this costs a few kilobytes of parsing.
+
+    Raises:
+        FileNotFoundError: If the file does not exist.
+        ValueError: If the file exceeds :data:`MAX_XML_SIZE_BYTES`.
+        ET.ParseError: If the XML is malformed.
+    """
+    if not os.path.exists(xml_path):
+        raise FileNotFoundError(f"XML file not found: {xml_path}")
+
+    size = os.path.getsize(xml_path)
+    if size > MAX_XML_SIZE_BYTES:
+        raise ValueError(
+            f"XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). "
+            "Refusing to parse to prevent resource exhaustion."
+        )
+
+    with open(xml_path, "rb") as handle:
+        for _event, elem in ET.iterparse(handle, events=("start",)):
+            if elem.tag == "COLLECTION":
+                declared = (elem.get("Entries") or "").strip()
+                try:
+                    return max(0, int(declared))
+                except ValueError:
+                    return 0
+            if elem.tag == "TRACK":
+                # Inside PLAYLISTS with no COLLECTION seen: there is none.
+                break
+    return None
+
+
 def has_collection_element(xml_path: str) -> bool:
     """Return True if the file contains a ``COLLECTION`` element.
 
@@ -1737,21 +1780,4 @@ def has_collection_element(xml_path: str) -> bool:
         ValueError: If the file exceeds :data:`MAX_XML_SIZE_BYTES`.
         ET.ParseError: If the XML is malformed.
     """
-    if not os.path.exists(xml_path):
-        raise FileNotFoundError(f"XML file not found: {xml_path}")
-
-    size = os.path.getsize(xml_path)
-    if size > MAX_XML_SIZE_BYTES:
-        raise ValueError(
-            f"XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). "
-            "Refusing to parse to prevent resource exhaustion."
-        )
-
-    with open(xml_path, "rb") as handle:
-        for event, elem in ET.iterparse(handle, events=("start",)):
-            if elem.tag == "COLLECTION":
-                return True
-            if elem.tag == "TRACK":
-                # Inside PLAYLISTS with no COLLECTION seen: there is none.
-                break
-    return False
+    return collection_entry_count(xml_path) is not None

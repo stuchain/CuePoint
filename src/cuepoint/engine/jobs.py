@@ -139,6 +139,12 @@ def _demo_candidates(
 class MatchJob:
     id: str
     state: JobState = JobState.QUEUED
+    #: Which kind of work this job is doing, matching the ``jobs`` table's
+    #: discriminator. FOUNDATION-07 added that column so a second kind could
+    #: share the table; DEC-033's library import is the first to use it. The
+    #: class keeps its name because renaming it would touch every match-job
+    #: caller and test for no behavioural gain — see the ``Job`` alias below.
+    type: str = "match"
     created_at: str = field(default_factory=_utc_now)
     updated_at: str = field(default_factory=_utc_now)
     progress: Optional[ProgressInfo] = None
@@ -151,6 +157,7 @@ class MatchJob:
     def to_status_dict(self) -> Dict[str, Any]:
         payload: Dict[str, Any] = {
             "id": self.id,
+            "type": self.type,
             "state": self.state.value,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
@@ -161,6 +168,12 @@ class MatchJob:
         if self.error is not None:
             payload["error"] = self.error
         return payload
+
+
+#: The same class, under the name new code should use. ``MatchJob`` is no
+#: longer only a match job, and a job store holding a library import should not
+#: read as if it held a match. A rename is deliberately not part of this step.
+Job = MatchJob
 
 
 # Progress ticks arrive per track; a run over a few thousand tracks would mean
@@ -237,7 +250,7 @@ class JobStore:
             repository.save(
                 JobRecord(
                     id=job.id,
-                    type="match",
+                    type=job.type,
                     state=job.state.value,
                     demo=job.demo,
                     progress=progress_to_dict(job.progress)
@@ -278,15 +291,29 @@ class JobStore:
             controller.cancel()
         return job
 
-    def create_match_job(
+    def create_job(
         self,
         *,
-        xml_path: Optional[str],
-        playlist_name: Optional[str],
-        demo: bool,
+        job_type: str,
+        demo: bool = False,
         runner: Callable[[MatchJob], None],
     ) -> MatchJob:
-        job = MatchJob(id=str(uuid.uuid4()), demo=demo)
+        """Register a job of any type and start it on a background thread.
+
+        The generic form of :meth:`create_match_job`, which now calls it. The
+        lifecycle — queued, running, terminal, persisted, cancellable — was
+        never match-specific; only the name and the hardcoded ``"match"``
+        discriminator were.
+
+        Args:
+            job_type: The ``jobs`` table discriminator, e.g. ``"match"`` or
+                ``"library_import"``.
+            demo: Whether this is a demo run, which the renderer labels.
+            runner: Called on the worker thread with the job. It may set a
+                terminal state itself; :meth:`_run_job` only supplies one when
+                the runner did not.
+        """
+        job = MatchJob(id=str(uuid.uuid4()), type=job_type, demo=demo)
         with self._lock:
             self._jobs[job.id] = job
         self._persist(job, force=True)
@@ -295,10 +322,26 @@ class JobStore:
             target=self._run_job,
             args=(job, runner),
             daemon=True,
-            name=f"match-job-{job.id[:8]}",
+            name=f"{job_type}-job-{job.id[:8]}",
         )
         thread.start()
         return job
+
+    def create_match_job(
+        self,
+        *,
+        xml_path: Optional[str],
+        playlist_name: Optional[str],
+        demo: bool,
+        runner: Callable[[MatchJob], None],
+    ) -> MatchJob:
+        """Register a match job. Kept for its existing callers.
+
+        ``xml_path`` and ``playlist_name`` have never been stored or used; they
+        are retained rather than removed so this step stays a generalization
+        and not a rewrite.
+        """
+        return self.create_job(job_type="match", demo=demo, runner=runner)
 
     def list_all(self) -> List[MatchJob]:
         """Return a snapshot of every job this process knows about.
@@ -344,6 +387,31 @@ class JobStore:
             )
         finally:
             self.unregister_controller(job.id)
+
+    def report_progress(self, job: MatchJob, progress: ProgressInfo) -> None:
+        """Record a progress tick from a runner.
+
+        The public form of :meth:`_update` for progress alone. A runner outside
+        this module should not have to reach for a private method to say how far
+        it has got, and should not be able to change a job's state by accident
+        while doing so.
+        """
+        self._update(job, progress=progress)
+
+    def finish(
+        self,
+        job: MatchJob,
+        *,
+        state: JobState,
+        error: Optional[Dict[str, str]] = None,
+    ) -> None:
+        """Set a job's terminal state from its runner.
+
+        A runner that ends a job itself — an import that honoured a cancel, for
+        instance — needs to say so before returning, because :meth:`_run_job`
+        treats an unset state as success.
+        """
+        self._update(job, state=state, error=error)
 
     def _update(
         self,

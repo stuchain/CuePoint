@@ -45,6 +45,19 @@ export function jobPercent(job: EngineJobSummary | null): number | null {
   return null;
 }
 
+/**
+ * What each job type is called while it runs.
+ *
+ * The strip said "Matching" for every job, which was true while matching was
+ * the only kind. A Rekordbox import (DEC-033) shares the job store, the
+ * progress shape and this strip, so the only thing that had to change to make
+ * it read correctly was the verb.
+ */
+const JOB_VERBS: Record<string, string> = {
+  match: "Matching",
+  library_import: "Importing",
+};
+
 /** A short description of what a job is doing, for the strip. */
 export function jobLabel(job: EngineJobSummary | null): string {
   if (!job) return "";
@@ -54,7 +67,11 @@ export function jobLabel(job: EngineJobSummary | null): string {
     typeof done === "number" && typeof total === "number" && total > 0
       ? ` ${done}/${total}`
       : "";
-  const verb = job.state === "queued" ? "Queued" : "Matching";
+  // An unknown type falls back to "Working" rather than to "Matching": a job
+  // this build has not heard of is not necessarily a match, and guessing wrong
+  // tells the user something untrue about their library.
+  const verb =
+    job.state === "queued" ? "Queued" : (JOB_VERBS[job.type] ?? "Working");
   return `${verb}${counted}`;
 }
 

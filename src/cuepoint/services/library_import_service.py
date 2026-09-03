@@ -34,10 +34,10 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Callable, Iterator, Optional, Tuple
 
 from cuepoint.data.rekordbox import (
-    has_collection_element,
+    collection_entry_count,
     iter_collection_tracks,
     iter_playlist_nodes,
 )
@@ -58,6 +58,29 @@ _logger = logging.getLogger(__name__)
 
 #: Activity event recorded when an import finishes (DEC-029's pattern).
 EVENT_LIBRARY_IMPORTED = "library.imported"
+
+#: Phase names reported through ``on_progress``, for a status message.
+PHASE_TRACKS = "tracks"
+PHASE_PLAYLISTS = "playlists"
+
+
+class ImportCancelled(Exception):
+    """Raised inside an import when the caller asked it to stop.
+
+    Raised from the track iterator on purpose: that runs inside the upsert's
+    transaction, so the exception rolls it back and the library is left exactly
+    as it was. Cancelling is therefore all-or-nothing for the part of the import
+    that takes the time.
+    """
+
+
+#: Called with ``(completed, total, phase)`` as an import proceeds. ``total`` is
+#: Rekordbox's declared entry count, which is a claim rather than a fact, so it
+#: is clamped upward if more tracks turn up than were declared.
+ProgressCallback = Callable[[int, int, str], None]
+
+#: Called between tracks; returning True stops the import.
+CancelCheck = Callable[[], bool]
 
 
 @dataclass(frozen=True)
@@ -133,7 +156,12 @@ class LibraryImportService(ILibraryImportService):
 
     # ----------------------------------------------------------------- import
 
-    def import_rekordbox_xml(self, xml_path: str) -> ImportSummary:
+    def import_rekordbox_xml(
+        self,
+        xml_path: str,
+        on_progress: Optional[ProgressCallback] = None,
+        should_cancel: Optional[CancelCheck] = None,
+    ) -> ImportSummary:
         """Import a Rekordbox export, and return what it did.
 
         Idempotent: importing the same file twice reports zero inserted and
@@ -141,8 +169,23 @@ class LibraryImportService(ILibraryImportService):
         the property most likely to break subtly, and the one a user notices
         last, so it is what the tests lean on hardest.
 
+        **Where cancellation is honoured, and where it stops being.** The check
+        runs before anything is written and then between tracks, inside the
+        upsert's transaction — so a cancel during the long phase rolls that
+        transaction back and leaves the library untouched. Once those tracks are
+        committed the import runs to completion: what remains is the playlist
+        mirror and the source record, together a small fraction of the work, and
+        stopping between them would leave a mirror that disagrees with the
+        tracks. The result either way is a library that is never half-imported,
+        and a source record that only ever describes an import that finished.
+
         Args:
             xml_path: Path to the Rekordbox XML export.
+            on_progress: Called with ``(completed, total, phase)`` as the import
+                proceeds. Called on the calling thread; a slow callback slows
+                the import, so a caller that persists should sample.
+            should_cancel: Called between tracks; returning True stops the
+                import with :class:`ImportCancelled` and writes nothing.
 
         Returns:
             An :class:`ImportSummary`.
@@ -150,15 +193,26 @@ class LibraryImportService(ILibraryImportService):
         Raises:
             FileNotFoundError: If the file does not exist.
             ValidationError: If the file has no ``COLLECTION`` element.
+            ImportCancelled: If ``should_cancel`` asked it to stop.
             ValueError: If the file exceeds the parser's size limit.
             xml.etree.ElementTree.ParseError: If the XML is malformed.
         """
         started = time.perf_counter()
-        self._require_collection(xml_path)
+        declared = self._require_collection(xml_path)
 
+        if should_cancel is not None and should_cancel():
+            raise ImportCancelled("Cancelled before the import began")
+
+        # Shared with the generator so the phase-transition tick below reports
+        # the total the track pass actually reached. Reporting `declared` here
+        # made a file that under-declares its Entries count jump backwards —
+        # 5/5 tracks, then 2/2 playlists.
+        observed = {"total": declared}
         tracks = self._tracks.upsert_many_from_rekordbox(
-            iter_collection_tracks(xml_path)
+            self._observed_tracks(xml_path, observed, on_progress, should_cancel)
         )
+        if on_progress is not None:
+            on_progress(observed["total"], observed["total"], PHASE_PLAYLISTS)
         playlists = self._playlists.replace_tree(iter_playlist_nodes(xml_path))
 
         source = self._source.replace(
@@ -201,15 +255,49 @@ class LibraryImportService(ILibraryImportService):
     # --------------------------------------------------------------- internal
 
     @staticmethod
-    def _require_collection(xml_path: str) -> None:
+    def _observed_tracks(
+        xml_path: str,
+        observed: dict,
+        on_progress: Optional[ProgressCallback],
+        should_cancel: Optional[CancelCheck],
+    ) -> Iterator:
+        """Yield parsed tracks, reporting progress and honouring cancellation.
+
+        A generator wrapped around the parser rather than a loop inside the
+        repository, so that both concerns stay out of the SQL and — the part
+        that matters — so a cancel raises *inside* the upsert's transaction and
+        rolls it back.
+
+        ``observed["total"]`` is clamped upward when more tracks arrive than the
+        file declared: ``Entries`` is Rekordbox's claim, and a progress bar that
+        reads 104% is a worse bug than one that finishes early. It is written
+        back so the caller's phase-transition tick reports the same total.
+        """
+        total = observed["total"]
+        for completed, track in enumerate(iter_collection_tracks(xml_path), start=1):
+            if should_cancel is not None and should_cancel():
+                raise ImportCancelled(f"Cancelled after reading {completed - 1} tracks")
+            yield track
+            if completed > total:
+                total = completed
+                observed["total"] = total
+            if on_progress is not None:
+                on_progress(completed, total, PHASE_TRACKS)
+
+    @staticmethod
+    def _require_collection(xml_path: str) -> int:
         """Fail clearly on a file that is not a Rekordbox collection export.
 
         Checked before anything is written. The alternative — importing and
         finding nothing — leaves a user with an empty library and a success
         message, which reads as CuePoint losing their collection.
+
+        Returns:
+            The number of tracks the file declares, for progress reporting.
         """
-        if has_collection_element(xml_path):
-            return
+        declared: Optional[int] = collection_entry_count(xml_path)
+        if declared is not None:
+            return declared
         raise ValidationError(
             message=(
                 f"{xml_path} has no COLLECTION section, so it is not a Rekordbox "

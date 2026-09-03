@@ -61,11 +61,15 @@ def _record_to_dict(record: Any) -> Dict[str, Any]:
 
 
 def _live_to_dict(job: Any) -> Dict[str, Any]:
-    payload = dict(job.to_status_dict())
-    # The in-memory job predates the `jobs` table's type discriminator and is
-    # always a match run; the persisted record carries the column.
-    payload.setdefault("type", "match")
-    return payload
+    """Return a live job's payload, without inventing a type for it.
+
+    The in-memory job carries the discriminator itself now (DEC-033), but a
+    store holding something older — or a test double — may not report one.
+    Defaulting here would make "this job says it is a match" and "this job did
+    not say" indistinguishable, and the merge below has to tell them apart to
+    know whether the live answer or the persisted column is the better one.
+    """
+    return dict(job.to_status_dict())
 
 
 def list_jobs(
@@ -105,9 +109,12 @@ def list_jobs(
     for job in job_store.list_all():
         live = _live_to_dict(job)
         existing = merged.get(live["id"])
-        if existing is not None:
-            # Keep the persisted type discriminator rather than the default.
-            live["type"] = existing.get("type", live["type"])
+        if not live.get("type"):
+            # A live job that cannot say what it is falls back to the persisted
+            # column, then to the historical default. A job that *can* say keeps
+            # its own answer: it is the source, and letting the sampled record
+            # win would relabel a running import as a match.
+            live["type"] = (existing or {}).get("type", "match")
         merged[live["id"]] = live
 
     jobs = list(merged.values())

@@ -170,6 +170,36 @@ class TestFirstImport:
     def test_no_source_record_before_any_import(self, service):
         assert service.current_source() is None
 
+    def test_a_wrong_entries_count_does_not_break_progress(self, service, tmp_path):
+        """Entries is Rekordbox's claim, not a fact.
+
+        A file that under-declares would otherwise drive the bar past 100%,
+        which reads as a bug in a way that finishing early does not.
+        """
+        path = tmp_path / "under-declared.xml"
+        entries = "\n".join(
+            f'<TRACK TrackID="{i}" Name="T{i}" Artist="A" '
+            f'Location="file://localhost/m/{i}.mp3"/>'
+            for i in range(5)
+        )
+        path.write_text(
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<DJ_PLAYLISTS Version="1.0.0">\n'
+            f'  <COLLECTION Entries="2">{entries}</COLLECTION>\n'
+            "  <PLAYLISTS/>\n</DJ_PLAYLISTS>\n",
+            encoding="utf-8",
+        )
+        ticks = []
+        summary = service.import_rekordbox_xml(
+            str(path), on_progress=lambda c, t, p: ticks.append((c, t))
+        )
+
+        assert summary.track_count == 5
+        assert all(done <= total for done, total in ticks), (
+            f"progress went past its total: {ticks}"
+        )
+        assert ticks[-1][1] >= 5
+
     def test_an_empty_collection_imports_as_an_empty_library(self, service, tmp_path):
         """A new Rekordbox install has no tracks; that is not an error."""
         summary = service.import_rekordbox_xml(write_export(tmp_path, []))

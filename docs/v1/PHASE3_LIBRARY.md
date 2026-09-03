@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 3: Persistent Rekordbox Library, Detailed Step Specifications
 
-Status: **In progress.** LIBRARY-01…LIBRARY-04 are implemented; LIBRARY-05…LIBRARY-12
+Status: **In progress.** LIBRARY-01…LIBRARY-05 are implemented; LIBRARY-06…LIBRARY-12
 remain draft step specs in design-only mode.
 Implementation of any step below requires an explicit "Implement LIBRARY-NN" instruction, scoped to
 exactly that step, followed by tests, a completion report, and a stop before the next step.
@@ -690,7 +690,7 @@ entry: still nothing a user can reach.
 
 ---
 
-## LIBRARY-05 — Import as a Background Job
+## LIBRARY-05 — Import as a Background Job ✅ IMPLEMENTED 2026-09-03
 
 **Objective**: Run import under the existing job infrastructure as a `library_import` job (DEC-033),
 with progress the status strip already knows how to display.
@@ -724,6 +724,92 @@ appears in `GET /api/v1/jobs` alongside match jobs; all pre-existing job tests s
 store are where correctness problems hide.
 
 **Complexity**: **L**
+
+### ✅ IMPLEMENTED 2026-09-03
+
+**Outcome**: Complete. `engine/library_jobs.py` runs an import as a `library_import` job;
+`engine/jobs.py` gained a `type` field, a generic `create_job`, and `report_progress`/`finish` for
+runners outside the module; the import service gained `on_progress` and `should_cancel`;
+`data/rekordbox.py` gained `collection_entry_count`. One renderer change, in `useActiveJob.ts`.
+33 new tests — 23 Python, 10 renderer.
+
+**The job store resisted about as much as the spec predicted, and no more.** Four things changed in
+`jobs.py`: `MatchJob` grew a `type` defaulting to `"match"`, `to_status_dict` reports it, `_persist`
+uses it instead of a hardcoded `"match"`, and `create_job` is the generic form `create_match_job`
+now calls. Nothing else about the lifecycle was match-specific. The class keeps its name — a rename
+would touch every match caller and test for no behavioural gain — with a `Job` alias so new code
+does not read as if a library import were a match. **All 123 pre-existing engine tests pass
+unchanged**, which was the stated bar.
+
+**The strip needed one word after all.** The spec expected no renderer change, and it was right
+about progress: an import reports the same `completed_tracks`/`total_tracks`/percentage shape, and
+nothing about how that is read or drawn moved. But `jobLabel` hardcoded the verb `"Matching"`, so a
+running import would have told the user CuePoint was matching their tracks. It now keys off the job
+type the payload already carried, and an unknown type falls back to `"Working"` rather than to
+`"Matching"` — a job this build has not heard of is not necessarily a match, and guessing wrong
+says something untrue. `EngineJobSummary.type` already existed, so no desktop-contract file moved.
+
+**A real total from the first tick.** Rekordbox writes `<COLLECTION Entries="3880">`, so
+`collection_entry_count()` reads it at the element's start tag and the bar shows a real percentage
+immediately rather than counting towards an unknown total. The count is Rekordbox's claim, not a
+fact, so it is clamped upward if more tracks arrive — and the test written for that caught a bug
+the design had not: the tracks→playlists tick still reported the *declared* count, so a file that
+under-declared jumped 5/5 backwards to 2/2.
+
+**Cancellation has a stated boundary rather than a promise.** The check runs before anything is
+written and then between tracks — **inside** the upsert's transaction, so raising there rolls it
+back and the library is untouched. Once those tracks commit the import finishes: what remains is
+the playlist mirror and the source record, and stopping between them would leave a mirror that
+disagrees with the tracks. Cancelling the real 3,880-track export at twelve different moments gave
+a consistent result every time: either nothing at all (0 tracks, 0 nodes, no source record) or
+everything (3,880 / 234 / a source record). There is no state in between, which is what the spec
+asked for.
+
+The runner sets its own terminal state in every outcome, because `_run_job` marks a job cancelled
+when a request arrived and the runner left the state unset — which would report a library that
+*was* imported as one that was not.
+
+**Four of the first seventeen guards did not guard**, and one piece of code existed only to make a
+test pass:
+
+- The runner sent a final 100% progress tick of its own, which made the sampler's "always report a
+  phase's last tick" rule unobservable. The tick was removed rather than the rule tested around it,
+  so a short import now depends on that rule to reach its total — and a test asserts both phases'
+  last ticks arrive.
+- The stale-record merge test wrote the record to the database, where the job's own state
+  transitions re-persisted the correct type moments later. It passed against the *opposite* merge
+  rule. The record is now injected through a stub.
+- Nothing exercised a file that under-declares `Entries` — the test added for it found the bug
+  above.
+- The pre-cancellation check is only reachable when a collection is empty; with tracks to read the
+  per-track check stops the import anyway. Tested with an empty collection now.
+
+With those addressed, **17 of 17 guards fail when the thing they protect is removed**, every source
+restored byte-identically.
+
+**A flaky test of my own, found by running it repeatedly.** `JobStore._update` sets state under its
+lock and persists *outside* it, deliberately, so a database write cannot hold up status polling or
+SSE. Durability is therefore eventual, and asserting the record synchronously after the in-memory
+job finished passed or failed on timing. The tests now wait for the record. Worth knowing: this
+means a crash in that window leaves a record reading "running" forever — pre-existing behaviour
+that match jobs share, not something this step introduced.
+
+**Verified in the running app.** A real `library_import` record in the real `jobs` table, merged by
+the real `/api/v1/jobs` handler and rendered by the real status strip: **"Importing 1940/3880"** with
+the bar at 50%. Before the label change that read "Matching 1940/3880". The endpoint that starts an
+import is LIBRARY-06's, so the job was seeded as a persisted record rather than through a button —
+nothing above the database row was faked. `config.yaml` was restored byte-for-byte and the real
+library was never written to.
+
+**Verification**: 23 new Python tests including an HTTP round trip against a real engine thread
+(`GET /api/v1/jobs` lists the import with its type; `POST /api/v1/jobs/{id}/cancel` cancels it) and
+a cancellation sweep across six timings; 10 new renderer tests for the label and percentage.
+`python scripts/run_tests.py --all --no-slow`: 2628 unit, 315 integration, 7 regression, 4 system.
+Renderer: 391 tests, typecheck, lint and `build:check` clean. **E2E run and passing (8/8)** because
+a shell file changed. `ruff check`/`format` clean; `check_no_qt_in_core.py`,
+`check_desktop_version_coupling.py` and `smoke_engine_health.py` pass. `mypy src/` adds only
+`import-not-found` noise; its one real finding was fixed. No `CHANGELOG` entry: a user still cannot
+start an import, which is LIBRARY-06.
 
 ---
 
