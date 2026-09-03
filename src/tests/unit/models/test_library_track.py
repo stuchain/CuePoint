@@ -109,6 +109,40 @@ class TestLibraryTrack:
         assert track.remixer is None
         assert track.bpm is None
 
+    def test_dec034_fields_default_to_none(self):
+        """Unknown, not zero — Rekordbox omits these attributes freely."""
+        track = _track()
+        assert track.rating is None
+        assert track.play_count is None
+        assert track.colour is None
+        assert track.date_added is None
+        assert track.comment is None
+        assert track.total_time is None
+        assert track.bitrate is None
+
+    @pytest.mark.parametrize("stars", [0, 1, 2, 3, 4, 5])
+    def test_rating_accepts_every_star_count(self, stars):
+        assert _track(rating=stars).rating == stars
+
+    @pytest.mark.parametrize("raw", [51, 102, 153, 204, 255, -1, 6])
+    def test_rating_rejects_rekordbox_raw_values(self, raw):
+        """The DEC-034 trap: Rekordbox stores 0/51/.../255, CuePoint stores 0-5.
+
+        Converting belongs to the parser (LIBRARY-02). This guard is what makes
+        forgetting it a failure rather than a library of five-star tracks.
+        """
+        with pytest.raises(ValueError, match="rating"):
+            _track(rating=raw)
+
+    def test_numeric_dec034_fields_coerced_to_int(self):
+        track = _track(rating="3", play_count="17", total_time="421", bitrate="320")
+        assert (track.rating, track.play_count, track.total_time, track.bitrate) == (
+            3,
+            17,
+            421,
+            320,
+        )
+
     def test_touch_updates_timestamp(self):
         track = _track()
         original = track.updated_at
@@ -131,6 +165,13 @@ class TestLibraryTrack:
             bpm=124.5,
             year=2022,
             duration_seconds=380,
+            rating=5,
+            play_count=9,
+            colour="0xFF007F",
+            date_added="2024-03-01",
+            comment="peak time",
+            total_time=380,
+            bitrate=320,
         )
         restored = LibraryTrack.from_row(track.to_dict())
 

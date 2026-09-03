@@ -91,6 +91,19 @@ class LibraryTrack:
         bpm: Beats per minute.
         year: Release year.
         duration_seconds: Track length in seconds.
+        rating: Star rating, 0-5. ``None`` when the export carried no rating,
+            which is not the same as an explicit zero. Rekordbox's raw 0-255
+            encoding is converted at the parser boundary, never stored here.
+        play_count: Rekordbox play count; ``None`` when unknown.
+        colour: Rekordbox colour label, as written by Rekordbox.
+        date_added: Date the track was added to Rekordbox, kept as the export's
+            own string rather than reformatted.
+        comment: Rekordbox comments field.
+        total_time: Track length in seconds as Rekordbox reports it. Kept
+            distinct from ``duration_seconds``, which is CuePoint's own value:
+            collapsing the two would make an imported number indistinguishable
+            from a computed one.
+        bitrate: Bitrate in kbps.
         created_at: When CuePoint first saw this track (ISO-8601, UTC).
         updated_at: When CuePoint last updated it (ISO-8601, UTC).
     """
@@ -109,6 +122,13 @@ class LibraryTrack:
     bpm: Optional[float] = None
     year: Optional[int] = None
     duration_seconds: Optional[int] = None
+    rating: Optional[int] = None
+    play_count: Optional[int] = None
+    colour: Optional[str] = None
+    date_added: Optional[str] = None
+    comment: Optional[str] = None
+    total_time: Optional[int] = None
+    bitrate: Optional[int] = None
     created_at: str = field(default_factory=utc_now_iso)
     updated_at: str = field(default_factory=utc_now_iso)
 
@@ -129,6 +149,20 @@ class LibraryTrack:
 
         if self.year is not None:
             self.year = int(self.year)
+
+        if self.rating is not None:
+            self.rating = int(self.rating)
+            # Rekordbox writes 0/51/102/153/204/255 in its XML. Rejecting
+            # anything outside 0-5 here is what stops a raw value reaching the
+            # database, where it would silently read as a nonsense rating
+            # instead of failing at the boundary that should have converted it.
+            if not 0 <= self.rating <= 5:
+                raise ValueError(f"rating must be a star count 0-5, got {self.rating}")
+
+        for name in ("play_count", "total_time", "bitrate"):
+            value = getattr(self, name)
+            if value is not None:
+                setattr(self, name, int(value))
 
     def touch(self) -> None:
         """Mark the track as updated now."""
@@ -151,6 +185,13 @@ class LibraryTrack:
             "bpm": self.bpm,
             "year": self.year,
             "duration_seconds": self.duration_seconds,
+            "rating": self.rating,
+            "play_count": self.play_count,
+            "colour": self.colour,
+            "date_added": self.date_added,
+            "comment": self.comment,
+            "total_time": self.total_time,
+            "bitrate": self.bitrate,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
         }
@@ -173,6 +214,13 @@ class LibraryTrack:
             bpm=data.get("bpm"),
             year=data.get("year"),
             duration_seconds=data.get("duration_seconds"),
+            rating=data.get("rating"),
+            play_count=data.get("play_count"),
+            colour=data.get("colour"),
+            date_added=data.get("date_added"),
+            comment=data.get("comment"),
+            total_time=data.get("total_time"),
+            bitrate=data.get("bitrate"),
             created_at=data.get("created_at") or utc_now_iso(),
             updated_at=data.get("updated_at") or utc_now_iso(),
         )

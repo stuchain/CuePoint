@@ -37,6 +37,13 @@ _COLUMNS = (
     "bpm",
     "year",
     "duration_seconds",
+    "rating",
+    "play_count",
+    "colour",
+    "date_added",
+    "comment",
+    "total_time",
+    "bitrate",
     "created_at",
     "updated_at",
 )

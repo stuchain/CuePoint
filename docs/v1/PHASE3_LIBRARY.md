@@ -1,6 +1,7 @@
 # CuePoint v1.0.0 — Phase 3: Persistent Rekordbox Library, Detailed Step Specifications
 
-Status: **Draft step specs, design-only mode.** No code has been written from this document.
+Status: **In progress.** LIBRARY-01 is implemented; LIBRARY-02…LIBRARY-12 remain draft step
+specs in design-only mode.
 Implementation of any step below requires an explicit "Implement LIBRARY-NN" instruction, scoped to
 exactly that step, followed by tests, a completion report, and a stop before the next step.
 
@@ -125,7 +126,7 @@ superseded immediately. Write it that way first; LIBRARY-12 verifies it.
 
 ---
 
-## LIBRARY-01 — Track Fields and the Source Record
+## LIBRARY-01 — Track Fields and the Source Record ✅ IMPLEMENTED 2026-09-03
 
 **Objective**: Migration 0005. Extend `tracks` with the fields DEC-034 chose — rating, play count,
 colour, date added, comment, total time, bitrate — and add the `library_source` record DEC-035
@@ -166,6 +167,64 @@ tests pass.
 column added to the schema and not to that tuple is silently never written.
 
 **Complexity**: **S**
+
+### ✅ IMPLEMENTED 2026-09-03
+
+**Outcome**: Complete, and smaller than the spec's own worry. `m0005_track_fields_and_source.py`
+adds the seven DEC-034 columns with seven `ALTER TABLE ADD COLUMN` statements and creates
+`library_source`. `LibraryTrack` gained the seven fields, `to_dict`/`from_row` carry them, and
+`_COLUMNS` gained the seven names. Nothing else changed: `track_to_dict` in `library_api.py` is an
+explicit field list, so the public search response is byte-identical, and `REVERTABLE_FIELDS` in
+`ActivityService` was deliberately left alone — these are Rekordbox source values, nothing writes
+history for them yet, and Phase 6 brings CuePoint's own rating.
+
+**The `_COLUMNS` risk is now a test, not a note.** `TestColumnListCoversTheSchema` asserts
+`PRAGMA table_info(tracks)` minus `id` equals `_COLUMNS` exactly. Deleting `"rating"` from the
+tuple fails it, and fails the repository round-trip alongside it — which is the point, because
+without the assertion that deletion produces a column that is silently never written and no test
+that notices.
+
+**Two design calls the spec left open.**
+
+*No `CHECK (id = 1)` on `library_source`.* The spec's reason for a table rather than a config key
+is that it can grow an import history later without a migration that moves data — and SQLite
+cannot drop a CHECK constraint without rebuilding the table, so the constraint would cost exactly
+the migration it was meant to avoid. Singularity is a property of the write path (LIBRARY-04
+replaces the record); readers take the most recent row. `xml_modified_at` and `xml_size_bytes` are
+nullable for a related reason: a `stat` that fails should cost the refresh its "unchanged?"
+shortcut, not cost the user their import.
+
+*`rating` is validated 0–5 in the model.* LIBRARY-02 owns the 0/51/102/153/204/255 → 0–5
+conversion, but the column is defined here, and a raw 255 reaching the database reads as a
+nonsense rating rather than failing. `LibraryTrack.__post_init__` now rejects anything outside
+0–5, so forgetting the conversion in LIBRARY-02 is a loud failure at the boundary that should have
+done it. This is slightly wider than the step as written; it is recorded here rather than done
+silently.
+
+**Every new column is nullable with no default**, asserted through `PRAGMA table_info`. A
+`DEFAULT 0` would turn "no `Rating` attribute in the export" into "rated zero stars" for every
+existing row, at migration time, irreversibly.
+
+**Verified on a real database, not only in tmp_path.** The dev `~/.cuepoint/cuepoint.db` was at
+version 4; three probe tracks were inserted at that version, the Electron app was launched, and
+the running app migrated it to 5 with all three rows intact and every new column null. The app's
+own global search then returned all three through engine → bridge → renderer, which is what proves
+the widened row still reads end to end; the engine reported connected throughout. The probe rows
+were deleted afterwards and the database left at 0 tracks, version 5.
+
+**Guards proven by breaking them**, each reverted after: removing `"rating"` from `_COLUMNS` fails
+2 tests; `NOT NULL DEFAULT 0` on `rating` fails 2; a `DELETE FROM tracks` inside the migration
+fails the populated-database tests; removing the rating range check fails 7.
+
+**Verification**: `python scripts/run_tests.py --unit --no-slow` — 2307 passed, 45 skipped (27
+new). `src/tests/unit/engine` — 121 passed. `ruff check`/`ruff format --check` clean.
+`check_no_qt_in_core.py`, `check_desktop_version_coupling.py` and `smoke_engine_health.py` pass.
+Renderer: 381 tests, typecheck and lint unchanged and green — no renderer or Electron file was
+touched, and no engine endpoint was added, so the desktop contract is unchanged. `mypy src/` is
+1179 errors against a 1174 baseline; the five new ones are the `import-not-found` noise every test
+file already produces, not type errors in the new code. No `CHANGELOG` entry: the step has no
+user-visible result, matching how the Phase 1 migrations were handled. E2E not run — nothing it
+covers changed.
 
 ---
 

@@ -67,6 +67,14 @@ class TestTracksTable:
             "bpm",
             "year",
             "duration_seconds",
+            # Added by migration 0005 (DEC-034).
+            "rating",
+            "play_count",
+            "colour",
+            "date_added",
+            "comment",
+            "total_time",
+            "bitrate",
             "created_at",
             "updated_at",
         } == columns
