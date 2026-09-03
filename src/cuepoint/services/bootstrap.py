@@ -135,6 +135,9 @@ def bootstrap_services() -> None:
             playlist_repository=container.resolve(IPlaylistRepository),
             source_repository=container.resolve(ILibrarySourceRepository),
             activity_service=container.resolve(IActivityService),
+            # DEC-011's reference check. Resolved here so a refresh diff always
+            # asks the real seam rather than falling back to a local zero.
+            library_service=container.resolve(ILibraryService),
         )
 
     container.register_factory(ILibraryImportService, create_library_import_service)

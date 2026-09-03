@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from cuepoint.incrate.beatport_api_models import DiscoveredTrack
     from cuepoint.migrations import Migration
     from cuepoint.models.library_source import LibrarySource
+    from cuepoint.models.references import ReferenceSummary
     from cuepoint.models.library_track import IdentityMatch, LibraryTrack
     from cuepoint.persistence.track_repository import BulkUpsertResult
     from cuepoint.services.library_import_service import ImportSummary
@@ -635,6 +636,16 @@ class ILibraryService(ABC):
     @abstractmethod
     def stats(self) -> "LibraryStats":
         """Return a summary of the library."""
+        ...
+
+    @abstractmethod
+    def references_for(self, track_ids: Iterable[int]) -> "ReferenceSummary":
+        """Return what Collections and Sets hold these tracks (DEC-011).
+
+        Consulted before a refresh deletes anything. Answers zero until Phase 6
+        builds Collections — which is the true answer, not a placeholder — and
+        Phase 6's whole job here is replacing that one body.
+        """
         ...
 
 

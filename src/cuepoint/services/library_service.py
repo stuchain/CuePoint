@@ -18,9 +18,10 @@ them here would be exactly the "no fake implementation" this project rules out.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Iterable, List, Optional
 
 from cuepoint.models.library_track import LibraryTrack
+from cuepoint.models.references import NO_REFERENCES, ReferenceSummary
 from cuepoint.services.interfaces import ILibraryService, ITrackRepository
 
 
@@ -125,3 +126,34 @@ class LibraryService(ILibraryService):
         """Return a summary of the library."""
         count = self._tracks.count()
         return LibraryStats(track_count=count, is_empty=count == 0)
+
+    def references_for(self, track_ids: Iterable[int]) -> ReferenceSummary:
+        """Return what else is holding on to these tracks (DEC-011).
+
+        Called before a refresh deletes anything, so the user can be told that
+        "N tracks removed from Rekordbox are used in M Collections and Sets"
+        rather than finding out afterwards — DEC-003's deletion takes the
+        CuePoint-side data with it and cannot be undone.
+
+        **Zero is the true answer today, not a stub.** Collections arrive in
+        Phase 6 and Sets in Phase 10; until then nothing in this build can
+        reference a track, so nothing does. The question is asked now because
+        DEC-032 chose to build the seam rather than reshape the refresh flow
+        later, and because a caller that already consults it needs no change
+        when the answer becomes interesting.
+
+        Phase 6 replaces the body — this signature, this return type, and every
+        existing caller stay as they are.
+
+        Args:
+            track_ids: Library ids of the tracks about to be deleted. An empty
+                iterable is valid and answers zero.
+
+        Returns:
+            A :class:`~cuepoint.models.references.ReferenceSummary`.
+        """
+        # Consumed rather than ignored: a caller passing a generator should not
+        # find it silently untouched when this starts doing work, and passing
+        # something unconsumable should fail here rather than in Phase 6.
+        list(track_ids)
+        return NO_REFERENCES

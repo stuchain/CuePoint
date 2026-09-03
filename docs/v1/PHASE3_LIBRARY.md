@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 3: Persistent Rekordbox Library, Detailed Step Specifications
 
-Status: **In progress.** LIBRARY-01…LIBRARY-07 are implemented; LIBRARY-08…LIBRARY-12
+Status: **In progress.** LIBRARY-01…LIBRARY-08 are implemented; LIBRARY-09…LIBRARY-12
 remain draft step specs in design-only mode.
 Implementation of any step below requires an explicit "Implement LIBRARY-NN" instruction, scoped to
 exactly that step, followed by tests, a completion report, and a stop before the next step.
@@ -1025,7 +1025,7 @@ where the diff reaches the app, so the desktop contract is unchanged and E2E was
 
 ---
 
-## LIBRARY-08 — The Reference-Check Seam (DEC-011)
+## LIBRARY-08 — The Reference-Check Seam (DEC-011) ✅ IMPLEMENTED 2026-09-03
 
 **Objective**: Answer "how many Collections or Sets reference these tracks?" — which is zero until
 Phase 6, and must be asked anyway.
@@ -1049,6 +1049,70 @@ one method.
 **Risks**: Low, provided it is not quietly bypassed.
 
 **Complexity**: **S**
+
+### ✅ IMPLEMENTED 2026-09-03
+
+**Outcome**: Complete. `models/references.py` defines `ReferenceSummary` and the shared
+`NO_REFERENCES`; `ILibraryService.references_for()` is the seam, implemented in `LibraryService`;
+`compute_refresh_diff` consults it for the tracks a refresh would delete and always sets
+`diff.references`. 22 new tests.
+
+**Zero is the answer, not a stub.** Nothing in this build can reference a track — Collections
+arrive in Phase 6 and Sets in Phase 10 — so "no Collections or Sets hold these tracks" is simply
+true today. That distinction is worth stating because it is what makes this not a fake
+implementation: the method answers the question correctly, and Phase 6 changes the answer rather
+than filling in a blank.
+
+**The seam consumes what it is given.** `list(track_ids)` looks pointless and is not: a caller
+passing a generator should not find it silently untouched the day this starts doing work, and
+something unconsumable should fail here rather than in Phase 6. A test asserts the ids are read.
+
+**Only removals are asked about.** A changed or re-linked track keeps its row and everything
+attached to it, so nothing is at risk; only what DEC-003 would delete gets the question. The diff
+carries a summary even when nothing would be removed, so a caller reading `diff.references` never
+handles it being absent — and an import service built without the seam returns the same
+`NO_REFERENCES`, so there is never a second shape for "nothing".
+
+**The real deliverable is the rule, and it is enforced.**
+`TestNoDeletionPathBypassesTheSeam` walks `src/cuepoint/` with an AST scan and fails if any module
+deletes a library track without appearing in an allow-list. The allow-list is **deliberately
+empty**: nothing in this build deletes one, and LIBRARY-09's refresh will be the first. Adding
+itself there is a claim that it consulted `references_for` first — which is exactly DEC-032's
+reason for building the seam now, and the cheapest possible moment to start enforcing it, because
+there is nothing to retrofit.
+
+Getting the scan right took two corrections, both made by the tests themselves. A scan matching any
+`.delete(` call flagged `http_cache`'s `cache.delete(key)`; it now matches
+`delete_by_rekordbox_ids` — which exists only on the track repository — or a bare `delete` whose
+receiver names tracks, which is what a real caller looks like. And an allow-list entry for
+`playlist_repository.py` turned out to be permission nobody needed: it clears its own tables with
+raw SQL and never calls a deletion method. Both entries came out.
+
+**A rule that cannot fail is worse than no rule**, and with no deletion path in the codebase every
+assertion would pass against a scan that found nothing at all — including a broken one. So the scan
+is itself tested, on a module that deletes and one that only appears to, and the verification adds
+a temporary module that deletes without asking: the rule catches it and the module is removed
+again.
+
+**Guards**: **9 of 9 fail when the thing they protect is removed**, sources restored
+byte-identically. One needed fixing first — `test_references_make_it_report_true` used two
+Collections and two named tracks, so a `referenced_track_count` that returned the collection count
+passed. Every number in that fixture is now distinct.
+
+**Verified end to end on the real export**: imported the 3,880-track collection, removed one track
+from a copy, and the diff reported 1 removed with
+`{"collection_count": 0, "set_count": 0, "referenced_track_count": 0, "has_references": false}` —
+no prompt needed, which is the correct DEC-011 answer for a library with no Collections. The
+container was checked to wire the real `LibraryService` into the import service rather than falling
+back to a local zero.
+
+**Verification**: `python scripts/run_tests.py --unit --no-slow` — 2737 passed, 45 skipped;
+integration, regression and system — 330 passed, 13 skipped. `ruff check`/`format` clean;
+`check_no_qt_in_core.py`, `check_desktop_version_coupling.py` and `smoke_engine_health.py` pass.
+`mypy src/` adds nothing but the usual `import-not-found` noise. No renderer, Electron or engine API
+file was touched — LIBRARY-10 carries the diff, references included, to the app — so the desktop
+contract is unchanged and E2E was not re-run. No `CHANGELOG` entry: the answer is zero and there is
+nowhere yet to show it.
 
 ---
 

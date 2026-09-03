@@ -53,11 +53,13 @@ from cuepoint.models.refresh_diff import (
     changed_fields,
     summarize,
 )
+from cuepoint.models.references import NO_REFERENCES, ReferenceSummary
 from cuepoint.models.rekordbox_playlist import PlaylistTreeWriteResult
 from cuepoint.persistence.track_repository import RelinkedTrack
 from cuepoint.services.interfaces import (
     IActivityService,
     ILibraryImportService,
+    ILibraryService,
     ILibrarySourceRepository,
     IPlaylistRepository,
     ITrackRepository,
@@ -147,6 +149,7 @@ class LibraryImportService(ILibraryImportService):
         playlist_repository: IPlaylistRepository,
         source_repository: ILibrarySourceRepository,
         activity_service: Optional[IActivityService] = None,
+        library_service: Optional[ILibraryService] = None,
     ) -> None:
         """Initialize the service.
 
@@ -157,11 +160,17 @@ class LibraryImportService(ILibraryImportService):
             activity_service: Records the completion event. Optional because the
                 feed is a record of what happened, not a dependency of it — the
                 same contract the engine's launch producers keep.
+            library_service: Answers DEC-011's reference check. Optional only so
+                a caller that never computes a diff need not build one; when a
+                diff *is* computed without it, the summary is the same
+                ``NO_REFERENCES`` the real seam returns today, so the shape a
+                caller sees never changes.
         """
         self._tracks = track_repository
         self._playlists = playlist_repository
         self._source = source_repository
         self._activity = activity_service
+        self._library = library_service
 
     # ----------------------------------------------------------------- import
 
@@ -377,6 +386,7 @@ class LibraryImportService(ILibraryImportService):
         snapshot = self._tracks.identity_snapshot()
         rows_for_refs = self._diff_tracks(path, diff, snapshot, should_cancel)
         self._diff_playlists(path, diff, rows_for_refs)
+        diff.references = self._references_for_removed(diff)
         diff.duration_seconds = time.perf_counter() - started
 
         _logger.info(
@@ -393,6 +403,34 @@ class LibraryImportService(ILibraryImportService):
             diff.duration_seconds,
         )
         return diff
+
+    def _references_for_removed(self, diff: RefreshDiff) -> ReferenceSummary:
+        """Ask DEC-011's question about the tracks this refresh would delete.
+
+        Only removals: a track that is changing or being re-linked keeps its row
+        and everything attached to it, so nothing is at risk. Asked even when
+        nothing would be removed, because a caller reading ``diff.references``
+        should never have to handle it being absent.
+
+        The ids come from the sample rather than the count, so a diff whose
+        detail was capped asks about the tracks it can name. That is a floor on
+        a number that is zero in every library this build can produce, and
+        Phase 6 inherits a note saying so.
+        """
+        if self._library is None:
+            return NO_REFERENCES
+        return self._library.references_for(
+            track.id for track in self._removed_track_rows(diff)
+        )
+
+    def _removed_track_rows(self, diff: RefreshDiff) -> list:
+        """Return the library rows behind the diff's removed sample."""
+        rows = []
+        for summary_item in diff.removed.items:
+            stored = self._tracks.find_by_rekordbox_id(summary_item.rekordbox_track_id)
+            if stored is not None and stored.id is not None:
+                rows.append(stored)
+        return rows
 
     def _resolve_refresh_path(self, xml_path: Optional[str]) -> str:
         """Return the export to diff against, defaulting to the source record."""
