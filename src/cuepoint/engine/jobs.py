@@ -18,6 +18,23 @@ _services_bootstrapped = False
 _bootstrap_lock = threading.Lock()
 
 
+#: States a user would call "happening now".
+_ACTIVE_STATES = frozenset({"queued", "running"})
+
+
+class JobTypeBusyError(RuntimeError):
+    """An exclusive job of this type is already queued or running.
+
+    Carries the existing job's id so a caller can point at it rather than only
+    saying no.
+    """
+
+    def __init__(self, job_type: str, job_id: str) -> None:
+        super().__init__(f"A {job_type} job is already running: {job_id}")
+        self.job_type = job_type
+        self.job_id = job_id
+
+
 class JobState(str, Enum):
     QUEUED = "queued"
     RUNNING = "running"
@@ -297,6 +314,7 @@ class JobStore:
         job_type: str,
         demo: bool = False,
         runner: Callable[[MatchJob], None],
+        exclusive: bool = False,
     ) -> MatchJob:
         """Register a job of any type and start it on a background thread.
 
@@ -312,9 +330,24 @@ class JobStore:
             runner: Called on the worker thread with the job. It may set a
                 terminal state itself; :meth:`_run_job` only supplies one when
                 the runner did not.
+            exclusive: Refuse if a job of this type is already active. Checked
+                and acted on **under the same lock** that registers the job:
+                asking the store and then creating would let two requests
+                arriving together both see an idle store, and two concurrent
+                imports would interleave their writes to the same tables.
+
+        Raises:
+            JobTypeBusyError: If ``exclusive`` and one is already active.
         """
         job = MatchJob(id=str(uuid.uuid4()), type=job_type, demo=demo)
         with self._lock:
+            if exclusive:
+                for existing in self._jobs.values():
+                    if (
+                        existing.type == job_type
+                        and existing.state.value in _ACTIVE_STATES
+                    ):
+                        raise JobTypeBusyError(job_type, existing.id)
             self._jobs[job.id] = job
         self._persist(job, force=True)
 

@@ -12,6 +12,8 @@ invariant, so it is defined here in one place.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from cuepoint.models.library_track import LibraryTrack
@@ -102,4 +104,150 @@ def search_library(
         # Lets the renderer say "no library yet" rather than "no results",
         # which are different problems with different answers.
         "library_empty": service.is_empty(),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Import and summary (LIBRARY-06)
+# ---------------------------------------------------------------------------
+
+#: Suffixes a Rekordbox collection export can have. Checked before starting a
+#: job so an obviously wrong pick — a CSV, an audio file — is refused straight
+#: away instead of becoming a failed job the user has to go and read.
+IMPORT_SUFFIXES = (".xml",)
+
+
+def parse_import_body(raw: bytes) -> str:
+    """Return the ``xml_path`` from a request body.
+
+    Raises:
+        ValueError: If the body is not a JSON object, or carries no usable
+            ``xml_path``. The message is what the caller shows, so it says what
+            was expected rather than what went wrong internally.
+    """
+    if not raw:
+        raise ValueError("A JSON body with an xml_path is required")
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError("Invalid JSON body") from exc
+    if not isinstance(data, dict):
+        raise ValueError("JSON body must be an object")
+
+    raw_path = data.get("xml_path")
+    if raw_path is None or not str(raw_path).strip():
+        raise ValueError("xml_path is required")
+    return str(raw_path).strip()
+
+
+def validate_import_path(xml_path: str) -> str:
+    """Check a path can plausibly be imported, and return it.
+
+    Only what can be decided cheaply and certainly: that something is there,
+    that it is a file, and that it is named like an export. Whether it is
+    *really* a Rekordbox collection needs the parser, and that stays inside the
+    job — a file that opens and turns out to be the wrong XML is a job failure
+    with a message, not a rejected request.
+
+    The split matters because the two failures reach the user differently. A
+    path that does not exist is almost always a mis-click or a file that moved,
+    and answering immediately is kinder than creating a job that fails a second
+    later.
+
+    Raises:
+        ValueError: If the path is missing, is not a file, or is not XML.
+    """
+    path = Path(xml_path)
+    if not path.exists():
+        raise ValueError(f"No such file: {xml_path}")
+    if not path.is_file():
+        raise ValueError(f"Not a file: {xml_path}")
+    if path.suffix.lower() not in IMPORT_SUFFIXES:
+        raise ValueError(
+            f"Not a Rekordbox XML export: {path.name}. "
+            "In Rekordbox, use File > Export Collection in xml format."
+        )
+    return str(path)
+
+
+def start_import(xml_path: str, *, job_store: Any) -> Dict[str, Any]:
+    """Start a library import as a background job (DEC-033).
+
+    Returns the job identity only. Progress is followed through the existing
+    job endpoints and their SSE stream — this endpoint deliberately adds no
+    second progress mechanism for the renderer to keep in step.
+
+    Raises:
+        ValueError: If the path cannot plausibly be imported.
+        JobTypeBusyError: If an import is already running.
+    """
+    from cuepoint.engine.library_jobs import start_library_import_job
+
+    job = start_library_import_job(job_store, validate_import_path(xml_path))
+    return {"job_id": job.id, "id": job.id, "state": job.state.value}
+
+
+def _resolve_import_service() -> Any:
+    """Resolve ``ILibraryImportService``, or raise :class:`LibraryUnavailableError`."""
+    try:
+        from cuepoint.services.interfaces import ILibraryImportService
+        from cuepoint.utils.di_container import get_container
+
+        return get_container().resolve(ILibraryImportService)
+    except Exception as exc:  # noqa: BLE001 — surfaced as a 503 to the caller
+        raise LibraryUnavailableError(str(exc)) from exc
+
+
+def _resolve_playlist_repository() -> Any:
+    """Resolve ``IPlaylistRepository``, or raise :class:`LibraryUnavailableError`."""
+    try:
+        from cuepoint.services.interfaces import IPlaylistRepository
+        from cuepoint.utils.di_container import get_container
+
+        return get_container().resolve(IPlaylistRepository)
+    except Exception as exc:  # noqa: BLE001 — surfaced as a 503 to the caller
+        raise LibraryUnavailableError(str(exc)) from exc
+
+
+def source_to_dict(source: Any) -> Dict[str, Any]:
+    """Serialize the DEC-035 source record, with the file's state now.
+
+    ``exists`` and ``changed`` are separate because they lead to different
+    things being said: a file that has moved has to be found again, one that has
+    changed has to be re-read, and one that is exactly as it was needs neither.
+    ``changed`` is null when it cannot be known — the file is gone, or the
+    import never recorded its state — which a caller must read as "re-read it",
+    never as "assume unchanged".
+    """
+    state = source.current_file_state()
+    return {
+        "xml_path": source.xml_path,
+        "imported_at": source.imported_at,
+        "xml_modified_at": source.xml_modified_at,
+        "xml_size_bytes": source.xml_size_bytes,
+        "track_count": source.track_count,
+        "playlist_count": source.playlist_count,
+        "exists": state.exists,
+        "changed": state.changed,
+    }
+
+
+def library_summary() -> Dict[str, Any]:
+    """Return what the library holds and where it came from.
+
+    Answers honestly before any import: zero counts, ``library_empty`` true and
+    a null ``source``. "Nothing imported yet" and "imported an empty
+    collection" are different situations, and the source record is what tells
+    them apart.
+    """
+    service = _resolve_library_service()
+    playlists = _resolve_playlist_repository()
+    source = _resolve_import_service().current_source()
+
+    return {
+        "track_count": service.track_count(),
+        "playlist_count": playlists.count(),
+        "playlist_entry_count": playlists.count_entries(),
+        "library_empty": service.is_empty(),
+        "source": source_to_dict(source) if source is not None else None,
     }

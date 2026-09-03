@@ -316,6 +316,38 @@ export interface ActivityFeed {
   limit: number;
 }
 
+export interface LibrarySourceInfo {
+  xml_path: string;
+  imported_at: string;
+  xml_modified_at: string | null;
+  xml_size_bytes: number | null;
+  track_count: number;
+  playlist_count: number;
+  /** Whether the export can still be read where it was imported from. */
+  exists: boolean;
+  /**
+   * Whether it differs from the import, or null when that cannot be known —
+   * the file is gone, or the import never recorded its state. Null means
+   * "re-read it", never "assume unchanged".
+   */
+  changed: boolean | null;
+}
+
+export interface LibrarySummary {
+  track_count: number;
+  playlist_count: number;
+  playlist_entry_count: number;
+  library_empty: boolean;
+  /** Null before any import has completed. */
+  source: LibrarySourceInfo | null;
+}
+
+export interface LibraryImportStarted {
+  job_id: string;
+  id: string;
+  state: string;
+}
+
 export interface EngineJobSummary {
   id: string;
   type: string;
@@ -382,6 +414,10 @@ export interface CuePointBridge {
     limit?: number;
     offset?: number;
   }) => Promise<LibrarySearchResponse>;
+  startLibraryImport?: (params: {
+    xml_path: string;
+  }) => Promise<LibraryImportStarted>;
+  getLibrarySummary?: () => Promise<LibrarySummary>;
   getHistoryRecent: (params?: { limit?: number }) => Promise<HistoryRecentResponse>;
   loadHistoryCsv: (csvPath: string) => Promise<HistoryLoadResponse>;
   getXmlPlaylists: (xmlPath: string) => Promise<XmlPlaylistsResponse>;

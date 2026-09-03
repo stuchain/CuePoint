@@ -43,8 +43,11 @@ from cuepoint.engine.jobs_api import (
 from cuepoint.engine.library_api import (
     LibraryUnavailableError,
     SEARCH_LIMIT_DEFAULT,
+    library_summary,
+    parse_import_body,
     parse_int_param,
     search_library,
+    start_import,
 )
 from cuepoint.engine.incrate_api import (
     demo_inventory_snapshot,
@@ -61,6 +64,7 @@ from cuepoint.engine.incrate_api import (
 from cuepoint.engine.xml_api import list_xml_playlists
 from cuepoint.engine.jobs import (
     JobStore,
+    JobTypeBusyError,
     cancel_match_job,
     parse_match_job_body,
     start_match_job,
@@ -337,6 +341,24 @@ def make_handler(
                     return
                 self._send_json(200, payload)
                 return
+            if path == "/api/v1/library/summary":
+                if not self._authorized():
+                    self._send_json(
+                        401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                    )
+                    return
+                try:
+                    payload = library_summary()
+                except LibraryUnavailableError as exc:
+                    self._send_json(503, error_payload("LIBRARY_UNAVAILABLE", str(exc)))
+                    return
+                except Exception as exc:  # noqa: BLE001 — surface to API client
+                    self._send_json(
+                        500, error_payload("LIBRARY_SUMMARY_FAILED", str(exc))
+                    )
+                    return
+                self._send_json(200, payload)
+                return
             if path == "/api/v1/library/search":
                 if not self._authorized():
                     self._send_json(
@@ -548,6 +570,36 @@ def make_handler(
                 self._send_json(200, payload)
                 return
 
+            if path == "/api/v1/library/import":
+                try:
+                    payload = start_import(
+                        parse_import_body(self._read_body()), job_store=job_store
+                    )
+                except ValueError as exc:
+                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                    return
+                except JobTypeBusyError as exc:
+                    # 409, not 400: the request was fine, the library was busy.
+                    # The running job's id goes back too, so a caller can follow
+                    # it rather than only being told no.
+                    self._send_json(
+                        409,
+                        {
+                            "error": {
+                                "code": "LIBRARY_IMPORT_IN_PROGRESS",
+                                "message": str(exc),
+                                "job_id": exc.job_id,
+                            }
+                        },
+                    )
+                    return
+                except Exception as exc:  # noqa: BLE001 — surface to API client
+                    self._send_json(
+                        500, error_payload("LIBRARY_IMPORT_FAILED", str(exc))
+                    )
+                    return
+                self._send_json(202, payload)
+                return
             if path == "/api/v1/jobs/match":
                 try:
                     body = parse_match_job_body(self._read_body())

@@ -42,6 +42,38 @@ export interface LibrarySearchResponse {
   library_empty: boolean;
 }
 
+export interface LibrarySourceInfo {
+  xml_path: string;
+  imported_at: string;
+  xml_modified_at: string | null;
+  xml_size_bytes: number | null;
+  track_count: number;
+  playlist_count: number;
+  /** Whether the export can still be read where it was imported from. */
+  exists: boolean;
+  /**
+   * Whether it differs from the import, or null when that cannot be known —
+   * the file is gone, or the import never recorded its state. Null means
+   * "re-read it", never "assume unchanged".
+   */
+  changed: boolean | null;
+}
+
+export interface LibrarySummary {
+  track_count: number;
+  playlist_count: number;
+  playlist_entry_count: number;
+  library_empty: boolean;
+  /** Null before any import has completed. */
+  source: LibrarySourceInfo | null;
+}
+
+export interface LibraryImportStarted {
+  job_id: string;
+  id: string;
+  state: string;
+}
+
 export interface EngineJobSummary {
   id: string;
   type: string;
@@ -128,6 +160,32 @@ export class EngineClient {
     if (params.limit != null) query.set("limit", String(params.limit));
     if (params.offset != null) query.set("offset", String(params.offset));
     const res = await fetch(this.url(`/api/v1/library/search?${query.toString()}`), {
+      headers: this.headers(),
+    });
+    return readJson(res);
+  }
+
+  /**
+   * Start a Rekordbox import (LIBRARY-06, DEC-033).
+   *
+   * Returns the job identity only. Progress is followed through the existing
+   * job endpoints and their SSE stream, so there is no second progress
+   * mechanism for the renderer to keep in step with.
+   */
+  async startLibraryImport(params: {
+    xml_path: string;
+  }): Promise<LibraryImportStarted> {
+    const res = await fetch(this.url("/api/v1/library/import"), {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify(params),
+    });
+    return readJson(res);
+  }
+
+  /** What the library holds and where it came from (DEC-035). */
+  async getLibrarySummary(): Promise<LibrarySummary> {
+    const res = await fetch(this.url("/api/v1/library/summary"), {
       headers: this.headers(),
     });
     return readJson(res);

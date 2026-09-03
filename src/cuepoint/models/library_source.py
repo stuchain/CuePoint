@@ -32,6 +32,30 @@ def _iso_from_timestamp(timestamp: float) -> str:
 
 
 @dataclass(frozen=True)
+class SourceFileState:
+    """What the source file looks like now, compared with the import.
+
+    Two separate facts, because they lead to different things being said to a
+    user. A file that has moved needs to be found again; a file that has changed
+    needs re-reading; a file that is exactly as it was needs neither.
+
+    Attributes:
+        exists: Whether the file can still be read.
+        changed: Whether it differs from the import, or ``None`` when that
+            cannot be known — the file is gone, or the import never recorded
+            its state. ``None`` means "re-read it", never "assume unchanged".
+    """
+
+    exists: bool
+    changed: Optional[bool]
+
+    @property
+    def unchanged(self) -> bool:
+        """True only when the file is present and demonstrably the same one."""
+        return self.exists and self.changed is False
+
+
+@dataclass(frozen=True)
 class LibrarySource:
     """Where a library came from, and what that import produced.
 
@@ -66,21 +90,32 @@ class LibrarySource:
         """
         return self.xml_modified_at is not None and self.xml_size_bytes is not None
 
-    def matches_file_on_disk(self, xml_path: Optional[str] = None) -> bool:
-        """True when the file still looks exactly as it did at import.
+    def current_file_state(self, xml_path: Optional[str] = None) -> SourceFileState:
+        """Compare the file on disk with what the import recorded.
 
-        Deliberately conservative: an unreadable file, a missing one, or an
-        import that never recorded the file's state all answer False, because
-        each of those is a reason to re-read rather than to skip. The last of
-        those needs no branch of its own — a recorded ``None`` never equals a
-        real modified time — and an explicit guard here would be code no test
-        could ever distinguish from its absence.
+        Deliberately conservative about ``changed``: an import that never
+        recorded the file's state answers ``None`` rather than ``False``,
+        because "I cannot tell" and "it is the same" lead to opposite actions.
         """
         current = describe_file(xml_path or self.xml_path)
         if current is None:
-            return False
+            return SourceFileState(exists=False, changed=None)
+        if not self.is_stat_known:
+            return SourceFileState(exists=True, changed=None)
         modified, size = current
-        return modified == self.xml_modified_at and size == self.xml_size_bytes
+        return SourceFileState(
+            exists=True,
+            changed=modified != self.xml_modified_at or size != self.xml_size_bytes,
+        )
+
+    def matches_file_on_disk(self, xml_path: Optional[str] = None) -> bool:
+        """True when the file still looks exactly as it did at import.
+
+        A missing file, an unreadable one, and an import that never recorded the
+        file's state all answer False: each is a reason to re-read rather than
+        to skip.
+        """
+        return self.current_file_state(xml_path).unchanged
 
     def to_dict(self) -> Dict[str, Any]:
         """Return a plain dict, suitable for persistence or serialization."""

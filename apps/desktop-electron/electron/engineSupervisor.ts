@@ -241,6 +241,16 @@ export class EngineSupervisor {
     return this.client().searchLibrary(params);
   }
 
+  async startLibraryImport(params: {
+    xml_path: string;
+  }): Promise<LibraryImportStarted> {
+    return this.client().startLibraryImport(params);
+  }
+
+  async getLibrarySummary(): Promise<LibrarySummary> {
+    return this.client().getLibrarySummary();
+  }
+
   async getRecentActivity(params?: {
     limit?: number;
     type?: string;

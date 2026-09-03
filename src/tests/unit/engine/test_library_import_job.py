@@ -27,7 +27,7 @@ from pathlib import Path
 
 import pytest
 
-from cuepoint.engine.jobs import Job, JobState, JobStore
+from cuepoint.engine.jobs import Job, JobState, JobStore, JobTypeBusyError
 from cuepoint.engine.library_jobs import (
     JOB_TYPE_LIBRARY_IMPORT,
     run_library_import_job,
@@ -615,5 +615,129 @@ class TestJobStoreStaysGeneral:
             )
             assert job.state is JobState.RUNNING
             assert job.progress.completed_tracks == 1
+        finally:
+            release.set()
+
+
+@pytest.mark.unit
+class TestExclusiveJobCreationIsAtomic:
+    """The check and the registration have to happen under one lock.
+
+    A six-thread HTTP test does not prove this: the window between scanning the
+    job dict and inserting into it is nanoseconds, so it almost never loses even
+    with no lock at all — that version of the test passed against a store that
+    had the lock removed. Here the window is widened deliberately, by making the
+    scan itself slow, which turns "is it locked?" into something a test can
+    actually answer.
+    """
+
+    class SlowScan(dict):
+        """A job dict whose scan takes long enough to lose a race.
+
+        The snapshot is taken *before* the delay on purpose. Sleeping and then
+        returning the live view proves nothing: the view is read after the
+        sleep, so the first thread to wake inserts and every other thread sees
+        it — which is how an earlier version of this test passed against a
+        store with no lock at all. A caller that has already observed the store
+        as empty and is then delayed is the actual race condition.
+        """
+
+        def values(self):
+            observed = list(super().values())
+            time.sleep(0.05)
+            return observed
+
+    def test_only_one_exclusive_job_is_created(self):
+        store = JobStore()
+        store._jobs = self.SlowScan()
+
+        release = threading.Event()
+        started = threading.Barrier(8)
+        created: list = []
+        refused: list = []
+
+        def attempt() -> None:
+            started.wait(timeout=10)
+            try:
+                created.append(
+                    store.create_job(
+                        job_type="library_import",
+                        runner=lambda _job: release.wait(timeout=5),
+                        exclusive=True,
+                    )
+                )
+            except JobTypeBusyError:
+                refused.append(True)
+
+        threads = [threading.Thread(target=attempt) for _ in range(8)]
+        try:
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(timeout=20)
+        finally:
+            release.set()
+
+        assert len(created) == 1, (
+            f"{len(created)} exclusive jobs were created at once; the busy "
+            "check and the registration are not under the same lock"
+        )
+        assert len(refused) == 7
+
+    def test_a_non_exclusive_job_type_is_unaffected(self):
+        store = JobStore()
+        release = threading.Event()
+        try:
+            jobs = [
+                store.create_job(
+                    job_type="match", runner=lambda _job: release.wait(timeout=5)
+                )
+                for _ in range(3)
+            ]
+            assert len({job.id for job in jobs}) == 3
+        finally:
+            release.set()
+
+    def test_the_error_names_the_job_already_running(self):
+        store = JobStore()
+        release = threading.Event()
+        try:
+            first = store.create_job(
+                job_type="library_import",
+                runner=lambda _job: release.wait(timeout=5),
+                exclusive=True,
+            )
+            with pytest.raises(JobTypeBusyError) as raised:
+                store.create_job(
+                    job_type="library_import",
+                    runner=lambda _job: None,
+                    exclusive=True,
+                )
+            assert raised.value.job_id == first.id
+            assert raised.value.job_type == "library_import"
+        finally:
+            release.set()
+
+    def test_a_finished_exclusive_job_frees_the_slot(self):
+        store = JobStore()
+        first = store.create_job(
+            job_type="library_import", runner=lambda _job: None, exclusive=True
+        )
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline and first.state not in (
+            JobState.SUCCEEDED,
+            JobState.FAILED,
+            JobState.CANCELLED,
+        ):
+            time.sleep(0.01)
+
+        release = threading.Event()
+        try:
+            second = store.create_job(
+                job_type="library_import",
+                runner=lambda _job: release.wait(timeout=5),
+                exclusive=True,
+            )
+            assert second.id != first.id
         finally:
             release.set()

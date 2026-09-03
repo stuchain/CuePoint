@@ -100,4 +100,54 @@ describe("desktop contract", () => {
       expect(bridgeTypes).toContain("LibrarySearchResponse");
     });
   });
+
+  describe("library import and summary (LIBRARY-06)", () => {
+    // Named the same way library search is, for the same reason: the generic
+    // checks above only compare the files against each other, so a method
+    // missing from *all* of them passes every one of them. These say what has
+    // to exist.
+    it("exposes both methods on the preload", () => {
+      expect(invokedChannels(preload)).toContain("engine:startLibraryImport");
+      expect(invokedChannels(preload)).toContain("engine:getLibrarySummary");
+    });
+
+    it("handles both channels in the main process", () => {
+      expect(handledChannels(main)).toContain("engine:startLibraryImport");
+      expect(handledChannels(main)).toContain("engine:getLibrarySummary");
+    });
+
+    it("has typed client methods hitting the documented paths", () => {
+      // The open bracket matters. `toContain("async startLibraryImport")` also
+      // matches `async startLibraryImportMisspelled(`, so renaming the method
+      // passed this check — which is exactly the drift it exists to catch.
+      expect(engineClient).toContain("async startLibraryImport(");
+      expect(engineClient).toContain("/api/v1/library/import");
+      expect(engineClient).toContain("async getLibrarySummary(");
+      expect(engineClient).toContain("/api/v1/library/summary");
+    });
+
+    it("forwards both through the supervisor", () => {
+      const declared = supervisorMethodsDeclared(supervisor);
+      expect(declared).toContain("startLibraryImport");
+      expect(declared).toContain("getLibrarySummary");
+    });
+
+    it("declares both on the renderer bridge type", () => {
+      // With the `?:`, for the same substring reason as above.
+      expect(bridgeTypes).toContain("startLibraryImport?:");
+      expect(bridgeTypes).toContain("getLibrarySummary?:");
+      expect(bridgeTypes).toContain("interface LibrarySummary");
+      expect(bridgeTypes).toContain("interface LibraryImportStarted");
+    });
+
+    it("starts the import with POST, not a GET", () => {
+      // A GET that changes the library would be retried by anything that
+      // retries GETs, and would import twice.
+      const method = engineClient.slice(
+        engineClient.indexOf("async startLibraryImport"),
+        engineClient.indexOf("async getLibrarySummary"),
+      );
+      expect(method).toContain('method: "POST"');
+    });
+  });
 });

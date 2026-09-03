@@ -103,6 +103,48 @@ class TestMatchesFileOnDisk:
         source = LibrarySource(xml_path=str(export), imported_at="now")
         assert source.matches_file_on_disk() is False
 
+
+@pytest.mark.unit
+class TestCurrentFileState:
+    """``exists`` and ``changed`` are separate facts with separate answers."""
+
+    def test_an_untouched_file(self, export):
+        state = source_for_import(str(export), "now", 0, 0).current_file_state()
+        assert (state.exists, state.changed) == (True, False)
+        assert state.unchanged is True
+
+    def test_a_changed_file(self, export):
+        source = source_for_import(str(export), "now", 0, 0)
+        export.write_text(
+            "<DJ_PLAYLISTS><COLLECTION/></DJ_PLAYLISTS>", encoding="utf-8"
+        )
+        state = source.current_file_state()
+        assert (state.exists, state.changed) == (True, True)
+        assert state.unchanged is False
+
+    def test_a_vanished_file_cannot_be_compared(self, export):
+        source = source_for_import(str(export), "now", 0, 0)
+        export.unlink()
+        state = source.current_file_state()
+        assert state.exists is False
+        # Not False: once the file is gone, whether it changed is unknowable,
+        # and False would read as "still fine".
+        assert state.changed is None
+
+    def test_an_import_that_recorded_no_stat_cannot_be_compared(self, export):
+        """The file is there, but there is nothing to compare it against.
+
+        ``changed`` must be None, not True: "I cannot tell" and "it changed"
+        both mean re-read, but only one of them is true, and reporting a change
+        the user did not make is a lie about their data.
+        """
+        state = LibrarySource(
+            xml_path=str(export), imported_at="now"
+        ).current_file_state()
+        assert state.exists is True
+        assert state.changed is None
+        assert state.unchanged is False
+
     def test_another_path_can_be_compared(self, tmp_path, export):
         """The refresh flow when a user points at a file that has moved."""
         source = source_for_import(str(export), "now", 0, 0)

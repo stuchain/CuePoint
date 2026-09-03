@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 3: Persistent Rekordbox Library, Detailed Step Specifications
 
-Status: **In progress.** LIBRARY-01…LIBRARY-05 are implemented; LIBRARY-06…LIBRARY-12
+Status: **In progress.** LIBRARY-01…LIBRARY-06 are implemented; LIBRARY-07…LIBRARY-12
 remain draft step specs in design-only mode.
 Implementation of any step below requires an explicit "Implement LIBRARY-NN" instruction, scoped to
 exactly that step, followed by tests, a completion report, and a stop before the next step.
@@ -813,7 +813,7 @@ start an import, which is LIBRARY-06.
 
 ---
 
-## LIBRARY-06 — Import API and Desktop Contract
+## LIBRARY-06 — Import API and Desktop Contract ✅ IMPLEMENTED 2026-09-03
 
 **Objective**: Start an import from the app and follow it.
 
@@ -841,6 +841,81 @@ endpoint reports an empty library honestly before any import.
 **Complexity**: **M**
 
 **PR breakdown**: Two — engine endpoints, then bridge plumbing.
+
+### ✅ IMPLEMENTED 2026-09-03
+
+**Outcome**: Complete, as one commit rather than the suggested two — the contract test is what
+makes the bridge half safe, and splitting them would have committed a state where it was red.
+`POST /api/v1/library/import` and `GET /api/v1/library/summary` are wired through all six files;
+`library_api.py` gained `parse_import_body`, `validate_import_path`, `start_import`,
+`source_to_dict` and `library_summary`; `jobs.py` gained exclusive job creation; the source model
+gained `SourceFileState`. 55 new tests — 34 engine, 4 model, 4 job store, 6 contract, 4 E2E, plus
+sharpened assertions on three that already existed.
+
+**Where validation happens, and why it is split.** The endpoint decides only what it can decide
+cheaply and certainly: the request has an `xml_path`, something is there, it is a file, and it is
+named like an export. Those are almost always a mis-click, and answering at once beats creating a
+job that fails a second later. Whether the file is *really* a Rekordbox collection needs the parser,
+so it stays inside the job, where LIBRARY-05 put it and where every other job outcome appears. Both
+halves are asserted: a `.csv` is refused with 400, and an `.xml` with no `COLLECTION` is accepted
+and then fails the job with `LIBRARY_XML_NO_COLLECTION`.
+
+**A second import is refused under the store's own lock.** Two at once would interleave: the track
+upsert resolves identity against a snapshot taken before it started, and the playlist mirror deletes
+before it rewrites. The check therefore lives in `JobStore.create_job(exclusive=True)`, inside the
+same lock that registers the job — asking the store and then creating would let two requests
+arriving together both see it idle. The endpoint answers **409**, not 400, because the request was
+fine and the library was busy, and it returns the running job's id so a caller can follow it rather
+than only being told no.
+
+**`exists` and `changed` are separate facts in the summary.** A file that has moved has to be found
+again; one that has changed has to be re-read; one that is exactly as it was needs neither.
+`changed` is **null** when it cannot be known — the file is gone, or the import never recorded a
+stat — which a caller must read as "re-read it", never as "assume unchanged". `matches_file_on_disk`
+now delegates to that, so the refresh in LIBRARY-07 inherits the seam.
+
+**Five of the first nineteen guards did not guard**, and three of those were the same mistake:
+
+- Three contract assertions matched their own broken replacements as substrings —
+  `toContain("async startLibraryImport")` also matches `async startLibraryImportTYPO(`. Renaming
+  the client method and the bridge type both passed. Fixed by asserting the bracket and the `?:`.
+- The rejected-body test asserted only the status, so a version substituting a placeholder path
+  passed: still 400, but saying "No such file: x" about a file the caller never named. It now
+  asserts the message.
+- Nothing distinguished "cannot tell" from "changed" on the source record; removing the guard made
+  `changed` True instead of null, and only `matches_file_on_disk` was covered, which is False
+  either way.
+- The concurrency test — six threads over HTTP — passed against a store with **no lock at all**.
+  The window between scanning the job dict and inserting into it is nanoseconds, so it almost never
+  loses. The replacement widens it deliberately with a job dict whose scan snapshots and then
+  sleeps. Getting that right took two attempts: sleeping and returning the *live* view proved
+  nothing, because the view is read after the sleep, so the first thread to wake inserts and every
+  other thread sees it. Snapshotting before the delay is the actual race. Without the lock it now
+  reports **8 exclusive jobs created at once**.
+
+With those fixed, **19 of 19 guards fail when the thing they protect is removed** — including each
+of the five contract files broken individually — and every source was restored byte-identically.
+
+**The E2E earns its place.** `e2e/libraryImport.spec.ts` starts an import from the renderer in the
+packaged app and follows it to completion through the existing job endpoint, checks the strip reads
+"Importing", and checks a missing file is refused with a message. Breaking the supervisor forward —
+the exact SHELL-04 failure — makes it fail with the exact SHELL-04 message: `TypeError:
+engine.startLibraryImport is not a function`. The contract test says *which* file is wrong; this one
+proves the chain carries a request.
+
+**Verified with the real collection, through the app's own bridge.** Summary before:
+`{"track_count":0,"library_empty":true,"source":null}` — honest, and null rather than a record of
+zeroes. Then `startLibraryImport` on the real 4.5 MB export, followed to `succeeded`, and the
+summary reported 3,880 tracks, 234 playlist nodes, 13,870 entries, with a source record carrying the
+file's modified time, its size, `exists: true` and `changed: false`. Search then returned 22 results
+for "Bedouin". Run against a temporary `CUEPOINT_HOME`, so the real library was never touched.
+
+**Verification**: `python scripts/run_tests.py --all --no-slow` — 2670 unit, 315 integration, 7
+regression, 4 system. Renderer: 397 tests, typecheck, lint and `build:check` clean. **E2E 12/12**,
+up from 8. `ruff check`/`format` clean; `check_no_qt_in_core.py`,
+`check_desktop_version_coupling.py` and `smoke_engine_health.py` pass. `mypy src/` adds nothing but
+the usual `import-not-found` noise. No `CHANGELOG` entry yet: there is still no button — LIBRARY-11
+builds the page, and that is when a user can do this without a console.
 
 ---
 

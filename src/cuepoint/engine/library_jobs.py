@@ -150,16 +150,24 @@ def run_library_import_job(job: Job, store: JobStore, xml_path: str) -> None:
 def start_library_import_job(
     store: JobStore, xml_path: str, *, demo: bool = False
 ) -> Job:
-    """Register and start an import job.
+    """Register and start an import job, refusing a second concurrent one.
 
-    Validation of ``xml_path`` deliberately happens inside the job rather than
-    here: a rejected file should show up as a failed job with a message the user
-    can act on, in the same place every other job outcome appears, rather than
-    as an error from whichever call happened to start it.
+    Whether the file *parses* is decided inside the job: a rejected export
+    should show up as a failed job with a message the user can act on, in the
+    same place every other job outcome appears. Whether another import is
+    already running is decided here, because two of them would interleave
+    writes to the same tables — the track upsert resolves identity against a
+    snapshot taken before it started, and the playlist mirror deletes before it
+    rewrites.
+
+    Raises:
+        JobTypeBusyError: If an import is already queued or running.
     """
     path = str(xml_path)
 
     def runner(job: Job) -> None:
         run_library_import_job(job, store, path)
 
-    return store.create_job(job_type=JOB_TYPE_LIBRARY_IMPORT, demo=demo, runner=runner)
+    return store.create_job(
+        job_type=JOB_TYPE_LIBRARY_IMPORT, demo=demo, runner=runner, exclusive=True
+    )
