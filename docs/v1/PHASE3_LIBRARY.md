@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 3: Persistent Rekordbox Library, Detailed Step Specifications
 
-Status: **In progress.** LIBRARY-01 is implemented; LIBRARY-02…LIBRARY-12 remain draft step
-specs in design-only mode.
+Status: **In progress.** LIBRARY-01 and LIBRARY-02 are implemented; LIBRARY-03…LIBRARY-12 remain
+draft step specs in design-only mode.
 Implementation of any step below requires an explicit "Implement LIBRARY-NN" instruction, scoped to
 exactly that step, followed by tests, a completion report, and a stop before the next step.
 
@@ -228,7 +228,7 @@ covers changed.
 
 ---
 
-## LIBRARY-02 — Parsing the Whole Collection
+## LIBRARY-02 — Parsing the Whole Collection ✅ IMPLEMENTED 2026-09-03
 
 **Objective**: Read every track in the `COLLECTION` element into `LibraryTrack` objects, including
 DEC-034's new fields, in a form that does not hold the whole XML in memory at once.
@@ -269,6 +269,106 @@ untouched (DEC-036).
 encoding is a genuine trap. Verify against a real export, not the documentation.
 
 **Complexity**: **M**
+
+### ✅ IMPLEMENTED 2026-09-03
+
+**Outcome**: Complete. `iter_collection_tracks()`, `location_to_path()` and four attribute
+coercers live at the end of `data/rekordbox.py`, beside the `parse_collection()` they share
+attribute-name handling with. 84 new tests. Verified against a **real 3,880-track Rekordbox 6.8.6
+export**, which is where most of what follows comes from — the spec was right that the mapping had
+to be confirmed against a file rather than trusted from documentation, and the file disagreed with
+the obvious reading in four places.
+
+**What the real export changed.**
+
+*`AverageBpm="0.00"` on four tracks.* `LibraryTrack` rejects a BPM of zero (FOUNDATION-04's
+validation), so the obvious `float(AverageBpm)` aborts the entire import of 3,880 tracks over four
+unanalyzed ones. `_optional_bpm` returns None for zero and for anything outside 0–300, which keeps
+the model's validation a backstop against a programming error instead of a tripwire on user data.
+No unit test written from the spec would have found this; the real file found it immediately.
+
+*The rating encoding is exactly the trap DEC-034 named.* Ratings in the export are
+`0/51/102/153/204/255` — 3812/3/7/15/10/33 tracks — and the converted star histogram in the
+database matches those counts exactly. LIBRARY-01's 0–5 range check turned this from a silent
+wrong number into an import that could not have shipped wrong.
+
+*Zero means "not known" for measured quantities.* 136 tracks carry `Year="0"`, 259 `BitRate="0"`,
+one `TotalTime="0"` (a `------------------additional------------------` separator entry, not an
+audio file). Stored as zeroes those sort as the oldest and worst-quality tracks in Phase 4, so
+`_measured_int` nulls them. Play count and rating deliberately do not use it: zero plays and zero
+stars are real answers. This is DEC-034's "a missing rating is not a zero rating" applied in the
+other direction.
+
+*Paths needed their own decoder, not `get_track_locations()`.* Seven tracks have `?` or `#` in
+their filename (`Is This A Dream?`, `f#m`, `C's Movement #1`), and `get_track_locations()` splits
+on both after decoding — **it truncates those paths and loses the extension. That is a real
+pre-existing bug** in the path inKey's tag-writing uses; not fixed here (DEC-036 leaves that code
+alone through Phase 3) but recorded. Four more tracks decode to a path still containing `%`:
+`A%C3%BCra%2C` is genuinely the name on disk, because a download tool wrote percent-encoded text
+into the filename and Rekordbox then encoded the `%` correctly — so `location_to_path` decodes
+**exactly once**, and decoding until the string stops changing would produce paths that do not
+exist. It also never touches the filesystem (DEC-037) and never branches on `os.name`: a Windows
+export must decode identically on a Mac, because the database is one file a user may copy.
+
+**`Colour` is not emitted at all.** Neither `Colour` nor `Color` appears on any of the 3,880
+tracks in a Rekordbox 6.8.6 export. Both spellings are read, and the column stays null. DEC-034
+still paid for the column correctly — adding it later would need a re-import — but nothing in
+Phase 4 should expect it to be populated.
+
+**`Tonality`, never `Key`.** Rekordbox uses `Key` as an alternative spelling of TrackID on
+playlist entries, and the existing parser already reads it that way. Accepting `Key` as a fallback
+for the musical key would put a track id in the key column; there is a test that fails if someone
+adds it.
+
+**Two deliberate divergences from `parse_collection()`**, both because the library mirrors
+Rekordbox where the matcher filters it: a track with no title is **kept** (dropping it would make
+a track the user can see in Rekordbox vanish from CuePoint, and DEC-003 would then delete any
+CuePoint data attached to it), and a track is skipped only when it has no TrackID, which is the
+DEC-002 identity and the unique key.
+
+**Streaming, measured.** On the real 4.5 MB file: 0.73 MiB peak against 26.23 MiB for `ET.parse`
+of the same file — **36× less memory**, flat rather than proportional. Clearing each `TRACK` is
+not enough on its own; a cleared element stays in `COLLECTION`'s child list, so the parser also
+detaches it (`del collection[:]`), and the guard for that compares peak memory at 2,000 and 20,000
+tracks. Parsing also stops at the end of `COLLECTION` rather than reading on into `PLAYLISTS`,
+whose `<TRACK Key="…"/>` references would otherwise parse as tracks with no title and no fields.
+The 50,000-track test is marked `slow` and holds under 8 MiB.
+
+**One thing the design should settle before Phase 4: `duration_seconds` is now dead.** The spec
+maps `TotalTime` → `total_time`, and nothing writes `duration_seconds` — which is the column
+`library_api.py`'s public `track_to_dict` actually exposes. After importing the real collection,
+`total_time` is populated on 3,879 of 3,880 tracks and `duration_seconds` on none, so the API
+reports no duration for any track. The two columns are the same quantity. Implemented as the spec
+literally says rather than silently writing both; **LIBRARY-06 or Phase 4 needs to pick one.**
+
+**Verified in the running app.** The real collection was imported into a scratch database, the
+app's `database.path` was pointed at it, and the packaged app searched it: "Themba" returned 21
+results and "Chloé" returned 5, each row showing BPM and key — values that exist only because
+`AverageBpm` and `Tonality` mapped correctly, rendered through engine → bridge → renderer.
+`config.yaml` was restored byte-identically afterwards and the user's real database was never
+written to (0 tracks, version 5, unchanged).
+
+**Guards proven by breaking them**, 11 of 11, each reverted and the source confirmed
+byte-identical afterwards: removing element detaching, removing the stop at `</COLLECTION>`,
+storing the raw rating, passing zero BPM through, treating zero as a real measurement, truncating
+paths at `?`/`#`, decoding paths repeatedly, branching the drive-letter rule on `os.name`, storing
+blank attributes as empty strings, reading the musical key from `Key`, and skipping untitled
+tracks. Every one fails the tests that cover it.
+
+**Persistence checked end to end** (a throwaway script, not LIBRARY-04): all 3,880 parsed tracks
+batch-insert into a migration-0005 database in 0.26s; the database's rating histogram matches the
+raw XML; DEC-002's `find_by_rekordbox_id` and `find_by_path` resolve to the same row; and
+re-running the same import through `upsert_from_rekordbox` gives 0 inserted, 3,880 updated, 0
+re-links and no duplicates.
+
+**Verification**: 84 new tests in `test_rekordbox_library.py` (including the `slow` 50,000-track
+case, which was run). `python scripts/run_tests.py --unit --no-slow` — 2390 passed, 45 skipped.
+`src/tests/unit/engine` — 121 passed. Integration — 315 passed, 12 skipped. `ruff check` and
+`ruff format --check` clean; `check_no_qt_in_core.py`, `check_desktop_version_coupling.py` and
+`smoke_engine_health.py` pass. `mypy src/` 1182 against a 1179 baseline, the three new ones being
+the `import-not-found` noise every module in this repo produces. No renderer, Electron or engine
+API file was touched, so the desktop contract is unchanged and E2E was not run. No `CHANGELOG`
+entry: nothing user-visible yet.
 
 ---
 

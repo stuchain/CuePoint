@@ -35,6 +35,7 @@ import tempfile
 
 from cuepoint.core.mix_parser import _extract_remixer_names_from_title  # noqa: E402
 from cuepoint.models.compat import track_from_rbtrack  # noqa: E402
+from cuepoint.models.library_track import LibraryTrack  # noqa: E402
 from cuepoint.models.playlist import Playlist  # noqa: E402
 from cuepoint.models.result import TrackResult  # noqa: E402
 from cuepoint.models.track import Track  # noqa: E402
@@ -1275,3 +1276,281 @@ def is_writable(path: Path) -> bool:
         return True
     except OSError:
         return False
+
+
+# ---------------------------------------------------------------------------
+# Library import (Phase 3 / LIBRARY-02)
+#
+# `parse_collection()` above serves the matching pipeline: five fields, and a
+# track without a title is skipped because it cannot be matched. The library is
+# a different job — it mirrors what Rekordbox holds, so it captures every field
+# DEC-034 chose and keeps rows the matcher would discard. The two share this
+# module, and its attribute-name variants, rather than growing a second parser.
+# ---------------------------------------------------------------------------
+
+# Rekordbox writes Location as a file URL whose host part is empty or
+# "localhost", e.g. file://localhost/Users/stu/track.mp3.
+_FILE_URL_HOST = re.compile(r"^file://[^/]*", re.IGNORECASE)
+
+# "/D:/Music/x.mp3" -> "D:/Music/x.mp3". Matched on the path rather than on
+# os.name: the database is a single file a user may copy between machines, so a
+# Windows export has to decode the same way when it is read on a Mac.
+_LEADING_DRIVE_LETTER = re.compile(r"^/([A-Za-z]:)")
+
+# Rekordbox stores a star rating as stars x 51, so a five-star track is 255.
+# Storing the raw value would put a nonsense number in front of the user and
+# break every comparison; the conversion happens here, once, at the boundary.
+_RATING_STARS = {0: 0, 51: 1, 102: 2, 153: 3, 204: 4, 255: 5}
+
+# Highest BPM accepted, matching LibraryTrack's own validation. A value outside
+# it is dropped rather than raised, so one corrupt row cannot fail an import of
+# fifty thousand.
+_MAX_BPM = 300.0
+
+
+def location_to_path(location: Optional[str]) -> str:
+    """Return the local file path a Rekordbox ``Location`` attribute refers to.
+
+    Deliberately different from :func:`get_track_locations` in three ways, each
+    of which matters for a stored library rather than a one-shot lookup:
+
+    - **The filesystem is never consulted.** No ``resolve()``, no existence
+      check. DEC-037 leaves missing-file detection to Phase 7, and resolving
+      would rewrite paths against whichever machine happened to run the import.
+    - **The result does not depend on the host platform.** ``os.sep`` and
+      ``os.name`` play no part, so a Windows export decodes identically on a
+      Mac — the database is one file a user may copy or restore anywhere.
+    - **Nothing is truncated at ``?`` or ``#``.** Those are ordinary characters
+      in a track name ("Is This A Dream?", "C's Movement #1", "f#m"), and a real
+      collection has them; cutting there silently loses the extension.
+
+    Percent-decoding happens **exactly once**. Decoding until the string stops
+    changing looks tempting and is wrong: a real export contains
+    ``...A%25C3%25BCra%252C...``, whose file on disk is genuinely named
+    ``A%C3%BCra%2C`` — a downloader wrote encoded text into the filename and
+    Rekordbox then encoded the ``%`` signs correctly. Decoding twice yields
+    ``Aura,`` and a path that does not exist.
+
+    Returns an empty string when there is no usable location, which
+    :func:`~cuepoint.models.library_track.normalize_path` turns into a value
+    that matches nothing.
+    """
+    if not location:
+        return ""
+
+    text = str(location).strip()
+    if not text:
+        return ""
+
+    text = _FILE_URL_HOST.sub("", text, count=1)
+    text = unquote(text)
+    return _LEADING_DRIVE_LETTER.sub(r"\1", text, count=1)
+
+
+def _optional_text(value: Optional[str]) -> Optional[str]:
+    """Return trimmed text, or None when the attribute is absent or blank.
+
+    Rekordbox writes every attribute on every track and leaves the unused ones
+    empty — in a real export 3,794 of 3,880 tracks carry ``Remixer=""``. Storing
+    those as empty strings would make "no remixer" and "a remixer whose name is
+    blank" the same value, and push empty strings through every later filter.
+    """
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _optional_int(value: Optional[str]) -> Optional[int]:
+    """Parse an integer attribute, returning None for anything unparseable.
+
+    Tolerant on purpose: an import of a whole collection must not fail because
+    one track has ``BitRate=""``. A decimal form ("320.0") is accepted because
+    exports have been seen to write one.
+    """
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        return int(text)
+    except ValueError:
+        pass
+    try:
+        return int(float(text))
+    except ValueError:
+        return None
+
+
+def _measured_int(value: Optional[str]) -> Optional[int]:
+    """Parse a quantity whose zero means "not known", returning None for it.
+
+    Year, total time and bitrate are quantities a track cannot actually have
+    zero of, and Rekordbox writes 0 when it has no value — 136 tracks with
+    ``Year="0"`` and 259 with ``BitRate="0"`` in a real 3,880-track export.
+    Storing those zeroes would sort unanalyzed tracks as the oldest and the
+    worst-quality in Phase 4, which is DEC-034's "a missing rating is not a zero
+    rating" applied to the other direction of the same mistake.
+
+    Play count and rating deliberately do **not** use this: zero plays and zero
+    stars are real answers.
+    """
+    parsed = _optional_int(value)
+    if parsed is None or parsed <= 0:
+        return None
+    return parsed
+
+
+def _optional_bpm(value: Optional[str]) -> Optional[float]:
+    """Parse ``AverageBpm``, returning None for "not analyzed" or out of range.
+
+    ``AverageBpm="0.00"`` appears on four tracks of a real export, and
+    :class:`~cuepoint.models.library_track.LibraryTrack` rejects a BPM of zero —
+    so passing it straight through would abort a whole import over four
+    unanalyzed tracks. Out-of-range values are dropped here for the same reason:
+    the model's validation stays a backstop against a programming error rather
+    than becoming a tripwire on user data.
+    """
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        bpm = float(text)
+    except ValueError:
+        return None
+    if not 0 < bpm <= _MAX_BPM:
+        return None
+    return bpm
+
+
+def _rating_to_stars(value: Optional[str]) -> Optional[int]:
+    """Convert a Rekordbox ``Rating`` attribute to a star count of 0-5.
+
+    Handles both encodings seen in the wild: the multiples of 51 Rekordbox
+    itself writes, and a plain star count some tools emit. The two cannot be
+    confused — no star count except 0 is a multiple of 51 — so no guess is
+    involved. Anything else becomes None with a warning, rather than a rating
+    the user never gave.
+    """
+    raw = _optional_int(value)
+    if raw is None:
+        return None
+    if raw in _RATING_STARS:
+        return _RATING_STARS[raw]
+    if 0 <= raw <= 5:
+        return raw
+    _logger.warning(
+        "[library] Unrecognized Rekordbox Rating value %r; storing no rating",
+        value,
+    )
+    return None
+
+
+def _library_track_from_element(elem: ET.Element) -> Optional[LibraryTrack]:
+    """Build a :class:`LibraryTrack` from one COLLECTION ``TRACK`` element.
+
+    Returns None only when the track has no Rekordbox TrackID: that is the
+    library's primary identity (DEC-002) and its unique key, so a row without
+    one cannot be stored at all. Everything else is kept, including a track with
+    an empty title — the library mirrors Rekordbox, and silently dropping a
+    track the user can see in Rekordbox is worse than showing a blank name.
+    """
+    get = elem.get
+    track_id = (get("TrackID") or get("ID") or get("Key") or "").strip()
+    if not track_id:
+        _logger.warning("[library] Skipping COLLECTION TRACK with no TrackID")
+        return None
+
+    title = (get("Name") or get("Title") or "").strip()
+    if not title:
+        _logger.debug("[library] Track %s has no title", track_id)
+
+    return LibraryTrack(
+        rekordbox_track_id=track_id,
+        title=title,
+        artist=(get("Artist") or get("Artists") or "").strip(),
+        file_path=location_to_path(get("Location")),
+        remixer=_optional_text(get("Remixer")),
+        album=_optional_text(get("Album")),
+        label=_optional_text(get("Label")),
+        genre=_optional_text(get("Genre")),
+        # "Tonality", never "Key": Rekordbox uses Key as an alternative spelling
+        # of TrackID on playlist entries, and reading the musical key from it
+        # would put a track id in the key column.
+        key=_optional_text(get("Tonality")),
+        bpm=_optional_bpm(get("AverageBpm")),
+        year=_measured_int(get("Year")),
+        rating=_rating_to_stars(get("Rating")),
+        play_count=_optional_int(get("PlayCount")),
+        colour=_optional_text(get("Colour") or get("Color")),
+        date_added=_optional_text(get("DateAdded")),
+        comment=_optional_text(get("Comments")),
+        total_time=_measured_int(get("TotalTime")),
+        bitrate=_measured_int(get("BitRate")),
+    )
+
+
+def iter_collection_tracks(xml_path: str) -> Iterator[LibraryTrack]:
+    """Yield every track in the ``COLLECTION`` element, one at a time.
+
+    Streaming rather than :func:`parse_rekordbox`'s DOM parse, because the
+    target is a 50,000-track library: building the whole tree would hold tens of
+    megabytes of elements for a job that needs one track at a time.
+
+    Two details do the actual work. Each ``TRACK`` is cleared **and detached from
+    its parent** once yielded — clearing alone frees a track's attributes and cue
+    points but leaves an empty element behind, so the parent's child list still
+    grows once per track. And parsing stops at the end of ``COLLECTION`` rather
+    than reading on: the playlist tree is a separate concern (LIBRARY-03), and
+    its ``<TRACK Key="..."/>`` references are not tracks.
+
+    Args:
+        xml_path: Path to a Rekordbox XML export.
+
+    Yields:
+        A :class:`LibraryTrack` per collection entry, in document order.
+
+    Raises:
+        FileNotFoundError: If the file does not exist.
+        ValueError: If the file exceeds :data:`MAX_XML_SIZE_BYTES`.
+        ET.ParseError: If the XML is malformed.
+    """
+    if not os.path.exists(xml_path):
+        raise FileNotFoundError(f"XML file not found: {xml_path}")
+
+    size = os.path.getsize(xml_path)
+    if size > MAX_XML_SIZE_BYTES:
+        raise ValueError(
+            f"XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). "
+            "Refusing to parse to prevent resource exhaustion."
+        )
+
+    yielded = 0
+    # Opened here rather than left to iterparse so the handle is closed even
+    # though this generator stops early, at the end of COLLECTION.
+    with open(xml_path, "rb") as handle:
+        collection: Optional[ET.Element] = None
+        for event, elem in ET.iterparse(handle, events=("start", "end")):
+            if event == "start":
+                if elem.tag == "COLLECTION":
+                    collection = elem
+                continue
+            if elem.tag == "COLLECTION":
+                break
+            if elem.tag != "TRACK" or collection is None:
+                continue
+
+            track = _library_track_from_element(elem)
+            if track is not None:
+                yielded += 1
+                yield track
+
+            elem.clear()
+            del collection[:]
+
+    _logger.info(
+        "[library] Parsed %s tracks from the collection in %s", yielded, xml_path
+    )
