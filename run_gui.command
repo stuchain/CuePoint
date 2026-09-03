@@ -1,58 +1,48 @@
-#!/bin/bash
-# macOS double-clickable script to run CuePoint GUI application
-# Double-click this file in Finder to run the GUI
+#!/usr/bin/env bash
+# macOS double-clickable launcher for the CuePoint Electron app.
 
-# Get the directory where this script is located
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ELECTRON_DIR="$SCRIPT_DIR/apps/desktop-electron"
 
-# Prefer project-local venv for a ship-ready, consistent runtime
-PY="$SCRIPT_DIR/.venv/bin/python"
-if [ -x "$PY" ]; then
-    echo "Using project virtualenv: $PY"
-else
-    PY="$(command -v python3)"
+# Finder does not always inherit the shell's PATH. Include the standard
+# Homebrew locations and load nvm as a fallback when it is installed.
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+if ! command -v npm >/dev/null 2>&1 && [ -s "$HOME/.nvm/nvm.sh" ]; then
+    # shellcheck source=/dev/null
+    . "$HOME/.nvm/nvm.sh"
 fi
 
-if [ -z "$PY" ]; then
-    echo "Error: python3 is not installed or not in PATH"
-    echo "Recommended: install Python 3.11+ (OpenSSL-backed) and create .venv"
+if [ ! -f "$ELECTRON_DIR/package.json" ]; then
+    echo "CuePoint desktop files were not found."
     echo ""
     echo "Press any key to exit..."
     read -n 1
     exit 1
 fi
 
-# Show SSL backend (helps detect LibreSSL vs OpenSSL)
-"$PY" -c "import ssl; print('Python:', __import__('sys').version.split()[0]); print('SSL:', ssl.OPENSSL_VERSION)" 2>/dev/null
-
-# Ensure Playwright and Chromium are installed (for inCrate Add to playlist browser fallback)
-if ! "$PY" -c "import playwright" 2>/dev/null; then
-    echo "Playwright not found. Installing..."
-    "$PY" -m pip install playwright
-fi
-echo "Ensuring Chromium for Playwright..."
-"$PY" -m playwright install chromium
-
-# Change to src directory
-cd "$SCRIPT_DIR/src" || {
-    echo "Error: Could not change to src directory"
+if ! command -v npm >/dev/null 2>&1; then
+    echo "Node.js and npm are required to run CuePoint."
+    echo "Install Node.js 22 or newer, then try again."
     echo "Press any key to exit..."
     read -n 1
     exit 1
-}
+fi
 
-# Run the GUI application
-echo "Starting CuePoint GUI..."
-"$PY" gui_app.py
+if [ ! -f "$ELECTRON_DIR/node_modules/electron/package.json" ]; then
+    echo "CuePoint desktop dependencies are not installed."
+    echo "Run npm install in apps/desktop-electron, then try again."
+    echo "Press any key to exit..."
+    read -n 1
+    exit 1
+fi
 
-# Capture exit code
+cd "$ELECTRON_DIR" || exit 1
+npm run electron:start
 EXIT_CODE=$?
 
-# If there was an error, wait for user input before closing
-if [ $EXIT_CODE -ne 0 ]; then
+if [ "$EXIT_CODE" -ne 0 ]; then
     echo ""
-    echo "Application exited with error code: $EXIT_CODE"
-    echo ""
+    echo "CuePoint exited with code $EXIT_CODE."
     echo "Press any key to close..."
     read -n 1
 fi
