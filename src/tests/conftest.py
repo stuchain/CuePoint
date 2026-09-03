@@ -126,6 +126,39 @@ def _restore_global_settings():
 
 
 @pytest.fixture(scope="session")
+def _user_config_sandbox(tmp_path_factory):
+    """One temp location standing in for the user's real ~/.cuepoint."""
+    return tmp_path_factory.mktemp("cuepoint-config") / "config.yaml"
+
+
+@pytest.fixture(autouse=True)
+def _never_read_the_real_user_config(_user_config_sandbox, monkeypatch):
+    """Keep the developer's own configuration out of the test suite.
+
+    ``ConfigService`` defaults to ``~/.cuepoint/config.yaml``, so without this
+    every test that builds one reads whatever the person running them happens to
+    have configured — matching tuning, privacy flags, paths. Two consequences,
+    both of which have bitten:
+
+    - Tests behave differently on a developer's machine than in CI, where no
+      such file exists, and the difference is invisible.
+    - ``database.path`` set there takes precedence over
+      ``default_database_path()``, which is the *only* thing
+      :func:`_never_touch_the_real_library_database` redirects — so that guard
+      was silently bypassed and the whole suite ran against the user's real
+      library database.
+
+    Tests that pass an explicit ``config_file`` are unaffected.
+    """
+    from cuepoint.services import config_service
+
+    monkeypatch.setattr(
+        config_service, "default_config_file", lambda: _user_config_sandbox
+    )
+    yield
+
+
+@pytest.fixture(scope="session")
 def _library_database_sandbox(tmp_path_factory):
     """One temp location standing in for the user's real database directory.
 
@@ -147,6 +180,11 @@ def _never_touch_the_real_library_database(_library_database_sandbox, monkeypatc
 
     Tests that pass an explicit path are unaffected, and tests needing an empty
     database of their own should pass one rather than relying on this sandbox.
+
+    This redirects the *default* only. A ``database.path`` in configuration
+    still wins, which is why :func:`_never_read_the_real_user_config` keeps the
+    user's real configuration out of the suite as well — the two are one guard
+    in two halves, and it was incomplete with only this one.
     """
     from cuepoint.services import database_service
 

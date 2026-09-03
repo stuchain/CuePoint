@@ -23,6 +23,19 @@ from cuepoint.models.config_models import AppConfig
 from cuepoint.services.interfaces import IConfigService
 
 
+def default_config_file() -> Path:
+    """Return the user's configuration file (``~/.cuepoint/config.yaml``).
+
+    A module-level function rather than an inline expression so the test suite
+    can redirect it, exactly as it redirects
+    :func:`~cuepoint.services.database_service.default_database_path`. Without
+    that seam every test read the real user's configuration, and a
+    ``database.path`` set there overrode the sandbox the suite installs — so
+    tests ran against, and wrote to, the user's real library database.
+    """
+    return Path.home() / ".cuepoint" / "config.yaml"
+
+
 class ConfigService(IConfigService):
     """Implementation of configuration service with multiple sources support."""
 
@@ -39,9 +52,8 @@ class ConfigService(IConfigService):
         """
         # Determine config file path
         if config_file is None:
-            config_dir = Path.home() / ".cuepoint"
-            config_dir.mkdir(parents=True, exist_ok=True)
-            config_file = config_dir / "config.yaml"
+            config_file = default_config_file()
+            config_file.parent.mkdir(parents=True, exist_ok=True)
         else:
             config_file = Path(config_file)
             config_file.parent.mkdir(parents=True, exist_ok=True)
