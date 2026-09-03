@@ -11,7 +11,8 @@ DEC-002 identity lookups a Rekordbox refresh depends on.
 
 from __future__ import annotations
 
-from typing import Iterable, List, Optional
+from dataclasses import dataclass
+from typing import Iterable, List, Optional, Tuple
 
 from cuepoint.models.library_track import (
     IdentityMatch,
@@ -21,6 +22,11 @@ from cuepoint.models.library_track import (
     utc_now_iso,
 )
 from cuepoint.services.interfaces import IDatabaseService, ITrackRepository
+
+# Rows per executemany during a bulk import. Large enough that the statement
+# overhead disappears, small enough that one statement's parameters stay a
+# few megabytes rather than a few hundred at fifty thousand tracks.
+_UPSERT_BATCH_SIZE = 1000
 
 # Column order used for inserts and updates. "id" is excluded: SQLite assigns it.
 _COLUMNS = (
@@ -96,6 +102,49 @@ def _search_clause(query: str):
         f"{column} LIKE ? ESCAPE '{_LIKE_ESCAPE}'" for column in _SEARCH_COLUMNS
     )
     return pattern, f"({sql})", tuple(pattern for _ in _SEARCH_COLUMNS)
+
+
+@dataclass(frozen=True)
+class RelinkedTrack:
+    """A track whose Rekordbox TrackID changed but whose file did not (DEC-002).
+
+    Attributes:
+        rekordbox_track_id: The TrackID the export now uses.
+        previous_rekordbox_track_id: The TrackID the library held before.
+        file_path: The path both agree on, which is what matched them.
+    """
+
+    rekordbox_track_id: str
+    previous_rekordbox_track_id: str
+    file_path: str
+
+
+@dataclass(frozen=True)
+class BulkUpsertResult:
+    """What one bulk upsert changed.
+
+    Attributes:
+        inserted: Tracks the library had not seen before.
+        updated: Tracks matched to an existing row and refreshed.
+        relinked: Every track matched by path because Rekordbox had renumbered
+            it. Listed rather than counted because DEC-002 requires re-links to
+            be reported: a user whose library was rebuilt should be able to see
+            which tracks kept their tags and why.
+    """
+
+    inserted: int = 0
+    updated: int = 0
+    relinked: Tuple[RelinkedTrack, ...] = ()
+
+    @property
+    def total(self) -> int:
+        """Tracks written, inserted and updated together."""
+        return self.inserted + self.updated
+
+    @property
+    def relinked_count(self) -> int:
+        """How many tracks were matched by path after a renumbering."""
+        return len(self.relinked)
 
 
 class TrackRepository(ITrackRepository):
@@ -331,3 +380,134 @@ class TrackRepository(ITrackRepository):
         track.created_at = existing.created_at
         track.updated_at = utc_now_iso()
         return self.update(track), "updated", match.relinked
+
+    # ----------------------------------------------------------- bulk upsert
+
+    def upsert_many_from_rekordbox(
+        self, tracks: Iterable[LibraryTrack], batch_size: int = _UPSERT_BATCH_SIZE
+    ) -> BulkUpsertResult:
+        """Insert or update a whole collection, applying DEC-002 identity.
+
+        The bulk form of :meth:`upsert_from_rekordbox`, and it exists because
+        that method cannot be looped. It runs two lookups and a write per track,
+        each in **its own transaction**: fifty thousand tracks would be fifty
+        thousand commits, which is the difference between seconds and an hour.
+
+        It is not a second identity rule. The same
+        :func:`~cuepoint.models.library_track.resolve_identity` decides every
+        match — that function takes its two lookups as callables precisely so
+        they can be dictionaries here instead of queries. If the rule ever
+        changes, both paths change with it.
+
+        **Identity is resolved against the library as it was before this import
+        began.** The maps are built once, up front, and a row already written by
+        this same import is never matched again. Both halves matter:
+
+        - Without the snapshot, two incoming tracks sharing a file path would
+          collapse into one row — the second would path-match the row the first
+          had just inserted and overwrite it. Rekordbox says they are two
+          tracks, and the library must agree.
+        - Without the claim set, the same would happen through an update.
+
+        The cost is holding the identity of every existing track in memory —
+        roughly 25 MB at fifty thousand tracks, freed when the import ends. A
+        per-batch query instead would be smaller but would see this import's own
+        writes, which is the behaviour above that has to be avoided.
+
+        Args:
+            tracks: Incoming tracks, in any order.
+            batch_size: Rows per ``executemany``. Everything is still one
+                transaction; this only bounds the size of a single statement.
+
+        Returns:
+            A :class:`BulkUpsertResult` with the counts and every re-link.
+
+        Note:
+            Inserted tracks are **not** stamped with their new ``id`` —
+            ``executemany`` does not report one per row. Callers needing ids
+            read them back; ``PlaylistRepository`` already does.
+        """
+        incoming = list(tracks)
+        if not incoming:
+            return BulkUpsertResult()
+
+        by_rekordbox_id, by_path = self._identity_snapshot()
+        claimed: set = set()
+
+        inserted = 0
+        updated = 0
+        relinked: List[RelinkedTrack] = []
+        insert_rows: List[tuple] = []
+        update_rows: List[tuple] = []
+
+        with self._db.transaction() as conn:
+            for track in incoming:
+                match = resolve_identity(
+                    track.rekordbox_track_id,
+                    track.file_path,
+                    by_rekordbox_id.get,
+                    by_path.get,
+                )
+                existing = match.track if match is not None else None
+                if existing is None or existing.id in claimed:
+                    insert_rows.append(self._values(track))
+                    inserted += 1
+                else:
+                    claimed.add(existing.id)
+                    track.id = existing.id
+                    # created_at belongs to the row, not to the incoming export.
+                    track.created_at = existing.created_at
+                    track.updated_at = utc_now_iso()
+                    update_rows.append((*self._values(track), existing.id))
+                    updated += 1
+                    if match is not None and match.relinked:
+                        relinked.append(
+                            RelinkedTrack(
+                                rekordbox_track_id=track.rekordbox_track_id,
+                                previous_rekordbox_track_id=(
+                                    existing.rekordbox_track_id
+                                ),
+                                file_path=track.file_path,
+                            )
+                        )
+
+                if len(insert_rows) >= batch_size:
+                    conn.executemany(_INSERT_SQL, insert_rows)
+                    insert_rows = []
+                if len(update_rows) >= batch_size:
+                    conn.executemany(_UPDATE_SQL, update_rows)
+                    update_rows = []
+
+            if insert_rows:
+                conn.executemany(_INSERT_SQL, insert_rows)
+            if update_rows:
+                conn.executemany(_UPDATE_SQL, update_rows)
+
+        return BulkUpsertResult(
+            inserted=inserted, updated=updated, relinked=tuple(relinked)
+        )
+
+    def _identity_snapshot(self) -> tuple:
+        """Return ``(by_rekordbox_id, by_normalized_path)`` for the whole library.
+
+        Only the columns identity needs are selected. ``LibraryTrack.from_row``
+        tolerates the rest being absent and derives ``normalized_path`` from
+        ``file_path``, so the comparison is the same one the indexed lookups
+        make rather than a second normalization.
+
+        Ordered by id so that a path shared by several rows resolves to the
+        lowest one — matching :meth:`find_by_normalized_path`, which a
+        single-track upsert would have used.
+        """
+        by_rekordbox_id: dict = {}
+        by_path: dict = {}
+        rows = self._db.connect().execute(
+            "SELECT id, rekordbox_track_id, file_path, created_at FROM tracks "
+            "ORDER BY id"
+        )
+        for row in rows:
+            track = LibraryTrack.from_row(row)
+            by_rekordbox_id[track.rekordbox_track_id] = track
+            if track.normalized_path and track.normalized_path not in by_path:
+                by_path[track.normalized_path] = track
+        return by_rekordbox_id, by_path

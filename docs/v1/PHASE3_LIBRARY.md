@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 3: Persistent Rekordbox Library, Detailed Step Specifications
 
-Status: **In progress.** LIBRARY-01, LIBRARY-02 and LIBRARY-03 are implemented;
-LIBRARY-04…LIBRARY-12 remain draft step specs in design-only mode.
+Status: **In progress.** LIBRARY-01…LIBRARY-04 are implemented; LIBRARY-05…LIBRARY-12
+remain draft step specs in design-only mode.
 Implementation of any step below requires an explicit "Implement LIBRARY-NN" instruction, scoped to
 exactly that step, followed by tests, a completion report, and a stop before the next step.
 
@@ -564,7 +564,7 @@ was not run. No `CHANGELOG` entry: nothing user-visible yet, as Phase 4 is what 
 
 ---
 
-## LIBRARY-04 — The Import Service
+## LIBRARY-04 — The Import Service ✅ IMPLEMENTED 2026-09-03
 
 **Objective**: The first import. Parse, upsert every track, store the playlist tree, write the
 source record, and return a summary.
@@ -596,6 +596,97 @@ duplicates; the source record matches the file.
 notice last.
 
 **Complexity**: **M/L**
+
+### ✅ IMPLEMENTED 2026-09-03
+
+**Outcome**: Complete. `services/library_import_service.py` adds `LibraryImportService` and
+`ImportSummary`; `models/library_source.py` and `persistence/library_source_repository.py` build
+the DEC-035 record LIBRARY-01 deliberately left unwritten; `TrackRepository` gains
+`upsert_many_from_rekordbox`; `data/rekordbox.py` gains `has_collection_element`. Both new
+services are registered in `bootstrap.py` behind `ILibraryImportService` and
+`ILibrarySourceRepository`. 87 new tests.
+
+**`upsert_from_rekordbox()` cannot be looped, so the bulk path is new code running the same
+rule.** The spec named that method for every track. It opens **its own transaction per call** —
+fifty thousand tracks would be fifty thousand commits — against a step that also requires "one
+transaction for the whole import, not a commit per track". `upsert_many_from_rekordbox` resolves
+the conflict without a second identity rule: `resolve_identity()` takes its two lookups as
+callables precisely so they can be dictionaries instead of queries, and it is still the only thing
+that decides a match. `TestAgreesWithTheSingleTrackPath` runs both paths over seven scenarios and
+compares the resulting rows, so the day they diverge a test says so rather than a user's tags
+landing on the wrong track.
+
+**Identity is resolved against the library as it was before the import began.** The maps are built
+once and a row already written by this import is never matched again. Without that, two incoming
+tracks sharing a file path would collapse into one — the second would path-match the row the first
+had just inserted and overwrite it. Rekordbox says they are two tracks, so the library must agree.
+The cost is holding the identity of every existing track in memory, about 25 MB at fifty thousand,
+freed when the import ends.
+
+**The real collection has exactly one such pair**: two Rekordbox entries pointing at
+`ajna (be) - on my mind (original mix).mp3`, titled `[5] On My Mind (Original Mix)` and `On My
+Mind (Original Mix)`. It only surfaced because the verification renumbered every TrackID in the
+real export to simulate a Rekordbox database rebuild — 3,879 tracks re-linked and kept their rows,
+and the pair produced one re-link plus one insert rather than one track quietly disappearing. That
+shape is now a unit test.
+
+**A separate service, not a method on `LibraryService`.** The spec pointed at `ILibraryService` as
+"the entry point engine handlers call", and that seam is reused — but the import method lives on
+its own service. An import needs the parser, the playlist mirror, the source record and the
+activity feed; the search endpoint needs none of them, and `LibraryService`'s own docstring says it
+is "reads and counts only". LIBRARY-05 hands this to a background job and LIBRARY-07/09 add the
+refresh diff to it, so the alternative was a service that grows to own the whole phase while the
+search endpoint carries its dependencies. Recorded rather than done silently.
+
+**The source record is written last, and that is the atomicity story.** `DatabaseService` refuses
+nested transactions by design — SQLite has none, and pretending otherwise would silently commit
+partial work — so the import is three explicit batches rather than one transaction. The ordering is
+what makes a partial failure safe: tracks, then playlists, then the source record. An import that
+fails part way leaves no source record, so the library honestly reports that it has not been
+imported from a file, and because every track write is an upsert a retry converges instead of
+duplicating. Two tests cover it, including one whose file passes the `COLLECTION` check and then
+fails while the tracks are being read.
+
+**A file with no `COLLECTION` is refused before anything is written.** `has_collection_element()`
+stops at that element's start tag, so the check costs a few kilobytes — deliberately not
+`validate_xml_file()`, which builds the whole document and then counts every element in it. An
+empty `COLLECTION` is allowed: a new Rekordbox install legitimately has no tracks.
+
+**Three of the first seventeen guards did not guard.** Breaking each behaviour found two tests that
+passed against code with the behaviour removed, and one piece of code that no test could
+distinguish from its absence:
+
+- Nothing covered "a path shared by several rows resolves to the lowest id", which is what keeps
+  the bulk and single-track paths agreeing when a library legitimately holds two rows for one file.
+- The source-record ordering test used a file rejected *before* any work started, so it passed
+  against a service that wrote the record first. It now uses a file that fails mid-parse.
+- `matches_file_on_disk` opened with `if not self.is_stat_known: return False`, which was
+  unreachable in effect — a recorded `None` never equals a real modified time. Removed rather than
+  guarded; `is_stat_known` stays as the property the refresh flow will ask.
+
+With those addressed, **16 of 16 guards fail when the thing they protect is removed**, and every
+source file was restored byte-identically.
+
+**The DoD, against the real export.** Imported completely (3,880 tracks, 234 nodes, 13,870 entries
+in 0.47s), then twice more: zero inserted, 3,880 updated, no duplicate rows, primary keys and
+`created_at` unchanged, and one source record matching the file's modified time and size. The
+renumbered variant re-linked 3,879 tracks onto their existing rows, and the playlist tree still
+rebuilt identically to that XML.
+
+**Verified in the running app.** The import ran through `bootstrap_services()` and the DI container
+the engine uses — the wiring check, not just the class — and the completion event reached the
+Activity panel, which rendered "Library imported — 3880 tracks, 3880 new, 206 playlists" with its
+detail, needing no renderer change. `config.yaml` was restored byte-for-byte and the real library
+was never written to (0 tracks, 0 nodes, 0 source rows, version 6).
+
+**Verification**: 87 new tests — 13 source model, 9 source repository, 31 bulk upsert, 34 import
+service. `python scripts/run_tests.py --all --no-slow`: 2604 unit, 315 integration, 7 regression,
+4 system, all passing. `ruff check` and `ruff format --check` clean; `check_no_qt_in_core.py`,
+`check_desktop_version_coupling.py` and `smoke_engine_health.py` pass. `mypy src/` adds only the
+`import-not-found` noise every module here produces — its one real finding, in
+`library_source.py`, was fixed. No renderer, Electron or engine API file was touched, so the
+desktop contract is unchanged and E2E was not run; LIBRARY-06 is what exposes this. No `CHANGELOG`
+entry: still nothing a user can reach.
 
 ---
 

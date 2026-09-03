@@ -35,7 +35,10 @@ if TYPE_CHECKING:
     # Annotations referencing them are quoted forward references.
     from cuepoint.incrate.beatport_api_models import DiscoveredTrack
     from cuepoint.migrations import Migration
+    from cuepoint.models.library_source import LibrarySource
     from cuepoint.models.library_track import IdentityMatch, LibraryTrack
+    from cuepoint.persistence.track_repository import BulkUpsertResult
+    from cuepoint.services.library_import_service import ImportSummary
     from cuepoint.models.rekordbox_playlist import (
         PlaylistTreeWriteResult,
         RekordboxPlaylist,
@@ -730,6 +733,13 @@ class ITrackRepository(ABC):
         """Insert or update an incoming Rekordbox track, applying DEC-002."""
         ...
 
+    @abstractmethod
+    def upsert_many_from_rekordbox(
+        self, tracks: Iterable["LibraryTrack"], batch_size: int = 1000
+    ) -> "BulkUpsertResult":
+        """Insert or update a whole collection in one transaction (DEC-002)."""
+        ...
+
 
 class IPlaylistRepository(ABC):
     """Interface for the mirrored Rekordbox playlist tree (DEC-031).
@@ -790,6 +800,49 @@ class IPlaylistRepository(ABC):
     @abstractmethod
     def count_entries(self) -> int:
         """Return the number of stored track references."""
+        ...
+
+
+class ILibrarySourceRepository(ABC):
+    """Interface for the DEC-035 record of the file a library was imported from.
+
+    One row: the library is singular. The write path enforces that rather than
+    the schema, so a later release can grow an import history without a
+    migration that moves data.
+    """
+
+    @abstractmethod
+    def replace(self, source: "LibrarySource") -> "LibrarySource":
+        """Make this the library's only source record."""
+        ...
+
+    @abstractmethod
+    def get(self) -> Optional["LibrarySource"]:
+        """Return the current source record, or None if nothing was imported."""
+        ...
+
+    @abstractmethod
+    def clear(self) -> None:
+        """Forget where the library came from."""
+        ...
+
+
+class ILibraryImportService(ABC):
+    """Interface for importing a Rekordbox export into the library.
+
+    Separate from :class:`ILibraryService`, which reads the library: an import
+    needs the parser, the playlist mirror and the activity feed, and a search
+    endpoint needs none of them.
+    """
+
+    @abstractmethod
+    def import_rekordbox_xml(self, xml_path: str) -> "ImportSummary":
+        """Import an export, returning what the import did."""
+        ...
+
+    @abstractmethod
+    def current_source(self) -> Optional["LibrarySource"]:
+        """Return the file the library was imported from, or None."""
         ...
 
 

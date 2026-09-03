@@ -42,6 +42,8 @@ from cuepoint.services.interfaces import (
     IPrivacyService,
     IProcessorService,
     ITelemetryService,
+    ILibraryImportService,
+    ILibrarySourceRepository,
     IPlaylistRepository,
     ITrackRepository,
 )
@@ -52,6 +54,9 @@ from cuepoint.services.onboarding_service import OnboardingService
 from cuepoint.services.privacy_service import PrivacyService
 from cuepoint.persistence.activity_repository import ActivityRepository
 from cuepoint.persistence.job_repository import JobRepository
+from cuepoint.persistence.library_source_repository import (
+    LibrarySourceRepository,
+)
 from cuepoint.persistence.playlist_repository import PlaylistRepository
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.activity_service import ActivityService
@@ -108,6 +113,31 @@ def bootstrap_services() -> None:
         return PlaylistRepository(database_service=container.resolve(IDatabaseService))
 
     container.register_factory(IPlaylistRepository, create_playlist_repository)
+
+    def create_library_source_repository() -> ILibrarySourceRepository:
+        """Build the DEC-035 source-record repository."""
+        return LibrarySourceRepository(
+            database_service=container.resolve(IDatabaseService)
+        )
+
+    container.register_factory(
+        ILibrarySourceRepository, create_library_source_repository
+    )
+
+    def create_library_import_service() -> ILibraryImportService:
+        """Build the Rekordbox import service."""
+        from cuepoint.services.library_import_service import (
+            LibraryImportService,
+        )
+
+        return LibraryImportService(
+            track_repository=container.resolve(ITrackRepository),
+            playlist_repository=container.resolve(IPlaylistRepository),
+            source_repository=container.resolve(ILibrarySourceRepository),
+            activity_service=container.resolve(IActivityService),
+        )
+
+    container.register_factory(ILibraryImportService, create_library_import_service)
 
     # Library entry point. Callers depend on this rather than on repositories,
     # so persistence details stay behind the seam.

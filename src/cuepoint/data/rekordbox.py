@@ -1716,3 +1716,42 @@ def _playlist_track_refs(elem: ET.Element) -> List[str]:
         if ref:
             refs.append(ref)
     return refs
+
+
+def has_collection_element(xml_path: str) -> bool:
+    """Return True if the file contains a ``COLLECTION`` element.
+
+    A Rekordbox export without one is malformed, and importing it would produce
+    an empty library that looks like a successful import of nothing — the exact
+    failure LIBRARY-04 has to turn into a clear error. An empty ``COLLECTION``
+    is a different thing and answers True: a new Rekordbox install legitimately
+    has no tracks yet.
+
+    Stops at the element's start tag, so this costs a few kilobytes of parsing
+    rather than a second pass over the file. Deliberately not
+    ``validate_xml_file()``, which builds the whole document and then counts
+    every element in it.
+
+    Raises:
+        FileNotFoundError: If the file does not exist.
+        ValueError: If the file exceeds :data:`MAX_XML_SIZE_BYTES`.
+        ET.ParseError: If the XML is malformed.
+    """
+    if not os.path.exists(xml_path):
+        raise FileNotFoundError(f"XML file not found: {xml_path}")
+
+    size = os.path.getsize(xml_path)
+    if size > MAX_XML_SIZE_BYTES:
+        raise ValueError(
+            f"XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). "
+            "Refusing to parse to prevent resource exhaustion."
+        )
+
+    with open(xml_path, "rb") as handle:
+        for event, elem in ET.iterparse(handle, events=("start",)):
+            if elem.tag == "COLLECTION":
+                return True
+            if elem.tag == "TRACK":
+                # Inside PLAYLISTS with no COLLECTION seen: there is none.
+                break
+    return False
