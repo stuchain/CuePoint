@@ -431,7 +431,7 @@ class TrackRepository(ITrackRepository):
         if not incoming:
             return BulkUpsertResult()
 
-        by_rekordbox_id, by_path = self._identity_snapshot()
+        by_rekordbox_id, by_path = self.identity_snapshot()
         claimed: set = set()
 
         inserted = 0
@@ -487,13 +487,16 @@ class TrackRepository(ITrackRepository):
             inserted=inserted, updated=updated, relinked=tuple(relinked)
         )
 
-    def _identity_snapshot(self) -> tuple:
+    def identity_snapshot(self) -> tuple:
         """Return ``(by_rekordbox_id, by_normalized_path)`` for the whole library.
 
-        Only the columns identity needs are selected. ``LibraryTrack.from_row``
-        tolerates the rest being absent and derives ``normalized_path`` from
-        ``file_path``, so the comparison is the same one the indexed lookups
-        make rather than a second normalization.
+        Whole rows rather than the four columns identity strictly needs, because
+        two callers share this: the bulk upsert, which needs ``id`` and
+        ``created_at``, and LIBRARY-07's refresh diff, which also compares every
+        Rekordbox-sourced field. One method means the two cannot drift on *what
+        a match is* — and a preview that classified a track differently from the
+        apply that follows it would be worse than no preview. The cost is
+        roughly 35 MB at fifty thousand tracks, freed when the operation ends.
 
         Ordered by id so that a path shared by several rows resolves to the
         lowest one — matching :meth:`find_by_normalized_path`, which a
@@ -501,10 +504,7 @@ class TrackRepository(ITrackRepository):
         """
         by_rekordbox_id: dict = {}
         by_path: dict = {}
-        rows = self._db.connect().execute(
-            "SELECT id, rekordbox_track_id, file_path, created_at FROM tracks "
-            "ORDER BY id"
-        )
+        rows = self._db.connect().execute(f"{_SELECT} ORDER BY id")
         for row in rows:
             track = LibraryTrack.from_row(row)
             by_rekordbox_id[track.rekordbox_track_id] = track

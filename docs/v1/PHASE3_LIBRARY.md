@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 3: Persistent Rekordbox Library, Detailed Step Specifications
 
-Status: **In progress.** LIBRARY-01…LIBRARY-06 are implemented; LIBRARY-07…LIBRARY-12
+Status: **In progress.** LIBRARY-01…LIBRARY-07 are implemented; LIBRARY-08…LIBRARY-12
 remain draft step specs in design-only mode.
 Implementation of any step below requires an explicit "Implement LIBRARY-NN" instruction, scoped to
 exactly that step, followed by tests, a completion report, and a stop before the next step.
@@ -919,7 +919,7 @@ builds the page, and that is when a user can do this without a console.
 
 ---
 
-## LIBRARY-07 — Computing a Refresh Diff
+## LIBRARY-07 — Computing a Refresh Diff ✅ IMPLEMENTED 2026-09-03
 
 **Objective**: Compare a re-read XML against the stored library and produce a diff, **writing
 nothing** (DEC-032).
@@ -949,6 +949,79 @@ is exercised against a real export edited in known ways.
 identity, and it is worth a regression test written to fail first.
 
 **Complexity**: **L**
+
+### ✅ IMPLEMENTED 2026-09-03
+
+**Outcome**: Complete. `models/refresh_diff.py` defines `RefreshDiff` and what "changed" means;
+`LibraryImportService.compute_refresh_diff()` computes it and writes nothing. 49 new tests — 45
+unit, 4 regression.
+
+**The diff and the import must classify the same way, so they share the snapshot.**
+`_identity_snapshot` became the public `identity_snapshot`, returning whole rows, and both the bulk
+upsert and the diff call it. The upsert now carries a few columns it does not need; that is the
+price of the two being unable to drift on *what a match is*. A preview that classified a track
+differently from the apply that follows it would have a user confirm one thing and get another,
+which is worse than having no preview. `TestTheDiffMatchesTheImport` runs both over seven edit
+scenarios and compares the counts.
+
+**Membership is compared by library row, not by TrackID — and that was worth finding.** The first
+version compared the Rekordbox ids a playlist held. Run against the real export with every id
+renumbered, it reported **185 of 206 playlists as edited** when not one had been touched: the ids
+had changed, the tracks had not. Comparing the *library row* each reference resolves to brings that
+to 5, and those 5 genuinely changed — they held the one track that could not re-link. A reference
+the export does not contain resolves to nothing and is dropped rather than counted, because it
+would not have been stored either way.
+
+**Incidental fields.** Playing a track increments its play count, so a refresh after a weekend of
+DJing would truthfully announce that the whole library changed. `play_count` is compared and stored
+like everything else, but a track whose *only* difference is an incidental field is not counted as
+notable. The rule lives with the comparison rather than with one of its readers, which is what the
+spec asked for; the field list travels with each entry so a preview can still show it.
+
+**Counts are exact, detail is capped.** A first refresh after a Rekordbox rebuild can legitimately
+touch every track in a fifty-thousand-track library. Each category keeps an exact count, a bounded
+sample (500 by default) and a `truncated` flag — "counts plus enough detail for a preview, without
+materializing 50,000 rows twice".
+
+**A BPM tolerance was written and then removed.** The theory was that ``"124.00"`` and a stored
+float might not compare equal. Measured, they always do: the parser turns ``"124.00"`` and
+``"124.000"`` into ``124.0``, and SQLite returns that double unchanged. Nothing could distinguish
+the tolerance from its absence, so it went — the same call as LIBRARY-06's unreachable guard, for
+the same reason.
+
+**Three of the first sixteen guards did not guard**, two of them mine and one a bad mutation:
+
+- Nothing exercised the BPM tolerance because nothing could; removing it settled that.
+- The empty-diff mutation was `return False or not any(...)`, which is a no-op. `False and` is the
+  real one, and the tests catch it.
+- The lowest-id path rule is covered by the bulk-upsert tests, not the diff's; the mutation was
+  pointed at the wrong file.
+
+With those addressed, **15 of 15 fail when the thing they protect is removed**, sources restored
+byte-identically.
+
+**The regression test the spec asked for, written to fail first.**
+`src/tests/regression/RB-RELINK-NOT-REMOVED/` pins the removed-versus-re-linked distinction — "where
+irreversible deletion meets identity". Resolving identity by TrackID alone makes 3 of its 4 tests
+fail, reporting the whole library as removed and re-added. It also asserts the opposite mistake:
+that genuine deletions are still reported, so it cannot pass against a diff that lost the category.
+
+**Every category exercised against the real export, edited in known ways.** Diffing the 3,880-track
+file against itself: **empty, in 0.43s, with the library byte-identical afterwards**. Then one track
+removed → 1 removed; one title changed → 1 changed with `fields=('title',)`, notable; every play
+count bumped → 3,880 changed, none notable; every TrackID renumbered → 3,879 re-linked, 0 changed,
+and the 1 removed + 1 added that the duplicate-path pair makes unavoidable; one file moved → 1
+changed with `fields=('file_path',)`, not removed; one track added → 1 added; a playlist deleted →
+1 playlist removed. Each variant was then imported, and the import's own counts matched what the
+diff had promised.
+
+**Verification**: `python scripts/run_tests.py --all --no-slow` — 2715 unit, 315 integration, 11
+regression, 4 system. `ruff check`/`format` clean; `check_no_qt_in_core.py`,
+`check_desktop_version_coupling.py` and `smoke_engine_health.py` pass. `mypy src/` adds only
+`import-not-found` noise — its three real findings, all stale annotations from restructuring
+`_diff_tracks`, were fixed. No renderer, Electron or engine API file was touched: LIBRARY-10 is
+where the diff reaches the app, so the desktop contract is unchanged and E2E was not re-run. No
+`CHANGELOG` entry — nothing user-visible until the preview has somewhere to appear.
 
 ---
 
