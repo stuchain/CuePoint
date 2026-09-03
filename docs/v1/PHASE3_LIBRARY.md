@@ -42,6 +42,7 @@ deleting, and driving it all from a job.
 | Decision | Substance | Step |
 | --- | --- | --- |
 | DEC-034 | Capture rating, play count, colour, date added, comment, total time, bitrate | LIBRARY-01, LIBRARY-02 |
+| DEC-038 | Total time lands in the existing `duration_seconds`, not a second column | LIBRARY-01, LIBRARY-02 |
 | DEC-035 | The library remembers the XML it was imported from | LIBRARY-01, LIBRARY-04 |
 | DEC-031 | Rekordbox playlists mirrored as read-only source data | LIBRARY-03 |
 | DEC-002 | TrackID identity with a normalized-path fallback, re-links reported | LIBRARY-04, LIBRARY-07 |
@@ -144,8 +145,9 @@ entries, which is deliberately the only place the column list lives.
 **Schema**:
 
 - `tracks` gains `rating INTEGER`, `play_count INTEGER`, `colour TEXT`, `date_added TEXT`,
-  `comment TEXT`, `total_time INTEGER`, `bitrate INTEGER`. All nullable: Rekordbox omits them
-  freely, and a missing rating is not a zero rating.
+  `comment TEXT`, `bitrate INTEGER`. All nullable: Rekordbox omits them freely, and a missing
+  rating is not a zero rating. DEC-034's seventh field, total time, goes into the existing
+  `duration_seconds` column instead of a new one (DEC-038).
 - `library_source` holds one row per library: `xml_path`, `xml_modified_at`, `xml_size_bytes`,
   `imported_at`, `track_count`, `playlist_count`. One row, because DEC-035 makes the library
   singular; a table rather than a config key so it can grow a history later without a migration
@@ -171,9 +173,16 @@ column added to the schema and not to that tuple is silently never written.
 ### ✅ IMPLEMENTED 2026-09-03
 
 **Outcome**: Complete, and smaller than the spec's own worry. `m0005_track_fields_and_source.py`
-adds the seven DEC-034 columns with seven `ALTER TABLE ADD COLUMN` statements and creates
-`library_source`. `LibraryTrack` gained the seven fields, `to_dict`/`from_row` carry them, and
-`_COLUMNS` gained the seven names. Nothing else changed: `track_to_dict` in `library_api.py` is an
+adds six DEC-034 columns with `ALTER TABLE ADD COLUMN` statements and creates `library_source`.
+`LibraryTrack` gained those six fields, `to_dict`/`from_row` carry them, and `_COLUMNS` gained the
+six names.
+
+**Amended 2026-09-03 by DEC-038.** As first written this step added a seventh column,
+`total_time` — and LIBRARY-02 then showed why that was wrong: `tracks` had held
+`duration_seconds` for the same quantity since migration 0002, and it is `duration_seconds` the
+engine API exposes. Migration 0005 was corrected rather than followed by one that drops the column
+it had just added, because it had not shipped and no database outside this machine had applied it.
+The rest of this section describes the step as it now stands. Nothing else changed: `track_to_dict` in `library_api.py` is an
 explicit field list, so the public search response is byte-identical, and `REVERTABLE_FIELDS` in
 `ActivityService` was deliberately left alone — these are Rekordbox source values, nothing writes
 history for them yet, and Phase 6 brings CuePoint's own rating.
@@ -194,7 +203,7 @@ replaces the record); readers take the most recent row. `xml_modified_at` and `x
 nullable for a related reason: a `stat` that fails should cost the refresh its "unchanged?"
 shortcut, not cost the user their import.
 
-*`rating` is validated 0–5 in the model.* LIBRARY-02 owns the 0/51/102/153/204/255 → 0–5
+*`rating` is validated 0-5 in the model.* LIBRARY-02 owns the 0/51/102/153/204/255 → 0–5
 conversion, but the column is defined here, and a raw 255 reaching the database reads as a
 nonsense rating rather than failing. `LibraryTrack.__post_init__` now rejects anything outside
 0–5, so forgetting the conversion in LIBRARY-02 is a loud failure at the boundary that should have
@@ -250,7 +259,8 @@ playlists in memory, which is right for a single playlist run and wrong for a 50
 implementation time rather than trusted from here: `Rating` → `rating` (Rekordbox stores 0/51/102/
 153/204/255 for 0–5 stars; store the star count, not the raw value, and say so in the code),
 `PlayCount` → `play_count`, `Colour`/`Color` → `colour`, `DateAdded` → `date_added`,
-`Comments` → `comment`, `TotalTime` → `total_time`, `BitRate` → `bitrate`, `AverageBpm` → `bpm`,
+`Comments` → `comment`, `TotalTime` → `duration_seconds` (DEC-038), `BitRate` → `bitrate`,
+`AverageBpm` → `bpm`,
 `Tonality` → `key`, `Genre`, `Album`, `Year`.
 
 **Tests**: A fixture XML exercising every field, a track missing every optional field, the
@@ -334,12 +344,23 @@ tracks. Parsing also stops at the end of `COLLECTION` rather than reading on int
 whose `<TRACK Key="…"/>` references would otherwise parse as tracks with no title and no fields.
 The 50,000-track test is marked `slow` and holds under 8 MiB.
 
-**One thing the design should settle before Phase 4: `duration_seconds` is now dead.** The spec
-maps `TotalTime` → `total_time`, and nothing writes `duration_seconds` — which is the column
-`library_api.py`'s public `track_to_dict` actually exposes. After importing the real collection,
-`total_time` is populated on 3,879 of 3,880 tracks and `duration_seconds` on none, so the API
-reports no duration for any track. The two columns are the same quantity. Implemented as the spec
-literally says rather than silently writing both; **LIBRARY-06 or Phase 4 needs to pick one.**
+**Two columns for a track's length — resolved as DEC-038.** As first implemented, the spec's
+literal mapping (`TotalTime` → `total_time`) left `duration_seconds` — the column
+`library_api.py`'s public `track_to_dict` actually exposes — empty on all 3,880 imported tracks
+while the real value sat in a column nothing read. They are the same quantity. Raised rather than
+silently double-written, and then settled: `TotalTime` is imported into `duration_seconds`,
+`total_time` does not exist, migration 0005 was corrected, and the API response shape is unchanged
+because it already named `duration_seconds`. Two tests fail if a second length column comes back.
+
+**`get_track_locations()`'s truncation is fixed, not just noted.** It is a real bug on the user's
+own collection, and DEC-036 is about not re-homing inKey onto the library — not about leaving a
+defect in it. It now decodes through `location_to_path` and keeps only its own local-lookup steps.
+Regression test and write-up: `src/tests/regression/RB-LOCATION-PUNCTUATION/`. It fails 6 of its 7
+cases against the old code, including one that puts a real file on disk and shows the returned path
+does not reach it. Fixing it removed a second latent bug in the same lines: the old
+`lstrip("/")` under `os.name == "nt"` turned a macOS-exported `/Users/...` path into a *relative*
+one, which `resolve()` then anchored to the current working directory — a wrong file rather than an
+honest miss.
 
 **Verified in the running app.** The real collection was imported into a scratch database, the
 app's `database.path` was pointed at it, and the packaged app searched it: "Themba" returned 21
@@ -361,14 +382,33 @@ raw XML; DEC-002's `find_by_rekordbox_id` and `find_by_path` resolve to the same
 re-running the same import through `upsert_from_rekordbox` gives 0 inserted, 3,880 updated, 0
 re-links and no duplicates.
 
-**Verification**: 84 new tests in `test_rekordbox_library.py` (including the `slow` 50,000-track
-case, which was run). `python scripts/run_tests.py --unit --no-slow` — 2390 passed, 45 skipped.
-`src/tests/unit/engine` — 121 passed. Integration — 315 passed, 12 skipped. `ruff check` and
-`ruff format --check` clean; `check_no_qt_in_core.py`, `check_desktop_version_coupling.py` and
-`smoke_engine_health.py` pass. `mypy src/` 1182 against a 1179 baseline, the three new ones being
-the `import-not-found` noise every module in this repo produces. No renderer, Electron or engine
-API file was touched, so the desktop contract is unchanged and E2E was not run. No `CHANGELOG`
-entry: nothing user-visible yet.
+**A third bug, found by tripping over it.** Verifying DEC-038 in the running app meant pointing
+`database.path` at a scratch library — and with that set, `test_engine_library_search.py` began
+failing on a unique-constraint violation, because the whole suite was resolving to that database.
+`conftest.py` has an autouse guard named `_never_touch_the_real_library_database` whose own
+docstring says writing to the user's library "has happened, so this is a guard rather than a
+precaution" — but it redirects `default_database_path()`, which `DatabaseService` consults **last**.
+A `database.path` in the user's real `~/.cuepoint/config.yaml` takes precedence, and the guard did
+nothing at all. The root cause is broader than the database: `ConfigService` defaulted to the real
+`~/.cuepoint/config.yaml`, so every test read whatever the person running it had configured, and
+behaved differently from CI for reasons nothing in the output explained.
+
+Fixed by giving `ConfigService` a `default_config_file()` seam — the same shape as
+`default_database_path()`, which the suite already redirects — and a second autouse fixture that
+sandboxes it. `test_user_data_isolation.py` asserts both halves, and asserts the *bootstrapped
+container's* database service, not a bare one: a bare `DatabaseService()` has no config service and
+was never at risk, so a test of that would have passed throughout. Demonstrated end to end by
+setting a `database.path` in the real config and watching the container resolve to it with the
+guard removed, and to the sandbox with it in place; the config file was restored byte-for-byte.
+
+**Verification** (re-run after DEC-038, the location fix and the isolation fix): 86 tests in
+`test_rekordbox_library.py` including the `slow` 50,000-track case, and 7 in
+`src/tests/regression/`. `python scripts/run_tests.py --all --no-slow`. `src/tests/unit/engine`.
+Integration. `ruff check` and `ruff format --check` clean; `check_no_qt_in_core.py`,
+`check_desktop_version_coupling.py` and `smoke_engine_health.py` pass. `mypy src/` adds only the
+`import-not-found` noise every module in this repo produces. The engine API response shape is
+unchanged — `duration_seconds` was always the field it exposed — so no desktop-contract file
+needed to move and E2E was not run. No `CHANGELOG` entry: nothing user-visible yet.
 
 ---
 

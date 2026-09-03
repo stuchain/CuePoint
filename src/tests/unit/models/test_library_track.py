@@ -117,7 +117,6 @@ class TestLibraryTrack:
         assert track.colour is None
         assert track.date_added is None
         assert track.comment is None
-        assert track.total_time is None
         assert track.bitrate is None
 
     @pytest.mark.parametrize("stars", [0, 1, 2, 3, 4, 5])
@@ -135,8 +134,15 @@ class TestLibraryTrack:
             _track(rating=raw)
 
     def test_numeric_dec034_fields_coerced_to_int(self):
-        track = _track(rating="3", play_count="17", total_time="421", bitrate="320")
-        assert (track.rating, track.play_count, track.total_time, track.bitrate) == (
+        track = _track(
+            rating="3", play_count="17", duration_seconds="421", bitrate="320"
+        )
+        assert (
+            track.rating,
+            track.play_count,
+            track.duration_seconds,
+            track.bitrate,
+        ) == (
             3,
             17,
             421,
@@ -170,7 +176,6 @@ class TestLibraryTrack:
             colour="0xFF007F",
             date_added="2024-03-01",
             comment="peak time",
-            total_time=380,
             bitrate=320,
         )
         restored = LibraryTrack.from_row(track.to_dict())

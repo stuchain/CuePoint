@@ -102,6 +102,61 @@ def engine(library_db):
         thread.join(timeout=2)
 
 
+@pytest.fixture
+def seeded_from_rekordbox(library_db, tmp_path):
+    """One track imported the way a real import will, straight from an export."""
+    from cuepoint.data.rekordbox import iter_collection_tracks
+    from cuepoint.services.interfaces import ITrackRepository
+    from cuepoint.utils.di_container import get_container
+
+    xml = tmp_path / "export.xml"
+    xml.write_text(
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<DJ_PLAYLISTS Version="1.0.0"><COLLECTION Entries="1">\n'
+        '<TRACK TrackID="900" Name="Tataki" Artist="Argy" Genre="Melodic House"'
+        ' Album="Tataki" Label="Anjunadeep" Tonality="10B" AverageBpm="122.00"'
+        ' Year="2022" TotalTime="328" BitRate="320" Rating="204" PlayCount="7"'
+        ' DateAdded="2022-10-03" Comments="peak time"'
+        ' Location="file://localhost/music/Tataki.mp3"/>\n'
+        "</COLLECTION></DJ_PLAYLISTS>\n",
+        encoding="utf-8",
+    )
+
+    repo = get_container().resolve(ITrackRepository)
+    for track in iter_collection_tracks(str(xml)):
+        repo.add(track)
+    return library_db
+
+
+@pytest.mark.unit
+class TestImportedTrackReachesTheApi:
+    """DEC-038: the response field that carries a length must actually carry one.
+
+    Before DEC-038 the parser wrote TotalTime into a separate total_time column
+    and this endpoint — whose shape has always named duration_seconds — reported
+    null for every imported track. This is the whole path in one test: export
+    attribute, parser, repository, HTTP response.
+    """
+
+    def test_duration_comes_through_from_totaltime(self, seeded_from_rekordbox, engine):
+        payload = _get_json(engine, "/api/v1/library/search?q=Tataki")
+
+        (track,) = payload["tracks"]
+        assert track["duration_seconds"] == 328
+
+    def test_the_other_imported_fields_come_through_too(
+        self, seeded_from_rekordbox, engine
+    ):
+        payload = _get_json(engine, "/api/v1/library/search?q=Tataki")
+
+        (track,) = payload["tracks"]
+        assert track["bpm"] == 122.0
+        assert track["key"] == "10B"
+        assert track["year"] == 2022
+        assert track["label"] == "Anjunadeep"
+        assert track["file_path"] == "/music/Tataki.mp3"
+
+
 @pytest.mark.unit
 class TestResponseShape:
     def test_returns_the_documented_envelope(self, seeded, engine):

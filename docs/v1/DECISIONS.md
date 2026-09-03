@@ -697,7 +697,8 @@ request for the length of a 50,000-track parse and duplicate progress reporting 
 
 ## DEC-034 — Capture Every Useful Rekordbox Field Now
 
-**Status**: Approved
+**Status**: Approved · **Amended by DEC-038** (total time lands in the existing
+`duration_seconds` column rather than a new one)
 
 **Decision**: Import captures rating, play count, colour, date added, comments, total time and
 bitrate in addition to today's fields, in one migration.
@@ -707,7 +708,7 @@ re-import their collection. These are the fields Phase 4 sorts and filters by an
 with.
 
 **Implications**: Migration 0005 extends `tracks`; the parser gains one pass over the new
-attributes.
+attributes. Six of the seven fields became new columns — see DEC-038 for total time.
 
 **Decided with**: User · **Date**: 2026-09-02
 
@@ -761,3 +762,39 @@ and caching questions, and Phase 7 is already scoped to do it properly.
 claims otherwise.
 
 **Decided with**: User · **Date**: 2026-09-02
+
+---
+
+## DEC-038 — One Column for a Track's Length
+
+**Status**: Approved · **Amends**: DEC-034
+
+**Decision**: Rekordbox's `TotalTime` is imported into the existing
+`tracks.duration_seconds` column. The separate `total_time` column DEC-034's field list implied is
+not created.
+
+**Reason**: DEC-034 listed "total time" among the fields to capture without noticing that `tracks`
+had held `duration_seconds` for the same quantity since migration 0002. Implementing the list
+literally produced two columns for one number, and the wrong one was the one the engine API
+exposes: after importing a real 3,880-track collection, `total_time` was populated on 3,879 tracks
+and `duration_seconds` on none, so `/api/v1/library/search` reported no duration for anything.
+
+`duration_seconds` is the name that survives because it is the domain's, not the vendor's — its
+unit is in the name, it is already in the public response shape, `engineClient.ts` and
+`cuepointBridge.types.ts`, and a model named after a Rekordbox XML attribute would leak the import
+format into every phase that reads a track. Phase 8's export maps it back to `TotalTime` in one
+line.
+
+Migration 0005 was corrected rather than followed by a migration that drops the column it had just
+added: it had not shipped, and no database outside the development machine had ever applied it.
+That is the only circumstance in which this repository's append-only migration rule gives way, and
+it is recorded here rather than left to be inferred from the diff.
+
+**Implications**:
+- DEC-034 still captures seven fields; only the column it lands in changed for one of them.
+- `LibraryTrack.total_time` does not exist. The engine API response shape is unchanged.
+- Pinned by tests in `test_rekordbox_library.py` and `test_library_source_schema.py` that fail if a
+  second length column reappears.
+
+**Decided with**: User (delegated: "do whatever you think better and most professional") ·
+**Date**: 2026-09-03

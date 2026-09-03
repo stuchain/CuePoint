@@ -42,7 +42,6 @@ _COLUMNS = (
     "colour",
     "date_added",
     "comment",
-    "total_time",
     "bitrate",
     "created_at",
     "updated_at",

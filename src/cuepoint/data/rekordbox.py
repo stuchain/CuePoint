@@ -1385,8 +1385,8 @@ def _optional_int(value: Optional[str]) -> Optional[int]:
 def _measured_int(value: Optional[str]) -> Optional[int]:
     """Parse a quantity whose zero means "not known", returning None for it.
 
-    Year, total time and bitrate are quantities a track cannot actually have
-    zero of, and Rekordbox writes 0 when it has no value — 136 tracks with
+    Year, duration and bitrate are quantities a track cannot actually have zero
+    of, and Rekordbox writes 0 when it has no value — 136 tracks with
     ``Year="0"`` and 259 with ``BitRate="0"`` in a real 3,880-track export.
     Storing those zeroes would sort unanalyzed tracks as the oldest and the
     worst-quality in Phase 4, which is DEC-034's "a missing rating is not a zero
@@ -1487,7 +1487,9 @@ def _library_track_from_element(elem: ET.Element) -> Optional[LibraryTrack]:
         colour=_optional_text(get("Colour") or get("Color")),
         date_added=_optional_text(get("DateAdded")),
         comment=_optional_text(get("Comments")),
-        total_time=_measured_int(get("TotalTime")),
+        # TotalTime lands in duration_seconds, the column tracks has held since
+        # migration 0002 for the same quantity (DEC-038).
+        duration_seconds=_measured_int(get("TotalTime")),
         bitrate=_measured_int(get("BitRate")),
     )
 

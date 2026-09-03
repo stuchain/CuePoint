@@ -8,12 +8,19 @@ both are what a Phase 3 import needs to write, and both are additive.
 
 DEC-034 — every useful Rekordbox field, now
 -------------------------------------------
-Rating, play count, colour, date added, comment, total time and bitrate. Adding
-a column later is cheap; *backfilling* one is not, because the only source for
-these values is the user's Rekordbox export — every user would have to re-import
-their whole collection to fill in a column added in a later release. These are
-the fields Phase 4 sorts and filters by and Phase 6 organizes with, so they are
+Rating, play count, colour, date added, comment and bitrate. Adding a column
+later is cheap; *backfilling* one is not, because the only source for these
+values is the user's Rekordbox export — every user would have to re-import their
+whole collection to fill in a column added in a later release. These are the
+fields Phase 4 sorts and filters by and Phase 6 organizes with, so they are
 captured on the first import rather than the second.
+
+DEC-034's seventh field, **total time, is deliberately not here**. ``tracks``
+has held ``duration_seconds`` since migration 0002 and it is the same quantity,
+so ``TotalTime`` is imported into that column instead (DEC-038). DEC-034 was
+written without noticing the existing column; adding a second one would have
+left the engine API exposing the empty one, and every phase after this one
+choosing between two names for a track's length.
 
 Every one is nullable, and none has a default. Rekordbox omits these attributes
 freely, and the distinction matters: a track with no ``Rating`` attribute is
@@ -65,8 +72,6 @@ ALTER TABLE tracks ADD COLUMN colour     TEXT;
 ALTER TABLE tracks ADD COLUMN date_added TEXT;
 
 ALTER TABLE tracks ADD COLUMN comment    TEXT;
-
-ALTER TABLE tracks ADD COLUMN total_time INTEGER;
 
 ALTER TABLE tracks ADD COLUMN bitrate    INTEGER;
 

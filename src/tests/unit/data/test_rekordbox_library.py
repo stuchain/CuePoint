@@ -227,7 +227,7 @@ class TestFieldMapping:
         assert track.play_count == 7
         assert track.date_added == "2022-10-03"
         assert track.comment == "peak time"
-        assert track.total_time == 328
+        assert track.duration_seconds == 328
         assert track.bitrate == 320
         assert track.file_path == "/Users/stu/Desktop/rekordbox collection/Tataki.mp3"
 
@@ -237,6 +237,18 @@ class TestFieldMapping:
             track.normalized_path
             == "/users/stu/desktop/rekordbox collection/tataki.mp3"
         )
+
+    def test_total_time_is_imported_into_duration_seconds(self, tmp_path):
+        """DEC-038: one column for a track's length, not two.
+
+        tracks has held duration_seconds since migration 0002, and it is the
+        field the engine API exposes. A separate total_time column would have
+        left the API reporting no duration for every imported track while the
+        real value sat in a column nothing read.
+        """
+        track = _one(tmp_path, TotalTime="328")
+        assert track.duration_seconds == 328
+        assert not hasattr(track, "total_time")
 
     def test_musical_key_comes_from_tonality_not_key(self, tmp_path):
         """Key is Rekordbox's other spelling of TrackID on playlist entries.
@@ -267,7 +279,7 @@ class TestFieldMapping:
             "colour",
             "date_added",
             "comment",
-            "total_time",
+            "duration_seconds",
             "bitrate",
         ):
             assert getattr(track, field) is None, field
@@ -398,7 +410,7 @@ class TestNumericTolerance:
         track = _one(tmp_path, BitRate=bad, PlayCount=bad, TotalTime=bad, Year=bad)
         assert track.bitrate is None
         assert track.play_count is None
-        assert track.total_time is None
+        assert track.duration_seconds is None
         assert track.year is None
 
     def test_decimal_integers_are_accepted(self, tmp_path):
@@ -421,7 +433,11 @@ class TestNumericTolerance:
 
     @pytest.mark.parametrize(
         "field,attribute",
-        [("year", "Year"), ("bitrate", "BitRate"), ("total_time", "TotalTime")],
+        [
+            ("year", "Year"),
+            ("bitrate", "BitRate"),
+            ("duration_seconds", "TotalTime"),
+        ],
     )
     def test_zero_means_unknown_for_measured_quantities(
         self, tmp_path, field, attribute

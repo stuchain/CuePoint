@@ -34,9 +34,11 @@ NEW_TRACK_COLUMNS = (
     "colour",
     "date_added",
     "comment",
-    "total_time",
     "bitrate",
 )
+
+# duration_seconds predates this migration (0002) but is the column TotalTime is
+# imported into (DEC-038), so it is asserted alongside them.
 
 _PRE_0005_INSERT = (
     "INSERT INTO tracks (rekordbox_track_id, file_path, normalized_path,"
@@ -80,6 +82,14 @@ class TestMigrationOn5Applies:
             row["name"] for row in db.connect().execute("PRAGMA table_info(tracks)")
         }
         assert set(NEW_TRACK_COLUMNS) <= columns
+
+    def test_there_is_only_one_column_for_a_track_length(self, db):
+        """DEC-038: TotalTime is imported into duration_seconds, not beside it."""
+        columns = {
+            row["name"] for row in db.connect().execute("PRAGMA table_info(tracks)")
+        }
+        assert "duration_seconds" in columns
+        assert "total_time" not in columns
 
     def test_library_source_table_exists(self, db):
         tables = {
@@ -159,7 +169,7 @@ class TestMigrationOnPopulatedDatabase:
                 colour="0xFF007F",
                 date_added="2024-03-01",
                 comment="peak time",
-                total_time=421,
+                duration_seconds=421,
                 bitrate=1411,
             )
         )
@@ -171,7 +181,7 @@ class TestMigrationOnPopulatedDatabase:
         assert restored.colour == "0xFF007F"
         assert restored.date_added == "2024-03-01"
         assert restored.comment == "peak time"
-        assert restored.total_time == 421
+        assert restored.duration_seconds == 421
         assert restored.bitrate == 1411
 
 

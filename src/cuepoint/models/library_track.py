@@ -90,7 +90,9 @@ class LibraryTrack:
         key: Musical key, as written by Rekordbox.
         bpm: Beats per minute.
         year: Release year.
-        duration_seconds: Track length in seconds.
+        duration_seconds: Track length in seconds, imported from Rekordbox's
+            ``TotalTime`` (DEC-038). One column rather than two for the same
+            quantity, so nothing downstream has to decide which is authoritative.
         rating: Star rating, 0-5. ``None`` when the export carried no rating,
             which is not the same as an explicit zero. Rekordbox's raw 0-255
             encoding is converted at the parser boundary, never stored here.
@@ -99,10 +101,6 @@ class LibraryTrack:
         date_added: Date the track was added to Rekordbox, kept as the export's
             own string rather than reformatted.
         comment: Rekordbox comments field.
-        total_time: Track length in seconds as Rekordbox reports it. Kept
-            distinct from ``duration_seconds``, which is CuePoint's own value:
-            collapsing the two would make an imported number indistinguishable
-            from a computed one.
         bitrate: Bitrate in kbps.
         created_at: When CuePoint first saw this track (ISO-8601, UTC).
         updated_at: When CuePoint last updated it (ISO-8601, UTC).
@@ -127,7 +125,6 @@ class LibraryTrack:
     colour: Optional[str] = None
     date_added: Optional[str] = None
     comment: Optional[str] = None
-    total_time: Optional[int] = None
     bitrate: Optional[int] = None
     created_at: str = field(default_factory=utc_now_iso)
     updated_at: str = field(default_factory=utc_now_iso)
@@ -159,7 +156,7 @@ class LibraryTrack:
             if not 0 <= self.rating <= 5:
                 raise ValueError(f"rating must be a star count 0-5, got {self.rating}")
 
-        for name in ("play_count", "total_time", "bitrate"):
+        for name in ("play_count", "duration_seconds", "bitrate"):
             value = getattr(self, name)
             if value is not None:
                 setattr(self, name, int(value))
@@ -190,7 +187,6 @@ class LibraryTrack:
             "colour": self.colour,
             "date_added": self.date_added,
             "comment": self.comment,
-            "total_time": self.total_time,
             "bitrate": self.bitrate,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
@@ -219,7 +215,6 @@ class LibraryTrack:
             colour=data.get("colour"),
             date_added=data.get("date_added"),
             comment=data.get("comment"),
-            total_time=data.get("total_time"),
             bitrate=data.get("bitrate"),
             created_at=data.get("created_at") or utc_now_iso(),
             updated_at=data.get("updated_at") or utc_now_iso(),
