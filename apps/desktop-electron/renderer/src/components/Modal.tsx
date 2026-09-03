@@ -7,7 +7,17 @@ export interface ModalProps {
   title: string;
   children: ReactNode;
   onClose: () => void;
-  primaryAction?: { label: string; onClick: () => void; loading?: boolean };
+  /**
+   * `disabled` is for a decision that is not ready to be taken — LIBRARY-11's
+   * refresh preview uses it while a warning is unacknowledged. A button that
+   * looks pressable and silently does nothing is worse than a greyed one.
+   */
+  primaryAction?: {
+    label: string;
+    onClick: () => void;
+    loading?: boolean;
+    disabled?: boolean;
+  };
   secondaryAction?: { label: string; onClick: () => void };
   /**
    * `"wide"` for content that is a table or a log rather than a message or a
@@ -124,6 +134,7 @@ export function Modal({
                 variant="primary"
                 onClick={primaryAction.onClick}
                 loading={primaryAction.loading}
+                disabled={primaryAction.disabled}
               >
                 {primaryAction.label}
               </Button>

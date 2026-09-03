@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   status chrome off-screen as those are added
 
 ### Added
+- A Library page. Import a Rekordbox collection and CuePoint keeps it — tracks,
+  playlists and playlist membership — and remembers the export it came from, so
+  refreshing later is one click. The page tells you when that export has changed
+  since your last import
+- Refreshing shows you what would change before it changes anything: how many
+  tracks would be added, updated and removed, which tracks would be deleted, and
+  a warning that deleting them takes their ratings, tags and history with them.
+  Nothing happens until you confirm, and cancelling changes nothing
 - CuePoint now restarts its engine if it stops unexpectedly, showing
   "Reconnecting to engine…" while it tries. After three attempts it stops and
   offers a Restart engine button instead of retrying indefinitely

@@ -71,19 +71,32 @@ describe("navRegistry", () => {
     expect(() => homeDestination(withoutHome)).toThrow(/Home destination/);
   });
 
-  it("declares the target IA that has not been built yet", () => {
+  it("declares the whole target IA, built or not", () => {
     // DEC-020: declared now, rendered when the phase that builds it flips the
     // flag. If these disappear, the registry has stopped describing the target.
     const declared = NAV_DESTINATIONS.map((d) => d.id);
     for (const id of ["library", "collections", "clean", "discover", "prepare"]) {
       expect(declared).toContain(id);
+    }
+  });
+
+  it("still has the not-yet-built destinations turned off", () => {
+    // Library came on in LIBRARY-11; the rest wait for their phase.
+    for (const id of ["collections", "clean", "discover", "prepare"]) {
       expect(findDestinationById(id)?.enabled).toBe(false);
     }
   });
 
-  it("renders none of the not-yet-built destinations", () => {
+  it("renders exactly what has been built", () => {
     const enabled = enabledDestinations().map((d) => d.id);
-    expect(enabled).toEqual(["tools", "match", "incrate", "results", "settings"]);
+    expect(enabled).toEqual([
+      "library",
+      "tools",
+      "match",
+      "incrate",
+      "results",
+      "settings",
+    ]);
   });
 
   it("keeps today's screens in the Tools group (DEC-021)", () => {
@@ -118,9 +131,17 @@ describe("groupedDestinations", () => {
   });
 
   it("drops groups with nothing enabled in them", () => {
-    // Today every workspace destination is disabled, so that group must not
-    // render as an empty heading with a divider under it.
-    expect(groupedDestinations().map((entry) => entry.group)).toEqual(["tools", "system"]);
+    // A group with everything in it disabled must not render as an empty
+    // heading with a divider under it. Asserted through the list-argument seam
+    // rather than against the live registry, which has had an enabled
+    // workspace destination since LIBRARY-11.
+    const noWorkspace = NAV_DESTINATIONS.map((d) =>
+      d.group === "workspace" ? { ...d, enabled: false } : d,
+    );
+    expect(groupedDestinations(noWorkspace).map((entry) => entry.group)).toEqual([
+      "tools",
+      "system",
+    ]);
   });
 
   it("contains only enabled destinations", () => {
@@ -137,9 +158,16 @@ describe("groupedDestinations", () => {
   });
 
   it("shows a workspace group as soon as one of its destinations is enabled", () => {
-    // The one-flag promise of DEC-020: this is what a later phase does, and it
-    // must need no change here.
-    const withLibrary = NAV_DESTINATIONS.map((d) =>
+    // The one-flag promise of DEC-020, which LIBRARY-11 collected: turning
+    // Library on is the whole of what it took to give the sidebar a Workspace
+    // group. Driven from an all-disabled list so the test still shows the
+    // transition rather than restating today's registry.
+    const noWorkspace = NAV_DESTINATIONS.map((d) =>
+      d.group === "workspace" ? { ...d, enabled: false } : d,
+    );
+    expect(groupedDestinations(noWorkspace).map((e) => e.group)).not.toContain("workspace");
+
+    const withLibrary = noWorkspace.map((d) =>
       d.id === "library" ? { ...d, enabled: true } : d,
     );
     const entries = groupedDestinations(withLibrary);

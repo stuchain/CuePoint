@@ -29,6 +29,7 @@ import { MatchResultsProvider } from "./context/MatchResultsContext";
 import {
   InCrateMainScreen,
   InKeyMainScreen,
+  LibraryScreen,
   ResultsScreen,
   SettingsExportScreen,
   ToolSelectionScreen,
@@ -97,6 +98,10 @@ function AppShell() {
     switch (id) {
       case "tools":
         return <ToolSelectionScreen />;
+      case "library":
+        return (
+          <LibraryScreen onOpenRekordboxInstructions={() => setRekordboxOpen(true)} />
+        );
       case "match":
         return (
           <InKeyMainScreen

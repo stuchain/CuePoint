@@ -58,7 +58,7 @@ export const HOME_DESTINATION_ID = "tools";
 
 export const NAV_DESTINATIONS: readonly NavDestination[] = [
   // Not built yet (DEC-020). Each is enabled by the phase that builds it.
-  { id: "library", label: "Library", path: "/library", group: "workspace", icon: "library", enabled: false },
+  { id: "library", label: "Library", path: "/library", group: "workspace", icon: "library", enabled: true },
   { id: "collections", label: "Collections", path: "/collections", group: "workspace", icon: "collections", enabled: false },
   { id: "clean", label: "Clean", path: "/clean", group: "workspace", icon: "clean", enabled: false },
   { id: "discover", label: "Discover", path: "/discover", group: "workspace", icon: "discover", enabled: false },

@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 3: Persistent Rekordbox Library, Detailed Step Specifications
 
-Status: **In progress.** LIBRARY-01…LIBRARY-10 are implemented; LIBRARY-11 and LIBRARY-12
+Status: **In progress.** LIBRARY-01…LIBRARY-11 are implemented; LIBRARY-12
 remain draft step specs in design-only mode.
 Implementation of any step below requires an explicit "Implement LIBRARY-NN" instruction, scoped to
 exactly that step, followed by tests, a completion report, and a stop before the next step.
@@ -1331,7 +1331,7 @@ alone.
 
 ---
 
-## LIBRARY-11 — The Library Page
+## LIBRARY-11 — The Library Page ✅ IMPLEMENTED 2026-09-03
 
 **Objective**: The first user-facing library surface: enable the `library` destination, show what
 the library holds, and drive import and refresh with DEC-032's preview.
@@ -1361,6 +1361,74 @@ refresh at the preview without anything changing.
 **Risks**: Low-medium — mostly the pull toward Phase 4's scope.
 
 **Complexity**: **M**
+
+### ✅ IMPLEMENTED 2026-09-03
+
+**Outcome**: Complete, and the first thing in this phase a user can see. The `library`
+destination is enabled, `screens/library/` holds the page, the refresh preview dialog, the wording
+helpers and the job-following module. 66 new renderer tests and 7 new E2E tests.
+
+**Enabling the destination really was one line**, which is what DEC-020 built the registry to buy:
+flipping `enabled` gave the sidebar a Workspace group, gave the router a route, and made the launch
+rule willing to reopen there. Four registry tests had to move, and none of them because the rule
+changed — they had used `library` as their example of a *disabled* destination, so they were still
+passing while no longer testing anything. They now drive the same rules through the list-argument
+seam the registry documents, which is what that seam was for.
+
+**The wording is the feature, so it is tested as functions.** `libraryFormat.ts` holds every
+sentence the page shows and has its own tests, because whether a user understands that DEC-003's
+removals are permanent is decided entirely by those sentences, not by the layout around them. Three
+choices are load-bearing and each has a test that fails if it is undone: the removal warning names
+what goes *with* the tracks (ratings, tags, history) rather than only counting rows; the
+irreversible number is on the button — "Remove 25 tracks and refresh", not "Apply" — so it is in
+front of the finger that presses it; and "0 removed" is the one line kept when it is zero, because
+that is the reassurance being looked for and an absent line reassures nobody.
+
+**"CuePoint could not tell" is its own state.** The engine returns `changed: null` when it could not
+stat the export. The page shows a third thing — "could not tell whether this export has changed" —
+rather than folding it into "unchanged", which would tell a user their library is current when
+nobody checked.
+
+**DEC-011's confirmation is built and exercised, at zero.** Nothing in this build can reference a
+track, so the extra warning never appears today. The dialog nevertheless has it, gated behind a
+checkbox that disables the confirm button until it is ticked, and tests drive both the refusal and
+the acknowledgement with a seam that answers non-zero. Phase 6 inherits a flow that has been used
+rather than only written.
+
+**No track table, and no progress bar.** Phase 4 (LIBUI) builds browsing; a test asserts the page
+renders no table, which is the boundary most likely to erode. SHELL-07's status strip already
+reports every running job with live progress, so the page shows only a busy state.
+
+**A real bug the fixtures could not have found.** Driving the page against the real 3,880-track
+January collection, the apply succeeded in the engine and the page waited forever. The cause was in
+`engineSupervisor.subscribeJobEvents`: streams were keyed `senderId:jobId` and each subscribe
+cancelled any earlier one for the same job. That was correct while only the status strip followed
+jobs; now the Library page follows the job it started and the strip follows whatever is running —
+the same job, the same renderer — so the second subscriber silently blinded the first. Small
+exports hid it completely, because the job finished before either subscription attached. The stream
+is now refcounted and only the last watcher leaving closes it. `two watchers can follow the same
+job at once` is the regression test, and it fails on the unfixed supervisor.
+
+**Guards**: **11 of 11 fail when the thing they protect is broken**, every source restored
+byte-for-byte (verified by hash): making Cancel apply; removing the DEC-011 gate; folding "cannot
+tell" into "unchanged"; shortening the removal warning; taking the count off the button; dropping
+"0 removed"; removing `followJob`'s immediate check (without which a fast apply is never noticed);
+replacing the empty state's guidance; turning the `library` destination back off; breaking the
+Check button, which the E2E catches; and un-refcounting the supervisor.
+
+**Verified on the real export, through the real UI.** The packaged app imported the 3,880-track
+January collection and rendered `3,880 tracks · 234 playlists · 13,870 entries`; 25 tracks were
+dropped from the export and the page moved to "Out of date" on its own; the preview reported 25
+removals; **cancelling left it at 3,880**; confirming applied `-25` and the page settled on 3,855
+tracks, 13,740 entries and "Up to date", with the engine's own summary agreeing.
+
+**Verification**: renderer `npm test` — 471 passed across 34 files; `npm run typecheck`,
+`npm run lint` and `npm run build:check` clean. The full Playwright suite against the built desktop
+app — 24 passed. `python -m pytest src/tests/unit/engine` — 215 passed (no Python changed this step,
+run because the page exercises those endpoints). `ruff check`/`format --check` and
+`check_desktop_version_coupling.py` pass. `~/.cuepoint` untouched (`cuepoint.db` and `config.yaml`
+hash-checked before and after). **`CHANGELOG` updated** — the first entry this phase has earned,
+because this is the first of it a user can use.
 
 ---
 

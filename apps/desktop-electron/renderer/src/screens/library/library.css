@@ -1,0 +1,186 @@
+/* The Library page and its refresh preview (LIBRARY-11). */
+
+.library-screen {
+  gap: var(--space-lg);
+}
+
+.library-screen__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.library-screen__loading,
+.library-screen__empty {
+  margin: 0 0 var(--space-md);
+  color: var(--fg-muted);
+  max-width: 60ch;
+}
+
+.library-screen__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.library-screen__stats {
+  margin: 0;
+}
+
+
+.library-screen__source {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: 0;
+}
+
+/* The full path is the thing a user checks when a file has moved, so it stays
+   on screen rather than hiding in a tooltip — wrapped, not truncated. */
+.library-screen__path {
+  font-size: var(--font-size-xs);
+  color: var(--fg-muted);
+  overflow-wrap: anywhere;
+}
+
+.library-screen__imported,
+.library-screen__state {
+  margin: var(--space-sm) 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--fg-muted);
+}
+
+.library-screen__state--attention {
+  color: var(--fg-primary);
+  font-weight: 700;
+}
+
+.library-screen__applied {
+  margin: var(--space-md) 0 0;
+  padding: var(--space-sm) var(--space-md);
+  border: var(--border-width) solid var(--border-outline);
+  background: var(--bg-panel-alt);
+  font-size: var(--font-size-xs);
+}
+
+/* ---------------------------------------------------------------- preview */
+
+.library-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.library-preview__source,
+.library-preview__empty {
+  margin: 0;
+  color: var(--fg-muted);
+}
+
+/* The removal warning is the one thing on this dialog that must not be skimmed
+   past: DEC-003 does not give the tracks back. */
+.library-preview__warning {
+  margin: 0;
+  padding: var(--space-md);
+  border: var(--border-width-heavy) solid var(--border-outline);
+  background: var(--accent-warning);
+  color: var(--fg-inverse);
+  font-weight: 700;
+}
+
+.library-preview__warning--refs {
+  background: var(--accent-danger);
+  color: var(--fg-primary);
+}
+
+.library-preview__counts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-sm) var(--space-lg);
+  margin: 0;
+}
+
+.library-preview__count {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding-bottom: var(--space-xs);
+  border-bottom: var(--border-width) solid var(--border-muted);
+}
+
+.library-preview__count dt {
+  font-size: var(--font-size-xs);
+  color: var(--fg-muted);
+}
+
+.library-preview__count dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.library-preview__count--destructive dt,
+.library-preview__count--destructive dd {
+  color: var(--accent-danger);
+}
+
+.library-preview__samples {
+  border: var(--border-width) solid var(--border-muted);
+  padding: var(--space-md);
+}
+
+.library-preview__samples-title {
+  margin: 0 0 var(--space-sm);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-muted);
+}
+
+.library-preview__samples ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  max-height: 30vh;
+  overflow-y: auto;
+}
+
+.library-preview__samples li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-md);
+  font-size: var(--font-size-xs);
+}
+
+.library-preview__track-artist {
+  color: var(--fg-muted);
+}
+
+.library-preview__more {
+  margin: var(--space-sm) 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--fg-muted);
+}
+
+.library-preview__acknowledge {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  cursor: pointer;
+}
+
+.library-preview__blocked {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--fg-muted);
+}
+
+@container content (max-width: 600px) {
+  .library-preview__counts {
+    grid-template-columns: 1fr;
+  }
+}

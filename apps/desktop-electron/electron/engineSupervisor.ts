@@ -63,7 +63,18 @@ export class EngineSupervisor {
   private token: string | null = null;
   private sessionId: string = crypto.randomUUID();
   private version: string | undefined;
-  private jobStreamAborts = new Map<string, AbortController>();
+  /**
+   * One SSE stream per renderer per job, shared by everyone watching it.
+   *
+   * Refcounted, and that is the whole point. Before LIBRARY-11 each subscribe
+   * cancelled any earlier one for the same job, because there was only ever one
+   * watcher. Now the status strip follows whatever job is running *and* the
+   * Library page follows the job it started — the same job, from the same
+   * renderer — and the second subscriber was silently killing the first. The
+   * symptom was a page waiting forever for a job the engine had already
+   * finished.
+   */
+  private jobStreams = new Map<string, { abort: AbortController; refs: number }>();
   private restartAttempts = 0;
   private reconnecting = false;
   /** Set while `stop()` is deliberate, so quitting is not treated as a crash. */
@@ -413,10 +424,19 @@ export class EngineSupervisor {
 
   subscribeJobEvents(jobId: string, senderId: number, sender: WebContents): () => void {
     const key = `${senderId}:${jobId}`;
-    this.unsubscribeJobEvents(jobId, senderId);
+
+    // Join the stream if one is already open for this job. Events are
+    // broadcast to the renderer, which fans them out to every listener, so a
+    // second stream would only duplicate frames — and opening one used to
+    // cancel the first.
+    const open = this.jobStreams.get(key);
+    if (open) {
+      open.refs += 1;
+      return () => this.unsubscribeJobEvents(jobId, senderId);
+    }
 
     const abort = new AbortController();
-    this.jobStreamAborts.set(key, abort);
+    this.jobStreams.set(key, { abort, refs: 1 });
 
     void this.client()
       .streamJobEvents(jobId, abort.signal, (event) => {
@@ -435,7 +455,9 @@ export class EngineSupervisor {
         }
       })
       .finally(() => {
-        this.jobStreamAborts.delete(key);
+        // The job reached a terminal state, so the stream is over for everyone
+        // watching it however many of them there were.
+        this.jobStreams.delete(key);
       });
 
     return () => this.unsubscribeJobEvents(jobId, senderId);
@@ -443,10 +465,14 @@ export class EngineSupervisor {
 
   unsubscribeJobEvents(jobId: string, senderId: number): void {
     const key = `${senderId}:${jobId}`;
-    const abort = this.jobStreamAborts.get(key);
-    if (!abort) return;
-    abort.abort();
-    this.jobStreamAborts.delete(key);
+    const entry = this.jobStreams.get(key);
+    if (!entry) return;
+    entry.refs -= 1;
+    // Only the last watcher leaving closes the stream. One watcher going away
+    // must not blind the others.
+    if (entry.refs > 0) return;
+    entry.abort.abort();
+    this.jobStreams.delete(key);
   }
 
   private pickPort(): Promise<number> {

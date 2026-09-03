@@ -21,8 +21,14 @@ import { HOME_DESTINATION_ID, NAV_DESTINATIONS } from "./navRegistry";
 /**
  * The real registry now declares not-yet-built destinations (DEC-020), so the
  * disabled cases below run against real data rather than a fixture.
+ *
+ * Collections, not Library: LIBRARY-11 enabled Library, and a test whose
+ * "disabled" example is enabled proves nothing while still passing its
+ * neighbours. Phase 6 will have to move this along again, which is the cost of
+ * testing against the real registry and worth paying — the alternative is a
+ * fixture that cannot go stale because it is not describing anything real.
  */
-const DISABLED_ID = "library";
+const DISABLED_ID = "collections";
 
 afterEach(() => {
   localStorage.clear();
@@ -67,7 +73,7 @@ describe("destinationToRemember", () => {
   });
 
   it("does not remember a disabled destination", () => {
-    expect(destinationToRemember("/library")).toBeNull();
+    expect(destinationToRemember("/collections")).toBeNull();
   });
 });
 
