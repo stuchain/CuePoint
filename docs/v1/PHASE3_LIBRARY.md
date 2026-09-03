@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 3: Persistent Rekordbox Library, Detailed Step Specifications
 
-Status: **In progress.** LIBRARY-01 and LIBRARY-02 are implemented; LIBRARY-03…LIBRARY-12 remain
-draft step specs in design-only mode.
+Status: **In progress.** LIBRARY-01, LIBRARY-02 and LIBRARY-03 are implemented;
+LIBRARY-04…LIBRARY-12 remain draft step specs in design-only mode.
 Implementation of any step below requires an explicit "Implement LIBRARY-NN" instruction, scoped to
 exactly that step, followed by tests, a completion report, and a stop before the next step.
 
@@ -428,7 +428,7 @@ needed to move and E2E was not run. No `CHANGELOG` entry: nothing user-visible y
 
 ---
 
-## LIBRARY-03 — Playlists as Read-Only Source Data
+## LIBRARY-03 — Playlists as Read-Only Source Data ✅ IMPLEMENTED 2026-09-03
 
 **Objective**: Persist the Rekordbox playlist tree and its membership (DEC-031).
 
@@ -444,6 +444,12 @@ preserved, and `playlist_path_for_display()` already formats a path for humans. 
 `position`, `track_count`. `rekordbox_playlist_tracks` — `playlist_id`, `track_id`, `position`, with
 a foreign key to `tracks` cascading on delete, because DEC-003 deletes tracks and membership rows
 for a track that no longer exists are unreachable.
+
+> **Amended at implementation.** The path is **not** unique, and is not the key: four playlists in
+> a real export contain `/` in their name, so a path is neither splittable nor guaranteed unique,
+> and a UNIQUE constraint would reject a legal tree. `parent_id` (a self-referential cascading
+> foreign key) plus `depth` carry the structure; membership is keyed on `(playlist_id, position)`.
+> See the implementation record below.
 
 **Read-only means read-only**: these tables are written by import and refresh and by nothing else.
 CuePoint's own Collections (Phase 6) are a different concept with a different table; a user editing
@@ -461,6 +467,100 @@ folders with the same name under different parents.
 presentation.
 
 **Complexity**: **M**
+
+### ✅ IMPLEMENTED 2026-09-03
+
+**Outcome**: Complete. Migration 0006 creates `rekordbox_playlists` and
+`rekordbox_playlist_tracks`; `models/rekordbox_playlist.py` adds `RekordboxPlaylist` and
+`PlaylistTreeWriteResult`; `data/rekordbox.py` gains `iter_playlist_nodes()`; and
+`persistence/playlist_repository.py` adds `PlaylistRepository` behind a new `IPlaylistRepository`,
+registered in `bootstrap.py`. 116 new tests.
+
+Verified against the same real 3,880-track export as LIBRARY-02, whose tree is a much harder case
+than the spec assumed: **234 nodes over five levels, 28 folders, 206 playlists, 13,870 track
+references**, twelve names reused under different parents, 21 empty playlists, three empty folders,
+19 playlists holding the same track more than once — one of them eight times — and four playlist
+names containing the path separator.
+
+**The path cannot be the key.** The spec proposed `rekordbox_path` as a unique
+`Folder/Sub/Playlist` key. That export contains playlists named `stoa w/ deer`,
+`dybbuk 11.12.25 w/ u.nid (rezo)`, `COZMO_11/02` and `COZMO_3/03`, so a path cannot be split back
+into segments — `ROOT/LIBRARY 7.0/PREP/PAST SETS/COZMO_11/02` reads equally well as a playlist
+`02` inside a folder `COZMO_11` — and two different trees can produce the same string (a folder
+`A/B` holding `C`, and a folder `A` holding `B/C`). **A UNIQUE constraint would have rejected a
+legal Rekordbox tree at import.** So `parent_id` is the structure: a self-referential, cascading
+foreign key that cannot be orphaned. `rekordbox_path` is kept beside it as a derived, indexed,
+**non-unique** column, because it is what the CLI's `--playlist` and `parse_playlist_tree()`
+already speak and Phase 4 wants it for display. `depth` is stored for the same reason: it is what
+resolves a child to its parent during import without parsing a path that may not be parseable.
+
+**A third parser, and why.** The spec said to reuse `parse_playlist_tree()` unchanged. It is
+reused — by the matching pipeline, untouched — but it cannot serve the library, on three counts
+that a single matching run does not care about. It calls `ET.parse` and then builds an `RBTrack`
+for every collection track and a `Track` for every playlist entry: 26 MiB of elements for a 4.5 MB
+file, an order of magnitude worse at the 50,000-track target. It **skips collection tracks with no
+title**, so a playlist entry pointing at one silently disappears — and LIBRARY-02 deliberately
+imports untitled tracks, so a mirror built on it would quietly hold fewer entries than the export.
+And it returns nested dictionaries keyed by that ambiguous path rather than tree coordinates.
+`iter_playlist_nodes()` streams instead: **1.16 MiB peak against 26 MiB**, parents always yielded
+before children.
+
+**Ordering is enforced, not conventional.** Membership is keyed on `(playlist_id, position)` with
+no surrogate id, so a DJ's set list order is a property the database holds rather than one the code
+remembers to preserve — while still allowing the same track twice in one playlist. Both foreign
+keys cascade; a `CHECK` on `kind` is acceptable here where 0005 refused one, because this table is
+a mirror rebuilt from the XML on every import, so a future rebuild migration costs nothing.
+
+**Read-only means read-only.** The repository offers `replace_tree` and `clear` and nothing else —
+no rename, move, add-track or remove-track. `test_playlist_read_only.py` fails if one appears, on
+the class and on the interface, because whatever such a method wrote would be destroyed without
+warning by the next refresh and Phase 6's Collections are the editable concept.
+
+**Unknown references are skipped and reported.** A reference naming a track the library does not
+hold is counted into `PlaylistTreeWriteResult.missing_track_refs` rather than inserted — the
+foreign key would reject it, and one stale reference must not fail a whole import. `track_count`
+records what was actually stored rather than what Rekordbox declared, so the mirror never claims
+rows it does not have; the discrepancy is reported at import time instead. The real export has zero
+of these, so this path is tested rather than exercised.
+
+**The DoD, met against the real file.** All 234 nodes and 13,870 entries were rebuilt from the
+database by following `parent_id` alone and compared to an independent DOM walk of the XML — node
+for node, reference for reference, in order. **Identical.** Import of the whole collection and tree
+took 0.44s.
+
+**Five of the first twenty-four guards did not guard.** Breaking each behaviour in turn found four
+tests that passed against code with the behaviour removed, which is the whole point of doing it:
+
+- The node-detaching memory test used 400 nodes and a 4x bound. Measured properly, 100 nodes cost
+  530 KiB either way while 20,000 cost 530 KiB with the detach and 2,095 KiB without; the test now
+  uses those sizes and a 1.5x bound.
+- Stopping at `</PLAYLISTS>` was unobservable because Rekordbox writes that element last. It is now
+  tested with an export whose `PLAYLISTS` *precedes* a 40,000-track collection, where reading on
+  would cost the whole file.
+- The stale-parent cleanup is only reachable on malformed input — in a well-formed tree the entry
+  one level up is always the right parent. The test now uses a depth jump after a closed subtree,
+  where without the cleanup a node silently attaches to a folder that already ended.
+- The sibling-order test used siblings whose alphabetical order happened to match their position,
+  and passed against a repository that sorted by name — which would silently reorder a set list.
+
+With those fixed, **24 of 24 guards fail when the thing they protect is removed**, and every source
+file was restored byte-identically afterwards.
+
+**Verified in the running app.** The packaged app migrated the real `~/.cuepoint/cuepoint.db` from
+version 5 to 6, creating both tables without disturbing anything, and reported the engine
+connected. It was then pointed at a scratch database holding the whole imported collection *and*
+tree — 3,880 tracks, 234 nodes, 13,870 entries — where search returned 22 results for "Bedouin"
+with BPM and key intact. The cascade was proven on that real data before handing the file over:
+deleting the most-referenced track removed exactly its 37 playlist entries. `config.yaml` was
+restored byte-for-byte and the real library was never written to (0 tracks, 0 nodes, version 6).
+
+**Verification**: 116 new tests — 19 model, 34 parser, 41 repository, 5 read-only, 17 schema.
+`python scripts/run_tests.py --all --no-slow`: 2521 unit, 315 integration, 7 regression, 4 system,
+all passing. `ruff check` and `ruff format --check` clean; `check_no_qt_in_core.py`,
+`check_desktop_version_coupling.py` and `smoke_engine_health.py` pass. `mypy src/` adds only the
+`import-not-found` noise every module here produces — the one real finding it reported was fixed.
+No renderer, Electron or engine API file was touched, so the desktop contract is unchanged and E2E
+was not run. No `CHANGELOG` entry: nothing user-visible yet, as Phase 4 is what browses this.
 
 ---
 

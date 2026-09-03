@@ -42,6 +42,7 @@ from cuepoint.services.interfaces import (
     IPrivacyService,
     IProcessorService,
     ITelemetryService,
+    IPlaylistRepository,
     ITrackRepository,
 )
 from cuepoint.services.logging_service import LoggingService
@@ -51,6 +52,7 @@ from cuepoint.services.onboarding_service import OnboardingService
 from cuepoint.services.privacy_service import PrivacyService
 from cuepoint.persistence.activity_repository import ActivityRepository
 from cuepoint.persistence.job_repository import JobRepository
+from cuepoint.persistence.playlist_repository import PlaylistRepository
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.activity_service import ActivityService
 from cuepoint.services.backup_service import BackupService
@@ -100,6 +102,12 @@ def bootstrap_services() -> None:
         return TrackRepository(database_service=container.resolve(IDatabaseService))
 
     container.register_factory(ITrackRepository, create_track_repository)
+
+    def create_playlist_repository() -> IPlaylistRepository:
+        """Build the mirrored Rekordbox playlist tree repository."""
+        return PlaylistRepository(database_service=container.resolve(IDatabaseService))
+
+    container.register_factory(IPlaylistRepository, create_playlist_repository)
 
     # Library entry point. Callers depend on this rather than on repositories,
     # so persistence details stay behind the seam.

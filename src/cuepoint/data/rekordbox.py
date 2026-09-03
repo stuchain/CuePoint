@@ -36,6 +36,12 @@ import tempfile
 from cuepoint.core.mix_parser import _extract_remixer_names_from_title  # noqa: E402
 from cuepoint.models.compat import track_from_rbtrack  # noqa: E402
 from cuepoint.models.library_track import LibraryTrack  # noqa: E402
+from cuepoint.models.rekordbox_playlist import (  # noqa: E402
+    KIND_FOLDER,
+    KIND_PLAYLIST,
+    RekordboxPlaylist,
+    build_path,
+)
 from cuepoint.models.playlist import Playlist  # noqa: E402
 from cuepoint.models.result import TrackResult  # noqa: E402
 from cuepoint.models.track import Track  # noqa: E402
@@ -1555,3 +1561,158 @@ def iter_collection_tracks(xml_path: str) -> Iterator[LibraryTrack]:
     _logger.info(
         "[library] Parsed %s tracks from the collection in %s", yielded, xml_path
     )
+
+
+def iter_playlist_nodes(xml_path: str) -> Iterator[RekordboxPlaylist]:
+    """Yield every node of the ``PLAYLISTS`` tree, parents before their children.
+
+    A second reader beside :func:`parse_playlist_tree`, not a replacement for
+    it, for three reasons that matter to a stored library and to none of which
+    matter for a single matching run:
+
+    - **It streams.** ``parse_playlist_tree()`` calls ``ET.parse`` and then
+      builds an ``RBTrack`` for every track in the collection and a ``Track``
+      for every playlist entry. On a 4.5 MB export the document alone is 26 MiB
+      of elements; at the 50,000-track target it is an order of magnitude worse,
+      for a job that needs one node at a time.
+    - **It keeps every track reference.** ``parse_playlist_tree()`` skips
+      collection tracks with no title, so a playlist entry pointing at one
+      silently disappears from that playlist. LIBRARY-02 deliberately imports
+      untitled tracks, and a mirror that drops entries is not a mirror.
+    - **It carries tree coordinates.** ``depth`` and ``position`` are what the
+      repository needs to rebuild the hierarchy; the existing function returns
+      nested dictionaries keyed by a path that a name containing ``/`` makes
+      ambiguous.
+
+    Ordering is a contract: a node is always yielded after its parent and after
+    its earlier siblings. Folders are emitted when their start tag is seen and
+    playlists when their end tag is — a playlist has no descendants, so that
+    satisfies both rules and still lets a playlist arrive complete with its
+    track references.
+
+    Args:
+        xml_path: Path to a Rekordbox XML export.
+
+    Yields:
+        A :class:`RekordboxPlaylist` per node, including the ``ROOT`` node
+        Rekordbox always writes, at depth 0.
+
+    Raises:
+        FileNotFoundError: If the file does not exist.
+        ValueError: If the file exceeds :data:`MAX_XML_SIZE_BYTES`.
+        ET.ParseError: If the XML is malformed.
+    """
+    if not os.path.exists(xml_path):
+        raise FileNotFoundError(f"XML file not found: {xml_path}")
+
+    size = os.path.getsize(xml_path)
+    if size > MAX_XML_SIZE_BYTES:
+        raise ValueError(
+            f"XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). "
+            "Refusing to parse to prevent resource exhaustion."
+        )
+
+    yielded = 0
+    with open(xml_path, "rb") as handle:
+        collection: Optional[ET.Element] = None
+        in_playlists = False
+        # One frame per open NODE: the node itself, its element, and how many
+        # children it has seen so far, which is the next child's position.
+        stack: List[Dict[str, Any]] = []
+        # Children of PLAYLISTS itself, so the ROOT node gets a position too.
+        top_position = 0
+
+        for event, elem in ET.iterparse(handle, events=("start", "end")):
+            if event == "start":
+                if elem.tag == "COLLECTION":
+                    collection = elem
+                elif elem.tag == "PLAYLISTS":
+                    in_playlists = True
+                elif elem.tag == "NODE" and in_playlists:
+                    node = _playlist_node_from_element(elem, stack, top_position)
+                    if not stack:
+                        top_position += 1
+                    stack.append({"node": node, "element": elem, "children": 0})
+                    if node.is_folder:
+                        # Emitted now, so it precedes everything it contains.
+                        yielded += 1
+                        yield node
+                continue
+
+            # --- end events ---
+            if elem.tag == "TRACK" and not in_playlists:
+                # A collection track. Nothing here wants it, but leaving it
+                # attached would hold the whole COLLECTION in memory.
+                elem.clear()
+                if collection is not None:
+                    del collection[:]
+                continue
+
+            if elem.tag == "PLAYLISTS":
+                break
+
+            if elem.tag != "NODE" or not in_playlists or not stack:
+                continue
+
+            node = stack.pop()["node"]
+            if not node.is_folder:
+                node.track_refs = _playlist_track_refs(elem)
+                node.track_count = len(node.track_refs)
+                yielded += 1
+                yield node
+
+            elem.clear()
+            if stack:
+                # Detach the finished child from the folder still being built,
+                # so a large folder does not accumulate the empty shells of
+                # everything it contained.
+                del stack[-1]["element"][:]
+
+    _logger.info("[library] Parsed %s playlist nodes from %s", yielded, xml_path)
+
+
+def _playlist_node_from_element(
+    elem: ET.Element, stack: List[Dict[str, Any]], top_position: int
+) -> RekordboxPlaylist:
+    """Build a node from a ``NODE`` start tag and its position in the stack."""
+    name = (elem.get("Name") or elem.get("name") or "").strip()
+    raw_type = (elem.get("Type") or elem.get("type") or "0").strip()
+    kind = KIND_PLAYLIST if raw_type == "1" else KIND_FOLDER
+
+    if stack:
+        parent = stack[-1]
+        parent_path: Optional[str] = parent["node"].rekordbox_path
+        position = parent["children"]
+        parent["children"] += 1
+    else:
+        parent_path = None
+        position = top_position
+
+    return RekordboxPlaylist(
+        name=name,
+        kind=kind,
+        depth=len(stack),
+        position=position,
+        rekordbox_path=build_path(parent_path, name),
+        parent_path=parent_path,
+    )
+
+
+def _playlist_track_refs(elem: ET.Element) -> List[str]:
+    """Return the Rekordbox TrackIDs a playlist NODE references, in order.
+
+    ``Key`` is Rekordbox's own spelling on a playlist entry; the other two are
+    the same variants :func:`parse_collection` already tolerates. A reference
+    with no id at all is dropped — it names nothing — but one naming a track
+    that is not in the collection is kept, because deciding what to do about it
+    belongs to the repository, which is the only thing that knows what the
+    library actually contains.
+    """
+    refs = []
+    for child in elem.findall("TRACK"):
+        ref = (
+            child.get("Key") or child.get("TrackID") or child.get("ID") or ""
+        ).strip()
+        if ref:
+            refs.append(ref)
+    return refs

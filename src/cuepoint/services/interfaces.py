@@ -36,6 +36,10 @@ if TYPE_CHECKING:
     from cuepoint.incrate.beatport_api_models import DiscoveredTrack
     from cuepoint.migrations import Migration
     from cuepoint.models.library_track import IdentityMatch, LibraryTrack
+    from cuepoint.models.rekordbox_playlist import (
+        PlaylistTreeWriteResult,
+        RekordboxPlaylist,
+    )
     from cuepoint.persistence.activity_repository import (
         ActivityEvent,
         TrackFieldChange,
@@ -724,6 +728,68 @@ class ITrackRepository(ABC):
         self, track: "LibraryTrack"
     ) -> Tuple["LibraryTrack", str, bool]:
         """Insert or update an incoming Rekordbox track, applying DEC-002."""
+        ...
+
+
+class IPlaylistRepository(ABC):
+    """Interface for the mirrored Rekordbox playlist tree (DEC-031).
+
+    Read-only source data: the only write is a wholesale replacement from an
+    export. There is deliberately no rename, move, add-track or remove-track —
+    a Phase 6 Collection is a different, editable concept in different tables,
+    and an edit landing here would be destroyed by the next refresh.
+    """
+
+    @abstractmethod
+    def replace_tree(
+        self, nodes: Iterable["RekordboxPlaylist"]
+    ) -> "PlaylistTreeWriteResult":
+        """Replace the whole mirror; nodes must arrive parents-first."""
+        ...
+
+    @abstractmethod
+    def clear(self) -> None:
+        """Remove the whole mirror."""
+        ...
+
+    @abstractmethod
+    def get(self, playlist_id: int) -> Optional["RekordboxPlaylist"]:
+        """Return a node by primary key, or None."""
+        ...
+
+    @abstractmethod
+    def find_by_path(self, rekordbox_path: str) -> Optional["RekordboxPlaylist"]:
+        """Return the node at this path, or None; the path is not unique."""
+        ...
+
+    @abstractmethod
+    def list_all(self) -> List["RekordboxPlaylist"]:
+        """Return every node, parents before children, siblings in order."""
+        ...
+
+    @abstractmethod
+    def children_of(self, playlist_id: Optional[int]) -> List["RekordboxPlaylist"]:
+        """Return a node's direct children, or the roots for None."""
+        ...
+
+    @abstractmethod
+    def track_ids_for(self, playlist_id: int) -> List[int]:
+        """Return the library track ids in a playlist, in Rekordbox's order."""
+        ...
+
+    @abstractmethod
+    def playlist_ids_for_track(self, track_id: int) -> List[int]:
+        """Return the playlists a track appears in."""
+        ...
+
+    @abstractmethod
+    def count(self) -> int:
+        """Return the number of nodes, folders included."""
+        ...
+
+    @abstractmethod
+    def count_entries(self) -> int:
+        """Return the number of stored track references."""
         ...
 
 
