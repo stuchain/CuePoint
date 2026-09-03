@@ -523,6 +523,17 @@ def get_track_locations(xml_path: str) -> Dict[str, str]:
     Rekordbox stores paths as file://localhost/D:/Music/track.mp3 (URL-encoded).
     Tracks without a Location attribute are omitted.
 
+    Decoding is :func:`location_to_path`; this function adds what a *local*
+    lookup needs on top of it — separators in the host platform's form, and
+    ``resolve()`` against the real filesystem — because its job is finding a
+    file on this machine to write tags to, not storing a portable value.
+
+    It used to decode inline, and cut the result at the first ``?`` or ``#`` to
+    "strip a query string or fragment". Rekordbox writes neither, and both are
+    ordinary characters in a track name: in one real 3,880-track collection,
+    seven files (``Is This A Dream?``, ``f#m - Open Air``, ``C's Movement #1``)
+    lost their extension that way and could not be found at all.
+
     Args:
         xml_path: Path to Rekordbox XML export file.
 
@@ -553,21 +564,9 @@ def get_track_locations(xml_path: str) -> Dict[str, str]:
         location = (elem.get("Location") or "").strip()
         if not tid or not location:
             continue
-        location = unquote(location)
-        prefix = "file://localhost"
-        if location.lower().startswith(prefix):
-            location = location[len(prefix) :]
-            # On Windows, Rekordbox uses file://localhost/D:/Music → strip leading slash.
-            # On Unix, file://localhost/var/... must stay /var/... (absolute path).
-            if os.name == "nt":
-                location = location.lstrip("/")
+        location = location_to_path(location)
         if not location:
             continue
-        # Strip query string or fragment (e.g. ?version=1) so suffix is correct
-        if "?" in location:
-            location = location.split("?")[0]
-        if "#" in location:
-            location = location.split("#")[0]
         # On Windows, normalize so DriveLetter:\ is consistent (e.g. S:/ or /S:/ -> S:\)
         normalized = location.replace("/", os.sep)
         normalized = os.path.normpath(normalized)

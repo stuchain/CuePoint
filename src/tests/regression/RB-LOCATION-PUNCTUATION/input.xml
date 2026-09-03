@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DJ_PLAYLISTS Version="1.0.0">
+  <PRODUCT Name="rekordbox" Version="6.8.6" Company="AlphaTheta"/>
+  <COLLECTION Entries="5">
+    <!-- Shapes taken verbatim from a real export. Rekordbox writes "?"
+         unencoded, and "#" both unencoded and as %23. -->
+    <TRACK TrackID="1" Name="Is This A Dream?" Artist="Samer Soltan"
+           Location="file://localhost/music/Samer%20Soltan%20-%20Is%20This%20A%20Dream?%20(Remix).mp3"/>
+    <TRACK TrackID="2" Name="C's Movement #1" Artist="Beanfield"
+           Location="file://localhost/music/15%20-%20Beanfield%20-%20C's%20Movement%20#1%20(Carl%20Craig%20remix).flac"/>
+    <TRACK TrackID="3" Name="Open Air" Artist="Edu Imbernon"
+           Location="file://localhost/music/f%23m%20-%20Edu%20Imbernon%20-%20Open%20Air.mp3"/>
+    <TRACK TrackID="4" Name="Where's My Voice?" Artist="EREZ"
+           Location="file://localhost/music/EREZ%20-%20Where's%20My%20Voice?%20(Remix)%20%5bCrosstown%5d.mp3"/>
+    <TRACK TrackID="5" Name="Ordinary" Artist="Nobody"
+           Location="file://localhost/music/Nobody%20-%20Ordinary.mp3"/>
+  </COLLECTION>
+  <PLAYLISTS>
+    <NODE Type="0" Name="ROOT" Count="1">
+      <NODE Name="Regression" Type="1" KeyType="0" Entries="5">
+        <TRACK Key="1"/>
+        <TRACK Key="2"/>
+        <TRACK Key="3"/>
+        <TRACK Key="4"/>
+        <TRACK Key="5"/>
+      </NODE>
+    </NODE>
+  </PLAYLISTS>
+</DJ_PLAYLISTS>

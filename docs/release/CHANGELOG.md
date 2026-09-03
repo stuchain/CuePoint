@@ -53,6 +53,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by one drawing, and it stays sharp at every interface scale
 
 ### Fixed
+- Tracks whose filename contains a `?` or a `#` can now be found on disk.
+  CuePoint cut the path short at the first one — `Is This A Dream? (Remix).mp3`
+  became `Is This A Dream`, with no extension — so writing tags to those tracks
+  silently did nothing. Seven tracks in a 3,880-track collection were affected
 - Dialogs can be used from the keyboard. They now take focus when they open,
   keep Tab inside themselves, close on Escape, and return focus to whatever
   opened them — previously a dialog could be opened and never reached
