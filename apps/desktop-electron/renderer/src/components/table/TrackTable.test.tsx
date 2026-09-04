@@ -403,6 +403,65 @@ describe("empty", () => {
   });
 });
 
+describe("when the rows start answering a different question", () => {
+  it("scrolls back to the top", () => {
+    // Position in a list means something only relative to the question that
+    // produced it: keeping the offset through a sort change shows a user a
+    // different place in a different order (LIBUI-05).
+    const { rerender } = render(
+      <ScaleProvider>
+        <TrackTable<Track>
+          columns={COLUMNS}
+          source={pendingSource<Track>(50_000)}
+          resetKey="artist-asc"
+        />
+      </ScaleProvider>,
+    );
+
+    const scroll = document.querySelector(".track-table__scroll") as HTMLElement;
+    scroll.scrollTop = 4_000;
+
+    rerender(
+      <ScaleProvider>
+        <TrackTable<Track>
+          columns={COLUMNS}
+          source={pendingSource<Track>(50_000)}
+          resetKey="bpm-desc"
+        />
+      </ScaleProvider>,
+    );
+
+    expect(scroll.scrollTop).toBe(0);
+  });
+
+  it("stays where it is when the question has not changed", () => {
+    const { rerender } = render(
+      <ScaleProvider>
+        <TrackTable<Track>
+          columns={COLUMNS}
+          source={pendingSource<Track>(50_000)}
+          resetKey="artist-asc"
+        />
+      </ScaleProvider>,
+    );
+
+    const scroll = document.querySelector(".track-table__scroll") as HTMLElement;
+    scroll.scrollTop = 4_000;
+
+    rerender(
+      <ScaleProvider>
+        <TrackTable<Track>
+          columns={COLUMNS}
+          source={pendingSource<Track>(50_000)}
+          resetKey="artist-asc"
+        />
+      </ScaleProvider>,
+    );
+
+    expect(scroll.scrollTop).toBe(4_000);
+  });
+});
+
 describe("column widths", () => {
   it("uses each column's default", () => {
     renderTable();

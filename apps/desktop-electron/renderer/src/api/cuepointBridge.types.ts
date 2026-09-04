@@ -323,6 +323,12 @@ export interface LibrarySearchResponse {
   scope?: number | null;
   sort?: string;
   dir?: "asc" | "desc";
+  /**
+   * The rule set the response was computed for, echoed like the rest — a
+   * filter changes neither scope, sort nor text, so without it two requests
+   * produce responses nothing can tell apart (LIBUI-05).
+   */
+  filters?: FilterRuleSet | null;
   /** Present only when ids were asked for; `tracks` is then empty. */
   track_ids?: number[];
 }

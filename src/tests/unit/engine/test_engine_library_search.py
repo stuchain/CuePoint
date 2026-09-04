@@ -178,6 +178,7 @@ class TestResponseShape:
             "scope",
             "sort",
             "dir",
+            "filters",
         }
         assert payload["query"] == "deadmau5"
         assert payload["total"] == 2

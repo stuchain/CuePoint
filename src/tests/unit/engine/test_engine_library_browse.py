@@ -215,6 +215,7 @@ class TestTodaysCallerIsUntouched:
             "scope",
             "sort",
             "dir",
+            "filters",
         }
 
     def test_it_answers_as_a_search_unless_told_otherwise(self, engine, seeded):
@@ -300,6 +301,25 @@ class TestBrowse:
             filters=filters,
         )
         assert [t["rekordbox_track_id"] for t in payload["tracks"]] == ["2", "1"]
+
+    def test_the_filters_are_echoed_back(self, engine, seeded):
+        # LIBUI-05 tells a late response from a current one by what it answers.
+        # A filter changes neither the scope, the sort nor the text, so without
+        # this the two requests are indistinguishable.
+        filters = json.dumps(
+            {"rules": [{"field": "bpm", "operator": "gte", "value": 128}]}
+        )
+        payload = get_json(
+            engine, "/api/v1/library/search", mode="browse", filters=filters
+        )
+        assert payload["filters"] == {
+            "match": "all",
+            "rules": [{"field": "bpm", "operator": "gte", "value": 128.0}],
+        }
+
+    def test_no_filters_echoes_an_empty_rule_set(self, engine, seeded):
+        payload = get_json(engine, "/api/v1/library/search", mode="browse")
+        assert payload["filters"] == {"match": "all", "rules": []}
 
     def test_playlist_order_is_available_inside_a_playlist(self, engine, seeded):
         scope = playlist_id(engine, "SETS/warmup")

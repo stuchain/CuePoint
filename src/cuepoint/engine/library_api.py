@@ -275,6 +275,12 @@ def search_library(
         "scope": getattr(result, "playlist_id", None),
         "sort": getattr(result, "sort", DEFAULT_SORT),
         "dir": getattr(result, "direction", "asc"),
+        # The filters too, so a caller can tell a late response from a current
+        # one by what it answers rather than by bookkeeping it has to keep in
+        # step (LIBUI-05). Without this, adding a filter — which changes
+        # neither the scope, the sort nor the text — produces two requests
+        # whose responses are indistinguishable.
+        "filters": (filters or RuleSet()).validated().to_dict(),
     }
     ids = getattr(result, "track_ids", None)
     if ids is not None:

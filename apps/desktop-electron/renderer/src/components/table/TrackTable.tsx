@@ -94,6 +94,16 @@ export interface TrackTableProps<Row> {
   /** Rows kept rendered either side of the viewport. */
   overscan?: number;
 
+  /**
+   * Changes when the rows now mean something else — a new sort, a new filter,
+   * a different playlist — and the table scrolls back to the top.
+   *
+   * Position in a list is only meaningful relative to the question that
+   * produced it: keeping the scroll offset through a sort change shows a user
+   * a different place in a different order and reads as a bug (LIBUI-05).
+   */
+  resetKey?: string | number;
+
   ariaLabel?: string;
 }
 
@@ -116,6 +126,7 @@ export function TrackTable<Row>({
   getRowKey,
   emptyState,
   overscan = 10,
+  resetKey,
   ariaLabel = "Tracks",
 }: TrackTableProps<Row>) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -162,6 +173,15 @@ export function TrackTable<Row>({
     estimateSize: () => rowHeight,
     overscan,
   });
+
+  // Back to the top when the rows start answering a different question.
+  const previousResetKey = useRef(resetKey);
+  useEffect(() => {
+    if (previousResetKey.current === resetKey) return;
+    previousResetKey.current = resetKey;
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+    virtualizer.scrollToOffset(0);
+  }, [resetKey, virtualizer]);
 
   const virtualRows = virtualizer.getVirtualItems();
   const firstIndex = virtualRows[0]?.index ?? 0;

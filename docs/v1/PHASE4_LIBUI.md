@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 4: Library UI, Detailed Step Specifications
 
-Status: **In progress.** LIBUI-01…LIBUI-04 are implemented, each with its outcome recorded below
-the step that specified it; LIBUI-05…LIBUI-10 are specified and not started. Per the process, no implementation
+Status: **In progress.** LIBUI-01…LIBUI-05 are implemented, each with its outcome recorded below
+the step that specified it; LIBUI-06…LIBUI-10 are specified and not started. Per the process, no implementation
 happens from this document — each step needs an explicit "Implement LIBUI-NN" instruction, scoped
 to exactly that step, and its outcome is recorded under the step afterwards.
 
@@ -642,7 +642,7 @@ partially-loaded states) so there is something to look at when it happens.
 
 ---
 
-## LIBUI-05 — Windowed Loading and Server-Side Sort
+## LIBUI-05 — Windowed Loading and Server-Side Sort ✅ IMPLEMENTED 2026-09-04
 
 **Objective**: Feed `TrackTable` from the engine as the user scrolls, and make sorting a query
 rather than a re-render (DEC-040).
@@ -683,6 +683,62 @@ stays bounded (asserted, with the measurement recorded), and no query state live
 invisible on small fixtures.
 
 **Complexity**: **L**
+
+### ✅ IMPLEMENTED 2026-09-04
+
+**Outcome**: Complete. `screens/library/libraryQuery.ts` describes what the page is asking;
+`useTrackWindow.ts` answers it a page at a time. 48 new renderer tests, plus two on the table and
+two on the engine.
+
+**The engine now echoes the filters too.** LIBUI-03 echoed the mode, scope, sort and direction so a
+response could be recognized by what it answers. That is not enough: adding a filter changes
+neither the scope, the sort nor the text, so two requests produced responses nothing could tell
+apart. One additive key closes it, and `answersQuery` is then a complete test of staleness with no
+counter to keep in step.
+
+**One place decides a page is missing.** `fetchPages` filters against what is held, what is in
+flight and what has failed; `requestWindow` just says which range is on screen. The first version
+filtered in both places, which mutation testing exposed as unfalsifiable — breaking either check
+changed nothing, because the other still caught it. Consolidating made the check load-bearing and
+the retry path simpler.
+
+**Memory is bounded by construction.** Twelve pages — 1,200 rows — are kept, nearest the window
+first, so browsing a 50,000-track library end to end holds a fixed amount however far it goes. The
+eviction is by distance rather than age, because scrolling back to the top should not find the top
+evicted.
+
+**A failed page is remembered.** Without that, a table over a dead engine re-issues the same failing
+request on every scroll event. `retry` clears the memory, and returns the table to "ready" rather
+than "loading" when there was nothing left to ask for — a state that would otherwise spin forever.
+
+**The table scrolls back to the top when the question changes**, through a `resetKey` prop rather
+than a remount. Position in a list means something only relative to the query that produced it;
+keeping the offset through a sort change shows a user a different place in a different order.
+
+**Three tests could not fail, and mutation testing is the only reason that was noticed.** One
+counted requests in an array that `mockRejectedValue` had already replaced. One asserted a stale
+response was dropped by comparing a row count the stale response would not have changed. One
+scrolled a table whose total was still zero, so there were no pages to ask for and nothing to
+re-ask. All three now discriminate: distinct row content for the stale response, a first page that
+succeeds before a later one fails, and the mock's own call count.
+
+**A tooling trap worth writing down.** The mutation runner reported three false survivors that did
+not reproduce by hand: Vite caches transforms by path and modification time, and writing a file
+then immediately running Vitest can serve the previous content. A pause between the write and the
+run fixed it. A mutation harness that silently reads stale source is worse than none, because it
+reports safety.
+
+**Guards: 20 of 20 fail when the thing they protect is broken** — page dedup by held/in-flight/
+failed, contiguous-run coalescing, eviction and its ordering, both staleness checks, the query
+reset, the total coming from the engine, the failure state and its recovery, the missing bridge,
+the prefetch margin, every field `answersQuery` compares, the table's scroll reset, and the engine
+echoing the filters at all.
+
+**Verification**: renderer `npm test` — 622 passed across 39 files; `npm run typecheck`,
+`npm run lint` and `npm run build:check` clean. Python: the two new echo tests plus the updated
+envelope assertions; `run_tests.py --all --no-slow` clean; `ruff check`/`format --check` pass. Not
+done here: the 50,000-track scroll measured in the running app — there is no page to scroll yet.
+LIBUI-10 assembles it, and that is where the number belongs.
 
 ---
 
