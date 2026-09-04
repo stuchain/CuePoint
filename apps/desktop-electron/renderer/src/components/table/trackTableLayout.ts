@@ -55,6 +55,12 @@ export interface TrackColumnDef<Row> {
   align?: ColumnAlign;
   /** Pinned to the left edge while the table scrolls sideways. */
   sticky?: boolean;
+  /**
+   * Not shown until a user asks for it (DEC-042). A table that opened on every
+   * column it has would be a wall; the picker is where the rest live, and once
+   * chosen the choice is remembered.
+   */
+  hiddenByDefault?: boolean;
   /** What the cell shows. Given the row; never given the index. */
   render: (row: Row) => ReactNode;
 }

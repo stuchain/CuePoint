@@ -1,0 +1,69 @@
+/* The library's counts, its source and its two actions (LIBUI-10, DEC-039). */
+
+.library-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  background: var(--bg-panel);
+  border-bottom: var(--border-width) solid var(--border-outline);
+}
+
+.library-header__counts {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.library-header__sep {
+  color: var(--fg-muted);
+}
+
+.library-header__source {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  min-width: 0;
+  font-size: var(--font-size-xs);
+}
+
+.library-header__file {
+  font-family: var(--font-data);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 18rem;
+}
+
+.library-header__imported,
+.library-header__state {
+  color: var(--fg-muted);
+}
+
+.library-header__state--attention {
+  color: var(--accent-warning);
+}
+
+.library-header__applied {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.library-header__actions {
+  display: flex;
+  gap: var(--space-sm);
+  margin-left: auto;
+}
+
+.library-header__title {
+  margin: 0;
+  font-size: var(--font-size-md);
+  line-height: var(--space-lg);
+  white-space: nowrap;
+}

@@ -3,7 +3,8 @@
 CuePoint keeps its own copy of your Rekordbox collection. Import an XML export
 once and CuePoint holds your tracks, your playlists and what is in them, so
 everything else it does can start from your actual music instead of asking you
-for a file every time.
+for a file every time. The Library page is also where you browse it: playlists,
+filters, sorting and a track's full detail.
 
 Open **Library** in the sidebar.
 
@@ -27,6 +28,75 @@ CuePoint refuses a file that is not a Rekordbox collection export rather than
 importing an empty library and telling you it worked. If you exported a single
 playlist instead of the whole collection, the file has no collection in it and
 CuePoint will say so — export again with **File → Export Collection**.
+
+## Browsing your library
+
+Once something is imported, the Library page **is** your collection: the
+playlists down the left, the tracks in the middle, and everything CuePoint
+knows about whichever track you clicked in the Inspector on the right.
+
+Nothing here changes your music. The Library page reads.
+
+### Finding tracks
+
+- **Click a playlist** on the left to look at just that playlist. Folders show
+  everything underneath them. **All tracks** goes back to the whole library.
+- **Type in the search box** to narrow to matching titles, artists, albums and
+  labels. It searches whatever you are looking at, so a search inside a playlist
+  stays inside that playlist.
+- **Add a filter** for anything more specific — BPM between 124 and 130, genre
+  is Techno, comment contains "promo". Filters stack, and the bar says how many
+  tracks are left after them.
+- **Click a column heading** to sort by it; click again to reverse it.
+
+A playlist opens in the order you arranged it in Rekordbox, which is what a set
+list is for. The whole library opens by artist. Sorting a playlist by anything
+else and then going back to **All tracks** does not carry that sort over.
+
+### Choosing columns
+
+**Columns…** opens the list. Nine are shown to start with — the ones a DJ reads —
+and eight more are there if you want them: remixer, year, plays, date added,
+colour, bitrate, comment and the file path. Turn them on and off, drag a heading
+to move a column, drag its edge to resize it. CuePoint remembers all of it.
+
+### Selecting tracks
+
+Click to select, Ctrl+click (Cmd+click) to add one, Shift+click for a range —
+a range works even across parts of a long list you have not scrolled to yet.
+
+**Ctrl+A selects everything matching what you are looking at**, filters and all.
+That means *everything*, not just the rows on screen: select-all over a filtered
+47,000-track view selects 47,000 tracks. **Esc** lets go. **Ctrl+F** puts the
+cursor in the search box.
+
+With something selected you can **Copy** it — the visible columns, in the order
+you have them, ready to paste into a spreadsheet — and, for a single track,
+**Show in folder**. A copy is capped at 5,000 tracks and tells you when it hit
+the cap.
+
+### The Inspector
+
+Selecting one track fills the Inspector with everything CuePoint imported for
+it: title, artist, remixer, album, label, genre, key, BPM, year, length, rating,
+plays, colour, comment, bitrate, when it was added, where the file is, and every
+playlist it belongs to. Click one of those playlists to jump to it.
+
+The Inspector is read-only. Ratings, comments and everything else come from
+Rekordbox, and CuePoint does not write back to it — editing here would mean
+editing something Rekordbox would overwrite on your next refresh. Ctrl+I hides
+the Inspector if you would rather have the width.
+
+**Double-clicking a track does nothing yet.** Starting a match run from a
+selection is the next release.
+
+### Large collections
+
+Browsing 50,000 tracks does not load 50,000 tracks. CuePoint fetches what is on
+screen and a little either side, so scrolling stays smooth and memory stays flat
+however far you go. A row that has not arrived yet is blank for a moment rather
+than moving everything around it. See
+[Performance](performance.md#the-library) for the measured numbers.
 
 ## Refreshing after Rekordbox changes
 

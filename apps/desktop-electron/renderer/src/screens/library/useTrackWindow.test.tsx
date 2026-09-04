@@ -295,6 +295,67 @@ describe("a query that changed", () => {
   });
 });
 
+describe("a library that changed under a query that did not", () => {
+  /*
+   * An import or a refresh replaces rows the table is holding while the
+   * question — scope, sort, text, filters — stays word for word the same.
+   * Nothing about comparing queries can notice that, so the window has to be
+   * told, and being told has to actually re-ask.
+   */
+
+  it("asks again when it is reloaded", async () => {
+    const { result } = renderHook(() => useTrackWindow(query()));
+    await waitFor(() => expect(result.current.total).toBe(TOTAL));
+    expect(calls).toHaveLength(1);
+
+    act(() => result.current.reload());
+
+    await waitFor(() => expect(calls).toHaveLength(2));
+    expect(calls[1]).toEqual({ offset: 0, limit: PAGE_SIZE });
+  });
+
+  it("lets go of the rows it was holding", async () => {
+    const { result } = renderHook(() => useTrackWindow(query()));
+    await waitFor(() => expect(result.current.source.getRow(0)?.id).toBe(1));
+
+    // The reloaded library answers with different tracks entirely, which is
+    // what a refresh that deleted something looks like.
+    browseLibrary.mockImplementation(async (params: Call & Record<string, unknown>) => {
+      calls.push({ offset: params.offset ?? 0, limit: params.limit ?? PAGE_SIZE });
+      const answer = respond(params);
+      return { ...answer, tracks: answer.tracks.map((track) => ({ ...track, id: (track.id ?? 0) + 500_000 })) };
+    });
+    act(() => result.current.reload());
+
+    await waitFor(() => expect(result.current.source.getRow(0)?.id).toBe(500_001));
+  });
+
+  it("drops the answer to the question it asked before the reload", async () => {
+    // A response in flight when the reload happened describes the old library
+    // and would otherwise be indistinguishable from the new one: same scope,
+    // same sort, same text, same filters.
+    let release: (() => void) | null = null;
+    browseLibrary.mockImplementationOnce(
+      async (params: Call & Record<string, unknown>) =>
+        new Promise<LibrarySearchResponse>((resolve) => {
+          release = () => resolve({ ...respond(params), total: 7 });
+        }),
+    );
+
+    const { result } = renderHook(() => useTrackWindow(query()));
+    await waitFor(() => expect(browseLibrary).toHaveBeenCalledTimes(1));
+
+    act(() => result.current.reload());
+    await waitFor(() => expect(browseLibrary).toHaveBeenCalledTimes(2));
+    await act(async () => {
+      release?.();
+    });
+
+    await waitFor(() => expect(result.current.total).toBe(TOTAL));
+    expect(result.current.total).not.toBe(7);
+  });
+});
+
 describe("a response that arrives late", () => {
   it("is dropped when it answers the previous sort", async () => {
     let release: ((value: LibrarySearchResponse) => void) | null = null;

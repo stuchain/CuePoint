@@ -252,8 +252,20 @@ export function TrackTable<Row>({
 
   return (
     <div className="track-table" style={style} data-testid="track-table">
-      <div ref={scrollRef} className="track-table__scroll">
-        <div className="track-table__header" role="row">
+      {/* The rows, headers and cells below are ARIA table parts, so something
+          has to be the table: without this they describe nothing and a screen
+          reader reads a pile of groups. `aria-rowcount` is the whole result,
+          not the window — the rows in the DOM are tens of a possible fifty
+          thousand, and saying "3 of 3" would be a lie the user cannot see. */}
+      <div
+        ref={scrollRef}
+        className="track-table__scroll"
+        role="table"
+        aria-label={ariaLabel}
+        aria-rowcount={source.total}
+      >
+        {/* Row 1, which is what makes the body rows row 2 onward. */}
+        <div className="track-table__header" role="row" aria-rowindex={1}>
           {columns.map((column, index) => {
             const active = Boolean(column.sortKey && sort?.key === column.sortKey);
             return (
@@ -321,7 +333,6 @@ export function TrackTable<Row>({
             className="track-table__body"
             style={{ height: `${virtualizer.getTotalSize()}px` }}
             role="rowgroup"
-            aria-label={ariaLabel}
           >
             {virtualRows.map((item) => {
               const row = source.getRow(item.index);
@@ -336,7 +347,9 @@ export function TrackTable<Row>({
                     height: `${item.size}px`,
                   }}
                   role="row"
-                  aria-rowindex={item.index + 1}
+                  // Row 1 is the header, so the first track is row 2. This was
+                  // index + 1 while nothing claimed to be a row above it.
+                  aria-rowindex={item.index + 2}
                   aria-selected={selected}
                   data-index={item.index}
                   data-placeholder={row ? undefined : "true"}

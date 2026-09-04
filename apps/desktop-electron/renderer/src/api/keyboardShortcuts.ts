@@ -20,6 +20,14 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   { context: "Results", action: "Focus search", shortcut: "Ctrl+F" },
   { context: "Results", action: "Clear filters", shortcut: "Ctrl+Shift+F" },
   { context: "Results", action: "View candidates", shortcut: "Enter" },
+  // The Library became a browser in Phase 4 (DEC-039), so it has a context of
+  // its own. Ctrl+F is deliberately the same key as on Results: it is the same
+  // gesture — put the cursor where the narrowing happens.
+  { context: "Library", action: "Focus search", shortcut: "Ctrl+F" },
+  { context: "Library", action: "Select all matching tracks", shortcut: "Ctrl+A" },
+  // Escape is not listed again here: "Cancel operation" above is what it
+  // means everywhere, and clearing a selection is backing out of one. Two rows
+  // would be two meanings for one key, which is the thing SHELL-10 forbids.
   { context: "History", action: "Toggle history", shortcut: "Ctrl+H" },
   { context: "Settings", action: "Open settings", shortcut: "Ctrl+," },
 ];

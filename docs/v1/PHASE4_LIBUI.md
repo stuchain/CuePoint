@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 4: Library UI, Detailed Step Specifications
 
-Status: **In progress.** LIBUI-01…LIBUI-09 are implemented, each with its outcome recorded below
-the step that specified it; LIBUI-10 is specified and not started. Per the process, no implementation
+Status: **Complete.** LIBUI-01…LIBUI-10 are implemented, each with its outcome recorded below the
+step that specified it, and the phase-level acceptance below is met in a packaged build. Per the process, no implementation
 happens from this document — each step needs an explicit "Implement LIBUI-NN" instruction, scoped
 to exactly that step, and its outcome is recorded under the step afterwards.
 
@@ -1131,7 +1131,7 @@ the page belong.
 
 ---
 
-## LIBUI-10 — The Library Page Becomes the Browser
+## LIBUI-10 — The Library Page Becomes the Browser ✅ IMPLEMENTED 2026-09-04
 
 **Objective**: DEC-039 — assemble the page, prove it at 50,000 tracks, and write down what changed.
 
@@ -1175,9 +1175,94 @@ gates pass, and the numbers are recorded rather than claimed.
 
 **Complexity**: **L**
 
+### ✅ IMPLEMENTED 2026-09-04
+
+**Outcome**: Complete. `LibraryScreen.tsx` is the browser, `LibraryHeader.tsx` compresses
+LIBRARY-11's two panels into a strip without changing a word of them, `libraryColumns.tsx` declares
+the seventeen columns, and `components/shell/inspectorSlot.tsx` is how a page fills the shell's
+Inspector. 40 new renderer tests, one new E2E journey, 21 of 21 mutations killed.
+
+**The assembly is where five real defects were, and four of them could only be found in a packaged
+build.** That is the finding of this step.
+
+**1. The page filled the Inspector, and the app locked up.** React said so — "Minified React error
+#185", maximum update depth — in the packaged app, while every renderer test passed. Twice, in fact:
+provider state looped because setting the content re-rendered the page that built it, and a store
+looped for the same reason once the *shell* subscribed, because the shell renders the page. The fix
+is `InspectorSlotOutlet`, a leaf inside the Track Inspector that subscribes on its own, so the
+re-render stops there. The tests missed it because they rendered the Inspector as a *sibling* of the
+page; the app renders it in an ancestor, which is a different graph. `App.test.tsx` now mounts the
+whole app with a library behind it and reproduces the loop exactly when the arrangement is put
+back — checked by reverting it.
+
+**2. The table rendered, held the right rows and was zero pixels tall.** `height: 100%` against a
+flex column resolved to nothing and collapsed both grid rows. jsdom measures nothing, so no unit
+test could see it. It is `flex: 1` now, and the table's row carries a floor
+(`minmax(140px, 1fr)`) so the filter bar, the selection strip and the columns row can never take the
+last of the height between them — in a small window the column scrolls instead, which is a thing a
+user can see.
+
+**3. Every user's playlist tree had a folder called ROOT in it.** Rekordbox wraps its playlists in
+`<NODE Name="ROOT" Type="0">`, the importer mirrors the file faithfully, and the pane drew it — so a
+real collection's playlists all sat inside a collapsed folder nobody made. LIBUI-07's fixtures had
+no such node. `buildTree` now unwraps it, recognized structurally (one node, top level, a folder,
+named ROOT) rather than by name alone, so a folder someone actually made and called ROOT still
+shows. Paths are untouched, because a path is how the pane remembers where the user was.
+
+**4. A refresh left deleted tracks on screen.** The query after a refresh is the same question word
+for word, so nothing downstream could tell that every answer to it was stale. `useTrackWindow` gained
+`reload()` — a new identity for the same question, which also makes a response in flight from before
+the refresh recognizably stale — and the page calls it after both an import and a refresh.
+
+**5. The table was not a table.** It rendered `columnheader`, `row` and `cell` with no enclosing
+`role="table"`, which is not a tree a screen reader can read, and is why nothing could find it by
+name. It now carries `role="table"`, its `aria-label` and `aria-rowcount` — the whole result, not the
+window, since the DOM holds tens of a possible fifty thousand rows.
+
+**LIBRARY-11's "renders no table" assertion is inverted in one place, with the reason.** It was
+right when it was written — Phase 3 was import and refresh and nothing more — and DEC-039 moved that
+boundary. The comment above it says so, so the change of mind stays visible.
+
+**Two guards were deleted rather than left.** Mutation testing showed nothing could observe a
+`!dialogOpen` check on Escape (`Modal` takes Escape in the capture phase and stops it) or an
+identity check in the slot's store (`useSyncExternalStore` compares snapshots itself). Both are
+comments now. It also caught two tests that could not fail: one that asserted React's own bail-out
+rather than this code's, and one that could not tell "no matches" from "empty playlist" because
+nothing scoped *and* searched at once.
+
+**The header shows the whole path, not the file name.** Compressing it lost that, and two exports
+called `collection.xml` in two folders are exactly what a user needs to tell apart. The page also
+keeps its `h1`: small, because the counts beside it say more, but a page with no heading has no
+name.
+
+**Measured, in the packaged app** (`CUEPOINT_E2E_MEMORY=1 npx playwright test e2e/libraryBrowse.spec.ts
+-g memory`): browsing the whole of a 50,000-track library takes the renderer's working set from
+105 MB to 159 MB, and a second pass over the same rows costs 1 MB more. 29 row elements were in the
+page at the end. The one-off cost is the window warming up; the second pass is the property, and it
+is the one recorded in `docs/user-guide/performance.md`.
+
+**Guards: 21 of 21 fail when the thing they protect is broken** — the table's role, the header's
+path, the eight columns that start hidden, a playlist's own order, the scope itself, both reloads
+after a refresh, Escape, Ctrl+A inside a text box, Ctrl+F, both empty-state branches, the Inspector
+being filled at all, a click selecting a row, double-click staying unwired, and every property of
+the slot including the loop.
+
+**Verification**: renderer `npm test` — 981 passed across 50 files; `npm run lint`,
+`npm run typecheck` and `npm run build:check` clean. Playwright — 26 passed, including the new
+Phase 4 journey (import → browse → scope → sort → filter → select → inspect → refresh → browse
+again) in a packaged build. Python `run_tests.py --all --no-slow` — 3,200 passed, 45 skipped, and
+one flake: `test_an_unauthorized_import_starts_no_job` aborted its socket under the full parallel
+run (WinError 10053) and passes on its own twice; no Python changed in this step. `ruff check`,
+`ruff format --check`, the Qt guard and the version-coupling check all pass.
+
 ---
 
-## Phase-level acceptance
+## Phase-level acceptance ✅ MET 2026-09-04
+
+Every item below was checked in a packaged build. Where a number is claimed it was measured and is
+recorded in `docs/user-guide/performance.md`; where behaviour is claimed there is a test that fails
+without it. Item 1's memory figure and the browse journey come from
+`apps/desktop-electron/e2e/libraryBrowse.spec.ts`.
 
 Phase 4 is complete when, in a **packaged build**:
 

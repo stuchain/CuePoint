@@ -38,6 +38,29 @@ export interface PaneState {
 
 export const EMPTY_PANE_STATE: PaneState = { expandedPaths: [], selectedPath: null };
 
+/**
+ * Rekordbox's own container for the playlist tree.
+ *
+ * Every export wraps its playlists in `<NODE Name="ROOT" Type="0">`, and the
+ * importer mirrors the file faithfully, so the engine sends it like any other
+ * folder. Drawing it would put every playlist a user has inside a collapsed
+ * folder called ROOT — a folder they did not make, cannot rename, and would
+ * have to open every time. "All tracks" is already the root of this pane.
+ *
+ * Recognized structurally as well as by name: one node, at the top, a folder,
+ * with no tracks of its own. Anything else called ROOT is a folder someone
+ * made, and is shown.
+ */
+function isRekordboxRoot(node: PlaylistTreeNode, roots: readonly PlaylistTreeNode[]): boolean {
+  return (
+    roots.length === 1 &&
+    node.kind === "folder" &&
+    node.depth === 0 &&
+    node.parent_id === null &&
+    node.name === "ROOT"
+  );
+}
+
 /** Build the tree from the flat, parents-first list the engine sends. */
 export function buildTree(nodes: readonly LibraryPlaylistNode[]): PlaylistTreeNode[] {
   const byId = new Map<number, PlaylistTreeNode>();
@@ -54,6 +77,9 @@ export function buildTree(nodes: readonly LibraryPlaylistNode[]): PlaylistTreeNo
     if (parent) parent.children.push(built);
     else roots.push(built);
   }
+  // Rekordbox's ROOT is unwrapped, so its children are the top level — which
+  // is where the user put them.
+  if (roots.length === 1 && isRekordboxRoot(roots[0]!, roots)) return roots[0]!.children;
   return roots;
 }
 

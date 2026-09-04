@@ -15,6 +15,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   status chrome off-screen as those are added
 
 ### Added
+- The Library page is now a browser. Playlists down the left scope what you are
+  looking at, a filter bar narrows it — search text, or rules like BPM between
+  124 and 130 — and the table sorts by any column. Selecting a track fills the
+  Track Inspector with everything CuePoint imported for it, including every
+  playlist it belongs to. Columns can be shown, hidden, reordered and resized,
+  and CuePoint remembers them
+- Browsing stays fast on a 50,000-track collection: CuePoint asks the engine for
+  the rows on screen rather than loading the library, so scrolling end to end
+  holds a fixed amount of memory
+- Ctrl+A selects every track matching what you are looking at — filters
+  included, not just the rows on screen — and Esc lets go of it
 - A Library page. Import a Rekordbox collection and CuePoint keeps it — tracks,
   playlists and playlist membership — and remembers the export it came from, so
   refreshing later is one click. The page tells you when that export has changed

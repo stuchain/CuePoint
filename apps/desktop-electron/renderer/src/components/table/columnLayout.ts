@@ -48,7 +48,7 @@ export function defaultLayout<Row>(
   return columns.map((column) => ({
     id: column.id,
     width: columnDefaultWidth(column, scale),
-    hidden: false,
+    hidden: column.hiddenByDefault === true,
   }));
 }
 
@@ -94,7 +94,9 @@ export function reconcileLayout<Row>(
     layout.push({
       id: column.id,
       width: columnDefaultWidth(column, scale),
-      hidden: false,
+      // A column added by a later release starts where its declaration says,
+      // so shipping one hidden does not make every existing user see it.
+      hidden: column.hiddenByDefault === true,
     });
   }
 

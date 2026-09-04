@@ -1,24 +1,41 @@
 /**
- * The Library page (LIBRARY-11).
+ * The Library page (LIBRARY-11, then LIBUI-10 / DEC-039).
  *
- * The acceptance criterion is a sentence about a user: they can import a
- * collection, see it, refresh it, and **cancel a refresh at the preview without
- * anything changing**. These tests are written against that sentence, so the
- * ones that matter most are the ones that assert nothing happened.
+ * LIBRARY-11's acceptance criterion is a sentence about a user: they can
+ * import a collection, see it, refresh it, and **cancel a refresh at the
+ * preview without anything changing**. Those tests are all still here, because
+ * DEC-039 changed what the page shows and not what it does to a library. The
+ * ones that matter most are still the ones that assert nothing happened.
+ *
+ * LIBUI-10 adds the second half: the page is the browser now, so it is tested
+ * as one — the three empty states, scoping by playlist, select-all and Escape,
+ * the Inspector it fills, and the double-click that deliberately still does
+ * nothing (DEC-046).
  *
  * The bridge is faked at `window.cuepoint`, which is where the renderer's only
  * contact with the engine lives. Jobs are followed the way the real page
  * follows them — start, then wait for a terminal state — so a page that forgot
  * to wait would show its "done" toast against a job still running and fail
- * here.
+ * here. The browse fake echoes back what it was asked (LIBUI-03), because a
+ * response that does not is one the page is right to throw away.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { LibraryScreen } from "./LibraryScreen";
 import { ToastProvider } from "../../components";
-import type { LibrarySummary, RefreshDiff } from "../../api/cuepointBridge.types";
+import { InspectorSlotProvider, useInspectorContent } from "../../components/shell";
+import { ScaleProvider } from "../../tokens/ScaleContext";
+import type {
+  LibraryFilterVocabulary,
+  LibraryPlaylistNode,
+  LibrarySearchResponse,
+  LibrarySummary,
+  LibraryTrackDetail,
+  LibraryTrackRow,
+  RefreshDiff,
+} from "../../api/cuepointBridge.types";
 
 function category<T>(count = 0, items: T[] = []) {
   return { count, items, truncated: count > items.length };
@@ -114,6 +131,100 @@ const APPLIED = {
   summary_line: "Library refreshed",
 };
 
+/** A row with every field present, so a column that reads one has something. */
+function track(id: number, overrides: Partial<LibraryTrackRow> = {}): LibraryTrackRow {
+  return {
+    id,
+    rekordbox_track_id: String(id),
+    title: `Track ${id}`,
+    artist: `Artist ${id}`,
+    remixer: null,
+    album: "An Album",
+    label: "A Label",
+    genre: "Techno",
+    key: "8A",
+    bpm: 128 + id,
+    year: 2024,
+    duration_seconds: 300 + id,
+    rating: 4,
+    play_count: 2,
+    colour: null,
+    date_added: "2026-01-01",
+    comment: "a comment",
+    bitrate: 320,
+    file_path: `C:\\music\\${id}.mp3`,
+    ...overrides,
+  };
+}
+
+const TRACKS = [track(1), track(2), track(3)];
+
+const PLAYLISTS: LibraryPlaylistNode[] = [
+  {
+    id: 10,
+    parent_id: null,
+    name: "Friday",
+    kind: "playlist",
+    depth: 0,
+    position: 0,
+    path: "Friday",
+    track_count: 2,
+  },
+];
+
+const VOCABULARY: LibraryFilterVocabulary = {
+  fields: [
+    {
+      name: "genre",
+      type: "text",
+      label: "Genre",
+      facetable: true,
+      integer: false,
+      operators: ["is", "contains"],
+    },
+  ],
+  operators: { is: { arity: "single" }, contains: { arity: "single" } },
+  facetable: ["genre"],
+  sortable: ["artist", "title", "bpm", "playlist_position"],
+};
+
+/**
+ * What the engine would answer, echoed (LIBUI-03).
+ *
+ * `rows` is the whole result and the window is sliced out of it here, the way
+ * the engine slices it out of SQLite — so an offset the page gets wrong shows
+ * up as the wrong rows rather than as the same three every time.
+ */
+function browseAnswer(
+  params: Record<string, unknown>,
+  rows: LibraryTrackRow[],
+): LibrarySearchResponse {
+  const offset = Number(params.offset ?? 0);
+  const limit = Number(params.limit ?? 100);
+  const page = rows.slice(offset, offset + limit);
+  const ids = params.fields === "id";
+  return {
+    query: (params.q as string) ?? "",
+    total: rows.length,
+    limit,
+    offset,
+    tracks: ids ? [] : page,
+    track_ids: ids ? page.map((row) => row.id ?? 0) : undefined,
+    library_empty: false,
+    mode: "browse",
+    scope: (params.playlistId as number | null) ?? null,
+    sort: params.sort as string,
+    dir: params.dir as "asc" | "desc",
+    filters: (params.filters as LibrarySearchResponse["filters"]) ?? null,
+  };
+}
+
+const DETAIL: LibraryTrackDetail = {
+  track: track(1),
+  playlists: PLAYLISTS,
+  playlist_count: 1,
+};
+
 interface Bridge {
   getLibrarySummary: ReturnType<typeof vi.fn>;
   startLibraryImport: ReturnType<typeof vi.fn>;
@@ -122,6 +233,12 @@ interface Bridge {
   getJob: ReturnType<typeof vi.fn>;
   getJobResults: ReturnType<typeof vi.fn>;
   openXmlFileDialog: ReturnType<typeof vi.fn>;
+  browseLibrary: ReturnType<typeof vi.fn>;
+  getLibraryPlaylists: ReturnType<typeof vi.fn>;
+  getLibraryFilterFields: ReturnType<typeof vi.fn>;
+  getLibraryFacet: ReturnType<typeof vi.fn>;
+  getLibraryTrack: ReturnType<typeof vi.fn>;
+  showItemInFolder: ReturnType<typeof vi.fn>;
 }
 
 let bridge: Bridge;
@@ -139,6 +256,22 @@ function install(overrides: Partial<Bridge> = {}) {
     openXmlFileDialog: vi
       .fn()
       .mockResolvedValue({ canceled: false, filePath: "C:\\new\\collection.xml" }),
+    browseLibrary: vi.fn(async (params: Record<string, unknown>) =>
+      browseAnswer(params, TRACKS),
+    ),
+    getLibraryPlaylists: vi
+      .fn()
+      .mockResolvedValue({ playlists: PLAYLISTS, total: PLAYLISTS.length }),
+    getLibraryFilterFields: vi.fn().mockResolvedValue(VOCABULARY),
+    getLibraryFacet: vi.fn().mockResolvedValue({
+      field: "genre",
+      values: [],
+      truncated: false,
+      total_values: 0,
+      range: null,
+    }),
+    getLibraryTrack: vi.fn().mockResolvedValue(DETAIL),
+    showItemInFolder: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
   (window as unknown as { cuepoint?: unknown }).cuepoint = bridge;
@@ -146,14 +279,58 @@ function install(overrides: Partial<Bridge> = {}) {
 
 function renderScreen(props: { onOpenRekordboxInstructions?: () => void } = {}) {
   return render(
-    <ToastProvider>
-      <LibraryScreen {...props} />
-    </ToastProvider>,
+    <ScaleProvider>
+      <ToastProvider>
+        <LibraryScreen {...props} />
+      </ToastProvider>
+    </ScaleProvider>,
   );
 }
 
+/** The table holding rows is what "the first window landed" looks like. */
+async function tableReady() {
+  await screen.findByRole("table", { name: "Library tracks" });
+  await screen.findByText("Track 1");
+}
+
+/** The most recent browse request, which is the question the page is asking. */
+function lastBrowse(): Record<string, unknown> {
+  const calls = bridge.browseLibrary.mock.calls;
+  return calls[calls.length - 1][0] as Record<string, unknown>;
+}
+
+beforeAll(() => {
+  // jsdom lays nothing out and has no ResizeObserver, so a virtualized table
+  // rendered here would show no rows at all. Both are supplied and nothing
+  // else is; the same fake `TrackTable.test.tsx` uses, for the same reason.
+  globalThis.ResizeObserver ??= class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+
+  Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
+    configurable: true,
+    get: () => 1200,
+  });
+  Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
+    configurable: true,
+    get: () => 600,
+  });
+});
+
+afterAll(() => {
+  // Reflect, because the properties are declared read-only: `delete` on them
+  // is a type error even though it is exactly what has to happen.
+  Reflect.deleteProperty(HTMLElement.prototype, "offsetWidth");
+  Reflect.deleteProperty(HTMLElement.prototype, "offsetHeight");
+});
+
 beforeEach(() => {
   install();
+  // The column layout is persisted (DEC-042), so a test that reordered or
+  // hid a column would otherwise decide what the next one opens on.
+  localStorage.clear();
 });
 
 afterEach(() => {
@@ -283,12 +460,21 @@ describe("an imported library", () => {
     expect(await screen.findByText(/no longer where it was/i)).toBeInTheDocument();
   });
 
-  it("does not list tracks — that is Phase 4's job", async () => {
-    // The scope boundary this step is most likely to be eroded at.
+  /**
+   * This assertion is inverted from LIBRARY-11, deliberately and in one place.
+   *
+   * LIBRARY-11 asserted `queryByRole("table")` was **not** in the document and
+   * called it "the scope boundary this step is most likely to be eroded at" —
+   * correct then, because Phase 3 was to import and refresh a collection and
+   * nothing more. DEC-039 moved that boundary: the Library page *is* the
+   * browser, so the same query now has to find a table. Inverted rather than
+   * deleted, so the change of mind stays visible to whoever reads this next.
+   */
+  it("lists tracks — DEC-039 made this page the browser", async () => {
     renderScreen();
     await screen.findByTestId("library-track-count");
 
-    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(await screen.findByRole("table", { name: "Library tracks" })).toBeInTheDocument();
   });
 });
 
@@ -505,5 +691,322 @@ describe("without an engine", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /Import a collection/i }));
     expect(await screen.findByText(/needs the desktop app/i)).toBeInTheDocument();
+  });
+});
+
+describe("the browser (LIBUI-10, DEC-039)", () => {
+  beforeEach(() => {
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+  });
+
+  it("opens on the whole library, sorted by artist", async () => {
+    renderScreen();
+    await tableReady();
+
+    expect(lastBrowse()).toMatchObject({ playlistId: null, sort: "artist", dir: "asc" });
+    // The nine columns a DJ reads, and not the eight that are theirs to turn
+    // on (DEC-042) — a default of "everything" is unreadable at this width.
+    const table = screen.getByRole("table", { name: "Library tracks" });
+    expect(within(table).getByRole("columnheader", { name: /Title/ })).toBeInTheDocument();
+    expect(within(table).queryByRole("columnheader", { name: /Comment/ })).toBeNull();
+  });
+
+  it("re-asks the engine when a column header is clicked", async () => {
+    renderScreen();
+    await tableReady();
+
+    await userEvent.click(within(screen.getByRole("table", { name: "Library tracks" })).getByRole("button", { name: "Title" }));
+
+    await waitFor(() => expect(lastBrowse()).toMatchObject({ sort: "title", dir: "asc" }));
+    // Sorting is a new question, not a re-render of the rows in hand.
+    expect(bridge.browseLibrary.mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it("scopes to a playlist and opens it in the order it was arranged", async () => {
+    renderScreen();
+    await tableReady();
+
+    const tree = await screen.findByRole("tree", { name: "Playlists" });
+    await userEvent.click(within(tree).getByText("Friday"));
+
+    // DEC-044: a set list is an order, so scoping to one changes the sort as
+    // well as the scope. Both, or the user sees the right tracks in the wrong
+    // order and has no way to know that is what happened.
+    await waitFor(() =>
+      expect(lastBrowse()).toMatchObject({ playlistId: 10, sort: "playlist_position" }),
+    );
+  });
+
+  it("goes back to artist order when the scope goes back to the library", async () => {
+    renderScreen();
+    await tableReady();
+
+    const tree = await screen.findByRole("tree", { name: "Playlists" });
+    await userEvent.click(within(tree).getByText("Friday"));
+    await waitFor(() => expect(lastBrowse()).toMatchObject({ sort: "playlist_position" }));
+
+    await userEvent.click(within(tree).getByText(/All tracks/i));
+
+    // Position means nothing outside a playlist; leaving one behind would sort
+    // the whole library by a column that is not there.
+    await waitFor(() =>
+      expect(lastBrowse()).toMatchObject({ playlistId: null, sort: "artist" }),
+    );
+  });
+
+  it("narrows to what was typed", async () => {
+    renderScreen();
+    await tableReady();
+
+    await userEvent.type(screen.getByLabelText("Search"), "acid");
+
+    await waitFor(() => expect(lastBrowse()).toMatchObject({ q: "acid" }));
+  });
+});
+
+describe("nothing to show (LIBUI-10)", () => {
+  beforeEach(() => {
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+    bridge.browseLibrary.mockImplementation(async (params: Record<string, unknown>) =>
+      browseAnswer(params, []),
+    );
+  });
+
+  /*
+   * Three different problems, three different sentences. "No tracks" over a
+   * filtered view sends a user looking for a broken import, and "no matches"
+   * over an empty playlist sends them looking for a filter they never set.
+   */
+
+  it("says the library is empty when nothing is asked of it", async () => {
+    renderScreen();
+
+    expect(await screen.findByText("No tracks yet.")).toBeInTheDocument();
+  });
+
+  it("says the playlist is empty when one is in scope", async () => {
+    renderScreen();
+    await screen.findByText("No tracks yet.");
+
+    const tree = await screen.findByRole("tree", { name: "Playlists" });
+    await userEvent.click(within(tree).getByText("Friday"));
+
+    expect(await screen.findByText("This playlist is empty.")).toBeInTheDocument();
+  });
+
+  it("blames the search, not the playlist, when both are in play", async () => {
+    // The case that tells the two answers apart. Scoped *and* searching, the
+    // honest sentence is about the search: the playlist may well have tracks,
+    // and "this playlist is empty" would send a user to look at the wrong
+    // thing. Without this the two branches could be in either order.
+    renderScreen();
+    await screen.findByText("No tracks yet.");
+
+    const tree = await screen.findByRole("tree", { name: "Playlists" });
+    await userEvent.click(within(tree).getByText("Friday"));
+    await screen.findByText("This playlist is empty.");
+
+    await userEvent.type(await screen.findByLabelText("Search"), "zz");
+
+    expect(await screen.findByText("No tracks match this search.")).toBeInTheDocument();
+    expect(screen.queryByText("This playlist is empty.")).toBeNull();
+  });
+
+  it("says nothing matched when there is a search to blame", async () => {
+    renderScreen();
+    await screen.findByText("No tracks yet.");
+
+    await userEvent.type(await screen.findByLabelText("Search"), "zz");
+
+    expect(await screen.findByText("No tracks match this search.")).toBeInTheDocument();
+  });
+});
+
+describe("selecting (LIBUI-10, DEC-045)", () => {
+  beforeEach(() => {
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+  });
+
+  it("selects a row when it is clicked", async () => {
+    renderScreen();
+    await tableReady();
+
+    await userEvent.click(screen.getByText("Track 2"));
+
+    expect(await screen.findByText("1 track selected")).toBeInTheDocument();
+  });
+
+  it("selects everything matching on Ctrl+A, and lets go on Escape", async () => {
+    renderScreen();
+    await tableReady();
+
+    await userEvent.keyboard("{Control>}a{/Control}");
+
+    // "Everything matching" is a description of the query, not a list — the
+    // count comes from the total, which is why it can be said at all.
+    expect(await screen.findByText(/3 tracks selected/)).toBeInTheDocument();
+
+    await userEvent.keyboard("{Escape}");
+
+    await waitFor(() => expect(screen.queryByText(/tracks selected/)).toBeNull());
+  });
+
+  it("leaves Ctrl+A to the text box while a search is being typed", async () => {
+    renderScreen();
+    await tableReady();
+
+    const search = screen.getByLabelText("Search");
+    search.focus();
+    await userEvent.keyboard("{Control>}a{/Control}");
+
+    // Select-all inside a search box means the text, not the library.
+    expect(screen.queryByText(/tracks selected/)).toBeNull();
+  });
+
+  it("puts the focus in the search box on Ctrl+F", async () => {
+    renderScreen();
+    await tableReady();
+
+    await userEvent.keyboard("{Control>}f{/Control}");
+
+    expect(screen.getByLabelText("Search")).toHaveFocus();
+  });
+
+  it("leaves Escape to the dialog on top of it", async () => {
+    bridge.getJobResults.mockResolvedValue({
+      id: "job-preview",
+      state: "succeeded",
+      result: diff(),
+    });
+    renderScreen();
+    await tableReady();
+
+    await userEvent.click(screen.getByText("Track 2"));
+    await screen.findByText("1 track selected");
+
+    await userEvent.click(screen.getByRole("button", { name: /Check for changes/i }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.type(dialog, "{Escape}");
+
+    // The dialog closes and the selection stays: one press, one thing. A page
+    // that clears regardless would take the selection away as a side effect of
+    // declining a refresh.
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.getByText("1 track selected")).toBeInTheDocument();
+  });
+
+  it("forgets the selection when the question changes", async () => {
+    renderScreen();
+    await tableReady();
+
+    await userEvent.click(screen.getByText("Track 2"));
+    await screen.findByText("1 track selected");
+
+    await userEvent.click(within(screen.getByRole("table", { name: "Library tracks" })).getByRole("button", { name: "Title" }));
+
+    // What was selected under the old sort is not a subset of the new one.
+    await waitFor(() => expect(screen.queryByText(/track selected/)).toBeNull());
+  });
+
+  it("does nothing on a double-click — that is Phase 5's (DEC-046)", async () => {
+    renderScreen();
+    await tableReady();
+
+    const before = bridge.browseLibrary.mock.calls.length;
+    await userEvent.dblClick(screen.getByText("Track 2"));
+
+    // The seam exists on the table and the page deliberately wires nothing to
+    // it. When Phase 5 opens a match run from here, this is the test to change
+    // — until then a double-click must not quietly do half of one.
+    expect(bridge.browseLibrary.mock.calls.length).toBe(before);
+    expect(screen.getByText("1 track selected")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
+
+describe("the Inspector (LIBUI-10, DEC-024, DEC-047)", () => {
+  function renderWithInspector() {
+    function Slot() {
+      return <section aria-label="Inspector">{useInspectorContent()}</section>;
+    }
+    return render(
+      <ScaleProvider>
+        <ToastProvider>
+          <InspectorSlotProvider>
+            <LibraryScreen />
+            <Slot />
+          </InspectorSlotProvider>
+        </ToastProvider>
+      </ScaleProvider>,
+    );
+  }
+
+  beforeEach(() => {
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+  });
+
+  it("fills the shell's Inspector with whatever is selected", async () => {
+    renderWithInspector();
+    await tableReady();
+
+    await userEvent.click(screen.getByText("Track 1"));
+
+    const inspector = await screen.findByRole("region", { name: "Inspector" });
+    await waitFor(() => expect(bridge.getLibraryTrack).toHaveBeenCalledWith({ trackId: 1 }));
+    expect(await within(inspector).findByText("Track 1")).toBeInTheDocument();
+    // Read-only (DEC-047): the Inspector describes a track, it does not edit
+    // one, so it offers no way to type into it.
+    expect(within(inspector).queryByRole("textbox")).toBeNull();
+    expect(within(inspector).queryByRole("spinbutton")).toBeNull();
+  });
+
+  it("takes its content away when the page unmounts", async () => {
+    const view = renderWithInspector();
+    await tableReady();
+    await userEvent.click(screen.getByText("Track 1"));
+    const inspector = await screen.findByRole("region", { name: "Inspector" });
+    await within(inspector).findByText("Track 1");
+
+    view.rerender(
+      <ScaleProvider>
+        <ToastProvider>
+          <InspectorSlotProvider>
+            <section aria-label="Inspector" />
+          </InspectorSlotProvider>
+        </ToastProvider>
+      </ScaleProvider>,
+    );
+
+    // Otherwise the Inspector keeps describing a track from a screen the user
+    // has left.
+    expect(screen.queryByText("Track 1")).toBeNull();
+  });
+});
+
+describe("after a refresh (LIBUI-10)", () => {
+  it("asks the library again rather than showing what it held", async () => {
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+    bridge.getJobResults.mockImplementation(async (jobId: string) =>
+      jobId === "job-preview"
+        ? { id: jobId, state: "succeeded", result: diff() }
+        : { id: jobId, state: "succeeded", result: APPLIED },
+    );
+    renderScreen();
+    await tableReady();
+
+    const browsesBefore = bridge.browseLibrary.mock.calls.length;
+    const treesBefore = bridge.getLibraryPlaylists.mock.calls.length;
+
+    await userEvent.click(screen.getByRole("button", { name: /Check for changes/i }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: /Remove 2 tracks and refresh/i }));
+
+    // A refresh replaces the tree row for row and the rows behind the table
+    // belong to a different library now; keeping either would show tracks that
+    // no longer exist.
+    await waitFor(() =>
+      expect(bridge.getLibraryPlaylists.mock.calls.length).toBeGreaterThan(treesBefore),
+    );
+    expect(bridge.browseLibrary.mock.calls.length).toBeGreaterThan(browsesBefore);
   });
 });

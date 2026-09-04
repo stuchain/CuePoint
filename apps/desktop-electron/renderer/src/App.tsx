@@ -23,6 +23,8 @@ import {
   Sidebar,
   StatusStrip,
   TrackInspector,
+  InspectorSlotProvider,
+  InspectorSlotOutlet,
   useRememberDestination,
 } from "./components/shell";
 import { MatchResultsProvider } from "./context/MatchResultsContext";
@@ -41,6 +43,8 @@ import "./App.css";
 
 function AppShell() {
   const location = useLocation();
+  // What the current page has put in the Inspector (LIBUI-10). The panel lives
+  // here rather than in the page so it survives navigation (SHELL-05).
   const [supportOpen, setSupportOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
@@ -137,7 +141,11 @@ function AppShell() {
         menuBar={<AppMenuBar {...menuActions} />}
         header={<GlobalSearch />}
         sidebar={<Sidebar />}
-        inspector={<TrackInspector />}
+        inspector={
+          <TrackInspector>
+            <InspectorSlotOutlet />
+          </TrackInspector>
+        }
         player={<PlayerRegion />}
         statusBar={<StatusStrip />}
       >
@@ -186,7 +194,9 @@ export default function App() {
         <ScaleProvider>
           <ToastProvider>
             <MatchResultsProvider>
-              <AppShell />
+              <InspectorSlotProvider>
+                <AppShell />
+              </InspectorSlotProvider>
             </MatchResultsProvider>
           </ToastProvider>
         </ScaleProvider>

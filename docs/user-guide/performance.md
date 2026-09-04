@@ -96,6 +96,26 @@ deliberately so: with a filter in play CuePoint reads the library directly
 instead of through those indexes, which is five times faster than the
 alternative (35 ms rather than 178 ms).
 
+## Memory while browsing
+
+The numbers above are the engine's. This one is the window's, measured in the
+packaged app with `CUEPOINT_E2E_MEMORY=1 npx playwright test e2e/libraryBrowse.spec.ts
+-g memory` from `apps/desktop-electron/`, which imports a 50,000-track
+collection and scrolls the length of it twice.
+
+| | Renderer working set |
+| --- | --- |
+| Library open, before scrolling | 105 MB |
+| After scrolling through all 50,000 tracks | 159 MB |
+| After a second pass over the same tracks | 160 MB |
+
+**The second pass is the number that matters.** Browsing the whole library
+costs about 54 MB the first time — buffers, fonts and compositing the window
+warms up on any long scroll — and about 1 MB every time after that. Nothing
+accumulates, because nothing is kept: 29 row elements were in the page at the
+end of a 50,000-row scroll, and the rows behind them are fetched a window at a
+time and dropped when they are far enough behind.
+
 ## Performance Budgets
 
 | Metric | Target | Notes |

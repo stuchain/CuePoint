@@ -64,6 +64,14 @@ export interface TrackWindow {
   loading: boolean;
   /** Ask again for whatever failed. */
   retry: () => void;
+  /**
+   * Ask the whole window again, unchanged.
+   *
+   * For when the library moved under a query that did not: after a refresh or
+   * an import the question is word for word the same and every answer to it is
+   * stale, which no comparison of queries can notice.
+   */
+  reload: () => void;
   /** How many rows are held in memory, for tests and diagnostics. */
   loadedRows: number;
 }
@@ -108,6 +116,11 @@ export function pagesToEvict(
 
 export function useTrackWindow(query: LibraryQuery): TrackWindow {
   const key = queryKey(query);
+  // A reload is a new identity for the same question, so everything below —
+  // the reset, the first page, and what counts as a stale response — treats it
+  // exactly as it treats a change of sort.
+  const [generation, setGeneration] = useState(0);
+  const identity = `${generation}\u0000${key}`;
 
   const [pages, setPages] = useState<Map<number, LibraryTrackRow[]>>(new Map());
   const [total, setTotal] = useState(0);
@@ -121,7 +134,7 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
   // between renders.
   const inFlight = useRef<Set<number>>(new Set());
   const centre = useRef(0);
-  const queryRef = useRef(key);
+  const queryRef = useRef(identity);
   const failedPages = useRef<Set<number>>(new Set());
   // What is held, tracked beside the state that holds it. React commits state
   // between renders, and a scroll produces several windows before any of them
@@ -131,7 +144,7 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
 
   // A new question: everything loaded belongs to the old one.
   useEffect(() => {
-    queryRef.current = key;
+    queryRef.current = identity;
     inFlight.current = new Set();
     failedPages.current = new Set();
     loadedPages.current = new Set();
@@ -141,7 +154,7 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
     setLoaded(false);
     setError(null);
     setStatus("loading");
-  }, [key]);
+  }, [identity]);
 
   /**
    * Ask for whatever of `wanted` is not already held, in flight, or known to
@@ -182,7 +195,7 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
         for (let page = first; page <= lastPage; page += 1) inFlight.current.add(page);
         const offset = first * PAGE_SIZE;
         const limit = (lastPage - first + 1) * PAGE_SIZE;
-        const askedFor = key;
+        const askedFor = identity;
 
         void bridge(browseParams(query, offset, limit))
           .then((response: LibrarySearchResponse) => {
@@ -229,7 +242,7 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
       }
       return true;
     },
-    [key, query],
+    [identity, query],
   );
 
   // The first page, so the table knows how many rows there are before anyone
@@ -239,7 +252,7 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
     // Deliberately keyed on the query, not on fetchPages: this runs once per
     // question, and fetchPages is rebuilt on every render of a new query.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [identity]);
 
   const requestWindow = useCallback(
     (startIndex: number, endIndex: number) => {
@@ -248,6 +261,8 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
     },
     [fetchPages, total],
   );
+
+  const reload = useCallback(() => setGeneration((value) => value + 1), []);
 
   const retry = useCallback(() => {
     failedPages.current = new Set();
@@ -281,6 +296,7 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
     libraryEmpty,
     loading: !loaded && status !== "error",
     retry,
+    reload,
     loadedRows,
   };
 }

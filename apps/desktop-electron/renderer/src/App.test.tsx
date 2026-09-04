@@ -207,3 +207,127 @@ describe("App shell", () => {
     });
   });
 });
+
+describe("the Library page inside the shell (LIBUI-10)", () => {
+  /*
+   * The other App tests run without `window.cuepoint`, so the Library page
+   * shows its import prompt and never becomes a browser. That is exactly the
+   * gap a packaged build fell into: the page filled the Track Inspector, the
+   * shell re-rendered, the page rebuilt its content, and React gave up with
+   * "Maximum update depth exceeded" — while every renderer test passed.
+   *
+   * So this mounts the whole App with a library behind it. If the Inspector
+   * slot ever re-renders the page again, this test does not fail neatly — it
+   * times out, which is what a hang looks like from here.
+   */
+  const TRACK = {
+    id: 1,
+    rekordbox_track_id: "1",
+    title: "Contact",
+    artist: "Someone",
+    remixer: null,
+    album: "An Album",
+    label: "A Label",
+    genre: "Techno",
+    key: "8A",
+    bpm: 128,
+    year: 2024,
+    duration_seconds: 300,
+    rating: 4,
+    play_count: 2,
+    colour: null,
+    date_added: "2026-01-01",
+    comment: null,
+    bitrate: 320,
+    file_path: "C:\\music\\1.mp3",
+  };
+
+  beforeEach(() => {
+    globalThis.ResizeObserver ??= class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
+    Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
+      configurable: true,
+      get: () => 1200,
+    });
+    Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
+      configurable: true,
+      get: () => 600,
+    });
+
+    (window as unknown as { cuepoint?: unknown }).cuepoint = {
+      getLibrarySummary: vi.fn().mockResolvedValue({
+        track_count: 1,
+        playlist_count: 0,
+        playlist_entry_count: 0,
+        library_empty: false,
+        source: {
+          xml_path: "C:\\dj\\collection.xml",
+          imported_at: "2026-09-03T10:00:00Z",
+          xml_modified_at: "2026-09-03T09:00:00Z",
+          xml_size_bytes: 2048,
+          track_count: 1,
+          playlist_count: 0,
+          exists: true,
+          changed: false,
+        },
+      }),
+      browseLibrary: vi.fn(async (params: Record<string, unknown>) => ({
+        query: "",
+        total: 1,
+        limit: Number(params.limit ?? 100),
+        offset: Number(params.offset ?? 0),
+        tracks: params.fields === "id" ? [] : [TRACK],
+        track_ids: params.fields === "id" ? [1] : undefined,
+        library_empty: false,
+        mode: "browse",
+        scope: null,
+        sort: params.sort,
+        dir: params.dir,
+        filters: null,
+      })),
+      getLibraryPlaylists: vi.fn().mockResolvedValue({ playlists: [], total: 0 }),
+      getLibraryFilterFields: vi
+        .fn()
+        .mockResolvedValue({ fields: [], operators: {}, facetable: [], sortable: ["artist"] }),
+      getLibraryTrack: vi
+        .fn()
+        .mockResolvedValue({ track: TRACK, playlists: [], playlist_count: 0 }),
+    };
+  });
+
+  afterEach(() => {
+    delete (window as unknown as { cuepoint?: unknown }).cuepoint;
+    Reflect.deleteProperty(HTMLElement.prototype, "offsetWidth");
+    Reflect.deleteProperty(HTMLElement.prototype, "offsetHeight");
+  });
+
+  it("browses, and fills the shell's Inspector without looping", async () => {
+    render(<App />);
+    await userEvent.click(navLink("Library"));
+
+    expect(await screen.findByRole("table", { name: "Library tracks" })).toBeInTheDocument();
+    await userEvent.click(await screen.findByText("Contact"));
+
+    // The Inspector is the shell's, and the page reached it.
+    const inspector = screen.getByRole("complementary", { name: /track inspector/i });
+    await waitFor(() => expect(within(inspector).getByText("Contact")).toBeInTheDocument());
+  });
+
+  it("empties the Inspector when the user leaves the page", async () => {
+    render(<App />);
+    await userEvent.click(navLink("Library"));
+    await screen.findByRole("table", { name: "Library tracks" });
+    await userEvent.click(await screen.findByText("Contact"));
+    const inspector = screen.getByRole("complementary", { name: /track inspector/i });
+    await waitFor(() => expect(within(inspector).getByText("Contact")).toBeInTheDocument());
+
+    await userEvent.click(navLink("Settings"));
+
+    // The Inspector survives navigation (DEC-018); what it was describing does
+    // not, because that track belongs to a page the user has left.
+    await waitFor(() => expect(within(inspector).queryByText("Contact")).toBeNull());
+  });
+});

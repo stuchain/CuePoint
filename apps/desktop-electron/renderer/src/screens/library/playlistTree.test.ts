@@ -291,3 +291,81 @@ describe("a remembered selection that is gone", () => {
     ]);
   });
 });
+
+describe("Rekordbox's ROOT container (LIBUI-10)", () => {
+  /*
+   * Found by the packaged-app E2E, not by these fixtures. A real export wraps
+   * everything in `<NODE Name="ROOT" Type="0">`, the importer mirrors it, and
+   * the pane drew it — so a user's playlists were inside a collapsed folder
+   * called ROOT that they did not make and could not rename.
+   */
+  function root(): LibraryPlaylistNode {
+    return {
+      id: 1,
+      parent_id: null,
+      name: "ROOT",
+      kind: "folder",
+      depth: 0,
+      position: 0,
+      path: "ROOT",
+      track_count: 0,
+    };
+  }
+
+  function child(id: number, name: string, parent = 1): LibraryPlaylistNode {
+    return {
+      id,
+      parent_id: parent,
+      name,
+      kind: "playlist",
+      depth: 1,
+      position: id,
+      path: `ROOT/${name}`,
+      track_count: 3,
+    };
+  }
+
+  it("lifts the playlists inside it to the top", () => {
+    const tree = buildTree([root(), child(2, "Warmup"), child(3, "Peak")]);
+
+    expect(tree.map((node) => node.name)).toEqual(["Warmup", "Peak"]);
+  });
+
+  it("leaves their paths alone", () => {
+    // The path is how the pane remembers where the user was across a refresh
+    // (LIBUI-07), and it is the engine's path — not a rendering of the tree.
+    const tree = buildTree([root(), child(2, "Warmup")]);
+
+    expect(tree[0]!.path).toBe("ROOT/Warmup");
+    expect(findByPath(tree, "ROOT/Warmup")?.name).toBe("Warmup");
+  });
+
+  it("shows a folder someone actually made, even if they called it ROOT", () => {
+    // Two top-level nodes means neither is the container: this is a folder a
+    // user created beside their other playlists.
+    const mine: LibraryPlaylistNode = { ...root(), id: 9, path: "ROOT" };
+    const other: LibraryPlaylistNode = {
+      id: 10,
+      parent_id: null,
+      name: "Gigs",
+      kind: "folder",
+      depth: 0,
+      position: 1,
+      path: "Gigs",
+      track_count: 0,
+    };
+
+    expect(buildTree([mine, other]).map((node) => node.name)).toEqual(["ROOT", "Gigs"]);
+  });
+
+  it("keeps a lone top-level playlist that happens to be named ROOT", () => {
+    // A playlist, not a folder: not the container, whatever it is called.
+    const asPlaylist: LibraryPlaylistNode = { ...root(), kind: "playlist", track_count: 12 };
+
+    expect(buildTree([asPlaylist]).map((node) => node.name)).toEqual(["ROOT"]);
+  });
+
+  it("has nothing to show for an empty container", () => {
+    expect(buildTree([root()])).toEqual([]);
+  });
+});

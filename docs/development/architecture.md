@@ -35,6 +35,41 @@ Input (Rekordbox XML) → Parse → Query Generation → Search → Match/Score 
 | `data/beatport.py` | Beatport search and page parsing |
 | `data/rekordbox.py` | Rekordbox XML parsing |
 
+## Library Browsing (desktop)
+
+The Library page browses a collection that does not fit in the renderer. Every
+question about it — a window of rows, a count, a facet's values, the ids behind
+a selection — is answered by SQLite and travels the full desktop path; the
+renderer holds no library.
+
+```
+TrackTable (virtualized)
+  -> useTrackWindow          renderer/src/screens/library/useTrackWindow.ts
+  -> window.cuepoint.browseLibrary                   preload (contextBridge)
+  -> IPC -> engineClient.ts -> loopback HTTP (bearer)
+  -> GET /api/v1/library/search                     engine/server.py
+  -> library_api.search_library                     engine/library_api.py
+  -> LibraryService.browse_tracks                   services/library_service.py
+  -> persistence/track_query.py                     one windowed SQL statement
+```
+
+Two properties hold this together:
+
+- **The window is a query, not a slice.** Scope, sort, direction, text and
+  filters go to SQLite; `LIMIT`/`OFFSET` is applied there. Sorting 50,000 tracks
+  re-asks the engine rather than re-ordering anything in JavaScript.
+- **A response says what it answers.** `search_library` echoes back the mode,
+  scope, sort, direction and filter set it computed for, and the renderer drops
+  any response that does not answer the question being asked now
+  (`libraryQuery.ts`). This is why a fast sequence of clicks cannot leave the
+  table showing the previous sort's rows.
+
+Related surfaces on the same path: `/api/v1/library/playlists` (the tree),
+`/api/v1/library/facets` (a field's values, for filter suggestions),
+`/api/v1/library/filter-fields` (the filter vocabulary the UI builds its
+controls from) and `/api/v1/library/tracks/{id}` (one track and its playlists,
+for the Inspector).
+
 ## Architecture Diagram (ASCII)
 
 ```

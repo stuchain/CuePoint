@@ -86,6 +86,8 @@ previous matching runs.
 | --- | --- |
 | **Ctrl+K** | Search your library |
 | **Ctrl+F** | Search within the table on screen |
+| **Ctrl+A** | Select every track matching what you are looking at |
+| **Esc** | Let go of a selection, or close what is open |
 | **Ctrl+B** | Collapse or expand the navigation |
 | **Ctrl+I** | Show or hide the Track Inspector |
 | **Ctrl+Shift+A** | Open Activity |
