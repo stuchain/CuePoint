@@ -1247,6 +1247,16 @@ after a refresh, Escape, Ctrl+A inside a text box, Ctrl+F, both empty-state bran
 being filled at all, a click selecting a row, double-click staying unwired, and every property of
 the slot including the loop.
 
+**Follow-up, same day.** Reviewing the phase-level acceptance turned up one coupling nothing
+pinned: a column's `sortKey` is sent to the engine, which serves only the names in
+`SORTABLE_COLUMNS`, and the two lists sit in different languages with no import between them. They
+agreed, but a typo in a future column — or a sort renamed on the engine side — would ship a header
+whose click is rejected. `src/tests/unit/engine/test_browse_sort_contract.py` now compares them in
+both directions, on the Python side because the renderer's contract test cannot read
+`src/cuepoint` (Vite allows it only the renderer and `../electron`). `playlist_position` is the one
+sort with no column, and the test names it as the deliberate exception rather than ignoring the
+direction.
+
 **Verification**: renderer `npm test` — 981 passed across 50 files; `npm run lint`,
 `npm run typecheck` and `npm run build:check` clean. Playwright — 26 passed, including the new
 Phase 4 journey (import → browse → scope → sort → filter → select → inspect → refresh → browse
