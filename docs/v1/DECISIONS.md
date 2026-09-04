@@ -798,3 +798,268 @@ it is recorded here rather than left to be inferred from the diff.
 
 **Decided with**: User (delegated: "do whatever you think better and most professional") ·
 **Date**: 2026-09-03
+
+---
+
+## DEC-039 — The Library Page Is the Browser
+
+**Status**: Approved
+
+**Decision**: Phase 4 turns the existing Library page into the library browser — playlist pane,
+track table and Track Inspector — rather than adding a second navigation destination. Import,
+refresh and the source-file state compress into a header on the same page.
+
+**Reason**: DEC-020's registry declares the whole target information architecture, and it contains
+one `library` destination. A separate "Browse" entry would add a destination the registry was
+written to make unnecessary, and would split "what my library holds" from "my library" for no
+gain.
+
+**Implications**:
+- LIBRARY-11's test asserting that the Library page renders no table is inverted by this phase,
+  deliberately and in one place, rather than deleted quietly.
+- The import and refresh flows, their wording (`libraryFormat.ts`) and DEC-032's preview dialog are
+  preserved intact — this is a change of surrounding layout, not of that flow.
+- The empty state stays the empty state: with no library imported, the page is the import prompt
+  LIBRARY-11 built, not an empty grid.
+
+**Decided with**: User · **Date**: 2026-09-04
+
+---
+
+## DEC-040 — Rows Come From the Engine, One Window at a Time
+
+**Status**: Approved
+
+**Decision**: The library table is fed by server-side windowed queries. Scope, text query, filters,
+sort and paging are all resolved in SQL; the renderer holds only the rows it is showing plus a
+margin, and fetches more as it scrolls. This extends `/api/v1/library/search` per DEC-023 rather
+than adding a second query path.
+
+**Reason**: `ResultsTable` materializes and sorts every row in JavaScript, which is a different
+program at 50,000 rows than at 400. LIBRARY-12 measured the library at the size it is designed for;
+a table that only works below a few thousand rows would not survive its own test data.
+
+**Implications**:
+- Sort becomes an API parameter with a whitelist of sortable columns, not a click handler over an
+  array. Sorting a column the database cannot sort is a contract error, not a slow render.
+- Every ordering needs a stable tiebreak (`id`), or paging can repeat or skip rows where sort keys
+  collide — which they do constantly on `artist` and on a null `bpm`.
+- Indexes must exist for the sorts and filters offered. A column that cannot be indexed is a column
+  that should not be offered as a default sort.
+- `total` continues to mean the full match count, so "showing 200 of 47,913" needs no second call.
+- The renderer must show unloaded rows as placeholders rather than as an empty table, and must not
+  reorder or renumber while a window is in flight.
+
+**Decided with**: User · **Date**: 2026-09-04
+
+---
+
+## DEC-041 — A New Generic Track Table; `ResultsTable` Converges in Phase 7
+
+**Status**: Approved
+
+**Decision**: Phase 4 extracts a generic `TrackTable` from `ResultsTable`'s proven parts —
+virtualization, resizable columns, sticky header, persisted layout — and uses it for the library.
+`ResultsTable` and the inKey results screen are left untouched, and migrate onto `TrackTable` in
+Phase 7 when inKey becomes Clean.
+
+**Reason**: `ResultsTable` is mature, load-bearing and shaped entirely around match results
+(`TrackResult`, a `write` checkbox, Beatport columns, client-side sort). Rewriting it in place
+would put a working screen's risk inside a phase about a new one. Coexist-then-converge is the
+pattern DEC-030 and DEC-036 already set in this project.
+
+**Implications**:
+- Two table components exist between Phase 4 and Phase 7. That is temporary and tracked, not
+  accidental — the same standing this repository gave two collection databases under DEC-030.
+- `TrackTable` must be generic in row type and column definition from the start, or the
+  convergence it promises will not be possible. Its data source is windowed (DEC-040), so the
+  match screen's in-memory array becomes one adapter of that interface in Phase 7, not a special
+  case inside the component.
+- inCrate's bare list adopts the same table in Phase 9 (DEC-021), not now.
+
+**Decided with**: User · **Date**: 2026-09-04
+
+---
+
+## DEC-042 — Columns Can Be Hidden and Reordered
+
+**Status**: Approved
+
+**Decision**: The library table has a column picker (show/hide) and drag-to-reorder, both persisted
+alongside the existing per-column width persistence. A "reset columns" action restores the default
+set, order and widths.
+
+**Reason**: User chose the fuller option over the recommended show/hide-only: order is part of how
+a dense table is read, and a column that cannot be moved is a column that eventually gets hidden
+instead.
+
+**Implications**:
+- Column layout becomes ordered state, not a set of visibility flags — persisted as an explicit
+  ordered list of column ids plus widths, so a column added in a later release appears at a defined
+  position rather than wherever a merge puts it.
+- Stored layout must be reconciled with the current column registry on load: unknown ids dropped,
+  missing ids appended in registry order. Without that, a rename or a removed column leaves a
+  persisted layout that renders a blank column forever.
+- Reorder must work in a virtualized CSS-grid table, which is the real cost of this option and is
+  accepted knowingly.
+- Sticky columns interact with reorder: whatever is pinned left stays pinned, and the constraint is
+  stated in the step rather than discovered.
+
+**Decided with**: User · **Date**: 2026-09-04
+
+---
+
+## DEC-043 — Filters Are the Smart Collection Rule Model, Unsaved
+
+**Status**: Approved · **Related**: DEC-016
+
+**Decision**: Phase 4 builds field filters (genre, key, BPM range, year, rating, label, and text)
+on top of one rule model — a flat, AND-only list of `{field, operator, value}` clauses, the exact
+shape DEC-016 chose for Smart Collections. Phase 6's Smart Collections save that model; Phase 4
+holds it in view state.
+
+**Reason**: Two rule vocabularies for the same job would drift, and the drift would show up as a
+filter that finds tracks a Smart Collection with the same rules does not. Building one model once,
+and adding persistence later, costs almost nothing extra now.
+
+**Implications**:
+- The field/operator vocabulary and its SQL compilation live in Python, per the "business rules
+  stay in Python" invariant. The renderer sends rules and renders facets; it does not build SQL or
+  decide what a rule means.
+- Operators are validated against a whitelist per field type. An unknown field or operator is a
+  rejected request with a message, never an interpolated string.
+- Facet values (which genres exist, and how many tracks each has) come from the engine, so the
+  counts reflect the library rather than the loaded window.
+- Phase 6 inherits the model, the compiler and their tests; what it adds is a table to store rule
+  sets in and a UI to name them.
+
+**Decided with**: User · **Date**: 2026-09-04
+
+---
+
+## DEC-044 — The Playlist Tree Scopes the Table
+
+**Status**: Approved · **Implements**: DEC-031
+
+**Decision**: The Library page has a playlist pane showing the mirrored Rekordbox folder/playlist
+tree. Selecting a playlist scopes the table to its tracks; inside a playlist the default sort is
+the playlist's own order ("as arranged in Rekordbox"). Selecting nothing shows the whole library.
+
+**Reason**: DEC-031 mirrored the tree and its membership precisely so Phase 4 could browse by
+playlist, and a DJ's mental index of their collection is the playlist tree, not an alphabetical
+list of 50,000 tracks.
+
+**Implications**:
+- A playlists endpoint is required — the mirrored tree has never been exposed over HTTP — with the
+  full six-file desktop-contract synchronization.
+- Playlist order is a sortable dimension only within a playlist scope. Offering it library-wide
+  would be meaningless, and the step says so rather than leaving it to be tried.
+- Playlists remain read-only (DEC-031): no drag-to-add, no rename, no delete. CuePoint's own
+  editable Collections are Phase 6.
+- Expansion and selection state persist with the existing `localStorage` pattern.
+
+**Decided with**: User · **Date**: 2026-09-04
+
+---
+
+## DEC-045 — Multi-Select Is Built Now
+
+**Status**: Approved
+
+**Decision**: The library table supports multi-selection — click, ctrl/cmd-click, shift-click,
+select-all — with a visible selection count. The only actions offered in Phase 4 are the ones that
+exist today: copy the selection, and reveal a file in the OS file manager.
+
+**Reason**: Nothing in this build can tag, rate or collect a set of tracks yet, but every phase
+after this one can. Retrofitting a selection model into a virtualized table backed by windowed data
+is materially harder than building it once.
+
+**Implications**:
+- Selection is identified by track id, not row index — with windowed data a row index means nothing
+  once the window moves, and "select all" cannot mean "all loaded rows".
+- "Select all" over a filtered 50,000-row view is a *description* of a selection (the current
+  query), not a list of ids. The model must be able to express that, or Phase 6's "tag everything
+  matching this filter" becomes a rewrite.
+- The Inspector shows the last-clicked track when several are selected, and says how many are
+  selected. It is not a multi-track editor; that question belongs to Phase 6.
+
+**Decided with**: User · **Date**: 2026-09-04
+
+---
+
+## DEC-046 — Double-Click Does Nothing Until the Player Exists
+
+**Status**: Approved · **Anticipates**: DEC-012
+
+**Decision**: In Phase 4, single click selects a row and fills the Inspector; double-click does
+nothing. Phase 5 gives double-click DEC-012's meaning — play the track and load the current view as
+the queue.
+
+**Reason**: Giving double-click a temporary meaning teaches a gesture in order to take it away.
+Doing nothing is honest about the fact that playback has not been built yet.
+
+**Implications**:
+- `TrackTable` still carries an `onRowActivate` callback so Phase 5 has a defined seam, and a test
+  asserts the library page passes nothing to it today.
+- The context menu ships in Phase 5 with playback in it (DEC-013), not in Phase 4 with two entries
+  that would be re-ordered a phase later. Copy and reveal-in-file-manager live in the selection
+  toolbar until then.
+
+**Decided with**: User · **Date**: 2026-09-04
+
+---
+
+## DEC-047 — The Inspector Shows Everything Imported, Read-Only
+
+**Status**: Approved · **Fills**: DEC-024
+
+**Decision**: Phase 4 fills DEC-024's empty Inspector slot with the selected track's full imported
+record — identity, the DEC-034 fields (rating, play count, colour, date added, comment, bitrate),
+BPM, key, duration, file path — plus the playlists that contain it. Everything is read-only.
+
+**Reason**: The Inspector container has existed since Phase 2 with nothing in it; this is the first
+phase with data to put there. Read-only because nothing in this build owns editing yet: ratings and
+tags are Phase 6, Beatport values are Phase 7, and an editable field with no write path is a lie.
+
+**Implications**:
+- A track-detail endpoint is required for playlist membership; `playlist_ids_for_track` already
+  exists in the repository and is not re-implemented.
+- Ratings display as stars with no conversion in the UI. This bullet originally called for a
+  mapping function for Rekordbox's 0/51/102/153/204/255 encoding; reading the code during LIBUI-01
+  showed the conversion already happens at import (`_rating_to_stars`), and `LibraryTrack` rejects
+  any rating outside 0–5, so the stored value is already the star count. Corrected here rather than
+  left to be implemented twice.
+- A field Rekordbox did not provide reads as absent, not as zero — a missing rating and a
+  zero rating are different facts, which is why LIBRARY-01 made those columns nullable.
+- Phase 6 adds editing in place; Phase 7 adds the Beatport comparison beside it. Neither replaces
+  this panel.
+
+**Decided with**: User · **Date**: 2026-09-04
+
+---
+
+## DEC-048 — A Data Font for Dense Values
+
+**Status**: Approved
+
+**Decision**: A `--font-data` token is introduced and used for table cell values and Inspector
+field values only. Pixelify Sans remains the font of the application everywhere else — headers,
+buttons, labels, panel titles, navigation. This closes the open sign-off item recorded in
+`PIXEL_DESIGN_SYSTEM.md` §4.
+
+**Reason**: The pixel identity lives in the black outlines, the bevels, the hard zero-blur shadows
+and the square corners — not in the numerals. A display face set at 10–12px across 14 columns of
+titles, keys and BPMs is the one place that identity costs legibility, and this is the screen users
+will stare at longest.
+
+**Implications**:
+- `--font-data` is a system-first stack, not a second Google Fonts `@import`: the packaged app must
+  render identically offline, and today's single webfont is already a network dependency worth not
+  doubling.
+- It is a token, so a theme or a later decision can point it back at Pixelify Sans in one line.
+- `PIXEL_DESIGN_SYSTEM.md` is updated in the same step that introduces it, since that document
+  records the open question this answers.
+- Contrast and hit-target checks (`apps/desktop-electron/docs/design-signoff.md`) are re-run for the
+  table at 1×, 2× and 3× scale, because row density and font metrics change both.
+
+**Decided with**: User · **Date**: 2026-09-04

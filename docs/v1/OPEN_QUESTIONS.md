@@ -819,6 +819,189 @@ re-import later.
 
 ---
 
+## DECISION ROUND 6 — LIBRARY UI ✅ Resolved 2026-09-04
+
+Asked before writing Phase 4's step specifications. Three of these came out of reading the code
+rather than the roadmap: `/api/v1/library/search` answers nothing for a blank query, so browsing
+has no data path at all today; `ResultsTable` sorts an in-memory array, which is a different
+program at 50,000 rows than at 400; and the Rekordbox playlist tree LIBRARY-03 mirrored is stored
+but has never been exposed over HTTP. Outcomes are DEC-039…DEC-048 in `DECISIONS.md`.
+
+---
+
+### Q-038 — Where browsing lives
+
+**Status**: Resolved → DEC-039 (Option A chosen: the Library page becomes the browser)
+
+**Question**: `LibraryScreen` shows counts, the source file and the import/refresh controls, and a
+test asserts it renders no table. Where does the track table go?
+
+- **Option A — The Library page becomes the browser**: playlist pane, table and Inspector, with
+  import and refresh compressed into a header.
+- **Option B — A second destination.** Library keeps its summary; a new "Browse" entry holds the
+  table.
+- **Option C — Tabs inside Library**: Overview and Tracks.
+
+**Recommendation**: **A** — DEC-020's registry declares one `library` destination and the target IA
+has no second one; B would invent a destination the registry exists to avoid inventing ad hoc.
+
+---
+
+### Q-039 — Where rows come from at fifty thousand tracks
+
+**Status**: Resolved → DEC-040 (Option A chosen: server-side windowed queries)
+
+**Question**: `ResultsTable` holds every row in memory and sorts in JavaScript. LIBRARY-12 measured
+the library at 50,000 tracks. What feeds the table?
+
+- **Option A — Server-side windowed queries.** Scope, filter, sort and paging in SQL; the renderer
+  holds a window and fetches as it scrolls. Extends `/api/v1/library/search` per DEC-023.
+- **Option B — Load everything once**, sorting and filtering client-side, as today's table does.
+- **Option C — Hybrid.** A compact in-memory index of ids and sort keys, row detail fetched per
+  window.
+
+**Recommendation**: **A**. Costs: new indexes, a stable tiebreak so paging cannot repeat or skip a
+row, and sort becoming an API parameter rather than a click handler. B is far less code and will be
+comfortable at 4,000 rows and wrong at 50,000 — which is the size this library is designed for.
+
+---
+
+### Q-040 — One table component or two
+
+**Status**: Resolved → DEC-041 (Option A chosen: a new generic table, converge in Phase 7)
+
+**Question**: The roadmap says Phase 4 "generalizes `ResultsTable` into the Universal Track Table".
+`ResultsTable` is mature, virtualized and load-bearing for inKey's results screen, and its 14
+columns are match-specific.
+
+- **Option A — Extract a generic `TrackTable`** from its proven parts, use it for the library now,
+  and migrate the results screen in Phase 7 when inKey becomes Clean. Coexist, then converge — the
+  pattern DEC-030 and DEC-036 already set.
+- **Option B — Refactor `ResultsTable` in place** and re-express match columns against the generic
+  table immediately.
+- **Option C — Two tables permanently.**
+
+**Recommendation**: **A**.
+
+---
+
+### Q-041 — Columns
+
+**Status**: Resolved → DEC-042 (Option C chosen: show/hide and reorder, both persisted)
+
+**Question**: Today's table has a fixed 14-column grid with persisted widths. A library table is
+looked at for hours by people with strong opinions about what belongs on screen.
+
+- **Option A — A fixed default set.**
+- **Option B — Show/hide picker**, persisted, alongside the existing width persistence.
+- **Option C — B plus drag-to-reorder.**
+
+**Recommendation**: **B**; reorder is real work in a virtualized grid for less payoff than hiding.
+**User chose C** — order is part of how a table is read, and a column you cannot move is a column
+you end up hiding.
+
+---
+
+### Q-042 — Filters, and whether they are the Smart Collection engine
+
+**Status**: Resolved → DEC-043 (Option B chosen: facets over one shared rule model)
+
+**Question**: The roadmap asks Phase 4 for "the reusable filter system that doesn't exist today",
+and DEC-016 already settled that Phase 6's Smart Collections are flat AND-only rule sets. Those are
+the same shape.
+
+- **Option A — Playlist scope and text search only** this phase.
+- **Option B — Field facets too** (genre, key, BPM range, year, rating, label), built as the
+  reusable component, with a rule vocabulary deliberately shaped so Phase 6's Smart Collections
+  reuse it rather than growing a second one.
+- **Option C — A full rule builder now**, with Phase 6 adding only persistence.
+
+**Recommendation**: **B** — one model, built once, saved later.
+
+---
+
+### Q-043 — The playlist tree
+
+**Status**: Resolved → DEC-044 (Option A chosen: the tree scopes the table)
+
+**Question**: DEC-031 mirrored the tree and its membership read-only, explicitly so Phase 4 could
+browse by playlist. Nothing exposes it over HTTP yet.
+
+- **Option A — A tree pane that scopes the table**, with "as arranged in Rekordbox" as the default
+  sort inside a playlist.
+- **Option B — A playlist filter chip**, no tree.
+- **Option C — No playlist browsing in Phase 4.**
+
+**Recommendation**: **A**. It needs a new playlists endpoint, which is a full six-file
+desktop-contract change.
+
+---
+
+### Q-044 — Selection
+
+**Status**: Resolved → DEC-045 (Option A chosen: multi-select now)
+
+**Question**: Nothing in this build can act on a set of tracks — tags and Collections arrive in
+Phase 6, Clean actions in Phase 7. Is selection built before the actions exist?
+
+- **Option A — Multi-select now** (ctrl/shift, select all, a selection count), with only the
+  actions that exist today: copy, and reveal in the file manager.
+- **Option B — Single-select now**, multi-select in Phase 6 when there is something to do with it.
+
+**Recommendation**: **A** — retrofitting a selection model into a virtualized table with windowed
+data later is worse than building it once, and every phase after this one wants it.
+
+---
+
+### Q-045 — Double-click before a player exists
+
+**Status**: Resolved → DEC-046 (Option A chosen: double-click stays inert)
+
+**Question**: DEC-012 says double-click plays the track and loads the current view as the queue.
+Phase 5 is where that becomes possible.
+
+- **Option A — Double-click does nothing yet**; single click selects and fills the Inspector.
+- **Option B — Double-click opens the Inspector** now and changes meaning in Phase 5.
+- **Option C — Double-click reveals the file.**
+
+**Recommendation**: **A** — B teaches a gesture in order to take it away.
+
+---
+
+### Q-046 — Inspector content
+
+**Status**: Resolved → DEC-047 (Option A chosen: everything imported, read-only)
+
+**Question**: DEC-024 built the Inspector container empty and left each later phase to fill it.
+Phase 4 is the first phase with something to put there.
+
+- **Option A — Everything imported, read-only**: all DEC-034 fields, the file path, and playlist
+  membership.
+- **Option B — Minimal identity only** (title, artist, key, BPM, path).
+- **Option C — Leave it empty** until Phase 6 and 7 have editable fields.
+
+**Recommendation**: **A**. Membership needs a track-detail endpoint; the repository method
+(`playlist_ids_for_track`) already exists.
+
+---
+
+### Q-047 — Typography at table density
+
+**Status**: Resolved → DEC-048 (Option B chosen: a data font for dense values)
+
+**Question**: `PIXEL_DESIGN_SYSTEM.md` §4 records that Pixelify Sans was never signed off for dense
+data tables, and notes that the Universal Track Table "will be exactly this".
+
+- **Option A — Keep Pixelify Sans everywhere** and tune size and row height.
+- **Option B — Keep the pixel chrome**, and introduce a `--font-data` token used only in table
+  cells and Inspector values.
+- **Option C — Run a readability check first** and decide after.
+
+**Recommendation**: **B** — the identity lives in the black outlines, bevels and hard shadows, not
+in the numerals.
+
+---
+
 ## Not yet asked (deferred to a later round)
 
 Per the spec's own guidance not to dump every question at once — these are real open items
@@ -831,4 +1014,6 @@ surfaced by the audit but held back until the decisions they depend on are locke
 
 **Resolved since first listed here**: the collapsible-sidebar question became Q-022/DEC-022 in
 Round 3. The `services/` Qt-boundary violation and the CI-gap items were folded into FOUNDATION-01
-and FOUNDATION-13 and are done.
+and FOUNDATION-13 and are done. The Smart Collection question above is now narrower than when it
+was written: DEC-043 settled that Phase 6's rules and Phase 4's filters are one model, so what
+remains open is only export and duplication of a *saved* rule set.
