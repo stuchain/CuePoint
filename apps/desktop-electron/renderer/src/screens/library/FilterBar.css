@@ -1,0 +1,86 @@
+/* Narrowing the library (LIBUI-08). A row of controls, then what is active. */
+
+.cp-filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  background: var(--bg-toolbar);
+  border-bottom: var(--border-width) solid var(--border-outline);
+}
+
+.cp-filter-bar__row,
+.cp-filter-bar__builder {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.cp-filter-bar__builder {
+  padding: var(--space-sm);
+  background: var(--bg-panel);
+  border: calc(1px * var(--scale)) solid var(--border-muted);
+}
+
+.cp-filter-bar__count {
+  margin-left: auto;
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cp-filter-bar__hint {
+  align-self: center;
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
+.cp-filter-bar__problem {
+  align-self: center;
+  color: var(--accent-danger);
+  font-size: var(--font-size-xs);
+}
+
+.cp-filter-bar__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cp-filter-bar__chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: calc(2px * var(--scale)) var(--space-xs);
+  background: var(--bg-input);
+  border: calc(1px * var(--scale)) solid var(--border-outline);
+  box-shadow: var(--shadow-badge);
+  font-size: var(--font-size-xs);
+}
+
+.cp-filter-bar__chip button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(14px * var(--scale));
+  height: calc(14px * var(--scale));
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--fg-muted);
+  font-family: var(--font-pixel);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.cp-filter-bar__chip button:hover {
+  color: var(--accent-danger);
+}

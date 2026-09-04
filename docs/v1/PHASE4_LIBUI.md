@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 4: Library UI, Detailed Step Specifications
 
-Status: **In progress.** LIBUI-01…LIBUI-07 are implemented, each with its outcome recorded below
-the step that specified it; LIBUI-08…LIBUI-10 are specified and not started. Per the process, no implementation
+Status: **In progress.** LIBUI-01…LIBUI-08 are implemented, each with its outcome recorded below
+the step that specified it; LIBUI-09 and LIBUI-10 are specified and not started. Per the process, no implementation
 happens from this document — each step needs an explicit "Implement LIBUI-NN" instruction, scoped
 to exactly that step, and its outcome is recorded under the step afterwards.
 
@@ -924,7 +924,7 @@ collection — LIBUI-10 assembles the page and is where that measurement belongs
 
 ---
 
-## LIBUI-08 — The Filter Bar
+## LIBUI-08 — The Filter Bar ✅ IMPLEMENTED 2026-09-04
 
 **Objective**: The reusable filter UI over LIBUI-02's rule model (DEC-043).
 
@@ -965,6 +965,62 @@ the UI never constructs a clause the engine rejects.
 **Risks**: Medium — mostly in keeping the vocabulary in one place instead of two.
 
 **Complexity**: **M**
+
+### ✅ IMPLEMENTED 2026-09-04
+
+**Outcome**: Complete. `filterText.ts` turns clauses into words and words into clauses,
+`useFilterVocabulary.ts` fetches what can be filtered and what values a field takes, and
+`FilterBar.tsx` is the control. 69 new renderer tests and 5 new Python ones.
+
+**The vocabulary stays in one place, and the engine now sends one more part of it.** LIBUI-02 built
+`describe_fields()` so the renderer could not name a field or an operator the engine would refuse;
+building the *controls* needs one thing more — how many values an operator takes. A box for "is
+empty" or one box for "between" is a clause the engine rejects, offered by something that looks
+fine. So `/library/filter-fields` now also carries `operators: {name: {arity}}`, derived from the
+same constants that do the refusing, and the bar builds a one-box, two-box, comma-separated or
+no-box control from it. What stays in the renderer is only what a screen needs: what to *call* an
+operator.
+
+**It holds no query.** The bar is handed a rule set and hands one back; it issues no request and
+knows nothing about the table it narrows. A test renders it against a rule set it did not build,
+which is exactly what Phase 6's Smart Collection editor will do — the reuse DEC-043 was chosen for,
+demonstrated rather than asserted.
+
+**Changing the field changes the operator when it has to.** Switching from Genre with "contains"
+selected to BPM would otherwise leave a clause nothing can answer, offered by a control showing no
+sign of it.
+
+**A clause that cannot be built says why.** "BPM takes numbers", "Give both ends of the range",
+"Give at least one value" — in the bar, next to the button, rather than a disabled control a user
+cannot learn from.
+
+**Ratings are stars in both directions, with no second mapping.** The parser converted Rekordbox's
+0/51/…/255 encoding at import (LIBRARY-02) and `LibraryTrack` refuses anything outside 0–5, so the
+filter offers stars, sends stars, and reads chips back as stars. This is the correction DEC-047
+recorded — the mapping function that spec called for would have been a second copy of a conversion
+that already happened.
+
+**Facets are asked for when a field is chosen, not when the bar is drawn**, and only for fields
+worth asking about: a facet is a pass over the library, and the values of a free-text comment are
+as many as the tracks. Each carries its count, which is the difference between guessing a genre and
+knowing there are 1,204 tracks in it.
+
+**The one mutation that survived was a test that could not fail**: removal was only ever exercised
+on the first chip, so hard-coding index 0 looked correct. Removing the *second* chip is now its own
+test.
+
+**Guards: 25 of 25 fail when the thing they protect is broken** — arity coming from the engine, the
+operator switch, every build refusal, the AND-only rule set, the empty-set collapse, both
+descriptions that are not a single value, the field and operator lists, the conditional value boxes,
+the silent failure, clear-all, chip removal by index, the engine's count, facet scoping and its
+field check, and the two Python halves (the endpoint sending arity, and `between` being a pair).
+
+**Verification**: renderer `npm test` — 847 passed across 48 files; `npm run typecheck`,
+`npm run lint` and `npm run build:check` clean. Python: `pytest` over the model and engine suites,
+`run_tests.py --all --no-slow`, `ruff check`/`format --check` all pass. Not done here: filters have
+no page to sit on yet. LIBUI-10 is where the bar, the pane and the table become one screen — and
+where the deliberate asymmetry this step's spec records (scope persists, filters do not) is
+actually observable.
 
 ---
 

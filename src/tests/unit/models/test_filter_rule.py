@@ -30,7 +30,9 @@ from cuepoint.models.filter_rule import (
     FilterRuleError,
     RuleSet,
     describe_fields,
+    describe_operators,
     field_spec,
+    operator_arity,
     valueless,
 )
 
@@ -81,6 +83,42 @@ class TestRegistry:
 
     def test_describe_fields_covers_every_field(self):
         assert len(describe_fields()) == len(FIELDS)
+
+
+class TestArity:
+    """How many values an operator takes, which the renderer builds from."""
+
+    @pytest.mark.parametrize(
+        "operator,arity",
+        [
+            ("is", "single"),
+            ("contains", "single"),
+            ("gte", "single"),
+            ("before", "single"),
+            ("between", "pair"),
+            ("any_of", "list"),
+            ("is_empty", "none"),
+            ("is_not_empty", "none"),
+        ],
+    )
+    def test_operator_arity(self, operator, arity):
+        assert operator_arity(operator) == arity
+
+    def test_every_operator_is_described(self):
+        described = describe_operators()
+        for operators in OPERATORS_BY_TYPE.values():
+            for operator in operators:
+                assert operator in described
+                assert described[operator]["arity"] in {
+                    "none",
+                    "single",
+                    "pair",
+                    "list",
+                }
+
+    def test_it_describes_nothing_that_is_not_an_operator(self):
+        allowed = {op for ops in OPERATORS_BY_TYPE.values() for op in ops}
+        assert set(describe_operators()) == allowed
 
 
 class TestOperatorsPerType:

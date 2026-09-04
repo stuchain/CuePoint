@@ -414,8 +414,19 @@ export interface LibraryFilterField {
   operators: string[];
 }
 
+/** How many values an operator takes, as the engine describes it. */
+export interface LibraryFilterOperator {
+  arity: "none" | "single" | "pair" | "list";
+}
+
 export interface LibraryFilterVocabulary {
   fields: LibraryFilterField[];
+  /**
+   * Every operator any field allows, and its arity. The renderer builds one
+   * control for "between" and another for "is empty" from this rather than
+   * from a table of its own, so it cannot offer a clause the engine refuses.
+   */
+  operators: Record<string, LibraryFilterOperator>;
   facetable: string[];
   sortable: string[];
 }

@@ -23,6 +23,7 @@ from cuepoint.models.filter_rule import (
     FacetRange,
     RuleSet,
     describe_fields,
+    describe_operators,
     field_spec,
 )
 from cuepoint.models.library_track import LibraryTrack
@@ -378,6 +379,10 @@ def library_filter_fields() -> Dict[str, Any]:
     """
     return {
         "fields": describe_fields(),
+        # How many values each operator takes, so the renderer builds one
+        # control for "between" and a different one for "is empty" without a
+        # second copy of that rule (LIBUI-08).
+        "operators": describe_operators(),
         "facetable": list(FACETABLE_FIELDS),
         "sortable": list(SORTABLE_COLUMNS),
     }

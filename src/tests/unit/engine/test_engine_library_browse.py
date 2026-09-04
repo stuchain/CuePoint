@@ -568,6 +568,22 @@ class TestFilterFieldsEndpoint:
         assert "artist" in payload["sortable"]
         assert "playlist_position" in payload["sortable"]
 
+    def test_it_says_how_many_values_each_operator_takes(self, engine, seeded):
+        # LIBUI-08 builds one control for "between" and another for "is empty".
+        # Arity comes from the engine so a renderer cannot offer a clause the
+        # engine would refuse.
+        operators = get_json(engine, "/api/v1/library/filter-fields")["operators"]
+        assert operators["is"]["arity"] == "single"
+        assert operators["between"]["arity"] == "pair"
+        assert operators["any_of"]["arity"] == "list"
+        assert operators["is_empty"]["arity"] == "none"
+
+    def test_every_operator_a_field_allows_is_described(self, engine, seeded):
+        payload = get_json(engine, "/api/v1/library/filter-fields")
+        described = set(payload["operators"])
+        for field in payload["fields"]:
+            assert set(field["operators"]) <= described
+
     def test_every_facetable_field_is_a_field(self, engine, seeded):
         payload = get_json(engine, "/api/v1/library/filter-fields")
         names = {f["name"] for f in payload["fields"]}

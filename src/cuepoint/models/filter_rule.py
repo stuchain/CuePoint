@@ -530,6 +530,41 @@ class FacetRange:
         }
 
 
+#: How many values an operator takes. The renderer builds its controls from
+#: this rather than from a table of its own: a operator that takes two values
+#: and a control that offers one is a clause the engine will refuse, and the
+#: only way to stop that is for arity to come from the same place the
+#: refusal does (DEC-043).
+ARITY_NONE = "none"
+ARITY_SINGLE = "single"
+ARITY_PAIR = "pair"
+ARITY_LIST = "list"
+
+
+def operator_arity(operator: str) -> str:
+    """How many values an operator needs."""
+    if operator in VALUELESS_OPERATORS:
+        return ARITY_NONE
+    if operator == OP_BETWEEN:
+        return ARITY_PAIR
+    if operator == OP_ANY_OF:
+        return ARITY_LIST
+    return ARITY_SINGLE
+
+
+def describe_operators() -> Dict[str, Dict[str, Any]]:
+    """Every operator, and how many values it takes.
+
+    Sent with the field list so a renderer can build the right control for a
+    clause without a second copy of this rule.
+    """
+    return {
+        operator: {"arity": operator_arity(operator)}
+        for operators in OPERATORS_BY_TYPE.values()
+        for operator in operators
+    }
+
+
 def describe_fields() -> List[Dict[str, Any]]:
     """The filter vocabulary, as the renderer needs it (LIBUI-08).
 
@@ -574,6 +609,8 @@ __all__: Sequence[str] = (
     "TYPE_NUMBER",
     "TYPE_TEXT",
     "describe_fields",
+    "describe_operators",
     "field_spec",
+    "operator_arity",
     "valueless",
 )
