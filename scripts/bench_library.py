@@ -44,6 +44,7 @@ import json
 import shutil
 import sys
 import tempfile
+import statistics
 import time
 import tracemalloc
 from dataclasses import asdict, dataclass, field
@@ -56,6 +57,8 @@ from cuepoint.persistence.library_source_repository import (  # noqa: E402
     LibrarySourceRepository,
 )
 from cuepoint.persistence.playlist_repository import PlaylistRepository  # noqa: E402
+from cuepoint.models.filter_rule import FilterRule, RuleSet  # noqa: E402
+from cuepoint.persistence.track_query import BrowseQuery  # noqa: E402
 from cuepoint.persistence.track_repository import TrackRepository  # noqa: E402
 from cuepoint.services.database_service import DatabaseService  # noqa: E402
 from cuepoint.services.library_import_service import (  # noqa: E402
@@ -74,8 +77,22 @@ DEFAULT_TRACKS = 50_000
 DEFAULT_PLAYLISTS = 250
 ENTRIES_PER_PLAYLIST = 700
 
+#: Genres a generated collection spreads across. A real 3,880-track export had
+#: a couple of dozen; eight is enough for a facet to be a real question rather
+#: than one row, without pretending to model anyone's taste.
+GENRES = (
+    "House",
+    "Tech House",
+    "Deep House",
+    "Progressive House",
+    "Techno",
+    "Melodic Techno",
+    "Minimal",
+    "Electronica",
+)
+
 TRACK_ATTRS = (
-    'Genre="House" Album="Album {i}" Label="Label {j}" Tonality="8A" '
+    'Genre="{genre}" Album="Album {i}" Label="Label {j}" Tonality="{key}" '
     'AverageBpm="{bpm}.00" Year="2024" TotalTime="{total}" BitRate="320" '
     'Rating="{rating}" PlayCount="{plays}" DateAdded="2024-01-01" '
     'Comments="generated"'
@@ -162,6 +179,8 @@ def write_export(
             attrs = TRACK_ATTRS.format(
                 i=i % 500,
                 j=i % 120,
+                genre=GENRES[i % len(GENRES)],
+                key=f"{(i % 12) + 1}{'AB'[i % 2]}",
                 bpm=118 + (i % 22),
                 total=180 + (i % 300),
                 rating=(i % 6) * 51,
@@ -193,18 +212,194 @@ def write_export(
     return path
 
 
-def build_service(db_path: Path) -> LibraryImportService:
-    """Wire the real services against a scratch database."""
+def build_service(
+    db_path: Path,
+) -> tuple[LibraryImportService, TrackRepository, PlaylistRepository]:
+    """Wire the real services against a scratch database.
+
+    The repositories come back too: LIBUI-01's browse query is measured
+    directly against them, because it is the read the Library table runs on
+    every scroll and it is far too fast to see through an import.
+    """
     database = DatabaseService(db_path=db_path)
     MigrationRunner(database).migrate()
     tracks = TrackRepository(database)
-    return LibraryImportService(
+    playlists = PlaylistRepository(database)
+    service = LibraryImportService(
         tracks,
-        PlaylistRepository(database),
+        playlists,
         LibrarySourceRepository(database),
         database,
         library_service=LibraryService(track_repository=tracks),
     )
+    return service, tracks, playlists
+
+
+#: Times per browse case. Enough for a median to mean something, few enough
+#: that the whole measurement stays a rounding error next to the import.
+BROWSE_REPEATS = 7
+
+
+def _median_ms(call) -> float:
+    """Median wall time of ``call``, in milliseconds, after a warm-up."""
+    call()  # warm the page cache, so the first case is not the slow one
+    samples = []
+    for _ in range(BROWSE_REPEATS):
+        started = time.perf_counter()
+        call()
+        samples.append((time.perf_counter() - started) * 1000)
+    return round(statistics.median(samples), 2)
+
+
+def measure_browse(
+    track_repo: TrackRepository, playlist_repo: PlaylistRepository, total: int
+) -> List[Dict[str, Any]]:
+    """Time the queries the Library table runs (LIBUI-01, DEC-040).
+
+    These are milliseconds, not seconds: they run on every scroll, sort click
+    and playlist selection, so the number that matters is whether they are
+    imperceptible rather than whether they are faster than an import. The deep
+    page is measured because ``LIMIT ? OFFSET ?`` gets slower the further in it
+    reaches, and a 50,000-row table is where that shows.
+    """
+    nodes = playlist_repo.list_all()
+    leaf = next((n for n in nodes if not n.is_folder), None)
+    folder = next((n for n in nodes if n.is_folder and n.depth > 0), None)
+
+    cases: List[tuple] = [
+        (
+            "first page, default order",
+            lambda: track_repo.browse(BrowseQuery(), limit=100),
+        ),
+        ("count, whole library", lambda: track_repo.browse_count(BrowseQuery())),
+        (
+            f"deep page (offset {max(0, total - 100):,})",
+            lambda: track_repo.browse(
+                BrowseQuery(), limit=100, offset=max(0, total - 100)
+            ),
+        ),
+    ]
+    for sort in ("title", "bpm", "genre", "rating", "date_added", "duration_seconds"):
+        cases.append(
+            (
+                f"first page, by {sort}",
+                lambda sort=sort: track_repo.browse(BrowseQuery(sort=sort), limit=100),
+            )
+        )
+    cases.append(
+        (
+            "first page, by bpm descending",
+            lambda: track_repo.browse(
+                BrowseQuery(sort="bpm", direction="desc"), limit=100
+            ),
+        )
+    )
+    cases.append(
+        (
+            "text query, first page",
+            lambda: track_repo.browse(BrowseQuery(query="Artist 42"), limit=100),
+        )
+    )
+    cases.append(
+        (
+            "text query, count",
+            lambda: track_repo.browse_count(BrowseQuery(query="Artist 42")),
+        )
+    )
+    if leaf is not None:
+        cases.append(
+            (
+                "playlist scope, first page",
+                lambda: track_repo.browse(BrowseQuery(playlist_id=leaf.id), limit=100),
+            )
+        )
+        cases.append(
+            (
+                "playlist scope, playlist order",
+                lambda: track_repo.browse(
+                    BrowseQuery(playlist_id=leaf.id, sort="playlist_position"),
+                    limit=100,
+                ),
+            )
+        )
+        cases.append(
+            (
+                "playlist scope, count",
+                lambda: track_repo.browse_count(BrowseQuery(playlist_id=leaf.id)),
+            )
+        )
+    if folder is not None:
+        cases.append(
+            (
+                "folder scope, first page",
+                lambda: track_repo.browse(
+                    BrowseQuery(playlist_id=folder.id), limit=100
+                ),
+            )
+        )
+        cases.append(
+            (
+                "folder scope, count",
+                lambda: track_repo.browse_count(BrowseQuery(playlist_id=folder.id)),
+            )
+        )
+
+    # LIBUI-02: filters and facets. These run when a user types in the filter
+    # bar and every time that bar redraws its choices, so they are measured
+    # beside the queries they narrow.
+    genre_rule = RuleSet(rules=(FilterRule("genre", "is", "Tech House"),))
+    narrow = RuleSet(
+        rules=(
+            FilterRule("genre", "is", "Tech House"),
+            FilterRule("bpm", "between", [122, 126]),
+            FilterRule("rating", "gte", 3),
+        )
+    )
+    cases += [
+        (
+            "filtered page, one rule",
+            lambda: track_repo.browse(BrowseQuery(rules=genre_rule), limit=100),
+        ),
+        (
+            "filtered count, one rule",
+            lambda: track_repo.browse_count(BrowseQuery(rules=genre_rule)),
+        ),
+        (
+            "filtered page, three rules",
+            lambda: track_repo.browse(BrowseQuery(rules=narrow), limit=100),
+        ),
+        (
+            "filtered count, three rules",
+            lambda: track_repo.browse_count(BrowseQuery(rules=narrow)),
+        ),
+        ("facet: genre", lambda: track_repo.facet_values(field="genre")),
+        ("facet: label (120 values)", lambda: track_repo.facet_values(field="label")),
+        ("facet: rating", lambda: track_repo.facet_values(field="rating")),
+        # Deliberately unindexed (migration 0008): the price of a long tail.
+        (
+            "facet: artist (900, no index)",
+            lambda: track_repo.facet_values(field="artist"),
+        ),
+        (
+            "facet: genre under a filter",
+            lambda: track_repo.facet_values(BrowseQuery(rules=narrow), "genre"),
+        ),
+        ("facet: bpm range", lambda: track_repo.facet_range(field="bpm")),
+    ]
+
+    measured: List[Dict[str, Any]] = []
+    for name, call in cases:
+        outcome = call()
+        if isinstance(outcome, int):
+            rows = outcome
+        elif hasattr(outcome, "values"):  # a facet: how many choices it offers
+            rows = len(outcome.values)
+        elif hasattr(outcome, "missing"):  # a range: how many tracks lack one
+            rows = outcome.missing
+        else:
+            rows = len(outcome)
+        measured.append({"name": name, "ms": _median_ms(call), "rows": rows})
+    return measured
 
 
 def run(tracks: int, playlists: int, workspace: Path) -> Dict[str, Any]:
@@ -217,7 +412,7 @@ def run(tracks: int, playlists: int, workspace: Path) -> Dict[str, Any]:
         write_export(base, ids, playlists)
         m.detail = {"tracks": tracks, "bytes": base.stat().st_size}
 
-    service = build_service(workspace / "library.db")
+    service, track_repo, playlist_repo = build_service(workspace / "library.db")
 
     with Measured("import", phases) as m:
         summary = service.import_rekordbox_xml(str(base))
@@ -235,6 +430,8 @@ def run(tracks: int, playlists: int, workspace: Path) -> Dict[str, Any]:
             "inserted": again.tracks_inserted,
             "updated": again.tracks_updated,
         }
+
+    browse = measure_browse(track_repo, playlist_repo, tracks)
 
     with Measured("diff, nothing changed", phases) as m:
         unchanged = service.compute_refresh_diff(str(base))
@@ -283,11 +480,12 @@ def run(tracks: int, playlists: int, workspace: Path) -> Dict[str, Any]:
         }
 
     problems = []
-    if phases[2].detail["inserted"] != 0:
-        problems.append("re-importing the same file inserted rows")
-    if phases[2].detail["tracks"] != tracks:
-        problems.append("re-importing the same file changed the track count")
     by_name = {p.name: p for p in phases}
+    reimport = by_name["re-import (idempotent)"]
+    if reimport.detail["inserted"] != 0:
+        problems.append("re-importing the same file inserted rows")
+    if reimport.detail["tracks"] != tracks:
+        problems.append("re-importing the same file changed the track count")
     if not by_name["diff, nothing changed"].detail["is_empty"]:
         problems.append("an unchanged file produced a non-empty diff")
     if by_name["diff, nothing changed"].detail["read_the_file"]:
@@ -301,6 +499,22 @@ def run(tracks: int, playlists: int, workspace: Path) -> Dict[str, Any]:
         problems.append("the diff did not match the edit that was made")
     if by_name["apply refresh"].detail["deleted"] != removed:
         problems.append("the apply did not delete what the preview promised")
+    by_case = {case["name"]: case for case in browse}
+    if by_case["count, whole library"]["rows"] != tracks:
+        problems.append("browse counted a different library than was imported")
+    if by_case["first page, default order"]["rows"] != min(100, tracks):
+        problems.append("the first browse page was not a full window")
+    if by_case["playlist scope, count"]["rows"] <= 0:
+        problems.append("a playlist scope found no tracks")
+    if by_case["facet: genre"]["rows"] != len(GENRES):
+        problems.append("the genre facet did not find every genre")
+    if by_case["filtered count, one rule"]["rows"] <= 0:
+        problems.append("a filter that should match found nothing")
+    if (
+        by_case["filtered count, three rules"]["rows"]
+        > by_case["filtered count, one rule"]["rows"]
+    ):
+        problems.append("adding rules found more tracks, not fewer")
 
     # Closed first, and the journal counted: an open SQLite connection can be
     # holding most of the database in a -wal file that stat() would not see, and
@@ -316,6 +530,7 @@ def run(tracks: int, playlists: int, workspace: Path) -> Dict[str, Any]:
         "playlists": playlists,
         "database_mb": _mb(db_bytes),
         "phases": [asdict(p) for p in phases],
+        "browse": browse,
         "problems": problems,
     }
 
@@ -341,6 +556,13 @@ def report(result: Dict[str, Any]) -> None:
     for phase in result["phases"]:
         if phase["detail"]:
             print(f"  {phase['name']}: {phase['detail']}")
+
+    if result.get("browse"):
+        print()
+        print(f"{'browse query (LIBUI-01)':<34}{'median ms':>11}{'rows':>9}")
+        print("-" * 54)
+        for case in result["browse"]:
+            print(f"{case['name']:<34}{case['ms']:>11.2f}{case['rows']:>9,}")
     if result["problems"]:
         print("\nPROBLEMS:")
         for problem in result["problems"]:

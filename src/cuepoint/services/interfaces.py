@@ -39,6 +39,8 @@ if TYPE_CHECKING:
     from cuepoint.models.references import ReferenceSummary
     from cuepoint.models.refresh_diff import RefreshDiff
     from cuepoint.models.library_track import IdentityMatch, LibraryTrack
+    from cuepoint.models.filter_rule import Facet, FacetRange
+    from cuepoint.persistence.track_query import BrowseQuery
     from cuepoint.persistence.track_repository import BulkUpsertResult
     from cuepoint.services.library_import_service import (
         ImportSummary,
@@ -743,6 +745,38 @@ class ITrackRepository(ABC):
     @abstractmethod
     def search_count(self, query: str) -> int:
         """Return how many tracks match a query, ignoring paging."""
+        ...
+
+    @abstractmethod
+    def browse(
+        self,
+        query: Optional["BrowseQuery"] = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
+    ) -> List["LibraryTrack"]:
+        """Return one scoped, ordered, paged window of the library (DEC-040)."""
+        ...
+
+    @abstractmethod
+    def browse_count(self, query: Optional["BrowseQuery"] = None) -> int:
+        """Return how many tracks a browse query matches, ignoring paging."""
+        ...
+
+    @abstractmethod
+    def facet_values(
+        self,
+        query: Optional["BrowseQuery"] = None,
+        field: str = "genre",
+        limit: int = 0,
+    ) -> "Facet":
+        """Return the values a field takes in the current view (DEC-043)."""
+        ...
+
+    @abstractmethod
+    def facet_range(
+        self, query: Optional["BrowseQuery"] = None, field: str = "bpm"
+    ) -> "FacetRange":
+        """Return the span of a numeric field in the current view."""
         ...
 
     @abstractmethod

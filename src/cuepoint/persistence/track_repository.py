@@ -21,6 +21,17 @@ from cuepoint.models.library_track import (
     resolve_identity,
     utc_now_iso,
 )
+from cuepoint.models.filter_rule import Facet, FacetRange, FacetValue, field_spec
+from cuepoint.persistence.track_query import (
+    BrowseQuery,
+    build_count,
+    build_facet_range,
+    build_facet_value_count,
+    build_facet_values,
+    build_select,
+    clamp_facet_limit,
+    search_clause,
+)
 from cuepoint.services.interfaces import IDatabaseService, ITrackRepository
 
 # Rows per executemany during a bulk import. Large enough that the statement
@@ -65,43 +76,6 @@ _UPDATE_SQL = (
 )
 
 _SELECT = "SELECT * FROM tracks"
-
-# Columns a global search looks in. Deliberately not file_path: a substring of a
-# directory name would match every track under it, which reads as a broken
-# search rather than a useful one.
-_SEARCH_COLUMNS = ("title", "artist", "album", "label")
-
-# `!` rather than the more usual `\`, so the pattern stays readable in a log and
-# no shell or Python escaping layer can eat it before SQLite sees it.
-_LIKE_ESCAPE = "!"
-
-
-def _escape_like(value: str) -> str:
-    """Neutralize LIKE wildcards in user input.
-
-    Parameter binding stops SQL injection, but it does not stop `%` and `_`
-    from being read as wildcards: searching for `_` would otherwise match every
-    track with at least one character in that field.
-    """
-    out = value.replace(_LIKE_ESCAPE, _LIKE_ESCAPE * 2)
-    out = out.replace("%", f"{_LIKE_ESCAPE}%")
-    return out.replace("_", f"{_LIKE_ESCAPE}_")
-
-
-def _search_clause(query: str):
-    """Build the WHERE fragment and parameters for a search.
-
-    Returns ``(None, "", ())`` for a blank query. An empty search returning the
-    whole library would be a surprising amount of work and a surprising result.
-    """
-    text = (query or "").strip()
-    if not text:
-        return None, "", ()
-    pattern = f"%{_escape_like(text)}%"
-    sql = " OR ".join(
-        f"{column} LIKE ? ESCAPE '{_LIKE_ESCAPE}'" for column in _SEARCH_COLUMNS
-    )
-    return pattern, f"({sql})", tuple(pattern for _ in _SEARCH_COLUMNS)
 
 
 @dataclass(frozen=True)
@@ -369,7 +343,7 @@ class TrackRepository(ITrackRepository):
         Deliberately LIKE rather than FTS5: SHELL-04 needs one reviewable
         contract now, and Phase 4 can add ranking behind the same response.
         """
-        pattern, sql, params = _search_clause(query)
+        pattern, sql, params = search_clause(query)
         if pattern is None:
             return []
         rows = (
@@ -390,7 +364,7 @@ class TrackRepository(ITrackRepository):
         Separate from :meth:`search` so a caller can say "showing 20 of 340"
         without reading 340 rows to find out.
         """
-        pattern, sql, params = _search_clause(query)
+        pattern, sql, params = search_clause(query)
         if pattern is None:
             return 0
         row = (
@@ -399,6 +373,136 @@ class TrackRepository(ITrackRepository):
             .fetchone()
         )
         return int(row["n"]) if row is not None else 0
+
+    def browse(
+        self,
+        query: Optional[BrowseQuery] = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
+    ) -> List[LibraryTrack]:
+        """Return one window of the library, scoped, ordered and paged.
+
+        The read behind the Library table (LIBUI-01, DEC-040). Unlike
+        :meth:`search`, a blank text query means *everything in scope* rather
+        than nothing: a table with an empty search box shows the library, while
+        a search box with nothing typed in it is not a request to read one.
+
+        ``limit`` and ``offset`` are clamped rather than trusted — this is
+        reached from an HTTP handler — and the ordering always ends with the
+        row id, so paging cannot repeat or skip a row where sort values tie.
+
+        Args:
+            query: What to show. Defaults to the whole library in the default
+                order.
+            limit: Rows to return, clamped to ``BROWSE_LIMIT_MAX``.
+            offset: Rows to skip, clamped to zero or more.
+
+        Raises:
+            BrowseQueryError: If the sort or direction is not one that exists,
+                or the sort needs a scope it was not given.
+        """
+        sql, params = build_select(query or BrowseQuery(), limit, offset)
+        rows = self._db.connect().execute(sql, params).fetchall()
+        return [LibraryTrack.from_row(row) for row in rows]
+
+    def browse_count(self, query: Optional[BrowseQuery] = None) -> int:
+        """Return how many tracks :meth:`browse` would return, ignoring paging.
+
+        The number a table needs to say "showing 100 of 47,913" and to size its
+        scrollbar, so it is asked once per query rather than inferred from a
+        window. Built from the same predicate as the rows it counts, in
+        ``track_query``, because a count of a different set of rows is worse
+        than no count at all.
+
+        Raises:
+            BrowseQueryError: As :meth:`browse` does.
+        """
+        sql, params = build_count(query or BrowseQuery())
+        row = self._db.connect().execute(sql, params).fetchone()
+        return int(row["n"]) if row is not None else 0
+
+    def facet_values(
+        self, query: Optional[BrowseQuery] = None, field: str = "genre", limit: int = 0
+    ) -> Facet:
+        """Return which values a field takes in the current view, with counts.
+
+        What a filter list is built from (LIBUI-02, LIBUI-08). Computed over
+        the playlist scope, the text query and every filter *except* this
+        field's own, so choosing one genre still leaves the other genres
+        choosable — see :func:`~cuepoint.persistence.track_query.facet_query`.
+
+        The counts come from the library, not from the loaded window: a facet
+        that counted only what is on screen would say "House (100)" for every
+        library.
+
+        Args:
+            query: The current view. Defaults to the whole library.
+            field: A facetable field name.
+            limit: Values to return; ``0`` means the default page size. One
+                more than the limit is read internally so ``truncated`` can be
+                answered without a second query.
+
+        Raises:
+            FilterRuleError: If the field cannot be filtered.
+            BrowseQueryError: Via :meth:`browse`'s validation.
+        """
+        spec = field_spec(field)
+        browse_query = query or BrowseQuery()
+        page = clamp_facet_limit(limit or None)
+
+        sql, params = build_facet_values(browse_query, spec.name, page)
+        rows = self._db.connect().execute(sql, params).fetchall()
+
+        truncated = len(rows) > page
+        named = tuple(
+            FacetValue(value=str(row["raw_value"]), count=int(row["n"]))
+            for row in rows[:page]
+        )
+
+        count_sql, count_params = build_facet_value_count(browse_query, spec.name)
+        totals = self._db.connect().execute(count_sql, count_params).fetchone()
+        distinct = int(totals["values_count"] or 0) if totals is not None else 0
+        missing = int(totals["missing"] or 0) if totals is not None else 0
+
+        # The "no value" bucket comes from the totals rather than the value
+        # rows, so it is always offered when it exists — a limit cannot cut it
+        # off, however many values are more common than it. It sits last
+        # whatever its count, because it is not a value.
+        gap = (FacetValue(value=None, count=missing),) if missing else ()
+
+        return Facet(
+            field=spec.name,
+            values=named + gap,
+            truncated=truncated,
+            # The gap counts as one of the choices offered, so "showing 100 of
+            # 240" stays true when one of them is "no genre".
+            total_values=distinct + (1 if missing else 0),
+        )
+
+    def facet_range(
+        self, query: Optional[BrowseQuery] = None, field: str = "bpm"
+    ) -> FacetRange:
+        """Return the span of a numeric field in the current view.
+
+        Both ends and how many tracks have no value, which is what a range
+        control needs to draw itself honestly rather than treating a missing
+        BPM as zero.
+
+        Raises:
+            FilterRuleError: If the field cannot be filtered.
+            BrowseQueryError: If the field is not numeric.
+        """
+        spec = field_spec(field)
+        sql, params = build_facet_range(query or BrowseQuery(), spec.name)
+        row = self._db.connect().execute(sql, params).fetchone()
+        if row is None:
+            return FacetRange(field=spec.name)
+        return FacetRange(
+            field=spec.name,
+            minimum=None if row["low"] is None else float(row["low"]),
+            maximum=None if row["high"] is None else float(row["high"]),
+            missing=int(row["missing"] or 0),
+        )
 
     def count(self) -> int:
         """Return the number of tracks in the library."""

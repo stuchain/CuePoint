@@ -1,9 +1,12 @@
 # CuePoint — Evolution Roadmap
 
-Status: **Phases 0, 1, 2 and 3 complete; Decision Rounds 1–3 resolved (DEC-001…DEC-027).**
+Status: **Phases 0, 1, 2 and 3 complete; Phase 4 in progress. Decision Rounds 1–6 resolved
+(DEC-001…DEC-048).**
 Phase 2's ten steps are implemented and recorded in `PHASE2_SHELL.md`. Phase 3's twelve steps are
 implemented and recorded in `PHASE3_LIBRARY.md` (LIBRARY-01…LIBRARY-12), unblocked by Decision
-Round 5 (DEC-030…DEC-037).
+Round 5 (DEC-030…DEC-037). Phase 4's ten steps are specified in `PHASE4_LIBUI.md`
+(LIBUI-01…LIBUI-10), unblocked by Decision Round 6 (DEC-039…DEC-048); LIBUI-01 and LIBUI-02
+are implemented.
 Remaining deferred items (crossfade, audio-analysis scope, Smart Collection export/duplication
 behavior) will be resolved before the phases they affect actually start. This roadmap shows the
 shape of what's ahead; it is not a commitment to implement anything without an explicit
@@ -90,10 +93,23 @@ retires it (DEC-030) — two collection imports that can disagree, which the use
 
 Step specifications: `PHASE3_LIBRARY.md`.
 
-## Phase 4 — Library UI (LIBUI-01 … LIBUI-10)
+## Phase 4 — Library UI (LIBUI-01 … LIBUI-10) — in progress (LIBUI-01, LIBUI-02 done)
 
-Generalizes `ResultsTable.tsx` into the spec's "Universal Track Table"; builds the reusable filter
-system and global search that don't exist today.
+Extracts a generic `TrackTable` from `ResultsTable.tsx` (DEC-041 — the results screen converges in
+Phase 7) and builds the reusable filter system. Global search already exists from Phase 2, so this
+phase extends that one query path (DEC-023) rather than building a second.
+
+Round 6 settled the rest: the Library page becomes the browser instead of gaining a sibling
+destination (DEC-039); rows come from the engine a window at a time, with sort and filters resolved
+in SQL, because 50,000 rows will not be sorted in JavaScript (DEC-040); columns can be hidden and
+reordered (DEC-042); filters *are* Phase 6's Smart Collection rule model, just unsaved (DEC-043);
+the mirrored Rekordbox tree scopes the table, read-only (DEC-044); multi-selection is built before
+the actions that need it (DEC-045); double-click stays inert until Phase 5 gives it DEC-012's
+meaning (DEC-046); the Track Inspector finally gets content — everything imported, read-only
+(DEC-047); and dense values get their own font token, closing the readability item
+`PIXEL_DESIGN_SYSTEM.md` §4 has carried since the audit (DEC-048).
+
+Step specifications: `PHASE4_LIBUI.md`.
 
 ## Phase 5 — Player (PLAYER-01 … PLAYER-12)
 

@@ -38,6 +38,64 @@ for an import. Both the parse and the comparison stream the file rather than
 loading it, so a bigger collection costs proportionally more, not
 catastrophically more.
 
+## Browsing the library
+
+The queries behind the Library table run on every scroll, sort and playlist
+selection, so these are milliseconds rather than seconds. Same machine, same
+50,000-track library, same script.
+
+| What you did | Time |
+| --- | --- |
+| Open the library | 1.4 ms |
+| Scroll to the very end | 5.1 ms |
+| Sort by any other column | 16–19 ms |
+| Type a search term | 19 ms (24 ms for the count) |
+| Select a playlist | 1.9 ms |
+| Select a folder of playlists | 48 ms |
+
+Sorting the library by artist is faster than sorting it by anything else
+because one database index covers exactly that order. That index is also what
+keeps scrolling to the end of a 50,000-track library instant: without it the
+same request takes **717 ms** instead of 5 ms, because the database has to sort
+the whole library to find the last hundred rows.
+
+It costs about 1.8 MB of database file and roughly 1% of import time
+(10.29 s → 10.40 s measured), which is why it exists and why six other indexes
+that were tried alongside it do not: they changed no measured time and cost ten
+times as much.
+
+A folder is the slowest selection because it gathers every playlist beneath it
+and counts each track once, however many of those playlists it appears in.
+
+## Filtering the library
+
+Filters and the lists of choices behind them, on the same 50,000-track library:
+
+| What you did | Time |
+| --- | --- |
+| Apply a filter | 13 ms |
+| Add two more rules to it | 12 ms |
+| Open the genre, label or rating list | 7–12 ms |
+| Open the artist list (900 artists) | 12 ms |
+| Re-open a list while other filters are on | 35 ms |
+| Read the BPM range | 16 ms |
+
+The lists of choices — every genre in your library and how many tracks each has
+— are the expensive part, because answering means visiting every track. Seven
+database indexes make that ten times faster: opening the genre list went from
+117 ms to 11 ms, the label list from 119 ms to 12 ms, and the rating list from
+65 ms to 7 ms.
+
+They cost 4.9 MB of database file and about 5% of an import time
+(10.40 s → 10.92 s). Artist, album and remixer are deliberately left out of
+them: those lists are long tails rather than a handful of choices, an index
+each would be far larger, and they still answer inside the same budget.
+
+Re-opening a list while other filters are on is the slowest of these, and
+deliberately so: with a filter in play CuePoint reads the library directly
+instead of through those indexes, which is five times faster than the
+alternative (35 ms rather than 178 ms).
+
 ## Performance Budgets
 
 | Metric | Target | Notes |
