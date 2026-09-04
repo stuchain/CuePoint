@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   screens scrolled the whole window, which would have carried the navigation and
   status chrome off-screen as those are added
 
+### Fixed
+- A fresh installation could create an empty library database. The packaged
+  engine did not include its schema migrations — they are loaded dynamically,
+  so the bundler never saw them — and applied none, leaving the first thing you
+  did to fail with an unrelated error. The packaged engine now carries them,
+  and refuses to start if it ever finds none rather than quietly building
+  nothing
+
 ### Added
 - The Library page is now a browser. Playlists down the left scope what you are
   looking at, a filter bar narrows it — search text, or rules like BPM between

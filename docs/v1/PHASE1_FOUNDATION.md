@@ -447,6 +447,17 @@ and that has already been missed once here. Python modules are followed automati
 module graph, so migrations cannot go missing in a shipped build. (The inCrate bug is real and
 pre-existing — reported separately, not fixed here.)
 
+> **Correction, 2026-09-04.** The last sentence above was wrong, and the sidecar shipped without
+> its migrations for four phases because of it. PyInstaller's module graph follows `import`
+> statements; `discover_migrations()` uses `pkgutil.iter_modules` and builds each module name at
+> runtime, so nothing in the source refers to `m0001_baseline` and the graph never reached any of
+> them. A packaged build discovered zero migrations, applied none, and would have created a
+> database with no tables on a fresh install — failing later, somewhere else. Fixed by collecting
+> the package explicitly in the spec and by making `discover_migrations()` raise when it finds
+> nothing, since this package always contains at least `m0001`. Guarded by
+> `src/tests/unit/scripts/test_engine_sidecar_imports.py`. The choice of modules over `.sql` files
+> still stands; what does not is the belief that it made them free.
+
 **Two real bugs found and fixed during implementation**, both caught by tests rather than review:
 
 1. **`executescript()` broke migration atomicity.** It issues an implicit `COMMIT` before

@@ -31,9 +31,16 @@ try:
 except Exception:
     pass
 
+# `cuepoint.migrations` is collected explicitly because nothing imports it by
+# name: `discover_migrations()` walks the package with `pkgutil.iter_modules`
+# and loads each module with `importlib.import_module`, which the module graph
+# cannot see. Without this the sidecar ships zero migrations and creates an
+# empty database on a fresh install.
+# src/tests/unit/scripts/test_engine_sidecar_imports.py guards this.
 hiddenimports = (
     collect_submodules("cuepoint.engine")
     + collect_submodules("cuepoint.services")
+    + collect_submodules("cuepoint.migrations")
     + [
         "cuepoint.models.result",
         "cuepoint.models.run_summary",

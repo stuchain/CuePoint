@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import sys
 import types
+from pathlib import Path
 from typing import List
 
 import pytest
@@ -103,6 +104,33 @@ class TestDiscoveryValidation:
             _fake_module("cuepoint.migrations.helpers", SOMETHING="else"),
         )
         assert [m.version for m in discover()] == [1]
+
+    def test_finding_nothing_is_a_packaging_failure(self, fake_package):
+        """Zero migrations means the modules are missing, not that there are none.
+
+        This is what a packaged sidecar looked like before the spec collected
+        `cuepoint.migrations`: discovery found nothing, no versions meant no
+        duplicates and no gaps, and the runner applied nothing — leaving a
+        database with no tables and a first query that failed somewhere else
+        entirely. `fake_package()` with no modules is that state exactly.
+        """
+        discover = fake_package()
+
+        with pytest.raises(ValueError, match="No migrations were found"):
+            discover()
+
+    def test_the_real_package_finds_every_migration_file(self):
+        """Not a fake: the modules on disk are what discovery must return."""
+        on_disk = sorted(
+            path.stem
+            for path in Path(migrations_pkg.__file__).parent.glob(
+                "m[0-9][0-9][0-9][0-9]_*.py"
+            )
+        )
+        discovered = sorted(m.module_name for m in migrations_pkg.discover_migrations())
+
+        assert on_disk, "no migration files found — check the glob"
+        assert discovered == on_disk
 
     def test_ordered_by_version_regardless_of_iteration_order(self, fake_package):
         discover = fake_package(

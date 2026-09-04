@@ -13,13 +13,20 @@ defining:
 - ``SQL: str`` — the statements to apply, executed as one script inside a
   single transaction
 
-Migrations are **Python modules rather than .sql data files** on purpose.
-PyInstaller follows the module graph automatically, so migrations are always
-present in the packaged engine sidecar. Data files must be listed explicitly in
-the spec, and this repository already has a case where that was missed
-(``incrate/schema.sql`` is absent from the packaged sidecar), which would break
-the database at runtime in exactly the situation hardest to debug — a shipped
-build on a user's machine.
+Migrations are **Python modules rather than .sql data files** on purpose: a
+module can be validated at import, and a data file must be listed in the
+PyInstaller spec by hand — something this repository has already missed once
+(``incrate/schema.sql``), which breaks the database in exactly the situation
+hardest to debug, a shipped build on a user's machine.
+
+That choice does **not** make them free. ``discover_migrations`` finds them with
+``pkgutil.iter_modules`` and loads them with ``importlib.import_module``, so
+nothing imports them by name and PyInstaller's module graph never sees them:
+they have to be collected explicitly in ``build/engine-sidecar.spec``
+(``collect_submodules("cuepoint.migrations")``), and
+``src/tests/unit/scripts/test_engine_sidecar_imports.py`` is what keeps that
+true. An earlier version of this note claimed the module graph covered them,
+which is why the spec did not.
 
 Migrations are append-only: never edit one that has shipped, since users'
 databases already record it as applied. Correct a mistake with a new migration.
@@ -99,9 +106,10 @@ def discover_migrations() -> List[Migration]:
     """Return every migration in this package, ordered by version.
 
     Raises:
-        ValueError: If a module is malformed, a version is duplicated, or the
-            sequence has gaps. These are developer errors that must fail loudly
-            rather than silently skipping a migration on a user's database.
+        ValueError: If no migrations are found, a module is malformed, a
+            version is duplicated, or the sequence has gaps. These are
+            developer or packaging errors that must fail loudly rather than
+            silently skipping a migration on a user's database.
     """
     migrations: List[Migration] = []
 
@@ -131,6 +139,19 @@ def discover_migrations() -> List[Migration]:
                 sql=str(module.SQL),
                 module_name=module_info.name,
             )
+        )
+
+    # Nothing at all is not an empty library: this package always contains at
+    # least m0001, so finding none means the modules are not there to find —
+    # the packaged sidecar was built without them. Silence here would create a
+    # database with no tables and leave the first query to fail somewhere else
+    # entirely, on a user's machine.
+    if not migrations:
+        raise ValueError(
+            "No migrations were found in cuepoint.migrations. In a packaged "
+            "build this means the modules were not bundled: they are loaded "
+            "dynamically, so build/engine-sidecar.spec has to collect them "
+            "with collect_submodules('cuepoint.migrations')."
         )
 
     migrations.sort(key=lambda m: m.version)

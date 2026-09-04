@@ -75,6 +75,31 @@ from project root.
 
 **Fix**: Use PyInstaller 6.17+ (see `requirements-dev.txt`). On Windows, ensure Visual C++ Redistributable is installed.
 
+### The packaged app behaves differently from a development run
+
+**Cause**: PyInstaller bundles what the *module graph* references — `import`
+statements, followed transitively. Anything loaded another way is invisible to
+it and simply will not be there:
+
+- a package imported dynamically (`importlib.import_module` with a name built at
+  runtime) needs `collect_submodules("package")` in the spec's `hiddenimports`
+- a non-`.py` file a package reads at runtime needs an entry in `datas`
+
+Both fail *only* in packaged builds, and usually silently — the build succeeds
+and the missing code or file surfaces as an unrelated error later. Two have
+happened here: inCrate's `schema.sql` (a data file), and `cuepoint.migrations`
+(dynamically imported, which shipped no migrations and would have created a
+database with no tables on a fresh install).
+
+**Fix**: Add it to `build/engine-sidecar.spec`. The guards are
+`src/tests/unit/scripts/test_engine_sidecar_datas.py` and
+`test_engine_sidecar_imports.py`; extend those rather than relying on someone
+remembering. To check a real bundle:
+
+```bash
+python scripts/build_engine_sidecar.py    # builds, then smoke-tests /health
+```
+
 ## Lint / Type Errors
 
 ### Ruff or mypy fails on new code
