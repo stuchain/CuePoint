@@ -316,6 +316,44 @@ const incrate = [
   "............",
 ];
 
+/**
+ * Folder: the classic tab-and-body shape (LIBUI-07).
+ *
+ * Drawn now for the same reason SHELL-09 drew the concept icons — there is a
+ * screen to draw it against. The playlist pane needs to tell a folder from a
+ * playlist at a glance, at 1x, where a grid cell is two CSS pixels.
+ */
+const folder = [
+  "............",
+  "............",
+  ".####.......",
+  ".#..#.......",
+  ".##########.",
+  ".#........#.",
+  ".#........#.",
+  ".#........#.",
+  ".#........#.",
+  ".##########.",
+  "............",
+  "............",
+];
+
+/** Playlist: lines with a marker, the shape a set list has on every deck. */
+const playlist = [
+  "............",
+  "............",
+  ".##.######..",
+  ".##.######..",
+  "............",
+  ".##.######..",
+  ".##.######..",
+  "............",
+  ".##.######..",
+  ".##.######..",
+  "............",
+  "............",
+];
+
 export const PIXEL_ICONS = {
   play,
   pause,
@@ -335,6 +373,9 @@ export const PIXEL_ICONS = {
   prepare,
   match,
   incrate,
+  // LIBUI-07: the playlist pane tells a folder from a set list at a glance.
+  folder,
+  playlist,
 } as const satisfies Record<string, readonly string[]>;
 
 export type PixelIconName = keyof typeof PIXEL_ICONS;

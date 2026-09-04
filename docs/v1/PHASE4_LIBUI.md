@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 4: Library UI, Detailed Step Specifications
 
-Status: **In progress.** LIBUI-01…LIBUI-06 are implemented, each with its outcome recorded below
-the step that specified it; LIBUI-07…LIBUI-10 are specified and not started. Per the process, no implementation
+Status: **In progress.** LIBUI-01…LIBUI-07 are implemented, each with its outcome recorded below
+the step that specified it; LIBUI-08…LIBUI-10 are specified and not started. Per the process, no implementation
 happens from this document — each step needs an explicit "Implement LIBUI-NN" instruction, scoped
 to exactly that step, and its outcome is recorded under the step afterwards.
 
@@ -834,7 +834,7 @@ columns for the first time.
 
 ---
 
-## LIBUI-07 — The Playlist Pane
+## LIBUI-07 — The Playlist Pane ✅ IMPLEMENTED 2026-09-04
 
 **Objective**: DEC-044 — render the mirrored Rekordbox tree and let it scope the table.
 
@@ -871,6 +871,56 @@ delay; nothing in the pane offers an edit.
 **Risks**: Low-medium.
 
 **Complexity**: **M**
+
+### ✅ IMPLEMENTED 2026-09-04
+
+**Outcome**: Complete. `playlistTree.ts` builds and remembers the tree, `usePlaylistTree.ts` fetches
+and holds it, `PlaylistPane.tsx` draws it. 74 new renderer tests (33 model, 41 pane and hook), plus
+two new pixel icons.
+
+**It remembers a path, not an id — and that is the finding of this step.** `replace_tree` deletes
+every row and re-inserts it (LIBRARY-03), so *every playlist gets a new database id on every
+import*. A remembered id would either lose the user's place on each refresh or, worse, land them in
+whichever playlist inherited the number. A Rekordbox path survives an import unchanged. Paths are
+not unique — a name may contain the separator, which four playlists in the real January export do —
+so resolving one takes the first match in tree order, the same rule `find_by_path` uses.
+
+**A remembered playlist that is gone falls back and says so**, once, in the pane: "That playlist is
+no longer in your collection. Showing all tracks." The same class of fallback DEC-027 required of
+the launch destination, for the same reason — an empty table with no explanation reads as something
+the user broke.
+
+**The sort a scope opens on is a property of the scope.** A playlist opens in Rekordbox's own order,
+because a set list is an order; a folder does not, because interleaving several playlists' positions
+means nothing; the whole library does not, because a track has no position in one. All three are one
+function with three tests.
+
+**Read-only, and it looks it (DEC-031).** No rename, no delete, no new playlist, nothing draggable,
+no text input — asserted directly, by checking that no button in the pane is labelled with any of
+those verbs and that no row is draggable. The header says "from Rekordbox", so nobody wonders why
+they cannot edit it.
+
+**A tree a keyboard can actually use.** One tab stop for the whole tree, arrows to move, right to
+open a closed folder or step into an open one, left to close or step out, Enter or Space to select.
+The tab stop is *derived* rather than corrected in an effect — a folder closing can take the focused
+row with it, and a tree rendered even for one frame with no tab stop is a tree a keyboard cannot
+enter. That started as a `useEffect`, which the renderer's lint gate rejected for depending on an
+array rebuilt every render; deriving it is both correct and simpler, and it now has its own test.
+
+**Two icons, drawn because there is finally a screen for them.** `folder` and `playlist` join the
+pixel set on the same terms SHELL-09 drew the concept icons: FOUNDATION-14 deferred icons until
+something needed them, and telling a folder from a set list at a glance is what this pane is for.
+
+**Guards: 24 of 24 fail when the thing they protect is broken** — collapsed subtrees, depth,
+orphaned nodes, both sort rules, the fallback and its notice, pruning expansion, both storage
+failure paths, revealing ancestors, remembering at all, fetching once, the tab stop and its
+derivation, all four keyboard behaviours, the twisty not selecting, the name not being split out of
+the path, folder counts, and the pane saying where the playlists came from.
+
+**Verification**: renderer `npm test` — 777 passed across 45 files; `npm run typecheck`,
+`npm run lint` and `npm run build:check` clean. Python untouched. Not done here: the pane has no
+page to sit on, so the 234-playlist tree the DoD asks about has not been rendered against a real
+collection — LIBUI-10 assembles the page and is where that measurement belongs.
 
 ---
 

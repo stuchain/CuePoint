@@ -83,12 +83,13 @@ sign-off item — table-density readability at small sizes hasn't been formally 
 
 ## Icons — the one real asset gap
 
-> **Partly closed by FOUNDATION-14.** Ten icons now exist as 12×12 pixel grids in
+> **Partly closed by FOUNDATION-14.** Icons now exist as 12×12 pixel grids in
 > `renderer/src/components/pixelIcons.ts`, rendered by `PixelIcon.tsx` as SVG rectangles filled
 > with `currentColor` so one drawing serves all five themes. Sized from `--icon-size`
 > (`24px * var(--scale)`), so a grid cell is always a whole number of CSS pixels. Unicode glyphs
 > remain the path for secondary actions per DEC-010. The audit below describes the state before
-> that step.
+> that step. SHELL-09 added the concept icons and LIBUI-07 added `folder` and `playlist`, each on
+> the same terms: an icon is drawn when a screen needs it.
 
 **No pixel sprite/icon assets exist.** `ToolbarIcon.tsx` renders icons as **Unicode glyph text**
 (e.g. `☰`) inside a styled button — not sprite sheets or PNGs. `renderer/src/assets/` contains only
