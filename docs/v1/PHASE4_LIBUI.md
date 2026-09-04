@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 4: Library UI, Detailed Step Specifications
 
-Status: **In progress.** LIBUI-01…LIBUI-05 are implemented, each with its outcome recorded below
-the step that specified it; LIBUI-06…LIBUI-10 are specified and not started. Per the process, no implementation
+Status: **In progress.** LIBUI-01…LIBUI-06 are implemented, each with its outcome recorded below
+the step that specified it; LIBUI-07…LIBUI-10 are specified and not started. Per the process, no implementation
 happens from this document — each step needs an explicit "Implement LIBUI-NN" instruction, scoped
 to exactly that step, and its outcome is recorded under the step afterwards.
 
@@ -742,7 +742,7 @@ LIBUI-10 assembles it, and that is where the number belongs.
 
 ---
 
-## LIBUI-06 — Columns: Hide, Reorder, Persist
+## LIBUI-06 — Columns: Hide, Reorder, Persist ✅ IMPLEMENTED 2026-09-04
 
 **Objective**: DEC-042 — a column picker, drag-to-reorder, persisted widths, and a reset.
 
@@ -780,6 +780,57 @@ change; no state is written that cannot be read back by the same code.
 **Risks**: Low-medium; drag inside a virtualized grid is the fiddly part.
 
 **Complexity**: **M**
+
+### ✅ IMPLEMENTED 2026-09-04
+
+**Outcome**: Complete. `columnLayout.ts` holds the ordered model and its
+reconciliation, `useColumnLayout.ts` remembers it, `ColumnPicker.tsx` is the keyboard path, and
+`TrackTable` reports a header drag. 66 new renderer tests (38 model, 14 hook, 13 picker, 6 table).
+
+**Order is part of the state, so the state is a list.** A map of visibility flags cannot express a
+move, and `resultsTableLayout.ts`'s array of widths indexed by position would apply the artist
+column's width to whatever moved into slot two. Each entry is `{id, width, hidden}`, and the id is
+what everything else keys off.
+
+**A stored layout is reconciled, never trusted.** Stored entries keep their order; a column the
+store has never seen is appended in registry order (which is where a column added in a later
+release turns up); a column that no longer exists is dropped rather than rendered as a gap; a width
+below the current scale's minimum is raised; a duplicate is collapsed. Pinned columns are floated
+back to the front, because a pinned column stored behind a scrolling one would be pinned over the
+top of it. And a layout where everything is hidden shows its first column, because a table with no
+columns hides the control that would bring one back.
+
+**Two paths, one function.** The picker's move buttons and a header drag both call `moveColumn`, so
+the keyboard and the mouse cannot disagree about what a move means — asserted directly, by
+comparing the two results. What a move is *allowed* to be lives with the layout, not in the table:
+`TrackTable` reports that a column was dropped at an index and renders whatever comes back.
+
+**The new storage key carries no legacy naming.** `cuepoint-library-table-layout`, without the
+`-ui-lab-` segment `PIXEL_DESIGN_SYSTEM.md` §2 records as debt. Renaming the existing keys touches
+persisted user state and is its own change; new ones do not add to it. A test pins that.
+
+**Nothing throws, whatever storage does.** A corrupt value, a `localStorage` that refuses to be read
+(a private window, site data blocked) and a quota-exceeded write all leave a working table with its
+default layout, tested by making `Storage.prototype` throw.
+
+**The mutation that survived was the most interesting one.** Deleting the effect that reconciles on
+a columns or scale change broke nothing, because every test mounted fresh and the *load* reconciles.
+The effect exists for what happens while the table is open: scale is a live setting a user can
+change in Settings with the table on screen. Three tests now cover that — a scale change under a
+mounted table re-floors its widths, and a column appearing or disappearing while mounted is taken on
+or dropped.
+
+**Guards: 22 of 22 fail when the thing they protect is broken**, each mutated in the source with the
+file restored byte-for-byte: every reconciliation rule, the last-visible refusal, both pinning
+rules, hidden columns being rendered, an entry with no column, both storage failure paths, writing
+the layout at all, reconciling while mounted, reset, all four picker refusals and its ordering, and
+the three drag behaviours.
+
+**Verification**: renderer `npm test` — 693 passed across 43 files; `npm run typecheck`,
+`npm run lint` and `npm run build:check` clean. Python untouched by this step, `pytest
+src/tests/unit/persistence` run anyway (437 passed). Not done here: the picker has no place on a
+screen yet — LIBUI-10 puts it there, and that is also where the layout gets used against real
+columns for the first time.
 
 ---
 

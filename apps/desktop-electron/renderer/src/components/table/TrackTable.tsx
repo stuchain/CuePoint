@@ -69,6 +69,15 @@ export interface TrackTableProps<Row> {
   sort?: TrackTableSort | null;
   onSortChange?: (sort: TrackTableSort) => void;
 
+  /**
+   * Where a column was dragged to (LIBUI-06, DEC-042). Absent means headers
+   * are not draggable, which is what a table with a fixed column set wants.
+   *
+   * Whether the move is allowed — a pinned column stays among the pinned ones
+   * — is decided by whoever owns the layout, not here: this reports a gesture.
+   */
+  onColumnMove?: (id: string, toIndex: number) => void;
+
   /** Selected rows, by the key `getRowKey` returns (DEC-045). */
   selectedKeys?: ReadonlySet<string | number>;
   onSelect?: (row: Row, index: number, event: React.MouseEvent) => void;
@@ -120,6 +129,7 @@ export function TrackTable<Row>({
   onWidthsChange,
   sort = null,
   onSortChange,
+  onColumnMove,
   selectedKeys,
   onSelect,
   onRowActivate,
@@ -131,6 +141,9 @@ export function TrackTable<Row>({
 }: TrackTableProps<Row>) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { scale } = useScale();
+  // Which header is being dragged, for the cursor and the dimmed cell. The
+  // move itself is the layout owner's to decide.
+  const [dragging, setDragging] = useState<string | null>(null);
 
   const [internalWidths, setInternalWidths] = useState<ColumnWidths>(() =>
     resolveWidths(columns, widths, scale),
@@ -246,11 +259,31 @@ export function TrackTable<Row>({
             return (
               <div
                 key={column.id}
-                className={`track-table__header-cell-wrap${column.sticky ? " track-table__header-cell-wrap--sticky" : ""}`}
+                className={`track-table__header-cell-wrap${column.sticky ? " track-table__header-cell-wrap--sticky" : ""}${dragging === column.id ? " track-table__header-cell-wrap--dragging" : ""}`}
                 style={column.sticky ? { left: stickyLeft(columns, ordered, index) } : undefined}
                 role="columnheader"
                 aria-sort={ariaSort(active, sort?.direction ?? "asc")}
                 data-column={column.id}
+                draggable={Boolean(onColumnMove)}
+                onDragStart={(event) => {
+                  setDragging(column.id);
+                  // Some data has to be set or Firefox refuses to start a drag;
+                  // the id is what a drop needs anyway.
+                  event.dataTransfer?.setData("text/plain", column.id);
+                }}
+                onDragEnd={() => setDragging(null)}
+                onDragOver={(event) => {
+                  if (!onColumnMove) return;
+                  // Without this the browser refuses the drop, silently.
+                  event.preventDefault();
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  const moved = event.dataTransfer?.getData("text/plain") || dragging;
+                  setDragging(null);
+                  if (!moved || moved === column.id) return;
+                  onColumnMove?.(moved, index);
+                }}
               >
                 <button
                   type="button"

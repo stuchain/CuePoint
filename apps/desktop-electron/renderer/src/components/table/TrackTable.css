@@ -104,6 +104,10 @@
   background: color-mix(in srgb, var(--bg-panel) 30%, var(--bg-toolbar));
 }
 
+.track-table__header-cell-wrap--dragging {
+  opacity: 0.5;
+}
+
 .track-table__sort {
   flex-shrink: 0;
   font-size: var(--font-size-xs);

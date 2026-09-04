@@ -403,6 +403,80 @@ describe("empty", () => {
   });
 });
 
+describe("dragging a column header", () => {
+  function headerFor(name: string): HTMLElement {
+    return screen.getAllByRole("columnheader").find((h) => h.dataset.column === name)!;
+  }
+
+  function dataTransfer() {
+    const store: Record<string, string> = {};
+    return {
+      setData: (type: string, value: string) => {
+        store[type] = value;
+      },
+      getData: (type: string) => store[type] ?? "",
+    };
+  }
+
+  it("reports where a column was dropped", () => {
+    const onColumnMove = vi.fn();
+    renderTable({ onColumnMove });
+    const transfer = dataTransfer();
+
+    fireEvent.dragStart(headerFor("bpm"), { dataTransfer: transfer });
+    fireEvent.dragOver(headerFor("title"), { dataTransfer: transfer });
+    fireEvent.drop(headerFor("title"), { dataTransfer: transfer });
+
+    expect(onColumnMove).toHaveBeenCalledWith("bpm", 0);
+  });
+
+  it("does not decide whether the move is allowed", () => {
+    // A pinned column staying pinned is the layout owner's rule (LIBUI-06);
+    // the table reports the gesture and renders whatever comes back.
+    const onColumnMove = vi.fn();
+    renderTable({ onColumnMove });
+    const transfer = dataTransfer();
+
+    fireEvent.dragStart(headerFor("artist"), { dataTransfer: transfer });
+    fireEvent.drop(headerFor("title"), { dataTransfer: transfer });
+
+    expect(onColumnMove).toHaveBeenCalledWith("artist", 0);
+  });
+
+  it("reports nothing when a column is dropped on itself", () => {
+    const onColumnMove = vi.fn();
+    renderTable({ onColumnMove });
+    const transfer = dataTransfer();
+
+    fireEvent.dragStart(headerFor("bpm"), { dataTransfer: transfer });
+    fireEvent.drop(headerFor("bpm"), { dataTransfer: transfer });
+
+    expect(onColumnMove).not.toHaveBeenCalled();
+  });
+
+  it("is not draggable when nobody is listening", () => {
+    // A table with a fixed column set should not look rearrangeable.
+    renderTable();
+    expect(headerFor("bpm")).not.toHaveAttribute("draggable", "true");
+  });
+
+  it("is draggable when somebody is", () => {
+    renderTable({ onColumnMove: vi.fn() });
+    expect(headerFor("bpm")).toHaveAttribute("draggable", "true");
+  });
+
+  it("marks the header being dragged", () => {
+    renderTable({ onColumnMove: vi.fn() });
+    const transfer = dataTransfer();
+
+    fireEvent.dragStart(headerFor("bpm"), { dataTransfer: transfer });
+    expect(headerFor("bpm").className).toContain("dragging");
+
+    fireEvent.dragEnd(headerFor("bpm"), { dataTransfer: transfer });
+    expect(headerFor("bpm").className).not.toContain("dragging");
+  });
+});
+
 describe("when the rows start answering a different question", () => {
   it("scrolls back to the top", () => {
     // Position in a list means something only relative to the question that

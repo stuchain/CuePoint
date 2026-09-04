@@ -5,7 +5,7 @@ Status: **Phases 0, 1, 2 and 3 complete; Phase 4 in progress. Decision Rounds 1�
 Phase 2's ten steps are implemented and recorded in `PHASE2_SHELL.md`. Phase 3's twelve steps are
 implemented and recorded in `PHASE3_LIBRARY.md` (LIBRARY-01…LIBRARY-12), unblocked by Decision
 Round 5 (DEC-030…DEC-037). Phase 4's ten steps are specified in `PHASE4_LIBUI.md`
-(LIBUI-01…LIBUI-10), unblocked by Decision Round 6 (DEC-039…DEC-048); LIBUI-01…LIBUI-05 are
+(LIBUI-01…LIBUI-10), unblocked by Decision Round 6 (DEC-039…DEC-048); LIBUI-01…LIBUI-06 are
 implemented.
 Remaining deferred items (crossfade, audio-analysis scope, Smart Collection export/duplication
 behavior) will be resolved before the phases they affect actually start. This roadmap shows the
@@ -93,7 +93,7 @@ retires it (DEC-030) — two collection imports that can disagree, which the use
 
 Step specifications: `PHASE3_LIBRARY.md`.
 
-## Phase 4 — Library UI (LIBUI-01 … LIBUI-10) — in progress (LIBUI-01…LIBUI-05 done)
+## Phase 4 — Library UI (LIBUI-01 … LIBUI-10) — in progress (LIBUI-01…LIBUI-06 done)
 
 Extracts a generic `TrackTable` from `ResultsTable.tsx` (DEC-041 — the results screen converges in
 Phase 7) and builds the reusable filter system. Global search already exists from Phase 2, so this
