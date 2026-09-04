@@ -1,8 +1,8 @@
 # CuePoint — Evolution Roadmap
 
-Status: **Phases 0, 1 and 2 complete; Decision Rounds 1–3 resolved (DEC-001…DEC-027).**
-Phase 2's ten steps are implemented and recorded in `PHASE2_SHELL.md`. Phase 3's step
-specifications are drafted in `PHASE3_LIBRARY.md` (LIBRARY-01…LIBRARY-12), unblocked by Decision
+Status: **Phases 0, 1, 2 and 3 complete; Decision Rounds 1–3 resolved (DEC-001…DEC-027).**
+Phase 2's ten steps are implemented and recorded in `PHASE2_SHELL.md`. Phase 3's twelve steps are
+implemented and recorded in `PHASE3_LIBRARY.md` (LIBRARY-01…LIBRARY-12), unblocked by Decision
 Round 5 (DEC-030…DEC-037).
 Remaining deferred items (crossfade, audio-analysis scope, Smart Collection export/duplication
 behavior) will be resolved before the phases they affect actually start. This roadmap shows the
@@ -74,7 +74,7 @@ Real navigation shell replacing the floating `app-lab-nav` pill. Decided by Roun
 Toasts/dialogs already largely exist and get reused, not rebuilt. Step specifications:
 `PHASE2_SHELL.md`.
 
-## Phase 3 — Persistent Rekordbox Library (LIBRARY-01 … LIBRARY-12) — next
+## Phase 3 — Persistent Rekordbox Library (LIBRARY-01 … LIBRARY-12) — complete
 
 Builds on DEC-002 (TrackID+path identity), DEC-003 (delete-on-removal), and DEC-011 (refresh
 warns before deleting tracks referenced by a Collection/Set — LIBRARY-08 builds that check as a

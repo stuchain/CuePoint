@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tracks would be added, updated and removed, which tracks would be deleted, and
   a warning that deleting them takes their ratings, tags and history with them.
   Nothing happens until you confirm, and cancelling changes nothing
+- Checking an unchanged collection for changes is now instant. CuePoint compares
+  the export's modified time and size against what it recorded at import instead
+  of re-reading a 50,000-track file to tell you nothing happened
 - CuePoint now restarts its engine if it stops unexpectedly, showing
   "Reconnecting to engine…" while it tries. After three attempts it stops and
   offers a Restart engine button instead of retrying indefinitely
@@ -59,6 +62,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   previous) and navigation (home/library/activity) icons for upcoming screens.
   The artwork inherits the active theme's colour, so all five themes are covered
   by one drawing, and it stays sharp at every interface scale
+
+### Known limitations
+- CuePoint does not check that your track files are still on disk. A track whose
+  file has moved or been deleted looks like any other until a later release adds
+  the check
+- inCrate keeps its own separate inventory. Importing your collection on the
+  Library page does not import it into inCrate, and the two can drift apart —
+  see [Your library](../user-guide/library.md). A later release moves inCrate
+  onto the shared library
 
 ### Fixed
 - Tracks whose filename contains a `?` or a `#` can now be found on disk.

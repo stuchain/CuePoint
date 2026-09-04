@@ -292,6 +292,50 @@ class TestPreviewWritesNothing:
         _, listed = request(engine, "/api/v1/jobs?state=all")
         assert all("result" not in job for job in listed["jobs"])
 
+    def test_an_untouched_export_is_answered_without_reading_it(
+        self, engine, library_db, tmp_path
+    ):
+        """LIBRARY-12's fast path, over HTTP.
+
+        Measured at 50,000 tracks, reading the collection to conclude nothing
+        changed cost as much as importing it, and this is the request the
+        Library page makes every time it is opened.
+        """
+        do_import(engine, write_export(tmp_path))
+
+        diff = do_preview(engine)
+
+        assert diff["is_empty"] is True
+        assert diff["contents_compared"] is False
+
+    def test_force_reads_it_anyway(self, engine, library_db, tmp_path):
+        """The way out for a file edited in place without its state moving."""
+        do_import(engine, write_export(tmp_path))
+
+        status, started = request(engine, PREVIEW, method="POST", body={"force": True})
+        assert status == 202
+        wait_for_job(engine, started["job_id"])
+        diff = job_result(engine, started["job_id"])
+
+        assert diff["is_empty"] is True
+        assert diff["contents_compared"] is True
+
+    def test_a_changed_export_is_read(self, engine, library_db, tmp_path):
+        """The shortcut must not hide a real change."""
+        export = write_export(tmp_path)
+        do_import(engine, export)
+        touch_export(export, (0, 1))
+
+        diff = do_preview(engine)
+
+        assert diff["contents_compared"] is True
+        assert diff["tracks"]["removed"]["count"] == 2
+
+    def test_a_non_boolean_force_is_refused(self, engine, library_db):
+        status, payload = request(engine, PREVIEW, method="POST", body={"force": "yes"})
+        assert status == 400
+        assert payload["error"]["code"] == "INVALID_REQUEST"
+
     def test_a_preview_with_no_path_uses_the_source_record(
         self, engine, library_db, tmp_path
     ):
@@ -527,11 +571,17 @@ class TestOneLibraryJobAtATime:
     def test_an_import_is_refused_while_a_preview_runs(
         self, engine, library_db, tmp_path
     ):
-        """The direction a per-type lock would have missed."""
+        """The direction a per-type lock would have missed.
+
+        ``force`` because the preview has to still be running when the import
+        arrives, and LIBRARY-12's fast path answers an untouched export in
+        microseconds. Without it this test races the shortcut and passes only
+        when it loses.
+        """
         big = write_export(tmp_path, tuple(range(4000)), "big.xml")
         do_import(engine, big)
 
-        status, started = request(engine, PREVIEW, method="POST", body={})
+        status, started = request(engine, PREVIEW, method="POST", body={"force": True})
         assert status == 202
         status, payload = request(
             engine, "/api/v1/library/import", method="POST", body={"xml_path": big}
@@ -552,7 +602,12 @@ class TestOneLibraryJobAtATime:
 
         def fire():
             barrier.wait()
-            results.append(request(engine, PREVIEW, method="POST", body={}))
+            # `force` for the same reason as above: a preview that finishes
+            # instantly would let all four through one after another, and the
+            # test would pass while proving nothing about exclusion.
+            results.append(
+                request(engine, PREVIEW, method="POST", body={"force": True})
+            )
 
         threads = [threading.Thread(target=fire) for _ in range(4)]
         for thread in threads:

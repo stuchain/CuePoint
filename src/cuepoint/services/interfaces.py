@@ -876,7 +876,12 @@ class ILibraryImportService(ABC):
 
     @abstractmethod
     def compute_refresh_diff(self, xml_path: Optional[str] = None) -> "RefreshDiff":
-        """Return what a refresh would change, having changed nothing (DEC-032)."""
+        """Return what a refresh would change, having changed nothing (DEC-032).
+
+        Answers from the file's recorded state when the export demonstrably has
+        not moved since the import; implementations take a ``force`` argument to
+        read it anyway.
+        """
         ...
 
     @abstractmethod

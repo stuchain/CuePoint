@@ -12,7 +12,7 @@ DEC-002 identity lookups a Rekordbox refresh depends on.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from cuepoint.models.library_track import (
     IdentityMatch,
@@ -117,6 +117,21 @@ class RelinkedTrack:
     rekordbox_track_id: str
     previous_rekordbox_track_id: str
     file_path: str
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize for the API. A public shape; extend rather than rename.
+
+        Here rather than in the diff because a refresh preview carries these in
+        a ``Category`` alongside track and playlist summaries, and that class
+        serializes whatever it holds by asking it. Without this, a diff for a
+        collection Rekordbox had renumbered could be computed and then not sent
+        — which is what happened, and is why LIBRARY-12's end-to-end run exists.
+        """
+        return {
+            "rekordbox_track_id": self.rekordbox_track_id,
+            "previous_rekordbox_track_id": self.previous_rekordbox_track_id,
+            "file_path": self.file_path,
+        }
 
 
 @dataclass(frozen=True)

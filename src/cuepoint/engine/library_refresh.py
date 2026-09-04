@@ -317,6 +317,7 @@ def run_refresh_preview_job(
     store: JobStore,
     xml_path: Optional[str],
     diff_store: Optional[RefreshDiffStore] = None,
+    force: bool = False,
 ) -> None:
     """Compute a diff under ``job`` and publish it as the job's result.
 
@@ -340,7 +341,9 @@ def run_refresh_preview_job(
     store.report_progress(job, _progress(0, 0, "tracks", started))
 
     try:
-        diff = service.compute_refresh_diff(xml_path, should_cancel=should_cancel)
+        diff = service.compute_refresh_diff(
+            xml_path, should_cancel=should_cancel, force=force
+        )
     except ImportCancelled as exc:
         _logger.info("[library] refresh preview cancelled: %s", exc)
         store.finish(
@@ -370,6 +373,7 @@ def start_refresh_preview_job(
     xml_path: Optional[str] = None,
     *,
     diff_store: Optional[RefreshDiffStore] = None,
+    force: bool = False,
 ) -> Job:
     """Register and start a preview job.
 
@@ -379,7 +383,7 @@ def start_refresh_preview_job(
     path = str(xml_path).strip() if xml_path is not None else None
 
     def runner(job: Job) -> None:
-        run_refresh_preview_job(job, store, path, diff_store)
+        run_refresh_preview_job(job, store, path, diff_store, force)
 
     return store.create_job(
         job_type=JOB_TYPE_LIBRARY_REFRESH_PREVIEW,

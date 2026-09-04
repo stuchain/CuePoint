@@ -6,6 +6,38 @@ Guide to performance tuning and expected behavior for large libraries.
 
 CuePoint is designed to handle large Rekordbox libraries (10k+ tracks) while maintaining responsive UI and predictable performance. Use this guide to understand expected throughput, memory usage, and tuning options.
 
+## The library
+
+Measured, not estimated. The numbers below come from
+`python scripts/bench_library.py`, which generates a collection, imports it,
+refreshes it and prints this table. Run it yourself if you want the numbers for
+your machine — these are from a Windows 11 desktop, Python 3.12, on an SSD.
+
+**50,000 tracks, 250 playlists, 175,000 playlist entries** (a 20 MB export):
+
+| Operation | Time | Peak memory |
+| --- | --- | --- |
+| Import | 10.9 s | 52 MB |
+| Re-import the same file | 13.9 s | 112 MB |
+| **Check for changes, nothing changed** | **under 10 ms** | negligible |
+| Check for changes, something changed | 12.1 s | 69 MB |
+| Apply a refresh | 14.0 s | 112 MB |
+
+The resulting library file is about 20 MB.
+
+**Checking an unchanged collection is instant on purpose.** Reading a
+50,000-track export to conclude that nothing happened takes 11 seconds — as long
+as importing it — and re-checking an untouched file is the common case. CuePoint
+compares the export's modified time and size against what it recorded at import
+and answers from that, so the Library page can tell you where you stand without
+a wait. It only ever answers "nothing changed" this way; anything that might
+have changed is read in full.
+
+Memory is the peak Python allocation for a single pass, roughly 1 KB per track
+for an import. Both the parse and the comparison stream the file rather than
+loading it, so a bigger collection costs proportionally more, not
+catastrophically more.
+
 ## Performance Budgets
 
 | Metric | Target | Notes |

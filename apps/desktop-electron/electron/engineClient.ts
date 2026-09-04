@@ -208,6 +208,7 @@ export class EngineClient {
    */
   async startLibraryRefreshPreview(params?: {
     xml_path?: string;
+    force?: boolean;
   }): Promise<LibraryRefreshStarted> {
     const res = await fetch(this.url("/api/v1/library/refresh/preview"), {
       method: "POST",

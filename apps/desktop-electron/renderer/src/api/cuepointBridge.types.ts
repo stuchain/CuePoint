@@ -432,6 +432,16 @@ export interface RefreshDiff {
   xml_path: string;
   is_empty: boolean;
   duration_seconds: number;
+  /**
+   * Whether the export was actually read (LIBRARY-12).
+   *
+   * False when the answer came from the file's recorded modified time and size
+   * alone, which is what happens when nothing has touched it since the import —
+   * reading a 50,000-track collection to be told nothing changed costs as much
+   * as importing it. Only ever false on an empty diff, so it never accompanies
+   * a claim that something changed.
+   */
+  contents_compared: boolean;
   computed_at: string;
   xml_modified_at: string | null;
   xml_size_bytes: number | null;
@@ -544,6 +554,8 @@ export interface CuePointBridge {
   }) => Promise<LibraryImportStarted>;
   startLibraryRefreshPreview?: (params?: {
     xml_path?: string;
+    /** Read the export even when its recorded state says it cannot have changed. */
+    force?: boolean;
   }) => Promise<LibraryRefreshStarted>;
   startLibraryRefreshApply?: (params: {
     diff_id: string;

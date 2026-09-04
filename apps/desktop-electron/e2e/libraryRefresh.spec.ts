@@ -294,7 +294,12 @@ test.describe("Library refresh from the renderer (LIBRARY-10)", () => {
       );
       await importLibrary(window, big);
 
-      await window.evaluate(() => window.cuepoint!.startLibraryRefreshPreview!({}));
+      // `force`, so the preview actually reads the 60,000-track export.
+      // LIBRARY-12's fast path answers an untouched file in microseconds — long
+      // over before the strip's two-second discovery poll could ever see it.
+      await window.evaluate(() =>
+        window.cuepoint!.startLibraryRefreshPreview!({ force: true }),
+      );
 
       // "Checking", not "Refreshing" and not "Working": the half that only
       // reads has to be distinguishable from the half that deletes.

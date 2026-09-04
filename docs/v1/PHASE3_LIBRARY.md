@@ -1,13 +1,13 @@
 # CuePoint v1.0.0 — Phase 3: Persistent Rekordbox Library, Detailed Step Specifications
 
-Status: **In progress.** LIBRARY-01…LIBRARY-11 are implemented; LIBRARY-12
-remain draft step specs in design-only mode.
-Implementation of any step below requires an explicit "Implement LIBRARY-NN" instruction, scoped to
-exactly that step, followed by tests, a completion report, and a stop before the next step.
+Status: **Complete.** LIBRARY-01…LIBRARY-12 are implemented, each with its outcome recorded below
+the step that specified it, and the phase-level acceptance is met — see
+[Phase-level acceptance](#phase-level-acceptance).
 
 Depends on Phase 1 (`PHASE1_FOUNDATION.md`) and Phase 2 (`PHASE2_SHELL.md`), both complete, and on
 Decision Rounds 1–5 (`DECISIONS.md`, DEC-001…DEC-037). Phase 3's own decisions are DEC-030…DEC-037,
-alongside DEC-002 (identity), DEC-003 (delete on removal) and DEC-011 (warn when referenced).
+alongside DEC-002 (identity), DEC-003 (delete on removal) and DEC-011 (warn when referenced), plus
+DEC-038 which this phase raised and settled (one column for a track's length).
 
 ## What this phase is
 
@@ -1432,7 +1432,7 @@ because this is the first of it a user can use.
 
 ---
 
-## LIBRARY-12 — Scale, Verification and Documentation
+## LIBRARY-12 — Scale, Verification and Documentation ✅ IMPLEMENTED 2026-09-04
 
 **Objective**: Prove the phase at the size it was designed for, and write down what a user needs to
 know — including what is confusing (DEC-030).
@@ -1463,6 +1463,95 @@ scale claim is worthless unless someone runs it.
 
 **Complexity**: **M**
 
+### ✅ IMPLEMENTED 2026-09-04
+
+**Outcome**: Complete. `scripts/bench_library.py` is the 50,000-track measurement,
+`src/tests/performance/test_library_scale.py` keeps its claims honest in the suite,
+`e2e/libraryJourney.spec.ts` walks the phase-level acceptance list in one packaged run, and
+`docs/user-guide/library.md` is the user documentation. Running the scale claim changed the code
+and found a bug, which is the whole argument for this step existing.
+
+**50,000 tracks, 250 playlists, 175,000 playlist entries** — a 20 MB export, on a Windows 11
+desktop with Python 3.12 and an SSD. Peak is `tracemalloc`'s, so it measures what Python held at
+once rather than what the machine could spare:
+
+| Phase | Time | Peak | Result |
+| --- | --- | --- | --- |
+| Import | 10.9 s | 52 MB | 50,000 inserted |
+| Re-import the same file | 13.9 s | 112 MB | 0 inserted, 50,000 updated, no duplicates |
+| **Diff, nothing changed** | **< 10 ms** | ~0 | empty, file not read |
+| Diff, nothing changed (forced) | 11.1 s | 68 MB | empty |
+| Diff, edited | 12.1 s | 69 MB | +250 −500, matching the edit |
+| Apply | 14.0 s | 112 MB | +250 −500, matching the preview |
+
+The resulting database is 19.7 MB. Roughly 1.1 KB of peak allocation per track for an import and
+2.3 KB for a pass that also holds the identity snapshot — both linear by design, one snapshot plus
+one batch.
+
+**The unchanged refresh did not meet its own requirement, and the measurement is what said so.**
+At 50,000 tracks, reading the collection to conclude nothing had changed cost **11.0 s against an
+import's 10.7 s** — the step's scope says in as many words that this "should not feel like a fresh
+import", and it felt exactly like one. So `compute_refresh_diff` now answers from DEC-035's
+recorded modified time and size when the path is the imported file and that file demonstrably has
+not moved: **under 10 ms**, and the export is never opened. This is what LIBRARY-01 recorded the
+stat for.
+
+The shortcut is narrow on purpose and safe in one direction. It requires a source record, the same
+path, and a file whose state matches exactly; `matches_file_on_disk` already answers False for a
+missing file, an unreadable one, or an import that never recorded the state, so "I cannot tell"
+reads the file. It can only ever produce an **empty** diff, so it cannot cause a deletion — the
+worst it can do is fail to notice a change. `force` (on the service, and `{"force": true}` on the
+preview endpoint) is the way out for a file edited in place without its size or modified time
+moving, which is undetectable by definition and therefore needs a switch. The apply never takes it:
+LIBRARY-09 re-reads the file every time. `contents_compared` on the diff says which happened, so
+the shortcut is visible in the API rather than invisible magic.
+
+**A real bug, found only by running the whole phase end to end.** `Category.to_dict` serializes
+whatever it holds by asking the item, and `RelinkedTrack` had no `to_dict` — so a preview of a
+collection Rekordbox had renumbered computed correctly and then **failed on the way out** with
+`'RelinkedTrack' object has no attribute 'to_dict'`. That is the DEC-002 case, the one this phase
+put the most care into, and it was unreachable through the API. Every existing serialization test
+had happened to use a diff with no re-links in it. Fixed, with two regression tests: one on the
+re-link shape, and one that builds a diff with **all seven categories populated** and puts it
+through `json.dumps` — the honest test, because a `to_dict` returning objects would satisfy a dict
+comparison and still fail to send.
+
+**Two tests were quietly weakened by the fast path**, and the full run found both: LIBRARY-10's
+job-exclusivity tests and the status-strip label E2E all started a preview and waited for it to
+still be running. They now pass `force`, with the reason written down — a preview that finishes in
+microseconds would have let all four concurrent requests through one after another while the test
+still passed.
+
+**Documentation**: `docs/user-guide/library.md` covers importing, refreshing, what the preview
+shows, and — at length, because it is the irreversible part — what a refresh deletes and what goes
+with it. Both limitations DEC-030 and DEC-037 require are stated plainly rather than left to be
+discovered: CuePoint does not check that track files still exist, and **inCrate keeps a separate
+inventory that importing here does not populate**. `the-window.md` no longer says importing a
+library is coming in a later release; `performance.md` carries the measured table; the docs index
+and README link the new page. `CHANGELOG` gains the two features and a **Known limitations**
+section.
+
+**Guards**: **9 of 9 fail when the thing they protect is broken**, every source restored
+byte-for-byte (verified by hash): removing `RelinkedTrack.to_dict`; disabling the shortcut;
+letting it apply to any path; letting it ignore a changed file; letting `force` be ignored in the
+service and in the request body; the scale suite's speed claim; its memory ceiling; and the
+end-to-end journey in the packaged app.
+
+**Verified on the real export**: the 3,880-track January collection imports with 206 playlists, 28
+folders, 13,870 entries and a tree five levels deep; every DEC-034 field is populated except
+`colour`, which this export carries on no track at all — the parser reads both `Colour` and
+`Color` and has a test for it. Ratings land as 0–5 rather than Rekordbox's raw
+0/51/102/153/204/255. No orphaned membership, no foreign-key violations, `integrity_check` ok.
+
+**Verification**: `python scripts/run_tests.py --unit --no-slow` — 2,814 passed, 45 skipped;
+integration, regression and system — 330 passed, 13 skipped; the performance layer including the
+new scale tests — 29 passed. Renderer `npm test` 471 passed, `typecheck`, `lint` and `build:check`
+clean. The full Playwright suite against the built desktop app — 25 passed. `ruff check`/`format
+--check`, `check_no_qt_in_core.py`, `check_desktop_version_coupling.py` and
+`smoke_engine_health.py` pass. `mypy src/` adds nothing beyond the usual `import-not-found` noise.
+`~/.cuepoint` untouched throughout (`cuepoint.db` and `config.yaml` hash-checked before and after
+every run).
+
 ---
 
 ## Phase-level acceptance
@@ -1482,6 +1571,25 @@ Phase 3 is complete when, in a **packaged build**:
 9. No decision in DEC-002, DEC-003, DEC-011 or DEC-030…DEC-037 is contradicted. Per the process, a
    contradiction stops the work and gets raised rather than worked around.
 
+### ✅ MET 2026-09-04
+
+Items 1–6 are asserted together in one run of the packaged app by `e2e/libraryJourney.spec.ts`,
+deliberately as a single session rather than six: a chain of steps that each pass alone can still
+fail where they join, and that is what this list is about. It found the `RelinkedTrack`
+serialization bug that six separate tests had not.
+
+| # | Where it is proved |
+| --- | --- |
+| 1 | The journey E2E, plus the 3,880-track January export checked field by field |
+| 2 | The journey E2E, and the 50,000-track re-import: 0 inserted, no duplicates |
+| 3 | The journey E2E: preview `+1 −2`, confirmed, applied |
+| 4 | The journey E2E: a renumbered track counts as re-linked and **not** as removed |
+| 5 | The journey E2E reads the activity feed back — `deleted: 2`, `relinked: 1`; DEC-011's seam is enforced by `test_reference_check_seam.py` |
+| 6 | The journey E2E starts an import from a different page and waits for the strip to say "Importing" |
+| 7 | `scripts/bench_library.py`, recorded above and in `docs/user-guide/performance.md` |
+| 8 | All green — see LIBRARY-12's verification list |
+| 9 | No contradiction was found. One decision was **added**: DEC-038 (one column for track length), raised and recorded in LIBRARY-01 |
+
 ## Deferred, with reasons
 
 - **The track table, filters and browsing** — Phase 4. LIBRARY-11 shows counts, not rows.
@@ -1492,15 +1600,23 @@ Phase 3 is complete when, in a **packaged build**:
 - **inKey and inCrate moving onto the library** — Phases 7 and 9 (DEC-036).
 - **Retiring inCrate's inventory** — Phase 9 (DEC-030).
 
-## Recommended First Step
+## How it actually went
 
-**LIBRARY-01**. Everything reads or writes the schema, the migration is small and well-precedented,
-and it settles DEC-034's field list before two other steps assume it.
+The order held: LIBRARY-01 first, and LIBRARY-09 on its own. Three things are worth carrying into
+Phase 4.
 
-**LIBRARY-02 and LIBRARY-03 can then run in parallel** if wanted — one parses tracks, the other
-playlists, and they meet at LIBRARY-04.
+**The real export earned its place in every step.** A 3,880-track collection from an actual DJ
+found what no fixture would have: `AverageBpm="0.00"` that would have aborted the whole import,
+Rekordbox's 0/51/102/153/204/255 rating encoding, four playlist names containing `/`, a duplicate
+file path, literal `?` and `#` in filenames — a bug that silently truncated seven tracks' paths and
+made tag writing do nothing — and double-percent-encoded locations.
 
-The step to schedule carefully is **LIBRARY-09**: it is the only irreversible operation in the
-phase, and it should not be written on the same day as the diff it applies.
+**Scale is not a claim you can make without running it.** LIBRARY-12's measurement showed the
+unchanged refresh missing its own requirement by a factor of a thousand, and the end-to-end run
+found a diff that could be computed but not sent. Both were invisible to eleven steps of passing
+tests.
 
-Waiting for an explicit "Implement LIBRARY-NN" before touching any code.
+**Breaking a guard to see it fail is worth the minutes.** Across the phase it caught a memory test
+too loose to fail, a `toContain` that matched a typo, a six-thread concurrency test that passed
+with no lock at all, a fixture whose two numbers coincided, and — twice in the last step — tests
+that a performance improvement had quietly turned into no-ops.

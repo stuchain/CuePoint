@@ -17,6 +17,9 @@ import afterwards and compare.
 
 from __future__ import annotations
 
+import json
+import os
+import time
 from pathlib import Path
 
 import pytest
@@ -598,6 +601,230 @@ class TestTheDiffMatchesTheImport:
 
 
 @pytest.mark.unit
+class TestEveryCategorySerializes:
+    """A diff that cannot be sent is a diff nobody sees.
+
+    ``Category.to_dict`` serializes whatever it holds by asking the item, so a
+    category whose item type has no ``to_dict`` computes fine and then fails at
+    the point of being handed to the API. That is exactly what happened to
+    re-links: every test that serialized a diff happened to use one with none in
+    it, so a preview of a collection Rekordbox had renumbered — the case DEC-002
+    exists for — failed with ``'RelinkedTrack' object has no attribute
+    'to_dict'``. LIBRARY-12's end-to-end run is what found it.
+    """
+
+    @staticmethod
+    def _renumbered(tmp_path):
+        """The same three files, every one of them under a new TrackID."""
+        return write_export(
+            tmp_path,
+            [
+                track_xml("101", "/m/one.mp3", "One", "A"),
+                track_xml("102", "/m/two.mp3", "Two", "B"),
+                track_xml("103", "/m/three.mp3", "Three", "C"),
+            ],
+            BASE_PLAYLISTS,
+            name="renumbered.xml",
+        )
+
+    def test_a_diff_with_relinks_serializes(self, service, imported, tmp_path):
+        diff = service.compute_refresh_diff(self._renumbered(tmp_path))
+        assert diff.relinked.count == 3
+
+        payload = diff.to_dict()
+
+        assert payload["tracks"]["relinked"]["count"] == 3
+        assert payload["tracks"]["relinked"]["items"][0] == {
+            "rekordbox_track_id": "101",
+            "previous_rekordbox_track_id": "1",
+            "file_path": "/m/one.mp3",
+        }
+
+    def test_every_populated_category_survives_json(self, service, imported, tmp_path):
+        """All seven at once, through a real serializer rather than a dict check.
+
+        ``json.dumps`` is the honest test: it fails on anything the API could
+        not actually send, which ``to_dict`` returning objects would not.
+        """
+        edited = write_export(
+            tmp_path,
+            [
+                track_xml("101", "/m/one.mp3", "One", "A"),
+                track_xml("2", "/m/two.mp3", "Two RENAMED", "B"),
+                track_xml("9", "/m/nine.mp3", "Nine", "N"),
+            ],
+            '<NODE Name="ROOT" Type="0">'
+            '<NODE Name="opening" Type="1" Entries="1"><TRACK Key="101"/></NODE>'
+            '<NODE Name="new one" Type="1" Entries="1"><TRACK Key="9"/></NODE>'
+            "</NODE>",
+            name="everything.xml",
+        )
+
+        diff = service.compute_refresh_diff(edited)
+        populated = [
+            name
+            for name, category in (
+                ("added", diff.added),
+                ("changed", diff.changed),
+                ("removed", diff.removed),
+                ("relinked", diff.relinked),
+                ("playlists_added", diff.playlists_added),
+                ("playlists_changed", diff.playlists_changed),
+                ("playlists_removed", diff.playlists_removed),
+            )
+            if category.items
+        ]
+        assert len(populated) == 7, f"only {populated} had examples to serialize"
+
+        json.dumps(diff.to_dict())
+
+
+@pytest.mark.unit
+class TestAnUntouchedFileIsNotRead:
+    """LIBRARY-12's fast path, and the narrowness that makes it safe.
+
+    Measured at 50,000 tracks, reading the collection to conclude that nothing
+    changed cost as much as importing it — and re-checking an untouched export
+    is the common case. DEC-035 recorded the modified time and size for exactly
+    this, so the diff is answered from them.
+
+    The shortcut can only ever produce an *empty* diff, so it cannot cause a
+    deletion. Everything below is about it not being taken when it should not
+    be, because the failure it could cause is the quiet one: telling a user
+    nothing changed when something did.
+    """
+
+    @staticmethod
+    def _watch(monkeypatch):
+        """Count how many times the collection is actually parsed."""
+        from cuepoint.services import library_import_service as module
+
+        reads = []
+        real = module.iter_collection_tracks
+
+        def counting(path, *args, **kwargs):
+            reads.append(path)
+            return real(path, *args, **kwargs)
+
+        monkeypatch.setattr(module, "iter_collection_tracks", counting)
+        return reads
+
+    def test_it_does_not_open_the_file_at_all(self, service, imported, monkeypatch):
+        reads = self._watch(monkeypatch)
+
+        diff = service.compute_refresh_diff(imported)
+
+        assert diff.is_empty
+        assert diff.contents_compared is False
+        assert reads == [], "the export was read to conclude it had not changed"
+
+    def test_it_answers_the_same_with_no_path_given(
+        self, service, imported, monkeypatch
+    ):
+        """The Library page's "Check for changes" sends no path at all."""
+        reads = self._watch(monkeypatch)
+
+        diff = service.compute_refresh_diff()
+
+        assert diff.is_empty
+        assert reads == []
+
+    def test_it_still_carries_a_reference_summary(self, service, imported):
+        """So a caller reading ``diff.references`` never handles it being absent."""
+        assert service.compute_refresh_diff(imported).references is not None
+
+    def test_force_reads_the_file_anyway(self, service, imported, monkeypatch):
+        """The way out for a file edited in place without its state moving."""
+        reads = self._watch(monkeypatch)
+
+        diff = service.compute_refresh_diff(imported, force=True)
+
+        assert diff.is_empty
+        assert diff.contents_compared is True
+        assert reads == [imported]
+
+    def test_a_changed_file_is_read(self, service, imported, tmp_path, monkeypatch):
+        edited = write_export(
+            tmp_path, BASE_TRACKS[:2], BASE_PLAYLISTS, name="base.xml"
+        )
+        os.utime(edited, (time.time() + 5, time.time() + 5))
+        reads = self._watch(monkeypatch)
+
+        diff = service.compute_refresh_diff(edited)
+
+        assert diff.contents_compared is True
+        assert diff.removed.count == 1
+        assert reads == [edited]
+
+    def test_a_different_export_is_read(self, service, imported, tmp_path, monkeypatch):
+        """A user considering a different file is asking a real question."""
+        other = write_export(
+            tmp_path, BASE_TRACKS[:2], BASE_PLAYLISTS, name="other.xml"
+        )
+        reads = self._watch(monkeypatch)
+
+        diff = service.compute_refresh_diff(other)
+
+        assert diff.contents_compared is True
+        assert reads == [other]
+
+    def test_a_file_that_has_gone_is_read_and_reported(
+        self, service, imported, monkeypatch
+    ):
+        """ "I cannot tell" reads the file — which then fails honestly."""
+        self._watch(monkeypatch)
+        Path(imported).unlink()
+
+        with pytest.raises((FileNotFoundError, ValidationError)):
+            service.compute_refresh_diff(imported)
+
+    def test_it_is_not_taken_before_anything_is_imported(self, db, tracks, playlists):
+        service = LibraryImportService(
+            tracks, playlists, LibrarySourceRepository(db), db
+        )
+        with pytest.raises(ValidationError) as excinfo:
+            service.compute_refresh_diff()
+
+        assert excinfo.value.error_code == "LIBRARY_NOT_IMPORTED"
+
+    def test_it_is_not_taken_when_the_import_recorded_no_state(
+        self, service, db, imported, monkeypatch
+    ):
+        """An import whose stat failed has nothing to compare against."""
+        from cuepoint.models import library_source as source_module
+
+        sources = LibrarySourceRepository(db)
+        stored = sources.get()
+        sources.replace(
+            source_module.LibrarySource(
+                xml_path=stored.xml_path,
+                imported_at=stored.imported_at,
+                xml_modified_at=None,
+                xml_size_bytes=None,
+                track_count=stored.track_count,
+                playlist_count=stored.playlist_count,
+            )
+        )
+        reads = self._watch(monkeypatch)
+
+        diff = service.compute_refresh_diff(imported)
+
+        assert diff.contents_compared is True
+        assert reads == [imported]
+
+    def test_the_apply_never_takes_the_shortcut(self, service, db, imported, tmp_path):
+        """LIBRARY-09 re-reads the file every time, and must keep doing so.
+
+        The shortcut is a preview optimisation. An apply that trusted it would
+        write a source record for a file it never opened.
+        """
+        summary = service.apply_refresh(service.compute_refresh_diff(imported))
+
+        assert summary.tracks_updated == 3
+        assert summary.tracks_deleted == 0
+
+
+@pytest.mark.unit
 class TestSourceAndErrors:
     def test_it_defaults_to_the_imported_file(self, service, imported):
         """DEC-035: a refresh re-reads that file without asking."""
@@ -622,14 +849,32 @@ class TestSourceAndErrors:
             service.compute_refresh_diff(str(tmp_path / "gone.xml"))
 
     def test_cancellation_stops_it(self, service, imported):
+        # `force`, because cancellation is about the read and LIBRARY-12's fast
+        # path answers an untouched file without one. There is nothing to stop
+        # when nothing is being done.
         with pytest.raises(ImportCancelled):
-            service.compute_refresh_diff(imported, should_cancel=lambda: True)
+            service.compute_refresh_diff(
+                imported, should_cancel=lambda: True, force=True
+            )
 
     def test_cancelling_leaves_the_library_alone(self, service, db, imported):
         before = library_state(db)
         with pytest.raises(ImportCancelled):
-            service.compute_refresh_diff(imported, should_cancel=lambda: True)
+            service.compute_refresh_diff(
+                imported, should_cancel=lambda: True, force=True
+            )
         assert library_state(db) == before
+
+    def test_an_untouched_file_has_nothing_to_cancel(self, service, imported):
+        """The fast path returns before a cancel could apply, and that is right.
+
+        A caller that asked to stop something instantaneous gets the answer
+        rather than an exception about work that never started.
+        """
+        diff = service.compute_refresh_diff(imported, should_cancel=lambda: True)
+
+        assert diff.is_empty
+        assert diff.contents_compared is False
 
 
 @pytest.mark.unit
@@ -665,6 +910,7 @@ class TestReportingShape:
             "xml_path",
             "is_empty",
             "duration_seconds",
+            "contents_compared",
             "tracks",
             "playlists",
             "references",

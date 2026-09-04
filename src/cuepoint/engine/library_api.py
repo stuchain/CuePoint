@@ -258,20 +258,26 @@ def library_summary() -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def parse_refresh_preview_body(raw: bytes) -> Optional[str]:
-    """Return the optional ``xml_path`` a preview should read.
+def parse_refresh_preview_body(raw: bytes) -> Tuple[Optional[str], bool]:
+    """Return the optional ``xml_path`` a preview should read, and ``force``.
 
     An empty body is valid and is the usual case: DEC-035 recorded where the
     library came from precisely so a refresh does not have to ask. A path is
     accepted for the other case — previewing a different export before deciding
     to adopt it.
 
+    ``force`` asks for the export to be read even when its recorded state says
+    it cannot have changed (LIBRARY-12). Off by default, because the whole point
+    of recording that state is not to read a 50,000-track file to be told
+    nothing happened.
+
     Raises:
-        ValueError: If the body is present but is not a JSON object, or carries
-            an ``xml_path`` that is not a usable string.
+        ValueError: If the body is present but is not a JSON object, carries an
+            ``xml_path`` that is not a usable string, or a non-boolean
+            ``force``.
     """
     if not raw:
-        return None
+        return None, False
     try:
         data = json.loads(raw.decode("utf-8"))
     except json.JSONDecodeError as exc:
@@ -279,12 +285,16 @@ def parse_refresh_preview_body(raw: bytes) -> Optional[str]:
     if not isinstance(data, dict):
         raise ValueError("JSON body must be an object")
 
+    force = data.get("force", False)
+    if not isinstance(force, bool):
+        raise ValueError("force must be true or false")
+
     raw_path = data.get("xml_path")
     if raw_path is None:
-        return None
+        return None, force
     if not isinstance(raw_path, str) or not raw_path.strip():
         raise ValueError("xml_path must be a non-empty string when given")
-    return raw_path.strip()
+    return raw_path.strip(), force
 
 
 def parse_refresh_apply_body(raw: bytes) -> Tuple[str, bool]:
@@ -316,7 +326,9 @@ def parse_refresh_apply_body(raw: bytes) -> Tuple[str, bool]:
     return str(diff_id).strip(), confirm
 
 
-def start_refresh_preview(xml_path: Optional[str], *, job_store: Any) -> Dict[str, Any]:
+def start_refresh_preview(
+    xml_path: Optional[str], force: bool = False, *, job_store: Any
+) -> Dict[str, Any]:
     """Start a refresh preview as a background job (DEC-032, DEC-033).
 
     A given path is checked the way an import's is, so an obviously wrong pick
@@ -332,7 +344,7 @@ def start_refresh_preview(xml_path: Optional[str], *, job_store: Any) -> Dict[st
     from cuepoint.engine.library_refresh import start_refresh_preview_job
 
     checked = validate_import_path(xml_path) if xml_path else None
-    job = start_refresh_preview_job(job_store, checked)
+    job = start_refresh_preview_job(job_store, checked, force=force)
     return {"job_id": job.id, "id": job.id, "state": job.state.value}
 
 

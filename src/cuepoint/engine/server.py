@@ -263,9 +263,9 @@ def make_handler(
 
             try:
                 if path.endswith("/preview"):
+                    requested, force = parse_refresh_preview_body(self._read_body())
                     payload = start_refresh_preview(
-                        parse_refresh_preview_body(self._read_body()),
-                        job_store=job_store,
+                        requested, force, job_store=job_store
                     )
                 else:
                     diff_id, confirm = parse_refresh_apply_body(self._read_body())

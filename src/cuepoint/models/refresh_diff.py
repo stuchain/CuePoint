@@ -218,6 +218,11 @@ class RefreshDiff:
     playlists_removed: Category = field(default_factory=Category)
     references: Optional[Any] = None
     duration_seconds: float = 0.0
+    #: Whether the export was actually read. False when the diff was answered
+    #: from the file's recorded state alone (LIBRARY-12) — see
+    #: ``LibraryImportService.compute_refresh_diff``. Only ever False on an
+    #: empty diff, so it never accompanies a claim that something changed.
+    contents_compared: bool = True
 
     @property
     def is_empty(self) -> bool:
@@ -253,6 +258,7 @@ class RefreshDiff:
             "xml_path": self.xml_path,
             "is_empty": self.is_empty,
             "duration_seconds": self.duration_seconds,
+            "contents_compared": self.contents_compared,
             "tracks": {
                 "added": self.added.to_dict(),
                 "changed": self.changed.to_dict(),

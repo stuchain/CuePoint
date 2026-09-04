@@ -40,6 +40,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable, Iterable, Iterator, Optional, Tuple
 
 from cuepoint.data.rekordbox import (
@@ -599,6 +600,7 @@ class LibraryImportService(ILibraryImportService):
         xml_path: Optional[str] = None,
         detail_limit: int = DEFAULT_DETAIL_LIMIT,
         should_cancel: Optional[CancelCheck] = None,
+        force: bool = False,
     ) -> RefreshDiff:
         """Work out what a refresh would change, and change nothing (DEC-032).
 
@@ -623,6 +625,10 @@ class LibraryImportService(ILibraryImportService):
             should_cancel: Checked between tracks; returning True aborts with
                 :class:`ImportCancelled`. Nothing was written, so there is
                 nothing to undo.
+            force: Read the export even when its recorded state says it cannot
+                have changed. The way out for a file that was edited in place
+                without its modified time or size moving — rare, and impossible
+                to detect by definition, which is why there is a switch for it.
 
         Returns:
             A :class:`RefreshDiff`.
@@ -635,6 +641,28 @@ class LibraryImportService(ILibraryImportService):
         """
         started = time.perf_counter()
         path = self._resolve_refresh_path(xml_path)
+
+        if not force and self._file_is_provably_unchanged(path):
+            # Measured at 50,000 tracks: reading the collection to conclude
+            # nothing changed costs as much as importing it (11.0s against
+            # 10.7s), and re-checking an untouched export is the common case —
+            # it is what the Library page does every time it is opened on.
+            # DEC-035 recorded the modified time and size for exactly this.
+            #
+            # Safe in the one direction that matters: the shortcut can only ever
+            # produce an *empty* diff, so it cannot cause a deletion. The worst
+            # it can do is fail to notice a change, which ``force`` undoes and
+            # which a re-export from Rekordbox fixes by itself. The apply never
+            # takes it — LIBRARY-09 re-reads the file every time.
+            diff = RefreshDiff(xml_path=path, contents_compared=False)
+            diff.references = NO_REFERENCES
+            diff.duration_seconds = time.perf_counter() - started
+            _logger.info(
+                "[library] %s is unchanged since the import; nothing to refresh",
+                path,
+            )
+            return diff
+
         self._require_collection(path)
 
         diff = RefreshDiff(xml_path=path)
@@ -669,6 +697,35 @@ class LibraryImportService(ILibraryImportService):
             diff.duration_seconds,
         )
         return diff
+
+    def _file_is_provably_unchanged(self, path: str) -> bool:
+        """True when this is the imported file and it demonstrably has not moved.
+
+        Deliberately narrow. Every one of these has to hold:
+
+        * something has been imported, so there is a state to compare against;
+        * the path is the one that was imported, not a different export a user
+          is considering;
+        * the file is there now and its modified time and size are exactly what
+          they were.
+
+        ``matches_file_on_disk`` is already conservative — a missing file, an
+        unreadable one, or an import that never recorded the state all answer
+        False — so "I cannot tell" reads the file rather than skipping it.
+
+        The invariant this rests on is that the library matches the source
+        record's file whenever both exist: an import writes both in one
+        transaction (LIBRARY-09), and a refresh rewrites the source record with
+        the file it just applied. There is no half-written state in between.
+        """
+        source = self._source.get()
+        if source is None:
+            return False
+        if str(Path(source.xml_path)) != str(Path(path)):
+            return False
+        # `bool(...)` so the annotation is carried rather than inferred: the
+        # method already returns one, and mypy cannot see that from here.
+        return bool(source.matches_file_on_disk())
 
     def _references_for_removed(self, diff: RefreshDiff) -> ReferenceSummary:
         """Ask DEC-011's question about the tracks this refresh would delete.

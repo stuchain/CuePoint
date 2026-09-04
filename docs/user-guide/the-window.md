@@ -23,6 +23,9 @@ also reopens on the page you were last using.
 The sidebar lists the pages available to you. Pages that are still being built
 are not shown at all rather than appearing and doing nothing.
 
+**Library** is where your Rekordbox collection lives — see
+[Your library](library.md).
+
 Collapse the sidebar with the button at its top, or press **Ctrl+B**. Collapsed,
 it shows icons only; hover any icon to see its name, and screen readers still
 announce the full label.
@@ -33,8 +36,8 @@ Press **Ctrl+K**, or click the search field, and type at least two characters.
 Search looks at track titles, artists, albums and labels.
 
 If you have not imported a Rekordbox collection yet, search says so rather than
-reporting that nothing matched — those are different problems. Importing a
-library is coming in a later release.
+reporting that nothing matched — those are different problems. Import one from
+the [Library](library.md) page.
 
 **Ctrl+K searches your whole library. Ctrl+F searches the table in front of
 you.** They are deliberately different keys, because they do different things.

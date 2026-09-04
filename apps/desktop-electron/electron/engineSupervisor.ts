@@ -263,6 +263,7 @@ export class EngineSupervisor {
 
   async startLibraryRefreshPreview(params?: {
     xml_path?: string;
+    force?: boolean;
   }): Promise<LibraryRefreshStarted> {
     return this.client().startLibraryRefreshPreview(params);
   }

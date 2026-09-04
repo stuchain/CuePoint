@@ -37,6 +37,7 @@ function diff(overrides: Partial<RefreshDiff> = {}): RefreshDiff {
     diff_id: "d1",
     xml_path: "C:\\Users\\dj\\Downloads\\collection.xml",
     is_empty: false,
+    contents_compared: true,
     duration_seconds: 0.4,
     computed_at: "2026-09-03T10:00:00Z",
     xml_modified_at: "2026-09-03T09:00:00Z",
