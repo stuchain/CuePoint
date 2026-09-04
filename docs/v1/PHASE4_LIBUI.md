@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 4: Library UI, Detailed Step Specifications
 
-Status: **In progress.** LIBUI-01…LIBUI-08 are implemented, each with its outcome recorded below
-the step that specified it; LIBUI-09 and LIBUI-10 are specified and not started. Per the process, no implementation
+Status: **In progress.** LIBUI-01…LIBUI-09 are implemented, each with its outcome recorded below
+the step that specified it; LIBUI-10 is specified and not started. Per the process, no implementation
 happens from this document — each step needs an explicit "Implement LIBUI-NN" instruction, scoped
 to exactly that step, and its outcome is recorded under the step afterwards.
 
@@ -1024,7 +1024,7 @@ actually observable.
 
 ---
 
-## LIBUI-09 — Selection, Actions and the Track Inspector
+## LIBUI-09 — Selection, Actions and the Track Inspector ✅ IMPLEMENTED 2026-09-04
 
 **Objective**: DEC-045's selection model, the two actions that exist today, and DEC-047's Inspector
 content — the first thing ever to render inside DEC-024's container.
@@ -1070,6 +1070,64 @@ time; selection behaves identically whether the rows involved are loaded or not.
 **Risks**: Medium. Shift-range across unloaded rows is the part that quietly does the wrong thing.
 
 **Complexity**: **L**
+
+### ✅ IMPLEMENTED 2026-09-04
+
+**Outcome**: Complete. `trackSelection.ts` is the model, `useTrackSelection.ts` drives it,
+`TrackDetailPanel.tsx` fills DEC-024's empty Inspector, `SelectionActions.tsx` is the strip, and
+`trackClipboard.ts` is the copy format. 91 new renderer tests.
+
+**"Everything matching" is a description, and a test proves it holds nothing.** Selecting a
+47,913-track view puts no ids in memory: the selection is either the ids it contains or the query
+minus the ids taken out of it. That is what Phase 6's "tag everything matching this filter" needs —
+the question, not a list that was true a moment ago — and it is asserted directly, because the
+failure is invisible until a library is big enough to hurt.
+
+**A shift-range that crosses unloaded rows is resolved through `fields=id`.** The rows in hand are
+used first, so a range inside the window costs no request at all; when it is not, the ids come from
+the same browse query with a narrower projection (LIBUI-03), so what a selection names and what the
+table shows can never disagree. A test asserts the request carries the *current* sort, not a
+default.
+
+**A selection is cleared by a change of question.** What was selected under the old query is not a
+subset of the new one, and acting on it would act on tracks the user can no longer see.
+
+**Absent is absent, in both directions.** The Inspector reads a missing rating as "—" and a zero
+play count as "0" — unrated and rated-zero are different facts, which is why LIBRARY-01 made those
+columns nullable (DEC-034). Two tests, in opposite directions, because a `!value` check passes one
+and fails the other.
+
+**Read-only, and asserted as such** (DEC-047): no text box, no number box, no clickable star. A
+rating shows as stars with no conversion, because the parser already converted Rekordbox's encoding
+at import.
+
+**Two actions, because two is what this build has.** Copy, and show one file in the file manager —
+the second offered only for a single selection, since revealing five folders at once is not a thing
+anyone asked for. A copy is tab-separated, the visible columns in the order the table shows them,
+with a header row; it is gathered through the ordinary browse query and capped at 5,000 rows, and
+says so when the selection was larger. Double-click stays inert (DEC-046): the table's seam is
+there and nothing is wired to it.
+
+**One redundant branch removed.** `onlySelectedId` special-cased a described selection, but such a
+selection never holds ids, so the general path already returned null — mutation testing showed the
+branch could not be observed, and it is now a comment instead of a condition.
+
+**`npm test` passed while `build:check` failed again**, on a generic constraint the clipboard did
+not need: `Record<string, unknown>` excluded the very row type it is for. Vitest does not
+type-check, so the gate that matters is still `build:check`.
+
+**Guards: 28 of 28 fail when the thing they protect is broken** — every selection rule including
+the description invariant, the anchor, ranges in both directions, the unloaded-range fetch and the
+query it carries, clearing on a new question, the copy's limit and its filter, both absent-versus-
+zero readings, stars, the playlist link, the multi-selection notice, the single-selection reveal,
+select-all's availability, the copy's header, column order and tab handling, the partial-copy
+message, a refusing clipboard, and a detail request for a track nobody is looking at.
+
+**Verification**: renderer `npm test` — 938 passed across 49 files; `npm run typecheck`,
+`npm run lint` and `npm run build:check` clean. Python untouched. Not done here: nothing is wired
+together — the table does not yet call `onRowClick`, and the Inspector container does not yet hold
+the panel. LIBUI-10 is the assembly, and it is where Ctrl+A, Escape and the DEC-046 assertion about
+the page belong.
 
 ---
 

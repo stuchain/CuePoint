@@ -1,0 +1,131 @@
+/*
+ * Everything CuePoint knows about one track (LIBUI-09, DEC-047).
+ *
+ * Values use --font-data (DEC-048): this is the other place in the app where
+ * a column of small values is read closely.
+ */
+
+.cp-track-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-sm);
+  overflow-y: auto;
+}
+
+.cp-track-detail__note {
+  padding: var(--space-md);
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.cp-track-detail__head {
+  display: flex;
+  flex-direction: column;
+  gap: calc(2px * var(--scale));
+  padding-bottom: var(--space-sm);
+  border-bottom: calc(1px * var(--scale)) solid var(--border-muted);
+}
+
+.cp-track-detail__title {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.cp-track-detail__artist {
+  margin: 0;
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+}
+
+.cp-track-detail__selection {
+  margin: var(--space-xs) 0 0;
+  color: var(--accent-info);
+  font-size: var(--font-size-xs);
+}
+
+.cp-track-detail__fields {
+  display: flex;
+  flex-direction: column;
+  gap: calc(2px * var(--scale));
+  margin: 0;
+}
+
+.cp-track-detail__row {
+  display: grid;
+  grid-template-columns: minmax(0, 5rem) minmax(0, 1fr);
+  gap: var(--space-sm);
+  align-items: baseline;
+}
+
+.cp-track-detail__label {
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.cp-track-detail__value {
+  margin: 0;
+  min-width: 0;
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+  word-break: break-word;
+}
+
+.cp-track-detail__file {
+  display: flex;
+  flex-direction: column;
+  gap: calc(2px * var(--scale));
+  min-width: 0;
+}
+
+.cp-track-detail__file > span {
+  overflow-wrap: anywhere;
+}
+
+.cp-track-detail__reveal,
+.cp-track-detail__playlist {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--accent-info);
+  font-family: var(--font-pixel);
+  font-size: var(--font-size-xs);
+  text-align: left;
+  cursor: pointer;
+}
+
+.cp-track-detail__reveal:hover,
+.cp-track-detail__playlist:hover {
+  text-decoration: underline;
+}
+
+.cp-track-detail__subtitle {
+  margin: 0 0 var(--space-xs);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.cp-track-detail__playlists ul {
+  display: flex;
+  flex-direction: column;
+  gap: calc(2px * var(--scale));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cp-track-detail__icon {
+  width: calc(var(--icon-size) * 0.5);
+  height: calc(var(--icon-size) * 0.5);
+  color: var(--fg-muted);
+}

@@ -1,0 +1,22 @@
+/* What can be done with a selection (LIBUI-09). A strip, not a dialog. */
+
+.cp-selection-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg-toolbar);
+  border-top: var(--border-width) solid var(--border-outline);
+}
+
+.cp-selection-actions--idle {
+  color: var(--fg-muted);
+}
+
+.cp-selection-actions__count {
+  margin-right: auto;
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
