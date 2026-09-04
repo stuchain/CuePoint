@@ -109,13 +109,23 @@ def bootstrap_services() -> None:
     container.register_factory(ITrackRepository, create_track_repository)
 
     def create_playlist_repository() -> IPlaylistRepository:
-        """Build the mirrored Rekordbox playlist tree repository."""
+        """Build the mirrored Rekordbox playlist tree repository.
+
+        Migrates first, like the track repository, so its tables exist however
+        this is reached. Until LIBUI-03 every path that touched playlists had
+        resolved something else first — the import service, or the summary
+        endpoint's library service — and so migrated by accident of ordering.
+        The playlists endpoint resolves only this, which on a fresh install is
+        a 500 the first time a user opens the Library page.
+        """
+        container.resolve(IMigrationRunner).migrate()
         return PlaylistRepository(database_service=container.resolve(IDatabaseService))
 
     container.register_factory(IPlaylistRepository, create_playlist_repository)
 
     def create_library_source_repository() -> ILibrarySourceRepository:
-        """Build the DEC-035 source-record repository."""
+        """Build the DEC-035 source-record repository, migrating first."""
+        container.resolve(IMigrationRunner).migrate()
         return LibrarySourceRepository(
             database_service=container.resolve(IDatabaseService)
         )

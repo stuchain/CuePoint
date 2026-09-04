@@ -286,6 +286,7 @@ export interface LibraryTrackRow {
   rekordbox_track_id: string;
   title: string;
   artist: string;
+  remixer: string | null;
   album: string | null;
   label: string | null;
   genre: string | null;
@@ -293,6 +294,13 @@ export interface LibraryTrackRow {
   bpm: number | null;
   year: number | null;
   duration_seconds: number | null;
+  /** Stars, 0-5. The parser converts Rekordbox's 0/51/…/255 at import. */
+  rating: number | null;
+  play_count: number | null;
+  colour: string | null;
+  date_added: string | null;
+  comment: string | null;
+  bitrate: number | null;
   file_path: string;
 }
 
@@ -305,6 +313,112 @@ export interface LibrarySearchResponse {
   /** True when nothing has been imported yet — a different problem from "no
    *  matches", and one the UI has to answer differently. */
   library_empty: boolean;
+  /**
+   * What the engine was asked, echoed back (LIBUI-03) so a late response can
+   * be recognized by what it answers rather than by bookkeeping the renderer
+   * keeps in step. Optional because the fixtures written against SHELL-04's
+   * shape describe valid requests; the engine always sends these.
+   */
+  mode?: "search" | "browse";
+  scope?: number | null;
+  sort?: string;
+  dir?: "asc" | "desc";
+  /** Present only when ids were asked for; `tracks` is then empty. */
+  track_ids?: number[];
+}
+
+/**
+ * The library filter model (DEC-043, DEC-016).
+ *
+ * The same structure Phase 6 saves as a Smart Collection. Flat and AND-only
+ * for v1, with `match` on the wire from the start so adding "any" later
+ * changes no shape. The renderer never invents a field or an operator: both
+ * come from `getLibraryFilterFields()`.
+ */
+export interface FilterRule {
+  field: string;
+  operator: string;
+  value?: unknown;
+}
+
+export interface FilterRuleSet {
+  match: "all";
+  rules: FilterRule[];
+}
+
+export interface LibraryBrowseParams {
+  q?: string;
+  playlistId?: number | null;
+  sort?: string;
+  dir?: "asc" | "desc";
+  filters?: FilterRuleSet | null;
+  limit?: number;
+  offset?: number;
+  /** Ask for ids instead of rows — a selection crossing unloaded rows. */
+  fields?: "id";
+}
+
+/** One node of the mirrored Rekordbox tree; read-only source data (DEC-031). */
+export interface LibraryPlaylistNode {
+  id: number;
+  parent_id: number | null;
+  name: string;
+  kind: "folder" | "playlist";
+  depth: number;
+  position: number;
+  /** Derived and not guaranteed unique — a name may contain the separator. */
+  path: string;
+  track_count: number;
+}
+
+export interface LibraryPlaylistTree {
+  playlists: LibraryPlaylistNode[];
+  total: number;
+}
+
+export interface LibraryFacetValue {
+  /** Null is the "no value" bucket, which the `is_empty` operator filters by. */
+  value: string | null;
+  count: number;
+}
+
+export interface LibraryFacetRange {
+  field: string;
+  min: number | null;
+  max: number | null;
+  missing: number;
+}
+
+export interface LibraryFacet {
+  field: string;
+  values: LibraryFacetValue[];
+  /** True when the field has more values than were returned. */
+  truncated: boolean;
+  total_values: number;
+  /** Present for number fields only. */
+  range: LibraryFacetRange | null;
+}
+
+export interface LibraryFilterField {
+  name: string;
+  type: "text" | "number" | "date";
+  label: string;
+  facetable: boolean;
+  integer: boolean;
+  operators: string[];
+}
+
+export interface LibraryFilterVocabulary {
+  fields: LibraryFilterField[];
+  facetable: string[];
+  sortable: string[];
+}
+
+/** A track and where it sits in the collection — the Inspector (DEC-047). */
+export interface LibraryTrackDetail {
+  track: LibraryTrackRow;
+  playlists: LibraryPlaylistNode[];
+  playlist_count: number;
 }
 
 export interface ActivityEvent {
@@ -549,6 +663,17 @@ export interface CuePointBridge {
     limit?: number;
     offset?: number;
   }) => Promise<LibrarySearchResponse>;
+  browseLibrary?: (params: LibraryBrowseParams) => Promise<LibrarySearchResponse>;
+  getLibraryPlaylists?: () => Promise<LibraryPlaylistTree>;
+  getLibraryFacet?: (params: {
+    field: string;
+    q?: string;
+    playlistId?: number | null;
+    filters?: FilterRuleSet | null;
+    limit?: number;
+  }) => Promise<LibraryFacet>;
+  getLibraryFilterFields?: () => Promise<LibraryFilterVocabulary>;
+  getLibraryTrack?: (params: { trackId: number }) => Promise<LibraryTrackDetail>;
   startLibraryImport?: (params: {
     xml_path: string;
   }) => Promise<LibraryImportStarted>;

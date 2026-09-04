@@ -9,10 +9,16 @@ import {
   EngineClient,
   type ActivityFeed,
   type EngineJobList,
+  type LibraryBrowseParams,
+  type LibraryFacet,
+  type LibraryFilterVocabulary,
   type LibraryImportStarted,
+  type LibraryPlaylistTree,
   type LibraryRefreshStarted,
   type LibrarySearchResponse,
   type LibrarySummary,
+  type LibraryTrackDetail,
+  type FilterRuleSet,
 } from "./engineClient";
 import { getBundledEnginePath, shouldUseBundledEngine } from "./engineLaunch";
 
@@ -253,6 +259,32 @@ export class EngineSupervisor {
     offset?: number;
   }): Promise<LibrarySearchResponse> {
     return this.client().searchLibrary(params);
+  }
+
+  async browseLibrary(params: LibraryBrowseParams): Promise<LibrarySearchResponse> {
+    return this.client().browseLibrary(params);
+  }
+
+  async getLibraryPlaylists(): Promise<LibraryPlaylistTree> {
+    return this.client().getLibraryPlaylists();
+  }
+
+  async getLibraryFacet(params: {
+    field: string;
+    q?: string;
+    playlistId?: number | null;
+    filters?: FilterRuleSet | null;
+    limit?: number;
+  }): Promise<LibraryFacet> {
+    return this.client().getLibraryFacet(params);
+  }
+
+  async getLibraryFilterFields(): Promise<LibraryFilterVocabulary> {
+    return this.client().getLibraryFilterFields();
+  }
+
+  async getLibraryTrack(params: { trackId: number }): Promise<LibraryTrackDetail> {
+    return this.client().getLibraryTrack(params);
   }
 
   async startLibraryImport(params: {

@@ -12,7 +12,10 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { GlobalSearch } from "./GlobalSearch";
-import type { LibrarySearchResponse } from "../../api/cuepointBridge.types";
+import type {
+  LibrarySearchResponse,
+  LibraryTrackRow,
+} from "../../api/cuepointBridge.types";
 
 function response(overrides: Partial<LibrarySearchResponse> = {}): LibrarySearchResponse {
   return {
@@ -26,11 +29,12 @@ function response(overrides: Partial<LibrarySearchResponse> = {}): LibrarySearch
   };
 }
 
-const TRACK = {
+const TRACK: LibraryTrackRow = {
   id: 1,
   rekordbox_track_id: "1",
   title: "Strobe",
   artist: "deadmau5",
+  remixer: null,
   album: "For Lack of a Better Name",
   label: "mau5trap",
   genre: null,
@@ -38,6 +42,12 @@ const TRACK = {
   bpm: 128,
   year: 2009,
   duration_seconds: 634,
+  rating: null,
+  play_count: null,
+  colour: null,
+  date_added: null,
+  comment: null,
+  bitrate: null,
   file_path: "/music/strobe.mp3",
 };
 

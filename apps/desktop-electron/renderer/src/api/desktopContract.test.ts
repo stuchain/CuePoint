@@ -151,6 +151,114 @@ describe("desktop contract", () => {
     });
   });
 
+  describe("browse, playlists, facets and track detail (LIBUI-03)", () => {
+    // Named the same way the endpoints before them are: the generic checks
+    // compare the files against each other, so a method missing from all of
+    // them passes every one. These say what has to exist.
+    const methods = [
+      "browseLibrary",
+      "getLibraryPlaylists",
+      "getLibraryFacet",
+      "getLibraryFilterFields",
+      "getLibraryTrack",
+    ];
+
+    it.each(methods)("exposes %s on the preload", (method) => {
+      expect(invokedChannels(preload)).toContain(`engine:${method}`);
+    });
+
+    it.each(methods)("handles engine:%s in the main process", (method) => {
+      expect(handledChannels(main)).toContain(`engine:${method}`);
+    });
+
+    it.each(methods)("forwards %s through the supervisor", (method) => {
+      expect(supervisorMethodsDeclared(supervisor)).toContain(method);
+    });
+
+    it.each(methods)("declares %s on the renderer bridge type", (method) => {
+      // With the `?:`, so a rename cannot pass on a substring.
+      expect(bridgeTypes).toContain(`${method}?:`);
+    });
+
+    it("has typed client methods hitting the documented paths", () => {
+      expect(engineClient).toContain("async browseLibrary(");
+      expect(engineClient).toContain("async getLibraryPlaylists(");
+      expect(engineClient).toContain("/api/v1/library/playlists");
+      expect(engineClient).toContain("async getLibraryFacet(");
+      expect(engineClient).toContain("/api/v1/library/facets");
+      expect(engineClient).toContain("async getLibraryFilterFields(");
+      expect(engineClient).toContain("/api/v1/library/filter-fields");
+      expect(engineClient).toContain("async getLibraryTrack(");
+      expect(engineClient).toContain("/api/v1/library/tracks/");
+    });
+
+    it("browses through the one search endpoint (DEC-023)", () => {
+      // Not a second query path. The whole point of DEC-023 is that browsing
+      // is the same endpoint with more parameters, so a filter and a search
+      // can never disagree about what the library contains.
+      const method = engineClient.slice(
+        engineClient.indexOf("async browseLibrary("),
+        engineClient.indexOf("async getLibraryPlaylists("),
+      );
+      expect(method).toContain("/api/v1/library/search");
+      expect(method).toContain('mode: "browse"');
+    });
+
+    it("reads with GET, so a scroll can be repeated safely", () => {
+      const reads = engineClient.slice(
+        engineClient.indexOf("async browseLibrary("),
+        engineClient.indexOf("async startLibraryImport("),
+      );
+      expect(reads).not.toContain('method: "POST"');
+    });
+
+    it("declares the shapes the renderer reads them as", () => {
+      expect(bridgeTypes).toContain("interface LibraryPlaylistNode");
+      expect(bridgeTypes).toContain("interface LibraryPlaylistTree");
+      expect(bridgeTypes).toContain("interface LibraryFacet");
+      expect(bridgeTypes).toContain("interface LibraryFilterVocabulary");
+      expect(bridgeTypes).toContain("interface LibraryTrackDetail");
+      expect(bridgeTypes).toContain("interface FilterRuleSet");
+    });
+
+    it("carries every imported field on a track row (DEC-034, DEC-047)", () => {
+      // The table's columns and the Inspector read one row shape; a field the
+      // engine sends and the type does not declare is a column that cannot be
+      // shown without an `any`.
+      const row = bridgeTypes.slice(
+        bridgeTypes.indexOf("export interface LibraryTrackRow"),
+        bridgeTypes.indexOf("export interface LibrarySearchResponse"),
+      );
+      for (const field of [
+        "remixer",
+        "rating",
+        "play_count",
+        "colour",
+        "date_added",
+        "comment",
+        "bitrate",
+      ]) {
+        expect(row).toContain(field);
+      }
+    });
+
+    it("keeps the engine and the renderer agreeing about that row", () => {
+      // Two copies of one shape, one in each process. They are compared here
+      // because nothing else does: the main process cannot import renderer
+      // types, and the renderer cannot import the client's.
+      const fields = (source: string) => {
+        const start = source.indexOf("export interface LibraryTrackRow");
+        return source
+          .slice(start, source.indexOf("\n}", start))
+          .split("\n")
+          .map((line) => line.trim().split(":")[0]!.trim())
+          .filter((name) => /^[a-z_]+$/.test(name));
+      };
+
+      expect(fields(bridgeTypes)).toEqual(fields(engineClient));
+    });
+  });
+
   describe("refresh preview and apply (LIBRARY-10)", () => {
     // Named the same way, for the same reason: the generic checks only compare
     // the files against each other, so a method missing from all of them passes

@@ -20,8 +20,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable, List, Optional
 
+from cuepoint.models.filter_rule import Facet, FacetRange, RuleSet, field_spec
 from cuepoint.models.library_track import LibraryTrack
 from cuepoint.models.references import NO_REFERENCES, ReferenceSummary
+from cuepoint.persistence.track_query import (
+    BROWSE_LIMIT_DEFAULT,
+    DEFAULT_SORT,
+    BrowseQuery,
+    clamp_ids_limit,
+    clamp_limit,
+    clamp_offset,
+)
 from cuepoint.services.interfaces import ILibraryService, ITrackRepository
 
 
@@ -55,6 +64,31 @@ class LibrarySearchResult:
     total: int
     limit: int
     offset: int
+
+
+@dataclass(frozen=True)
+class LibraryBrowseResult:
+    """One window of the library, and what was asked for to get it.
+
+    The request is echoed back — scope, sort, direction — so a renderer can
+    tell a late response from a current one by what it *answers* rather than by
+    bookkeeping it has to keep in step (LIBUI-05). ``total`` is the full match
+    count, so a table can size its scrollbar without reading every row.
+
+    ``track_ids`` is populated instead of ``tracks`` when only ids were asked
+    for; both are never populated at once, because a caller asking for ids does
+    not want the rows and one that wants rows has them.
+    """
+
+    query: str
+    tracks: List[LibraryTrack]
+    total: int
+    limit: int
+    offset: int
+    playlist_id: Optional[int] = None
+    sort: str = DEFAULT_SORT
+    direction: str = "asc"
+    track_ids: Optional[List[int]] = None
 
 
 class LibraryService(ILibraryService):
@@ -113,6 +147,121 @@ class LibraryService(ILibraryService):
             limit=safe_limit,
             offset=safe_offset,
         )
+
+    def browse_tracks(
+        self,
+        query: str = "",
+        playlist_id: Optional[int] = None,
+        rules: Optional[RuleSet] = None,
+        sort: str = DEFAULT_SORT,
+        direction: str = "asc",
+        limit: int = BROWSE_LIMIT_DEFAULT,
+        offset: int = 0,
+    ) -> LibraryBrowseResult:
+        """Return one window of the library, with the unpaged total (DEC-040).
+
+        Unlike :meth:`search_tracks`, a blank query means *everything in
+        scope*: a table with an empty search box shows the library, while an
+        empty search box is not a request to read one. That difference is the
+        only thing separating the two, and it lives here rather than in two
+        query paths (DEC-023).
+
+        Raises:
+            BrowseQueryError: If the sort or direction is not one that exists.
+            FilterRuleError: If a filter rule cannot be honoured as written.
+        """
+        browse = BrowseQuery(
+            query=query or "",
+            playlist_id=playlist_id,
+            sort=sort or DEFAULT_SORT,
+            direction=direction or "asc",
+            rules=rules or RuleSet(),
+        ).validated()
+        safe_limit = clamp_limit(limit)
+        safe_offset = clamp_offset(offset)
+        return LibraryBrowseResult(
+            query=browse.query,
+            tracks=self._tracks.browse(browse, limit=safe_limit, offset=safe_offset),
+            total=self._tracks.browse_count(browse),
+            limit=safe_limit,
+            offset=safe_offset,
+            playlist_id=browse.playlist_id,
+            sort=browse.sort,
+            direction=browse.direction,
+        )
+
+    def browse_track_ids(
+        self,
+        query: str = "",
+        playlist_id: Optional[int] = None,
+        rules: Optional[RuleSet] = None,
+        sort: str = DEFAULT_SORT,
+        direction: str = "asc",
+        limit: Optional[int] = None,
+        offset: int = 0,
+    ) -> LibraryBrowseResult:
+        """Return the ids of one window, in the same order as the rows.
+
+        What a selection that crosses unloaded rows is built from (DEC-045).
+        The result carries ``track_ids`` and an empty ``tracks``.
+        """
+        browse = BrowseQuery(
+            query=query or "",
+            playlist_id=playlist_id,
+            sort=sort or DEFAULT_SORT,
+            direction=direction or "asc",
+            rules=rules or RuleSet(),
+        ).validated()
+        safe_limit = clamp_ids_limit(limit)
+        safe_offset = clamp_offset(offset)
+        return LibraryBrowseResult(
+            query=browse.query,
+            tracks=[],
+            total=self._tracks.browse_count(browse),
+            limit=safe_limit,
+            offset=safe_offset,
+            playlist_id=browse.playlist_id,
+            sort=browse.sort,
+            direction=browse.direction,
+            track_ids=self._tracks.browse_ids(
+                browse, limit=safe_limit, offset=safe_offset
+            ),
+        )
+
+    def facet(
+        self,
+        field: str,
+        query: str = "",
+        playlist_id: Optional[int] = None,
+        rules: Optional[RuleSet] = None,
+        limit: int = 0,
+    ) -> Facet:
+        """Return the values a field takes in the current view (DEC-043).
+
+        Computed over the scope, the text query and every *other* filter, so
+        choosing one genre leaves the rest choosable.
+        """
+        browse = BrowseQuery(
+            query=query or "",
+            playlist_id=playlist_id,
+            rules=rules or RuleSet(),
+        )
+        return self._tracks.facet_values(browse, field_spec(field).name, limit)
+
+    def facet_range(
+        self,
+        field: str,
+        query: str = "",
+        playlist_id: Optional[int] = None,
+        rules: Optional[RuleSet] = None,
+    ) -> FacetRange:
+        """Return the span of a numeric field in the current view."""
+        browse = BrowseQuery(
+            query=query or "",
+            playlist_id=playlist_id,
+            rules=rules or RuleSet(),
+        )
+        return self._tracks.facet_range(browse, field_spec(field).name)
 
     def track_count(self) -> int:
         """Return the number of tracks in the library."""

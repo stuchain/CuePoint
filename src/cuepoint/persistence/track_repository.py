@@ -29,6 +29,7 @@ from cuepoint.persistence.track_query import (
     build_facet_value_count,
     build_facet_values,
     build_select,
+    build_select_ids,
     clamp_facet_limit,
     search_clause,
 )
@@ -404,6 +405,22 @@ class TrackRepository(ITrackRepository):
         sql, params = build_select(query or BrowseQuery(), limit, offset)
         rows = self._db.connect().execute(sql, params).fetchall()
         return [LibraryTrack.from_row(row) for row in rows]
+
+    def browse_ids(
+        self,
+        query: Optional[BrowseQuery] = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
+    ) -> List[int]:
+        """Return the ids :meth:`browse` would return, in the same order.
+
+        The same predicate and ordering with a narrower projection, so a
+        selection can name rows the table has not loaded (DEC-045) without a
+        second query path that could disagree about which rows those are.
+        """
+        sql, params = build_select_ids(query or BrowseQuery(), limit, offset)
+        rows = self._db.connect().execute(sql, params).fetchall()
+        return [int(row["id"]) for row in rows]
 
     def browse_count(self, query: Optional[BrowseQuery] = None) -> int:
         """Return how many tracks :meth:`browse` would return, ignoring paging.

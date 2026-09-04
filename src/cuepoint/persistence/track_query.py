@@ -61,6 +61,14 @@ BROWSE_LIMIT_DEFAULT = 100
 #: a data layer should assume.
 BROWSE_LIMIT_MAX = 500
 
+#: Ids per request when only ids are wanted. Higher than the row limit because
+#: an id is eight bytes rather than a track: a shift-click that selects forty
+#: thousand rows (DEC-045) is one request, not four hundred.
+BROWSE_IDS_LIMIT_DEFAULT = 1000
+
+#: The most ids one request can ask for — the whole library, and no more.
+BROWSE_IDS_LIMIT_MAX = 50_000
+
 #: The order the Library page opens on, and the one the composite index serves.
 DEFAULT_SORT = "artist"
 
@@ -223,6 +231,13 @@ def clamp_limit(limit: Optional[int]) -> int:
     return max(1, min(int(limit), BROWSE_LIMIT_MAX))
 
 
+def clamp_ids_limit(limit: Optional[int]) -> int:
+    """Return an id-page size inside the supported bounds."""
+    if limit is None:
+        return BROWSE_IDS_LIMIT_DEFAULT
+    return max(1, min(int(limit), BROWSE_IDS_LIMIT_MAX))
+
+
 def clamp_offset(offset: Optional[int]) -> int:
     """Return a non-negative offset."""
     if offset is None:
@@ -376,6 +391,24 @@ def build_select(
     cte, where, params = _predicate(valid)
     sql = f"{cte}SELECT tracks.* FROM tracks{where} {_order_by(valid)} LIMIT ? OFFSET ?"
     return sql, (*params, clamp_limit(limit), clamp_offset(offset))
+
+
+def build_select_ids(
+    query: BrowseQuery, limit: Optional[int] = None, offset: Optional[int] = None
+) -> Tuple[str, Tuple[object, ...]]:
+    """Build the same query with a narrower projection: ids only.
+
+    Not a second query path — the same predicate and the same ordering, reading
+    one column instead of twenty. It is what lets a shift-click select a range
+    that crosses rows the table has never loaded (DEC-045), without pretending
+    a row index means anything when the window moves.
+    """
+    valid = query.validated()
+    cte, where, params = _predicate(valid)
+    sql = (
+        f"{cte}SELECT tracks.id FROM tracks{where} {_order_by(valid)} LIMIT ? OFFSET ?"
+    )
+    return sql, (*params, clamp_ids_limit(limit), clamp_offset(offset))
 
 
 def build_count(query: BrowseQuery) -> Tuple[str, Tuple[object, ...]]:

@@ -5,6 +5,11 @@ contextBridge.exposeInMainWorld("cuepoint", {
   restartEngine: () => ipcRenderer.invoke("engine:restart"),
   startMatchJob: (body) => ipcRenderer.invoke("engine:startMatchJob", body),
   searchLibrary: (params) => ipcRenderer.invoke("engine:searchLibrary", params),
+  browseLibrary: (params) => ipcRenderer.invoke("engine:browseLibrary", params),
+  getLibraryPlaylists: () => ipcRenderer.invoke("engine:getLibraryPlaylists"),
+  getLibraryFacet: (params) => ipcRenderer.invoke("engine:getLibraryFacet", params),
+  getLibraryFilterFields: () => ipcRenderer.invoke("engine:getLibraryFilterFields"),
+  getLibraryTrack: (params) => ipcRenderer.invoke("engine:getLibraryTrack", params),
   startLibraryImport: (params) =>
     ipcRenderer.invoke("engine:startLibraryImport", params),
   startLibraryRefreshPreview: (params) =>

@@ -21,6 +21,15 @@ function registerIpcHandlers(): void {
   ipcMain.handle("engine:restart", () => engine.restart());
   ipcMain.handle("engine:startMatchJob", (_event, body) => engine.startMatchJob(body));
   ipcMain.handle("engine:searchLibrary", (_event, params) => engine.searchLibrary(params));
+  ipcMain.handle("engine:browseLibrary", (_event, params) => engine.browseLibrary(params));
+  ipcMain.handle("engine:getLibraryPlaylists", () => engine.getLibraryPlaylists());
+  ipcMain.handle("engine:getLibraryFacet", (_event, params) =>
+    engine.getLibraryFacet(params),
+  );
+  ipcMain.handle("engine:getLibraryFilterFields", () => engine.getLibraryFilterFields());
+  ipcMain.handle("engine:getLibraryTrack", (_event, params) =>
+    engine.getLibraryTrack(params),
+  );
   ipcMain.handle("engine:startLibraryImport", (_event, params) =>
     engine.startLibraryImport(params),
   );

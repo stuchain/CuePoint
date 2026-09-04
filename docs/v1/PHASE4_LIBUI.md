@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 4: Library UI, Detailed Step Specifications
 
-Status: **In progress.** LIBUI-01 and LIBUI-02 are implemented, each with its outcome recorded
-below the step that specified it; LIBUI-03…LIBUI-10 are specified and not started. Per the process, no implementation
+Status: **In progress.** LIBUI-01, LIBUI-02 and LIBUI-03 are implemented, each with its outcome
+recorded below the step that specified it; LIBUI-04…LIBUI-10 are specified and not started. Per the process, no implementation
 happens from this document — each step needs an explicit "Implement LIBUI-NN" instruction, scoped
 to exactly that step, and its outcome is recorded under the step afterwards.
 
@@ -404,7 +404,7 @@ nothing here is visible to a user yet.
 
 ---
 
-## LIBUI-03 — Browse, Playlists, Facets and Track Detail Over the Engine API
+## LIBUI-03 — Browse, Playlists, Facets and Track Detail Over the Engine API ✅ IMPLEMENTED 2026-09-04
 
 **Objective**: Expose LIBUI-01 and LIBUI-02 to the renderer, plus the playlist tree DEC-031 stored
 and the track detail DEC-047 needs — as one search path (DEC-023), across the six-file contract.
@@ -455,6 +455,73 @@ test pass; no existing caller changed behaviour.
 requirement meet; getting it wrong means either a broken global search or two query paths.
 
 **Complexity**: **L**
+
+### ✅ IMPLEMENTED 2026-09-04
+
+**Outcome**: Complete. Five endpoints, one query path, and the six-file contract moved together.
+`LibraryService` gained `browse_tracks`, `browse_track_ids`, `facet` and `facet_range`;
+`library_api.py` gained the parameter parsing and four new payloads; `engineClient.ts`,
+`engineSupervisor.ts`, `main.ts`, `preload.cjs` and `cuepointBridge.types.ts` gained five methods
+each. 62 new Python tests and 21 new renderer contract assertions.
+
+**One endpoint, two modes.** `mode=search` is what SHELL-04 shipped, down to the blank query
+finding nothing; `mode=browse` adds scope, filters, ordering and paging. Defaulting to `search` is
+what makes DEC-023's promise keepable: the live caller sends no new parameter and gets exactly what
+it got. Three tests hold that line, including one that asserts the response's key set — the six
+SHELL-04 documented plus the four LIBUI-03 echoes, and nothing else.
+
+**The response grew, deliberately and additively.** `mode`, `scope`, `sort` and `dir` are echoed so
+LIBUI-05 can recognize a stale response by what it answers rather than by bookkeeping it keeps in
+step. The track row gained the seven fields DEC-034 imported, because the table's columns (DEC-042)
+and the Inspector (DEC-047) read the same row shape and a second serializer for one row is a second
+thing to keep in step. Two of SHELL-04's tests asserted the old shapes exactly; both were updated
+in place with a comment naming this step, rather than loosened to stop noticing.
+
+**`fields=id` is a projection, not an endpoint.** The same predicate and the same ordering, reading
+one column. That is what lets a shift-click select a range crossing rows the table has never loaded
+(DEC-045) without a second query path that could disagree about which rows those are. A test asserts
+the ids equal the ids of the rows the same query returns, in the same order.
+
+**A real bug, found by the test for the empty case.** `/api/v1/library/playlists` resolves only the
+playlist repository — and that repository's factory did not run migrations, while the track
+repository's did. Every path that had ever touched playlists resolved something else first (the
+import service, or the summary endpoint's library service), so the tables existed by accident of
+ordering. On a fresh install, the first visit to the Library page would have been a 500 with no
+table. The playlist and source repositories now migrate like the others, and
+`test_bootstrap_migrations.py` resolves each repository **on its own** against a database nothing
+has opened — the exact condition the old code got wrong. It fails on the unfixed bootstrap.
+
+**A fifth endpoint the spec did not list.** `/api/v1/library/filter-fields` sends the filter
+vocabulary — fields, types, operators, what is facetable and what is sortable. LIBUI-02 built
+`describe_fields()` for exactly this reason: the only way to guarantee the renderer cannot build a
+clause the engine refuses is for the list of what is buildable to come from the thing that does the
+refusing. Adding it here rather than in LIBUI-08 costs one route and saves a second six-file change.
+
+**Refusals name the clause.** A filter naming a field that does not exist, an operator a field does
+not allow, a value that will not coerce, an unsortable column, a direction that is neither, a scope
+that is not a number, `fields` that is not `id`, `match: any` — each is a 400 carrying the message
+the model wrote, not a 500. A missing track is a 404, because an empty object is something a panel
+renders as a track with no title. Every new endpoint requires the bearer token, asserted per
+endpoint rather than assumed from the pattern.
+
+**One redundant check became a real one.** The API validates the sort column, and so does the query
+builder — so mutating the API check away changed nothing, because the query layer still refused.
+Rather than delete a defence, the case it uniquely covers is now tested: in `search` mode nothing
+downstream ever reads `sort`, so without the check at the edge a typo would be accepted in silence.
+
+**Guards: 18 of 18 fail when the thing they protect is broken**, each mutated in the source with the
+file restored byte-for-byte (SHA-256 verified). Including: browse becoming the default mode, every
+parameter check, the echo keys, the ids projection, the 404, the row's imported fields, playlist
+membership, the 400-not-500 mapping, the token checks, the repository migration fix, a dropped
+scope, and — on the desktop half — the client browsing a second endpoint, the preload losing a
+channel, and the supervisor losing a method.
+
+**Verification**: `python -m pytest src/tests/unit` clean; `python scripts/run_tests.py --all
+--no-slow` clean; renderer `npm test` (497 passed, 34 files), `npm run typecheck`, `npm run lint`
+and the Electron `npm run build` clean; `ruff check`/`format --check`, `check_no_qt_in_core.py`,
+`check_desktop_version_coupling.py` and `smoke_engine_health.py` pass; `mypy src/` introduces no
+new finding (the two this step first produced were fixed). Still no CHANGELOG entry: five endpoints
+exist and no screen calls them yet.
 
 ---
 

@@ -39,7 +39,7 @@ if TYPE_CHECKING:
     from cuepoint.models.references import ReferenceSummary
     from cuepoint.models.refresh_diff import RefreshDiff
     from cuepoint.models.library_track import IdentityMatch, LibraryTrack
-    from cuepoint.models.filter_rule import Facet, FacetRange
+    from cuepoint.models.filter_rule import Facet, FacetRange, RuleSet
     from cuepoint.persistence.track_query import BrowseQuery
     from cuepoint.persistence.track_repository import BulkUpsertResult
     from cuepoint.services.library_import_service import (
@@ -56,7 +56,11 @@ if TYPE_CHECKING:
     )
     from cuepoint.persistence.job_repository import JobRecord
     from cuepoint.services.backup_service import BackupInfo
-    from cuepoint.services.library_service import LibraryStats, LibrarySearchResult
+    from cuepoint.services.library_service import (
+        LibraryBrowseResult,
+        LibrarySearchResult,
+        LibraryStats,
+    )
     from cuepoint.services.checkpoint_service import CheckpointData
     from cuepoint.services.onboarding_service import OnboardingState
     from cuepoint.services.privacy_service import PrivacyPreferences
@@ -639,6 +643,57 @@ class ILibraryService(ABC):
         ...
 
     @abstractmethod
+    def browse_tracks(
+        self,
+        query: str = "",
+        playlist_id: Optional[int] = None,
+        rules: Optional["RuleSet"] = None,
+        sort: str = "artist",
+        direction: str = "asc",
+        limit: int = 100,
+        offset: int = 0,
+    ) -> "LibraryBrowseResult":
+        """Return one scoped, filtered, sorted window of the library."""
+        ...
+
+    @abstractmethod
+    def browse_track_ids(
+        self,
+        query: str = "",
+        playlist_id: Optional[int] = None,
+        rules: Optional["RuleSet"] = None,
+        sort: str = "artist",
+        direction: str = "asc",
+        limit: Optional[int] = None,
+        offset: int = 0,
+    ) -> "LibraryBrowseResult":
+        """Return the ids of one window, in the same order as the rows."""
+        ...
+
+    @abstractmethod
+    def facet(
+        self,
+        field: str,
+        query: str = "",
+        playlist_id: Optional[int] = None,
+        rules: Optional["RuleSet"] = None,
+        limit: int = 0,
+    ) -> "Facet":
+        """Return the values a field takes in the current view (DEC-043)."""
+        ...
+
+    @abstractmethod
+    def facet_range(
+        self,
+        field: str,
+        query: str = "",
+        playlist_id: Optional[int] = None,
+        rules: Optional["RuleSet"] = None,
+    ) -> "FacetRange":
+        """Return the span of a numeric field in the current view."""
+        ...
+
+    @abstractmethod
     def track_count(self) -> int:
         """Return the number of tracks in the library."""
         ...
@@ -755,6 +810,16 @@ class ITrackRepository(ABC):
         offset: Optional[int] = None,
     ) -> List["LibraryTrack"]:
         """Return one scoped, ordered, paged window of the library (DEC-040)."""
+        ...
+
+    @abstractmethod
+    def browse_ids(
+        self,
+        query: Optional["BrowseQuery"] = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
+    ) -> List[int]:
+        """Return the ids of one window, in the same order as the rows."""
         ...
 
     @abstractmethod

@@ -162,6 +162,11 @@ class TestResponseShape:
     def test_returns_the_documented_envelope(self, seeded, engine):
         payload = _get_json(engine, "/api/v1/library/search?q=deadmau5")
 
+        # LIBUI-03 added the four echo keys — what the engine was asked, sent
+        # back so a late response is recognizable by what it answers. Every
+        # key SHELL-04 documented is still here with the same meaning, which
+        # is what "extend rather than rename" means; the assertions below are
+        # unchanged from before Phase 4.
         assert set(payload) == {
             "query",
             "total",
@@ -169,6 +174,10 @@ class TestResponseShape:
             "offset",
             "tracks",
             "library_empty",
+            "mode",
+            "scope",
+            "sort",
+            "dir",
         }
         assert payload["query"] == "deadmau5"
         assert payload["total"] == 2
@@ -179,11 +188,15 @@ class TestResponseShape:
     def test_each_track_carries_the_documented_fields(self, seeded, engine):
         payload = _get_json(engine, "/api/v1/library/search?q=Strobe")
 
+        # LIBUI-03 added the fields DEC-034 imported, because the Library
+        # table's columns and the Inspector read this same row shape and a
+        # second serializer for the same row is a second thing to keep in step.
         assert set(payload["tracks"][0]) == {
             "id",
             "rekordbox_track_id",
             "title",
             "artist",
+            "remixer",
             "album",
             "label",
             "genre",
@@ -191,6 +204,12 @@ class TestResponseShape:
             "bpm",
             "year",
             "duration_seconds",
+            "rating",
+            "play_count",
+            "colour",
+            "date_added",
+            "comment",
+            "bitrate",
             "file_path",
         }
 

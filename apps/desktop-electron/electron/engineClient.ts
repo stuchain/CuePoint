@@ -21,6 +21,7 @@ export interface LibraryTrackRow {
   rekordbox_track_id: string;
   title: string;
   artist: string;
+  remixer: string | null;
   album: string | null;
   label: string | null;
   genre: string | null;
@@ -28,7 +29,97 @@ export interface LibraryTrackRow {
   bpm: number | null;
   year: number | null;
   duration_seconds: number | null;
+  rating: number | null;
+  play_count: number | null;
+  colour: string | null;
+  date_added: string | null;
+  comment: string | null;
+  bitrate: number | null;
   file_path: string;
+}
+
+/** One clause of a filter (DEC-043). The vocabulary comes from the engine. */
+export interface FilterRule {
+  field: string;
+  operator: string;
+  value?: unknown;
+}
+
+/** Flat and AND-only for v1 (DEC-016); `match` is on the wire from the start. */
+export interface FilterRuleSet {
+  match: "all";
+  rules: FilterRule[];
+}
+
+export interface LibraryBrowseParams {
+  q?: string;
+  playlistId?: number | null;
+  sort?: string;
+  dir?: "asc" | "desc";
+  filters?: FilterRuleSet | null;
+  limit?: number;
+  offset?: number;
+  /** Ask for ids instead of rows, for a selection that crosses unloaded rows. */
+  fields?: "id";
+}
+
+export interface LibraryPlaylistNode {
+  id: number;
+  parent_id: number | null;
+  name: string;
+  kind: "folder" | "playlist";
+  depth: number;
+  position: number;
+  path: string;
+  track_count: number;
+}
+
+export interface LibraryPlaylistTree {
+  playlists: LibraryPlaylistNode[];
+  total: number;
+}
+
+export interface LibraryFacetValue {
+  /** Null is the "no value" bucket, which `is_empty` filters by. */
+  value: string | null;
+  count: number;
+}
+
+export interface LibraryFacetRange {
+  field: string;
+  min: number | null;
+  max: number | null;
+  missing: number;
+}
+
+export interface LibraryFacet {
+  field: string;
+  values: LibraryFacetValue[];
+  truncated: boolean;
+  total_values: number;
+  /** Present for number fields only. */
+  range: LibraryFacetRange | null;
+}
+
+export interface LibraryFilterField {
+  name: string;
+  type: "text" | "number" | "date";
+  label: string;
+  facetable: boolean;
+  integer: boolean;
+  operators: string[];
+}
+
+export interface LibraryFilterVocabulary {
+  fields: LibraryFilterField[];
+  facetable: string[];
+  sortable: string[];
+}
+
+export interface LibraryTrackDetail {
+  track: LibraryTrackRow;
+  playlists: LibraryPlaylistNode[];
+  playlist_count: number;
 }
 
 export interface LibrarySearchResponse {
@@ -40,6 +131,17 @@ export interface LibrarySearchResponse {
   /** True when nothing has been imported yet — a different problem from "no
    *  matches", and one with a different answer in the UI. */
   library_empty: boolean;
+  /**
+   * What the engine was asked, echoed back (LIBUI-03). Optional because the
+   * fixtures written against SHELL-04's shape are still valid requests; the
+   * engine always sends them.
+   */
+  mode?: "search" | "browse";
+  scope?: number | null;
+  sort?: string;
+  dir?: "asc" | "desc";
+  /** Present only when ids were asked for; `tracks` is then empty. */
+  track_ids?: number[];
 }
 
 export interface LibrarySourceInfo {
@@ -175,6 +277,82 @@ export class EngineClient {
     const res = await fetch(this.url(`/api/v1/library/search?${query.toString()}`), {
       headers: this.headers(),
     });
+    return readJson(res);
+  }
+
+  /**
+   * Browse the library (LIBUI-03, DEC-040).
+   *
+   * The same endpoint as `searchLibrary`, in browse mode: one query path
+   * (DEC-023), and the only difference is what a blank query means — nothing
+   * for a search box, everything in scope for a table.
+   */
+  async browseLibrary(params: LibraryBrowseParams): Promise<LibrarySearchResponse> {
+    const query = new URLSearchParams({ mode: "browse" });
+    if (params.q) query.set("q", params.q);
+    if (params.playlistId != null) query.set("playlist_id", String(params.playlistId));
+    if (params.sort) query.set("sort", params.sort);
+    if (params.dir) query.set("dir", params.dir);
+    if (params.filters && params.filters.rules.length > 0) {
+      query.set("filters", JSON.stringify(params.filters));
+    }
+    if (params.limit != null) query.set("limit", String(params.limit));
+    if (params.offset != null) query.set("offset", String(params.offset));
+    if (params.fields) query.set("fields", params.fields);
+    const res = await fetch(this.url(`/api/v1/library/search?${query.toString()}`), {
+      headers: this.headers(),
+    });
+    return readJson(res);
+  }
+
+  /** The mirrored Rekordbox playlist tree, read-only (LIBUI-03, DEC-044). */
+  async getLibraryPlaylists(): Promise<LibraryPlaylistTree> {
+    const res = await fetch(this.url("/api/v1/library/playlists"), {
+      headers: this.headers(),
+    });
+    return readJson(res);
+  }
+
+  /**
+   * The values one field takes in the current view, with counts (DEC-043).
+   *
+   * Scoped by everything except this field's own filters, so choosing one
+   * genre leaves the others choosable.
+   */
+  async getLibraryFacet(params: {
+    field: string;
+    q?: string;
+    playlistId?: number | null;
+    filters?: FilterRuleSet | null;
+    limit?: number;
+  }): Promise<LibraryFacet> {
+    const query = new URLSearchParams({ field: params.field });
+    if (params.q) query.set("q", params.q);
+    if (params.playlistId != null) query.set("playlist_id", String(params.playlistId));
+    if (params.filters && params.filters.rules.length > 0) {
+      query.set("filters", JSON.stringify(params.filters));
+    }
+    if (params.limit != null) query.set("limit", String(params.limit));
+    const res = await fetch(this.url(`/api/v1/library/facets?${query.toString()}`), {
+      headers: this.headers(),
+    });
+    return readJson(res);
+  }
+
+  /** What can be filtered, and with which operators (DEC-043). */
+  async getLibraryFilterFields(): Promise<LibraryFilterVocabulary> {
+    const res = await fetch(this.url("/api/v1/library/filter-fields"), {
+      headers: this.headers(),
+    });
+    return readJson(res);
+  }
+
+  /** One track and the playlists holding it — the Inspector's content (DEC-047). */
+  async getLibraryTrack(params: { trackId: number }): Promise<LibraryTrackDetail> {
+    const res = await fetch(
+      this.url(`/api/v1/library/tracks/${encodeURIComponent(String(params.trackId))}`),
+      { headers: this.headers() },
+    );
     return readJson(res);
   }
 

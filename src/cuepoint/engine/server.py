@@ -42,16 +42,33 @@ from cuepoint.engine.jobs_api import (
 )
 from cuepoint.engine.library_api import (
     LibraryUnavailableError,
+    MODE_BROWSE,
     SEARCH_LIMIT_DEFAULT,
+    library_facet,
+    library_filter_fields,
+    library_playlists,
     library_summary,
+    library_track_detail,
+    parse_direction,
+    parse_fields,
+    parse_filters_param,
     parse_import_body,
     parse_int_param,
+    parse_mode,
+    parse_playlist_id,
     parse_refresh_apply_body,
     parse_refresh_preview_body,
+    parse_sort,
     search_library,
     start_import,
     start_refresh_apply,
     start_refresh_preview,
+)
+from cuepoint.models.filter_rule import FilterRuleError
+from cuepoint.persistence.track_query import (
+    BROWSE_IDS_LIMIT_DEFAULT,
+    BROWSE_LIMIT_DEFAULT,
+    BrowseQueryError,
 )
 from cuepoint.engine.incrate_api import (
     demo_inventory_snapshot,
@@ -448,27 +465,156 @@ def make_handler(
                     )
                     return
                 params = parse_qs(parsed.query)
+                # One endpoint, two modes (DEC-023). Every browsing parameter is
+                # optional and absent means what it meant before Phase 4, so a
+                # caller written against SHELL-04 gets exactly what it got.
                 try:
+                    mode = parse_mode(params.get("mode", [None])[0])
+                    fields = parse_fields(params.get("fields", [None])[0])
+                    default_limit = SEARCH_LIMIT_DEFAULT
+                    if mode == MODE_BROWSE:
+                        default_limit = (
+                            BROWSE_IDS_LIMIT_DEFAULT
+                            if fields is not None
+                            else BROWSE_LIMIT_DEFAULT
+                        )
                     limit = parse_int_param(
                         params.get("limit", [None])[0],
-                        default=SEARCH_LIMIT_DEFAULT,
+                        default=default_limit,
                         name="limit",
                     )
                     offset = parse_int_param(
                         params.get("offset", [None])[0], default=0, name="offset"
                     )
-                except ValueError as exc:
+                    playlist_id = parse_playlist_id(
+                        params.get("playlist_id", [None])[0]
+                    )
+                    sort = parse_sort(params.get("sort", [None])[0])
+                    direction = parse_direction(params.get("dir", [None])[0])
+                    filters = parse_filters_param(params.get("filters", [None])[0])
+                except (ValueError, FilterRuleError) as exc:
                     self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
                     return
                 try:
                     payload = search_library(
-                        params.get("q", [""])[0], limit=limit, offset=offset
+                        params.get("q", [""])[0],
+                        limit=limit,
+                        offset=offset,
+                        mode=mode,
+                        playlist_id=playlist_id,
+                        sort=sort,
+                        direction=direction,
+                        filters=filters,
+                        fields=fields,
                     )
+                except (BrowseQueryError, FilterRuleError) as exc:
+                    # A request that cannot be honoured as written, not a
+                    # failure: it names the clause, and the caller can fix it.
+                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                    return
                 except LibraryUnavailableError as exc:
                     self._send_json(503, error_payload("LIBRARY_UNAVAILABLE", str(exc)))
                     return
                 except Exception as exc:  # noqa: BLE001 — surface to API client
                     self._send_json(500, error_payload("SEARCH_FAILED", str(exc)))
+                    return
+                self._send_json(200, payload)
+                return
+            if path == "/api/v1/library/playlists":
+                if not self._authorized():
+                    self._send_json(
+                        401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                    )
+                    return
+                try:
+                    payload = library_playlists()
+                except LibraryUnavailableError as exc:
+                    self._send_json(503, error_payload("LIBRARY_UNAVAILABLE", str(exc)))
+                    return
+                except Exception as exc:  # noqa: BLE001 — surface to API client
+                    self._send_json(500, error_payload("PLAYLISTS_FAILED", str(exc)))
+                    return
+                self._send_json(200, payload)
+                return
+            if path == "/api/v1/library/filter-fields":
+                if not self._authorized():
+                    self._send_json(
+                        401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                    )
+                    return
+                self._send_json(200, library_filter_fields())
+                return
+            if path == "/api/v1/library/facets":
+                if not self._authorized():
+                    self._send_json(
+                        401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                    )
+                    return
+                params = parse_qs(parsed.query)
+                field = params.get("field", [""])[0]
+                if not field:
+                    self._send_json(
+                        400, error_payload("INVALID_REQUEST", "field is required")
+                    )
+                    return
+                try:
+                    limit = parse_int_param(
+                        params.get("limit", [None])[0], default=0, name="limit"
+                    )
+                    playlist_id = parse_playlist_id(
+                        params.get("playlist_id", [None])[0]
+                    )
+                    filters = parse_filters_param(params.get("filters", [None])[0])
+                except (ValueError, FilterRuleError) as exc:
+                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                    return
+                try:
+                    payload = library_facet(
+                        field,
+                        query=params.get("q", [""])[0],
+                        playlist_id=playlist_id,
+                        filters=filters,
+                        limit=limit,
+                    )
+                except (BrowseQueryError, FilterRuleError) as exc:
+                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                    return
+                except LibraryUnavailableError as exc:
+                    self._send_json(503, error_payload("LIBRARY_UNAVAILABLE", str(exc)))
+                    return
+                except Exception as exc:  # noqa: BLE001 — surface to API client
+                    self._send_json(500, error_payload("FACET_FAILED", str(exc)))
+                    return
+                self._send_json(200, payload)
+                return
+            if path.startswith("/api/v1/library/tracks/"):
+                if not self._authorized():
+                    self._send_json(
+                        401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                    )
+                    return
+                raw_id = path[len("/api/v1/library/tracks/") :].strip("/")
+                try:
+                    track_id = int(raw_id)
+                except ValueError:
+                    self._send_json(
+                        400,
+                        error_payload(
+                            "INVALID_REQUEST",
+                            f"track id must be a number, not {raw_id!r}",
+                        ),
+                    )
+                    return
+                try:
+                    payload = library_track_detail(track_id)
+                except LookupError as exc:
+                    self._send_json(404, error_payload("TRACK_NOT_FOUND", str(exc)))
+                    return
+                except LibraryUnavailableError as exc:
+                    self._send_json(503, error_payload("LIBRARY_UNAVAILABLE", str(exc)))
+                    return
+                except Exception as exc:  # noqa: BLE001 — surface to API client
+                    self._send_json(500, error_payload("TRACK_DETAIL_FAILED", str(exc)))
                     return
                 self._send_json(200, payload)
                 return
