@@ -37,6 +37,23 @@
 
   /* Typography */
   --font-pixel: "Pixelify Sans", "Segoe UI", sans-serif;
+
+  /*
+   * Dense data only (DEC-048): table cell values and Inspector field values.
+   * Everything that is chrome — headers, buttons, labels, panel titles,
+   * navigation — stays on --font-pixel, because the pixel identity lives in
+   * the black outlines, the bevels and the hard shadows rather than in the
+   * numerals. This is the one screen a user reads for hours, and a display
+   * face at 10px across fourteen columns is where that identity would cost
+   * legibility.
+   *
+   * A system stack, not a second webfont: the packaged app must render the
+   * same offline, and one Google Fonts import is already a network dependency
+   * worth not doubling. It is a token, so a theme or a later decision can
+   * point it back at --font-pixel in one line.
+   */
+  --font-data: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui,
+    -apple-system, "Helvetica Neue", Arial, sans-serif;
   --font-size-xs: calc(10px * var(--scale));
   --font-size-sm: calc(12px * var(--scale));
   --font-size-md: calc(14px * var(--scale));

@@ -54,6 +54,14 @@ weight 600–700. **Open item already flagged in-repo**: `docs/ui-overhaul/phase
 lists "Pixelify Sans acceptable for table readability (or swap font ADR)" as an unchecked
 sign-off item — table-density readability at small sizes hasn't been formally confirmed.
 
+> **Closed by DEC-048 (LIBUI-04).** A second token, `--font-data`, now exists and is used for
+> **table cell values and Inspector field values only**; everything that is chrome — headers,
+> buttons, labels, panel titles, navigation — stays on `--font-pixel`. The pixel identity lives
+> in the black outlines, the bevels, the hard zero-blur shadows and the square corners, not in
+> the numerals, and the track table is the one screen a user reads for hours. It is a system
+> stack rather than a second Google Fonts import, so the packaged app renders the same offline;
+> being a token, a theme or a later decision can point it back at `--font-pixel` in one line.
+
 ## Spacing
 
 `--unit: calc(4px * var(--scale))`; `--space-xs/sm/md/lg/xl` = `1×/1.5×/2×/3×/4×` unit.
@@ -120,7 +128,7 @@ flagging — see `OPEN_QUESTIONS.md`):
    but touches persisted user state (would need a migration, not just a rename).
 3. **Tabs hit-target**: the known-and-logged sub-44px tab height should get an explicit decision
    (fix now vs. accept for secondary nav) rather than staying an open item indefinitely.
-4. **Font readability at density**: Pixelify Sans's suitability for dense data tables (the
-   Universal Track Table will be exactly this) was never formally signed off.
+4. ~~**Font readability at density**~~: **resolved by DEC-048** — dense values use `--font-data`
+   and everything else stays Pixelify Sans. See the Typography note above.
 
 None of this blocks reusing the system as the foundation for SHELL/LIBUI phase work.

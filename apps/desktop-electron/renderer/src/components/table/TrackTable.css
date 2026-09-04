@@ -1,0 +1,218 @@
+/*
+ * The Universal Track Table (LIBUI-04).
+ *
+ * The chrome is `ResultsTable.css`'s, deliberately: the black outline, the
+ * sticky header on the toolbar background, the hard-edged scrollbar and the
+ * inset selection ring are the pixel signature, and a second table that looked
+ * different would read as a second application.
+ *
+ * The one departure is the type. Cell *values* use `--font-data` (DEC-048),
+ * because this is the screen a user reads for hours and a display face set at
+ * 10px across fourteen columns is where that identity costs legibility.
+ * Everything that is chrome — headers, buttons, the empty state — stays
+ * Pixelify Sans.
+ */
+
+.track-table {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  border: var(--border-width) solid var(--border-outline);
+  background: var(--bg-input);
+}
+
+.track-table__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  position: relative;
+  scrollbar-color: var(--border-muted) var(--bg-toolbar);
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+}
+
+.track-table__scroll::-webkit-scrollbar {
+  width: calc(10px * var(--scale));
+  height: calc(10px * var(--scale));
+}
+
+.track-table__scroll::-webkit-scrollbar-track {
+  background: var(--bg-toolbar);
+}
+
+.track-table__scroll::-webkit-scrollbar-thumb {
+  background: var(--border-muted);
+  border: calc(1px * var(--scale)) solid var(--border-outline);
+}
+
+.track-table__header {
+  display: grid;
+  grid-template-columns: var(--track-table-columns);
+  min-width: var(--track-table-min-width);
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--bg-toolbar);
+  border-bottom: var(--border-width) solid var(--border-outline);
+}
+
+.track-table__header-cell-wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.track-table__header-cell-wrap--sticky {
+  position: sticky;
+  z-index: 4;
+  background: var(--bg-toolbar);
+}
+
+.track-table__header-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: var(--row-height);
+  padding: 0 calc(var(--space-sm) + 6px) 0 var(--space-sm);
+  border: none;
+  border-right: calc(1px * var(--scale)) solid var(--border-muted);
+  background: inherit;
+  color: var(--fg-muted);
+  font-family: var(--font-pixel);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track-table__header-cell:disabled {
+  cursor: default;
+}
+
+.track-table__header-cell:not(:disabled):hover {
+  color: var(--fg-primary);
+  background: color-mix(in srgb, var(--bg-panel) 30%, var(--bg-toolbar));
+}
+
+.track-table__sort {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+}
+
+.track-table__col-resizer {
+  position: absolute;
+  top: 0;
+  right: calc(-4px * var(--scale));
+  z-index: 5;
+  width: calc(8px * var(--scale));
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: col-resize;
+}
+
+.track-table__col-resizer:hover,
+.track-table__col-resizer:focus-visible {
+  background: color-mix(in srgb, var(--accent-info) 35%, transparent);
+}
+
+.track-table__body {
+  position: relative;
+  min-width: var(--track-table-min-width);
+}
+
+.track-table__row {
+  display: grid;
+  grid-template-columns: var(--track-table-columns);
+  align-items: stretch;
+  box-sizing: border-box;
+  position: absolute;
+  left: 0;
+  width: 100%;
+  background: var(--bg-input);
+  border-bottom: calc(1px * var(--scale)) solid var(--border-muted);
+  cursor: default;
+  overflow: hidden;
+}
+
+.track-table__row:hover {
+  background: color-mix(in srgb, var(--bg-panel) 35%, var(--bg-input));
+}
+
+.track-table__row--selected {
+  box-shadow: inset 0 0 0 var(--focus-ring-width) var(--accent-info);
+  z-index: 1;
+}
+
+/* A row that has not arrived. Same height as any other, by construction. */
+.track-table__row--placeholder {
+  cursor: progress;
+}
+
+.track-table__cell {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-width: 0;
+  height: 100%;
+  padding: 0 var(--space-sm);
+  /* DEC-048: the values, and only the values. */
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+  line-height: 1.2;
+  color: var(--fg-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track-table__cell--right {
+  justify-content: flex-end;
+  /* Digits line up column-wise, which is the point of a right-aligned number. */
+  font-variant-numeric: tabular-nums;
+}
+
+.track-table__cell--sticky {
+  position: sticky;
+  z-index: 2;
+  background: inherit;
+}
+
+.track-table__skeleton {
+  display: block;
+  width: 60%;
+  height: calc(6px * var(--scale));
+  background: color-mix(in srgb, var(--fg-muted) 25%, transparent);
+}
+
+.track-table__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+  color: var(--fg-muted);
+  font-family: var(--font-pixel);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+/* While a column is being dragged, nothing else should select or hover. */
+body.track-table--resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+body.track-table--resizing .track-table__row:hover {
+  background: var(--bg-input);
+}

@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 4: Library UI, Detailed Step Specifications
 
-Status: **In progress.** LIBUI-01, LIBUI-02 and LIBUI-03 are implemented, each with its outcome
-recorded below the step that specified it; LIBUI-04…LIBUI-10 are specified and not started. Per the process, no implementation
+Status: **In progress.** LIBUI-01…LIBUI-04 are implemented, each with its outcome recorded below
+the step that specified it; LIBUI-05…LIBUI-10 are specified and not started. Per the process, no implementation
 happens from this document — each step needs an explicit "Implement LIBUI-NN" instruction, scoped
 to exactly that step, and its outcome is recorded under the step afterwards.
 
@@ -525,7 +525,7 @@ exist and no screen calls them yet.
 
 ---
 
-## LIBUI-04 — `TrackTable`: The Generic Virtualized Table
+## LIBUI-04 — `TrackTable`: The Generic Virtualized Table ✅ IMPLEMENTED 2026-09-04
 
 **Objective**: The Universal Track Table as a component: generic in row type and column set,
 windowed in its data source, and visually identical in character to what `ResultsTable` established
@@ -572,6 +572,73 @@ still pass; contrast and hit-target checks pass at 1×, 2× and 3× with the new
 or too much (a table framework nobody asked for). The Phase 7 convergence is the test of "enough".
 
 **Complexity**: **L**
+
+### ✅ IMPLEMENTED 2026-09-04
+
+**Outcome**: Complete. `components/table/` holds the component, its layout maths, the data-source
+interface, its stories and its tests. `ResultsTable` is untouched, and a test says so. 73 renderer
+tests (34 component, 26 layout, 13 boundary).
+
+**It owns two things and no more.** How wide a column is while you drag it, and which rows are on
+screen. The sort, the widths, the selection, the query and the persistence are all passed in and
+handed back. That is what makes "universal" true rather than aspirational: the library table
+(LIBUI-10), the match results (Phase 7) and inCrate (Phase 9) differ in exactly the state this
+component refuses to hold.
+
+**Widths are keyed by column id, not by position.** `resultsTableLayout.ts` stores an array indexed
+by column, which is right only while the order is fixed — and DEC-042 lets a user reorder columns,
+at which point an array would apply the artist column's width to whatever moved into slot two.
+`resolveWidths` also drops a width stored for a column that no longer exists, without which
+renaming a column would leave a user a layout they could never correct.
+
+**A row that has not arrived is still a row.** `getRow` returning undefined draws a placeholder of
+exactly the same height, positioned where the row will be. Two tests hold that: one compares a
+placeholder's height against a loaded row's, and one checks the second placeholder is not at
+`translateY(0)`. If height depended on whether data had arrived, every window a 50,000-row table
+loaded would move the ground under the pointer.
+
+**The source is told about a range, not woken by a wheel.** `requestWindow(first, last)` fires when
+the visible range changes, which is the contract LIBUI-05's coalescing needs; a test fails if it is
+ever called once per row.
+
+**`--font-data` (DEC-048), and only for values.** A system stack rather than a second Google Fonts
+import, so a packaged app renders the same offline. Cell values use it; headers, buttons and the
+empty state stay Pixelify Sans. `PIXEL_DESIGN_SYSTEM.md`'s §4 sign-off item — open since the
+Phase 0 audit — is closed in the same change, in both the Typography section and the open-items
+list.
+
+**jsdom needed two fakes, and it is worth writing down which.** The virtualizer measures its scroll
+element with `offsetWidth`/`offsetHeight` (not `getBoundingClientRect`, which was the first guess
+and rendered nothing) and watches it with a `ResizeObserver` jsdom does not have. Both are supplied
+in the test file; nothing else is faked, and the component under test is the real one. That is why
+this repository can now test a virtualized table at all, which it could not before.
+
+**A redundant guard, removed rather than left.** `handleSort` began with
+`if (!column.sortKey || !onSortChange) return;`. Mutating the second half away changed no
+behaviour — the optional call below already did nothing — so the check could not be tested and was
+deleted, leaving the half that is observable: a column with no `sortKey` has a disabled header and
+asks for nothing when clicked.
+
+**`npm run typecheck` passed while `npm run build:check` failed**, on the very next line: `tsc -b`
+had cached the previous successful build and did not re-check the file that changed. The
+type error was real (a call that had relied on the guard just removed). Worth carrying forward —
+`build:check` is the gate that actually re-checks.
+
+**Guards: 18 of 18 fail when the thing they protect is broken**, each mutated in the source with the
+file restored byte-for-byte (SHA-256 verified): the placeholder's height, drawing unloaded rows at
+all, the table reordering rows itself, the sort toggle, the disabled header, keying rows by
+identity, ignoring clicks on rows that are not there, the window request being one call, the scroll
+range covering every row, reporting a drag rather than deciding it, the drag minimum, the width
+clamping and reconciliation, the sticky offset, reading the row height, importing an application
+row type, and the in-memory source.
+
+**Verification**: renderer `npm test` — 570 passed across 37 files (73 new); `npm run typecheck`,
+`npm run lint` and `npm run build:check` clean. Not done in this step, and deliberately: the
+contrast and hit-target re-check the spec asks for. `--font-data` changes no colour and no row
+height, so `design-signoff.md`'s recorded results still hold arithmetically, but a table rendered
+at 1×, 2× and 3× in the packaged app has not been looked at — LIBUI-10 assembles the page and is
+where that pass belongs. Stories exist (`TrackTable.stories.tsx`, including the loading and
+partially-loaded states) so there is something to look at when it happens.
 
 ---
 

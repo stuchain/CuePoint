@@ -15,6 +15,13 @@ export { SyncTagsDialog } from "./SyncTagsDialog";
 export { SupportBundleDialog } from "./SupportBundleDialog";
 export { ExportResultsButton, ExportResultsModal } from "./ExportResultsModal";
 export { ResultsTable } from "./ResultsTable";
+// The Universal Track Table (LIBUI-04). Lives beside ResultsTable rather
+// than replacing it until Phase 7 converges them (DEC-041).
+export { TrackTable } from "./table/TrackTable";
+export type { TrackTableProps, TrackTableSort, SortDirection } from "./table/TrackTable";
+export type { TrackColumnDef, ColumnWidths } from "./table/trackTableLayout";
+export { inMemorySource, pendingSource } from "./table/trackTableSource";
+export type { TrackTableSource, TrackTableStatus } from "./table/trackTableSource";
 export { Badge } from "./Badge";
 export { Button } from "./Button";
 export { ListRow } from "./ListRow";
