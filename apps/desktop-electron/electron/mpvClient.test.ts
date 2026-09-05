@@ -255,6 +255,57 @@ describe("connect", () => {
     expect(a).toBe(b);
   });
 
+  it("can be retried after a failed connect", async () => {
+    // mpv does not create its IPC socket the instant its process exists, so
+    // the supervisor always retries. Treating a failed attempt as "closed"
+    // made the client single-use and broke the first play of every session.
+    const server = new FakeMpvServer();
+    servers.push(server);
+    const client = new MpvClient({ socketPath: server.path });
+    clients.push(client);
+
+    await expect(client.connect()).rejects.toThrow(); // nothing listening yet
+
+    await server.start();
+    await expect(client.connect()).resolves.toBeUndefined();
+    expect(client.isConnected).toBe(true);
+  });
+
+  it("still works after several failed attempts", async () => {
+    const server = new FakeMpvServer();
+    servers.push(server);
+    const client = new MpvClient({ socketPath: server.path });
+    clients.push(client);
+
+    for (let i = 0; i < 3; i += 1) {
+      await expect(client.connect()).rejects.toThrow();
+    }
+    await server.start();
+    await client.connect();
+    await server.waitForConnection();
+    server.onCommand = (command, s) => s.reply(command, "alive");
+
+    await expect(client.command(["get_property", "mpv-version"])).resolves.toBe("alive");
+  });
+
+  it("a stale attempt closing later does not kill a live connection", async () => {
+    // The other direction of the same identity check: an abandoned socket
+    // emitting `close` after a later attempt succeeded must not tear it down.
+    const server = await startServer();
+    const client = await connectedClient(server);
+    const closes: unknown[] = [];
+    client.on("close", () => closes.push(true));
+
+    // A socket that was never adopted as the live connection.
+    const orphan = net.connect(server.path);
+    await flush();
+    orphan.destroy();
+    await flush();
+
+    expect(closes).toHaveLength(0);
+    expect(client.isConnected).toBe(true);
+  });
+
   it("refuses to connect after close", async () => {
     const server = await startServer();
     const client = await connectedClient(server);

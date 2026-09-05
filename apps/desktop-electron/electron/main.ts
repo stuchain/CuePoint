@@ -5,12 +5,51 @@ import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { EngineSupervisor, resolvePreloadPath } from "./engineSupervisor";
+import { PlayerSupervisor } from "./playerSupervisor";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDev = process.env.NODE_ENV === "development";
 const DEV_URL = process.env.CUEPOINT_RENDERER_URL ?? "http://localhost:5173";
 
 const engine = new EngineSupervisor();
+
+/**
+ * The audio player (PLAYER-03, DEC-050).
+ *
+ * Constructed eagerly but started lazily: no mpv process exists until
+ * something is played, so a session that never plays a track never pays for
+ * one. `packaged` and the paths are passed in rather than read inside, which
+ * is what keeps the supervisor testable without an Electron runtime.
+ */
+const player = new PlayerSupervisor({
+  packaged: app.isPackaged,
+  resourcesPath: process.resourcesPath,
+  repoRoot: engine.getRepoRoot(),
+});
+
+/**
+ * Renderers watching playback state.
+ *
+ * Refcounted per renderer the way `subscribeJobEvents` is: a window that
+ * reloads must not leave a dead sender being pushed to, and two subscribers in
+ * one window must not cancel each other.
+ */
+const playerWatchers = new Map<number, { sender: Electron.WebContents; refs: number }>();
+let playerUnsubscribe: (() => void) | null = null;
+
+function pushPlayerState(snapshot: unknown): void {
+  for (const [id, watcher] of playerWatchers) {
+    if (watcher.sender.isDestroyed()) {
+      playerWatchers.delete(id);
+      continue;
+    }
+    watcher.sender.send("player:state", snapshot);
+  }
+  if (playerWatchers.size === 0 && playerUnsubscribe) {
+    playerUnsubscribe();
+    playerUnsubscribe = null;
+  }
+}
 let privacyExitPrefs = {
   clearCacheOnExit: false,
   clearLogsOnExit: false,
@@ -121,6 +160,59 @@ function registerIpcHandlers(): void {
   ipcMain.handle("shell:showItemInFolder", (_event, filePath: string) => {
     shell.showItemInFolder(filePath);
   });
+
+  // --- Player (PLAYER-03) ---------------------------------------------------
+  // Transport only. There is no queue here: what plays next is PLAYER-04's,
+  // which is why there is no `player:next` yet — an endpoint that cannot do
+  // anything is worse than an absent one.
+  ipcMain.handle("player:getState", () => player.getSnapshot());
+  ipcMain.handle("player:play", async (_event, filePath: string) => {
+    try {
+      await player.play(filePath);
+      return { ok: true as const };
+    } catch (error) {
+      // A structured result, not a thrown string: "there is no audio player"
+      // is something the UI shows a person, not a stack trace.
+      return {
+        ok: false as const,
+        code: (error as { code?: string }).code ?? "player-error",
+        error: (error as Error).message,
+      };
+    }
+  });
+  ipcMain.handle("player:pause", () => player.pause());
+  ipcMain.handle("player:resume", () => player.resume());
+  ipcMain.handle("player:toggle", () => player.togglePause());
+  ipcMain.handle("player:stop", () => player.stopPlayback());
+  ipcMain.handle("player:seek", (_event, seconds: number) => player.seek(seconds));
+  ipcMain.handle("player:setVolume", (_event, volume: number) => player.setVolume(volume));
+  ipcMain.handle("player:setMuted", (_event, muted: boolean) => player.setMuted(muted));
+  ipcMain.handle("player:subscribeState", (event) => {
+    const id = event.sender.id;
+    const existing = playerWatchers.get(id);
+    if (existing) {
+      existing.refs += 1;
+    } else {
+      playerWatchers.set(id, { sender: event.sender, refs: 1 });
+      event.sender.once("destroyed", () => playerWatchers.delete(id));
+    }
+    playerUnsubscribe ??= player.onSnapshot(pushPlayerState);
+    // Answer immediately so a subscriber is not blind until the next change.
+    event.sender.send("player:state", player.getSnapshot());
+    return { ok: true };
+  });
+  ipcMain.handle("player:unsubscribeState", (event) => {
+    const id = event.sender.id;
+    const existing = playerWatchers.get(id);
+    if (!existing) return { ok: true };
+    existing.refs -= 1;
+    if (existing.refs <= 0) playerWatchers.delete(id);
+    if (playerWatchers.size === 0 && playerUnsubscribe) {
+      playerUnsubscribe();
+      playerUnsubscribe = null;
+    }
+    return { ok: true };
+  });
   ipcMain.handle("engine:subscribeJobEvents", (event, jobId: string) => {
     engine.subscribeJobEvents(jobId, event.sender.id, event.sender);
     return { ok: true };
@@ -225,6 +317,9 @@ app.on("before-quit", async () => {
   if (tasks.length > 0) {
     await Promise.allSettled(tasks);
   }
+  // The player first: a leaked mpv still holding an audio device after
+  // CuePoint exits is the worst failure this phase can ship.
+  await player.dispose();
   await engine.stop();
 });
 

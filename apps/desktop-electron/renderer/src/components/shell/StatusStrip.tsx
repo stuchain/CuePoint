@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ActivityPanel } from "./ActivityPanel";
 import { jobLabel, jobPercent, useActiveJob } from "./useActiveJob";
 import { useEngineStatus } from "./useEngineStatus";
+import { playerStatusMessage, usePlayerStatus } from "./usePlayerStatus";
 import "./StatusStrip.css";
 
 /**
@@ -22,6 +23,8 @@ import "./StatusStrip.css";
  */
 export function StatusStrip() {
   const status = useEngineStatus();
+  const playerSnapshot = usePlayerStatus();
+  const playerMessage = playerStatusMessage(playerSnapshot);
   const { job, activeCount } = useActiveJob();
   const [activityOpen, setActivityOpen] = useState(false);
 
@@ -83,6 +86,16 @@ export function StatusStrip() {
                   }`
                 : `Engine offline${status.error ? `: ${status.error}` : ""}`}
         </span>
+
+        {/*
+          The player speaks only when it was in use and broke (PLAYER-03).
+          "Audio player unavailable" is a different sentence from "Engine
+          offline" and must not read as one: the engine being down stops
+          everything, while a dead player leaves the whole library usable.
+        */}
+        {playerMessage && (
+          <span className="cp-status__player cp-status__engine--error">{playerMessage}</span>
+        )}
 
         {canRestart && (
           <button

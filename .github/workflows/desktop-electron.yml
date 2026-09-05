@@ -62,13 +62,6 @@ jobs:
         working-directory: apps/desktop-electron
         run: npm run typecheck
 
-      # PLAYER-02: main-process unit tests (mpv JSON IPC client). Runs on all
-      # three OSes because the client speaks a named pipe on Windows and a unix
-      # socket elsewhere, and only the matrix exercises both.
-      - name: Unit test Electron main process
-        working-directory: apps/desktop-electron
-        run: npm test
-
       - name: Build desktop shell
         working-directory: apps/desktop-electron
         run: npm run build
@@ -89,6 +82,15 @@ jobs:
 
       - name: Bundled component licences
         run: python scripts/check_bundled_licenses.py
+
+      # PLAYER-02/03: main-process tests. Runs on all three OSes because the
+      # client speaks a named pipe on Windows and a unix socket elsewhere, and
+      # only the matrix exercises both. The PLAYER-03 integration tests drive
+      # the real mpv binary fetched above, and skip themselves on Linux, which
+      # pins none.
+      - name: Unit test Electron main process
+        working-directory: apps/desktop-electron
+        run: npm test
 
       - name: Player sidecar tests
         env:

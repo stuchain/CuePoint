@@ -113,7 +113,7 @@ meaning (DEC-046); the Track Inspector finally gets content — everything impor
 
 Step specifications: `PHASE4_LIBUI.md`.
 
-## Phase 5 — Player (PLAYER-01 … PLAYER-12) — in progress (PLAYER-01, PLAYER-02 done)
+## Phase 5 — Player (PLAYER-01 … PLAYER-12) — in progress (PLAYER-01…03 done)
 
 Backend is decided: **libmpv sidecar** (DEC-005), for foobar2000-grade quality — gapless, wide
 lossless format support, high-quality resampling. Still the highest-uncertainty phase in
@@ -136,9 +136,11 @@ Carried forward from Round 2: double-click plays and loads the current view as t
 (DEC-012); "Play Next"/"Add to Queue" are the explicit append actions (DEC-013); no
 position-resume across restarts (DEC-014).
 
-PLAYER-01 and PLAYER-02 are implemented: mpv is pinned, fetched, verified and packaged, with
-ADR-004 written and the format spike passing on Windows, and the JSON IPC client that drives it is
-written and tested against both a fake socket server and the real binary. Implementation corrected two things the plan had wrong — the
+PLAYER-01, PLAYER-02 and PLAYER-03 are implemented: mpv is pinned, fetched, verified and packaged,
+with ADR-004 written and the format spike passing on Windows; the JSON IPC client that drives it is
+written and tested against both a fake socket server and the real binary; and the supervisor that
+owns the process — lazy start, bounded restart, state mirroring, IPC to the renderer — plays a real
+file end to end through the packaged shell and leaves no process behind. Implementation corrected two things the plan had wrong — the
 bundled build is GPL rather than LGPL, and electron-builder's `${os}` macro expands to `mac`/`win`,
 not `darwin`/`win32` — and surfaced a pre-existing packaging bug that leaves the Python engine out
 of packaged Windows and macOS builds. See the step's Outcome section.

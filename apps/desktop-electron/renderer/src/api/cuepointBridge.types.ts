@@ -1,5 +1,55 @@
 import type { ProgressInfo, TrackResult } from "../mocks/types";
 
+/** Health of the bundled audio player (PLAYER-03). */
+export interface PlayerStatus {
+  available: boolean;
+  running: boolean;
+  reconnecting: boolean;
+  restartAttempts: number;
+  error?: string;
+  source?: string;
+}
+
+/** What is playing, as mirrored from mpv. */
+export interface PlaybackState {
+  filePath: string | null;
+  playing: boolean;
+  paused: boolean;
+  positionSeconds: number | null;
+  durationSeconds: number | null;
+  volume: number;
+  muted: boolean;
+}
+
+export interface PlayerSnapshot {
+  status: PlayerStatus;
+  playback: PlaybackState;
+}
+
+export type PlayerPlayResult =
+  | { ok: true }
+  | { ok: false; code: string; error: string };
+
+/**
+ * The player bridge (PLAYER-03).
+ *
+ * Transport only — there is no `next`/`previous` because there is no queue
+ * yet; PLAYER-04 owns that and will add them when they can mean something.
+ */
+export interface PlayerBridge {
+  getState: () => Promise<PlayerSnapshot>;
+  play: (filePath: string) => Promise<PlayerPlayResult>;
+  pause: () => Promise<void>;
+  resume: () => Promise<void>;
+  toggle: () => Promise<void>;
+  stop: () => Promise<void>;
+  seek: (seconds: number) => Promise<void>;
+  setVolume: (volume: number) => Promise<void>;
+  setMuted: (muted: boolean) => Promise<void>;
+  /** Subscribe to state pushes; returns an unsubscribe function. */
+  subscribeState: (onState: (snapshot: PlayerSnapshot) => void) => () => void;
+}
+
 export interface EngineStatus {
   connected: boolean;
   version?: string;
@@ -634,6 +684,8 @@ export interface EngineJobList {
 
 export interface CuePointBridge {
   getEngineStatus: () => Promise<EngineStatus>;
+  /** Absent when running in a browser tab, or in an older shell. */
+  player?: PlayerBridge;
   restartEngine?: () => Promise<EngineStatus>;
   startMatchJob: (body: StartMatchJobRequest) => Promise<StartMatchJobResponse>;
   getJob: (jobId: string) => Promise<MatchJobStatus>;

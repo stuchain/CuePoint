@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 5: Player, Detailed Step Specifications
 
-Status: **In progress. PLAYER-01 and PLAYER-02 are implemented** (outcomes recorded under each
-step); PLAYER-03…PLAYER-12 are described below and not started. Per the process, no implementation happens from this document — each step needs an
+Status: **In progress. PLAYER-01, PLAYER-02 and PLAYER-03 are implemented** (outcomes recorded
+under each step); PLAYER-04…PLAYER-12 are described below and not started. Per the process, no implementation happens from this document — each step needs an
 explicit "Implement PLAYER-NN" instruction, scoped to exactly that step, and its outcome is
 recorded under the step afterwards.
 
@@ -417,6 +417,70 @@ selection (PLAYER-11).
 **Risks.** Lazy start interacts with PLAYER-10: the first play of a session must not report
 "file failed" when what actually failed was starting mpv. The two failures are different sentences
 and the code must be able to tell them apart.
+
+### Outcome (2026-09-05)
+
+Implemented as `electron/playerLaunch.ts` (18 tests), `electron/playerSupervisor.ts` (43 unit,
+14 integration against the real binary), the `player:*` IPC surface in `main.ts`, a narrow `player`
+namespace in `preload.cjs`, and the status-strip line with `usePlayerStatus.ts` (12 renderer
+tests). 137 main-process tests and 993 renderer tests pass; both typechecks are clean.
+
+`playerLaunch.ts` deliberately imports nothing from Electron, so every path it resolves — Windows,
+both macOS arches, the `CUEPOINT_MPV_PATH` override, the macOS `.app` layout — is checked from
+every platform rather than only on the one that happens to be building. `PlayerSupervisor` takes
+its `spawn` and its client as options for the same reason: `engineLaunch.ts` reads `app.isPackaged`
+at module scope, which is exactly why `EngineSupervisor` has no unit tests to this day, and
+repeating the pattern would have repeated the consequence.
+
+**Three bugs found, each by a different kind of test.**
+
+1. **A failed connect left the client permanently closed** (`mpvClient.ts`). mpv does not create
+   its IPC socket the instant its process exists, so the supervisor retries — and every retry
+   failed with "client is closed". This would have broken the **first play of every session**. It
+   was invisible to PLAYER-02's unit tests, which only ever connected to a server that was already
+   listening, and invisible to the manual probe, which slept before connecting. The integration
+   test found it immediately. `close` is now fatal only for the socket that actually became the
+   live connection, which also stops a stale attempt from tearing down a later, working one.
+2. **The restart budget never bound anything.** Resetting the attempt counter whenever a start
+   *succeeded* meant mpv that launches cleanly and then dies — failing to open an audio device,
+   say — restarts forever, since starting succeeds every time. That is precisely the unbounded
+   loop the bound exists to prevent. The counter is now cleared by evidence the player *worked*:
+   surviving `PLAYER_STABLE_UPTIME_MS`, or a deliberate play.
+3. **A test harness silently dropped an option**, so a restart test was measuring default
+   behaviour rather than the case it named. Caught by the `electron/` typecheck gate turned on
+   immediately before this step — which is the return on that decision, arriving one step later.
+
+**Verified end to end in the real packaged shell**, not only in unit tests: launching the app with
+Playwright, `window.cuepoint.player` exposes exactly ten methods and no socket path, process handle
+or binary path; `getState()` reports `running: false` before any play (lazy start); `player:play`
+on a real fixture returns `{ok: true}`, brings `running` to true, and delivers **11 state pushes**
+to the renderer with the correct file path. `getSnapshot()` agrees with the last pushed snapshot.
+No `mpv.exe` survived the app closing.
+
+The integration tests assert the acceptance criteria against the real binary: mpv starts on first
+play and not before, real duration reaches the supervisor, a track ends with `eof`, a missing file
+ends with `error` **and mpv's own message**, an externally killed process is restarted, and — the
+worst failure this phase could ship — **no process is left behind**, asserted against the real pid
+rather than assumed.
+
+**Scope corrections, both deliberate.**
+
+- **No `player:next` or `player:previous`.** This step's bullet list named them, but they are queue
+  operations and DEC-050 puts the queue in PLAYER-04. Shipping endpoints that cannot do anything
+  would contradict DEC-025's own reasoning about controls that do nothing; PLAYER-04 adds them when
+  they can mean something.
+- **The status strip stays silent unless the player broke.** "Player unavailability is surfaced in
+  the status strip" cannot mean a permanent line on a Linux build that bundles no mpv, or on a
+  checkout where nobody ran the fetch script — the strip is always on screen, so anything it says
+  permanently is noise. It speaks when the player was in use and is now reconnecting or has given
+  up, and the never-installed case is reported when someone actually tries to play something.
+
+**Owed to PLAYER-04**: gapless (DEC-056) needs mpv to know the *next* file before the current one
+ends, which means using mpv's own playlist (`loadfile … append`) rather than loading one file at a
+time on `end-file`. Loading on end-file is correct for a single track and would put a gap between
+every pair of tracks in a queue. The supervisor already accepts an append mode; PLAYER-04 has to
+decide the preload policy, and it is the step where "gapless" stops being a flag and starts being a
+behaviour worth testing.
 
 ---
 

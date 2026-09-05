@@ -72,4 +72,32 @@ contextBridge.exposeInMainWorld("cuepoint", {
     }
   },
   saveExportFileDialog: (options) => ipcRenderer.invoke("dialog:saveExport", options),
+  /**
+   * Audio playback (PLAYER-03).
+   *
+   * Narrow on purpose: the renderer can ask for transport and read state, and
+   * that is all. No socket path, no process handle and no binary path crosses
+   * this boundary — the renderer has no business knowing mpv exists, let alone
+   * where it lives.
+   */
+  player: {
+    getState: () => ipcRenderer.invoke("player:getState"),
+    play: (filePath) => ipcRenderer.invoke("player:play", filePath),
+    pause: () => ipcRenderer.invoke("player:pause"),
+    resume: () => ipcRenderer.invoke("player:resume"),
+    toggle: () => ipcRenderer.invoke("player:toggle"),
+    stop: () => ipcRenderer.invoke("player:stop"),
+    seek: (seconds) => ipcRenderer.invoke("player:seek", seconds),
+    setVolume: (volume) => ipcRenderer.invoke("player:setVolume", volume),
+    setMuted: (muted) => ipcRenderer.invoke("player:setMuted", muted),
+    subscribeState: (onState) => {
+      const handler = (_event, snapshot) => onState(snapshot);
+      ipcRenderer.on("player:state", handler);
+      void ipcRenderer.invoke("player:subscribeState");
+      return () => {
+        ipcRenderer.removeListener("player:state", handler);
+        void ipcRenderer.invoke("player:unsubscribeState");
+      };
+    },
+  },
 });

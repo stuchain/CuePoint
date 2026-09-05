@@ -283,7 +283,7 @@ export class MpvClient extends EventEmitter<MpvClientEventMap> {
       const onError = (error: Error) => {
         if (settled) {
           // Post-connection errors end the connection; `close` follows.
-          this.emit("error", error);
+          if (this.socket === socket) this.emit("error", error);
           return;
         }
         settled = true;
@@ -296,7 +296,7 @@ export class MpvClient extends EventEmitter<MpvClientEventMap> {
       socket.on("ready", onConnect);
       socket.on("error", onError);
       socket.on("data", (chunk: string | Buffer) => this.onData(chunk));
-      socket.on("close", () => this.onClose());
+      socket.on("close", () => this.onClose(socket));
     });
 
     return this.connectPromise;
@@ -539,7 +539,25 @@ export class MpvClient extends EventEmitter<MpvClientEventMap> {
     }
   }
 
-  private onClose(): void {
+  /**
+   * The socket ended.
+   *
+   * Only the *current* socket closing is fatal. A connection attempt that never
+   * succeeded also emits `close`, and treating that as fatal made the client
+   * single-use: `connect()` could be called once, and every retry afterwards
+   * failed with "client is closed". Since mpv does not create its IPC socket
+   * the instant its process exists, the supervisor always retries — so this
+   * would have broken the first play of every session.
+   *
+   * Comparing identity also protects the other direction: a stale socket from
+   * an abandoned attempt closing later must not tear down a connection that has
+   * since succeeded.
+   */
+  private onClose(socket: net.Socket): void {
+    if (this.socket !== socket) {
+      // An attempt that never became the live connection. Nothing to tear down.
+      return;
+    }
     if (this.closed) return;
     this.closed = true;
     this.socket = null;
