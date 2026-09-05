@@ -30,6 +30,11 @@ jobs:
         run: |
           python scripts/validate_licenses.py --requirements requirements-build.txt --allow-unknown
 
+      # PLAYER-01: pip metadata cannot see a bundled binary we did not build.
+      - name: Validate bundled component licences (mpv sidecar)
+        run: |
+          python scripts/check_bundled_licenses.py
+
       - name: Generate THIRD_PARTY_LICENSES.txt
         run: |
           python scripts/generate_licenses.py --output THIRD_PARTY_LICENSES.txt

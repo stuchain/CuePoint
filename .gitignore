@@ -155,6 +155,10 @@ src/output/
 !apps/**/tsconfig*.json
 !apps/**/.oxlintrc.json
 
+# Build manifests (exception to user-output *.json above). The player sidecar
+# pin is source, not output: without it a fresh clone cannot fetch mpv.
+!scripts/player_sidecar_manifest.json
+
 # Test files
 test_output/
 test_results/
@@ -360,3 +364,6 @@ scripts/delete_all_releases.py
 
 # Local test data (not for version control)
 collection-january.xml
+
+# Player sidecar (PLAYER-01): fetched by scripts/fetch_player_sidecar.py, never committed
+apps/desktop-electron/resources/player/

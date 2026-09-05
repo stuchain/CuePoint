@@ -14,7 +14,9 @@
     "build:electron": "esbuild electron/main.ts --bundle --platform=node --packages=external --format=esm --outfile=electron-dist/main.mjs",
     "build": "npm run build:renderer && npm run build:electron",
     "build:engine-sidecar": "python ../../scripts/build_engine_sidecar.py",
-    "pack:full": "npm run build:engine-sidecar && npm run pack",
+    "fetch:player-sidecar": "python ../../scripts/fetch_player_sidecar.py",
+    "verify:player-sidecar": "python ../../scripts/fetch_player_sidecar.py --verify-only",
+    "pack:full": "npm run build:engine-sidecar && npm run fetch:player-sidecar && npm run pack",
     "storybook": "npm run storybook --prefix renderer",
     "dev": "npm run dev:renderer",
     "electron:dev": "npm run build:electron && cross-env NODE_ENV=development electron .",
@@ -40,6 +42,11 @@
       {
         "from": "resources/engine/${os}",
         "to": "engine",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "resources/player/${os}-${arch}",
+        "to": "player",
         "filter": ["**/*"]
       }
     ],

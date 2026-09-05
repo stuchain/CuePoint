@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   nothing
 
 ### Added
+- Groundwork for audio playback: CuePoint now bundles the mpv player engine as a
+  second background process, verified on every build to carry the formats it
+  promises (FLAC, ALAC, AIFF, WavPack, Monkey's Audio, MP3 and AAC). Nothing
+  plays yet - the transport, queue and player bar arrive with the rest of Phase 5
 - The Library page is now a browser. Playlists down the left scope what you are
   looking at, a filter bar narrows it — search text, or rules like BPM between
   124 and 130 — and the table sorts by any column. Selecting a track fills the

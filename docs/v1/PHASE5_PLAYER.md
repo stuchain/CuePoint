@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 5: Player, Detailed Step Specifications
 
-Status: **Specified, not started.** PLAYER-01…PLAYER-12 are described below and none of them is
-implemented. Per the process, no implementation happens from this document — each step needs an
+Status: **In progress. PLAYER-01 is implemented** (outcome recorded under the step);
+PLAYER-02…PLAYER-12 are described below and not started. Per the process, no implementation happens from this document — each step needs an
 explicit "Implement PLAYER-NN" instruction, scoped to exactly that step, and its outcome is
 recorded under the step afterwards.
 
@@ -207,6 +207,77 @@ executable; macOS commonly needs a Homebrew-built binary or a bundle); the manif
 per-platform unpacking rather than pretending they are the same. macOS notarization of a
 third-party binary inside the app bundle is the specific thing most likely to surprise, and the
 step is not done until a *signed* packaged build has been produced at least once.
+
+### Outcome (2026-09-05)
+
+Implemented. `scripts/fetch_player_sidecar.py` pins, downloads, verifies, installs and smoke-tests
+mpv v0.41.0-dev-gf5bcfb195; `scripts/player_sidecar_manifest.json` holds the pins;
+`scripts/make_audio_fixtures.py` regenerates the five decode fixtures;
+`scripts/check_bundled_licenses.py` is the licence gate; `third_party/mpv/` carries the licence
+texts and `NOTICE.md`; ADR-004 is written. 132 tests pass (54 unit for the fetcher, 12 for the
+licence gate, 23 integration against the real binary, the rest pre-existing in those files), plus
+the full unit suite at 3276 passed / 45 skipped.
+
+Five things the work changed about the plan, each because the code or the artifacts said so:
+
+1. **The source is mpv's own CI builds, not a third-party one.** mpv publishes *no* binaries on
+   its stable tags — `v0.40.0` and `v0.39.0` carry zero release assets — so the only first-party
+   binaries live on the rolling `git-release` tag. They ship as `.zip` (stdlib-extractable, so no
+   7-Zip dependency and no `py7zr`) and cover macOS as well as Windows. The cost is that pins
+   expire when CI republishes, which is why `--update-manifest` exists and why a 404 is reported
+   as a rotated pin naming the command that fixes it, rather than as a network error.
+2. **Checksums are verified against upstream, not against ourselves.** The GitHub API publishes a
+   SHA-256 per asset. The re-pin flow compares the download against *that*, so the manifest
+   records what upstream says it published; a hash we computed from our own possibly-corrupt
+   download can never silently become the pin.
+3. **The licence is GPL, not LGPL.** See the correction note below — it changes the obligation,
+   not the architecture.
+4. **`${os}` does not mean what the engine's packaging assumes.** It expands to `mac`/`win`/`linux`
+   (a Platform's `buildConfigurationKey`), never `darwin`/`win32`. The player's install
+   directories use `${os}-${arch}` — the arch half because two macOS pins (arm64 and x64) would
+   otherwise overwrite each other in one `mac` directory. Two unit tests hold both properties.
+5. **No MP3 encoder ships in the bundled build** (`libmp3lame` absent, the MediaFoundation wrapper
+   writes zero bytes) and this repository has no ffmpeg, so `tone.mp3` is a constructed, spec-valid
+   MPEG-1 Layer III stream that decodes to silence. The other four fixtures carry a real 441 Hz
+   tone, and the decode check asserts RMS on those rather than merely an exit code. `tone.mp3`'s
+   frame count is what its check means, and `FORMAT_FIXTURES` marks it non-tonal so this is
+   explicit rather than a quiet weakness.
+
+**Verified, not assumed**: the pinned build carries FLAC, ALAC, WavPack, Monkey's Audio, AAC, MP3
+and big-endian PCM decoders, plus `--input-ipc-server`, `--gapless-audio`, `--audio-exclusive`
+and `--audio-device`; all five formats decode to real audio; a corrupt FLAC decodes to nothing (so
+the check can fail); a packaged `--dir` build contains `resources/player/mpv.exe` and it runs from
+there with its licences beside it.
+
+**Not verified, and owed to the macOS pass**: signing and notarization of a third-party binary
+inside the bundle — the risk this step flagged — could not be exercised here. Windows packaging
+was verified without code signing, because electron-builder's `winCodeSign` extraction needs
+symlink privileges this account does not have. The macOS `.app` bundles were extracted and their
+layout verified on Windows, but never executed.
+
+**Correction owed to DEC-049.** Its implications say "LGPL compliance is satisfied by shipping the
+binary unmodified". The published builds are **GPL-2.0-or-later** — they include GPL components
+such as `libdvdcss`, and no first-party LGPL *player* binary is published at all (only LGPL
+`libmpv` development builds, which would need the native-addon approach DEC-049 rejected). The
+decision's conclusion is unaffected, since an unmodified binary in a separate process is the shape
+that works under either licence, but the obligation is the GPL's. ADR-004 records this; DEC-049's
+bullet should be amended rather than left to mislead.
+
+**Adjacent bug found, and fixed separately.** `resources/engine/${os}` in
+`apps/desktop-electron/package.json` had the same macro mistake, and `build_engine_sidecar.py` wrote
+`resources/engine/win32`. A packaged build printed `file source doesn't exist from=...\resources\engine\win`
+and shipped **no Python engine at all** on Windows or macOS - confirmed by inspecting
+`release/win-unpacked`, which contained `player/` and no `engine/`. Only Linux matched, by
+coincidence, which is why it went unnoticed.
+
+Fixed on the user's instruction as its own change rather than folded into PLAYER-01:
+`PLATFORM_DIRS` now yields electron-builder's names, a new `platform_dir()` appends `${arch}` (the
+engine has the same two-macOS-arches problem the player does), and both `extraResources` entries
+use `${os}-${arch}`. `src/tests/unit/scripts/test_packaging_resource_paths.py` expands the macros
+the way electron-builder does and asserts both sidecar builds write exactly there - it fails on the
+unfixed code with 6 failures and Linux passing, which is the bug's real-world signature. Verified
+end to end: a packaged build now contains both `engine/` and `player/`, and the packaged
+`cuepoint-engine.exe` starts and answers `/health`.
 
 ---
 

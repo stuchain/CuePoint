@@ -1,0 +1,78 @@
+{
+  "component": "mpv",
+  "repo": "mpv-player/mpv",
+  "tag": "git-release",
+  "version": "v0.41.0-dev-gf5bcfb195",
+  "commit": "f5bcfb195",
+  "required_decoders": [
+    "flac",
+    "alac",
+    "mp3",
+    "pcm_s16be",
+    "wavpack",
+    "ape",
+    "aac"
+  ],
+  "required_options": [
+    "input-ipc-server",
+    "gapless-audio",
+    "audio-exclusive",
+    "audio-device",
+    "idle"
+  ],
+  "license": {
+    "spdx": "GPL-2.0-or-later",
+    "files": [
+      "Copyright",
+      "LICENSE.GPL",
+      "LICENSE.LGPL"
+    ],
+    "source_url": "https://github.com/mpv-player/mpv/tree/f5bcfb195"
+  },
+  "targets": {
+    "darwin-arm64": {
+      "platform_dir": "mac-arm64",
+      "asset": "mpv-v0.41.0-dev-gf5bcfb195-33776508483-macos-14-arm.zip",
+      "url": "https://github.com/mpv-player/mpv/releases/download/git-release/mpv-v0.41.0-dev-gf5bcfb195-33776508483-macos-14-arm.zip",
+      "sha256": "c56eb8dc64cc855fdf9a3bd295db998546ab6f6de8200bfeb3cfc7f92a7f4dbf",
+      "size": 47311377,
+      "archive": "zip+tar.gz",
+      "inner_archive": "mpv.tar.gz",
+      "install": [
+        "mpv.app"
+      ],
+      "binary": "mpv.app/Contents/MacOS/mpv"
+    },
+    "darwin-x64": {
+      "platform_dir": "mac-x64",
+      "asset": "mpv-v0.41.0-dev-gf5bcfb195-33776508483-macos-15-intel.zip",
+      "url": "https://github.com/mpv-player/mpv/releases/download/git-release/mpv-v0.41.0-dev-gf5bcfb195-33776508483-macos-15-intel.zip",
+      "sha256": "cffa0618d5da8ef09a59734d3e624f5a9447adfd7259af493e3603524f2198f7",
+      "size": 52296705,
+      "archive": "zip+tar.gz",
+      "inner_archive": "mpv.tar.gz",
+      "install": [
+        "mpv.app"
+      ],
+      "binary": "mpv.app/Contents/MacOS/mpv"
+    },
+    "win32-x64": {
+      "platform_dir": "win-x64",
+      "asset": "mpv-v0.41.0-dev-gf5bcfb195-33776508483-x86_64-pc-windows-msvc.zip",
+      "url": "https://github.com/mpv-player/mpv/releases/download/git-release/mpv-v0.41.0-dev-gf5bcfb195-33776508483-x86_64-pc-windows-msvc.zip",
+      "sha256": "c56687f0b791edda3762ce891417e76f54ee7fb0b03257a730b93140026afb59",
+      "size": 28326192,
+      "archive": "zip",
+      "inner_archive": "",
+      "install": [
+        "mpv.exe"
+      ],
+      "binary": "mpv.exe"
+    },
+    "linux-x64": {
+      "supported": false,
+      "platform_dir": "linux-x64",
+      "note": "No prebuilt Linux binary is pinned. Linux is best-effort for the desktop app; install mpv from the distribution and point CuePoint at it with CUEPOINT_MPV_PATH."
+    }
+  }
+}

@@ -113,7 +113,7 @@ meaning (DEC-046); the Track Inspector finally gets content — everything impor
 
 Step specifications: `PHASE4_LIBUI.md`.
 
-## Phase 5 — Player (PLAYER-01 … PLAYER-12) — specified, not started
+## Phase 5 — Player (PLAYER-01 … PLAYER-12) — in progress (PLAYER-01 done)
 
 Backend is decided: **libmpv sidecar** (DEC-005), for foobar2000-grade quality — gapless, wide
 lossless format support, high-quality resampling. Still the highest-uncertainty phase in
@@ -135,6 +135,12 @@ output are user-controlled, which is what turns DEC-005's quality claim into som
 Carried forward from Round 2: double-click plays and loads the current view as the queue
 (DEC-012); "Play Next"/"Add to Queue" are the explicit append actions (DEC-013); no
 position-resume across restarts (DEC-014).
+
+PLAYER-01 is implemented: mpv is pinned, fetched, verified and packaged, with ADR-004 written and
+the format spike passing on Windows. Implementation corrected two things the plan had wrong — the
+bundled build is GPL rather than LGPL, and electron-builder's `${os}` macro expands to `mac`/`win`,
+not `darwin`/`win32` — and surfaced a pre-existing packaging bug that leaves the Python engine out
+of packaged Windows and macOS builds. See the step's Outcome section.
 
 Step specifications: `PHASE5_PLAYER.md`.
 

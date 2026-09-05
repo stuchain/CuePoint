@@ -65,6 +65,23 @@ jobs:
       - name: Verify no Qt imports in core packages
         run: python scripts/check_no_qt_in_core.py
 
+      # PLAYER-01 (DEC-049). Exits 0 with a notice on Linux, which pins no
+      # binary, so the ubuntu leg of the matrix stays green.
+      - name: Fetch player sidecar (mpv)
+        run: python scripts/fetch_player_sidecar.py
+
+      - name: Player sidecar format decode check
+        run: python scripts/fetch_player_sidecar.py --check-formats
+
+      - name: Bundled component licences
+        run: python scripts/check_bundled_licenses.py
+
+      - name: Player sidecar tests
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m pytest src/tests/unit/scripts/test_fetch_player_sidecar.py src/tests/unit/scripts/test_check_bundled_licenses.py src/tests/integration/test_player_sidecar_binary.py -q --tb=short
+
       - name: Engine unit tests (HTTP API)
         env:
           PYTHONPATH: src

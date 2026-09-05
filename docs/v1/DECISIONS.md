@@ -1068,7 +1068,8 @@ will stare at longest.
 
 ## DEC-049 — How libmpv Is Embedded
 
-**Status**: Approved · **Refines**: DEC-005
+**Status**: Approved, then **amended 2026-09-05** (see the amendment note at the end of this entry
+- implementation showed the bundled binary's licence is GPL, not LGPL) · **Refines**: DEC-005
 
 **Decision**: CuePoint bundles the **official prebuilt `mpv` executable** for each OS as a second
 sidecar and controls it over mpv's JSON IPC protocol — a named pipe on Windows, a unix domain
@@ -1086,9 +1087,10 @@ C/Rust wrapper puts a toolchain we own in a release path the audit already calls
 
 **Implications**:
 - A `PlayerSupervisor` is written in the image of `EngineSupervisor`, not as a new pattern.
-- LGPL compliance is satisfied by shipping the binary unmodified and carrying its license text;
+- Licence compliance is satisfied by shipping the binary unmodified and carrying its licence text;
   the `license-compliance` workflow gains mpv as a bundled non-Python component. No relinking
-  obligation arises because nothing is statically linked.
+  obligation arises because nothing is statically linked. (This bullet originally said *LGPL*; see
+  the amendment below.)
 - The binaries are fetched at build time into `resources/player/${os}` and are **not** committed —
   `large-file-check` and repository size both argue against vendoring them, and the engine sidecar
   sets the precedent that `resources/` is build output.
@@ -1099,6 +1101,40 @@ C/Rust wrapper puts a toolchain we own in a release path the audit already calls
   than silently producing an app with no player.
 
 **Decided with**: User (delegated to recommendation) · **Date**: 2026-09-05
+
+### Amendment (2026-09-05) - the bundled binary is GPL, not LGPL
+
+**What implementation found**: PLAYER-01 pinned mpv's own CI builds and read their contents. They
+are **GPL-2.0-or-later**, not LGPL. mpv supports an LGPL build configuration, but the published
+builds are not built that way - they include GPL components such as `libdvdcss` - and no
+first-party LGPL *player* binary is published at all. The only LGPL artifacts upstream publishes
+are `libmpv` development builds, which could only be used through the native-addon approach this
+decision rejected. Two further facts came out of the same work: mpv publishes no binaries on its
+stable tags, so the pin necessarily tracks a rolling tag and expires; and the shipped binary must
+be accompanied by the exact upstream commit so the corresponding source is identifiable.
+
+**Amended implication**: the obligation is the **GPL's**, discharged by (1) shipping
+`LICENSE.GPL`, `LICENSE.LGPL` and `Copyright` from the pinned commit inside every package,
+(2) recording that commit in the manifest and in the install receipt written beside the binary, and
+(3) shipping the binary unmodified. `scripts/check_bundled_licenses.py` fails the build if any of
+this is missing, and `third_party/mpv/NOTICE.md` records the analysis.
+
+**Unchanged from the original decision**: everything architectural. An unmodified binary running as
+a separate process, spoken to over mpv's published JSON IPC interface, is aggregation rather than
+incorporation, and is the shape that works under either licence - which is why the GPL finding
+changes the paperwork and not the design. CuePoint's own code remains Apache-2.0. The native addon
+and the custom wrapper stay rejected, and this amendment is a further reason to keep rejecting the
+addon: linking libmpv into CuePoint's own process is a different licensing question with a
+different answer.
+
+**Also corrected**: the implications above describe the engine sidecar as building into
+`resources/engine/${os}`. That path never resolved - electron-builder's `${os}` expands to
+`mac`/`win`/`linux`, not `darwin`/`win32` - and both sidecars now use `${os}-${arch}`. See
+`docs/ui-overhaul/adr/004-player-backend.md` and the CHANGELOG entry for the packaging fix.
+
+**Decided with**: User (delegated: "decide the most professional and proper decisions") ·
+**Date**: 2026-09-05
+
 ---
 
 ## DEC-050 — Playback State Lives in Electron Main

@@ -6,6 +6,31 @@ CuePoint’s own source code is licensed under the **Apache License, Version 2.0
 
 This document outlines the license compliance process for CuePoint, ensuring all third-party dependencies are properly licensed and documented.
 
+## Bundled binary components
+
+The tooling below (`analyze_licenses.py`, `validate_licenses.py`, `generate_licenses.py`) reads
+**pip metadata**, so it sees Python dependencies and nothing else. CuePoint also ships binaries it
+did not build, which no Python tool can see. Those are covered by
+`python scripts/check_bundled_licenses.py`, which runs in the `license-compliance` and
+`desktop-electron` workflows.
+
+| Component | Licence | How it is used | Where it is recorded |
+| --- | --- | --- | --- |
+| mpv (player sidecar) | **GPL-2.0-or-later** | Unmodified binary, run as a separate child process, controlled over mpv's own JSON IPC protocol | `third_party/mpv/NOTICE.md`, `scripts/player_sidecar_manifest.json`, ADR-004 |
+
+**On the copyleft check below.** "Check for copyleft licenses (GPL, AGPL)" does not mean copyleft
+is forbidden; it means it requires a deliberate decision recorded somewhere a future reader will
+find. mpv is that case, decided in DEC-005/DEC-049 and analysed in
+`docs/ui-overhaul/adr/004-player-backend.md`. It is compatible with CuePoint's Apache-2.0 licence
+because mpv is **aggregated, not incorporated**: it is a separate program in a separate process,
+communicating over a published IPC interface, with no linking in either direction. Distributing it
+obliges CuePoint to ship its licence texts and to identify the corresponding source, both of which
+are automated and gated.
+
+The line that must not be crossed without a new decision is **linking**. Loading libmpv into
+CuePoint's own process — a native addon, or a wrapper we build — changes the analysis entirely and
+was rejected for this reason among others.
+
 ## Compliance Process
 
 ### Regular Audits
@@ -40,7 +65,9 @@ When adding a new dependency:
 
 2. **Verify License Compatibility**
    - Ensure license is compatible with project license
-   - Check for copyleft licenses (GPL, AGPL)
+   - Check for copyleft licenses (GPL, AGPL) — permitted only for a *separate process* bundled
+     as a binary, with an ADR recording the analysis (see "Bundled binary components"); never for
+     anything linked into CuePoint's own process
    - Verify commercial use is allowed
    - Confirm redistribution is allowed
 
