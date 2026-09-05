@@ -30,6 +30,8 @@ function fakeEngine(count: number, options: { totalOverride?: number } = {}): Fa
     id: index + 1,
     title: `Track ${index + 1}`,
     artist: `Artist ${index + 1}`,
+    key: "8A",
+    bpm: 128,
     duration_seconds: 100 + index,
     file_path: `/music/${index + 1}.flac`,
   }));
@@ -85,6 +87,8 @@ describe("resolving a whole view", () => {
       filePath: "/music/1.flac",
       title: "Track 1",
       artist: "Artist 1",
+      key: "8A",
+      bpm: 128,
       durationSeconds: 100,
     });
   });

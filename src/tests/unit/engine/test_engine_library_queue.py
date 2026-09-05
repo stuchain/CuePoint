@@ -77,9 +77,18 @@ class TestTheProjection:
             "id",
             "title",
             "artist",
+            "key",
+            "bpm",
             "duration_seconds",
             "file_path",
         }
+
+    def test_carries_what_a_dj_reads_off_a_player(self, engine):
+        # Key and BPM are the two fields a DJ actually looks at; fetching them
+        # per track change would flash empty at every transition (PLAYER-06).
+        row = next(r for r in queue_rows(engine) if r["title"] == "Strobe")
+        assert row["bpm"] == 128.0
+        assert "key" in row
 
     def test_carries_the_file_the_player_opens(self, engine):
         # Without this the queue is unplayable, which is the entire point.
@@ -89,7 +98,8 @@ class TestTheProjection:
         # A queue can be tens of thousands of rows; every extra field is paid
         # for once per track.
         row = queue_rows(engine)[0]
-        for absent in ("rating", "label", "colour", "comment", "bpm", "genre"):
+        # Key and BPM are deliberately present (PLAYER-06); these are not.
+        for absent in ("rating", "label", "colour", "comment", "genre", "album"):
             assert absent not in row
 
     def test_reports_the_full_total_not_the_page_length(self, engine):

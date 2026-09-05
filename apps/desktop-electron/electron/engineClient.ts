@@ -172,14 +172,17 @@ export interface LibrarySearchResponse {
 /**
  * A track as a playback queue entry (PLAYER-05).
  *
- * Five fields, because DEC-012 turns a whole view into a queue and a view can
+ * Seven fields, because DEC-012 turns a whole view into a queue and a view can
  * be tens of thousands of rows. `file_path` is what the player opens; the rest
- * is what the queue panel shows.
+ * is what the player bar and the queue panel show.
  */
 export interface QueueTrackRow {
   id: number;
   title: string;
   artist: string;
+  /** What a DJ reads off a player, so the bar shows it without a second fetch. */
+  key: string | null;
+  bpm: number | null;
   duration_seconds: number | null;
   file_path: string;
 }

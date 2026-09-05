@@ -30,6 +30,9 @@ export interface QueueItem {
   filePath: string;
   title: string;
   artist: string;
+  /** What the player bar and the queue panel show for a DJ (PLAYER-06). */
+  key: string | null;
+  bpm: number | null;
   durationSeconds: number | null;
   status: QueueItemStatus;
 }
@@ -40,6 +43,8 @@ export interface QueueItemInput {
   filePath: string;
   title?: string;
   artist?: string;
+  key?: string | null;
+  bpm?: number | null;
   durationSeconds?: number | null;
 }
 
@@ -80,6 +85,8 @@ function makeItem(input: QueueItemInput): QueueItem {
     filePath: input.filePath,
     title: input.title ?? "",
     artist: input.artist ?? "",
+    key: input.key ?? null,
+    bpm: input.bpm ?? null,
     durationSeconds: input.durationSeconds ?? null,
     status: "pending",
   };

@@ -96,6 +96,8 @@ export async function resolveQueueFromView(
         filePath: row.file_path,
         title: row.title,
         artist: row.artist,
+        key: row.key,
+        bpm: row.bpm,
         durationSeconds: row.duration_seconds,
       });
     }

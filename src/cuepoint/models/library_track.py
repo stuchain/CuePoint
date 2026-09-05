@@ -288,11 +288,12 @@ def resolve_identity(
 class QueueTrack:
     """The part of a track a playback queue needs (PLAYER-05).
 
-    Five fields, not twenty. DEC-012 loads *the current view* as the queue, and
+    Seven fields, not twenty. DEC-012 loads *the current view* as the queue, and
     a view can be tens of thousands of rows; ratings, labels, colours and the
     rest are the Inspector's business and would multiply the payload for
     nothing. What is here is what a queue entry has to have: which track it is,
-    what to show for it, how long it runs, and the file to open.
+    what to show for it, how long it runs, and the file to open — plus key and
+    BPM, which are what a DJ actually reads off a player (PLAYER-06).
 
     Frozen because a queue entry is a snapshot of the library at the moment the
     queue was built, not a live view of the row.
@@ -301,6 +302,8 @@ class QueueTrack:
     id: int
     title: str
     artist: str
+    key: Optional[str]
+    bpm: Optional[float]
     duration_seconds: Optional[int]
     file_path: str
 
@@ -312,6 +315,8 @@ class QueueTrack:
             id=int(data["id"]),
             title=data.get("title") or "",
             artist=data.get("artist") or "",
+            key=data.get("key"),
+            bpm=data.get("bpm"),
             duration_seconds=data.get("duration_seconds"),
             file_path=data.get("file_path") or "",
         )

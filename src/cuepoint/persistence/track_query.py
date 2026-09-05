@@ -423,9 +423,12 @@ def build_select_queue(
     rather than an array — so the queue is resolved by re-running the query the
     user is looking at, in the order they are looking at it.
 
-    Five columns rather than twenty because a queue can be tens of thousands of
+    Seven columns rather than twenty because a queue can be tens of thousands of
     rows: the rest of a track's fields are the Inspector's business, and sending
-    them would multiply the payload for nothing.
+    them would multiply the payload for nothing. Key and BPM are here because
+    they are what a DJ reads off a player — PLAYER-06's bar shows them for the
+    playing track and PLAYER-08's panel for the ones coming — and fetching them
+    per track change would flash empty at every transition.
 
     Ordering ends with the row id, exactly as the other projections do, so
     paging a long queue cannot repeat or skip a track where sort values tie.
@@ -433,8 +436,8 @@ def build_select_queue(
     valid = query.validated()
     cte, where, params = _predicate(valid)
     sql = (
-        f"{cte}SELECT tracks.id, tracks.title, tracks.artist, "
-        f"tracks.duration_seconds, tracks.file_path FROM tracks{where} "
+        f"{cte}SELECT tracks.id, tracks.title, tracks.artist, tracks.key, "
+        f"tracks.bpm, tracks.duration_seconds, tracks.file_path FROM tracks{where} "
         f"{_order_by(valid)} LIMIT ? OFFSET ?"
     )
     return sql, (*params, clamp_ids_limit(limit), clamp_offset(offset))

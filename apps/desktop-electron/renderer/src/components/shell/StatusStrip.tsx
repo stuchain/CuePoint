@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ActivityPanel } from "./ActivityPanel";
 import { jobLabel, jobPercent, useActiveJob } from "./useActiveJob";
 import { useEngineStatus } from "./useEngineStatus";
-import { playerStatusMessage, usePlayerStatus } from "./usePlayerStatus";
+import { usePlayerStatusMessage } from "./usePlayerStatus";
 import "./StatusStrip.css";
 
 /**
@@ -23,8 +23,9 @@ import "./StatusStrip.css";
  */
 export function StatusStrip() {
   const status = useEngineStatus();
-  const playerSnapshot = usePlayerStatus();
-  const playerMessage = playerStatusMessage(playerSnapshot);
+  // The message, not the snapshot: the strip must not repaint every time the
+  // playback position moves (PLAYER-06).
+  const playerMessage = usePlayerStatusMessage();
   const { job, activeCount } = useActiveJob();
   const [activityOpen, setActivityOpen] = useState(false);
 

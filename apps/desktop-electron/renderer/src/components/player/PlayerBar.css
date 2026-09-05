@@ -1,0 +1,144 @@
+/*
+ * The player bar (PLAYER-06, DEC-052).
+ *
+ * Four regions on one row: transport, what is playing, the position, and
+ * volume. The position takes the space that is left, because it is the only
+ * one that benefits from being wider — the others are a fixed size whatever the
+ * window does.
+ *
+ * Built from the existing tokens and the pixel chrome the rest of the shell
+ * uses (PIXEL_DESIGN_SYSTEM.md): square corners, hard borders, zero-blur
+ * shadows. Nothing here introduces a new visual idea.
+ */
+
+.cp-player-bar {
+  display: grid;
+  grid-template-columns: auto minmax(8rem, 18rem) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  border-top: var(--border-width, 2px) solid var(--color-border, #000);
+  background: var(--color-surface, #fff);
+  min-width: 0;
+}
+
+.cp-player-bar__transport {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1, 4px);
+}
+
+.cp-player-bar__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* `--hit-min` (44px x scale), the same floor `ToolbarIcon` and `Button` use.
+     Sized from the token rather than a number picked here, so the transport
+     obeys the app's own standard at every scale — the design sign-off measures
+     against it. */
+  min-width: var(--hit-min, 44px);
+  min-height: var(--hit-min, 44px);
+  padding: 0;
+  border: var(--border-width, 2px) solid var(--color-border, #000);
+  background: var(--color-surface, #fff);
+  color: var(--color-text, #000);
+  cursor: pointer;
+}
+
+.cp-player-bar__button:hover:not(:disabled) {
+  background: var(--color-surface-hover, #eee);
+}
+
+.cp-player-bar__button:active:not(:disabled) {
+  /* The press is the shadow collapsing, as everywhere else in the shell. */
+  transform: translate(1px, 1px);
+}
+
+.cp-player-bar__button:focus-visible {
+  outline: var(--border-width, 2px) solid var(--color-accent, #06c);
+  outline-offset: 2px;
+}
+
+.cp-player-bar__button--play {
+  /* The one control people aim at without looking. */
+  min-width: calc(var(--hit-min, 44px) * 1.25);
+}
+
+.cp-player-bar__track {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
+.cp-player-bar__title,
+.cp-player-bar__meta {
+  /* One line each: a long title must not grow the bar and reflow the app. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cp-player-bar__title {
+  font-size: var(--font-size-sm, 12px);
+  color: var(--color-text, #000);
+}
+
+.cp-player-bar__meta {
+  /* Artist, key and BPM: dense values, so the data face (DEC-048). */
+  font-family: var(--font-data, monospace);
+  font-size: var(--font-size-xs, 11px);
+  color: var(--color-text-muted, #555);
+}
+
+.cp-player-bar__seek {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  min-width: 0;
+}
+
+.cp-player-bar__time {
+  /* Numerals that change every second — exactly what DEC-048's token is for.
+     Tabular figures so the bar does not twitch as digits change width. */
+  font-family: var(--font-data, monospace);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--font-size-xs, 11px);
+  color: var(--color-text-muted, #555);
+  white-space: nowrap;
+}
+
+.cp-player-bar__slider {
+  flex: 1 1 auto;
+  min-width: 0;
+  accent-color: var(--color-accent, #06c);
+  cursor: pointer;
+}
+
+.cp-player-bar__slider:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.cp-player-bar__volume {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+
+.cp-player-bar__slider--volume {
+  flex: 0 0 auto;
+  width: 6rem;
+}
+
+/* Narrow windows: the track text gives way first, then volume. The transport
+   and the position never disappear — they are why the bar exists. */
+@media (max-width: 900px) {
+  .cp-player-bar {
+    grid-template-columns: auto minmax(6rem, 12rem) minmax(0, 1fr) auto;
+  }
+
+  .cp-player-bar__slider--volume {
+    width: 4rem;
+  }
+}

@@ -19,7 +19,6 @@ import {
   enabledDestinations,
   GlobalSearch,
   HOME_DESTINATION_ID,
-  PlayerRegion,
   Sidebar,
   StatusStrip,
   TrackInspector,
@@ -27,6 +26,7 @@ import {
   InspectorSlotOutlet,
   useRememberDestination,
 } from "./components/shell";
+import { PlayerSlot } from "./components/player/PlayerSlot";
 import { MatchResultsProvider } from "./context/MatchResultsContext";
 import {
   InCrateMainScreen,
@@ -146,7 +146,7 @@ function AppShell() {
             <InspectorSlotOutlet />
           </TrackInspector>
         }
-        player={<PlayerRegion />}
+        player={<PlayerSlot />}
         statusBar={<StatusStrip />}
       >
         <Routes>

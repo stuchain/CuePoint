@@ -2,8 +2,9 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { PlayerBridge, PlayerSnapshot } from "../../api/cuepointBridge.types";
+import { resetPlayerStore } from "../player/playerStore";
 import { StatusStrip } from "./StatusStrip";
-import { playerStatusMessage } from "./usePlayerStatus";
+import { playerStatusMessage, usePlayerStatusMessage } from "./usePlayerStatus";
 
 /**
  * The player's line in the status strip (PLAYER-03).
@@ -43,9 +44,31 @@ function snapshot(overrides: Partial<PlayerSnapshot["status"]> = {}): PlayerSnap
 }
 
 afterEach(() => {
+  resetPlayerStore();
   vi.restoreAllMocks();
   delete (window as { cuepoint?: unknown }).cuepoint;
 });
+
+function installBridge(initial: PlayerSnapshot) {
+  let push: ((snapshot: PlayerSnapshot) => void) | null = null;
+  const unsubscribe = vi.fn();
+  // Only the two bridge methods the strip uses; the rest of the surface is
+  // PLAYER-06's to exercise.
+  const player = {
+    getState: vi.fn().mockResolvedValue(initial),
+    subscribeState: (onState: (s: PlayerSnapshot) => void) => {
+      push = onState;
+      onState(initial);
+      return unsubscribe;
+    },
+  } as unknown as PlayerBridge;
+  window.cuepoint = {
+    getEngineStatus: vi.fn().mockResolvedValue({ connected: true, version: "1.0.0" }),
+    listJobs: vi.fn().mockResolvedValue({ jobs: [] }),
+    player,
+  } as unknown as typeof window.cuepoint;
+  return { push: (s: PlayerSnapshot) => push?.(s), unsubscribe };
+}
 
 describe("what the strip says about the player", () => {
   it("says nothing when there is no bridge at all", () => {
@@ -92,26 +115,6 @@ describe("what the strip says about the player", () => {
 });
 
 describe("the strip with a player bridge", () => {
-  function installBridge(initial: PlayerSnapshot) {
-    let push: ((snapshot: PlayerSnapshot) => void) | null = null;
-    const unsubscribe = vi.fn();
-    // Only the two bridge methods the strip uses; the rest of the surface is
-    // PLAYER-06's to exercise.
-    const player = {
-      getState: vi.fn().mockResolvedValue(initial),
-      subscribeState: (onState: (s: PlayerSnapshot) => void) => {
-        push = onState;
-        onState(initial);
-        return unsubscribe;
-      },
-    } as unknown as PlayerBridge;
-    window.cuepoint = {
-      getEngineStatus: vi.fn().mockResolvedValue({ connected: true, version: "1.0.0" }),
-      listJobs: vi.fn().mockResolvedValue({ jobs: [] }),
-      player,
-    } as unknown as typeof window.cuepoint;
-    return { push: (s: PlayerSnapshot) => push?.(s), unsubscribe };
-  }
 
   it("stays quiet for a healthy player", async () => {
     installBridge(snapshot());
@@ -164,5 +167,46 @@ describe("the strip with a player bridge", () => {
     render(<StatusStrip />);
     await waitFor(() => expect(screen.getByRole("status")).toBeInTheDocument());
     expect(screen.queryByText(/audio player/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("the strip and a moving position (PLAYER-06)", () => {
+  /** Renders the strip's message and counts how often it recomputed. */
+  function MessageProbe({ onRender }: { onRender: () => void }) {
+    const message = usePlayerStatusMessage();
+    onRender();
+    return <span>{message ?? "quiet"}</span>;
+  }
+
+  it("does not repaint as playback position moves", async () => {
+    // The strip is on screen for the life of the app. Subscribed to whole
+    // snapshots it would repaint several times a second for the length of
+    // every track, which is the trap PLAYER-06 was flagged for.
+    const { push } = installBridge(snapshot());
+    const renders = vi.fn();
+    render(<MessageProbe onRender={renders} />);
+    await waitFor(() => expect(renders).toHaveBeenCalled());
+    const before = renders.mock.calls.length;
+
+    for (const seconds of [1, 2, 3, 4, 5]) {
+      const moving = snapshot();
+      moving.playback.positionSeconds = seconds;
+      push(moving);
+    }
+
+    expect(renders.mock.calls.length).toBe(before);
+  });
+
+  it("still repaints when the player's health changes", async () => {
+    const { push } = installBridge(snapshot());
+    const renders = vi.fn();
+    render(<MessageProbe onRender={renders} />);
+    await waitFor(() => expect(renders).toHaveBeenCalled());
+    const before = renders.mock.calls.length;
+
+    push(snapshot({ reconnecting: true }));
+
+    await waitFor(() => expect(renders.mock.calls.length).toBeGreaterThan(before));
+    expect(screen.getByText("Audio player reconnecting")).toBeInTheDocument();
   });
 });

@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 5: Player, Detailed Step Specifications
 
-Status: **In progress. PLAYER-01…PLAYER-05 are implemented** (outcomes recorded under each
-step); PLAYER-06…PLAYER-12 are described below and not started. Per the process, no implementation happens from this document — each step needs an
+Status: **In progress. PLAYER-01…PLAYER-06 are implemented** (outcomes recorded under each
+step); PLAYER-07…PLAYER-12 are described below and not started. Per the process, no implementation happens from this document — each step needs an
 explicit "Implement PLAYER-NN" instruction, scoped to exactly that step, and its outcome is
 recorded under the step afterwards.
 
@@ -712,6 +712,56 @@ device settings (PLAYER-11), any waveform (Phase 11).
 
 **Risks.** A position stream at 10Hz re-rendering a table of 200 virtualized rows is the
 performance trap here. Position state must be isolated to the bar's own subtree.
+
+### Outcome (2026-09-05)
+
+Implemented as `components/player/` — `PlayerBar.tsx` and its CSS, `PlayerSlot.tsx`,
+`playerFormat.ts` and `playerStore.ts` — with 55 component tests, plus `e2e/playerBar.spec.ts`
+measuring the bar in the running app. 1,058 renderer tests, 263 main-process tests, 28 E2E, both
+typechecks, lint, ruff and the Python suites all pass.
+
+**The performance risk is addressed by construction, and tested.** A `playerStore` holds one bridge
+subscription for the whole renderer and hands out slices through selectors, so a component
+re-renders only when *its* value changes. The status strip now selects the message rather than the
+snapshot, which means it repaints when the player's health changes and never for a moving position;
+a test asserts that pushing three positions in a row re-renders a track-selecting component zero
+times, and that three readers still make one IPC subscription. Without that, every component reading
+playback state would repaint several times a second for the length of every track — the kind of
+problem that only shows up on a real library, on a slow machine, long after the code was written.
+
+**Nothing is optimistic (DEC-050).** Every control sends an intent and waits to be told what
+happened; a test asserts the play button does *not* flip on click and only changes when main says
+so. A transport that flips its own icon and then finds the command failed tells the user something
+untrue about a process they cannot see. The single exception is the seek slider mid-drag, which
+holds a local preview so an arriving position cannot yank the handle away from the pointer, and
+commits exactly one seek on release — tested in both directions.
+
+**Three things the work changed.**
+
+1. **Key and BPM were added to the queue projection.** PLAYER-05 justified five fields; the bar
+   needs what a DJ actually reads off a player, and fetching it per track change would flash empty
+   at every transition. Two small columns across the same query, additive at every layer, and
+   PLAYER-08's panel gets them too.
+2. **The transport button now derives from `playing`, not `paused`.** Idle is not paused: with
+   nothing loaded `paused` is false, so a button derived from it offered to *pause* silence. Found
+   by the no-bridge test.
+3. **Hit targets were wrong and are now the app's own.** The buttons had a hand-picked 32px floor,
+   which measured 56px at 2× against the 88px `--hit-min` standard `ToolbarIcon` and `Button` use.
+   They now size from the token: measured 44 / 88 / 132 px at 1× / 2× / 3×.
+
+**Measured in the running app, not asserted by eye.** `e2e/playerBar.spec.ts` reads sizes out of the
+packaged shell: the region is 0 px tall with no children before the first play (DEC-025's promise,
+kept), and at all three scales nothing overflows the viewport, nothing is clipped by the bar, and
+the transport meets the floor. It applies scale the way the app does — the `data-scale` attribute
+*and* the `--scale` custom property; an earlier version of this check set only the attribute, which
+changed no sizes and would have passed while testing nothing. `docs/design-signoff.md` records the
+numbers.
+
+**Not visible to a user yet, and that is the sequencing.** Nothing in the UI can start playback
+until PLAYER-09 wires double-click and the context menu, so the bar is reachable only through the
+queue API. That is why there is no CHANGELOG entry: the feature is not user-visible until the
+gesture exists. Shuffle, repeat and the queue panel are deliberately absent (PLAYER-07, PLAYER-08),
+and the model behind all three already exists from PLAYER-04.
 
 ---
 

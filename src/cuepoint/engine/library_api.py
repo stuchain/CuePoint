@@ -76,15 +76,17 @@ def parse_int_param(raw: Optional[str], *, default: int, name: str) -> int:
 def queue_track_to_dict(track: QueueTrack) -> Dict[str, Any]:
     """Serialize one playable queue entry (PLAYER-05).
 
-    Five fields, and an explicit list like :func:`track_to_dict`'s: a queue can
+    Seven fields, and an explicit list like :func:`track_to_dict`'s: a queue can
     be tens of thousands of rows, so anything added here is paid for once per
-    track. ``file_path`` is what the player opens; the rest is what the queue
-    panel shows.
+    track. ``file_path`` is what the player opens; the rest is what the player
+    bar and the queue panel show, key and BPM included (PLAYER-06).
     """
     return {
         "id": track.id,
         "title": track.title,
         "artist": track.artist,
+        "key": track.key,
+        "bpm": track.bpm,
         "duration_seconds": track.duration_seconds,
         "file_path": track.file_path,
     }

@@ -82,6 +82,43 @@ const previous = [
 ];
 
 /** Home: roof over a doorway. */
+/**
+ * Volume: a speaker cone with two waves (PLAYER-06).
+ *
+ * The waves are what separate it from `volume-muted` at a glance; the cone
+ * alone reads as "speaker", not as "sound is on".
+ */
+const volume = [
+  "............",
+  "........#...",
+  ".....#...#..",
+  "...###.#..#.",
+  "..####.#..#.",
+  "..####.#.#..",
+  "..####.#.#..",
+  "..####.#..#.",
+  "...###.#..#.",
+  ".....#...#..",
+  "........#...",
+  "............",
+];
+
+/** Muted: the same cone, crossed out. */
+const volumeMuted = [
+  "............",
+  "............",
+  ".....#......",
+  "...###..#.#.",
+  "..####...#..",
+  "..####....#.",
+  "..####...#..",
+  "..####..#.#.",
+  "...###......",
+  ".....#......",
+  "............",
+  "............",
+];
+
 const home = [
   "............",
   ".....##.....",
@@ -359,6 +396,8 @@ export const PIXEL_ICONS = {
   pause,
   next,
   previous,
+  volume,
+  "volume-muted": volumeMuted,
   home,
   library,
   activity,

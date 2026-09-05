@@ -101,8 +101,12 @@ Measured with browser devtools contrast checker at 2× scale. Primary reading pa
 | Modal close | 88 × 88 | `--hit-min` | Yes |
 | Text field | full width × 88 | `--hit-min` height | Yes |
 | Tab | flex × 66 | 0.75 × hit-min | Review* |
+| Player transport (PLAYER-06) | 88 × 88 | `--hit-min` = 44 × scale | Yes† |
+| Player play/pause (PLAYER-06) | 110 × 88 | 1.25 × `--hit-min` | Yes† |
 
 \*Tab height is slightly below 44 CSS px at 2×; acceptable for secondary nav per Phase 1 risk entry, or bump in sign-off revision.
+
+†Measured, not asserted by eye: `e2e/playerBar.spec.ts` reads the rendered sizes out of the running app at 1×, 2× and 3× (44 / 88 / 132 px) and fails if the transport drops below the floor, if anything overflows the viewport, or if any child is clipped by the bar. The play/pause button is deliberately wider — it is the one control people aim at without looking.
 
 ## Integer scale
 
@@ -111,6 +115,10 @@ Measured with browser devtools contrast checker at 2× scale. Primary reading pa
 | 1× | `--scale: 1`, crisp borders | Manual |
 | 2× | Default stored scale | Manual |
 | 3× | Large UI mode | Manual |
+
+The player bar is checked at all three automatically (`e2e/playerBar.spec.ts`), applying scale the
+way the app does — the `data-scale` attribute *and* the `--scale` custom property. Setting only the
+attribute changes no sizes, which is how a scale test can pass while testing nothing.
 
 Scale helper: `renderer/src/tokens/scale.ts` — persists to `localStorage`.  
 Scale context: `renderer/src/tokens/ScaleContext.tsx` — shared by top-right **Scale** control and **Settings → UI scale**.  
