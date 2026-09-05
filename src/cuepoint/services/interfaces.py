@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     from cuepoint.models.library_source import LibrarySource
     from cuepoint.models.references import ReferenceSummary
     from cuepoint.models.refresh_diff import RefreshDiff
-    from cuepoint.models.library_track import IdentityMatch, LibraryTrack
+    from cuepoint.models.library_track import IdentityMatch, LibraryTrack, QueueTrack
     from cuepoint.models.filter_rule import Facet, FacetRange, RuleSet
     from cuepoint.persistence.track_query import BrowseQuery
     from cuepoint.persistence.track_repository import BulkUpsertResult
@@ -671,6 +671,20 @@ class ILibraryService(ABC):
         ...
 
     @abstractmethod
+    def browse_queue_tracks(
+        self,
+        query: str = "",
+        playlist_id: Optional[int] = None,
+        rules: Optional["RuleSet"] = None,
+        sort: str = "artist",
+        direction: str = "asc",
+        limit: Optional[int] = None,
+        offset: int = 0,
+    ) -> "LibraryBrowseResult":
+        """Return one window of the view as playable queue entries."""
+        ...
+
+    @abstractmethod
     def facet(
         self,
         field: str,
@@ -820,6 +834,16 @@ class ITrackRepository(ABC):
         offset: Optional[int] = None,
     ) -> List[int]:
         """Return the ids of one window, in the same order as the rows."""
+        ...
+
+    @abstractmethod
+    def browse_queue(
+        self,
+        query: Optional["BrowseQuery"] = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
+    ) -> List["QueueTrack"]:
+        """Return one window as playable queue entries, in the rows' order."""
         ...
 
     @abstractmethod

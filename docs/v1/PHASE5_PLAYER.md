@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 5: Player, Detailed Step Specifications
 
-Status: **In progress. PLAYER-01…PLAYER-04 are implemented** (outcomes recorded under each
-step); PLAYER-05…PLAYER-12 are described below and not started. Per the process, no implementation happens from this document — each step needs an
+Status: **In progress. PLAYER-01…PLAYER-05 are implemented** (outcomes recorded under each
+step); PLAYER-06…PLAYER-12 are described below and not started. Per the process, no implementation happens from this document — each step needs an
 explicit "Implement PLAYER-NN" instruction, scoped to exactly that step, and its outcome is
 recorded under the step afterwards.
 
@@ -620,6 +620,57 @@ items. **This is the phase's only desktop-contract step.**
 **Risks.** Paging without a stable tiebreak repeats or skips rows, which LIBUI-01 already solved
 for the table; this step must use the same ordering guarantee rather than a new one, or a long
 queue will quietly contain duplicates.
+
+### Outcome (2026-09-05)
+
+Implemented across the full contract chain: `build_select_queue` in `track_query.py`,
+`browse_queue` on the repository, `browse_queue_tracks` on the service, a `QueueTrack` model,
+`fields=queue` on `/api/v1/library/search`, the typed parameter and row in `engineClient.ts`, a
+`queueResolver.ts` in main, the `player:playView` IPC arm, the runtime preload and the renderer
+bridge types. 23 new engine tests, 21 resolver tests, and one end-to-end test that crosses every
+layer at once. 3,317 Python tests, 263 main-process tests, 993 renderer tests, 27 E2E, both
+typechecks, ruff and lint all pass.
+
+**The projection is a third view of one query, not a second query path.** `build_select_queue`
+reuses the same predicate, the same scope and the same `_order_by` as `build_select` and
+`build_select_ids` — including the row-id tiebreak the risk note names — so paging a long queue
+cannot repeat or skip a track. The acceptance criterion is tested directly rather than argued:
+`fields=queue` and `mode=browse` are asserted to return identical ids for the default order, four
+different sorts, a text query, a filtered view, a playlist-scoped view, and all of them at once.
+A separate test pages the queue two rows at a time and asserts the pages join up into exactly the
+browse order with nothing duplicated.
+
+**Resolution happens in main, not the renderer.** The renderer sends the *query* it is showing;
+main asks the engine and keeps the result, which is where DEC-050 puts the queue. The alternative —
+resolving in the renderer — would send up to fifty thousand rows across IPC twice, out to a
+renderer that never needs to see them and back again. The cap is `QUEUE_MAX_TRACKS = 50,000`,
+matched to the engine's own ceiling for one projection request and to the library size LIBUI-01 was
+measured against, so it is "the largest library CuePoint supports" rather than a smaller number
+invented here. Above it the queue is cut short and `playView` returns `truncated` with a message
+naming both numbers, because doing less than was asked without saying so is the one outcome that is
+not acceptable.
+
+**Two defects found by the gates rather than by review.**
+
+1. **An interface left behind.** `browse_queue` was added to `TrackRepository` but not to
+   `ITrackRepository`, so the service called a method its own interface did not declare. The mypy
+   foundation gate caught it — exactly the gap FOUNDATION-01 formalised those interfaces to
+   prevent.
+2. **A filter syntax I got wrong** (`op` rather than `operator`) made two agreement tests fail
+   against the real engine — worth noting only because it is the kind of thing a mocked test would
+   have accepted happily.
+
+**Verified end to end**, in `e2e/playerQueue.spec.ts`: the app imports a Rekordbox export whose
+tracks point at the repository's real audio fixtures, then plays the view sorted by artist
+descending starting at its second row. The resulting queue is asserted **equal to what the table
+itself returns for the same query**, the second row is what is playing, and mpv is running. That is
+the one test that proves the chain is joined up; each layer's own tests cannot.
+
+**Scope notes.** The gesture that triggers this is PLAYER-09's and the panel that shows the queue
+is PLAYER-08's — nothing in the renderer calls `playView` yet, and the bridge type is what
+PLAYER-09 will reach for. DEC-013's Play Next and Add to Queue over a *selection* are not resolved
+here either: a selection that crosses unloaded rows is a list of ids rather than a view, which is a
+different query shape, and PLAYER-09 is where the selection semantics get decided.
 
 ---
 

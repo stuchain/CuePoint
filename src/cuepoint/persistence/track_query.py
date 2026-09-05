@@ -411,6 +411,35 @@ def build_select_ids(
     return sql, (*params, clamp_ids_limit(limit), clamp_offset(offset))
 
 
+def build_select_queue(
+    query: BrowseQuery, limit: Optional[int] = None, offset: Optional[int] = None
+) -> Tuple[str, Tuple[object, ...]]:
+    """Build the same query projected to what a playback queue needs (PLAYER-05).
+
+    A third projection of one query, not a third query path: the same predicate
+    and the same ordering as :func:`build_select`, reading the five columns a
+    queue entry is made of. DEC-012 says double-clicking loads *the current
+    view* as the queue, and with DEC-040's windowed table that view is a query
+    rather than an array — so the queue is resolved by re-running the query the
+    user is looking at, in the order they are looking at it.
+
+    Five columns rather than twenty because a queue can be tens of thousands of
+    rows: the rest of a track's fields are the Inspector's business, and sending
+    them would multiply the payload for nothing.
+
+    Ordering ends with the row id, exactly as the other projections do, so
+    paging a long queue cannot repeat or skip a track where sort values tie.
+    """
+    valid = query.validated()
+    cte, where, params = _predicate(valid)
+    sql = (
+        f"{cte}SELECT tracks.id, tracks.title, tracks.artist, "
+        f"tracks.duration_seconds, tracks.file_path FROM tracks{where} "
+        f"{_order_by(valid)} LIMIT ? OFFSET ?"
+    )
+    return sql, (*params, clamp_ids_limit(limit), clamp_offset(offset))
+
+
 def build_count(query: BrowseQuery) -> Tuple[str, Tuple[object, ...]]:
     """Build the unpaged count for the same predicate as :func:`build_select`.
 

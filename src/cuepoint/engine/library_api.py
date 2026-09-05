@@ -26,7 +26,7 @@ from cuepoint.models.filter_rule import (
     describe_operators,
     field_spec,
 )
-from cuepoint.models.library_track import LibraryTrack
+from cuepoint.models.library_track import LibraryTrack, QueueTrack
 from cuepoint.persistence.track_query import (
     DEFAULT_SORT,
     SORTABLE_COLUMNS,
@@ -73,6 +73,23 @@ def parse_int_param(raw: Optional[str], *, default: int, name: str) -> int:
         raise ValueError(f"{name} must be an integer") from exc
 
 
+def queue_track_to_dict(track: QueueTrack) -> Dict[str, Any]:
+    """Serialize one playable queue entry (PLAYER-05).
+
+    Five fields, and an explicit list like :func:`track_to_dict`'s: a queue can
+    be tens of thousands of rows, so anything added here is paid for once per
+    track. ``file_path`` is what the player opens; the rest is what the queue
+    panel shows.
+    """
+    return {
+        "id": track.id,
+        "title": track.title,
+        "artist": track.artist,
+        "duration_seconds": track.duration_seconds,
+        "file_path": track.file_path,
+    }
+
+
 def track_to_dict(track: LibraryTrack) -> Dict[str, Any]:
     """Serialize a library track for the API.
 
@@ -117,9 +134,13 @@ MODE_SEARCH = "search"
 MODE_BROWSE = "browse"
 MODES = (MODE_SEARCH, MODE_BROWSE)
 
-#: ``fields=id`` narrows the projection to ids (DEC-045). Anything else is
-#: refused rather than ignored, so a typo does not silently return whole rows.
+#: ``fields=id`` narrows the projection to ids (DEC-045); ``fields=queue``
+#: narrows it to what a playback queue entry needs (PLAYER-05, DEC-012).
+#: Anything else is refused rather than ignored, so a typo does not silently
+#: return whole rows.
 FIELDS_ID = "id"
+FIELDS_QUEUE = "queue"
+FIELDS_VALUES = (FIELDS_ID, FIELDS_QUEUE)
 
 
 def parse_mode(raw: Optional[str]) -> str:
@@ -207,13 +228,14 @@ def parse_fields(raw: Optional[str]) -> Optional[str]:
     """Parse the ``fields`` projection parameter.
 
     Raises:
-        ValueError: If it is anything but ``id``.
+        ValueError: If it is anything but ``id`` or ``queue``.
     """
     if raw is None or raw.strip() == "":
         return None
     fields = str(raw).strip().lower()
-    if fields != FIELDS_ID:
-        raise ValueError(f"fields may only be '{FIELDS_ID}', not {raw!r}")
+    if fields not in FIELDS_VALUES:
+        allowed = " or ".join(repr(value) for value in FIELDS_VALUES)
+        raise ValueError(f"fields may only be {allowed}, not {raw!r}")
     return fields
 
 
@@ -247,9 +269,12 @@ def search_library(
     service = _resolve_library_service()
 
     if mode == MODE_BROWSE:
-        browse = (
-            service.browse_track_ids if fields == FIELDS_ID else service.browse_tracks
-        )
+        if fields == FIELDS_ID:
+            browse = service.browse_track_ids
+        elif fields == FIELDS_QUEUE:
+            browse = service.browse_queue_tracks
+        else:
+            browse = service.browse_tracks
         result: Any = browse(
             query=query,
             playlist_id=playlist_id,
@@ -286,6 +311,11 @@ def search_library(
     ids = getattr(result, "track_ids", None)
     if ids is not None:
         payload["track_ids"] = ids
+    queue_tracks = getattr(result, "queue_tracks", None)
+    if queue_tracks is not None:
+        # Additive, like ``track_ids`` before it: a caller that never asks for
+        # this projection sees exactly the response it always saw.
+        payload["queue_tracks"] = [queue_track_to_dict(t) for t in queue_tracks]
     return payload
 
 

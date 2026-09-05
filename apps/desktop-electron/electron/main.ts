@@ -6,7 +6,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { EngineSupervisor, resolvePreloadPath } from "./engineSupervisor";
 import { PlaybackController } from "./playbackController";
+import { queueTruncationMessage, resolveQueueFromView } from "./queueResolver";
 import type { QueueItemInput, RepeatMode } from "./playbackQueue";
+import type { LibraryBrowseParams } from "./engineClient";
 import { PlayerSupervisor } from "./playerSupervisor";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -190,6 +192,45 @@ function registerIpcHandlers(): void {
       } catch (error) {
         // A structured result, not a thrown string: "there is no audio player"
         // is something the UI shows a person, not a stack trace.
+        return {
+          ok: false as const,
+          code: (error as { code?: string }).code ?? "player-error",
+          error: (error as Error).message,
+        };
+      }
+    },
+  );
+  /**
+   * Play a whole view (PLAYER-05, DEC-012).
+   *
+   * The renderer sends the query it is showing, not the rows: with DEC-040's
+   * windowed table it only holds a hundred of them, and the queue has to be
+   * the whole view in the view's own order. Resolving here also keeps up to
+   * fifty thousand rows from crossing IPC twice for a list the renderer never
+   * needs to see.
+   */
+  ipcMain.handle(
+    "player:playView",
+    async (_event, view: LibraryBrowseParams, startIndex: number) => {
+      try {
+        const resolved = await resolveQueueFromView(
+          (params) => engine.browseLibrary(params),
+          view ?? {},
+        );
+        if (resolved.items.length === 0) {
+          return { ok: false as const, code: "empty-view", error: "Nothing to play." };
+        }
+        await playback.playQueue(resolved.items, startIndex ?? 0);
+        return {
+          ok: true as const,
+          queued: resolved.items.length,
+          total: resolved.total,
+          truncated: resolved.truncated,
+          // Null unless something was actually left out, so the renderer shows
+          // a message only when there is one to show.
+          message: queueTruncationMessage(resolved),
+        };
+      } catch (error) {
         return {
           ok: false as const,
           code: (error as { code?: string }).code ?? "player-error",

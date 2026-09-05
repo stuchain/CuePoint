@@ -68,6 +68,23 @@ export type PlayerPlayResult =
   | { ok: false; code: string; error: string };
 
 /**
+ * The result of queueing a whole view (PLAYER-05).
+ *
+ * `truncated` and `message` exist because a view can be larger than a queue is
+ * allowed to be, and doing less than was asked without saying so is the one
+ * outcome that is not acceptable.
+ */
+export type PlayerPlayViewResult =
+  | {
+      ok: true;
+      queued: number;
+      total: number;
+      truncated: boolean;
+      message: string | null;
+    }
+  | { ok: false; code: string; error: string };
+
+/**
  * The player bridge (PLAYER-03, extended by PLAYER-04).
  *
  * Everything that plays goes through the queue, which is why there is no
@@ -78,6 +95,16 @@ export interface PlayerBridge {
   getState: () => Promise<PlayerSnapshot>;
   /** Play a view's worth of tracks, starting at one of them (DEC-012). */
   playQueue: (items: QueueItemInput[], startIndex?: number) => Promise<PlayerPlayResult>;
+  /**
+   * Play the whole of the view described by `params` (PLAYER-05).
+   *
+   * Send the query, not the rows: the table holds a window, and the queue is
+   * the whole view in the view's own order.
+   */
+  playView: (
+    params: LibraryBrowseParams,
+    startIndex?: number,
+  ) => Promise<PlayerPlayViewResult>;
   /** DEC-013's two append actions. */
   playNext: (items: QueueItemInput[]) => Promise<void>;
   addToQueue: (items: QueueItemInput[]) => Promise<void>;

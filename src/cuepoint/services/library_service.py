@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from typing import Iterable, List, Optional
 
 from cuepoint.models.filter_rule import Facet, FacetRange, RuleSet, field_spec
-from cuepoint.models.library_track import LibraryTrack
+from cuepoint.models.library_track import LibraryTrack, QueueTrack
 from cuepoint.models.references import NO_REFERENCES, ReferenceSummary
 from cuepoint.persistence.track_query import (
     BROWSE_LIMIT_DEFAULT,
@@ -89,6 +89,9 @@ class LibraryBrowseResult:
     sort: str = DEFAULT_SORT
     direction: str = "asc"
     track_ids: Optional[List[int]] = None
+    #: Populated instead of ``tracks`` when queue entries were asked for
+    #: (PLAYER-05). Never populated at the same time as the others.
+    queue_tracks: Optional[List[QueueTrack]] = None
 
 
 class LibraryService(ILibraryService):
@@ -224,6 +227,48 @@ class LibraryService(ILibraryService):
             sort=browse.sort,
             direction=browse.direction,
             track_ids=self._tracks.browse_ids(
+                browse, limit=safe_limit, offset=safe_offset
+            ),
+        )
+
+    def browse_queue_tracks(
+        self,
+        query: str = "",
+        playlist_id: Optional[int] = None,
+        rules: Optional[RuleSet] = None,
+        sort: str = DEFAULT_SORT,
+        direction: str = "asc",
+        limit: Optional[int] = None,
+        offset: int = 0,
+    ) -> LibraryBrowseResult:
+        """Return one window of the view as playable queue entries (PLAYER-05).
+
+        What DEC-012's "the current view becomes the queue" is built from. The
+        same predicate, scope and ordering as :meth:`browse_tracks` — so the
+        queue is in the order the user is looking at — with the compact
+        projection a queue entry needs.
+
+        The result carries ``queue_tracks`` and an empty ``tracks``.
+        """
+        browse = BrowseQuery(
+            query=query or "",
+            playlist_id=playlist_id,
+            sort=sort or DEFAULT_SORT,
+            direction=direction or "asc",
+            rules=rules or RuleSet(),
+        ).validated()
+        safe_limit = clamp_ids_limit(limit)
+        safe_offset = clamp_offset(offset)
+        return LibraryBrowseResult(
+            query=browse.query,
+            tracks=[],
+            total=self._tracks.browse_count(browse),
+            limit=safe_limit,
+            offset=safe_offset,
+            playlist_id=browse.playlist_id,
+            sort=browse.sort,
+            direction=browse.direction,
+            queue_tracks=self._tracks.browse_queue(
                 browse, limit=safe_limit, offset=safe_offset
             ),
         )

@@ -59,8 +59,14 @@ export interface LibraryBrowseParams {
   filters?: FilterRuleSet | null;
   limit?: number;
   offset?: number;
-  /** Ask for ids instead of rows, for a selection that crosses unloaded rows. */
-  fields?: "id";
+  /**
+   * Ask for a narrower projection of the same query.
+   *
+   * `id` is a selection crossing unloaded rows (DEC-045); `queue` is the
+   * playable form the queue is built from (PLAYER-05). Neither is a different
+   * query — same scope, filters and ordering, fewer columns.
+   */
+  fields?: "id" | "queue";
 }
 
 export interface LibraryPlaylistNode {
@@ -159,6 +165,23 @@ export interface LibrarySearchResponse {
   filters?: FilterRuleSet | null;
   /** Present only when ids were asked for; `tracks` is then empty. */
   track_ids?: number[];
+  /** Present only when queue entries were asked for; `tracks` is then empty. */
+  queue_tracks?: QueueTrackRow[];
+}
+
+/**
+ * A track as a playback queue entry (PLAYER-05).
+ *
+ * Five fields, because DEC-012 turns a whole view into a queue and a view can
+ * be tens of thousands of rows. `file_path` is what the player opens; the rest
+ * is what the queue panel shows.
+ */
+export interface QueueTrackRow {
+  id: number;
+  title: string;
+  artist: string;
+  duration_seconds: number | null;
+  file_path: string;
 }
 
 export interface LibrarySourceInfo {

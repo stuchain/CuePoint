@@ -17,6 +17,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 from cuepoint.models.library_track import (
     IdentityMatch,
     LibraryTrack,
+    QueueTrack,
     normalize_path,
     resolve_identity,
     utc_now_iso,
@@ -30,6 +31,7 @@ from cuepoint.persistence.track_query import (
     build_facet_values,
     build_select,
     build_select_ids,
+    build_select_queue,
     clamp_facet_limit,
     search_clause,
 )
@@ -421,6 +423,22 @@ class TrackRepository(ITrackRepository):
         sql, params = build_select_ids(query or BrowseQuery(), limit, offset)
         rows = self._db.connect().execute(sql, params).fetchall()
         return [int(row["id"]) for row in rows]
+
+    def browse_queue(
+        self,
+        query: Optional[BrowseQuery] = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
+    ) -> List[QueueTrack]:
+        """Return what :meth:`browse` would return, as playable queue entries.
+
+        The same predicate and ordering with a queue-shaped projection, so the
+        queue a double-click builds is in exactly the order the table shows
+        (PLAYER-05, DEC-012) without a second query path that could disagree.
+        """
+        sql, params = build_select_queue(query or BrowseQuery(), limit, offset)
+        rows = self._db.connect().execute(sql, params).fetchall()
+        return [QueueTrack.from_row(row) for row in rows]
 
     def browse_count(self, query: Optional[BrowseQuery] = None) -> int:
         """Return how many tracks :meth:`browse` would return, ignoring paging.
