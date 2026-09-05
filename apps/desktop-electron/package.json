@@ -40,7 +40,7 @@
     ],
     "extraResources": [
       {
-        "from": "resources/engine/${os}",
+        "from": "resources/engine/${os}-${arch}",
         "to": "engine",
         "filter": ["**/*"]
       },

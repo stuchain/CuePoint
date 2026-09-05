@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   status chrome off-screen as those are added
 
 ### Fixed
+- Installed builds of CuePoint shipped without the engine that does the work.
+  The packaging step looked for it under a directory name the build never
+  produced, and packaging treats a missing file as a warning rather than an
+  error, so Windows and macOS installers were built and published with the
+  engine silently left out. Both bundled components are now named consistently
+  and a test holds the two halves together
 - A fresh installation could create an empty library database. The packaged
   engine did not include its schema migrations — they are loaded dynamically,
   so the bundler never saw them — and applied none, leaving the first thing you

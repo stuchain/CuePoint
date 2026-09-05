@@ -368,7 +368,7 @@ operator`**, weakening type-checking on the best-tested, highest-value module.
 
 Python engine: `scripts/build_engine_sidecar.py` → PyInstaller (onedir/onefile set inside the
 `.spec` file, not confirmed from build-script flags), output copied into
-`apps/desktop-electron/resources/engine/${os}` as `electron-builder` `extraResources`.
+`apps/desktop-electron/resources/engine/${os}-${arch}` as `electron-builder` `extraResources`.
 `electron-builder` targets **all three OSes** (`nsis`/`dmg`/`AppImage`), but there's no dedicated
 `build-linux.yml` — only `desktop-electron.yml`'s ubuntu CI leg exercises it, not a release
 pipeline. Checksums are always generated; GPG signing of `SHA256SUMS` is optional

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import platform
 import shutil
 import socket
 import subprocess
@@ -12,16 +13,55 @@ import sys
 import time
 import urllib.request
 from pathlib import Path
+from typing import Optional
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SPEC = PROJECT_ROOT / "build" / "engine-sidecar.spec"
 RESOURCES_ROOT = PROJECT_ROOT / "apps" / "desktop-electron" / "resources" / "engine"
 
+#: ``sys.platform`` -> the ``${os}`` value electron-builder expands.
+#:
+#: These are electron-builder's names, not Python's. ``extraResources.from`` in
+#: ``apps/desktop-electron/package.json`` is macro-expanded as
+#: ``resources/engine/${os}-${arch}``, where ``${os}`` is a Platform's
+#: ``buildConfigurationKey`` (``mac``/``win``/``linux``) and ``${arch}`` is
+#: ``x64``/``arm64``. They are deliberately *not* ``darwin``/``win32``.
+#:
+#: This mapping previously used Python's names, and the mismatch meant the
+#: ``from`` path never resolved on Windows or macOS: electron-builder skipped
+#: the payload with a warning and produced installers with no engine in them.
+#: ``src/tests/unit/scripts/test_packaging_resource_paths.py`` now holds the two
+#: sides together.
 PLATFORM_DIRS = {
-    "win32": "win32",
-    "darwin": "darwin",
+    "win32": "win",
+    "darwin": "mac",
     "linux": "linux",
 }
+
+
+def normalize_arch(machine: str) -> str:
+    """Map a ``platform.machine()`` value onto electron-builder's ``${arch}``."""
+    m = (machine or "").lower()
+    if m in ("amd64", "x86_64", "x64"):
+        return "x64"
+    if m in ("arm64", "aarch64"):
+        return "arm64"
+    return m or "unknown"
+
+
+def platform_dir(
+    system: Optional[str] = None, machine: Optional[str] = None
+) -> Optional[str]:
+    """The ``resources/engine/`` subdirectory this build should write to.
+
+    Returns ``None`` for a platform the sidecar cannot be built for. Separated
+    from :func:`main` so the packaging contract can be tested without running
+    PyInstaller.
+    """
+    key = PLATFORM_DIRS.get(system or sys.platform)
+    if key is None:
+        return None
+    return f"{key}-{normalize_arch(machine or platform.machine())}"
 
 
 def _free_port() -> int:
@@ -73,7 +113,7 @@ def _smoke_test_executable(exe: Path) -> None:
 
 
 def main() -> int:
-    platform_key = PLATFORM_DIRS.get(sys.platform)
+    platform_key = platform_dir()
     if not platform_key:
         print(f"Unsupported platform: {sys.platform}", file=sys.stderr)
         return 1

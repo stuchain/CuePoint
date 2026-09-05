@@ -65,6 +65,15 @@ pip install -r requirements.txt -r requirements-dev.txt
 | `CUEPOINT_ENV` | Set to `dev` for development mode |
 | `CUEPOINT_MPV_PATH` | Path to an mpv binary to use instead of the bundled player sidecar |
 
+## Engine sidecar layout
+
+`python scripts/build_engine_sidecar.py` writes to
+`apps/desktop-electron/resources/engine/<os>-<arch>/` (`win-x64`, `mac-arm64`, ...). These names are
+electron-builder's `${os}-${arch}` macros, not Python's `sys.platform`, because `extraResources`
+expands them when packaging; a mismatch makes the packaged app silently omit the sidecar. If you
+have a `resources/engine/win32/` or `resources/engine/darwin/` directory from an older checkout it
+is stale build output and can be deleted.
+
 ## Player sidecar (mpv)
 
 The desktop app plays audio through a bundled `mpv` binary run as a second
