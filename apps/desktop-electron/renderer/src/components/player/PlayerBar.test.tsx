@@ -55,10 +55,11 @@ function snapshot(overrides: {
       ...overrides.playback,
     },
     queue: {
-      items,
-      playOrder: items.map((entry) => entry.id),
+      length: items.length,
       currentId: overrides.currentId === undefined ? items[0]?.id ?? null : overrides.currentId,
       currentIndex: 0,
+      currentItem:
+        overrides.currentId === null ? null : (items[0] ?? null),
       shuffle: overrides.shuffle ?? false,
       repeat: overrides.repeat ?? "off",
     },

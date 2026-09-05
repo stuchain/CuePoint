@@ -4,6 +4,7 @@ import {
   type QueueItem,
   type QueueItemInput,
   type QueueSnapshot,
+  type QueueWindow,
   type RepeatMode,
 } from "./playbackQueue";
 import type { PlayerSnapshot, PlayerSupervisor } from "./playerSupervisor";
@@ -77,6 +78,17 @@ export class PlaybackController {
 
   snapshot(): PlaybackControllerSnapshot {
     return { ...this.player.getSnapshot(), queue: this.queue.snapshot() };
+  }
+
+  /**
+   * One page of the queue, for the panel (PLAYER-08).
+   *
+   * Served from the queue already in memory rather than re-queried from the
+   * engine: main built these items when the view was resolved (PLAYER-05) and
+   * they are the queue, so asking the engine again could only disagree.
+   */
+  queueWindow(offset: number, limit: number): QueueWindow {
+    return this.queue.window(offset, limit);
   }
 
   onSnapshot(listener: ControllerListener): () => void {

@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 5: Player, Detailed Step Specifications
 
-Status: **In progress. PLAYER-01…PLAYER-07 are implemented** (outcomes recorded under each
-step); PLAYER-08…PLAYER-12 are described below and not started. Per the process, no implementation happens from this document — each step needs an
+Status: **In progress. PLAYER-01…PLAYER-08 are implemented** (outcomes recorded under each
+step); PLAYER-09…PLAYER-12 are described below and not started. Per the process, no implementation happens from this document — each step needs an
 explicit "Implement PLAYER-NN" instruction, scoped to exactly that step, and its outcome is
 recorded under the step afterwards.
 
@@ -869,6 +869,52 @@ asserting a bounded number of rendered nodes.
 **Risks.** Drag-and-drop plus virtualization is the combination that produces flaky tests and
 janky pointer behavior. Reordering must be expressible without dragging as well — keyboard, or a
 menu action — both for accessibility and so the behavior can be tested without simulating drags.
+
+### Outcome (2026-09-05)
+
+Implemented as `QueuePanel.tsx` and `useQueueWindow.ts`, opened from a toggle in the bar, with the
+queue's contents moved off the pushed snapshot and behind a window. 1,143 renderer tests, 276
+main-process, 30 E2E, both typechecks and lint pass.
+
+**The step began by finding a defect the earlier steps had shipped.** The snapshot pushed to the
+renderer carried the whole queue. Measured against PLAYER-05's documented 50,000-track cap that is
+**14.5 MB per push, about 58 MB/s of IPC** at the transport's update rate — for a panel showing
+twenty rows. So `QueueSnapshot` now carries the queue's *shape* (length, current index, the playing
+entry) and `player:queueWindow` serves the slice the panel can see. A test pins it: a 50,000-track
+queue and a 10-track queue produce snapshots within 20% of each other, both under 2 KB.
+
+That change rippled — the bar's "current item" moved from a search through `queue.items` to a field
+on the snapshot, and every fixture in six test files was updated. It also correctly broke two of
+this phase's own E2E specs, which were still reading `state.queue.items`; both now read a window,
+the same way the panel does.
+
+**Every gesture works without a mouse**, which is the answer to the step's stated risk: Alt+Up and
+Alt+Down move a row, Delete removes one, Enter plays it, and double-click and drag do the same
+things. The keyboard path is what the tests use, so the suite never simulates a drag — though one
+test does, to keep the drag path honest.
+
+**It is a place, not a stack.** Played entries stay above the current one, so "what did I just
+play?" is answerable and jumping back is possible.
+
+**A real layout regression, caught by a test written two steps earlier.** Adding the queue toggle
+made seven scaled buttons plus gaps wider than the window at 3×, and the shell began scrolling
+horizontally — `e2e/playerBar.spec.ts` measured it and failed. The bar is now flex with wrapping
+rather than a fixed grid, and its two flexible sections start from a zero basis so they absorb the
+squeeze instead of forcing a wrap. Bar heights are back to exactly what they were before this step
+at every scale (62 / 108 / 154 px), with wrapping left as the safety net for a genuinely narrow
+window.
+
+**The E2E suite was over-parallelised, and this step tipped it over.** Playwright defaulted to
+eight workers on this machine, each launching a whole Electron app — several twice, and the player
+specs also start mpv. The full run took four minutes and timed a test out at two; capped at two
+workers it finishes in under one, green twice in a row. Capped rather than serialised: two still
+overlaps the launch waits, which is where the time actually goes.
+
+**Verified in the running app** (`e2e/playerQueuePanel.spec.ts`): the panel lists the queue main is
+actually holding, an Alt+Up reorder is reflected in main's own window, removing a track changes both
+the panel and main's total, and Enter on a row changes what is playing.
+
+**Not in scope, as specified**: saving a queue as a Collection (Phase 6) and Sets (Phase 10).
 
 ---
 

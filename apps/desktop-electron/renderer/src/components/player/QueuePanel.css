@@ -1,0 +1,151 @@
+/*
+ * The queue panel (PLAYER-08).
+ *
+ * A column beside the content, not a floating popover: it is a place the user
+ * works in — reordering, removing, jumping — rather than something glanced at
+ * and dismissed. Built from the same tokens and pixel chrome as the rest of the
+ * shell; nothing here introduces a new visual idea.
+ */
+
+.cp-queue {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: min(28rem, 40vw);
+  border-left: var(--border-width, 2px) solid var(--color-border, #000);
+  background: var(--color-surface, #fff);
+}
+
+.cp-queue__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2, 8px);
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  border-bottom: var(--border-width, 2px) solid var(--color-border, #000);
+}
+
+.cp-queue__title {
+  margin: 0;
+  font-size: var(--font-size-sm, 12px);
+}
+
+.cp-queue__close {
+  min-width: var(--hit-min, 44px);
+  min-height: var(--hit-min, 44px);
+  border: var(--border-width, 2px) solid var(--color-border, #000);
+  background: var(--color-surface, #fff);
+  color: var(--color-text, #000);
+  cursor: pointer;
+}
+
+.cp-queue__empty {
+  margin: 0;
+  padding: var(--space-4, 16px);
+  color: var(--color-text-muted, #555);
+  font-size: var(--font-size-sm, 12px);
+}
+
+.cp-queue__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  position: relative;
+}
+
+.cp-queue__sizer {
+  position: relative;
+  width: 100%;
+}
+
+.cp-queue__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  width: 100%;
+  padding: 0 var(--space-2, 8px);
+  border-bottom: 1px solid var(--color-border-subtle, #ddd);
+  box-sizing: border-box;
+  cursor: default;
+}
+
+.cp-queue__row:hover {
+  background: var(--color-surface-hover, #eee);
+}
+
+.cp-queue__row:focus-visible {
+  outline: var(--border-width, 2px) solid var(--color-accent, #06c);
+  outline-offset: -2px;
+}
+
+/* The playing row is marked with weight and a bar, not colour alone. */
+.cp-queue__row--playing {
+  background: var(--color-surface-hover, #eee);
+  border-left: 3px solid var(--color-accent, #06c);
+  font-weight: 700;
+}
+
+.cp-queue__row--failed .cp-queue__row-title {
+  text-decoration: line-through;
+  color: var(--color-text-muted, #555);
+}
+
+.cp-queue__position,
+.cp-queue__duration {
+  font-family: var(--font-data, monospace);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--font-size-xs, 11px);
+  color: var(--color-text-muted, #555);
+  flex: 0 0 auto;
+}
+
+.cp-queue__position {
+  min-width: 3ch;
+  text-align: right;
+}
+
+.cp-queue__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.cp-queue__row-title,
+.cp-queue__row-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cp-queue__row-title {
+  font-size: var(--font-size-sm, 12px);
+}
+
+.cp-queue__row-meta {
+  font-family: var(--font-data, monospace);
+  font-size: var(--font-size-xs, 11px);
+  color: var(--color-text-muted, #555);
+}
+
+.cp-queue__failed {
+  flex: 0 0 auto;
+  font-size: var(--font-size-xs, 11px);
+  color: var(--color-danger, #c00);
+  text-transform: uppercase;
+}
+
+.cp-queue__remove {
+  flex: 0 0 auto;
+  min-width: 24px;
+  min-height: 24px;
+  border: var(--border-width, 2px) solid transparent;
+  background: transparent;
+  color: var(--color-text-muted, #555);
+  cursor: pointer;
+}
+
+.cp-queue__remove:hover {
+  border-color: var(--color-border, #000);
+  color: var(--color-text, #000);
+}

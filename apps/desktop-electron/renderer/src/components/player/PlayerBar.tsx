@@ -9,6 +9,7 @@ import {
   selectMuted,
   selectPlaying,
   selectPosition,
+  selectQueueLength,
   selectRepeat,
   selectShuffle,
   selectVolume,
@@ -37,7 +38,13 @@ import "./PlayerBar.css";
 
 const bridge = () => window.cuepoint?.player;
 
-export function PlayerBar() {
+export interface PlayerBarProps {
+  /** Whether the queue panel is open, and how to change that (PLAYER-08). */
+  queueOpen?: boolean;
+  onToggleQueue?: () => void;
+}
+
+export function PlayerBar({ queueOpen = false, onToggleQueue }: PlayerBarProps = {}) {
   const item = usePlayerValue(selectCurrentItem, sameItem);
   const playing = usePlayerValue(selectPlaying);
   const position = usePlayerValue(selectPosition);
@@ -46,6 +53,7 @@ export function PlayerBar() {
   const muted = usePlayerValue(selectMuted);
   const shuffle = usePlayerValue(selectShuffle);
   const repeat = usePlayerValue(selectRepeat);
+  const queueLength = usePlayerValue(selectQueueLength);
 
   // Only while dragging; null the rest of the time so the slider follows mpv.
   const [scrubSeconds, setScrubSeconds] = useState<number | null>(null);
@@ -146,6 +154,7 @@ export function PlayerBar() {
         <span className="cp-player-bar__time">{formatTime(duration)}</span>
       </div>
 
+      <div className="cp-player-bar__controls">
       <div className="cp-player-bar__order">
         <button
           type="button"
@@ -167,6 +176,18 @@ export function PlayerBar() {
               glyph rather than the loop with a badge stuck on it. */}
           <PixelIcon name={repeat === "one" ? "repeat-one" : "repeat"} />
         </button>
+        {onToggleQueue && (
+          <button
+            type="button"
+            className={`cp-player-bar__button${queueOpen ? " cp-player-bar__button--on" : ""}`}
+            onClick={onToggleQueue}
+            aria-label={queueOpen ? "Hide queue" : `Show queue (${queueLength})`}
+            aria-pressed={queueOpen}
+            aria-expanded={queueOpen}
+          >
+            <PixelIcon name="queue" />
+          </button>
+        )}
       </div>
 
       <div className="cp-player-bar__volume">
@@ -190,6 +211,7 @@ export function PlayerBar() {
           aria-label="Volume"
           aria-valuetext={`${muted ? 0 : Math.round(volume)}%`}
         />
+      </div>
       </div>
     </div>
   );

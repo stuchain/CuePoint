@@ -39,16 +39,28 @@ export interface QueueItem {
   status: QueueItemStatus;
 }
 
-/** What the queue panel needs to draw itself (PLAYER-08). */
+/**
+ * The shape of the queue, pushed on every change (PLAYER-08).
+ *
+ * Not its contents: at PLAYER-05's 50,000-track cap those are about 14.5 MB,
+ * and this is pushed several times a second while a track plays. The panel
+ * reads what it can see through `queueWindow`.
+ */
 export interface QueueSnapshot {
-  /** View order, which is what the panel shows. */
-  items: QueueItem[];
-  /** Play order, which differs from view order while shuffled. */
-  playOrder: string[];
+  length: number;
   currentId: string | null;
   currentIndex: number;
+  /** The playing entry, so the bar needs no window request. */
+  currentItem: QueueItem | null;
   shuffle: boolean;
   repeat: RepeatMode;
+}
+
+/** One page of the queue, in play order (PLAYER-08). */
+export interface QueueWindow {
+  offset: number;
+  total: number;
+  items: QueueItem[];
 }
 
 /** What a caller adds to the queue; ids and status are assigned in main. */
@@ -110,6 +122,8 @@ export interface PlayerBridge {
     params: LibraryBrowseParams,
     startIndex?: number,
   ) => Promise<PlayerPlayViewResult>;
+  /** One page of the queue, in play order (PLAYER-08). */
+  queueWindow: (offset: number, limit: number) => Promise<QueueWindow>;
   /** DEC-013's two append actions. */
   playNext: (items: QueueItemInput[]) => Promise<void>;
   addToQueue: (items: QueueItemInput[]) => Promise<void>;

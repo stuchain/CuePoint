@@ -63,16 +63,39 @@ export interface PlaybackQueueOptions {
   random?: () => number;
 }
 
+/**
+ * What is pushed to the renderer on every change (PLAYER-08).
+ *
+ * Deliberately *not* the queue's contents. A queue may hold PLAYER-05's cap of
+ * 50,000 tracks, which serializes to about 14.5 MB; pushed at the transport's
+ * update rate that is roughly 58 MB/s across IPC, for a panel showing twenty
+ * rows. So the snapshot carries the shape of the queue and the one entry the
+ * player bar has to name, and the panel asks for the window it can see
+ * (`PlaybackQueue.window`).
+ */
 export interface QueueSnapshot {
-  /** In view order — what the queue panel shows (PLAYER-08). */
-  items: readonly QueueItem[];
-  /** In play order, which differs from view order while shuffled. */
-  playOrder: readonly string[];
+  /** How many tracks are queued. */
+  length: number;
   currentId: string | null;
-  /** Position within `playOrder`, or -1. */
+  /** Position within play order, or -1. */
   currentIndex: number;
+  /**
+   * The playing entry itself.
+   *
+   * Carried so the bar can name what is playing without asking for a window —
+   * it is one item, and it changes exactly when the track does.
+   */
+  currentItem: QueueItem | null;
   shuffle: boolean;
   repeat: RepeatMode;
+}
+
+/** One page of the queue, in play order (PLAYER-08). */
+export interface QueueWindow {
+  offset: number;
+  /** The whole queue's length, so the panel can size its scrollbar. */
+  total: number;
+  items: QueueItem[];
 }
 
 let idCounter = 0;
@@ -141,13 +164,36 @@ export class PlaybackQueue {
   }
 
   snapshot(): QueueSnapshot {
+    const current = this.current;
     return {
-      items: this.items.map((item) => ({ ...item })),
-      playOrder: [...this.order],
+      length: this.items.length,
       currentId: this.currentIdValue,
       currentIndex: this.currentIndex,
+      currentItem: current ? { ...current } : null,
       shuffle: this.shuffleOn,
       repeat: this.repeatMode,
+    };
+  }
+
+  /**
+   * One page of the queue, in the order it will play.
+   *
+   * Play order rather than view order: the panel's job is to show what is
+   * coming, and while shuffled those are different lists. Out-of-range offsets
+   * answer with an empty page rather than throwing — a panel scrolling as the
+   * queue shrinks underneath it is ordinary, not exceptional.
+   */
+  window(offset: number, limit: number): QueueWindow {
+    const safeOffset = Math.max(0, Math.floor(offset));
+    const safeLimit = Math.max(0, Math.floor(limit));
+    const ids = this.order.slice(safeOffset, safeOffset + safeLimit);
+    return {
+      offset: safeOffset,
+      total: this.items.length,
+      items: ids
+        .map((id) => this.itemById(id))
+        .filter((item): item is QueueItem => item !== null)
+        .map((item) => ({ ...item })),
     };
   }
 
@@ -236,23 +282,32 @@ export class PlaybackQueue {
     return { removed, nextToPlay: next };
   }
 
-  /** Reorder in *view* order; play order follows when not shuffled. */
+  /**
+   * Reorder in *play* order — the order the queue panel shows (PLAYER-08).
+   *
+   * Dragging a row in the panel means "play this one sooner", which is a
+   * statement about play order. While unshuffled the two orders are the same
+   * and the view list is rebuilt to match; while shuffled only the play order
+   * moves, because DEC-052 says shuffle reorders the queue and never the view
+   * it was built from.
+   */
   move(fromIndex: number, toIndex: number): boolean {
     if (
       fromIndex < 0 ||
-      fromIndex >= this.items.length ||
+      fromIndex >= this.order.length ||
       toIndex < 0 ||
-      toIndex >= this.items.length ||
+      toIndex >= this.order.length ||
       fromIndex === toIndex
     ) {
       return false;
     }
-    const [moved] = this.items.splice(fromIndex, 1);
-    this.items.splice(toIndex, 0, moved);
+    const [movedId] = this.order.splice(fromIndex, 1);
+    this.order.splice(toIndex, 0, movedId);
     if (!this.shuffleOn) {
-      // Play order mirrors view order exactly while unshuffled; rebuilding it
-      // keeps the two from drifting apart.
-      this.order = this.items.map((item) => item.id);
+      const byId = new Map(this.items.map((item) => [item.id, item]));
+      this.items = this.order
+        .map((id) => byId.get(id))
+        .filter((item): item is QueueItem => item !== undefined);
     }
     return true;
   }

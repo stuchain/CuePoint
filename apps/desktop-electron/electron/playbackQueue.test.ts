@@ -24,9 +24,16 @@ function queueOf(...names: string[]) {
   return queue;
 }
 
-const titles = (queue: PlaybackQueue) => queue.snapshot().items.map((item) => item.title);
-const playTitles = (queue: PlaybackQueue) =>
-  queue.snapshot().playOrder.map((id) => queue.itemById(id)?.title);
+/**
+ * The queue as the panel sees it: play order, read through a window.
+ *
+ * The snapshot no longer carries the items themselves (PLAYER-08) — at
+ * PLAYER-05's 50,000-track cap that is 14.5 MB per push — so this is how the
+ * contents are read now.
+ */
+const titles = (queue: PlaybackQueue) => queue.window(0, 1_000).items.map((item) => item.title);
+const playTitles = titles;
+const statuses = (queue: PlaybackQueue) => queue.window(0, 1_000).items.map((item) => item.status);
 
 describe("an empty queue", () => {
   it("has nothing current", () => {
@@ -83,7 +90,7 @@ describe("building a queue", () => {
   it("marks the starting item as playing", () => {
     const queue = queueOf("a", "b");
     expect(queue.current?.status).toBe("playing");
-    expect(queue.itemById(queue.snapshot().playOrder[1])?.status).toBe("pending");
+    expect(queue.window(0, 1_000).items[1].status).toBe("pending");
   });
 
   it("gives repeated tracks distinct identities", () => {
@@ -91,7 +98,7 @@ describe("building a queue", () => {
     // separately removable.
     const queue = new PlaybackQueue();
     queue.replace([track("a"), track("a")]);
-    const [first, second] = queue.snapshot().items;
+    const [first, second] = queue.window(0, 1_000).items;
     expect(first.id).not.toBe(second.id);
   });
 });
@@ -143,7 +150,7 @@ describe("Play Next and Add to Queue (DEC-013)", () => {
 describe("removing items", () => {
   it("removing a later item leaves playback alone", () => {
     const queue = queueOf("a", "b", "c");
-    const result = queue.removeById(queue.snapshot().items[2].id);
+    const result = queue.removeById(queue.window(0, 1_000).items[2].id);
     expect(result.nextToPlay).toBeNull();
     expect(queue.current?.title).toBe("a");
   });
@@ -153,7 +160,7 @@ describe("removing items", () => {
     // neighbour "current" and the next advance skips a track.
     const queue = queueOf("a", "b", "c");
     queue.jumpTo(2); // playing "c"
-    queue.removeById(queue.snapshot().items[0].id); // remove "a"
+    queue.removeById(queue.window(0, 1_000).items[0].id); // remove "a"
 
     expect(queue.current?.title).toBe("c");
     expect(queue.currentIndex).toBe(1);
@@ -162,7 +169,7 @@ describe("removing items", () => {
   it("advancing after removing an earlier item still goes to the right track", () => {
     const queue = queueOf("a", "b", "c", "d");
     queue.jumpTo(1); // playing "b"
-    queue.removeById(queue.snapshot().items[0].id); // remove "a"
+    queue.removeById(queue.window(0, 1_000).items[0].id); // remove "a"
     expect(queue.next()?.title).toBe("c");
   });
 
@@ -261,7 +268,7 @@ describe("advancing", () => {
     queue.next();
 
     expect(queue.currentIndex).toBe(-1);
-    expect(queue.snapshot().items.some((item) => item.status === "playing")).toBe(false);
+    expect(statuses(queue).some((status) => status === "playing")).toBe(false);
   });
 
   it("jumps to an arbitrary position", () => {
@@ -279,7 +286,7 @@ describe("advancing", () => {
   it("only one item is ever marked playing", () => {
     const queue = queueOf("a", "b", "c");
     queue.next();
-    const playing = queue.snapshot().items.filter((item) => item.status === "playing");
+    const playing = queue.window(0, 1_000).items.filter((item) => item.status === "playing");
     expect(playing).toHaveLength(1);
     expect(playing[0].title).toBe("b");
   });
@@ -384,11 +391,15 @@ describe("shuffle", () => {
     expect(playTitles(queue)).toHaveLength(3);
   });
 
-  it("does not reorder the view (DEC-052)", () => {
-    // Shuffle reorders the queue, not the table the queue came from.
+  it("keeps the queue's own order to restore (DEC-052)", () => {
+    // Shuffle reorders the queue, not the list it was built from — which is
+    // why turning it off can put things back exactly. That the *table* is
+    // untouched is asserted where the table actually lives, in
+    // `playerOrderIsolation.test.tsx`.
     const queue = new PlaybackQueue({ random: reversing });
     queue.replace(tracks("a", "b", "c"));
     queue.setShuffle(true);
+    queue.setShuffle(false);
     expect(titles(queue)).toEqual(["a", "b", "c"]);
   });
 
@@ -431,7 +442,7 @@ describe("shuffle", () => {
     const queue = new PlaybackQueue({ random: reversing });
     queue.setShuffle(true);
     queue.replace(tracks("a", "b", "c"));
-    expect(queue.snapshot().playOrder).toHaveLength(3);
+    expect(queue.window(0, 1_000).items).toHaveLength(3);
     expect(queue.current?.title).toBe("a");
   });
 
@@ -449,7 +460,7 @@ describe("failures", () => {
     // PLAYER-10 shows this in the panel after the toast is gone (DEC-054).
     const queue = queueOf("a", "b");
     queue.markFailed(queue.currentId!);
-    expect(queue.snapshot().items[0].status).toBe("failed");
+    expect(queue.window(0, 1_000).items[0].status).toBe("failed");
     expect(queue.length).toBe(2);
   });
 
@@ -483,5 +494,149 @@ describe("nothing is persisted (DEC-014, DEC-050)", () => {
 
   it("starts empty every time", () => {
     expect(new PlaybackQueue().isEmpty).toBe(true);
+  });
+});
+
+describe("reading the queue a window at a time (PLAYER-08)", () => {
+  it("does not put the queue's contents in the snapshot", () => {
+    // At PLAYER-05's 50,000-track cap the contents are ~14.5 MB, and the
+    // snapshot is pushed several times a second while a track plays.
+    const queue = queueOf("a", "b", "c");
+    const snapshot = queue.snapshot() as unknown as Record<string, unknown>;
+
+    expect(snapshot.items).toBeUndefined();
+    expect(snapshot.playOrder).toBeUndefined();
+    expect(snapshot.length).toBe(3);
+  });
+
+  it("carries the playing entry, so the bar needs no window", () => {
+    const queue = queueOf("a", "b");
+    expect(queue.snapshot().currentItem?.title).toBe("a");
+  });
+
+  it("carries no playing entry once the queue ends", () => {
+    const queue = queueOf("a");
+    queue.next();
+    expect(queue.snapshot().currentItem).toBeNull();
+  });
+
+  it("returns the page asked for, in play order", () => {
+    const queue = queueOf("a", "b", "c", "d", "e");
+    const page = queue.window(1, 2);
+    expect(page.items.map((item) => item.title)).toEqual(["b", "c"]);
+    expect(page.offset).toBe(1);
+    expect(page.total).toBe(5);
+  });
+
+  it("reports the whole length so a scrollbar can be sized", () => {
+    const queue = queueOf("a", "b", "c");
+    expect(queue.window(0, 1).total).toBe(3);
+  });
+
+  it("follows play order while shuffled, not the order it was built in", () => {
+    const queue = new PlaybackQueue({ random: reversing });
+    queue.replace(tracks("a", "b", "c", "d"), 0);
+    queue.setShuffle(true);
+
+    const windowed = queue.window(0, 10).items.map((item) => item.title);
+    expect(windowed[0]).toBe("a"); // the playing track stays first
+    expect([...windowed].sort()).toEqual(["a", "b", "c", "d"]);
+  });
+
+  it("answers an out-of-range page with nothing rather than throwing", () => {
+    // A panel scrolling while the queue shrinks underneath it is ordinary.
+    const queue = queueOf("a", "b");
+    expect(queue.window(50, 10).items).toEqual([]);
+    expect(queue.window(-5, 10).items).toHaveLength(2);
+    expect(queue.window(0, 0).items).toEqual([]);
+  });
+
+  it("hands out copies, so a caller cannot edit the queue by accident", () => {
+    const queue = queueOf("a", "b");
+    const page = queue.window(0, 10);
+    page.items[0].title = "tampered";
+    expect(queue.window(0, 10).items[0].title).toBe("a");
+  });
+
+  it("pages a large queue without repeating or skipping", () => {
+    const queue = new PlaybackQueue();
+    queue.replace(
+      Array.from({ length: 5_000 }, (_, index) => ({
+        filePath: `/music/${index}.flac`,
+        title: `Track ${index}`,
+      })),
+      0,
+    );
+
+    const collected: string[] = [];
+    for (let offset = 0; offset < 5_000; offset += 250) {
+      collected.push(...queue.window(offset, 250).items.map((item) => item.title));
+    }
+
+    expect(collected).toHaveLength(5_000);
+    expect(new Set(collected).size).toBe(5_000);
+    expect(collected[0]).toBe("Track 0");
+    expect(collected.at(-1)).toBe("Track 4999");
+  });
+});
+
+describe("reordering in play order (PLAYER-08)", () => {
+  it("moves a track sooner", () => {
+    const queue = queueOf("a", "b", "c");
+    expect(queue.move(2, 0)).toBe(true);
+    expect(titles(queue)).toEqual(["c", "a", "b"]);
+  });
+
+  it("reorders only the queue while shuffled, never the list it came from", () => {
+    const queue = new PlaybackQueue({ random: reversing });
+    queue.replace(tracks("a", "b", "c", "d"), 0);
+    queue.setShuffle(true);
+
+    queue.move(3, 1);
+    queue.setShuffle(false);
+
+    // Unshuffling still restores the order the queue was built in.
+    expect(titles(queue)).toEqual(["a", "b", "c", "d"]);
+  });
+});
+
+describe("what crosses the IPC boundary (PLAYER-08)", () => {
+  /** A queue the size PLAYER-05 allows, with realistic paths and titles. */
+  function bigQueue(count: number): PlaybackQueue {
+    const queue = new PlaybackQueue();
+    queue.replace(
+      Array.from({ length: count }, (_, index) => ({
+        trackId: index,
+        filePath: `C:/Users/dj/Music/Some Artist/Some Album/${index} - A Reasonably Long Track Title.flac`,
+        title: `A Reasonably Long Track Title ${index}`,
+        artist: `Some Artist With A Long Name ${index}`,
+        key: "8A",
+        bpm: 128,
+        durationSeconds: 360,
+      })),
+      0,
+    );
+    return queue;
+  }
+
+  it("keeps the snapshot small however long the queue is", () => {
+    // Measured before this step: a 50,000-track queue serialized to 14.5 MB,
+    // pushed several times a second while a track plays — about 58 MB/s of IPC
+    // for a panel showing twenty rows.
+    const bytes = (queue: PlaybackQueue) =>
+      Buffer.byteLength(JSON.stringify(queue.snapshot()), "utf8");
+
+    const small = bytes(bigQueue(10));
+    const huge = bytes(bigQueue(50_000));
+
+    expect(huge).toBeLessThan(2_000);
+    // Not merely "small": the same size, because length is a number either way.
+    expect(huge).toBeLessThan(small * 1.2);
+  });
+
+  it("a window stays proportional to what was asked for", () => {
+    const queue = bigQueue(50_000);
+    const page = Buffer.byteLength(JSON.stringify(queue.window(0, 100)), "utf8");
+    expect(page).toBeLessThan(60_000);
   });
 });

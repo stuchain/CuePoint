@@ -119,6 +119,22 @@ const volumeMuted = [
   "............",
 ];
 
+/** Queue: stacked lines, the list the player is working through (PLAYER-08). */
+const queue = [
+  "............",
+  "..##.######.",
+  "..##.######.",
+  "............",
+  "..##.######.",
+  "..##.######.",
+  "............",
+  "..##.######.",
+  "..##.######.",
+  "............",
+  "............",
+  "............",
+];
+
 /** Shuffle: two paths crossing, with tips on the right (PLAYER-07). */
 const shuffle = [
   "............",
@@ -456,6 +472,7 @@ export const PIXEL_ICONS = {
   shuffle,
   repeat,
   "repeat-one": repeatOne,
+  queue,
   home,
   library,
   activity,

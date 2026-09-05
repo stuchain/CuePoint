@@ -33,10 +33,10 @@ function snapshot(overrides: Partial<PlayerSnapshot["status"]> = {}): PlayerSnap
       muted: false,
     },
     queue: {
-      items: [],
-      playOrder: [],
+      length: 0,
       currentId: null,
       currentIndex: -1,
+      currentItem: null,
       shuffle: false,
       repeat: "off",
     },

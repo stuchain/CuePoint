@@ -183,7 +183,7 @@ describe("mpv advancing by itself", () => {
 
     advanceTo(2);
 
-    expect(controller.snapshot().queue.items[1].status).toBe("playing");
+    expect(controller.queueWindow(0, 1_000).items[1].status).toBe("playing");
   });
 
   it("preloads the one after it, without reloading what is playing", async () => {
@@ -256,7 +256,7 @@ describe("the end of the queue", () => {
 
     finish("eof");
 
-    expect(controller.snapshot().queue.items).toHaveLength(2);
+    expect(controller.queueWindow(0, 1_000).items).toHaveLength(2);
   });
 
   it("does not stop when more tracks follow", async () => {
@@ -278,8 +278,8 @@ describe("failures", () => {
 
     finish("error", 1);
 
-    expect(controller.snapshot().queue.items[0].status).toBe("failed");
-    expect(controller.snapshot().queue.items).toHaveLength(2);
+    expect(controller.queueWindow(0, 1_000).items[0].status).toBe("failed");
+    expect(controller.queueWindow(0, 1_000).items).toHaveLength(2);
   });
 
   it("marks the preloaded track when it is the one that failed", async () => {
@@ -289,7 +289,7 @@ describe("failures", () => {
 
     finish("error", 2); // the appended entry
 
-    expect(controller.snapshot().queue.items[1].status).toBe("failed");
+    expect(controller.queueWindow(0, 1_000).items[1].status).toBe("failed");
   });
 });
 
@@ -387,7 +387,7 @@ describe("editing the queue while it plays", () => {
     await controller.addToQueue(tracks("z"));
 
     expect(played(calls)).toEqual([]);
-    expect(controller.snapshot().queue.items).toHaveLength(3);
+    expect(controller.queueWindow(0, 1_000).items).toHaveLength(3);
   });
 
   it("removing the playing track moves to the next one", async () => {
@@ -406,7 +406,7 @@ describe("editing the queue while it plays", () => {
     const { player, calls } = fakePlayer();
     const controller = new PlaybackController(player);
     await controller.playQueue(tracks("a", "b", "c"), 0);
-    const thirdId = controller.snapshot().queue.items[2].id;
+    const thirdId = controller.queueWindow(0, 1_000).items[2].id;
     calls.length = 0;
 
     await controller.removeFromQueue(thirdId);
@@ -418,7 +418,7 @@ describe("editing the queue while it plays", () => {
     const { player, calls } = fakePlayer();
     const controller = new PlaybackController(player);
     await controller.playQueue(tracks("a", "b", "c"), 0);
-    const secondId = controller.snapshot().queue.items[1].id;
+    const secondId = controller.queueWindow(0, 1_000).items[1].id;
     calls.length = 0;
 
     await controller.removeFromQueue(secondId);
@@ -456,7 +456,7 @@ describe("editing the queue while it plays", () => {
 
     await controller.clearQueue();
 
-    expect(controller.snapshot().queue.items).toEqual([]);
+    expect(controller.queueWindow(0, 1_000).items).toEqual([]);
     expect(calls.some((c) => c.kind === "stop")).toBe(true);
   });
 });
@@ -495,14 +495,14 @@ describe("snapshots", () => {
 
     const snapshot = controller.snapshot();
     expect(snapshot.status.running).toBe(true);
-    expect(snapshot.queue.items).toHaveLength(2);
+    expect(snapshot.queue.length).toBe(2);
   });
 
   it("notifies listeners when the queue changes", async () => {
     const { player } = fakePlayer();
     const controller = new PlaybackController(player);
     const seen: number[] = [];
-    controller.onSnapshot((s) => seen.push(s.queue.items.length));
+    controller.onSnapshot((s) => seen.push(s.queue.length));
 
     await controller.playQueue(tracks("a"), 0);
     await controller.addToQueue(tracks("b"));

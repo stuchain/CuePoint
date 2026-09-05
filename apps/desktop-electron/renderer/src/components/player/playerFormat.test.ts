@@ -55,10 +55,10 @@ function snapshot(overrides: Partial<PlayerSnapshot> = {}): PlayerSnapshot {
       muted: false,
     },
     queue: {
-      items: [],
-      playOrder: [],
+      length: 0,
       currentId: null,
       currentIndex: -1,
+      currentItem: null,
       shuffle: false,
       repeat: "off",
     },
@@ -173,10 +173,10 @@ describe("selectors", () => {
     const playing = item({ id: "q2" });
     const state = snapshot({
       queue: {
-        items: [item({ id: "q1" }), playing],
-        playOrder: ["q1", "q2"],
+        length: 2,
         currentId: "q2",
         currentIndex: 1,
+        currentItem: playing,
         shuffle: false,
         repeat: "off",
       },
@@ -206,10 +206,10 @@ describe("whether anything has played (DEC-053)", () => {
   it("is true once a queue exists", () => {
     const state = snapshot({
       queue: {
-        items: [item()],
-        playOrder: ["q1"],
+        length: 1,
         currentId: "q1",
         currentIndex: 0,
+        currentItem: item(),
         shuffle: false,
         repeat: "off",
       },
@@ -221,10 +221,10 @@ describe("whether anything has played (DEC-053)", () => {
     // The bar must not vanish when a queue ends; the items are still there.
     const state = snapshot({
       queue: {
-        items: [item({ status: "pending" })],
-        playOrder: ["q1"],
+        length: 1,
         currentId: null,
         currentIndex: -1,
+        currentItem: null,
         shuffle: false,
         repeat: "off",
       },

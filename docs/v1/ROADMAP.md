@@ -113,7 +113,7 @@ meaning (DEC-046); the Track Inspector finally gets content — everything impor
 
 Step specifications: `PHASE4_LIBUI.md`.
 
-## Phase 5 — Player (PLAYER-01 … PLAYER-12) — in progress (PLAYER-01…07 done)
+## Phase 5 — Player (PLAYER-01 … PLAYER-12) — in progress (PLAYER-01…08 done)
 
 Backend is decided: **libmpv sidecar** (DEC-005), for foobar2000-grade quality — gapless, wide
 lossless format support, high-quality resampling. Still the highest-uncertainty phase in
@@ -144,8 +144,9 @@ file end to end through the packaged shell and leaves no process behind; the que
 plays a three-track list through unattended, gapless, by preloading the next track into mpv; a
 whole view — the query the table is showing, not the rows it happens to hold — resolves into that
 queue in the view's own order; the transport bar appears on first play, showing what main says
-rather than what the click implied; and shuffle and repeat are controls on it, remembered across
-sessions and applied before anything is queued. Nothing in the UI starts playback until PLAYER-09
+rather than what the click implied; shuffle and repeat are controls on it, remembered across
+sessions and applied before anything is queued; and the queue itself is visible in a panel that
+reorders, removes and jumps — read a window at a time, because the whole queue is 14.5 MB. Nothing in the UI starts playback until PLAYER-09
 wires the gesture. Implementation corrected two things the plan had wrong — the
 bundled build is GPL rather than LGPL, and electron-builder's `${os}` macro expands to `mac`/`win`,
 not `darwin`/`win32` — and surfaced a pre-existing packaging bug that leaves the Python engine out

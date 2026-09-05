@@ -1,0 +1,23 @@
+/*
+ * The player's corner of the shell (PLAYER-08).
+ *
+ * The queue panel sits above the bar and pushes the content region up rather
+ * than floating over it: the table the queue was built from stays visible while
+ * the queue is being rearranged, which is the whole point of having both.
+ */
+
+.cp-player-slot {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.cp-player-slot__queue {
+  display: flex;
+  justify-content: flex-end;
+  /* Tall enough to work in, never so tall it swallows the app. */
+  max-height: min(24rem, 45vh);
+  min-height: 0;
+  overflow: hidden;
+  border-top: var(--border-width, 2px) solid var(--color-border, #000);
+}

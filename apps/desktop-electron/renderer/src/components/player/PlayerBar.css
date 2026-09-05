@@ -11,15 +11,56 @@
  * shadows. Nothing here introduces a new visual idea.
  */
 
+/*
+ * Flex with wrapping, not a fixed grid.
+ *
+ * At 3x the transport, order and volume controls are 132px each: seven of them
+ * plus gaps exceed the window on their own, before the track name or the
+ * position bar get any space at all. A grid can only squeeze, so it produced a
+ * horizontally scrolling shell — caught by `e2e/playerBar.spec.ts`, which
+ * measures this at every scale. Wrapping lets the controls drop to a second row
+ * when they genuinely do not fit, and changes nothing at 1x and 2x where they
+ * do.
+ */
 .cp-player-bar {
-  display: grid;
-  grid-template-columns: auto minmax(8rem, 18rem) minmax(0, 1fr) auto auto;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3, 12px);
   padding: var(--space-2, 8px) var(--space-3, 12px);
   border-top: var(--border-width, 2px) solid var(--color-border, #000);
   background: var(--color-surface, #fff);
   min-width: 0;
+}
+
+.cp-player-bar__transport {
+  flex: 0 0 auto;
+}
+
+/*
+ * Both flexible sections start from nothing and share what is left.
+ *
+ * A non-zero basis here is what made the bar wrap at 2x, the default scale:
+ * the track name and the position bar were each demanding room before the
+ * controls had been placed. Starting at zero means they absorb the squeeze and
+ * the bar only wraps when the *controls* genuinely do not fit, which is 3x.
+ * The position bar takes twice the share, being the one that benefits.
+ */
+.cp-player-bar__track {
+  flex: 1 1 0;
+}
+
+.cp-player-bar__seek {
+  flex: 2 1 0;
+}
+
+/* Order and volume travel together: half a control group on each row would be
+   worse than a clean break. */
+.cp-player-bar__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  flex: 0 0 auto;
 }
 
 .cp-player-bar__transport {
@@ -151,10 +192,6 @@
 /* Narrow windows: the track text gives way first, then volume. The transport
    and the position never disappear — they are why the bar exists. */
 @media (max-width: 900px) {
-  .cp-player-bar {
-    grid-template-columns: auto minmax(6rem, 12rem) minmax(0, 1fr) auto auto;
-  }
-
   .cp-player-bar__slider--volume {
     width: 4rem;
   }

@@ -86,6 +86,8 @@ contextBridge.exposeInMainWorld("cuepoint", {
       ipcRenderer.invoke("player:playQueue", items, startIndex ?? 0),
     playView: (view, startIndex) =>
       ipcRenderer.invoke("player:playView", view, startIndex ?? 0),
+    queueWindow: (offset, limit) =>
+      ipcRenderer.invoke("player:queueWindow", offset ?? 0, limit ?? 100),
     playNext: (items) => ipcRenderer.invoke("player:playNext", items),
     addToQueue: (items) => ipcRenderer.invoke("player:addToQueue", items),
     next: () => ipcRenderer.invoke("player:next"),

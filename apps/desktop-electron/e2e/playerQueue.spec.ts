@@ -104,15 +104,16 @@ test("playing a view queues exactly what the table shows, in its order", async (
       // Read immediately: the fixtures are a quarter of a second long, so a
       // wait here would see a queue that has already finished.
       const state = await w.cuepoint.player.getState();
+      // The queue's contents are no longer pushed with the snapshot (PLAYER-08),
+      // so they are read a window at a time — the same way the panel reads them.
+      const page = await w.cuepoint.player.queueWindow(0, 100);
       // What the table itself shows for the same query.
       const browse = await w.cuepoint.browseLibrary({ sort: "artist", dir: "desc", limit: 100 });
       return {
         res,
-        queueTitles: state.queue.items.map((item: { title: string }) => item.title),
+        queueTitles: page.items.map((item: { title: string }) => item.title),
         tableTitles: browse.tracks.map((track: { title: string }) => track.title),
-        current:
-          state.queue.items.find((item: { id: string }) => item.id === state.queue.currentId)
-            ?.title ?? null,
+        current: state.queue.currentItem?.title ?? null,
         running: state.status.running,
       };
     });

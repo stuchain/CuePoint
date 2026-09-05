@@ -31,22 +31,20 @@ function snapshot(position: number, title = "Strobe"): PlayerSnapshot {
       muted: false,
     },
     queue: {
-      items: [
-        {
-          id: "q1",
-          trackId: 1,
-          filePath: "/music/a.flac",
-          title,
-          artist: "deadmau5",
-          key: "8A",
-          bpm: 128,
-          durationSeconds: 600,
-          status: "playing",
-        },
-      ],
-      playOrder: ["q1"],
+      length: 1,
       currentId: "q1",
       currentIndex: 0,
+      currentItem: {
+        id: "q1",
+        trackId: 1,
+        filePath: "/music/a.flac",
+        title,
+        artist: "deadmau5",
+        key: "8A",
+        bpm: 128,
+        durationSeconds: 600,
+        status: "playing",
+      },
       shuffle: false,
       repeat: "off",
     },
@@ -187,7 +185,7 @@ describe("selectors isolate re-renders", () => {
     const before = trackRenders.mock.calls.length;
 
     const next = snapshot(10, "Ghosts n Stuff");
-    next.queue.items[0].id = "q2";
+    next.queue.currentItem!.id = "q2";
     next.queue.currentId = "q2";
     bridge.push(next);
 

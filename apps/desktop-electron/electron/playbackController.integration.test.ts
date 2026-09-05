@@ -75,9 +75,9 @@ describeWithMpv("a queue playing through real mpv", () => {
       0,
     );
 
-    await waitFor(() => controller.snapshot().queue.items[1].status === "playing");
+    await waitFor(() => controller.queueWindow(0, 1_000).items[1].status === "playing");
 
-    expect(controller.snapshot().queue.currentId).toBe(controller.snapshot().queue.items[1].id);
+    expect(controller.snapshot().queue.currentId).toBe(controller.queueWindow(0, 1_000).items[1].id);
   });
 
   it("plays a three-track queue end to end unattended", async () => {
@@ -91,9 +91,9 @@ describeWithMpv("a queue playing through real mpv", () => {
       0,
     );
 
-    await waitFor(() => controller.snapshot().queue.items[2].status === "playing");
+    await waitFor(() => controller.queueWindow(0, 1_000).items[2].status === "playing");
 
-    expect(controller.snapshot().queue.items.map((i) => i.title)).toEqual([
+    expect(controller.queueWindow(0, 1_000).items.map((i) => i.title)).toEqual([
       "one",
       "two",
       "three",
@@ -106,7 +106,7 @@ describeWithMpv("a queue playing through real mpv", () => {
 
     await waitFor(() => controller.snapshot().queue.currentId === null);
 
-    expect(controller.snapshot().queue.items).toHaveLength(1);
+    expect(controller.queueWindow(0, 1_000).items).toHaveLength(1);
   });
 
   it("repeats one track without stopping", async () => {
@@ -128,9 +128,9 @@ describeWithMpv("a queue playing through real mpv", () => {
     );
     await controller.setRepeat("all");
 
-    await waitFor(() => controller.snapshot().queue.items[0].status === "playing");
+    await waitFor(() => controller.queueWindow(0, 1_000).items[0].status === "playing");
 
-    expect(controller.snapshot().queue.currentId).toBe(controller.snapshot().queue.items[0].id);
+    expect(controller.snapshot().queue.currentId).toBe(controller.queueWindow(0, 1_000).items[0].id);
   });
 
   it("skips to the next track on demand", async () => {
@@ -142,7 +142,7 @@ describeWithMpv("a queue playing through real mpv", () => {
 
     await controller.next();
 
-    expect(controller.snapshot().queue.items[1].status).toBe("playing");
+    expect(controller.queueWindow(0, 1_000).items[1].status).toBe("playing");
   });
 
   it("records a track that will not play, and carries on (DEC-054)", async () => {
@@ -153,9 +153,9 @@ describeWithMpv("a queue playing through real mpv", () => {
     const { controller } = makeController();
     const everPlayed = new Set<string>();
     controller.onSnapshot(({ queue }) => {
-      for (const item of queue.items) {
-        if (item.status === "playing") everPlayed.add(item.title);
-      }
+      // The snapshot names the playing entry directly now (PLAYER-08); the
+      // contents live behind a window.
+      if (queue.currentItem?.status === "playing") everPlayed.add(queue.currentItem.title);
     });
 
     await controller.playQueue(
@@ -166,11 +166,11 @@ describeWithMpv("a queue playing through real mpv", () => {
       0,
     );
 
-    await waitFor(() => controller.snapshot().queue.items[0].status === "failed");
+    await waitFor(() => controller.queueWindow(0, 1_000).items[0].status === "failed");
     // mpv walks past the broken entry into the preloaded one by itself.
     await waitFor(() => everPlayed.has("fine"));
 
-    expect(controller.snapshot().queue.items[0].status).toBe("failed");
+    expect(controller.queueWindow(0, 1_000).items[0].status).toBe("failed");
     expect(everPlayed.has("fine")).toBe(true);
   });
 
@@ -184,8 +184,8 @@ describeWithMpv("a queue playing through real mpv", () => {
 
     await controller.removeFromQueue(playingId);
 
-    expect(controller.snapshot().queue.items).toHaveLength(1);
-    expect(controller.snapshot().queue.items[0].status).toBe("playing");
+    expect(controller.queueWindow(0, 1_000).items).toHaveLength(1);
+    expect(controller.queueWindow(0, 1_000).items[0].status).toBe("playing");
   });
 
   it("keeps playing while the queue is edited around it", async () => {
@@ -203,7 +203,7 @@ describeWithMpv("a queue playing through real mpv", () => {
     await controller.playNextItems([{ filePath: fixture("tone.m4a"), title: "urgent" }]);
 
     expect(controller.snapshot().queue.currentId).toBe(playingId);
-    expect(controller.snapshot().queue.items).toHaveLength(4);
+    expect(controller.queueWindow(0, 1_000).items).toHaveLength(4);
   });
 
   it("shuffles without interrupting the current track", async () => {

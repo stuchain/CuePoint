@@ -239,6 +239,16 @@ function registerIpcHandlers(): void {
       }
     },
   );
+  /**
+   * One page of the queue (PLAYER-08).
+   *
+   * The pushed snapshot carries the queue's shape, not its contents: at
+   * PLAYER-05's 50,000-track cap those are ~14.5 MB, and pushing them at the
+   * transport's rate is ~58 MB/s of IPC for a panel showing twenty rows.
+   */
+  ipcMain.handle("player:queueWindow", (_event, offset: number, limit: number) =>
+    playback.queueWindow(offset ?? 0, limit ?? 100),
+  );
   ipcMain.handle("player:playNext", (_event, items: QueueItemInput[]) =>
     playback.playNextItems(items ?? []),
   );

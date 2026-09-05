@@ -64,10 +64,14 @@ export function progressFraction(
 // Selectors — stable module-level functions, as `usePlayerValue` requires
 // ---------------------------------------------------------------------------
 
-/** The track that is playing, or null. */
+/**
+ * The track that is playing, or null.
+ *
+ * Read straight off the snapshot: the queue's contents are no longer pushed
+ * (PLAYER-08), and the one entry the bar has to name is carried on its own.
+ */
 export function selectCurrentItem(state: PlayerSnapshot | null): QueueItem | null {
-  if (!state?.queue.currentId) return null;
-  return state.queue.items.find((item) => item.id === state.queue.currentId) ?? null;
+  return state?.queue.currentItem ?? null;
 }
 
 /** Two queue items are the same for display purposes when they are the same entry. */
@@ -124,5 +128,26 @@ export function selectRepeat(state: PlayerSnapshot | null): RepeatMode {
  */
 export function selectHasPlayed(state: PlayerSnapshot | null): boolean {
   if (!state) return false;
-  return state.playback.filePath !== null || state.queue.items.length > 0;
+  return state.playback.filePath !== null || state.queue.length > 0;
+}
+
+/** How many tracks are queued, for the panel's button and its empty state. */
+export function selectQueueLength(state: PlayerSnapshot | null): number {
+  return state?.queue.length ?? 0;
+}
+
+/**
+ * A value that changes whenever the queue's contents might have.
+ *
+ * The panel holds a window rather than the whole queue, so it cannot diff the
+ * items itself. This is what tells it to re-read: the length, what is playing,
+ * and the ordering that produced it.
+ */
+export function selectQueueRevision(state: PlayerSnapshot | null): string | null {
+  // Null, not a sentinel string: "no state has arrived yet" is a different
+  // thing from "the queue is empty", and a panel must not ask for a window
+  // before it knows there is a queue to window.
+  if (!state) return null;
+  const { length, currentId, shuffle, repeat } = state.queue;
+  return `${length}:${currentId ?? "-"}:${shuffle ? "s" : "-"}:${repeat}`;
 }
