@@ -16,6 +16,32 @@ let privacyExitPrefs = {
   clearLogsOnExit: false,
 };
 
+/**
+ * Open a native dialog, parented to the focused window when there is one.
+ *
+ * `dialog.showOpenDialog` has two overloads — with a parent window and
+ * without — and passing `undefined` as the parent selects neither. The call
+ * sites used to write `win ?? undefined`, which works at runtime (Electron
+ * ignores a falsy first argument) but does not type-check, and those five
+ * errors were the only thing keeping `electron/` out of CI's typecheck.
+ *
+ * Choosing the overload explicitly keeps the behaviour identical and lets the
+ * gate go on.
+ */
+function showOpenDialogFor(
+  win: BrowserWindow | null,
+  options: Electron.OpenDialogOptions,
+): Promise<Electron.OpenDialogReturnValue> {
+  return win ? dialog.showOpenDialog(win, options) : dialog.showOpenDialog(options);
+}
+
+function showSaveDialogFor(
+  win: BrowserWindow | null,
+  options: Electron.SaveDialogOptions,
+): Promise<Electron.SaveDialogReturnValue> {
+  return win ? dialog.showSaveDialog(win, options) : dialog.showSaveDialog(options);
+}
+
 function registerIpcHandlers(): void {
   ipcMain.handle("engine:status", () => engine.getStatus());
   ipcMain.handle("engine:restart", () => engine.restart());
@@ -76,7 +102,7 @@ function registerIpcHandlers(): void {
     "support:exportBundle",
     async (_event, options: { include_logs?: boolean; include_config?: boolean; sanitize?: boolean }) => {
       const win = BrowserWindow.getFocusedWindow();
-      const pick = await dialog.showOpenDialog(win ?? undefined, {
+      const pick = await showOpenDialogFor(win, {
         properties: ["openDirectory", "createDirectory"],
         title: "Choose folder for support bundle",
       });
@@ -105,7 +131,7 @@ function registerIpcHandlers(): void {
   });
   ipcMain.handle("dialog:openXml", async () => {
     const win = BrowserWindow.getFocusedWindow();
-    const result = await dialog.showOpenDialog(win ?? undefined, {
+    const result = await showOpenDialogFor(win, {
       properties: ["openFile"],
       filters: [{ name: "Rekordbox XML", extensions: ["xml"] }],
     });
@@ -116,7 +142,7 @@ function registerIpcHandlers(): void {
   });
   ipcMain.handle("dialog:openCsv", async () => {
     const win = BrowserWindow.getFocusedWindow();
-    const result = await dialog.showOpenDialog(win ?? undefined, {
+    const result = await showOpenDialogFor(win, {
       properties: ["openFile"],
       filters: [{ name: "CuePoint CSV", extensions: ["csv"] }],
     });
@@ -127,7 +153,7 @@ function registerIpcHandlers(): void {
   });
   ipcMain.handle("dialog:openM3u", async () => {
     const win = BrowserWindow.getFocusedWindow();
-    const result = await dialog.showOpenDialog(win ?? undefined, {
+    const result = await showOpenDialogFor(win, {
       properties: ["openFile"],
       filters: [{ name: "Playlist", extensions: ["m3u", "m3u8"] }],
     });
@@ -147,7 +173,7 @@ function registerIpcHandlers(): void {
           : format === "xlsx" || format === "excel"
             ? [{ name: "Excel", extensions: ["xlsx"] }]
             : [{ name: "CSV", extensions: ["csv"] }];
-      const result = await dialog.showSaveDialog(win ?? undefined, {
+      const result = await showSaveDialogFor(win, {
         defaultPath: options.defaultPath,
         filters,
       });

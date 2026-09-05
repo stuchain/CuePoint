@@ -359,10 +359,20 @@ are exported for PLAYER-03 to consume so the flags the protocol depends on — `
 `--input-ipc-server`, and DEC-056's `--gapless-audio` with no crossfade filter — cannot drift away
 from the client that relies on them.
 
-**Adjacent finding, not fixed.** `npx tsc -p tsconfig.json --noEmit` over `electron/` reports 5
-pre-existing errors in `main.ts` (`BrowserWindow | undefined` passed where `BaseWindow` is
-required). Nothing type-checks that directory in CI today, which is how they survived. The new
-files add none, but the gate cannot be turned on until those are fixed.
+**Adjacent finding, fixed immediately after.** `tsc -p tsconfig.json --noEmit` over `electron/`
+reported 5 pre-existing errors in `main.ts`: `dialog.showOpenDialog(win ?? undefined, ...)` at five
+call sites. Not bugs — Electron ignores a falsy first argument, so the dialogs worked — but
+`undefined` selects neither overload, and those five errors were the only thing keeping the main
+process out of CI's typecheck. Replaced with `showOpenDialogFor`/`showSaveDialogFor` helpers that
+pick the overload explicitly, behaviour unchanged, and `npm run typecheck` now runs over
+`electron/` in CI.
+
+The point was never the five errors. Nothing type-checked the process that spawns both sidecars,
+owns the IPC surface, and under DEC-050 is about to own all playback state — and PLAYER-03 adds
+the supervisor and the whole `player:*` surface to that same file. Turning the gate on before that
+code is written is worth considerably more than turning it on after. Verified as a real gate by
+planting a type error and watching it fail, and as behaviour-preserving by the 26-test Playwright
+suite against the packaged app.
 
 ---
 

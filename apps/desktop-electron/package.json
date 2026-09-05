@@ -22,6 +22,7 @@
     "electron:dev": "npm run build:electron && cross-env NODE_ENV=development electron .",
     "electron:start": "npm run build && cross-env NODE_ENV=production electron .",
     "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium",
     "pack": "npm run build && electron-builder --dir",
