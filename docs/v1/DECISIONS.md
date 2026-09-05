@@ -1063,3 +1063,217 @@ will stare at longest.
   table at 1×, 2× and 3× scale, because row density and font metrics change both.
 
 **Decided with**: User · **Date**: 2026-09-04
+
+---
+
+## DEC-049 — How libmpv Is Embedded
+
+**Status**: Approved · **Refines**: DEC-005
+
+**Decision**: CuePoint bundles the **official prebuilt `mpv` executable** for each OS as a second
+sidecar and controls it over mpv's JSON IPC protocol — a named pipe on Windows, a unix domain
+socket on macOS and Linux — spawned by Electron main with `--idle --no-video --input-ipc-server`.
+It does not link libmpv into a native Node addon, and it does not wrap libmpv in a sidecar of our
+own.
+
+**Reason**: The repository already knows how to do exactly this once. `EngineSupervisor` spawns a
+bundled binary, restarts it with backoff, reports its health to a status strip and fails visibly;
+`scripts/build_engine_sidecar.py` builds a per-OS binary into `resources/engine/${os}` which
+`extraResources` ships. A second sidecar reuses that shape wholesale. The alternatives each add
+something the release pipeline does not currently have: a native addon needs per-OS,
+per-Electron-ABI compilation and turns a decoder crash into an application crash; a custom
+C/Rust wrapper puts a toolchain we own in a release path the audit already calls lightly tested.
+
+**Implications**:
+- A `PlayerSupervisor` is written in the image of `EngineSupervisor`, not as a new pattern.
+- LGPL compliance is satisfied by shipping the binary unmodified and carrying its license text;
+  the `license-compliance` workflow gains mpv as a bundled non-Python component. No relinking
+  obligation arises because nothing is statically linked.
+- The binaries are fetched at build time into `resources/player/${os}` and are **not** committed —
+  `large-file-check` and repository size both argue against vendoring them, and the engine sidecar
+  sets the precedent that `resources/` is build output.
+- Playback commands are asynchronous request/response over a socket, so the contract needs request
+  ids, an observer/event stream for position and state, and a timeout policy. This is the
+  substance of PLAYER-01–03.
+- Offline builds need a cache or a pinned local path; the fetch script must fail loudly rather
+  than silently producing an app with no player.
+
+**Decided with**: User (delegated to recommendation) · **Date**: 2026-09-05
+---
+
+## DEC-050 — Playback State Lives in Electron Main
+
+**Status**: Approved · **Depends on**: DEC-051
+
+**Decision**: Electron main owns the playback queue, the current track and the transport state,
+mirroring mpv's state to the renderer over IPC events. The Python engine is not told that playback
+is happening.
+
+**Reason**: With DEC-051 writing nothing to the database, the engine has nothing to record, and a
+split ownership whose engine half is empty is a seam that costs a boundary and buys nothing. This
+also keeps AGENTS.md's division intact on its own terms: playback is supervision of a bundled
+process, which is precisely what Electron main is for, and no business rule is involved in deciding
+which file plays next.
+
+**Implications**:
+- The renderer holds no authoritative playback state; it renders what main publishes and sends
+  intents back. Same shape as engine status today.
+- DEC-012's "the current view becomes the queue" means the renderer sends the resolved track list
+  at play time — main does not query the library itself.
+- Revisiting this is a real possibility: if Phase 10's Set Builder wants to read the queue, or a
+  later decision reverses DEC-051, the queue moves or grows an engine half. Nothing here should
+  make that hard, but nothing here anticipates it either.
+
+**Decided with**: User (delegated to recommendation) · **Date**: 2026-09-05
+
+---
+
+## DEC-051 — Playback Writes Nothing to the Library
+
+**Status**: Approved
+
+**Decision**: Playing a track in Phase 5 changes no database row. No CuePoint play counter, no
+last-played timestamp, no activity-feed entry per play. `tracks.play_count` keeps the value
+Rekordbox exported and nothing writes to it.
+
+**Reason**: Every alternative requires first defining what "played" means — three seconds, half the
+track, to the end — and that threshold is arbitrary until some feature actually consumes the
+number. Nothing in v1 does. It also keeps Phase 5 additive: the player can be built, changed and
+thrown away without leaving marks on user data.
+
+**Implications**:
+- "Recently played" and "most played" are not v1 features and are not half-built here.
+- A later phase that wants them adds its own columns; it must not repurpose the imported
+  Rekordbox `play_count`, which means what Rekordbox meant by it.
+- Playback failures are still surfaced (DEC-054) — that is a toast, not a database write.
+
+**Decided with**: User · **Date**: 2026-09-05
+
+---
+
+## DEC-052 — What the Player Bar Contains
+
+**Status**: Approved · **Completes**: DEC-013
+
+**Decision**: Phase 5 ships play/pause, previous/next, a seekable position bar with elapsed and
+total time, volume, current-track information, shuffle and repeat (off / one / all) as persisted
+toggles, and a visible, reorderable queue panel.
+
+**Reason**: DEC-013 already made "Play Next" and "Add to Queue" first-class context-menu actions
+from day one. An append action whose result the user cannot see is an action they cannot trust or
+correct — the queue panel is what makes DEC-013 legible, not an extra. Shuffle and repeat come with
+it because both are queue-order concepts and the panel is where their effect is visible.
+
+**Implications**:
+- The queue panel is the largest single piece of UI in the phase and its own step, with drag
+  reordering, remove-from-queue, and a marker for the currently playing item.
+- Shuffle needs an explicit order model decided against DEC-012: shuffling reorders the queue that
+  the view produced, and un-shuffling restores the view's order — the view itself never changes.
+- Repeat-one must not fight gapless (DEC-056); it is a queue-advance rule, not a decoder setting.
+- The transport pixel icons drawn in FOUNDATION-14 are finally used; shuffle, repeat and queue
+  icons are new and follow `PIXEL_DESIGN_SYSTEM.md`.
+
+**Decided with**: User · **Date**: 2026-09-05
+
+---
+
+## DEC-053 — The Bar Appears on First Play
+
+**Status**: Approved · **Fulfils**: DEC-025
+
+**Decision**: The player region stays at zero height exactly as DEC-025 left it until the first
+track is played, then occupies its row for the rest of the session. Closing the app resets it,
+consistent with DEC-014.
+
+**Reason**: This is the reading of DEC-025 that survives contact with the phase that fills it.
+DEC-025's stated reason was never "the region should be empty" but "the app never ships controls
+that do nothing" — a bar with no track and disabled transport is that same thing, just later. The
+one-time layout shift costs less than a permanently reserved strip with nothing in it.
+
+**Implications**:
+- `PlayerRegion`'s `if (!children) return null` behavior is kept, not deleted — Phase 5 supplies
+  children once there is something to play, and the existing test that the empty region takes no
+  space remains valid and load-bearing.
+- The content region must handle being resized under the bar without losing scroll position or
+  table window state.
+- There is no "stop" that empties the queue and retracts the bar; ending playback leaves the bar
+  showing the last track, paused.
+
+**Decided with**: User · **Date**: 2026-09-05
+
+---
+
+## DEC-054 — A Queued File That Will Not Play Is Skipped
+
+**Status**: Approved · **Meets**: DEC-037
+
+**Decision**: When a queued file is missing or mpv cannot decode it, the player logs the failure,
+advances to the next queue item, and shows a toast naming the track. Consecutive failures coalesce
+into one toast reporting the count.
+
+**Reason**: DEC-037 deliberately deferred file-existence checking to Phase 7, which makes the
+player the first thing in CuePoint to discover a moved or deleted file. Stopping the queue lets one
+bad file end a listening session; failing silently leaves the user guessing why tracks went past.
+Coalescing is not a refinement but a requirement: a 50,000-track library on a disconnected drive
+must produce one toast, not a toast storm.
+
+**Implications**:
+- The failed track is marked in the queue panel as failed, so the skip is visible after the toast
+  is gone.
+- Nothing is written to the database — this does not pre-empt Phase 7's missing-file detection, and
+  a track that failed once is retried normally next time.
+- If every item in the queue fails, the player stops and says so once rather than looping.
+
+**Decided with**: User · **Date**: 2026-09-05
+
+---
+
+## DEC-055 — Output Device and Exclusive Output Are User-Controlled
+
+**Status**: Approved · **Delivers on**: DEC-005
+
+**Decision**: Settings gains an audio section with an output-device picker enumerated from mpv, an
+exclusive-output toggle (WASAPI exclusive on Windows, hog mode on macOS), and mpv's high-quality
+resampler configured explicitly rather than left at defaults.
+
+**Reason**: DEC-005 chose libmpv for foobar2000-grade playback. A high-quality decoder played to
+the system default device through the OS mixer at whatever rate the mixer happens to be running is
+not that claim delivered. A DJ with an audio interface who cannot route CuePoint to it is a
+day-one complaint, and exclusive output is the specific mechanism that makes bit-perfect playback
+real rather than nominal.
+
+**Implications**:
+- This is the only part of Phase 5 with genuinely divergent per-OS behavior, so it is its own step
+  rather than an addition to an existing settings step.
+- Exclusive mode can fail at runtime — device busy, unsupported format — and must fall back to
+  shared output with a visible, non-fatal message rather than silence.
+- Device lists change while the app runs; a disappeared device must not wedge playback.
+- Settings persist through FOUNDATION-09's settings architecture, not a new store.
+- Volume normalization and ReplayGain are explicitly excluded: they need scan data the library does
+  not have, which is Phase 12's scope.
+
+**Decided with**: User · **Date**: 2026-09-05
+
+---
+
+## DEC-056 — No Crossfade in v1
+
+**Status**: Approved · **Closes**: the crossfade item deferred since Round 2
+
+**Decision**: CuePoint v1 plays gapless and does not crossfade. No fade duration setting, no
+second decoder instance, no filter graph for track transitions.
+
+**Reason**: CuePoint prepares sets; the mixing happens in Rekordbox. Crossfade also actively fights
+gapless — one wants overlapping decode at a track boundary and the other wants none — so building
+both means choosing between them per transition, for a feature nobody has asked for. The question
+had to be answered before PLAYER-01's control contract, not after, because a crossfade decides
+whether that contract needs two decoders.
+
+**Implications**:
+- One mpv instance, one playlist, gapless left at mpv's own behavior.
+- The control contract is written for a single decoder. Revisiting this later is a real change to
+  that contract, not a setting — recorded here so the cost is not underestimated when it comes up.
+- Phase 10 may re-open it with a concrete Set Builder use case; that would be a new decision
+  superseding this one, not an amendment.
+
+**Decided with**: User · **Date**: 2026-09-05

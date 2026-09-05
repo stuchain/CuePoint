@@ -1007,13 +1007,175 @@ in the numerals.
 Per the spec's own guidance not to dump every question at once — these are real open items
 surfaced by the audit but held back until the decisions they depend on are locked:
 
-- Crossfade support (deferred — Round 2 covered double-click/queue/resume but not crossfade)
+- ~~Crossfade support~~ — asked as Q-055 in Round 7 and resolved by DEC-056 (no crossfade in v1)
 - Audio analysis scope (which features are worth building at all — likely a Phase 12 conversation)
 - Smart Collection export/duplication behavior (target spec §28 asks whether Smart Collections
   should be directly exportable and whether rule sets can be duplicated — not yet asked)
 
-**Resolved since first listed here**: the collapsible-sidebar question became Q-022/DEC-022 in
+**Resolved since first listed here**: crossfade became Q-055/DEC-056 in Round 7, asked before
+Phase 5's contract was written because a crossfade decides whether that contract needs a second
+decoder. The collapsible-sidebar question became Q-022/DEC-022 in
 Round 3. The `services/` Qt-boundary violation and the CI-gap items were folded into FOUNDATION-01
 and FOUNDATION-13 and are done. The Smart Collection question above is now narrower than when it
 was written: DEC-043 settled that Phase 6's rules and Phase 4's filters are one model, so what
 remains open is only export and duplication of a *saved* rule set.
+
+---
+
+## DECISION ROUND 7 — PLAYER ✅ Resolved 2026-09-05
+
+Asked before writing Phase 5's step specifications. DEC-005 chose libmpv and DEC-012/013/014
+settled double-click, queue append and no-resume back in Round 2, but none of them says how mpv is
+embedded, who holds the queue, or what the bar contains — and Phase 5 is the first phase that adds
+a second bundled per-OS binary to a release pipeline the audit already flagged as lightly tested.
+Two of these came from reading the code rather than the roadmap: `PlayerRegion` currently returns
+`null` and is the single file DEC-025 promised Phase 5 would change, and `tracks.play_count` is
+already populated *from Rekordbox*, so "count plays" is a write against a column CuePoint does not
+own. Q-055 closes the crossfade item deferred since Round 2. Outcomes are DEC-049…DEC-056 in
+`DECISIONS.md`.
+
+---
+
+### Q-048 — How libmpv is embedded
+
+**Status**: Resolved → DEC-049 (Option A chosen: bundle the mpv binary, JSON IPC)
+
+**Question**: DEC-005 says "libmpv sidecar" without saying what that binary is. The shape decides
+PLAYER-01–03's control contract and everything about packaging and signing.
+
+- **Option A — Bundle the official prebuilt `mpv` executable** per OS, spawn it with `--idle
+  --input-ipc-server`, and speak JSON over a named pipe (Windows) or unix socket. Mirrors
+  `EngineSupervisor` exactly; no compiler in the release path; LGPL satisfied by shipping an
+  unmodified binary.
+- **Option B — A native N-API addon** linking libmpv into Electron main. Lowest latency and direct
+  property access, at the cost of per-OS, per-Electron-ABI compilation and native crashes that
+  take the app down with them.
+- **Option C — A custom C/Rust sidecar** around libmpv speaking our own protocol. Most control,
+  most new code, and the only option that puts a toolchain we own in the release path.
+
+**Recommendation**: **A**. The repository already knows how to build, ship, supervise and smoke-test
+a sidecar; this is the option that reuses all of it.
+
+---
+
+### Q-049 — Who owns playback state
+
+**Status**: Resolved → DEC-050 (Option A chosen: Electron main owns it)
+
+**Question**: The queue, the current track and the position have to live somewhere. AGENTS.md says
+business rules live in Python and Electron supervises — playback is not obviously either.
+
+- **Option A — Electron main.** Holds the queue, mirrors mpv's state to the renderer over IPC;
+  Python never hears about playback.
+- **Option B — The Python engine.** One source of truth, queryable by Phase 10's Set Builder, at
+  the cost of routing every transport tick across two process boundaries.
+- **Option C — Split.** Main drives live transport; the engine is told only durable facts.
+
+**Recommendation**: **A**, given Q-050's answer. C is the right long-term shape, but with nothing
+written to the database in this phase its engine half would have nothing to record.
+
+---
+
+### Q-050 — Whether playback writes to the library
+
+**Status**: Resolved → DEC-051 (Option A chosen: nothing in Phase 5)
+
+**Question**: `tracks.play_count` already holds a value imported from Rekordbox (m0005). Does
+playing a track in CuePoint change anything in the database?
+
+- **Option A — Nothing in Phase 5.** Playback is read-only against the library.
+- **Option B — CuePoint-owned counters** (`cuepoint_play_count`, `last_played_at`) written on a
+  play threshold, never touching the imported values.
+- **Option C — Activity-log entries only**, no new columns.
+
+**Recommendation**: **A**. Both alternatives require defining what "played" means — a threshold
+that is arbitrary until someone actually wants the number for something.
+
+---
+
+### Q-051 — What the player bar contains
+
+**Status**: Resolved → DEC-052 (Option C chosen: transport, shuffle/repeat, and a queue panel)
+
+**Question**: Waveforms are Phase 11 regardless. What ships in the bar itself?
+
+- **Option A — Transport, seek and volume**: play/pause, previous/next, position bar with
+  elapsed/total, volume, current-track info.
+- **Option B — Plus shuffle and repeat** as persisted toggles.
+- **Option C — Plus a visible, reorderable queue panel**, so DEC-013's Play Next and Add to Queue
+  have somewhere to show their result.
+
+**Recommendation**: **A** for scope discipline, but C is defensible: DEC-013 makes two append
+actions first-class from day one, and an append action with no visible queue is an action whose
+effect the user cannot see.
+
+---
+
+### Q-052 — The bar when nothing is playing
+
+**Status**: Resolved → DEC-053 (Option B chosen: appears on first play)
+
+**Question**: DEC-025 holds the region at zero height and gave the reason: never ship controls that
+do nothing. Once they do something, does the bar appear before it has a track?
+
+- **Option A — Always visible from launch** with disabled transport; no layout shift, but it
+  reverses DEC-025's reasoning.
+- **Option B — Zero-height until the first play**, then present for the rest of the session.
+- **Option C — Always visible with a pixel empty state**, the way the Inspector handled its own
+  empty slot.
+
+**Recommendation**: **B**. It is the reading of DEC-025 that survives contact with Phase 5, and the
+one-time layout shift is a smaller cost than a permanently reserved strip with nothing in it.
+
+---
+
+### Q-053 — A queued file that will not play
+
+**Status**: Resolved → DEC-054 (Option A chosen: skip and toast)
+
+**Question**: DEC-037 deliberately left file existence unchecked until Phase 7. The player is the
+first thing that opens these files, so it is the first thing that finds them gone.
+
+- **Option A — Skip with a toast** naming the track, and continue the queue.
+- **Option B — Stop and report** against the failed track until the user acts.
+- **Option C — Skip silently**, recording every failure in the activity feed.
+
+**Recommendation**: **A**, with coalescing: a 500-track queue on a disconnected drive must produce
+one toast, not five hundred. B lets a single bad file end the session; C leaves a user who never
+opens Activity wondering why tracks vanished.
+
+---
+
+### Q-054 — How much audio control is exposed
+
+**Status**: Resolved → DEC-055 (Option A chosen: device picker and exclusive mode)
+
+**Question**: DEC-005 was chosen for foobar2000-grade quality. A bundled high-quality decoder
+playing to the wrong device at the system mixer's sample rate does not deliver that.
+
+- **Option A — Output-device picker plus exclusive output** (WASAPI exclusive on Windows, hog mode
+  on macOS) with mpv's high-quality resampler configured explicitly.
+- **Option B — Device picker only**, everything else at mpv's defaults.
+- **Option C — No audio settings in Phase 5.**
+- **Option D — A, plus ReplayGain/volume normalization.**
+
+**Recommendation**: **A**. C leaves a DJ with an audio interface unable to route CuePoint to it,
+which is a plausible day-one complaint. D needs scan data the library does not have and drags
+Phase 12's analysis scope forward.
+
+---
+
+### Q-055 — Crossfade
+
+**Status**: Resolved → DEC-056 (Option A chosen: no crossfade in v1)
+
+**Question**: Deferred since Round 2, due now because it shapes the mpv control contract — a
+crossfade needs either two decoder instances or a filter graph, decided before the contract is
+written, not after.
+
+- **Option A — No crossfade in v1.** Gapless only, which mpv provides for free.
+- **Option B — A fixed, configurable crossfade** between queue items.
+- **Option C — Defer again**, keeping the contract deliberately open for it until Phase 10.
+
+**Recommendation**: **A**. CuePoint prepares sets; the mixing happens in Rekordbox. B also fights
+gapless — the two features want opposite things at a track boundary.

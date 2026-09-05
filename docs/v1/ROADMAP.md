@@ -1,13 +1,16 @@
 # CuePoint — Evolution Roadmap
 
-Status: **Phases 0, 1, 2, 3 and 4 complete. Decision Rounds 1–6 resolved (DEC-001…DEC-048).**
+Status: **Phases 0, 1, 2, 3 and 4 complete. Decision Rounds 1–7 resolved (DEC-001…DEC-056).**
 Phase 2's ten steps are implemented and recorded in `PHASE2_SHELL.md`. Phase 3's twelve steps are
 implemented and recorded in `PHASE3_LIBRARY.md` (LIBRARY-01…LIBRARY-12), unblocked by Decision
 Round 5 (DEC-030…DEC-037). Phase 4's ten steps are specified in `PHASE4_LIBUI.md`
 (LIBUI-01…LIBUI-10), unblocked by Decision Round 6 (DEC-039…DEC-048). Complete: every step is
-implemented and the phase-level acceptance is met in a packaged build.
-Remaining deferred items (crossfade, audio-analysis scope, Smart Collection export/duplication
-behavior) will be resolved before the phases they affect actually start. This roadmap shows the
+implemented and the phase-level acceptance is met in a packaged build. Phase 5's steps are
+specified in `PHASE5_PLAYER.md` (PLAYER-01…PLAYER-12), unblocked by Decision Round 7
+(DEC-049…DEC-056); none of them is implemented yet.
+Remaining deferred items (audio-analysis scope, Smart Collection export/duplication behavior) will
+be resolved before the phases they affect actually start; crossfade, deferred since Round 2, was
+resolved by DEC-056 as part of Round 7. This roadmap shows the
 shape of what's ahead; it is not a commitment to implement anything without an explicit
 "Implement <STEP-ID>" instruction.
 
@@ -110,18 +113,30 @@ meaning (DEC-046); the Track Inspector finally gets content — everything impor
 
 Step specifications: `PHASE4_LIBUI.md`.
 
-## Phase 5 — Player (PLAYER-01 … PLAYER-12)
+## Phase 5 — Player (PLAYER-01 … PLAYER-12) — specified, not started
 
 Backend is decided: **libmpv sidecar** (DEC-005), for foobar2000-grade quality — gapless, wide
 lossless format support, high-quality resampling. Still the highest-uncertainty phase in
 execution terms (entirely greenfield, confirmed zero existing player code, and now also a new
-per-OS sidecar to build/sign/package alongside the existing Python engine sidecar). PLAYER-01–03
-need to define the Electron-main ↔ libmpv control contract (analogous to `EngineSupervisor`/
-`EngineClient`); an early FLAT/AIFF-on-Windows-and-macOS validation spike is still worthwhile as
-a packaging/build-integration check even though the codec-availability question itself is settled
-by choosing libmpv over HTML5 `<audio>`. Double-click plays + loads the current view as the queue
+per-OS sidecar to build/sign/package alongside the existing Python engine sidecar).
+
+Round 7 settled the shape. The sidecar is the official prebuilt `mpv` binary driven over JSON IPC,
+supervised the way `EngineSupervisor` already supervises the engine, fetched at build time rather
+than committed (DEC-049). Electron main owns the queue and the transport; the Python engine is not
+told playback is happening (DEC-050), which is coherent only because playback writes nothing to
+the database at all in this phase (DEC-051). The bar carries transport, seek, volume, shuffle,
+repeat and a reorderable queue panel — the panel is what makes DEC-013's two append actions
+visible (DEC-052) — and it stays at DEC-025's zero height until the first play (DEC-053). A
+missing or undecodable file is skipped with a coalesced toast, the player being the first thing in
+CuePoint to discover what DEC-037 left unchecked (DEC-054). Output device and exclusive/hog-mode
+output are user-controlled, which is what turns DEC-005's quality claim into something audible
+(DEC-055). No crossfade in v1 (DEC-056), closing the item deferred since Round 2.
+
+Carried forward from Round 2: double-click plays and loads the current view as the queue
 (DEC-012); "Play Next"/"Add to Queue" are the explicit append actions (DEC-013); no
-position-resume across restarts for v1 (DEC-014).
+position-resume across restarts (DEC-014).
+
+Step specifications: `PHASE5_PLAYER.md`.
 
 ## Phase 6 — Organization (ORG-01 … ORG-11)
 
