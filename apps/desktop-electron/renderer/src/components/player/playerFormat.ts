@@ -1,4 +1,4 @@
-import type { PlayerSnapshot, QueueItem } from "../../api/cuepointBridge.types";
+import type { PlayerSnapshot, QueueItem, RepeatMode } from "../../api/cuepointBridge.types";
 
 /**
  * Formatting and selectors for the player bar (PLAYER-06).
@@ -104,6 +104,15 @@ export function selectVolume(state: PlayerSnapshot | null): number {
 
 export function selectMuted(state: PlayerSnapshot | null): boolean {
   return state?.playback.muted ?? false;
+}
+
+/** Order settings live on the queue, which is where DEC-050 keeps them. */
+export function selectShuffle(state: PlayerSnapshot | null): boolean {
+  return state?.queue.shuffle ?? false;
+}
+
+export function selectRepeat(state: PlayerSnapshot | null): RepeatMode {
+  return state?.queue.repeat ?? "off";
 }
 
 /**

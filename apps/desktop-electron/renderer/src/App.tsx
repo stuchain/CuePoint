@@ -27,6 +27,7 @@ import {
   useRememberDestination,
 } from "./components/shell";
 import { PlayerSlot } from "./components/player/PlayerSlot";
+import { useRestorePlayerOrder } from "./components/player/playerOrderState";
 import { MatchResultsProvider } from "./context/MatchResultsContext";
 import {
   InCrateMainScreen,
@@ -90,6 +91,10 @@ function AppShell() {
   }, []);
 
   useRememberDestination();
+  // Shuffle and repeat are remembered across sessions (PLAYER-07). Restored
+  // here rather than in the bar, which does not exist until the first play —
+  // by then the queue has already been built and ordered.
+  useRestorePlayerOrder();
 
   /**
    * Maps a destination id to the screen that renders it.

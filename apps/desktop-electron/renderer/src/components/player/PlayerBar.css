@@ -13,7 +13,7 @@
 
 .cp-player-bar {
   display: grid;
-  grid-template-columns: auto minmax(8rem, 18rem) minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(8rem, 18rem) minmax(0, 1fr) auto auto;
   align-items: center;
   gap: var(--space-3, 12px);
   padding: var(--space-2, 8px) var(--space-3, 12px);
@@ -120,6 +120,23 @@
   opacity: 0.5;
 }
 
+.cp-player-bar__order {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1, 4px);
+}
+
+/* An engaged toggle is filled, not merely outlined: at a glance across a dark
+   room the difference has to survive, and colour alone would not. */
+.cp-player-bar__button--on {
+  background: var(--color-accent, #06c);
+  color: var(--color-surface, #fff);
+}
+
+.cp-player-bar__button--on:hover:not(:disabled) {
+  background: var(--color-accent-hover, var(--color-accent, #06c));
+}
+
 .cp-player-bar__volume {
   display: flex;
   align-items: center;
@@ -135,7 +152,7 @@
    and the position never disappear — they are why the bar exists. */
 @media (max-width: 900px) {
   .cp-player-bar {
-    grid-template-columns: auto minmax(6rem, 12rem) minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(6rem, 12rem) minmax(0, 1fr) auto auto;
   }
 
   .cp-player-bar__slider--volume {

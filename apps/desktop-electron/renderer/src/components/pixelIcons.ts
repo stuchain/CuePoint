@@ -119,6 +119,61 @@ const volumeMuted = [
   "............",
 ];
 
+/** Shuffle: two paths crossing, with tips on the right (PLAYER-07). */
+const shuffle = [
+  "............",
+  "..##.....##.",
+  "...##...###.",
+  "....##.##.#.",
+  ".....###....",
+  "......#.....",
+  ".....###....",
+  "....##.##.#.",
+  "...##...###.",
+  "..##.....##.",
+  "............",
+  "............",
+];
+
+/**
+ * Repeat: a closed loop.
+ *
+ * Repeat has three states and DEC-052 asks for three *visually distinct* ones
+ * rather than two and a badge, so `repeat-one` is its own drawing rather than
+ * this glyph with a dot added. The icon test refuses duplicate artwork, which
+ * is that rule made mechanical.
+ */
+const repeat = [
+  "............",
+  "...######...",
+  "..##....##..",
+  "..#......#..",
+  "..#......#..",
+  "..#......#..",
+  "..#......#..",
+  "..##....##..",
+  "...######...",
+  "............",
+  "............",
+  "............",
+];
+
+/** Repeat one: the same loop around a numeral 1. */
+const repeatOne = [
+  "............",
+  "...######...",
+  "..##....##..",
+  "..#..##..#..",
+  "..#...#..#..",
+  "..#...#..#..",
+  "..#..###.#..",
+  "..##....##..",
+  "...######...",
+  "............",
+  "............",
+  "............",
+];
+
 const home = [
   "............",
   ".....##.....",
@@ -398,6 +453,9 @@ export const PIXEL_ICONS = {
   previous,
   volume,
   "volume-muted": volumeMuted,
+  shuffle,
+  repeat,
+  "repeat-one": repeatOne,
   home,
   library,
   activity,

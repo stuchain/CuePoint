@@ -9,8 +9,11 @@ import {
   selectMuted,
   selectPlaying,
   selectPosition,
+  selectRepeat,
+  selectShuffle,
   selectVolume,
 } from "./playerFormat";
+import { nextRepeatMode, repeatLabel, saveRepeat, saveShuffle } from "./playerOrderState";
 import { usePlayerValue } from "./playerStore";
 import "./PlayerBar.css";
 
@@ -41,6 +44,8 @@ export function PlayerBar() {
   const duration = usePlayerValue(selectDuration);
   const volume = usePlayerValue(selectVolume);
   const muted = usePlayerValue(selectMuted);
+  const shuffle = usePlayerValue(selectShuffle);
+  const repeat = usePlayerValue(selectRepeat);
 
   // Only while dragging; null the rest of the time so the slider follows mpv.
   const [scrubSeconds, setScrubSeconds] = useState<number | null>(null);
@@ -53,6 +58,24 @@ export function PlayerBar() {
     scrubbing.current = true;
     setScrubSeconds(value);
   }, []);
+
+  /**
+   * Persist only what actually took effect.
+   *
+   * Saving before the command lands would remember a preference the player
+   * never applied — the same reason nothing else here is optimistic.
+   */
+  const toggleShuffle = useCallback(async () => {
+    const next = !shuffle;
+    await bridge()?.setShuffle(next);
+    saveShuffle(next);
+  }, [shuffle]);
+
+  const cycleRepeat = useCallback(async () => {
+    const next = nextRepeatMode(repeat);
+    await bridge()?.setRepeat(next);
+    saveRepeat(next);
+  }, [repeat]);
 
   const commitScrub = useCallback(() => {
     if (!scrubbing.current) return;
@@ -121,6 +144,29 @@ export function PlayerBar() {
           aria-valuetext={`${formatTime(shownPosition)} of ${formatTime(duration)}`}
         />
         <span className="cp-player-bar__time">{formatTime(duration)}</span>
+      </div>
+
+      <div className="cp-player-bar__order">
+        <button
+          type="button"
+          className={`cp-player-bar__button${shuffle ? " cp-player-bar__button--on" : ""}`}
+          onClick={() => void toggleShuffle()}
+          aria-label={shuffle ? "Shuffle on" : "Shuffle off"}
+          aria-pressed={shuffle}
+        >
+          <PixelIcon name="shuffle" />
+        </button>
+        <button
+          type="button"
+          className={`cp-player-bar__button${repeat !== "off" ? " cp-player-bar__button--on" : ""}`}
+          onClick={() => void cycleRepeat()}
+          aria-label={repeatLabel(repeat)}
+          aria-pressed={repeat !== "off"}
+        >
+          {/* Three states, three drawings (DEC-052): repeat-one is its own
+              glyph rather than the loop with a badge stuck on it. */}
+          <PixelIcon name={repeat === "one" ? "repeat-one" : "repeat"} />
+        </button>
       </div>
 
       <div className="cp-player-bar__volume">

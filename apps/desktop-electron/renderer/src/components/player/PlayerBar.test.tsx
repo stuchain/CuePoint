@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlayerSnapshot, QueueItem } from "../../api/cuepointBridge.types";
 import { PlayerBar } from "./PlayerBar";
 import { PlayerSlot } from "./PlayerSlot";
+import { PLAYER_REPEAT_STORAGE_KEY, PLAYER_SHUFFLE_STORAGE_KEY } from "./playerOrderState";
 import { resetPlayerStore } from "./playerStore";
 
 /**
@@ -37,6 +38,8 @@ function snapshot(overrides: {
   playback?: Partial<PlayerSnapshot["playback"]>;
   items?: QueueItem[];
   currentId?: string | null;
+  shuffle?: boolean;
+  repeat?: PlayerSnapshot["queue"]["repeat"];
 } = {}): PlayerSnapshot {
   const items = overrides.items ?? [item()];
   return {
@@ -56,8 +59,8 @@ function snapshot(overrides: {
       playOrder: items.map((entry) => entry.id),
       currentId: overrides.currentId === undefined ? items[0]?.id ?? null : overrides.currentId,
       currentIndex: 0,
-      shuffle: false,
-      repeat: "off",
+      shuffle: overrides.shuffle ?? false,
+      repeat: overrides.repeat ?? "off",
     },
   };
 }
@@ -82,6 +85,8 @@ function installBridge(initial: PlayerSnapshot | null = null): Harness {
     seek: vi.fn().mockResolvedValue(undefined),
     setVolume: vi.fn().mockResolvedValue(undefined),
     setMuted: vi.fn().mockResolvedValue(undefined),
+    setShuffle: vi.fn().mockResolvedValue(undefined),
+    setRepeat: vi.fn().mockResolvedValue(undefined),
   } as unknown as Record<string, ReturnType<typeof vi.fn>>;
 
   window.cuepoint = {
@@ -99,6 +104,7 @@ beforeEach(() => {
 
 afterEach(() => {
   resetPlayerStore();
+  localStorage.clear();
   vi.restoreAllMocks();
   delete (window as { cuepoint?: unknown }).cuepoint;
 });
@@ -359,5 +365,114 @@ describe("without a bridge", () => {
     render(<PlayerBar />);
     // Nothing is playing, so the button offers Play.
     expect(() => fireEvent.click(screen.getByRole("button", { name: "Play" }))).not.toThrow();
+  });
+});
+
+describe("shuffle and repeat (PLAYER-07, DEC-052)", () => {
+  it("offers both controls", async () => {
+    installBridge(snapshot());
+    render(<PlayerBar />);
+    await screen.findByText("Strobe");
+
+    expect(screen.getByRole("button", { name: "Shuffle off" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Repeat off" })).toBeInTheDocument();
+  });
+
+  it("asks main to shuffle rather than reordering anything itself", async () => {
+    const harness = installBridge(snapshot());
+    render(<PlayerBar />);
+    await screen.findByText("Strobe");
+
+    fireEvent.click(screen.getByRole("button", { name: "Shuffle off" }));
+
+    await waitFor(() => expect(harness.player.setShuffle).toHaveBeenCalledWith(true));
+  });
+
+  it("shows shuffle as on only once main says so", async () => {
+    const harness = installBridge(snapshot());
+    render(<PlayerBar />);
+    await screen.findByText("Strobe");
+
+    fireEvent.click(screen.getByRole("button", { name: "Shuffle off" }));
+    expect(screen.getByRole("button", { name: "Shuffle off" })).toBeInTheDocument();
+
+    harness.push(snapshot({ shuffle: true }));
+
+    expect(await screen.findByRole("button", { name: "Shuffle on" })).toBeInTheDocument();
+  });
+
+  it("cycles repeat off, all, one", async () => {
+    const harness = installBridge(snapshot());
+    render(<PlayerBar />);
+    await screen.findByText("Strobe");
+
+    fireEvent.click(screen.getByRole("button", { name: "Repeat off" }));
+    await waitFor(() => expect(harness.player.setRepeat).toHaveBeenCalledWith("all"));
+
+    harness.push(snapshot({ repeat: "all" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Repeat all" }));
+    await waitFor(() => expect(harness.player.setRepeat).toHaveBeenCalledWith("one"));
+
+    harness.push(snapshot({ repeat: "one" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Repeat one" }));
+    await waitFor(() => expect(harness.player.setRepeat).toHaveBeenCalledWith("off"));
+  });
+
+  it("draws repeat-one with its own glyph, not a badge (DEC-052)", async () => {
+    installBridge(snapshot({ repeat: "one" }));
+    const { container } = render(<PlayerBar />);
+    await screen.findByText("Strobe");
+
+    expect(container.querySelector('[data-icon="repeat-one"]')).not.toBeNull();
+    expect(container.querySelector('[data-icon="repeat"]')).toBeNull();
+  });
+
+  it("remembers shuffle for the next session", async () => {
+    const harness = installBridge(snapshot());
+    render(<PlayerBar />);
+    await screen.findByText("Strobe");
+
+    fireEvent.click(screen.getByRole("button", { name: "Shuffle off" }));
+
+    await waitFor(() => expect(localStorage.getItem(PLAYER_SHUFFLE_STORAGE_KEY)).toBe("1"));
+    expect(harness.player.setShuffle).toHaveBeenCalledWith(true);
+  });
+
+  it("remembers repeat for the next session", async () => {
+    installBridge(snapshot());
+    render(<PlayerBar />);
+    await screen.findByText("Strobe");
+
+    fireEvent.click(screen.getByRole("button", { name: "Repeat off" }));
+
+    await waitFor(() => expect(localStorage.getItem(PLAYER_REPEAT_STORAGE_KEY)).toBe("all"));
+  });
+
+  it("remembers nothing when the command failed", async () => {
+    // Persisting first would remember a preference the player never applied.
+    const harness = installBridge(snapshot());
+    harness.player.setShuffle.mockRejectedValue(new Error("no player"));
+    render(<PlayerBar />);
+    await screen.findByText("Strobe");
+
+    fireEvent.click(screen.getByRole("button", { name: "Shuffle off" }));
+
+    await waitFor(() => expect(harness.player.setShuffle).toHaveBeenCalled());
+    expect(localStorage.getItem(PLAYER_SHUFFLE_STORAGE_KEY)).toBeNull();
+  });
+
+  it("marks an engaged toggle as pressed for assistive technology", async () => {
+    installBridge(snapshot({ shuffle: true, repeat: "all" }));
+    render(<PlayerBar />);
+    await screen.findByText("Strobe");
+
+    expect(screen.getByRole("button", { name: "Shuffle on" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Repeat all" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 });

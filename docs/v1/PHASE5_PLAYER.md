@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 5: Player, Detailed Step Specifications
 
-Status: **In progress. PLAYER-01…PLAYER-06 are implemented** (outcomes recorded under each
-step); PLAYER-07…PLAYER-12 are described below and not started. Per the process, no implementation happens from this document — each step needs an
+Status: **In progress. PLAYER-01…PLAYER-07 are implemented** (outcomes recorded under each
+step); PLAYER-08…PLAYER-12 are described below and not started. Per the process, no implementation happens from this document — each step needs an
 explicit "Implement PLAYER-NN" instruction, scoped to exactly that step, and its outcome is
 recorded under the step afterwards.
 
@@ -787,6 +787,57 @@ implements.
 **Acceptance.** Unit tests for the order rules already exist from PLAYER-04; this step adds
 component tests for the toggles and their persistence, and an assertion that toggling shuffle does
 not reorder, refetch or scroll the table.
+
+### Outcome (2026-09-05)
+
+Implemented as two controls in the bar over PLAYER-04's existing order rules, with
+`playerOrderState.ts` for persistence and three new pixel icons. 87 player tests (1,107 renderer in
+total), 263 main-process, 29 E2E, both typechecks, lint — all pass.
+
+**Three drawings for three states, enforced rather than intended.** DEC-052 asked for three
+visually distinct repeat states rather than two and a badge, so `repeat-one` is its own 12×12 glyph
+beside `repeat` and `shuffle`. The icon suite already refuses duplicate artwork, which turns that
+decision into something a test can fail on, and a component test asserts the `repeat-one` glyph is
+the one rendered in that state.
+
+**Persistence is a preference, not playback state.** DEC-014 rules out restoring what was playing
+and where it had got to; it says nothing about how someone likes their queue ordered, and a shuffle
+setting that silently reset each launch would be a bug rather than a decision. Stored in
+`localStorage` the way the sidebar's state and the table's columns already are — never in main,
+which owns the live order and is *told* the preference at startup.
+
+**Restoring happens at the shell, not in the bar**, and that timing is the substance: the bar does
+not exist until the first play (DEC-053), so restoring from it would reorder a queue the user had
+already started listening to. `useRestorePlayerOrder()` runs once in `App`, before anything is
+queued, and sends the defaults explicitly rather than assuming main starts in the same state — the
+two would drift the moment either default changed.
+
+**Nothing is persisted that did not take effect.** The toggles await main's acknowledgement before
+writing to storage, so a failed command leaves the remembered preference untouched; a test forces a
+rejection and asserts storage stays empty. The buttons themselves show what main reports, never the
+click.
+
+**Two testing faults found and fixed, both of the same kind — a test that passed while proving
+nothing.**
+
+1. The table-isolation test compared "rows before" with "rows after" and both were **empty**: jsdom
+   lays nothing out and has no `ResizeObserver`, so the virtualised table rendered no rows at all,
+   and the comparison was `[] === []`. Found by adding a guard assertion on the *content* of the
+   list before comparing it. It now installs the same layout fakes `LibraryScreen.test.tsx` uses,
+   compares whole rows rather than one column, and asserts six specific rows are there first.
+2. A first version of the same file mocked a library summary with `source: null`, which is the
+   "nothing imported yet" state — so the page rendered the import prompt and there was no table to
+   leave alone.
+
+**Verified in the running app** (`e2e/playerOrder.spec.ts`): pressing the controls changes the
+queue's order settings in the main process, repeat cycles off → all → one with its own glyph, and —
+the half no single session can exercise — the preference is still applied after closing and
+reopening the app on the same profile.
+
+**The acceptance criterion, met explicitly**: toggling shuffle does not reorder the table's rows,
+does not re-run its query (asserted on the browse call count — at 50,000 rows a refetch per press is
+exactly what DEC-040's windowing exists to avoid), does not scroll it, and does not change the sort
+it is showing.
 
 ---
 
