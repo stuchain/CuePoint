@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 5: Player, Detailed Step Specifications
 
-Status: **In progress. PLAYER-01 is implemented** (outcome recorded under the step);
-PLAYER-02…PLAYER-12 are described below and not started. Per the process, no implementation happens from this document — each step needs an
+Status: **In progress. PLAYER-01 and PLAYER-02 are implemented** (outcomes recorded under each
+step); PLAYER-03…PLAYER-12 are described below and not started. Per the process, no implementation happens from this document — each step needs an
 explicit "Implement PLAYER-NN" instruction, scoped to exactly that step, and its outcome is
 recorded under the step afterwards.
 
@@ -314,6 +314,55 @@ a socket and knows nothing about queues, tracks or React.
 
 **Risks.** Windows named-pipe semantics differ enough from unix sockets that "it works on my
 machine" is a real failure mode here; both paths need a test, and the CI matrix must exercise both.
+
+### Outcome (2026-09-05)
+
+Implemented as `apps/desktop-electron/electron/mpvClient.ts` with 59 tests in
+`electron/mpvClient.test.ts`, all passing. The client connects, correlates requests, buffers
+partial lines, times out, routes property observations, and exposes typed wrappers for the
+commands and properties Phase 5 drives. It starts no process and knows nothing about tracks or
+queues, as specified.
+
+**A test harness had to be built first.** `electron/` had no way to run a unit test — which is why
+`engineSupervisor` and `engineClient` have none — so this step adds vitest to the desktop workspace
+(the renderer already used it), a `vitest.config.ts` scoped to `electron/**/*.test.ts` in a node
+environment, an `npm test` script, and a CI step that runs it on all three operating systems. That
+matrix is what discharges the step's stated risk: the tests drive the client against a real
+`net` server, so Windows exercises a named pipe and macOS and Linux exercise a unix socket.
+
+**Two bugs found, both by tests rather than by review.**
+
+1. `createMpvSocketPath()` returned the *same* path when called twice in one millisecond — its
+   entire purpose is uniqueness, and a supervisor restarting a dead player is exactly the caller
+   that would hit it. A sequence number now separates them.
+2. **mpv reports a failed file in `file_error`, not `error`.** The client read `error`, so the
+   explanation was silently dropped — precisely the text DEC-054's "skipped, and here is why" toast
+   is built from, meaning PLAYER-10 would have been built on a field that is always `undefined`.
+
+The second was invisible to the unit tests, because the fake server produced the shape the
+implementation assumed. It was found by driving the **real bundled mpv** (from PLAYER-01) once,
+which answered with
+`{"event":"end-file","reason":"error","playlist_entry_id":1,"file_error":"loading failed"}`. That
+payload is now the fixture in the test, so the knowledge is committed rather than remembered, and
+the client accepts the `error` spelling as a fallback.
+
+**Verified against real mpv, not only against the fake** (a throwaway probe, since spawning is
+PLAYER-03's scope): connect over a real named pipe, `get_property mpv-version`, an unknown property
+rejecting as `MpvCommandError` rather than hanging, all five observed properties accepted,
+`loadfile` of a fixture ending with `reason: "eof"`, `time-pos` changes arriving, and a missing
+file ending with `reason: "error"` and its message. PLAYER-03 owns turning that probe into a
+standing integration test, since it is the step that legitimately spawns the process.
+
+**Not done here, and deliberately**: no reconnection (PLAYER-03's supervisor), no queue, no IPC to
+the renderer, no process spawning. `MPV_BASE_ARGS`, `buildMpvArgs()` and `MPV_OBSERVED_PROPERTIES`
+are exported for PLAYER-03 to consume so the flags the protocol depends on — `--idle`,
+`--input-ipc-server`, and DEC-056's `--gapless-audio` with no crossfade filter — cannot drift away
+from the client that relies on them.
+
+**Adjacent finding, not fixed.** `npx tsc -p tsconfig.json --noEmit` over `electron/` reports 5
+pre-existing errors in `main.ts` (`BrowserWindow | undefined` passed where `BaseWindow` is
+required). Nothing type-checks that directory in CI today, which is how they survived. The new
+files add none, but the gate cannot be turned on until those are fixed.
 
 ---
 

@@ -55,6 +55,13 @@ jobs:
         working-directory: apps/desktop-electron/renderer
         run: npm run typecheck
 
+      # PLAYER-02: main-process unit tests (mpv JSON IPC client). Runs on all
+      # three OSes because the client speaks a named pipe on Windows and a unix
+      # socket elsewhere, and only the matrix exercises both.
+      - name: Unit test Electron main process
+        working-directory: apps/desktop-electron
+        run: npm test
+
       - name: Build desktop shell
         working-directory: apps/desktop-electron
         run: npm run build

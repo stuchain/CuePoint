@@ -21,6 +21,7 @@
     "dev": "npm run dev:renderer",
     "electron:dev": "npm run build:electron && cross-env NODE_ENV=development electron .",
     "electron:start": "npm run build && cross-env NODE_ENV=production electron .",
+    "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium",
     "pack": "npm run build && electron-builder --dir",
@@ -42,23 +43,33 @@
       {
         "from": "resources/engine/${os}-${arch}",
         "to": "engine",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "resources/player/${os}-${arch}",
         "to": "player",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "asar": true,
     "win": {
-      "target": ["nsis"]
+      "target": [
+        "nsis"
+      ]
     },
     "mac": {
-      "target": ["dmg"]
+      "target": [
+        "dmg"
+      ]
     },
     "linux": {
-      "target": ["AppImage"]
+      "target": [
+        "AppImage"
+      ]
     }
   },
   "devDependencies": {
@@ -68,6 +79,7 @@
     "electron-builder": "^25.1.8",
     "esbuild": "^0.25.0",
     "tsx": "^4.19.3",
-    "typescript": "~5.7.3"
+    "typescript": "~5.7.3",
+    "vitest": "^4.1.11"
   }
 }
