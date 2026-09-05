@@ -1,5 +1,10 @@
 import type { MpvEndFile, MpvStartFile } from "./mpvClient";
 import {
+  FailureReporter,
+  type FailureReport,
+  type PlayerNotice,
+} from "./playbackFailures";
+import {
   PlaybackQueue,
   type QueueItem,
   type QueueItemInput,
@@ -41,6 +46,8 @@ export interface PlaybackControllerOptions {
   queue?: PlaybackQueue;
   /** Injected in tests. */
   random?: () => number;
+  /** How long failures are coalesced before being reported (PLAYER-10). */
+  failureWindowMs?: number;
 }
 
 export interface PlaybackControllerSnapshot extends PlayerSnapshot {
@@ -48,6 +55,7 @@ export interface PlaybackControllerSnapshot extends PlayerSnapshot {
 }
 
 export type ControllerListener = (snapshot: PlaybackControllerSnapshot) => void;
+export type NoticeListener = (notice: PlayerNotice) => void;
 
 export class PlaybackController {
   private readonly queue: PlaybackQueue;
@@ -59,16 +67,47 @@ export class PlaybackController {
   /** The queue item currently preloaded into mpv, if any. */
   private preloadedItemId: string | null = null;
 
+  /** Coalesces failures into one message per run (PLAYER-10, DEC-054). */
+  private readonly failures: FailureReporter;
+  private readonly noticeListeners = new Set<NoticeListener>();
+  private noticeSequence = 0;
+
+  /**
+   * The item that just failed and has not been answered yet.
+   *
+   * mpv normally walks past a broken file into the entry preloaded behind it,
+   * and then this is cleared by `start-file`. When it does not — nothing was
+   * preloaded, or the append lost the race with the failure — mpv goes idle
+   * instead, and this is what tells `onPlayerIdle` that the silence is a
+   * stalled queue rather than a player that was idle anyway.
+   */
+  private failedAwaitingAdvance: string | null = null;
+
+  /**
+   * Bumped by every deliberate load.
+   *
+   * `loadfile … replace` clears mpv's playlist, so an append that was already
+   * in flight when it happened describes a playlist that no longer exists.
+   * Recording its entry id would leave a mapping that makes mpv look like it
+   * advanced to a track nobody queued.
+   */
+  private generation = 0;
+
   constructor(
     private readonly player: PlayerSupervisor,
     options: PlaybackControllerOptions = {},
   ) {
     this.queue = options.queue ?? new PlaybackQueue({ random: options.random });
+    this.failures = new FailureReporter({
+      windowMs: options.failureWindowMs,
+      onReport: (report) => this.onFailureReport(report),
+    });
 
     this.unsubscribes.push(
       this.player.onSnapshot(() => this.publish()),
       this.player.onStartFile((info) => this.onStartFile(info)),
       this.player.onEndFile((info) => this.onEndFile(info)),
+      this.player.onIdle(() => this.onPlayerIdle()),
     );
   }
 
@@ -102,9 +141,39 @@ export class PlaybackController {
     for (const listener of this.listeners) listener(snapshot);
   }
 
+  /**
+   * Subscribe to things the user should be told once (PLAYER-10).
+   *
+   * Separate from the snapshot stream on purpose: a snapshot is state, and a
+   * subscriber that arrives late is entitled to all of it. A notice is an
+   * event — replaying it would put a toast about a track that failed ten
+   * minutes ago in front of someone who just opened a window.
+   */
+  onNotice(listener: NoticeListener): () => void {
+    this.noticeListeners.add(listener);
+    return () => this.noticeListeners.delete(listener);
+  }
+
+  private emitNotice(notice: Omit<PlayerNotice, "id">): void {
+    this.noticeSequence += 1;
+    const full: PlayerNotice = { ...notice, id: this.noticeSequence };
+    for (const listener of this.noticeListeners) listener(full);
+  }
+
+  private onFailureReport(report: FailureReport): void {
+    this.emitNotice({
+      kind: "track-failed",
+      message: report.message,
+      count: report.count,
+      stopped: report.stopped,
+    });
+  }
+
   dispose(): void {
     for (const unsubscribe of this.unsubscribes.splice(0)) unsubscribe();
     this.listeners.clear();
+    this.noticeListeners.clear();
+    this.failures.dispose();
   }
 
   // -------------------------------------------------------------------------
@@ -149,18 +218,51 @@ export class PlaybackController {
   }
 
   private async playCurrent(): Promise<void> {
-    const current = this.queue.current;
+    // An item with no path cannot be handed to mpv at all, so it fails here
+    // rather than there (PLAYER-10). A loop rather than recursion: a queue of
+    // fifty thousand such items would otherwise be fifty thousand stack frames.
+    let current = this.queue.current;
+    while (current && current.filePath.trim() === "") {
+      this.queue.markFailed(current.id);
+      this.failures.record({ title: current.title, reason: "no file path" });
+      const upcoming = this.stillWorthTrying() ? this.queue.next() : null;
+      if (!upcoming) {
+        await this.stop();
+        this.failures.stopped();
+        return;
+      }
+      current = this.queue.current;
+    }
     if (!current) {
       await this.stop();
       return;
     }
+
+    const generation = ++this.generation;
+    this.failedAwaitingAdvance = null;
     const entryId = await this.player.play(current.filePath);
+    // A newer load happened while this one was in flight; that one owns mpv.
+    if (generation !== this.generation) return;
     // `replace` cleared mpv's playlist, so every previous mapping is stale.
     this.entryToItem.clear();
     this.preloadedItemId = null;
     if (entryId !== null) this.entryToItem.set(entryId, current.id);
-    await this.refreshPreload();
+    await this.refreshPreload(generation);
     this.publish();
+  }
+
+  /**
+   * Whether it is still worth handing mpv another track.
+   *
+   * A disconnected drive fails every track in the queue, and mpv fails a file
+   * it cannot open far faster than it plays one — so without this a 5,000-track
+   * queue would be walked in a couple of seconds, and a repeating one would be
+   * walked forever. Once the current run of failures covers the whole queue,
+   * everything has been tried and playback stops (DEC-054).
+   */
+  private stillWorthTrying(): boolean {
+    if (this.queue.length === 0) return false;
+    return this.failures.pending < this.queue.length;
   }
 
   /**
@@ -170,8 +272,15 @@ export class PlaybackController {
    * was edited, shuffle or repeat changed. When the answer is already loaded
    * this does nothing, so ordinary playback appends each track exactly once.
    */
-  private async refreshPreload(): Promise<void> {
+  private async refreshPreload(generation = this.generation): Promise<void> {
     if (!this.player.isRunning) return;
+    // Everything in the queue has failed. Feeding mpv another entry is what
+    // "spinning through the queue at speed" looks like; letting it run dry is
+    // what makes it stop, and `onPlayerIdle` says so once.
+    if (!this.stillWorthTrying()) {
+      this.preloadedItemId = null;
+      return;
+    }
     // Nothing is playing, so nothing "comes next". Without this, a queue that
     // has finished would still report its first track as upcoming — and
     // editing the queue afterwards would quietly hand mpv a track to play.
@@ -191,6 +300,9 @@ export class PlaybackController {
     if (this.preloadedItemId === upcoming.id) return;
 
     const entryId = await this.player.enqueue(upcoming.filePath);
+    // A `replace` happened while this append was in flight: mpv's playlist is
+    // not the one this entry id belongs to any more.
+    if (generation !== this.generation) return;
     if (entryId !== null) this.entryToItem.set(entryId, upcoming.id);
     this.preloadedItemId = upcoming.id;
   }
@@ -212,6 +324,9 @@ export class PlaybackController {
 
     this.queue.jumpToId(itemId);
     this.preloadedItemId = null;
+    // mpv answered the failure by walking into the next entry itself, so the
+    // stall handler has nothing to do.
+    this.failedAwaitingAdvance = null;
     // Line up the one after this. Failures here must not break playback: mpv is
     // already playing, and a missing preload only costs the next gap.
     void this.refreshPreload().catch(() => undefined);
@@ -221,14 +336,27 @@ export class PlaybackController {
   /**
    * A file ended.
    *
-   * A failure is recorded on the item so the queue panel can show it
-   * (DEC-054); reporting it to the user is PLAYER-10's. When the queue has run
-   * out, playback stops here rather than leaving a stale "playing" state.
+   * A failure is marked on the item so the queue panel keeps showing it after
+   * the toast is gone, counted so a run of them produces one message rather
+   * than hundreds (DEC-054), and remembered so a queue that stalls because of
+   * it can be restarted. When the queue has run out, playback stops here
+   * rather than leaving a stale "playing" state.
    */
   private onEndFile(info: MpvEndFile): void {
     if (info.reason === "error") {
       const failedId = this.entryToItem.get(info.playlistEntryId ?? -1) ?? this.queue.currentId;
-      if (failedId) this.queue.markFailed(failedId);
+      if (failedId) {
+        const item = this.queue.itemById(failedId);
+        this.queue.markFailed(failedId);
+        this.failures.record({ title: item?.title ?? "", reason: info.error ?? null });
+        this.failedAwaitingAdvance = failedId;
+        // mpv may have said it was idle *before* sending this. `idle-active`
+        // only fires on change, so no second event is coming to prompt the
+        // recovery — the level has to be read here instead.
+        if (this.player.isIdle) this.onPlayerIdle();
+      }
+      this.publish();
+      return;
     }
     if (info.reason === "eof" && this.queue.peekNext() === null) {
       // The end of the queue. mpv will go idle by itself; the queue stays so
@@ -236,6 +364,50 @@ export class PlaybackController {
       this.queue.next();
     }
     this.publish();
+  }
+
+  /**
+   * mpv ran out of things to play (PLAYER-10).
+   *
+   * Only interesting when a failure is outstanding. mpv goes idle for plenty
+   * of innocent reasons — it is idle before the first track of the session, and
+   * again after the queue ends or playback is stopped — and taking any of those
+   * as a cue to start playing would be an app that plays music nobody asked
+   * for. A failure with no answer from mpv is the one case where the silence
+   * means something is stuck.
+   */
+  private onPlayerIdle(): void {
+    const failedId = this.failedAwaitingAdvance;
+    if (failedId === null) return;
+    this.failedAwaitingAdvance = null;
+    // mpv did move on after all, and this idle is about something else.
+    if (failedId !== this.queue.currentId) return;
+    void this.advanceAfterFailure();
+  }
+
+  private async advanceAfterFailure(): Promise<void> {
+    try {
+      const upcoming = this.stillWorthTrying() ? this.queue.next() : null;
+      if (!upcoming) {
+        await this.stop();
+        // Now, not when the coalescing window closes: the message has to
+        // arrive with the silence it is explaining.
+        this.failures.stopped();
+        return;
+      }
+      await this.playCurrent();
+    } catch (error) {
+      // The player itself is gone, which is a different thing from a file that
+      // will not play and gets said differently (PLAYER-03's risk note).
+      await this.stop().catch(() => undefined);
+      this.failures.flush();
+      this.emitNotice({
+        kind: "player-unavailable",
+        message: (error as Error).message,
+        count: 0,
+        stopped: true,
+      });
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -354,6 +526,7 @@ export class PlaybackController {
   async stop(): Promise<void> {
     this.entryToItem.clear();
     this.preloadedItemId = null;
+    this.failedAwaitingAdvance = null;
     await this.player.stopPlayback();
     this.publish();
   }

@@ -22,11 +22,15 @@ function fakePlayer() {
   const calls: FakeCall[] = [];
   let entryId = 0;
   let startFile: ((info: { playlistEntryId: number | null }) => void) | null = null;
-  let endFile: ((info: { reason: string; playlistEntryId?: number }) => void) | null = null;
+  let endFile:
+    | ((info: { reason: string; playlistEntryId?: number; error?: string }) => void)
+    | null = null;
+  let idle: (() => void) | null = null;
   let position: number | null = 0;
 
   const player = {
     isRunning: true,
+    isIdle: false,
     getSnapshot: () => ({
       status: {
         available: true,
@@ -49,12 +53,19 @@ function fakePlayer() {
       startFile = listener;
       return () => undefined;
     },
-    onEndFile: (listener: (info: { reason: string; playlistEntryId?: number }) => void) => {
+    onEndFile: (
+      listener: (info: { reason: string; playlistEntryId?: number; error?: string }) => void,
+    ) => {
       endFile = listener;
+      return () => undefined;
+    },
+    onIdle: (listener: () => void) => {
+      idle = listener;
       return () => undefined;
     },
     play: async (file: string) => {
       calls.push({ kind: "play", file });
+      player.isIdle = false;
       entryId += 1;
       return entryId;
     },
@@ -81,7 +92,29 @@ function fakePlayer() {
     calls,
     /** Pretend mpv moved to a playlist entry by itself. */
     advanceTo: (id: number) => startFile?.({ playlistEntryId: id }),
-    finish: (reason = "eof", id?: number) => endFile?.({ reason, playlistEntryId: id }),
+    finish: (reason = "eof", id?: number, error?: string) =>
+      endFile?.({ reason, playlistEntryId: id, error }),
+    /**
+     * Pretend mpv ran out of playlist and went idle (PLAYER-10).
+     *
+     * The real player reports this through `idle-active`, which is both a
+     * level and an edge — so the fake sets the level and fires the edge, in
+     * that order, exactly as the supervisor does.
+     */
+    goIdle: () => {
+      player.isIdle = true;
+      idle?.();
+    },
+    /**
+     * Pretend mpv reported itself idle *before* the failure that explains it.
+     *
+     * Both are messages on the same socket and either can arrive first. In this
+     * order there is no second edge to react to — an observed property only
+     * fires on change — so only the level is left to notice it.
+     */
+    goIdleSilently: () => {
+      player.isIdle = true;
+    },
     setPosition: (seconds: number | null) => {
       position = seconds;
     },
@@ -292,6 +325,322 @@ describe("failures", () => {
     expect(controller.queueWindow(0, 1_000).items[1].status).toBe("failed");
   });
 });
+
+/**
+ * Files that will not play (PLAYER-10, DEC-054).
+ *
+ * Two things have to be true at once and they pull against each other: nothing
+ * may stall — a failed track must not leave the queue sitting in silence — and
+ * nothing may run away, because a disconnected drive fails every track in the
+ * queue as fast as mpv can try them.
+ */
+describe("recovering from a failure (PLAYER-10)", () => {
+  /** Collect the notices a controller emits, the way main forwards them. */
+  function watch(controller: PlaybackController) {
+    const notices: Array<{ kind: string; message: string; count: number; stopped: boolean }> = [];
+    controller.onNotice((notice) => notices.push(notice));
+    return notices;
+  }
+
+  it("leaves the advance to mpv when there is something preloaded", async () => {
+    // mpv walks past a broken entry into the one appended behind it, without a
+    // gap. Loading it again here would play the same track twice.
+    const { player, calls, finish } = fakePlayer();
+    const controller = new PlaybackController(player, { failureWindowMs: 5 });
+    await controller.playQueue(tracks("a", "b"), 0);
+    calls.length = 0;
+
+    finish("error", 1, "loading failed");
+    await vi.waitFor(() => expect(controller.queueWindow(0, 1_000).items[0].status).toBe("failed"));
+
+    expect(played(calls)).toEqual([]);
+  });
+
+  it("takes over when mpv goes idle instead of advancing", async () => {
+    // The stall this step exists to prevent: the append lost the race with the
+    // failure, so mpv has nothing to walk into and simply stops. Without this
+    // the queue sits in silence with tracks still in it.
+    const { player, calls, finish, goIdle } = fakePlayer();
+    const controller = new PlaybackController(player, { failureWindowMs: 5 });
+    await controller.playQueue(tracks("a", "b"), 0);
+    calls.length = 0;
+
+    finish("error", 1, "loading failed");
+    goIdle();
+
+    await vi.waitFor(() => expect(played(calls)).toEqual(["/music/b.flac"]));
+  });
+
+  it("ignores an idle player when nothing failed", async () => {
+    // mpv is idle before the first track, after the queue ends, and whenever
+    // playback is stopped. Starting something on any of those would be an app
+    // that plays music nobody asked for.
+    const { player, calls, goIdle } = fakePlayer();
+    const controller = new PlaybackController(player, { failureWindowMs: 5 });
+    await controller.playQueue(tracks("a", "b"), 0);
+    calls.length = 0;
+
+    goIdle();
+    goIdle();
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(calls).toEqual([]);
+  });
+
+  it("ignores an idle player once mpv has already moved on", async () => {
+    const { player, calls, finish, advanceTo, goIdle } = fakePlayer();
+    const controller = new PlaybackController(player, { failureWindowMs: 5 });
+    await controller.playQueue(tracks("a", "b", "c"), 0);
+
+    finish("error", 1, "loading failed");
+    advanceTo(2); // mpv walked into the preloaded entry after all
+    calls.length = 0;
+    goIdle();
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(played(calls)).toEqual([]);
+  });
+
+  it("says once that a track would not play, and names it", async () => {
+    const { player, finish } = fakePlayer();
+    const controller = new PlaybackController(player, { failureWindowMs: 5 });
+    const notices = watch(controller);
+    await controller.playQueue(tracks("a", "b"), 0);
+
+    finish("error", 1, "loading failed");
+
+    await vi.waitFor(() => expect(notices).toHaveLength(1));
+    expect(notices[0]).toMatchObject({
+      kind: "track-failed",
+      count: 1,
+      stopped: false,
+      message: "Could not play “a” (loading failed)",
+    });
+  });
+
+  it("says one thing about a whole queue of broken files", async () => {
+    // Three failures in a row, walked by mpv, are one message and not three.
+    const { player, finish, advanceTo, goIdle } = fakePlayer();
+    const controller = new PlaybackController(player, { failureWindowMs: 20 });
+    const notices = watch(controller);
+    await controller.playQueue(tracks("a", "b", "c"), 0);
+
+    finish("error", 1, "loading failed");
+    advanceTo(2);
+    finish("error", 2, "loading failed");
+    advanceTo(3);
+    finish("error", 3, "loading failed");
+    // Nothing is left, so mpv stops.
+    goIdle();
+
+    await vi.waitFor(() => expect(notices).toHaveLength(1), { timeout: 1_000 });
+    expect(notices[0]).toMatchObject({ count: 3, kind: "track-failed" });
+  });
+
+  it("stops rather than spinning when every track in the queue fails", async () => {
+    // The disconnected-drive case. Each failure must not hand mpv another file
+    // to fail on for ever — with repeat on, that never ends by itself.
+    const { player, calls, finish, goIdle } = fakePlayer();
+    // A window long enough that the run is genuinely one run, which is what a
+    // dead drive produces: mpv fails a file it cannot open in milliseconds.
+    const controller = new PlaybackController(player, { failureWindowMs: 1_000 });
+    const notices = watch(controller);
+    await controller.playQueue(tracks("a", "b", "c"), 0);
+    await controller.setRepeat("all");
+    calls.length = 0;
+
+    // mpv fails whatever it is handed and goes idle, over and over. The loop
+    // ends when the player says something — and if it never does, the count
+    // below is what fails, which is the runaway this test is here to catch.
+    for (let round = 0; round < 10 && notices.length === 0; round += 1) {
+      finish("error", undefined, "loading failed");
+      goIdle();
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+
+    expect(notices).toEqual([
+      expect.objectContaining({ stopped: true, count: 3, kind: "track-failed" }),
+    ]);
+    expect(calls.some((call) => call.kind === "stop")).toBe(true);
+    // Repeat-all did not send it round the queue again.
+    expect(played(calls).length).toBeLessThanOrEqual(3);
+  });
+
+  it("stops handing mpv new files once the whole queue has failed", async () => {
+    // The disconnected drive as it actually happens: mpv walks its *own*
+    // playlist, and every `start-file` is what makes CuePoint append the entry
+    // behind it. Nothing in that loop ends by itself — with repeat on it laps
+    // for ever, and mpv fails a file it cannot open far faster than it plays
+    // one, so it laps at speed.
+    const { player, calls, finish, advanceTo, goIdle } = fakePlayer();
+    const controller = new PlaybackController(player, { failureWindowMs: 1_000 });
+    const notices = watch(controller);
+    await controller.playQueue(tracks("a", "b", "c", "d"), 0);
+    await controller.setRepeat("all");
+
+    let entry = 1;
+    let rounds = 0;
+    for (; rounds < 25; rounds += 1) {
+      finish("error", entry, "loading failed");
+      const before = enqueued(calls).length;
+      entry += 1;
+      advanceTo(entry);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      // mpv was handed nothing, so its playlist is about to run dry.
+      if (enqueued(calls).length === before) break;
+    }
+
+    expect(rounds).toBeLessThan(25);
+    // Four tracks, plus the one appended before the first failure was counted.
+    expect(enqueued(calls).length).toBeLessThanOrEqual(5);
+
+    // mpv started that last entry and it fails too — and this time there is
+    // nothing behind it, so mpv runs dry and goes idle.
+    finish("error", entry, "loading failed");
+    goIdle();
+
+    await vi.waitFor(() => expect(notices).toHaveLength(1));
+    expect(notices[0]).toMatchObject({ stopped: true, kind: "track-failed" });
+    expect(notices[0]!.count).toBeGreaterThanOrEqual(4);
+  });
+
+  it("recovers when mpv reports itself idle before the failure", async () => {
+    // Found by the end-to-end test, not by reasoning: with eight missing files
+    // the real player sometimes sends `idle-active` ahead of the `end-file`
+    // that explains it, and an observed property fires only on change — so
+    // nothing else ever arrives to prompt a recovery. The queue stalled in
+    // silence with tracks still in it, and the only symptom was a message that
+    // counted four failures out of eight.
+    const { player, calls, finish, goIdleSilently } = fakePlayer();
+    const controller = new PlaybackController(player, { failureWindowMs: 5 });
+    await controller.playQueue(tracks("a", "b"), 0);
+    calls.length = 0;
+
+    goIdleSilently();
+    finish("error", 1, "loading failed");
+
+    await vi.waitFor(() => expect(played(calls)).toEqual(["/music/b.flac"]));
+  });
+
+  it("stops and says so when the only track fails", async () => {
+    const { player, calls, finish, goIdle } = fakePlayer();
+    const controller = new PlaybackController(player, { failureWindowMs: 5_000 });
+    const notices = watch(controller);
+    await controller.playQueue(tracks("a"), 0);
+
+    finish("error", 1, "loading failed");
+    goIdle();
+
+    // Reported immediately rather than after the window: the silence is the
+    // thing being explained.
+    await vi.waitFor(() => expect(notices).toHaveLength(1));
+    expect(notices[0]).toMatchObject({
+      stopped: true,
+      count: 1,
+      message: "Could not play “a” (loading failed) — playback stopped",
+    });
+    expect(calls.some((call) => call.kind === "stop")).toBe(true);
+  });
+
+  it("plays a track that failed before, when it is asked for again", async () => {
+    // DEC-054 makes failure transient; the drive may well be back.
+    const { player, calls, finish, goIdle } = fakePlayer();
+    const controller = new PlaybackController(player, { failureWindowMs: 5 });
+    await controller.playQueue(tracks("a", "b"), 0);
+    finish("error", 1, "loading failed");
+    goIdle();
+    await vi.waitFor(() => expect(played(calls)).toContain("/music/b.flac"));
+    calls.length = 0;
+
+    await controller.jumpTo(0);
+
+    expect(played(calls)).toEqual(["/music/a.flac"]);
+    expect(controller.queueWindow(0, 1_000).items[0].status).toBe("playing");
+  });
+
+  it("fails an item with no file path without asking mpv about it", async () => {
+    const { player, calls, goIdle } = fakePlayer();
+    const controller = new PlaybackController(player, { failureWindowMs: 5 });
+    const notices = watch(controller);
+
+    await controller.playQueue(
+      [{ filePath: "", title: "nowhere" }, { filePath: "/music/b.flac", title: "b" }],
+      0,
+    );
+
+    expect(played(calls)).toEqual(["/music/b.flac"]);
+    expect(controller.queueWindow(0, 1_000).items[0].status).toBe("failed");
+    await vi.waitFor(() => expect(notices).toHaveLength(1));
+    expect(notices[0]!.message).toBe("Could not play “nowhere” (no file path)");
+    goIdle();
+  });
+
+  it("stops when every item has no path, without recursing through the queue", async () => {
+    const { player, calls } = fakePlayer();
+    const controller = new PlaybackController(player, { failureWindowMs: 5 });
+    const notices = watch(controller);
+
+    await controller.playQueue(
+      Array.from({ length: 2_000 }, (_, index) => ({ filePath: "  ", title: `t${index}` })),
+      0,
+    );
+
+    expect(played(calls)).toEqual([]);
+    expect(calls.some((call) => call.kind === "stop")).toBe(true);
+    expect(notices).toHaveLength(1);
+    expect(notices[0]).toMatchObject({ count: 2_000, stopped: true });
+  });
+
+  it("tells a dead player apart from a dead file", async () => {
+    // PLAYER-03 flagged this: "there is no audio player" and "this file will
+    // not play" are different problems and must not share a message.
+    const { player, finish, goIdle } = fakePlayer();
+    const controller = new PlaybackController(player, { failureWindowMs: 5 });
+    const notices = watch(controller);
+    await controller.playQueue(tracks("a", "b"), 0);
+    (player as unknown as { play: () => Promise<number> }).play = () => {
+      throw new Error("There is no audio player.");
+    };
+
+    finish("error", 1, "loading failed");
+    goIdle();
+
+    await vi.waitFor(() => expect(notices.length).toBeGreaterThanOrEqual(2));
+    expect(notices.map((notice) => notice.kind)).toContain("player-unavailable");
+    expect(notices.find((notice) => notice.kind === "player-unavailable")!.message).toBe(
+      "There is no audio player.",
+    );
+  });
+
+  it("gives every notice a rising id, so a repeat is not mistaken for a resend", async () => {
+    const { player, finish } = fakePlayer();
+    const controller = new PlaybackController(player, { failureWindowMs: 5 });
+    const notices: Array<{ id: number }> = [];
+    controller.onNotice((notice) => notices.push(notice));
+    await controller.playQueue(tracks("a", "b", "c"), 0);
+
+    finish("error", 1, "loading failed");
+    await vi.waitFor(() => expect(notices).toHaveLength(1));
+    finish("error", 2, "loading failed");
+    await vi.waitFor(() => expect(notices).toHaveLength(2));
+
+    expect(notices.map((notice) => notice.id)).toEqual([1, 2]);
+  });
+
+  it("stops reporting once disposed", async () => {
+    const { player, finish } = fakePlayer();
+    const controller = new PlaybackController(player, { failureWindowMs: 5 });
+    const notices = watch(controller);
+    await controller.playQueue(tracks("a", "b"), 0);
+
+    finish("error", 1, "loading failed");
+    controller.dispose();
+
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(notices).toHaveLength(0);
+  });
+});
+
 
 describe("manual transport", () => {
   it("next loads the following track immediately", async () => {

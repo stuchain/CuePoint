@@ -4,6 +4,7 @@ import { PlayerBar } from "./PlayerBar";
 import { QueuePanel } from "./QueuePanel";
 import { selectHasPlayed } from "./playerFormat";
 import { usePlayerValue } from "./playerStore";
+import { usePlayerNotices } from "./usePlayerNotices";
 import "./PlayerSlot.css";
 
 /**
@@ -27,6 +28,10 @@ import "./PlayerSlot.css";
  * must not cover the table the queue was built from.
  */
 export function PlayerSlot() {
+  // Mounted here rather than in the bar, because the bar does not exist yet the
+  // first time a track fails — and "the file you just double-clicked will not
+  // play" is exactly the moment the user most needs to be told (PLAYER-10).
+  usePlayerNotices();
   const hasPlayed = usePlayerValue(selectHasPlayed);
   const [everPlayed, setEverPlayed] = useState(false);
   const [queueOpen, setQueueOpen] = useState(false);

@@ -105,6 +105,20 @@ contextBridge.exposeInMainWorld("cuepoint", {
     seek: (seconds) => ipcRenderer.invoke("player:seek", seconds),
     setVolume: (volume) => ipcRenderer.invoke("player:setVolume", volume),
     setMuted: (muted) => ipcRenderer.invoke("player:setMuted", muted),
+    /**
+     * Things to tell the user once: a track that would not play, or a player
+     * that is gone (PLAYER-10). Not replayed on subscribe, so a reloaded
+     * window never shows a stale toast.
+     */
+    subscribeNotices: (onNotice) => {
+      const handler = (_event, notice) => onNotice(notice);
+      ipcRenderer.on("player:notice", handler);
+      void ipcRenderer.invoke("player:subscribeNotices");
+      return () => {
+        ipcRenderer.removeListener("player:notice", handler);
+        void ipcRenderer.invoke("player:unsubscribeNotices");
+      };
+    },
     subscribeState: (onState) => {
       const handler = (_event, snapshot) => onState(snapshot);
       ipcRenderer.on("player:state", handler);

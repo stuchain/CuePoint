@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 5: Player, Detailed Step Specifications
 
-Status: **In progress. PLAYER-01…PLAYER-09 are implemented** (outcomes recorded under each
-step); PLAYER-10…PLAYER-12 are described below and not started. Per the process, no implementation happens from this document — each step needs an
+Status: **In progress. PLAYER-01…PLAYER-10 are implemented** (outcomes recorded under each
+step); PLAYER-11…PLAYER-12 are described below and not started. Per the process, no implementation happens from this document — each step needs an
 explicit "Implement PLAYER-NN" instruction, scoped to exactly that step, and its outcome is
 recorded under the step afterwards.
 
@@ -1032,6 +1032,62 @@ to relocate them — all Phase 7 (DEC-037).
 **Acceptance.** Unit tests for the advance-and-mark rule and the coalescing window; a test that a
 queue of all-bad files stops with exactly one message; a test that a failed track plays normally
 on a later attempt; an integration check with a real missing path through the supervisor.
+
+### Outcome (2026-09-06)
+
+Implemented as `playbackFailures.ts` (the coalescer), a failure path through `PlaybackController`,
+a `player:notice` channel from main to the renderer, and `usePlayerNotices` turning notices into
+toasts. 1,195 renderer tests, 318 main-process, 32 E2E, both typechecks, lint and the production
+build pass.
+
+**The requirement is the silence between messages, not the message.** A disconnected drive fails
+every track in the queue, and mpv fails a file it cannot open far faster than it plays one — so
+the naive version of this step puts five thousand toasts on screen. Failures are collected into a
+*run*: consecutive failures with nothing having played in between. A run is reported once, when it
+ends, which is either 400 ms with nothing new failing or the moment playback stops for want of
+anything left to try. A run of one names the track and repeats mpv's own reason; a run of twelve
+does not try to name twelve.
+
+**Two things pull against each other and both had to be true.** Nothing may stall — a failed track
+must not leave the queue sitting in silence with tracks still in it — and nothing may run away,
+because a repeating queue of unplayable files never ends by itself. The stall is answered by
+watching mpv's `idle-active`, which is its only definitive statement that it has stopped and will
+start nothing more; the runaway is answered by refusing to hand mpv another file once the current
+run of failures covers the whole queue, which lets it run dry and stop with one message.
+
+**The end-to-end test found a race that no amount of reasoning had.** With eight missing files the
+real player sometimes sends `idle-active` *before* the `end-file` that explains it — and an
+observed property fires only on change, so no second event ever arrives to prompt a recovery. The
+queue stalled with four of eight tried, and the only visible symptom was a message that counted
+four. The supervisor now exposes idle as a level as well as an edge, and the failure path reads it;
+the regression test for that ordering fails on the code as it stood.
+
+**A latent hang, found while answering "log it".** mpv was spawned with a stderr *pipe* that
+nothing ever read. A pipe nobody reads fills up, and the writer then blocks — and mpv is quiet
+while things work and writes a line per file when they do not, so the case that fills 64 KB of pipe
+buffer is precisely this step's: a queue pointed at a drive that is not there. The supervisor now
+drains stderr and keeps a bounded tail of it, which is also where a failure's log entry lives —
+the user is told "could not play that track", and mpv's own words about why belong in diagnostics
+rather than in a toast.
+
+**Failure stays transient (DEC-051, DEC-054).** Nothing is written to the database, and a track
+that failed loses the mark the moment it is played again — the drive may well be back. That last
+part was a real change: the queue used to keep the failed status through a re-play, which would
+have shown a track marked broken in the panel while it was playing.
+
+**Told apart, as PLAYER-03 asked.** "This file will not play" and "there is no audio player" are
+different notices with different text: the first names the track, the second carries the
+supervisor's own reason and is raised when the player dies mid-queue rather than when a file does.
+
+**Verified in the running app** (`e2e/playerFailures.spec.ts`): eight files that do not exist
+produce exactly one toast — counted with a `MutationObserver`, because toasts clear themselves
+after four seconds and a test that looked afterwards could see one while five hundred had come and
+gone — playback stops, every row carries the panel's failed mark, one bad file among good ones is
+named and skipped without stopping, and the same queue item plays once it points at a real file.
+Green three times in a row.
+
+**Not in scope, as specified**: detecting missing files ahead of time, marking them in the library,
+or offering to relocate them — all Phase 7 (DEC-037).
 
 ---
 

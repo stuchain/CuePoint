@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlayerSnapshot, QueueItem } from "../../api/cuepointBridge.types";
 import { PlayerBar } from "./PlayerBar";
 import { PlayerSlot } from "./PlayerSlot";
+import { ToastProvider } from "../Toast";
 import { PLAYER_REPEAT_STORAGE_KEY, PLAYER_SHUFFLE_STORAGE_KEY } from "./playerOrderState";
 import { resetPlayerStore } from "./playerStore";
 
@@ -110,6 +111,15 @@ afterEach(() => {
   delete (window as { cuepoint?: unknown }).cuepoint;
 });
 
+/** The slot reports player notices (PLAYER-10), so it needs the toast stack. */
+function Slot() {
+  return (
+    <ToastProvider>
+      <PlayerSlot />
+    </ToastProvider>
+  );
+}
+
 describe("when the bar exists (DEC-053)", () => {
   it("renders nothing at all before the first play", async () => {
     // DEC-025 held this region at zero height with a stated reason: the app
@@ -117,17 +127,21 @@ describe("when the bar exists (DEC-053)", () => {
     installBridge(
       snapshot({ playback: { filePath: null }, items: [], currentId: null }),
     );
-    const { container } = render(<PlayerSlot />);
+    const { container } = render(<Slot />);
 
     await waitFor(() => expect(window.cuepoint?.player?.getState).toHaveBeenCalled());
-    expect(container).toBeEmptyDOMElement();
+    // The slot contributes no element at all — not an empty one. Everything
+    // left in the container belongs to the toast stack the wrapper brings.
+    expect(container.querySelector(".cp-player-slot")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Player" })).toBeNull();
+    expect(container.querySelector(".cp-player-bar")).toBeNull();
   });
 
   it("appears once something is playing", async () => {
     const harness = installBridge(
       snapshot({ playback: { filePath: null }, items: [], currentId: null }),
     );
-    render(<PlayerSlot />);
+    render(<Slot />);
 
     harness.push(snapshot());
 
@@ -138,7 +152,7 @@ describe("when the bar exists (DEC-053)", () => {
     // Ending a queue must not make the app jump as a control the user was
     // just using disappears from under the pointer.
     const harness = installBridge(snapshot());
-    render(<PlayerSlot />);
+    render(<Slot />);
     await waitFor(() => expect(screen.getByRole("region", { name: "Player" })).toBeInTheDocument());
 
     harness.push(

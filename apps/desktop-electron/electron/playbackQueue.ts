@@ -397,7 +397,10 @@ export class PlaybackQueue {
     const previous = this.current;
     if (previous && previous.status === "playing") previous.status = "pending";
     this.currentIdValue = id;
-    if (item.status !== "failed") item.status = "playing";
+    // Including one that failed before: DEC-054 makes failure transient, and
+    // the drive may well be back. Leaving the mark on would make the panel
+    // claim a track is broken while it is playing.
+    item.status = "playing";
     return item;
   }
 

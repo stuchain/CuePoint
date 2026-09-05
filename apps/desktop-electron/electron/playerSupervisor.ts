@@ -66,6 +66,9 @@ export const PLAYER_QUIT_TIMEOUT_MS = 2000;
  * loop the budget exists to prevent. Surviving this long is evidence it really
  * worked; anything shorter is a crash loop.
  */
+/** How many lines of mpv's own output are kept for diagnostics. */
+export const PLAYER_OUTPUT_LINES = 50;
+
 export const PLAYER_STABLE_UPTIME_MS = 10_000;
 
 /**
@@ -135,6 +138,7 @@ export interface PlayerSupervisorOptions extends Partial<ResolvePlayerBinaryOpti
 type SnapshotListener = (snapshot: PlayerSnapshot) => void;
 type EndFileListener = (info: MpvEndFile) => void;
 type StartFileListener = (info: MpvStartFile) => void;
+type IdleListener = () => void;
 
 const IDLE_PLAYBACK: PlaybackState = {
   filePath: null,
@@ -167,6 +171,12 @@ export class PlayerSupervisor {
   private readonly snapshotListeners = new Set<SnapshotListener>();
   private readonly endFileListeners = new Set<EndFileListener>();
   private readonly startFileListeners = new Set<StartFileListener>();
+  private readonly idleListeners = new Set<IdleListener>();
+  /** mpv's own `idle-active`: it has nothing loaded and is playing nothing. */
+  private idleActive = false;
+  /** The tail of mpv's own diagnostics; see `drainOutput`. */
+  private output: string[] = [];
+  private outputTail = "";
 
   private readonly spawnFn: typeof nodeSpawn;
   private readonly clientFactory: (socketPath: string) => MpvClient;
@@ -248,6 +258,47 @@ export class PlayerSupervisor {
     return () => this.startFileListeners.delete(listener);
   }
 
+  /**
+   * Subscribe to mpv running out of things to play (PLAYER-10).
+   *
+   * `idle-active` going true is the only *definitive* statement mpv makes that
+   * it has stopped and will not start anything else on its own. PLAYER-10 needs
+   * it because a file that fails to load is normally walked past by mpv into
+   * the preloaded entry — but when there is no preloaded entry, or the append
+   * lost the race with the failure, mpv simply goes idle and playback would
+   * stall silently in the middle of a queue.
+   */
+  onIdle(listener: IdleListener): () => void {
+    this.idleListeners.add(listener);
+    return () => this.idleListeners.delete(listener);
+  }
+
+  /**
+   * Whether mpv is sitting with nothing to play, right now.
+   *
+   * The event above is an edge and this is the level, and both are needed:
+   * `end-file` and `idle-active` are separate messages on the same socket and
+   * arrive in either order. A listener that only watched the edge would miss
+   * the case where mpv reported itself idle *before* the failure that explains
+   * it — and an observed property only fires on change, so no second edge ever
+   * comes to correct it.
+   */
+  get isIdle(): boolean {
+    return this.idleActive;
+  }
+
+  /**
+   * The last few lines mpv wrote about itself.
+   *
+   * PLAYER-10 asks for a failure to be logged, and this is where the player's
+   * own words about it are kept. The renderer never sees them: a user is told
+   * "could not play that track", and the reason mpv gave for *why* belongs in
+   * diagnostics rather than in a toast.
+   */
+  recentOutput(): readonly string[] {
+    return [...this.output];
+  }
+
   // -------------------------------------------------------------------------
   // Lifecycle
   // -------------------------------------------------------------------------
@@ -296,6 +347,8 @@ export class PlayerSupervisor {
         `Could not start the audio player at ${binary.path}: ${(error as Error).message}`,
       );
     }
+
+    this.drainOutput(child);
 
     // A spawn that fails asynchronously (ENOENT) reports through `error`.
     let spawnError: Error | null = null;
@@ -409,8 +462,43 @@ export class PlayerSupervisor {
     if (this.playback.muted) await client.setMuted(true).catch(() => undefined);
   }
 
+  /**
+   * Read mpv's stderr and keep the tail of it.
+   *
+   * The reading is not optional. The process is spawned with a stderr *pipe*,
+   * and a pipe nobody reads fills up — at which point mpv blocks on its next
+   * write and the player stops responding, taking playback with it. mpv is
+   * quiet while things work and writes a line per file when they do not, so
+   * the case that fills 64 KB of pipe buffer is precisely the one this step is
+   * about: a queue pointed at a drive that is not there.
+   *
+   * What is kept is bounded for the same reason: a tail, not a transcript.
+   */
+  private drainOutput(child: ChildProcess): void {
+    const stream = child.stderr;
+    if (!stream) return;
+    stream.setEncoding("utf-8");
+    stream.on("data", (chunk: string) => {
+      const text = this.outputTail + chunk;
+      const lines = text.split(/\r?\n/);
+      // A chunk can end mid-line; hold the remainder for the next one.
+      this.outputTail = lines.pop() ?? "";
+      for (const line of lines) {
+        if (line.trim() === "") continue;
+        this.output.push(line);
+      }
+      if (this.output.length > PLAYER_OUTPUT_LINES) {
+        this.output = this.output.slice(-PLAYER_OUTPUT_LINES);
+      }
+    });
+    // A broken pipe on shutdown is not an error worth surfacing, but an
+    // unhandled one on a stream would take the process down.
+    stream.on("error", () => undefined);
+  }
+
   private applyProperty(name: string, value: unknown): void {
     let significant = false;
+    let idle = false;
     switch (name) {
       case "time-pos":
         this.playback = {
@@ -432,15 +520,22 @@ export class PlayerSupervisor {
         break;
       }
       case "idle-active":
+        this.idleActive = value === true;
         if (value === true) {
           this.playback = { ...this.playback, playing: false };
           significant = true;
+          // After the state is settled, so a listener that reacts by playing
+          // something sees an idle player rather than a half-updated one.
+          idle = true;
         }
         break;
       default:
         break;
     }
     this.push(significant);
+    if (idle) {
+      for (const listener of this.idleListeners) listener();
+    }
   }
 
   private markStopped(): void {
@@ -559,6 +654,7 @@ export class PlayerSupervisor {
     this.snapshotListeners.clear();
     this.endFileListeners.clear();
     this.startFileListeners.clear();
+    this.idleListeners.clear();
   }
 
   // -------------------------------------------------------------------------
@@ -585,6 +681,10 @@ export class PlayerSupervisor {
       positionSeconds: null,
       durationSeconds: null,
     };
+    // Not idle any more, whatever mpv last said: it is about to play this or
+    // fail it. Waiting for the property to catch up would leave a window in
+    // which a failure looks like it arrived at an already-idle player.
+    this.idleActive = false;
     this.push(true);
     // `replace` clears mpv's playlist, so any preloaded entry goes with it —
     // verified against the bundled build, where playlist-count returns to 1.

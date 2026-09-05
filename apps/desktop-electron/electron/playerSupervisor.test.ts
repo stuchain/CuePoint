@@ -1,7 +1,12 @@
 import { EventEmitter } from "node:events";
+import { PassThrough } from "node:stream";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { PlayerSupervisor, PlayerUnavailableError } from "./playerSupervisor";
+import {
+  PLAYER_OUTPUT_LINES,
+  PlayerSupervisor,
+  PlayerUnavailableError,
+} from "./playerSupervisor";
 
 /**
  * The player's lifecycle (PLAYER-03).
@@ -18,6 +23,18 @@ class FakeChild extends EventEmitter {
   signalCode: NodeJS.Signals | null = null;
   killed = false;
   readonly killSignals: Array<string | undefined> = [];
+  /**
+   * A stderr pipe, because that is what the real spawn creates.
+   *
+   * `PassThrough` and not a bare emitter: the point of the supervisor reading
+   * this is back-pressure, and only a real stream has any.
+   */
+  readonly stderr = new PassThrough();
+
+  /** Write a line the way mpv writes one. */
+  say(text: string): void {
+    this.stderr.write(text);
+  }
 
   kill(signal?: NodeJS.Signals): boolean {
     this.killSignals.push(signal);
@@ -541,6 +558,77 @@ describe("transport", () => {
     expect(
       clients[0]!.commands.filter((command) => command[1] === "volume"),
     ).toHaveLength(0);
+  });
+});
+
+describe("what mpv says about itself (PLAYER-10)", () => {
+  /** Let the stream deliver what was written to it. */
+  const settle = () => new Promise((resolve) => setImmediate(resolve));
+
+  it("reads stderr, so a talkative player cannot block on a full pipe", async () => {
+    // The process is spawned with a stderr *pipe*, and a pipe nobody reads
+    // fills up — at which point mpv blocks on its next write and playback stops
+    // with it. mpv is quiet while things work and writes a line per file when
+    // they do not, so the case that fills the buffer is exactly the one this
+    // step is about: a queue pointed at a drive that is not there.
+    const { supervisor, children } = track(harness());
+    await supervisor.play("/music/a.flac");
+    const child = children[0]!;
+
+    // Far more than any pipe buffer would hold.
+    for (let index = 0; index < 5_000; index += 1) {
+      child.say(`[ffmpeg] file ${index}: No such file or directory\n`);
+    }
+    await settle();
+
+    expect(child.stderr.readableLength).toBe(0);
+  });
+
+  it("keeps a bounded tail of it for diagnostics", async () => {
+    const { supervisor, children } = track(harness());
+    await supervisor.play("/music/a.flac");
+    const child = children[0]!;
+
+    for (let index = 0; index < 200; index += 1) {
+      child.say(`line ${index}\n`);
+    }
+    await settle();
+
+    const output = supervisor.recentOutput();
+    expect(output.length).toBe(PLAYER_OUTPUT_LINES);
+    // The tail, not the head: the most recent lines are the ones worth having.
+    expect(output.at(-1)).toBe("line 199");
+  });
+
+  it("joins a line that arrived in pieces", async () => {
+    // Stream chunks have nothing to do with line boundaries.
+    const { supervisor, children } = track(harness());
+    await supervisor.play("/music/a.flac");
+    const child = children[0]!;
+
+    child.say("Failed to open ");
+    child.say("/music/gone.flac\n");
+    await settle();
+
+    expect(supervisor.recentOutput()).toEqual(["Failed to open /music/gone.flac"]);
+  });
+
+  it("keeps no blank lines", async () => {
+    const { supervisor, children } = track(harness());
+    await supervisor.play("/music/a.flac");
+    children[0]!.say("\n\n  \nreal line\n");
+    await settle();
+
+    expect(supervisor.recentOutput()).toEqual(["real line"]);
+  });
+
+  it("survives the stream erroring", async () => {
+    // A broken pipe at shutdown must not take the main process down with it.
+    const { supervisor, children } = track(harness());
+    await supervisor.play("/music/a.flac");
+
+    expect(() => children[0]!.stderr.emit("error", new Error("EPIPE"))).not.toThrow();
+    expect(supervisor.getSnapshot().status.running).toBe(true);
   });
 });
 

@@ -34,7 +34,7 @@ const describeWithMpv = binary ? describe : describe.skip;
 const supervisors: PlayerSupervisor[] = [];
 const controllers: PlaybackController[] = [];
 
-function makeController() {
+function makeController(options: { failureWindowMs?: number } = {}) {
   const player = new PlayerSupervisor({
     packaged: false,
     repoRoot: REPO_ROOT,
@@ -42,10 +42,13 @@ function makeController() {
     mpvArgs: ["--ao=null"],
     positionPushIntervalMs: 20,
   });
-  const controller = new PlaybackController(player);
+  const controller = new PlaybackController(player, options);
   supervisors.push(player);
   controllers.push(controller);
-  return { player, controller };
+  // Everything the user would be told, in the order it was said (PLAYER-10).
+  const notices: Array<{ kind: string; message: string; count: number; stopped: boolean }> = [];
+  controller.onNotice((notice) => notices.push(notice));
+  return { player, controller, notices };
 }
 
 async function waitFor(
@@ -172,6 +175,69 @@ describeWithMpv("a queue playing through real mpv", () => {
 
     expect(controller.queueWindow(0, 1_000).items[0].status).toBe("failed");
     expect(everPlayed.has("fine")).toBe(true);
+  });
+
+  it("says one thing about a whole queue of missing files (DEC-054)", async () => {
+    // The disconnected drive, against the real player. Every path is missing,
+    // so mpv fails each one as fast as it can open and close a file — which is
+    // exactly the situation a toast per failure would turn into a wall of them.
+    const { controller, notices } = makeController({ failureWindowMs: 250 });
+
+    await controller.playQueue(
+      Array.from({ length: 6 }, (_, index) => ({
+        filePath: fixture(`missing-${index}.flac`),
+        title: `gone ${index}`,
+      })),
+      0,
+    );
+
+    await waitFor(() => notices.length > 0);
+    // Long enough that a second message would have arrived if one were coming.
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    expect(notices).toHaveLength(1);
+    expect(notices[0]!.kind).toBe("track-failed");
+    expect(notices[0]!.count).toBeGreaterThan(1);
+    expect(notices[0]!.stopped).toBe(true);
+    expect(notices[0]!.message).toMatch(/tracks could not be played — playback stopped$/);
+    // Nothing is playing and every item carries the mark the panel shows.
+    expect(controller.snapshot().playback.playing).toBe(false);
+    expect(
+      controller.queueWindow(0, 1_000).items.every((item) => item.status === "failed"),
+    ).toBe(true);
+  });
+
+  it("names the one track that would not play, and keeps going", async () => {
+    const { controller, notices } = makeController({ failureWindowMs: 150 });
+
+    await controller.playQueue(
+      [
+        { filePath: fixture("definitely-missing.flac"), title: "gone" },
+        { filePath: fixture("tone.flac"), title: "fine" },
+      ],
+      0,
+    );
+
+    await waitFor(() => notices.length > 0);
+
+    expect(notices[0]!.count).toBe(1);
+    expect(notices[0]!.message).toContain("Could not play “gone”");
+    // It carried on rather than stopping: the good track is what played.
+    expect(notices[0]!.stopped).toBe(false);
+  });
+
+  it("plays a track that failed once the file is there again", async () => {
+    // DEC-054's transience, end to end: the same queue item, first pointed at
+    // nothing and then at a real file, plays the second time.
+    const { controller } = makeController({ failureWindowMs: 5_000 });
+
+    await controller.playQueue([{ filePath: fixture("missing-retry.flac"), title: "gone" }], 0);
+    await waitFor(() => controller.queueWindow(0, 1_000).items[0].status === "failed");
+
+    await controller.playQueue([{ filePath: fixture("tone.flac"), title: "back" }], 0);
+
+    await waitFor(() => controller.snapshot().queue.currentItem?.status === "playing");
+    expect(controller.queueWindow(0, 1_000).items[0].status).toBe("playing");
   });
 
   it("takes over immediately when the playing track is removed", async () => {

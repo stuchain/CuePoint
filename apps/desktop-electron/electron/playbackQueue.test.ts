@@ -481,6 +481,19 @@ describe("failures", () => {
     expect(queue.jumpToId(failedId)?.id).toBe(failedId);
     expect(queue.current?.id).toBe(failedId);
   });
+
+  it("loses the mark when it is played again (PLAYER-10)", () => {
+    // Otherwise the panel shows a track as broken while it is playing, which
+    // is the one thing the mark must never say.
+    const queue = queueOf("a", "b");
+    const failedId = queue.currentId!;
+    queue.markFailed(failedId);
+    queue.next();
+
+    queue.jumpToId(failedId);
+
+    expect(queue.itemById(failedId)?.status).toBe("playing");
+  });
 });
 
 describe("nothing is persisted (DEC-014, DEC-050)", () => {

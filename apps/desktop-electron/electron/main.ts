@@ -62,6 +62,31 @@ function pushPlayerState(snapshot: unknown): void {
     playerUnsubscribe = null;
   }
 }
+
+/**
+ * Renderers watching for things to tell the user once (PLAYER-10).
+ *
+ * A separate subscription from the state stream rather than a field on the
+ * snapshot: state is replayed to whoever asks for it, and a notice replayed is
+ * a toast about a track that failed ten minutes ago appearing in a window that
+ * has just opened.
+ */
+const noticeWatchers = new Map<number, { sender: Electron.WebContents; refs: number }>();
+let noticeUnsubscribe: (() => void) | null = null;
+
+function pushPlayerNotice(notice: unknown): void {
+  for (const [id, watcher] of noticeWatchers) {
+    if (watcher.sender.isDestroyed()) {
+      noticeWatchers.delete(id);
+      continue;
+    }
+    watcher.sender.send("player:notice", notice);
+  }
+  if (noticeWatchers.size === 0 && noticeUnsubscribe) {
+    noticeUnsubscribe();
+    noticeUnsubscribe = null;
+  }
+}
 let privacyExitPrefs = {
   clearCacheOnExit: false,
   clearLogsOnExit: false,
@@ -297,6 +322,31 @@ function registerIpcHandlers(): void {
     if (playerWatchers.size === 0 && playerUnsubscribe) {
       playerUnsubscribe();
       playerUnsubscribe = null;
+    }
+    return { ok: true };
+  });
+  ipcMain.handle("player:subscribeNotices", (event) => {
+    const id = event.sender.id;
+    const existing = noticeWatchers.get(id);
+    if (existing) {
+      existing.refs += 1;
+    } else {
+      noticeWatchers.set(id, { sender: event.sender, refs: 1 });
+      event.sender.once("destroyed", () => noticeWatchers.delete(id));
+    }
+    noticeUnsubscribe ??= playback.onNotice(pushPlayerNotice);
+    // Deliberately no replay of the last notice: see `noticeWatchers`.
+    return { ok: true };
+  });
+  ipcMain.handle("player:unsubscribeNotices", (event) => {
+    const id = event.sender.id;
+    const existing = noticeWatchers.get(id);
+    if (!existing) return { ok: true };
+    existing.refs -= 1;
+    if (existing.refs <= 0) noticeWatchers.delete(id);
+    if (noticeWatchers.size === 0 && noticeUnsubscribe) {
+      noticeUnsubscribe();
+      noticeUnsubscribe = null;
     }
     return { ok: true };
   });

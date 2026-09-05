@@ -108,6 +108,26 @@ export type PlayerPlayViewResult =
  * single-file `play`: one path means the queue and what is actually playing
  * cannot disagree.
  */
+/**
+ * Something the player wants said once (PLAYER-10, DEC-054).
+ *
+ * `track-failed` covers files that would not play — one message per run of
+ * failures, however many tracks it covers. `player-unavailable` is mpv itself
+ * being gone, which is a different problem with a different answer.
+ */
+export type PlayerNoticeKind = "track-failed" | "player-unavailable";
+
+export interface PlayerNotice {
+  /** Rises with every notice, so a repeat can be told from a re-delivery. */
+  id: number;
+  kind: PlayerNoticeKind;
+  message: string;
+  /** How many tracks it covers; zero when it is not about tracks. */
+  count: number;
+  /** True when playback stopped as a result. */
+  stopped: boolean;
+}
+
 export interface PlayerBridge {
   getState: () => Promise<PlayerSnapshot>;
   /** Play a view's worth of tracks, starting at one of them (DEC-012). */
@@ -144,6 +164,12 @@ export interface PlayerBridge {
   setMuted: (muted: boolean) => Promise<void>;
   /** Subscribe to state pushes; returns an unsubscribe function. */
   subscribeState: (onState: (snapshot: PlayerSnapshot) => void) => () => void;
+  /**
+   * Subscribe to one-off notices (PLAYER-10): a track that would not play, or
+   * a player that is gone. Never replayed on subscribe — a notice is an event,
+   * and a reloaded window must not show a toast about something it missed.
+   */
+  subscribeNotices: (onNotice: (notice: PlayerNotice) => void) => () => void;
 }
 
 export interface EngineStatus {
