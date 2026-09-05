@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 5: Player, Detailed Step Specifications
 
-Status: **In progress. PLAYER-01, PLAYER-02 and PLAYER-03 are implemented** (outcomes recorded
-under each step); PLAYER-04…PLAYER-12 are described below and not started. Per the process, no implementation happens from this document — each step needs an
+Status: **In progress. PLAYER-01…PLAYER-04 are implemented** (outcomes recorded under each
+step); PLAYER-05…PLAYER-12 are described below and not started. Per the process, no implementation happens from this document — each step needs an
 explicit "Implement PLAYER-NN" instruction, scoped to exactly that step, and its outcome is
 recorded under the step afterwards.
 
@@ -520,6 +520,65 @@ operation without throwing.
 **Risks.** Index bookkeeping under mutation is where this kind of module always breaks. Tracking
 the current item by identity and deriving the index — rather than storing an index and patching it
 on every mutation — is the design that survives; the tests above are written to catch the other one.
+
+### Outcome (2026-09-05)
+
+Implemented as `electron/playbackQueue.ts` (59 tests) and `electron/playbackController.ts`
+(36 unit, 10 integration against real mpv), with the queue exposed over IPC and through the
+preload. 242 main-process tests and 993 renderer tests pass, twice in a row; both typechecks,
+lint and the 26-test Playwright suite are green.
+
+The queue holds the current track by identity and derives the index, as the risk note asked. The
+tests that matter are the awkward ones: removing the row *above* the playing track leaves it
+playing and still advances correctly, reordering across it does not disturb it, and shuffling
+mid-track keeps it current and restores the original order when switched off.
+
+**Gapless is the substance of this step, and it decided the design.** `--gapless-audio` only
+removes the gap *inside mpv's own playlist*, so waiting for `end-file` and then loading the next
+track would put a gap between every pair — the exact thing DEC-056 rules out. The controller
+therefore appends the next track while the current one is still playing and lets mpv walk into it.
+That means mpv decides the moment of the transition and CuePoint notices afterwards, which is done
+with **playlist entry ids**: `loadfile` returns the id of the entry it creates and `start-file`
+reports the id mpv began. Probing the real binary settled why ids and not positions —
+`playlist-pos` reads `-1` until playback actually starts, and indices shift as the playlist is
+edited. Manual next/previous/jump use `replace` instead: a gap there is not a defect, because the
+user asked for the change and expects it now.
+
+**Three defects found, two of them real.**
+
+1. **A finished queue reported a track as still playing.** Clearing the current id at the end left
+   the last item's status at `playing`, so a snapshot said "nothing is current" and "this one is
+   playing" at once — the queue panel would have drawn a stopped track as running. Found by
+   reading the state after a real queue finished in the packaged app, not by a unit test.
+2. **`append-play` would have started music nobody asked for.** I briefly switched the preload to
+   it while chasing a failure. It is worse than it looks: after a queue finishes mpv is idle and
+   `peekNext()` answers with the *first* track, so any later queue edit would have appended-and-
+   played it spontaneously. Reverted to `append`, and the controller now refuses to preload at all
+   while nothing is playing.
+3. **A test that could not have passed.** The "carries on past a broken file" integration test
+   sampled item status after the fact, but the fixtures are a quarter of a second long, so the
+   recovery track had played *and finished* before the assertion looked. It now records transitions
+   from the snapshot stream. Probing mpv directly proved the product behaviour was right all along
+   — entry 1 fails, entry 2 starts — which is why the fix belonged in the test.
+
+**Verified against real mpv**, not only the fake: a three-track queue plays end to end unattended
+(mpv cannot start a file it was never given, so an unattended advance *is* the evidence the preload
+worked), repeat-one loops, repeat-all wraps, a broken track is recorded and skipped past, removing
+the playing track hands over immediately, and editing or shuffling around a playing track does not
+interrupt it. Verified end to end in the packaged shell too: `playQueue` over IPC plays three
+tracks through to the third with no manual `next`, 24 state pushes reach the renderer, shuffle and
+repeat round-trip, and the queue ends with nothing marked playing.
+
+**Scope note.** `player:play(filePath)` from PLAYER-03 is gone, replaced by `player:playQueue`.
+Everything that plays now goes through the queue, so the queue and what is actually playing cannot
+disagree — a single-track play is a one-item queue. `next` and `previous`, deferred from PLAYER-03
+because there was no queue to make them mean anything, exist now, along with the queue editing and
+order operations PLAYER-07 and PLAYER-08 will put controls on.
+
+**Not done here, deliberately**: no UI (PLAYER-06/07/08), no toast for a failed track (PLAYER-10 —
+the item is marked `failed`, and reporting it is that step's), and nothing is persisted anywhere,
+per DEC-014 and DEC-050. A test asserts the queue exposes no serialization at all, because that is
+the first step someone would take toward restoring it.
 
 ---
 

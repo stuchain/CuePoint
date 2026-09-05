@@ -82,7 +82,18 @@ contextBridge.exposeInMainWorld("cuepoint", {
    */
   player: {
     getState: () => ipcRenderer.invoke("player:getState"),
-    play: (filePath) => ipcRenderer.invoke("player:play", filePath),
+    playQueue: (items, startIndex) =>
+      ipcRenderer.invoke("player:playQueue", items, startIndex ?? 0),
+    playNext: (items) => ipcRenderer.invoke("player:playNext", items),
+    addToQueue: (items) => ipcRenderer.invoke("player:addToQueue", items),
+    next: () => ipcRenderer.invoke("player:next"),
+    previous: () => ipcRenderer.invoke("player:previous"),
+    jumpTo: (index) => ipcRenderer.invoke("player:jumpTo", index),
+    removeFromQueue: (id) => ipcRenderer.invoke("player:removeFromQueue", id),
+    moveInQueue: (from, to) => ipcRenderer.invoke("player:moveInQueue", from, to),
+    clearQueue: () => ipcRenderer.invoke("player:clearQueue"),
+    setShuffle: (on) => ipcRenderer.invoke("player:setShuffle", on),
+    setRepeat: (mode) => ipcRenderer.invoke("player:setRepeat", mode),
     pause: () => ipcRenderer.invoke("player:pause"),
     resume: () => ipcRenderer.invoke("player:resume"),
     toggle: () => ipcRenderer.invoke("player:toggle"),

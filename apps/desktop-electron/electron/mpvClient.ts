@@ -50,6 +50,18 @@ export interface MpvEndFile {
   playlistEntryId?: number;
 }
 
+/**
+ * mpv began playing a playlist entry.
+ *
+ * The definitive signal that mpv advanced on its own — which is how gapless
+ * works (DEC-056): the next file is appended before the current one ends, and
+ * mpv moves to it without a gap. `playlist_entry_id` is stable per entry,
+ * unlike `playlist-pos`, which shifts whenever the playlist is edited.
+ */
+export interface MpvStartFile {
+  playlistEntryId: number | null;
+}
+
 export interface MpvPropertyChange<T = unknown> {
   name: string;
   data: T;
@@ -204,6 +216,7 @@ type PropertyHandler = (value: unknown) => void;
 export interface MpvClientEventMap {
   event: [MpvEvent];
   "property-change": [MpvPropertyChange];
+  "start-file": [MpvStartFile];
   "end-file": [MpvEndFile];
   close: [Error | undefined];
   error: [Error];
@@ -433,8 +446,25 @@ export class MpvClient extends EventEmitter<MpvClientEventMap> {
     return this.getProperty("audio-device-list");
   }
 
-  async loadFile(file: string, mode: "replace" | "append" | "append-play" = "replace"): Promise<void> {
-    await this.command(["loadfile", file, mode]);
+  /**
+   * Load a file, resolving with mpv's id for the playlist entry it created.
+   *
+   * The id is what makes gapless advance trackable: appending the next file
+   * returns an id, and the `start-file` event that fires when mpv reaches it
+   * carries the same one. Positions cannot be used for this — they shift as
+   * the playlist is edited.
+   */
+  async loadFile(
+    file: string,
+    mode: "replace" | "append" | "append-play" = "replace",
+  ): Promise<number | null> {
+    const result = await this.command<{ playlist_entry_id?: number } | null>([
+      "loadfile",
+      file,
+      mode,
+    ]);
+    const id = result?.playlist_entry_id;
+    return typeof id === "number" ? id : null;
   }
 
   async stop(): Promise<void> {
@@ -522,6 +552,14 @@ export class MpvClient extends EventEmitter<MpvClientEventMap> {
       const observer = this.observers.get(change.id);
       observer?.handler(change.data);
       this.emit("property-change", change);
+      return;
+    }
+
+    if (event.event === "start-file") {
+      this.emit("start-file", {
+        playlistEntryId:
+          typeof event.playlist_entry_id === "number" ? event.playlist_entry_id : null,
+      });
       return;
     }
 

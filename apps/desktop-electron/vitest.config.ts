@@ -17,6 +17,10 @@ export default defineConfig({
     include: ["electron/**/*.test.ts"],
     // The renderer runs its own suite from renderer/.
     exclude: ["renderer/**", "node_modules/**", "e2e/**"],
-    testTimeout: 15_000,
+    // Headroom for the integration tests, which start real mpv processes and
+    // wait for real playback. Comfortably above the in-test `waitFor` budgets,
+    // so a genuine failure reports what it was waiting for instead of being
+    // cut off by the runner on a loaded machine.
+    testTimeout: 30_000,
   },
 });

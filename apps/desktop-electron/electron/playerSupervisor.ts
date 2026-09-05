@@ -7,6 +7,7 @@ import {
   buildMpvArgs,
   createMpvSocketPath,
   type MpvEndFile,
+  type MpvStartFile,
 } from "./mpvClient";
 import {
   resolvePlayerBinary,
@@ -133,6 +134,7 @@ export interface PlayerSupervisorOptions extends Partial<ResolvePlayerBinaryOpti
 
 type SnapshotListener = (snapshot: PlayerSnapshot) => void;
 type EndFileListener = (info: MpvEndFile) => void;
+type StartFileListener = (info: MpvStartFile) => void;
 
 const IDLE_PLAYBACK: PlaybackState = {
   filePath: null,
@@ -164,6 +166,7 @@ export class PlayerSupervisor {
 
   private readonly snapshotListeners = new Set<SnapshotListener>();
   private readonly endFileListeners = new Set<EndFileListener>();
+  private readonly startFileListeners = new Set<StartFileListener>();
 
   private readonly spawnFn: typeof nodeSpawn;
   private readonly clientFactory: (socketPath: string) => MpvClient;
@@ -232,6 +235,17 @@ export class PlayerSupervisor {
   onEndFile(listener: EndFileListener): () => void {
     this.endFileListeners.add(listener);
     return () => this.endFileListeners.delete(listener);
+  }
+
+  /**
+   * Subscribe to mpv starting a playlist entry.
+   *
+   * How the queue learns that mpv advanced *by itself* into a preloaded entry,
+   * which is what gapless playback looks like from out here (DEC-056).
+   */
+  onStartFile(listener: StartFileListener): () => void {
+    this.startFileListeners.add(listener);
+    return () => this.startFileListeners.delete(listener);
   }
 
   // -------------------------------------------------------------------------
@@ -327,6 +341,9 @@ export class PlayerSupervisor {
     client.on("close", () => {
       if (this.client !== client) return;
       this.client = null;
+    });
+    client.on("start-file", (info) => {
+      for (const listener of this.startFileListeners) listener(info);
     });
     client.on("end-file", (info) => {
       this.playback = { ...this.playback, playing: false };
@@ -525,6 +542,7 @@ export class PlayerSupervisor {
     await this.stop();
     this.snapshotListeners.clear();
     this.endFileListeners.clear();
+    this.startFileListeners.clear();
   }
 
   // -------------------------------------------------------------------------
@@ -539,7 +557,7 @@ export class PlayerSupervisor {
    * throws `PlayerUnavailableError` here and now; a file that will not decode
    * arrives later as an `end-file` event, which is PLAYER-10's to report.
    */
-  async play(filePath: string): Promise<void> {
+  async play(filePath: string): Promise<number | null> {
     await this.ensureRunning();
     const client = this.requireClient();
     this.restartAttempts = 0;
@@ -552,8 +570,40 @@ export class PlayerSupervisor {
       durationSeconds: null,
     };
     this.push(true);
-    await client.loadFile(filePath, "replace");
+    // `replace` clears mpv's playlist, so any preloaded entry goes with it —
+    // verified against the bundled build, where playlist-count returns to 1.
+    const entryId = await client.loadFile(filePath, "replace");
     await client.setPaused(false);
+    return entryId;
+  }
+
+  /**
+   * Append a file to mpv's playlist so it can start without a gap.
+   *
+   * This is what DEC-056 actually requires: `--gapless-audio` only avoids a gap
+   * *within* mpv's own playlist, so the next track has to be there before the
+   * current one ends. Loading it on `end-file` instead would put a gap between
+   * every pair of tracks, which is the thing the decision rules out.
+   */
+  async enqueue(filePath: string): Promise<number | null> {
+    const client = this.requireClient();
+    // `append`, deliberately not `append-play`. `append-play` starts playback
+    // when mpv happens to be idle, which sounds like useful robustness and is
+    // actually a way to start music nobody asked for: after a queue finishes,
+    // mpv is idle, and any later queue edit would preload — and therefore
+    // begin playing — the first track. Preloading is for continuing playback
+    // that is already happening; the controller decides when to *start*.
+    return client.loadFile(filePath, "append");
+  }
+
+  /** True when mpv is up and can take playlist commands. */
+  get isRunning(): boolean {
+    return this.child !== null && this.client !== null;
+  }
+
+  /** The file currently loaded, for the controller's bookkeeping. */
+  get currentFilePath(): string | null {
+    return this.playback.filePath;
   }
 
   async pause(): Promise<void> {

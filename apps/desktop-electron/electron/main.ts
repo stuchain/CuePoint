@@ -5,6 +5,8 @@ import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { EngineSupervisor, resolvePreloadPath } from "./engineSupervisor";
+import { PlaybackController } from "./playbackController";
+import type { QueueItemInput, RepeatMode } from "./playbackQueue";
 import { PlayerSupervisor } from "./playerSupervisor";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -26,6 +28,14 @@ const player = new PlayerSupervisor({
   resourcesPath: process.resourcesPath,
   repoRoot: engine.getRepoRoot(),
 });
+
+/**
+ * The queue on top of the player (PLAYER-04, DEC-050).
+ *
+ * Everything the renderer asks for goes through here rather than at the
+ * supervisor directly, so the queue and what mpv is doing cannot disagree.
+ */
+const playback = new PlaybackController(player);
 
 /**
  * Renderers watching playback state.
@@ -165,28 +175,54 @@ function registerIpcHandlers(): void {
   // Transport only. There is no queue here: what plays next is PLAYER-04's,
   // which is why there is no `player:next` yet — an endpoint that cannot do
   // anything is worse than an absent one.
-  ipcMain.handle("player:getState", () => player.getSnapshot());
-  ipcMain.handle("player:play", async (_event, filePath: string) => {
-    try {
-      await player.play(filePath);
-      return { ok: true as const };
-    } catch (error) {
-      // A structured result, not a thrown string: "there is no audio player"
-      // is something the UI shows a person, not a stack trace.
-      return {
-        ok: false as const,
-        code: (error as { code?: string }).code ?? "player-error",
-        error: (error as Error).message,
-      };
-    }
-  });
-  ipcMain.handle("player:pause", () => player.pause());
-  ipcMain.handle("player:resume", () => player.resume());
-  ipcMain.handle("player:toggle", () => player.togglePause());
-  ipcMain.handle("player:stop", () => player.stopPlayback());
-  ipcMain.handle("player:seek", (_event, seconds: number) => player.seek(seconds));
-  ipcMain.handle("player:setVolume", (_event, volume: number) => player.setVolume(volume));
-  ipcMain.handle("player:setMuted", (_event, muted: boolean) => player.setMuted(muted));
+  ipcMain.handle("player:getState", () => playback.snapshot());
+  /**
+   * Play a view's worth of tracks (DEC-012). There is no single-file `play`:
+   * everything that plays goes through the queue, so the two cannot disagree
+   * about what is playing.
+   */
+  ipcMain.handle(
+    "player:playQueue",
+    async (_event, items: QueueItemInput[], startIndex: number) => {
+      try {
+        await playback.playQueue(items ?? [], startIndex ?? 0);
+        return { ok: true as const };
+      } catch (error) {
+        // A structured result, not a thrown string: "there is no audio player"
+        // is something the UI shows a person, not a stack trace.
+        return {
+          ok: false as const,
+          code: (error as { code?: string }).code ?? "player-error",
+          error: (error as Error).message,
+        };
+      }
+    },
+  );
+  ipcMain.handle("player:playNext", (_event, items: QueueItemInput[]) =>
+    playback.playNextItems(items ?? []),
+  );
+  ipcMain.handle("player:addToQueue", (_event, items: QueueItemInput[]) =>
+    playback.addToQueue(items ?? []),
+  );
+  ipcMain.handle("player:next", () => playback.next());
+  ipcMain.handle("player:previous", () => playback.previous());
+  ipcMain.handle("player:jumpTo", (_event, index: number) => playback.jumpTo(index));
+  ipcMain.handle("player:removeFromQueue", (_event, id: string) =>
+    playback.removeFromQueue(id),
+  );
+  ipcMain.handle("player:moveInQueue", (_event, from: number, to: number) =>
+    playback.moveInQueue(from, to),
+  );
+  ipcMain.handle("player:clearQueue", () => playback.clearQueue());
+  ipcMain.handle("player:setShuffle", (_event, on: boolean) => playback.setShuffle(on));
+  ipcMain.handle("player:setRepeat", (_event, mode: RepeatMode) => playback.setRepeat(mode));
+  ipcMain.handle("player:pause", () => playback.pause());
+  ipcMain.handle("player:resume", () => playback.resume());
+  ipcMain.handle("player:toggle", () => playback.togglePause());
+  ipcMain.handle("player:stop", () => playback.stop());
+  ipcMain.handle("player:seek", (_event, seconds: number) => playback.seek(seconds));
+  ipcMain.handle("player:setVolume", (_event, volume: number) => playback.setVolume(volume));
+  ipcMain.handle("player:setMuted", (_event, muted: boolean) => playback.setMuted(muted));
   ipcMain.handle("player:subscribeState", (event) => {
     const id = event.sender.id;
     const existing = playerWatchers.get(id);
@@ -196,9 +232,9 @@ function registerIpcHandlers(): void {
       playerWatchers.set(id, { sender: event.sender, refs: 1 });
       event.sender.once("destroyed", () => playerWatchers.delete(id));
     }
-    playerUnsubscribe ??= player.onSnapshot(pushPlayerState);
+    playerUnsubscribe ??= playback.onSnapshot(pushPlayerState);
     // Answer immediately so a subscriber is not blind until the next change.
-    event.sender.send("player:state", player.getSnapshot());
+    event.sender.send("player:state", playback.snapshot());
     return { ok: true };
   });
   ipcMain.handle("player:unsubscribeState", (event) => {
@@ -319,6 +355,7 @@ app.on("before-quit", async () => {
   }
   // The player first: a leaked mpv still holding an audio device after
   // CuePoint exits is the worst failure this phase can ship.
+  playback.dispose();
   await player.dispose();
   await engine.stop();
 });

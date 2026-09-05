@@ -21,9 +21,46 @@ export interface PlaybackState {
   muted: boolean;
 }
 
+export type RepeatMode = "off" | "one" | "all";
+
+export type QueueItemStatus = "pending" | "playing" | "failed";
+
+/** One entry in the playback queue (PLAYER-04). */
+export interface QueueItem {
+  id: string;
+  trackId: number | null;
+  filePath: string;
+  title: string;
+  artist: string;
+  durationSeconds: number | null;
+  status: QueueItemStatus;
+}
+
+/** What the queue panel needs to draw itself (PLAYER-08). */
+export interface QueueSnapshot {
+  /** View order, which is what the panel shows. */
+  items: QueueItem[];
+  /** Play order, which differs from view order while shuffled. */
+  playOrder: string[];
+  currentId: string | null;
+  currentIndex: number;
+  shuffle: boolean;
+  repeat: RepeatMode;
+}
+
+/** What a caller adds to the queue; ids and status are assigned in main. */
+export interface QueueItemInput {
+  trackId?: number | null;
+  filePath: string;
+  title?: string;
+  artist?: string;
+  durationSeconds?: number | null;
+}
+
 export interface PlayerSnapshot {
   status: PlayerStatus;
   playback: PlaybackState;
+  queue: QueueSnapshot;
 }
 
 export type PlayerPlayResult =
@@ -31,14 +68,27 @@ export type PlayerPlayResult =
   | { ok: false; code: string; error: string };
 
 /**
- * The player bridge (PLAYER-03).
+ * The player bridge (PLAYER-03, extended by PLAYER-04).
  *
- * Transport only — there is no `next`/`previous` because there is no queue
- * yet; PLAYER-04 owns that and will add them when they can mean something.
+ * Everything that plays goes through the queue, which is why there is no
+ * single-file `play`: one path means the queue and what is actually playing
+ * cannot disagree.
  */
 export interface PlayerBridge {
   getState: () => Promise<PlayerSnapshot>;
-  play: (filePath: string) => Promise<PlayerPlayResult>;
+  /** Play a view's worth of tracks, starting at one of them (DEC-012). */
+  playQueue: (items: QueueItemInput[], startIndex?: number) => Promise<PlayerPlayResult>;
+  /** DEC-013's two append actions. */
+  playNext: (items: QueueItemInput[]) => Promise<void>;
+  addToQueue: (items: QueueItemInput[]) => Promise<void>;
+  next: () => Promise<void>;
+  previous: () => Promise<void>;
+  jumpTo: (index: number) => Promise<void>;
+  removeFromQueue: (id: string) => Promise<void>;
+  moveInQueue: (from: number, to: number) => Promise<void>;
+  clearQueue: () => Promise<void>;
+  setShuffle: (on: boolean) => Promise<void>;
+  setRepeat: (mode: RepeatMode) => Promise<void>;
   pause: () => Promise<void>;
   resume: () => Promise<void>;
   toggle: () => Promise<void>;
