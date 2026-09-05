@@ -83,12 +83,34 @@ export interface TrackTableProps<Row> {
   onSelect?: (row: Row, index: number, event: React.MouseEvent) => void;
 
   /**
-   * Double-click. Wired to nothing in Phase 4 (DEC-046): the gesture belongs
-   * to playback, which arrives in Phase 5, and teaching it a temporary meaning
-   * now would mean taking that meaning away. The seam exists so Phase 5 adds a
-   * handler rather than reopening this component.
+   * Double-click, or Enter on the active row.
+   *
+   * The seam Phase 4 left deliberately unwired (DEC-046) so playback could give
+   * it DEC-012's meaning without reopening this component. PLAYER-09 is what
+   * finally passes a handler; the component itself did not have to change.
    */
   onRowActivate?: (row: Row, index: number) => void;
+
+  /**
+   * Right-click, or the keyboard's menu key on a row (PLAYER-09).
+   *
+   * The table reports the gesture, the row it happened on, and where to hang a
+   * menu; what the menu contains, and whether it acts on this row or the whole
+   * selection, is the screen's business rather than the table's.
+   *
+   * The anchor is a point rather than the event because the keyboard raises
+   * this too, and a key press has no pointer position — it gets the corner of
+   * the row instead, which is where a menu opened from the keyboard belongs.
+   */
+  onRowContextMenu?: (row: Row, index: number, anchor: { x: number; y: number }) => void;
+
+  /**
+   * The row the keyboard acts on: the last one clicked (LIBUI-09's anchor).
+   *
+   * Only Shift+F10 and the menu key need it. Arrow-key row navigation is not
+   * this table's yet, so there is no roving focus to read instead.
+   */
+  activeIndex?: number | null;
 
   /**
    * A row's identity. Defaults to its index, which is only right for a source
@@ -133,6 +155,8 @@ export function TrackTable<Row>({
   selectedKeys,
   onSelect,
   onRowActivate,
+  onRowContextMenu,
+  activeIndex = null,
   getRowKey,
   emptyState,
   overscan = 10,
@@ -243,6 +267,38 @@ export function TrackTable<Row>({
     [applyWidths, effectiveWidths, scale],
   );
 
+  /**
+   * Shift+F10 and the menu key, the keyboard's way to a context menu.
+   *
+   * Chromium raises a `contextmenu` event for these on the *focused* element,
+   * which here is the scroller and not a row — so the row is found by index and
+   * the menu is hung on its top-left corner.
+   */
+  const onTableKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    // Enter is the keyboard's double-click: whatever activation means to the
+    // caller, it must not be reachable only with a mouse.
+    if (event.key === "Enter" && onRowActivate && activeIndex != null) {
+      const row = source.getRow(activeIndex);
+      if (!row) return;
+      event.preventDefault();
+      onRowActivate(row, activeIndex);
+      return;
+    }
+    const wanted = event.key === "ContextMenu" || (event.shiftKey && event.key === "F10");
+    if (!wanted || !onRowContextMenu || activeIndex == null) return;
+    const row = source.getRow(activeIndex);
+    if (!row) return;
+    event.preventDefault();
+    const element = scrollRef.current?.querySelector<HTMLElement>(
+      `[data-index="${activeIndex}"]`,
+    );
+    const rect = element?.getBoundingClientRect();
+    onRowContextMenu(row, activeIndex, {
+      x: rect ? rect.left + 8 : 0,
+      y: rect ? rect.top + rect.height : 0,
+    });
+  };
+
   const style = {
     ["--track-table-columns" as string]: template,
     ["--track-table-min-width" as string]: `${minWidth}px`,
@@ -263,6 +319,11 @@ export function TrackTable<Row>({
         role="table"
         aria-label={ariaLabel}
         aria-rowcount={source.total}
+        // Focusable so the table can be reached, scrolled and asked for a
+        // context menu without a mouse — and so a menu opened from it has
+        // somewhere to give focus back to when it closes.
+        tabIndex={0}
+        onKeyDown={onTableKeyDown}
       >
         {/* Row 1, which is what makes the body rows row 2 onward. */}
         <div className="track-table__header" role="row" aria-rowindex={1}>
@@ -355,6 +416,11 @@ export function TrackTable<Row>({
                   data-placeholder={row ? undefined : "true"}
                   onClick={(event) => row && onSelect?.(row, item.index, event)}
                   onDoubleClick={() => row && onRowActivate?.(row, item.index)}
+                  onContextMenu={(event) => {
+                    if (!row || !onRowContextMenu) return;
+                    event.preventDefault();
+                    onRowContextMenu(row, item.index, { x: event.clientX, y: event.clientY });
+                  }}
                 >
                   {columns.map((column, index) => (
                     <div

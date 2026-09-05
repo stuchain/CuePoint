@@ -20,7 +20,7 @@
  * response that does not is one the page is right to throw away.
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { LibraryScreen } from "./LibraryScreen";
@@ -239,6 +239,13 @@ interface Bridge {
   getLibraryFacet: ReturnType<typeof vi.fn>;
   getLibraryTrack: ReturnType<typeof vi.fn>;
   showItemInFolder: ReturnType<typeof vi.fn>;
+  /** The player namespace (PLAYER-09); the same shape preload exposes. */
+  player: {
+    playView: ReturnType<typeof vi.fn>;
+    playQueue: ReturnType<typeof vi.fn>;
+    playNext: ReturnType<typeof vi.fn>;
+    addToQueue: ReturnType<typeof vi.fn>;
+  };
 }
 
 let bridge: Bridge;
@@ -272,6 +279,12 @@ function install(overrides: Partial<Bridge> = {}) {
     }),
     getLibraryTrack: vi.fn().mockResolvedValue(DETAIL),
     showItemInFolder: vi.fn().mockResolvedValue(undefined),
+    player: {
+      playView: vi.fn().mockResolvedValue({ ok: true }),
+      playQueue: vi.fn().mockResolvedValue({ ok: true }),
+      playNext: vi.fn().mockResolvedValue(undefined),
+      addToQueue: vi.fn().mockResolvedValue(undefined),
+    },
     ...overrides,
   };
   (window as unknown as { cuepoint?: unknown }).cuepoint = bridge;
@@ -908,19 +921,253 @@ describe("selecting (LIBUI-10, DEC-045)", () => {
     await waitFor(() => expect(screen.queryByText(/track selected/)).toBeNull());
   });
 
-  it("does nothing on a double-click — that is Phase 5's (DEC-046)", async () => {
+  it("plays the row and the view behind it on a double-click (DEC-012)", async () => {
+    // DEC-046 left this seam empty through Phase 4 and PLAYER-09 fills it. The
+    // queue is the *view*, so what goes over the bridge is the query with no
+    // limit — not the three rows the table happens to hold.
     renderScreen();
     await tableReady();
 
-    const before = bridge.browseLibrary.mock.calls.length;
     await userEvent.dblClick(screen.getByText("Track 2"));
 
-    // The seam exists on the table and the page deliberately wires nothing to
-    // it. When Phase 5 opens a match run from here, this is the test to change
-    // — until then a double-click must not quietly do half of one.
-    expect(bridge.browseLibrary.mock.calls.length).toBe(before);
-    expect(screen.getByText("1 track selected")).toBeInTheDocument();
-    expect(screen.queryByRole("dialog")).toBeNull();
+    await waitFor(() => expect(bridge.player.playView).toHaveBeenCalledTimes(1));
+    const [params, index] = bridge.player.playView.mock.calls[0]!;
+    expect(index).toBe(1);
+    expect(params).toMatchObject({ sort: "artist", dir: "asc", limit: 0, offset: 0 });
+  });
+
+  it("plays the row the view is sorted into, not the row's id", async () => {
+    // The queue's order is the view's order, so the index has to be the row's
+    // position in *this* question — a table sorted differently plays a
+    // different track from the same row.
+    renderScreen();
+    await tableReady();
+
+    await userEvent.click(
+      within(screen.getByRole("table", { name: "Library tracks" })).getByRole("button", {
+        name: "Title",
+      }),
+    );
+    await waitFor(() => expect(lastBrowse().sort).toBe("title"));
+
+    await userEvent.dblClick(await screen.findByText("Track 3"));
+
+    await waitFor(() => expect(bridge.player.playView).toHaveBeenCalled());
+    const [params, index] = bridge.player.playView.mock.calls.at(-1)!;
+    expect(params).toMatchObject({ sort: "title", limit: 0 });
+    expect(index).toBe(2);
+  });
+
+  it("says so when the player refuses", async () => {
+    renderScreen();
+    await tableReady();
+    bridge.player.playView.mockResolvedValue({ ok: false, error: "The player is not running" });
+
+    await userEvent.dblClick(screen.getByText("Track 2"));
+
+    expect(await screen.findByText("The player is not running")).toBeInTheDocument();
+  });
+});
+
+describe("the track context menu (PLAYER-09, DEC-013, DEC-045)", () => {
+  beforeEach(() => {
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+  });
+
+  async function openMenu(text: string) {
+    const row = screen.getByText(text).closest("[role=row]")!;
+    fireEvent.contextMenu(row, { clientX: 100, clientY: 100 });
+    return screen.findByRole("menu");
+  }
+
+  /** A shift-range over all three rows: an explicit set of ids, not "all". */
+  async function selectAllThree() {
+    await userEvent.click(screen.getByText("Track 1"));
+    fireEvent.click(screen.getByText("Track 3"), { shiftKey: true });
+    await screen.findByText(/3 tracks selected/);
+  }
+
+  it("acts on the row under the pointer when nothing is selected", async () => {
+    renderScreen();
+    await tableReady();
+
+    const menu = await openMenu("Track 2");
+    await userEvent.click(within(menu).getByRole("menuitem", { name: "Add to queue" }));
+
+    await waitFor(() => expect(bridge.player.addToQueue).toHaveBeenCalledTimes(1));
+    expect(bridge.player.addToQueue.mock.calls[0]![0]).toEqual([
+      expect.objectContaining({ trackId: 2, title: "Track 2" }),
+    ]);
+    expect(await screen.findByText("1 track added to the queue")).toBeInTheDocument();
+  });
+
+  it("acts on the whole selection when the clicked row is in it", async () => {
+    renderScreen();
+    await tableReady();
+    await selectAllThree();
+
+    const menu = await openMenu("Track 2");
+    await userEvent.click(within(menu).getByRole("menuitem", { name: "Play next" }));
+
+    await waitFor(() => expect(bridge.player.playNext).toHaveBeenCalledTimes(1));
+    // In the view's order, which is the order the selection gathers in.
+    expect(
+      bridge.player.playNext.mock.calls[0]![0].map((item: { trackId: number }) => item.trackId),
+    ).toEqual([1, 2, 3]);
+    expect(await screen.findByText("3 tracks queued to play next")).toBeInTheDocument();
+  });
+
+  it("acts on the clicked row alone when it is outside the selection", async () => {
+    // The convention every file manager follows, and the one a user assumes
+    // when they right-click somewhere other than what they just selected.
+    renderScreen();
+    await tableReady();
+
+    await userEvent.click(screen.getByText("Track 1"));
+    await screen.findByText("1 track selected");
+
+    const menu = await openMenu("Track 3");
+    await userEvent.click(within(menu).getByRole("menuitem", { name: "Add to queue" }));
+
+    await waitFor(() => expect(bridge.player.addToQueue).toHaveBeenCalled());
+    expect(bridge.player.addToQueue.mock.calls[0]![0]).toEqual([
+      expect.objectContaining({ trackId: 3 }),
+    ]);
+  });
+
+  it("plays a selection as the queue, and a lone row as the view", async () => {
+    renderScreen();
+    await tableReady();
+
+    // One row: DEC-012, the view is the queue.
+    let menu = await openMenu("Track 2");
+    await userEvent.click(within(menu).getByRole("menuitem", { name: "Play" }));
+    await waitFor(() => expect(bridge.player.playView).toHaveBeenCalledTimes(1));
+    expect(bridge.player.playQueue).not.toHaveBeenCalled();
+
+    // Three rows: the selection is the queue, because that is what was picked.
+    await selectAllThree();
+    menu = await openMenu("Track 2");
+    await userEvent.click(within(menu).getByRole("menuitem", { name: "Play 3 tracks" }));
+
+    await waitFor(() => expect(bridge.player.playQueue).toHaveBeenCalledTimes(1));
+    expect(bridge.player.playQueue.mock.calls[0]![1]).toBe(0);
+    expect(bridge.player.playView).toHaveBeenCalledTimes(1);
+  });
+
+  it("copies what the menu points at, not the selection", async () => {
+    // jsdom has no clipboard at all, so one is supplied; without it the copy
+    // reports a refusal and the test would prove nothing about what it copied.
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    renderScreen();
+    await tableReady();
+
+    await userEvent.click(screen.getByText("Track 1"));
+    await screen.findByText("1 track selected");
+
+    const menu = await openMenu("Track 3");
+    await userEvent.click(within(menu).getByRole("menuitem", { name: "Copy" }));
+
+    expect(await screen.findByText("Copied 1 track")).toBeInTheDocument();
+    // The clicked row, not the selected one.
+    expect(writeText.mock.calls[0]![0]).toContain("Track 3");
+    expect(writeText.mock.calls[0]![0]).not.toContain("Track 1");
+    Reflect.deleteProperty(navigator, "clipboard");
+  });
+
+  it("reveals a single row and offers nothing to reveal for many", async () => {
+    renderScreen();
+    await tableReady();
+
+    let menu = await openMenu("Track 2");
+    await userEvent.click(within(menu).getByRole("menuitem", { name: "Show in folder" }));
+    expect(bridge.showItemInFolder).toHaveBeenCalledWith(track(2).file_path);
+
+    await selectAllThree();
+    menu = await openMenu("Track 2");
+    expect(within(menu).getByRole("menuitem", { name: "Show in folder" })).toBeDisabled();
+  });
+
+  it("closes on Escape without letting go of the selection", async () => {
+    // Escape belongs to whatever is on top. The page clears the selection on
+    // Escape, and a menu that let it through would take the selection with it
+    // every time one was dismissed.
+    renderScreen();
+    await tableReady();
+    await selectAllThree();
+
+    const menu = await openMenu("Track 2");
+    await userEvent.type(menu, "{Escape}");
+
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    expect(screen.getByText(/3 tracks selected/)).toBeInTheDocument();
+    expect(bridge.player.playQueue).not.toHaveBeenCalled();
+  });
+
+  it("opens from the keyboard on the last row clicked", async () => {
+    renderScreen();
+    await tableReady();
+
+    await userEvent.click(screen.getByText("Track 2"));
+    await screen.findByText("1 track selected");
+
+    fireEvent.keyDown(screen.getByRole("table", { name: "Library tracks" }), {
+      key: "F10",
+      shiftKey: true,
+    });
+
+    const menu = await screen.findByRole("menu");
+    await userEvent.click(within(menu).getByRole("menuitem", { name: "Play next" }));
+
+    await waitFor(() => expect(bridge.player.playNext).toHaveBeenCalled());
+    expect(bridge.player.playNext.mock.calls[0]![0]).toEqual([
+      expect.objectContaining({ trackId: 2 }),
+    ]);
+  });
+
+  it("acts on a select-all-matching selection too", async () => {
+    // Ctrl+A is stored as "everything except these", not as a list of ids, so
+    // the menu reads the selection through a different branch entirely.
+    renderScreen();
+    await tableReady();
+
+    await userEvent.keyboard("{Control>}a{/Control}");
+    await screen.findByText(/3 tracks selected/);
+
+    const menu = await openMenu("Track 2");
+    await userEvent.click(within(menu).getByRole("menuitem", { name: "Add to queue" }));
+
+    await waitFor(() => expect(bridge.player.addToQueue).toHaveBeenCalled());
+    expect(
+      bridge.player.addToQueue.mock.calls[0]![0].map((item: { trackId: number }) => item.trackId),
+    ).toEqual([1, 2, 3]);
+  });
+
+  it("plays the selected row on Enter, without a mouse", async () => {
+    renderScreen();
+    await tableReady();
+
+    await userEvent.click(screen.getByText("Track 2"));
+    await screen.findByText("1 track selected");
+
+    fireEvent.keyDown(screen.getByRole("table", { name: "Library tracks" }), { key: "Enter" });
+
+    await waitFor(() => expect(bridge.player.playView).toHaveBeenCalledTimes(1));
+    expect(bridge.player.playView.mock.calls[0]![1]).toBe(1);
+  });
+
+  it("shows one menu at a time", async () => {
+    renderScreen();
+    await tableReady();
+
+    await openMenu("Track 1");
+    await openMenu("Track 3");
+
+    expect(screen.getAllByRole("menu")).toHaveLength(1);
   });
 });
 

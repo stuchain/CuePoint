@@ -18,7 +18,13 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { Button, Panel, useToast } from "../../components";
+import {
+  Button,
+  Panel,
+  TrackContextMenu,
+  type TrackContextMenuItem,
+  useToast,
+} from "../../components";
 import {
   ColumnPicker,
   LIBRARY_TABLE_LAYOUT_KEY,
@@ -40,6 +46,7 @@ import { LIBRARY_COLUMNS } from "./libraryColumns";
 import { PlaylistPane } from "./PlaylistPane";
 import { RefreshPreviewDialog } from "./RefreshPreviewDialog";
 import { SelectionActions } from "./SelectionActions";
+import { QUEUE_ACTION_LIMIT, useLibraryPlayback } from "./useLibraryPlayback";
 import { TrackDetailPanel } from "./TrackDetailPanel";
 import { defaultSortForScope, findByPath } from "./playlistTree";
 import { followJob } from "./followJob";
@@ -50,7 +57,7 @@ import { onlySelectedId } from "./trackSelection";
 import { useFacet, useFilterVocabulary } from "./useFilterVocabulary";
 import { usePlaylistTree } from "./usePlaylistTree";
 import { useTrackDetail } from "./useTrackDetail";
-import { useTrackSelection } from "./useTrackSelection";
+import { COPY_LIMIT, useTrackSelection } from "./useTrackSelection";
 import { useTrackWindow } from "./useTrackWindow";
 import "../screens.css";
 import "./library.css";
@@ -127,6 +134,13 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
   );
   const window_ = useTrackWindow(query);
   const selection = useTrackSelection(query, window_.total, window_.source.getRow);
+  const playback = useLibraryPlayback({
+    query,
+    onMessage: (message) => push(message, "info"),
+  });
+  const [menu, setMenu] = useState<{ x: number; y: number; rows: LibraryTrackRow[]; index: number } | null>(
+    null,
+  );
   const detail = useTrackDetail(selection.selection.lastId);
 
   const scopeTo = useCallback(
@@ -161,21 +175,101 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
     />,
   );
 
-  const handleCopy = useCallback(async () => {
-    setCopying(true);
-    try {
-      const rows = await selection.gatherRows();
-      const text = tracksAsText(columns.visible, rows);
-      const wrote = text === "" ? false : await writeClipboard(text);
-      if (!mounted.current) return;
-      push(
-        wrote ? copySummary(rows.length, selection.count) : "Could not copy to the clipboard",
-        wrote ? "success" : "warning",
-      );
-    } finally {
-      if (mounted.current) setCopying(false);
-    }
-  }, [columns.visible, push, selection]);
+  /**
+   * Copy rows as text, saying what was copied.
+   *
+   * Takes a gatherer rather than rows because the selection's rows are fetched
+   * (they can name tracks no window holds) while the menu already has its own —
+   * and the busy state has to cover the fetch, not start after it.
+   */
+  const copyRows = useCallback(
+    async (gather: () => Promise<LibraryTrackRow[]>, requested: number) => {
+      setCopying(true);
+      try {
+        const rows = await gather();
+        const text = tracksAsText(columns.visible, rows);
+        const wrote = text === "" ? false : await writeClipboard(text);
+        if (!mounted.current) return;
+        push(
+          wrote ? copySummary(rows.length, requested) : "Could not copy to the clipboard",
+          wrote ? "success" : "warning",
+        );
+      } finally {
+        if (mounted.current) setCopying(false);
+      }
+    },
+    [columns.visible, push],
+  );
+
+  const handleCopy = useCallback(
+    () => copyRows(() => selection.gatherRows(), selection.count),
+    [copyRows, selection],
+  );
+
+  /**
+   * Open the menu on a row (PLAYER-09, DEC-045).
+   *
+   * The target is the selection when the clicked row belongs to it, and the
+   * clicked row alone otherwise — the convention every file manager follows,
+   * and the one users assume when they right-click inside a selection they
+   * just made.
+   */
+  const openMenuFor = useCallback(
+    async (row: LibraryTrackRow, index: number, x: number, y: number) => {
+      const inSelection =
+        row.id != null &&
+        (selection.selection.all
+          ? !selection.selection.excluded.has(row.id)
+          : selection.selection.ids.has(row.id));
+      const rows =
+        inSelection && selection.count > 1 ? await selection.gatherRows(QUEUE_ACTION_LIMIT) : [row];
+      setMenu({ x, y, rows, index });
+    },
+    [selection],
+  );
+
+  const menuItems = useMemo((): TrackContextMenuItem[] => {
+    if (!menu) return [];
+    const { rows, index } = menu;
+    const many = rows.length > 1;
+    const path = rows.length === 1 ? rows[0].file_path : null;
+    return [
+      {
+        id: "play",
+        // One row plays the view behind it (DEC-012); a selection *is* the
+        // queue, because someone who picked five tracks meant those five.
+        label: many ? `Play ${rows.length.toLocaleString()} tracks` : "Play",
+        onSelect: () => void (many ? playback.playRows(rows) : playback.playRow(index)),
+      },
+      {
+        id: "play-next",
+        label: "Play next",
+        onSelect: () => void playback.playNext(rows),
+      },
+      {
+        id: "add-to-queue",
+        label: "Add to queue",
+        onSelect: () => void playback.addToQueue(rows),
+      },
+      {
+        id: "reveal",
+        label: "Show in folder",
+        separatorBefore: true,
+        disabled: !path,
+        onSelect: () => void (path && window.cuepoint?.showItemInFolder?.(path)),
+      },
+      {
+        id: "copy",
+        label: many ? `Copy ${rows.length.toLocaleString()} tracks` : "Copy",
+        // The menu's rows, not the selection's: right-clicking outside a
+        // selection acts on the row under the pointer, and copy is no
+        // exception. COPY_LIMIT still applies — the queue's cap is ten times
+        // the clipboard's, and 50,000 rows of text is not a copy anyone meant.
+        onSelect: () =>
+          void copyRows(async () => rows.slice(0, COPY_LIMIT), rows.length),
+      },
+    ];
+  }, [copyRows, menu, playback]);
 
   // Ctrl+A selects everything the query matches; Escape lets go of it;
   // Ctrl+F is the in-page search, matching the Results screen (SHELL-10's
@@ -468,13 +562,34 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
               selectedKeys={selectedKeys}
               getRowKey={(row) => row.id ?? -1}
               onSelect={selection.onRowClick}
-              // Double-click is Phase 5's (DEC-046): the seam exists and
-              // nothing is wired to it.
+              // DEC-046's seam, finally given DEC-012's meaning: the row plays
+              // and the whole view — the query, not the loaded window — becomes
+              // the queue.
+              onRowActivate={(_row, index) => void playback.playRow(index)}
+              onRowContextMenu={(row, index, anchor) =>
+                void openMenuFor(row, index, anchor.x, anchor.y)
+              }
+              // Shift+F10 and the menu key open it on the last row clicked.
+              activeIndex={selection.selection.anchor}
               emptyState={emptyState}
               resetKey={queryKey(query)}
               ariaLabel="Library tracks"
             />
           </div>
+
+          {menu && (
+            <TrackContextMenu
+              x={menu.x}
+              y={menu.y}
+              items={menuItems}
+              onClose={() => setMenu(null)}
+              label={
+                menu.rows.length > 1
+                  ? `Actions for ${menu.rows.length.toLocaleString()} tracks`
+                  : "Track actions"
+              }
+            />
+          )}
 
           <SelectionActions
             count={selection.count}

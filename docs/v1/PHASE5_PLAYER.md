@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 5: Player, Detailed Step Specifications
 
-Status: **In progress. PLAYER-01…PLAYER-08 are implemented** (outcomes recorded under each
-step); PLAYER-09…PLAYER-12 are described below and not started. Per the process, no implementation happens from this document — each step needs an
+Status: **In progress. PLAYER-01…PLAYER-09 are implemented** (outcomes recorded under each
+step); PLAYER-10…PLAYER-12 are described below and not started. Per the process, no implementation happens from this document — each step needs an
 explicit "Implement PLAYER-NN" instruction, scoped to exactly that step, and its outcome is
 recorded under the step afterwards.
 
@@ -948,6 +948,61 @@ actions (Phase 7). The menu is built so those are additions, not rewrites.
 - Play Next inserts after the current track; Add to Queue appends; neither interrupts playback.
 - With three rows selected, all three actions act on all three, in view order.
 - The menu opens with the keyboard and closes on Escape without losing table focus.
+
+### Outcome (2026-09-05)
+
+Implemented as `TrackContextMenu.tsx` and `useLibraryPlayback.ts`, with `onRowContextMenu` and a
+keyboard path added to `TrackTable`. DEC-046's seam is filled: a double-click plays the row and the
+view behind it. 1,186 renderer tests, 278 main-process, 31 E2E, both typechecks, lint and the
+production build pass.
+
+**What each action means by "the queue" is the whole step.** Play on a single row is DEC-012 — the
+row plays and the *view* becomes the queue, so what crosses the bridge is the query with no limit
+and main resolves it (PLAYER-05), not the hundred rows the table happens to hold. Play on a
+selection replaces the queue with the selection, because someone who picked five tracks meant those
+five. Play Next and Add to Queue (DEC-013) never replace anything. The E2E test is built so a page
+that sent the row's id, or its position in the loaded window, would pass every unit test and play
+the wrong track: the fixtures are imported in one order and the view is sorted in another.
+
+**The menu targets the selection or the clicked row**, per DEC-045 — the file-manager convention.
+Both branches of the selection model are covered, because Ctrl+A stores "everything except these"
+rather than a list of ids and reads through completely different code. Copy moved to the same rule:
+it used to act on the selection unconditionally, which would have copied the wrong tracks from a
+menu opened outside one.
+
+**Nothing here is mouse-only.** Enter on the active row activates it, Shift+F10 and the menu key
+open the menu on it, and the table itself is focusable so a dismissed menu has somewhere to give
+focus back to. Escape closes the menu without clearing the selection — the page clears the
+selection on Escape, and a menu that let the key through would take the selection with it every
+time one was dismissed.
+
+**Three defects found in already-shipped Phase 5 code, all fixed here.**
+
+1. *The player chrome never followed the theme.* Every stylesheet from PLAYER-06, 07 and 08 —
+   and the new menu — referenced `--color-surface`, `--space-2` and a dozen other names that are
+   defined nowhere in `src/tokens/`. Each one silently fell back to a hardcoded literal, so the bar
+   and the queue panel rendered in fixed light-ish colours whatever theme was chosen, and did not
+   scale with the integer scale. Renamed to the tokens the app actually defines (`--bg-panel`,
+   `--fg-primary`, `--border-outline`, `--accent-primary`, `--space-sm`…), fallbacks dropped so the
+   next typo of this kind fails visibly, and every stylesheet in the renderer audited for the same
+   mistake. `e2e/playerBar.spec.ts` confirms the bar still fits at 1×, 2× and 3× now that its
+   spacing genuinely scales, and the menu was photographed in the running app to confirm it wears
+   the pixel chrome.
+2. *Volume did not survive a player restart.* `setVolume` stored the value and pushed it to the
+   renderer, but a newly spawned mpv came up at its own default and nothing put the value back — so
+   the bar showed 40 while mpv played at 100, and a crash-restart silently undid whatever the user
+   had set. Fixed in `playerSupervisor.start()`, with a test that fails on the unfixed code.
+3. *An unhandled promise rejection.* A refused shuffle or repeat command left a rejected promise
+   with no handler; it surfaced as an error in the suite even while the tests passed.
+
+**Verified in the running app** (`e2e/libraryPlayback.spec.ts`): a real import, a real table sorted
+against the import order, a real double-click, a real right-click, real menu clicks. Repeat-one is
+switched on first — the fixtures are a quarter of a second long, and without it the queue advances
+underneath every assertion about what is playing, which is what makes "Add to Queue did not
+interrupt" checkable at all.
+
+**Not in scope, as specified**: tag, rating and Collection entries (Phase 6) and Beatport actions
+(Phase 7). The menu takes a list of items, so those are additions rather than a rewrite.
 
 ---
 

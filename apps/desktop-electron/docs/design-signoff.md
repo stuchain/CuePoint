@@ -103,8 +103,11 @@ Measured with browser devtools contrast checker at 2× scale. Primary reading pa
 | Tab | flex × 66 | 0.75 × hit-min | Review* |
 | Player transport (PLAYER-06) | 88 × 88 | `--hit-min` = 44 × scale | Yes† |
 | Player play/pause (PLAYER-06) | 110 × 88 | 1.25 × `--hit-min` | Yes† |
+| Track menu entry (PLAYER-09) | ≥ 360 × 66 | 0.75 × `--hit-min` | Yes‡ |
 
 \*Tab height is slightly below 44 CSS px at 2×; acceptable for secondary nav per Phase 1 risk entry, or bump in sign-off revision.
+
+‡A menu entry is the full width of the menu (180 × scale at minimum), so its area is far above the floor even though its height matches `--row-height` rather than `--hit-min`. Same reasoning as the tab row, and the same convention as every context menu on the three platforms.
 
 †Measured, not asserted by eye: `e2e/playerBar.spec.ts` reads the rendered sizes out of the running app at 1×, 2× and 3× (44 / 88 / 132 px) and fails if the transport drops below the floor, if anything overflows the viewport, or if any child is clipped by the bar. The play/pause button is deliberately wider — it is the one control people aim at without looking.
 

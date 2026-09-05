@@ -113,7 +113,7 @@ meaning (DEC-046); the Track Inspector finally gets content — everything impor
 
 Step specifications: `PHASE4_LIBUI.md`.
 
-## Phase 5 — Player (PLAYER-01 … PLAYER-12) — in progress (PLAYER-01…08 done)
+## Phase 5 — Player (PLAYER-01 … PLAYER-12) — in progress (PLAYER-01…09 done)
 
 Backend is decided: **libmpv sidecar** (DEC-005), for foobar2000-grade quality — gapless, wide
 lossless format support, high-quality resampling. Still the highest-uncertainty phase in

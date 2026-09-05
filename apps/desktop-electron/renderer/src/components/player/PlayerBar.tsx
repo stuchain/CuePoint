@@ -75,13 +75,23 @@ export function PlayerBar({ queueOpen = false, onToggleQueue }: PlayerBarProps =
    */
   const toggleShuffle = useCallback(async () => {
     const next = !shuffle;
-    await bridge()?.setShuffle(next);
+    // A refusal leaves the preference where it was; it must not also surface
+    // as an unhandled rejection, which is what a bare `void` here would give.
+    try {
+      await bridge()?.setShuffle(next);
+    } catch {
+      return;
+    }
     saveShuffle(next);
   }, [shuffle]);
 
   const cycleRepeat = useCallback(async () => {
     const next = nextRepeatMode(repeat);
-    await bridge()?.setRepeat(next);
+    try {
+      await bridge()?.setRepeat(next);
+    } catch {
+      return;
+    }
     saveRepeat(next);
   }, [repeat]);
 

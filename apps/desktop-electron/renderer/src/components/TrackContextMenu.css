@@ -1,0 +1,50 @@
+/*
+ * The track context menu (PLAYER-09).
+ *
+ * Fixed to the viewport because it is anchored to a pointer, not to a layout
+ * box, and it must escape the table's scroll container without being clipped
+ * by it.
+ */
+
+.cp-track-menu {
+  position: fixed;
+  z-index: 60;
+  min-width: calc(180px * var(--scale));
+  padding: var(--space-xs) 0;
+  border: var(--border-width) solid var(--border-outline);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-panel);
+  outline: none;
+}
+
+.cp-track-menu__item {
+  display: block;
+  width: 100%;
+  min-height: calc(var(--hit-min) * 0.75);
+  padding: var(--space-sm) var(--space-md);
+  border: 0;
+  background: transparent;
+  color: var(--fg-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* One highlight for both pointer and keyboard: hovering sets the active item,
+   so the menu never shows two "current" rows at once. */
+.cp-track-menu__item--active:not(:disabled) {
+  background: var(--accent-primary);
+  color: var(--fg-inverse);
+}
+
+.cp-track-menu__item:disabled {
+  color: var(--fg-muted);
+  cursor: default;
+}
+
+.cp-track-menu__separator {
+  height: 0;
+  margin: var(--space-xs) 0;
+  border-top: 1px solid var(--border-muted);
+}

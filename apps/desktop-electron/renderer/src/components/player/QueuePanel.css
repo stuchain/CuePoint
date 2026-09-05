@@ -12,38 +12,38 @@
   flex-direction: column;
   min-height: 0;
   width: min(28rem, 40vw);
-  border-left: var(--border-width, 2px) solid var(--color-border, #000);
-  background: var(--color-surface, #fff);
+  border-left: var(--border-width) solid var(--border-outline);
+  background: var(--bg-panel);
 }
 
 .cp-queue__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-2, 8px);
-  padding: var(--space-2, 8px) var(--space-3, 12px);
-  border-bottom: var(--border-width, 2px) solid var(--color-border, #000);
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: var(--border-width) solid var(--border-outline);
 }
 
 .cp-queue__title {
   margin: 0;
-  font-size: var(--font-size-sm, 12px);
+  font-size: var(--font-size-sm);
 }
 
 .cp-queue__close {
-  min-width: var(--hit-min, 44px);
-  min-height: var(--hit-min, 44px);
-  border: var(--border-width, 2px) solid var(--color-border, #000);
-  background: var(--color-surface, #fff);
-  color: var(--color-text, #000);
+  min-width: var(--hit-min);
+  min-height: var(--hit-min);
+  border: var(--border-width) solid var(--border-outline);
+  background: var(--bg-panel);
+  color: var(--fg-primary);
   cursor: pointer;
 }
 
 .cp-queue__empty {
   margin: 0;
-  padding: var(--space-4, 16px);
-  color: var(--color-text-muted, #555);
-  font-size: var(--font-size-sm, 12px);
+  padding: var(--space-lg);
+  color: var(--fg-muted);
+  font-size: var(--font-size-sm);
 }
 
 .cp-queue__scroll {
@@ -61,41 +61,41 @@
 .cp-queue__row {
   display: flex;
   align-items: center;
-  gap: var(--space-2, 8px);
+  gap: var(--space-sm);
   width: 100%;
-  padding: 0 var(--space-2, 8px);
-  border-bottom: 1px solid var(--color-border-subtle, #ddd);
+  padding: 0 var(--space-sm);
+  border-bottom: 1px solid var(--border-muted);
   box-sizing: border-box;
   cursor: default;
 }
 
 .cp-queue__row:hover {
-  background: var(--color-surface-hover, #eee);
+  background: var(--bg-panel-alt);
 }
 
 .cp-queue__row:focus-visible {
-  outline: var(--border-width, 2px) solid var(--color-accent, #06c);
+  outline: var(--border-width) solid var(--accent-primary);
   outline-offset: -2px;
 }
 
 /* The playing row is marked with weight and a bar, not colour alone. */
 .cp-queue__row--playing {
-  background: var(--color-surface-hover, #eee);
-  border-left: 3px solid var(--color-accent, #06c);
+  background: var(--bg-panel-alt);
+  border-left: 3px solid var(--accent-primary);
   font-weight: 700;
 }
 
 .cp-queue__row--failed .cp-queue__row-title {
   text-decoration: line-through;
-  color: var(--color-text-muted, #555);
+  color: var(--fg-muted);
 }
 
 .cp-queue__position,
 .cp-queue__duration {
-  font-family: var(--font-data, monospace);
+  font-family: var(--font-data);
   font-variant-numeric: tabular-nums;
-  font-size: var(--font-size-xs, 11px);
-  color: var(--color-text-muted, #555);
+  font-size: var(--font-size-xs);
+  color: var(--fg-muted);
   flex: 0 0 auto;
 }
 
@@ -119,19 +119,19 @@
 }
 
 .cp-queue__row-title {
-  font-size: var(--font-size-sm, 12px);
+  font-size: var(--font-size-sm);
 }
 
 .cp-queue__row-meta {
-  font-family: var(--font-data, monospace);
-  font-size: var(--font-size-xs, 11px);
-  color: var(--color-text-muted, #555);
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+  color: var(--fg-muted);
 }
 
 .cp-queue__failed {
   flex: 0 0 auto;
-  font-size: var(--font-size-xs, 11px);
-  color: var(--color-danger, #c00);
+  font-size: var(--font-size-xs);
+  color: var(--accent-danger);
   text-transform: uppercase;
 }
 
@@ -139,13 +139,13 @@
   flex: 0 0 auto;
   min-width: 24px;
   min-height: 24px;
-  border: var(--border-width, 2px) solid transparent;
+  border: var(--border-width) solid transparent;
   background: transparent;
-  color: var(--color-text-muted, #555);
+  color: var(--fg-muted);
   cursor: pointer;
 }
 
 .cp-queue__remove:hover {
-  border-color: var(--color-border, #000);
-  color: var(--color-text, #000);
+  border-color: var(--border-outline);
+  color: var(--fg-primary);
 }

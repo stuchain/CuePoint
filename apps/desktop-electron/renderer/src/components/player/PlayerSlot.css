@@ -19,5 +19,5 @@
   max-height: min(24rem, 45vh);
   min-height: 0;
   overflow: hidden;
-  border-top: var(--border-width, 2px) solid var(--color-border, #000);
+  border-top: var(--border-width) solid var(--border-outline);
 }

@@ -243,6 +243,116 @@ describe("rows", () => {
   });
 });
 
+describe("the context menu gesture (PLAYER-09)", () => {
+  it("reports the row and where the pointer was", () => {
+    const onRowContextMenu = vi.fn();
+    renderTable({ source: inMemorySource(tracks(3)), onRowContextMenu });
+
+    fireEvent.contextMenu(renderedRows()[1]!, { clientX: 320, clientY: 180 });
+
+    expect(onRowContextMenu).toHaveBeenCalledWith(expect.objectContaining({ id: 2 }), 1, {
+      x: 320,
+      y: 180,
+    });
+  });
+
+  it("keeps the browser's own menu out of the way", () => {
+    renderTable({ source: inMemorySource(tracks(2)), onRowContextMenu: vi.fn() });
+
+    const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+    fireEvent(renderedRows()[0]!, event);
+
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it("leaves the browser's menu alone when nobody is listening", () => {
+    // A table with no menu of its own must not swallow the platform's.
+    renderTable({ source: inMemorySource(tracks(2)) });
+
+    const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+    fireEvent(renderedRows()[0]!, event);
+
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it("says nothing for a row that has not arrived", () => {
+    const onRowContextMenu = vi.fn();
+    renderTable({ source: pendingSource(50), onRowContextMenu });
+
+    fireEvent.contextMenu(renderedRows()[0]!, { clientX: 10, clientY: 10 });
+
+    expect(onRowContextMenu).not.toHaveBeenCalled();
+  });
+
+  it("opens on the active row from the keyboard, hung off that row", () => {
+    // Shift+F10 and the menu key are the keyboard's context menu. Chromium
+    // sends them to the focused element — the scroller — so the table has to
+    // find the row itself.
+    const onRowContextMenu = vi.fn();
+    renderTable({ source: inMemorySource(tracks(5)), onRowContextMenu, activeIndex: 2 });
+
+    const table = screen.getByRole("table");
+    fireEvent.keyDown(table, { key: "F10", shiftKey: true });
+    expect(onRowContextMenu).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 3 }),
+      2,
+      expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }),
+    );
+
+    onRowContextMenu.mockClear();
+    fireEvent.keyDown(table, { key: "ContextMenu" });
+    expect(onRowContextMenu).toHaveBeenCalledWith(expect.objectContaining({ id: 3 }), 2, expect.anything());
+  });
+
+  it("ignores the menu key with no active row", () => {
+    const onRowContextMenu = vi.fn();
+    renderTable({ source: inMemorySource(tracks(5)), onRowContextMenu, activeIndex: null });
+
+    fireEvent.keyDown(screen.getByRole("table"), { key: "ContextMenu" });
+
+    expect(onRowContextMenu).not.toHaveBeenCalled();
+  });
+
+  it("ignores F10 without shift, which is the browser's own", () => {
+    const onRowContextMenu = vi.fn();
+    renderTable({ source: inMemorySource(tracks(5)), onRowContextMenu, activeIndex: 0 });
+
+    fireEvent.keyDown(screen.getByRole("table"), { key: "F10" });
+
+    expect(onRowContextMenu).not.toHaveBeenCalled();
+  });
+
+  it("activates the active row on Enter", () => {
+    // The keyboard's double-click. Without it playing a track is mouse-only.
+    const onRowActivate = vi.fn();
+    renderTable({ source: inMemorySource(tracks(5)), onRowActivate, activeIndex: 3 });
+
+    fireEvent.keyDown(screen.getByRole("table"), { key: "Enter" });
+
+    expect(onRowActivate).toHaveBeenCalledWith(expect.objectContaining({ id: 4 }), 3);
+  });
+
+  it("ignores Enter with no active row", () => {
+    const onRowActivate = vi.fn();
+    renderTable({ source: inMemorySource(tracks(5)), onRowActivate });
+
+    fireEvent.keyDown(screen.getByRole("table"), { key: "Enter" });
+
+    expect(onRowActivate).not.toHaveBeenCalled();
+  });
+
+  it("can be reached and held by the keyboard", () => {
+    // The menu gives focus back here when it closes; a table that cannot take
+    // focus would drop the user at the top of the page instead.
+    renderTable();
+
+    const table = screen.getByRole("table");
+    expect(table).toHaveAttribute("tabindex", "0");
+    table.focus();
+    expect(table).toHaveFocus();
+  });
+});
+
 describe("rows that have not arrived", () => {
   it("renders a placeholder for every unloaded row", () => {
     renderTable({ source: pendingSource<Track>(20) });

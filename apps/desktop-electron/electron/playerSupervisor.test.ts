@@ -519,6 +519,29 @@ describe("transport", () => {
     expect(supervisor.getSnapshot().playback.volume).toBe(40);
     expect(spawnCalls).toHaveLength(0);
   });
+
+  it("applies a volume set before the start to the player that starts", async () => {
+    // Otherwise the snapshot says 40 and mpv is at 100: the bar would show a
+    // volume that was never true, and the first track would play at full.
+    const { supervisor, clients } = track(harness());
+    await supervisor.setVolume(40);
+    await supervisor.setMuted(true);
+
+    await supervisor.play("/music/a.flac");
+
+    expect(clients[0]!.commands).toContainEqual(["set_property", "volume", 40]);
+    expect(clients[0]!.commands).toContainEqual(["set_property", "mute", true]);
+  });
+
+  it("says nothing about volume when it is still the default", async () => {
+    // A start that has nothing to restore should not talk to mpv about it.
+    const { supervisor, clients } = track(harness());
+    await supervisor.play("/music/a.flac");
+
+    expect(
+      clients[0]!.commands.filter((command) => command[1] === "volume"),
+    ).toHaveLength(0);
+  });
 });
 
 describe("state from mpv", () => {

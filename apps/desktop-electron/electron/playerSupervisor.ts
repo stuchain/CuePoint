@@ -352,6 +352,7 @@ export class PlayerSupervisor {
     });
 
     await this.observeState(client);
+    await this.restoreAudio(client);
     this.startedAt = Date.now();
     this.gaveUpReason = null;
     this.push(true);
@@ -391,6 +392,21 @@ export class PlayerSupervisor {
           // the transport simply will not update that field.
         });
     }
+  }
+
+  /**
+   * Put the volume and mute back after a start.
+   *
+   * A fresh mpv comes up at its own defaults. Without this, a restart after a
+   * crash would silently undo whatever the user had set, and a volume set
+   * before the first track ever played would be shown in the bar and not
+   * actually be true.
+   */
+  private async restoreAudio(client: MpvClient): Promise<void> {
+    if (this.playback.volume !== IDLE_PLAYBACK.volume) {
+      await client.setVolume(this.playback.volume).catch(() => undefined);
+    }
+    if (this.playback.muted) await client.setMuted(true).catch(() => undefined);
   }
 
   private applyProperty(name: string, value: unknown): void {

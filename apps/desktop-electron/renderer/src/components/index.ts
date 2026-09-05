@@ -17,6 +17,8 @@ export { ExportResultsButton, ExportResultsModal } from "./ExportResultsModal";
 export { ResultsTable } from "./ResultsTable";
 // The Universal Track Table (LIBUI-04). Lives beside ResultsTable rather
 // than replacing it until Phase 7 converges them (DEC-041).
+export { TrackContextMenu } from "./TrackContextMenu";
+export type { TrackContextMenuItem, TrackContextMenuProps } from "./TrackContextMenu";
 export { TrackTable } from "./table/TrackTable";
 export type { TrackTableProps, TrackTableSort, SortDirection } from "./table/TrackTable";
 export type { TrackColumnDef, ColumnWidths } from "./table/trackTableLayout";
