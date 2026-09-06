@@ -165,6 +165,10 @@ src/output/
 # pin is source, not output: without it a fresh clone cannot fetch mpv.
 !scripts/player_sidecar_manifest.json
 
+# Agent hook config (exception to user-output *.json above). These hooks enforce
+# repo invariants at edit time, so they are source and must survive a clone.
+!.claude/settings.json
+
 # Test files
 test_output/
 test_results/

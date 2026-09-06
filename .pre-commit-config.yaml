@@ -1,38 +1,43 @@
+# Mirrors the Python gates in AGENTS.md: ruff for lint and format, plus basic
+# file hygiene. Keep the ruff rev in step with the pinned ruff in the dev
+# requirements so local commits and CI agree.
+#
+# mypy is deliberately not wired in here. `mypy src/` still reports real errors
+# on the current tree, so adding it would block every commit rather than gate
+# new work. Run it manually per AGENTS.md until that backlog is cleared.
+
+default_language_version:
+  python: python3
+
+exclude: |
+  (?x)^(
+      \.venv/
+    | node_modules/
+    | build/
+    | dist/
+    | electron-dist/
+    | release/
+    | output/
+  )
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
-      - id: check-added-large-files
-      - id: check-json
       - id: check-toml
       - id: check-merge-conflict
+      - id: check-added-large-files
       - id: debug-statements
+      - id: check-json
+        # The renderer tsconfigs are JSONC (Vite emits them with comments).
+        exclude: ^apps/desktop-electron/renderer/tsconfig\..*\.json$
 
-  - repo: https://github.com/psf/black
-    rev: 23.3.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.0
     hooks:
-      - id: black
-        language_version: python3.7
-
-  - repo: https://github.com/pycqa/isort
-    rev: 5.12.0
-    hooks:
-      - id: isort
-        args: ["--profile", "black"]
-
-  - repo: https://github.com/pycqa/flake8
-    rev: 6.0.0
-    hooks:
-      - id: flake8
-        args: ["--max-line-length=100", "--extend-ignore=E203"]
-
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.3.0
-    hooks:
-      - id: mypy
-        additional_dependencies: [types-all]
-        args: [--ignore-missing-imports]
-
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format

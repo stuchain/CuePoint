@@ -73,6 +73,26 @@ cd apps/desktop-electron && npm run build
 use `python -m pytest` for focused selectors. Run Electron E2E only when the changed flow warrants
 it. Do not claim a check passed unless it ran; report skipped checks and why.
 
+## Local automation
+
+Claude Code runs the hooks in `.claude/settings.json`; Codex, plain editors, and CI do not. Never
+assume a gate ran because a hook exists. Hook scripts live in `.claude/hooks/` and parse their
+payload with bash builtins, not `jq`, which is not a supported dependency.
+
+| Trigger | Hook | Effect |
+| --- | --- | --- |
+| Edit/Write `src/cuepoint/**.py` | `qt-guard.sh` | runs `check_no_qt_in_core.py` |
+| Edit/Write `.py` or renderer `.ts`/`.tsx` | `lint-touched.sh` | applies `ruff format`; reports `ruff check` and `oxlint -D correctness` |
+| Edit/Write `version.py` or desktop `package.json` | `version-coupling.sh` | runs `check_desktop_version_coupling.py` |
+| Bash `git commit`, `git tag`, `gh pr` | `commit-guard.sh` | denies AI attribution trailers, and non-Conventional or multi-line subjects |
+
+`lint-touched.sh` is the only hook that writes: it reformats the file just touched, so re-read a
+file before editing a region it may have changed. Lint violations are reported, never auto-fixed.
+
+`pre-commit` is installed at `.git/hooks/pre-commit` and runs ruff plus file hygiene on staged
+files. `trailing-whitespace` and `end-of-file-fixer` rewrite files and abort the commit for
+re-staging. mypy is excluded from it deliberately; `.pre-commit-config.yaml` explains why.
+
 ## Invariants
 
 - For engine API changes, search and synchronize Python `server.py`/`*_api.py`, Electron

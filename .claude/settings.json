@@ -1,0 +1,42 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/commit-guard.sh\"",
+            "timeout": 15,
+            "statusMessage": "Checking commit message"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/qt-guard.sh\"",
+            "timeout": 60,
+            "statusMessage": "Checking Qt boundary"
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/lint-touched.sh\"",
+            "timeout": 90,
+            "statusMessage": "Linting touched file"
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/version-coupling.sh\"",
+            "timeout": 60,
+            "statusMessage": "Checking version coupling"
+          }
+        ]
+      }
+    ]
+  }
+}
