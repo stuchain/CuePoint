@@ -7,6 +7,7 @@ import { ScaleProvider } from "../../tokens/ScaleContext";
 import { ToastProvider } from "../Toast";
 import { PlayerBar } from "./PlayerBar";
 import { resetPlayerStore } from "./playerStore";
+import { EMPTY_AUDIO_STATE } from "./playerFormat";
 
 /**
  * Shuffle reorders the queue, not the view (PLAYER-07, DEC-052).
@@ -74,6 +75,7 @@ function playerSnapshot(shuffle: boolean): PlayerSnapshot {
       shuffle,
       repeat: "off",
     },
+    audio: EMPTY_AUDIO_STATE,
   };
 }
 

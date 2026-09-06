@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PlayerSnapshot } from "../../api/cuepointBridge.types";
-import { selectCurrentItem, sameItem, selectPosition } from "./playerFormat";
+import { EMPTY_AUDIO_STATE, selectCurrentItem, sameItem, selectPosition } from "./playerFormat";
 import { resetPlayerStore, usePlayerValue } from "./playerStore";
 
 /**
@@ -48,6 +48,7 @@ function snapshot(position: number, title = "Strobe"): PlayerSnapshot {
       shuffle: false,
       repeat: "off",
     },
+    audio: EMPTY_AUDIO_STATE,
   };
 }
 

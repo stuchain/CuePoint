@@ -12,7 +12,13 @@ import {
   type QueueWindow,
   type RepeatMode,
 } from "./playbackQueue";
-import type { PlayerSnapshot, PlayerSupervisor } from "./playerSupervisor";
+import {
+  SYSTEM_DEFAULT_DEVICE,
+  isAudioOutputFailure,
+  type AudioSettings,
+  type PlayerSnapshot,
+  type PlayerSupervisor,
+} from "./playerSupervisor";
 
 /**
  * Where the queue meets mpv (PLAYER-04, DEC-050).
@@ -343,6 +349,14 @@ export class PlaybackController {
    * rather than leaving a stale "playing" state.
    */
   private onEndFile(info: MpvEndFile): void {
+    if (info.reason === "error" && isAudioOutputFailure(info.error)) {
+      // Not the file's fault and not the file's problem: mpv could not open
+      // the audio output. Marking the track failed here would blame a track
+      // that is perfectly fine, and counting it toward PLAYER-10's run would
+      // eventually stop a queue for a reason that has nothing to do with it.
+      void this.recoverFromAudioFailure();
+      return;
+    }
     if (info.reason === "error") {
       const failedId = this.entryToItem.get(info.playlistEntryId ?? -1) ?? this.queue.currentId;
       if (failedId) {
@@ -383,6 +397,87 @@ export class PlaybackController {
     // mpv did move on after all, and this idle is about something else.
     if (failedId !== this.queue.currentId) return;
     void this.advanceAfterFailure();
+  }
+
+  /**
+   * Exclusive output or a chosen device was not available (PLAYER-11, DEC-055).
+   *
+   * A ladder, taken one rung per failure, because the two causes are told apart
+   * by what is left to try rather than by anything mpv says: exclusive output
+   * fails when another application holds the device, and a device fails when
+   * its interface has been unplugged. Both surface as the same
+   * "audio output initialization failed".
+   *
+   * Every rung falls back and **retries the same track** rather than skipping
+   * it — the track was never the problem — and says so, because a player that
+   * silently stopped being bit-perfect is exactly what DEC-055 exists to
+   * prevent. The last rung has nothing left to try, so the failure is a real
+   * one and goes to PLAYER-10's path.
+   *
+   * None of this overwrites what the user asked for. An interface that is
+   * asleep now may be back in a minute, and the next player start tries it
+   * again.
+   */
+  private async recoverFromAudioFailure(): Promise<void> {
+    const audio = this.player.getSnapshot().audio;
+    const fallback = async (settings: Partial<AudioSettings>, message: string) => {
+      await this.player.setAudioSettings(settings, { remember: false });
+      this.emitNotice({ kind: "audio-fallback", message, count: 0, stopped: false });
+      await this.playCurrent();
+      this.publish();
+    };
+
+    try {
+      if (audio.activeExclusive) {
+        await fallback(
+          { exclusive: false },
+          "Exclusive output was not available — playing through the shared device.",
+        );
+        return;
+      }
+      if (audio.activeDevice !== SYSTEM_DEFAULT_DEVICE) {
+        await fallback(
+          { device: SYSTEM_DEFAULT_DEVICE },
+          "The selected audio device is not available — playing through the system default.",
+        );
+        return;
+      }
+    } catch (error) {
+      await this.stop().catch(() => undefined);
+      this.emitNotice({
+        kind: "player-unavailable",
+        message: (error as Error).message,
+        count: 0,
+        stopped: true,
+      });
+      return;
+    }
+
+    // Shared output on the system default already failed: there is nothing
+    // left to fall back to, so this is a genuine failure of this track.
+    const failedId = this.queue.currentId;
+    if (failedId) {
+      const item = this.queue.itemById(failedId);
+      this.queue.markFailed(failedId);
+      this.failures.record({ title: item?.title ?? "", reason: "no audio output" });
+      this.failedAwaitingAdvance = failedId;
+      if (this.player.isIdle) this.onPlayerIdle();
+    }
+    this.publish();
+  }
+
+  // ------------------------------------------------------------------------
+  // Audio output (PLAYER-11, DEC-055)
+  // ------------------------------------------------------------------------
+
+  listAudioDevices() {
+    return this.player.listAudioDevices();
+  }
+
+  /** A deliberate choice, so it is remembered and re-tried after a restart. */
+  async setAudioSettings(settings: Partial<AudioSettings>): Promise<void> {
+    await this.player.setAudioSettings(settings, { remember: true });
+    this.publish();
   }
 
   private async advanceAfterFailure(): Promise<void> {

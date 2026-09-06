@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlayerSnapshot, QueueItem, QueueWindow } from "../../api/cuepointBridge.types";
 import { QueuePanel } from "./QueuePanel";
 import { resetPlayerStore } from "./playerStore";
+import { EMPTY_AUDIO_STATE } from "./playerFormat";
 
 /**
  * The queue panel (PLAYER-08, DEC-013).
@@ -54,6 +55,7 @@ function snapshot(length: number, currentId: string | null = "q0"): PlayerSnapsh
       shuffle: false,
       repeat: "off",
     },
+    audio: EMPTY_AUDIO_STATE,
   };
 }
 

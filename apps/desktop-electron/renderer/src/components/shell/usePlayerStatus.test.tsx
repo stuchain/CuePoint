@@ -5,6 +5,7 @@ import type { PlayerBridge, PlayerSnapshot } from "../../api/cuepointBridge.type
 import { resetPlayerStore } from "../player/playerStore";
 import { StatusStrip } from "./StatusStrip";
 import { playerStatusMessage, usePlayerStatusMessage } from "./usePlayerStatus";
+import { EMPTY_AUDIO_STATE } from "../player/playerFormat";
 
 /**
  * The player's line in the status strip (PLAYER-03).
@@ -40,6 +41,7 @@ function snapshot(overrides: Partial<PlayerSnapshot["status"]> = {}): PlayerSnap
       shuffle: false,
       repeat: "off",
     },
+    audio: EMPTY_AUDIO_STATE,
   };
 }
 

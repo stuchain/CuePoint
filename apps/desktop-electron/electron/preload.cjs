@@ -105,6 +105,10 @@ contextBridge.exposeInMainWorld("cuepoint", {
     seek: (seconds) => ipcRenderer.invoke("player:seek", seconds),
     setVolume: (volume) => ipcRenderer.invoke("player:setVolume", volume),
     setMuted: (muted) => ipcRenderer.invoke("player:setMuted", muted),
+    /** The output devices mpv can see right now (PLAYER-11, DEC-055). */
+    audioDevices: () => ipcRenderer.invoke("player:audioDevices"),
+    setAudioSettings: (settings) =>
+      ipcRenderer.invoke("player:setAudioSettings", settings ?? {}),
     /**
      * Things to tell the user once: a track that would not play, or a player
      * that is gone (PLAYER-10). Not replayed on subscribe, so a reloaded

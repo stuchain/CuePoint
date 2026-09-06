@@ -111,6 +111,34 @@ export const DEFAULT_CONNECT_TIMEOUT_MS = 10_000;
  *   explicitly not. No crossfade filter is configured, here or anywhere.
  * - `--audio-client-name` is what the OS mixer shows the user.
  */
+/**
+ * The resampler, configured rather than assumed (PLAYER-11, DEC-055, DEC-005).
+ *
+ * These matter only in shared mode, and that is exactly when they matter: the
+ * OS mixer runs at a fixed rate, so a 44.1 kHz track played on a 48 kHz mixer
+ * is resampled on every single sample. Exclusive output avoids the conversion
+ * altogether, which is the point of offering it.
+ *
+ * - `filter-size=32` is libswresample's maximum, twice the default 16. A longer
+ *   sinc means better stopband rejection — less of the aliasing that a short
+ *   filter folds back into the audible band.
+ * - `phase-shift=12` gives a 4,096-entry phase table instead of 1,024, so the
+ *   interpolation between filter phases contributes less error.
+ *
+ * **Not SoX.** DEC-005's reasoning names SoX resampling, and the bundled build
+ * cannot do it: `--audio-swresample-o=resampler=soxr` on the pinned mpv gives
+ * "SWR: Requested resampling engine is unavailable" followed by "libswresample
+ * failed to initialize", and every track that needs resampling then fails to
+ * play. Its FFmpeg is not built with libsoxr. Setting it would not be a quality
+ * improvement, it would be silence — so the highest-quality settings the build
+ * actually has are set instead, and `mpvAudio.integration.test.ts` fails if a
+ * future build changes that in either direction.
+ */
+export const MPV_RESAMPLER_ARGS: readonly string[] = [
+  "--audio-resample-filter-size=32",
+  "--audio-resample-phase-shift=12",
+];
+
 export const MPV_BASE_ARGS: readonly string[] = [
   "--idle=yes",
   "--no-video",
@@ -118,6 +146,7 @@ export const MPV_BASE_ARGS: readonly string[] = [
   "--no-config",
   "--gapless-audio=yes",
   "--audio-client-name=CuePoint",
+  ...MPV_RESAMPLER_ARGS,
 ];
 
 /** The full argument list for an mpv listening on `socketPath`. */
@@ -435,6 +464,16 @@ export class MpvClient extends EventEmitter<MpvClientEventMap> {
   /** DEC-055's device picker writes through here. */
   async setAudioDevice(device: string): Promise<void> {
     await this.setProperty("audio-device", device);
+  }
+
+  /**
+   * WASAPI exclusive on Windows, hog mode on macOS (DEC-055).
+   *
+   * mpv accepts this while idle and applies it the next time it opens the audio
+   * output, so there is no need to restart the player to change it.
+   */
+  async setAudioExclusive(exclusive: boolean): Promise<void> {
+    await this.setProperty("audio-exclusive", exclusive);
   }
 
   async setSpeed(speed: number): Promise<void> {

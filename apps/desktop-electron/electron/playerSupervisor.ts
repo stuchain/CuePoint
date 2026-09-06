@@ -66,6 +66,75 @@ export const PLAYER_QUIT_TIMEOUT_MS = 2000;
  * loop the budget exists to prevent. Surviving this long is evidence it really
  * worked; anything shorter is a crash loop.
  */
+/**
+ * The audio output, as the user set it and as it actually is (PLAYER-11).
+ *
+ * Two pairs, not one, because they come apart: exclusive output can fail
+ * because another application holds the device, and a chosen device can vanish
+ * when its interface is unplugged. DEC-055 requires that neither is fatal, so
+ * the player falls back — and a fallback that overwrote the user's choice would
+ * quietly forget an interface that is merely asleep. What the user asked for is
+ * kept; what is in use right now is reported alongside it.
+ */
+export interface AudioSettings {
+  /** An mpv device name, or "auto" for the system default. */
+  device: string;
+  exclusive: boolean;
+}
+
+export interface AudioState extends AudioSettings {
+  /** The device actually in use, after any fallback. */
+  activeDevice: string;
+  /** Whether exclusive output is actually in force. */
+  activeExclusive: boolean;
+  /**
+   * Whether this OS can do exclusive output at all.
+   *
+   * Linux has no equivalent (DEC-055), and a control that lies is worse than a
+   * control that is disabled with a reason — so the renderer is told rather
+   * than left to guess from a platform string it should not have.
+   */
+  exclusiveSupported: boolean;
+}
+
+export interface AudioDevice {
+  name: string;
+  description: string;
+}
+
+export const DEFAULT_AUDIO_SETTINGS: AudioSettings = { device: "auto", exclusive: false };
+
+/** The device name that means "whatever the system is using". */
+export const SYSTEM_DEFAULT_DEVICE = "auto";
+
+/**
+ * mpv's own words when it cannot open the audio output (PLAYER-11).
+ *
+ * Verified against the bundled build: a device that does not exist produces
+ * `{"event":"end-file","reason":"error","file_error":"audio output
+ * initialization failed"}`. It is deliberately *not* the same text as a file
+ * that will not load ("loading failed"), which is what lets PLAYER-10's
+ * skip-and-count and this step's fall-back-and-retry stay apart.
+ */
+export const AUDIO_INIT_FAILURE = "audio output initialization failed";
+
+/**
+ * Whether this platform has an exclusive-output mode at all (DEC-055).
+ *
+ * WASAPI exclusive on Windows and hog mode on macOS; Linux has no equivalent,
+ * and PipeWire/PulseAudio deliberately do not offer one. The control is
+ * disabled there with a reason rather than offered and quietly ignored.
+ */
+export function exclusiveOutputSupported(platform: string): boolean {
+  return platform === "win32" || platform === "darwin";
+}
+
+/** Whether a failure reason from mpv is the audio output rather than the file. */
+export function isAudioOutputFailure(reason: string | null | undefined): boolean {
+  if (!reason) return false;
+  return reason.toLowerCase().includes("audio output");
+}
+
 /** How many lines of mpv's own output are kept for diagnostics. */
 export const PLAYER_OUTPUT_LINES = 50;
 
@@ -109,6 +178,8 @@ export interface PlaybackState {
 export interface PlayerSnapshot {
   status: PlayerStatus;
   playback: PlaybackState;
+  /** The output settings and what they actually resolved to (PLAYER-11). */
+  audio: AudioState;
 }
 
 /** Playback failed for a reason the user should be told about. */
@@ -174,6 +245,10 @@ export class PlayerSupervisor {
   private readonly idleListeners = new Set<IdleListener>();
   /** mpv's own `idle-active`: it has nothing loaded and is playing nothing. */
   private idleActive = false;
+  /** What the user asked for; see `AudioState`. */
+  private audio: AudioSettings = { ...DEFAULT_AUDIO_SETTINGS };
+  /** What is actually in use, which a fallback can pull away from it. */
+  private activeAudio: AudioSettings = { ...DEFAULT_AUDIO_SETTINGS };
   /** The tail of mpv's own diagnostics; see `drainOutput`. */
   private output: string[] = [];
   private outputTail = "";
@@ -232,7 +307,11 @@ export class PlayerSupervisor {
   }
 
   getSnapshot(): PlayerSnapshot {
-    return { status: this.getStatus(), playback: { ...this.playback } };
+    return {
+      status: this.getStatus(),
+      playback: { ...this.playback },
+      audio: this.getAudioState(),
+    };
   }
 
   /** Subscribe to state pushes. Returns an unsubscribe function. */
@@ -285,6 +364,70 @@ export class PlayerSupervisor {
    */
   get isIdle(): boolean {
     return this.idleActive;
+  }
+
+  /** The audio output as asked for and as it is (PLAYER-11, DEC-055). */
+  getAudioState(): AudioState {
+    return {
+      device: this.audio.device,
+      exclusive: this.audio.exclusive,
+      activeDevice: this.activeAudio.device,
+      activeExclusive: this.activeAudio.exclusive,
+      exclusiveSupported: exclusiveOutputSupported(this.options.platform ?? process.platform),
+    };
+  }
+
+  /**
+   * The devices mpv can see right now (DEC-055).
+   *
+   * Asked for rather than cached: interfaces are plugged in and unplugged while
+   * the app runs, and a picker showing last hour's list is a picker that offers
+   * a device which is no longer there. Starts the player if it is not running,
+   * because only mpv can answer.
+   */
+  async listAudioDevices(): Promise<AudioDevice[]> {
+    await this.ensureRunning();
+    const client = this.requireClient();
+    const devices = await client.getAudioDeviceList();
+    if (!Array.isArray(devices)) return [];
+    return devices
+      .filter(
+        (device): device is AudioDevice =>
+          typeof device?.name === "string" && device.name !== "",
+      )
+      .map((device) => ({
+        name: device.name,
+        description:
+          typeof device.description === "string" && device.description !== ""
+            ? device.description
+            : device.name,
+      }));
+  }
+
+  /**
+   * Choose the output, or fall back to it.
+   *
+   * `applyNow` distinguishes the two callers. The user choosing a device is a
+   * choice and is remembered; the controller falling back because the device
+   * is gone is not, and must not overwrite what the user asked for — the
+   * interface may be plugged in again in a minute.
+   */
+  async setAudioSettings(
+    settings: Partial<AudioSettings>,
+    options: { remember?: boolean } = {},
+  ): Promise<void> {
+    const remember = options.remember ?? true;
+    const next: AudioSettings = {
+      device: settings.device ?? this.activeAudio.device,
+      exclusive: settings.exclusive ?? this.activeAudio.exclusive,
+    };
+    if (remember) this.audio = { ...next };
+    this.activeAudio = { ...next };
+    this.push(true);
+    // Applied to a player that is not running would start one for nothing:
+    // the settings are put back by `restoreAudio` when it next starts.
+    if (!this.client) return;
+    await this.applyAudio(this.client);
   }
 
   /**
@@ -460,6 +603,25 @@ export class PlayerSupervisor {
       await client.setVolume(this.playback.volume).catch(() => undefined);
     }
     if (this.playback.muted) await client.setMuted(true).catch(() => undefined);
+    // A fresh player gets what the *user* asked for, not what a fallback
+    // settled on: a restart is the natural moment to try the interface again.
+    this.activeAudio = { ...this.audio };
+    await this.applyAudio(client);
+  }
+
+  /**
+   * Push the output settings into mpv.
+   *
+   * Never fatal. mpv takes a device name it has never heard of without
+   * complaint (verified against the bundled build), and finds out at the next
+   * `loadfile` — which is the failure the controller's fallback answers. A
+   * throw here would instead take down whatever asked for the change.
+   */
+  private async applyAudio(client: MpvClient): Promise<void> {
+    await client.setAudioDevice(this.activeAudio.device).catch(() => undefined);
+    if (exclusiveOutputSupported(this.options.platform ?? process.platform)) {
+      await client.setAudioExclusive(this.activeAudio.exclusive).catch(() => undefined);
+    }
   }
 
   /**

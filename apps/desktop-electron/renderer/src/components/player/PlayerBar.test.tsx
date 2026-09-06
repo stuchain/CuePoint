@@ -7,6 +7,7 @@ import { PlayerSlot } from "./PlayerSlot";
 import { ToastProvider } from "../Toast";
 import { PLAYER_REPEAT_STORAGE_KEY, PLAYER_SHUFFLE_STORAGE_KEY } from "./playerOrderState";
 import { resetPlayerStore } from "./playerStore";
+import { EMPTY_AUDIO_STATE } from "./playerFormat";
 
 /**
  * The player bar (PLAYER-06, DEC-052, DEC-053).
@@ -64,6 +65,7 @@ function snapshot(overrides: {
       shuffle: overrides.shuffle ?? false,
       repeat: overrides.repeat ?? "off",
     },
+    audio: EMPTY_AUDIO_STATE,
   };
 }
 

@@ -19,6 +19,15 @@ paid distribution licence. A raw ffmpeg/libavcodec binding is the most flexible
 and the most work. libmpv is the engine behind mpv, mpv.net and IINA, with the
 format coverage and the resampler the requirement asks for.
 
+One part of that turned out to be conditional on the *build* rather than on mpv.
+The bundled binary's FFmpeg is not compiled with libsoxr, so the SoX resampler
+named in DEC-005's reasoning is unavailable: asking for it makes libswresample
+fail to initialise and every track that needs resampling fails to play. PLAYER-11
+configures libswresample's own highest-quality settings instead, and DEC-055's
+amendment records the evidence. Exclusive output is the part that actually
+delivers the quality claim — it hands the file to the device in its native
+format and skips resampling altogether.
+
 DEC-005 chose libmpv. It did not say what "a libmpv sidecar" is made of, and
 that question — settled here and in DEC-049 — is what determines the packaging,
 signing and IPC work.

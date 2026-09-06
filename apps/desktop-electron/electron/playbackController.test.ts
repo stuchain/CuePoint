@@ -13,9 +13,11 @@ import type { PlayerSupervisor } from "./playerSupervisor";
  */
 
 interface FakeCall {
-  kind: "play" | "enqueue" | "stop" | "seek";
+  kind: "play" | "enqueue" | "stop" | "seek" | "audio";
   file?: string;
   seconds?: number;
+  settings?: { device?: string; exclusive?: boolean };
+  remember?: boolean;
 }
 
 function fakePlayer() {
@@ -27,6 +29,14 @@ function fakePlayer() {
     | null = null;
   let idle: (() => void) | null = null;
   let position: number | null = 0;
+  // What the user asked for, and what is actually in use (PLAYER-11).
+  const audio = {
+    device: "auto",
+    exclusive: false,
+    activeDevice: "auto",
+    activeExclusive: false,
+    exclusiveSupported: true,
+  };
 
   const player = {
     isRunning: true,
@@ -47,6 +57,7 @@ function fakePlayer() {
         volume: 100,
         muted: false,
       },
+      audio: { ...audio },
     }),
     onSnapshot: () => () => undefined,
     onStartFile: (listener: (info: { playlistEntryId: number | null }) => void) => {
@@ -85,6 +96,21 @@ function fakePlayer() {
     togglePause: async () => undefined,
     setVolume: async () => undefined,
     setMuted: async () => undefined,
+    listAudioDevices: async () => [{ name: "auto", description: "Autoselect device" }],
+    setAudioSettings: async (
+      settings: { device?: string; exclusive?: boolean },
+      options: { remember?: boolean } = {},
+    ) => {
+      calls.push({ kind: "audio", settings: { ...settings }, remember: options.remember ?? true });
+      if (settings.device !== undefined) {
+        audio.activeDevice = settings.device;
+        if (options.remember !== false) audio.device = settings.device;
+      }
+      if (settings.exclusive !== undefined) {
+        audio.activeExclusive = settings.exclusive;
+        if (options.remember !== false) audio.exclusive = settings.exclusive;
+      }
+    },
   };
 
   return {
@@ -118,6 +144,9 @@ function fakePlayer() {
     setPosition: (seconds: number | null) => {
       position = seconds;
     },
+    /** Put the player into a given audio state, as the user's settings would. */
+    setAudio: (next: Partial<typeof audio>) => Object.assign(audio, next),
+    audio,
   };
 }
 
@@ -641,6 +670,164 @@ describe("recovering from a failure (PLAYER-10)", () => {
   });
 });
 
+
+/**
+ * When the audio output is the problem (PLAYER-11, DEC-055).
+ *
+ * mpv reports a device it cannot open with the same `end-file` and the same
+ * reason as a file it cannot read. Only the text tells them apart, and getting
+ * that wrong is expensive in both directions: treat an unplugged interface as a
+ * broken file and a whole queue of perfectly good music is marked failed and
+ * skipped; treat a broken file as a device problem and the player quietly
+ * stops being bit-perfect for the rest of the session.
+ */
+describe("falling back when the audio output fails (PLAYER-11)", () => {
+  const AUDIO_FAILURE = "audio output initialization failed";
+
+  function watch(controller: PlaybackController) {
+    const notices: Array<{ kind: string; message: string; stopped: boolean }> = [];
+    controller.onNotice((notice) => notices.push(notice));
+    return notices;
+  }
+
+  it("drops exclusive output and plays the same track again", async () => {
+    const { player, calls, finish, setAudio } = fakePlayer();
+    const controller = new PlaybackController(player, { failureWindowMs: 5 });
+    const notices = watch(controller);
+    await controller.playQueue(tracks("a", "b"), 0);
+    setAudio({ exclusive: true, activeExclusive: true });
+    calls.length = 0;
+
+    finish("error", 1, AUDIO_FAILURE);
+
+    await vi.waitFor(() => expect(played(calls)).toEqual(["/music/a.flac"]));
+    expect(calls.find((call) => call.kind === "audio")).toMatchObject({
+      settings: { exclusive: false },
+      remember: false,
+    });
+    expect(notices).toEqual([
+      expect.objectContaining({
+        kind: "audio-fallback",
+        stopped: false,
+        message: "Exclusive output was not available — playing through the shared device.",
+      }),
+    ]);
+  });
+
+  it("does not blame the track, or count it as one that failed", async () => {
+    // The file was never the problem. Marking it failed would show a broken
+    // badge on a track that plays perfectly, and counting it would eventually
+    // stop the queue for a reason that has nothing to do with it (PLAYER-10).
+    const { player, finish, setAudio } = fakePlayer();
+    const controller = new PlaybackController(player, { failureWindowMs: 5 });
+    const notices = watch(controller);
+    await controller.playQueue(tracks("a", "b"), 0);
+    setAudio({ exclusive: true, activeExclusive: true });
+
+    finish("error", 1, AUDIO_FAILURE);
+    await vi.waitFor(() => expect(notices).toHaveLength(1));
+
+    expect(controller.queueWindow(0, 1_000).items[0]!.status).not.toBe("failed");
+    expect(notices.some((notice) => notice.kind === "track-failed")).toBe(false);
+  });
+
+  it("falls back to the system default when the chosen device is gone", async () => {
+    const { player, calls, finish, setAudio } = fakePlayer();
+    const controller = new PlaybackController(player, { failureWindowMs: 5 });
+    const notices = watch(controller);
+    await controller.playQueue(tracks("a", "b"), 0);
+    setAudio({ device: "wasapi/{gone}", activeDevice: "wasapi/{gone}" });
+    calls.length = 0;
+
+    finish("error", 1, AUDIO_FAILURE);
+
+    await vi.waitFor(() => expect(played(calls)).toEqual(["/music/a.flac"]));
+    expect(calls.find((call) => call.kind === "audio")).toMatchObject({
+      settings: { device: "auto" },
+      remember: false,
+    });
+    expect(notices[0]!.message).toBe(
+      "The selected audio device is not available — playing through the system default.",
+    );
+  });
+
+  it("takes one rung at a time: exclusive first, then the device", async () => {
+    const { player, calls, finish, setAudio } = fakePlayer();
+    const controller = new PlaybackController(player, { failureWindowMs: 5 });
+    const notices = watch(controller);
+    await controller.playQueue(tracks("a", "b"), 0);
+    setAudio({
+      device: "wasapi/{gone}",
+      activeDevice: "wasapi/{gone}",
+      exclusive: true,
+      activeExclusive: true,
+    });
+
+    finish("error", 1, AUDIO_FAILURE);
+    await vi.waitFor(() => expect(notices).toHaveLength(1));
+    finish("error", undefined, AUDIO_FAILURE);
+    await vi.waitFor(() => expect(notices).toHaveLength(2));
+
+    expect(notices.map((notice) => notice.kind)).toEqual(["audio-fallback", "audio-fallback"]);
+    expect(
+      calls.filter((call) => call.kind === "audio").map((call) => call.settings),
+    ).toEqual([{ exclusive: false }, { device: "auto" }]);
+  });
+
+  it("gives up and skips the track once there is nothing left to try", async () => {
+    // Shared output on the system default already failed, so this is not a
+    // configuration problem any more — it is a track that will not play, and
+    // PLAYER-10 takes it from here.
+    const { player, finish, goIdle } = fakePlayer();
+    const controller = new PlaybackController(player, { failureWindowMs: 5 });
+    const notices = watch(controller);
+    await controller.playQueue(tracks("a", "b"), 0);
+
+    finish("error", 1, AUDIO_FAILURE);
+    goIdle();
+
+    await vi.waitFor(() => expect(notices).toHaveLength(1));
+    expect(notices[0]!.kind).toBe("track-failed");
+    expect(controller.queueWindow(0, 1_000).items[0]!.status).toBe("failed");
+  });
+
+  it("leaves a file that will not load to PLAYER-10", async () => {
+    const { player, calls, finish } = fakePlayer();
+    const controller = new PlaybackController(player, { failureWindowMs: 5 });
+    const notices = watch(controller);
+    await controller.playQueue(tracks("a", "b"), 0);
+    calls.length = 0;
+
+    finish("error", 1, "loading failed");
+
+    await vi.waitFor(() => expect(notices).toHaveLength(1));
+    expect(notices[0]!.kind).toBe("track-failed");
+    // Skipped, not retried: the track really is the problem.
+    expect(played(calls)).toEqual([]);
+    expect(calls.some((call) => call.kind === "audio")).toBe(false);
+  });
+
+  it("remembers a device the user chose", async () => {
+    const { player, calls } = fakePlayer();
+    const controller = new PlaybackController(player);
+
+    await controller.setAudioSettings({ device: "wasapi/{interface}", exclusive: true });
+
+    expect(calls.find((call) => call.kind === "audio")).toMatchObject({
+      settings: { device: "wasapi/{interface}", exclusive: true },
+      remember: true,
+    });
+  });
+
+  it("hands the device list straight through", async () => {
+    const { player } = fakePlayer();
+    const controller = new PlaybackController(player);
+
+    await expect(controller.listAudioDevices()).resolves.toEqual([
+      { name: "auto", description: "Autoselect device" },
+    ]);
+  });
+});
 
 describe("manual transport", () => {
   it("next loads the following track immediately", async () => {

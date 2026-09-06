@@ -325,6 +325,41 @@ function registerIpcHandlers(): void {
     }
     return { ok: true };
   });
+  /**
+   * The devices mpv can see (PLAYER-11, DEC-055).
+   *
+   * Asked fresh every time the panel opens: interfaces come and go while the
+   * app runs, and a cached list offers devices that are no longer there. A
+   * structured refusal rather than a throw, because "there is no audio player"
+   * is something the settings panel shows a person.
+   */
+  ipcMain.handle("player:audioDevices", async () => {
+    try {
+      return { ok: true as const, devices: await playback.listAudioDevices() };
+    } catch (error) {
+      return {
+        ok: false as const,
+        code: (error as { code?: string }).code ?? "player-error",
+        error: (error as Error).message,
+        devices: [] as Array<{ name: string; description: string }>,
+      };
+    }
+  });
+  ipcMain.handle(
+    "player:setAudioSettings",
+    async (_event, settings: { device?: string; exclusive?: boolean }) => {
+      try {
+        await playback.setAudioSettings(settings ?? {});
+        return { ok: true as const };
+      } catch (error) {
+        return {
+          ok: false as const,
+          code: (error as { code?: string }).code ?? "player-error",
+          error: (error as Error).message,
+        };
+      }
+    },
+  );
   ipcMain.handle("player:subscribeNotices", (event) => {
     const id = event.sender.id;
     const existing = noticeWatchers.get(id);
@@ -424,6 +459,18 @@ async function createWindow(): Promise<void> {
       preload: resolvePreloadPath(),
       contextIsolation: true,
       nodeIntegration: false,
+      /**
+       * Keep the renderer running while the window is in the background.
+       *
+       * Chromium throttles timers and delays task delivery in a background
+       * renderer, which is right for a web page and wrong for a music player:
+       * CuePoint is used with something else in front of it, and a throttled
+       * renderer stops the position moving, stops the queue panel updating and
+       * delays replies from main until the window is touched again. Found by
+       * PLAYER-11's settings test, where an answer main had already sent sat
+       * undelivered until the next interaction.
+       */
+      backgroundThrottling: false,
     },
   });
 

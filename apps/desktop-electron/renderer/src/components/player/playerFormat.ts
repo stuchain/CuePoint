@@ -1,4 +1,9 @@
-import type { PlayerSnapshot, QueueItem, RepeatMode } from "../../api/cuepointBridge.types";
+import type {
+  AudioState,
+  PlayerSnapshot,
+  QueueItem,
+  RepeatMode,
+} from "../../api/cuepointBridge.types";
 
 /**
  * Formatting and selectors for the player bar (PLAYER-06).
@@ -150,4 +155,35 @@ export function selectQueueRevision(state: PlayerSnapshot | null): string | null
   if (!state) return null;
   const { length, currentId, shuffle, repeat } = state.queue;
   return `${length}:${currentId ?? "-"}:${shuffle ? "s" : "-"}:${repeat}`;
+}
+
+/**
+ * The audio output before main has said anything (PLAYER-11).
+ *
+ * Every field the safe answer — the system default, shared, and exclusive
+ * output assumed unsupported — so a panel rendered before the first snapshot
+ * arrives shows a control that is disabled rather than one claiming a
+ * capability the machine may not have.
+ */
+export const EMPTY_AUDIO_STATE: AudioState = {
+  device: "auto",
+  exclusive: false,
+  activeDevice: "auto",
+  activeExclusive: false,
+  exclusiveSupported: false,
+};
+
+/** The audio output, for the settings panel. */
+export function selectAudio(snapshot: PlayerSnapshot | null): AudioState {
+  return snapshot?.audio ?? EMPTY_AUDIO_STATE;
+}
+
+/**
+ * Whether what is playing differs from what was asked for (PLAYER-11).
+ *
+ * The settings panel says so out loud: a toggle reading "on" while the audio
+ * is going out shared is the lie DEC-055 exists to prevent.
+ */
+export function audioFellBack(audio: AudioState): boolean {
+  return audio.device !== audio.activeDevice || audio.exclusive !== audio.activeExclusive;
 }

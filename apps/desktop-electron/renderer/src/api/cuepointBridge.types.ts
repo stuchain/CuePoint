@@ -78,6 +78,8 @@ export interface PlayerSnapshot {
   status: PlayerStatus;
   playback: PlaybackState;
   queue: QueueSnapshot;
+  /** The output settings and what they actually resolved to (PLAYER-11). */
+  audio: AudioState;
 }
 
 export type PlayerPlayResult =
@@ -128,6 +130,37 @@ export interface PlayerNotice {
   stopped: boolean;
 }
 
+/**
+ * The audio output as chosen and as it actually is (PLAYER-11, DEC-055).
+ *
+ * The two come apart when a fallback happens — exclusive output refused by a
+ * busy device, a chosen interface unplugged — and the settings panel shows
+ * both, because a toggle that says "on" while the audio is shared is a lie.
+ */
+export interface AudioSettings {
+  device: string;
+  exclusive: boolean;
+}
+
+export interface AudioState extends AudioSettings {
+  activeDevice: string;
+  activeExclusive: boolean;
+  /** False on Linux, where there is no exclusive mode to offer. */
+  exclusiveSupported: boolean;
+}
+
+export interface AudioDevice {
+  name: string;
+  description: string;
+}
+
+export interface AudioDevicesResult {
+  ok: boolean;
+  devices: AudioDevice[];
+  error?: string;
+  code?: string;
+}
+
 export interface PlayerBridge {
   getState: () => Promise<PlayerSnapshot>;
   /** Play a view's worth of tracks, starting at one of them (DEC-012). */
@@ -162,6 +195,9 @@ export interface PlayerBridge {
   seek: (seconds: number) => Promise<void>;
   setVolume: (volume: number) => Promise<void>;
   setMuted: (muted: boolean) => Promise<void>;
+  /** The output devices mpv can see right now (PLAYER-11, DEC-055). */
+  audioDevices: () => Promise<AudioDevicesResult>;
+  setAudioSettings: (settings: Partial<AudioSettings>) => Promise<PlayerPlayResult>;
   /** Subscribe to state pushes; returns an unsubscribe function. */
   subscribeState: (onState: (snapshot: PlayerSnapshot) => void) => () => void;
   /**

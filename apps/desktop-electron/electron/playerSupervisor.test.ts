@@ -3,9 +3,12 @@ import { PassThrough } from "node:stream";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  AUDIO_INIT_FAILURE,
   PLAYER_OUTPUT_LINES,
   PlayerSupervisor,
   PlayerUnavailableError,
+  exclusiveOutputSupported,
+  isAudioOutputFailure,
 } from "./playerSupervisor";
 
 /**
@@ -114,6 +117,21 @@ class FakeClient extends EventEmitter {
   async setMuted(muted: boolean): Promise<void> {
     this.commands.push(["set_property", "mute", muted]);
   }
+  async setAudioDevice(device: string): Promise<void> {
+    this.commands.push(["set_property", "audio-device", device]);
+  }
+  async setAudioExclusive(exclusive: boolean): Promise<void> {
+    this.commands.push(["set_property", "audio-exclusive", exclusive]);
+  }
+  async getAudioDeviceList(): Promise<Array<{ name: string; description: string }>> {
+    this.commands.push(["get_property", "audio-device-list"]);
+    return this.devices;
+  }
+  /** What this fake pretends the machine has plugged in. */
+  devices: Array<{ name: string; description: string }> = [
+    { name: "auto", description: "Autoselect device" },
+    { name: "wasapi/{interface}", description: "Speakers (Focusrite USB Audio)" },
+  ];
 }
 
 interface Harness {
@@ -130,6 +148,8 @@ function harness(
     connectFailures?: number;
     maxRestartAttempts?: number;
     stableUptimeMs?: number;
+    /** Exclusive output exists only on some platforms (PLAYER-11, DEC-055). */
+    platform?: NodeJS.Platform;
   } = {},
 ): Harness {
   const children: FakeChild[] = [];
@@ -139,7 +159,7 @@ function harness(
   const supervisor = new PlayerSupervisor({
     packaged: false,
     repoRoot: "/repo",
-    platform: "linux",
+    platform: overrides.platform ?? "linux",
     arch: "x64",
     env: {},
     exists: overrides.exists ?? (() => true),
@@ -558,6 +578,176 @@ describe("transport", () => {
     expect(
       clients[0]!.commands.filter((command) => command[1] === "volume"),
     ).toHaveLength(0);
+  });
+});
+
+/**
+ * The audio output (PLAYER-11, DEC-055).
+ *
+ * The distinction that carries this step is between what the user asked for and
+ * what is actually in use. They come apart whenever a fallback happens, and a
+ * fallback that overwrote the choice would quietly forget an interface that is
+ * merely unplugged for the evening.
+ */
+describe("audio output (PLAYER-11)", () => {
+  it("applies the chosen device and exclusive flag to a running player", async () => {
+    const { supervisor, clients } = track(harness({ platform: "win32" }));
+    await supervisor.play("/music/a.flac");
+    clients[0]!.commands.length = 0;
+
+    await supervisor.setAudioSettings({ device: "wasapi/{interface}", exclusive: true });
+
+    expect(clients[0]!.commands).toContainEqual([
+      "set_property",
+      "audio-device",
+      "wasapi/{interface}",
+    ]);
+    expect(clients[0]!.commands).toContainEqual(["set_property", "audio-exclusive", true]);
+  });
+
+  it("does not start a player just to remember a preference", async () => {
+    // Settings are restored at app startup (PLAYER-11), long before anyone
+    // presses play. Spawning mpv there would undo PLAYER-03's lazy start.
+    const { supervisor, spawnCalls } = track(harness());
+
+    await supervisor.setAudioSettings({ device: "wasapi/{interface}", exclusive: true });
+
+    expect(spawnCalls).toHaveLength(0);
+    expect(supervisor.getAudioState()).toMatchObject({
+      device: "wasapi/{interface}",
+      exclusive: true,
+    });
+  });
+
+  it("applies the remembered settings to the player that eventually starts", async () => {
+    const { supervisor, clients } = track(harness({ platform: "win32" }));
+    await supervisor.setAudioSettings({ device: "wasapi/{interface}", exclusive: true });
+
+    await supervisor.play("/music/a.flac");
+
+    expect(clients[0]!.commands).toContainEqual([
+      "set_property",
+      "audio-device",
+      "wasapi/{interface}",
+    ]);
+    expect(clients[0]!.commands).toContainEqual(["set_property", "audio-exclusive", true]);
+  });
+
+  it("keeps the choice when a fallback overrides it", async () => {
+    // The interface may be plugged in again in a minute; forgetting the choice
+    // because it is asleep would make the user pick it a second time.
+    const { supervisor } = track(harness({ platform: "win32" }));
+    await supervisor.play("/music/a.flac");
+    await supervisor.setAudioSettings({ device: "wasapi/{interface}", exclusive: true });
+
+    await supervisor.setAudioSettings({ exclusive: false }, { remember: false });
+
+    expect(supervisor.getAudioState()).toMatchObject({
+      device: "wasapi/{interface}",
+      exclusive: true,
+      activeDevice: "wasapi/{interface}",
+      activeExclusive: false,
+    });
+  });
+
+  it("tries the user's choice again on the next player start", async () => {
+    // A restart is the natural moment to see whether the interface is back.
+    const { supervisor, clients, children } = track(harness({ platform: "win32" }));
+    await supervisor.play("/music/a.flac");
+    await supervisor.setAudioSettings({ device: "wasapi/{interface}", exclusive: true });
+    await supervisor.setAudioSettings({ exclusive: false }, { remember: false });
+
+    children.at(-1)?.exit(1);
+    await vi.waitFor(() => expect(clients.length).toBeGreaterThan(1));
+
+    await vi.waitFor(() =>
+      expect(clients.at(-1)!.commands).toContainEqual([
+        "set_property",
+        "audio-exclusive",
+        true,
+      ]),
+    );
+    expect(supervisor.getAudioState().activeExclusive).toBe(true);
+  });
+
+  it("leaves the exclusive flag alone where the platform has no such thing", async () => {
+    // Linux has no equivalent; setting it there would be a no-op that reads as
+    // a working feature in the snapshot.
+    const { supervisor, clients } = track(harness({ platform: "linux" }));
+    await supervisor.play("/music/a.flac");
+    clients[0]!.commands.length = 0;
+
+    await supervisor.setAudioSettings({ exclusive: true });
+
+    expect(
+      clients[0]!.commands.filter((command) => command[1] === "audio-exclusive"),
+    ).toHaveLength(0);
+    expect(supervisor.getAudioState().exclusiveSupported).toBe(false);
+  });
+
+  it("says which platforms can do exclusive output", () => {
+    expect(exclusiveOutputSupported("win32")).toBe(true);
+    expect(exclusiveOutputSupported("darwin")).toBe(true);
+    expect(exclusiveOutputSupported("linux")).toBe(false);
+    expect(exclusiveOutputSupported("freebsd")).toBe(false);
+  });
+
+  it("lists the devices mpv can see", async () => {
+    const { supervisor } = track(harness());
+
+    const devices = await supervisor.listAudioDevices();
+
+    expect(devices).toEqual([
+      { name: "auto", description: "Autoselect device" },
+      { name: "wasapi/{interface}", description: "Speakers (Focusrite USB Audio)" },
+    ]);
+  });
+
+  it("falls back to the device name when mpv gives no description", async () => {
+    const { supervisor, clients } = track(harness());
+    await supervisor.play("/music/a.flac");
+    clients[0]!.devices = [
+      { name: "alsa/hw:0,0", description: "" },
+      { name: "", description: "nameless" },
+    ] as Array<{ name: string; description: string }>;
+
+    const devices = await supervisor.listAudioDevices();
+
+    // A device with no name cannot be selected and is dropped; one with no
+    // description is shown by its name rather than as a blank row.
+    expect(devices).toEqual([{ name: "alsa/hw:0,0", description: "alsa/hw:0,0" }]);
+  });
+
+  it("survives mpv answering with something that is not a list", async () => {
+    const { supervisor, clients } = track(harness());
+    await supervisor.play("/music/a.flac");
+    clients[0]!.devices = null as unknown as Array<{ name: string; description: string }>;
+
+    await expect(supervisor.listAudioDevices()).resolves.toEqual([]);
+  });
+
+  it("reports the audio state in the snapshot", async () => {
+    const { supervisor } = track(harness({ platform: "win32" }));
+
+    expect(supervisor.getSnapshot().audio).toEqual({
+      device: "auto",
+      exclusive: false,
+      activeDevice: "auto",
+      activeExclusive: false,
+      exclusiveSupported: true,
+    });
+  });
+
+  it("tells an audio-output failure apart from a file that will not load", () => {
+    // The two arrive as the same `end-file` with the same reason, and only the
+    // text tells them apart. One is answered by falling back, the other by
+    // skipping the track — swapping them would skip perfectly good music.
+    expect(isAudioOutputFailure(AUDIO_INIT_FAILURE)).toBe(true);
+    expect(isAudioOutputFailure("Audio output initialization failed")).toBe(true);
+    expect(isAudioOutputFailure("loading failed")).toBe(false);
+    expect(isAudioOutputFailure(null)).toBe(false);
+    expect(isAudioOutputFailure(undefined)).toBe(false);
+    expect(isAudioOutputFailure("")).toBe(false);
   });
 });
 

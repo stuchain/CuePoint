@@ -1266,7 +1266,8 @@ must produce one toast, not a toast storm.
 
 ## DEC-055 — Output Device and Exclusive Output Are User-Controlled
 
-**Status**: Approved · **Delivers on**: DEC-005
+**Status**: Approved, then **amended 2026-09-06** (see the amendment note at the end of this entry
+— the bundled build has no SoX resampler) · **Delivers on**: DEC-005
 
 **Decision**: Settings gains an audio section with an output-device picker enumerated from mpv, an
 exclusive-output toggle (WASAPI exclusive on Windows, hog mode on macOS), and mpv's high-quality
@@ -1289,6 +1290,29 @@ real rather than nominal.
   not have, which is Phase 12's scope.
 
 **Decided with**: User · **Date**: 2026-09-05
+
+### Amendment (2026-09-06) — the bundled build has no SoX resampler
+
+**What implementation found**: PLAYER-11 drove the pinned mpv directly before configuring anything.
+Asking it for SoX resampling — `--audio-swresample-o=resampler=soxr` — produces
+`SWR: Requested resampling engine is unavailable`, then `libswresample failed to initialize`, and
+**every track that needs resampling fails to play**. The bundled build's FFmpeg is not compiled with
+libsoxr. mpv accepts the option at the command line without complaint, so the failure appears only
+at the moment a file is loaded: shipping it would have been silence sold as quality.
+
+**Amended implication**: "mpv's high-quality resampler configured explicitly rather than left at
+defaults" is delivered with the highest-quality settings the build actually has —
+`--audio-resample-filter-size=32` (libswresample's maximum, twice the default) and
+`--audio-resample-phase-shift=12` (a 4,096-entry phase table rather than 1,024). Both were verified
+to play a resampled file through the real binary. `electron/mpvAudio.integration.test.ts` asserts
+that soxr is *unavailable*, deliberately inverted: if a future bundled build gains libsoxr the test
+fails and the choice is made again with the evidence in front of whoever makes it, rather than
+staying at second best because nobody rechecked.
+
+**Unchanged from the original decision**: everything else. The device picker, the exclusive-output
+toggle, the runtime fallback and the persistence are as decided. The resampler settings matter only
+in shared mode — exclusive output avoids sample-rate conversion altogether, which remains the way
+DEC-005's claim is actually delivered.
 
 ---
 

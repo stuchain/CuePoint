@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlayerSnapshot, QueueItem, QueueWindow } from "../../api/cuepointBridge.types";
 import { resetPlayerStore } from "./playerStore";
 import { useQueueWindow } from "./useQueueWindow";
+import { EMPTY_AUDIO_STATE } from "./playerFormat";
 
 /**
  * Reading the queue a window at a time (PLAYER-08).
@@ -47,6 +48,7 @@ function snapshot(length: number, currentId: string | null): PlayerSnapshot {
       shuffle: false,
       repeat: "off",
     },
+    audio: EMPTY_AUDIO_STATE,
   };
 }
 

@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 5: Player, Detailed Step Specifications
 
-Status: **In progress. PLAYER-01…PLAYER-10 are implemented** (outcomes recorded under each
-step); PLAYER-11…PLAYER-12 are described below and not started. Per the process, no implementation happens from this document — each step needs an
+Status: **In progress. PLAYER-01…PLAYER-11 are implemented** (outcomes recorded under each
+step); PLAYER-12 is described below and not started. Per the process, no implementation happens from this document — each step needs an
 explicit "Implement PLAYER-NN" instruction, scoped to exactly that step, and its outcome is
 recorded under the step afterwards.
 
@@ -1129,6 +1129,69 @@ normalization needs scan data the library does not have, which is Phase 12).
 **Risks.** This step cannot be validated in CI — it needs real hardware on two operating systems.
 The acceptance is manual by nature, and the step is not complete until that manual pass has actually
 been run and recorded, not asserted.
+
+### Outcome (2026-09-06)
+
+Implemented as an Audio panel in Settings, audio state on the supervisor, a fallback ladder in the
+controller, and the resampler settings on mpv's command line. 1,221 renderer tests, 344
+main-process, 33 E2E, both typechecks, lint and the production build pass.
+
+**The step began by asking the real binary instead of assuming.** Every claim below was checked
+against the pinned mpv before anything was built on it, and two of them came back different from
+what the design said.
+
+**DEC-005's SoX resampling does not exist in this build, and asking for it is silence.**
+`--audio-swresample-o=resampler=soxr` produces `SWR: Requested resampling engine is unavailable`
+and `libswresample failed to initialize`, and then *every track that needs resampling fails to
+play*. mpv accepts the option at the command line without a word, so it fails only at the moment a
+file is loaded — the shape of bug that ships. The bundled FFmpeg is simply not built with libsoxr.
+What is configured instead is the best libswresample itself has: `--audio-resample-filter-size=32`
+(its maximum, twice the default) and `--audio-resample-phase-shift=12` (a 4,096-entry phase table
+rather than 1,024), both verified to actually play a resampled file. DEC-055 is amended with the
+evidence, and `mpvAudio.integration.test.ts` asserts soxr is *unavailable* — inverted on purpose, so
+a future build that gains it fails the test rather than leaving CuePoint at second best for ever.
+
+**The two failure causes are indistinguishable, so the recovery is a ladder.** A device that has
+been unplugged and a device another application holds exclusively both arrive as the same
+`end-file` with the same `audio output initialization failed` — which is also, deliberately, not
+the `loading failed` a missing *file* produces. So the controller takes one rung per failure:
+exclusive output is dropped first, then the device falls back to the system default, and only when
+there is nothing left to try is it treated as a track that will not play (PLAYER-10). Every rung
+**retries the same track** rather than skipping it, because the track was never the problem, and
+says what it did.
+
+**A fallback never overwrites the choice.** What the user asked for and what is actually in use are
+two separate pairs in the snapshot, and the settings panel shows both — a toggle reading "on" while
+the audio is going out shared is exactly the lie DEC-055 exists to prevent. The interface may be
+plugged back in an hour later, so the choice is kept and re-tried on the next player start.
+
+**A real defect in the app, found by this step's own test.** The settings panel hung on a device
+list that main had already sent. Chromium throttles background renderers, and the reply sat
+undelivered until something touched the window — which for a *music player* is wrong far beyond
+this panel: it also stalls the position, the queue panel and every push from main whenever the user
+is working in another application, which is how a DJ app is used. `backgroundThrottling: false` is
+now set on the window, and the E2E asserts it.
+
+**Verified on real Windows hardware**, which is half of what DEC-055's risk note asks for. Through
+the packaged-mode app: the picker lists this machine's four real devices, selecting one routes to it
+(`[ao/wasapi] Selecting device '{…}' (Speakers (Focusrite USB Audio))`), and exclusive output
+engages on it — `Trying stereo s16 (16/16 bits) @ 44100hz (exclusive) -> ok`, the file's own format
+handed to the device untouched, against `Accepted as stereo float @ 44100hz … (shared)` for the same
+file through the mixer. That contrast *is* DEC-005's claim, made visible.
+
+**Verified in the running app** (`e2e/playerAudio.spec.ts`): the device list crosses all five
+layers, exclusive output survives a restart and is in force before the first track of the next
+session, and a device that is not there falls back to the system default with a toast, keeps the
+user's choice, shows the fallback in the panel, and leaves the track unmarked — the runtime fallback
+DEC-055 called the part most likely to be under-built, provoked without unplugging anything.
+
+**Still owed, and not asserted here.** Whether sound is *audible* out of a chosen interface is a
+human check, and macOS is untouched: hog mode is not WASAPI exclusive, and rows 6 and 7 of the
+macOS checklist below are where this step's acceptance is finished. This outcome records what was
+verified, not what was assumed.
+
+**Not in scope, as specified**: ReplayGain, volume normalization, DSP and EQ — DEC-055 excludes
+them, and normalization needs scan data the library does not have until Phase 12.
 
 ---
 

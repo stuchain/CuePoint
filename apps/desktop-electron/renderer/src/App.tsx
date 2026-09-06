@@ -27,6 +27,7 @@ import {
   useRememberDestination,
 } from "./components/shell";
 import { PlayerSlot } from "./components/player/PlayerSlot";
+import { useRestorePlayerAudio } from "./components/player/playerAudioState";
 import { useRestorePlayerOrder } from "./components/player/playerOrderState";
 import { MatchResultsProvider } from "./context/MatchResultsContext";
 import {
@@ -95,6 +96,8 @@ function AppShell() {
   // here rather than in the bar, which does not exist until the first play —
   // by then the queue has already been built and ordered.
   useRestorePlayerOrder();
+  // The output device the user chose, before the first track plays (PLAYER-11).
+  useRestorePlayerAudio();
 
   /**
    * Maps a destination id to the screen that renders it.

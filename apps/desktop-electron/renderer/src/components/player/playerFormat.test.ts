@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { PlayerSnapshot, QueueItem } from "../../api/cuepointBridge.types";
 import {
+  EMPTY_AUDIO_STATE,
   formatBpm,
   formatTime,
   formatTrackMeta,
@@ -62,6 +63,7 @@ function snapshot(overrides: Partial<PlayerSnapshot> = {}): PlayerSnapshot {
       shuffle: false,
       repeat: "off",
     },
+    audio: EMPTY_AUDIO_STATE,
     ...overrides,
   };
 }

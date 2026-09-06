@@ -3,6 +3,7 @@ import { Button, Panel, TextField } from "../components";
 import { ExportResultsButton } from "../components/ExportResultsModal";
 import { hasEngineBridge } from "../api/cuepointBridge.types";
 import { useBeatportToken } from "../hooks/useBeatportToken";
+import { AudioSettingsPanel } from "./AudioSettingsPanel";
 import { ThemeSettingsPanel } from "./ThemeSettingsPanel";
 import { useMatchResults } from "../context/MatchResultsContext";
 import { sampleResults } from "../mocks/fixtures";
@@ -39,6 +40,8 @@ export function SettingsExportScreen() {
       </header>
 
       <ThemeSettingsPanel />
+
+      <AudioSettingsPanel />
 
       <Panel title="Settings">
         <div className="settings-form">

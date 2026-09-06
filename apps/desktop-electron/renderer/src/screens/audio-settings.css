@@ -1,0 +1,82 @@
+/*
+ * The audio settings panel (PLAYER-11, DEC-055).
+ *
+ * Built from the same tokens as the rest of the shell; nothing here introduces
+ * a visual idea of its own. The explanatory text is deliberately given room —
+ * exclusive output takes a device away from every other application on the
+ * machine, and that is not something to bury in a tooltip.
+ */
+
+.cp-audio-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.cp-audio-settings__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.cp-audio-settings__label {
+  font-size: var(--font-size-sm);
+  color: var(--fg-primary);
+}
+
+.cp-audio-settings__select {
+  min-height: var(--hit-min);
+  max-width: 100%;
+  padding: 0 var(--space-sm);
+  border: var(--border-width) solid var(--border-outline);
+  background: var(--bg-input);
+  color: var(--fg-primary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+}
+
+.cp-audio-settings__select:disabled {
+  color: var(--fg-disabled);
+}
+
+.cp-audio-settings__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: var(--hit-min);
+  font-size: var(--font-size-sm);
+  color: var(--fg-primary);
+}
+
+.cp-audio-settings__toggle input:disabled + span {
+  color: var(--fg-disabled);
+}
+
+.cp-audio-settings__hint {
+  margin: 0;
+  max-width: 60ch;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+/* The two states worth interrupting the reading order for: what is actually
+   playing is not what was asked for, and something went wrong. */
+.cp-audio-settings__fallback,
+.cp-audio-settings__error {
+  margin: 0;
+  padding: var(--space-sm);
+  border: var(--border-width) solid var(--border-outline);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.cp-audio-settings__fallback {
+  background: var(--bg-panel-alt);
+  color: var(--fg-primary);
+}
+
+.cp-audio-settings__error {
+  background: var(--bg-panel-alt);
+  color: var(--accent-danger);
+}

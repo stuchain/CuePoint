@@ -76,7 +76,11 @@ export function failureMessage(
  * are answered differently: one is "the drive is unplugged", the other is
  * "there is no audio player".
  */
-export type PlayerNoticeKind = "track-failed" | "player-unavailable";
+/**
+ * `audio-fallback` is PLAYER-11: exclusive output or a chosen device was not
+ * available and playback carried on through something that was.
+ */
+export type PlayerNoticeKind = "track-failed" | "player-unavailable" | "audio-fallback";
 
 export interface PlayerNotice {
   /** Rises with every notice, so a renderer can tell a repeat from a re-send. */
