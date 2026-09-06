@@ -339,6 +339,54 @@ class TestExtraction:
         assert (install_dir / "mpv.app/Contents/MacOS/mpv").read_bytes() == b"macho"
         assert (install_dir / "mpv.app/Contents/MacOS/lib/libx.dylib").exists()
 
+    def test_strips_the_files_that_make_the_bundle_unsignable(self, tmp_path):
+        """Upstream's mpv.app carries placeholders that codesign refuses.
+
+        The real archive ships ``.gitkeep`` in ``Contents/MacOS`` and in
+        ``Contents/MacOS/lib``, each with an AppleDouble ``._.gitkeep``
+        companion. Everything under ``Contents/MacOS`` is treated as code, so
+        codesign rejects the whole bundle with "code object is not signed at
+        all", the nested signature never happens, and notarization of the
+        CuePoint app fails on a release machine rather than here.
+        """
+        archive = tmp_path / "mpv-mac.zip"
+        _nested_zip(
+            archive,
+            {
+                "mpv.app/Contents/MacOS/mpv": b"macho",
+                "mpv.app/Contents/MacOS/.gitkeep": b"",
+                "mpv.app/Contents/MacOS/._.gitkeep": b"\x00\x05\x16\x07",
+                "mpv.app/Contents/MacOS/lib/libx.dylib": b"dylib",
+                "mpv.app/Contents/MacOS/lib/.gitkeep": b"",
+                "mpv.app/Contents/MacOS/lib/._.gitkeep": b"\x00\x05\x16\x07",
+                "mpv.app/Contents/.DS_Store": b"junk",
+                "mpv.app/Contents/Info.plist": b"<plist/>",
+            },
+        )
+        target = self._target(
+            tmp_path,
+            archive="zip+tar.gz",
+            inner_archive="mpv.tar.gz",
+            install=["mpv.app"],
+            binary="mpv.app/Contents/MacOS/mpv",
+        )
+        install_dir = tmp_path / "out"
+
+        written = fps.extract_target(archive, target, install_dir)
+
+        leftovers = sorted(
+            p.relative_to(install_dir).as_posix()
+            for p in install_dir.rglob("*")
+            if p.is_file()
+            and (p.name.startswith("._") or p.name in {".gitkeep", ".DS_Store"})
+        )
+        assert leftovers == []
+        # The payload itself survives, and the return value does not promise
+        # files that are no longer on disk.
+        assert (install_dir / "mpv.app/Contents/MacOS/mpv").read_bytes() == b"macho"
+        assert (install_dir / "mpv.app/Contents/MacOS/lib/libx.dylib").exists()
+        assert all(p.exists() for p in written)
+
     def test_replaces_a_previous_install_rather_than_merging(self, tmp_path):
         archive = tmp_path / "mpv.zip"
         _flat_zip(archive, {"mpv.exe": b"new"})

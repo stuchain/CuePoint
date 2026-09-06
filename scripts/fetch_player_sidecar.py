@@ -484,6 +484,7 @@ def extract_target(archive: Path, target: Target, install_dir: Path) -> List[Pat
             f"Nothing was extracted for {target.key}; the archive layout has "
             f"changed. Expected entries matching {target.install!r} in {archive.name}."
         )
+    written = _strip_bundle_detritus(install_dir, written)
     _make_executable(target, install_dir)
     return written
 
@@ -511,6 +512,43 @@ def _extract_tar(payload: bytes, target: Target, install_dir: Path) -> None:
             tf.extractall(install_dir, members=members, filter="data")
         except TypeError:  # Python < 3.11.4 has no extraction filters
             tf.extractall(install_dir, members=members)  # noqa: S202 - members vetted
+
+
+#: Files that make a macOS bundle unsignable.
+#:
+#: ``._name`` is an AppleDouble companion holding a resource fork, and upstream
+#: mpv's macOS archive ships two of them (``._.gitkeep``, beside the placeholder
+#: files in ``Contents/MacOS`` and ``Contents/MacOS/lib``). ``codesign`` refuses
+#: any bundle containing one:
+#:
+#:     mpv.app: code object is not signed at all
+#:     In subcomponent: .../Contents/MacOS/._.gitkeep
+#:
+#: which makes the whole CuePoint app unnotarizable, since nested code has to be
+#: signed for the outer signature to be accepted. It fails at *signing* time on
+#: a release machine rather than here, so it is stripped at install time where
+#: the evidence is still in front of whoever is looking.
+#:
+#: ``.gitkeep`` is the same problem from the other direction. Upstream ships two
+#: empty ones (the AppleDouble files above are their companions), and everything
+#: inside ``Contents/MacOS`` is treated as code, so a zero-byte placeholder there
+#: draws the identical "code object is not signed at all". They hold no bytes and
+#: exist only to keep a directory in someone else's git tree.
+_DETRITUS_PREFIXES = ("._",)
+_DETRITUS_NAMES = (".DS_Store", ".gitkeep")
+
+
+def _strip_bundle_detritus(install_dir: Path, written: List[Path]) -> List[Path]:
+    """Remove AppleDouble and Finder metadata from an extracted bundle."""
+    removed = set()
+    for path in list(install_dir.rglob("*")):
+        if not path.is_file():
+            continue
+        name = path.name
+        if name.startswith(_DETRITUS_PREFIXES) or name in _DETRITUS_NAMES:
+            path.unlink()
+            removed.add(path)
+    return [p for p in written if p not in removed]
 
 
 def _make_executable(target: Target, install_dir: Path) -> None:
