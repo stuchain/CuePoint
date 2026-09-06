@@ -38,6 +38,7 @@ if TYPE_CHECKING:
     from cuepoint.models.library_source import LibrarySource
     from cuepoint.models.references import ReferenceSummary
     from cuepoint.models.track_metadata import TrackMetadata
+    from cuepoint.models.tag import Tag, TagUsage
     from cuepoint.models.refresh_diff import RefreshDiff
     from cuepoint.models.library_track import IdentityMatch, LibraryTrack, QueueTrack
     from cuepoint.models.filter_rule import Facet, FacetRange, RuleSet
@@ -939,6 +940,179 @@ class ITrackMetadataRepository(ABC):
     @abstractmethod
     def clear(self, track_id: int) -> bool:
         """Delete everything CuePoint knows about a track."""
+        ...
+
+
+class ITagRepository(ABC):
+    """Interface for the tag vocabulary and its assignments (DEC-015).
+
+    Flat and user-defined, with an optional category *label* per tag. There is
+    deliberately no parent, no child and no category entity: DEC-015 chose that
+    over a hierarchy, and an interface that cannot express a tree is what keeps
+    the decision from eroding one convenience method at a time.
+    """
+
+    @abstractmethod
+    def get(self, tag_id: int) -> Optional["Tag"]:
+        """Return one tag, or None."""
+        ...
+
+    @abstractmethod
+    def find_by_name(self, name: str) -> Optional["Tag"]:
+        """Return the tag with this name, ignoring case, or None."""
+        ...
+
+    @abstractmethod
+    def list_all(self) -> List["TagUsage"]:
+        """Return every tag with how many tracks carry it."""
+        ...
+
+    @abstractmethod
+    def usage_count(self, tag_id: int) -> int:
+        """Return how many tracks carry this tag."""
+        ...
+
+    @abstractmethod
+    def categories_in_use(self) -> List[str]:
+        """Return the category labels currently written on tags."""
+        ...
+
+    @abstractmethod
+    def tags_for_track(self, track_id: int) -> List["Tag"]:
+        """Return the tags on one track."""
+        ...
+
+    @abstractmethod
+    def tags_for_tracks(self, track_ids: Iterable[int]) -> Dict[int, List["Tag"]]:
+        """Return the tags on each track that has any, keyed by track id."""
+        ...
+
+    @abstractmethod
+    def tracks_with_tag(
+        self, tag_id: int, track_ids: Optional[Iterable[int]] = None
+    ) -> List[int]:
+        """Return which tracks carry this tag, optionally within a given set."""
+        ...
+
+    @abstractmethod
+    def create(self, tag: "Tag") -> "Tag":
+        """Insert a tag and return it with its assigned id."""
+        ...
+
+    @abstractmethod
+    def rename(self, tag_id: int, name: str) -> Optional["Tag"]:
+        """Rename a tag, leaving its assignments alone."""
+        ...
+
+    @abstractmethod
+    def set_category(self, tag_id: int, category: Optional[str]) -> Optional["Tag"]:
+        """Set or clear a tag's category label."""
+        ...
+
+    @abstractmethod
+    def set_colour(self, tag_id: int, colour: Optional[str]) -> Optional["Tag"]:
+        """Set or clear a tag's colour token."""
+        ...
+
+    @abstractmethod
+    def delete(self, tag_id: int) -> bool:
+        """Delete a tag and its assignments. Deletes no tracks."""
+        ...
+
+    @abstractmethod
+    def merge(self, source_id: int, target_id: int) -> int:
+        """Move every assignment to another tag and delete the source."""
+        ...
+
+    @abstractmethod
+    def assign(self, track_ids: Iterable[int], tag_id: int) -> List[int]:
+        """Put a tag on tracks; return the ones that did not have it."""
+        ...
+
+    @abstractmethod
+    def unassign(self, track_ids: Iterable[int], tag_id: int) -> List[int]:
+        """Take a tag off tracks; return the ones that had it."""
+        ...
+
+
+class ITagService(ABC):
+    """Interface for building and applying the tag vocabulary (DEC-015, DEC-008).
+
+    The layer that turns a tag change into a change *plus* its history, and that
+    knows the difference between the vocabulary and the tracks: renaming a tag
+    is a change to the vocabulary and writes no track history, while putting one
+    on a track is a change to that track and does.
+    """
+
+    @abstractmethod
+    def create_or_get(
+        self,
+        name: str,
+        category: Optional[str] = None,
+        colour: Optional[str] = None,
+    ) -> "Tag":
+        """Return the tag with this name, creating it if it does not exist."""
+        ...
+
+    @abstractmethod
+    def rename(self, tag_id: int, name: str) -> "Tag":
+        """Rename a tag."""
+        ...
+
+    @abstractmethod
+    def set_category(self, tag_id: int, category: Optional[str]) -> "Tag":
+        """Set or clear a tag's category label."""
+        ...
+
+    @abstractmethod
+    def set_colour(self, tag_id: int, colour: Optional[str]) -> "Tag":
+        """Set or clear a tag's colour token."""
+        ...
+
+    @abstractmethod
+    def delete(self, tag_id: int, batch_id: Optional[str] = None) -> int:
+        """Delete a tag, recording its removal from every track that had it."""
+        ...
+
+    @abstractmethod
+    def merge(
+        self, source_id: int, target_id: int, batch_id: Optional[str] = None
+    ) -> int:
+        """Merge one tag into another, recording what changed per track."""
+        ...
+
+    @abstractmethod
+    def assign(
+        self, track_ids: Iterable[int], tag_id: int, batch_id: Optional[str] = None
+    ) -> List[int]:
+        """Put a tag on tracks and record it; return the ones that changed."""
+        ...
+
+    @abstractmethod
+    def unassign(
+        self, track_ids: Iterable[int], tag_id: int, batch_id: Optional[str] = None
+    ) -> List[int]:
+        """Take a tag off tracks and record it; return the ones that changed."""
+        ...
+
+    @abstractmethod
+    def list_all(self) -> List["TagUsage"]:
+        """Return every tag with its usage count."""
+        ...
+
+    @abstractmethod
+    def categories_in_use(self) -> List[str]:
+        """Return the category labels currently in use."""
+        ...
+
+    @abstractmethod
+    def tags_for_track(self, track_id: int) -> List["Tag"]:
+        """Return the tags on one track."""
+        ...
+
+    @abstractmethod
+    def tags_for_tracks(self, track_ids: Iterable[int]) -> Dict[int, List["Tag"]]:
+        """Return the tags on each track that has any."""
         ...
 
 

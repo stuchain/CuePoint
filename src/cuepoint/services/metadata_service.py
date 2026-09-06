@@ -33,6 +33,19 @@ record — that is the whole point of DEC-057 — so they are not added to
 therefore not possible yet, and says so rather than half-working; ORG-10 shows
 the history and a later phase gives it its own revert.
 
+The write and its record are one transaction
+-------------------------------------------
+A rating stored with no history entry — because the entry failed after the
+value had already committed — is a library that quietly disagrees with its own
+log. So each write opens a transaction and both the repository and the history
+writer join it. This service runs no SQL of its own; it holds the boundary, the
+way ``library_import_service`` does for a refresh, which is why the persistence
+boundary test lists it by name.
+
+It arrived a step late. ORG-02 wrote and then recorded, in two transactions;
+ORG-03 found the gap while making a twelve-thousand-track tagging atomic, and
+closed it here at the same time.
+
 A no-op is not history
 ----------------------
 Re-saving the same note writes nothing. ``record_field_change`` already returns
@@ -53,6 +66,7 @@ from cuepoint.models.track_metadata import (
 )
 from cuepoint.services.interfaces import (
     IActivityService,
+    IDatabaseService,
     IMetadataService,
     ITrackMetadataRepository,
     ITrackRepository,
@@ -80,6 +94,7 @@ class MetadataService(IMetadataService):
         metadata_repository: ITrackMetadataRepository,
         track_repository: ITrackRepository,
         activity_service: IActivityService,
+        database_service: IDatabaseService,
     ) -> None:
         """Wire the layer to its store, the imported record, and the history log.
 
@@ -89,10 +104,13 @@ class MetadataService(IMetadataService):
                 effective rating and to refuse a write against a track that does
                 not exist.
             activity_service: Where each change is recorded (DEC-008).
+            database_service: Used only to open the transaction a write and its
+                history entry share. No SQL is run here.
         """
         self._metadata = metadata_repository
         self._tracks = track_repository
         self._activity = activity_service
+        self._db = database_service
 
     # ------------------------------------------------------------------ read
 
@@ -138,11 +156,16 @@ class MetadataService(IMetadataService):
         self._require_track(track_id)
         wanted = normalize_rating(rating)
 
-        before = self._metadata.get(track_id)
-        record = self._metadata.set_rating(track_id, wanted)
-        self._record(
-            track_id, FIELD_RATING, before.rating if before else None, wanted, batch_id
-        )
+        with self._db.transaction():
+            before = self._metadata.get(track_id)
+            record = self._metadata.set_rating(track_id, wanted)
+            self._record(
+                track_id,
+                FIELD_RATING,
+                before.rating if before else None,
+                wanted,
+                batch_id,
+            )
         return record
 
     def set_favorite(
@@ -157,15 +180,16 @@ class MetadataService(IMetadataService):
         self._require_track(track_id)
         wanted = bool(favorite)
 
-        before = self._metadata.get(track_id)
-        record = self._metadata.set_favorite(track_id, wanted)
-        self._record(
-            track_id,
-            FIELD_FAVORITE,
-            bool(before.favorite) if before else False,
-            wanted,
-            batch_id,
-        )
+        with self._db.transaction():
+            before = self._metadata.get(track_id)
+            record = self._metadata.set_favorite(track_id, wanted)
+            self._record(
+                track_id,
+                FIELD_FAVORITE,
+                bool(before.favorite) if before else False,
+                wanted,
+                batch_id,
+            )
         return record
 
     def set_notes(
@@ -180,11 +204,16 @@ class MetadataService(IMetadataService):
         self._require_track(track_id)
         wanted = normalize_notes(notes)
 
-        before = self._metadata.get(track_id)
-        record = self._metadata.set_notes(track_id, wanted)
-        self._record(
-            track_id, FIELD_NOTES, before.notes if before else None, wanted, batch_id
-        )
+        with self._db.transaction():
+            before = self._metadata.get(track_id)
+            record = self._metadata.set_notes(track_id, wanted)
+            self._record(
+                track_id,
+                FIELD_NOTES,
+                before.notes if before else None,
+                wanted,
+                batch_id,
+            )
         return record
 
     def clear(self, track_id: int, batch_id: Optional[str] = None) -> bool:
@@ -203,14 +232,15 @@ class MetadataService(IMetadataService):
         track_id = int(track_id)
         self._require_track(track_id)
 
-        before = self._metadata.get(track_id)
-        removed = self._metadata.clear(track_id)
-        if before is not None:
-            self._record(track_id, FIELD_RATING, before.rating, None, batch_id)
-            self._record(
-                track_id, FIELD_FAVORITE, bool(before.favorite), False, batch_id
-            )
-            self._record(track_id, FIELD_NOTES, before.notes, None, batch_id)
+        with self._db.transaction():
+            before = self._metadata.get(track_id)
+            removed = self._metadata.clear(track_id)
+            if before is not None:
+                self._record(track_id, FIELD_RATING, before.rating, None, batch_id)
+                self._record(
+                    track_id, FIELD_FAVORITE, bool(before.favorite), False, batch_id
+                )
+                self._record(track_id, FIELD_NOTES, before.notes, None, batch_id)
         return removed
 
     # --------------------------------------------------------------- helpers

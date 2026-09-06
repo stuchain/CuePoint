@@ -63,6 +63,7 @@ def metadata(db, tracks):
         TrackMetadataRepository(db),
         tracks,
         ActivityService(ActivityRepository(db), tracks),
+        db,
     )
 
 

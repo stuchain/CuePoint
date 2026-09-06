@@ -113,8 +113,13 @@ class ActivityRepository(IActivityRepository):
     # --------------------------------------------------------------- activity
 
     def add_event(self, event: ActivityEvent) -> ActivityEvent:
-        """Append an activity event."""
-        with self._db.transaction() as conn:
+        """Append an activity event.
+
+        Joins an open transaction rather than refusing one (see
+        :meth:`add_field_change`), so an event describing work that is rolled
+        back is rolled back with it.
+        """
+        with self._db.transaction(join_existing=True) as conn:
             cursor = conn.execute(
                 "INSERT INTO activity_events (type, summary, detail_json, created_at)"
                 " VALUES (?, ?, ?, ?)",
@@ -161,8 +166,28 @@ class ActivityRepository(IActivityRepository):
     # ---------------------------------------------------------------- history
 
     def add_field_change(self, change: TrackFieldChange) -> TrackFieldChange:
-        """Append a field change to a track's history."""
-        with self._db.transaction() as conn:
+        """Append a field change to a track's history.
+
+        **Joins an open transaction** (``join_existing=True``), which matters
+        for two reasons that point the same way.
+
+        A history entry belongs to the change it describes. Written in its own
+        transaction, it commits even when the write it records is rolled back —
+        leaving a log that claims something happened to a track that nothing
+        happened to. Joining makes the record and the change succeed or fail as
+        one thing.
+
+        And it is the only way a bulk edit can be written at all. ORG-03 assigns
+        a tag to twelve thousand tracks in one transaction and records each one;
+        DEC-063's batches do the same at forty times that size. Before this,
+        a history write inside an open transaction raised
+        ``DB_NESTED_TRANSACTION`` — found by ORG-03, fixed here rather than
+        worked around with a second connection.
+
+        Where no transaction is open — every caller before Phase 6 — the
+        behaviour is exactly as it was.
+        """
+        with self._db.transaction(join_existing=True) as conn:
             cursor = conn.execute(
                 "INSERT INTO track_history"
                 " (track_id, field, old_value_json, new_value_json, source,"

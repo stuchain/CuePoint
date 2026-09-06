@@ -81,7 +81,7 @@ def activity(db):
 
 @pytest.fixture
 def service(db, tracks, activity):
-    return MetadataService(TrackMetadataRepository(db), tracks, activity)
+    return MetadataService(TrackMetadataRepository(db), tracks, activity, db)
 
 
 @pytest.fixture
@@ -296,6 +296,67 @@ class TestRefusals:
         # from two layers down.
         with pytest.raises(ValueError, match="No such track"):
             call(service)
+
+
+class TestTheWriteAndItsRecordAreOneThing:
+    """Found by ORG-03, fixed for both services at once.
+
+    ORG-02 wrote the value and then recorded it, in two transactions. A failure
+    between them left a rating stored with nothing in the history saying who
+    set it — or, worse once batches exist, a history entry describing a write
+    that had been rolled back. Both services now open one transaction and let
+    the repository and the history writer join it.
+    """
+
+    def test_a_failed_history_write_takes_the_value_with_it(
+        self, service, activity, rated, monkeypatch
+    ):
+        def explode(*args, **kwargs):
+            raise RuntimeError("boom")
+
+        monkeypatch.setattr(service._activity, "record_field_change", explode)
+
+        with pytest.raises(RuntimeError):
+            service.set_rating(rated, 5)
+
+        assert service.get(rated) is None
+        assert history(activity, rated) == []
+
+    def test_a_failed_clear_leaves_the_record_intact(
+        self, service, activity, rated, monkeypatch
+    ):
+        service.set_rating(rated, 4)
+        service.set_notes(rated, "keep me")
+        recorded = len(history(activity, rated))
+
+        real = service._activity.record_field_change
+        calls = {"n": 0}
+
+        def explode(*args, **kwargs):
+            calls["n"] += 1
+            if calls["n"] > 1:
+                raise RuntimeError("boom")
+            return real(*args, **kwargs)
+
+        monkeypatch.setattr(service._activity, "record_field_change", explode)
+
+        with pytest.raises(RuntimeError):
+            service.clear(rated)
+
+        # Nothing was forgotten, and nothing claims it was.
+        assert service.get(rated).notes == "keep me"
+        assert len(history(activity, rated)) == recorded
+
+    def test_a_write_is_one_transaction(self, db, service, rated):
+        connection = db.connect()
+        statements = []
+        connection.set_trace_callback(statements.append)
+        try:
+            service.set_rating(rated, 3)
+        finally:
+            connection.set_trace_callback(None)
+        assert len([s for s in statements if s.startswith("BEGIN")]) == 1
+        assert len([s for s in statements if s.startswith("COMMIT")]) == 1
 
 
 class TestReading:

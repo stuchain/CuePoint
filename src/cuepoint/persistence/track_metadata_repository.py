@@ -30,7 +30,7 @@ this track", not for "unrate it".
 
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, Optional
 
 from cuepoint.models.library_track import utc_now_iso
 from cuepoint.models.track_metadata import (
@@ -38,12 +38,8 @@ from cuepoint.models.track_metadata import (
     normalize_notes,
     normalize_rating,
 )
+from cuepoint.persistence.id_chunks import CHUNK_SIZE, chunked, unique_ids
 from cuepoint.services.interfaces import IDatabaseService, ITrackMetadataRepository
-
-#: Ids per ``IN`` clause when reading many rows. SQLite's default parameter
-#: limit is 999 in older builds; a window is a hundred rows and a batch job's
-#: chunk is larger, so the chunking is here rather than at every call site.
-_READ_CHUNK_SIZE = 500
 
 _SELECT = (
     "SELECT track_id, rating, favorite, notes, created_at, updated_at"
@@ -81,15 +77,17 @@ class TrackMetadataRepository(ITrackMetadataRepository):
         the result rather than present as empty records.
 
         Duplicate ids are asked about once, and the order of ``track_ids`` does
-        not matter — the caller is looking things up, not iterating.
+        not matter — the caller is looking things up, not iterating. Reads are
+        chunked (``id_chunks``) so a batch-sized id list cannot outgrow
+        SQLite's parameter limit.
         """
-        wanted = _unique_ids(track_ids)
+        wanted = unique_ids(track_ids)
         if not wanted:
             return {}
 
         found: Dict[int, TrackMetadata] = {}
         connection = self._db.connect()
-        for chunk in _chunked(wanted, _READ_CHUNK_SIZE):
+        for chunk in chunked(wanted, CHUNK_SIZE):
             placeholders = ", ".join("?" for _ in chunk)
             rows = connection.execute(
                 f"{_SELECT} WHERE track_id IN ({placeholders})", tuple(chunk)
@@ -174,17 +172,3 @@ class TrackMetadataRepository(ITrackMetadataRepository):
             )
             row = conn.execute(f"{_SELECT} WHERE track_id = ?", (track_id,)).fetchone()
         return TrackMetadata.from_row(row)
-
-
-def _unique_ids(track_ids: Iterable[int]) -> List[int]:
-    """Return the ids once each, in the order first seen."""
-    seen: Dict[int, None] = {}
-    for track_id in track_ids:
-        seen.setdefault(int(track_id), None)
-    return list(seen)
-
-
-def _chunked(values: Sequence[int], size: int) -> Iterable[Tuple[int, ...]]:
-    """Yield ``values`` in tuples of at most ``size``."""
-    for start in range(0, len(values), size):
-        yield tuple(values[start : start + size])

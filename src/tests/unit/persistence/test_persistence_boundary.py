@@ -43,6 +43,14 @@ _ALLOWED = {
     # failed would be data loss (LIBRARY-09, DEC-003). It says the same thing
     # backup_service does: it holds the database, it does not query it.
     "services/library_import_service.py",
+    # Phase 6's two editing services, for the same reason and with the same
+    # limit: they run no SQL. Each opens one transaction so that a change and
+    # the history entry recording it (DEC-008) succeed or fail together —
+    # tagging twelve thousand tracks writes twelve thousand history rows, and a
+    # log that survives a rolled-back write is a log that lies. They hold the
+    # database; they do not query it.
+    "services/metadata_service.py",
+    "services/tag_service.py",
 }
 _ALLOWED_PREFIXES = ("persistence/", "migrations/")
 

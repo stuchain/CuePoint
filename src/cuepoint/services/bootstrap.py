@@ -35,6 +35,8 @@ from cuepoint.services.interfaces import (
     IJobRepository,
     ILibraryService,
     IMetadataService,
+    ITagRepository,
+    ITagService,
     IInventoryService,
     ILoggingService,
     IMatcherService,
@@ -60,6 +62,7 @@ from cuepoint.persistence.library_source_repository import (
     LibrarySourceRepository,
 )
 from cuepoint.persistence.playlist_repository import PlaylistRepository
+from cuepoint.persistence.tag_repository import TagRepository
 from cuepoint.persistence.track_metadata_repository import (
     TrackMetadataRepository,
 )
@@ -68,6 +71,7 @@ from cuepoint.services.activity_service import ActivityService
 from cuepoint.services.backup_service import BackupService
 from cuepoint.services.library_service import LibraryService
 from cuepoint.services.metadata_service import MetadataService
+from cuepoint.services.tag_service import TagService
 from cuepoint.services.processor_service import ProcessorService
 from cuepoint.services.telemetry_service import TelemetryService
 from cuepoint.utils.di_container import get_container
@@ -211,9 +215,29 @@ def bootstrap_services() -> None:
             metadata_repository=container.resolve(ITrackMetadataRepository),
             track_repository=container.resolve(ITrackRepository),
             activity_service=container.resolve(IActivityService),
+            database_service=container.resolve(IDatabaseService),
         )
 
     container.register_factory(IMetadataService, create_metadata_service)
+
+    # The tag vocabulary and its assignments (DEC-015). The service takes the
+    # database service as well as its repository: a tag applied to twelve
+    # thousand tracks and the twelve thousand history entries recording it are
+    # one transaction, and something has to open it.
+    def create_tag_repository() -> ITagRepository:
+        container.resolve(IMigrationRunner).migrate()
+        return TagRepository(database_service=container.resolve(IDatabaseService))
+
+    container.register_factory(ITagRepository, create_tag_repository)
+
+    def create_tag_service() -> ITagService:
+        return TagService(
+            tag_repository=container.resolve(ITagRepository),
+            activity_service=container.resolve(IActivityService),
+            database_service=container.resolve(IDatabaseService),
+        )
+
+    container.register_factory(ITagService, create_tag_service)
 
     # Library database backups (DEC-009). Resolving this does not open the
     # database or write anything; backup_on_launch() is called explicitly.

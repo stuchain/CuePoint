@@ -33,6 +33,7 @@ from cuepoint.models.collection import (
 from cuepoint.models.tag import (
     MAX_TAG_CATEGORY_LENGTH,
     MAX_TAG_NAME_LENGTH,
+    TAG_COLOURS,
     Tag,
 )
 from cuepoint.models.track_metadata import (
@@ -232,8 +233,19 @@ class TestTag:
     def test_an_empty_colour_is_no_colour(self):
         assert Tag(name="Dark", colour="").colour is None
 
+    @pytest.mark.parametrize("colour", TAG_COLOURS)
+    def test_every_theme_token_is_accepted(self, colour):
+        assert Tag(name="Dark", colour=colour).colour == colour
+
+    @pytest.mark.parametrize("colour", ["#ff0000", "red", "secondary", "Primary "])
+    def test_anything_that_is_not_a_token_is_refused(self, colour):
+        # A hex value picked against one theme is illegible in three of the
+        # others, and "secondary" is a panel fill rather than a hue.
+        with pytest.raises(ValueError, match="must be one of"):
+            Tag(name="Dark", colour=colour)
+
     def test_it_round_trips_through_a_row(self):
-        original = Tag(name="Peak-time", category="Energy", colour="accent", id=3)
+        original = Tag(name="Peak-time", category="Energy", colour="danger", id=3)
         assert Tag.from_row(original.to_dict()) == original
 
 

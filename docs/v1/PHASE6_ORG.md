@@ -1,8 +1,8 @@
 # CuePoint v1.0.0 — Phase 6: Organization, Detailed Step Specifications
 
-Status: **ORG-01 and ORG-02 implemented; ORG-03…ORG-13 specified, not implemented.** The thirteen
-steps below are the inventory the roadmap has carried as a placeholder since Phase 0. Per the
-process, no implementation happens from this document — each step needs an explicit
+Status: **ORG-01, ORG-02 and ORG-03 implemented; ORG-04…ORG-13 specified, not implemented.** The
+thirteen steps below are the inventory the roadmap has carried as a placeholder since Phase 0.
+Per the process, no implementation happens from this document — each step needs an explicit
 "Implement ORG-NN" instruction, scoped to exactly that step, and its outcome is recorded under the
 step afterwards.
 
@@ -464,7 +464,7 @@ part of `scripts/bench_library.py`; ORG-13 owns the recorded scale numbers.
 
 ---
 
-## ORG-03 — Tags
+## ORG-03 — Tags ✅ IMPLEMENTED 2026-09-06
 
 **Objective**: A tag vocabulary a user can build, correct, and apply to tracks.
 
@@ -512,6 +512,85 @@ same service call serves one track and 12,000; nothing about a tag is stored in 
 already refused.
 
 **Complexity**: **M**
+
+### ✅ IMPLEMENTED 2026-09-06
+
+**Outcome**: Complete. `persistence/tag_repository.py` owns the vocabulary and its assignments,
+`services/tag_service.py` decides what counts as a change to a track and records it, and
+`models/tag.py` gained the colour vocabulary ORG-01 deferred to this step plus `TagUsage`. Both are
+in the DI container. Nothing in the UI can reach any of it yet.
+
+**A blocker, found by trying to do what the spec said.** The step calls for assignment "in one
+transaction", and every assignment writes history — but `ActivityRepository.add_field_change` used
+`transaction()` without `join_existing`, so a history write *inside* anyone's transaction raised
+`DB_NESTED_TRANSACTION`. Tagging twelve thousand tracks atomically was therefore impossible, and so
+were DEC-063's batches. Both `add_field_change` and `add_event` now join an open transaction, which
+is the correct relationship anyway: a history entry written in its own transaction commits even
+when the write it describes is rolled back, leaving a log that claims something happened to a track
+that nothing happened to. Where no transaction is open — every caller before Phase 6, including the
+import's deliberately-after-the-commit event — the behaviour is unchanged.
+
+**That gap existed in ORG-02 too, and is closed here rather than left inconsistent.**
+`MetadataService` wrote the value and then recorded it, in two transactions; a failure between them
+left a rating with nothing in the history saying who set it. It now opens one transaction per
+write, like `TagService`. Three tests were added there for it, including one asserting a failed
+clear leaves the note intact and the history unchanged.
+
+**The persistence-boundary guard caught the consequence, which is what it is for.** Both services
+take `IDatabaseService`, so `test_persistence_boundary.py` failed until they were listed with a
+justification — the same one `library_import_service` carries: they run no SQL, they hold the
+transaction boundary. Adding to that list is meant to require an argument, and this is the
+argument.
+
+**The tag listing was measured and rewritten before it landed.** `LEFT JOIN track_tags ... GROUP BY
+tags.id` reads correctly and costs **35 ms** over 40 tags and 200,000 assignments: SQLite scans the
+tags, searches the index once per tag, then sorts in a temporary B-tree. Grouping the counts in a
+subquery first lets it scan `idx_track_tags_tag` as a covering index once and read the tags in name
+order through `idx_tags_name` — **15 ms** for the identical answer. A query-plan test pins the
+shape, because nothing but the clock would notice a rewrite.
+
+**Colours are theme tokens, not colours.** `TAG_COLOURS` is five accent-token names the renderer
+resolves to `var(--accent-*)`, so a tag stays legible when the theme changes underneath it.
+`--accent-secondary` is deliberately excluded: in `clubNeon` it is `#1a1a28`, a near-black panel
+fill, and a tag wearing it would be invisible in exactly the theme most likely to be running.
+
+**What counts as a change to a track, decided explicitly.** Renaming or recolouring a tag changes a
+*word* and writes no track history — a History tab listing an entry on three hundred tracks after a
+typo fix would bury the entries that matter. Putting a tag on a track, taking one off, deleting a
+tag, and merging two all change *tracks*, and each writes one entry per track that actually
+changed, naming the tag. The name is recorded rather than the id, because an entry has to stay
+readable after the tag it names is gone — asserted by a test that deletes the tag and reads the
+history back.
+
+**Two smaller things.** `unassign` originally rebuilt its "which tracks have this" set inside a list
+comprehension, which is one query per track — one statement instead of forty thousand, fixed before
+the first test run. And `id_chunks.py` now holds the chunking helpers ORG-02 had privately, since
+ORG-03 needed the same three lines.
+
+**Measured at the acceptance scale** — 50,000 tracks, 40 tags, 199,940 assignments (with 199,940
+history rows, written in 9.4 s): the tag list with counts is **15 ms**, a 100-row window's tags
+**1.3 ms**, one track's tags **0.012 ms**. Assigning to 12,000 tracks is **0.29 s**, unassigning
+**0.31 s**, and merging two 5,000-track tags **0.53 s** — one service call, the same one that
+serves a single track.
+
+**Guards: 25 of 25 fail when the thing they protect is broken**, first pass. Any colour string
+accepted; a panel fill in the palette; case-sensitive name lookup; names case-folded on the way in;
+unused tags dropped from the listing; the listing reverted to join-then-group; case-sensitive
+ordering; a count query per tag; `assign` and `unassign` reporting everything they were asked about
+rather than what changed; duplicate ids assigned twice; unchunked reads; `UPDATE OR REPLACE` in the
+merge (which duplicates a tag on tracks that had both); the source tag left behind by a merge;
+merging a tag into itself; tagging not recorded; the id recorded instead of the name; an addition
+indistinguishable from a removal; a rename writing track history; a delete saying nothing to the
+tracks that had it; a merge recording nothing; a dropped batch id; a rename colliding silently;
+history demanding its own transaction again; and a metadata write splitting from its record.
+
+**Verification**: `python -m pytest src/tests/unit` — 3608 passed, 45 skipped (98 of them new);
+`python -m pytest src/tests/integration src/tests/regression` — 350 passed, 13 skipped;
+`ruff check src/` and `ruff format --check src/` clean; `python scripts/check_no_qt_in_core.py` OK.
+
+No renderer, Electron or engine-API file was touched, so the desktop-contract and renderer gates
+were not run. The measurements above are ad-hoc; ORG-13 owns the recorded scale numbers, and the
+`var(--accent-*)` mapping is ORG-12's when the tag manager is built.
 
 ---
 
