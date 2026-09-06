@@ -534,6 +534,13 @@ export class PlayerSupervisor {
     }
 
     this.client = client;
+    client.on("error", (error: Error) => {
+      // The transport failed — almost always a pipe that closed under a write
+      // because mpv exited. `close` follows and does the recovery; what this
+      // adds is that the reason is *kept*, and that `MpvClient` has a listener
+      // at all: without one, Node turns the emit into an uncaught exception.
+      this.note(`[ipc] ${error.message}`);
+    });
     client.on("close", () => {
       if (this.client !== client) return;
       this.client = null;
@@ -645,17 +652,20 @@ export class PlayerSupervisor {
       const lines = text.split(/\r?\n/);
       // A chunk can end mid-line; hold the remainder for the next one.
       this.outputTail = lines.pop() ?? "";
-      for (const line of lines) {
-        if (line.trim() === "") continue;
-        this.output.push(line);
-      }
-      if (this.output.length > PLAYER_OUTPUT_LINES) {
-        this.output = this.output.slice(-PLAYER_OUTPUT_LINES);
-      }
+      for (const line of lines) this.note(line);
     });
     // A broken pipe on shutdown is not an error worth surfacing, but an
     // unhandled one on a stream would take the process down.
     stream.on("error", () => undefined);
+  }
+
+  /** Keep one line in the bounded diagnostics tail. */
+  private note(line: string): void {
+    if (line.trim() === "") return;
+    this.output.push(line);
+    if (this.output.length > PLAYER_OUTPUT_LINES) {
+      this.output = this.output.slice(-PLAYER_OUTPUT_LINES);
+    }
   }
 
   private applyProperty(name: string, value: unknown): void {

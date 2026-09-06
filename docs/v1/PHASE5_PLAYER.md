@@ -1294,6 +1294,18 @@ drawing rather than a badge. The bundled-binary inventory the scope asks about i
 `docs/features/` — PLAYER-01 put it in `docs/compliance/license-compliance.md`, where the licence
 tooling that enforces it lives, so nothing was moved to satisfy the letter of a conditional clause.
 
+**A crash found in use, after the step was committed.** Running the app produced Electron's
+"A JavaScript error occurred in the main process" over `write EPIPE` from `MpvClient.command`. The
+cause was not the pipe closing — that is ordinary, and mpv exiting is expected — it was that
+`MpvClient` is an `EventEmitter` which **emits `error`**, and nothing anywhere listened. Node throws
+when `error` is emitted with no listener, so a socket dying under a write became an uncaught
+exception, and in Electron's main process that is a modal dialog and an app that has to be
+restarted rather than a player that stopped. A single malformed line from mpv would have done the
+same thing by the other emit site. The client now refuses to emit into the void and the supervisor
+listens, keeping the reason with mpv's own output; four regression tests fail on the code as it
+stood. It survived the whole phase because no test ever emitted `error` without a listener — the
+one path a fake never takes.
+
 **What was not done here, and is owed.** The macOS pass below has not been run: this is a Windows
 machine, and rows 1–11 of that table are the parts a green Windows run says nothing about. Row 6
 and row 7 also carry the other half of DEC-055's hardware acceptance. Gapless "by ear" is in the

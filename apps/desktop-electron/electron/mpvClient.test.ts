@@ -1,3 +1,4 @@
+import { EventEmitter } from "node:events";
 import fs from "node:fs";
 import net from "node:net";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -949,5 +950,113 @@ describe("observed properties", () => {
       .filter((m) => (m.command as unknown[])[0] === "observe_property")
       .map((m) => (m.command as unknown[])[2]);
     expect(observed).toEqual([...MPV_OBSERVED_PROPERTIES]);
+  });
+});
+
+/**
+ * A dying connection must not take the app with it (PLAYER-12, found in use).
+ *
+ * `EventEmitter` throws when `error` is emitted and nothing is listening.
+ * Everything else in this file is about mpv's protocol; this is about Node,
+ * and it is the difference between "the player stopped" and a modal
+ * "A JavaScript error occurred in the main process" over an app that has to be
+ * restarted.
+ *
+ * It is not hypothetical. It happened: mpv exited, the next write to its pipe
+ * failed with `EPIPE`, the socket emitted `error`, `MpvClient` re-emitted it,
+ * and nothing anywhere was listening.
+ */
+describe("errors from a dying connection", () => {
+  /** A socket whose failures can be produced on demand. */
+  function fakeSocket() {
+    const socket = new EventEmitter() as EventEmitter & {
+      setEncoding(encoding: string): void;
+      write(payload: string, callback?: (error?: Error) => void): boolean;
+      end(): void;
+      destroy(): void;
+      writable: boolean;
+      /** What a write to a closed pipe does, from Node's own machinery. */
+      breakPipe(): void;
+    };
+    socket.setEncoding = () => undefined;
+    socket.write = (_payload: string, callback?: (error?: Error) => void) => {
+      if (!socket.writable) {
+        const epipe = Object.assign(new Error("write EPIPE"), { code: "EPIPE" });
+        callback?.(epipe);
+        // Node reports the failure on the stream as well as to the callback.
+        socket.emit("error", epipe);
+        return false;
+      }
+      callback?.();
+      return true;
+    };
+    socket.end = () => undefined;
+    socket.destroy = () => undefined;
+    socket.writable = true;
+    socket.breakPipe = () => {
+      socket.writable = false;
+    };
+    return socket;
+  }
+
+  async function clientOnFakeSocket() {
+    const socket = fakeSocket();
+    const client = new MpvClient({
+      socketPath: "/fake",
+      requestTimeoutMs: 50,
+      createConnection: () => socket as unknown as net.Socket,
+    });
+    clients.push(client);
+    const connecting = client.connect();
+    socket.emit("connect");
+    await connecting;
+    return { client, socket };
+  }
+
+  it("survives the pipe closing under a write", async () => {
+    // The reported crash, reproduced: mpv is gone, and the command written to
+    // its pipe fails.
+    const { client, socket } = await clientOnFakeSocket();
+    socket.breakPipe();
+
+    // The command fails, which is correct — and nothing is thrown at the
+    // process, which is the fix.
+    await expect(client.command(["get_property", "pause"])).rejects.toThrow(/EPIPE/);
+  });
+
+  it("does not throw when the socket errors with nothing listening", async () => {
+    const { socket } = await clientOnFakeSocket();
+
+    expect(() =>
+      socket.emit("error", Object.assign(new Error("write EPIPE"), { code: "EPIPE" })),
+    ).not.toThrow();
+  });
+
+  it("hands the error to a listener when there is one", async () => {
+    const { client, socket } = await clientOnFakeSocket();
+    const seen: string[] = [];
+    client.on("error", (error) => seen.push(error.message));
+
+    socket.emit("error", new Error("write EPIPE"));
+
+    expect(seen).toEqual(["write EPIPE"]);
+  });
+
+  it("does not throw on a line from mpv it cannot parse", async () => {
+    // The same footgun by a different route: one malformed line would
+    // otherwise be a crash rather than a line nobody could read.
+    const { socket } = await clientOnFakeSocket();
+
+    expect(() => socket.emit("data", "this is not json\n")).not.toThrow();
+  });
+
+  it("still reports an unparseable line to a listener", async () => {
+    const { client, socket } = await clientOnFakeSocket();
+    const seen: string[] = [];
+    client.on("error", (error) => seen.push(error.message));
+
+    socket.emit("data", "not json at all\n");
+
+    expect(seen[0]).toContain("unparseable line from mpv");
   });
 });

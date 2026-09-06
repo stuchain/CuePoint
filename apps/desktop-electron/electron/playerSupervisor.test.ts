@@ -751,6 +751,33 @@ describe("audio output (PLAYER-11)", () => {
   });
 });
 
+describe("a transport error is heard, not thrown (PLAYER-12)", () => {
+  it("listens for the client's errors", async () => {
+    // `MpvClient` is an EventEmitter, and an `error` emitted with no listener
+    // is an uncaught exception — in Electron's main process, a modal dialog
+    // and a dead app. The supervisor is the listener.
+    const { supervisor, clients } = track(harness());
+    await supervisor.play("/music/a.flac");
+
+    expect(clients[0]!.listenerCount("error")).toBeGreaterThan(0);
+    expect(() =>
+      clients[0]!.emit("error", Object.assign(new Error("write EPIPE"), { code: "EPIPE" })),
+    ).not.toThrow();
+    expect(supervisor.getSnapshot().status.running).toBe(true);
+  });
+
+  it("keeps the reason with mpv's own output", async () => {
+    // A player that stopped for a reason nobody recorded is a support ticket
+    // with nothing in it.
+    const { supervisor, clients } = track(harness());
+    await supervisor.play("/music/a.flac");
+
+    clients[0]!.emit("error", new Error("write EPIPE"));
+
+    expect(supervisor.recentOutput().some((line) => line.includes("write EPIPE"))).toBe(true);
+  });
+});
+
 describe("what mpv says about itself (PLAYER-10)", () => {
   /** Let the stream deliver what was written to it. */
   const settle = () => new Promise((resolve) => setImmediate(resolve));

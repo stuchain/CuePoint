@@ -325,7 +325,7 @@ export class MpvClient extends EventEmitter<MpvClientEventMap> {
       const onError = (error: Error) => {
         if (settled) {
           // Post-connection errors end the connection; `close` follows.
-          if (this.socket === socket) this.emit("error", error);
+          if (this.socket === socket) this.report(error);
           return;
         }
         settled = true;
@@ -342,6 +342,26 @@ export class MpvClient extends EventEmitter<MpvClientEventMap> {
     });
 
     return this.connectPromise;
+  }
+
+  /**
+   * Report a transport problem without turning it into a crash.
+   *
+   * `EventEmitter` **throws** when `error` is emitted and nothing is listening.
+   * That is Node's oldest footgun, and in Electron's main process it is not a
+   * log line — it is a modal "A JavaScript error occurred in the main process"
+   * and an app that has to be restarted.
+   *
+   * The errors that reach here are the ordinary end of a socket's life: mpv
+   * exits, the pipe goes with it, and the next write fails with `EPIPE`. That
+   * is not a crash, it is a player that stopped — `close` follows immediately,
+   * fails everything in flight and lets the supervisor restart it. Nothing is
+   * swallowed: the supervisor listens and keeps the message with mpv's own
+   * output for diagnostics.
+   */
+  private report(error: Error): void {
+    if (this.listenerCount("error") === 0) return;
+    this.emit("error", error);
   }
 
   /**
@@ -546,7 +566,7 @@ export class MpvClient extends EventEmitter<MpvClientEventMap> {
       // Not fatal. mpv is still running and the next line is probably fine;
       // tearing down playback over one unparseable line would be worse than
       // the line itself.
-      this.emit("error", new Error(`unparseable line from mpv: ${line.slice(0, 200)}`));
+      this.report(new Error(`unparseable line from mpv: ${line.slice(0, 200)}`));
       return;
     }
 
