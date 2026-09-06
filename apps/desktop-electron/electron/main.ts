@@ -1,11 +1,12 @@
 /**
  * Electron main process — Spike S1: spawn engine and expose status to renderer.
  */
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, shell } from "electron";
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, shell, systemPreferences } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { EngineSupervisor, resolvePreloadPath } from "./engineSupervisor";
 import { MediaKeyBinding } from "./mediaKeys";
+import type { PlayerNotice } from "./playbackFailures";
 import { PlaybackController } from "./playbackController";
 import { queueTruncationMessage, resolveQueueFromView } from "./queueResolver";
 import type { QueueItemInput, RepeatMode } from "./playbackQueue";
@@ -41,6 +42,60 @@ const player = new PlayerSupervisor({
 const playback = new PlaybackController(player);
 
 /**
+ * macOS gates global media keys behind the Accessibility permission; Windows
+ * and Linux gate nothing, and get no permission object at all.
+ *
+ * `isTrustedAccessibilityClient(false)` asks without prompting, which is what
+ * every focus needs. Passing `true` is what opens the system dialog, and that
+ * belongs behind `MediaKeyBinding`'s once-per-session guard rather than here.
+ */
+const mediaKeyPermission =
+  process.platform === "darwin"
+    ? {
+        granted: () => {
+          try {
+            return systemPreferences.isTrustedAccessibilityClient(false);
+          } catch {
+            // Not every macOS build exposes it; assume the keys are worth trying.
+            return true;
+          }
+        },
+        request: () => {
+          try {
+            systemPreferences.isTrustedAccessibilityClient(true);
+          } catch {
+            // The prompt is a courtesy — its absence is not a failure to report.
+          }
+        },
+      }
+    : undefined;
+
+/** Set when the keys could not be taken before any renderer was listening. */
+let pendingMediaKeyNotice: PlayerNotice | null = null;
+let mediaKeyNoticeSent = false;
+
+function reportMediaKeysUnavailable(): void {
+  if (mediaKeyNoticeSent) return;
+  mediaKeyNoticeSent = true;
+  const notice: PlayerNotice = {
+    id: Date.now(),
+    kind: "media-keys-unavailable",
+    message:
+      "Your keyboard's media keys will not control CuePoint until you allow it " +
+      "under System Settings → Privacy & Security → Accessibility. Everything " +
+      "else about playback works without it.",
+    count: 0,
+    stopped: false,
+  };
+  if (noticeWatchers.size > 0) pushPlayerNotice(notice);
+  // Unlike a track failure, this is *state* rather than an event: it is still
+  // true whenever the renderer gets around to listening, so it is held rather
+  // than dropped. That is why it does not contradict `noticeWatchers`' refusal
+  // to replay — there is nothing stale about a permission that is still missing.
+  else pendingMediaKeyNotice = notice;
+}
+
+/**
  * The machine's media keys, held only while CuePoint has focus (PLAYER-12).
  *
  * See `mediaKeys.ts` for why they are borrowed rather than taken: they are
@@ -48,11 +103,20 @@ const playback = new PlaybackController(player);
  * the background swallows the keys meant for whatever the user is actually
  * looking at.
  */
-const mediaKeys = new MediaKeyBinding(globalShortcut, {
-  playPause: () => playback.togglePause(),
-  next: () => playback.next(),
-  previous: () => playback.previous(),
-});
+const mediaKeys = new MediaKeyBinding(
+  globalShortcut,
+  {
+    playPause: () => playback.togglePause(),
+    next: () => playback.next(),
+    previous: () => playback.previous(),
+  },
+  {
+    permission: mediaKeyPermission,
+    onStateChange: (state) => {
+      if (state === "unavailable") reportMediaKeysUnavailable();
+    },
+  },
+);
 
 /**
  * Renderers watching playback state.
@@ -218,6 +282,15 @@ function registerIpcHandlers(): void {
   // which is why there is no `player:next` yet — an endpoint that cannot do
   // anything is worse than an absent one.
   ipcMain.handle("player:getState", () => playback.snapshot());
+  /**
+   * Whether the media keys are actually working (PLAYER-12, macOS pass row 8).
+   *
+   * A missing Accessibility permission is durable state, not an event: it is
+   * still true an hour after the toast that announced it has faded. Queryable
+   * so a screen can say so plainly, and so the E2E suite can assert it without
+   * racing a toast that appears during startup.
+   */
+  ipcMain.handle("player:mediaKeyStatus", () => mediaKeys.status);
   /**
    * Play a view's worth of tracks (DEC-012). There is no single-file `play`:
    * everything that plays goes through the queue, so the two cannot disagree
@@ -385,7 +458,14 @@ function registerIpcHandlers(): void {
       event.sender.once("destroyed", () => noticeWatchers.delete(id));
     }
     noticeUnsubscribe ??= playback.onNotice(pushPlayerNotice);
-    // Deliberately no replay of the last notice: see `noticeWatchers`.
+    // Deliberately no replay of the last notice: see `noticeWatchers`. The one
+    // exception is the media-key permission, which was decided before any
+    // renderer existed and is still true now — see `reportMediaKeysUnavailable`.
+    if (pendingMediaKeyNotice) {
+      const notice = pendingMediaKeyNotice;
+      pendingMediaKeyNotice = null;
+      event.sender.send("player:notice", notice);
+    }
     return { ok: true };
   });
   ipcMain.handle("player:unsubscribeNotices", (event) => {

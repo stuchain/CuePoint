@@ -196,3 +196,135 @@ describe("when the keys are not available", () => {
     expect(binding.accelerators).toEqual([]);
   });
 });
+
+/**
+ * The macOS Accessibility gate (PLAYER-12, macOS pass row 8).
+ *
+ * On macOS `globalShortcut.register` returns `false` for media keys until the
+ * user grants Accessibility — the identical answer it gives when another
+ * application owns the key. Phase 5 shipped treating both as "their key, their
+ * rules", so on macOS the media keys silently never worked and nothing said so.
+ * A probe on macOS 26.6 returned `isTrustedAccessibilityClient: false` with all
+ * three accelerators refused.
+ */
+describe("media keys behind a permission the OS may refuse", () => {
+  function permission(granted: boolean) {
+    return {
+      granted: vi.fn(() => granted),
+      request: vi.fn(),
+    };
+  }
+
+  it("does not ask the registry for keys the OS has already refused", () => {
+    const fake = registry();
+    const gate = permission(false);
+    const binding = new MediaKeyBinding(fake, handlers(), { permission: gate });
+
+    binding.acquire();
+
+    // Attempting anyway is not merely wasteful: it makes the failure
+    // indistinguishable from another app owning the key.
+    expect(fake.attempts).toEqual([]);
+    expect(binding.accelerators).toEqual([]);
+    expect(binding.status).toBe("unavailable");
+  });
+
+  it("reports unavailable rather than leaving the user to press a dead key", () => {
+    const states: string[] = [];
+    const binding = new MediaKeyBinding(registry(), handlers(), {
+      permission: permission(false),
+      onStateChange: (state) => states.push(state),
+    });
+
+    binding.acquire();
+
+    expect(states).toEqual(["unavailable"]);
+  });
+
+  it("asks for the permission once, not on every focus", () => {
+    // The prompt is modal to the user's attention. One that reappears whenever
+    // the window regains focus is worse than the feature it is about.
+    const gate = permission(false);
+    const binding = new MediaKeyBinding(registry(), handlers(), { permission: gate });
+
+    binding.acquire();
+    binding.release();
+    binding.acquire();
+    binding.release();
+    binding.acquire();
+
+    expect(gate.request).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports the permission problem once, however often focus changes", () => {
+    const states: string[] = [];
+    const binding = new MediaKeyBinding(registry(), handlers(), {
+      permission: permission(false),
+      onStateChange: (state) => states.push(state),
+    });
+
+    binding.acquire();
+    binding.release();
+    binding.acquire();
+
+    // Not ["unavailable", "idle", "unavailable"]: a permission that is still
+    // missing has not changed, and a toast per focus change is noise.
+    expect(states).toEqual(["unavailable"]);
+  });
+
+  it("takes the keys as soon as the permission is granted", () => {
+    // The user grants it in System Settings while CuePoint is running; the next
+    // focus has to pick it up without a restart.
+    const fake = registry();
+    let granted = false;
+    const binding = new MediaKeyBinding(fake, handlers(), {
+      permission: { granted: () => granted, request: () => undefined },
+    });
+
+    binding.acquire();
+    expect(binding.accelerators).toEqual([]);
+
+    granted = true;
+    binding.release();
+    binding.acquire();
+
+    expect(binding.accelerators).toEqual(MEDIA_KEYS);
+    expect(binding.status).toBe("held");
+  });
+
+  it("still holds the keys where nothing gates them", () => {
+    // Windows and Linux pass no permission at all, and must be unaffected.
+    const binding = new MediaKeyBinding(registry(), handlers());
+
+    binding.acquire();
+
+    expect(binding.accelerators).toEqual(MEDIA_KEYS);
+    expect(binding.status).toBe("held");
+  });
+
+  it("separates a refused permission from keys another app owns", () => {
+    // Both look like "registered nothing". Only one is worth telling anyone.
+    const fake = registry();
+    for (const key of MEDIA_KEYS) fake.takenByAnother(key);
+    const binding = new MediaKeyBinding(fake, handlers(), { permission: permission(true) });
+
+    binding.acquire();
+
+    expect(binding.accelerators).toEqual([]);
+    expect(binding.status).toBe("taken");
+  });
+
+  it("survives a permission check that throws", () => {
+    const binding = new MediaKeyBinding(registry(), handlers(), {
+      permission: {
+        granted: () => false,
+        request: () => {
+          throw new Error("no system preferences here");
+        },
+      },
+    });
+
+    expect(() => binding.acquire()).not.toThrow();
+    expect(binding.status).toBe("unavailable");
+  });
+});

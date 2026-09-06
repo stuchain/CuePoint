@@ -35,23 +35,87 @@ export interface ShortcutRegistry {
   isRegistered(accelerator: string): boolean;
 }
 
+/**
+ * Whether this OS will let the process take global media keys at all (macOS).
+ *
+ * Windows hands them to whoever asks first. macOS gates them behind the
+ * Accessibility permission, and until it is granted `register` simply returns
+ * `false` — the same answer it gives when another app owns the key. Those two
+ * cases need opposite responses: one is "their key, their rules" and correct to
+ * ignore, the other is "this feature does not work and never will until the
+ * user is told", and CuePoint told nobody. Injected rather than imported so the
+ * policy stays testable without an Electron runtime.
+ */
+export interface MediaKeyPermission {
+  /** True when the OS has granted it. Called on every acquire; must be cheap. */
+  granted(): boolean;
+  /**
+   * Ask for it, which on macOS opens System Settings' prompt.
+   *
+   * Called at most once per session: the prompt is modal to the user's
+   * attention, and one that reappears on every focus is worse than the missing
+   * feature it is about.
+   */
+  request(): void;
+}
+
+/**
+ * What the binding is currently doing, for whoever has to explain it.
+ *
+ * `unavailable` is the only value that deserves telling the user about: the
+ * others are either working or a key legitimately owned by something else.
+ */
+export type MediaKeyState =
+  /** Holding at least one accelerator. */
+  | "held"
+  /** The OS refuses global media keys to this process (macOS Accessibility). */
+  | "unavailable"
+  /** Everything asked for is owned by another application. */
+  | "taken"
+  /** Nothing held because nothing has been asked for yet. */
+  | "idle";
+
 export interface MediaKeyHandlers {
   playPause(): unknown;
   next(): unknown;
   previous(): unknown;
 }
 
+export interface MediaKeyBindingOptions {
+  /** Absent on platforms that gate nothing, which is every one but macOS. */
+  permission?: MediaKeyPermission;
+  /**
+   * Called when the state changes, so the app can say the keys are unavailable
+   * rather than leaving the user to discover it by pressing one.
+   */
+  onStateChange?: (state: MediaKeyState) => void;
+}
+
 export class MediaKeyBinding {
   private held: string[] = [];
+  private state: MediaKeyState = "idle";
+  private requestedPermission = false;
 
   constructor(
     private readonly registry: ShortcutRegistry,
     private readonly handlers: MediaKeyHandlers,
+    private readonly options: MediaKeyBindingOptions = {},
   ) {}
 
   /** Which accelerators this binding currently holds. */
   get accelerators(): readonly string[] {
     return [...this.held];
+  }
+
+  /** What happened the last time the keys were asked for. */
+  get status(): MediaKeyState {
+    return this.state;
+  }
+
+  private setState(next: MediaKeyState): void {
+    if (this.state === next) return;
+    this.state = next;
+    this.options.onStateChange?.(next);
   }
 
   /**
@@ -63,6 +127,24 @@ export class MediaKeyBinding {
    */
   acquire(): void {
     if (this.held.length > 0) return;
+
+    // Asking the OS for a key it has already decided to refuse burns nothing,
+    // but it does make "registration failed" ambiguous. Settle the permission
+    // question first so the outcome can be attributed.
+    const permission = this.options.permission;
+    if (permission && !permission.granted()) {
+      this.setState("unavailable");
+      if (!this.requestedPermission) {
+        this.requestedPermission = true;
+        try {
+          permission.request();
+        } catch {
+          // Asking is best-effort; a refusal to even ask is still "unavailable".
+        }
+      }
+      return;
+    }
+
     for (const [accelerator, handler] of this.bindings()) {
       // Something else on the machine already owns it. Their key, their rules.
       if (this.registry.isRegistered(accelerator)) continue;
@@ -82,6 +164,11 @@ export class MediaKeyBinding {
       }
       if (taken) this.held.push(accelerator);
     }
+
+    // "taken" rather than "unavailable": on a platform that gates nothing, or
+    // once the gate is open, holding none of them means other applications got
+    // there first — which is the documented, acceptable outcome.
+    this.setState(this.held.length > 0 ? "held" : "taken");
   }
 
   /** Give them back, on blur or at quit. Safe to call when holding nothing. */
@@ -93,6 +180,10 @@ export class MediaKeyBinding {
         // Already gone, or the registry is being torn down at quit.
       }
     }
+    // Not "unavailable": giving the keys back on blur says nothing about
+    // whether they could be taken again, and a permission problem already
+    // reported must not be re-reported every time the window loses focus.
+    if (this.state !== "unavailable") this.setState("idle");
   }
 
   private bindings(): Array<[string, () => unknown]> {

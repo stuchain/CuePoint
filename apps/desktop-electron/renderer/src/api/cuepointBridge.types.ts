@@ -110,14 +110,23 @@ export type PlayerPlayViewResult =
  * single-file `play`: one path means the queue and what is actually playing
  * cannot disagree.
  */
+/** Mirrors `MediaKeyState` in `electron/mediaKeys.ts`. */
+export type MediaKeyStatus = "held" | "unavailable" | "taken" | "idle";
+
 /**
  * Something the player wants said once (PLAYER-10, DEC-054).
  *
  * `track-failed` covers files that would not play — one message per run of
  * failures, however many tracks it covers. `player-unavailable` is mpv itself
  * being gone, which is a different problem with a different answer.
+ *
+ * Mirrors `PlayerNoticeKind` in `electron/playbackFailures.ts`.
  */
-export type PlayerNoticeKind = "track-failed" | "player-unavailable";
+export type PlayerNoticeKind =
+  | "track-failed"
+  | "player-unavailable"
+  | "audio-fallback"
+  | "media-keys-unavailable";
 
 export interface PlayerNotice {
   /** Rises with every notice, so a repeat can be told from a re-delivery. */
@@ -163,6 +172,13 @@ export interface AudioDevicesResult {
 
 export interface PlayerBridge {
   getState: () => Promise<PlayerSnapshot>;
+  /**
+   * Whether the machine's media keys are driving CuePoint.
+   *
+   * `"unavailable"` is macOS refusing them until Accessibility is granted;
+   * `"taken"` is another application owning them, which is not a problem.
+   */
+  mediaKeyStatus?: () => Promise<MediaKeyStatus>;
   /** Play a view's worth of tracks, starting at one of them (DEC-012). */
   playQueue: (items: QueueItemInput[], startIndex?: number) => Promise<PlayerPlayResult>;
   /**
@@ -202,8 +218,13 @@ export interface PlayerBridge {
   subscribeState: (onState: (snapshot: PlayerSnapshot) => void) => () => void;
   /**
    * Subscribe to one-off notices (PLAYER-10): a track that would not play, or
-   * a player that is gone. Never replayed on subscribe — a notice is an event,
+   * a player that is gone. Not replayed on subscribe — a notice is an event,
    * and a reloaded window must not show a toast about something it missed.
+   *
+   * One exception, delivered once to the first subscriber:
+   * `media-keys-unavailable` is decided at startup, before any renderer exists,
+   * and describes a permission that is still missing when the window opens.
+   * Query `mediaKeyStatus` for it instead of relying on catching the notice.
    */
   subscribeNotices: (onNotice: (notice: PlayerNotice) => void) => () => void;
 }

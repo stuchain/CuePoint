@@ -82,6 +82,9 @@ contextBridge.exposeInMainWorld("cuepoint", {
    */
   player: {
     getState: () => ipcRenderer.invoke("player:getState"),
+    // Durable state, not an event: a missing macOS Accessibility permission
+    // is still missing long after the toast about it has faded (PLAYER-12).
+    mediaKeyStatus: () => ipcRenderer.invoke("player:mediaKeyStatus"),
     playQueue: (items, startIndex) =>
       ipcRenderer.invoke("player:playQueue", items, startIndex ?? 0),
     playView: (view, startIndex) =>

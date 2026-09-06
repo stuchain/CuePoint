@@ -80,7 +80,16 @@ export function failureMessage(
  * `audio-fallback` is PLAYER-11: exclusive output or a chosen device was not
  * available and playback carried on through something that was.
  */
-export type PlayerNoticeKind = "track-failed" | "player-unavailable" | "audio-fallback";
+/**
+ * `media-keys-unavailable` is PLAYER-12 on macOS: the OS refuses global media
+ * keys until the Accessibility permission is granted, and a silently dead
+ * feature is worse than one that explains itself.
+ */
+export type PlayerNoticeKind =
+  | "track-failed"
+  | "player-unavailable"
+  | "audio-fallback"
+  | "media-keys-unavailable";
 
 export interface PlayerNotice {
   /** Rises with every notice, so a renderer can tell a repeat from a re-send. */
