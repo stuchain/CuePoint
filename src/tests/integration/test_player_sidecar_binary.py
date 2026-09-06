@@ -16,6 +16,7 @@ Fetch it locally with::
 
 from __future__ import annotations
 
+import array
 import importlib.util
 import json
 import subprocess
@@ -270,8 +271,7 @@ class TestGaplessAudio:
     #: allowance for a join landing a sample either side of the boundary.
     TOLERANCE_SAMPLES = 44
 
-    def _render(self, binary, out: Path, sources) -> "array.array":
-        import array
+    def _render(self, binary, out: Path, sources) -> array.array:
         import wave
 
         # `--ao=pcm` writes exactly what would have gone to the device, which is

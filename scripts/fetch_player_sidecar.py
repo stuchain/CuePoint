@@ -602,11 +602,21 @@ def write_receipt(
     return path
 
 
-def verify_install(target: Target, dest_root: Path) -> Dict[str, Any]:
+def verify_install(
+    target: Target, dest_root: Path, *, match_manifest: bool = False
+) -> Dict[str, Any]:
     """Re-check an installed target against its receipt.
 
     Catches the failure mode a plain existence check misses: a truncated or
     partially-copied install that has all the right filenames.
+
+    ``match_manifest`` adds the question the receipt alone cannot answer: is
+    this the build the manifest *pins*? An install left over from before a
+    re-pin is perfectly intact and completely wrong, and it passes every check
+    above. That matters twice over — the packaged app would ship a different
+    binary from the one the manifest, the NOTICE and the licence audit all
+    name. The install path leaves this off on purpose: there a mismatch means
+    "reinstall", not "fail".
     """
     install_dir = install_dir_for(target, dest_root)
     receipt_path = install_dir / RECEIPT_NAME
@@ -631,6 +641,12 @@ def verify_install(target: Target, dest_root: Path) -> Dict[str, Any]:
             f"Player sidecar install at {install_dir} is damaged:\n  "
             + "\n  ".join(problems)
             + "\nRe-run the fetch script with --force."
+        )
+    if match_manifest and receipt.get("asset_sha256") != target.sha256:
+        raise PlayerSidecarError(
+            f"Player sidecar at {install_dir} is {receipt.get('version')} "
+            f"({receipt.get('asset')}), but the manifest pins {target.asset}. "
+            "Run `python scripts/fetch_player_sidecar.py` to install the pinned build."
         )
     return receipt
 
@@ -1198,7 +1214,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
         if args.verify_only:
             for target in targets:
-                receipt = verify_install(target, args.dest)
+                receipt = verify_install(target, args.dest, match_manifest=True)
                 print(
                     f"OK {target.key}: {receipt['version']} ({len(receipt['files'])} files)"
                 )

@@ -127,6 +127,13 @@ async function currentTitle(win: Page): Promise<string | null> {
   });
 }
 
+async function isPaused(win: Page): Promise<boolean> {
+  return win.evaluate(async () => {
+    const state = await (window as never as Bridge).cuepoint.player.getState();
+    return state.playback.paused;
+  });
+}
+
 async function queueTitles(win: Page): Promise<string[]> {
   return win.evaluate(async () => {
     const page = await (window as never as Bridge).cuepoint.player.queueWindow(0, 200);
@@ -195,30 +202,40 @@ test.describe("Phase 5 end to end", () => {
       await panel.getByRole("button", { name: "Close queue" }).click();
 
       // --- Space is play/pause, and only where it should be (PLAYER-12) -----
-      await win.locator("main.app-main").click({ position: { x: 5, y: 5 } });
-      await win.keyboard.press("Space");
+      // Repeat-one comes off first, and the state is *set* before each press
+      // rather than inherited. Both matter, and the second only became visible
+      // on a re-run: the fixtures are a quarter of a second long, so under
+      // repeat-one mpv restarts the file several times a second — and every
+      // restart clears `pause`. A pause assertion in that environment is a
+      // race with the loop, which is exactly how this step failed.
+      await win.evaluate(() => (window as never as Bridge).cuepoint.player.setRepeat("off"));
+      await win.evaluate(() => (window as never as Bridge).cuepoint.player.stop());
       await expect
         .poll(
           async () =>
             win.evaluate(async () => {
               const state = await (window as never as Bridge).cuepoint.player.getState();
-              return state.playback.paused;
+              return state.playback.playing;
             }),
           { timeout: 15_000 },
         )
-        .toBe(true);
+        .toBe(false);
+      await win.locator("main.app-main").click({ position: { x: 5, y: 5 } });
+      await win.evaluate(() => (window as never as Bridge).cuepoint.player.pause());
+      await expect.poll(() => isPaused(win), { timeout: 15_000 }).toBe(true);
+
+      await win.keyboard.press("Space");
+      await expect.poll(() => isPaused(win), { timeout: 15_000 }).toBe(false);
 
       // Typing in the library's search box must not touch playback.
+      await win.evaluate(() => (window as never as Bridge).cuepoint.player.pause());
+      await expect.poll(() => isPaused(win), { timeout: 15_000 }).toBe(true);
       const search = win.locator(".cp-filter-bar").getByRole("textbox", { name: "Search" });
       await search.click();
-      await search.type("drum and bass");
-      expect(
-        await win.evaluate(async () => {
-          const state = await (window as never as Bridge).cuepoint.player.getState();
-          return state.playback.paused;
-        }),
-      ).toBe(true);
+      await search.fill("drum and bass");
       await expect(search).toHaveValue("drum and bass");
+      // Still paused: every one of those spaces went into the box.
+      expect(await isPaused(win)).toBe(true);
 
       // --- the machine's media keys, held while CuePoint is in front --------
       // The release on blur is unit-tested (`mediaKeys.test.ts`); focus cannot

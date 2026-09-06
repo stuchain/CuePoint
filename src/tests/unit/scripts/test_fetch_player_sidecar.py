@@ -491,6 +491,68 @@ class TestReceipt:
         with pytest.raises(fps.PlayerSidecarError, match="No install receipt"):
             fps.verify_install(target, tmp_path / "nothing-here")
 
+    def test_verify_ignores_the_pin_unless_asked(self, tmp_path):
+        """The install path wants a re-pin to mean "reinstall", not "fail"."""
+        _, _, _ = self._install(tmp_path)
+        repinned = fps.parse_manifest(
+            _manifest_dict(
+                version="v0.41.0-dev-gdef456",
+                targets={
+                    "win32-x64": {
+                        "platform_dir": "win",
+                        "asset": "mpv-new.zip",
+                        "url": "https://example.invalid/mpv-new.zip",
+                        "sha256": "1" * 64,
+                        "size": 10,
+                        "archive": "zip",
+                        "install": ["mpv.exe"],
+                        "binary": "mpv.exe",
+                    }
+                },
+            )
+        ).target("win32-x64")
+
+        assert (
+            fps.verify_install(repinned, tmp_path / "player")["target"] == "win32-x64"
+        )
+
+    def test_verify_can_reject_an_install_the_manifest_no_longer_pins(self, tmp_path):
+        """An install from before a re-pin is intact and completely wrong.
+
+        Every check above passes on it: the files are all there, the right size
+        and the right bytes — of the *previous* build. Without this, a stale
+        sidecar is verified as good and packaged, and the app ships a binary
+        that the manifest, the NOTICE and the licence audit do not describe.
+        """
+        _, _, _ = self._install(tmp_path)
+        repinned = fps.parse_manifest(
+            _manifest_dict(
+                version="v0.41.0-dev-gdef456",
+                targets={
+                    "win32-x64": {
+                        "platform_dir": "win",
+                        "asset": "mpv-new.zip",
+                        "url": "https://example.invalid/mpv-new.zip",
+                        "sha256": "1" * 64,
+                        "size": 10,
+                        "archive": "zip",
+                        "install": ["mpv.exe"],
+                        "binary": "mpv.exe",
+                    }
+                },
+            )
+        ).target("win32-x64")
+
+        with pytest.raises(fps.PlayerSidecarError, match="manifest pins mpv-new.zip"):
+            fps.verify_install(repinned, tmp_path / "player", match_manifest=True)
+
+    def test_verify_accepts_the_install_the_manifest_does_pin(self, tmp_path):
+        _, target, _ = self._install(tmp_path)
+
+        receipt = fps.verify_install(target, tmp_path / "player", match_manifest=True)
+
+        assert receipt["target"] == "win32-x64"
+
 
 # ---------------------------------------------------------------------------
 # Download behaviour
