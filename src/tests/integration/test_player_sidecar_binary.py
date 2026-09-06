@@ -235,3 +235,110 @@ class TestCliAgainstTheRealInstall:
         assert fps.main(["--offline", "--quiet"]) == 0
 
         assert json.loads(receipt.read_text(encoding="utf-8")) == json.loads(before)
+
+
+@pytest.mark.integration
+class TestGaplessAudio:
+    """DEC-056's claim, measured in the samples rather than heard (PLAYER-12).
+
+    The macOS pass asks for gapless "by ear" across two consecutive files. A
+    test harness has no ears, but it does not need them: a gap between tracks is
+    silence, and added silence is visible in the decoded PCM. This plays the
+    fixtures through the real bundled mpv with the same gapless and resampler
+    arguments CuePoint runs (`MPV_BASE_ARGS` in `mpvClient.ts`) and captures
+    what the audio output actually received.
+
+    **Self-calibrating on purpose.** ``tone.flac`` carries 63.5 ms of its own
+    trailing silence — an encoder artifact, nothing to do with the player — so a
+    fixed "no quiet run longer than 1 ms" threshold reports a 63.5 ms gap on a
+    perfectly gapless join. The measurement that means something is the
+    *difference*: render one file, render two, and compare the longest silence.
+    Gapless playback adds none.
+
+    It is the stronger half of the acceptance rather than a substitute for it:
+    `playbackController.integration.test.ts` shows mpv advances without
+    reloading, and this shows the samples never stop for longer than the files
+    themselves do. Neither can say whether it *sounds* right, which is why row 9
+    of the macOS pass stays open until somebody listens.
+    """
+
+    #: A sine at 441 Hz crosses zero 882 times a second, so isolated near-zero
+    #: samples are the signal, not a gap. Below 2% of full scale the tone spends
+    #: well under a sample per crossing.
+    QUIET = int(0.02 * 32768)
+    #: One millisecond at 44.1 kHz. Far below anything audible as a gap, and the
+    #: allowance for a join landing a sample either side of the boundary.
+    TOLERANCE_SAMPLES = 44
+
+    def _render(self, binary, out: Path, sources) -> "array.array":
+        import array
+        import wave
+
+        # `--ao=pcm` writes exactly what would have gone to the device, which is
+        # the only place a gap introduced by the player would show up.
+        result = subprocess.run(
+            [
+                str(binary),
+                "--no-config",
+                "--no-terminal",
+                "--no-video",
+                "--gapless-audio=yes",
+                "--audio-resample-filter-size=32",
+                "--audio-resample-phase-shift=12",
+                "--ao=pcm",
+                f"--ao-pcm-file={out}",
+                "--audio-channels=mono",
+                "--audio-samplerate=44100",
+                "--audio-format=s16",
+                *[str(s) for s in sources],
+            ],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        assert out.exists(), (
+            f"mpv wrote no PCM (exit {result.returncode}): {result.stderr[:400]}"
+        )
+        with wave.open(str(out), "rb") as handle:
+            assert handle.getsampwidth() == 2, "expected 16-bit PCM"
+            frames = handle.readframes(handle.getnframes())
+        samples = array.array("h")
+        samples.frombytes(frames)
+        return samples
+
+    def _longest_quiet_run(self, samples) -> int:
+        longest = 0
+        run = 0
+        for sample in samples:
+            if abs(sample) < self.QUIET:
+                run += 1
+                if run > longest:
+                    longest = run
+            else:
+                run = 0
+        return longest
+
+    def test_two_tracks_run_together_without_adding_silence(self, binary, tmp_path):
+        fixture = fps.FIXTURE_DIR / "tone.flac"
+        if not fixture.exists():
+            pytest.skip(f"missing fixture: {fixture}")
+
+        once = self._render(binary, tmp_path / "one.wav", [fixture])
+        twice = self._render(binary, tmp_path / "two.wav", [fixture, fixture])
+
+        # Both files really played; otherwise "no added silence" is trivially
+        # true because there was never a second track.
+        assert len(twice) >= 2 * len(once) - self.TOLERANCE_SAMPLES, (
+            f"two tracks produced {len(twice)} samples against {len(once)} for "
+            "one; the second file did not play"
+        )
+
+        baseline = self._longest_quiet_run(once)
+        joined = self._longest_quiet_run(twice)
+        added = joined - baseline
+
+        assert added <= self.TOLERANCE_SAMPLES, (
+            f"the join added {added} samples of silence "
+            f"({added / 44100 * 1000:.1f} ms) beyond the {baseline} the file "
+            f"carries on its own — that is the gap DEC-056 says must not be there"
+        )
