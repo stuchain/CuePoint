@@ -37,6 +37,7 @@ if TYPE_CHECKING:
     from cuepoint.migrations import Migration
     from cuepoint.models.library_source import LibrarySource
     from cuepoint.models.references import ReferenceSummary
+    from cuepoint.models.track_metadata import TrackMetadata
     from cuepoint.models.refresh_diff import RefreshDiff
     from cuepoint.models.library_track import IdentityMatch, LibraryTrack, QueueTrack
     from cuepoint.models.filter_rule import Facet, FacetRange, RuleSet
@@ -542,8 +543,9 @@ class IActivityService(ABC):
         old_value: Any,
         new_value: Any,
         source: str = "cuepoint",
+        batch_id: Optional[str] = None,
     ) -> Optional["TrackFieldChange"]:
-        """Record a change to one track field."""
+        """Record a change to one track field, optionally as part of a batch."""
         ...
 
     @abstractmethod
@@ -890,6 +892,104 @@ class ITrackRepository(ABC):
         self, tracks: Iterable["LibraryTrack"], batch_size: int = 1000
     ) -> "BulkUpsertResult":
         """Insert or update a whole collection in one transaction (DEC-002)."""
+        ...
+
+
+class ITrackMetadataRepository(ABC):
+    """Interface for CuePoint's own per-track metadata (DEC-057).
+
+    Deliberately separate from :class:`ITrackRepository`. That one owns what
+    Rekordbox wrote and rewrites every column of it on a refresh; this one owns
+    what the user wrote, and nothing on either side can reach the other's
+    columns. The separation is the mechanism behind "a refresh can never
+    overwrite your rating", which is why it is two interfaces and not one with
+    more methods.
+    """
+
+    @abstractmethod
+    def get(self, track_id: int) -> Optional["TrackMetadata"]:
+        """Return one track's metadata, or None when it has none."""
+        ...
+
+    @abstractmethod
+    def get_many(self, track_ids: Iterable[int]) -> Dict[int, "TrackMetadata"]:
+        """Return metadata for the tracks that have any, keyed by track id."""
+        ...
+
+    @abstractmethod
+    def count(self) -> int:
+        """Return how many tracks have any CuePoint metadata."""
+        ...
+
+    @abstractmethod
+    def set_rating(self, track_id: int, rating: Optional[int]) -> "TrackMetadata":
+        """Set or clear the CuePoint rating (None clears; 0 is a rating)."""
+        ...
+
+    @abstractmethod
+    def set_favorite(self, track_id: int, favorite: bool) -> "TrackMetadata":
+        """Set the favorite flag."""
+        ...
+
+    @abstractmethod
+    def set_notes(self, track_id: int, notes: Optional[str]) -> "TrackMetadata":
+        """Set or clear the note."""
+        ...
+
+    @abstractmethod
+    def clear(self, track_id: int) -> bool:
+        """Delete everything CuePoint knows about a track."""
+        ...
+
+
+class IMetadataService(ABC):
+    """Interface for editing CuePoint's own track metadata (DEC-057, DEC-008).
+
+    The layer that turns a write into a write *plus* its history entry. Every
+    method here is a user's edit, and DEC-008 chose per-field history over an
+    undo stack precisely so those edits can be looked at and taken back one at
+    a time.
+    """
+
+    @abstractmethod
+    def get(self, track_id: int) -> Optional["TrackMetadata"]:
+        """Return one track's CuePoint metadata, or None."""
+        ...
+
+    @abstractmethod
+    def get_many(self, track_ids: Iterable[int]) -> Dict[int, "TrackMetadata"]:
+        """Return metadata for many tracks, keyed by track id."""
+        ...
+
+    @abstractmethod
+    def effective_rating_for(self, track_id: int) -> Optional[int]:
+        """Return the rating to show for a track, resolving both layers."""
+        ...
+
+    @abstractmethod
+    def set_rating(
+        self, track_id: int, rating: Optional[int], batch_id: Optional[str] = None
+    ) -> "TrackMetadata":
+        """Set or clear the CuePoint rating and record the change."""
+        ...
+
+    @abstractmethod
+    def set_favorite(
+        self, track_id: int, favorite: bool, batch_id: Optional[str] = None
+    ) -> "TrackMetadata":
+        """Set the favorite flag and record the change."""
+        ...
+
+    @abstractmethod
+    def set_notes(
+        self, track_id: int, notes: Optional[str], batch_id: Optional[str] = None
+    ) -> "TrackMetadata":
+        """Set or clear the note and record the change."""
+        ...
+
+    @abstractmethod
+    def clear(self, track_id: int, batch_id: Optional[str] = None) -> bool:
+        """Forget everything CuePoint knows about a track, recording each loss."""
         ...
 
 

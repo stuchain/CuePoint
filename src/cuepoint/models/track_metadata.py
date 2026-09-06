@@ -40,6 +40,12 @@ from cuepoint.models.library_track import utc_now_iso
 MIN_RATING = 0
 MAX_RATING = 5
 
+#: What :func:`rating_source` answers with. Stable identifiers rather than
+#: display text: the renderer labels them, and DEC-057's "yours" versus
+#: "from Rekordbox" is wording, not data.
+SOURCE_CUEPOINT_RATING = "cuepoint"
+SOURCE_REKORDBOX_RATING = "rekordbox"
+
 #: A note is a note, not a document. The cap exists so that an accidental paste
 #: is refused with a sentence rather than discovered later as a row that makes
 #: every read of the track slow.
@@ -173,3 +179,54 @@ def normalize_notes(value: Any) -> Optional[str]:
             f"A note may be at most {MAX_NOTES_LENGTH} characters, got {len(text)}"
         )
     return text
+
+
+def effective_rating(
+    rekordbox_rating: Optional[int], cuepoint_rating: Optional[int]
+) -> Optional[int]:
+    """Return the rating to show, resolving DEC-057's two layers.
+
+    CuePoint's value wins when there is one; otherwise Rekordbox's shows
+    through; and when neither exists the track has no rating, which is not the
+    same as having none of them.
+
+    **This is the only implementation of that rule.** The browse query, the
+    track-detail read and the Inspector all resolve a rating, and two
+    implementations would disagree the day one of them is edited — with the
+    symptom being a table and a panel showing different stars for the same
+    track, which reads as data corruption rather than as a bug.
+
+    ``0`` from either layer is a rating and is returned as one: a user who
+    deliberately rated something zero stars has said something, and DEC-034
+    already keeps that distinct from a field Rekordbox never wrote.
+
+    Args:
+        rekordbox_rating: What the import stored on ``tracks.rating``.
+        cuepoint_rating: What the user set, or ``None`` for no override.
+
+    Returns:
+        The effective rating, or ``None`` when neither layer has one.
+    """
+    if cuepoint_rating is not None:
+        return cuepoint_rating
+    return rekordbox_rating
+
+
+def rating_source(
+    rekordbox_rating: Optional[int], cuepoint_rating: Optional[int]
+) -> Optional[str]:
+    """Return where :func:`effective_rating` took its answer from.
+
+    DEC-057 requires the UI to say which layer it is showing, and asking that
+    question anywhere other than beside the resolution itself is how the label
+    and the value drift apart.
+
+    Returns:
+        :data:`SOURCE_CUEPOINT_RATING`, :data:`SOURCE_REKORDBOX_RATING`, or
+        ``None`` when there is no rating to attribute.
+    """
+    if cuepoint_rating is not None:
+        return SOURCE_CUEPOINT_RATING
+    if rekordbox_rating is not None:
+        return SOURCE_REKORDBOX_RATING
+    return None

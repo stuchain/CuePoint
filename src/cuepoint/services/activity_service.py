@@ -90,8 +90,13 @@ class ActivityService(IActivityService):
         old_value: Any,
         new_value: Any,
         source: str = SOURCE_CUEPOINT,
+        batch_id: Optional[str] = None,
     ) -> Optional[TrackFieldChange]:
         """Record a change to one track field.
+
+        Args:
+            batch_id: Set when this change is one of many from a single action
+                (DEC-063), so the whole batch can be read back as one thing.
 
         Returns:
             The recorded change, or ``None`` when the value did not actually
@@ -109,6 +114,7 @@ class ActivityService(IActivityService):
                 new_value=new_value,
                 source=source,
                 changed_at=utc_now_iso(),
+                batch_id=batch_id,
             )
         )
 

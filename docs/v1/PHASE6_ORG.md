@@ -1,9 +1,10 @@
 # CuePoint v1.0.0 — Phase 6: Organization, Detailed Step Specifications
 
-Status: **ORG-01 implemented; ORG-02…ORG-13 specified, not implemented.** The thirteen steps below
-are the inventory the roadmap has carried as a placeholder since Phase 0. Per the process, no
-implementation happens from this document — each step needs an explicit "Implement ORG-NN"
-instruction, scoped to exactly that step, and its outcome is recorded under the step afterwards.
+Status: **ORG-01 and ORG-02 implemented; ORG-03…ORG-13 specified, not implemented.** The thirteen
+steps below are the inventory the roadmap has carried as a placeholder since Phase 0. Per the
+process, no implementation happens from this document — each step needs an explicit
+"Implement ORG-NN" instruction, scoped to exactly that step, and its outcome is recorded under the
+step afterwards.
 
 Depends on Phase 1 (`PHASE1_FOUNDATION.md`), Phase 2 (`PHASE2_SHELL.md`), Phase 3
 (`PHASE3_LIBRARY.md`) and Phase 4 (`PHASE4_LIBUI.md`), all complete, and on Phase 5
@@ -336,7 +337,7 @@ were not run — there is nothing in this step for them to check.
 
 ---
 
-## ORG-02 — Rating, Favorite and Notes
+## ORG-02 — Rating, Favorite and Notes ✅ IMPLEMENTED 2026-09-06
 
 **Objective**: CuePoint's own per-track values, written, read, resolved against Rekordbox's, and
 recorded in history.
@@ -369,22 +370,97 @@ recorded in history.
   track, runs a full import and a refresh over the same XML, and asserts all three survive
   unchanged, alongside the Rekordbox rating being re-imported. Written so it fails against a
   columns-on-`tracks` implementation.
-- `browse` and the track-detail read gain a `LEFT JOIN track_metadata`, so the table and the
-  Inspector can show the effective rating and the favorite without a second query per row.
+- ~~`browse` and the track-detail read gain a `LEFT JOIN track_metadata`.~~ **Moved to ORG-08**
+  during implementation. `browse` returns `LibraryTrack`, so carrying two more values means either
+  changing that return type — rippling through the shipped service, API and about thirty
+  assertions in Phase 4's tests — or returning data nothing reads. Both are the mistake LIBUI-01
+  paid for with six speculative indexes. The join's real consumers are ORG-08's serializer and
+  ORG-05's predicate (`COALESCE` for the effective rating), and it lands with the first of them.
+  `get_many` is what this step provides instead: one query per window, not per row, which is the
+  property the bullet was protecting.
 
 **Tests**: Validation refusals for each field, each naming the field. Clear-versus-zero. History
 written on change and not on a no-op. The import/refresh guard above. The join returns nulls, not
 missing rows, for a track with no metadata. Effective-value resolution over the four combinations
 (neither, one, the other, both).
 
-**Acceptance criteria / DoD**: A rating survives an import, a refresh and a restart; the browse
-window carries effective rating and favorite at no measurable cost at 50,000 tracks; nothing writes
-`tracks.rating` or `tracks.comment`.
+**Acceptance criteria / DoD**: A rating survives an import, a refresh and a restart; a window's
+worth of metadata reads at no measurable cost at 50,000 tracks; nothing writes `tracks.rating` or
+`tracks.comment`. (The browse projection itself is ORG-08's, per the corrected bullet above.)
 
 **Risks**: Low-medium. The one real risk is the join's cost in the hot browse path, which is
 measured rather than assumed.
 
 **Complexity**: **M**
+
+### ✅ IMPLEMENTED 2026-09-06
+
+**Outcome**: Complete. `persistence/track_metadata_repository.py` stores the layer,
+`services/metadata_service.py` validates it and records every change, and
+`models/track_metadata.py` gained the one function that resolves DEC-057's two ratings. Both are
+registered in the DI container, so ORG-08 resolves an interface rather than constructing anything.
+Nothing in the UI can reach it yet, which is the step as specified.
+
+**The browse join moved to ORG-08, and the spec above is corrected rather than quietly skipped.**
+`TrackRepository.browse` returns `LibraryTrack`; carrying two more values means either changing
+that return type — through the shipped service, the API and about thirty assertions in Phase 4's
+tests — or projecting columns nothing reads. That is the same mistake LIBUI-01 paid for with six
+speculative indexes and that ORG-01 corrected four more of. The join's real consumers are ORG-08's
+serializer and ORG-05's predicate, and it is one join for both. `get_many` is what this step
+provides instead, and it holds the property the bullet was actually protecting: one query per
+window, never one per row. Measured at 50,000 tracks with 25,000 of them rated: **0.22 ms** for a
+100-row window's metadata against **1.18 ms** for the browse itself, so ORG-08 chooses between the
+join and the second query with both numbers rather than an assumption.
+
+**A measurement ORG-07 should not have to rediscover.** Writing ratings through the ordinary
+per-write path costs **1.95 ms per track**, because each write is its own transaction and each
+transaction is a commit. The same writes inside one transaction cost **0.014 ms** — **144×** — which
+is a hundred seconds against under a second for a 47,913-track batch. No bulk method is needed to
+get it: the repository's writes already join an outer transaction, so DEC-063's chunked
+transactions are the whole mechanism. Recorded in ORG-07's design.
+
+**`batch_id` was threaded through the history writer here rather than in ORG-07.** ORG-01 added the
+column; `TrackFieldChange`, `ActivityRepository.add_field_change` and
+`ActivityService.record_field_change` now carry it as an optional argument defaulting to `None`,
+and `MetadataService` passes it. Additive, tested both ways, and it means ORG-07 supplies ids
+rather than re-plumbing three layers that were already being edited.
+
+**The mutation run found three real gaps, and each closed with a test rather than a shrug.**
+
+- *`rating_source` was written and never tested.* Reporting the wrong layer left every test
+  passing. It now has its own tests, including one asserting the label always agrees with the value
+  — the two are read together by the Inspector, and a disagreement is what a user would see.
+- *The chunking test proved nothing.* It passed 2,000 ids and asserted the answer, but this SQLite
+  build accepts far more parameters than that, so an unchunked query passed too. It now counts the
+  statements through `set_trace_callback`, which is build-independent, plus a second test that a
+  chunked read loses nothing on a boundary.
+- *The service's own validation looked redundant* — removing it left everything green, because the
+  repository validates too. It is not redundant, and the missing test said why: the service writes
+  the history entry, and it must record **the value that was stored**, not the value that was typed.
+  `set_rating(id, "4")` now has to record the integer 4, and `"  late  "` has to record `late` —
+  otherwise a re-save of the same note would look like a change, and a later revert would restore a
+  string into an integer column.
+
+**Guards: 17 of 17 fail when the thing they protect is broken.** The one worth naming is the last:
+*the design DEC-057 rejected, simulated*. Making the bulk import delete `track_metadata` rows —
+which is exactly what a columns-on-`tracks` layout does implicitly when it rebuilds a row from the
+XML — makes the guard test fail. The others: a falsy-zero in the effective-rating rule, Rekordbox
+winning over the user, the source reported backwards, an upsert that replaces the whole row,
+clearing a rating deleting the record, validation after the write, unchunked reads, `get_many`
+inventing empty records, history not written, history written without the previous value, a
+dropped batch id, a silent clear, a no-op recorded as history, history field names colliding with
+Rekordbox's, a missing track not refused by name, and the service skipping validation.
+
+**Verification**: `python -m pytest src/tests/unit` — 3509 passed, 45 skipped (83 of them new);
+`python -m pytest src/tests/integration src/tests/regression` — 350 passed, 13 skipped;
+`ruff check src/` and `ruff format --check src/` clean; `python scripts/check_no_qt_in_core.py` OK.
+The DEC-057 guard runs the real import and the real refresh over real XML, using the fixtures
+Phase 3's refresh tests already build from, rather than mocking a repository and asserting it was
+not called.
+
+No renderer, Electron or engine-API file was touched, so the desktop-contract and renderer gates
+were not run — nothing in this step reaches them. The measurements above are ad-hoc rather than
+part of `scripts/bench_library.py`; ORG-13 owns the recorded scale numbers.
 
 ---
 
@@ -525,6 +601,9 @@ escaped `LIKE` wildcards) hold unchanged for everything added here.
   `collection` (collection), and **`rating` becomes the effective value** — `COALESCE(m.rating,
   t.rating)` — with `rating_rekordbox` addressing the imported column explicitly. DEC-057 says the
   UI's plain "Rating" means the effective value; this is where that is true rather than asserted.
+- **The `LEFT JOIN track_metadata` arrives here or in ORG-08, whichever lands first**, and is
+  written once for both: the effective rating is `COALESCE(m.rating, t.rating)` in the predicate,
+  which is the same join ORG-08's projection needs. ORG-02 deliberately did not add it early.
 - **`FieldSpec` gains a way to say how a field is addressed**: a column expression or a subquery
   template. The compiler stays one function with one place that turns a rule into SQL; what changes
   is that a field can name an `EXISTS (SELECT 1 FROM track_tags …)` instead of a column. This is
@@ -647,7 +726,12 @@ how a query becomes an id set.
   and the status strip follows it (DEC-033's pattern). The threshold is a named constant this step
   fixes, not a setting.
 - **Chunked transactions** — a stated batch size per commit — so a cancel is honored promptly and
-  one transaction does not hold 47,913 rows. The consequence is stated rather than hidden: a
+  one transaction does not hold 47,913 rows. ORG-02 measured why this is not a nicety: writing
+  through the ordinary per-write path costs 1.95 ms per track because each write is its own commit,
+  and 0.014 ms inside one transaction — **144×**, or a hundred seconds against under a second for a
+  47,913-track batch. No bulk repository method is needed to get it; the metadata writes already
+  join an outer transaction (`transaction(join_existing=True)`), so the batch opens one and the
+  existing calls do the rest. The consequence is stated rather than hidden: a
   cancelled batch leaves applied work applied, and the activity event says how far it got (DEC-063).
 - **Every applied change writes its per-field history row, all sharing one `batch_id`** (a uuid).
   This is the step that makes "revert this batch" buildable later without an undo stack; building
@@ -718,6 +802,13 @@ guard test that a request carrying none of the new parameters returns byte-ident
 - Ids in paths are parsed with the existing helper and refused as 400, not 500, when absurd.
 - Response shapes use explicit field lists, like `track_to_dict`, so adding a column to a table is
   never accidentally a public contract change.
+- **The browse projection carries CuePoint's values** — effective rating, its source, and the
+  favorite — which is the step that changes `browse`'s return type and `LibraryBrowseResult`
+  alongside the serializer that consumes them. ORG-02 measured the alternative it leaves open: a
+  window's `get_many` is 0.22 ms against a 1.18 ms browse at 50,000 tracks, so a second query per
+  window is affordable and the join is a choice to make with both numbers in hand rather than an
+  assumption. Notes stay out of the window either way: a 10,000-character note times a hundred rows
+  is a megabyte per window, and the Inspector reads one track.
 - The six-file sweep for every route, with `engineSupervisor.ts` explicitly on the list. The
   contract test is extended in the same commit as the route, not after it.
 - Bridge types name the domain, not the transport: `Collection`, `CollectionNode`, `Tag`,

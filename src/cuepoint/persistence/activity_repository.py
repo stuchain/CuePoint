@@ -72,6 +72,12 @@ class TrackFieldChange:
 
     ``old_value``/``new_value`` come back with the type they were stored with,
     so reverting a numeric field restores a number rather than a string.
+
+    ``batch_id`` is set when the change was one of many applied by a single
+    action (DEC-063), and ``None`` when a user changed one field on one track.
+    It is what lets a whole batch be looked at — and one day taken back — as the
+    thing the user actually did, rather than as forty thousand unrelated edits
+    that happen to share a timestamp.
     """
 
     track_id: int
@@ -81,6 +87,7 @@ class TrackFieldChange:
     source: str
     changed_at: str = ""
     id: Optional[int] = None
+    batch_id: Optional[str] = None
 
     @classmethod
     def from_row(cls, row: Any) -> "TrackFieldChange":
@@ -93,6 +100,7 @@ class TrackFieldChange:
             new_value=_loads(data.get("new_value_json")),
             source=data["source"],
             changed_at=data["changed_at"],
+            batch_id=data.get("batch_id"),
         )
 
 
@@ -157,8 +165,9 @@ class ActivityRepository(IActivityRepository):
         with self._db.transaction() as conn:
             cursor = conn.execute(
                 "INSERT INTO track_history"
-                " (track_id, field, old_value_json, new_value_json, source, changed_at)"
-                " VALUES (?, ?, ?, ?, ?, ?)",
+                " (track_id, field, old_value_json, new_value_json, source,"
+                "  changed_at, batch_id)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (
                     change.track_id,
                     change.field_name,
@@ -166,6 +175,7 @@ class ActivityRepository(IActivityRepository):
                     _dumps(change.new_value),
                     change.source,
                     change.changed_at,
+                    change.batch_id,
                 ),
             )
             new_id = int(cursor.lastrowid or 0)
@@ -177,6 +187,7 @@ class ActivityRepository(IActivityRepository):
             new_value=change.new_value,
             source=change.source,
             changed_at=change.changed_at,
+            batch_id=change.batch_id,
         )
 
     def history_for_track(

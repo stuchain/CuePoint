@@ -37,9 +37,13 @@ from cuepoint.models.tag import (
 )
 from cuepoint.models.track_metadata import (
     MAX_NOTES_LENGTH,
+    SOURCE_CUEPOINT_RATING,
+    SOURCE_REKORDBOX_RATING,
     TrackMetadata,
+    effective_rating,
     normalize_notes,
     normalize_rating,
+    rating_source,
 )
 
 
@@ -78,6 +82,60 @@ class TestTrackMetadataRating:
 
     def test_a_whole_float_is_the_same_rating(self):
         assert normalize_rating(4.0) == 4
+
+
+class TestTheEffectiveRatingRule:
+    """DEC-057's two layers, resolved in the one place that decides it."""
+
+    @pytest.mark.parametrize(
+        "rekordbox,cuepoint,expected",
+        [
+            (None, None, None),
+            (3, None, 3),
+            (None, 5, 5),
+            (3, 5, 5),
+        ],
+    )
+    def test_all_four_combinations(self, rekordbox, cuepoint, expected):
+        assert effective_rating(rekordbox, cuepoint) == expected
+
+    def test_a_zero_star_override_does_not_fall_back(self):
+        # The falsy-zero bug this rule is most likely to grow: `if cuepoint`
+        # instead of `is not None` reads a deliberate zero as "unset".
+        assert effective_rating(4, 0) == 0
+
+    def test_a_zero_from_rekordbox_is_still_a_rating(self):
+        assert effective_rating(0, None) == 0
+
+
+class TestTheRatingSource:
+    """DEC-057 requires the UI to say which layer it is showing."""
+
+    def test_the_users_value_is_attributed_to_the_user(self):
+        assert rating_source(3, 5) == SOURCE_CUEPOINT_RATING
+
+    def test_a_zero_star_override_is_still_the_users(self):
+        assert rating_source(3, 0) == SOURCE_CUEPOINT_RATING
+
+    def test_an_imported_value_is_attributed_to_rekordbox(self):
+        assert rating_source(3, None) == SOURCE_REKORDBOX_RATING
+
+    def test_no_rating_is_attributed_to_nobody(self):
+        assert rating_source(None, None) is None
+
+    def test_the_source_agrees_with_the_value(self):
+        # The two functions are read together by the Inspector, so a label
+        # that disagrees with the stars is the failure worth pinning.
+        for rekordbox in (None, 0, 3):
+            for cuepoint in (None, 0, 5):
+                value = effective_rating(rekordbox, cuepoint)
+                source = rating_source(rekordbox, cuepoint)
+                if value is None:
+                    assert source is None
+                elif source == SOURCE_CUEPOINT_RATING:
+                    assert value == cuepoint
+                else:
+                    assert value == rekordbox
 
 
 class TestTrackMetadataNotes:

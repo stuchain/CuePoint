@@ -34,6 +34,7 @@ from cuepoint.services.interfaces import (
     IIncrateDiscoveryService,
     IJobRepository,
     ILibraryService,
+    IMetadataService,
     IInventoryService,
     ILoggingService,
     IMatcherService,
@@ -45,6 +46,7 @@ from cuepoint.services.interfaces import (
     ILibraryImportService,
     ILibrarySourceRepository,
     IPlaylistRepository,
+    ITrackMetadataRepository,
     ITrackRepository,
 )
 from cuepoint.services.logging_service import LoggingService
@@ -58,10 +60,14 @@ from cuepoint.persistence.library_source_repository import (
     LibrarySourceRepository,
 )
 from cuepoint.persistence.playlist_repository import PlaylistRepository
+from cuepoint.persistence.track_metadata_repository import (
+    TrackMetadataRepository,
+)
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.activity_service import ActivityService
 from cuepoint.services.backup_service import BackupService
 from cuepoint.services.library_service import LibraryService
+from cuepoint.services.metadata_service import MetadataService
 from cuepoint.services.processor_service import ProcessorService
 from cuepoint.services.telemetry_service import TelemetryService
 from cuepoint.utils.di_container import get_container
@@ -185,6 +191,29 @@ def bootstrap_services() -> None:
         )
 
     container.register_factory(IActivityService, create_activity_service)
+
+    # CuePoint's own per-track values (DEC-057). Registered after the activity
+    # service because every write through it records its own history (DEC-008),
+    # and after the track repository because it refuses a write against a track
+    # that is not there.
+    def create_track_metadata_repository() -> ITrackMetadataRepository:
+        container.resolve(IMigrationRunner).migrate()
+        return TrackMetadataRepository(
+            database_service=container.resolve(IDatabaseService)
+        )
+
+    container.register_factory(
+        ITrackMetadataRepository, create_track_metadata_repository
+    )
+
+    def create_metadata_service() -> IMetadataService:
+        return MetadataService(
+            metadata_repository=container.resolve(ITrackMetadataRepository),
+            track_repository=container.resolve(ITrackRepository),
+            activity_service=container.resolve(IActivityService),
+        )
+
+    container.register_factory(IMetadataService, create_metadata_service)
 
     # Library database backups (DEC-009). Resolving this does not open the
     # database or write anything; backup_on_launch() is called explicitly.
