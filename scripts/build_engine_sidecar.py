@@ -70,6 +70,19 @@ def _free_port() -> int:
         return sock.getsockname()[1]
 
 
+#: How long the freshly built sidecar gets to answer /health.
+#:
+#: A one-file PyInstaller build has to unpack ~72 MB into a temporary directory
+#: and import the whole engine before it can bind a socket, and it does that
+#: unpacking only on the *first* run of a given build. On macOS that cold start
+#: measured over 10s where the warm one takes ~8s, so the original 10s budget
+#: failed the build on exactly the run that matters - the first one after
+#: packaging - while passing on every re-run. Generous on purpose: this bound
+#: exists to catch a sidecar that never starts, not to police startup latency.
+SMOKE_TIMEOUT_SECONDS = 90.0
+_SMOKE_POLL_SECONDS = 0.25
+
+
 def _smoke_test_executable(exe: Path) -> None:
     port = _free_port()
     token = "sidecar-smoke-token"
@@ -87,7 +100,8 @@ def _smoke_test_executable(exe: Path) -> None:
     )
     try:
         url = f"http://127.0.0.1:{port}/health"
-        for _ in range(40):
+        deadline = time.monotonic() + SMOKE_TIMEOUT_SECONDS
+        while time.monotonic() < deadline:
             if proc.poll() is not None:
                 out, err = proc.communicate(timeout=2)
                 detail = (err or out or b"").decode("utf-8", errors="replace").strip()
@@ -102,8 +116,11 @@ def _smoke_test_executable(exe: Path) -> None:
                             print(f"OK: sidecar health version={data.get('version')}")
                             return
             except Exception:
-                time.sleep(0.25)
-        raise RuntimeError("Engine sidecar health check timed out")
+                time.sleep(_SMOKE_POLL_SECONDS)
+        raise RuntimeError(
+            f"Engine sidecar health check timed out after {SMOKE_TIMEOUT_SECONDS:.0f}s "
+            f"(the process was still running but never answered {url})"
+        )
     finally:
         proc.terminate()
         try:
