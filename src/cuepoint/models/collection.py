@@ -37,7 +37,7 @@ request when the track is in there twice; "remove this entry" always is.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from cuepoint.models.library_track import utc_now_iso
 
@@ -281,3 +281,70 @@ def normalize_collection_name(value: Any) -> str:
             f"characters, got {len(name)}"
         )
     return name
+
+
+@dataclass(frozen=True)
+class AddResult:
+    """What adding a set of tracks to a Collection actually did (DEC-058).
+
+    ``add`` appends the tracks that are not already there and skips the ones
+    that are, so the two numbers differ whenever a user drops a selection that
+    overlaps what the Collection already holds. Both are reported, because
+    "added 40 tracks (12 were already here)" is a different sentence from
+    "added 52 tracks", and only one of them is true.
+
+    A deliberate duplicate is made with ``insert_at``, not by calling this twice.
+
+    Attributes:
+        added_track_ids: The tracks that were appended, in the order given.
+        skipped_track_ids: The tracks already in the Collection, left alone.
+    """
+
+    added_track_ids: Tuple[int, ...] = ()
+    skipped_track_ids: Tuple[int, ...] = ()
+
+    @property
+    def added(self) -> int:
+        """How many tracks were appended."""
+        return len(self.added_track_ids)
+
+    @property
+    def skipped(self) -> int:
+        """How many were already there."""
+        return len(self.skipped_track_ids)
+
+
+@dataclass(frozen=True)
+class SubtreeSummary:
+    """What deleting a node would take with it (ORG-04, for ORG-09's confirm).
+
+    A folder delete cascades, and a confirmation that cannot say what it is
+    about to destroy is a confirmation nobody can give meaningfully. So the
+    service answers this *before* the delete, and the dialog reads it out.
+
+    The node itself is counted here along with its descendants: "delete this
+    folder — 3 folders, 11 Collections and 1,204 entries" includes the folder
+    being deleted, which is what a person reading the sentence expects.
+
+    Attributes:
+        folders: Folder nodes that would go.
+        collections: Collections that would go.
+        smart_collections: Smart Collections that would go.
+        entries: Membership rows across all of them. Tracks are never counted
+            here, because no track is deleted by any of this.
+    """
+
+    folders: int = 0
+    collections: int = 0
+    smart_collections: int = 0
+    entries: int = 0
+
+    @property
+    def nodes(self) -> int:
+        """Every node that would be removed."""
+        return self.folders + self.collections + self.smart_collections
+
+    @property
+    def is_empty(self) -> bool:
+        """True when there is nothing to warn about."""
+        return self.nodes == 0 and self.entries == 0

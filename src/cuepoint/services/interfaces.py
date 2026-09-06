@@ -39,6 +39,12 @@ if TYPE_CHECKING:
     from cuepoint.models.references import ReferenceSummary
     from cuepoint.models.track_metadata import TrackMetadata
     from cuepoint.models.tag import Tag, TagUsage
+    from cuepoint.models.collection import (
+        AddResult,
+        Collection,
+        CollectionEntry,
+        SubtreeSummary,
+    )
     from cuepoint.models.refresh_diff import RefreshDiff
     from cuepoint.models.library_track import IdentityMatch, LibraryTrack, QueueTrack
     from cuepoint.models.filter_rule import Facet, FacetRange, RuleSet
@@ -940,6 +946,237 @@ class ITrackMetadataRepository(ABC):
     @abstractmethod
     def clear(self, track_id: int) -> bool:
         """Delete everything CuePoint knows about a track."""
+        ...
+
+
+class ICollectionRepository(ABC):
+    """Interface for CuePoint's own collection tree and membership (DEC-058/059).
+
+    The editable counterpart to :class:`IPlaylistRepository`. That one mirrors
+    Rekordbox and has no rename, move or reorder because DEC-031 made it
+    read-only; this one is all of those, and is never rebuilt from an import.
+    """
+
+    @abstractmethod
+    def get(self, node_id: int) -> Optional["Collection"]:
+        """Return one node, or None."""
+        ...
+
+    @abstractmethod
+    def tree(self) -> List["Collection"]:
+        """Return every node, parents before children, siblings in order."""
+        ...
+
+    @abstractmethod
+    def children_of(self, parent_id: Optional[int]) -> List["Collection"]:
+        """Return a node's children, or the top level."""
+        ...
+
+    @abstractmethod
+    def subtree_ids(self, node_id: int) -> List[int]:
+        """Return the node's id and every descendant's."""
+        ...
+
+    @abstractmethod
+    def subtree_summary(self, node_id: int) -> "SubtreeSummary":
+        """Return what deleting this node would remove."""
+        ...
+
+    @abstractmethod
+    def max_depth_in_subtree(self, node_id: int) -> int:
+        """Return the deepest depth under and including this node."""
+        ...
+
+    @abstractmethod
+    def count(self) -> int:
+        """Return how many nodes exist, folders included."""
+        ...
+
+    @abstractmethod
+    def create(self, node: "Collection") -> "Collection":
+        """Insert a node at the end of its parent's children."""
+        ...
+
+    @abstractmethod
+    def rename(self, node_id: int, name: str) -> Optional["Collection"]:
+        """Rename a node."""
+        ...
+
+    @abstractmethod
+    def set_rules(
+        self,
+        node_id: int,
+        rules_json: Optional[str],
+        sort_field: Optional[str] = None,
+        sort_dir: Optional[str] = None,
+    ) -> Optional["Collection"]:
+        """Write a Smart Collection's saved rule set and sort."""
+        ...
+
+    @abstractmethod
+    def move(
+        self, node_id: int, parent_id: Optional[int], position: Optional[int] = None
+    ) -> Optional["Collection"]:
+        """Reparent a node, keeping both sibling lists contiguous."""
+        ...
+
+    @abstractmethod
+    def reorder(self, node_id: int, position: int) -> Optional["Collection"]:
+        """Move a node among its own siblings."""
+        ...
+
+    @abstractmethod
+    def delete(self, node_id: int) -> bool:
+        """Delete a node and its subtree. Deletes no tracks."""
+        ...
+
+    @abstractmethod
+    def entries(
+        self, collection_id: int, offset: int = 0, limit: Optional[int] = None
+    ) -> List["CollectionEntry"]:
+        """Return a Collection's entries in its own order."""
+        ...
+
+    @abstractmethod
+    def track_ids(self, collection_id: int) -> List[int]:
+        """Return the track ids in a Collection's order, repeats included."""
+        ...
+
+    @abstractmethod
+    def entry_count(self, collection_id: int) -> int:
+        """Return how many rows a Collection holds, duplicates counted."""
+        ...
+
+    @abstractmethod
+    def track_count(self, collection_id: int) -> int:
+        """Return how many distinct tracks a Collection holds."""
+        ...
+
+    @abstractmethod
+    def add(self, collection_id: int, track_ids: Iterable[int]) -> "AddResult":
+        """Append tracks that are not already there; report what was skipped."""
+        ...
+
+    @abstractmethod
+    def insert_at(
+        self, collection_id: int, track_id: int, position: int
+    ) -> "CollectionEntry":
+        """Put a track at a given place, duplicates allowed (DEC-058)."""
+        ...
+
+    @abstractmethod
+    def remove_entries(self, entry_ids: Iterable[int]) -> int:
+        """Remove specific entries and close the gaps they leave."""
+        ...
+
+    @abstractmethod
+    def reorder_entry(
+        self, entry_id: int, position: int
+    ) -> Optional["CollectionEntry"]:
+        """Move one entry within its Collection."""
+        ...
+
+    @abstractmethod
+    def clear(self, collection_id: int) -> int:
+        """Remove every entry from a Collection. Deletes no tracks."""
+        ...
+
+    @abstractmethod
+    def collection_ids_for_track(self, track_id: int) -> List[int]:
+        """Return the Collections a track is in."""
+        ...
+
+    @abstractmethod
+    def references_for(self, track_ids: Iterable[int]) -> Tuple[List[int], List[int]]:
+        """Return (collection ids, referenced track ids) for a set of tracks."""
+        ...
+
+
+class ICollectionService(ABC):
+    """Interface for editing the collection tree (DEC-006, DEC-058, DEC-059).
+
+    Where the rules of the tree live: only a folder may be a parent, a node may
+    not be moved into its own subtree, the tree has a maximum depth, and a
+    Smart Collection holds a question rather than rows and so cannot be given
+    membership.
+    """
+
+    @abstractmethod
+    def create_folder(self, name: str, parent_id: Optional[int] = None) -> "Collection":
+        """Create a folder."""
+        ...
+
+    @abstractmethod
+    def create_collection(
+        self, name: str, parent_id: Optional[int] = None
+    ) -> "Collection":
+        """Create a Collection."""
+        ...
+
+    @abstractmethod
+    def rename(self, node_id: int, name: str) -> "Collection":
+        """Rename a node."""
+        ...
+
+    @abstractmethod
+    def move(
+        self, node_id: int, parent_id: Optional[int], position: Optional[int] = None
+    ) -> "Collection":
+        """Reparent a node, refusing cycles and over-deep destinations."""
+        ...
+
+    @abstractmethod
+    def reorder(self, node_id: int, position: int) -> "Collection":
+        """Move a node among its siblings."""
+        ...
+
+    @abstractmethod
+    def delete_preview(self, node_id: int) -> "SubtreeSummary":
+        """Return what deleting this node would remove, before it happens."""
+        ...
+
+    @abstractmethod
+    def delete(self, node_id: int) -> "SubtreeSummary":
+        """Delete a node and its subtree, returning what went."""
+        ...
+
+    @abstractmethod
+    def tree(self) -> List["Collection"]:
+        """Return the whole tree in draw order."""
+        ...
+
+    @abstractmethod
+    def add_tracks(self, collection_id: int, track_ids: Iterable[int]) -> "AddResult":
+        """Append tracks not already there, skipping and reporting the rest."""
+        ...
+
+    @abstractmethod
+    def insert_track(
+        self, collection_id: int, track_id: int, position: int
+    ) -> "CollectionEntry":
+        """Put a track at a position, deliberately allowing a duplicate."""
+        ...
+
+    @abstractmethod
+    def remove_entries(self, entry_ids: Iterable[int]) -> int:
+        """Remove entries by their own ids."""
+        ...
+
+    @abstractmethod
+    def reorder_entry(self, entry_id: int, position: int) -> "CollectionEntry":
+        """Move one entry within its Collection."""
+        ...
+
+    @abstractmethod
+    def entries(
+        self, collection_id: int, offset: int = 0, limit: Optional[int] = None
+    ) -> List["CollectionEntry"]:
+        """Return a Collection's entries in order."""
+        ...
+
+    @abstractmethod
+    def counts(self, collection_id: int) -> Tuple[int, int]:
+        """Return ``(entry_count, distinct_track_count)`` for a Collection."""
         ...
 
 

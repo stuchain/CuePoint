@@ -23,6 +23,8 @@ from cuepoint.services.config_service import ConfigService
 from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.export_service import ExportService
 from cuepoint.services.interfaces import (
+    ICollectionRepository,
+    ICollectionService,
     IActivityRepository,
     IActivityService,
     IBackupService,
@@ -62,6 +64,7 @@ from cuepoint.persistence.library_source_repository import (
     LibrarySourceRepository,
 )
 from cuepoint.persistence.playlist_repository import PlaylistRepository
+from cuepoint.persistence.collection_repository import CollectionRepository
 from cuepoint.persistence.tag_repository import TagRepository
 from cuepoint.persistence.track_metadata_repository import (
     TrackMetadataRepository,
@@ -69,6 +72,7 @@ from cuepoint.persistence.track_metadata_repository import (
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.activity_service import ActivityService
 from cuepoint.services.backup_service import BackupService
+from cuepoint.services.collection_service import CollectionService
 from cuepoint.services.library_service import LibraryService
 from cuepoint.services.metadata_service import MetadataService
 from cuepoint.services.tag_service import TagService
@@ -169,7 +173,10 @@ def bootstrap_services() -> None:
     # Library entry point. Callers depend on this rather than on repositories,
     # so persistence details stay behind the seam.
     def create_library_service() -> ILibraryService:
-        return LibraryService(track_repository=container.resolve(ITrackRepository))
+        return LibraryService(
+            track_repository=container.resolve(ITrackRepository),
+            collection_repository=container.resolve(ICollectionRepository),
+        )
 
     container.register_factory(ILibraryService, create_library_service)
 
@@ -238,6 +245,25 @@ def bootstrap_services() -> None:
         )
 
     container.register_factory(ITagService, create_tag_service)
+
+    # CuePoint's own collection tree (DEC-006, DEC-059). The repository is
+    # resolved by the library service too, because DEC-011's warning before a
+    # refresh deletes anything is a question about Collections.
+    def create_collection_repository() -> ICollectionRepository:
+        container.resolve(IMigrationRunner).migrate()
+        return CollectionRepository(
+            database_service=container.resolve(IDatabaseService)
+        )
+
+    container.register_factory(ICollectionRepository, create_collection_repository)
+
+    def create_collection_service() -> ICollectionService:
+        return CollectionService(
+            collection_repository=container.resolve(ICollectionRepository),
+            database_service=container.resolve(IDatabaseService),
+        )
+
+    container.register_factory(ICollectionService, create_collection_service)
 
     # Library database backups (DEC-009). Resolving this does not open the
     # database or write anything; backup_on_launch() is called explicitly.

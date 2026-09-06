@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 6: Organization, Detailed Step Specifications
 
-Status: **ORG-01, ORG-02 and ORG-03 implemented; ORG-04…ORG-13 specified, not implemented.** The
+Status: **ORG-01…ORG-04 implemented; ORG-05…ORG-13 specified, not implemented.** The
 thirteen steps below are the inventory the roadmap has carried as a placeholder since Phase 0.
 Per the process, no implementation happens from this document — each step needs an explicit
 "Implement ORG-NN" instruction, scoped to exactly that step, and its outcome is recorded under the
@@ -594,7 +594,7 @@ were not run. The measurements above are ad-hoc; ORG-13 owns the recorded scale 
 
 ---
 
-## ORG-04 — Collections, the Folder Tree, and the Reference Answer
+## ORG-04 — Collections, the Folder Tree, and the Reference Answer ✅ IMPLEMENTED 2026-09-06
 
 **Objective**: The organizational primitive itself — a tree of folders and Collections, ordered
 membership that allows repeats, and the DEC-011 question finally answering something.
@@ -655,6 +655,91 @@ are user data. The mitigation is that every mutation is one transaction with a c
 behind it.
 
 **Complexity**: **L**
+
+### ✅ IMPLEMENTED 2026-09-06
+
+**Outcome**: Complete. `persistence/collection_repository.py` owns the tree and its membership,
+`services/collection_service.py` owns what a legal tree is, `models/collection.py` gained
+`AddResult` and `SubtreeSummary`, and `LibraryService.references_for` has its real body. Both are
+in the DI container. The pane that will show any of it is ORG-09.
+
+**DEC-011's warning answers something for the first time in the project's history.** A track filed
+in a Collection now makes the refresh preview say so, applying it without confirmation is refused,
+and confirming deletes the track and its entry while the Collection itself survives. Tested end to
+end through the real import and the real refresh, not through the seam alone. LIBRARY-08's bet paid
+off exactly as written: one method body changed, and no caller moved.
+
+**`references_for` needed the collection repository, and it is a required argument.** An optional
+one with a `None` default would let a mis-wired service answer "nothing references these" and wave
+a deletion through — a silent zero where the whole point is a warning. A missing argument is a loud
+failure at construction, so four construction sites were updated rather than one default added.
+
+**A bug found by reading the code before running it.** The first `move` parked a node by setting
+its `parent_id` to `NULL`, which put it in the top-level sibling list while the top-level list was
+being renumbered — a same-parent move to position 0 left a gap at 1. Parking it at a position past
+the end of any real list instead is correct for both cases. The mutation run then showed the
+same-parent branch was no longer needed *for contiguity*, so its docstring now says what it does
+decide: a position-less move to the parent a node already has leaves it where it is, rather than
+appending it to the end of its own siblings.
+
+**Reordering is arithmetic, and that is ORG-01's decision paying off.** Moving an entry shifts only
+the rows between its old and new position — two `UPDATE`s, whatever the size of the Collection —
+which is possible only because ORG-01 declined a unique index on `(collection_id, position)`: two
+rows briefly share a position mid-shift. Measured on a 5,000-entry Collection: **0.20 ms** to move
+the first entry to last, and the same back. A renumbering loop would have been 5,000 statements.
+Removal is the one case that cannot be arithmetic — several holes open at once — so it renumbers
+with one windowed `UPDATE` rather than a Python loop.
+
+**What a cascade leaves behind is documented rather than papered over.** A refresh deletes tracks
+in SQL, and `m0009`'s cascade removes their entries with no Python involved and therefore no
+renumbering: a Collection can be left holding entries at 0 and 2. That is harmless — order is read
+with `ORDER BY position` — and the next mutation closes it. Four tests pin exactly that, because
+the alternative is teaching the refresh about Collections for no gain.
+
+**The mutation run found five gaps: three missing tests and two pieces of code that could not
+fail.**
+
+- *One Collection holding several doomed tracks* was never tested, so counting a Collection once
+  per track it held passed everything. That is the arithmetic DEC-011's sentence depends on.
+- *A summary naming tracks it was only asked about* passed too, because every test removed exactly
+  the tracks that were filed. Now two are removed and one is filed.
+- *The depth cap on create was checked twice* — in the service and in `Collection` itself. Deleting
+  the service's copy changed nothing, so it went; the model is the one place that carries the rule.
+- *`references_for` had two unreachable guards*: an early return for an empty request, and a
+  "found nothing" shortcut. Both were deleted with every test still passing, because the repository
+  already answers an empty ask without a query and an all-zero summary already equals
+  `NO_REFERENCES`. A guard that cannot fail is not a guard, it is a second place to be wrong.
+- *The `list()` that consumes a caller's generator* was only proven by the repository's habit of
+  consuming it downstream. It now has a test that hands the service a repository reading nothing,
+  which is the service's own contract rather than a collaborator's.
+
+**Measured at the acceptance scale** — 50,000 tracks, 200 nodes in a tree eight deep, a 5,000-entry
+Collection: the whole tree in **one query, 1.24 ms**; a folder's children **0.16 ms**; a subtree
+summary **0.64 ms**; a 100-entry window **0.31 ms**; entry and distinct-track counts together
+**0.71 ms**; `references_for` over 1,000 doomed tracks **1.47 ms** (**0.32 ms** when none are
+filed); and deleting a 200-node subtree **11 ms**, with all 50,000 tracks still present afterwards.
+
+**Guards: 26 of 26 fail when the thing they protect is broken.** Contiguity, in eight ways: a
+same-parent move through the reparenting path, an old parent not closed up, a new parent making no
+room, a deleted sibling leaving a hole, removed entries leaving holes, an insert not making room,
+and both reorders shifting the wrong way. Depth: a child not inheriting its parent's, a moved
+subtree keeping its old depths, and the cap unenforced. Duplicates: `add` not skipping, `add` not
+reporting what it skipped, `insert_at` refusing a deliberate duplicate, and a distinct count
+counting entries. The tree rules: anything as a parent, a node into its own subtree, a node into
+itself, the depth check against the node rather than the subtree, a smart collection handed rows,
+and a delete preview reporting the wrong thing. And the DEC-011 answer: back to zero, a Collection
+counted once per track, tracks reported that were only asked about, the collection count counting
+the wrong list, and an unconsumed generator.
+
+**Verification**: `python -m pytest src/tests/unit` — 3717 passed, 45 skipped (109 of them new);
+`python -m pytest src/tests/integration src/tests/regression` — 350 passed, 13 skipped;
+`ruff check src/` and `ruff format --check src/` clean; `python scripts/check_no_qt_in_core.py`,
+`check_desktop_version_coupling.py` and the engine health smoke all OK. Three failures in
+`test_code_quality_step_5_7.py` are unrelated to this step: they assert `.pre-commit-config.yaml`
+mentions black, isort and flake8, and that file was rewritten to use ruff outside this work.
+
+No renderer, Electron or engine-API file was touched. The measurements are ad-hoc; ORG-13 owns the
+recorded scale numbers.
 
 ---
 

@@ -51,6 +51,7 @@ _ALLOWED = {
     # database; they do not query it.
     "services/metadata_service.py",
     "services/tag_service.py",
+    "services/collection_service.py",
 }
 _ALLOWED_PREFIXES = ("persistence/", "migrations/")
 

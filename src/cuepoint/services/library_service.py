@@ -22,7 +22,7 @@ from typing import Iterable, List, Optional
 
 from cuepoint.models.filter_rule import Facet, FacetRange, RuleSet, field_spec
 from cuepoint.models.library_track import LibraryTrack, QueueTrack
-from cuepoint.models.references import NO_REFERENCES, ReferenceSummary
+from cuepoint.models.references import ReferenceSummary
 from cuepoint.persistence.track_query import (
     BROWSE_LIMIT_DEFAULT,
     DEFAULT_SORT,
@@ -31,7 +31,11 @@ from cuepoint.persistence.track_query import (
     clamp_limit,
     clamp_offset,
 )
-from cuepoint.services.interfaces import ILibraryService, ITrackRepository
+from cuepoint.services.interfaces import (
+    ICollectionRepository,
+    ILibraryService,
+    ITrackRepository,
+)
 
 
 @dataclass(frozen=True)
@@ -97,8 +101,22 @@ class LibraryBrowseResult:
 class LibraryService(ILibraryService):
     """Read access to the persistent library."""
 
-    def __init__(self, track_repository: ITrackRepository) -> None:
+    def __init__(
+        self,
+        track_repository: ITrackRepository,
+        collection_repository: ICollectionRepository,
+    ) -> None:
+        """Wire the library to the tracks it reads and the Collections that hold them.
+
+        ``collection_repository`` has no default on purpose. It is only used by
+        :meth:`references_for`, which is what stands between a refresh and
+        deleting tracks a user has filed somewhere (DEC-011) — and a default
+        would let a mis-wired service answer "nothing references these" and
+        wave that deletion through. A missing argument is a loud failure at
+        construction; a silent zero is data loss.
+        """
         self._tracks = track_repository
+        self._collections = collection_repository
 
     def get_track(self, track_id: int) -> Optional[LibraryTrack]:
         """Return a track by its library id, or None."""
@@ -336,8 +354,21 @@ class LibraryService(ILibraryService):
         later, and because a caller that already consults it needs no change
         when the answer becomes interesting.
 
-        Phase 6 replaces the body — this signature, this return type, and every
-        existing caller stay as they are.
+        **ORG-04 replaced the body, and nothing else.** The signature, the
+        return type and every caller are as LIBRARY-08 wrote them, which was the
+        whole point of building the seam before there was anything to find.
+
+        The counts are of *referencing things*, not of references: a Collection
+        holding three of the doomed tracks is one Collection a user would find
+        changed, and a track filed in two Collections twice over is one track
+        that is referenced. Sets stay zero until Phase 10.
+
+        There is no early return for an empty request, and no special case for
+        "found nothing". Both were written and both were removed: a mutation
+        run showed each could be deleted with every test still passing, because
+        the repository already answers an empty ask without a query and an
+        all-zero summary already equals :data:`NO_REFERENCES`. A guard that
+        cannot fail is not a guard, it is a second place to be wrong.
 
         Args:
             track_ids: Library ids of the tracks about to be deleted. An empty
@@ -346,8 +377,12 @@ class LibraryService(ILibraryService):
         Returns:
             A :class:`~cuepoint.models.references.ReferenceSummary`.
         """
-        # Consumed rather than ignored: a caller passing a generator should not
-        # find it silently untouched when this starts doing work, and passing
-        # something unconsumable should fail here rather than in Phase 6.
-        list(track_ids)
-        return NO_REFERENCES
+        # Consumed rather than ignored: a caller passing a generator must not
+        # find it silently untouched.
+        wanted = list(track_ids)
+        collection_ids, referenced = self._collections.references_for(wanted)
+        return ReferenceSummary(
+            collection_count=len(collection_ids),
+            set_count=0,
+            referenced_track_ids=tuple(referenced),
+        )

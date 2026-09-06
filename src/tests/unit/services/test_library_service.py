@@ -14,6 +14,7 @@ from __future__ import annotations
 import pytest
 
 from cuepoint.models.library_track import LibraryTrack
+from cuepoint.persistence.collection_repository import CollectionRepository
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.interfaces import (
@@ -26,16 +27,23 @@ from cuepoint.services.migration_runner import MigrationRunner
 
 
 @pytest.fixture
-def repo(tmp_path):
+def db(tmp_path):
     service = DatabaseService(db_path=tmp_path / "cuepoint.db")
     MigrationRunner(service).migrate()
-    yield TrackRepository(service)
+    yield service
     service.close_all()
 
 
 @pytest.fixture
-def library(repo) -> LibraryService:
-    return LibraryService(track_repository=repo)
+def repo(db):
+    return TrackRepository(db)
+
+
+@pytest.fixture
+def library(db, repo) -> LibraryService:
+    return LibraryService(
+        track_repository=repo, collection_repository=CollectionRepository(db)
+    )
 
 
 def _track(track_id: str = "1", **kwargs) -> LibraryTrack:

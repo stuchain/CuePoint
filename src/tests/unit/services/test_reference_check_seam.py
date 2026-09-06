@@ -25,6 +25,7 @@ import pytest
 from cuepoint.models.references import NO_REFERENCES, ReferenceSummary
 from cuepoint.persistence.library_source_repository import LibrarySourceRepository
 from cuepoint.persistence.playlist_repository import PlaylistRepository
+from cuepoint.persistence.collection_repository import CollectionRepository
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.interfaces import ILibraryService
@@ -68,7 +69,10 @@ def db(tmp_path):
 
 @pytest.fixture
 def library(db):
-    return LibraryService(track_repository=TrackRepository(db))
+    return LibraryService(
+        track_repository=TrackRepository(db),
+        collection_repository=CollectionRepository(db),
+    )
 
 
 @pytest.mark.unit
@@ -86,6 +90,51 @@ class TestTheSeamAnswersToday:
     def test_it_answers_zero_for_ids_that_do_not_exist(self, library):
         """Zero because nothing can reference anything, not because they are gone."""
         assert library.references_for([424242]).has_references is False
+
+    def test_an_empty_request_asks_the_database_nothing(self, db, library):
+        """The early return, which is otherwise indistinguishable.
+
+        Answering the shared zero without a query is what makes the common
+        refresh — one that removes nothing — free rather than merely fast. Both
+        paths return the same value, so only the absence of a statement says
+        which one ran.
+        """
+        connection = db.connect()
+        statements = []
+        connection.set_trace_callback(statements.append)
+        try:
+            library.references_for([])
+        finally:
+            connection.set_trace_callback(None)
+        assert statements == []
+
+    def test_the_generator_is_read_here_not_downstream(self, db):
+        """The service's own contract, not the repository's habit.
+
+        ``references_for`` reads what it is given before delegating. Today the
+        repository would consume the generator anyway, which means a test going
+        through the real one passes whether the service does this or not — so
+        this one hands it a repository that reads nothing and asserts the
+        generator was still consumed.
+        """
+
+        class ReadsNothing:
+            def references_for(self, track_ids):
+                return [], []
+
+        service = LibraryService(
+            track_repository=TrackRepository(db),
+            collection_repository=ReadsNothing(),  # type: ignore[arg-type]
+        )
+        consumed = []
+
+        def ids():
+            for value in (1, 2, 3):
+                consumed.append(value)
+                yield value
+
+        service.references_for(ids())
+        assert consumed == [1, 2, 3]
 
     def test_it_accepts_a_generator(self, library):
         """A caller streaming ids must not have them silently ignored."""
@@ -200,7 +249,7 @@ class TestTheDiffCarriesTheSummary:
         assert diff.removed.count == 0
         assert diff.references is not None
 
-    def test_the_seam_is_asked_about_the_removed_tracks(self, service, tmp_path):
+    def test_the_seam_is_asked_about_the_removed_tracks(self, service, db, tmp_path):
         """Only removals: a changed or re-linked track keeps everything."""
         asked = []
 
@@ -209,7 +258,10 @@ class TestTheDiffCarriesTheSummary:
                 asked.append(list(track_ids))
                 return NO_REFERENCES
 
-        service._library = Recording(track_repository=service._tracks)
+        service._library = Recording(
+            track_repository=service._tracks,
+            collection_repository=CollectionRepository(db),
+        )
         service.import_rekordbox_xml(self._export(tmp_path, [1, 2, 3], "a.xml"))
         removed_id = service._tracks.find_by_rekordbox_id("3").id
 

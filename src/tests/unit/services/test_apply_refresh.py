@@ -25,6 +25,7 @@ import pytest
 from cuepoint.exceptions.cuepoint_exceptions import DatabaseError, ValidationError
 from cuepoint.models.references import NO_REFERENCES, ReferenceSummary
 from cuepoint.persistence.activity_repository import ActivityRepository
+from cuepoint.persistence.collection_repository import CollectionRepository
 from cuepoint.persistence.library_source_repository import LibrarySourceRepository
 from cuepoint.persistence.playlist_repository import PlaylistRepository
 from cuepoint.persistence.track_repository import TrackRepository
@@ -482,7 +483,11 @@ class TestTheApplyAsksTheSeam:
                 return NO_REFERENCES
 
         service = LibraryImportService(
-            tracks, playlists, sources, db, library_service=Recording(tracks)
+            tracks,
+            playlists,
+            sources,
+            db,
+            library_service=Recording(tracks, CollectionRepository(db)),
         )
         doomed = sorted(tracks.find_by_rekordbox_id(rid).id for rid in ("2", "3"))
         edited = write_export(
@@ -525,7 +530,11 @@ class TestTheApplyAsksTheSeam:
                 return NO_REFERENCES
 
         service = LibraryImportService(
-            tracks, playlists, sources, db, library_service=Looking(tracks)
+            tracks,
+            playlists,
+            sources,
+            db,
+            library_service=Looking(tracks, CollectionRepository(db)),
         )
         edited = write_export(
             tmp_path, [track_xml("1", "/m/one.mp3", "One", "A")], name="edited.xml"
@@ -552,7 +561,11 @@ class TestTheApplyAsksTheSeam:
                 return NO_REFERENCES
 
         service = LibraryImportService(
-            tracks, playlists, sources, db, library_service=Recording(tracks)
+            tracks,
+            playlists,
+            sources,
+            db,
+            library_service=Recording(tracks, CollectionRepository(db)),
         )
         diff = service.compute_refresh_diff(imported)
         asked.clear()  # LIBRARY-07's preview asks too; this is about the apply.
@@ -581,7 +594,11 @@ class TestTheApplyAsksTheSeam:
                 )
 
         service = LibraryImportService(
-            tracks, playlists, sources, db, library_service=Holding(tracks)
+            tracks,
+            playlists,
+            sources,
+            db,
+            library_service=Holding(tracks, CollectionRepository(db)),
         )
         edited = write_export(
             tmp_path, [track_xml("1", "/m/one.mp3", "One", "A")], name="edited.xml"
@@ -609,7 +626,11 @@ class TestTheApplyAsksTheSeam:
                 )
 
         service = LibraryImportService(
-            tracks, playlists, sources, db, library_service=Holding(tracks)
+            tracks,
+            playlists,
+            sources,
+            db,
+            library_service=Holding(tracks, CollectionRepository(db)),
         )
         edited = write_export(
             tmp_path, [track_xml("1", "/m/one.mp3", "One", "A")], name="edited.xml"

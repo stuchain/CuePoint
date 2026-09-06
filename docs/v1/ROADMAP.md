@@ -9,8 +9,8 @@ implemented and the phase-level acceptance is met in a packaged build. Phase 5's
 specified in `PHASE5_PLAYER.md` (PLAYER-01…PLAYER-12), unblocked by Decision Round 7
 (DEC-049…DEC-056), and all of them are implemented; the phase is not complete, and what is left is
 non-code (see below). Phase 6's thirteen steps are specified in `PHASE6_ORG.md`
-(ORG-01…ORG-13), unblocked by Decision Round 8 (DEC-057…DEC-064); ORG-01, ORG-02 and ORG-03
-are implemented and the other ten are not.
+(ORG-01…ORG-13), unblocked by Decision Round 8 (DEC-057…DEC-064); ORG-01 through ORG-04 are
+implemented and the other nine are not.
 Audio-analysis scope is the one remaining deferred item, to be resolved before the phase it affects
 starts; crossfade was resolved by DEC-056 in Round 7, and Smart Collection export/duplication by
 DEC-061 in Round 8. This roadmap shows the shape of what's ahead; it is not a commitment to
@@ -187,9 +187,10 @@ batch id, because DEC-008 promised revert instead of an undo stack (DEC-063). An
 phase writes outside the database — no audio-file tags, no Rekordbox XML (DEC-064).
 
 This is also the phase that makes `references_for()` answer: DEC-011's warning before a refresh
-deletes a track has returned zero since Phase 3 because nothing could reference a track yet.
+deletes a track had returned zero since Phase 3 because nothing could reference a track yet.
+ORG-04 changed that — one method body, no callers moved.
 
-Step specifications: `PHASE6_ORG.md` (ORG-01…ORG-13; ORG-01, ORG-02 and ORG-03 implemented).
+Step specifications: `PHASE6_ORG.md` (ORG-01…ORG-13; ORG-01 through ORG-04 implemented).
 
 ## Phase 7 — Clean / Beatport (CLEAN-01 … CLEAN-13)
 
