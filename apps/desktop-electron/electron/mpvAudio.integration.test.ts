@@ -110,11 +110,24 @@ describeWithMpv("the bundled player's audio output", () => {
     expect(MPV_RESAMPLER_ARGS).toContain("--audio-resample-filter-size=32");
   });
 
-  it("has no SoX resampler, which is why one is not asked for", async () => {
-    // The assertion is inverted on purpose. If a future bundled build gains
-    // libsoxr this fails, and the resampler choice gets made again with the
-    // evidence in front of whoever is making it — rather than staying at
-    // second best for ever because nobody rechecked.
+  it("has the SoX resampler on exactly the platforms it is known to", async () => {
+    // Originally asserted, flatly, that libsoxr is absent — true of the Windows
+    // build this phase was developed on, and the assertion was inverted on
+    // purpose so that a build which *gained* it would fail here and force the
+    // resampler choice to be made again with the evidence in front of whoever
+    // was making it.
+    //
+    // The first macOS run of Phase 5 duly failed it. The macOS build *does*
+    // carry libsoxr: `resampler=soxr` plays to `eof` there and errors on
+    // Windows. That alarm has now been heard and recorded (PHASE5_PLAYER.md,
+    // macOS pass), and DEC-055's premise — "the bundled build has no SoX
+    // resampler" — is true on one platform and false on the other, which is an
+    // open decision rather than a bug.
+    //
+    // So the assertion becomes what is actually known per platform, and keeps
+    // its original job: it fails again if Windows gains libsoxr, or if macOS
+    // loses it, either of which changes the decision's footing.
+    const soxrExpected = process.platform === "darwin";
     const player = makePlayer([
       "--ao=null",
       "--audio-samplerate=96000",
@@ -126,7 +139,7 @@ describeWithMpv("the bundled player's audio output", () => {
     await player.play(fixture("tone.flac"));
 
     await waitFor(() => ended.length > 0);
-    expect(ended[0]!.reason).toBe("error");
+    expect(ended[0]!.reason).toBe(soxrExpected ? "eof" : "error");
   });
 
   it("keeps the user's choice after the player is restarted", async () => {
