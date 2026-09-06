@@ -1,9 +1,9 @@
 # CuePoint v1.0.0 — Phase 6: Organization, Detailed Step Specifications
 
-Status: **Specified, none of it implemented.** ORG-01…ORG-13 below are the step inventory the
-roadmap has carried as a placeholder since Phase 0. Per the process, no implementation happens from
-this document — each step needs an explicit "Implement ORG-NN" instruction, scoped to exactly that
-step, and its outcome is recorded under the step afterwards.
+Status: **ORG-01 implemented; ORG-02…ORG-13 specified, not implemented.** The thirteen steps below
+are the inventory the roadmap has carried as a placeholder since Phase 0. Per the process, no
+implementation happens from this document — each step needs an explicit "Implement ORG-NN"
+instruction, scoped to exactly that step, and its outcome is recorded under the step afterwards.
 
 Depends on Phase 1 (`PHASE1_FOUNDATION.md`), Phase 2 (`PHASE2_SHELL.md`), Phase 3
 (`PHASE3_LIBRARY.md`) and Phase 4 (`PHASE4_LIBUI.md`), all complete, and on Phase 5
@@ -188,7 +188,7 @@ than a silent no-op.
 
 ---
 
-## ORG-01 — The Organizational Schema
+## ORG-01 — The Organizational Schema ✅ IMPLEMENTED 2026-09-06
 
 **Objective**: One migration that lands every table this phase needs, plus the domain models over
 them. Nothing behaves yet.
@@ -265,6 +265,74 @@ questioned later — the sibling table and the non-unique position index — are
 than assumed.
 
 **Complexity**: **M**
+
+### ✅ IMPLEMENTED 2026-09-06
+
+**Outcome**: Complete. `migrations/m0009_organization.py` creates five tables and adds one column;
+`models/track_metadata.py`, `models/tag.py` and `models/collection.py` are the types over them.
+Nothing reads or writes any of it yet, which is the step as specified.
+
+**The sibling table was the right call, and the reason got sharper on contact with the code.** The
+spec argued it from `TrackRepository._UPDATE_SQL` writing every column. Reading the surrounding
+code confirmed something the spec had not: `activity_service.apply_field_change` and
+`revert_field_change` both work by `setattr` on a `LibraryTrack` followed by
+`TrackRepository.update`, gated on `REVERTABLE_FIELDS`. So columns on `tracks` would have made
+CuePoint's own values reachable by *three* code paths that rewrite a track from an import-shaped
+object, not one. In a sibling table none of them can reach it, and cross-cutting fact 6 stands as
+written: CuePoint fields are deliberately not added to `REVERTABLE_FIELDS`, and ORG-02 gives them
+their own write path.
+
+**Four indexes were written, then removed before the step landed.** The first draft indexed
+`track_metadata.favorite`, `track_metadata.rating`, `tags.category` and `track_history.batch_id` —
+every one of them an index for a query that does not exist yet, which is exactly what LIBUI-01
+built, measured and deleted, and exactly what this phase's own ORG-05 spec says not to do. They are
+gone. What remains is on columns that *reference another table*, where the justification is
+structural rather than speculative: SQLite scans the whole child table on a parent delete unless
+the referencing column is indexed, so those five indexes are what make this migration's cascades
+affordable. Two tests hold the line — one naming the four that must not come back, one asserting
+that every index present is on a referencing column or is the unique constraint on tag names.
+
+**The models are mutable dataclasses, not frozen ones.** The spec said "frozen dataclasses with
+`from_row`, matching `LibraryTrack` and `RekordboxPlaylist`" — and those two are not frozen; they
+carry `touch()`. The existing convention won over the spec's own sentence, so `TrackMetadata` and
+`Collection` have `touch()` and behave like every other persisted entity in the repository.
+Corrected here rather than left as two conventions.
+
+**One invariant is enforced in the model in one direction only.** A `smart` node without rules is
+refused and a `folder` with rules is refused; a `collection` carrying rules is left legal. That is
+the same asymmetry the migration gives for not writing a CHECK — a frozen Collection remembering
+the rules it came from is a plausible future, and the model is the layer where that can change
+without rebuilding a table full of user data.
+
+**`frozen_from_id` is deliberately not a foreign key.** DEC-061 makes a freeze a copy, not a link:
+the frozen Collection has to outlive the Smart Collection it came from, so a cascade — or even a
+`SET NULL` — would make the provenance depend on the disappearance it exists to survive. A test
+deletes the source and asserts the record stands.
+
+**Guards: 26 of 26 fail when the thing they protect is broken.** Each was mutated in the source,
+the suite was run, and the mutation was reverted: four cascades removed, the `kind` CHECK removed,
+the membership index made unique, duplicate membership forbidden, tag-name uniqueness removed, its
+collation removed, the `track_tags` primary key loosened, the `batch_id` column not added,
+`frozen_from_id` made a cascading foreign key, a speculative index reintroduced, a referencing
+column's index redirected, ratings clamped instead of refused, a boolean accepted as a rating,
+an empty note stored as `""`, the note cap removed, tag names case-folded, empty tag names
+accepted, a smart collection without rules accepted, a folder with rules accepted, the depth cap
+removed, negative coordinates accepted, unnamed nodes accepted, and the model's `kind` vocabulary
+left unvalidated. Every one produced a failure.
+
+**Verification**: `python -m pytest src/tests/unit` — 3427 passed, 45 skipped (104 of them new);
+`python -m pytest src/tests/integration src/tests/regression` — 350 passed, 13 skipped;
+`ruff check src/` and `ruff format --check src/` clean; `python scripts/check_no_qt_in_core.py` OK;
+`python scripts/check_desktop_version_coupling.py` OK; `PYTHONPATH=src python
+scripts/smoke_engine_health.py` OK. `mypy src/` reports the same 1,413 pre-existing errors, 1,032
+of which are the unresolved-import noise that already affects every module importing
+`cuepoint.models.library_track`; the six lines naming the new files are that same noise and not
+type errors. The packaged-sidecar test that enumerates migration modules
+(`test_engine_sidecar_imports.py`) covers `m0009` through the existing
+`collect_submodules("cuepoint.migrations")`, so nothing in `build/engine-sidecar.spec` changed.
+
+No renderer, Electron or engine-API file was touched, so the desktop-contract and renderer gates
+were not run — there is nothing in this step for them to check.
 
 ---
 
