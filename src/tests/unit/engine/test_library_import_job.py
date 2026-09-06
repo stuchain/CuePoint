@@ -292,6 +292,42 @@ class TestFailures:
         assert (tracks, source) == (0, None)
 
 
+class _CancelsOnTrack(Job):
+    """A job that asks to stop at a known track, not after a wall-clock delay.
+
+    The original test slept 50 ms on a second thread and assumed the import was
+    still running. It is not on fast hardware: a 4,000-track import finishes in
+    about 50 ms on an Apple M5, so the job reached SUCCEEDED before the cancel
+    landed and the test failed for a reason that had nothing to do with
+    cancellation — the first macOS run of Phase 5 found it this way.
+
+    ``should_cancel`` is called once per track (``_observed_tracks``), so
+    flipping the flag on the Nth call cancels after N-ish tracks on every
+    machine, however fast. That is the same moment the sleep was aiming at,
+    expressed in the work rather than in time.
+    """
+
+    #: Comfortably inside the track pass: past the two pre-flight checks, and
+    #: far enough in that a rollback has something to undo.
+    cancel_on_check = 500
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        self._checks = 0
+        self._cancel = False
+        super().__init__(*args, **kwargs)  # type: ignore[arg-type]
+
+    @property
+    def cancel_requested(self) -> bool:
+        if not self._cancel:
+            self._checks += 1
+            self._cancel = self._checks >= self.cancel_on_check
+        return self._cancel
+
+    @cancel_requested.setter
+    def cancel_requested(self, value: bool) -> None:
+        self._cancel = bool(value)
+
+
 @pytest.mark.unit
 class TestCancellation:
     """The step's stated risk: cancelling mid-write."""
@@ -305,17 +341,17 @@ class TestCancellation:
         undoes every track the import had written so far.
         """
         export = write_export(tmp_path, 4000)
-        job = Job(id="cancel-me", type=JOB_TYPE_LIBRARY_IMPORT)
+        job = _CancelsOnTrack(id="cancel-me", type=JOB_TYPE_LIBRARY_IMPORT)
 
-        def cancel_after_a_while() -> None:
-            time.sleep(0.05)
-            job.cancel_requested = True
-
-        threading.Thread(target=cancel_after_a_while, daemon=True).start()
         run_library_import_job(job, store, export)
 
         assert job.state is JobState.CANCELLED
         assert job.error["code"] == "JOB_CANCELLED"
+        # Proves the cancel landed *inside* the track pass rather than before
+        # it: hundreds of tracks were read and written, and the rollback below
+        # is what undid them.
+        assert "after reading" in job.error["message"]
+        assert int(job.error["message"].split("after reading ")[1].split()[0]) > 100
         tracks, nodes, source = counts()
         assert (tracks, nodes, source) == (0, 0, None)
 
