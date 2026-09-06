@@ -286,15 +286,21 @@ test.describe("Library refresh from the renderer (LIBRARY-10)", () => {
     try {
       const window = await ready(app);
       // Large enough that the strip's two-second discovery poll finds it while
-      // it is still running.
+      // it is still running (`JOB_POLL_MS`). 60,000 was sized on a Windows
+      // machine; an M5 reads that export in well under the poll interval, so
+      // the preview started and finished between two polls and the strip never
+      // saw it. The verb itself is covered deterministically by
+      // `useActiveJob.test.ts` — what only this test shows is that a real
+      // refresh job reaches the strip, which needs it to outlive one poll on
+      // the fastest machine we know of.
       const big = writeExport(
         workspace,
-        Array.from({ length: 60_000 }, (_unused, i) => i),
+        Array.from({ length: 250_000 }, (_unused, i) => i),
         "big.xml",
       );
       await importLibrary(window, big);
 
-      // `force`, so the preview actually reads the 60,000-track export.
+      // `force`, so the preview actually reads the whole export.
       // LIBRARY-12's fast path answers an untouched file in microseconds — long
       // over before the strip's two-second discovery poll could ever see it.
       await window.evaluate(() =>

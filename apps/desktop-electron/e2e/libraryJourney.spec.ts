@@ -238,9 +238,14 @@ test.describe("Phase 3 end to end (LIBRARY-12)", () => {
       // The status strip reports library work from anywhere in the app, so this
       // is asserted from a different page than the one that started it.
       await window.getByRole("link", { name: "Tools" }).click();
+      // Large enough to outlive the strip's two-second discovery poll
+      // (`JOB_POLL_MS`) on the fastest machine we know of. 60,000 was sized on
+      // Windows and an M5 imports it between two polls, so the strip never saw
+      // the job — the first macOS run of Phase 5 failed here, as it did in
+      // `libraryImport.spec.ts` and `libraryRefresh.spec.ts`.
       const big = writeExport(
         workspace,
-        plain(Array.from({ length: 60_000 }, (_unused, i) => i + 1)),
+        plain(Array.from({ length: 250_000 }, (_unused, i) => i + 1)),
         "big.xml",
       );
       await window.evaluate(

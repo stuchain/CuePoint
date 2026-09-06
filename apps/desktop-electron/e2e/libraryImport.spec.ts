@@ -167,8 +167,15 @@ test.describe("Library import from the renderer (LIBRARY-06)", () => {
     try {
       const window = await ready(app);
       // Large enough that the strip's two-second discovery poll finds it while
-      // it is still running.
-      const xmlPath = writeExport(workspace, 60_000, "big.xml");
+      // it is still running (`JOB_POLL_MS`). 60,000 was sized on a Windows
+      // machine and is not enough: an M5 imports that in well under the poll
+      // interval, so the job began and finished between two polls, the strip
+      // never saw it, and the first macOS run of Phase 5 failed here. The label
+      // itself is covered deterministically by `useActiveJob.test.ts`; what
+      // only this test can show is that a real engine job reaches the strip at
+      // all, and for that the job has to outlive a poll on the fastest machine
+      // we know of.
+      const xmlPath = writeExport(workspace, 250_000, "big.xml");
 
       await window.evaluate(
         (file) => window.cuepoint!.startLibraryImport!({ xml_path: file }),
