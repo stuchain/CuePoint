@@ -62,10 +62,22 @@
         "nsis"
       ]
     },
+    "afterPack": "build/signNestedBinaries.cjs",
+    "afterSign": "build/notarize.cjs",
     "mac": {
       "target": [
         "dmg"
-      ]
+      ],
+      "category": "public.app-category.music",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.inherit.plist",
+      "notarize": false,
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "CuePoint does not record audio. macOS asks for this because the bundled mpv player links the system audio frameworks.",
+        "NSAppleEventsUsageDescription": "CuePoint does not script other applications."
+      }
     },
     "linux": {
       "target": [

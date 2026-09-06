@@ -71,6 +71,12 @@ Thumbs.db
 # Build artifacts
 dist/
 build/
+# ...except electron-builder's buildResources directory, which holds signing
+# inputs (entitlements, the afterPack/afterSign hooks) rather than build output.
+# package.json's mac config points at these, so a checkout without them cannot
+# package macOS at all.
+!apps/desktop-electron/build/
+!apps/desktop-electron/build/**
 *.dmg
 *.pkg
 *.exe
