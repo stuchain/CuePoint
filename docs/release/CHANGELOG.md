@@ -37,6 +37,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   status chrome off-screen as those are added
 
 ### Fixed
+- On macOS your keyboard's media keys did nothing, and CuePoint never said why.
+  macOS only hands the play, next and previous keys to an app the user has
+  allowed under Privacy & Security → Accessibility, and until then it refuses
+  them in a way that is indistinguishable from another app already owning them
+  — so CuePoint treated a permission it had never asked for as somebody else's
+  key and stayed quiet. It now asks once, picks the permission up as soon as it
+  is granted without needing a restart, and says plainly when the keys are not
+  available instead of leaving you pressing a dead one
+- macOS builds could not be signed, and so could not be notarized or
+  distributed. The bundled mpv player arrives from upstream with empty
+  `.gitkeep` placeholders and their AppleDouble companions inside its
+  `Contents/MacOS` directory; macOS treats everything there as code, so
+  `codesign` refused the whole player bundle with "code object is not signed at
+  all" and the outer app could never be signed around it. The files are now
+  stripped when the player is installed, and the macOS build declares the
+  hardened runtime, entitlements and signing hooks that notarization requires
+- Packaging on macOS failed on a clean build. The freshly built engine sidecar
+  was given ten seconds to answer its health check, but a one-file build has to
+  unpack ~72 MB and import the engine before it can listen, which measured over
+  that on the first run after packaging and about eight seconds on later ones.
+  The build broke on exactly the run that mattered and passed on every re-run;
+  the check now waits long enough to be about liveness rather than latency
 - Installed builds of CuePoint shipped without the engine that does the work.
   The packaging step looked for it under a directory name the build never
   produced, and packaging treats a missing file as a warning rather than an

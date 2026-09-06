@@ -1,8 +1,16 @@
 # CuePoint v1.0.0 — Phase 5: Player, Detailed Step Specifications
 
-Status: **All twelve steps are implemented** (outcomes recorded under each step). The phase is
-**not complete**: the macOS pass below has not been run, and DEC-055's hardware acceptance is
-half-done. Nothing here may be called finished until both are recorded rather than asserted. Per the process, no implementation happens from this document — each step needs an
+Status: **All twelve steps are implemented** (outcomes recorded under each step). The macOS pass has
+been run (2026-09-06, recorded under PLAYER-12): **nine of its eleven rows are closed**, the one
+defect it found — media keys never worked on macOS, because nothing asked for the Accessibility
+permission they need — is fixed, and the four tests that assumed slower hardware are fixed with it.
+
+The phase is **not complete**, and the remaining gap is deliberately small and entirely non-code:
+row 2 needs one notarization submission with a Developer ID, rows 6 and 7 need a real audio
+interface to contend for and unplug, and row 9 needs somebody to listen. Each has an automated
+equivalent recorded under PLAYER-12 that exercises everything up to the human or the certificate,
+which is evidence but is **not** the acceptance. DEC-055 also needs amending: its premise that the
+bundled build has no SoX resampler is true on Windows and false on macOS. Per the process, no implementation happens from this document — each step needs an
 explicit "Implement PLAYER-NN" instruction, scoped to exactly that step, and its outcome is
 recorded under the step afterwards.
 
@@ -1311,6 +1319,106 @@ machine, and rows 1–11 of that table are the parts a green Windows run says no
 and row 7 also carry the other half of DEC-055's hardware acceptance. Gapless "by ear" is in the
 same position — measured at 0 ms here, unheard. **Phase 5 is not complete**, and the phase-level
 acceptance below is not claimed.
+
+### macOS pass, first run (2026-09-06)
+
+macOS 26.6.2 (build 25G83), Apple M5 Pro, arm64, Electron 34.5.8, on the `feature` branch.
+**Nine of the eleven rows are closed.** Rows 2, 6, 7 and 9 cannot be *completed* on a machine with
+no Developer ID, no second audio interface and no listener, but each now has an automated
+equivalent that exercises everything except the part that needs a human or a certificate — recorded
+below as an emulation, never as the row itself.
+
+| # | Result |
+| --- | --- |
+| 1 | **Fixed, then passed.** The pinned mpv build had 404'd — mpv publishes only on the rolling `git-release` tag, so pins expire. Re-pinned every target to `v0.41.0-dev-g876ba7b28`. `pack:full` then failed on the engine sidecar's health check (see the timeout fix). After both, a full pack produced an app containing `engine/` and `player/` |
+| 2 | **Emulated; the Apple round trip is still owed.** The whole signing chain runs with an ad-hoc identity: the `afterPack` hook signs 115 nested sidecar binaries inside out, frameworks and helpers and the outer app sign over them, and `codesign --verify --deep --strict` accepts the result. mpv and the engine both carry `flags=0x10002(adhoc,runtime)`, the app declares the JIT entitlements, and the signed bundle **launches and starts its sidecar under the hardened runtime** — the thing most likely to break a signed Electron app. What is untested is notarization itself: no submission has been made |
+| 3 | **Passed.** WAV, FLAC, AIFF and ALAC decode at 44100 Hz with RMS 11600; MP3 is deliberately non-tonal. 7 decoders, 5 options |
+| 4 | **Passed.** The 33 real-mpv integration tests that skip without a binary ran here for the first time — unix socket rather than named pipe — covering play, pause, seek, volume, queue advance, repeat, shuffle, reorder and end of queue. `playback.spec.ts` covers double-click → bar → queue → next/previous → reorder |
+| 5 | **Passed.** Both "leaves no process behind" integration tests run against real mpv here, and quitting the packaged app left no `mpv` and no `cuepoint-engine` |
+| 6 | **Emulated; hog mode on real hardware is still owed.** Three new integration tests drive the real binary through PLAYER-11's fallback ladder. With exclusive output and a dead device set, rung 1 drops exclusive with its notice, rung 2 drops the device, playback continues, and the user's own settings are left untouched while `activeExclusive`/`activeDevice` tell the truth. What no harness can show is hog mode *succeeding* on a real interface |
+| 7 | **Emulated; the physical unplug is still owed.** A device mpv accepts and then cannot open is what an unplugged interface produces, and the second new test asserts the fall back to the system default, the notice, the same track retried rather than skipped, and the chosen device remembered for when it returns |
+| 8 | **Failed, then fixed.** See below — the one real defect the pass found |
+| 9 | **Measured; the listening is still owed.** A new integration test renders one fixture and then two through real mpv with CuePoint's own gapless and resampler arguments, capturing the PCM the audio output actually received, and asserts the join adds no silence beyond what the file carries itself. It is self-calibrating because `tone.flac` has 63.5 ms of its own trailing silence: a fixed threshold reports a 63.5 ms "gap" on a perfectly gapless join, which is how the first version of this test lied. Measured on macOS: **one sample** added across the boundary |
+| 10 | **Passed.** The full Playwright suite is green — 35 passed, 1 skipped, 0 failed |
+| 11 | **Passed.** `reports unavailable rather than throwing at construction` runs here, and `playback.spec.ts`'s "still runs, and says so, with no player at all" passes |
+
+**Row 8, the defect: media keys never worked on macOS.** A direct probe returned
+`isTrustedAccessibilityClient: false` with `register()` refusing all three accelerators. macOS gates
+global media keys behind the Accessibility permission and, until it is granted, `register` returns
+`false` — the identical answer it gives when another application owns the key. `MediaKeyBinding`
+treated both as "their key, their rules", which is right on Windows and wrong here, so the feature
+was silently dead and nothing said so. Nothing in the codebase asked for the permission or reported
+its absence.
+
+Fixed by giving the binding an injected `MediaKeyPermission` — still Electron-free, so the policy
+stays testable without a window. When the OS has refused, it does not ask the registry at all (which
+is what made the failure indistinguishable), reports `unavailable`, and requests the permission once
+per session rather than on every focus. Granting it in System Settings is picked up on the next
+focus without a restart. The state is surfaced two ways, because a missing permission is durable
+state rather than an event: a one-off toast through PLAYER-10's existing notice channel, held for
+the first renderer since it is decided before any window exists, and a queryable
+`player.mediaKeyStatus` for anything that wants to say so plainly. Eight new unit tests cover the
+gate, including that Windows and Linux — which pass no permission at all — are unaffected.
+
+`playback.spec.ts` asserted all three keys were held, which on macOS asserts a permission a test
+harness will never be granted. It now asserts the keys are held *when the OS allows it* and that
+CuePoint knows the difference otherwise.
+
+**The signing blocker, found and fixed.** PLAYER-01 flagged notarization of a third-party binary as
+this phase's packaging risk. It is real, and it is not about credentials. Upstream's `mpv.app` ships
+two empty `.gitkeep` files inside `Contents/MacOS` and `Contents/MacOS/lib`, each with an AppleDouble
+`._.gitkeep` companion. Everything under `Contents/MacOS` is treated as code, so `codesign` refuses
+the bundle outright:
+
+```
+mpv.app: code object is not signed at all
+In subcomponent: .../Contents/MacOS/._.gitkeep
+```
+
+The nested player could not be signed, and an app whose nested code is unsigned cannot be notarized
+— this would have failed on a release machine with credentials, not here. The four files are now
+stripped at install time, with a regression test that fails on the unfixed code, and
+`scripts/verify_macos_bundle.py` checks a packaged app for exactly this class of problem (detritus,
+unsigned Mach-O images, missing hardened runtime, missing entitlements, deep-strict verification)
+without needing an Apple identity. It was itself verified by re-introducing the two files and
+watching it fail.
+
+**Signing configuration added.** The Electron `mac` target had no `hardenedRuntime`, no entitlements
+and no notarization step — `build-macos.yml` signs and notarizes the legacy PySide6/PyInstaller app,
+not this one, and CI's `npm run dist` on macOS produced an unsigned bundle. Added:
+`build/entitlements.mac.plist` and `build/entitlements.mac.inherit.plist`, an `afterPack` hook that
+signs the bundled mpv and engine inside out (nested code first, since the outer signature has to
+close over it), and an `afterSign` hook that submits to `notarytool` and staples. Both no-op with a
+clear message when no identity or credentials are present, so a credential-less local `pack` and the
+current CI leg keep working. `.gitignore`'s blanket `build/` rule would have silently swallowed all
+four files; it now has an exception for this directory.
+
+**Four tests that assumed slower hardware.** Not macOS defects — they fail on any fast machine, and
+would have failed on a fast CI runner. `test_a_cancel_during_the_track_pass_writes_nothing` slept
+50 ms on a second thread and assumed the import was still running; a 4,000-track import takes about
+50 ms on an M5, so the job succeeded before the cancel landed. It now flips the flag on the 500th
+`should_cancel` call — the same moment expressed in the work rather than in time — and asserts the
+cancel landed mid-write rather than before it. `libraryImport.spec.ts`, `libraryRefresh.spec.ts` and
+`libraryJourney.spec.ts` each wrote a 60,000-track export so the status strip's two-second discovery
+poll would catch the job in flight; here the job began and ended between two polls. The strip's own
+documentation accepts that a job shorter than the interval goes unseen, and the verbs are covered
+deterministically by `useActiveJob.test.ts`, so what these tests uniquely prove is that a real engine
+job reaches the strip at all — which needs a job that outlives one poll. Raised to 250,000 tracks and
+confirmed over repeated runs.
+
+**One difference worth a decision, now recorded rather than failing.** The macOS mpv build carries
+libsoxr; the Windows one does not — `--audio-swresample-o=resampler=soxr` plays to `eof` here and
+errors there. `mpvAudio.integration.test.ts` asserted flatly that libsoxr is absent, inverted on
+purpose so a build that gained it would force the resampler choice to be made again. That alarm has
+now been heard. The assertion became per-platform, keeping its original job — it fails again if
+Windows gains libsoxr or macOS loses it — but **DEC-055's premise, "the bundled build has no SoX
+resampler", is now true on one platform and false on the other, and the decision needs amending
+rather than merely noting.** That is a product decision and is left open deliberately.
+
+**What is still owed, and by whom.** Row 2 needs one `notarytool` submission with a Developer ID.
+Rows 6 and 7 need a real interface to contend for and unplug. Row 9 needs somebody to listen. The
+Windows rows were recorded against the pin that had expired, so they should be re-run against
+`g876ba7b28` — expected to hold, since the archive shapes are unchanged, but not asserted here.
 
 ---
 
