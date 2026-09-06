@@ -224,13 +224,43 @@ test.describe("Phase 5 end to end", () => {
       // The release on blur is unit-tested (`mediaKeys.test.ts`); focus cannot
       // be given away reliably from a test harness, but that the wiring from
       // main to the binding is real can only be seen here.
-      expect(
-        await app.evaluate(({ globalShortcut }) => ({
+      //
+      // macOS gates these behind the Accessibility permission, which a test
+      // harness does not have and cannot grant itself, so `register` refuses
+      // all three. Asserting they are held would assert that the harness has a
+      // permission it will never be given — which is what this test did, and
+      // why it failed on the first macOS run of the phase. What is actually
+      // required is that the keys are held *when the OS allows it*, and that
+      // CuePoint knows the difference rather than silently holding nothing.
+      const keys = await app.evaluate(({ globalShortcut, systemPreferences }) => ({
+        held: {
           playPause: globalShortcut.isRegistered("MediaPlayPause"),
           next: globalShortcut.isRegistered("MediaNextTrack"),
           previous: globalShortcut.isRegistered("MediaPreviousTrack"),
-        })),
-      ).toEqual({ playPause: true, next: true, previous: true });
+        },
+        // `false` on the platforms that gate nothing, so the branch below reads
+        // the same way everywhere.
+        gated:
+          process.platform === "darwin" &&
+          !systemPreferences.isTrustedAccessibilityClient(false),
+      }));
+
+      const status = await win.evaluate(() =>
+        window.cuepoint!.player!.mediaKeyStatus!(),
+      );
+
+      if (keys.gated) {
+        // The permission is missing: nothing may be held, and the app must know
+        // that this is a refusal rather than another application owning the
+        // keys — the distinction it used to lose, leaving the feature silently
+        // dead. Asserted through the status rather than the toast, which is
+        // raised during startup and would be a race to catch.
+        expect(keys.held).toEqual({ playPause: false, next: false, previous: false });
+        expect(status).toBe("unavailable");
+      } else {
+        expect(keys.held).toEqual({ playPause: true, next: true, previous: true });
+        expect(status).toBe("held");
+      }
 
       // --- quit, relaunch: nothing resumes and nothing is remembered --------
       // DEC-014, and the only way to show it is to actually leave and return.
