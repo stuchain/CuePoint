@@ -28,6 +28,18 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   // Escape is not listed again here: "Cancel operation" above is what it
   // means everywhere, and clearing a selection is backing out of one. Two rows
   // would be two meanings for one key, which is the thing SHELL-10 forbids.
+  // The player (PLAYER-12). Space is bare because it is the one key everyone
+  // already tries; the rest are Ctrl-modified because bare arrows belong to the
+  // table and the queue panel, which is where a keyboard user spends their time.
+  { context: "Player", action: "Play or pause", shortcut: "Space" },
+  { context: "Player", action: "Next track", shortcut: "Ctrl+Right" },
+  { context: "Player", action: "Previous track", shortcut: "Ctrl+Left" },
+  { context: "Player", action: "Volume up", shortcut: "Ctrl+Up" },
+  { context: "Player", action: "Volume down", shortcut: "Ctrl+Down" },
+  { context: "Player", action: "Move a queued track", shortcut: "Alt+Up / Alt+Down" },
+  { context: "Player", action: "Remove a queued track", shortcut: "Delete" },
+  // Held only while CuePoint has focus, so the rest of the machine keeps them.
+  { context: "Player", action: "Media keys, while CuePoint is focused", shortcut: "Play/Pause, Next, Previous" },
   { context: "History", action: "Toggle history", shortcut: "Ctrl+H" },
   { context: "Settings", action: "Open settings", shortcut: "Ctrl+," },
 ];

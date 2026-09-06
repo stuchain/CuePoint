@@ -24,7 +24,9 @@ The sidebar lists the pages available to you. Pages that are still being built
 are not shown at all rather than appearing and doing nothing.
 
 **Library** is where your Rekordbox collection lives — see
-[Your library](library.md).
+[Your library](library.md). Double-clicking a track there plays it; the bar
+along the bottom of the window is the player, and it appears the first time you
+play something — see [Playing music](player.md).
 
 Collapse the sidebar with the button at its top, or press **Ctrl+B**. Collapsed,
 it shows icons only; hover any icon to see its name, and screen readers still

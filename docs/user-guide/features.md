@@ -4,7 +4,9 @@
 
 CuePoint offers two tools from the start screen. For the window around them —
 navigation, search, the Track Inspector, the status strip and the keyboard
-shortcuts — see [The CuePoint window](the-window.md).
+shortcuts — see [The CuePoint window](the-window.md). For your collection and
+the player that plays it, see [Your library](library.md) and
+[Playing music](player.md).
 
 CuePoint offers two tools from the start screen:
 

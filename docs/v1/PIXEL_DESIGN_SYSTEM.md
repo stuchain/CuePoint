@@ -89,7 +89,15 @@ sign-off item — table-density readability at small sizes hasn't been formally 
 > (`24px * var(--scale)`), so a grid cell is always a whole number of CSS pixels. Unicode glyphs
 > remain the path for secondary actions per DEC-010. The audit below describes the state before
 > that step. SHELL-09 added the concept icons and LIBUI-07 added `folder` and `playlist`, each on
-> the same terms: an icon is drawn when a screen needs it.
+> the same terms: an icon is drawn when a screen needs it. Phase 5 added the player's:
+> `play`, `pause`, `previous`, `next`, `shuffle`, `repeat`, `repeat-one`, `queue`, `volume` and
+> `volume-muted`.
+>
+> Two of those are worth the note. `repeat-one` is a **separate drawing** rather than `repeat` with
+> a badge — a 12×12 grid has no room for a legible "1" on top of an existing shape, and a badge
+> that reads as a smudge is worse than a second icon. `volume-muted` differs from `volume` by its
+> waves rather than by colour, because the five themes do not agree on what a muted colour is and
+> a state a user has to compare two shades to read is not a state at a glance.
 
 **No pixel sprite/icon assets exist.** `ToolbarIcon.tsx` renders icons as **Unicode glyph text**
 (e.g. `☰`) inside a styled button — not sprite sheets or PNGs. `renderer/src/assets/` contains only

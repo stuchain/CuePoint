@@ -177,6 +177,68 @@ describeWithMpv("a queue playing through real mpv", () => {
     expect(everPlayed.has("fine")).toBe(true);
   });
 
+  it("crosses into the next track without a gap (PLAYER-12, DEC-056)", async () => {
+    // A phase that decided not to crossfade should at least prove it is
+    // gapless. "Gapless" here is measured rather than asserted by shape: the
+    // time between mpv finishing one file and starting the next, with the real
+    // binary and real files.
+    //
+    // The mechanism is what makes it possible at all — the next file is
+    // appended while the current one is still decoding, so mpv walks into it
+    // from its own playlist and never waits for CuePoint. If anything ever
+    // reverted to loading on `end-file`, the round trip through the IPC socket
+    // would show up here as tens of milliseconds.
+    const { player, controller } = makeController();
+    const marks: Array<{ what: string; at: number }> = [];
+    player.onEndFile(() => marks.push({ what: "end", at: Date.now() }));
+    player.onStartFile(() => marks.push({ what: "start", at: Date.now() }));
+
+    await controller.playQueue(
+      [
+        { filePath: fixture("tone.flac"), title: "one" },
+        { filePath: fixture("tone.wav"), title: "two" },
+      ],
+      0,
+    );
+
+    await waitFor(() => controller.queueWindow(0, 1_000).items[1].status === "playing");
+
+    const firstEnd = marks.find((mark) => mark.what === "end");
+    // The second start: the first is the file this test asked for by hand.
+    const secondStart = marks.filter((mark) => mark.what === "start")[1];
+    expect(firstEnd).toBeDefined();
+    expect(secondStart).toBeDefined();
+    // mpv reports both from the same playback loop, so the interval is the
+    // hand-off itself and not a round trip to CuePoint and back.
+    expect(Math.abs(secondStart!.at - firstEnd!.at)).toBeLessThan(120);
+  });
+
+  it("never asks mpv to load the track it already gave it (PLAYER-12)", async () => {
+    // The other half of the same claim, and the one that would still hold if
+    // the machine were too loaded for the timing above to mean anything: the
+    // second track is reached without a second `loadfile … replace`.
+    const { player, controller } = makeController();
+    const loaded: string[] = [];
+    const originalPlay = player.play.bind(player);
+    player.play = async (file: string) => {
+      loaded.push(file);
+      return originalPlay(file);
+    };
+
+    await controller.playQueue(
+      [
+        { filePath: fixture("tone.flac"), title: "one" },
+        { filePath: fixture("tone.wav"), title: "two" },
+        { filePath: fixture("tone.aiff"), title: "three" },
+      ],
+      0,
+    );
+
+    await waitFor(() => controller.queueWindow(0, 1_000).items[2].status === "playing");
+
+    expect(loaded).toEqual([fixture("tone.flac")]);
+  });
+
   it("says one thing about a whole queue of missing files (DEC-054)", async () => {
     // The disconnected drive, against the real player. Every path is missing,
     // so mpv fails each one as fast as it can open and close a file — which is

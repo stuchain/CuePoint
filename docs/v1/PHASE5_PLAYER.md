@@ -1,7 +1,8 @@
 # CuePoint v1.0.0 — Phase 5: Player, Detailed Step Specifications
 
-Status: **In progress. PLAYER-01…PLAYER-11 are implemented** (outcomes recorded under each
-step); PLAYER-12 is described below and not started. Per the process, no implementation happens from this document — each step needs an
+Status: **All twelve steps are implemented** (outcomes recorded under each step). The phase is
+**not complete**: the macOS pass below has not been run, and DEC-055's hardware acceptance is
+half-done. Nothing here may be called finished until both are recorded rather than asserted. Per the process, no implementation happens from this document — each step needs an
 explicit "Implement PLAYER-NN" instruction, scoped to exactly that step, and its outcome is
 recorded under the step afterwards.
 
@@ -1227,6 +1228,78 @@ set.
 **Acceptance.** Every check above run — not assumed — with results recorded under this step,
 including which ones needed real hardware and were therefore manual.
 
+### Outcome (2026-09-06)
+
+Implemented as `usePlayerShortcuts`, `PlayerAnnouncer`, `mediaKeys.ts`, `e2e/playback.spec.ts`, a
+user-guide page and the documentation updates below. 1,258 renderer tests, 363 main-process, 35
+E2E, both typechecks, lint and the production build pass, and the E2E suite is green twice in a
+row.
+
+**Space is the dangerous key, so the guard is the feature.** It is also the key that activates
+every button in the app and types a space in every text field — a play/pause binding without guards
+pauses the music each time someone presses a button and stops the track while they are typing a
+search. Three rules: typing wins, the focused control wins, and a dialog on top wins. Each is a
+test, because each is a bug a user would report as "the player randomly stops". The other transport
+keys are Ctrl-modified because bare arrows belong to the table and the queue panel, which is where
+a keyboard user actually spends their time.
+
+**The media keys are borrowed, not taken.** `globalShortcut` is global to the *operating system*,
+so CuePoint holds Play/Pause, Next and Previous only while its window has focus and gives them back
+on blur and at quit. A player that kept them would silently swallow the keys meant for whatever the
+user turned to next. Registration failing — because something else got there first — is not an
+error worth showing anyone, and a key another application already holds is left alone rather than
+stolen. Verified in the running app: all three are registered while CuePoint is in front.
+
+**The live region says little on purpose.** The position stream pushes several times a second, and
+a region that mirrored the snapshot would read the elapsed time aloud for ever — which makes the
+whole app unusable rather than just the player. Only two things are announced, because only two are
+events: the track changed, and playback started or stopped. Forty position pushes produce no new
+sentence, and that is the test that matters.
+
+**The rest of the accessibility scope was audited rather than assumed.** PLAYER-06 built the
+transport as real buttons with `aria-pressed`, and sliders whose `aria-valuetext` reads "1:30 of
+10:00" rather than "90"; PLAYER-08 made the queue reorderable by keyboard. `playerAccessibility.test.tsx`
+now pins all of it, including that the three-state repeat button names its mode — `aria-pressed`
+alone cannot tell "all" from "one".
+
+**A defect found by the E2E, in behaviour three steps old.** With repeat-one on, pressing **Next**
+replayed the same track: `next()` was built on `peekNext()`, which honours repeat-one. But
+repeat-one is a statement about what happens when a track *ends*, not about what a button does —
+every player moves on, and one that does not has a Next button that visibly does nothing. The two
+are now separate, and PLAYER-07's test that encoded the old behaviour is amended with the reason.
+
+**Gapless was measured, not asserted** (DEC-056's other half). Against the real binary the interval
+between mpv finishing one file and starting the next is **0 ms** — both are reported from the same
+playback loop, because the next file was appended while the current one was still decoding. A
+second test makes the same claim in a way that survives a loaded machine: three tracks play through
+with exactly one `loadfile`.
+
+**DEC-014 is shown by leaving and coming back.** The E2E quits mid-queue and relaunches: no queue,
+no current track, no position, and no player bar — this session has played nothing. That is the
+only way to demonstrate it, and a player that remembered its position would look entirely correct
+until that moment.
+
+**Cross-cutting fact 4 is a run of its own.** With `CUEPOINT_MPV_PATH` pointed at nothing, the app
+launches, imports, browses and selects normally; only playing is refused, with a message a person
+can act on. That promise is only ever true in the run where mpv is missing, which no other test
+creates.
+
+**Documentation.** A user-guide page (`docs/user-guide/player.md`) covering the transport, the
+queue, shuffle and repeat, the audio settings and what a skipped track means, linked from
+`features.md` and `the-window.md`; `CHANGELOG.md` under `Unreleased`; ADR-004 confirmed at the end
+of the phase with the consequences *observed* — the measured gapless hand-off, and the
+graceful-degradation dividend of a separate process that the decision did not predict;
+`PIXEL_DESIGN_SYSTEM.md` extended with the ten player icons and why `repeat-one` is a separate
+drawing rather than a badge. The bundled-binary inventory the scope asks about is **not** in
+`docs/features/` — PLAYER-01 put it in `docs/compliance/license-compliance.md`, where the licence
+tooling that enforces it lives, so nothing was moved to satisfy the letter of a conditional clause.
+
+**What was not done here, and is owed.** The macOS pass below has not been run: this is a Windows
+machine, and rows 1–11 of that table are the parts a green Windows run says nothing about. Row 6
+and row 7 also carry the other half of DEC-055's hardware acceptance. Gapless "by ear" is in the
+same position — measured at 0 ms here, unheard. **Phase 5 is not complete**, and the phase-level
+acceptance below is not claimed.
+
 ---
 
 ## Before the phase is called complete — the macOS pass
@@ -1256,7 +1329,7 @@ complete:
 | 7 | Unplug the selected interface mid-playback | Device-loss handling, per PLAYER-11 |
 | 8 | Media keys, with CuePoint focused and then backgrounded | Global-shortcut registration behaves differently on macOS, including its accessibility permissions prompt |
 | 9 | Gapless across two consecutive fixture files, by ear | The DEC-056 claim, on the OS where the audio path is different |
-| 10 | The E2E suite, including the mpv-absent degradation case | `apps/desktop-electron/e2e/playback.spec.ts` from PLAYER-12 |
+| 10 | The E2E suite, including the mpv-absent degradation case | `apps/desktop-electron/e2e/playback.spec.ts`, written in PLAYER-12 and green on Windows |
 | 11 | The whole run again with mpv deliberately removed from the bundle | Cross-cutting fact 4 — the app must still launch and browse |
 
 Record the result under PLAYER-12 with the macOS version and hardware used. A failure here is a

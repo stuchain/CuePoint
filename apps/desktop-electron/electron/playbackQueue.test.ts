@@ -306,11 +306,15 @@ describe("repeat", () => {
     expect(queue.next()?.title).toBe("a");
   });
 
-  it("one replays the same track", () => {
+  it("one replays the track when it ends, and steps off it when Next is pressed", () => {
+    // Amended in PLAYER-12. This used to assert that `next()` replayed the same
+    // track, which made the Next button visibly do nothing while repeat-one was
+    // on — `peekNext` is what repeat-one governs, because that is what plays
+    // when a track *ends*. See "repeat-one and the buttons" below.
     const queue = queueOf("a", "b");
     queue.setRepeat("one");
-    expect(queue.next()?.title).toBe("a");
-    expect(queue.next()?.title).toBe("a");
+    expect(queue.peekNext()?.title).toBe("a");
+    expect(queue.next()?.title).toBe("b");
   });
 
   it("one still reports the same track as what comes next", () => {
@@ -452,6 +456,57 @@ describe("shuffle", () => {
     queue.setShuffle(true);
     queue.playNext(tracks("x"));
     expect(queue.peekNext()?.title).toBe("x");
+  });
+});
+
+describe("repeat-one and the buttons (PLAYER-12)", () => {
+  it("repeats the track when it ends by itself", () => {
+    const queue = queueOf("a", "b", "c");
+    queue.setRepeat("one");
+
+    expect(queue.peekNext()?.id).toBe(queue.currentId);
+  });
+
+  it("moves on when Next is pressed", () => {
+    // Repeat-one says what happens when a track *ends*. A Next button that
+    // played the same track again would be a button that visibly does nothing.
+    const queue = queueOf("a", "b", "c");
+    queue.setRepeat("one");
+    const first = queue.currentId;
+
+    const upcoming = queue.next();
+
+    expect(upcoming?.id).not.toBe(first);
+    expect(queue.currentId).toBe(upcoming?.id);
+  });
+
+  it("still stops at the end of the queue when Next is pressed", () => {
+    const queue = queueOf("a");
+    queue.setRepeat("one");
+
+    expect(queue.next()).toBeNull();
+    expect(queue.currentId).toBeNull();
+  });
+
+  it("wraps on Next under repeat-all, which is about order rather than a track", () => {
+    const queue = queueOf("a", "b");
+    queue.setRepeat("all");
+    queue.next();
+
+    const wrapped = queue.next();
+
+    expect(wrapped?.id).toBe(queue.window(0, 10).items[0]!.id);
+  });
+
+  it("goes back on Previous rather than repeating", () => {
+    const queue = queueOf("a", "b", "c");
+    queue.next();
+    queue.setRepeat("one");
+
+    const result = queue.previous(0);
+
+    expect(result.action).toBe("changed");
+    expect(result.item?.id).toBe(queue.window(0, 10).items[0]!.id);
   });
 });
 

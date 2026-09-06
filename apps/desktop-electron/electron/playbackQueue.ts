@@ -340,8 +340,20 @@ export class PlaybackQueue {
    * gapless repeat possible.
    */
   peekNext(): QueueItem | null {
+    return this.following({ repeatOne: this.repeatMode === "one" });
+  }
+
+  /**
+   * What comes next, with or without repeat-one honoured.
+   *
+   * The distinction is the whole of `peekNext` versus `next`: repeat-one is a
+   * statement about what happens when a track *ends*, not about what a button
+   * does. Every player behaves this way, and one that did not would have a Next
+   * button that visibly does nothing while repeat-one is on.
+   */
+  private following({ repeatOne }: { repeatOne: boolean }): QueueItem | null {
     if (this.isEmpty) return null;
-    if (this.repeatMode === "one") return this.current;
+    if (repeatOne) return this.current;
 
     const index = this.currentIndex;
     if (index === -1) return this.itemById(this.order[0] ?? "");
@@ -351,9 +363,14 @@ export class PlaybackQueue {
     return this.repeatMode === "all" ? this.itemById(this.order[0] ?? "") : null;
   }
 
-  /** Advance. Returns the new current item, or null at the end of the queue. */
+  /**
+   * Advance, the way pressing Next does. Null at the end of the queue.
+   *
+   * Deliberately not `peekNext`: someone who presses Next with repeat-one on is
+   * asking to leave this track, not to hear it again.
+   */
   next(): QueueItem | null {
-    const upcoming = this.peekNext();
+    const upcoming = this.following({ repeatOne: false });
     if (!upcoming) {
       // End of the queue: stop, but keep the queue so the panel still shows it.
       // The outgoing track stops being "playing" — leaving that status behind

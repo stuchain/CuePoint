@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- CuePoint plays your music. Double-click a track in the Library and it plays,
+  with the view you were looking at — filtered, sorted, scoped to a playlist —
+  becoming the queue in the order on screen. A player bar appears along the
+  bottom the first time you play something, with transport, seeking, volume,
+  shuffle and repeat, and a queue panel you can reorder by keyboard or by
+  dragging. Right-click a track for Play, Play next and Add to queue, on one
+  track or on a whole selection
+- Audio output settings, under Settings → Audio: choose the interface you
+  listen through, and turn on exclusive output to bypass the system mixer and
+  hand the file to the hardware in its own format (Windows and macOS). If the
+  device is busy or unplugged, playback continues through what is available and
+  says what it did — and your choice is kept for when the interface is back
+- Playback from the keyboard: Space for play/pause, Ctrl+arrows for tracks and
+  volume, Alt+arrows and Delete in the queue. Your keyboard's media keys drive
+  CuePoint while its window is in front, and are released when it is not, so
+  they still work for whatever you switch to
+- Tracks that will not play — a moved file, an unplugged drive — are skipped
+  and marked in the queue rather than stopping the session, and are reported
+  once for the whole run rather than once each. Nothing about it is permanent:
+  the same track plays normally the next time you ask for it
+
 ### Changed
 - The window is now laid out as an application frame rather than a centered page.
   Screens sit at the top of a content area that scrolls on its own, and the menu

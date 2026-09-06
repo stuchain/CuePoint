@@ -1,10 +1,11 @@
 /**
  * Electron main process — Spike S1: spawn engine and expose status to renderer.
  */
-import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, shell } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { EngineSupervisor, resolvePreloadPath } from "./engineSupervisor";
+import { MediaKeyBinding } from "./mediaKeys";
 import { PlaybackController } from "./playbackController";
 import { queueTruncationMessage, resolveQueueFromView } from "./queueResolver";
 import type { QueueItemInput, RepeatMode } from "./playbackQueue";
@@ -38,6 +39,20 @@ const player = new PlayerSupervisor({
  * supervisor directly, so the queue and what mpv is doing cannot disagree.
  */
 const playback = new PlaybackController(player);
+
+/**
+ * The machine's media keys, held only while CuePoint has focus (PLAYER-12).
+ *
+ * See `mediaKeys.ts` for why they are borrowed rather than taken: they are
+ * global to the operating system, and a player that keeps them while it is in
+ * the background swallows the keys meant for whatever the user is actually
+ * looking at.
+ */
+const mediaKeys = new MediaKeyBinding(globalShortcut, {
+  playPause: () => playback.togglePause(),
+  next: () => playback.next(),
+  previous: () => playback.previous(),
+});
 
 /**
  * Renderers watching playback state.
@@ -474,6 +489,13 @@ async function createWindow(): Promise<void> {
     },
   });
 
+  // Held on focus and given back on blur, so the keys belong to whatever the
+  // user is looking at (PLAYER-12).
+  win.on("focus", () => mediaKeys.acquire());
+  win.on("blur", () => mediaKeys.release());
+  win.on("closed", () => mediaKeys.release());
+  if (win.isFocused()) mediaKeys.acquire();
+
   if (isDev) {
     const url = new URL(DEV_URL);
     url.searchParams.set("engine", status.connected ? "1" : "0");
@@ -501,6 +523,9 @@ app.on("before-quit", async () => {
   if (tasks.length > 0) {
     await Promise.allSettled(tasks);
   }
+  // Given back before anything else: an accelerator still registered at quit
+  // takes the machine's media keys away from whatever the user turns to next.
+  mediaKeys.release();
   // The player first: a leaked mpv still holding an audio device after
   // CuePoint exits is the worst failure this phase can ship.
   playback.dispose();

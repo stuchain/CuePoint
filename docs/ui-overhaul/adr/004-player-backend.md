@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted (PLAYER-01, 2026-09-05). Supersedes the original HTML5-first
+Accepted (PLAYER-01, 2026-09-05); **confirmed at the end of Phase 5**
+(PLAYER-12, 2026-09-06) with the consequences recorded below actually
+observed rather than predicted. Supersedes the original HTML5-first
 recommendation recorded in `docs/v1/OPEN_QUESTIONS.md` Q-005.
 
 ## Context
@@ -77,6 +79,16 @@ requirement names.
   than being a claim in a document.
 - Verified in a packaged build: `resources/player/mpv.exe` is present in
   `release/win-unpacked` and runs from there.
+- **Gapless is real and was measured, not assumed** (PLAYER-12). Against the
+  real binary, the interval between mpv finishing one file and starting the
+  next is 0 ms: both are reported from the same playback loop, because the
+  next file was appended while the current one was still decoding. A design
+  that loaded on `end-file` instead would show a round trip through the IPC
+  socket here.
+- **The separate process paid off in a way the decision did not predict.** A
+  crashed or missing player degrades to a working app: with mpv absent the
+  library imports, browses and selects normally and only playing is refused,
+  with a message. An in-process addon would have taken the window with it.
 
 ### Negative
 

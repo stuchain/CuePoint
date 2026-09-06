@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { PlayerRegion } from "../shell/PlayerRegion";
+import { PlayerAnnouncer } from "./PlayerAnnouncer";
 import { PlayerBar } from "./PlayerBar";
 import { QueuePanel } from "./QueuePanel";
 import { selectHasPlayed } from "./playerFormat";
 import { usePlayerValue } from "./playerStore";
 import { usePlayerNotices } from "./usePlayerNotices";
+import { usePlayerShortcuts } from "./usePlayerShortcuts";
 import "./PlayerSlot.css";
 
 /**
@@ -32,6 +34,11 @@ export function PlayerSlot() {
   // first time a track fails — and "the file you just double-clicked will not
   // play" is exactly the moment the user most needs to be told (PLAYER-10).
   usePlayerNotices();
+  // Both live here rather than in the bar, because the bar does not exist until
+  // the first play (DEC-053) and neither of these may wait for it: Space has to
+  // work from the moment there is something to play, and a screen reader user
+  // needs to be told about that first track too (PLAYER-12).
+  usePlayerShortcuts();
   const hasPlayed = usePlayerValue(selectHasPlayed);
   const [everPlayed, setEverPlayed] = useState(false);
   const [queueOpen, setQueueOpen] = useState(false);
@@ -43,11 +50,15 @@ export function PlayerSlot() {
   // `PlayerRegion` returns null when it has no children, so this renders no
   // element at all until the first play — the zero-height promise SHELL-06
   // made, kept by the component that made it rather than re-implemented here.
+  // DEC-025's promise, kept literally: nothing here, not even an empty element.
+  // The announcer arrives with the bar, which is also the first moment there is
+  // anything to announce.
   if (!everPlayed) return <PlayerRegion />;
 
   return (
     <PlayerRegion>
       <div className="cp-player-slot">
+        <PlayerAnnouncer />
         {queueOpen && (
           <div className="cp-player-slot__queue">
             <QueuePanel onClose={() => setQueueOpen(false)} />
