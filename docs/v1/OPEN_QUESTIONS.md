@@ -1009,16 +1009,17 @@ surfaced by the audit but held back until the decisions they depend on are locke
 
 - ~~Crossfade support~~ — asked as Q-055 in Round 7 and resolved by DEC-056 (no crossfade in v1)
 - Audio analysis scope (which features are worth building at all — likely a Phase 12 conversation)
-- Smart Collection export/duplication behavior (target spec §28 asks whether Smart Collections
-  should be directly exportable and whether rule sets can be duplicated — not yet asked)
+- ~~Smart Collection export/duplication behavior~~ — asked as Q-060 in Round 8 and resolved by
+  DEC-061 (live, duplicable, freezable; direct export stays Phase 8's decision)
 
 **Resolved since first listed here**: crossfade became Q-055/DEC-056 in Round 7, asked before
 Phase 5's contract was written because a crossfade decides whether that contract needs a second
 decoder. The collapsible-sidebar question became Q-022/DEC-022 in
 Round 3. The `services/` Qt-boundary violation and the CI-gap items were folded into FOUNDATION-01
-and FOUNDATION-13 and are done. The Smart Collection question above is now narrower than when it
-was written: DEC-043 settled that Phase 6's rules and Phase 4's filters are one model, so what
-remains open is only export and duplication of a *saved* rule set.
+and FOUNDATION-13 and are done. The Smart Collection question narrowed twice before it was asked:
+DEC-043 settled that Phase 6's rules and Phase 4's filters are one model, leaving only export and
+duplication of a *saved* rule set, which Round 8 asked as Q-060. Audio analysis scope is the only
+item still held back.
 
 ---
 
@@ -1179,3 +1180,193 @@ written, not after.
 
 **Recommendation**: **A**. CuePoint prepares sets; the mixing happens in Rekordbox. B also fights
 gapless — the two features want opposite things at a track boundary.
+
+---
+
+## DECISION ROUND 8 — ORGANIZATION ✅ Resolved 2026-09-06
+
+Asked before writing Phase 6's step specifications. Round 1 and Round 2 settled the shape of the
+organizational layer in the abstract — DEC-006 (Collections only), DEC-015 (flat tags), DEC-016
+(flat AND-only rules), DEC-008 (per-field history, no undo stack) — and Round 6 settled that
+Phase 4's filters and Phase 6's Smart Collections are one model (DEC-043). None of them says who
+owns a rating, what a Collection is structurally, where one is browsed, or what a rule may talk
+about.
+
+Four of these came from reading the code rather than the roadmap: `tracks.rating` and
+`tracks.comment` are already populated *from Rekordbox*, so "rate a track" and "write a note" are
+writes against columns CuePoint does not own; `filter_sql.py` compiles rules to bare column
+predicates on one table, with no joins, so a rule about a tag is a different shape of SQL than
+anything it emits today; `references_for()` is the DEC-011 seam that answers zero because nothing
+can reference a track yet, and this is the phase that makes it answer; and `navRegistry.ts`
+declares a disabled `collections` destination while DEC-039 decided the Library page *is* the
+browser.
+
+Q-060 closes the Smart Collection export/duplication item deferred since Round 2. Outcomes are
+DEC-057…DEC-064 in `DECISIONS.md`. Two answers went against the recommendation — Q-057 and Q-058 —
+and both are noted as such below, because the reasoning trail is worth more than a tidy record.
+
+---
+
+### Q-056 — Who owns a track's rating, and where do notes live
+
+**Status**: Resolved → DEC-057 (Option A chosen: CuePoint metadata is its own layer)
+
+**Question**: Ratings, favorites and notes are entirely new (GAP_ANALYSIS §E), but `tracks.rating`
+and `tracks.comment` already exist and are already populated from Rekordbox by DEC-034's import,
+and shown read-only in the Inspector by DEC-047. A user rating a track is therefore a write against
+a column CuePoint does not own, and the next refresh re-imports it.
+
+- **Option A — CuePoint metadata is its own column set**, Rekordbox's stays untouched, and the UI
+  shows an effective value with its source (the DEC-004 precedence shape, reused). A refresh can
+  never overwrite a user's rating.
+- **Option B — One rating field.** Editing overwrites the imported value; the next refresh
+  overwrites the edit.
+- **Option C — One field plus a dirty flag.** Refresh skips fields the user has touched.
+
+**Recommendation**: **A**. It is the only option where Phase 8's export can answer "whose value do
+I write?", and it reuses DEC-004's precedence model rather than inventing a second one. B loses
+user data on a routine refresh; C keeps one column meaning two things depending on a flag.
+
+---
+
+### Q-057 — Is a Collection ordered, and may a track appear twice in one
+
+**Status**: Resolved → DEC-058 (Option C chosen: ordered, duplicates allowed — **not** the
+recommended option)
+
+**Question**: DEC-006 made Collections the only CuePoint-native organizational unit. Its structure
+was never specified, and Phase 8 has to export one into a Rekordbox playlist, which is ordered.
+
+- **Option A — Ordered, duplicates rejected.** A Collection is a set of tracks; a Phase 10 Set is a
+  running order.
+- **Option B — Unordered.** The table's sort is the only order there is.
+- **Option C — Ordered, duplicates allowed**, matching DEC-017's rule for Sets.
+
+**Recommendation**: **A**. Rekordbox playlists are ordered, so B loses information at the export
+boundary; rejecting duplicates is what keeps DEC-006 coherent, since the set/running-order
+difference is the reason there is no third concept.
+
+**Chosen**: **C**. Consistency with DEC-017 was preferred over the structural distinction: a DJ who
+can repeat a track in a Set and not in a Collection has to learn a rule with no reason behind it.
+The consequence — that the Collection/Set distinction now rests entirely on what Phase 10 adds
+rather than on structure — is recorded in DEC-058 so Phase 10 does not rediscover it as an argument
+for merging the two.
+
+---
+
+### Q-058 — Do Collections nest
+
+**Status**: Resolved → DEC-059 (Option B chosen: folders from day one — **not** the recommended
+option)
+
+**Question**: A DJ's mental index is a tree (DEC-044 says so about the Rekordbox pane). Whether
+CuePoint's own Collections get one is a schema and a UI decision, and retrofitting a tree into a
+flat list is cheaper in the database than in the interface.
+
+- **Option A — Flat in v1**, with a nullable `parent_id` carried from the start so folders can
+  arrive later without a migration (the DEC-016 pattern).
+- **Option B — Folders from day one**, mirroring the tree already mirrored in
+  `rekordbox_playlists`.
+- **Option C — Flat forever.** Tags do the grouping.
+
+**Recommendation**: **A**. B is real tree UI — drag, move, rename, cycle prevention, cascade
+delete — for a library that starts with zero collections.
+
+**Chosen**: **B**. The pane will already be rendering one tree next to it, and a user who files
+Rekordbox playlists in folders will file Collections in folders on the first day. Building the flat
+version first would mean writing the pane twice. The cost is accepted explicitly: DEC-059 lists the
+tree operations as phase scope rather than leaving them to be discovered mid-step.
+
+---
+
+### Q-059 — Can a rule reference CuePoint-owned data
+
+**Status**: Resolved → DEC-060 (Option A chosen: rules reach tags, ratings, favorites and
+membership)
+
+**Question**: DEC-043's vocabulary is seventeen columns of `tracks`, and `filter_sql.py` compiles
+each rule to a bare predicate on that one table — no joins, no aliases. "Tagged Peak-time AND rated
+at least 4 AND not in Collection X" is a different shape of SQL.
+
+- **Option A — Extend the vocabulary** to tags, CuePoint rating, favorite, notes and Collection
+  membership; the compiler grows `EXISTS` subqueries. A Smart Collection may not reference another
+  Smart Collection.
+- **Option B — Scalars only** (favorite, rating, tags); no membership rules.
+- **Option C — Keep rules on `tracks` columns only.**
+
+**Recommendation**: **A**. Tag-based Smart Collections are most of the point of having tags, and a
+filter bar that cannot say "tagged X" while a Smart Collection can would be precisely the drift
+DEC-043 was written to prevent.
+
+---
+
+### Q-060 — Smart Collection liveness, duplication and export
+
+**Status**: Resolved → DEC-061 (Option A chosen: live, duplicable, freezable) · **Closes** the item
+deferred since Round 2
+
+**Question**: Deferred since Round 2 and narrowed by DEC-043 to exactly this: what a *saved* rule
+set can do. Target spec §28 asks whether Smart Collections are directly exportable and whether rule
+sets can be duplicated.
+
+- **Option A — Always live** (evaluated per query, never materialized), rule sets can be
+  duplicated, "Freeze to Collection" converts current membership into a static Collection, and
+  direct export stays Phase 8's decision.
+- **Option B — Live, no duplication, no freeze.**
+- **Option C — Materialized membership**, refreshed on a trigger.
+
+**Recommendation**: **A**. DEC-040 already made windowed SQL over 50,000 rows the norm, so
+materializing buys nothing and adds a staleness bug with an invalidation rule to get wrong.
+
+---
+
+### Q-061 — Where Collections live in the UI
+
+**Status**: Resolved → DEC-062 (Option B chosen: the Library page's left pane)
+
+**Question**: `navRegistry.ts` has declared a disabled `collections` destination since DEC-020, and
+DEC-039 then decided that the Library page *is* the browser. Phase 6 has to reconcile them.
+
+- **Option A — Enable the nav destination** as its own page, with its own list and its own table.
+- **Option B — A second section in the Library page's left pane**, beside the mirrored Rekordbox
+  tree; selecting a Collection scopes the same table, by DEC-044's mechanism.
+- **Option C — Both surfaces.**
+
+**Recommendation**: **B**. One browser, one selection model, one filter bar, one table. It amends
+DEC-020's IA, which is why it is a question and not an assumption.
+
+---
+
+### Q-062 — How a batch edit runs over "everything matching"
+
+**Status**: Resolved → DEC-063 (Option A chosen: threshold, then a job; full history either way)
+
+**Question**: DEC-045 lets a selection be a *description* — the current query over 47,913 rows —
+specifically so Phase 6 could tag all of them. DEC-008 promises per-field revert, which at that
+size is 47,913 history rows for one gesture.
+
+- **Option A — Small selections apply synchronously**, anything above a threshold runs as a
+  background job (DEC-033's pattern); full per-field history either way, every row carrying a shared
+  batch id.
+- **Option B — Always a background job.**
+- **Option C — A job, with one summary history row per batch** instead of per track.
+
+**Recommendation**: **A**. C is cheaper storage in exchange for breaking the one promise DEC-008
+made instead of building an undo stack — and a batch edit is exactly the operation a user most
+wants to take back.
+
+---
+
+### Q-063 — Does Phase 6 write anything outside the database
+
+**Status**: Resolved → DEC-064 (Option A chosen: database only)
+
+**Question**: `data/tag_writer.py` already writes ID3/Vorbis tags to audio files, safely and well.
+Whether Phase 6 uses it decides whether rating a track modifies files on disk.
+
+- **Option A — No.** Ratings, tags and notes live in CuePoint's database only; carrying them into
+  files or into Rekordbox is Phase 8's decision.
+- **Option B — Write through to audio files** as edits are made.
+
+**Recommendation**: **A**. Same discipline as DEC-051 kept for the player, and it keeps Phase 6
+clear of "I rated one track and CuePoint modified four hundred files" as a failure mode.

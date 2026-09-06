@@ -1,18 +1,19 @@
 # CuePoint — Evolution Roadmap
 
-Status: **Phases 0, 1, 2, 3 and 4 complete. Decision Rounds 1–7 resolved (DEC-001…DEC-056).**
+Status: **Phases 0, 1, 2, 3 and 4 complete. Decision Rounds 1–8 resolved (DEC-001…DEC-064).**
 Phase 2's ten steps are implemented and recorded in `PHASE2_SHELL.md`. Phase 3's twelve steps are
 implemented and recorded in `PHASE3_LIBRARY.md` (LIBRARY-01…LIBRARY-12), unblocked by Decision
 Round 5 (DEC-030…DEC-037). Phase 4's ten steps are specified in `PHASE4_LIBUI.md`
 (LIBUI-01…LIBUI-10), unblocked by Decision Round 6 (DEC-039…DEC-048). Complete: every step is
-implemented and the phase-level acceptance is met in a packaged build. Phase 5's steps are
+implemented and the phase-level acceptance is met in a packaged build. Phase 5's twelve steps are
 specified in `PHASE5_PLAYER.md` (PLAYER-01…PLAYER-12), unblocked by Decision Round 7
-(DEC-049…DEC-056); none of them is implemented yet.
-Remaining deferred items (audio-analysis scope, Smart Collection export/duplication behavior) will
-be resolved before the phases they affect actually start; crossfade, deferred since Round 2, was
-resolved by DEC-056 as part of Round 7. This roadmap shows the
-shape of what's ahead; it is not a commitment to implement anything without an explicit
-"Implement <STEP-ID>" instruction.
+(DEC-049…DEC-056), and all of them are implemented; the phase is not complete, and what is left is
+non-code (see below). Phase 6's thirteen steps are specified in `PHASE6_ORG.md`
+(ORG-01…ORG-13), unblocked by Decision Round 8 (DEC-057…DEC-064); none of them is implemented yet.
+Audio-analysis scope is the one remaining deferred item, to be resolved before the phase it affects
+starts; crossfade was resolved by DEC-056 in Round 7, and Smart Collection export/duplication by
+DEC-061 in Round 8. This roadmap shows the shape of what's ahead; it is not a commitment to
+implement anything without an explicit "Implement <STEP-ID>" instruction.
 
 No implementation happens from this document alone — every phase step requires an explicit
 "Implement <STEP-ID>" instruction, scoped to exactly that step.
@@ -113,7 +114,7 @@ meaning (DEC-046); the Track Inspector finally gets content — everything impor
 
 Step specifications: `PHASE4_LIBUI.md`.
 
-## Phase 5 — Player (PLAYER-01 … PLAYER-12) — all steps implemented, **macOS pass outstanding**
+## Phase 5 — Player (PLAYER-01 … PLAYER-12) — all steps implemented, **acceptance outstanding**
 
 Backend is decided: **libmpv sidecar** (DEC-005), for foobar2000-grade quality — gapless, wide
 lossless format support, high-quality resampling. Still the highest-uncertainty phase in
@@ -152,14 +153,42 @@ bundled build is GPL rather than LGPL, and electron-builder's `${os}` macro expa
 not `darwin`/`win32` — and surfaced a pre-existing packaging bug that leaves the Python engine out
 of packaged Windows and macOS builds. See the step's Outcome section.
 
+The macOS pass has since been run (2026-09-06, recorded under PLAYER-12): nine of its eleven rows
+are closed and the one defect it found is fixed. What keeps the phase from complete is non-code —
+a notarization submission, two rows needing a real audio interface, and one row needing somebody to
+listen — plus an amendment DEC-055 needs, since its premise that the bundled build has no SoX
+resampler is true on Windows and false on macOS.
+
 Step specifications: `PHASE5_PLAYER.md`.
 
-## Phase 6 — Organization (ORG-01 … ORG-11)
+## Phase 6 — Organization (ORG-01 … ORG-13)
 
 Collections-only per DEC-006 (no separate local-Playlist concept). Tags are flat with optional
 categories, not hierarchical (DEC-015). Smart Collections are flat AND-only for v1, schema left
 room for AND/OR grouping later (DEC-016). Ratings/favorites/notes/Collections/Smart Collections
 are all entirely new, no existing code to reuse.
+
+Round 8 settled the shape. CuePoint's rating, favorite and notes are their own layer beside the
+Rekordbox-imported `rating` and `comment`, resolved to an effective value at read time, so a
+refresh can never overwrite a user's own rating and Phase 8 still has both values to choose from
+(DEC-057). A Collection is ordered and may repeat a track, matching DEC-017's rule for Sets — which
+means the Collection/Set distinction now rests entirely on what Phase 10 adds, not on structure
+(DEC-058). Collections and Smart Collections file into a user-editable folder tree from day one,
+the same shape as the mirrored Rekordbox tree but a separate, editable table (DEC-059). The DEC-043
+rule vocabulary grows past the `tracks` table to tags, CuePoint rating, favorite, notes and
+Collection membership — the compiler's first joins — while a rule may never name another Smart
+Collection (DEC-060). A Smart Collection stores rules and not membership: evaluated live,
+duplicable, freezable into a static Collection, never hand-pinned (DEC-061), which closes the
+export/duplication item deferred since Round 2. All of it is browsed in the Library page's left
+pane rather than a second browser, amending DEC-020's IA (DEC-062). A batch edit applies inline
+when small and as a background job when large, always writing per-field history under a shared
+batch id, because DEC-008 promised revert instead of an undo stack (DEC-063). And nothing in this
+phase writes outside the database — no audio-file tags, no Rekordbox XML (DEC-064).
+
+This is also the phase that makes `references_for()` answer: DEC-011's warning before a refresh
+deletes a track has returned zero since Phase 3 because nothing could reference a track yet.
+
+Step specifications: `PHASE6_ORG.md` (ORG-01…ORG-13, specified, none implemented).
 
 ## Phase 7 — Clean / Beatport (CLEAN-01 … CLEAN-13)
 

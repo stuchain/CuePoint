@@ -1337,3 +1337,266 @@ whether that contract needs two decoders.
   superseding this one, not an amendment.
 
 **Decided with**: User · **Date**: 2026-09-05
+
+---
+
+## DEC-057 — CuePoint Metadata Is Its Own Layer
+
+**Status**: Approved · **Related**: DEC-004, DEC-034, DEC-047, DEC-008
+
+**Decision**: A CuePoint rating, favorite and note are stored separately from the Rekordbox-imported
+`rating` and `comment`. Both survive. The UI shows an *effective* value and says where it came
+from. A Rekordbox refresh writes only the imported fields and can never overwrite a CuePoint one.
+
+**Reason**: `tracks.rating` and `tracks.comment` are already populated from Rekordbox by DEC-034's
+import, so a single-field design means either a routine refresh silently discarding a user's own
+rating, or one column whose meaning depends on a flag. Phase 8 also has to write an export, and it
+can only choose whose value to write if both are still there to choose between. This is DEC-004's
+precedence model — keep the source value, record the CuePoint value, resolve at read time — reused
+rather than a second mechanism invented for the same problem.
+
+**Implications**:
+- New nullable fields for the CuePoint layer: a 0–5 rating, a favorite flag, and free-text notes.
+  Whether they are columns on `tracks` or a sibling table is the phase spec's call; either way the
+  imported columns keep their current names and meanings, and nothing that reads them changes.
+- Effective rating is the CuePoint value when set, otherwise the Rekordbox one. Clearing an override
+  falls back to Rekordbox's value; it does not write zero. A missing rating and a zero rating stay
+  different facts (DEC-034, DEC-047).
+- The Inspector shows the source of the effective value and offers "clear override" — the one
+  control that makes the two-layer model visible instead of mysterious.
+- "Favorite" is its own flag, not five stars. They are different statements and a user who wants
+  both should not have to spend one to get the other.
+- Notes are a CuePoint field beside Rekordbox's comment, never on top of it. The Inspector shows
+  both, labelled.
+- Every edit writes a `track_history` row whose `source` marks it as the user's (FOUNDATION-08,
+  DEC-008), so the History tab distinguishes "you changed this" from "the last import changed this".
+- Filter and sort vocabulary addresses the layers separately, with the UI's plain "Rating" meaning
+  the effective value (DEC-060).
+
+**Decided with**: User · **Date**: 2026-09-06
+
+---
+
+## DEC-058 — A Collection Is Ordered and May Repeat a Track
+
+**Status**: Approved · **Related**: DEC-006, DEC-017 · **Recommendation not taken** (Q-057)
+
+**Decision**: Collection membership is explicitly ordered and reorderable by drag, and a track may
+appear in the same Collection more than once — DEC-017's rule for Sets, applied to Collections.
+
+**Reason**: An ordered list that refuses a deliberate second entry has to explain itself, and the
+explanation would be a rule with no reason behind it: a DJ can repeat a track in a Set for a
+closing reprise, and cannot in a Collection. Ordering is not optional either way, because Phase 8
+exports a Collection into a Rekordbox playlist, which is ordered, and an unordered Collection would
+lose that information at the boundary. The recommendation was ordered-without-duplicates, on the
+grounds that "a Collection is a set of tracks, a Set is a running order" is what keeps DEC-006's
+single-primitive decision coherent; consistency with DEC-017 was preferred.
+
+**Implications**:
+- A membership row needs its own identity — a row id, with `(collection_id, position)` unique —
+  rather than a `(collection_id, track_id)` primary key. "Remove the track" is ambiguous when it
+  appears twice; the UI removes a *specific entry*.
+- A rule asking whether a track is in a Collection (DEC-060) is an `EXISTS`, so a duplicate never
+  double-counts a track in a rule result.
+- A Collection reports its entry count. Where that differs from the number of distinct tracks, both
+  are shown, because a "412 tracks" label that means 412 entries is a small lie that costs trust.
+- Adding a multi-selection to a Collection appends only the tracks not already in it and says how
+  many it skipped; a deliberate duplicate is made by an explicit drop or "add anyway" inside the
+  Collection view. Bulk-adding is the gesture most likely to create duplicates by accident, and the
+  one where the user can least easily see it happen.
+- **The Collection/Set distinction now rests entirely on what Phase 10 adds** — Chapters,
+  transitions, set-level analysis and export — and not on structure. Recorded here so Phase 10
+  weighs that deliberately instead of rediscovering it as an argument for merging the two concepts.
+- `references_for()` (DEC-011) counts distinct tracks, not entries: the question it answers is how
+  many *tracks* about to be deleted are still referenced.
+
+**Decided with**: User · **Date**: 2026-09-06
+
+---
+
+## DEC-059 — Collections Nest in Folders
+
+**Status**: Approved · **Related**: DEC-044, DEC-031 · **Recommendation not taken** (Q-058)
+
+**Decision**: Collections and Smart Collections live in a user-editable folder tree from day one,
+the same shape as the Rekordbox tree already mirrored in `rekordbox_playlists`.
+
+**Reason**: The pane will be rendering one tree beside it already, and a user who files Rekordbox
+playlists into folders will want folders for their own Collections on the first day. Building flat
+first — the recommendation, on the grounds that tree UI is a real cost for a library that starts
+with zero collections — would mean writing the pane twice.
+
+**Implications**:
+- One table with a `kind` discriminator (`folder` | `collection` | `smart`), a nullable `parent_id`,
+  a sibling `position` and a name: deliberately the same shape as m0006's `rekordbox_playlists`, so
+  one pane component renders both trees. It is a *separate* table, because this one is edited by the
+  user and is not rebuilt from the XML on every import.
+- A `CHECK` on `kind` at creation, per m0006's reasoning — SQLite cannot drop a constraint without
+  rebuilding the table, and this table holds user data, so the constraint has to be right the first
+  time.
+- Only a folder may be a parent. Cycles and self-parenting are refused at the service layer, and
+  depth is bounded.
+- Deleting a folder deletes its subtree, behind a confirmation that names what goes. Deleting a
+  Collection never deletes tracks.
+- Rename, move (drag between folders), and reorder among siblings are **phase scope**, not a later
+  nicety. Listed explicitly so the step inventory budgets them.
+- Smart Collections file into the same tree, so rules sit beside lists rather than in a second
+  parallel place.
+- The Rekordbox tree stays read-only (DEC-031); the two trees must be visually and behaviorally
+  distinct in one pane — a drag into a Collection works, a drag into a playlist is refused.
+
+**Decided with**: User · **Date**: 2026-09-06
+
+---
+
+## DEC-060 — Rules Reach CuePoint-Owned Data
+
+**Status**: Approved · **Extends**: DEC-043, DEC-016
+
+**Decision**: The rule vocabulary grows beyond the `tracks` table to tags, CuePoint rating,
+favorite, notes and Collection membership. A rule may not reference a Smart Collection.
+
+**Reason**: Tag-based Smart Collections are most of the point of having tags. A filter bar that
+cannot say "tagged Peak-time" while a Smart Collection can would be exactly the drift DEC-043 was
+written to prevent, and the drift would show up as a filter finding tracks its saved twin does not.
+
+**Implications**:
+- `filter_sql.py` today compiles every rule to a bare predicate on `tracks` — no joins, no aliases.
+  Membership rules make it emit `EXISTS` subqueries. That is the single largest change this decision
+  causes, and its three existing properties hold unchanged: column names come from the registry and
+  never from the caller, values are always bound parameters, and LIKE wildcards stay escaped.
+- New field kinds join the registry alongside text/number/date: a tag field, a boolean favorite, and
+  membership fields whose value is a Collection id. Operators stay whitelisted per type, and an
+  unknown field or operator is still a rejected request with a message, never an interpolated
+  string.
+- **No recursion**: a rule cannot name a Smart Collection. This prevents cycles and unbounded
+  evaluation, and keeps a Smart Collection explainable — its membership depends on facts about
+  tracks, not on what another query happens to answer right now.
+- A rule naming a deleted Collection is a broken rule, and says so on the Smart Collection rather
+  than quietly matching nothing.
+- Tags are facetable ("which tags exist, and how many tracks each"); notes are free text and are
+  not, for the reason `FieldSpec.facetable` already gives.
+- One compiler serves the Library filter bar and every Smart Collection, as DEC-043 requires.
+
+**Decided with**: User · **Date**: 2026-09-06
+
+---
+
+## DEC-061 — Smart Collections Are Live, Duplicable and Freezable
+
+**Status**: Approved · **Closes**: the Smart Collection export/duplication item deferred since
+Round 2 · **Related**: DEC-016, DEC-040, DEC-043
+
+**Decision**: A Smart Collection stores rules, not membership. It is evaluated at query time and
+never materialized. A rule set can be duplicated. "Freeze to Collection" writes the current
+membership into a static Collection. A track cannot be manually added to or removed from a Smart
+Collection. Whether a Smart Collection exports directly is Phase 8's decision, not this one.
+
+**Reason**: DEC-040 already made windowed SQL over 50,000 rows the normal way this app answers a
+query, so materializing membership buys nothing and adds a staleness bug with an invalidation rule
+to get wrong — every edit, import, refresh and batch operation would have to know which cached
+memberships it just falsified. Refusing manual pinning is what keeps a Smart Collection
+explainable: its answer is "these rules, therefore these tracks", and a hand-pinned exception makes
+that sentence false.
+
+**Implications**:
+- Stored state is the rule set plus name, folder and sort. There is no membership table for Smart
+  Collections and nothing to invalidate.
+- Evaluation reuses the existing count-plus-window path, so a Smart Collection scope costs what a
+  filter costs.
+- Freeze is a copy, not a link. The new Collection records where it was frozen from and when, and
+  the freeze writes an activity event. Nothing keeps the two in step afterwards, and the UI says so
+  at the moment of freezing rather than in a tooltip later.
+- Duplicating copies the rules and settings into a new name and does not link the original.
+- Phase 8 may decide a Smart Collection exports as a playlist of its current membership; nothing
+  here prevents that, and freezing is the answer in the meantime.
+
+**Decided with**: User · **Date**: 2026-09-06
+
+---
+
+## DEC-062 — Collections Live in the Library's Left Pane
+
+**Status**: Approved · **Amends**: DEC-020 · **Implements**: DEC-039, DEC-044
+
+**Decision**: The Library page's left pane gains a Collections tree beside the mirrored Rekordbox
+tree. Selecting a Collection or a Smart Collection scopes the same table, by the same mechanism
+DEC-044 built for playlists. The `collections` nav destination resolves to the Library page with the
+Collections tree focused; it does not open a second browser.
+
+**Reason**: DEC-039 decided the Library page *is* the browser, and a second page would mean a second
+table, a second selection model and a second filter bar — three things that would drift from the
+ones Phase 4 built and tested. DEC-020's IA declared a Collections destination before any of that
+was settled; this amends where it lands, not whether it exists.
+
+**Implications**:
+- `navRegistry.ts`'s disabled `collections` entry becomes enabled and routes into the Library page
+  with the Collections tree focused. DEC-027's last-visited-destination memory must resolve one
+  page, not two ids that fight over it — the phase spec names the rule.
+- A Collection scope is another scope alongside DEC-044's playlist scope: one table, one selection
+  model (DEC-045), one filter bar.
+- Inside a Collection the default sort is the Collection's own order, exactly as inside a playlist —
+  and unlike a playlist, reordering is allowed and writes (DEC-058).
+- The pane distinguishes read-only Rekordbox playlists from editable Collections by look and by
+  affordance (DEC-031, DEC-059).
+- Tree expansion and selection persist with the existing `localStorage` pattern, as the Rekordbox
+  tree already does.
+
+**Decided with**: User · **Date**: 2026-09-06
+
+---
+
+## DEC-063 — Batch Edits Run as Jobs Above a Threshold, With Full History
+
+**Status**: Approved · **Related**: DEC-045, DEC-008, DEC-007, DEC-033, DEC-029
+
+**Decision**: A batch edit over a small selection applies synchronously; above a threshold it runs
+as a background job in the status strip. Either way, every changed field writes its own
+`track_history` row, and every row from one operation carries a shared batch id.
+
+**Reason**: DEC-045 made a selection a *description* — the current query, possibly 47,913 rows —
+precisely so this phase could tag all of them, and blocking the UI on that is not acceptable.
+Writing one summary row instead of per-field history would be cheaper storage in exchange for
+breaking the one promise DEC-008 made instead of building an undo stack, and a batch edit is
+exactly the operation a user most wants to take back.
+
+**Implications**:
+- An "everything matching" selection crosses the wire as the query, never as a list of ids. The job
+  resolves it to an id set **once, at start**, and reports how many tracks it acted on, so the
+  answer cannot drift underneath a running job.
+- The threshold is a named constant the phase spec fixes, not a user setting.
+- The shared batch id is what makes "revert this batch" buildable later without an undo stack.
+  Phase 6 must write the id; it does not have to build the revert UI.
+- One activity event per batch, carrying counts (DEC-029) — not one event per track. The per-track
+  detail lives in history, which is where a user looks for it.
+- Cancellation leaves what was applied applied: the job is not a transaction across 47,913 tracks,
+  and the activity event records how far it got. Saying so here is cheaper than a user discovering
+  it.
+
+**Decided with**: User · **Date**: 2026-09-06
+
+---
+
+## DEC-064 — Phase 6 Writes Nothing Outside the Database
+
+**Status**: Approved · **Related**: DEC-051, DEC-036
+
+**Decision**: Ratings, favorites, notes, tags, Collections and Smart Collections live only in
+CuePoint's database. Phase 6 writes no audio-file tags and no Rekordbox XML.
+
+**Reason**: The same discipline DEC-051 kept for the player, for the same reason: a phase that only
+reads and writes its own database is a phase whose failure modes are recoverable. `tag_writer.py`
+works well and stays available, but "I rated one track and CuePoint modified four hundred files" is
+not a failure mode worth introducing here, and carrying CuePoint's organization outward is a
+question with its own safety properties that belongs to the export phase.
+
+**Implications**:
+- `data/tag_writer.py` is untouched by this phase; it remains Phase 7's and Phase 8's tool.
+- Phase 8 decides the export mapping — Collections into Rekordbox playlists, ratings and tags into
+  whatever fields make sense, if any — as an explicit user-initiated write, keeping the existing
+  never-overwrite-the-source property.
+- Until export exists, a user's CuePoint organization is invisible in Rekordbox. The user docs for
+  this phase must say that plainly, next to the existing note about two collection imports that can
+  disagree (DEC-030).
+
+**Decided with**: User · **Date**: 2026-09-06
