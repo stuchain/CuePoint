@@ -34,12 +34,18 @@ const describeWithMpv = binary ? describe : describe.skip;
 const supervisors: PlayerSupervisor[] = [];
 const controllers: PlaybackController[] = [];
 
-function makeController(options: { failureWindowMs?: number } = {}) {
+function makeController(
+  options: { failureWindowMs?: number } = {},
+  // `--ao=null` never fails to initialise, which is what makes it the right
+  // default here and useless for PLAYER-11: the fallback ladder only runs when
+  // a real audio output refuses. Those tests pass `[]` and get the system's.
+  mpvArgs: string[] = ["--ao=null"],
+) {
   const player = new PlayerSupervisor({
     packaged: false,
     repoRoot: REPO_ROOT,
     env: process.env,
-    mpvArgs: ["--ao=null"],
+    mpvArgs,
     positionPushIntervalMs: 20,
   });
   const controller = new PlaybackController(player, options);
@@ -350,5 +356,97 @@ describeWithMpv("a queue playing through real mpv", () => {
 
     expect(controller.snapshot().queue.currentId).toBe(playingId);
     expect(controller.snapshot().queue.shuffle).toBe(true);
+  });
+});
+
+/**
+ * The audio fallback ladder against real mpv (PLAYER-11, DEC-055).
+ *
+ * Rows 6 and 7 of the macOS pass ask for exclusive output to be forced to fail
+ * with another application holding the device, and for the selected interface
+ * to be unplugged mid-playback. Neither is available to a test harness: there
+ * is no second application to contend with and no hand to pull a cable.
+ *
+ * What *is* available is the failure those events produce. mpv reports both as
+ * the same "audio output initialization failed" — which is precisely why the
+ * ladder is written to tell them apart by what is left to try rather than by
+ * what mpv says — and a device name that cannot be opened produces it on
+ * demand. These drive the real binary through both rungs and assert the two
+ * things the acceptance actually asks for: that playback continues, and that
+ * the user is told it is no longer getting what they asked for.
+ *
+ * This is not a substitute for the hardware pass. It cannot show that hog mode
+ * engages on a real interface, only that failing to get it is handled.
+ */
+describeWithMpv("falling back when the audio output refuses (PLAYER-11)", () => {
+  /** A device name mpv will accept and then fail to open, as an unplugged one does. */
+  const GONE = "coreaudio/definitely-not-a-device";
+
+  it("drops exclusive output first, keeps playing, and says so", async () => {
+    // Rung 1. With both exclusive output and a dead device set, the ladder must
+    // take exclusive away first: it is the cheaper thing to lose, and on a real
+    // unplug the device rung is the one that will matter.
+    const { player, controller, notices } = makeController({}, []);
+    await player.setAudioSettings({ device: GONE, exclusive: true });
+
+    await controller.playQueue([{ filePath: fixture("tone.flac"), title: "one" }]);
+
+    await waitFor(() => notices.some((n) => /Exclusive output/i.test(n.message)), {
+      timeoutMs: 20_000,
+    });
+    const exclusiveNotice = notices.find((n) => /Exclusive output/i.test(n.message))!;
+    expect(exclusiveNotice.kind).toBe("audio-fallback");
+    // Not a stop: the track was never the problem, so nothing is skipped.
+    expect(exclusiveNotice.stopped).toBe(false);
+
+    // The ladder then finds the device is gone too and takes the second rung.
+    await waitFor(() => notices.some((n) => /audio device is not available/i.test(n.message)), {
+      timeoutMs: 20_000,
+    });
+
+    const audio = player.getSnapshot().audio;
+    // What the user asked for is untouched — an interface that is asleep now
+    // may be back in a minute, and the next start tries it again.
+    expect(audio.exclusive).toBe(true);
+    expect(audio.device).toBe(GONE);
+    // What is actually in force is the truth, and differs.
+    expect(audio.activeExclusive).toBe(false);
+    expect(audio.activeDevice).not.toBe(GONE);
+  });
+
+  it("falls back to the system default when the chosen device is gone", async () => {
+    // Rung 2 on its own, which is the unplugged-interface case (row 7): no
+    // exclusive output to lose, just a device that will not open.
+    const { player, controller, notices } = makeController({}, []);
+    await player.setAudioSettings({ device: GONE, exclusive: false });
+
+    await controller.playQueue([{ filePath: fixture("tone.flac"), title: "one" }]);
+
+    await waitFor(() => notices.some((n) => /audio device is not available/i.test(n.message)), {
+      timeoutMs: 20_000,
+    });
+    const notice = notices.find((n) => /audio device is not available/i.test(n.message))!;
+    expect(notice.kind).toBe("audio-fallback");
+    expect(notice.stopped).toBe(false);
+
+    // The same track is retried rather than skipped, and it is still the one
+    // the queue is on.
+    const snapshot = controller.snapshot();
+    expect(snapshot.queue.currentItem?.title).toBe("one");
+    expect(snapshot.queue.currentItem?.status).not.toBe("failed");
+
+    const audio = player.getSnapshot().audio;
+    expect(audio.device).toBe(GONE);
+    expect(audio.activeDevice).not.toBe(GONE);
+  });
+
+  it("reports exclusive output as unsupported on no platform that has it", async () => {
+    // DEC-055: WASAPI exclusive on Windows, hog mode on macOS, nothing on Linux.
+    // The settings panel offers the toggle from this flag, so a macOS build
+    // that said "unsupported" would hide a feature the OS has.
+    const { player } = makeController({}, []);
+
+    const audio = player.getSnapshot().audio;
+    expect(audio.exclusiveSupported).toBe(process.platform !== "linux");
   });
 });
