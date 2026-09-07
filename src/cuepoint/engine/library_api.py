@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 from cuepoint.models.filter_rule import (
@@ -27,7 +28,13 @@ from cuepoint.models.filter_rule import (
     field_spec,
 )
 from cuepoint.models.library_track import LibraryTrack, QueueTrack
+from cuepoint.models.track_metadata import (
+    TrackMetadata,
+    effective_rating,
+    rating_source,
+)
 from cuepoint.persistence.track_query import (
+    COLLECTION_POSITION,
     DEFAULT_SORT,
     SORTABLE_COLUMNS,
 )
@@ -92,7 +99,9 @@ def queue_track_to_dict(track: QueueTrack) -> Dict[str, Any]:
     }
 
 
-def track_to_dict(track: LibraryTrack) -> Dict[str, Any]:
+def track_to_dict(
+    track: LibraryTrack, metadata: Optional[TrackMetadata] = None
+) -> Dict[str, Any]:
     """Serialize a library track for the API.
 
     An explicit field list rather than ``dataclasses.asdict``: the response is
@@ -104,7 +113,21 @@ def track_to_dict(track: LibraryTrack) -> Dict[str, Any]:
     (DEC-042) and the Inspector (DEC-047) show them, and one serializer for one
     row shape is what keeps the two agreeing. Additive: every field the shape
     had, it still has.
+
+    ORG-08 added CuePoint's own three. ``rating`` stays exactly what Rekordbox
+    imported — DEC-057 keeps the two layers apart, and a row that overwrote one
+    with the other would make the Inspector unable to say which it is showing.
+    ``effective_rating`` is what to draw, ``rating_source`` says which layer it
+    came from, and ``favorite`` is a flag of its own rather than five stars.
+    Notes are deliberately absent: ten thousand characters times a hundred rows
+    is a megabyte a window, and the one place that shows a note reads one track.
+
+    ``metadata`` is what the window read in one query (ORG-02). ``None`` means
+    the track has nothing recorded, which is the common case and is not a
+    missing answer — the imported rating shows through and the favorite is
+    false.
     """
+    cuepoint_rating = metadata.rating if metadata is not None else None
     return {
         "id": track.id,
         "rekordbox_track_id": track.rekordbox_track_id,
@@ -125,6 +148,9 @@ def track_to_dict(track: LibraryTrack) -> Dict[str, Any]:
         "comment": track.comment,
         "bitrate": track.bitrate,
         "file_path": track.file_path,
+        "effective_rating": effective_rating(track.rating, cuepoint_rating),
+        "rating_source": rating_source(track.rating, cuepoint_rating),
+        "favorite": bool(metadata.favorite) if metadata is not None else False,
     }
 
 
@@ -241,16 +267,124 @@ def parse_fields(raw: Optional[str]) -> Optional[str]:
     return fields
 
 
+#: What ``scope`` may name. ``collection`` is CuePoint's own list of rows;
+#: ``smart`` is a saved question that resolves to rules (DEC-061). Absent means
+#: the library, which is what every caller written before ORG-08 sends.
+SCOPE_COLLECTION = "collection"
+SCOPE_SMART = "smart"
+SCOPES = (SCOPE_COLLECTION, SCOPE_SMART)
+
+
+def parse_scope(raw: Optional[str]) -> Optional[str]:
+    """Parse the ``scope`` parameter.
+
+    Raises:
+        ValueError: If it is not one of :data:`SCOPES`.
+    """
+    if raw is None or raw.strip() == "":
+        return None
+    scope = str(raw).strip().lower()
+    if scope not in SCOPES:
+        allowed = " or ".join(repr(value) for value in SCOPES)
+        raise ValueError(f"scope may only be {allowed}, not {raw!r}")
+    return scope
+
+
+def parse_collection_id(raw: Optional[str]) -> Optional[int]:
+    """Parse the ``collection_id`` scope parameter.
+
+    Raises:
+        ValueError: If it is present and is not a number.
+    """
+    if raw is None or raw.strip() == "":
+        return None
+    try:
+        return int(raw)
+    except ValueError:
+        raise ValueError(f"collection_id must be a number, not {raw!r}") from None
+
+
+def parse_optional_sort(raw: Optional[str]) -> Optional[str]:
+    """Parse ``sort``, keeping "the caller did not say" distinguishable.
+
+    :func:`parse_sort` answers with the library's default for a missing value,
+    which is the right answer for a library and the wrong one inside a scope
+    that has an order of its own (ORG-09). Absent has to stay absent for this
+    endpoint to tell the two apart.
+
+    Raises:
+        ValueError: If the column cannot be sorted by.
+    """
+    if raw is None or raw == "":
+        return None
+    return parse_sort(raw)
+
+
+@dataclass(frozen=True)
+class BrowseScope:
+    """What a ``scope`` parameter resolved to (ORG-08).
+
+    A Collection resolves to a scope the query narrows by and an order it can
+    open in. A Smart Collection resolves to *rules* — it holds a question, not
+    rows (DEC-061) — plus the sort it was saved with, so opening one shows what
+    the user saw when they saved it.
+    """
+
+    collection_id: Optional[int] = None
+    rules: RuleSet = RuleSet()
+    sort: Optional[str] = None
+    direction: Optional[str] = None
+
+
+def _resolve_collection_service() -> Any:
+    """Resolve ``ICollectionService``, or raise :class:`LibraryUnavailableError`."""
+    try:
+        from cuepoint.services.interfaces import ICollectionService
+        from cuepoint.utils.di_container import get_container
+
+        return get_container().resolve(ICollectionService)
+    except Exception as exc:  # noqa: BLE001 — surfaced as a 503 to the caller
+        raise LibraryUnavailableError(str(exc)) from exc
+
+
+def resolve_scope(scope: Optional[str], collection_id: Optional[int]) -> BrowseScope:
+    """Turn a ``scope`` and an id into what the query needs.
+
+    Raises:
+        ValueError: If a scope was named without a collection, or an id without
+            a scope — both are requests that cannot be honoured as written,
+            and guessing which was meant is worse than saying so.
+        BrokenRuleError: If a Smart Collection's saved rules cannot be run. It
+            is a ``FilterRuleError``, so it reaches the caller as the clause
+            that broke rather than as a failure.
+    """
+    if scope is None and collection_id is None:
+        return BrowseScope()
+    if scope is None:
+        raise ValueError("collection_id needs a scope: 'collection' or 'smart'")
+    if collection_id is None:
+        raise ValueError(f"scope={scope!r} needs a collection_id")
+
+    if scope == SCOPE_COLLECTION:
+        return BrowseScope(collection_id=collection_id, sort=COLLECTION_POSITION)
+
+    resolution = _resolve_collection_service().resolve(collection_id)
+    query = resolution.require_query()
+    return BrowseScope(rules=query.rules, sort=query.sort, direction=query.direction)
+
+
 def search_library(
     query: str,
     limit: int = SEARCH_LIMIT_DEFAULT,
     offset: int = 0,
     mode: str = MODE_SEARCH,
     playlist_id: Optional[int] = None,
-    sort: str = DEFAULT_SORT,
-    direction: str = "asc",
+    sort: Optional[str] = None,
+    direction: Optional[str] = None,
     filters: Optional[RuleSet] = None,
     fields: Optional[str] = None,
+    scope: Optional[str] = None,
+    collection_id: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Run a library query and return the API payload.
 
@@ -264,11 +398,26 @@ def search_library(
     by what it answers rather than by bookkeeping the renderer has to keep in
     step (LIBUI-05).
 
+    ``scope`` adds CuePoint's own two (ORG-08). A Collection narrows the same
+    query and opens in the order the user arranged unless a sort is named; a
+    Smart Collection resolves to the rules it saved, which are then *and*ed with
+    whatever the filter bar is holding — so narrowing a saved question further
+    is one query, not a second path (DEC-016, DEC-043).
+
     Raises:
         BrowseQueryError: If the sort or direction cannot be honoured.
-        FilterRuleError: If a filter rule cannot be honoured.
+        FilterRuleError: If a filter rule cannot be honoured, including a saved
+            one that names something that has since been deleted.
+        ValueError: If the scope and the collection do not go together.
     """
     service = _resolve_library_service()
+    resolved = resolve_scope(scope, collection_id)
+    rules = _combine(resolved.rules, filters)
+    # What the caller asked for wins; the scope's own answer is the fallback,
+    # and the library's default is the fallback for that. A caller who names a
+    # sort gets it, inside a Collection or out of one.
+    order = sort or resolved.sort or DEFAULT_SORT
+    heading = direction or resolved.direction or "asc"
 
     if mode == MODE_BROWSE:
         if fields == FIELDS_ID:
@@ -280,16 +429,20 @@ def search_library(
         result: Any = browse(
             query=query,
             playlist_id=playlist_id,
-            rules=filters,
-            sort=sort,
-            direction=direction,
+            rules=rules,
+            sort=order,
+            direction=heading,
             limit=limit,
             offset=offset,
+            collection_id=resolved.collection_id,
         )
     else:
         result = service.search_tracks(query, limit=limit, offset=offset)
 
-    tracks: List[Dict[str, Any]] = [track_to_dict(t) for t in result.tracks]
+    found = getattr(result, "metadata", {}) or {}
+    tracks: List[Dict[str, Any]] = [
+        track_to_dict(t, found.get(t.id)) for t in result.tracks
+    ]
     payload: Dict[str, Any] = {
         "query": result.query,
         "total": result.total,
@@ -303,12 +456,20 @@ def search_library(
         "scope": getattr(result, "playlist_id", None),
         "sort": getattr(result, "sort", DEFAULT_SORT),
         "dir": getattr(result, "direction", "asc"),
+        # CuePoint's scope, echoed under its own names rather than folded into
+        # the two above: ``scope`` has meant "which playlist" since DEC-023 and
+        # changing what it means would break every caller reading it.
+        "collection_scope": scope,
+        "collection_id": getattr(result, "collection_id", None),
         # The filters too, so a caller can tell a late response from a current
         # one by what it answers rather than by bookkeeping it has to keep in
         # step (LIBUI-05). Without this, adding a filter — which changes
         # neither the scope, the sort nor the text — produces two requests
         # whose responses are indistinguishable.
-        "filters": (filters or RuleSet()).validated().to_dict(),
+        # The rules that were actually run, saved ones included, so a caller
+        # can tell a late response from a current one by what it answers
+        # (LIBUI-05) and can see what a Smart Collection resolved to.
+        "filters": rules.validated().to_dict(),
     }
     ids = getattr(result, "track_ids", None)
     if ids is not None:
@@ -319,6 +480,24 @@ def search_library(
         # this projection sees exactly the response it always saw.
         payload["queue_tracks"] = [queue_track_to_dict(t) for t in queue_tracks]
     return payload
+
+
+def _combine(saved: RuleSet, sent: Optional[RuleSet]) -> RuleSet:
+    """AND a scope's saved rules with the ones the caller sent (DEC-016).
+
+    Concatenation is the whole of it, because the rule model is flat and
+    all-of: two lists of clauses that must all hold are one list of clauses
+    that must all hold. When either side is empty the other is returned
+    unchanged, so a request with no scope produces exactly the rule set it
+    sent — which is what keeps DEC-023's guarantee that a caller written
+    before ORG-08 gets byte-identical output.
+    """
+    extra = sent or RuleSet()
+    if not saved.rules:
+        return extra
+    if not extra.rules:
+        return saved
+    return RuleSet(rules=tuple(saved.rules) + tuple(extra.rules), match=saved.match)
 
 
 # ---------------------------------------------------------------------------
@@ -374,6 +553,8 @@ def library_facet(
     playlist_id: Optional[int] = None,
     filters: Optional[RuleSet] = None,
     limit: int = 0,
+    scope: Optional[str] = None,
+    collection_id: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Return which values a field takes in the current view, with counts.
 
@@ -385,18 +566,35 @@ def library_facet(
     no value — because a control for a number needs both to draw itself, and
     asking twice would mean two passes over the same rows.
 
+    The scope is every scope the table has, CuePoint's included (ORG-08): a
+    filter control inside a Collection has to offer the values that Collection
+    holds. Answering with the library's would offer a genre that vanishes the
+    moment it is chosen.
+
     Raises:
         FilterRuleError: If the field cannot be filtered by.
+        ValueError: If the scope and the collection do not go together.
     """
     service = _resolve_library_service()
     spec = field_spec(field)
+    resolved = resolve_scope(scope, collection_id)
+    rules = _combine(resolved.rules, filters)
     facet = service.facet(
-        spec.name, query=query, playlist_id=playlist_id, rules=filters, limit=limit
+        spec.name,
+        query=query,
+        playlist_id=playlist_id,
+        rules=rules,
+        limit=limit,
+        collection_id=resolved.collection_id,
     )
     span: Optional[FacetRange] = None
     if spec.type == TYPE_NUMBER:
         span = service.facet_range(
-            spec.name, query=query, playlist_id=playlist_id, rules=filters
+            spec.name,
+            query=query,
+            playlist_id=playlist_id,
+            rules=rules,
+            collection_id=resolved.collection_id,
         )
     return facet_to_dict(facet, span)
 
@@ -443,10 +641,24 @@ def library_track_detail(track_id: int) -> Dict[str, Any]:
         for playlist_id in playlists.playlist_ids_for_track(int(track_id))
     ]
     holders = [playlist_to_dict(node) for node in nodes if node is not None]
+
+    # The one place a note belongs: the Inspector reads one track, and this is
+    # it (ORG-08). The row shape deliberately leaves notes out.
+    from cuepoint.engine.organization_api import (
+        collections_holding,
+        metadata_to_dict,
+        resolve_metadata_service,
+        tags_on,
+    )
+
+    record = resolve_metadata_service().get(int(track_id))
     return {
-        "track": track_to_dict(track),
+        "track": track_to_dict(track, record),
         "playlists": holders,
         "playlist_count": len(holders),
+        "metadata": metadata_to_dict(int(track_id), track.rating, record),
+        "tags": tags_on(int(track_id)),
+        "collections": collections_holding(int(track_id)),
     }
 
 

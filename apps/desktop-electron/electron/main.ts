@@ -211,6 +211,82 @@ function registerIpcHandlers(): void {
   ipcMain.handle("engine:getLibraryTrack", (_event, params) =>
     engine.getLibraryTrack(params),
   );
+
+  // CuePoint's own organization (ORG-08). Every one of these is a thin
+  // forward: the main process supervises and bridges, and every rule
+  // about what a Collection may hold or what a rating may be lives in
+  // Python.
+  ipcMain.handle("engine:getCollections", () => engine.getCollections());
+  ipcMain.handle("engine:getCollectionEntries", (_event, params) =>
+    engine.getCollectionEntries(params),
+  );
+  ipcMain.handle("engine:createCollection", (_event, params) =>
+    engine.createCollection(params),
+  );
+  ipcMain.handle("engine:renameCollection", (_event, params) =>
+    engine.renameCollection(params),
+  );
+  ipcMain.handle("engine:moveCollection", (_event, params) =>
+    engine.moveCollection(params),
+  );
+  ipcMain.handle("engine:deleteCollection", (_event, params) =>
+    engine.deleteCollection(params),
+  );
+  ipcMain.handle("engine:previewCollectionDelete", (_event, params) =>
+    engine.previewCollectionDelete(params),
+  );
+  ipcMain.handle("engine:addTracksToCollection", (_event, params) =>
+    engine.addTracksToCollection(params),
+  );
+  ipcMain.handle("engine:insertTrackInCollection", (_event, params) =>
+    engine.insertTrackInCollection(params),
+  );
+  ipcMain.handle("engine:removeCollectionEntries", (_event, params) =>
+    engine.removeCollectionEntries(params),
+  );
+  ipcMain.handle("engine:reorderCollectionEntry", (_event, params) =>
+    engine.reorderCollectionEntry(params),
+  );
+  ipcMain.handle("engine:saveSmartCollection", (_event, params) =>
+    engine.saveSmartCollection(params),
+  );
+  ipcMain.handle("engine:updateSmartCollection", (_event, params) =>
+    engine.updateSmartCollection(params),
+  );
+  ipcMain.handle("engine:duplicateSmartCollection", (_event, params) =>
+    engine.duplicateSmartCollection(params),
+  );
+  ipcMain.handle("engine:freezeSmartCollection", (_event, params) =>
+    engine.freezeSmartCollection(params),
+  );
+  ipcMain.handle("engine:getTags", () => engine.getTags());
+  ipcMain.handle("engine:createTag", (_event, params) =>
+    engine.createTag(params),
+  );
+  ipcMain.handle("engine:updateTag", (_event, params) =>
+    engine.updateTag(params),
+  );
+  ipcMain.handle("engine:deleteTag", (_event, params) =>
+    engine.deleteTag(params),
+  );
+  ipcMain.handle("engine:mergeTags", (_event, params) =>
+    engine.mergeTags(params),
+  );
+  ipcMain.handle("engine:assignTag", (_event, params) =>
+    engine.assignTag(params),
+  );
+  ipcMain.handle("engine:unassignTag", (_event, params) =>
+    engine.unassignTag(params),
+  );
+  ipcMain.handle("engine:setTrackMetadata", (_event, params) =>
+    engine.setTrackMetadata(params),
+  );
+  ipcMain.handle("engine:getTrackHistory", (_event, params) =>
+    engine.getTrackHistory(params),
+  );
+  ipcMain.handle("engine:applyBatch", (_event, params) =>
+    engine.applyBatch(params),
+  );
   ipcMain.handle("engine:startLibraryImport", (_event, params) =>
     engine.startLibraryImport(params),
   );

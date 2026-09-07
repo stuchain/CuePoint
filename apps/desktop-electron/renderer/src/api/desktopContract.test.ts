@@ -317,4 +317,190 @@ describe("desktop contract", () => {
       expect(bridgeTypes).toContain("result?: RefreshDiff | RefreshApplied");
     });
   });
+
+  describe("CuePoint's own organization (ORG-08)", () => {
+    // The generic checks above compare the files against each other, so a
+    // method missing from *all* of them passes every one. This says what has
+    // to exist — twenty-five methods across six files, which is exactly the
+    // surface where "forgot one" is silent until the packaged app runs.
+    const methods = [
+      "getCollections",
+      "getCollectionEntries",
+      "createCollection",
+      "renameCollection",
+      "moveCollection",
+      "deleteCollection",
+      "previewCollectionDelete",
+      "addTracksToCollection",
+      "insertTrackInCollection",
+      "removeCollectionEntries",
+      "reorderCollectionEntry",
+      "saveSmartCollection",
+      "updateSmartCollection",
+      "duplicateSmartCollection",
+      "freezeSmartCollection",
+      "getTags",
+      "createTag",
+      "updateTag",
+      "deleteTag",
+      "mergeTags",
+      "assignTag",
+      "unassignTag",
+      "setTrackMetadata",
+      "getTrackHistory",
+      "applyBatch",
+    ];
+
+    it.each(methods)("exposes %s on the preload", (method) => {
+      expect(invokedChannels(preload)).toContain(`engine:${method}`);
+    });
+
+    it.each(methods)("handles engine:%s in the main process", (method) => {
+      expect(handledChannels(main)).toContain(`engine:${method}`);
+    });
+
+    it.each(methods)("forwards %s through the supervisor", (method) => {
+      expect(supervisorMethodsDeclared(supervisor)).toContain(method);
+    });
+
+    it.each(methods)("has a typed client method for %s", (method) => {
+      // The open bracket matters: `toContain("async getTags")` also matches
+      // `async getTagsMisspelled(`, so a rename would pass the check that
+      // exists to catch it.
+      expect(engineClient).toContain(`async ${method}(`);
+    });
+
+    it.each(methods)("declares %s on the renderer bridge type", (method) => {
+      expect(bridgeTypes).toContain(`${method}?:`);
+    });
+
+    it("hits the documented paths", () => {
+      for (const path of [
+        "/api/v1/collections",
+        "/api/v1/collections/entries?",
+        "/api/v1/collections/create",
+        "/api/v1/collections/rename",
+        "/api/v1/collections/move",
+        "/api/v1/collections/delete",
+        "/api/v1/collections/delete/preview",
+        "/api/v1/collections/tracks/add",
+        "/api/v1/collections/tracks/insert",
+        "/api/v1/collections/tracks/remove",
+        "/api/v1/collections/tracks/reorder",
+        "/api/v1/collections/smart/save",
+        "/api/v1/collections/smart/update",
+        "/api/v1/collections/smart/duplicate",
+        "/api/v1/collections/smart/freeze",
+        "/api/v1/tags",
+        "/api/v1/tags/create",
+        "/api/v1/tags/update",
+        "/api/v1/tags/delete",
+        "/api/v1/tags/merge",
+        "/api/v1/tags/assign",
+        "/api/v1/tags/unassign",
+        "/api/v1/library/batch",
+      ]) {
+        expect(engineClient).toContain(path);
+      }
+      // The two that carry an id in the path, built rather than literal.
+      expect(engineClient).toContain("/metadata`");
+      expect(engineClient).toContain("/history${query}`");
+    });
+
+    it("declares the shapes the renderer reads them as", () => {
+      for (const shape of [
+        "interface CollectionNode",
+        "interface CollectionTree",
+        "interface CollectionEntry",
+        "interface CollectionEntryPage",
+        "interface CollectionSubtree",
+        "interface CollectionAdded",
+        "interface FrozenCollection",
+        "interface Tag",
+        "interface TagUsage",
+        "interface TagVocabulary",
+        "interface TrackMetadata",
+        "interface TrackFieldChange",
+        "interface TrackHistory",
+        "interface BatchResult",
+        "interface BatchOutcome",
+        "interface BatchSelection",
+        "interface BatchOperation",
+      ]) {
+        expect(bridgeTypes).toContain(shape);
+      }
+    });
+
+    it("keeps the engine and the renderer agreeing about a Collection node", () => {
+      // Two copies of one shape, one in each process, compared the way the
+      // track row already is: the main process cannot import renderer types,
+      // and the renderer cannot import the client's.
+      const fields = (source: string) => {
+        const start = source.indexOf("export interface CollectionNode");
+        return source
+          .slice(start, source.indexOf("\n}", start))
+          .split("\n")
+          .map((line) => line.trim().split(":")[0]!.trim())
+          .filter((name) => /^[a-z_]+$/.test(name));
+      };
+
+      expect(fields(bridgeTypes)).toEqual(fields(engineClient));
+    });
+
+    it("keeps them agreeing about a track's metadata", () => {
+      const fields = (source: string) => {
+        const start = source.indexOf("export interface TrackMetadata");
+        return source
+          .slice(start, source.indexOf("\n}", start))
+          .split("\n")
+          .map((line) => line.trim().split(":")[0]!.trim())
+          .filter((name) => /^[a-z_]+$/.test(name));
+      };
+
+      expect(fields(bridgeTypes)).toEqual(fields(engineClient));
+    });
+
+    it("writes with POST and reads with GET", () => {
+      // A GET that changed the library would be retried by anything that
+      // retries GETs, and a batch applied twice is not a batch.
+      const batch = engineClient.slice(
+        engineClient.indexOf("async applyBatch("),
+        engineClient.indexOf("async getLibrarySummary("),
+      );
+      expect(batch).toContain("postJson");
+
+      const tree = engineClient.slice(
+        engineClient.indexOf("async getCollections("),
+        engineClient.indexOf("async getCollectionEntries("),
+      );
+      expect(tree).toContain("getJson");
+      expect(tree).not.toContain("postJson");
+    });
+
+    it("carries CuePoint's own values on a track row (DEC-057)", () => {
+      // The table draws the effective rating and says which layer it came
+      // from; a field the engine sends and the type does not declare is a
+      // column that cannot be shown without an `any`.
+      const row = bridgeTypes.slice(
+        bridgeTypes.indexOf("export interface LibraryTrackRow"),
+        bridgeTypes.indexOf("export interface LibrarySearchResponse"),
+      );
+      for (const field of ["effective_rating", "rating_source", "favorite"]) {
+        expect(row).toContain(field);
+      }
+      expect(row).not.toContain("notes");
+    });
+
+    it("can scope a browse to a Collection without a second query path", () => {
+      // DEC-023: browsing is one endpoint with more parameters, and ORG-08's
+      // scope is two more of them rather than a route of its own.
+      const method = engineClient.slice(
+        engineClient.indexOf("async browseLibrary("),
+        engineClient.indexOf("async getLibraryPlaylists("),
+      );
+      expect(method).toContain("/api/v1/library/search");
+      expect(method).toContain('query.set("scope"');
+      expect(method).toContain('query.set("collection_id"');
+    });
+  });
 });

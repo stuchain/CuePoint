@@ -10,6 +10,56 @@ contextBridge.exposeInMainWorld("cuepoint", {
   getLibraryFacet: (params) => ipcRenderer.invoke("engine:getLibraryFacet", params),
   getLibraryFilterFields: () => ipcRenderer.invoke("engine:getLibraryFilterFields"),
   getLibraryTrack: (params) => ipcRenderer.invoke("engine:getLibraryTrack", params),
+
+  // CuePoint's own organization (ORG-08).
+  getCollections: () => ipcRenderer.invoke("engine:getCollections"),
+  getCollectionEntries: (params) =>
+    ipcRenderer.invoke("engine:getCollectionEntries", params),
+  createCollection: (params) =>
+    ipcRenderer.invoke("engine:createCollection", params),
+  renameCollection: (params) =>
+    ipcRenderer.invoke("engine:renameCollection", params),
+  moveCollection: (params) =>
+    ipcRenderer.invoke("engine:moveCollection", params),
+  deleteCollection: (params) =>
+    ipcRenderer.invoke("engine:deleteCollection", params),
+  previewCollectionDelete: (params) =>
+    ipcRenderer.invoke("engine:previewCollectionDelete", params),
+  addTracksToCollection: (params) =>
+    ipcRenderer.invoke("engine:addTracksToCollection", params),
+  insertTrackInCollection: (params) =>
+    ipcRenderer.invoke("engine:insertTrackInCollection", params),
+  removeCollectionEntries: (params) =>
+    ipcRenderer.invoke("engine:removeCollectionEntries", params),
+  reorderCollectionEntry: (params) =>
+    ipcRenderer.invoke("engine:reorderCollectionEntry", params),
+  saveSmartCollection: (params) =>
+    ipcRenderer.invoke("engine:saveSmartCollection", params),
+  updateSmartCollection: (params) =>
+    ipcRenderer.invoke("engine:updateSmartCollection", params),
+  duplicateSmartCollection: (params) =>
+    ipcRenderer.invoke("engine:duplicateSmartCollection", params),
+  freezeSmartCollection: (params) =>
+    ipcRenderer.invoke("engine:freezeSmartCollection", params),
+  getTags: () => ipcRenderer.invoke("engine:getTags"),
+  createTag: (params) =>
+    ipcRenderer.invoke("engine:createTag", params),
+  updateTag: (params) =>
+    ipcRenderer.invoke("engine:updateTag", params),
+  deleteTag: (params) =>
+    ipcRenderer.invoke("engine:deleteTag", params),
+  mergeTags: (params) =>
+    ipcRenderer.invoke("engine:mergeTags", params),
+  assignTag: (params) =>
+    ipcRenderer.invoke("engine:assignTag", params),
+  unassignTag: (params) =>
+    ipcRenderer.invoke("engine:unassignTag", params),
+  setTrackMetadata: (params) =>
+    ipcRenderer.invoke("engine:setTrackMetadata", params),
+  getTrackHistory: (params) =>
+    ipcRenderer.invoke("engine:getTrackHistory", params),
+  applyBatch: (params) =>
+    ipcRenderer.invoke("engine:applyBatch", params),
   startLibraryImport: (params) =>
     ipcRenderer.invoke("engine:startLibraryImport", params),
   startLibraryRefreshPreview: (params) =>

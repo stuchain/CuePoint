@@ -26,6 +26,9 @@ from cuepoint.models.references import NO_REFERENCES, ReferenceSummary
 from cuepoint.persistence.library_source_repository import LibrarySourceRepository
 from cuepoint.persistence.playlist_repository import PlaylistRepository
 from cuepoint.persistence.collection_repository import CollectionRepository
+from cuepoint.persistence.track_metadata_repository import (
+    TrackMetadataRepository,
+)
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.interfaces import ILibraryService
@@ -72,6 +75,7 @@ def library(db):
     return LibraryService(
         track_repository=TrackRepository(db),
         collection_repository=CollectionRepository(db),
+        metadata_repository=TrackMetadataRepository(db),
     )
 
 
@@ -125,6 +129,7 @@ class TestTheSeamAnswersToday:
         service = LibraryService(
             track_repository=TrackRepository(db),
             collection_repository=ReadsNothing(),  # type: ignore[arg-type]
+            metadata_repository=TrackMetadataRepository(db),
         )
         consumed = []
 
@@ -261,6 +266,7 @@ class TestTheDiffCarriesTheSummary:
         service._library = Recording(
             track_repository=service._tracks,
             collection_repository=CollectionRepository(db),
+            metadata_repository=TrackMetadataRepository(db),
         )
         service.import_rekordbox_xml(self._export(tmp_path, [1, 2, 3], "a.xml"))
         removed_id = service._tracks.find_by_rekordbox_id("3").id

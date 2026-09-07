@@ -21,6 +21,7 @@ from cuepoint.engine.config_api import (
     set_beatport_token,
     test_beatport_token,
 )
+from cuepoint.engine.api_errors import error_payload as _error_payload
 from cuepoint.engine.job_events import iter_job_events
 from cuepoint.engine.export_api import parse_export_body, run_export
 from cuepoint.engine.sync_tags_api import parse_sync_tags_body, run_sync_tags
@@ -45,6 +46,9 @@ from cuepoint.engine.library_api import (
     MODE_BROWSE,
     SEARCH_LIMIT_DEFAULT,
     library_facet,
+    parse_collection_id,
+    parse_optional_sort,
+    parse_scope,
     library_filter_fields,
     library_playlists,
     library_summary,
@@ -58,7 +62,6 @@ from cuepoint.engine.library_api import (
     parse_playlist_id,
     parse_refresh_apply_body,
     parse_refresh_preview_body,
-    parse_sort,
     search_library,
     start_import,
     start_refresh_apply,
@@ -68,7 +71,6 @@ from cuepoint.models.filter_rule import FilterRuleError
 from cuepoint.persistence.track_query import (
     BROWSE_IDS_LIMIT_DEFAULT,
     BROWSE_LIMIT_DEFAULT,
-    BrowseQueryError,
 )
 from cuepoint.engine.incrate_api import (
     demo_inventory_snapshot,
@@ -81,6 +83,13 @@ from cuepoint.engine.incrate_api import (
     run_incrate_import,
     run_incrate_reset,
     run_playlist_create,
+)
+from cuepoint.engine.organization_api import (
+    handle_get as organization_get,
+    handle_post as organization_post,
+    handles_get as organization_handles_get,
+    handles_post as organization_handles_post,
+    status_for as organization_status,
 )
 from cuepoint.engine.xml_api import list_xml_playlists
 from cuepoint.engine.jobs import (
@@ -166,8 +175,9 @@ def health_payload() -> dict:
     return payload
 
 
-def error_payload(code: str, message: str) -> dict:
-    return {"error": {"code": code, "message": message}}
+#: Re-exported so every module that built this envelope before ORG-08 still
+#: imports it from where it was. There is one definition, in ``api_errors``.
+error_payload = _error_payload
 
 
 def get_job_store() -> JobStore:
@@ -489,9 +499,17 @@ def make_handler(
                     playlist_id = parse_playlist_id(
                         params.get("playlist_id", [None])[0]
                     )
-                    sort = parse_sort(params.get("sort", [None])[0])
-                    direction = parse_direction(params.get("dir", [None])[0])
+                    # Absent stays absent: a scope with an order of its own
+                    # answers for it, and the library's default answers for a
+                    # request that names neither (ORG-08, ORG-09).
+                    sort = parse_optional_sort(params.get("sort", [None])[0])
+                    raw_dir = params.get("dir", [None])[0]
+                    direction = parse_direction(raw_dir) if raw_dir else None
                     filters = parse_filters_param(params.get("filters", [None])[0])
+                    scope = parse_scope(params.get("scope", [None])[0])
+                    collection_id = parse_collection_id(
+                        params.get("collection_id", [None])[0]
+                    )
                 except (ValueError, FilterRuleError) as exc:
                     self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
                     return
@@ -506,10 +524,15 @@ def make_handler(
                         direction=direction,
                         filters=filters,
                         fields=fields,
+                        scope=scope,
+                        collection_id=collection_id,
                     )
-                except (BrowseQueryError, FilterRuleError) as exc:
+                except ValueError as exc:
                     # A request that cannot be honoured as written, not a
                     # failure: it names the clause, and the caller can fix it.
+                    # ``BrowseQueryError`` and ``FilterRuleError`` are both
+                    # ValueErrors, and so is a scope that does not go with the
+                    # collection it was given (ORG-08).
                     self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
                     return
                 except LibraryUnavailableError as exc:
@@ -565,6 +588,10 @@ def make_handler(
                         params.get("playlist_id", [None])[0]
                     )
                     filters = parse_filters_param(params.get("filters", [None])[0])
+                    scope = parse_scope(params.get("scope", [None])[0])
+                    collection_id = parse_collection_id(
+                        params.get("collection_id", [None])[0]
+                    )
                 except (ValueError, FilterRuleError) as exc:
                     self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
                     return
@@ -575,8 +602,10 @@ def make_handler(
                         playlist_id=playlist_id,
                         filters=filters,
                         limit=limit,
+                        scope=scope,
+                        collection_id=collection_id,
                     )
-                except (BrowseQueryError, FilterRuleError) as exc:
+                except ValueError as exc:
                     self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
                     return
                 except LibraryUnavailableError as exc:
@@ -586,6 +615,13 @@ def make_handler(
                     self._send_json(500, error_payload("FACET_FAILED", str(exc)))
                     return
                 self._send_json(200, payload)
+                return
+            if organization_handles_get(path):
+                # Before the prefix below, which would read the whole of
+                # "7/history" as a track id and refuse it as one.
+                self._handle_organization(
+                    lambda: organization_get(path, parse_qs(parsed.query))
+                )
                 return
             if path.startswith("/api/v1/library/tracks/"):
                 if not self._authorized():
@@ -768,7 +804,32 @@ def make_handler(
                     return
                 self._send_json(200, get_beatport_token_status())
                 return
+            if organization_handles_get(path):
+                self._handle_organization(
+                    lambda: organization_get(path, parse_qs(parsed.query))
+                )
+                return
             self._send_json(404, error_payload("NOT_FOUND", "Unknown path"))
+
+        def _handle_organization(self, run) -> None:
+            """Answer one organization route (ORG-08).
+
+            The whole of the server's knowledge of that module: whether it
+            handles the path, and how to send what it answers. Every status it
+            can produce — a refused clause, a missing track, a busy library, an
+            unreachable database — is decided there, beside the handler that
+            knows which it is, rather than in five ``except`` clauses here.
+            """
+            if not self._authorized():
+                self._send_json(
+                    401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                )
+                return
+            try:
+                status, payload = run()
+            except Exception as exc:  # noqa: BLE001 — mapped, not swallowed
+                status, payload = organization_status(exc)
+            self._send_json(status, payload)
 
         def do_POST(self) -> None:  # noqa: N802
             path = urlparse(self.path).path
@@ -984,6 +1045,13 @@ def make_handler(
                     self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
                     return
                 self._send_json(200, {"ok": ok, "message": message})
+                return
+
+            if organization_handles_post(path):
+                body = self._read_body()
+                self._handle_organization(
+                    lambda: organization_post(path, body, job_store=job_store)
+                )
                 return
 
             self._send_json(404, error_payload("NOT_FOUND", "Unknown path"))

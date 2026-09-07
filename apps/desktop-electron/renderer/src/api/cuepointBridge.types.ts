@@ -531,6 +531,15 @@ export interface LibraryTrackRow {
   comment: string | null;
   bitrate: number | null;
   file_path: string;
+  /**
+   * CuePoint's own layer, resolved (ORG-08, DEC-057). `rating` above stays
+   * exactly what Rekordbox imported; this is what to draw, and
+   * `rating_source` says which of the two it came from. Notes are not here on
+   * purpose — the Inspector reads one track and can afford them.
+   */
+  effective_rating: number | null;
+  rating_source: "cuepoint" | "rekordbox" | null;
+  favorite: boolean;
 }
 
 export interface LibrarySearchResponse {
@@ -558,6 +567,9 @@ export interface LibrarySearchResponse {
    * produce responses nothing can tell apart (LIBUI-05).
    */
   filters?: FilterRuleSet | null;
+  /** CuePoint's own scope, echoed back beside Rekordbox's (ORG-08). */
+  collection_scope?: "collection" | "smart" | null;
+  collection_id?: number | null;
   /** Present only when ids were asked for; `tracks` is then empty. */
   track_ids?: number[];
 }
@@ -591,6 +603,13 @@ export interface LibraryBrowseParams {
   offset?: number;
   /** Ask for ids instead of rows — a selection crossing unloaded rows. */
   fields?: "id";
+  /**
+   * CuePoint's own scope (ORG-08). A Collection opens in the order the user
+   * arranged unless `sort` says otherwise; a Smart Collection resolves to the
+   * rules it saved and is narrowed further by anything in `filters`.
+   */
+  scope?: "collection" | "smart";
+  collectionId?: number | null;
 }
 
 /** One node of the mirrored Rekordbox tree; read-only source data (DEC-031). */
@@ -676,6 +695,185 @@ export interface LibraryTrackDetail {
   track: LibraryTrackRow;
   playlists: LibraryPlaylistNode[];
   playlist_count: number;
+  /** CuePoint's own layer, notes included (ORG-08, DEC-057). */
+  metadata: TrackMetadata;
+  tags: Array<Pick<Tag, "id" | "name" | "category" | "colour">>;
+  collections: Array<Pick<CollectionNode, "id" | "name" | "kind">>;
+}
+
+/**
+ * CuePoint's own organization (ORG-08).
+ *
+ * Mirrors `organization_api.py`'s explicit field lists, and `engineClient.ts`'s
+ * copy of them. Two declarations of one shape, one in each process, because
+ * neither can import the other's — the desktop contract test compares them.
+ */
+export type CollectionKind = "folder" | "collection" | "smart";
+
+export interface CollectionNode {
+  id: number;
+  parent_id: number | null;
+  kind: CollectionKind;
+  name: string;
+  position: number;
+  depth: number;
+  /** A Smart Collection's saved rules; null for anything else (DEC-061). */
+  rules: FilterRuleSet | null;
+  sort: string | null;
+  dir: "asc" | "desc" | null;
+  frozen_from_id: number | null;
+  frozen_at: string | null;
+  /** Rows held, duplicates counted — DEC-058 lets the two counts differ. */
+  entry_count: number;
+  track_count: number;
+  /** A Smart Collection whose saved rules cannot be run right now (ORG-06). */
+  broken: boolean;
+  problem: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CollectionTree {
+  collections: CollectionNode[];
+  total: number;
+}
+
+/** One track's place in one Collection. Removal addresses `id` (DEC-058). */
+export interface CollectionEntry {
+  id: number;
+  collection_id: number;
+  track_id: number;
+  position: number;
+  added_at: string;
+}
+
+export interface CollectionEntryPage {
+  collection_id: number;
+  entries: CollectionEntry[];
+  entry_count: number;
+  track_count: number;
+  offset: number;
+}
+
+/** What a subtree delete would take, or did — ORG-09's confirmation. */
+export interface CollectionSubtree {
+  folders: number;
+  collections: number;
+  smart_collections: number;
+  entries: number;
+  nodes: number;
+}
+
+export interface CollectionAdded {
+  added: number;
+  skipped: number;
+  added_track_ids: number[];
+  skipped_track_ids: number[];
+}
+
+export interface FrozenCollection {
+  collection: CollectionNode;
+  source_id: number;
+  source_name: string;
+  track_count: number;
+}
+
+export interface Tag {
+  id: number;
+  name: string;
+  category: string | null;
+  colour: string | null;
+  created_at: string;
+}
+
+export interface TagUsage extends Tag {
+  track_count: number;
+}
+
+export interface TagVocabulary {
+  tags: TagUsage[];
+  categories: string[];
+}
+
+/** CuePoint's layer for one track, notes included (DEC-057). */
+export interface TrackMetadata {
+  track_id: number;
+  /** The override, or null. Different from zero, which is a rating. */
+  rating: number | null;
+  rekordbox_rating: number | null;
+  effective_rating: number | null;
+  rating_source: "cuepoint" | "rekordbox" | null;
+  favorite: boolean;
+  notes: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+/** One row of a track's field history (DEC-008). */
+export interface TrackFieldChange {
+  id: number | null;
+  track_id: number;
+  field: string;
+  old_value: unknown;
+  new_value: unknown;
+  source: string;
+  changed_at: string;
+  /** Shared by every row one batch wrote (DEC-063). */
+  batch_id: string | null;
+}
+
+export interface TrackHistory {
+  track_id: number;
+  changes: TrackFieldChange[];
+  limit: number;
+}
+
+/** What a batch did, in the counts a toast reads (ORG-07). */
+export interface BatchResult {
+  batch_id: string;
+  operation: string;
+  target: string;
+  total: number;
+  changed: number;
+  unchanged: number;
+  failed: number;
+  cancelled: boolean;
+}
+
+/** Either counts, when it applied inline, or a job to follow (DEC-063). */
+export interface BatchOutcome {
+  applied?: BatchResult;
+  job_id?: string;
+  id?: string;
+  state?: string;
+}
+
+/**
+ * A selection: the tracks in hand, or the query that names them (DEC-045).
+ *
+ * The query form is what keeps a 47,913-track operation from crossing the
+ * bridge as 47,913 numbers.
+ */
+export interface BatchSelection {
+  track_ids?: number[];
+  query?: {
+    q?: string;
+    playlist_id?: number | null;
+    scope?: "collection" | "smart";
+    collection_id?: number | null;
+    filters?: FilterRuleSet | null;
+  };
+}
+
+export interface BatchOperation {
+  kind:
+    | "set_rating"
+    | "set_favorite"
+    | "add_tag"
+    | "remove_tag"
+    | "add_to_collection"
+    | "remove_from_collection";
+  value?: number | boolean | null;
 }
 
 export interface ActivityEvent {
@@ -933,6 +1131,109 @@ export interface CuePointBridge {
   }) => Promise<LibraryFacet>;
   getLibraryFilterFields?: () => Promise<LibraryFilterVocabulary>;
   getLibraryTrack?: (params: { trackId: number }) => Promise<LibraryTrackDetail>;
+  // CuePoint's own organization (ORG-08). Optional like every method added
+  // after the bridge existed: the renderer runs in a browser tab too, and an
+  // older shell exposes none of these.
+  getCollections?: () => Promise<CollectionTree>;
+  getCollectionEntries?: (params: {
+    collectionId: number;
+    limit?: number;
+    offset?: number;
+  }) => Promise<CollectionEntryPage>;
+  createCollection?: (params: {
+    kind: "folder" | "collection";
+    name: string;
+    parent_id?: number | null;
+  }) => Promise<{ collection: CollectionNode }>;
+  renameCollection?: (params: {
+    id: number;
+    name: string;
+  }) => Promise<{ collection: CollectionNode }>;
+  moveCollection?: (params: {
+    id: number;
+    parent_id?: number | null;
+    position?: number | null;
+  }) => Promise<{ collection: CollectionNode }>;
+  deleteCollection?: (params: { id: number }) => Promise<{ removed: CollectionSubtree }>;
+  previewCollectionDelete?: (params: {
+    id: number;
+  }) => Promise<{ removes: CollectionSubtree }>;
+  addTracksToCollection?: (params: {
+    collection_id: number;
+    track_ids: number[];
+  }) => Promise<CollectionAdded>;
+  insertTrackInCollection?: (params: {
+    collection_id: number;
+    track_id: number;
+    position: number;
+  }) => Promise<{ entry: CollectionEntry }>;
+  removeCollectionEntries?: (params: {
+    entry_ids: number[];
+  }) => Promise<{ removed: number }>;
+  reorderCollectionEntry?: (params: {
+    entry_id: number;
+    position: number;
+  }) => Promise<{ entry: CollectionEntry }>;
+  saveSmartCollection?: (params: {
+    name: string;
+    rules: FilterRuleSet;
+    parent_id?: number | null;
+    sort?: string | null;
+    dir?: "asc" | "desc" | null;
+  }) => Promise<{ collection: CollectionNode }>;
+  updateSmartCollection?: (params: {
+    id: number;
+    rules: FilterRuleSet;
+    sort?: string | null;
+    dir?: "asc" | "desc" | null;
+  }) => Promise<{ collection: CollectionNode }>;
+  duplicateSmartCollection?: (params: {
+    id: number;
+    name?: string | null;
+  }) => Promise<{ collection: CollectionNode }>;
+  freezeSmartCollection?: (params: {
+    id: number;
+    name?: string | null;
+  }) => Promise<FrozenCollection>;
+  getTags?: () => Promise<TagVocabulary>;
+  createTag?: (params: {
+    name: string;
+    category?: string | null;
+    colour?: string | null;
+  }) => Promise<{ tag: Tag }>;
+  updateTag?: (params: {
+    id: number;
+    name?: string;
+    category?: string | null;
+    colour?: string | null;
+  }) => Promise<{ tag: Tag }>;
+  deleteTag?: (params: { id: number }) => Promise<{ untagged: number }>;
+  mergeTags?: (params: {
+    source_id: number;
+    target_id: number;
+  }) => Promise<{ moved: number }>;
+  assignTag?: (params: {
+    tag_id: number;
+    track_ids: number[];
+  }) => Promise<{ changed: number; track_ids: number[] }>;
+  unassignTag?: (params: {
+    tag_id: number;
+    track_ids: number[];
+  }) => Promise<{ changed: number; track_ids: number[] }>;
+  setTrackMetadata?: (params: {
+    trackId: number;
+    rating?: number | null;
+    favorite?: boolean;
+    notes?: string | null;
+  }) => Promise<{ metadata: TrackMetadata }>;
+  getTrackHistory?: (params: {
+    trackId: number;
+    limit?: number;
+  }) => Promise<TrackHistory>;
+  applyBatch?: (params: {
+    selection: BatchSelection;
+    operation: BatchOperation;
+  }) => Promise<BatchOutcome>;
   startLibraryImport?: (params: {
     xml_path: string;
   }) => Promise<LibraryImportStarted>;

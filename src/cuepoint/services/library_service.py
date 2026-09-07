@@ -17,12 +17,13 @@ them here would be exactly the "no fake implementation" this project rules out.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Iterable, List, Optional
+from dataclasses import dataclass, field
+from typing import Dict, Iterable, List, Optional
 
 from cuepoint.models.filter_rule import Facet, FacetRange, RuleSet, field_spec
 from cuepoint.models.library_track import LibraryTrack, QueueTrack
 from cuepoint.models.references import ReferenceSummary
+from cuepoint.models.track_metadata import TrackMetadata
 from cuepoint.persistence.track_query import (
     BROWSE_LIMIT_DEFAULT,
     DEFAULT_SORT,
@@ -34,6 +35,7 @@ from cuepoint.persistence.track_query import (
 from cuepoint.services.interfaces import (
     ICollectionRepository,
     ILibraryService,
+    ITrackMetadataRepository,
     ITrackRepository,
 )
 
@@ -68,6 +70,10 @@ class LibrarySearchResult:
     total: int
     limit: int
     offset: int
+    #: CuePoint's own layer for the tracks in this window, keyed by track id
+    #: (ORG-08, DEC-057). Absent for a track with nothing recorded, because the
+    #: absence *is* the answer — one query per window, never one per row.
+    metadata: Dict[int, TrackMetadata] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -93,6 +99,12 @@ class LibraryBrowseResult:
     sort: str = DEFAULT_SORT
     direction: str = "asc"
     track_ids: Optional[List[int]] = None
+    #: CuePoint's own scope, echoed back beside Rekordbox's for the same reason
+    #: (ORG-08): a renderer tells a late response from a current one by what it
+    #: answers rather than by bookkeeping it has to keep in step.
+    collection_id: Optional[int] = None
+    #: CuePoint's own layer for the rows in this window (ORG-08, DEC-057).
+    metadata: Dict[int, TrackMetadata] = field(default_factory=dict)
     #: Populated instead of ``tracks`` when queue entries were asked for
     #: (PLAYER-05). Never populated at the same time as the others.
     queue_tracks: Optional[List[QueueTrack]] = None
@@ -105,8 +117,9 @@ class LibraryService(ILibraryService):
         self,
         track_repository: ITrackRepository,
         collection_repository: ICollectionRepository,
+        metadata_repository: ITrackMetadataRepository,
     ) -> None:
-        """Wire the library to the tracks it reads and the Collections that hold them.
+        """Wire the library to the tracks it reads and what else knows about them.
 
         ``collection_repository`` has no default on purpose. It is only used by
         :meth:`references_for`, which is what stands between a refresh and
@@ -114,9 +127,47 @@ class LibraryService(ILibraryService):
         would let a mis-wired service answer "nothing references these" and
         wave that deletion through. A missing argument is a loud failure at
         construction; a silent zero is data loss.
+
+        ``metadata_repository`` has none for the same kind of reason. It is
+        what puts CuePoint's rating and favorite on the rows a window returns
+        (ORG-08, DEC-057), and a service without one would answer every window
+        with "nobody has rated anything" — which is not an error a caller can
+        see, only a library that looks emptier than it is.
         """
         self._tracks = track_repository
         self._collections = collection_repository
+        self._metadata = metadata_repository
+
+    def _browse_query(
+        self,
+        query: str,
+        playlist_id: Optional[int],
+        collection_id: Optional[int],
+        rules: Optional[RuleSet],
+        sort: str,
+        direction: str,
+    ) -> BrowseQuery:
+        """Build and validate the one query every read here is a projection of.
+
+        In one place rather than five: rows, ids, queue entries and the two
+        facet reads are the same question asked with different projections, and
+        a scope added to four of the five is a filter bar that stops agreeing
+        with the table it is filtering.
+        """
+        return BrowseQuery(
+            query=query or "",
+            playlist_id=playlist_id,
+            collection_id=collection_id,
+            sort=sort or DEFAULT_SORT,
+            direction=direction or "asc",
+            rules=rules or RuleSet(),
+        ).validated()
+
+    def _metadata_for(self, tracks: List[LibraryTrack]) -> Dict[int, TrackMetadata]:
+        """Read CuePoint's layer for one window, in one query (ORG-02)."""
+        return self._metadata.get_many(
+            [track.id for track in tracks if track.id is not None]
+        )
 
     def get_track(self, track_id: int) -> Optional[LibraryTrack]:
         """Return a track by its library id, or None."""
@@ -161,12 +212,14 @@ class LibraryService(ILibraryService):
             return LibrarySearchResult(
                 query=text, tracks=[], total=0, limit=safe_limit, offset=safe_offset
             )
+        found = self._tracks.search(text, limit=safe_limit, offset=safe_offset)
         return LibrarySearchResult(
             query=text,
-            tracks=self._tracks.search(text, limit=safe_limit, offset=safe_offset),
+            tracks=found,
             total=self._tracks.search_count(text),
             limit=safe_limit,
             offset=safe_offset,
+            metadata=self._metadata_for(found),
         )
 
     def browse_tracks(
@@ -178,6 +231,7 @@ class LibraryService(ILibraryService):
         direction: str = "asc",
         limit: int = BROWSE_LIMIT_DEFAULT,
         offset: int = 0,
+        collection_id: Optional[int] = None,
     ) -> LibraryBrowseResult:
         """Return one window of the library, with the unpaged total (DEC-040).
 
@@ -191,24 +245,23 @@ class LibraryService(ILibraryService):
             BrowseQueryError: If the sort or direction is not one that exists.
             FilterRuleError: If a filter rule cannot be honoured as written.
         """
-        browse = BrowseQuery(
-            query=query or "",
-            playlist_id=playlist_id,
-            sort=sort or DEFAULT_SORT,
-            direction=direction or "asc",
-            rules=rules or RuleSet(),
-        ).validated()
+        browse = self._browse_query(
+            query, playlist_id, collection_id, rules, sort, direction
+        )
         safe_limit = clamp_limit(limit)
         safe_offset = clamp_offset(offset)
+        rows = self._tracks.browse(browse, limit=safe_limit, offset=safe_offset)
         return LibraryBrowseResult(
             query=browse.query,
-            tracks=self._tracks.browse(browse, limit=safe_limit, offset=safe_offset),
+            tracks=rows,
             total=self._tracks.browse_count(browse),
             limit=safe_limit,
             offset=safe_offset,
             playlist_id=browse.playlist_id,
+            collection_id=browse.collection_id,
             sort=browse.sort,
             direction=browse.direction,
+            metadata=self._metadata_for(rows),
         )
 
     def browse_track_ids(
@@ -220,19 +273,16 @@ class LibraryService(ILibraryService):
         direction: str = "asc",
         limit: Optional[int] = None,
         offset: int = 0,
+        collection_id: Optional[int] = None,
     ) -> LibraryBrowseResult:
         """Return the ids of one window, in the same order as the rows.
 
         What a selection that crosses unloaded rows is built from (DEC-045).
         The result carries ``track_ids`` and an empty ``tracks``.
         """
-        browse = BrowseQuery(
-            query=query or "",
-            playlist_id=playlist_id,
-            sort=sort or DEFAULT_SORT,
-            direction=direction or "asc",
-            rules=rules or RuleSet(),
-        ).validated()
+        browse = self._browse_query(
+            query, playlist_id, collection_id, rules, sort, direction
+        )
         safe_limit = clamp_ids_limit(limit)
         safe_offset = clamp_offset(offset)
         return LibraryBrowseResult(
@@ -242,6 +292,7 @@ class LibraryService(ILibraryService):
             limit=safe_limit,
             offset=safe_offset,
             playlist_id=browse.playlist_id,
+            collection_id=browse.collection_id,
             sort=browse.sort,
             direction=browse.direction,
             track_ids=self._tracks.browse_ids(
@@ -258,6 +309,7 @@ class LibraryService(ILibraryService):
         direction: str = "asc",
         limit: Optional[int] = None,
         offset: int = 0,
+        collection_id: Optional[int] = None,
     ) -> LibraryBrowseResult:
         """Return one window of the view as playable queue entries (PLAYER-05).
 
@@ -268,13 +320,9 @@ class LibraryService(ILibraryService):
 
         The result carries ``queue_tracks`` and an empty ``tracks``.
         """
-        browse = BrowseQuery(
-            query=query or "",
-            playlist_id=playlist_id,
-            sort=sort or DEFAULT_SORT,
-            direction=direction or "asc",
-            rules=rules or RuleSet(),
-        ).validated()
+        browse = self._browse_query(
+            query, playlist_id, collection_id, rules, sort, direction
+        )
         safe_limit = clamp_ids_limit(limit)
         safe_offset = clamp_offset(offset)
         return LibraryBrowseResult(
@@ -284,6 +332,7 @@ class LibraryService(ILibraryService):
             limit=safe_limit,
             offset=safe_offset,
             playlist_id=browse.playlist_id,
+            collection_id=browse.collection_id,
             sort=browse.sort,
             direction=browse.direction,
             queue_tracks=self._tracks.browse_queue(
@@ -298,16 +347,17 @@ class LibraryService(ILibraryService):
         playlist_id: Optional[int] = None,
         rules: Optional[RuleSet] = None,
         limit: int = 0,
+        collection_id: Optional[int] = None,
     ) -> Facet:
         """Return the values a field takes in the current view (DEC-043).
 
         Computed over the scope, the text query and every *other* filter, so
-        choosing one genre leaves the rest choosable.
+        choosing one genre leaves the rest choosable. The scope is both of
+        them: a filter control inside a Collection has to offer the values that
+        Collection holds, not the ones the library does.
         """
-        browse = BrowseQuery(
-            query=query or "",
-            playlist_id=playlist_id,
-            rules=rules or RuleSet(),
+        browse = self._browse_query(
+            query, playlist_id, collection_id, rules, DEFAULT_SORT, "asc"
         )
         return self._tracks.facet_values(browse, field_spec(field).name, limit)
 
@@ -317,12 +367,11 @@ class LibraryService(ILibraryService):
         query: str = "",
         playlist_id: Optional[int] = None,
         rules: Optional[RuleSet] = None,
+        collection_id: Optional[int] = None,
     ) -> FacetRange:
         """Return the span of a numeric field in the current view."""
-        browse = BrowseQuery(
-            query=query or "",
-            playlist_id=playlist_id,
-            rules=rules or RuleSet(),
+        browse = self._browse_query(
+            query, playlist_id, collection_id, rules, DEFAULT_SORT, "asc"
         )
         return self._tracks.facet_range(browse, field_spec(field).name)
 

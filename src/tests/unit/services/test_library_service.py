@@ -15,6 +15,9 @@ import pytest
 
 from cuepoint.models.library_track import LibraryTrack
 from cuepoint.persistence.collection_repository import CollectionRepository
+from cuepoint.persistence.track_metadata_repository import (
+    TrackMetadataRepository,
+)
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.interfaces import (
@@ -42,7 +45,9 @@ def repo(db):
 @pytest.fixture
 def library(db, repo) -> LibraryService:
     return LibraryService(
-        track_repository=repo, collection_repository=CollectionRepository(db)
+        track_repository=repo,
+        collection_repository=CollectionRepository(db),
+        metadata_repository=TrackMetadataRepository(db),
     )
 
 

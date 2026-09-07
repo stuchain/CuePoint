@@ -26,6 +26,9 @@ import pytest
 from cuepoint.persistence.collection_repository import CollectionRepository
 from cuepoint.persistence.library_source_repository import LibrarySourceRepository
 from cuepoint.persistence.playlist_repository import PlaylistRepository
+from cuepoint.persistence.track_metadata_repository import (
+    TrackMetadataRepository,
+)
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.persistence.activity_repository import ActivityRepository
 from cuepoint.services.activity_service import ActivityService
@@ -65,7 +68,9 @@ def collections(db, tracks):
 @pytest.fixture
 def library(db, tracks):
     return LibraryService(
-        track_repository=tracks, collection_repository=CollectionRepository(db)
+        track_repository=tracks,
+        collection_repository=CollectionRepository(db),
+        metadata_repository=TrackMetadataRepository(db),
     )
 
 

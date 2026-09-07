@@ -49,6 +49,9 @@ const TRACK: LibraryTrackRow = {
   comment: null,
   bitrate: null,
   file_path: "/music/strobe.mp3",
+  effective_rating: null,
+  rating_source: null,
+  favorite: false,
 };
 
 let searchLibrary: ReturnType<typeof vi.fn>;

@@ -43,6 +43,9 @@ const TRACK: LibraryTrackRow = {
   comment: null,
   bitrate: 320,
   file_path: "/music/strobe.mp3",
+  effective_rating: null,
+  rating_source: null,
+  favorite: false,
 };
 
 const DETAIL: LibraryTrackDetail = {
@@ -60,6 +63,19 @@ const DETAIL: LibraryTrackDetail = {
     },
   ],
   playlist_count: 1,
+  metadata: {
+    track_id: 900,
+    rating: null,
+    rekordbox_rating: null,
+    effective_rating: null,
+    rating_source: null,
+    favorite: false,
+    notes: null,
+    created_at: null,
+    updated_at: null,
+  },
+  tags: [],
+  collections: [],
 };
 
 function rowFor(label: string): HTMLElement {

@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 6: Organization, Detailed Step Specifications
 
-Status: **ORG-01…ORG-07 implemented; ORG-08…ORG-13 specified, not implemented.** The
+Status: **ORG-01…ORG-08 implemented; ORG-09…ORG-13 specified, not implemented.** The
 thirteen steps below are the inventory the roadmap has carried as a placeholder since Phase 0.
 Per the process, no implementation happens from this document — each step needs an explicit
 "Implement ORG-NN" instruction, scoped to exactly that step, and its outcome is recorded under the
@@ -1378,7 +1378,7 @@ are ad-hoc; ORG-13 owns the recorded scale numbers.
 
 ---
 
-## ORG-08 — The Organization API and the Desktop Contract
+## ORG-08 — The Organization API and the Desktop Contract ✅ IMPLEMENTED 2026-09-07
 
 **Objective**: Expose ORG-02 through ORG-07 to the renderer, through all six contract files, with
 the existing error envelopes intact.
@@ -1446,6 +1446,135 @@ enumerates every new method.
 the existing test, extended per route rather than at the end.
 
 **Complexity**: **L**
+
+### ✅ IMPLEMENTED 2026-09-07
+
+**Outcome**: Complete. `engine/organization_api.py` answers twenty-two routes,
+`engine/api_errors.py` holds the one error envelope it and `server.py` both build, and
+twenty-five methods cross all six
+contract files. `search` and `facets` grew CuePoint's scope; the browse row grew CuePoint's three
+values; `track_query.py` grew a Collection scope and the order a Collection opens in. No schema
+changed and no service gained a rule — every refusal these tests assert is a message some earlier
+step already wrote.
+
+**The server learned two functions rather than twenty branches.** `do_GET` and `do_POST` are long
+if-chains, and twenty more would have put the routing of one feature in a file that knows nothing
+else about it. `organization_api` exposes `handles_get`/`handles_post` and
+`handle_get`/`handle_post`,
+each answering `(status, payload)`, so the server's whole knowledge of this step is "does that
+module
+take this path, and how do I send what it answers". The exception-to-status mapping lives beside the
+handlers that raise, in one `status_for`, rather than as five `except` clauses per route written
+slightly differently each time.
+
+**`error_payload` moved rather than being copied.** It lived in `server.py` while one module built
+the envelope; ORG-08 added a second builder, and two builders of one shape is how a shape stops
+being one. It is now in `engine/api_errors.py` and re-exported from `server.py` under its old name,
+so nothing that imported it noticed.
+
+**Refusals are 400, and the reason is worth stating.** Every Phase 6 service says no with a
+`ValueError` — "that rating is not a rating" and "there is no Collection 7" arrive identically, and
+telling them apart from outside would mean matching on message text, which is a worse contract than
+one honest status. So an action whose *body* names something missing is a 400 carrying the service's
+own message. A resource named in the *path* is different: `/library/tracks/999/history` is a 404,
+because the path is the thing that was wrong. Both are asserted on every route, because a refusal
+that arrives as a 500 throws away the message and tells the user their app is broken instead of
+that their request is.
+
+**The scope had to reach the query, not sit beside it.** ORG-09 needs a Collection to open in the
+order its owner arranged, and an ordering has to know *which* Collection it is ordering within —
+something a rule about membership does not say. So `BrowseQuery` gained `collection_id` the way
+LIBUI-03 gave it `playlist_id`: a CTE, a predicate that asks `IN` rather than joining (so a track
+filed twice appears once and the count agrees with the rows), and a `collection_position` sort
+refused outside the scope that defines it. Both scopes may be set at once and narrow together. The
+whole of it is forty lines, and the alternative — a second read path for "the tracks of a
+Collection" — is the one DEC-023 exists to prevent.
+
+`scope=smart` needed no scope at all: a Smart Collection *is* rules, so it resolves to them and runs
+the query that already existed. What the filter bar is holding is ANDed onto them rather than
+replacing them — DEC-016's model is flat and all-of, so concatenation is the whole operation —
+which is what lets ORG-12 narrow a saved question without a second endpoint. A saved sort answers
+when the caller names none, which meant teaching the endpoint to tell "no sort" from "sort=artist":
+the library's default is the right answer for a library and the wrong one inside a scope with an
+order of its own.
+
+**The browse row carries CuePoint's values, and `rating` still means Rekordbox's.** DEC-057 keeps
+the two layers apart, so the row gained three fields rather than overwriting one. `effective_rating`
+is what to draw, `rating_source` says which layer it came from, and `favorite` is a flag of its own.
+Overwriting `rating` would have been a smaller change and would have left the Inspector unable to
+say which value it is showing. Notes stay out of the window: ten thousand characters times a hundred
+rows is a megabyte a window, and the one surface that shows a note reads a single track.
+
+The values come from one `get_many` per window — what ORG-02 built after measuring the alternative
+at 0.22 ms against a 1.18 ms browse at 50,000 tracks. The join stayed unbuilt and `LibraryTrack` did
+not change, so Phase 4's thirty assertions about that row shape did not either.
+
+**`LibraryService` gained a third repository, and it has no default.** A service wired without one
+would answer every window with "nobody has rated anything" — not an error anyone can see, only a
+library that looks emptier than it is. That is the argument `collection_repository` already carries,
+and it is why both are required arguments rather than convenient defaults.
+
+**A routing bug, found by a test rather than by a user.** `/api/v1/library/tracks/{id}` is matched
+with `startswith`, so `/api/v1/library/tracks/7/history` was read as a track whose id is
+`"7/history"` and refused as one. The organization routes are matched first now, with two anchored
+patterns that cannot be confused for a track id, and a mutation putting the order back is caught.
+
+**One route the spec's table does not list, and why.** `GET /api/v1/collections/entries` answers a
+Collection's membership *by entry*. The table lists `/collections/tracks/remove` and `/reorder`,
+both of which address entry ids (DEC-058: a track filed twice has two of them, and "remove the
+track" is not a well-formed request) — and without this the renderer would have no way to learn an
+entry id. The *tracks* of a Collection still come from the browse endpoint with `scope=collection`,
+which is the one query path everything else uses.
+
+**Guards: 48 of 48 fail when the thing they protect is broken.** The scope, fourteen ways: a
+collection scope that does not narrow, one that means any collection rather than the one it names, a
+Collection that opens in the library's order, a position sort accepted without the scope that
+defines it, a track's *last* place deciding its order instead of its first, a named sort ignored
+inside a scope, a Smart Collection not resolved to its rules, a filter replacing those rules instead
+of narrowing them, a saved sort ignored, a broken Smart Collection resolving to the whole library, a
+scope with no collection accepted, a collection with no scope accepted, any word accepted as a
+scope, and a missing sort read as the default rather than as absent. The row, four ways: Rekordbox's
+rating shown where CuePoint's belongs, every rating attributed to Rekordbox, a window that reads no
+metadata at all, and a row carrying the note it was told not to. The tree, five ways: no counts, the
+two counts collapsed into one, a broken Smart Collection drawn as though it worked, rules withheld
+so nothing could edit a saved filter, and a Smart Collection creatable as an empty one. Bodies, six
+ways: a body that is not an object, an empty id list, a list of words as ids, `true` as an id, an
+empty name, and rules that are not a rule set. One track's metadata, five ways: a write on a missing
+track that is not a 404, a field nobody sent written anyway, an empty body treated as a no-op,
+`"true"` accepted as a favorite, and the override reported as the effective rating. History, three
+ways: a missing track answered with an empty list, a limit trusted rather than clamped, and rows
+with no batch id. The batch, four ways: a selection that ignores its scope, a job reported as
+applied, and a body with no operation or no selection accepted. And the envelope, seven ways: a
+service refusal as a 500, an unreachable database as a bad request, a named status thrown away, an
+unknown path answered 200, a path id as a 500 rather than a refusal, the routes open to anyone, and
+the track-detail prefix swallowing the history route.
+
+Twelve of those started as survivors, and ten of them said the same thing: *the status was right
+either way, and the message was the whole difference*. A list of words as ids was refused by
+`int()` a moment later; an empty name was refused by the service; a body that is not an object was
+refused for the field it did not have. In each case the user would have been told something true
+and useless — "invalid literal for int() with base 10" instead of "track_ids must hold numbers". The
+tests now assert the message a user actually reads, which is what those parsing helpers exist to
+produce. The other two were real gaps: nothing asserted that a rating set through the API appears in
+the *window* (only in the Inspector's read), so a window that read no metadata passed everything.
+
+**Verification**: `python -m pytest src/tests/unit` — 4,308 passed, 45 skipped (98 of them new);
+`python -m pytest src/tests/integration src/tests/regression` — 350 passed, 13 skipped; `npm test`
+in the renderer —
+1,397 passed, including 179 desktop-contract assertions; `npm run typecheck`, `npm run lint` and
+`npm run build:check` in the renderer, and `npm run build` in the desktop app, all clean; `ruff
+check
+src/` and `ruff format --check src/` clean; `PYTHONPATH=src python scripts/smoke_engine_health.py`,
+`check_no_qt_in_core.py` and `check_desktop_version_coupling.py` all OK; `mypy` reports nothing new
+in the changed modules. The three failures in `test_code_quality_step_5_7.py` are unrelated and
+predate this step.
+
+Two things this step deliberately did not do. It did not build a single UI: the Library page behaves
+exactly as it did, which is the step as specified — ORG-09 draws the tree, ORG-10 makes the
+Inspector editable, ORG-11 adds the selection actions and ORG-12 the save button. And it did not
+add a scope to the *playback* queue beyond what it gets for free: `resolveQueueFromView` passes the
+view through untouched, so a queue built inside a Collection is already in that Collection's order,
+and nothing else was needed to make DEC-012 agree with DEC-058.
 
 ---
 

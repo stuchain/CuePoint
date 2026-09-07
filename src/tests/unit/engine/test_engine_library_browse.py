@@ -216,6 +216,10 @@ class TestTodaysCallerIsUntouched:
             "sort",
             "dir",
             "filters",
+            # ...plus ORG-08's, under their own names rather than by changing
+            # what "scope" has meant since DEC-023.
+            "collection_scope",
+            "collection_id",
         }
 
     def test_it_answers_as_a_search_unless_told_otherwise(self, engine, seeded):

@@ -84,7 +84,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from cuepoint.models.collection import (
     KIND_COLLECTION,
@@ -403,6 +403,15 @@ class CollectionService(ICollectionService):
             self._collections.entry_count(collection_id),
             self._collections.track_count(collection_id),
         )
+
+    def all_counts(self) -> Dict[int, Tuple[int, int]]:
+        """Return ``(entries, distinct tracks)`` for every Collection at once.
+
+        What a pane drawing the whole tree needs, in one statement rather than
+        two per node (ORG-08). A Collection holding nothing is absent, which a
+        caller reads as the zero it is.
+        """
+        return self._collections.all_counts()
 
     # ----------------------------------------------------- smart collections
 

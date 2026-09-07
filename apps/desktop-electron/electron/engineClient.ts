@@ -36,6 +36,182 @@ export interface LibraryTrackRow {
   comment: string | null;
   bitrate: number | null;
   file_path: string;
+  /** What to draw: CuePoint's rating when there is one, else Rekordbox's. */
+  effective_rating: number | null;
+  /** Which of the two layers `effective_rating` came from (DEC-057). */
+  rating_source: "cuepoint" | "rekordbox" | null;
+  favorite: boolean;
+}
+
+/**
+ * CuePoint's own organization (ORG-08).
+ *
+ * These mirror `organization_api.py`'s explicit field lists. They are declared
+ * twice — here for the main process and in `cuepointBridge.types.ts` for the
+ * renderer — because neither process can import the other's, and the contract
+ * test compares them.
+ */
+export type CollectionKind = "folder" | "collection" | "smart";
+
+export interface CollectionNode {
+  id: number;
+  parent_id: number | null;
+  kind: CollectionKind;
+  name: string;
+  position: number;
+  depth: number;
+  /** A Smart Collection's saved rules; null for anything else (DEC-061). */
+  rules: FilterRuleSet | null;
+  sort: string | null;
+  dir: "asc" | "desc" | null;
+  frozen_from_id: number | null;
+  frozen_at: string | null;
+  /** Rows held, duplicates counted — DEC-058 lets the two counts differ. */
+  entry_count: number;
+  track_count: number;
+  /** A Smart Collection whose saved rules cannot be run right now (ORG-06). */
+  broken: boolean;
+  problem: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CollectionTree {
+  collections: CollectionNode[];
+  total: number;
+}
+
+/** One track's place in one Collection. Removal addresses `id` (DEC-058). */
+export interface CollectionEntry {
+  id: number;
+  collection_id: number;
+  track_id: number;
+  position: number;
+  added_at: string;
+}
+
+export interface CollectionEntryPage {
+  collection_id: number;
+  entries: CollectionEntry[];
+  entry_count: number;
+  track_count: number;
+  offset: number;
+}
+
+/** What a subtree delete would take, or did (ORG-09's confirmation). */
+export interface CollectionSubtree {
+  folders: number;
+  collections: number;
+  smart_collections: number;
+  entries: number;
+  nodes: number;
+}
+
+export interface CollectionAdded {
+  added: number;
+  skipped: number;
+  added_track_ids: number[];
+  skipped_track_ids: number[];
+}
+
+export interface FrozenCollection {
+  collection: CollectionNode;
+  source_id: number;
+  source_name: string;
+  track_count: number;
+}
+
+export interface Tag {
+  id: number;
+  name: string;
+  category: string | null;
+  colour: string | null;
+  created_at: string;
+}
+
+export interface TagUsage extends Tag {
+  track_count: number;
+}
+
+export interface TagVocabulary {
+  tags: TagUsage[];
+  categories: string[];
+}
+
+/** CuePoint's layer for one track, notes included (DEC-057). */
+export interface TrackMetadata {
+  track_id: number;
+  rating: number | null;
+  rekordbox_rating: number | null;
+  effective_rating: number | null;
+  rating_source: "cuepoint" | "rekordbox" | null;
+  favorite: boolean;
+  notes: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+/** One row of a track's field history (DEC-008). */
+export interface TrackFieldChange {
+  id: number | null;
+  track_id: number;
+  field: string;
+  old_value: unknown;
+  new_value: unknown;
+  source: string;
+  changed_at: string;
+  /** Shared by every row one batch wrote (DEC-063). */
+  batch_id: string | null;
+}
+
+export interface TrackHistory {
+  track_id: number;
+  changes: TrackFieldChange[];
+  limit: number;
+}
+
+/** What a batch did, in the counts a toast reads (ORG-07). */
+export interface BatchResult {
+  batch_id: string;
+  operation: string;
+  target: string;
+  total: number;
+  changed: number;
+  unchanged: number;
+  failed: number;
+  cancelled: boolean;
+}
+
+/** Either counts, when it applied inline, or a job to follow (DEC-063). */
+export interface BatchOutcome {
+  applied?: BatchResult;
+  job_id?: string;
+  id?: string;
+  state?: string;
+}
+
+/** A selection: the tracks in hand, or the query that names them (DEC-045). */
+export interface BatchSelection {
+  track_ids?: number[];
+  query?: {
+    q?: string;
+    playlistId?: never;
+    playlist_id?: number | null;
+    scope?: "collection" | "smart";
+    collection_id?: number | null;
+    filters?: FilterRuleSet | null;
+  };
+}
+
+export interface BatchOperation {
+  kind:
+    | "set_rating"
+    | "set_favorite"
+    | "add_tag"
+    | "remove_tag"
+    | "add_to_collection"
+    | "remove_from_collection";
+  value?: number | boolean | null;
 }
 
 /** One clause of a filter (DEC-043). The vocabulary comes from the engine. */
@@ -59,6 +235,13 @@ export interface LibraryBrowseParams {
   filters?: FilterRuleSet | null;
   limit?: number;
   offset?: number;
+  /**
+   * CuePoint's own scope (ORG-08). A Collection opens in the order the user
+   * arranged unless `sort` says otherwise; a Smart Collection resolves to the
+   * rules it saved and is narrowed further by anything in `filters`.
+   */
+  scope?: "collection" | "smart";
+  collectionId?: number | null;
   /**
    * Ask for a narrower projection of the same query.
    *
@@ -163,6 +346,9 @@ export interface LibrarySearchResponse {
    * produce responses nothing can tell apart (LIBUI-05).
    */
   filters?: FilterRuleSet | null;
+  /** CuePoint's own scope, echoed back beside Rekordbox's (ORG-08). */
+  collection_scope?: "collection" | "smart" | null;
+  collection_id?: number | null;
   /** Present only when ids were asked for; `tracks` is then empty. */
   track_ids?: number[];
   /** Present only when queue entries were asked for; `tracks` is then empty. */
@@ -342,6 +528,8 @@ export class EngineClient {
     if (params.limit != null) query.set("limit", String(params.limit));
     if (params.offset != null) query.set("offset", String(params.offset));
     if (params.fields) query.set("fields", params.fields);
+    if (params.scope) query.set("scope", params.scope);
+    if (params.collectionId != null) query.set("collection_id", String(params.collectionId));
     const res = await fetch(this.url(`/api/v1/library/search?${query.toString()}`), {
       headers: this.headers(),
     });
@@ -368,6 +556,8 @@ export class EngineClient {
     playlistId?: number | null;
     filters?: FilterRuleSet | null;
     limit?: number;
+    scope?: "collection" | "smart";
+    collectionId?: number | null;
   }): Promise<LibraryFacet> {
     const query = new URLSearchParams({ field: params.field });
     if (params.q) query.set("q", params.q);
@@ -376,6 +566,8 @@ export class EngineClient {
       query.set("filters", JSON.stringify(params.filters));
     }
     if (params.limit != null) query.set("limit", String(params.limit));
+    if (params.scope) query.set("scope", params.scope);
+    if (params.collectionId != null) query.set("collection_id", String(params.collectionId));
     const res = await fetch(this.url(`/api/v1/library/facets?${query.toString()}`), {
       headers: this.headers(),
     });
@@ -457,6 +649,238 @@ export class EngineClient {
       body: JSON.stringify(params),
     });
     return readJson(res);
+  }
+
+
+  // -------------------------------------------------------------------------
+  // CuePoint's own organization (ORG-08)
+  //
+  // Mutations are POSTs to action paths. Reads are GETs, so a pane redrawing
+  // itself can repeat one safely.
+  // -------------------------------------------------------------------------
+
+  private async postJson<T>(path: string, body: unknown): Promise<T> {
+    const res = await fetch(this.url(path), {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify(body ?? {}),
+    });
+    return readJson<T>(res);
+  }
+
+  private async getJson<T>(path: string): Promise<T> {
+    const res = await fetch(this.url(path), { headers: this.headers() });
+    return readJson<T>(res);
+  }
+
+  /** The whole Collection tree, with counts and broken-rule state (ORG-04). */
+  async getCollections(): Promise<CollectionTree> {
+    return this.getJson("/api/v1/collections");
+  }
+
+  /** One window of a Collection's membership, in its own order (DEC-058). */
+  async getCollectionEntries(params: {
+    collectionId: number;
+    limit?: number;
+    offset?: number;
+  }): Promise<CollectionEntryPage> {
+    const query = new URLSearchParams({ collection_id: String(params.collectionId) });
+    if (params.limit != null) query.set("limit", String(params.limit));
+    if (params.offset != null) query.set("offset", String(params.offset));
+    return this.getJson(`/api/v1/collections/entries?${query.toString()}`);
+  }
+
+  async createCollection(params: {
+    kind: "folder" | "collection";
+    name: string;
+    parent_id?: number | null;
+  }): Promise<{ collection: CollectionNode }> {
+    return this.postJson("/api/v1/collections/create", params);
+  }
+
+  async renameCollection(params: {
+    id: number;
+    name: string;
+  }): Promise<{ collection: CollectionNode }> {
+    return this.postJson("/api/v1/collections/rename", params);
+  }
+
+  async moveCollection(params: {
+    id: number;
+    parent_id?: number | null;
+    position?: number | null;
+  }): Promise<{ collection: CollectionNode }> {
+    return this.postJson("/api/v1/collections/move", params);
+  }
+
+  /** Delete a node and everything under it, echoing what went (ORG-09). */
+  async deleteCollection(params: {
+    id: number;
+  }): Promise<{ removed: CollectionSubtree }> {
+    return this.postJson("/api/v1/collections/delete", params);
+  }
+
+  /** What a delete would take, before it takes it. */
+  async previewCollectionDelete(params: {
+    id: number;
+  }): Promise<{ removes: CollectionSubtree }> {
+    return this.postJson("/api/v1/collections/delete/preview", params);
+  }
+
+  async addTracksToCollection(params: {
+    collection_id: number;
+    track_ids: number[];
+  }): Promise<CollectionAdded> {
+    return this.postJson("/api/v1/collections/tracks/add", params);
+  }
+
+  /** The deliberate duplicate DEC-058 allows: a drop between two rows. */
+  async insertTrackInCollection(params: {
+    collection_id: number;
+    track_id: number;
+    position: number;
+  }): Promise<{ entry: CollectionEntry }> {
+    return this.postJson("/api/v1/collections/tracks/insert", params);
+  }
+
+  async removeCollectionEntries(params: {
+    entry_ids: number[];
+  }): Promise<{ removed: number }> {
+    return this.postJson("/api/v1/collections/tracks/remove", params);
+  }
+
+  async reorderCollectionEntry(params: {
+    entry_id: number;
+    position: number;
+  }): Promise<{ entry: CollectionEntry }> {
+    return this.postJson("/api/v1/collections/tracks/reorder", params);
+  }
+
+  /** Save the filter bar as a Smart Collection (DEC-043, DEC-061). */
+  async saveSmartCollection(params: {
+    name: string;
+    rules: FilterRuleSet;
+    parent_id?: number | null;
+    sort?: string | null;
+    dir?: "asc" | "desc" | null;
+  }): Promise<{ collection: CollectionNode }> {
+    return this.postJson("/api/v1/collections/smart/save", params);
+  }
+
+  async updateSmartCollection(params: {
+    id: number;
+    rules: FilterRuleSet;
+    sort?: string | null;
+    dir?: "asc" | "desc" | null;
+  }): Promise<{ collection: CollectionNode }> {
+    return this.postJson("/api/v1/collections/smart/update", params);
+  }
+
+  async duplicateSmartCollection(params: {
+    id: number;
+    name?: string | null;
+  }): Promise<{ collection: CollectionNode }> {
+    return this.postJson("/api/v1/collections/smart/duplicate", params);
+  }
+
+  /** Store today's answer as a plain Collection. A copy, not a link. */
+  async freezeSmartCollection(params: {
+    id: number;
+    name?: string | null;
+  }): Promise<FrozenCollection> {
+    return this.postJson("/api/v1/collections/smart/freeze", params);
+  }
+
+  /** The tag vocabulary with usage counts (ORG-03). */
+  async getTags(): Promise<TagVocabulary> {
+    return this.getJson("/api/v1/tags");
+  }
+
+  /** Create-or-get: typing a tag that exists means the one that exists. */
+  async createTag(params: {
+    name: string;
+    category?: string | null;
+    colour?: string | null;
+  }): Promise<{ tag: Tag }> {
+    return this.postJson("/api/v1/tags/create", params);
+  }
+
+  async updateTag(params: {
+    id: number;
+    name?: string;
+    category?: string | null;
+    colour?: string | null;
+  }): Promise<{ tag: Tag }> {
+    return this.postJson("/api/v1/tags/update", params);
+  }
+
+  /** Deleting a tag removes it from tracks and deletes none of them. */
+  async deleteTag(params: { id: number }): Promise<{ untagged: number }> {
+    return this.postJson("/api/v1/tags/delete", params);
+  }
+
+  async mergeTags(params: {
+    source_id: number;
+    target_id: number;
+  }): Promise<{ moved: number }> {
+    return this.postJson("/api/v1/tags/merge", params);
+  }
+
+  async assignTag(params: {
+    tag_id: number;
+    track_ids: number[];
+  }): Promise<{ changed: number; track_ids: number[] }> {
+    return this.postJson("/api/v1/tags/assign", params);
+  }
+
+  async unassignTag(params: {
+    tag_id: number;
+    track_ids: number[];
+  }): Promise<{ changed: number; track_ids: number[] }> {
+    return this.postJson("/api/v1/tags/unassign", params);
+  }
+
+  /**
+   * Set any of one track's rating, favorite and note (DEC-057).
+   *
+   * Only the fields sent are changed. `rating: null` clears the override and
+   * lets Rekordbox's show through; leaving `rating` out says nothing about it.
+   */
+  async setTrackMetadata(params: {
+    trackId: number;
+    rating?: number | null;
+    favorite?: boolean;
+    notes?: string | null;
+  }): Promise<{ metadata: TrackMetadata }> {
+    const { trackId, ...body } = params;
+    return this.postJson(
+      `/api/v1/library/tracks/${encodeURIComponent(String(trackId))}/metadata`,
+      body,
+    );
+  }
+
+  /** One track's field history, newest first (DEC-008). */
+  async getTrackHistory(params: {
+    trackId: number;
+    limit?: number;
+  }): Promise<TrackHistory> {
+    const id = encodeURIComponent(String(params.trackId));
+    const query = params.limit != null ? `?limit=${params.limit}` : "";
+    return this.getJson(`/api/v1/library/tracks/${id}/history${query}`);
+  }
+
+  /**
+   * Apply one operation to a selection of any size (ORG-07, DEC-063).
+   *
+   * Answers with counts when it applied inline, and with a job id when the
+   * selection was large enough to need one — followed through the existing job
+   * endpoints, so there is no second progress mechanism.
+   */
+  async applyBatch(params: {
+    selection: BatchSelection;
+    operation: BatchOperation;
+  }): Promise<BatchOutcome> {
+    return this.postJson("/api/v1/library/batch", params);
   }
 
   /** What the library holds and where it came from (DEC-035). */

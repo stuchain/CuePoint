@@ -709,6 +709,7 @@ class ILibraryService(ABC):
         playlist_id: Optional[int] = None,
         rules: Optional["RuleSet"] = None,
         limit: int = 0,
+        collection_id: Optional[int] = None,
     ) -> "Facet":
         """Return the values a field takes in the current view (DEC-043)."""
         ...
@@ -720,6 +721,7 @@ class ILibraryService(ABC):
         query: str = "",
         playlist_id: Optional[int] = None,
         rules: Optional["RuleSet"] = None,
+        collection_id: Optional[int] = None,
     ) -> "FacetRange":
         """Return the span of a numeric field in the current view."""
         ...
@@ -1051,6 +1053,11 @@ class ICollectionRepository(ABC):
         ...
 
     @abstractmethod
+    def all_counts(self) -> Dict[int, Tuple[int, int]]:
+        """Return (entries, distinct tracks) for every Collection, in one query."""
+        ...
+
+    @abstractmethod
     def entry_count(self, collection_id: int) -> int:
         """Return how many rows a Collection holds, duplicates counted."""
         ...
@@ -1192,6 +1199,11 @@ class ICollectionService(ABC):
         self, collection_id: int, offset: int = 0, limit: Optional[int] = None
     ) -> List["CollectionEntry"]:
         """Return a Collection's entries in order."""
+        ...
+
+    @abstractmethod
+    def all_counts(self) -> Dict[int, Tuple[int, int]]:
+        """Return (entries, distinct tracks) for every Collection at once."""
         ...
 
     @abstractmethod

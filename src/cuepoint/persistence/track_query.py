@@ -81,6 +81,11 @@ DIRECTIONS = ("asc", "desc")
 #: "as arranged in Rekordbox" is not a property a track has library-wide.
 PLAYLIST_POSITION = "playlist_position"
 
+#: The order a user arranged a Collection in (ORG-04, DEC-058). The same kind
+#: of thing as :data:`PLAYLIST_POSITION` and meaningful in the same way: only
+#: inside the scope that gives it a meaning.
+COLLECTION_POSITION = "collection_position"
+
 # SQLite grew NULLS FIRST/LAST in 3.30 (2019). Every supported interpreter
 # ships something far newer, but the fallback is three lines and the
 # alternative is an ordering that silently changes on an old system SQLite —
@@ -120,8 +125,8 @@ class SortTerm:
 # means selecting everything under it, at any depth. UNION (not UNION ALL) so a
 # malformed tree cannot loop forever — import builds a real tree, but a
 # recursive query that can hang is not worth the microsecond.
-_SCOPE_CTE = (
-    "WITH RECURSIVE browse_scope(id) AS ("
+_PLAYLIST_CTE = (
+    "browse_scope(id) AS ("
     "SELECT id FROM rekordbox_playlists WHERE id = ? "
     "UNION "
     "SELECT p.id FROM rekordbox_playlists p "
@@ -139,6 +144,29 @@ _SCOPE_PREDICATE = (
     "SELECT track_id FROM rekordbox_playlist_tracks "
     "WHERE playlist_id IN (SELECT id FROM browse_scope)"
     ")"
+)
+
+# CuePoint's own scope (ORG-08). Not recursive: a Collection holds tracks and
+# never nodes, so there is no tree to walk — selecting a *folder* is not a
+# scope, it is a question ORG-09 answers by selecting one of its children.
+#
+# A CTE rather than a subquery in two places, for the reason the playlist one
+# is: the ordering below has to reach the same rows, and an expression in
+# ORDER BY cannot carry its own bound parameter without changing where every
+# other parameter falls.
+_COLLECTION_CTE = (
+    "collection_scope(track_id, position) AS ("
+    "SELECT track_id, position FROM collection_tracks WHERE collection_id = ?"
+    ") "
+)
+
+_COLLECTION_PREDICATE = "tracks.id IN (SELECT track_id FROM collection_scope)"
+
+# The earliest place the track holds in the Collection. DEC-058 lets a track be
+# in one twice; it appears once, where it first appears — the same rule the
+# playlist expression follows, for the same reason.
+_COLLECTION_POSITION_EXPR = (
+    "(SELECT MIN(cs.position) FROM collection_scope cs WHERE cs.track_id = tracks.id)"
 )
 
 # The earliest position the track holds anywhere in the scope. A track listed
@@ -233,6 +261,7 @@ _PRIMARY: Dict[str, Tuple[SortTerm, ...]] = {
     # make the term harder to serve from an index.
     "date_added": (SortTerm("tracks.date_added", nullable=True),),
     PLAYLIST_POSITION: (SortTerm(_POSITION_EXPR),),
+    COLLECTION_POSITION: (SortTerm(_COLLECTION_POSITION_EXPR),),
 }
 
 # Sorting by genre with only the row id to break ties scatters the tracks of a
@@ -244,8 +273,17 @@ _SECONDARY: Tuple[SortTerm, ...] = (_ARTIST, _TITLE)
 #: The only orderings that exist. Anything else is a rejected request.
 SORTABLE_COLUMNS: Tuple[str, ...] = tuple(_PRIMARY)
 
-#: Sorts that are only meaningful inside a playlist or folder scope.
-SCOPED_SORTS: Tuple[str, ...] = (PLAYLIST_POSITION,)
+#: What each position sort needs to mean anything: the scope that defines it.
+#: Asking for one without the other is a request that cannot be honoured, not a
+#: request to fall back to some other order — a table that quietly sorts by
+#: something else than it was asked to is worse than one that says it cannot.
+_SCOPE_FOR_SORT: Dict[str, str] = {
+    PLAYLIST_POSITION: "playlist",
+    COLLECTION_POSITION: "collection",
+}
+
+#: Sorts that are only meaningful inside a scope.
+SCOPED_SORTS: Tuple[str, ...] = tuple(_SCOPE_FOR_SORT)
 
 
 def sort_terms(sort: str) -> Tuple[SortTerm, ...]:
@@ -289,6 +327,12 @@ class BrowseQuery:
     ``rules`` is DEC-043's rule set — the same structure Phase 6 saves as a
     Smart Collection, held here in view state. It defaults to an empty set, so
     every caller written before filters existed still reads correctly.
+
+    ``collection_id`` is CuePoint's own scope (ORG-08), beside Rekordbox's
+    rather than instead of it: both may be set, and they narrow together. It is
+    a field rather than a rule because the *order* a Collection opens in is its
+    own (ORG-09), and an ordering needs to know which Collection it is ordering
+    within — which a rule about membership does not say.
     """
 
     query: str = ""
@@ -296,6 +340,7 @@ class BrowseQuery:
     sort: str = DEFAULT_SORT
     direction: str = "asc"
     rules: RuleSet = RuleSet()
+    collection_id: Optional[int] = None
 
     def validated(self) -> "BrowseQuery":
         """Return a normalized copy, or raise.
@@ -331,10 +376,25 @@ class BrowseQuery:
                 f"Playlist must be identified by a number, not {self.playlist_id!r}"
             ) from None
 
-        if sort in SCOPED_SORTS and playlist_id is None:
+        try:
+            collection_id = (
+                None if self.collection_id is None else int(self.collection_id)
+            )
+        except (TypeError, ValueError):
+            raise BrowseQueryError(
+                f"Collection must be identified by a number, not {self.collection_id!r}"
+            ) from None
+
+        needed = _SCOPE_FOR_SORT.get(sort)
+        if needed == "playlist" and playlist_id is None:
             raise BrowseQueryError(
                 f"Sorting by {sort!r} needs a playlist; a track has no position "
                 "in a library, only in a playlist"
+            )
+        if needed == "collection" and collection_id is None:
+            raise BrowseQueryError(
+                f"Sorting by {sort!r} needs a collection; a track has no position "
+                "in a library, only in a collection"
             )
 
         # FilterRuleError, not BrowseQueryError: it names the clause that was
@@ -349,6 +409,7 @@ class BrowseQuery:
             sort=sort,
             direction=direction,
             rules=rules,
+            collection_id=collection_id,
         )
 
 
@@ -412,11 +473,20 @@ def _predicate(query: BrowseQuery, *, metadata: bool = False) -> Predicate:
     clauses: List[str] = []
     params: List[object] = []
 
-    cte = ""
+    # Both scopes are CTEs, and both bind before anything else does: a WITH
+    # clause is read first, so its parameters have to come first in the tuple.
+    ctes: List[str] = []
     if query.playlist_id is not None:
-        cte = _SCOPE_CTE
+        ctes.append(_PLAYLIST_CTE)
         params.append(query.playlist_id)
         clauses.append(_SCOPE_PREDICATE)
+    if query.collection_id is not None:
+        ctes.append(_COLLECTION_CTE)
+        params.append(query.collection_id)
+        clauses.append(_COLLECTION_PREDICATE)
+    # RECURSIVE covers the whole clause and is harmless for one that is not,
+    # which is what lets the two be written independently and combined here.
+    cte = f"WITH RECURSIVE {', '.join(ctes)}" if ctes else ""
 
     pattern, sql, search_params = search_clause(query.query)
     if pattern is not None:

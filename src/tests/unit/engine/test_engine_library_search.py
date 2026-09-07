@@ -163,10 +163,13 @@ class TestResponseShape:
         payload = _get_json(engine, "/api/v1/library/search?q=deadmau5")
 
         # LIBUI-03 added the four echo keys — what the engine was asked, sent
-        # back so a late response is recognizable by what it answers. Every
-        # key SHELL-04 documented is still here with the same meaning, which
-        # is what "extend rather than rename" means; the assertions below are
-        # unchanged from before Phase 4.
+        # back so a late response is recognizable by what it answers. ORG-08
+        # added two more for CuePoint's own scope, under their own names:
+        # ``scope`` has meant "which playlist" since DEC-023, and changing what
+        # a key means is not an additive change. Every key SHELL-04 documented
+        # is still here with the same meaning, which is what "extend rather
+        # than rename" means; the assertions below are unchanged from before
+        # Phase 4.
         assert set(payload) == {
             "query",
             "total",
@@ -179,6 +182,8 @@ class TestResponseShape:
             "sort",
             "dir",
             "filters",
+            "collection_scope",
+            "collection_id",
         }
         assert payload["query"] == "deadmau5"
         assert payload["total"] == 2
@@ -192,6 +197,9 @@ class TestResponseShape:
         # LIBUI-03 added the fields DEC-034 imported, because the Library
         # table's columns and the Inspector read this same row shape and a
         # second serializer for the same row is a second thing to keep in step.
+        # ORG-08 added CuePoint's own three (DEC-057): ``rating`` still means
+        # exactly what Rekordbox imported, ``effective_rating`` is what to
+        # draw, and ``rating_source`` says which layer that came from.
         assert set(payload["tracks"][0]) == {
             "id",
             "rekordbox_track_id",
@@ -212,6 +220,9 @@ class TestResponseShape:
             "comment",
             "bitrate",
             "file_path",
+            "effective_rating",
+            "rating_source",
+            "favorite",
         }
 
     def test_total_is_the_match_count_not_the_page_length(self, seeded, engine):

@@ -32,6 +32,7 @@ from typing import Any, List
 
 import pytest
 
+from cuepoint.models.collection import KIND_COLLECTION, Collection
 from cuepoint.models.library_track import LibraryTrack
 from cuepoint.models.rekordbox_playlist import (
     KIND_FOLDER,
@@ -39,6 +40,7 @@ from cuepoint.models.rekordbox_playlist import (
     RekordboxPlaylist,
 )
 from cuepoint.persistence import track_query
+from cuepoint.persistence.collection_repository import CollectionRepository
 from cuepoint.persistence.playlist_repository import PlaylistRepository
 from cuepoint.persistence.track_query import (
     BROWSE_LIMIT_DEFAULT,
@@ -310,7 +312,10 @@ class TestSorting:
     def test_every_sortable_column_is_covered_by_a_test(self):
         # Fails when a sort is added to the whitelist without a test, which is
         # how a column arrives that nobody ever ordered by.
-        covered = set(self.ATTRIBUTE) | {track_query.PLAYLIST_POSITION}
+        covered = set(self.ATTRIBUTE) | {
+            track_query.PLAYLIST_POSITION,
+            track_query.COLLECTION_POSITION,
+        }
         assert covered == set(SORTABLE_COLUMNS)
 
 
@@ -412,6 +417,97 @@ class TestPlaylistPosition:
     def test_refused_without_a_scope_for_the_count_too(self, seeded):
         with pytest.raises(BrowseQueryError):
             seeded.browse_count(BrowseQuery(sort="playlist_position"))
+
+
+class TestCollectionScope:
+    """CuePoint's own scope, beside Rekordbox's rather than instead of it.
+
+    The same three properties the playlist scope has: a track filed twice
+    appears once, the order a user arranged is an order the table can open in,
+    and asking for that order without the scope that defines it is refused
+    rather than quietly answered with something else.
+    """
+
+    @pytest.fixture
+    def warmups(self, db, seeded) -> int:
+        """A Collection holding 5, 3 and 1 — in that order, with 3 twice."""
+        repo = CollectionRepository(db)
+        node = repo.create(Collection(kind=KIND_COLLECTION, name="Warmups"))
+        by_rekordbox = {
+            track.rekordbox_track_id: track.id for track in seeded.browse(limit=100)
+        }
+        repo.add(node.id, [by_rekordbox["5"], by_rekordbox["3"], by_rekordbox["1"]])
+        repo.insert_at(node.id, by_rekordbox["3"], 3)
+        return int(node.id)
+
+    def test_it_returns_exactly_its_tracks(self, seeded, warmups):
+        rows = seeded.browse(BrowseQuery(collection_id=warmups))
+        assert sorted(ids(rows)) == ["1", "3", "5"]
+
+    def test_a_track_filed_twice_appears_once(self, seeded, warmups):
+        # DEC-058 allows the duplicate; a table showing it twice would make the
+        # count disagree with the rows.
+        query = BrowseQuery(collection_id=warmups)
+        assert len(seeded.browse(query)) == 3
+        assert seeded.browse_count(query) == 3
+
+    def test_it_opens_in_the_order_the_user_arranged(self, seeded, warmups):
+        query = BrowseQuery(collection_id=warmups, sort="collection_position")
+        assert ids(seeded.browse(query)) == ["5", "3", "1"]
+
+    def test_descending_reverses_it(self, seeded, warmups):
+        query = BrowseQuery(
+            collection_id=warmups, sort="collection_position", direction="desc"
+        )
+        assert ids(seeded.browse(query)) == ["1", "3", "5"]
+
+    def test_a_track_filed_twice_takes_its_first_place(self, seeded, warmups):
+        # Track 3 is at 1 and again at 3; it sorts where it first appears.
+        query = BrowseQuery(collection_id=warmups, sort="collection_position")
+        assert ids(seeded.browse(query)).index("3") == 1
+
+    def test_that_order_is_refused_without_the_scope(self, seeded):
+        with pytest.raises(BrowseQueryError, match="needs a collection"):
+            seeded.browse(BrowseQuery(sort="collection_position"))
+
+    def test_refused_without_a_scope_for_the_count_too(self, seeded):
+        with pytest.raises(BrowseQueryError):
+            seeded.browse_count(BrowseQuery(sort="collection_position"))
+
+    def test_an_empty_collection_is_empty(self, db, seeded):
+        node = CollectionRepository(db).create(
+            Collection(kind=KIND_COLLECTION, name="Nothing")
+        )
+        query = BrowseQuery(collection_id=node.id)
+        assert seeded.browse(query) == []
+        assert seeded.browse_count(query) == 0
+
+    def test_an_unknown_collection_is_empty_not_an_error(self, seeded):
+        query = BrowseQuery(collection_id=999_999)
+        assert seeded.browse(query) == []
+        assert seeded.browse_count(query) == 0
+
+    def test_it_combines_with_a_text_query(self, seeded, warmups):
+        query = BrowseQuery(query="deadmau5", collection_id=warmups)
+        assert ids(seeded.browse(query)) == ["1"]
+
+    def test_it_combines_with_the_rekordbox_scope(self, seeded, warmups, tree):
+        """Both scopes at once narrow together rather than one winning.
+
+        The Collection holds 1, 3 and 5; the closing playlist holds 1 and 2.
+        A query in both is about track 1 and nothing else.
+        """
+        query = BrowseQuery(
+            collection_id=warmups, playlist_id=tree["ROOT/SETS/peak/closing"]
+        )
+        assert ids(seeded.browse(query)) == ["1"]
+        assert seeded.browse_count(query) == 1
+
+    def test_the_collection_is_a_bound_parameter(self, seeded):
+        """Nothing the caller sends reaches the SQL text (LIBUI-01)."""
+        sql, params = build_select(BrowseQuery(collection_id=7))
+        assert "7" not in sql
+        assert 7 in params
 
 
 class TestValidation:

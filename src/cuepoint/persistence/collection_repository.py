@@ -407,6 +407,28 @@ class CollectionRepository(ICollectionRepository):
         )
         return [int(row["track_id"]) for row in rows]
 
+    def all_counts(self) -> Dict[int, Tuple[int, int]]:
+        """Return ``(entries, distinct tracks)`` for every Collection, in one query.
+
+        The whole tree at once rather than two counts per node. A pane drawing
+        two hundred Collections would otherwise run four hundred statements to
+        put a number beside each name — the same N+1 ORG-03 measured away for
+        the tag list, met here for the same reason and answered the same way.
+
+        Collections holding nothing are absent rather than zero: they have no
+        rows to group, and a caller reading a count for a node has to default
+        anyway for one that was created a moment ago.
+        """
+        rows = self._db.connect().execute(
+            "SELECT collection_id, count(*) AS entries,"
+            " count(DISTINCT track_id) AS tracks"
+            " FROM collection_tracks GROUP BY collection_id"
+        )
+        return {
+            int(row["collection_id"]): (int(row["entries"]), int(row["tracks"]))
+            for row in rows
+        }
+
     def entry_count(self, collection_id: int) -> int:
         """Return how many rows a Collection holds, duplicates counted."""
         row = (

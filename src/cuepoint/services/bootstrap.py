@@ -173,11 +173,14 @@ def bootstrap_services() -> None:
     container.register_factory(ILibraryImportService, create_library_import_service)
 
     # Library entry point. Callers depend on this rather than on repositories,
-    # so persistence details stay behind the seam.
+    # so persistence details stay behind the seam. It reads three of them: the
+    # tracks, the Collections that reference them (DEC-011) and CuePoint's own
+    # layer, which every window carries beside the imported record (ORG-08).
     def create_library_service() -> ILibraryService:
         return LibraryService(
             track_repository=container.resolve(ITrackRepository),
             collection_repository=container.resolve(ICollectionRepository),
+            metadata_repository=container.resolve(ITrackMetadataRepository),
         )
 
     container.register_factory(ILibraryService, create_library_service)

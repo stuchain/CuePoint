@@ -26,6 +26,9 @@ from cuepoint.exceptions.cuepoint_exceptions import DatabaseError, ValidationErr
 from cuepoint.models.references import NO_REFERENCES, ReferenceSummary
 from cuepoint.persistence.activity_repository import ActivityRepository
 from cuepoint.persistence.collection_repository import CollectionRepository
+from cuepoint.persistence.track_metadata_repository import (
+    TrackMetadataRepository,
+)
 from cuepoint.persistence.library_source_repository import LibrarySourceRepository
 from cuepoint.persistence.playlist_repository import PlaylistRepository
 from cuepoint.persistence.track_repository import TrackRepository
@@ -487,7 +490,9 @@ class TestTheApplyAsksTheSeam:
             playlists,
             sources,
             db,
-            library_service=Recording(tracks, CollectionRepository(db)),
+            library_service=Recording(
+                tracks, CollectionRepository(db), TrackMetadataRepository(db)
+            ),
         )
         doomed = sorted(tracks.find_by_rekordbox_id(rid).id for rid in ("2", "3"))
         edited = write_export(
@@ -534,7 +539,9 @@ class TestTheApplyAsksTheSeam:
             playlists,
             sources,
             db,
-            library_service=Looking(tracks, CollectionRepository(db)),
+            library_service=Looking(
+                tracks, CollectionRepository(db), TrackMetadataRepository(db)
+            ),
         )
         edited = write_export(
             tmp_path, [track_xml("1", "/m/one.mp3", "One", "A")], name="edited.xml"
@@ -565,7 +572,9 @@ class TestTheApplyAsksTheSeam:
             playlists,
             sources,
             db,
-            library_service=Recording(tracks, CollectionRepository(db)),
+            library_service=Recording(
+                tracks, CollectionRepository(db), TrackMetadataRepository(db)
+            ),
         )
         diff = service.compute_refresh_diff(imported)
         asked.clear()  # LIBRARY-07's preview asks too; this is about the apply.
@@ -598,7 +607,9 @@ class TestTheApplyAsksTheSeam:
             playlists,
             sources,
             db,
-            library_service=Holding(tracks, CollectionRepository(db)),
+            library_service=Holding(
+                tracks, CollectionRepository(db), TrackMetadataRepository(db)
+            ),
         )
         edited = write_export(
             tmp_path, [track_xml("1", "/m/one.mp3", "One", "A")], name="edited.xml"
@@ -630,7 +641,9 @@ class TestTheApplyAsksTheSeam:
             playlists,
             sources,
             db,
-            library_service=Holding(tracks, CollectionRepository(db)),
+            library_service=Holding(
+                tracks, CollectionRepository(db), TrackMetadataRepository(db)
+            ),
         )
         edited = write_export(
             tmp_path, [track_xml("1", "/m/one.mp3", "One", "A")], name="edited.xml"

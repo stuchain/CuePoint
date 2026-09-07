@@ -28,7 +28,11 @@ from pathlib import Path
 
 import pytest
 
-from cuepoint.persistence.track_query import PLAYLIST_POSITION, SORTABLE_COLUMNS
+from cuepoint.persistence.track_query import (
+    COLLECTION_POSITION,
+    PLAYLIST_POSITION,
+    SORTABLE_COLUMNS,
+)
 
 # src/tests/unit/engine -> 4 levels up is the repository root
 _REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -77,9 +81,11 @@ class TestBrowseSortContract:
     def test_the_engine_offers_no_sort_the_table_hides(self):
         """The other direction: a sort nobody can reach is a sort nobody has.
 
-        ``playlist_position`` is the deliberate exception. It is not a column —
-        it is the ordering a playlist opens in (DEC-044), chosen by the scope
-        rather than by a header, and outside a playlist it means nothing.
+        The two position sorts are the deliberate exceptions. Neither is a
+        column: one is the order a playlist opens in (DEC-044) and the other
+        the order a Collection was arranged in (ORG-08, DEC-058), both chosen
+        by the scope rather than by a header, and outside that scope neither
+        means anything — the engine refuses them there rather than falling back.
 
         This is also what stops the pair passing vacuously. If the declaration
         format changed and the pattern above matched nothing, the test before
@@ -88,7 +94,7 @@ class TestBrowseSortContract:
         """
         unreachable = sorted(set(SORTABLE_COLUMNS) - _column_sort_keys())
 
-        assert unreachable == [PLAYLIST_POSITION], (
+        assert unreachable == sorted([COLLECTION_POSITION, PLAYLIST_POSITION]), (
             f"the engine sorts by {unreachable} and the table offers no column "
             f"for it. Either add the column, or say here why it is not one."
         )

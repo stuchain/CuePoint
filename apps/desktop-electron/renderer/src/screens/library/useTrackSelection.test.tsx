@@ -36,6 +36,9 @@ function row(index: number): LibraryTrackRow {
     comment: null,
     bitrate: null,
     file_path: `/music/${index + 1}.mp3`,
+    effective_rating: null,
+    rating_source: null,
+    favorite: false,
   };
 }
 

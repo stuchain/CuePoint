@@ -153,6 +153,9 @@ function track(id: number, overrides: Partial<LibraryTrackRow> = {}): LibraryTra
     comment: "a comment",
     bitrate: 320,
     file_path: `C:\\music\\${id}.mp3`,
+    effective_rating: 4,
+    rating_source: "rekordbox",
+    favorite: false,
     ...overrides,
   };
 }
@@ -223,6 +226,19 @@ const DETAIL: LibraryTrackDetail = {
   track: track(1),
   playlists: PLAYLISTS,
   playlist_count: 1,
+  metadata: {
+    track_id: 1,
+    rating: null,
+    rekordbox_rating: null,
+    effective_rating: null,
+    rating_source: null,
+    favorite: false,
+    notes: null,
+    created_at: null,
+    updated_at: null,
+  },
+  tags: [],
+  collections: [],
 };
 
 interface Bridge {

@@ -19,6 +19,20 @@ import {
   type LibrarySummary,
   type LibraryTrackDetail,
   type FilterRuleSet,
+  type BatchOperation,
+  type BatchOutcome,
+  type BatchSelection,
+  type CollectionAdded,
+  type CollectionEntry,
+  type CollectionEntryPage,
+  type CollectionNode,
+  type CollectionSubtree,
+  type CollectionTree,
+  type FrozenCollection,
+  type Tag,
+  type TagVocabulary,
+  type TrackHistory,
+  type TrackMetadata,
 } from "./engineClient";
 import { getBundledEnginePath, shouldUseBundledEngine } from "./engineLaunch";
 
@@ -285,6 +299,111 @@ export class EngineSupervisor {
 
   async getLibraryTrack(params: { trackId: number }): Promise<LibraryTrackDetail> {
     return this.client().getLibraryTrack(params);
+  }
+
+  // CuePoint's own organization (ORG-08). One forward per client method:
+  // `main.ts` calls this facade, and a method missing here is an
+  // `undefined is not a function` in the packaged app that nothing
+  // type-checks — which is why the contract test enumerates them.
+
+  async getCollections(): Promise<CollectionTree> {
+    return this.client().getCollections();
+  }
+
+  async getCollectionEntries(params: { collectionId: number; limit?: number; offset?: number }): Promise<CollectionEntryPage> {
+    return this.client().getCollectionEntries(params);
+  }
+
+  async createCollection(params: { kind: "folder" | "collection"; name: string; parent_id?: number | null }): Promise<{ collection: CollectionNode }> {
+    return this.client().createCollection(params);
+  }
+
+  async renameCollection(params: { id: number; name: string }): Promise<{ collection: CollectionNode }> {
+    return this.client().renameCollection(params);
+  }
+
+  async moveCollection(params: { id: number; parent_id?: number | null; position?: number | null }): Promise<{ collection: CollectionNode }> {
+    return this.client().moveCollection(params);
+  }
+
+  async deleteCollection(params: { id: number }): Promise<{ removed: CollectionSubtree }> {
+    return this.client().deleteCollection(params);
+  }
+
+  async previewCollectionDelete(params: { id: number }): Promise<{ removes: CollectionSubtree }> {
+    return this.client().previewCollectionDelete(params);
+  }
+
+  async addTracksToCollection(params: { collection_id: number; track_ids: number[] }): Promise<CollectionAdded> {
+    return this.client().addTracksToCollection(params);
+  }
+
+  async insertTrackInCollection(params: { collection_id: number; track_id: number; position: number }): Promise<{ entry: CollectionEntry }> {
+    return this.client().insertTrackInCollection(params);
+  }
+
+  async removeCollectionEntries(params: { entry_ids: number[] }): Promise<{ removed: number }> {
+    return this.client().removeCollectionEntries(params);
+  }
+
+  async reorderCollectionEntry(params: { entry_id: number; position: number }): Promise<{ entry: CollectionEntry }> {
+    return this.client().reorderCollectionEntry(params);
+  }
+
+  async saveSmartCollection(params: { name: string; rules: FilterRuleSet; parent_id?: number | null; sort?: string | null; dir?: "asc" | "desc" | null }): Promise<{ collection: CollectionNode }> {
+    return this.client().saveSmartCollection(params);
+  }
+
+  async updateSmartCollection(params: { id: number; rules: FilterRuleSet; sort?: string | null; dir?: "asc" | "desc" | null }): Promise<{ collection: CollectionNode }> {
+    return this.client().updateSmartCollection(params);
+  }
+
+  async duplicateSmartCollection(params: { id: number; name?: string | null }): Promise<{ collection: CollectionNode }> {
+    return this.client().duplicateSmartCollection(params);
+  }
+
+  async freezeSmartCollection(params: { id: number; name?: string | null }): Promise<FrozenCollection> {
+    return this.client().freezeSmartCollection(params);
+  }
+
+  async getTags(): Promise<TagVocabulary> {
+    return this.client().getTags();
+  }
+
+  async createTag(params: { name: string; category?: string | null; colour?: string | null }): Promise<{ tag: Tag }> {
+    return this.client().createTag(params);
+  }
+
+  async updateTag(params: { id: number; name?: string; category?: string | null; colour?: string | null }): Promise<{ tag: Tag }> {
+    return this.client().updateTag(params);
+  }
+
+  async deleteTag(params: { id: number }): Promise<{ untagged: number }> {
+    return this.client().deleteTag(params);
+  }
+
+  async mergeTags(params: { source_id: number; target_id: number }): Promise<{ moved: number }> {
+    return this.client().mergeTags(params);
+  }
+
+  async assignTag(params: { tag_id: number; track_ids: number[] }): Promise<{ changed: number; track_ids: number[] }> {
+    return this.client().assignTag(params);
+  }
+
+  async unassignTag(params: { tag_id: number; track_ids: number[] }): Promise<{ changed: number; track_ids: number[] }> {
+    return this.client().unassignTag(params);
+  }
+
+  async setTrackMetadata(params: { trackId: number; rating?: number | null; favorite?: boolean; notes?: string | null }): Promise<{ metadata: TrackMetadata }> {
+    return this.client().setTrackMetadata(params);
+  }
+
+  async getTrackHistory(params: { trackId: number; limit?: number }): Promise<TrackHistory> {
+    return this.client().getTrackHistory(params);
+  }
+
+  async applyBatch(params: { selection: BatchSelection; operation: BatchOperation }): Promise<BatchOutcome> {
+    return this.client().applyBatch(params);
   }
 
   async startLibraryImport(params: {
