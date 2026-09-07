@@ -883,7 +883,7 @@ row with a free-text box would ask a user to type a database id and refuse every
 typed, so `filterText.buildableFields` keeps the bar to the three types it has controls for, and a
 `FilterBar` test fails if the filter is removed. ORG-12 deletes that filter when it adds the chips.
 
-**Guards: 47 of 47 fail when the thing they protect is broken.** The effective rating, five ways:
+**Guards: 52 of 52 fail when the thing they protect is broken.** The effective rating, five ways:
 reverted to the imported column, reduced to the CuePoint one, coalesced backwards, and either layer
 losing its own name. The join, five ways: never written, always written, `requires_metadata` mute,
 a facet unable to ask for it, and made inner so untouched tracks vanish. Favorite: unknown rather
@@ -897,7 +897,11 @@ the first chunk never looked up. Each of the six reads skipping the check. And t
 grouped by track, ignoring the rest of the view, honouring its own field's rules, the untagged
 bucket dropped, assignments counted as tags, a value losing its name or carrying the name instead of
 the id, a facet grouping the column the field is named after, a bool faceted as text, and a
-membership field faceted as a column. Plus one that ORG-05 must not have broken: the `LIKE` escape.
+membership field faceted as a column. The scope, two ways: a playlist scope that stops applying
+once a rule is present, and a scoped tag facet computed over the whole library. The boundary,
+three ways: a broken rule reaching the client as a crash rather than a message, every facet value
+carrying a label including the ones that are their own, and the new fields no longer described to
+the renderer. Plus one that ORG-05 must not have broken: the `LIKE` escape.
 
 Four of those started as survivors. `any_of` truncated to its first id passed, because the fixture's
 first tag happened to cover the whole union — the list is now ordered narrowest-first, so a
@@ -910,6 +914,25 @@ an integer against text that SQLite answers correctly by its type ordering, whic
 coincidence rather than by intent, and a collation on an integer claims a rule the SQL does not
 have.
 
+**Two gaps closed after the first commit, both found by reading the DoD back rather than by a
+failing test.** The DoD says these rules must compose "with scope", and nothing put a membership
+rule inside a playlist — the query with the most moving parts, where a recursive CTE, a playlist
+membership test, the metadata join and a link-table test are assembled into one statement, with an
+ordering that is itself a subquery over the scope. Ten tests now drive that, including the
+`playlist_position` sort with a tag rule in the predicate and a tag facet counted inside a
+playlist. And the DoD's vocabulary clause is about a boundary that three shipped endpoints cross:
+`/library/filter-fields`, `/library/search` and `/library/facets` all answer differently now, and
+none of it was tested over HTTP.
+
+**The refusal was the reason to go back.** `BrokenRuleError` reaches a handler that catches
+`FilterRuleError`, and it is caught — but only because of today's class statement. A filter a user
+can build must never return a 500 where a message naming the clause belongs, and "a subclass, so it
+is fine" is exactly the reasoning that stops being true during a later refactor. Thirty-four tests
+now drive the real engine over real HTTP: a deleted tag is a 400 naming the clause, a Smart
+Collection is a 400 naming the Collection, a tag chip built from a facet response matches the count
+that facet reported, and a facet value for a field that is its own label carries no `label` key at
+all, so an existing consumer sees the object it has always seen.
+
 **Measured at the acceptance scale** — 50,000 tracks, 200,000 assignments over 20 tags, a
 5,000-track Collection, 10,000 CuePoint metadata rows. Counts, which are the unpaged half and
 therefore the slow one: "has this tag" **8.4 ms**, "not this tag" 11.9 ms, "any of five" 23.8 ms,
@@ -919,7 +942,7 @@ together 7.8 ms. Windows are all under 30 ms and mostly under 3. Facets: tags **
 42.1 ms), favorite 16.3 ms, effective rating 20.2 ms. The unfiltered browse is unchanged at
 0.36 ms, with no join in its SQL.
 
-**Verification**: `python -m pytest src/tests/unit` — 3918 passed, 45 skipped (201 of them new);
+**Verification**: `python -m pytest src/tests/unit` — 3962 passed, 45 skipped (245 of them new);
 `python -m pytest src/tests/integration src/tests/regression` — 350 passed, 13 skipped; `npm test`
 in the renderer — 1265 passed; `npm run typecheck` and `npm run lint` clean; `ruff check src/` and
 `ruff format --check src/` clean; `check_no_qt_in_core.py`, `check_desktop_version_coupling.py` and
@@ -928,8 +951,9 @@ this step: they assert `.pre-commit-config.yaml` mentions black, isort and flake
 rewritten to use ruff outside this work.
 
 No Electron main, preload or engine-API file was touched; the vocabulary endpoint describes the new
-fields because `describe_fields()` reads the registry, not because anything was added to it. The
-measurements are ad-hoc; ORG-13 owns the recorded scale numbers.
+fields because `describe_fields()` reads the registry, not because anything was added to it — which
+is why ORG-08 has an API to build rather than one to correct. The measurements are ad-hoc; ORG-13
+owns the recorded scale numbers.
 
 ---
 

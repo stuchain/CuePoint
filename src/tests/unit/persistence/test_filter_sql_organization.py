@@ -570,3 +570,161 @@ class TestTheJoinIsOnlyWrittenWhenItIsNeeded:
         query = BrowseQuery(rules=RuleSet(rules=(rule("favorite", "is", False),)))
         assert tracks.browse_count(query) == 5
         assert len(tracks.browse(query, limit=500)) == 5
+
+
+class TestTheyComposeWithAPlaylistScope:
+    """The last third of the DoD: scope, text query, and every other filter.
+
+    A scoped browse is the query with the most moving parts — a recursive CTE
+    for the folder, a membership test against the playlist tables, the metadata
+    join, and now a second membership test against a link table — and the
+    ordering can be a subquery over playlist positions on top of all of it. It
+    is the one place where the pieces could be assembled in an order that
+    parses and answers the wrong question, so it is asserted rather than
+    assumed.
+    """
+
+    @pytest.fixture
+    def scoped(self, db, tracks, library):
+        """A folder holding one playlist with tracks 1, 2 and 5 in it.
+
+        Tracks 1 and 2 carry the Peak time tag and are in the Warmups
+        Collection; track 5 is untagged and in Closers. So every membership
+        rule has something inside the scope *and* something outside it, which
+        is what makes "the scope was applied" different from "the rule was".
+        """
+        from cuepoint.models.rekordbox_playlist import (
+            KIND_FOLDER,
+            KIND_PLAYLIST,
+            RekordboxPlaylist,
+        )
+        from cuepoint.persistence.playlist_repository import PlaylistRepository
+
+        playlists = PlaylistRepository(db)
+        playlists.replace_tree(
+            [
+                RekordboxPlaylist(
+                    name="SETS",
+                    kind=KIND_FOLDER,
+                    depth=0,
+                    position=0,
+                    rekordbox_path="SETS",
+                ),
+                RekordboxPlaylist(
+                    name="warmup",
+                    kind=KIND_PLAYLIST,
+                    depth=1,
+                    position=0,
+                    rekordbox_path="SETS/warmup",
+                    parent_path="SETS",
+                    track_refs=["5", "2", "1"],
+                ),
+            ]
+        )
+        return {
+            "folder": int(playlists.find_by_path("SETS").id),
+            "playlist": int(playlists.find_by_path("SETS/warmup").id),
+        }
+
+    def scoped_ids(self, tracks, scoped, *rules, sort="artist"):
+        query = BrowseQuery(
+            playlist_id=scoped["playlist"], sort=sort, rules=RuleSet(rules=rules)
+        )
+        rows = tracks.browse(query, limit=500)
+        assert tracks.browse_count(query) == len(rows)
+        return sorted(row.rekordbox_track_id for row in rows)
+
+    def test_the_scope_alone(self, tracks, scoped):
+        assert self.scoped_ids(tracks, scoped) == ["1", "2", "5"]
+
+    def test_a_tag_rule_inside_a_playlist(self, tracks, library, scoped):
+        # Track 6 also carries this tag and is not in the playlist.
+        assert self.scoped_ids(
+            tracks, scoped, rule("tag", "has_tag", library["tags"]["peak"])
+        ) == ["1", "2"]
+
+    def test_untagged_inside_a_playlist(self, tracks, library, scoped):
+        # Track 3 is untagged too, and outside the scope.
+        assert self.scoped_ids(tracks, scoped, rule("tag", "is_empty")) == ["5"]
+
+    def test_a_collection_rule_inside_a_playlist(self, tracks, library, scoped):
+        assert self.scoped_ids(
+            tracks,
+            scoped,
+            rule("collection", "in_collection", library["collections"]["warmups"]),
+        ) == ["1", "2"]
+
+    def test_a_cuepoint_rule_inside_a_playlist(self, tracks, library, scoped):
+        # The metadata join and the scope CTE in one statement. Track 3 is
+        # rated 2 in CuePoint and is outside the scope.
+        assert self.scoped_ids(tracks, scoped, rule("rating", "is", 5)) == ["1", "2"]
+
+    def test_a_folder_scope_reaches_its_playlists(self, tracks, library, scoped):
+        query = BrowseQuery(
+            playlist_id=scoped["folder"],
+            rules=RuleSet(rules=(rule("tag", "has_tag", library["tags"]["peak"]),)),
+        )
+        rows = tracks.browse(query, limit=500)
+        assert sorted(row.rekordbox_track_id for row in rows) == ["1", "2"]
+        assert tracks.browse_count(query) == 2
+
+    def test_everything_at_once(self, tracks, library, scoped):
+        # A folder scope, a text query, a Phase 4 filter, a CuePoint filter, a
+        # tag and a Collection — one predicate, and the count agrees with it.
+        query = BrowseQuery(
+            query="Title",
+            playlist_id=scoped["folder"],
+            rules=RuleSet(
+                rules=(
+                    rule("genre", "is", "House"),
+                    rule("rating", "gte", 5),
+                    rule("tag", "has_tag", library["tags"]["peak"]),
+                    rule(
+                        "collection", "in_collection", library["collections"]["warmups"]
+                    ),
+                )
+            ),
+        )
+        rows = tracks.browse(query, limit=500)
+        assert sorted(row.rekordbox_track_id for row in rows) == ["1", "2"]
+        assert tracks.browse_count(query) == 2
+
+    def test_the_playlist_ordering_survives_a_membership_rule(
+        self, tracks, library, scoped
+    ):
+        # `playlist_position` orders by a subquery over the scope CTE. It has
+        # to still mean "as arranged in Rekordbox" with a link table in the
+        # predicate: the playlist lists 5, 2, 1 in that order.
+        query = BrowseQuery(
+            playlist_id=scoped["playlist"],
+            sort="playlist_position",
+            rules=RuleSet(rules=(rule("tag", "not_has_tag", library["tags"]["dub"]),)),
+        )
+        rows = tracks.browse(query, limit=500)
+        assert [row.rekordbox_track_id for row in rows] == ["5", "2", "1"]
+
+    def test_a_facet_is_computed_inside_the_scope(self, tracks, library, scoped):
+        # Peak time is on tracks 1, 2 and 6; only two of them are in the
+        # playlist, and the facet has to say two.
+        facet = tracks.facet_values(
+            BrowseQuery(playlist_id=scoped["playlist"]), field="tag"
+        )
+        counts = {value.label: value.count for value in facet.values if value.label}
+        assert counts["Peak time"] == 2
+        assert facet.values[-1].value is None  # track 5 is untagged
+
+    def test_a_scoped_facet_count_is_what_choosing_it_would_show(
+        self, tracks, library, scoped
+    ):
+        facet = tracks.facet_values(
+            BrowseQuery(playlist_id=scoped["playlist"]), field="tag"
+        )
+        for value in facet.values:
+            if value.value is None:
+                continue
+            assert value.count == tracks.browse_count(
+                BrowseQuery(
+                    playlist_id=scoped["playlist"],
+                    rules=RuleSet(rules=(rule("tag", "has_tag", int(value.value)),)),
+                )
+            ), value.label
