@@ -2,26 +2,46 @@
 # -*- coding: utf-8 -*-
 
 """
-Generate release notes from merged PRs since last tag.
+Generate release notes from the changelog.
 
-Design: 02 Release Engineering (2.18). Uses GitHub API to list PRs merged
-since the release tag and formats them as markdown. Set GITHUB_TOKEN and
-GITHUB_REPOSITORY (or pass --repo). For tag v1.2.3, PRs merged into the
-branch that was tagged are included.
+Design: 02 Release Engineering (2.18). The hand-written changelog is the source
+of release notes: its section for the release is lifted into RELEASE_NOTES.md,
+which becomes the GitHub Release body and, through the appcast <description>,
+the text shown in the in-app update dialog.
+
+This replaces an earlier implementation that derived notes from merged pull
+requests. This repository commits directly to branches rather than merging PRs,
+so that scan found nothing and every release fell back to a placeholder.
+
+Section resolution, in order:
+  1. a section matching the full version (e.g. [1.2.3-feb1])
+  2. [Unreleased], when it has content
+  3. a section matching the base version (e.g. [1.2.3])
+
+[Unreleased] is preferred over the base version because release tags carry
+labelled suffixes (1.0.0-feb1), whose base version can collide with a section
+published long ago. Cut [Unreleased] into a dated section before tagging a
+stable release and the exact match wins.
+
+Exits non-zero when no usable section is found, so a release fails before
+publishing empty notes rather than after.
 
 Usage:
-    export GITHUB_TOKEN=...
     python scripts/generate_release_notes.py --tag v1.2.3 [--output RELEASE_NOTES.md]
-    python scripts/generate_release_notes.py --tag v1.2.3 --repo owner/repo
+    python scripts/generate_release_notes.py --tag v1.2.3 --section Unreleased
 """
 
 import argparse
-import json
 import os
 import re
 import sys
-import urllib.request
 from pathlib import Path
+
+from validate_changelog import extract_base_version
+
+# Mirrors the section heading pattern in validate_changelog.py: ## [X.Y.Z] - date
+# or ## [Unreleased].
+SECTION_RE = re.compile(r"^##\s+\[([^\]]+)\]\s*(?:-\s*[-\d]+)?\s*$", re.MULTILINE)
 
 
 def get_project_root() -> Path:
@@ -32,51 +52,124 @@ def get_version_from_tag(tag: str) -> str:
     return tag.lstrip("v") if tag.startswith("v") else tag
 
 
-def fetch_prs_in_tag(repo: str, tag: str, token: str, max_commits: int = 250) -> list[dict]:
-    """Fetch PRs whose merge commits are in the given tag. Uses GitHub API."""
-    headers = {
-        "Accept": "application/vnd.github.v3+json",
-        "Authorization": f"Bearer {token}",
-    }
-    out: list[dict] = []
-    try:
-        req = urllib.request.Request(
-            f"https://api.github.com/repos/{repo}/commits?sha={tag}&per_page=100",
-            headers=headers,
-        )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            commits = json.loads(resp.read().decode())
-        pr_numbers: set[int] = set()
-        for c in commits:
-            msg = c.get("commit", {}).get("message", "")
-            m = re.search(r"Merge pull request #(\d+)|#(\d+)", msg, re.I)
-            if m:
-                pr_numbers.add(int(m.group(1) or m.group(2)))
-        for num in sorted(pr_numbers, reverse=True):
-            pr_url = f"https://api.github.com/repos/{repo}/pulls/{num}"
-            req = urllib.request.Request(pr_url, headers=headers)
-            try:
-                with urllib.request.urlopen(req, timeout=10) as resp:
-                    pr = json.loads(resp.read().decode())
-                    out.append({"number": num, "title": pr.get("title", ""), "html_url": pr.get("html_url", "")})
-            except Exception:
-                out.append({"number": num, "title": f"PR #{num}", "html_url": f"https://github.com/{repo}/pull/{num}"})
-    except Exception as e:
-        print(f"Warning: Could not fetch PRs: {e}", file=sys.stderr)
-    return out
+def extract_sections(path: Path) -> dict[str, str]:
+    """Map each changelog section title to its body text."""
+    if not path.exists():
+        return {}
+    content = path.read_text(encoding="utf-8")
+    matches = list(SECTION_RE.finditer(content))
+    sections: dict[str, str] = {}
+    for i, m in enumerate(matches):
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(content)
+        title = m.group(1).strip()
+        # First heading wins, so a duplicated version title keeps the newest entry.
+        sections.setdefault(title, content[m.end() : end].strip())
+    return sections
+
+
+def has_content(body: str) -> bool:
+    """True when the body has a ### subsection with at least one bullet under it."""
+    return bool(re.search(r"^###\s+\w+", body, re.MULTILINE)) and bool(
+        re.search(r"^[-*]\s+.+", body, re.MULTILINE)
+    )
+
+
+def resolve_section(sections: dict[str, str], version: str) -> tuple[str, str] | None:
+    """Pick the changelog section for this version. See module docstring for order."""
+    candidates = [version]
+    unreleased = next((t for t in sections if t.lower() == "unreleased"), None)
+    if unreleased:
+        candidates.append(unreleased)
+    base = extract_base_version(version)
+    if base != version:
+        candidates.append(base)
+
+    for title in candidates:
+        body = sections.get(title)
+        if body and has_content(body):
+            return title, body
+    return None
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate release notes from merged PRs (2.18).")
+    parser = argparse.ArgumentParser(
+        description="Generate release notes from the changelog (2.18)."
+    )
+    # Changelog prose carries non-ASCII; a Windows console defaults to cp1252.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     parser.add_argument("--tag", "-t", required=True, help="Release tag (e.g. v1.2.3)")
-    parser.add_argument("--repo", "-r", default=os.environ.get("GITHUB_REPOSITORY"), help="Repo owner/name")
-    parser.add_argument("--output", "-o", type=Path, default=None, help="Output path (default: stdout)")
-    parser.add_argument("--token", default=os.environ.get("GITHUB_TOKEN"), help="GitHub token (default: GITHUB_TOKEN)")
+    parser.add_argument(
+        "--output", "-o", type=Path, default=None, help="Output path (default: stdout)"
+    )
+    parser.add_argument(
+        "--changelog",
+        type=Path,
+        default=None,
+        help="Changelog path (default: docs/release/CHANGELOG.md)",
+    )
+    parser.add_argument(
+        "--section",
+        default=None,
+        help="Use this changelog section verbatim instead of resolving one from the tag",
+    )
+    # Accepted for backward compatibility with existing callers; no longer used.
+    parser.add_argument(
+        "--repo",
+        "-r",
+        default=os.environ.get("GITHUB_REPOSITORY"),
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--token", default=os.environ.get("GITHUB_TOKEN"), help=argparse.SUPPRESS
+    )
     args = parser.parse_args()
 
     version = get_version_from_tag(args.tag)
-    token = args.token
-    repo = args.repo
+    changelog = (
+        args.changelog or get_project_root() / "docs" / "release" / "CHANGELOG.md"
+    )
+
+    if not changelog.exists():
+        print(f"ERROR: Changelog not found: {changelog}", file=sys.stderr)
+        sys.exit(1)
+
+    sections = extract_sections(changelog)
+    if not sections:
+        print(f"ERROR: No changelog sections parsed from {changelog}", file=sys.stderr)
+        sys.exit(1)
+
+    if args.section:
+        body = sections.get(args.section)
+        if body is None:
+            available = ", ".join(sorted(sections)) or "none"
+            print(
+                f"ERROR: Section [{args.section}] not found in {changelog}. Available: {available}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        title = args.section
+    else:
+        resolved = resolve_section(sections, version)
+        if resolved is None:
+            available = ", ".join(sorted(sections)) or "none"
+            print(
+                f"ERROR: No changelog section with content for {version} in {changelog}.\n"
+                f"       Looked for [{version}], [Unreleased], then "
+                f"[{extract_base_version(version)}]. Available: {available}\n"
+                "       Write the changelog entry before tagging, or pass --section.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        title, body = resolved
+
+    if title.lower() == "unreleased":
+        print(
+            f"Note: using the [Unreleased] section for {args.tag}. Cut it into a dated "
+            f"[{version}] section as part of a stable release.",
+            file=sys.stderr,
+        )
 
     lines = [
         f"# Release {args.tag}",
@@ -85,22 +178,8 @@ def main() -> None:
         "",
         "## Changes",
         "",
-    ]
-
-    if token and repo:
-        prs = fetch_prs_in_tag(repo, args.tag, token)
-        if prs:
-            for pr in prs:
-                lines.append(f"- [{pr['title']}]({pr['html_url']}) (#{pr['number']})")
-            lines.append("")
-        else:
-            lines.append("See CHANGELOG for details.")
-            lines.append("")
-    else:
-        lines.append("See CHANGELOG for details.")
-        lines.append("")
-
-    lines.extend([
+        body,
+        "",
         "## Installation",
         "",
         "### macOS",
@@ -111,13 +190,13 @@ def main() -> None:
         "1. Download the installer",
         "2. Run the installer and follow the prompts",
         "",
-    ])
+    ]
 
     text = "\n".join(lines)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(text, encoding="utf-8")
-        print(f"Written: {args.output}")
+        print(f"Written: {args.output} (changelog section [{title}])")
     else:
         print(text)
 
