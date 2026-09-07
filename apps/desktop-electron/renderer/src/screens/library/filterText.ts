@@ -64,6 +64,30 @@ export function fieldOf(
   return vocabulary?.fields.find((field) => field.name === name) ?? null;
 }
 
+/**
+ * Field types this bar has a control for.
+ *
+ * ORG-05 taught the engine to filter by tag, by Collection membership and by
+ * favorite, and the vocabulary endpoint describes all three — it has to, or
+ * ORG-12 would have to hard-code them, which is the thing DEC-043 exists to
+ * prevent. What ORG-12 adds is the controls: tag chips, a Collection picker, a
+ * favorite toggle.
+ *
+ * Until then the bar offers only what it can actually build. A "Tag" row with
+ * a free-text box would ask a user to type a tag's database id, and refuse
+ * every tag name they typed instead — worse than not offering it.
+ */
+const BUILDABLE_TYPES = new Set(["text", "number", "date"]);
+
+/** The fields this bar can build a clause for, in the engine's order. */
+export function buildableFields(
+  vocabulary: LibraryFilterVocabulary | null,
+): LibraryFilterField[] {
+  return (vocabulary?.fields ?? []).filter((field) =>
+    BUILDABLE_TYPES.has(field.type),
+  );
+}
+
 /** Stars, for a rating. The engine stores 0–5; nothing needs converting. */
 export function starsFor(value: number): string {
   const count = Math.max(0, Math.min(5, Math.round(value)));
@@ -110,7 +134,7 @@ export interface DraftRule {
 }
 
 export function emptyDraft(vocabulary: LibraryFilterVocabulary | null): DraftRule {
-  const field = vocabulary?.fields[0];
+  const field = buildableFields(vocabulary)[0];
   return {
     field: field?.name ?? "",
     operator: field?.operators[0] ?? "",

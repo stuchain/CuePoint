@@ -17,6 +17,7 @@ import {
   addRule,
   arityOf,
   buildRule,
+  buildableFields,
   describeRule,
   emptyDraft,
   fieldOf,
@@ -77,6 +78,95 @@ const VOCABULARY: LibraryFilterVocabulary = {
   facetable: ["genre", "rating"],
   sortable: ["artist", "bpm"],
 };
+
+/** The vocabulary as ORG-05 leaves it: three kinds this bar cannot build. */
+const WITH_ORGANIZATION_FIELDS: LibraryFilterVocabulary = {
+  ...VOCABULARY,
+  fields: [
+    ...VOCABULARY.fields,
+    {
+      name: "favorite",
+      type: "bool",
+      label: "Favorite",
+      facetable: true,
+      integer: false,
+      operators: ["is"],
+    },
+    {
+      name: "tag",
+      type: "tag",
+      label: "Tag",
+      facetable: true,
+      integer: false,
+      operators: ["has_tag", "not_has_tag", "any_of", "is_empty"],
+    },
+    {
+      name: "collection",
+      type: "collection",
+      label: "Collection",
+      facetable: false,
+      integer: false,
+      operators: ["in_collection", "not_in_collection"],
+    },
+  ],
+};
+
+describe("buildableFields", () => {
+  /**
+   * ORG-05 taught the engine to filter by tag, Collection and favorite, and
+   * the vocabulary endpoint describes all three — it has to, or ORG-12 would
+   * have to hard-code them, which is what DEC-043 exists to prevent. The
+   * controls arrive in ORG-12; until then the bar offers only what it can
+   * actually build, because a "Tag" row with a text box would ask a user to
+   * type a database id and refuse every tag name they typed.
+   */
+  it("keeps the field kinds this bar has controls for", () => {
+    expect(buildableFields(WITH_ORGANIZATION_FIELDS).map((f) => f.name)).toEqual([
+      "genre",
+      "bpm",
+      "rating",
+      "date_added",
+    ]);
+  });
+
+  it("drops the kinds it does not", () => {
+    const names = buildableFields(WITH_ORGANIZATION_FIELDS).map((f) => f.name);
+    expect(names).not.toContain("tag");
+    expect(names).not.toContain("collection");
+    expect(names).not.toContain("favorite");
+  });
+
+  it("keeps the engine's order", () => {
+    expect(buildableFields(VOCABULARY).map((f) => f.name)).toEqual(
+      VOCABULARY.fields.map((f) => f.name),
+    );
+  });
+
+  it("is empty without a vocabulary", () => {
+    expect(buildableFields(null)).toEqual([]);
+  });
+
+  it("starts a draft on a field that can be built", () => {
+    // Not simply `fields[0]`: were the engine to describe a tag field first,
+    // an empty draft would open on a control that cannot be filled in.
+    const vocabulary: LibraryFilterVocabulary = {
+      ...WITH_ORGANIZATION_FIELDS,
+      fields: [
+        WITH_ORGANIZATION_FIELDS.fields[4],
+        ...VOCABULARY.fields,
+      ],
+    };
+    expect(emptyDraft(vocabulary).field).toBe("genre");
+  });
+
+  it("leaves a draft empty when nothing can be built", () => {
+    const vocabulary: LibraryFilterVocabulary = {
+      ...VOCABULARY,
+      fields: [WITH_ORGANIZATION_FIELDS.fields[4]],
+    };
+    expect(emptyDraft(vocabulary).field).toBe("");
+  });
+});
 
 function draft(overrides: Partial<DraftRule> = {}): DraftRule {
   return { field: "genre", operator: "is", value: "", secondValue: "", ...overrides };

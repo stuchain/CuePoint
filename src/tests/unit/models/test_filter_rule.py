@@ -20,12 +20,11 @@ import pytest
 
 from cuepoint.models.filter_rule import (
     FACETABLE_FIELDS,
+    FIELD_TYPES,
     FIELDS,
     MATCH_ALL,
     OPERATORS_BY_TYPE,
-    TYPE_DATE,
     TYPE_NUMBER,
-    TYPE_TEXT,
     FilterRule,
     FilterRuleError,
     RuleSet,
@@ -43,7 +42,10 @@ def rule(field: str, operator: str, value=None) -> FilterRule:
 
 class TestRegistry:
     def test_every_field_has_a_known_type(self):
-        assert {spec.type for spec in FIELDS} <= {TYPE_TEXT, TYPE_NUMBER, TYPE_DATE}
+        # Against the registry's own list rather than a copy of it here: ORG-05
+        # added three types, and a test that named the types it knew about
+        # would have had to be edited to keep meaning what it says.
+        assert {spec.type for spec in FIELDS} <= set(FIELD_TYPES)
 
     def test_every_field_has_operators(self):
         for spec in FIELDS:

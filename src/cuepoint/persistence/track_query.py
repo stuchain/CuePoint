@@ -41,6 +41,8 @@ from dataclasses import dataclass, replace
 from typing import Dict, List, Optional, Tuple
 
 from cuepoint.models.filter_rule import (
+    METADATA_ALIAS,
+    TYPE_BOOL,
     TYPE_NUMBER,
     FieldSpec,
     RuleSet,
@@ -50,6 +52,7 @@ from cuepoint.persistence.filter_sql import (
     LIKE_ESCAPE,
     compile_rule_set,
     escape_like,
+    requires_metadata,
 )
 
 #: Rows per window. A table shows tens of rows; a window covers the viewport
@@ -147,6 +150,35 @@ _POSITION_EXPR = (
     "WHERE pt.track_id = tracks.id "
     "AND pt.playlist_id IN (SELECT id FROM browse_scope))"
 )
+
+# CuePoint's own layer, joined only when something asks for it (ORG-05). A
+# LEFT JOIN because most tracks have no metadata row at all: a track nobody has
+# rated, favorited or annotated is not a track that should disappear from the
+# library when a filter mentions rating. `track_metadata.track_id` is that
+# table's primary key, so the join can never multiply a row — `SELECT tracks.*`
+# and `count(*)` mean exactly what they meant before it.
+#
+# Written only when a rule or a facet reads it, because "cheap per row" is
+# still fifty thousand index probes over a real library, and every browse the
+# Library page has run since Phase 4 would have started paying them for
+# nothing. A filter bar with no CuePoint clause produces the SQL it always did.
+_METADATA_JOIN = (
+    f" LEFT JOIN track_metadata AS {METADATA_ALIAS}"
+    f" ON {METADATA_ALIAS}.track_id = tracks.id"
+)
+
+# The tag facet counts assignments and only then looks up names — the same
+# group-then-join ORG-03 measured for the tag list, and the same reason. Joining
+# `tags` first makes the grouping walk 200,000 rows through a table it does not
+# need until the end; grouping first walks one index and joins twenty rows.
+# Measured over 50,000 tracks and 200,000 assignments: 96.1 ms joined first,
+# **14.3 ms** grouped first. With a filter narrowing it, 17.9 ms against 15.3 ms
+# — so the shape that wins by seven times in the common case never loses.
+_TAG_COUNTS = "SELECT track_tags.tag_id AS tag_id, count(*) AS n FROM track_tags"
+
+# The same reach, kept outer, so untagged tracks survive to be counted as the
+# "no tag" bucket instead of being dropped by the join.
+_TAG_OUTER_JOIN = " LEFT JOIN track_tags ON track_tags.track_id = tracks.id"
 
 # Columns a text query looks in. Deliberately not file_path: a substring of a
 # directory name would match every track under it, which reads as a broken
@@ -346,12 +378,36 @@ def _order_by(query: BrowseQuery) -> str:
     return "ORDER BY " + ", ".join(parts)
 
 
-def _predicate(query: BrowseQuery) -> Tuple[str, str, Tuple[object, ...]]:
-    """Build ``(cte, where, params)`` shared by the rows and the count.
+@dataclass(frozen=True)
+class Predicate:
+    """The parts of a statement that describe *which* tracks, not which columns.
+
+    Four pieces rather than a string, because they go in three different places
+    in the SQL and the projections that use them differ only in what they read.
+
+    Attributes:
+        cte: The scope CTE, or empty.
+        join: The tables the predicate needs reached, or empty.
+        where: The WHERE clause, leading space included, or empty.
+        params: Every bound value, in the order the pieces above use them.
+    """
+
+    cte: str = ""
+    join: str = ""
+    where: str = ""
+    params: Tuple[object, ...] = ()
+
+
+def _predicate(query: BrowseQuery, *, metadata: bool = False) -> Predicate:
+    """Build the predicate shared by the rows and the count.
 
     One function so a count can never be taken of a different set of rows than
     the query returns — the failure that makes a table say "showing 100 of 340"
     over 200 rows.
+
+    ``metadata`` forces the CuePoint join on for a caller that reads that table
+    in its projection rather than in its rules: a facet on ``favorite`` groups
+    by a column no rule mentioned.
     """
     clauses: List[str] = []
     params: List[object] = []
@@ -373,7 +429,8 @@ def _predicate(query: BrowseQuery) -> Tuple[str, str, Tuple[object, ...]]:
         params.extend(filter_params)
 
     where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
-    return cte, where, tuple(params)
+    join = _METADATA_JOIN if metadata or requires_metadata(query.rules) else ""
+    return Predicate(cte=cte, join=join, where=where, params=tuple(params))
 
 
 def build_select(
@@ -388,9 +445,12 @@ def build_select(
         BrowseQueryError: Via :meth:`BrowseQuery.validated`.
     """
     valid = query.validated()
-    cte, where, params = _predicate(valid)
-    sql = f"{cte}SELECT tracks.* FROM tracks{where} {_order_by(valid)} LIMIT ? OFFSET ?"
-    return sql, (*params, clamp_limit(limit), clamp_offset(offset))
+    parts = _predicate(valid)
+    sql = (
+        f"{parts.cte}SELECT tracks.* FROM tracks{parts.join}{parts.where} "
+        f"{_order_by(valid)} LIMIT ? OFFSET ?"
+    )
+    return sql, (*parts.params, clamp_limit(limit), clamp_offset(offset))
 
 
 def build_select_ids(
@@ -404,11 +464,12 @@ def build_select_ids(
     a row index means anything when the window moves.
     """
     valid = query.validated()
-    cte, where, params = _predicate(valid)
+    parts = _predicate(valid)
     sql = (
-        f"{cte}SELECT tracks.id FROM tracks{where} {_order_by(valid)} LIMIT ? OFFSET ?"
+        f"{parts.cte}SELECT tracks.id FROM tracks{parts.join}{parts.where} "
+        f"{_order_by(valid)} LIMIT ? OFFSET ?"
     )
-    return sql, (*params, clamp_ids_limit(limit), clamp_offset(offset))
+    return sql, (*parts.params, clamp_ids_limit(limit), clamp_offset(offset))
 
 
 def build_select_queue(
@@ -434,13 +495,14 @@ def build_select_queue(
     paging a long queue cannot repeat or skip a track where sort values tie.
     """
     valid = query.validated()
-    cte, where, params = _predicate(valid)
+    parts = _predicate(valid)
     sql = (
-        f"{cte}SELECT tracks.id, tracks.title, tracks.artist, tracks.key, "
-        f"tracks.bpm, tracks.duration_seconds, tracks.file_path FROM tracks{where} "
+        f"{parts.cte}SELECT tracks.id, tracks.title, tracks.artist, tracks.key, "
+        f"tracks.bpm, tracks.duration_seconds, tracks.file_path "
+        f"FROM tracks{parts.join}{parts.where} "
         f"{_order_by(valid)} LIMIT ? OFFSET ?"
     )
-    return sql, (*params, clamp_ids_limit(limit), clamp_offset(offset))
+    return sql, (*parts.params, clamp_ids_limit(limit), clamp_offset(offset))
 
 
 def build_count(query: BrowseQuery) -> Tuple[str, Tuple[object, ...]]:
@@ -451,8 +513,11 @@ def build_count(query: BrowseQuery) -> Tuple[str, Tuple[object, ...]]:
     "of 47,913" and a slow one.
     """
     valid = query.validated()
-    cte, where, params = _predicate(valid)
-    return f"{cte}SELECT count(*) AS n FROM tracks{where}", params
+    parts = _predicate(valid)
+    return (
+        f"{parts.cte}SELECT count(*) AS n FROM tracks{parts.join}{parts.where}",
+        parts.params,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -489,8 +554,15 @@ def facet_query(query: BrowseQuery, field: str) -> BrowseQuery:
 
 
 def _facet_column(spec: FieldSpec) -> str:
-    """The column a facet groups by."""
-    return f"tracks.{spec.name}"
+    """The expression a facet groups by.
+
+    The same one the rules compile against, so a facet's count and the count of
+    applying that value as a rule are the same number. Once ``rating`` means
+    the value a user sees rather than the imported column (DEC-057), a facet
+    that still grouped the imported column would offer "5 stars (312)" and then
+    show a different set of tracks.
+    """
+    return spec.expression
 
 
 def _group_by(spec: FieldSpec) -> str:
@@ -504,7 +576,9 @@ def _group_by(spec: FieldSpec) -> str:
     case, so they group as themselves.
     """
     column = _facet_column(spec)
-    return column if spec.type == TYPE_NUMBER else f"{column} COLLATE NOCASE"
+    if spec.type in (TYPE_NUMBER, TYPE_BOOL):
+        return column
+    return f"{column} COLLATE NOCASE"
 
 
 def _facet_table(where: str) -> str:
@@ -546,9 +620,91 @@ def _has_value(spec: FieldSpec) -> str:
     an answer and a zero rating is a rating (DEC-034).
     """
     column = _facet_column(spec)
-    if spec.type == TYPE_NUMBER:
+    if spec.type in (TYPE_NUMBER, TYPE_BOOL):
+        # A yes/no is never missing — a track with no CuePoint row is simply
+        # not favorited — so this is always true for it, and the "no value"
+        # bucket a text field needs is correctly empty.
         return f"{column} IS NOT NULL"
     return f"({column} IS NOT NULL AND {column} <> '')"
+
+
+def _column_facet_spec(field: str) -> FieldSpec:
+    """The spec for a field a column facet can be built from.
+
+    Raises:
+        BrowseQueryError: If the field is a membership field. A tag is not a
+            column on a track, and grouping ``tracks.tag`` would be a query
+            SQLite refuses at a point far from the mistake. Tags have their own
+            pair of builders below.
+    """
+    spec = field_spec(field)
+    if spec.is_membership:
+        raise BrowseQueryError(
+            f"{spec.label} is not a column; its facet is built by "
+            "build_tag_facet_values"
+        )
+    return spec
+
+
+def build_tag_facet_values(
+    query: BrowseQuery, limit: Optional[int] = None
+) -> Tuple[str, Tuple[object, ...]]:
+    """Build "which tags are in this view, and how many tracks each" (ORG-05).
+
+    The tag list a filter bar offers, counted over the same rows the table is
+    showing and over every filter *except* the tag rules themselves — so
+    choosing one tag leaves the others choosable, exactly as a genre facet
+    does.
+
+    ``raw_value`` is the tag's **id**, because that is what a rule carries; the
+    name comes back beside it as ``label``. A chip built from this facet
+    therefore matches precisely the tracks the facet counted, and it goes on
+    matching them after the tag is renamed.
+
+    One row more than the limit is asked for, so the caller can tell whether
+    there are more without a second query.
+    """
+    scoped = facet_query(query, "tag")
+    parts = _predicate(scoped)
+    # Unscoped and unfiltered, the counts are the whole link table and no part
+    # of `tracks` is read at all. With anything narrowing the view, the same
+    # grouping runs over the ids that view holds.
+    narrowed = (
+        f" WHERE track_tags.track_id IN (SELECT tracks.id FROM tracks"
+        f"{parts.join}{parts.where})"
+        if parts.where
+        else ""
+    )
+    return (
+        f"{parts.cte}SELECT tags.id AS raw_value, tags.name AS label, "
+        f"counts.n AS n FROM ({_TAG_COUNTS}{narrowed} GROUP BY track_tags.tag_id) "
+        "AS counts JOIN tags ON tags.id = counts.tag_id "
+        "ORDER BY n DESC, tags.name COLLATE NOCASE ASC "
+        "LIMIT ?",
+        (*parts.params, clamp_facet_limit(limit) + 1),
+    )
+
+
+def build_tag_facet_totals(query: BrowseQuery) -> Tuple[str, Tuple[object, ...]]:
+    """Build "how many distinct tags, and how many tracks have none" (ORG-05).
+
+    The counterpart to :func:`build_facet_value_count`, and the same two
+    numbers: how many choices exist so a truncated list can say "showing 100 of
+    240", and how big the untagged bucket is so it is always offered.
+
+    A LEFT JOIN rather than the inner one the value query uses, and that is the
+    whole trick: an untagged track survives it as a single row with a null tag,
+    which ``count(DISTINCT …)`` ignores and the CASE counts. One pass answers
+    both.
+    """
+    scoped = facet_query(query, "tag")
+    parts = _predicate(scoped)
+    return (
+        f"{parts.cte}SELECT count(DISTINCT track_tags.tag_id) AS values_count, "
+        "sum(CASE WHEN track_tags.tag_id IS NULL THEN 1 ELSE 0 END) AS missing "
+        f"FROM tracks{parts.join}{_TAG_OUTER_JOIN}{parts.where}",
+        parts.params,
+    )
 
 
 def build_facet_values(
@@ -573,18 +729,18 @@ def build_facet_values(
     the library is mostly made of. One row more than the limit is asked for, so
     the caller can tell whether there are more without a second query.
     """
-    spec = field_spec(field)
+    spec = _column_facet_spec(field)
     scoped = facet_query(query, spec.name)
-    cte, where, params = _predicate(scoped)
+    parts = _predicate(scoped, metadata=spec.metadata)
     present = _has_value(spec)
-    filtered = f"{where} AND {present}" if where else f" WHERE {present}"
+    filtered = f"{parts.where} AND {present}" if parts.where else f" WHERE {present}"
     return (
-        f"{cte}SELECT min({_facet_column(spec)}) AS raw_value, "
-        f"count(*) AS n FROM {_facet_table(where)}{filtered} "
+        f"{parts.cte}SELECT min({_facet_column(spec)}) AS raw_value, "
+        f"count(*) AS n FROM {_facet_table(parts.where)}{parts.join}{filtered} "
         f"GROUP BY {_group_by(spec)} "
         "ORDER BY n DESC, raw_value COLLATE NOCASE ASC "
         "LIMIT ?",
-        (*params, clamp_facet_limit(limit) + 1),
+        (*parts.params, clamp_facet_limit(limit) + 1),
     )
 
 
@@ -600,17 +756,18 @@ def build_facet_value_count(
     One grouped scan answers both: the subquery groups the same way the value
     query does, and the two sums split it into values and the gap.
     """
-    spec = field_spec(field)
+    spec = _column_facet_spec(field)
     scoped = facet_query(query, spec.name)
-    cte, where, params = _predicate(scoped)
+    parts = _predicate(scoped, metadata=spec.metadata)
     present = _has_value(spec)
     return (
-        f"{cte}SELECT "
+        f"{parts.cte}SELECT "
         f"sum(CASE WHEN has_value THEN 1 ELSE 0 END) AS values_count, "
         f"sum(CASE WHEN has_value THEN 0 ELSE n END) AS missing FROM "
         f"(SELECT {present} AS has_value, count(*) AS n "
-        f"FROM {_facet_table(where)}{where} GROUP BY {_group_by(spec)})",
-        params,
+        f"FROM {_facet_table(parts.where)}{parts.join}{parts.where} "
+        f"GROUP BY {_group_by(spec)})",
+        parts.params,
     )
 
 
@@ -632,11 +789,11 @@ def build_facet_range(query: BrowseQuery, field: str) -> Tuple[str, Tuple[object
             f"{spec.label} is a {spec.type} field; a range needs a number field"
         )
     scoped = facet_query(query, spec.name)
-    cte, where, params = _predicate(scoped)
+    parts = _predicate(scoped, metadata=spec.metadata)
     column = _facet_column(spec)
     return (
-        f"{cte}SELECT min({column}) AS low, max({column}) AS high, "
+        f"{parts.cte}SELECT min({column}) AS low, max({column}) AS high, "
         f"sum(CASE WHEN {column} IS NULL THEN 1 ELSE 0 END) AS missing "
-        f"FROM {_facet_table(where)}{where}",
-        params,
+        f"FROM {_facet_table(parts.where)}{parts.join}{parts.where}",
+        parts.params,
     )

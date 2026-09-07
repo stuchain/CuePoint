@@ -26,6 +26,7 @@ import {
   addRule,
   arityOf,
   buildRule,
+  buildableFields,
   describeRule,
   emptyDraft,
   fieldOf,
@@ -137,7 +138,7 @@ export function FilterBar({
           <Select
             label="Field"
             value={draft.field}
-            options={(vocabulary?.fields ?? []).map((entry) => ({
+            options={buildableFields(vocabulary).map((entry) => ({
               value: entry.name,
               label: entry.label,
             }))}

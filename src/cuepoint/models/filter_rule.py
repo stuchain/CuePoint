@@ -44,7 +44,26 @@ TYPE_TEXT = "text"
 TYPE_NUMBER = "number"
 TYPE_DATE = "date"
 
-FIELD_TYPES = (TYPE_TEXT, TYPE_NUMBER, TYPE_DATE)
+#: A yes/no field. Only ``favorite`` today, and it is never missing: a track
+#: with no CuePoint metadata row at all is not favorited, which is an answer
+#: rather than a gap (ORG-05, DEC-057).
+TYPE_BOOL = "bool"
+
+#: Membership in a vocabulary rather than a value on the track. Both of these
+#: are answered by an existence check against a link table, never by comparing
+#: a column, which is why they are types of their own rather than numbers that
+#: happen to hold an id.
+TYPE_TAG = "tag"
+TYPE_COLLECTION = "collection"
+
+FIELD_TYPES = (
+    TYPE_TEXT,
+    TYPE_NUMBER,
+    TYPE_DATE,
+    TYPE_BOOL,
+    TYPE_TAG,
+    TYPE_COLLECTION,
+)
 
 #: The only ``match`` value v1 accepts (DEC-016).
 MATCH_ALL = "all"
@@ -85,6 +104,14 @@ OP_AFTER = "after"
 OP_IS_EMPTY = "is_empty"
 OP_IS_NOT_EMPTY = "is_not_empty"
 
+# Membership operators (ORG-05). Spelled for what they ask rather than reusing
+# `is`/`is_not`: "tag is Peak time" reads as though a track had one tag, and a
+# track has as many as it was given.
+OP_HAS_TAG = "has_tag"
+OP_NOT_HAS_TAG = "not_has_tag"
+OP_IN_COLLECTION = "in_collection"
+OP_NOT_IN_COLLECTION = "not_in_collection"
+
 #: Operators each field type allows. Dates get ``before``/``after`` rather than
 #: ``lt``/``gt``: one name per meaning per type, so a clause reads as what it
 #: asks and no operator has two spellings.
@@ -121,6 +148,15 @@ OPERATORS_BY_TYPE: Dict[str, Tuple[str, ...]] = {
         OP_IS_EMPTY,
         OP_IS_NOT_EMPTY,
     ),
+    # No `is_not`: "favorite is not true" and "favorite is false" are the same
+    # question, and two spellings of one question is how a filter bar grows two
+    # controls that disagree.
+    TYPE_BOOL: (OP_IS,),
+    # `is_empty` means untagged. There is deliberately no `is_not_empty`:
+    # "has any tag at all" is not a filter anyone has asked for, and an
+    # operator nobody uses is a shape to keep working forever.
+    TYPE_TAG: (OP_HAS_TAG, OP_NOT_HAS_TAG, OP_ANY_OF, OP_IS_EMPTY),
+    TYPE_COLLECTION: (OP_IN_COLLECTION, OP_NOT_IN_COLLECTION),
 }
 
 #: Operators that take no value at all.
@@ -130,12 +166,43 @@ VALUELESS_OPERATORS = (OP_IS_EMPTY, OP_IS_NOT_EMPTY)
 LIST_OPERATORS = (OP_ANY_OF, OP_BETWEEN)
 
 
+#: The alias the CuePoint metadata join is given. Named once here, because the
+#: expressions below are written against it and the persistence layer that
+#: writes the join has to establish the same name.
+METADATA_ALIAS = "meta"
+
+
+@dataclass(frozen=True)
+class LinkTable:
+    """Where a membership field's answer lives.
+
+    A tag and a Collection are not columns on a track. They are rows in a link
+    table, and "does this track have that tag" is an existence question rather
+    than a comparison — so a membership field names its table instead of an
+    expression, and the compiler has one subquery shape to get right rather
+    than one per field.
+
+    Attributes:
+        table: The link table.
+        value_column: The column holding what a rule names — a tag id or a
+            Collection id.
+        track_column: The column holding the track. The same in both tables,
+            and named rather than assumed so a third link table does not have
+            to be.
+    """
+
+    table: str
+    value_column: str
+    track_column: str = "track_id"
+
+
 @dataclass(frozen=True)
 class FieldSpec:
     """One filterable field.
 
     Attributes:
-        name: What crosses the wire, and the ``tracks`` column it filters.
+        name: What crosses the wire. It is the ``tracks`` column too, unless
+            ``column`` or ``link`` says otherwise.
         type: One of :data:`FIELD_TYPES`.
         label: What a person calls it.
         facetable: Whether "which values exist, and how many tracks each" is a
@@ -146,6 +213,19 @@ class FieldSpec:
         integer: Numbers that are whole. Rating is stars, play count is plays;
             neither is ever 3.5, and coercing "4.0" to 4 keeps a filter built
             from a facet value matching the rows that facet counted.
+        column: How the field is addressed in SQL, when that is not
+            ``tracks.<name>``. ORG-05 needs three shapes the plain rule cannot
+            express: a column on the joined metadata table, a coalesce across
+            both layers, and a second name for a column that already has one
+            (``rating_rekordbox`` is ``tracks.rating``). It is registry text,
+            never anything a caller sent.
+        link: The table a membership field is answered from. Mutually
+            exclusive with ``column``: a field is either something a track has
+            or something a track is in.
+        metadata: Whether the expression reads the CuePoint metadata table, and
+            therefore needs its join. Stated rather than sniffed out of the
+            expression text, so adding a fourth metadata field cannot forget
+            it and the join cannot be added for a query that does not need one.
     """
 
     name: str
@@ -153,11 +233,29 @@ class FieldSpec:
     label: str
     facetable: bool = False
     integer: bool = False
+    column: Optional[str] = None
+    link: Optional[LinkTable] = None
+    metadata: bool = False
 
     @property
     def operators(self) -> Tuple[str, ...]:
         """Operators this field allows."""
         return OPERATORS_BY_TYPE[self.type]
+
+    @property
+    def expression(self) -> str:
+        """The SQL this field's value is read from.
+
+        Qualified, always: the browse query puts a scope CTE and — for a
+        CuePoint field — a joined table in scope, and an unqualified column is
+        a bug waiting for a name to collide.
+        """
+        return self.column or f"tracks.{self.name}"
+
+    @property
+    def is_membership(self) -> bool:
+        """True when this field is answered by an existence check."""
+        return self.link is not None
 
 
 #: Every filterable field. The column list is deliberately narrower than
@@ -165,6 +263,9 @@ class FieldSpec:
 #: ``normalized_path``) and bookkeeping (``created_at``, ``updated_at``) are
 #: not things a user filters a library by, and exposing them would make them a
 #: public contract for no one's benefit.
+_TAG_LINK = LinkTable("track_tags", "tag_id")
+_COLLECTION_LINK = LinkTable("collection_tracks", "collection_id")
+
 FIELDS: Tuple[FieldSpec, ...] = (
     FieldSpec("title", TYPE_TEXT, "Title"),
     FieldSpec("artist", TYPE_TEXT, "Artist", facetable=True),
@@ -178,11 +279,58 @@ FIELDS: Tuple[FieldSpec, ...] = (
     FieldSpec("file_path", TYPE_TEXT, "File path"),
     FieldSpec("bpm", TYPE_NUMBER, "BPM"),
     FieldSpec("year", TYPE_NUMBER, "Year", facetable=True, integer=True),
-    FieldSpec("rating", TYPE_NUMBER, "Rating", facetable=True, integer=True),
+    # DEC-057: the plain word "rating" means the value the user sees, which is
+    # theirs when they have set one and Rekordbox's otherwise. This is where
+    # that is true rather than asserted — a filter for "rated 5" finds a track
+    # rated 5 in CuePoint over a 3 imported from Rekordbox, and stops finding
+    # one rated 5 in Rekordbox and 3 here. Either layer can still be addressed
+    # on its own, by name, for the person who wants exactly one of them.
+    FieldSpec(
+        "rating",
+        TYPE_NUMBER,
+        "Rating",
+        facetable=True,
+        integer=True,
+        column=f"COALESCE({METADATA_ALIAS}.rating, tracks.rating)",
+        metadata=True,
+    ),
     FieldSpec("play_count", TYPE_NUMBER, "Play count", integer=True),
     FieldSpec("bitrate", TYPE_NUMBER, "Bitrate", facetable=True, integer=True),
     FieldSpec("duration_seconds", TYPE_NUMBER, "Length", integer=True),
     FieldSpec("date_added", TYPE_DATE, "Date added"),
+    # --- CuePoint's own layer (ORG-05) ------------------------------------
+    FieldSpec(
+        "rating_rekordbox",
+        TYPE_NUMBER,
+        "Rekordbox rating",
+        integer=True,
+        column="tracks.rating",
+    ),
+    FieldSpec(
+        "cuepoint_rating",
+        TYPE_NUMBER,
+        "CuePoint rating",
+        integer=True,
+        column=f"{METADATA_ALIAS}.rating",
+        metadata=True,
+    ),
+    FieldSpec(
+        "favorite",
+        TYPE_BOOL,
+        "Favorite",
+        facetable=True,
+        column=f"COALESCE({METADATA_ALIAS}.favorite, 0)",
+        metadata=True,
+    ),
+    FieldSpec(
+        "notes",
+        TYPE_TEXT,
+        "Notes",
+        column=f"{METADATA_ALIAS}.notes",
+        metadata=True,
+    ),
+    FieldSpec("tag", TYPE_TAG, "Tag", facetable=True, link=_TAG_LINK),
+    FieldSpec("collection", TYPE_COLLECTION, "Collection", link=_COLLECTION_LINK),
 )
 
 _FIELDS_BY_NAME: Dict[str, FieldSpec] = {spec.name: spec for spec in FIELDS}
@@ -232,6 +380,62 @@ def _coerce_number(value: Any, spec: FieldSpec, operator: str) -> Any:
     return number
 
 
+#: What a yes/no value may be spelled as. A rule arrives as JSON from the
+#: renderer and as text from a query string, and "favorite is true" has to mean
+#: the same thing however it was written.
+_TRUE_WORDS = ("true", "1", "yes", "on")
+_FALSE_WORDS = ("false", "0", "no", "off")
+
+
+def _coerce_bool(value: Any, spec: FieldSpec, operator: str) -> bool:
+    """Coerce one value for a yes/no field, or say why it cannot be."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)) and value in (0, 1):
+        return bool(value)
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in _TRUE_WORDS:
+            return True
+        if text in _FALSE_WORDS:
+            return False
+    raise FilterRuleError(f"{spec.label} is yes or no, not {value!r} ({operator})")
+
+
+def _coerce_id(value: Any, spec: FieldSpec, operator: str) -> int:
+    """Coerce one value for a membership field, or say why it cannot be.
+
+    A tag and a Collection are named by id rather than by name, because both
+    can be renamed: ORG-12's tag manager renames tags, and a saved Smart
+    Collection that stopped matching because someone corrected a spelling would
+    be a rule that silently changed meaning. An id survives a rename and a
+    deletion is visible as a missing row rather than as an empty answer.
+    """
+    if isinstance(value, bool):
+        raise FilterRuleError(f"{spec.label} needs an id, not {value!r} ({operator})")
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        raise FilterRuleError(
+            f"{spec.label} needs an id, not {value!r} ({operator})"
+        ) from None
+    if number != number or number in (float("inf"), float("-inf")):
+        raise FilterRuleError(f"{spec.label} needs a real id, not {value!r}")
+    if number != int(number):
+        raise FilterRuleError(
+            f"{spec.label} is identified by a whole number, and {value!r} is not one"
+        )
+    identifier = int(number)
+    if identifier <= 0:
+        # Row ids start at 1. A zero or a negative is a renderer that sent an
+        # index or a sentinel, and answering it with "nothing has that tag"
+        # would hide the mistake behind an empty table.
+        raise FilterRuleError(
+            f"{spec.label} needs a positive id, not {value!r} ({operator})"
+        )
+    return identifier
+
+
 def _coerce_text(value: Any, spec: FieldSpec, operator: str) -> str:
     """Coerce one value for a text or date field."""
     if value is None or isinstance(value, (list, tuple, dict, bool)):
@@ -245,6 +449,21 @@ def _coerce_text(value: Any, spec: FieldSpec, operator: str) -> str:
             f"{spec.label} {operator!r} needs something to match against"
         )
     return text
+
+
+def _coerce_one(value: Any, spec: FieldSpec, operator: str) -> Any:
+    """Coerce one value for whatever kind of field this is.
+
+    One dispatch, used by the single-value path and by every item of a list, so
+    "tag is any of" coerces its ids the same way "tag has" coerces its one.
+    """
+    if spec.type == TYPE_NUMBER:
+        return _coerce_number(value, spec, operator)
+    if spec.type == TYPE_BOOL:
+        return _coerce_bool(value, spec, operator)
+    if spec.type in (TYPE_TAG, TYPE_COLLECTION):
+        return _coerce_id(value, spec, operator)
+    return _coerce_text(value, spec, operator)
 
 
 @dataclass(frozen=True)
@@ -297,9 +516,7 @@ class FilterRule:
         if operator in LIST_OPERATORS:
             return self._validated_list(spec, operator)
 
-        if spec.type == TYPE_NUMBER:
-            return _coerce_number(self.value, spec, operator)
-        return _coerce_text(self.value, spec, operator)
+        return _coerce_one(self.value, spec, operator)
 
     def _validated_list(self, spec: FieldSpec, operator: str) -> Tuple[Any, ...]:
         if isinstance(self.value, (str, bytes)) or not isinstance(
@@ -326,9 +543,7 @@ class FilterRule:
 
         if not values:
             raise FilterRuleError(f"{spec.label} 'any of' needs at least one value")
-        if spec.type == TYPE_NUMBER:
-            return tuple(_coerce_number(v, spec, operator) for v in values)
-        return tuple(_coerce_text(v, spec, operator) for v in values)
+        return tuple(_coerce_one(v, spec, operator) for v in values)
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize for the API. A public shape; extend rather than rename."""
@@ -467,14 +682,23 @@ class FacetValue:
     dropped, because "how many of my tracks have no genre" is one of the more
     useful things a library can tell you, and it is what the ``is_empty``
     operator filters by.
+
+    ``value`` is always what a rule would carry, so a chip built from a facet
+    matches exactly the rows the facet counted. For a tag that is its id, which
+    is not something to show anyone — hence ``label``, which is the tag's name.
+    Every other field is its own label and leaves it ``None``.
     """
 
     value: Optional[str]
     count: int
+    label: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize for the API."""
-        return {"value": self.value, "count": self.count}
+        payload: Dict[str, Any] = {"value": self.value, "count": self.count}
+        if self.label is not None:
+            payload["label"] = self.label
+        return payload
 
 
 @dataclass(frozen=True)
@@ -598,15 +822,20 @@ __all__: Sequence[str] = (
     "FieldSpec",
     "FilterRule",
     "FilterRuleError",
+    "LinkTable",
     "RuleSet",
     "FACETABLE_FIELDS",
     "FIELDS",
     "FIELD_TYPES",
     "MATCH_ALL",
     "MATCH_ANY",
+    "METADATA_ALIAS",
     "OPERATORS_BY_TYPE",
+    "TYPE_BOOL",
+    "TYPE_COLLECTION",
     "TYPE_DATE",
     "TYPE_NUMBER",
+    "TYPE_TAG",
     "TYPE_TEXT",
     "describe_fields",
     "describe_operators",

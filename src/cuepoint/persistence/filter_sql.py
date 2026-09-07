@@ -23,6 +23,25 @@ search uses is used here, for the same reason.
 either a missing attribute or an empty string, and a user asking for tracks
 with no genre means both. For numbers there is no empty string, so empty means
 null — and only null, because a rating of zero is a rating (DEC-034).
+
+ORG-05 added CuePoint's own data to the same vocabulary, and it added one thing
+to the shape above: a field is no longer always a column. Two kinds now exist.
+A **column field** names an expression — ``tracks.genre``, ``meta.notes``, or
+``COALESCE(meta.rating, tracks.rating)`` for the rating a user actually sees —
+and every operator above works on it unchanged. A **membership field** names a
+link table instead, and is answered by membership in a set of track ids
+rather than by a comparison: a track has as many tags as it was given, so "has
+this tag" is a question about rows, not about a value. There is one subquery
+shape for both membership fields, which is the point of writing it once.
+
+That shape also settles a question ORG-04 left open: a track filed in the same
+Collection twice matches ``in_collection`` once, because a set has no
+duplicates. A join would have returned it twice and the table would have shown
+it twice.
+
+The expressions that read ``meta.`` need the join that establishes that alias.
+Which rule sets need it is :func:`requires_metadata`; writing it is
+``track_query``'s job, because that is where the FROM clause is built.
 """
 
 from __future__ import annotations
@@ -38,6 +57,8 @@ from cuepoint.models.filter_rule import (
     OP_ENDS_WITH,
     OP_GT,
     OP_GTE,
+    OP_HAS_TAG,
+    OP_IN_COLLECTION,
     OP_IS,
     OP_IS_EMPTY,
     OP_IS_NOT,
@@ -45,12 +66,17 @@ from cuepoint.models.filter_rule import (
     OP_LT,
     OP_LTE,
     OP_NOT_CONTAINS,
+    OP_NOT_HAS_TAG,
+    OP_NOT_IN_COLLECTION,
     OP_STARTS_WITH,
+    TYPE_BOOL,
     TYPE_NUMBER,
     FieldSpec,
+    LinkTable,
     FilterRule,
     FilterRuleError,
     RuleSet,
+    field_spec,
 )
 
 #: Same escape character as the text search, so one convention covers every
@@ -68,13 +94,94 @@ def escape_like(value: str) -> str:
 
 
 def _column(spec: FieldSpec) -> str:
-    """The qualified column for a field.
+    """The qualified expression a field is read from.
 
-    Qualified because the browse query puts a playlist-scope CTE in scope, and
-    an unqualified column in a subquery is a bug waiting for a column name to
+    The registry's answer, never the caller's: a field name is resolved to a
+    :class:`~cuepoint.models.filter_rule.FieldSpec` first, and only what the
+    registry declared is written into the SQL. It is qualified because the
+    browse query puts a playlist-scope CTE and, for a CuePoint field, a joined
+    table in scope, and an unqualified column is a bug waiting for a name to
     collide.
     """
-    return f"tracks.{spec.name}"
+    return spec.expression
+
+
+def _link(spec: FieldSpec) -> LinkTable:
+    """The link table for a membership field."""
+    if spec.link is None:  # pragma: no cover - guarded by the caller's dispatch
+        raise FilterRuleError(f"{spec.label} is not a membership field")
+    return spec.link
+
+
+def _membership(
+    spec: FieldSpec, values: Sequence[Any], *, negated: bool
+) -> Tuple[str, Tuple[Any, ...]]:
+    """ "Is this track in that list", as SQL — the one membership shape.
+
+    Written once for tags and Collections rather than once each, because what
+    is easy to get wrong is the same in both: that this asks about a track
+    rather than about its membership rows. A track filed twice in one
+    Collection satisfies it once, because a set has no duplicates — a join
+    would have returned that track twice and the table would have shown it
+    twice. It is the shape the playlist scope already uses, for that reason.
+
+    It is also the faster shape, which was not obvious. A correlated
+    ``EXISTS`` probes the link table once per track in the library; gathering
+    the ids first reads one run of an index and tests a set. Measured over
+    50,000 tracks and 200,000 assignments, with the index migration 0010
+    widens: "has this tag" 18.1 ms as ``EXISTS`` against **8.4 ms** as a set,
+    "any of five tags" 51.5 ms against **23.8 ms**, and "in this Collection"
+    11.1 ms against **1.4 ms**.
+
+    ``NOT IN`` is safe here and would not be everywhere: it answers null — and
+    therefore not true — if the subquery can produce a null, which would
+    silently return no tracks at all. Both link tables declare their track
+    column ``NOT NULL`` (migration 0009), and a test asserts that, because it
+    is the kind of thing a later migration could relax without anyone
+    connecting it to a filter that stopped matching.
+    """
+    link = _link(spec)
+    placeholders = ", ".join("?" for _ in values)
+    inner = (
+        f"SELECT {link.track_column} FROM {link.table}"
+        f" WHERE {link.value_column} IN ({placeholders})"
+    )
+    keyword = "NOT IN" if negated else "IN"
+    return f"tracks.id {keyword} ({inner})", tuple(values)
+
+
+def _no_membership(spec: FieldSpec) -> str:
+    """ "This track is in none of them" — an untagged track, and nothing else."""
+    link = _link(spec)
+    return f"tracks.id NOT IN (SELECT {link.track_column} FROM {link.table})"
+
+
+def _compile_membership(
+    spec: FieldSpec, operator: str, value: Any
+) -> Tuple[str, Tuple[Any, ...]]:
+    """Compile a tag or Collection rule.
+
+    Values are ids the model has already coerced to positive whole numbers, and
+    they are bound, so nothing a caller sent reaches the SQL text here either.
+    Whether the id names a row that still exists — and, for a Collection,
+    whether it names one a rule is allowed to name — is a question about the
+    database rather than about the clause, and it is answered before this in
+    ``persistence/rule_references.py``.
+    """
+    if operator == OP_IS_EMPTY:
+        return _no_membership(spec), ()
+    if operator in (OP_HAS_TAG, OP_IN_COLLECTION):
+        return _membership(spec, (value,), negated=False)
+    if operator in (OP_NOT_HAS_TAG, OP_NOT_IN_COLLECTION):
+        return _membership(spec, (value,), negated=True)
+    if operator == OP_ANY_OF:
+        return _membership(spec, tuple(value), negated=False)
+
+    # Unreachable while the model and this module agree; see `compile_rule`.
+    raise FilterRuleError(
+        f"{spec.label} cannot be filtered with {operator!r} — the filter model "
+        "allows it but the query builder does not implement it"
+    )
 
 
 def _empty_test(spec: FieldSpec, *, negated: bool) -> str:
@@ -149,6 +256,11 @@ def compile_rule(rule: FilterRule) -> Tuple[str, Tuple[Any, ...]]:
     spec = checked.spec
     operator = checked.operator
     value = checked.value
+
+    # Before anything reads a column: a membership field does not have one.
+    if spec.is_membership:
+        return _compile_membership(spec, operator, value)
+
     column = _column(spec)
 
     if operator == OP_IS_EMPTY:
@@ -157,7 +269,10 @@ def compile_rule(rule: FilterRule) -> Tuple[str, Tuple[Any, ...]]:
         return _empty_test(spec, negated=True), ()
 
     if operator == OP_IS:
-        if spec.type == TYPE_NUMBER:
+        if spec.type in (TYPE_NUMBER, TYPE_BOOL):
+            # A yes/no compares as the 0 or 1 SQLite stores; there is no case
+            # in it, and a collation on an integer comparison would only read
+            # as though there might be.
             return f"{column} = ?", (value,)
         # COLLATE NOCASE, because a user typing "house" means the genre
         # "House". The same reason the default sort collates that way.
@@ -236,9 +351,26 @@ def compile_rule_set(rules: RuleSet) -> Tuple[str, Tuple[Any, ...]]:
     return (f"({joined})" if len(clauses) > 1 else joined), tuple(params)
 
 
+def requires_metadata(rules: RuleSet) -> bool:
+    """True when a rule set reads CuePoint's metadata table.
+
+    Asked so the join is written only when it is needed. It is a cheap join —
+    ``track_metadata.track_id`` is the table's primary key, so it is one probe
+    per row — but "cheap" over fifty thousand rows is still fifty thousand
+    probes, and every browse query the Library page has ever run would pay
+    them for nothing. A filter bar with no CuePoint clause in it produces the
+    same SQL it produced before ORG-05.
+
+    Takes a rule set whose fields are known; an unknown one raises, exactly as
+    compiling it would.
+    """
+    return any(field_spec(rule.field).metadata for rule in rules.rules)
+
+
 __all__: Sequence[str] = (
     "LIKE_ESCAPE",
     "compile_rule",
     "compile_rule_set",
     "escape_like",
+    "requires_metadata",
 )

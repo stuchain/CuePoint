@@ -615,6 +615,12 @@ export interface LibraryFacetValue {
   /** Null is the "no value" bucket, which the `is_empty` operator filters by. */
   value: string | null;
   count: number;
+  /**
+   * What to show, when that is not the value itself. A tag's value is its id,
+   * because that is what a rule carries and what survives a rename; its label
+   * is the tag's name. Absent for every field that is its own label.
+   */
+  label?: string;
 }
 
 export interface LibraryFacetRange {
@@ -636,7 +642,12 @@ export interface LibraryFacet {
 
 export interface LibraryFilterField {
   name: string;
-  type: "text" | "number" | "date";
+  /**
+   * ORG-05 added `bool`, `tag` and `collection`. The bar renders the first
+   * three; `filterText.buildableFields` is what keeps it from offering a
+   * control it does not have yet (ORG-12 adds them).
+   */
+  type: "text" | "number" | "date" | "bool" | "tag" | "collection";
   label: string;
   facetable: boolean;
   integer: boolean;

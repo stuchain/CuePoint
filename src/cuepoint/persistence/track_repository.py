@@ -22,7 +22,14 @@ from cuepoint.models.library_track import (
     resolve_identity,
     utc_now_iso,
 )
-from cuepoint.models.filter_rule import Facet, FacetRange, FacetValue, field_spec
+from cuepoint.models.filter_rule import (
+    TYPE_TAG,
+    Facet,
+    FacetRange,
+    FacetValue,
+    field_spec,
+)
+from cuepoint.persistence.rule_references import check_rule_references
 from cuepoint.persistence.track_query import (
     BrowseQuery,
     build_count,
@@ -32,6 +39,8 @@ from cuepoint.persistence.track_query import (
     build_select,
     build_select_ids,
     build_select_queue,
+    build_tag_facet_totals,
+    build_tag_facet_values,
     clamp_facet_limit,
     search_clause,
 )
@@ -377,6 +386,24 @@ class TrackRepository(ITrackRepository):
         )
         return int(row["n"]) if row is not None else 0
 
+    def _checked(self, query: Optional[BrowseQuery]) -> BrowseQuery:
+        """Validate a browse request, including what its rules name (ORG-05).
+
+        Two refusals, and the second is the one that needs a database.
+        :meth:`~cuepoint.persistence.track_query.BrowseQuery.validated` decides
+        whether the clauses make sense; ``check_rule_references`` decides
+        whether the tag and Collection ids they carry still name rows, and
+        whether one of those rows is a Smart Collection a rule may not be built
+        on (DEC-060).
+
+        Every read that takes a query goes through here, because a check one
+        entry point skips is a check that does not exist: the filter that would
+        be refused in the table would come back as an empty facet list instead.
+        """
+        valid = (query or BrowseQuery()).validated()
+        check_rule_references(self._db.connect(), valid.rules)
+        return valid
+
     def browse(
         self,
         query: Optional[BrowseQuery] = None,
@@ -404,7 +431,7 @@ class TrackRepository(ITrackRepository):
             BrowseQueryError: If the sort or direction is not one that exists,
                 or the sort needs a scope it was not given.
         """
-        sql, params = build_select(query or BrowseQuery(), limit, offset)
+        sql, params = build_select(self._checked(query), limit, offset)
         rows = self._db.connect().execute(sql, params).fetchall()
         return [LibraryTrack.from_row(row) for row in rows]
 
@@ -420,7 +447,7 @@ class TrackRepository(ITrackRepository):
         selection can name rows the table has not loaded (DEC-045) without a
         second query path that could disagree about which rows those are.
         """
-        sql, params = build_select_ids(query or BrowseQuery(), limit, offset)
+        sql, params = build_select_ids(self._checked(query), limit, offset)
         rows = self._db.connect().execute(sql, params).fetchall()
         return [int(row["id"]) for row in rows]
 
@@ -436,7 +463,7 @@ class TrackRepository(ITrackRepository):
         queue a double-click builds is in exactly the order the table shows
         (PLAYER-05, DEC-012) without a second query path that could disagree.
         """
-        sql, params = build_select_queue(query or BrowseQuery(), limit, offset)
+        sql, params = build_select_queue(self._checked(query), limit, offset)
         rows = self._db.connect().execute(sql, params).fetchall()
         return [QueueTrack.from_row(row) for row in rows]
 
@@ -452,7 +479,7 @@ class TrackRepository(ITrackRepository):
         Raises:
             BrowseQueryError: As :meth:`browse` does.
         """
-        sql, params = build_count(query or BrowseQuery())
+        sql, params = build_count(self._checked(query))
         row = self._db.connect().execute(sql, params).fetchone()
         return int(row["n"]) if row is not None else 0
 
@@ -482,19 +509,34 @@ class TrackRepository(ITrackRepository):
             BrowseQueryError: Via :meth:`browse`'s validation.
         """
         spec = field_spec(field)
-        browse_query = query or BrowseQuery()
+        browse_query = self._checked(query)
         page = clamp_facet_limit(limit or None)
 
-        sql, params = build_facet_values(browse_query, spec.name, page)
+        # A tag is not a column, so its values come from the link table rather
+        # than from a GROUP BY on `tracks` — but everything after that is the
+        # same, and shares the code below so the two cannot disagree about the
+        # "no value" bucket or about what `truncated` means.
+        if spec.type == TYPE_TAG:
+            sql, params = build_tag_facet_values(browse_query, page)
+            count_sql, count_params = build_tag_facet_totals(browse_query)
+            labelled = True
+        else:
+            sql, params = build_facet_values(browse_query, spec.name, page)
+            count_sql, count_params = build_facet_value_count(browse_query, spec.name)
+            labelled = False
+
         rows = self._db.connect().execute(sql, params).fetchall()
 
         truncated = len(rows) > page
         named = tuple(
-            FacetValue(value=str(row["raw_value"]), count=int(row["n"]))
+            FacetValue(
+                value=str(row["raw_value"]),
+                count=int(row["n"]),
+                label=str(row["label"]) if labelled else None,
+            )
             for row in rows[:page]
         )
 
-        count_sql, count_params = build_facet_value_count(browse_query, spec.name)
         totals = self._db.connect().execute(count_sql, count_params).fetchone()
         distinct = int(totals["values_count"] or 0) if totals is not None else 0
         missing = int(totals["missing"] or 0) if totals is not None else 0
@@ -528,7 +570,7 @@ class TrackRepository(ITrackRepository):
             BrowseQueryError: If the field is not numeric.
         """
         spec = field_spec(field)
-        sql, params = build_facet_range(query or BrowseQuery(), spec.name)
+        sql, params = build_facet_range(self._checked(query), spec.name)
         row = self._db.connect().execute(sql, params).fetchone()
         if row is None:
             return FacetRange(field=spec.name)

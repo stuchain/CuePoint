@@ -146,6 +146,45 @@ describe("building a clause", () => {
     ]);
   });
 
+  it("does not offer a field kind it has no control for", () => {
+    // ORG-05 put tag, Collection and favorite rules in the engine, and the
+    // vocabulary endpoint describes them so ORG-12 does not have to hard-code
+    // them. ORG-12 also brings their controls. Offering "Tag" with a text box
+    // in the meantime would ask a user to type a database id.
+    show({
+      vocabulary: {
+        ...VOCABULARY,
+        fields: [
+          ...VOCABULARY.fields,
+          {
+            name: "tag",
+            type: "tag",
+            label: "Tag",
+            facetable: true,
+            integer: false,
+            operators: ["has_tag", "any_of", "is_empty"],
+          },
+          {
+            name: "favorite",
+            type: "bool",
+            label: "Favorite",
+            facetable: true,
+            integer: false,
+            operators: ["is"],
+          },
+        ],
+      },
+    });
+    openBuilder();
+
+    const options = within(screen.getByLabelText("Field")).getAllByRole("option");
+    expect(options.map((option) => option.textContent)).toEqual([
+      "Genre",
+      "BPM",
+      "Rating",
+    ]);
+  });
+
   it("offers only the operators that field allows", () => {
     show();
     openBuilder();

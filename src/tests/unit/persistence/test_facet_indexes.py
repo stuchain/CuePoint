@@ -164,12 +164,47 @@ class TestTheyAreActuallyUsed:
         # library instead — which is the cost this migration exists to remove.
         assert "TEMP B-TREE FOR GROUP BY" not in detail.upper()
 
-    @pytest.mark.parametrize("field", ["rating", "year"])
+    @pytest.mark.parametrize("field", ["bitrate", "year"])
     def test_a_numeric_facet_reads_the_index(self, seeded, db, field):
         sql, params = build_facet_values(BrowseQuery(), field)
         detail = plan(db, sql, params)
         assert f"idx_tracks_{field}_facet" in detail
         assert "TEMP B-TREE FOR GROUP BY" not in detail.upper()
+
+    def test_the_imported_rating_still_groups_from_the_index(self, seeded, db):
+        """``rating_rekordbox`` is the column this index was built for.
+
+        ORG-05 gave the plain word "rating" a wider meaning (DEC-057) and left
+        the imported column addressable under its own name. That name still
+        groups straight from the index, which is what this migration bought.
+        """
+        sql, params = build_facet_values(BrowseQuery(), "rating_rekordbox")
+        detail = plan(db, sql, params)
+        assert "idx_tracks_rating_facet" in detail
+        assert "TEMP B-TREE FOR GROUP BY" not in detail.upper()
+
+    def test_the_effective_rating_facet_pays_for_coalescing_two_layers(
+        self, seeded, db
+    ):
+        """And the price of DEC-057, stated rather than discovered later.
+
+        ``rating`` now means ``COALESCE(meta.rating, tracks.rating)``, so the
+        facet groups by a key that spans two tables. No index can serve that —
+        an index is per table, and an expression index cannot reach a joined
+        one — so SQLite reads the rating index and then sorts. It still reads
+        the index rather than the table, which is why this stays a scan of five
+        bytes per track instead of a scan of a track.
+
+        Measured at 50,000 tracks with 10,000 CuePoint ratings: **21.0 ms**
+        against 3.9 ms for the imported column alone. That is the cost of a
+        filter list a user opens, and it buys a facet whose counts match the
+        rows a rule with the same value returns — which the fast plan would
+        not.
+        """
+        sql, params = build_facet_values(BrowseQuery(), "rating")
+        detail = plan(db, sql, params)
+        assert "idx_tracks_rating_facet" in detail
+        assert "TEMP B-TREE FOR GROUP BY" in detail.upper()
 
     def test_the_totals_query_reads_the_index_too(self, seeded, db):
         sql, params = build_facet_value_count(BrowseQuery(), "genre")

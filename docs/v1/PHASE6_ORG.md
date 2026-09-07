@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 6: Organization, Detailed Step Specifications
 
-Status: **ORG-01…ORG-04 implemented; ORG-05…ORG-13 specified, not implemented.** The
+Status: **ORG-01…ORG-05 implemented; ORG-06…ORG-13 specified, not implemented.** The
 thirteen steps below are the inventory the roadmap has carried as a placeholder since Phase 0.
 Per the process, no implementation happens from this document — each step needs an explicit
 "Implement ORG-NN" instruction, scoped to exactly that step, and its outcome is recorded under the
@@ -743,7 +743,7 @@ recorded scale numbers.
 
 ---
 
-## ORG-05 — Rules Reach CuePoint's Own Data
+## ORG-05 — Rules Reach CuePoint's Own Data ✅ IMPLEMENTED 2026-09-07
 
 **Objective**: Extend DEC-043's one rule model to tags, ratings, favorites, notes and Collection
 membership — which means the compiler's first joins.
@@ -805,6 +805,131 @@ existing test in `filter_sql`'s suite must pass untouched, and that the subquery
 tested place rather than a per-field string.
 
 **Complexity**: **L**
+
+### ✅ IMPLEMENTED 2026-09-07
+
+**Outcome**: Complete. `models/filter_rule.py` gained three field types, four operators and six
+fields; `persistence/filter_sql.py` gained the membership shape; `persistence/rule_references.py`
+is new and answers the two questions that need a database; `track_query.py` writes the metadata
+join and the tag facet. The filter bar does not offer any of it — ORG-12 does, and the bar has a
+test saying so.
+
+**DEC-057 is true rather than asserted.** `rating` is `COALESCE(meta.rating, tracks.rating)` in the
+registry, so a filter for "rated 5" finds a track rated 5 in CuePoint over a 3 imported from
+Rekordbox and stops finding one rated 5 in Rekordbox and 3 here. Both layers keep names of their
+own — `rating_rekordbox` and `cuepoint_rating` — for the person who wants exactly one of them. A
+rating of zero is still a rating through the coalesce (DEC-034), and "unrated" now means neither
+layer has a value.
+
+**`FieldSpec` says where a field lives, in one of two ways.** A column field names an expression:
+`tracks.genre`, `meta.notes`, the coalesce above, or — for `rating_rekordbox` — a column whose name
+is not the field's. A membership field names a link table instead, and there is exactly one
+subquery shape for both tags and Collections. That split is the whole step: `compile_rule` is still
+one function with one place that turns a rule into SQL.
+
+**A tag and a Collection are named by id, never by name.** ORG-12's tag manager renames tags, and a
+rule that stopped matching because someone corrected a spelling would be a saved question that
+quietly changed meaning. A test renames a tag and asserts the rule still matches. The price of an
+id is that it can name a row that is gone, which is what `rule_references.py` exists for.
+
+**The set shape beat the correlated one, which was not the guess.** `EXISTS (… WHERE track_id =
+tracks.id …)` probes the link table once per track in the library; `tracks.id IN (SELECT track_id
+…)` reads one run of an index and tests a set. Measured over 50,000 tracks and 200,000 assignments:
+"has this tag" 18.1 ms against **8.4 ms**, "any of five tags" 51.5 ms against **23.8 ms**, "in this
+Collection" 11.1 ms against **1.4 ms**. It is also the shape the playlist scope already uses, and
+for the same reason: a track filed in a Collection twice matches once, because a set has no
+duplicates. `NOT IN` is safe only because both link tables declare their track column `NOT NULL`,
+so a schema test asserts that — no behavioural test can catch a null the schema cannot hold.
+
+**One index changed and none was added.** Migration 0009 built `idx_track_tags_tag (tag_id)` to
+answer "how many tracks carry each tag". ORG-05 asks *which* tracks, which is the same index plus
+one column. Migration 0010 **replaces** it with `(tag_id, track_id)`: the table keeps the number of
+indexes it had, writing 12,000 assignments measured the same either way, and every tag rule got two
+to three times faster. `collection_tracks` needed nothing — `idx_collection_tracks_collection`,
+built for ORG-04's ordering, already answers the membership question in 1.3 ms.
+
+**The join is written only when something asks for it.** `track_metadata` joins on its primary key,
+so it is one probe per row — and one probe per row over fifty thousand rows is fifty thousand
+probes that every browse the Library page has run since Phase 4 would start paying for nothing. A
+filter bar with no CuePoint clause in it produces the SQL it produced before this step, and a test
+asserts the string.
+
+**The rating facet got slower, and that is the price of DEC-057.** Its group key now spans two
+tables, and no index can serve that — an index is per table, and an expression index cannot reach a
+joined one. Measured: **20.2 ms** against 3.7 ms for the imported column alone. It still reads the
+rating index rather than the table, so it is a scan of five bytes per track rather than of a track,
+and it buys a facet whose counts match the rows a rule with the same value returns — which the fast
+plan would not. `test_facet_indexes.py` now pins both plans, with the numbers.
+
+**The tag facet counts before it joins**, which is ORG-03's measurement applied again: joining
+`tags` first makes the grouping walk 200,000 rows through a table it does not need until the end.
+96.1 ms joined first, **14.6 ms** grouped first; with a filter narrowing it, 17.9 ms against
+15.3 ms — the shape that wins by seven times in the common case never loses. Its values are tag
+ids with names beside them as labels, so a chip built from the facet matches exactly the tracks the
+facet counted and goes on matching them after a rename.
+
+**Two refusals, and the difference between them is deliberate.** A rule naming a deleted tag or
+Collection raises `BrokenRuleError` — a subclass, so ORG-06 can show it as a repairable state on a
+Smart Collection while every handler that already maps a `FilterRuleError` keeps working untouched.
+A rule naming a **Smart Collection** raises a plain `FilterRuleError` (DEC-060): it is not stale, it
+is not a rule, and deleting nothing would fix it. Both messages name the clause, because a user can
+have six filters on screen. The checks run in `TrackRepository._checked`, which all six reads go
+through — a check one entry point skips is a check that does not exist, and six mutations prove
+each one calls it.
+
+**The bar does not offer what it cannot build.** The vocabulary endpoint describes tag, Collection
+and favorite — it has to, or ORG-12 would hard-code them and DEC-043 would be a slogan. But a "Tag"
+row with a free-text box would ask a user to type a database id and refuse every tag name they
+typed, so `filterText.buildableFields` keeps the bar to the three types it has controls for, and a
+`FilterBar` test fails if the filter is removed. ORG-12 deletes that filter when it adds the chips.
+
+**Guards: 47 of 47 fail when the thing they protect is broken.** The effective rating, five ways:
+reverted to the imported column, reduced to the CuePoint one, coalesced backwards, and either layer
+losing its own name. The join, five ways: never written, always written, `requires_metadata` mute,
+a facet unable to ask for it, and made inner so untouched tracks vanish. Favorite: unknown rather
+than false without a row, "no" spelled yes, anything at all a yes, and the comparison collated.
+Membership, eight ways: negation inverted, untagged meaning tagged, `any_of` reading one id, the
+link table's columns swapped, a tag rule reading the Collection table, the predicate compiled as a
+join so a duplicate entry duplicates a track, and an id allowed to be zero or fractional. What a
+rule may name, seven ways: a deleted tag, a deleted Collection, a Smart Collection, a broken rule
+that is not a `FilterRuleError`, only the first id of a list, membership never checked, and ids past
+the first chunk never looked up. Each of the six reads skipping the check. And the facets, ten ways:
+grouped by track, ignoring the rest of the view, honouring its own field's rules, the untagged
+bucket dropped, assignments counted as tags, a value losing its name or carrying the name instead of
+the id, a facet grouping the column the field is named after, a bool faceted as text, and a
+membership field faceted as a column. Plus one that ORG-05 must not have broken: the `LIKE` escape.
+
+Four of those started as survivors. `any_of` truncated to its first id passed, because the fixture's
+first tag happened to cover the whole union — the list is now ordered narrowest-first, so a
+one-element read answers one track. The tag facet honouring its own rules passed against "more than
+one choice survives", which a facet that narrowed to one track's three tags also satisfies; it is
+now an equality against the unfiltered facet. And two branches turned out to change no behaviour at
+all: a collation on a yes/no comparison, and the text spelling of "has a value" against an integer.
+Both were kept and pinned with tests on the SQL text rather than deleted — `COALESCE(…) <> ''` is
+an integer against text that SQLite answers correctly by its type ordering, which is right by
+coincidence rather than by intent, and a collation on an integer claims a rule the SQL does not
+have.
+
+**Measured at the acceptance scale** — 50,000 tracks, 200,000 assignments over 20 tags, a
+5,000-track Collection, 10,000 CuePoint metadata rows. Counts, which are the unpaged half and
+therefore the slow one: "has this tag" **8.4 ms**, "not this tag" 11.9 ms, "any of five" 23.8 ms,
+untagged 11.5 ms, "in this Collection" **1.3 ms**, not in it 10.5 ms, favorite 6.7 ms, effective
+rating ≥ 4 **9.9 ms**, notes containing a word 7.8 ms, and a tag *and* a Collection *and* a genre
+together 7.8 ms. Windows are all under 30 ms and mostly under 3. Facets: tags **14.6 ms** (totals
+42.1 ms), favorite 16.3 ms, effective rating 20.2 ms. The unfiltered browse is unchanged at
+0.36 ms, with no join in its SQL.
+
+**Verification**: `python -m pytest src/tests/unit` — 3918 passed, 45 skipped (201 of them new);
+`python -m pytest src/tests/integration src/tests/regression` — 350 passed, 13 skipped; `npm test`
+in the renderer — 1265 passed; `npm run typecheck` and `npm run lint` clean; `ruff check src/` and
+`ruff format --check src/` clean; `check_no_qt_in_core.py`, `check_desktop_version_coupling.py` and
+the engine health smoke all OK. Three failures in `test_code_quality_step_5_7.py` are unrelated to
+this step: they assert `.pre-commit-config.yaml` mentions black, isort and flake8, and that file was
+rewritten to use ruff outside this work.
+
+No Electron main, preload or engine-API file was touched; the vocabulary endpoint describes the new
+fields because `describe_fields()` reads the registry, not because anything was added to it. The
+measurements are ad-hoc; ORG-13 owns the recorded scale numbers.
 
 ---
 
