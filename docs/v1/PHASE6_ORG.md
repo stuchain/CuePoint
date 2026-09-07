@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 6: Organization, Detailed Step Specifications
 
-Status: **ORG-01…ORG-05 implemented; ORG-06…ORG-13 specified, not implemented.** The
+Status: **ORG-01…ORG-06 implemented; ORG-07…ORG-13 specified, not implemented.** The
 thirteen steps below are the inventory the roadmap has carried as a placeholder since Phase 0.
 Per the process, no implementation happens from this document — each step needs an explicit
 "Implement ORG-NN" instruction, scoped to exactly that step, and its outcome is recorded under the
@@ -957,7 +957,7 @@ owns the recorded scale numbers.
 
 ---
 
-## ORG-06 — Smart Collections
+## ORG-06 — Smart Collections ✅ IMPLEMENTED 2026-09-07
 
 **Objective**: Save the rule set, evaluate it live, duplicate it, freeze it (DEC-061).
 
@@ -1009,6 +1009,147 @@ run twice will want to store the answer. DEC-061's reasoning is recorded so that
 argument.
 
 **Complexity**: **M**
+
+### ✅ IMPLEMENTED 2026-09-07
+
+**Outcome**: Complete. `services/collection_service.py` gained five operations, two value types and
+four helpers; `services/interfaces.py` declares all of them; nothing else in `src/cuepoint/` changed
+and no schema changed — m0009 already had `rules_json`, `sort_field`, `sort_dir`, `frozen_from_id`
+and `frozen_at`, which is what a step that only has to use them looks like. No engine route and no
+renderer file was touched: ORG-08 owns the API and ORG-12 owns the button.
+
+**It went into the tree service rather than beside it.** Every ORG-06 operation is a node
+operation — saving one creates a node, duplicating one creates a node, and renaming, moving and
+deleting one are ORG-04's methods working unchanged on a row whose `kind` happens to be `smart`. A
+`SmartCollectionService` would have needed the depth cap, the folder-only-parent rule and the
+sibling ordering a second time, or a private call into the first service to borrow them. What it
+does buy is two new constructor arguments, and both exist for one method: a freeze has to *run* the
+rules to find out what it is storing, which is a library query, and DEC-029 wants one event saying
+it happened.
+
+**DEC-043's promise is a fact about the code rather than a sentence in a document.** `resolve()`
+reads a rule set out of a column and builds a `BrowseQuery` from it — the same class the filter bar
+fills in, handed to the same `TrackRepository`. There is no saved-rule query path that could
+disagree with the unsaved one about a null, a collation or a tiebreak, because there is only one
+path. The tests assert it end to end anyway, down to the order of the ids, with a two-clause rule
+set as well as a one-clause one: a bug that keeps the first rule and drops the rest still returns
+tracks, just the wrong ones, and a single-rule fixture would never notice.
+
+**A resolution is either a query or a reason, and the constructor refuses anything else.** This is
+the shape decision of the step. The tempting design is a resolution that always carries a query plus
+a `broken` flag; the trouble is what the query holds when the rules could not be read. An empty rule
+set is the honest parse of nothing, and an empty rule set **does not match nothing — it matches
+everything**. A Smart Collection whose rules were lost would quietly become the whole library under
+a name the user chose for forty tracks. Three separate refusals now stand between that and a user:
+saving an empty set, reading one back, and constructing a resolution with neither a query nor a
+problem. Each is caught by its own mutation, and the third is the only one that cannot be argued
+away by "the other two already cover it".
+
+**Rules are checked when they are saved and again when they are read, and the two refusals are
+different on purpose.** Saving refuses a rule set naming a tag or Collection that is already gone,
+or one naming another Smart Collection (DEC-060) — while the user is still looking at the filter
+they built, which is the only moment a refusal costs nothing. Reading cannot refuse: the row exists
+whether or not the tag still does, and ORG-09 has to draw it either way. So `resolve()` reports the
+problem, and the refusal happens when someone tries to run it — as `BrokenRuleError`, which ORG-05
+made a `FilterRuleError` precisely so this arrives at a handler as a message naming the clause
+rather than as a 500.
+
+**DEC-060 is what makes recursion, cycle detection and an evaluation bound unnecessary rather than
+unwritten.** A rule may name a Collection and may not name a Smart Collection, so a saved question
+can never reference another saved question — not itself, not a cycle, not a chain. ORG-05 built that
+check; ORG-06 is the first caller with something to lose by it. A *frozen* Collection is rows rather
+than a question, so filtering on one is allowed, and a test says so: the rule is about `kind`, not
+about provenance.
+
+**A freeze keeps the rules it came from, which m0009 anticipated and DEC-061 needs.**
+`frozen_from_id` is deliberately not a foreign key — the source has to be deletable — so provenance
+that says "frozen from #7" with no #7 left says nothing at all. The frozen Collection therefore
+carries `rules_json` as well, which m0009 declined to forbid with a CHECK for exactly this reason
+and `Collection.__post_init__` leaves legal for exactly this case. It is still a plain Collection:
+`resolve` refuses it, and tracks can be added to it by hand.
+
+**Freezing is one transaction, including the activity event.** The Collection, its entries and the
+feed entry are all of it or none of it — a Collection in the tree with forty thousand tracks in it
+and nothing in the feed to say where it came from is a worse outcome than a slow freeze. A test
+drives it with an activity service that refuses, and asserts the tree and `collection_tracks` are
+untouched afterwards. `_create` joins an open transaction rather than refusing one, which is what
+makes that possible.
+
+**The freeze reads its answer a page at a time, and that is correctness rather than tuning.**
+`browse_ids` caps one request at 50,000 ids. An unpaged read would freeze the first page of a larger
+library and report it as the answer — a silent wrong number, which is the worst kind. Three
+mutations cover it: reading one page, stopping one page early, and re-reading the same page forever
+(the last one hangs rather than fails, which is why the harness runs under a timeout). The page
+loop is driven in the tests by shrinking the page to two rather than by building a library.
+
+**Guards: 46 of 47 fail when the thing they protect is broken.** Saving, five ways: an empty rule
+set stored, what the rules name never checked, the rules stored unvalidated so one filter becomes
+two different rows, a smart collection saved as a plain one, and only the first rule of a set kept.
+The saved order, six ways: silence read as the default, an unknown sort accepted, a playlist
+position accepted, an unknown direction accepted, the direction stored as typed, and the sort
+written nowhere on update. Resolving, eight ways: the saved sort ignored, the saved direction
+ignored, a broken rule set resolved to no filters at all, references never re-checked, empty stored
+rules read as no rules, unreadable JSON escaping as a crash, an unrunnable saved order escaping as a
+crash, and one Smart Collection's rules read off another node. The resolution shape, three ways:
+neither a query nor a reason allowed, a broken one answering with the whole library, and a broken
+one crashing the caller instead of refusing it. Duplicating, four ways: the order dropped, the copy
+landing at the top of the tree, a name allowed past the length a name may be, and the rules
+re-checked so a broken one cannot be copied to repair. Freezing, thirteen ways: the source
+forgotten, the time recorded without the source, the rules dropped, a second smart collection
+produced instead of a Collection, the parent lost, one page read as the whole answer, the loop
+stopping early, the loop never advancing, a broken rule set frozen as though "nothing" were the
+answer, the event not written, the event written outside the transaction, the count dropped from the
+event, and one track reported as one tracks. What a smart collection is, three ways: any node
+answering as one, a smart collection handed rows after all, and the folder it was filed in ignored.
+And the contract, two ways: a tree operation and the smart operations each removed from
+`ICollectionService`.
+
+Three of those started as survivors. Storing the rules unvalidated passed, because
+`check_rule_references` validates the set itself before looking anything up — so the refusal was
+covered and the *normalization* was not, and a filter written as `"128"` and one written as `128`
+would have been two different rows for one question; two tests on the stored bytes now pin it.
+Removing an operation from the interface passed, because nothing compared the two lists: there is
+now a test asserting that what `CollectionService` offers and what `ICollectionService` declares are
+one set, which also found that ORG-04's `get` had never been declared. And one mutation is
+genuinely equivalent and was kept rather than removed: reporting `len(track_ids)` instead of the
+`AddResult`'s own count cannot differ, because a Collection created a statement earlier holds
+nothing to skip and a query cannot return an id twice. The write's report of what it wrote is still
+the more honest of the two, and the property that matters — the reported count equals the rows the
+Collection holds — is asserted directly.
+
+**Measured at the acceptance scale** — 50,000 tracks, 200,000 assignments over 20 tags. The DoD's
+first question answers itself, because a Smart Collection scope *is* the equivalent filter: counting
+five tags takes **26.84 ms** saved against 26.75 ms unsaved, a window **33.41 ms** against 33.14 ms;
+a tag and a genre together, **7.09 ms** against 7.31 ms and **13.22 ms** against 13.99 ms. The whole
+of the difference is `resolve()` itself at **0.07–0.09 ms** — one row and one reference check.
+Editing a Smart Collection standing for 49,466 tracks is **2.17 ms** and duplicating it is 2.00 ms,
+because both write one row. Nothing is stored against a smart node: `collection_tracks` holds
+**0** rows for it after saving, updating, duplicating, resolving, browsing and freezing.
+
+**Freezing is the one expensive thing, and the number is why ORG-07 owns it.** 1,683 tracks take
+**28.9 ms**, 9,913 take 89.1 ms, 33,646 take 419.4 ms and 49,466 take **897.3 ms** — roughly linear
+at 15 µs a track, and comfortably past any budget for a gesture that blocks. The count is reported
+and correct at every size (49,466 reported, 49,466 rows stored, 49,466 matched). ORG-07 wraps this
+in its job path and needs no change here; the threshold it has to pick now has points rather than
+an intuition, and a freeze stays under 50 ms up to roughly three thousand tracks. It is also worth
+recording what a freeze *buys*: paging the frozen Collection costs **0.30 ms** against **72.34 ms**
+for the live rule set over the same tracks, which is the answer to "why would anyone freeze one".
+
+**Verification**: `python -m pytest src/tests/unit` — 4077 passed, 45 skipped (115 of them new);
+`python -m pytest src/tests/integration src/tests/regression` — 350 passed, 13 skipped; `npm test`
+in the renderer — 1265 passed, unchanged and untouched; `ruff check src/` and `ruff format --check
+src/` clean; `check_no_qt_in_core.py`, `check_desktop_version_coupling.py` and the engine health
+smoke all OK; `mypy` reports nothing in either changed module. Three failures in
+`test_code_quality_step_5_7.py` are unrelated to this step and predate it: they assert
+`.pre-commit-config.yaml` mentions black, isort and flake8, and that file was rewritten to use ruff
+outside this work.
+
+Two things this step deliberately did not do. It did not add a `collection` or `smart` scope to
+`BrowseQuery`: ORG-08's table puts `scope=collection|smart` on the search endpoint, and a Smart
+Collection scope resolves to rules and then runs the query that already exists, which is the whole
+of what "reused unchanged" means here. And it did not build the freeze job: `engine/jobs.py` is
+ORG-07's, a job with no route would be unreachable, and `freeze` already returns the count a job has
+to report. The measurements above are ad-hoc; ORG-13 owns the recorded scale numbers.
 
 ---
 

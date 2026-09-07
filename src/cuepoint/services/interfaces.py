@@ -64,6 +64,7 @@ if TYPE_CHECKING:
     )
     from cuepoint.persistence.job_repository import JobRecord
     from cuepoint.services.backup_service import BackupInfo
+    from cuepoint.services.collection_service import FreezeResult, SmartResolution
     from cuepoint.services.library_service import (
         LibraryBrowseResult,
         LibrarySearchResult,
@@ -1099,6 +1100,13 @@ class ICollectionService(ABC):
     not be moved into its own subtree, the tree has a maximum depth, and a
     Smart Collection holds a question rather than rows and so cannot be given
     membership.
+
+    A Smart Collection's own operations (ORG-06, DEC-061) are here rather than
+    in a service of their own, because every one of them is a node operation:
+    saving one creates a node, duplicating one creates a node, and renaming,
+    moving and deleting one are the methods above, unchanged. Only
+    :meth:`freeze` reaches outside the tree, and what it reaches for is the
+    library query it is about to store the answer to.
     """
 
     @abstractmethod
@@ -1146,6 +1154,11 @@ class ICollectionService(ABC):
         ...
 
     @abstractmethod
+    def get(self, node_id: int) -> Optional["Collection"]:
+        """Return one node, or ``None``."""
+        ...
+
+    @abstractmethod
     def add_tracks(self, collection_id: int, track_ids: Iterable[int]) -> "AddResult":
         """Append tracks not already there, skipping and reporting the rest."""
         ...
@@ -1177,6 +1190,44 @@ class ICollectionService(ABC):
     @abstractmethod
     def counts(self, collection_id: int) -> Tuple[int, int]:
         """Return ``(entry_count, distinct_track_count)`` for a Collection."""
+        ...
+
+    @abstractmethod
+    def create_smart(
+        self,
+        name: str,
+        rules: "RuleSet",
+        parent_id: Optional[int] = None,
+        sort: Optional[str] = None,
+        direction: Optional[str] = None,
+    ) -> "Collection":
+        """Save a rule set as a Smart Collection, checking what it names."""
+        ...
+
+    @abstractmethod
+    def update_rules(
+        self,
+        node_id: int,
+        rules: "RuleSet",
+        sort: Optional[str] = None,
+        direction: Optional[str] = None,
+    ) -> "Collection":
+        """Replace a Smart Collection's saved question. Stores nothing else."""
+        ...
+
+    @abstractmethod
+    def duplicate(self, node_id: int, name: Optional[str] = None) -> "Collection":
+        """Copy a Smart Collection's rules and order, linked to nothing."""
+        ...
+
+    @abstractmethod
+    def resolve(self, node_id: int) -> "SmartResolution":
+        """Return the query a Smart Collection stands for, or why it cannot run."""
+        ...
+
+    @abstractmethod
+    def freeze(self, node_id: int, name: Optional[str] = None) -> "FreezeResult":
+        """Store a Smart Collection's current answer as a Collection (DEC-061)."""
         ...
 
 

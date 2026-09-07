@@ -84,8 +84,8 @@ def tags(db, activity) -> TagService:
 
 
 @pytest.fixture
-def collections(db) -> CollectionService:
-    return CollectionService(CollectionRepository(db), db)
+def collections(db, tracks, activity) -> CollectionService:
+    return CollectionService(CollectionRepository(db), db, tracks, activity)
 
 
 def _track(rekordbox_id: str, **kwargs) -> LibraryTrack:

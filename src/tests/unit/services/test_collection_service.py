@@ -42,6 +42,7 @@ from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.activity_service import ActivityService
 from cuepoint.services.collection_service import CollectionService
 from cuepoint.services.database_service import DatabaseService
+from cuepoint.services.interfaces import ICollectionService
 from cuepoint.services.migration_runner import MigrationRunner
 
 
@@ -82,13 +83,42 @@ def repo(db, tracks):
 
 
 @pytest.fixture
-def service(db, repo):
-    return CollectionService(repo, db)
+def activity(db, tracks):
+    return ActivityService(ActivityRepository(db), tracks)
+
+
+@pytest.fixture
+def service(db, repo, tracks, activity):
+    return CollectionService(repo, db, tracks, activity)
 
 
 @pytest.fixture
 def warmups(service) -> int:
     return int(service.create_collection("Warmups").id)
+
+
+class TestTheContract:
+    """What the service offers and what the interface promises are one list.
+
+    An operation the interface does not declare is one a second implementation
+    can quietly not have, and one a caller holding an ``ICollectionService``
+    cannot reach without knowing which class it really got. ORG-06 added five
+    methods and this is what stops the sixth from being added to the class
+    alone.
+    """
+
+    def test_every_operation_is_declared_on_the_interface(self):
+        declared = {
+            name
+            for name, value in vars(ICollectionService).items()
+            if getattr(value, "__isabstractmethod__", False)
+        }
+        offered = {
+            name
+            for name, value in vars(CollectionService).items()
+            if not name.startswith("_") and callable(value)
+        }
+        assert offered == declared
 
 
 class TestCreating:

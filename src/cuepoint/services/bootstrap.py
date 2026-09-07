@@ -257,10 +257,16 @@ def bootstrap_services() -> None:
 
     container.register_factory(ICollectionRepository, create_collection_repository)
 
+    # The tree service also takes the library and the activity feed, and both
+    # are there for one operation: freezing a Smart Collection has to run its
+    # rules to find out what it is storing, and DEC-029 wants one event saying
+    # it happened.
     def create_collection_service() -> ICollectionService:
         return CollectionService(
             collection_repository=container.resolve(ICollectionRepository),
             database_service=container.resolve(IDatabaseService),
+            track_repository=container.resolve(ITrackRepository),
+            activity_service=container.resolve(IActivityService),
         )
 
     container.register_factory(ICollectionService, create_collection_service)
