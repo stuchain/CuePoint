@@ -52,6 +52,13 @@ _ALLOWED = {
     "services/metadata_service.py",
     "services/tag_service.py",
     "services/collection_service.py",
+    # ORG-07's batch path, which is the reason the three above hold a boundary
+    # at all: it opens one transaction per chunk of a thousand tracks and lets
+    # their writes join it, because a write that commits on its own costs
+    # 1.95 ms per track against 0.014 ms inside one (ORG-02, DEC-063). It runs
+    # no SQL — it does not even know which tables the operation it was handed
+    # will touch.
+    "services/batch_service.py",
 }
 _ALLOWED_PREFIXES = ("persistence/", "migrations/")
 

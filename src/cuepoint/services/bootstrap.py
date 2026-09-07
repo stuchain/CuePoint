@@ -28,6 +28,7 @@ from cuepoint.services.interfaces import (
     IActivityRepository,
     IActivityService,
     IBackupService,
+    IBatchService,
     IBeatportService,
     ICacheService,
     IConfigService,
@@ -72,6 +73,7 @@ from cuepoint.persistence.track_metadata_repository import (
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.activity_service import ActivityService
 from cuepoint.services.backup_service import BackupService
+from cuepoint.services.batch_service import BatchService
 from cuepoint.services.collection_service import CollectionService
 from cuepoint.services.library_service import LibraryService
 from cuepoint.services.metadata_service import MetadataService
@@ -270,6 +272,23 @@ def bootstrap_services() -> None:
         )
 
     container.register_factory(ICollectionService, create_collection_service)
+
+    # One operation over a selection of any size (ORG-07, DEC-063). It resolves
+    # a query selection through the track repository and then delegates every
+    # write to the service that owns it, which is why it takes five of them and
+    # holds no rules of its own. The database service is the transaction a chunk
+    # commits in; no SQL is run here either.
+    def create_batch_service() -> IBatchService:
+        return BatchService(
+            metadata_service=container.resolve(IMetadataService),
+            tag_service=container.resolve(ITagService),
+            collection_service=container.resolve(ICollectionService),
+            track_repository=container.resolve(ITrackRepository),
+            activity_service=container.resolve(IActivityService),
+            database_service=container.resolve(IDatabaseService),
+        )
+
+    container.register_factory(IBatchService, create_batch_service)
 
     # Library database backups (DEC-009). Resolving this does not open the
     # database or write anything; backup_on_launch() is called explicitly.

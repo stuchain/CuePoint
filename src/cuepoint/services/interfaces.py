@@ -64,6 +64,13 @@ if TYPE_CHECKING:
     )
     from cuepoint.persistence.job_repository import JobRecord
     from cuepoint.services.backup_service import BackupInfo
+    from cuepoint.services.batch_service import (
+        BatchCancelCallback,
+        BatchOperation,
+        BatchProgressCallback,
+        BatchResult,
+        BatchSelection,
+    )
     from cuepoint.services.collection_service import FreezeResult, SmartResolution
     from cuepoint.services.library_service import (
         LibraryBrowseResult,
@@ -1452,6 +1459,43 @@ class IMetadataService(ABC):
     @abstractmethod
     def clear(self, track_id: int, batch_id: Optional[str] = None) -> bool:
         """Forget everything CuePoint knows about a track, recording each loss."""
+        ...
+
+
+class IBatchService(ABC):
+    """Interface for applying one operation to a whole selection (ORG-07).
+
+    The entry point DEC-063 describes: one vocabulary of operations, a
+    selection that is either ids or the query naming them (DEC-045), and a
+    result whose counts are what a toast and an activity event both read.
+
+    Nothing about ratings, tags or Collections is decided here — those services
+    own their rules, and a batch calls them. What this interface promises is
+    the part they do not have: the selection is resolved once, the work is
+    applied in committed chunks so a cancel can be honoured, and every field
+    change it causes carries one shared batch id.
+    """
+
+    @abstractmethod
+    def resolve(self, selection: "BatchSelection") -> List[int]:
+        """Return the ids a selection names, once, deduplicated."""
+        ...
+
+    @abstractmethod
+    def check(self, operation: "BatchOperation") -> str:
+        """Refuse an operation that cannot be applied, and name what it targets."""
+        ...
+
+    @abstractmethod
+    def apply_batch(
+        self,
+        selection: "BatchSelection",
+        operation: "BatchOperation",
+        *,
+        on_progress: Optional["BatchProgressCallback"] = None,
+        should_cancel: Optional["BatchCancelCallback"] = None,
+    ) -> "BatchResult":
+        """Apply one operation to every track a selection names."""
         ...
 
 

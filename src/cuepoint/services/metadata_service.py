@@ -46,6 +46,12 @@ It arrived a step late. ORG-02 wrote and then recorded, in two transactions;
 ORG-03 found the gap while making a twelve-thousand-track tagging atomic, and
 closed it here at the same time.
 
+That boundary joins an outer one when there is one (ORG-07). A batch edit
+commits a chunk of a thousand tracks at a time, and a write that insisted on its
+own transaction could not be part of one — it would raise inside the batch's,
+and each of the thousand would be its own commit if it did not. With no
+transaction open, which is every caller outside a batch, nothing changes.
+
 A no-op is not history
 ----------------------
 Re-saving the same note writes nothing. ``record_field_change`` already returns
@@ -156,7 +162,7 @@ class MetadataService(IMetadataService):
         self._require_track(track_id)
         wanted = normalize_rating(rating)
 
-        with self._db.transaction():
+        with self._db.transaction(join_existing=True):
             before = self._metadata.get(track_id)
             record = self._metadata.set_rating(track_id, wanted)
             self._record(
@@ -180,7 +186,7 @@ class MetadataService(IMetadataService):
         self._require_track(track_id)
         wanted = bool(favorite)
 
-        with self._db.transaction():
+        with self._db.transaction(join_existing=True):
             before = self._metadata.get(track_id)
             record = self._metadata.set_favorite(track_id, wanted)
             self._record(
@@ -204,7 +210,7 @@ class MetadataService(IMetadataService):
         self._require_track(track_id)
         wanted = normalize_notes(notes)
 
-        with self._db.transaction():
+        with self._db.transaction(join_existing=True):
             before = self._metadata.get(track_id)
             record = self._metadata.set_notes(track_id, wanted)
             self._record(
@@ -232,7 +238,7 @@ class MetadataService(IMetadataService):
         track_id = int(track_id)
         self._require_track(track_id)
 
-        with self._db.transaction():
+        with self._db.transaction(join_existing=True):
             before = self._metadata.get(track_id)
             removed = self._metadata.clear(track_id)
             if before is not None:

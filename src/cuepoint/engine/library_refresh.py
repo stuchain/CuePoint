@@ -44,6 +44,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, Tuple
 
 from cuepoint.compat.gui_types import ProgressInfo
+from cuepoint.engine.batch_jobs import JOB_TYPE_LIBRARY_BATCH
 from cuepoint.engine.jobs import Job, JobState, JobStore, _ensure_services
 from cuepoint.engine.library_jobs import JOB_TYPE_LIBRARY_IMPORT
 from cuepoint.exceptions.cuepoint_exceptions import CuePointException
@@ -66,10 +67,17 @@ JOB_TYPE_LIBRARY_REFRESH_APPLY = "library_refresh_apply"
 #: another, not just their own kind: an import and a refresh apply write the
 #: same tables, and a preview running against a library being rewritten under it
 #: would describe a state that never existed. One library operation at a time.
+#:
+#: ORG-07's batch edit joined the group rather than starting a second one. It
+#: writes CuePoint's own tables rather than the imported record, so it does not
+#: collide with an import the way an import collides with itself — but it acts
+#: on an id set resolved once, and a refresh deleting some of those tracks
+#: underneath it turns its counts into a report of who won a race.
 LIBRARY_JOB_TYPES: Tuple[str, ...] = (
     JOB_TYPE_LIBRARY_IMPORT,
     JOB_TYPE_LIBRARY_REFRESH_PREVIEW,
     JOB_TYPE_LIBRARY_REFRESH_APPLY,
+    JOB_TYPE_LIBRARY_BATCH,
 )
 
 #: How many previews are remembered. Small on purpose: a user previews, looks,

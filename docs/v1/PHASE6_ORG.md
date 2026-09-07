@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 6: Organization, Detailed Step Specifications
 
-Status: **ORG-01…ORG-06 implemented; ORG-07…ORG-13 specified, not implemented.** The
+Status: **ORG-01…ORG-07 implemented; ORG-08…ORG-13 specified, not implemented.** The
 thirteen steps below are the inventory the roadmap has carried as a placeholder since Phase 0.
 Per the process, no implementation happens from this document — each step needs an explicit
 "Implement ORG-NN" instruction, scoped to exactly that step, and its outcome is recorded under the
@@ -1153,7 +1153,7 @@ to report. The measurements above are ad-hoc; ORG-13 owns the recorded scale num
 
 ---
 
-## ORG-07 — Batch Edits as Jobs
+## ORG-07 — Batch Edits as Jobs ✅ IMPLEMENTED 2026-09-07
 
 **Objective**: Apply one operation to a selection that may be 47,913 tracks, without blocking the
 UI and without losing the history that DEC-008 promised instead of an undo stack.
@@ -1211,6 +1211,170 @@ boundary is felt as a frozen app or a half-applied edit, and the first bulk writ
 against data it cannot re-derive.
 
 **Complexity**: **L**
+
+### ✅ IMPLEMENTED 2026-09-07
+
+**Outcome**: Complete. `services/batch_service.py` is the one entry point, `engine/batch_jobs.py`
+decides where it runs, and between them they add six operations, three value types and a job type.
+`services/interfaces.py` declares the service, `bootstrap.py` wires it, and eight write methods
+across the three Phase 6 services now join an outer transaction instead of demanding their own. No
+schema changed: ORG-01 added `track_history.batch_id` and ORG-02 threaded it through the history
+writer, which is what a step that only has to use them looks like. No route and no renderer file
+was touched — `POST /api/v1/library/batch` is ORG-08's and the menu that calls it is ORG-11's.
+
+**The service holds no rule about ratings, tags or Collections, and that is the design.** Every
+operation is delegated to the service that owns it, so a batch and an Inspector edit validate
+identically, normalize identically and record identically — there is no second write path that
+could disagree about what `"4"` means or about whether a no-op is history. What lives here is the
+part neither of them has: resolving a selection once, moving through it in committed chunks,
+honouring a cancel, counting what happened, and saying so once in the feed. The cost is six
+constructor arguments, and every one of them is a rule this service refuses to own a copy of.
+
+**The selection is resolved once, and the two tests that matter move the library underneath it.**
+The obvious failure is a job that re-reads its query, and the queries a user actually batches are
+the self-defeating kind: "everything with no rating", rated. A job re-reading that would rate its
+first chunk, find nothing left to do, and report *that* as the answer. One test does exactly that
+and asserts all forty are rated; a second adds a track mid-run and asserts it was not swept up.
+Both drive real chunks by shrinking the chunk to five rather than by building a library.
+
+**Where the refusals happen is a decision rather than an accident.** `apply_or_start` resolves the
+selection *and* checks the operation before it chooses between inline and a job, so a verb that
+does not exist, a favorite sent as the word `"false"`, a selection naming nothing and a tag deleted
+a moment ago all come back as errors. The alternative — checking inside the job — turns each of
+them into a job that appears in the status strip and fails a tick later, which is a worse way to
+say "that request does not make sense". It also means the id set that answered "how many" is the id
+set the work is done over, which is DEC-063's rule read literally rather than approximately.
+
+**A chunk is applied set-shaped and retried one track at a time.** Tagging a thousand tracks is one
+INSERT rather than a thousand; asking a Collection to take a thousand reads its membership once
+rather than a thousand times. But a set-shaped call cannot say *which* row a foreign key complained
+about, and a track deleted while the batch runs has to cost one failure rather than a thousand. So
+a chunk that raises has already rolled back, and is re-applied one track at a time to find out
+which one it was. That is the only path where the cost differs from the fast one, and it is the
+path the spec's deleted-track test takes.
+
+**Collection membership writes no history, deliberately, and this is the step where that had to be
+decided.** DEC-063 says every changed *field* writes a row, and membership is not a field of a
+track: ORG-04 records it as an entry row with its own identity (DEC-058) and writes no history for
+it by any path. Recording it here alone would mean the same user action appears in the History tab
+when it came from the toolbar and is absent when it came from a drag, which is worse than the gap.
+If it belongs there it belongs in `CollectionService`, where both paths pass. The batch's activity
+event carries the counts either way, and every field operation — rating, favorite, tag on, tag off
+— writes its rows under one batch id.
+
+**Eight write methods now join an outer transaction, which is the change ORG-03 made for the same
+reason.** `MetadataService`'s four writes, `TagService.assign`/`unassign` and
+`CollectionService.add_tracks`/`remove_entries` opened `transaction()` rather than
+`transaction(join_existing=True)`, so calling any of them inside a batch's chunk raised
+`DB_NESTED_TRANSACTION`: the chunked transaction DEC-063 asks for was not merely unimplemented, it
+was impossible. Joining is the correct relationship anyway — a write that commits independently of
+the boundary its caller opened makes that caller's rollback a lie. Where no transaction is open,
+which is every caller outside a batch, nothing changes at all, and the 1,848 tests over those three
+services say so.
+
+**A blocker found by doing what the spec said, and fixed rather than routed around.** Removing
+50,000 tracks from a Collection never finished. `CollectionRepository._renumber_entries` closed the
+gaps with a *correlated* scalar subquery, so SQLite rebuilt the entire numbering once for every row
+it updated: 2,000 entries took **1.24 s**, 10,000 took **30.9 s** and 20,000 took **123 s** —
+quadratic, which puts one call over a 50,000-entry Collection at about a quarter of an hour, and a
+batch makes one call per chunk. Nothing had noticed because nothing had ever removed entries from a
+Collection that big; ORG-04's own tests use eight tracks. Rewritten as `UPDATE … FROM`, which builds
+the numbering once and joins it, the same three sizes are **3.5 ms**, **18.1 ms** and **37.0 ms**,
+and removing every track from a 50,000-entry Collection takes **3.6 s**. `_close_gap` over the tree
+had the identical shape and was fixed with it: a folder's children will never be fifty thousand
+long, but leaving one statement of each shape in one file is how the wrong one gets copied next.
+
+Its guard is neither a clock nor a query plan. It counts the virtual-machine instructions SQLite
+actually executes, through `set_progress_handler`, because a clock would be flaky and a plan would
+be build-specific. The two shapes are two orders of magnitude apart — **57 steps per row against
+29,474** — so the bound refuses the old one and passes the new one with a great deal of room on
+either side.
+
+**A result whose parts do not add up is refused by its own constructor.** A batch that ran to the
+end accounts for every track it resolved; only a cancelled one stops short, and then it says so.
+That is not tidiness: `changed`, `unchanged` and `failed` are three counters incremented in three
+places, and "47,913 selected, 47,900 accounted for" is a report a user cannot reconcile with
+anything. Two mutations that quietly miscount are caught by this rule rather than by a test that
+happened to look in the right place.
+
+**The threshold is measured, and the chunk size is not a speed dial.** At 50,000 tracks the most
+expensive operation — a rating, four statements a track — settles at **62 µs a track**, so the
+1,000-track threshold is **61 ms** of blocking: about as long as a click may take before it needs a
+progress bar instead of a result. For the chunk, the same 10,000 tracks take 882 ms in chunks of
+100, 561 ms in 500, 546 ms in 1,000, 524 ms in 2,000 and 521 ms in 5,000 — everything past 500 is
+within a few per cent of everything else, so the size is chosen for the cancel rather than the
+clock, and the cancel is **41 ms** at the acceptance scale.
+
+**Guards: 58 of 58 fail when the thing they protect is broken.** The selection, six ways: a track
+named twice counted twice, a selection naming nothing running as a batch, one page read as the
+whole answer, the page loop never advancing, the loop stopping a page early, and a selection
+allowed to be both ids and a query or neither. The vocabulary, six ways: an unknown verb accepted,
+a rating stored as it was typed, favorite taking the word `"true"`, zero and negatives accepted as
+ids, `True` accepted as an id, and a verb not trimmed. The target, six ways: a missing tag found
+anyway, a missing Collection used anyway, anything in the tree given tracks, the target never
+checked before the work starts, the snapshot never read, and `check` checking nothing. The loop,
+eleven ways: a cancel noticed one chunk late, a cancel never noticed, the chunk size ignored, every
+write committing on its own (the 144×), the whole batch as one transaction so a cancel keeps
+nothing, one batch id per chunk, no batch id at all, an unchanged track counted as changed, a
+failure counted as unchanged, a chunk failure taking the batch down, and the retry giving up on the
+first track it cannot apply. Progress, three ways: nothing reported before the first chunk, the
+chunk reported instead of the running total, and nothing reported after a chunk. The event, nine
+ways: no event at all, an event per chunk, an event with no counts, a summary counting what was
+selected rather than what changed, a summary that never says what it did not change, one track as
+"1 tracks", adding and removing a tag reading the same, a cleared rating reading as a rating, and
+favoriting and unfavoriting reading the same. The result, four ways: accounting for fewer tracks
+than it resolved, for more, failures excluded from what was reached, and a payload that forgets it
+was cancelled. And the engine, twelve ways: the threshold off by one, everything a job, nothing a
+job, a refusal turned into a job that fails, exclusivity dropped, the conflict group dropped, a
+cancelled batch reported as success, a cancelled batch reported without counts, a failure losing
+its error code, the status strip told nothing about which operation is running, the last progress
+tick droppable so the bar never fills, and an operation removed from `IBatchService` so the
+contract and the implementation could drift apart.
+
+Three of those started as survivors, and each closed with a test rather than a shrug. *The summary
+counting the selection rather than the change* passed because every summary test happened to use a
+batch where the two numbers were equal — so "Rated 5 tracks" would have appeared in the feed after
+a batch that changed nothing. *The removal reporting what it was asked to do rather than what it
+did* passed because the only mixed-selection test had no tracks in the Collection at all, and the
+early return covered it; a chunk holding both kinds is what "remove this page from the Collection"
+produces, and now has its own test. And *the sampler's last tick* passed because the test that
+watched progress had switched the throttle off; with a minute-long interval, a sampler with no
+exception for the final tick leaves the bar stopped where it last fired.
+
+**Measured at the acceptance scale** — 50,000 tracks, 200,000 assignments over 20 tags. The DoD's
+question first: tagging every track takes **1,397 ms** and writes **50,000** assignments, **50,000**
+history rows under one batch id and **one** activity event, in 51 progress ticks with a longest gap
+of **41.1 ms**. Adding all of them to a Collection is **1,325 ms** and removing them again **3.6
+s**.
+Resolving the whole library to ids is **30.5 ms** and a genre to 8,334 ids is **18.9 ms**;
+favoriting those 8,334 is **704 ms** and reports the 8,096 that were not already favorites. Doing
+the same tagging a second time, when nothing can change, is **106 ms** rather than 1,397 — thirteen
+times cheaper, because `assign` skips what is already there and the batch counts what it skipped.
+Inline sizes: 100 tracks 12.1 ms, 500 39.2 ms, 1,000 61.0 ms, 2,000 123.9 ms, 5,000 312.0 ms.
+
+The app staying responsive is a property of those chunks rather than a hope: the database is in WAL
+mode and no transaction spans the batch, so a reader never waits for it. A test runs a second
+connection in a thread reading throughout a batch applied one track per chunk, and asserts it never
+blocks and never sees a torn count.
+
+**Verification**: `python -m pytest src/tests/unit` — 4,198 passed, 45 skipped (122 of them new);
+`python -m pytest src/tests/integration src/tests/regression` — 350 passed, 13 skipped; `npm test`
+in the renderer —
+1,265 passed, unchanged and untouched; `ruff check src/` and `ruff format --check src/` clean;
+`check_no_qt_in_core.py`, `check_desktop_version_coupling.py` and the engine health smoke all OK;
+`mypy` reports nothing in `batch_service.py` and, in `batch_jobs.py`, only the
+`container.resolve(IInterface)` note every other engine module already carries. The three failures
+in `test_code_quality_step_5_7.py` are unrelated to this step and predate it: they assert
+`.pre-commit-config.yaml` mentions black, isort and flake8, and that file was rewritten to use ruff
+outside this work.
+
+Three things this step deliberately did not do. It did not add the route: `POST
+/api/v1/library/batch` is in ORG-08's table, and `apply_or_start` returns exactly what that handler
+has to serve — an applied count or a job id. It did not build the menu or the confirmation above the
+threshold, which are ORG-11's. And it did not build "revert this batch": DEC-063 requires only that
+the id be written, the Deferred list already says why reverting CuePoint's own fields needs a second
+write path, and a revert with no way to put a rating back is worse than none. The measurements above
+are ad-hoc; ORG-13 owns the recorded scale numbers.
 
 ---
 

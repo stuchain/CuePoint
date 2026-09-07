@@ -546,3 +546,80 @@ class TestWhatACascadeLeavesBehind:
         tracks.delete(ids[1])
         repo.insert_at(warmups, ids[5], 1)
         assert repo.track_ids(warmups) == [ids[0], ids[5], ids[2], ids[3]]
+
+
+@pytest.mark.unit
+class TestRenumberingIsLinear:
+    """The renumber is linear in the Collection, not quadratic (ORG-07).
+
+    It was quadratic, and nothing noticed for three steps: a correlated
+    subquery rebuilt the numbering once per row it updated, which is invisible
+    over the eight-track Collections every other test here builds and is about
+    a quarter of an hour over fifty thousand. ORG-07 removes entries a thousand
+    at a time and was the first thing to ask.
+
+    A clock would make this test flaky and a query plan would make it
+    build-specific, so what is counted is the work SQLite actually does:
+    ``set_progress_handler`` fires every thousand virtual-machine
+    instructions. The two shapes are two orders of magnitude apart — 57 steps
+    per row against 29,474 — so the bound below refuses one and passes the
+    other with a great deal of room either side.
+    """
+
+    ROWS = 2_000
+    MAX_STEPS_PER_ROW = 500
+
+    @pytest.fixture
+    def crowded(self, db, repo):
+        """A Collection holding two thousand tracks."""
+        rows = [
+            (f"big-{i}", f"/big/{i}.mp3", f"/big/{i}.mp3", f"Big {i}", "An Artist")
+            for i in range(self.ROWS)
+        ]
+        db.connect().executemany(
+            "INSERT INTO tracks (rekordbox_track_id, file_path, normalized_path,"
+            " title, artist, created_at, updated_at)"
+            " VALUES (?, ?, ?, ?, ?, '2026-01-01', '2026-01-01')",
+            rows,
+        )
+        db.connect().commit()
+        node = repo.create(Collection(kind=KIND_COLLECTION, name="Everything"))
+        held = [
+            int(row["id"])
+            for row in db.connect().execute(
+                "SELECT id FROM tracks WHERE file_path LIKE '/big/%' ORDER BY id"
+            )
+        ]
+        repo.add(node.id, held)
+        return node.id
+
+    def test_removing_from_a_large_collection_does_not_walk_it_once_per_row(
+        self, db, repo, crowded
+    ):
+        removing = [entry.id for entry in repo.entries(crowded)][:40]
+        connection = db.connect()
+        steps = {"count": 0}
+
+        def tick() -> int:
+            steps["count"] += 1
+            return 0
+
+        connection.set_progress_handler(tick, 1000)
+        try:
+            repo.remove_entries(removing)
+        finally:
+            connection.set_progress_handler(None, 0)
+
+        remaining = repo.entry_count(crowded)
+        per_row = steps["count"] * 1000 / remaining
+        assert per_row < self.MAX_STEPS_PER_ROW, (
+            f"renumbering {remaining} entries took {per_row:.0f} virtual-machine "
+            "steps per row; the linear form takes about 57 and the correlated "
+            "one about 29,474"
+        )
+
+    def test_and_the_positions_are_still_contiguous(self, repo, crowded):
+        """Guards the guard: the fast statement has to be the correct one."""
+        repo.remove_entries([entry.id for entry in repo.entries(crowded)][:40])
+        assert_contiguous(entry_positions(repo, crowded))
+        assert repo.entry_count(crowded) == self.ROWS - 40

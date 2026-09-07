@@ -37,6 +37,10 @@ Every method that changes more than one row opens a transaction and lets the
 repository and the history writer join it, so tagging twelve thousand tracks
 either happens or does not. ORG-03 is what made that possible: the history
 writer used to demand its own transaction and raised inside anyone else's.
+
+:meth:`TagService.assign` and :meth:`TagService.unassign` in turn join an outer
+transaction when a caller has opened one, which is how ORG-07's batch commits a
+thousand tracks at a time rather than a thousand times.
 """
 
 from __future__ import annotations
@@ -239,7 +243,7 @@ class TagService(ITagService):
             The tracks that did not have the tag and now do.
         """
         tag = self._require_tag(tag_id)
-        with self._db.transaction():
+        with self._db.transaction(join_existing=True):
             changed = self._tags.assign(track_ids, tag_id)
             self._record(changed, tag.name, added=True, batch_id=batch_id)
         return changed
@@ -258,7 +262,7 @@ class TagService(ITagService):
             The tracks that had the tag and now do not.
         """
         tag = self._require_tag(tag_id)
-        with self._db.transaction():
+        with self._db.transaction(join_existing=True):
             changed = self._tags.unassign(track_ids, tag_id)
             self._record(changed, tag.name, added=False, batch_id=batch_id)
         return changed

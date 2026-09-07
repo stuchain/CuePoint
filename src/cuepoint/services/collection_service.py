@@ -34,6 +34,15 @@ a track's own fields, and an entry saying "collection: null → Warmups" on thre
 hundred tracks would bury the rating and tag changes that the History tab exists
 to show. What a Collection holds is visible in the Collection.
 
+ORG-07's batch path holds to that rather than making an exception of itself: a
+selection added to a Collection from the toolbar records the same nothing a drag
+does. Membership recorded on one path and not the other would be worse than the
+gap, and if it belongs in the History tab it belongs here, where both paths pass.
+
+:meth:`CollectionService.add_tracks` and :meth:`CollectionService.remove_entries`
+join an outer transaction when one is open, so a batch can commit a thousand
+tracks' membership at a time; with none open they behave exactly as before.
+
 Deleting says what it will take
 -------------------------------
 :meth:`CollectionService.delete_preview` answers before anything happens, so
@@ -334,7 +343,7 @@ class CollectionService(ICollectionService):
             ValueError: If there is no such node, or it does not hold tracks.
         """
         self._require_collection(collection_id)
-        with self._db.transaction():
+        with self._db.transaction(join_existing=True):
             return self._collections.add(collection_id, track_ids)
 
     def insert_track(
@@ -361,7 +370,7 @@ class CollectionService(ICollectionService):
         Entries rather than tracks, because a track in a Collection twice has
         two of them and "remove the track" would be ambiguous (DEC-058).
         """
-        with self._db.transaction():
+        with self._db.transaction(join_existing=True):
             return self._collections.remove_entries(entry_ids)
 
     def reorder_entry(self, entry_id: int, position: int) -> CollectionEntry:
