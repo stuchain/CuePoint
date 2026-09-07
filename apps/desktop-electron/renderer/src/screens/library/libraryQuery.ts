@@ -29,6 +29,16 @@ export interface LibraryQuery {
   dir: SortDirection;
   /** DEC-043's rule set, or null while nothing is filtered. */
   filters: FilterRuleSet | null;
+  /**
+   * CuePoint's own scope (ORG-08, ORG-09): a Collection's rows or a Smart
+   * Collection's rules. Null when the scope is Rekordbox's or the library.
+   *
+   * Beside `playlistId` rather than replacing it, because the two are
+   * different questions and the engine ANDs them; the pane selects one at a
+   * time, so in practice one of the pair is always null.
+   */
+  scope: "collection" | "smart" | null;
+  collectionId: number | null;
 }
 
 export const DEFAULT_LIBRARY_QUERY: LibraryQuery = {
@@ -37,6 +47,8 @@ export const DEFAULT_LIBRARY_QUERY: LibraryQuery = {
   sort: "artist",
   dir: "asc",
   filters: null,
+  scope: null,
+  collectionId: null,
 };
 
 /** An empty rule set and no rule set are the same question. */
@@ -58,6 +70,8 @@ export function queryKey(query: LibraryQuery): string {
     query.sort,
     query.dir,
     rulesOf(query.filters),
+    query.scope,
+    query.collectionId,
   ]);
 }
 
@@ -86,6 +100,12 @@ export function answersQuery(
   if (response.mode !== "browse") return false;
   if ((response.query ?? "") !== query.q.trim()) return false;
   if ((response.scope ?? null) !== query.playlistId) return false;
+  // CuePoint's scope is echoed under its own names (ORG-08). Absent means an
+  // engine that predates it, which cannot have been asked for one either.
+  if (response.collection_scope !== undefined) {
+    if ((response.collection_scope ?? null) !== query.scope) return false;
+    if ((response.collection_id ?? null) !== query.collectionId) return false;
+  }
   if ((response.sort ?? query.sort) !== query.sort) return false;
   if ((response.dir ?? query.dir) !== query.dir) return false;
   if (response.filters !== undefined) {
@@ -104,5 +124,7 @@ export function browseParams(query: LibraryQuery, offset: number, limit: number)
     filters: query.filters,
     limit,
     offset,
+    scope: query.scope ?? undefined,
+    collectionId: query.collectionId,
   };
 }

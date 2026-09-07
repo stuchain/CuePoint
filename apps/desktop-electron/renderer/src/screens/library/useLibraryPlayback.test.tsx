@@ -78,7 +78,19 @@ describe("playing a row (DEC-012)", () => {
     // main resolves into a queue (PLAYER-05). A limit borrowed from the table's
     // window would queue a hundred tracks out of fifty thousand.
     expect(player.playView).toHaveBeenCalledWith(
-      { q: "acid", playlistId: 7, sort: "bpm", dir: "desc", filters: null, limit: 0, offset: 0 },
+      {
+        q: "acid",
+        playlistId: 7,
+        sort: "bpm",
+        dir: "desc",
+        filters: null,
+        limit: 0,
+        offset: 0,
+        // ORG-09's scope travels with the view, so a queue built inside a
+        // Collection is that Collection in the order it is arranged.
+        scope: undefined,
+        collectionId: null,
+      },
       41,
     );
   });

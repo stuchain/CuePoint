@@ -33,6 +33,7 @@ import {
 } from "../../components/table";
 import { useInspectorSlot } from "../../components/shell";
 import type {
+  CollectionNode,
   FilterRuleSet,
   LibraryPlaylistNode,
   LibrarySummary,
@@ -43,12 +44,14 @@ import type {
 import { FilterBar } from "./FilterBar";
 import { LibraryHeader } from "./LibraryHeader";
 import { LIBRARY_COLUMNS } from "./libraryColumns";
-import { PlaylistPane } from "./PlaylistPane";
+import { LibraryPane } from "./LibraryPane";
 import { RefreshPreviewDialog } from "./RefreshPreviewDialog";
 import { SelectionActions } from "./SelectionActions";
 import { QUEUE_ACTION_LIMIT, useLibraryPlayback } from "./useLibraryPlayback";
 import { TrackDetailPanel } from "./TrackDetailPanel";
 import { defaultSortForScope, findByPath } from "./playlistTree";
+import { defaultSortForCollection } from "./collectionTree";
+import { useCollectionTree } from "./useCollectionTree";
 import { followJob } from "./followJob";
 import { appliedLine, jobErrorMessage } from "./libraryFormat";
 import { DEFAULT_LIBRARY_QUERY, type LibraryQuery, queryKey } from "./libraryQuery";
@@ -126,6 +129,7 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
   // ---------------------------------------------------------------- browsing
 
   const playlists = usePlaylistTree();
+  const collections = useCollectionTree();
   const { vocabulary } = useFilterVocabulary();
   const facet = useFacet(query);
   const columns = useColumnLayout<LibraryTrackRow>(
@@ -150,16 +154,46 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
       // live, so it is looked up rather than cast.
       const inTree = node ? findByPath(playlists.tree, node.path) : null;
       playlists.select(inTree);
+      // One scope at a time in the pane. The engine would AND the two
+      // (ORG-08), but a user who clicks a playlist means the playlist, and a
+      // Collection still highlighted beside it would be a lie about what the
+      // table is showing.
+      collections.select(null);
       setQuery((previous) => ({
         ...previous,
         playlistId: node?.id ?? null,
+        scope: null,
+        collectionId: null,
         // A set list is an order; a folder or the whole library is not
         // (DEC-044), so the scope decides what the table opens on.
         sort: defaultSortForScope(inTree),
         dir: "asc",
       }));
     },
-    [playlists],
+    [collections, playlists],
+  );
+
+  const scopeToCollection = useCallback(
+    (node: CollectionNode | null) => {
+      collections.select(node);
+      if (!node || node.kind === "folder") {
+        // A folder is not a scope: it holds nodes, not tracks and not a
+        // question. Selecting one moves the highlight and leaves the table
+        // showing what it was showing.
+        return;
+      }
+      playlists.select(null);
+      const order = defaultSortForCollection(node);
+      setQuery((previous) => ({
+        ...previous,
+        playlistId: null,
+        scope: node.kind === "smart" ? "smart" : "collection",
+        collectionId: node.id,
+        sort: order.sort,
+        dir: order.dir,
+      }));
+    },
+    [collections, playlists],
   );
 
   // The Inspector belongs to the shell (SHELL-05); the page hands its content
@@ -418,9 +452,12 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
       playlists.reload();
       setQuery({ ...DEFAULT_LIBRARY_QUERY });
       window_.reload();
+      // A refresh can delete tracks a Collection holds (DEC-011), so the
+      // counts beside its name are stale the moment it lands.
+      collections.reload();
       push("Library refreshed.", "success");
     },
-    [diff, loadSummary, playlists, push, run, window_],
+    [collections, diff, loadSummary, playlists, push, run, window_],
   );
 
   // ------------------------------------------------------------------ render
@@ -431,8 +468,10 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
     // filtered view sends someone looking for a broken import.
     if (filtered) return "No tracks match this search.";
     if (query.playlistId != null) return "This playlist is empty.";
+    if (query.scope === "smart") return "Nothing matches these rules right now.";
+    if (query.scope === "collection") return "This Collection is empty. Drop tracks onto it.";
     return "No tracks yet.";
-  }, [filtered, query.playlistId]);
+  }, [filtered, query.playlistId, query.scope]);
 
   const revealPath = useMemo(() => {
     const id = onlySelectedId(selection.selection, window_.total);
@@ -517,15 +556,14 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
       />
 
       <div className="library-screen__body">
-        <PlaylistPane
-          rows={playlists.rows}
-          selected={playlists.selected}
+        <LibraryPane
           libraryTrackCount={summary.track_count}
-          onSelect={(node) => scopeTo(node)}
-          onExpand={playlists.expand}
-          selectionFellBack={playlists.selectionFellBack}
-          status={playlists.status}
-          error={playlists.error}
+          playlists={playlists}
+          collections={collections}
+          scopeIsLibrary={query.playlistId == null && query.collectionId == null}
+          onSelectPlaylist={(node) => scopeTo(node)}
+          onSelectCollection={(node) => scopeToCollection(node)}
+          onNotify={(message, tone) => push(message, tone === "warning" ? "warning" : "success")}
         />
 
         <div className="library-screen__main">

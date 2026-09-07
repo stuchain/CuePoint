@@ -4,18 +4,24 @@
  * A DJ's index of their own library is the playlist tree, not an alphabetical
  * list of fifty thousand tracks. This is that tree, mirrored from Rekordbox
  * and **read-only** (DEC-031): there is no rename here, no delete, no drag, no
- * new playlist. CuePoint's own editable Collections are Phase 6, and an edit
- * landing here would be destroyed by the next refresh — so the pane says where
- * these came from rather than leaving a user to discover it.
+ * new playlist. CuePoint's own editable Collections are the section beside it
+ * (ORG-09), and an edit landing *here* would be destroyed by the next refresh
+ * — so the pane says where these came from rather than leaving a user to
+ * discover it.
  *
- * It is a tree by the ARIA definition, and it behaves like one: arrows move
- * and open, Enter and Space select, and exactly one row is in the tab order,
- * so a keyboard reaches the tree in one Tab and moves inside it with arrows.
+ * ORG-09 moved the rows, the twisties and the arrow keys into
+ * :func:`PaneTree`, which both sections share. What did not move is what this
+ * section is allowed to do: it passes none of that component's editing or
+ * drag handlers, which is what "read-only" means here in code rather than in a
+ * comment. The one exception is a *refused* drop — a target that silently does
+ * nothing teaches nothing (DEC-031), so a selection dropped here is turned
+ * away with a reason.
  */
-import { useRef, useState, type KeyboardEvent } from "react";
+import { useState } from "react";
 
-import { PixelIcon } from "../../components/PixelIcon";
 import type { PlaylistTreeNode, VisibleRow } from "./playlistTree";
+import { PaneTree, type PaneTreeRow } from "./PaneTree";
+import { isCuePointDrag } from "./collectionDrag";
 import "./PlaylistPane.css";
 
 export interface PlaylistPaneProps {
@@ -29,9 +35,25 @@ export interface PlaylistPaneProps {
   selectionFellBack?: boolean;
   status?: "loading" | "ready" | "error" | "unavailable";
   error?: string | null;
+  /**
+   * Whether this section draws the "All tracks" row.
+   *
+   * True when it is the whole pane, which is what it was through Phase 4 and
+   * what it still is anywhere it is used alone. The two-section pane (ORG-09)
+   * draws that row itself, above both sections: "everything" belongs to
+   * neither Rekordbox's mirror nor CuePoint's own tree, and putting it under
+   * one of the two headings would say it came from there.
+   */
+  showAllTracks?: boolean;
+  /** Said out loud when a drag is turned away (DEC-031). */
+  onRefuseDrop?: (message: string) => void;
 }
 
 const ALL_TRACKS_KEY = "__all__";
+
+/** What a user is told when they drop a selection on a mirrored playlist. */
+export const REKORDBOX_DROP_REFUSAL =
+  "Rekordbox playlists are read-only in CuePoint. Drop onto a Collection instead.";
 
 export function PlaylistPane({
   rows,
@@ -42,64 +64,27 @@ export function PlaylistPane({
   selectionFellBack = false,
   status = "ready",
   error = null,
+  showAllTracks = true,
+  onRefuseDrop,
 }: PlaylistPaneProps) {
-  // The row that carries the tab stop. A tree is one stop, not one per node.
-  const [focusKey, setFocusKey] = useState<string>(ALL_TRACKS_KEY);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [refusing, setRefusing] = useState<string | null>(null);
 
-  const keys = [ALL_TRACKS_KEY, ...rows.map((row) => row.node.path)];
+  const byKey = new Map(rows.map((row) => [row.node.path, row.node] as const));
+  const treeRows: PaneTreeRow[] = rows.map((row) => ({
+    key: row.node.path,
+    name: row.node.name,
+    // A name, not a path: four playlists in a real export contain the
+    // separator, and splitting one would show half a name.
+    title: row.node.path,
+    icon: row.node.kind === "folder" ? "folder" : "playlist",
+    depth: row.depth,
+    expanded: row.expanded,
+    hasChildren: row.hasChildren,
+    kind: row.node.kind,
+    count: row.node.kind === "playlist" ? row.node.track_count : null,
+  }));
 
-  // A folder that closed, or a playlist a refresh removed, can take the tab
-  // stop's row with it. Derived rather than corrected in an effect, so the
-  // tree is never rendered for even one frame with no way into it.
-  const tabStop = keys.includes(focusKey) ? focusKey : ALL_TRACKS_KEY;
-
-  const focusRow = (key: string) => {
-    setFocusKey(key);
-    const selector = `[data-tree-key="${CSS.escape(key)}"]`;
-    containerRef.current?.querySelector<HTMLElement>(selector)?.focus();
-  };
-
-  const move = (from: string, delta: 1 | -1) => {
-    const index = keys.indexOf(from);
-    const next = keys[index + delta];
-    if (next !== undefined) focusRow(next);
-  };
-
-  const onKeyDown = (event: KeyboardEvent<HTMLElement>, row: VisibleRow | null) => {
-    switch (event.key) {
-      case "ArrowDown":
-        event.preventDefault();
-        move(row?.node.path ?? ALL_TRACKS_KEY, 1);
-        break;
-      case "ArrowUp":
-        event.preventDefault();
-        move(row?.node.path ?? ALL_TRACKS_KEY, -1);
-        break;
-      case "ArrowRight":
-        if (!row) break;
-        event.preventDefault();
-        // Open a closed folder; step into an open one.
-        if (row.hasChildren && !row.expanded) onExpand(row.node.path, true);
-        else if (row.hasChildren) move(row.node.path, 1);
-        break;
-      case "ArrowLeft":
-        if (!row) break;
-        event.preventDefault();
-        if (row.hasChildren && row.expanded) onExpand(row.node.path, false);
-        else move(row.node.path, -1);
-        break;
-      case "Enter":
-      case " ":
-        event.preventDefault();
-        onSelect(row ? row.node : null);
-        break;
-      default:
-        break;
-    }
-  };
-
-  const selectedKey = selected ? selected.path : ALL_TRACKS_KEY;
+  const selectedKey = selected ? selected.path : showAllTracks ? ALL_TRACKS_KEY : null;
 
   return (
     <nav className="cp-playlist-pane" aria-label="Playlists">
@@ -122,90 +107,52 @@ export function PlaylistPane({
         </p>
       )}
 
-      <div
-        ref={containerRef}
-        className="cp-playlist-pane__tree"
-        role="tree"
-        aria-label="Playlists"
+      {refusing && (
+        <p className="cp-playlist-pane__note cp-playlist-pane__note--error" role="alert">
+          {refusing}
+        </p>
+      )}
+
+      <PaneTree
+        label="Playlists"
+        rows={treeRows}
+        selectedKey={selectedKey}
+        onSelect={(key) =>
+          onSelect(key === ALL_TRACKS_KEY ? null : (byKey.get(key) ?? null))
+        }
+        onExpand={onExpand}
+        leadingRow={
+          showAllTracks
+            ? {
+                key: ALL_TRACKS_KEY,
+                name: "All tracks",
+                icon: "library",
+                depth: 0,
+                expanded: false,
+                hasChildren: false,
+                count: libraryTrackCount,
+              }
+            : null
+        }
+        // The only drag handlers this section has, and they exist to say no.
+        // Nothing here is draggable and nothing here accepts a drop; what a
+        // drop gets is a sentence explaining where it should have gone.
+        onDragOver={(_key, event) => {
+          if (!isCuePointDrag(event.dataTransfer)) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "none";
+        }}
+        onDrop={(_key, event) => {
+          if (!isCuePointDrag(event.dataTransfer)) return;
+          event.preventDefault();
+          setRefusing(REKORDBOX_DROP_REFUSAL);
+          onRefuseDrop?.(REKORDBOX_DROP_REFUSAL);
+        }}
       >
-        <div
-          role="treeitem"
-          aria-level={1}
-          aria-selected={selectedKey === ALL_TRACKS_KEY}
-          data-tree-key={ALL_TRACKS_KEY}
-          tabIndex={tabStop === ALL_TRACKS_KEY ? 0 : -1}
-          className={`cp-playlist-pane__row${selectedKey === ALL_TRACKS_KEY ? " cp-playlist-pane__row--selected" : ""}`}
-          onClick={() => {
-            setFocusKey(ALL_TRACKS_KEY);
-            onSelect(null);
-          }}
-          onKeyDown={(event) => onKeyDown(event, null)}
-        >
-          <span className="cp-playlist-pane__twisty" aria-hidden />
-          <PixelIcon name="library" className="cp-playlist-pane__icon" />
-          <span className="cp-playlist-pane__name">All tracks</span>
-          <span className="cp-playlist-pane__count">{libraryTrackCount.toLocaleString()}</span>
-        </div>
-
-        {rows.map((row) => {
-          const isSelected = selectedKey === row.node.path;
-          return (
-            <div
-              key={row.node.id}
-              role="treeitem"
-              aria-level={row.depth + 2}
-              aria-selected={isSelected}
-              aria-expanded={row.hasChildren ? row.expanded : undefined}
-              data-tree-key={row.node.path}
-              data-kind={row.node.kind}
-              tabIndex={tabStop === row.node.path ? 0 : -1}
-              style={{ paddingLeft: `calc(var(--space-sm) + ${row.depth} * var(--space-md))` }}
-              className={`cp-playlist-pane__row${isSelected ? " cp-playlist-pane__row--selected" : ""}`}
-              onClick={() => {
-                setFocusKey(row.node.path);
-                onSelect(row.node);
-              }}
-              onKeyDown={(event) => onKeyDown(event, row)}
-            >
-              {row.hasChildren ? (
-                <button
-                  type="button"
-                  className="cp-playlist-pane__twisty"
-                  aria-label={`${row.expanded ? "Collapse" : "Expand"} ${row.node.name}`}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onExpand(row.node.path, !row.expanded);
-                  }}
-                >
-                  {row.expanded ? "▾" : "▸"}
-                </button>
-              ) : (
-                <span className="cp-playlist-pane__twisty" aria-hidden />
-              )}
-              <PixelIcon
-                name={row.node.kind === "folder" ? "folder" : "playlist"}
-                className="cp-playlist-pane__icon"
-              />
-              {/* A name, not a path: four playlists in a real export contain the
-                  separator, and splitting one would show half a name. */}
-              <span className="cp-playlist-pane__name" title={row.node.path}>
-                {row.node.name}
-              </span>
-              {row.node.kind === "playlist" && (
-                <span className="cp-playlist-pane__count">
-                  {row.node.track_count.toLocaleString()}
-                </span>
-              )}
-            </div>
-          );
-        })}
-
         {status === "ready" && rows.length === 0 && (
-          <p className="cp-playlist-pane__note">
-            Your export has no playlists in it.
-          </p>
+          <p className="cp-playlist-pane__note">Your export has no playlists in it.</p>
         )}
-      </div>
+      </PaneTree>
     </nav>
   );
 }

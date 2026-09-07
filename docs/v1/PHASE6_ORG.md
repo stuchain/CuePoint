@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 6: Organization, Detailed Step Specifications
 
-Status: **ORG-01…ORG-08 implemented; ORG-09…ORG-13 specified, not implemented.** The
+Status: **ORG-01…ORG-09 implemented; ORG-10…ORG-13 specified, not implemented.** The
 thirteen steps below are the inventory the roadmap has carried as a placeholder since Phase 0.
 Per the process, no implementation happens from this document — each step needs an explicit
 "Implement ORG-NN" instruction, scoped to exactly that step, and its outcome is recorded under the
@@ -1578,7 +1578,7 @@ and nothing else was needed to make DEC-012 agree with DEC-058.
 
 ---
 
-## ORG-09 — The Collections Tree in the Library Pane
+## ORG-09 — The Collections Tree in the Library Pane ✅ IMPLEMENTED 2026-09-07
 
 **Objective**: DEC-062's left pane: an editable Collections tree beside the read-only Rekordbox
 tree, scoping the same table.
@@ -1632,6 +1632,129 @@ playlist.
 tests are the mitigation.
 
 **Complexity**: **L**
+
+### ✅ IMPLEMENTED 2026-09-07
+
+**Outcome**: Complete. The Library pane is two sections in one scroll container:
+`CollectionsPane.tsx` for CuePoint's own tree and the unchanged `PlaylistPane.tsx` for Rekordbox's
+mirror, both drawn by one extracted `PaneTree.tsx`, composed by `LibraryPane.tsx`.
+`collectionTree.ts` is the model, `useCollectionTree.ts` the state and the writes,
+`collectionDrag.ts` the payload a drag carries. Two sprites joined `pixelIcons.ts`. No engine file
+changed: everything here is ORG-08's API being used.
+
+**The mirror is read-only because it passes no handlers, not because a comment says so.** The two
+sections are the same component. What differs is what each hands it: `CollectionsPane` gives it
+rename, drag, drop and delete; `PlaylistPane` gives it none of them, which is DEC-031 expressed as
+code rather than as a promise. The regression that mattered most is that this cost nothing — all 41
+of `PlaylistPane`'s existing tests pass **unchanged** against the extracted component, including
+the three that assert it offers no rename, no draggable row and no text field.
+
+**One visible change to Phase 4's pane, and it is deliberate.** "All tracks" now belongs to the
+pane rather than to the Rekordbox section. It is the row that clears the scope, and leaving it
+under a heading that says "from Rekordbox" would say everything came from there. `PlaylistPane`
+still draws its own when it is used alone — which is what every one of its tests does — so the
+change is a prop with a default rather than a rewrite.
+
+**Identity is the id here and the path next door, and the difference is not a preference.** A
+refresh replaces the entire Rekordbox mirror, so every playlist gets a new database id and only a
+path survives; nothing replaces a Collection, and what changes about one is its *name*. Remembering
+a path here would lose the user's place every time they renamed a folder. Both are tested by doing
+the thing that breaks the other one.
+
+**A drop that cannot work is never offered.** ORG-04's rules — only a folder may be a parent,
+nothing may move inside itself, a Smart Collection holds a question rather than rows — are the
+engine's and it still refuses anything wrong. `canMoveInto` asks the same questions first, and
+answers *false* rather than a message: the pane declines to draw an impossible affordance, and the
+rule itself stays in one place. A refusal a user has to trigger to discover is a worse answer than
+a cursor that never offers it.
+
+The one refusal that is *not* silent is the one aimed at Rekordbox. A selection dropped on a
+mirrored playlist says why and names where it should have gone, because a target that quietly does
+nothing teaches nothing — the user tries again, and again, and concludes the app is broken. Both
+halves of DEC-031 are tested from this side: nothing in that section can be picked up, and nothing
+dropped on it lands.
+
+**A Collection opens in the order its owner arranged.** That is the whole reason ORG-08 taught
+`BrowseQuery` a Collection scope and a `collection_position` sort. Selecting a Collection asks for
+that order; selecting a Smart Collection asks for the sort it was saved with, so it looks the way
+it looked when it was saved; selecting a *folder* asks for nothing at all, because a folder holds
+nodes rather than tracks and scoping to one would show an empty table for something that is not
+empty. One scope at a time: the engine would AND a playlist with a Collection, but a user who
+clicks a playlist means the playlist, and a Collection still highlighted beside it would be a lie
+about what the table is showing.
+
+**A delete says what it will take, in the numbers ORG-08's preview route answers with.** "Delete
+this?" over a folder holding nine Collections is a question nobody can answer, so the dialog names
+the folders, the Collections, the Smart Collections and the entries filed in them — and says, every
+time, that no track is deleted. That last clause is the thing a user is actually afraid of, and it
+is in the dialog rather than in a document nobody reads. A preview that *fails* still asks, with
+less detail: refusing to let someone delete a Collection because the preview could not be read
+would be the worse answer.
+
+**Every edit is one call and one reload, not a patch to a local tree.** Patching would mean a
+second copy of the rules about depth, sibling order and what a folder may hold, and the copy in the
+renderer would be the one that is wrong. A reload is one query over a few hundred rows — ORG-08
+made the tree and its counts a single statement rather than two per node, which is what makes that
+affordable.
+
+**Two icons were drawn rather than borrowed** (DEC-010's rule: recurring and high-visibility). The
+Smart Collection icon is deliberately the same funnel `filter` draws, with a spark beside it,
+because a Smart Collection *is* the filter bar's rule set saved — and ORG-10's tag chips needed a
+tag. Both go through the existing artwork tests: a square grid, rows of the exact width, something
+drawn, inside the bounds, at least one two-cell stroke, and no duplicate of another icon.
+
+**Guards: 44 of 44 fail when the thing they protect is broken.** The model, sixteen ways: a node
+whose parent is gone dropped from the tree, a closed folder showing its children, a Collection
+allowed to be a parent, a move into a node's own subtree allowed, a node already at the top allowed
+to move there again, a Smart Collection said to hold tracks, a Collection opened alphabetically
+rather than as it was arranged, a Smart Collection's saved sort ignored, a delete that stops
+promising no track is deleted, one that stops counting the entries, one of a thing described as
+several, stored state of some other shape trusted, ids for nodes that are gone kept, a Smart
+Collection drawn as a plain one, a selection inside a closed folder left hidden, and the pane's
+storage key joining the legacy `-ui-lab-` debt. The section, twelve ways: a new Collection not
+opened for naming, a new node ignoring the folder that was selected, a rename that changed nothing
+sent anyway, Escape committing the rename it was meant to abandon, a delete that happens without
+asking, a confirmation that does not say what it is taking, tracks dropped on a folder, a move the
+tree refuses offered anyway, a broken Smart Collection drawn as though it worked, the drop target
+unmarked, an engine refusal swallowed, and a drop that says nothing about what was already there.
+The mirror, four ways: a drop silently ignored, the refusal never reaching the page, a file from the
+desktop refused as though it were tracks, and its rows made draggable. The query, three ways: two
+Collections sharing one identity, a response for another scope accepted as current, and the scope
+never reaching the engine. The page, four ways: a Collection selected without clearing the playlist
+scope, a playlist selected without clearing the Collection scope, a folder scoping the table, and an
+empty Collection reading like a search that found nothing. The tree widget, three ways: every row a
+tab stop, the arrow keys unable to reach the row above the tree, and a tree whose focused row
+vanished left with no way in. And the drag payload, two ways: any dragged text read as a selection
+of tracks, and a payload that is not a list read as one.
+
+Four of those started as survivors, and each closed with a test. Two were the same gap: nothing
+compared two *different* Collection scopes, so a query key and a late-response check that both
+ignored the scope passed everything — which at runtime is the first Collection's rows still on
+screen after switching to the second. The third was a test that asserted `playlistId: null` from a
+state where it was already null; it now scopes to a playlist first, so it says the scope was
+*cleared*. The fourth was about a `DataTransfer` that answers every format with its text, which some
+platforms do — the guard that reads the declared types rather than trusting `getData` now has a test
+that fails without it. A fifth mutation was withdrawn rather than caught: the explicit "not into
+itself" check was dead, because a node's subtree includes the node, and a branch no test can tell
+from its absence is a branch that is not there.
+
+**Verification**: `npm test` in the renderer — 1,528 passed across 70 files, of which 121 are new
+and 41 are `PlaylistPane`'s, unchanged; `npm run typecheck`, `npm run lint` and `npm run
+build:check`
+clean, and `npm run build` in the desktop app; `python -m pytest src/tests/unit` — 4,308 passed, 45
+skipped, unchanged because no Python file changed; `ruff check src/` and `ruff format --check src/`
+clean; `PYTHONPATH=src python scripts/smoke_engine_health.py`, `check_no_qt_in_core.py` and
+`check_desktop_version_coupling.py` all OK. The three failures in `test_code_quality_step_5_7.py`
+are unrelated and predate this step. Electron E2E was not run: no main-process or preload file
+changed here, and the flows this step adds are covered by component tests that drive the same
+events.
+
+Four things this step deliberately did not do. It did not build the drag *source*: dragging rows
+out of the table is ORG-11's, so the drop target is exercised here by the events that gesture will
+send, through the one module both ends read. It did not make the Inspector editable (ORG-10) or add
+the filter bar's save button (ORG-12) — both call ORG-08 routes this step deliberately left alone.
+And it did not build the tag manager, which is ORG-12's, even though the tag icon it needs was
+drawn here beside the one this step uses.
 
 ---
 

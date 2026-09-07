@@ -143,3 +143,73 @@ describe("request parameters", () => {
     });
   });
 });
+
+describe("CuePoint's own scope (ORG-09)", () => {
+  it("makes two Collections two different questions", () => {
+    // The key is the identity of a window: two scopes that shared one would
+    // keep the first Collection's rows on screen after switching to the
+    // second, because every loaded page would look like it belonged.
+    expect(queryKey(query({ scope: "collection", collectionId: 1 }))).not.toBe(
+      queryKey(query({ scope: "collection", collectionId: 2 })),
+    );
+  });
+
+  it("tells a Collection from a Smart Collection with the same id", () => {
+    expect(queryKey(query({ scope: "collection", collectionId: 1 }))).not.toBe(
+      queryKey(query({ scope: "smart", collectionId: 1 })),
+    );
+  });
+
+  it("leaves a query with no scope exactly as it was", () => {
+    expect(sameQuery(query(), DEFAULT_LIBRARY_QUERY)).toBe(true);
+  });
+
+  it("refuses a response computed for another Collection", () => {
+    const asking = query({ scope: "collection", collectionId: 7 });
+    const late = response({
+      collection_scope: "collection",
+      collection_id: 4,
+      sort: asking.sort,
+      dir: asking.dir,
+    });
+
+    expect(answersQuery(late, asking)).toBe(false);
+  });
+
+  it("refuses a response computed for no scope at all", () => {
+    const asking = query({ scope: "smart", collectionId: 7 });
+    const late = response({
+      collection_scope: null,
+      collection_id: null,
+      sort: asking.sort,
+      dir: asking.dir,
+    });
+
+    expect(answersQuery(late, asking)).toBe(false);
+  });
+
+  it("accepts the response that answers it", () => {
+    const asking = query({ scope: "smart", collectionId: 7 });
+    const answer = response({
+      collection_scope: "smart",
+      collection_id: 7,
+      sort: asking.sort,
+      dir: asking.dir,
+    });
+
+    expect(answersQuery(answer, asking)).toBe(true);
+  });
+
+  it("accepts an engine that does not echo a scope it was never sent", () => {
+    // An older build, or a fixture written before ORG-08. Dropping everything
+    // would leave a table that never fills, which is the worse failure.
+    expect(answersQuery(response({ sort: "artist", dir: "asc" }), query())).toBe(true);
+  });
+
+  it("sends the scope to the engine, and nothing when there is none", () => {
+    expect(
+      browseParams(query({ scope: "collection", collectionId: 7 }), 0, 100),
+    ).toMatchObject({ scope: "collection", collectionId: 7 });
+    expect(browseParams(query(), 0, 100).scope).toBeUndefined();
+  });
+});

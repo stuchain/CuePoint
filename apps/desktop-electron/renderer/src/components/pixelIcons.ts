@@ -462,6 +462,51 @@ const playlist = [
   "............",
 ];
 
+/**
+ * Smart collection: the filter funnel with a spark beside it (ORG-09).
+ *
+ * Deliberately the same funnel `filter` draws, because that is what a Smart
+ * Collection *is* — DEC-043's rule set, saved. The spark is what says it was
+ * saved rather than typed, and it is what tells the row apart from a plain
+ * Collection at a glance, at 1x, where a grid cell is two CSS pixels.
+ */
+const smart = [
+  "............",
+  ".########...",
+  "..######....",
+  "...####..##.",
+  "....##..####",
+  "....##...##.",
+  "....##......",
+  "....##......",
+  "...####.....",
+  "............",
+  "............",
+  "............",
+];
+
+/**
+ * Tag: the luggage-tag shape — a body cut to a point, with the hole the
+ * string goes through (ORG-09, ORG-10).
+ *
+ * The hole is what makes it a tag rather than an arrow at this size, so it is
+ * two cells of nothing inside a body that is otherwise solid.
+ */
+const tag = [
+  "............",
+  "............",
+  "..#########.",
+  ".##.......#.",
+  "##..##....#.",
+  "#...##....#.",
+  "##........#.",
+  ".##.......#.",
+  "..#########.",
+  "............",
+  "............",
+  "............",
+];
+
 export const PIXEL_ICONS = {
   play,
   pause,
@@ -490,6 +535,12 @@ export const PIXEL_ICONS = {
   // LIBUI-07: the playlist pane tells a folder from a set list at a glance.
   folder,
   playlist,
+  // ORG-09: CuePoint's own tree needs a saved question to look like one, and
+  // ORG-10's chips need a tag to look like a tag. Both are recurring and
+  // high-visibility, which is DEC-010's rule for drawing one rather than
+  // borrowing a glyph.
+  smart,
+  tag,
 } as const satisfies Record<string, readonly string[]>;
 
 export type PixelIconName = keyof typeof PIXEL_ICONS;

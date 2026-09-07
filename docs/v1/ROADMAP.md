@@ -9,8 +9,8 @@ implemented and the phase-level acceptance is met in a packaged build. Phase 5's
 specified in `PHASE5_PLAYER.md` (PLAYER-01…PLAYER-12), unblocked by Decision Round 7
 (DEC-049…DEC-056), and all of them are implemented; the phase is not complete, and what is left is
 non-code (see below). Phase 6's thirteen steps are specified in `PHASE6_ORG.md`
-(ORG-01…ORG-13), unblocked by Decision Round 8 (DEC-057…DEC-064); ORG-01 through ORG-08 are
-implemented and the other five are not.
+(ORG-01…ORG-13), unblocked by Decision Round 8 (DEC-057…DEC-064); ORG-01 through ORG-09 are
+implemented and the other four are not.
 Audio-analysis scope is the one remaining deferred item, to be resolved before the phase it affects
 starts; crossfade was resolved by DEC-056 in Round 7, and Smart Collection export/duplication by
 DEC-061 in Round 8. This roadmap shows the shape of what's ahead; it is not a commitment to
@@ -200,9 +200,13 @@ entries from a Collection that large, that closing the gaps afterwards was quadr
 entries took 123 s and now take 37 ms. ORG-08 put all of it on the wire — twenty-two routes and
 twenty-five methods across the six contract files — and gave the browse query CuePoint's own scope,
 so a Collection opens in the order its owner arranged and a Smart Collection resolves to its rules,
-both through the one query path DEC-023 has insisted on since Phase 2.
+both through the one query path DEC-023 has insisted on since Phase 2. ORG-09 drew it: the Library
+pane is now two sections, CuePoint's editable tree above Rekordbox's read-only mirror, both rendered
+by one extracted tree component — which is why the mirror's 41 existing tests pass against it
+unchanged, and why "read-only" is now a fact about which handlers that section passes rather than a
+line in a comment.
 
-Step specifications: `PHASE6_ORG.md` (ORG-01…ORG-13; ORG-01 through ORG-08 implemented).
+Step specifications: `PHASE6_ORG.md` (ORG-01…ORG-13; ORG-01 through ORG-09 implemented).
 
 ## Phase 7 — Clean / Beatport (CLEAN-01 … CLEAN-13)
 

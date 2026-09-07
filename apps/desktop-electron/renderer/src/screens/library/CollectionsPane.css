@@ -1,0 +1,175 @@
+/**
+ * The Collections section (ORG-09, DEC-062).
+ *
+ * Deliberately the playlist pane's rows with three things added: a fold for
+ * the whole section, a place for a row's own controls, and the two states a
+ * drag needs to be legible — the row a drop would land on, and the strip that
+ * means "out of every folder".
+ *
+ * Every value is a token. `PIXEL_DESIGN_SYSTEM.md` §2: a hex here is a colour
+ * that is wrong in four of the five themes.
+ */
+
+/*
+ * The whole pane: one scroll container with three things in it (DEC-062) —
+ * everything, what the user made, and what Rekordbox gave them.
+ *
+ * The sections size themselves to their content and the container scrolls,
+ * rather than each section scrolling on its own. Two scrollbars a few pixels
+ * apart is the layout a user cannot aim at.
+ */
+.cp-library-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  border-right: var(--border-width) solid var(--border-outline);
+  background: var(--bg-panel);
+  scrollbar-color: var(--border-muted) var(--bg-toolbar);
+  scrollbar-width: thin;
+}
+
+/* Inside the pane a section is not its own scroll container or its own edge. */
+.cp-library-pane .cp-playlist-pane {
+  flex: 0 0 auto;
+  border-right: 0;
+}
+
+.cp-library-pane .cp-playlist-pane__tree {
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+/* "All tracks" is a row, not a section: no heading, no border of its own. */
+.cp-library-pane__all .cp-playlist-pane__tree {
+  padding-bottom: 0;
+}
+
+.cp-collections {
+  border-bottom: var(--border-width) solid var(--border-subtle);
+}
+
+/* The whole section folds from its heading, which is also the heading. */
+.cp-collections__fold {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.cp-collections__fold:focus-visible {
+  outline: var(--border-width) solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.cp-collections__actions {
+  display: flex;
+  gap: var(--space-xs);
+  margin-left: auto;
+}
+
+.cp-collections__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 2px var(--space-xs);
+  border: var(--border-width) solid transparent;
+  background: none;
+  color: var(--fg-secondary);
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cp-collections__action:hover {
+  color: var(--fg-primary);
+  border-color: var(--border-subtle);
+}
+
+.cp-collections__action:focus-visible {
+  outline: var(--border-width) solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+/*
+ * A row's own controls appear on hover or focus, not permanently: two buttons
+ * on every row of a two-hundred-row tree is a wall of glyphs, and the row is
+ * the thing a user is reading.
+ */
+.cp-collections__row-actions {
+  display: none;
+  gap: 2px;
+  margin-left: var(--space-xs);
+}
+
+.cp-playlist-pane__row:hover .cp-collections__row-actions,
+.cp-playlist-pane__row:focus-within .cp-collections__row-actions {
+  display: inline-flex;
+}
+
+/* A Smart Collection whose saved rules cannot be run (ORG-06). */
+.cp-collections__broken {
+  margin-left: var(--space-xs);
+  color: var(--accent-warning, var(--fg-secondary));
+  font-weight: bold;
+}
+
+/* The row a drop would land on. */
+.cp-playlist-pane__row--drop {
+  outline: var(--border-width) solid var(--accent-primary);
+  outline-offset: -1px;
+}
+
+/*
+ * "Out of every folder": the strip under the tree, which is where a node
+ * nested three deep is dropped to bring it back to the top level. Invisible
+ * until something is dragged over it, and never a hole in the layout.
+ */
+.cp-collections__root-drop {
+  min-height: var(--space-md);
+}
+
+.cp-collections__root-drop--over {
+  border-top: var(--border-width) dashed var(--accent-primary);
+}
+
+.cp-collections__empty {
+  padding: var(--space-sm);
+  color: var(--fg-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.cp-collections__empty p {
+  margin: 0 0 var(--space-sm);
+}
+
+.cp-collections__empty button {
+  padding: var(--space-xs) var(--space-sm);
+  border: var(--border-width) solid var(--border-subtle);
+  background: var(--bg-elevated);
+  color: var(--fg-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.cp-collections__empty button:hover {
+  border-color: var(--accent-primary);
+  color: var(--fg-primary);
+}
+
+/* The inline rename field, sized to the row it replaces a name in. */
+.cp-playlist-pane__rename {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0 var(--space-xs);
+  border: var(--border-width) solid var(--accent-primary);
+  background: var(--bg-base);
+  color: var(--fg-primary);
+  font: inherit;
+}

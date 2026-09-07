@@ -28,6 +28,7 @@ import { ToastProvider } from "../../components";
 import { InspectorSlotProvider, useInspectorContent } from "../../components/shell";
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import type {
+  CollectionNode,
   LibraryFilterVocabulary,
   LibraryPlaylistNode,
   LibrarySearchResponse,
@@ -216,6 +217,10 @@ function browseAnswer(
     library_empty: false,
     mode: "browse",
     scope: (params.playlistId as number | null) ?? null,
+    // ORG-08 echoes CuePoint's scope under its own names, and the page checks
+    // both before it accepts a response as current.
+    collection_scope: (params.scope as "collection" | "smart" | undefined) ?? null,
+    collection_id: (params.collectionId as number | null) ?? null,
     sort: params.sort as string,
     dir: params.dir as "asc" | "desc",
     filters: (params.filters as LibrarySearchResponse["filters"]) ?? null,
@@ -241,6 +246,67 @@ const DETAIL: LibraryTrackDetail = {
   collections: [],
 };
 
+/** CuePoint's own tree (ORG-09): a folder, a Collection, a saved filter. */
+const COLLECTIONS: CollectionNode[] = [
+  {
+    id: 11,
+    parent_id: null,
+    kind: "folder",
+    name: "Sets",
+    position: 0,
+    depth: 0,
+    rules: null,
+    sort: null,
+    dir: null,
+    frozen_from_id: null,
+    frozen_at: null,
+    entry_count: 0,
+    track_count: 0,
+    broken: false,
+    problem: null,
+    created_at: "2026-01-01",
+    updated_at: "2026-01-01",
+  },
+  {
+    id: 12,
+    parent_id: 11,
+    kind: "collection",
+    name: "Warmups",
+    position: 0,
+    depth: 1,
+    rules: null,
+    sort: null,
+    dir: null,
+    frozen_from_id: null,
+    frozen_at: null,
+    entry_count: 2,
+    track_count: 2,
+    broken: false,
+    problem: null,
+    created_at: "2026-01-01",
+    updated_at: "2026-01-01",
+  },
+  {
+    id: 13,
+    parent_id: null,
+    kind: "smart",
+    name: "Recent techno",
+    position: 1,
+    depth: 0,
+    rules: { match: "all", rules: [{ field: "genre", operator: "is", value: "Techno" }] },
+    sort: "date_added",
+    dir: "desc",
+    frozen_from_id: null,
+    frozen_at: null,
+    entry_count: 0,
+    track_count: 0,
+    broken: false,
+    problem: null,
+    created_at: "2026-01-01",
+    updated_at: "2026-01-01",
+  },
+];
+
 interface Bridge {
   getLibrarySummary: ReturnType<typeof vi.fn>;
   startLibraryImport: ReturnType<typeof vi.fn>;
@@ -251,6 +317,9 @@ interface Bridge {
   openXmlFileDialog: ReturnType<typeof vi.fn>;
   browseLibrary: ReturnType<typeof vi.fn>;
   getLibraryPlaylists: ReturnType<typeof vi.fn>;
+  getCollections: ReturnType<typeof vi.fn>;
+  createCollection: ReturnType<typeof vi.fn>;
+  addTracksToCollection: ReturnType<typeof vi.fn>;
   getLibraryFilterFields: ReturnType<typeof vi.fn>;
   getLibraryFacet: ReturnType<typeof vi.fn>;
   getLibraryTrack: ReturnType<typeof vi.fn>;
@@ -285,6 +354,18 @@ function install(overrides: Partial<Bridge> = {}) {
     getLibraryPlaylists: vi
       .fn()
       .mockResolvedValue({ playlists: PLAYLISTS, total: PLAYLISTS.length }),
+    getCollections: vi
+      .fn()
+      .mockResolvedValue({ collections: COLLECTIONS, total: COLLECTIONS.length }),
+    createCollection: vi
+      .fn()
+      .mockResolvedValue({ collection: COLLECTIONS[0] }),
+    addTracksToCollection: vi.fn().mockResolvedValue({
+      added: 1,
+      skipped: 0,
+      added_track_ids: [1],
+      skipped_track_ids: [],
+    }),
     getLibraryFilterFields: vi.fn().mockResolvedValue(VOCABULARY),
     getLibraryFacet: vi.fn().mockResolvedValue({
       field: "genre",
@@ -774,7 +855,9 @@ describe("the browser (LIBUI-10, DEC-039)", () => {
     await userEvent.click(within(tree).getByText("Friday"));
     await waitFor(() => expect(lastBrowse()).toMatchObject({ sort: "playlist_position" }));
 
-    await userEvent.click(within(tree).getByText(/All tracks/i));
+    // "All tracks" is the pane's own row rather than the playlist tree's
+    // (ORG-09): everything is not something Rekordbox gave you.
+    await userEvent.click(screen.getByText(/All tracks/i));
 
     // Position means nothing outside a playlist; leaving one behind would sort
     // the whole library by a column that is not there.
@@ -1271,5 +1354,131 @@ describe("after a refresh (LIBUI-10)", () => {
       expect(bridge.getLibraryPlaylists.mock.calls.length).toBeGreaterThan(treesBefore),
     );
     expect(bridge.browseLibrary.mock.calls.length).toBeGreaterThan(browsesBefore);
+  });
+});
+
+describe("CuePoint's own Collections in the pane (ORG-09, DEC-062)", () => {
+  beforeEach(() => {
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+  });
+
+  it("draws both sections in one pane", async () => {
+    renderScreen();
+    await tableReady();
+
+    expect(await screen.findByRole("tree", { name: "Collections" })).toBeInTheDocument();
+    expect(await screen.findByRole("tree", { name: "Playlists" })).toBeInTheDocument();
+    // Everything belongs to neither of them, so it has a row of its own.
+    expect(screen.getByRole("tree", { name: "Everything" })).toBeInTheDocument();
+  });
+
+  it("scopes the table to a Collection, in the order it was arranged", async () => {
+    renderScreen();
+    await tableReady();
+
+    // From a playlist, so the assertion below says the playlist scope was
+    // *cleared* rather than that it happened to start empty.
+    const playlists = await screen.findByRole("tree", { name: "Playlists" });
+    await userEvent.click(within(playlists).getByText("Friday"));
+    await waitFor(() => expect(lastBrowse()).toMatchObject({ playlistId: 10 }));
+
+    const tree = await screen.findByRole("tree", { name: "Collections" });
+    await userEvent.click(within(tree).getByRole("button", { name: "Expand Sets" }));
+    await userEvent.click(within(tree).getByText("Warmups"));
+
+    // ORG-09: inside a Collection the default sort is the Collection's own
+    // order, which is what the user arranged and not what the alphabet says.
+    await waitFor(() =>
+      expect(lastBrowse()).toMatchObject({
+        scope: "collection",
+        collectionId: 12,
+        sort: "collection_position",
+        playlistId: null,
+      }),
+    );
+  });
+
+  it("scopes to a Smart Collection with the sort it was saved with", async () => {
+    renderScreen();
+    await tableReady();
+
+    const tree = await screen.findByRole("tree", { name: "Collections" });
+    await userEvent.click(within(tree).getByText("Recent techno"));
+
+    await waitFor(() =>
+      expect(lastBrowse()).toMatchObject({
+        scope: "smart",
+        collectionId: 13,
+        sort: "date_added",
+        dir: "desc",
+      }),
+    );
+  });
+
+  it("asks once for a scope, not once per section", async () => {
+    renderScreen();
+    await tableReady();
+    const before = bridge.browseLibrary.mock.calls.length;
+
+    const tree = await screen.findByRole("tree", { name: "Collections" });
+    await userEvent.click(within(tree).getByText("Recent techno"));
+    await waitFor(() => expect(lastBrowse()).toMatchObject({ scope: "smart" }));
+
+    // One question, one window: the count and the rows come from the same
+    // request the table pages (DEC-040), so a scope change is not a burst.
+    expect(bridge.browseLibrary.mock.calls.length - before).toBeLessThanOrEqual(2);
+  });
+
+  it("selecting a playlist clears the Collection scope", async () => {
+    renderScreen();
+    await tableReady();
+
+    const collections = await screen.findByRole("tree", { name: "Collections" });
+    await userEvent.click(within(collections).getByText("Recent techno"));
+    await waitFor(() => expect(lastBrowse()).toMatchObject({ scope: "smart" }));
+
+    const playlists = await screen.findByRole("tree", { name: "Playlists" });
+    await userEvent.click(within(playlists).getByText("Friday"));
+
+    // One scope at a time in the pane: the engine would AND the two, and a
+    // Collection still highlighted beside a playlist would be a lie about
+    // what the table is showing.
+    await waitFor(() =>
+      expect(lastBrowse()).toMatchObject({
+        scope: undefined,
+        collectionId: null,
+        playlistId: 10,
+      }),
+    );
+  });
+
+  it("selecting a folder moves the highlight and leaves the table alone", async () => {
+    renderScreen();
+    await tableReady();
+    const before = lastBrowse();
+
+    const tree = await screen.findByRole("tree", { name: "Collections" });
+    await userEvent.click(within(tree).getByText("Sets"));
+
+    // A folder holds nodes, not tracks and not a question. Scoping to one
+    // would show an empty table for a thing that is not empty.
+    expect(lastBrowse()).toEqual(before);
+  });
+
+  it("says a Collection is empty differently from a search that found nothing", async () => {
+    install({
+      browseLibrary: vi.fn(async (params: Record<string, unknown>) =>
+        browseAnswer(params, []),
+      ),
+      getLibrarySummary: vi.fn().mockResolvedValue(loadedSummary()),
+    });
+    renderScreen();
+    await screen.findByRole("table", { name: "Library tracks" });
+
+    const tree = await screen.findByRole("tree", { name: "Collections" });
+    await userEvent.click(within(tree).getByRole("button", { name: "Expand Sets" }));
+    await userEvent.click(within(tree).getByText("Warmups"));
+
+    expect(await screen.findByText(/This Collection is empty/i)).toBeInTheDocument();
   });
 });

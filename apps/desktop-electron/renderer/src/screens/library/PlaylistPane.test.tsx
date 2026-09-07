@@ -493,3 +493,77 @@ describe("the hook behind it", () => {
     await waitFor(() => expect(getLibraryPlaylists).toHaveBeenCalledTimes(2));
   });
 });
+
+describe("a drop is refused, visibly (DEC-031, ORG-09)", () => {
+  /** What ORG-11's drag source puts on a drag. */
+  function trackDrag(trackIds: number[]) {
+    return {
+      dataTransfer: {
+        types: ["application/x-cuepoint-track-ids"],
+        getData: () => JSON.stringify(trackIds),
+        setData: vi.fn(),
+        dropEffect: "",
+        effectAllowed: "",
+      },
+    };
+  }
+
+  it("says why, rather than doing nothing", () => {
+    // A target that silently ignores a drop teaches nothing: the user tries
+    // again, and again, and concludes the app is broken.
+    paneWith(["SETS"]);
+
+    fireEvent.drop(rowFor("warmup"), trackDrag([7, 8]));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/read-only/i);
+    expect(screen.getByRole("alert")).toHaveTextContent(/Collection/);
+  });
+
+  it("tells the page too, so it can toast", () => {
+    const onRefuseDrop = vi.fn();
+    const tree = buildTree(NODES);
+    render(
+      <PlaylistPane
+        rows={visibleRows(tree, ["SETS"])}
+        selected={null}
+        libraryTrackCount={10}
+        onSelect={vi.fn()}
+        onExpand={vi.fn()}
+        onRefuseDrop={onRefuseDrop}
+      />,
+    );
+
+    fireEvent.drop(rowFor("warmup"), trackDrag([7]));
+
+    expect(onRefuseDrop).toHaveBeenCalledWith(expect.stringMatching(/read-only/i));
+  });
+
+  it("refuses a folder as well as a playlist", () => {
+    paneWith(["SETS"]);
+
+    fireEvent.drop(rowFor("SETS"), trackDrag([7]));
+
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+  });
+
+  it("ignores a drag that is not ours at all", () => {
+    // A file dragged from the desktop is not a selection of tracks, and
+    // claiming it would be a refusal for something nobody attempted.
+    paneWith(["SETS"]);
+
+    fireEvent.drop(rowFor("warmup"), {
+      dataTransfer: { types: ["Files"], getData: () => "", setData: vi.fn() },
+    });
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("still makes no row draggable", () => {
+    // The other half of DEC-031: nothing here can be picked up either, so no
+    // gesture in this section can reach a Rekordbox playlist at all.
+    paneWith(["SETS"]);
+    for (const row of screen.getAllByRole("treeitem")) {
+      expect(row).not.toHaveAttribute("draggable", "true");
+    }
+  });
+});
