@@ -323,6 +323,10 @@ interface Bridge {
   getLibraryFilterFields: ReturnType<typeof vi.fn>;
   getLibraryFacet: ReturnType<typeof vi.fn>;
   getLibraryTrack: ReturnType<typeof vi.fn>;
+  /** CuePoint's own layer, editable from the Inspector (ORG-10). */
+  setTrackMetadata: ReturnType<typeof vi.fn>;
+  getTrackHistory: ReturnType<typeof vi.fn>;
+  getTags: ReturnType<typeof vi.fn>;
   showItemInFolder: ReturnType<typeof vi.fn>;
   /** The player namespace (PLAYER-09); the same shape preload exposes. */
   player: {
@@ -375,6 +379,9 @@ function install(overrides: Partial<Bridge> = {}) {
       range: null,
     }),
     getLibraryTrack: vi.fn().mockResolvedValue(DETAIL),
+    setTrackMetadata: vi.fn().mockResolvedValue({ metadata: DETAIL.metadata }),
+    getTrackHistory: vi.fn().mockResolvedValue({ track_id: 1, changes: [], limit: 50 }),
+    getTags: vi.fn().mockResolvedValue({ tags: [], categories: [] }),
     showItemInFolder: vi.fn().mockResolvedValue(undefined),
     player: {
       playView: vi.fn().mockResolvedValue({ ok: true }),
@@ -1300,10 +1307,60 @@ describe("the Inspector (LIBUI-10, DEC-024, DEC-047)", () => {
     const inspector = await screen.findByRole("region", { name: "Inspector" });
     await waitFor(() => expect(bridge.getLibraryTrack).toHaveBeenCalledWith({ trackId: 1 }));
     expect(await within(inspector).findByText("Track 1")).toBeInTheDocument();
-    // Read-only (DEC-047): the Inspector describes a track, it does not edit
-    // one, so it offers no way to type into it.
-    expect(within(inspector).queryByRole("textbox")).toBeNull();
-    expect(within(inspector).queryByRole("spinbutton")).toBeNull();
+    // Still read-only where DEC-047 said so (ORG-10): the imported fields
+    // offer nothing to type into. The zone above them is CuePoint's own and is
+    // editable, which is why this names the zone rather than the panel.
+    const imported = inspector.querySelector(".cp-track-detail__fields") as HTMLElement;
+    expect(within(imported).queryByRole("textbox")).toBeNull();
+    expect(within(imported).queryByRole("spinbutton")).toBeNull();
+    // "Show in folder" is the one control in there, and it reads a field
+    // rather than writing one.
+    expect(
+      within(imported)
+        .getAllByRole("button")
+        .map((button) => button.textContent),
+    ).toEqual(["Show in folder"]);
+  });
+
+  it("opens a Collection the track is in, from the Inspector (ORG-10)", async () => {
+    // The detail read names a Collection by id, kind and name; the node the
+    // scope needs — with its saved sort — lives in the tree, so the page looks
+    // it up rather than rebuilding one from three fields.
+    bridge.getLibraryTrack.mockResolvedValue({
+      ...DETAIL,
+      collections: [{ id: 12, name: "Warmups", kind: "collection" }],
+    });
+    renderWithInspector();
+    await tableReady();
+    await userEvent.click(screen.getByText("Track 1"));
+    const inspector = await screen.findByRole("region", { name: "Inspector" });
+    await within(inspector).findByText("Warmups");
+
+    await userEvent.click(within(inspector).getByRole("button", { name: /Warmups/ }));
+
+    await waitFor(() =>
+      expect(bridge.browseLibrary).toHaveBeenCalledWith(
+        expect.objectContaining({ scope: "collection", collectionId: 12 }),
+      ),
+    );
+  });
+
+  it("says so when the engine refuses an edit made in the Inspector (ORG-10)", async () => {
+    // The panel is optimistic, so a refusal that went nowhere would leave a
+    // rating on screen that the library does not have.
+    bridge.setTrackMetadata.mockRejectedValue(new Error("No track with id 1"));
+    renderWithInspector();
+    await tableReady();
+    await userEvent.click(screen.getByText("Track 1"));
+    const inspector = await screen.findByRole("region", { name: "Inspector" });
+    await within(inspector).findByText("Track 1");
+
+    await userEvent.click(within(inspector).getByRole("radio", { name: "4 stars" }));
+
+    expect(await screen.findByText("No track with id 1")).toBeInTheDocument();
+    expect(
+      within(inspector).getByRole("radio", { name: "4 stars" }),
+    ).toHaveAttribute("aria-checked", "false");
   });
 
   it("takes its content away when the page unmounts", async () => {

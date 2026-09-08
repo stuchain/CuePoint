@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 6: Organization, Detailed Step Specifications
 
-Status: **ORG-01…ORG-09 implemented; ORG-10…ORG-13 specified, not implemented.** The
+Status: **ORG-01…ORG-10 implemented; ORG-11…ORG-13 specified, not implemented.** The
 thirteen steps below are the inventory the roadmap has carried as a placeholder since Phase 0.
 Per the process, no implementation happens from this document — each step needs an explicit
 "Implement ORG-NN" instruction, scoped to exactly that step, and its outcome is recorded under the
@@ -1758,7 +1758,7 @@ drawn here beside the one this step uses.
 
 ---
 
-## ORG-10 — The Inspector Becomes Editable
+## ORG-10 — The Inspector Becomes Editable ✅ IMPLEMENTED 2026-09-08
 
 **Objective**: DEC-047's read-only panel gains the first editable fields in CuePoint, and shows
 where each value came from.
@@ -1802,6 +1802,158 @@ restart; no imported field is editable; the panel never displays a value the eng
 **Risks**: Medium. Optimistic UI over a real write is where "it looked saved" bugs come from.
 
 **Complexity**: **M**
+
+### ✅ IMPLEMENTED 2026-09-08
+
+**Outcome**: Complete. The Inspector is two zones. `TrackYours.tsx` is CuePoint's own layer — stars,
+a favorite, a note and tag chips — over `useTrackMetadata.ts` and `useTrackTags.ts`;
+`TrackHistorySection.tsx` shows what has happened to the track, over `useTrackHistory.ts`;
+`trackEdits.ts` holds every sentence the two-layer model is made of. `TrackDetailPanel.tsx` composes
+them above its Phase 4 fields, which did not change. No engine file changed: this is ORG-08's API
+being used, as ORG-09 was.
+
+**The old promise was kept while the new one was made.** DEC-047 said read-only was the whole
+design, and gave the reason: nothing in the build owned a write path, so an editable field would
+have been a lie. ORG-10 does not take that back by making those fields editable — it puts a second
+zone above them. Every one of LIBUI-09's field tests passes unchanged; the one that had to move is
+the one that said *the panel* offers nothing to type into, which stopped being true the moment
+CuePoint had something of its own to say. It now names the imported zone, and asserts that zone
+holds no textbox, no radio and no button at all.
+
+**Which layer is showing is a sentence, not an icon.** DEC-057 keeps two ratings and resolves them
+at read time, and the resolution is worthless if the panel will not say which one it resolved to.
+So there are four sentences and they are different: *Yours — Rekordbox's is ★★★*, *Yours —
+Rekordbox never rated it*, *Rekordbox's*, *Not rated*. The first is the one that earns the module:
+without naming what is underneath, "clear" is a control whose result cannot be predicted. Which is
+why the clear control's own label changes — **Clear override** when something is underneath it,
+**Clear rating** when nothing is, and absent when there is nothing of yours to clear. Clearing falls
+back; it never writes a zero, and a zero of yours never falls through to Rekordbox's.
+
+**Clicking a star that is already lit is not always a clear.** The toggle compares against *your*
+rating rather than the effective one. With Rekordbox's four stars showing and no override of yours,
+clicking the fourth star writes your own four — which looks like nothing happened until the line
+underneath changes, and is exactly right: you have said this is a four, and it stays a four when the
+next refresh changes Rekordbox's mind. That is the whole of DEC-057 in one gesture.
+
+**The panel is optimistic, so the interesting half of it is the rollback.** A rating that waits for
+a round trip is a rating a user clicks twice, so every control shows its result at once — and the
+price of that is a panel that can be wrong. The hook keeps two copies, what the engine last
+confirmed and what is on screen, and a refusal puts the confirmed value back and says why in the
+engine's own words. The restore is **per field**: a note being typed while a rating fails is not
+part of that failure, and a rating restores all three of its fields, because the effective value and
+its source are derived from it and a half-restored rating labels itself wrongly.
+
+**A note is never lost, and the debounce is not what guarantees that.** Typing settles for 600 ms
+before one request goes out, and the timer resets with each keystroke — a debounce, not a throttle,
+which is the difference between one request and one request per 600 ms carrying half a sentence.
+What actually makes it safe is the flush: leaving the field sends what is waiting, and so does the
+panel going away. Clicking the next track is precisely the moment a user believes their note was
+saved, and the pending write goes out **against the track it was typed against**, with the id read
+from a ref rather than from the render that is already showing something else.
+
+**Tags are created-or-reused by the engine, never by the renderer.** `createTag` is
+`TagService.create_or_get`, which matches ignoring case against the unique index, so typing
+`peak-time` when `Peak-time` exists returns the tag that exists. The renderer's vocabulary is for
+*suggestions* only and never decides: a copy that is seconds old would answer the same question
+differently, and the answer would be a second tag that should not exist. The chips are optimistic in
+the direction that works — a removal disappears at once and comes back if the engine refuses, while
+an addition waits for the tag to have an id, because a chip with nothing behind it cannot be removed
+again.
+
+**The history says who, and re-reads rather than appending.** A change of yours and one an import
+made are drawn differently, and `cuepoint_rating` is labelled "Your rating" where `rating` is
+labelled "Rekordbox rating" — two rows both reading "Rating" would destroy the one distinction the
+section exists to draw. A tag or a favorite becomes a sentence rather than a diff, because
+`null → "Peak-time"` is a diff and *Tagged Peak-time* is what happened. After every accepted write
+the section re-reads: the engine decides what counts as a change, and re-saving the same note
+records nothing at all, so an entry appended here would be one that does not exist. There is no
+revert, deliberately — `REVERTABLE_FIELDS` covers Rekordbox's columns, CuePoint's live in another
+table, and a revert that worked for four fields and refused for three teaches the wrong thing about
+what history is.
+
+**Two things the step added beyond its own controls.** The Collections holding the track are listed
+beside the Rekordbox playlists and open the table on one — ORG-08 put that field in the detail
+payload and nothing had ever read it. And with several tracks selected the panel says, in the same
+line as the count, that edits here change the one it is showing: editing twelve thousand at once is
+ORG-11's toolbar, and a control that quietly applies to one when a user believed it applied to all
+is not recoverable (DEC-008).
+
+**A bug ORG-09 shipped, found on the way and fixed.** `CollectionsPane.css` named four tokens that
+do not exist — `--border-subtle`, `--fg-secondary`, `--bg-elevated`, `--bg-base` — all plausible,
+none of them in `tokens.css` or in any theme. An undefined custom property with no fallback is not a
+compile error, not a lint error and not a visible one: the declaration is thrown away at
+computed-value time, so a border vanishes and the pane looks *nearly* right. TypeScript, oxlint, the
+production build and every component test were all silent about it. It is fixed, four more in
+`LogViewerDialog.css` with it, and `test_renderer_css_tokens.py` now refuses the whole class —
+along with a theme-parity check, since a token one theme defines and another does not is the same
+hole with a different shape. It lives in the Python suite because the renderer deliberately has no
+Node types and Vite's SSR pipeline hands back an empty string for a CSS import however it is
+queried, so a Vitest file cannot read a stylesheet at all.
+
+**Three numbers and two vocabularies belong to the engine, and a test says so.**
+`test_inspector_field_contract.py` holds `NOTES_MAX_LENGTH`, `TAG_NAME_MAX_LENGTH` and
+`RATING_STARS` to `MAX_NOTES_LENGTH`, `MAX_TAG_NAME_LENGTH` and `MAX_RATING`; every field the
+services record to a label a person can read; and the `rating_source` strings the panel *branches
+on* to the ones `rating_source` returns. Each drifts into a different wrong: a generous limit turns
+a refusal the field could have prevented into a failure after the whole note was typed; a missing
+label prints a column name in the panel whose purpose is not printing column names; a mismatched
+source labels the wrong layer as yours.
+
+**Guards: 59 of 59 fail when the thing they protect is broken.** The model, nineteen ways: a rating
+of yours that does not say what it is covering, Rekordbox's presented as yours, a zero underneath
+read as no rating, a missing rating read as a zero, a clear that calls itself an override over
+nothing, a clear offered when there is nothing of yours, the chosen star failing to clear, the
+effective value and its source not recomputed while a write is in flight, a zero falling through to
+Rekordbox's, an emptied note stored as an empty string, one star described as several, your rating
+labelled as Rekordbox's, a change of yours not told from an import's, an untagging recorded as a
+tagging, an unfavoriting as a favoriting, an absent value drawn as a gap, a note filling the panel
+rather than being cut, and a source that goes unnamed. The engine's own limits and vocabularies,
+five ways: each of the three numbers drifting, and a field of either kind losing its label. What is
+on screen versus what the engine has, eleven ways: stars that wait for a round trip, a refused write
+left showing, a rolled-back rating keeping the failed write's label, a refusal swallowed, a failure
+reported as a save, a throttle in place of a debounce, a blur that sends nothing, a note abandoned
+and lost, a note written against whichever track is showing now, a field that never says it saved,
+and a fresh read leaving the previous value in place. Tags, six ways: a tag created and never
+assigned, a chip that stays after a refused assign, one that stays gone after a refused unassign,
+the same name in another capitalization asked for again, a tag already carried suggested again, and
+a vocabulary that cannot be read reported as a failure. The controls, eight ways: stars showing only
+your own layer, Rekordbox's rating that cannot be adopted, arrow keys that do not move, every star a
+tab stop, a group with no name, a favorite that does not say whether it is on, Enter that does
+nothing, and a remove button with no name of its own. The two zones, seven ways: the imported rating
+row showing the resolved value, nothing saying whose those fields are, a selection of many not
+saying the edits change one, a Collection that cannot be opened, the Collections and the playlists
+counted as one list, a history that does not re-read after a write, and an editor kept across a
+change of track. And the reads, three ways: a history asking for a life story, a build with no
+history route saying nothing has ever happened, and a stylesheet naming a token nothing defines.
+
+Six of those started as survivors. Two were the same shape — nothing distinguished a debounce from a
+throttle, because the `waiting` ref makes a stray timer a no-op, and nothing had ever re-read the
+same track — and both closed with a test. Two were failures nobody was watching: an addition the
+engine refuses at the *assign* step, and a history that never re-read. One was the editor's
+identity:
+the panel keys it by track, and nothing said what that is for, so a half-typed tag name now has to
+be gone after the panel moves on. The sixth was a mutation that was not one — adding a second flush
+after the first has already cleared what was waiting changes nothing — and it was replaced with the
+mistake it was reaching for: keeping the ref current during render, so the note goes to the track
+that is showing rather than the one it was typed against.
+
+**Verification**: `npm test` in the renderer — 1,628 passed across 72 files, 100 of them new and
+two of the files; `npm run typecheck`, `npm run lint` and `npm run build:check` clean, and `npm run
+build` in the desktop app; `python -m pytest src/tests/unit` — 4,320 passed and 45 skipped, twelve
+of the passes new; `ruff
+check src/` and `ruff format --check src/` clean; `PYTHONPATH=src python
+scripts/smoke_engine_health.py`, `check_no_qt_in_core.py` and `check_desktop_version_coupling.py`
+all OK. The three failures in `test_code_quality_step_5_7.py` are unrelated and predate this step.
+Electron E2E was not run: no main-process or preload file changed, and every route this step calls
+was already carried through all six contract files by ORG-08.
+
+Four things this step deliberately did not do. It did not add a **revert** to the History section,
+for the reason above and stated in the phase's own preamble. It did not change the **table's Rating
+column**, which is still Rekordbox's own value — the resolved one reaching the grid is ORG-11's, and
+a column that quietly changed whose value it shows is exactly what this panel spent a zone
+avoiding. It did not build the **tag manager** — rename, recolour, merge, delete with counts — which
+is ORG-12's, beside the filter bar that uses the vocabulary. And it did not touch the changelog,
+which Phase 6 has been holding for ORG-13 since ORG-07.
 
 ---
 

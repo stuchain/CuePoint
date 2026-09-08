@@ -47,7 +47,7 @@
 }
 
 .cp-collections {
-  border-bottom: var(--border-width) solid var(--border-subtle);
+  border-bottom: var(--border-width) solid var(--border-muted);
 }
 
 /* The whole section folds from its heading, which is also the heading. */
@@ -81,7 +81,7 @@
   padding: 2px var(--space-xs);
   border: var(--border-width) solid transparent;
   background: none;
-  color: var(--fg-secondary);
+  color: var(--fg-muted);
   font: inherit;
   line-height: 1;
   cursor: pointer;
@@ -89,7 +89,7 @@
 
 .cp-collections__action:hover {
   color: var(--fg-primary);
-  border-color: var(--border-subtle);
+  border-color: var(--border-muted);
 }
 
 .cp-collections__action:focus-visible {
@@ -116,7 +116,7 @@
 /* A Smart Collection whose saved rules cannot be run (ORG-06). */
 .cp-collections__broken {
   margin-left: var(--space-xs);
-  color: var(--accent-warning, var(--fg-secondary));
+  color: var(--accent-warning);
   font-weight: bold;
 }
 
@@ -141,7 +141,7 @@
 
 .cp-collections__empty {
   padding: var(--space-sm);
-  color: var(--fg-secondary);
+  color: var(--fg-muted);
   font-size: var(--font-size-sm);
 }
 
@@ -151,8 +151,8 @@
 
 .cp-collections__empty button {
   padding: var(--space-xs) var(--space-sm);
-  border: var(--border-width) solid var(--border-subtle);
-  background: var(--bg-elevated);
+  border: var(--border-width) solid var(--border-muted);
+  background: var(--bg-panel-alt);
   color: var(--fg-primary);
   font: inherit;
   cursor: pointer;
@@ -169,7 +169,7 @@
   min-width: 0;
   padding: 0 var(--space-xs);
   border: var(--border-width) solid var(--accent-primary);
-  background: var(--bg-base);
+  background: var(--bg-input);
   color: var(--fg-primary);
   font: inherit;
 }

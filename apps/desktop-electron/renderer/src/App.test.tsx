@@ -292,9 +292,26 @@ describe("the Library page inside the shell (LIBUI-10)", () => {
       getLibraryFilterFields: vi
         .fn()
         .mockResolvedValue({ fields: [], operators: {}, facetable: [], sortable: ["artist"] }),
-      getLibraryTrack: vi
-        .fn()
-        .mockResolvedValue({ track: TRACK, playlists: [], playlist_count: 0 }),
+      getLibraryTrack: vi.fn().mockResolvedValue({
+        track: TRACK,
+        playlists: [],
+        playlist_count: 0,
+        // CuePoint's own layer (ORG-08), which ORG-10 made the Inspector's
+        // first zone. Empty rather than absent: the panel draws it either way.
+        metadata: {
+          track_id: TRACK.id,
+          rating: null,
+          rekordbox_rating: null,
+          effective_rating: null,
+          rating_source: null,
+          favorite: false,
+          notes: null,
+          created_at: null,
+          updated_at: null,
+        },
+        tags: [],
+        collections: [],
+      }),
     };
   });
 

@@ -129,3 +129,271 @@
   height: calc(var(--icon-size) * 0.5);
   color: var(--fg-muted);
 }
+
+/*
+ * The editable zone (ORG-10, DEC-057).
+ *
+ * Visibly a different zone from the imported fields below it, because they are
+ * different data: one is yours and one is Rekordbox's, and a panel that made
+ * them look alike would be undoing the reason DEC-057 keeps them apart. The
+ * separation is a tinted ground and a rule, not a colour — every value here is
+ * a token, per PIXEL_DESIGN_SYSTEM.md §2.
+ */
+
+.cp-track-yours {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  border: calc(1px * var(--scale)) solid var(--border-muted);
+  background: var(--bg-panel-alt);
+}
+
+.cp-track-yours__label {
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.cp-track-yours__rating {
+  display: flex;
+  flex-direction: column;
+  gap: calc(2px * var(--scale));
+}
+
+.cp-track-yours__stars,
+.cp-track-yours__group {
+  display: flex;
+  align-items: center;
+  gap: calc(2px * var(--scale));
+}
+
+.cp-track-yours__star {
+  padding: 0 calc(1px * var(--scale));
+  border: none;
+  background: transparent;
+  color: var(--fg-disabled);
+  font-size: var(--font-size-md);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cp-track-yours__star--on {
+  color: var(--accent-warning);
+}
+
+.cp-track-yours__star:focus-visible,
+.cp-track-yours__clear:focus-visible,
+.cp-track-yours__favorite:focus-visible,
+.cp-track-yours__tag-remove:focus-visible,
+.cp-track-yours__tag-add:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent-primary);
+  outline-offset: calc(1px * var(--scale));
+}
+
+.cp-track-yours__clear {
+  margin-left: var(--space-xs);
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--accent-info);
+  font-family: var(--font-pixel);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.cp-track-yours__clear:hover {
+  text-decoration: underline;
+}
+
+.cp-track-yours__source {
+  margin: 0;
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+}
+
+.cp-track-yours__favorite {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  align-self: flex-start;
+  min-height: var(--hit-min);
+  padding: var(--space-xs) var(--space-sm);
+  border: calc(1px * var(--scale)) solid var(--border-muted);
+  background: var(--bg-input);
+  color: var(--fg-muted);
+  font-family: var(--font-pixel);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.cp-track-yours__favorite--on {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.cp-track-yours__field {
+  display: flex;
+  flex-direction: column;
+  gap: calc(2px * var(--scale));
+}
+
+.cp-track-yours__notes {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--space-xs);
+  border: calc(1px * var(--scale)) solid var(--border-muted);
+  background: var(--bg-input);
+  color: var(--fg-primary);
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+  resize: vertical;
+}
+
+.cp-track-yours__notes:focus-visible,
+.cp-track-yours__tag-input:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent-primary);
+  outline-offset: 0;
+}
+
+.cp-track-yours__state {
+  min-height: var(--font-size-xs);
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.cp-track-yours__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cp-track-yours__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(2px * var(--scale));
+  padding: calc(1px * var(--scale)) var(--space-xs);
+  border: calc(1px * var(--scale)) solid var(--border-muted);
+  background: var(--bg-input);
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+}
+
+.cp-track-yours__tag-icon {
+  width: calc(var(--icon-size) * 0.5);
+  height: calc(var(--icon-size) * 0.5);
+  color: var(--fg-muted);
+}
+
+.cp-track-yours__tag-remove {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--fg-muted);
+  font-family: var(--font-pixel);
+  font-size: var(--font-size-xs);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cp-track-yours__tag-remove:hover {
+  color: var(--accent-danger);
+}
+
+.cp-track-yours__tag-empty {
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.cp-track-yours__add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-top: var(--space-xs);
+}
+
+.cp-track-yours__tag-input {
+  flex: 1 1 auto;
+  min-width: calc(80px * var(--scale));
+  padding: var(--space-xs);
+  border: calc(1px * var(--scale)) solid var(--border-muted);
+  background: var(--bg-input);
+  color: var(--fg-primary);
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+}
+
+.cp-track-yours__tag-add {
+  padding: var(--space-xs) var(--space-sm);
+  border: calc(1px * var(--scale)) solid var(--border-muted);
+  background: var(--bg-input);
+  color: var(--fg-primary);
+  font-family: var(--font-pixel);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.cp-track-yours__tag-add:disabled {
+  color: var(--fg-disabled);
+  cursor: default;
+}
+
+/*
+ * The history (ORG-10, DEC-008).
+ *
+ * Every entry says who, because in a two-layer library "you changed this" and
+ * "the last refresh changed this" are the two answers a reader is here for.
+ */
+
+.cp-track-history__list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(2px * var(--scale));
+  max-height: calc(220px * var(--scale));
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.cp-track-history__note {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.cp-track-history__entry {
+  display: grid;
+  grid-template-columns: minmax(0, 5rem) minmax(0, 1fr);
+  gap: var(--space-xs);
+  align-items: baseline;
+  padding: calc(2px * var(--scale)) 0;
+  border-left: calc(2px * var(--scale)) solid transparent;
+  padding-left: var(--space-xs);
+  font-size: var(--font-size-xs);
+}
+
+.cp-track-history__entry--mine {
+  border-left-color: var(--accent-primary);
+}
+
+.cp-track-history__what {
+  color: var(--fg-muted);
+}
+
+.cp-track-history__values,
+.cp-track-history__who {
+  grid-column: 2;
+  min-width: 0;
+  font-family: var(--font-data);
+  word-break: break-word;
+}
+
+.cp-track-history__who {
+  color: var(--fg-muted);
+}

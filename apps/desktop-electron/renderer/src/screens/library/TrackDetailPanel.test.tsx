@@ -9,9 +9,23 @@
  * The property worth the most here is **absent is absent**. A field Rekordbox
  * did not supply must not read as a zero — unrated and rated-zero are
  * different facts, which is why LIBRARY-01 made those columns nullable.
+ *
+ * ORG-10 added a second zone above these fields and made *it* editable. The
+ * tests below are unchanged except where that is the point: the imported zone
+ * is still read-only, field for field, and the check that it is now names the
+ * zone rather than the panel — because "the panel offers nothing to type into"
+ * stopped being true the moment CuePoint had something of its own to say.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 
 import type {
   LibraryTrackDetail,
@@ -22,6 +36,7 @@ import { SelectionActions } from "./SelectionActions";
 import { TrackDetailPanel } from "./TrackDetailPanel";
 import { copySummary, tracksAsText, writeClipboard } from "./trackClipboard";
 import { useTrackDetail } from "./useTrackDetail";
+import { HISTORY_LIMIT } from "./useTrackHistory";
 
 const TRACK: LibraryTrackRow = {
   id: 12,
@@ -164,17 +179,119 @@ describe("what the panel shows", () => {
   });
 });
 
-describe("it is read-only (DEC-047)", () => {
+describe("the imported zone is still read-only (DEC-047, ORG-10)", () => {
+  /** The imported fields, which is what DEC-047's promise was about. */
+  function imported(): HTMLElement {
+    return document.querySelector(".cp-track-detail__fields") as HTMLElement;
+  }
+
   it("offers nothing to type into", () => {
     render(<TrackDetailPanel detail={DETAIL} />);
-    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
-    expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
+    expect(within(imported()).queryByRole("textbox")).not.toBeInTheDocument();
+    expect(within(imported()).queryByRole("spinbutton")).not.toBeInTheDocument();
   });
 
-  it("offers no rating to click", () => {
+  it("offers nothing to click at all", () => {
     render(<TrackDetailPanel detail={DETAIL} />);
-    const buttons = screen.getAllByRole("button").map((b) => b.textContent ?? "");
-    expect(buttons.some((text) => text.includes("★"))).toBe(false);
+    expect(within(imported()).queryAllByRole("button")).toHaveLength(0);
+    expect(within(imported()).queryAllByRole("radio")).toHaveLength(0);
+  });
+
+  it("says whose these fields are, so the two zones are never one", () => {
+    render(<TrackDetailPanel detail={DETAIL} />);
+    expect(screen.getByText("From Rekordbox")).toBeInTheDocument();
+    expect(screen.getByText("Yours")).toBeInTheDocument();
+  });
+
+  it("keeps showing Rekordbox's rating whatever yours says (DEC-057)", () => {
+    // The one row that could quietly become a resolved value. It must not:
+    // Phase 8 can only choose whose rating to export while both are visible.
+    render(
+      <TrackDetailPanel
+        detail={{
+          ...DETAIL,
+          metadata: {
+            ...DETAIL.metadata,
+            rating: 1,
+            rekordbox_rating: 4,
+            effective_rating: 1,
+            rating_source: "cuepoint",
+          },
+        }}
+      />,
+    );
+    expect(within(rowFor("Rating")).getByText("★★★★")).toBeInTheDocument();
+  });
+});
+
+describe("the editable zone (ORG-10)", () => {
+  it("offers the four things CuePoint owns", () => {
+    render(<TrackDetailPanel detail={DETAIL} />);
+    expect(screen.getByRole("radiogroup", { name: "Your rating" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Favorite" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Your notes")).toBeInTheDocument();
+    expect(screen.getByLabelText("Add a tag")).toBeInTheDocument();
+  });
+
+  it("shows the resolved rating, with its source beside it", () => {
+    render(
+      <TrackDetailPanel
+        detail={{
+          ...DETAIL,
+          metadata: {
+            ...DETAIL.metadata,
+            rekordbox_rating: 4,
+            effective_rating: 4,
+            rating_source: "rekordbox",
+          },
+        }}
+      />,
+    );
+    expect(screen.getByRole("radio", { name: "4 stars" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(screen.getByText("Rekordbox's")).toBeInTheDocument();
+  });
+
+  it("shows Rekordbox's comment and your notes as two labelled things", () => {
+    render(
+      <TrackDetailPanel
+        detail={{
+          ...DETAIL,
+          track: { ...TRACK, comment: "from the CDJ" },
+          metadata: { ...DETAIL.metadata, notes: "intro is long" },
+        }}
+      />,
+    );
+    expect(within(rowFor("Comment")).getByText("from the CDJ")).toBeInTheDocument();
+    expect(screen.getByLabelText("Your notes")).toHaveValue("intro is long");
+  });
+
+  it("starts over when the panel moves to another track", async () => {
+    // Every scrap of local state — a half-typed tag name, which star has focus
+    // — belongs to the track it was typed against. Keeping the editor across a
+    // change of track would carry it onto the next one.
+    const view = render(<TrackDetailPanel detail={DETAIL} />);
+    fireEvent.change(screen.getByLabelText("Add a tag"), { target: { value: "Closer" } });
+    expect(screen.getByLabelText("Add a tag")).toHaveValue("Closer");
+
+    await act(async () => {
+      view.rerender(
+        <TrackDetailPanel
+          detail={{ ...DETAIL, track: { ...TRACK, id: 13, title: "Ghosts" } }}
+        />,
+      );
+    });
+
+    expect(screen.getByLabelText("Add a tag")).toHaveValue("");
+  });
+
+  it("offers nothing to edit on a track with no id to address", () => {
+    render(
+      <TrackDetailPanel detail={{ ...DETAIL, track: { ...TRACK, id: null } }} />,
+    );
+    expect(screen.queryByRole("radiogroup", { name: "Your rating" })).not.toBeInTheDocument();
   });
 });
 
@@ -213,11 +330,204 @@ describe("where the track sits in the collection", () => {
   });
 });
 
+describe("the Collections holding it (ORG-09, ORG-10)", () => {
+  const COLLECTIONS = [
+    { id: 4, name: "Closers", kind: "collection" as const },
+    { id: 5, name: "Over 128", kind: "smart" as const },
+  ];
+
+  it("lists them", () => {
+    render(<TrackDetailPanel detail={{ ...DETAIL, collections: COLLECTIONS }} />);
+    expect(screen.getByText("In 2 Collections")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Closers/ })).toBeInTheDocument();
+  });
+
+  it("counts one as one", () => {
+    render(
+      <TrackDetailPanel detail={{ ...DETAIL, collections: [COLLECTIONS[0]!] }} />,
+    );
+    expect(screen.getByText("In 1 Collection")).toBeInTheDocument();
+  });
+
+  it("says when it is in none", () => {
+    render(<TrackDetailPanel detail={DETAIL} />);
+    expect(screen.getByText("In no Collections")).toBeInTheDocument();
+  });
+
+  it("scopes the table to one that is clicked", () => {
+    const onSelectCollection = vi.fn();
+    render(
+      <TrackDetailPanel
+        detail={{ ...DETAIL, collections: COLLECTIONS }}
+        onSelectCollection={onSelectCollection}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Over 128/ }));
+
+    expect(onSelectCollection).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 5, kind: "smart" }),
+    );
+  });
+
+  it("keeps them apart from the Rekordbox playlists", () => {
+    // Two lists, two headings. One list would say Rekordbox gave the user
+    // something they made themselves.
+    render(<TrackDetailPanel detail={{ ...DETAIL, collections: COLLECTIONS }} />);
+    expect(screen.getByText("In 2 Collections")).toBeInTheDocument();
+    expect(screen.getByText("In 1 playlist")).toBeInTheDocument();
+  });
+});
+
+describe("the history (DEC-008)", () => {
+  let getTrackHistory: ReturnType<typeof vi.fn>;
+
+  const IMPORTED = {
+    id: 2,
+    track_id: 12,
+    field: "bpm",
+    old_value: 127,
+    new_value: 128,
+    source: "rekordbox",
+    changed_at: "2026-09-01T10:00:00Z",
+    batch_id: null,
+  };
+  const MINE = {
+    id: 3,
+    track_id: 12,
+    field: "cuepoint_rating",
+    old_value: null,
+    new_value: 5,
+    source: "cuepoint",
+    changed_at: "2026-09-08T10:00:00Z",
+    batch_id: null,
+  };
+
+  let setTrackMetadata: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    getTrackHistory = vi.fn(async () => ({
+      track_id: 12,
+      changes: [MINE, IMPORTED],
+      limit: 50,
+    }));
+    setTrackMetadata = vi.fn(async () => ({ metadata: DETAIL.metadata }));
+    (window as unknown as { cuepoint?: unknown }).cuepoint = {
+      getTrackHistory,
+      setTrackMetadata,
+    };
+  });
+
+  afterEach(() => {
+    delete (window as unknown as { cuepoint?: unknown }).cuepoint;
+  });
+
+  /** The history list, once the read has come back. */
+  async function entries(container: HTMLElement): Promise<HTMLElement> {
+    // Scoped rather than searched for by text: "BPM" is also an imported
+    // field's label and "Your rating" is also the editable zone's, which is
+    // the point — an entry and a field are two different things named alike.
+    return await waitFor(() => {
+      const list = container.querySelector(".cp-track-history__list") as HTMLElement;
+      expect(list.children.length).toBeGreaterThan(0);
+      return list;
+    });
+  }
+
+  it("lists what has happened to the track", async () => {
+    const { container } = render(<TrackDetailPanel detail={DETAIL} />);
+
+    const list = await entries(container);
+
+    expect(within(list).getByText("Your rating")).toBeInTheDocument();
+    expect(within(list).getByText("BPM")).toBeInTheDocument();
+    expect(list.textContent).toContain("— → ★★★★★");
+  });
+
+  it("tells a change of yours from one an import made", async () => {
+    // The question the history exists to answer in a two-layer library.
+    const { container } = render(<TrackDetailPanel detail={DETAIL} />);
+
+    const rows = [...(await entries(container)).children];
+    expect(rows[0]!.className).toContain("--mine");
+    expect(rows[0]!.textContent).toContain("You");
+    expect(rows[1]!.className).not.toContain("--mine");
+    expect(rows[1]!.textContent).toContain("Rekordbox");
+  });
+
+  it("says when nothing has happened yet", async () => {
+    getTrackHistory.mockResolvedValueOnce({ track_id: 12, changes: [], limit: 50 });
+    render(<TrackDetailPanel detail={DETAIL} />);
+
+    expect(
+      await screen.findByText("Nothing has changed about this track yet."),
+    ).toBeInTheDocument();
+  });
+
+  it("says when it could not be read", async () => {
+    getTrackHistory.mockRejectedValueOnce(new Error("Engine offline"));
+    render(<TrackDetailPanel detail={DETAIL} />);
+
+    expect(await screen.findByText("Engine offline")).toBeInTheDocument();
+  });
+
+  it("asks for a page rather than a life story", async () => {
+    render(<TrackDetailPanel detail={DETAIL} />);
+
+    await waitFor(() => expect(getTrackHistory).toHaveBeenCalled());
+    expect(getTrackHistory).toHaveBeenCalledWith({ trackId: 12, limit: HISTORY_LIMIT });
+  });
+
+  it("re-reads after an edit rather than guessing what was recorded", async () => {
+    // The engine decides what counts as a change: re-saving the same note
+    // records nothing at all, so an entry appended here would be one that does
+    // not exist.
+    render(<TrackDetailPanel detail={DETAIL} />);
+    await waitFor(() => expect(getTrackHistory).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole("radio", { name: "4 stars" }));
+
+    await waitFor(() => expect(getTrackHistory).toHaveBeenCalledTimes(2));
+  });
+
+  it("offers no revert, because CuePoint's fields have none yet", async () => {
+    const { container } = render(<TrackDetailPanel detail={DETAIL} />);
+
+    await entries(container);
+    expect(screen.queryByRole("button", { name: /revert/i })).not.toBeInTheDocument();
+  });
+
+  it("shows nothing at all when the build has no history route", () => {
+    delete (window as unknown as { cuepoint?: unknown }).cuepoint;
+    render(<TrackDetailPanel detail={DETAIL} />);
+    expect(screen.queryByText("History")).not.toBeInTheDocument();
+  });
+});
+
 describe("with several tracks selected", () => {
   it("shows the last one clicked, and how many there are", () => {
     render(<TrackDetailPanel detail={DETAIL} selectionCount={7} />);
     expect(screen.getByRole("heading", { name: "Strobe" })).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("7 tracks selected");
+  });
+
+  it("says the edits apply to the one shown, rather than letting it be found out", () => {
+    // DEC-045: editing all of them is ORG-11's toolbar. A rating control that
+    // looks like it covers a selection of twelve thousand and covers one is
+    // the worst version of this panel.
+    render(<TrackDetailPanel detail={DETAIL} selectionCount={7} />);
+    expect(screen.getByRole("status")).toHaveTextContent("edits here change this one");
+  });
+
+  it("offers one editor, for the one track it is showing", () => {
+    // Editing twelve thousand tracks at once is ORG-11's toolbar. Nothing here
+    // may look like it does that, because a control that quietly applies to one
+    // when a user believed it applied to all is unrecoverable (DEC-008).
+    render(<TrackDetailPanel detail={DETAIL} selectionCount={7} />);
+    expect(screen.getAllByRole("radiogroup")).toHaveLength(1);
+    expect(
+      screen.queryByRole("button", { name: /all selected|apply to/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("says nothing about a selection of one", () => {

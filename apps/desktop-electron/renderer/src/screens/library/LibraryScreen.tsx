@@ -50,7 +50,7 @@ import { SelectionActions } from "./SelectionActions";
 import { QUEUE_ACTION_LIMIT, useLibraryPlayback } from "./useLibraryPlayback";
 import { TrackDetailPanel } from "./TrackDetailPanel";
 import { defaultSortForScope, findByPath } from "./playlistTree";
-import { defaultSortForCollection } from "./collectionTree";
+import { defaultSortForCollection, findCollection } from "./collectionTree";
 import { useCollectionTree } from "./useCollectionTree";
 import { followJob } from "./followJob";
 import { appliedLine, jobErrorMessage } from "./libraryFormat";
@@ -205,7 +205,14 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
       error={detail.error}
       selectionCount={selection.count}
       onSelectPlaylist={(playlist) => scopeTo(playlist)}
+      // The detail read names a Collection by id, kind and name; the node with
+      // its rules and its counts lives in the tree, so it is looked up rather
+      // than reconstructed from three fields (ORG-10).
+      onSelectCollection={(collection) =>
+        scopeToCollection(findCollection(collections.tree, collection.id))
+      }
       onReveal={(path) => void window.cuepoint?.showItemInFolder?.(path)}
+      onError={(message) => push(message, "warning")}
     />,
   );
 
