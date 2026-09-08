@@ -9,8 +9,8 @@ implemented and the phase-level acceptance is met in a packaged build. Phase 5's
 specified in `PHASE5_PLAYER.md` (PLAYER-01…PLAYER-12), unblocked by Decision Round 7
 (DEC-049…DEC-056), and all of them are implemented; the phase is not complete, and what is left is
 non-code (see below). Phase 6's thirteen steps are specified in `PHASE6_ORG.md`
-(ORG-01…ORG-13), unblocked by Decision Round 8 (DEC-057…DEC-064); ORG-01 through ORG-10 are
-implemented and the other three are not.
+(ORG-01…ORG-13), unblocked by Decision Round 8 (DEC-057…DEC-064); ORG-01 through ORG-11 are
+implemented and the other two are not.
 Audio-analysis scope is the one remaining deferred item, to be resolved before the phase it affects
 starts; crossfade was resolved by DEC-056 in Round 7, and Smart Collection export/duplication by
 DEC-061 in Round 8. This roadmap shows the shape of what's ahead; it is not a commitment to
@@ -208,8 +208,14 @@ line in a comment. ORG-10 gave the Inspector the first editable fields in CuePoi
 favorite, a note and tag chips — in a second zone above Phase 4's imported record rather than in
 place of it, so DEC-047's read-only promise is kept field for field while DEC-057's two layers stay
 visibly two, each saying which one the stars are showing and what clearing would fall back to.
+ORG-11 gave DEC-045's selection model something to do: one list of operations offered by the context
+menu and by the toolbar's Actions button, applied through ORG-07's single entry point, confirmed
+above the engine's own threshold and followed as a job past it. It also closed the gap that model
+had carried since Phase 4 — "everything matching, minus the three I clicked out" now crosses the
+wire as the question plus a handful of exclusions, so what the toolbar counts and what the batch
+touches are finally the same tracks.
 
-Step specifications: `PHASE6_ORG.md` (ORG-01…ORG-13; ORG-01 through ORG-10 implemented).
+Step specifications: `PHASE6_ORG.md` (ORG-01…ORG-13; ORG-01 through ORG-11 implemented).
 
 ## Phase 7 — Clean / Beatport (CLEAN-01 … CLEAN-13)
 

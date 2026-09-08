@@ -25,6 +25,7 @@ import {
   EMPTY_COLLECTIONS_STATE,
   buildCollectionTree,
   canMoveInto,
+  canReorder,
   collectionAncestors,
   collectionRows,
   collectionSortLabel,
@@ -35,6 +36,7 @@ import {
   holdsTracks,
   iconForKind,
   loadCollectionsState,
+  movedPosition,
   pruneCollectionIds,
   rulesOf,
   saveCollectionsState,
@@ -333,5 +335,94 @@ describe("what the pane remembers", () => {
     // be worse than one that never remembered.
     const renamed = NODES.map((n) => (n.id === 1 ? { ...n, name: "Live sets" } : n));
     expect(pruneCollectionIds(buildCollectionTree(renamed), [1, 3])).toEqual([1, 3]);
+  });
+});
+
+describe("rearranging a Collection (ORG-11)", () => {
+  const warmups = NODES[1]!;
+  const closers = NODES[3]!;
+  const inOrder = {
+    scope: "collection" as const,
+    collectionId: 2,
+    sort: "collection_position",
+    dir: "asc" as const,
+    q: "",
+    filtered: false,
+  };
+
+  it("is allowed when the table is showing the Collection as it was arranged", () => {
+    expect(canReorder(inOrder, warmups)).toEqual({ ok: true });
+  });
+
+  it("is refused outside a Collection, and says where to go", () => {
+    const answer = canReorder({ ...inOrder, scope: null, collectionId: null }, null);
+    expect(answer.ok).toBe(false);
+    expect(answer).toMatchObject({ why: expect.stringContaining("Open a Collection") });
+  });
+
+  it("is refused under any other ordering", () => {
+    // A drag says "put this one there", and "there" has to be a place in the
+    // Collection rather than a place in a view sorted by BPM.
+    const answer = canReorder({ ...inOrder, sort: "bpm" }, warmups);
+    expect(answer).toMatchObject({ ok: false, why: expect.stringContaining("own order") });
+  });
+
+  it("is refused when the Collection's own order is upside down", () => {
+    const answer = canReorder({ ...inOrder, dir: "desc" }, warmups);
+    expect(answer).toMatchObject({ ok: false, why: expect.stringContaining("own order") });
+  });
+
+  it("is refused while a search or a filter is narrowing the table", () => {
+    // Row 4 of a filtered view is not entry 4 of the Collection, and writing
+    // one as the other scrambles the order silently.
+    expect(canReorder({ ...inOrder, q: "dub" }, warmups)).toMatchObject({
+      ok: false,
+      why: expect.stringContaining("Clear the search"),
+    });
+    expect(canReorder({ ...inOrder, filtered: true }, warmups)).toMatchObject({
+      ok: false,
+      why: expect.stringContaining("Clear the search"),
+    });
+  });
+
+  it("is refused when a track is in the Collection twice (DEC-058)", () => {
+    // The browse query collapses duplicates to the earliest position, so a row
+    // index stops being an entry position and the renderer cannot tell.
+    expect(canReorder({ ...inOrder, collectionId: 4 }, closers)).toMatchObject({
+      ok: false,
+      why: expect.stringContaining("more than once"),
+    });
+  });
+
+  it("names the Collection it is refusing about", () => {
+    const answer = canReorder({ ...inOrder, collectionId: 4 }, closers);
+    expect(answer).toMatchObject({ why: expect.stringContaining("Closers") });
+  });
+
+  it("refuses with a sentence rather than a bare false", () => {
+    // A drop that does nothing teaches a user the feature is broken.
+    const answer = canReorder({ ...inOrder, sort: "bpm" }, warmups);
+    expect(answer.ok).toBe(false);
+    expect((answer as { why: string }).why.length).toBeGreaterThan(20);
+  });
+});
+
+describe("where a dragged row lands", () => {
+  it("keeps its place when it is dropped where it already is", () => {
+    expect(movedPosition(3, 3)).toBe(3);
+  });
+
+  it("moves up to the gap it was dropped in", () => {
+    expect(movedPosition(7, 2)).toBe(2);
+  });
+
+  it("accounts for its own removal when it moves down", () => {
+    // Dropped into the gap before row 7, a row from position 2 ends at 6:
+    // taking it out first moved everything after it up one.
+    expect(movedPosition(2, 7)).toBe(6);
+  });
+
+  it("lands at the end when it is dropped past the last row", () => {
+    expect(movedPosition(0, 10)).toBe(9);
   });
 });

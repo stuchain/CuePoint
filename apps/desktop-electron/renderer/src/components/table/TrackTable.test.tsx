@@ -714,3 +714,141 @@ describe("column widths", () => {
     expect(document.body).not.toHaveClass("track-table--resizing");
   });
 });
+
+describe("dragging rows (ORG-11)", () => {
+  /**
+   * A DataTransfer good enough for a drag between two of our own components.
+   *
+   * jsdom has none, and the real one is the thing under test either side of
+   * this boundary — so it remembers what was put on it and answers the types
+   * it was given, which is exactly what the readers depend on.
+   */
+  function transfer(initial: Record<string, string> = {}) {
+    const data: Record<string, string> = { ...initial };
+    return {
+      dropEffect: "none",
+      effectAllowed: "none",
+      get types() {
+        return Object.keys(data);
+      },
+      getData: (format: string) => data[format] ?? "",
+      setData: (format: string, value: string) => {
+        data[format] = value;
+      },
+    } as unknown as DataTransfer;
+  }
+
+  it("does not make rows draggable unless someone wants them to be", () => {
+    // Every other table in the app: a row that can be picked up and dropped
+    // nowhere is an affordance that teaches the wrong thing.
+    renderTable();
+    expect(renderedRows()[0]).not.toHaveAttribute("draggable", "true");
+  });
+
+  it("makes them draggable when a handler is given", () => {
+    renderTable({ onRowDragStart: vi.fn() });
+    expect(renderedRows()[0]).toHaveAttribute("draggable", "true");
+  });
+
+  it("hands over the row, its index and the transfer", () => {
+    const onRowDragStart = vi.fn();
+    renderTable({ onRowDragStart });
+
+    const dataTransfer = transfer();
+    fireEvent.dragStart(renderedRows()[2]!, { dataTransfer });
+
+    expect(onRowDragStart).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 3 }),
+      2,
+      dataTransfer,
+    );
+  });
+
+  /**
+   * A drag event carrying both a transfer and a pointer position.
+   *
+   * `fireEvent.dragOver` builds a plain `Event` — jsdom has no `DragEvent` —
+   * and a plain Event has no `clientY`, so the half of the row the pointer is
+   * over would always read as the top one. A `MouseEvent` carries the
+   * position, and the transfer is attached the way the browser attaches it.
+   */
+  function drag(
+    type: "dragover" | "drop",
+    row: HTMLElement,
+    dataTransfer: DataTransfer,
+    clientY = 0,
+  ) {
+    const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientY });
+    Object.defineProperty(event, "dataTransfer", { value: dataTransfer });
+    fireEvent(row, event);
+  }
+
+  it("marks the gap above a row when a drop would land there", () => {
+    renderTable({ onRowDrop: vi.fn() });
+
+    // jsdom lays nothing out, so every rect is zero by zero: a clientY of 0 is
+    // the top half of the row and anything past it is the bottom half.
+    drag("dragover", renderedRows()[2]!, transfer(), 0);
+
+    expect(renderedRows()[2]).toHaveAttribute("data-drop", "before");
+  });
+
+  it("marks the gap below a row when the pointer is past its middle", () => {
+    renderTable({ onRowDrop: vi.fn() });
+
+    drag("dragover", renderedRows()[2]!, transfer(), 5);
+
+    expect(renderedRows()[2]).toHaveAttribute("data-drop", "after");
+  });
+
+  it("reports the gap the drop landed in, not the row it was over", () => {
+    // An insertion point, so the last row can be dropped past: a reorder puts
+    // a track *between* two, and "onto row 4" cannot say "at the end".
+    const onRowDrop = vi.fn();
+    renderTable({ onRowDrop });
+
+    const dataTransfer = transfer();
+    drag("dragover", renderedRows()[2]!, dataTransfer, 5);
+    drag("drop", renderedRows()[2]!, dataTransfer, 5);
+
+    expect(onRowDrop).toHaveBeenCalledWith(3, dataTransfer);
+  });
+
+  it("marks nothing and accepts nothing when the drag is refused", () => {
+    const onRowDrop = vi.fn();
+    renderTable({ onRowDrop, acceptsRowDrop: () => false });
+
+    const dataTransfer = transfer();
+    drag("dragover", renderedRows()[2]!, dataTransfer, 0);
+    expect(renderedRows()[2]).not.toHaveAttribute("data-drop");
+
+    drag("drop", renderedRows()[2]!, dataTransfer, 0);
+    expect(onRowDrop).not.toHaveBeenCalled();
+  });
+
+  it("asks about the drag itself, not just about the table", () => {
+    const acceptsRowDrop = vi.fn(() => true);
+    renderTable({ onRowDrop: vi.fn(), acceptsRowDrop });
+
+    const dataTransfer = transfer({ "application/x-cuepoint-track-ids": "[1]" });
+    drag("dragover", renderedRows()[0]!, dataTransfer, 0);
+
+    expect(acceptsRowDrop).toHaveBeenCalledWith(dataTransfer);
+  });
+
+  it("takes the mark away when the drag leaves", () => {
+    renderTable({ onRowDrop: vi.fn() });
+    const row = renderedRows()[1]!;
+
+    drag("dragover", row, transfer(), 0);
+    fireEvent.dragLeave(row);
+
+    expect(row).not.toHaveAttribute("data-drop");
+  });
+
+  it("accepts no drop at all when nobody is listening for one", () => {
+    renderTable();
+    drag("dragover", renderedRows()[0]!, transfer(), 0);
+    expect(renderedRows()[0]).not.toHaveAttribute("data-drop");
+  });
+});

@@ -169,6 +169,78 @@ export function holdsTracks(node: CollectionTreeNode | CollectionNode): boolean 
   return node.kind === "collection";
 }
 
+/**
+ * The final position of a row moved from `from` to the insertion point
+ * `insertAt` (ORG-11).
+ *
+ * `reorder_entry` takes the position the entry ends up at, while a drag names
+ * a *gap*: dropping row 2 into the gap before row 7 leaves it at 6, because
+ * taking it out first moved everything after it up one. Off by one here is a
+ * track that lands next to where it was dropped, every time, in one direction
+ * only — which is the kind of bug that gets called "the drag is broken".
+ */
+export function movedPosition(from: number, insertAt: number): number {
+  return insertAt > from ? insertAt - 1 : insertAt;
+}
+
+/** What the table is showing, as far as rearranging it is concerned. */
+export interface ReorderView {
+  scope: "collection" | "smart" | null;
+  collectionId: number | null;
+  sort: string;
+  dir: "asc" | "desc";
+  q: string;
+  /** True when a rule set is narrowing the table. */
+  filtered: boolean;
+}
+
+/**
+ * Whether the rows on screen can be dragged into a new order, and why not.
+ *
+ * A drag says "put this one there", and "there" has to be a place in the
+ * Collection rather than a place in a derived view. Sorted by BPM, or narrowed
+ * by a search, a row's position on screen is not its position in the
+ * Collection, and writing one as if it were the other silently scrambles the
+ * order the user arranged.
+ *
+ * The duplicate case is the subtle one. DEC-058 lets a Collection hold a track
+ * twice, and the browse query collapses those to one row at the earliest of
+ * its positions — so with duplicates present, the row index and the entry
+ * position stop being the same number, and the renderer has no way to learn
+ * the difference without reading the whole membership.
+ *
+ * Every refusal is a sentence rather than a false, because a user dragging a
+ * row inside a Collection has clearly said what they meant, and a drop that
+ * does nothing teaches them the feature is broken.
+ */
+export function canReorder(
+  view: ReorderView,
+  node: CollectionNode | null,
+): { ok: true } | { ok: false; why: string } {
+  if (view.scope !== "collection" || view.collectionId == null || !node) {
+    return { ok: false, why: "Open a Collection to put its tracks in order." };
+  }
+  if (view.sort !== "collection_position" || view.dir !== "asc") {
+    return {
+      ok: false,
+      why: "Sort by the Collection's own order before rearranging it.",
+    };
+  }
+  if (view.q.trim() !== "" || view.filtered) {
+    return {
+      ok: false,
+      why: "Clear the search and the filters before rearranging the Collection.",
+    };
+  }
+  if (node.entry_count !== node.track_count) {
+    return {
+      ok: false,
+      why: `“${node.name}” holds a track more than once, so its rows cannot be dragged into a new order.`,
+    };
+  }
+  return { ok: true };
+}
+
 /** The icon a node is drawn with. */
 export function iconForKind(kind: CollectionKind): "folder" | "collections" | "smart" {
   if (kind === "folder") return "folder";

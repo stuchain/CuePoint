@@ -460,6 +460,24 @@ describe("desktop contract", () => {
       expect(fields(bridgeTypes)).toEqual(fields(engineClient));
     });
 
+    it("keeps them agreeing about what a batch applies to (ORG-11)", () => {
+      // The selection is the one payload the desktop path forwards without
+      // looking at it, so a field one side declares and the other does not is
+      // a batch that silently applies to more tracks than the toolbar promised.
+      //
+      // Read to the next declaration rather than to the first closing brace:
+      // this shape nests, and every field of it is optional, so the helper the
+      // flat shapes use above would see almost none of it.
+      const fields = (source: string) => {
+        const start = source.indexOf("export interface BatchSelection");
+        const body = source.slice(start, source.indexOf("export interface", start + 10));
+        return [...body.matchAll(/^ +([a-z_]+)\??:/gm)].map((match) => match[1]!).sort();
+      };
+
+      expect(fields(bridgeTypes)).toContain("exclude_track_ids");
+      expect(fields(bridgeTypes)).toEqual(fields(engineClient));
+    });
+
     it("writes with POST and reads with GET", () => {
       // A GET that changed the library would be retried by anything that
       // retries GETs, and a batch applied twice is not a batch.

@@ -140,15 +140,30 @@ class BatchSelection:
 
     A selection of 47,913 tracks never crosses the wire as 47,913 numbers
     (DEC-045); it crosses as :attr:`query` and is resolved here, once.
+
+    :attr:`exclude_track_ids` is the other half of DEC-045's shape, added in
+    ORG-11 when a user interface finally had one: "everything matching, except
+    these" is what select-all-then-deselect-three means, and it is what the
+    count on screen already says. Without it the renderer could either send a
+    query that applies to three more tracks than it promised, or materialize
+    47,913 ids to say the same thing — and both of those are the mistake this
+    class exists to prevent. It is bounded by what a person can click, so it
+    reintroduces nothing. It belongs to the query branch only: a selection made
+    of ids already lists exactly what it means.
     """
 
     track_ids: Optional[Sequence[int]] = None
     query: Optional[BrowseQuery] = None
+    exclude_track_ids: Sequence[int] = ()
 
     def __post_init__(self) -> None:
         if (self.track_ids is None) == (self.query is None):
             raise ValueError(
                 "A selection is either tracks or a query, never both and never neither"
+            )
+        if self.track_ids is not None and self.exclude_track_ids:
+            raise ValueError(
+                "A selection made of ids cannot also exclude ids: leave them out"
             )
 
     @classmethod
@@ -157,9 +172,11 @@ class BatchSelection:
         return cls(track_ids=list(track_ids))
 
     @classmethod
-    def matching(cls, query: BrowseQuery) -> "BatchSelection":
-        """Everything matching a query, however many that turns out to be."""
-        return cls(query=query)
+    def matching(
+        cls, query: BrowseQuery, exclude: Optional[Sequence[int]] = None
+    ) -> "BatchSelection":
+        """Everything matching a query, minus the tracks taken back out."""
+        return cls(query=query, exclude_track_ids=tuple(exclude or ()))
 
 
 @dataclass(frozen=True)
@@ -311,7 +328,9 @@ class BatchService(IBatchService):
             ValueError: If the selection names no tracks at all. A batch over
                 nothing is a request that cannot be honoured, not a batch that
                 did nothing — and refusing it here means a job is never started
-                for work that does not exist.
+                for work that does not exist. A selection that excludes
+                everything it matched is exactly that, and is refused the same
+                way rather than reported as a batch of zero.
             BrowseQueryError: If the query cannot be built.
         """
         if selection.track_ids is not None:
@@ -320,6 +339,9 @@ class BatchService(IBatchService):
             query = selection.query
             assert query is not None  # guaranteed by BatchSelection
             found = self._matching_ids(query.validated())
+            if selection.exclude_track_ids:
+                taken_out = set(unique_ids(selection.exclude_track_ids))
+                found = [track_id for track_id in found if track_id not in taken_out]
 
         if not found:
             raise ValueError(

@@ -201,6 +201,15 @@ export interface BatchSelection {
     collection_id?: number | null;
     filters?: FilterRuleSet | null;
   };
+  /**
+   * Everything matching, minus the tracks taken back out (ORG-11, DEC-045).
+   *
+   * Select all and ctrl-click three tracks out again: the count on screen
+   * says "minus these", and this is what makes the batch say the same. Only
+   * meaningful beside `query` — a selection made of ids already lists what it
+   * means, and the engine refuses both together.
+   */
+  exclude_track_ids?: number[];
 }
 
 export interface BatchOperation {

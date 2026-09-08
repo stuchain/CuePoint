@@ -22,6 +22,7 @@ import type { CollectionNode } from "../../api/cuepointBridge.types";
 import { CollectionsPane } from "./CollectionsPane";
 import { PlaylistPane } from "./PlaylistPane";
 import type { PlaylistTreeNode } from "./playlistTree";
+import type { DraggedTracks } from "./collectionDrag";
 import type { CollectionTreeController } from "./useCollectionTree";
 import type { PlaylistTreeController } from "./usePlaylistTree";
 import "./PlaylistPane.css";
@@ -36,6 +37,23 @@ export interface LibraryPaneProps {
   scopeIsLibrary: boolean;
   onSelectPlaylist: (node: PlaylistTreeNode | null) => void;
   onSelectCollection: (node: CollectionNode | null) => void;
+  /**
+   * Tracks dropped on a Collection (ORG-11).
+   *
+   * The page's rather than the tree controller's, because the payload may be
+   * "everything the current query matches" — and the query is the page's
+   * (DEC-045). `silent` says the page has already reported the outcome.
+   */
+  onDropTracks: (
+    collectionId: number,
+    tracks: DraggedTracks,
+  ) => Promise<{
+    ok: boolean;
+    error?: string;
+    added?: number;
+    skipped?: number;
+    silent?: boolean;
+  }>;
   onNotify?: (message: string, tone: "info" | "warning") => void;
 }
 
@@ -46,6 +64,7 @@ export function LibraryPane({
   scopeIsLibrary,
   onSelectPlaylist,
   onSelectCollection,
+  onDropTracks,
   onNotify,
 }: LibraryPaneProps) {
   return (
@@ -94,7 +113,7 @@ export function LibraryPane({
         onMove={collections.move}
         onPreviewDelete={collections.previewDelete}
         onDelete={collections.remove}
-        onDropTracks={collections.addTracks}
+        onDropTracks={onDropTracks}
         onNotify={onNotify}
       />
 

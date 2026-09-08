@@ -600,6 +600,35 @@ describe("the actions", () => {
     expect(handlers.onReveal).toHaveBeenCalledWith("/music/strobe.mp3");
   });
 
+  it("opens the organization menu, anchored under the button (ORG-11)", () => {
+    // The toolbar does not carry its own set of buttons: it opens the same
+    // menu the rows do, built from the same array, so "one vocabulary for both
+    // surfaces" is a fact rather than two lists kept in step by hand.
+    const onActions = vi.fn();
+    actions({ onActions });
+
+    fireEvent.click(screen.getByRole("button", { name: "Actions…" }));
+
+    expect(onActions).toHaveBeenCalledWith(
+      expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }),
+    );
+  });
+
+  it("says the button opens a menu", () => {
+    actions({ onActions: vi.fn() });
+    expect(screen.getByRole("button", { name: "Actions…" })).toHaveAttribute(
+      "aria-haspopup",
+      "menu",
+    );
+  });
+
+  it("offers no actions when the build has none", () => {
+    // A browser-lab render with no engine behind it: a button whose only
+    // outcome is an error message is worse than no button.
+    actions();
+    expect(screen.queryByRole("button", { name: "Actions…" })).not.toBeInTheDocument();
+  });
+
   it("offers no reveal for several tracks", () => {
     // One track, one file: revealing five folders at once is not a thing
     // anyone asked for.

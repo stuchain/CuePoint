@@ -1,10 +1,15 @@
 /**
- * The track context menu (PLAYER-09).
+ * The track context menu (PLAYER-09, then ORG-11).
  *
  * Two things here are easy to write and easy to get subtly wrong, so both have
  * a test that fails if they regress: a menu that traps focus when it closes
  * (leaving the user at the top of the page), and arrow keys that walk onto a
  * disabled entry and then do nothing when Enter is pressed.
+ *
+ * ORG-11 added submenus, and a third: a submenu that swallows the keyboard.
+ * Once one is open every key belongs to it, or the parent list moves
+ * underneath while the user is reading the child — and ArrowLeft has to mean
+ * "back" rather than "somewhere else entirely".
  */
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -162,5 +167,126 @@ describe("the menu", () => {
     open({ label: "Actions for 3 tracks" });
 
     expect(screen.getByRole("menu", { name: "Actions for 3 tracks" })).toBeInTheDocument();
+  });
+});
+
+describe("a submenu (ORG-11)", () => {
+  function withRate() {
+    const onRate = vi.fn();
+    const menuItems: TrackContextMenuItem[] = [
+      { id: "play", label: "Play", onSelect: vi.fn() },
+      {
+        id: "rate",
+        label: "Rate",
+        onSelect: vi.fn(),
+        items: [
+          { id: "one", label: "★", onSelect: () => onRate(1) },
+          { id: "two", label: "★★", onSelect: () => onRate(2) },
+          { id: "clear", label: "Clear rating", onSelect: () => onRate(null) },
+        ],
+      },
+    ];
+    const view = open({ items: menuItems });
+    return { ...view, onRate };
+  }
+
+  it("is closed until it is asked for", () => {
+    withRate();
+    expect(screen.queryByRole("menuitem", { name: "★★" })).not.toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /Rate/ })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+  });
+
+  it("says it has one, so a screen reader can say so too", () => {
+    withRate();
+    expect(screen.getByRole("menuitem", { name: /Rate/ })).toHaveAttribute(
+      "aria-haspopup",
+      "menu",
+    );
+  });
+
+  it("opens when the parent is clicked, and does not close the menu", async () => {
+    const { onClose } = withRate();
+
+    await userEvent.click(screen.getByRole("menuitem", { name: /Rate/ }));
+
+    expect(screen.getByRole("menuitem", { name: "★★" })).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("runs a child and closes the whole menu", async () => {
+    const { onRate, onClose } = withRate();
+
+    await userEvent.click(screen.getByRole("menuitem", { name: /Rate/ }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "★★" }));
+
+    expect(onRate).toHaveBeenCalledWith(2);
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("opens with ArrowRight and chooses with Enter", async () => {
+    const { onRate } = withRate();
+    const menu = screen.getByRole("menu", { name: "Track actions" });
+
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{ArrowRight}");
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{Enter}");
+
+    expect(menu).toBeDefined();
+    expect(onRate).toHaveBeenCalledWith(2);
+  });
+
+  it("keeps the arrows inside it while it is open", async () => {
+    withRate();
+
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{ArrowRight}");
+    await userEvent.keyboard("{ArrowDown}");
+
+    // The parent's highlight has not moved: the keys belong to the child.
+    expect(screen.getByRole("menuitem", { name: /Rate/ }).className).toContain("--active");
+  });
+
+  it("closes only the submenu on ArrowLeft", async () => {
+    const { onClose } = withRate();
+
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{ArrowRight}");
+    await userEvent.keyboard("{ArrowLeft}");
+
+    expect(screen.queryByRole("menuitem", { name: "★★" })).not.toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("closes only the submenu on the first Escape", async () => {
+    const { onClose } = withRate();
+
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{ArrowRight}");
+    await userEvent.keyboard("{Escape}");
+
+    expect(screen.queryByRole("menuitem", { name: "★★" })).not.toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+
+    await userEvent.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("closes what it opened when the pointer moves to a plain entry", async () => {
+    withRate();
+
+    await userEvent.click(screen.getByRole("menuitem", { name: /Rate/ }));
+    await userEvent.hover(screen.getByRole("menuitem", { name: "Play" }));
+
+    expect(screen.queryByRole("menuitem", { name: "★★" })).not.toBeInTheDocument();
+  });
+
+  it("is named after the entry that opened it", async () => {
+    withRate();
+    await userEvent.click(screen.getByRole("menuitem", { name: /Rate/ }));
+    expect(screen.getByRole("menu", { name: "Rate" })).toBeInTheDocument();
   });
 });

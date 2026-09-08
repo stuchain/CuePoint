@@ -20,6 +20,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   Button,
+  Modal,
   Panel,
   TrackContextMenu,
   type TrackContextMenuItem,
@@ -33,6 +34,7 @@ import {
 } from "../../components/table";
 import { useInspectorSlot } from "../../components/shell";
 import type {
+  BatchSelection,
   CollectionNode,
   FilterRuleSet,
   LibraryPlaylistNode,
@@ -40,6 +42,7 @@ import type {
   LibraryTrackRow,
   RefreshApplied,
   RefreshDiff,
+  TagUsage,
 } from "../../api/cuepointBridge.types";
 import { FilterBar } from "./FilterBar";
 import { LibraryHeader } from "./LibraryHeader";
@@ -50,13 +53,32 @@ import { SelectionActions } from "./SelectionActions";
 import { QUEUE_ACTION_LIMIT, useLibraryPlayback } from "./useLibraryPlayback";
 import { TrackDetailPanel } from "./TrackDetailPanel";
 import { defaultSortForScope, findByPath } from "./playlistTree";
-import { defaultSortForCollection, findCollection } from "./collectionTree";
+import {
+  canReorder,
+  defaultSortForCollection,
+  findCollection,
+  flattenCollections,
+  holdsTracks,
+  iconForKind,
+  movedPosition,
+} from "./collectionTree";
+import {
+  draggedTracks,
+  isTrackDrag,
+  setDraggedQuerySelection,
+  setDraggedTrackIds,
+  type DraggedTracks,
+} from "./collectionDrag";
+import { PickerDialog, type PickerItem } from "./PickerDialog";
+import { batchSelection, type BatchAction } from "./libraryBatch";
+import { organizationMenuItems } from "./trackMenu";
+import { useLibraryBatch } from "./useLibraryBatch";
 import { useCollectionTree } from "./useCollectionTree";
 import { followJob } from "./followJob";
 import { appliedLine, jobErrorMessage } from "./libraryFormat";
 import { DEFAULT_LIBRARY_QUERY, type LibraryQuery, queryKey } from "./libraryQuery";
 import { copySummary, tracksAsText, writeClipboard } from "./trackClipboard";
-import { onlySelectedId } from "./trackSelection";
+import { isSelected, onlySelectedId } from "./trackSelection";
 import { useFacet, useFilterVocabulary } from "./useFilterVocabulary";
 import { usePlaylistTree } from "./usePlaylistTree";
 import { useTrackDetail } from "./useTrackDetail";
@@ -67,6 +89,19 @@ import "./library.css";
 
 /** What the page is doing, when it is doing something. */
 type Busy = null | "importing" | "checking" | "applying";
+
+/**
+ * The tracks an organization action will apply to, and how many (DEC-045).
+ *
+ * Resolved when the menu opens rather than when an entry is chosen, because
+ * the two are not always the same tracks: right-clicking a row outside the
+ * selection acts on that row, which is the convention every file manager
+ * follows and the one a user assumes.
+ */
+interface BatchTarget {
+  selection: BatchSelection;
+  count: number;
+}
 
 const BUSY_LABEL: Record<Exclude<Busy, null>, string> = {
   importing: "Importing…",
@@ -142,10 +177,40 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
     query,
     onMessage: (message) => push(message, "info"),
   });
-  const [menu, setMenu] = useState<{ x: number; y: number; rows: LibraryTrackRow[]; index: number } | null>(
-    null,
-  );
+  const [menu, setMenu] = useState<{
+    x: number;
+    y: number;
+    rows: LibraryTrackRow[];
+    index: number;
+    target: BatchTarget;
+    /** A row's menu carries playback; the toolbar's carries the actions only. */
+    kind: "row" | "selection";
+  } | null>(null);
+  const [picker, setPicker] = useState<{
+    kind: "collection" | "tag-add" | "tag-remove";
+    target: BatchTarget;
+  } | null>(null);
+  const [tags, setTags] = useState<TagUsage[]>([]);
+  /** Where a row drag started, which is the only Collection position in hand. */
+  const draggingRow = useRef<{ index: number; count: number } | null>(null);
   const detail = useTrackDetail(selection.selection.lastId);
+
+  /** The Collection the table is showing, when it is one that holds rows. */
+  const scopedCollection = useMemo(() => {
+    if (query.scope !== "collection" || query.collectionId == null) return null;
+    const node = findCollection(collections.tree, query.collectionId);
+    return node && holdsTracks(node) ? node : null;
+  }, [collections.tree, query.collectionId, query.scope]);
+
+  const batch = useLibraryBatch({
+    onMessage: (message, tone) => push(message, tone),
+    onApplied: () => {
+      // The table and the pane agree about what happened without a manual
+      // refresh: the rows are re-read and the tree's counts with them.
+      window_.reload();
+      collections.reload();
+    },
+  });
 
   const scopeTo = useCallback(
     (node: LibraryPlaylistNode | null) => {
@@ -257,20 +322,99 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
    */
   const openMenuFor = useCallback(
     async (row: LibraryTrackRow, index: number, x: number, y: number) => {
-      const inSelection =
-        row.id != null &&
-        (selection.selection.all
-          ? !selection.selection.excluded.has(row.id)
-          : selection.selection.ids.has(row.id));
+      const inSelection = row.id != null && isSelected(selection.selection, row.id);
       const rows =
         inSelection && selection.count > 1 ? await selection.gatherRows(QUEUE_ACTION_LIMIT) : [row];
-      setMenu({ x, y, rows, index });
+      // Playback takes rows and is capped; an organization action takes the
+      // selection *as a description* and is not. The two must not be confused:
+      // gathering 47,913 rows to tag them is the mistake DEC-045 exists to
+      // prevent, and `rows` here is already a capped sample.
+      const target: BatchTarget =
+        inSelection && selection.count > 0
+          ? { selection: batchSelection(selection.selection, query), count: selection.count }
+          : { selection: { track_ids: row.id == null ? [] : [row.id] }, count: 1 };
+      setMenu({ x, y, rows, index, target, kind: "row" });
     },
-    [selection],
+    [query, selection],
+  );
+
+  /** Run one organization action over a target, through ORG-07's entry point. */
+  const runAction = useCallback(
+    (action: BatchAction, target: BatchTarget) =>
+      void batch.start({ action, selection: target.selection, count: target.count }),
+    [batch],
+  );
+
+  /** The library's tags, read when a picker needs them and again after a change. */
+  const loadTags = useCallback(async () => {
+    const bridge = window.cuepoint?.getTags;
+    if (!bridge) return;
+    try {
+      const payload = await bridge();
+      if (mounted.current) setTags(payload.tags);
+    } catch {
+      // Suggestions are a convenience; a name can still be typed.
+    }
+  }, []);
+
+  const openPicker = useCallback(
+    (kind: "collection" | "tag-add" | "tag-remove", target: BatchTarget) => {
+      setPicker({ kind, target });
+      if (kind !== "collection") void loadTags();
+    },
+    [loadTags],
+  );
+
+  /** The organization entries, for whichever surface asked for them. */
+  const actionItems = useCallback(
+    (target: BatchTarget): TrackContextMenuItem[] =>
+      organizationMenuItems(
+        {
+          count: target.count,
+          collection: scopedCollection
+            ? { id: scopedCollection.id, name: scopedCollection.name }
+            : null,
+        },
+        {
+          onAddToCollection: () => openPicker("collection", target),
+          onRemoveFromCollection: () =>
+            scopedCollection &&
+            runAction(
+              {
+                kind: "remove_from_collection",
+                value: scopedCollection.id,
+                target: scopedCollection.name,
+              },
+              target,
+            ),
+          onAddTag: () => openPicker("tag-add", target),
+          onRemoveTag: () => openPicker("tag-remove", target),
+          onRate: (starsWanted) =>
+            runAction(
+              {
+                kind: "set_rating",
+                value: starsWanted,
+                target: starsWanted == null ? "no rating" : String(starsWanted),
+              },
+              target,
+            ),
+          onFavorite: (favorite) =>
+            runAction({ kind: "set_favorite", value: favorite, target: "favorite" }, target),
+        },
+      ),
+    [openPicker, runAction, scopedCollection],
   );
 
   const menuItems = useMemo((): TrackContextMenuItem[] => {
     if (!menu) return [];
+    const organization = actionItems(menu.target);
+    if (menu.kind === "selection") {
+      // Nothing above them here, so the first entry's divider would be a line
+      // along the top of the menu.
+      return organization.map((item, at) =>
+        at === 0 ? { ...item, separatorBefore: false } : item,
+      );
+    }
     const { rows, index } = menu;
     const many = rows.length > 1;
     const path = rows.length === 1 ? rows[0].file_path : null;
@@ -309,8 +453,158 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
         onSelect: () =>
           void copyRows(async () => rows.slice(0, COPY_LIMIT), rows.length),
       },
+      ...organization,
     ];
-  }, [copyRows, menu, playback]);
+  }, [actionItems, copyRows, menu, playback]);
+
+  /**
+   * Tracks dropped on a Collection in the pane (ORG-09's target, ORG-11's source).
+   *
+   * A list of ids goes through the membership route, which answers with how
+   * many were added and how many were already there. "Everything matching"
+   * cannot: it is a query, and only the batch path takes one — so it goes
+   * there, reports itself, and tells the pane to stay quiet rather than
+   * announcing an outcome it does not have.
+   */
+  const dropTracks = useCallback(
+    async (collectionId: number, carried: DraggedTracks) => {
+      if ("ids" in carried) return collections.addTracks(collectionId, carried.ids);
+
+      const node = findCollection(collections.tree, collectionId);
+      await batch.start({
+        action: {
+          kind: "add_to_collection",
+          value: collectionId,
+          target: node?.name ?? "the Collection",
+        },
+        selection: batchSelection(selection.selection, query),
+        count: selection.count,
+      });
+      return { ok: true, silent: true };
+    },
+    [batch, collections, query, selection],
+  );
+
+  /**
+   * A row dragged into a new place inside the Collection it belongs to.
+   *
+   * The position it came from is the only one the renderer knows without
+   * reading the whole membership, which is why exactly one row moves and why
+   * every other case is refused out loud rather than quietly.
+   */
+  const reorderTo = useCallback(
+    async (toIndex: number, transfer: DataTransfer) => {
+      const allowed = canReorder(
+        {
+          scope: query.scope,
+          collectionId: query.collectionId,
+          sort: query.sort,
+          dir: query.dir,
+          q: query.q,
+          filtered: Boolean(query.filters && query.filters.rules.length > 0),
+        },
+        scopedCollection,
+      );
+      if (!allowed.ok) {
+        push(allowed.why, "warning");
+        return;
+      }
+
+      const carried = draggedTracks(transfer);
+      const from = draggingRow.current?.index ?? null;
+      if (!carried || from === null) return;
+      if (!("ids" in carried) || carried.ids.length !== 1) {
+        push("Tracks are rearranged one at a time.", "warning");
+        return;
+      }
+
+      const read = window.cuepoint?.getCollectionEntries;
+      const write = window.cuepoint?.reorderCollectionEntry;
+      if (!read || !write || query.collectionId == null) return;
+
+      try {
+        // One entry, at the position the drag started from. With no duplicates
+        // and no filter — both of which `canReorder` has just insisted on — a
+        // row's index is its position in the Collection.
+        const page = await read({
+          collectionId: query.collectionId,
+          offset: from,
+          limit: 1,
+        });
+        const entry = page.entries[0];
+        if (!entry) return;
+        await write({ entry_id: entry.id, position: movedPosition(from, toIndex) });
+        window_.reload();
+        collections.reload();
+      } catch (error) {
+        push(
+          error instanceof Error ? error.message : "Could not move that track.",
+          "warning",
+        );
+      }
+    },
+    [collections, push, query, scopedCollection, window_],
+  );
+
+  /** What the open picker offers: the tree, or the tag vocabulary. */
+  const pickerItems = useMemo((): PickerItem[] => {
+    if (!picker) return [];
+    if (picker.kind === "collection") {
+      return flattenCollections(collections.tree).map((node) => ({
+        id: node.id,
+        label: node.name,
+        depth: node.depth,
+        icon: iconForKind(node.kind),
+        // A folder holds nodes and a Smart Collection holds a question
+        // (DEC-061). Both are drawn and neither can be chosen, because a tree
+        // with its folders taken out is a list whose indentation lies.
+        disabled: !holdsTracks(node),
+        hint: holdsTracks(node) ? node.entry_count.toLocaleString() : undefined,
+      }));
+    }
+    return tags.map((tag) => ({
+      id: tag.id,
+      label: tag.name,
+      icon: "tag" as const,
+      hint: tag.track_count.toLocaleString(),
+    }));
+  }, [collections.tree, picker, tags]);
+
+  const choosePicked = useCallback(
+    (item: PickerItem) => {
+      const current = picker;
+      setPicker(null);
+      if (!current) return;
+      const kind =
+        current.kind === "collection"
+          ? "add_to_collection"
+          : current.kind === "tag-add"
+            ? "add_tag"
+            : "remove_tag";
+      runAction({ kind, value: item.id, target: item.label }, current.target);
+    },
+    [picker, runAction],
+  );
+
+  const createAndTag = useCallback(
+    async (name: string) => {
+      const current = picker;
+      setPicker(null);
+      const create = window.cuepoint?.createTag;
+      if (!current || !create) return;
+      try {
+        // `create_or_get`: typing a name that already exists in another
+        // capitalization reuses the tag rather than making a second one, and
+        // that rule stays in the engine where the unique index enforces it.
+        const { tag } = await create({ name });
+        void loadTags();
+        runAction({ kind: "add_tag", value: tag.id, target: tag.name }, current.target);
+      } catch (error) {
+        push(error instanceof Error ? error.message : "Could not make that tag.", "warning");
+      }
+    },
+    [loadTags, picker, push, runAction],
+  );
 
   // Ctrl+A selects everything the query matches; Escape lets go of it;
   // Ctrl+F is the in-page search, matching the Results screen (SHELL-10's
@@ -570,6 +864,7 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
           scopeIsLibrary={query.playlistId == null && query.collectionId == null}
           onSelectPlaylist={(node) => scopeTo(node)}
           onSelectCollection={(node) => scopeToCollection(node)}
+          onDropTracks={dropTracks}
           onNotify={(message, tone) => push(message, tone === "warning" ? "warning" : "success")}
         />
 
@@ -614,6 +909,34 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
               onRowContextMenu={(row, index, anchor) =>
                 void openMenuFor(row, index, anchor.x, anchor.y)
               }
+              // A row is picked up as the selection when it belongs to it, and
+              // as itself otherwise — the same rule the context menu follows,
+              // because they are the same gesture with a different hand.
+              onRowDragStart={(row, index, transfer) => {
+                const inSelection = row.id != null && isSelected(selection.selection, row.id);
+                if (inSelection && selection.selection.all) {
+                  setDraggedQuerySelection(transfer, selection.count);
+                } else if (inSelection && selection.count > 1) {
+                  setDraggedTrackIds(transfer, [...selection.selection.ids]);
+                } else {
+                  setDraggedTrackIds(transfer, row.id == null ? [] : [row.id]);
+                }
+                transfer.effectAllowed = "copyMove";
+                draggingRow.current = {
+                  index,
+                  count: inSelection ? selection.count : 1,
+                };
+              }}
+              // Offered inside a Collection and nowhere else. Whether *this*
+              // Collection can be rearranged is answered on the drop, out
+              // loud, because a user dragging a row inside one has said
+              // plainly what they meant.
+              acceptsRowDrop={(transfer) =>
+                query.scope === "collection" &&
+                query.collectionId != null &&
+                isTrackDrag(transfer)
+              }
+              onRowDrop={(toIndex, transfer) => void reorderTo(toIndex, transfer)}
               // Shift+F10 and the menu key open it on the last row clicked.
               activeIndex={selection.selection.anchor}
               emptyState={emptyState}
@@ -636,6 +959,46 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
             />
           )}
 
+          <PickerDialog
+            open={picker !== null}
+            title={
+              picker?.kind === "collection"
+                ? "Add to Collection"
+                : picker?.kind === "tag-remove"
+                  ? "Remove a tag"
+                  : "Add a tag"
+            }
+            items={pickerItems}
+            onChoose={choosePicked}
+            onClose={() => setPicker(null)}
+            // Only a tag can be made from here: a new Collection needs a place
+            // in the tree, and this dialog has no way to ask about one.
+            onCreate={picker?.kind === "tag-add" ? (name) => void createAndTag(name) : undefined}
+            emptyText={
+              picker?.kind === "collection"
+                ? "There are no Collections yet — make one in the pane on the left."
+                : "No tags yet."
+            }
+          />
+
+          <Modal
+            open={batch.pending !== null}
+            title="That is a lot of tracks"
+            onClose={batch.cancel}
+            primaryAction={{
+              label: "Apply",
+              onClick: () => void batch.confirm(),
+              loading: batch.busy,
+            }}
+            secondaryAction={{ label: "Cancel", onClick: batch.cancel }}
+          >
+            <p>{batch.question}</p>
+            <p>
+              It runs in the background, and there is no undo — every change is
+              recorded in each track&rsquo;s History.
+            </p>
+          </Modal>
+
           <SelectionActions
             count={selection.count}
             describedByQuery={selection.selection.all}
@@ -646,6 +1009,19 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
             onReveal={(path) => void window.cuepoint?.showItemInFolder?.(path)}
             onClear={selection.clear}
             onSelectAll={selection.selectAllMatching}
+            onActions={(anchor) =>
+              setMenu({
+                x: anchor.x,
+                y: anchor.y,
+                rows: [],
+                index: -1,
+                target: {
+                  selection: batchSelection(selection.selection, query),
+                  count: selection.count,
+                },
+                kind: "selection",
+              })
+            }
           />
 
           <div className="library-screen__columns">

@@ -378,7 +378,10 @@ describe("dropping tracks (the pane's first drop target)", () => {
 
     fireEvent.drop(rowFor("Warmups"), trackDrag([7, 8]));
 
-    await waitFor(() => expect(onDropTracks).toHaveBeenCalledWith(2, [7, 8]));
+    // The payload rather than a bare list: a selection may be a query, and
+    // one reader for both is what stops a target handling one and dropping
+    // the other (ORG-11, DEC-045).
+    await waitFor(() => expect(onDropTracks).toHaveBeenCalledWith(2, { ids: [7, 8] }));
   });
 
   it("says how many landed and how many were already there", async () => {

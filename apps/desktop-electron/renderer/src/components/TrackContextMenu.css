@@ -48,3 +48,42 @@
   margin: var(--space-xs) 0;
   border-top: 1px solid var(--border-muted);
 }
+
+/*
+ * A submenu (ORG-11).
+ *
+ * Beside its parent rather than under it, so the parent list stays readable
+ * while the child is open — which is what makes ArrowLeft mean "back" rather
+ * than "somewhere else entirely".
+ */
+
+.cp-track-menu__group {
+  position: relative;
+}
+
+.cp-track-menu__item--parent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.cp-track-menu__arrow {
+  color: var(--fg-muted);
+}
+
+.cp-track-menu__item--active .cp-track-menu__arrow {
+  color: var(--fg-inverse);
+}
+
+.cp-track-menu__submenu {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  z-index: 61;
+  min-width: calc(140px * var(--scale));
+  padding: var(--space-xs) 0;
+  border: var(--border-width) solid var(--border-outline);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-panel);
+}

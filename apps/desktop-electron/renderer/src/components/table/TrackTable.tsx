@@ -119,6 +119,32 @@ export interface TrackTableProps<Row> {
    */
   getRowKey?: (row: Row, index: number) => string | number;
 
+  /**
+   * A row was picked up (ORG-11). Absent means rows are not draggable, which
+   * is what every table but the Library's wants.
+   *
+   * What goes on the drag is the caller's: this reports the gesture and hands
+   * over the transfer, exactly as the column header drag already does.
+   */
+  onRowDragStart?: (row: Row, index: number, transfer: DataTransfer) => void;
+
+  /**
+   * Whether a drag hovering the rows could land here.
+   *
+   * Asked on every dragover, because the answer depends on what the drag is
+   * carrying. False draws no insertion line and lets the drop fall through —
+   * a table that marks a place a drop cannot land is a table that lies.
+   */
+  acceptsRowDrop?: (transfer: DataTransfer) => boolean;
+
+  /**
+   * A drop the table accepted, at the index the rows should take.
+   *
+   * The index is an insertion point, so it runs from 0 to the row count: the
+   * upper half of a row means "before it", the lower half "after it".
+   */
+  onRowDrop?: (toIndex: number, transfer: DataTransfer) => void;
+
   /** Shown instead of rows when the query matched nothing. */
   emptyState?: ReactNode;
 
@@ -156,6 +182,9 @@ export function TrackTable<Row>({
   onSelect,
   onRowActivate,
   onRowContextMenu,
+  onRowDragStart,
+  acceptsRowDrop,
+  onRowDrop,
   activeIndex = null,
   getRowKey,
   emptyState,
@@ -168,6 +197,8 @@ export function TrackTable<Row>({
   // Which header is being dragged, for the cursor and the dimmed cell. The
   // move itself is the layout owner's to decide.
   const [dragging, setDragging] = useState<string | null>(null);
+  // Where an insertion line is drawn, as an index between rows (ORG-11).
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
 
   const [internalWidths, setInternalWidths] = useState<ColumnWidths>(() =>
     resolveWidths(columns, widths, scale),
@@ -402,7 +433,7 @@ export function TrackTable<Row>({
               return (
                 <div
                   key={key}
-                  className={`track-table__row${row ? "" : " track-table__row--placeholder"}${selected ? " track-table__row--selected" : ""}`}
+                  className={`track-table__row${row ? "" : " track-table__row--placeholder"}${selected ? " track-table__row--selected" : ""}${dropIndex === item.index ? " track-table__row--drop-before" : ""}${dropIndex === item.index + 1 ? " track-table__row--drop-after" : ""}`}
                   style={{
                     transform: `translateY(${item.start}px)`,
                     height: `${item.size}px`,
@@ -414,6 +445,45 @@ export function TrackTable<Row>({
                   aria-selected={selected}
                   data-index={item.index}
                   data-placeholder={row ? undefined : "true"}
+                  draggable={Boolean(row && onRowDragStart)}
+                  onDragStart={(event) => {
+                    if (!row || !onRowDragStart || !event.dataTransfer) return;
+                    onRowDragStart(row, item.index, event.dataTransfer);
+                  }}
+                  onDragOver={(event) => {
+                    if (!onRowDrop) return;
+                    const transfer = event.dataTransfer;
+                    if (!transfer || (acceptsRowDrop && !acceptsRowDrop(transfer))) {
+                      setDropIndex(null);
+                      return;
+                    }
+                    // Without this the browser refuses the drop, silently.
+                    event.preventDefault();
+                    transfer.dropEffect = "move";
+                    // The upper half means before this row, the lower half
+                    // after it: an insertion point, so the last row can be
+                    // dropped past.
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    const after = event.clientY > rect.top + rect.height / 2;
+                    setDropIndex(item.index + (after ? 1 : 0));
+                  }}
+                  onDragLeave={() => setDropIndex(null)}
+                  onDrop={(event) => {
+                    const at = dropIndex;
+                    setDropIndex(null);
+                    if (!onRowDrop || at === null || !event.dataTransfer) return;
+                    if (acceptsRowDrop && !acceptsRowDrop(event.dataTransfer)) return;
+                    event.preventDefault();
+                    onRowDrop(at, event.dataTransfer);
+                  }}
+                  onDragEnd={() => setDropIndex(null)}
+                  data-drop={
+                    dropIndex === item.index
+                      ? "before"
+                      : dropIndex === item.index + 1
+                        ? "after"
+                        : undefined
+                  }
                   onClick={(event) => row && onSelect?.(row, item.index, event)}
                   onDoubleClick={() => row && onRowActivate?.(row, item.index)}
                   onContextMenu={(event) => {

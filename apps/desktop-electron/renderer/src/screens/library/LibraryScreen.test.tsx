@@ -327,6 +327,11 @@ interface Bridge {
   setTrackMetadata: ReturnType<typeof vi.fn>;
   getTrackHistory: ReturnType<typeof vi.fn>;
   getTags: ReturnType<typeof vi.fn>;
+  /** The one entry point every organization action goes through (ORG-11). */
+  applyBatch: ReturnType<typeof vi.fn>;
+  createTag: ReturnType<typeof vi.fn>;
+  getCollectionEntries: ReturnType<typeof vi.fn>;
+  reorderCollectionEntry: ReturnType<typeof vi.fn>;
   showItemInFolder: ReturnType<typeof vi.fn>;
   /** The player namespace (PLAYER-09); the same shape preload exposes. */
   player: {
@@ -381,7 +386,46 @@ function install(overrides: Partial<Bridge> = {}) {
     getLibraryTrack: vi.fn().mockResolvedValue(DETAIL),
     setTrackMetadata: vi.fn().mockResolvedValue({ metadata: DETAIL.metadata }),
     getTrackHistory: vi.fn().mockResolvedValue({ track_id: 1, changes: [], limit: 50 }),
-    getTags: vi.fn().mockResolvedValue({ tags: [], categories: [] }),
+    getTags: vi.fn().mockResolvedValue({
+      tags: [
+        {
+          id: 21,
+          name: "Peak-time",
+          category: "energy",
+          colour: null,
+          created_at: "2026-01-01",
+          track_count: 9,
+        },
+      ],
+      categories: ["energy"],
+    }),
+    applyBatch: vi.fn().mockResolvedValue({
+      applied: {
+        batch_id: "b1",
+        operation: "set_rating",
+        target: "4",
+        total: 1,
+        changed: 1,
+        unchanged: 0,
+        failed: 0,
+        cancelled: false,
+      },
+    }),
+    createTag: vi.fn().mockResolvedValue({
+      tag: { id: 22, name: "Closer", category: null, colour: null, created_at: "2026-09-08" },
+    }),
+    getCollectionEntries: vi.fn().mockResolvedValue({
+      collection_id: 12,
+      entries: [
+        { id: 500, collection_id: 12, track_id: 1, position: 0, added_at: "2026-01-01" },
+      ],
+      entry_count: 2,
+      track_count: 2,
+      offset: 0,
+    }),
+    reorderCollectionEntry: vi.fn().mockResolvedValue({
+      entry: { id: 500, collection_id: 12, track_id: 1, position: 2, added_at: "2026-01-01" },
+    }),
     showItemInFolder: vi.fn().mockResolvedValue(undefined),
     player: {
       playView: vi.fn().mockResolvedValue({ ok: true }),
@@ -1537,5 +1581,708 @@ describe("CuePoint's own Collections in the pane (ORG-09, DEC-062)", () => {
     await userEvent.click(within(tree).getByText("Warmups"));
 
     expect(await screen.findByText(/This Collection is empty/i)).toBeInTheDocument();
+  });
+});
+
+
+/**
+ * Acting on a selection (ORG-11, DEC-045, DEC-063).
+ *
+ * The property this whole step turns on: **a selection of everything matching
+ * never becomes a list of ids**. The renderer sends the question and the
+ * handful of tracks taken back out of it, and the assertions below say so by
+ * looking at what crossed the bridge rather than at what happened afterwards.
+ */
+describe("organizing a selection (ORG-11)", () => {
+  beforeEach(() => {
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+  });
+
+  async function openMenuOn(text: string) {
+    const row = screen.getByText(text).closest("[role=row]")!;
+    fireEvent.contextMenu(row, { clientX: 100, clientY: 100 });
+    return screen.findByRole("menu");
+  }
+
+  async function openCollection() {
+    const tree = await screen.findByRole("tree", { name: "Collections" });
+    await userEvent.click(within(tree).getByRole("button", { name: "Expand Sets" }));
+    await userEvent.click(within(tree).getByText("Warmups"));
+    await waitFor(() => expect(lastBrowse()).toMatchObject({ collectionId: 12 }));
+  }
+
+  /** The payload of the one batch that was asked for. */
+  function lastBatch(): Record<string, unknown> {
+    const calls = bridge.applyBatch.mock.calls;
+    return calls[calls.length - 1][0] as Record<string, unknown>;
+  }
+
+  describe("what the menu offers", () => {
+    it("offers every organization operation below the playback ones", async () => {
+      renderScreen();
+      await tableReady();
+
+      const menu = await openMenuOn("Track 2");
+
+      const labels = within(menu)
+        .getAllByRole("menuitem")
+        .map((node) => node.textContent);
+      // Playback first: DEC-013 made it the first-class gesture.
+      expect(labels.slice(0, 3)).toEqual(["Play", "Play next", "Add to queue"]);
+      expect(labels).toContain("Add to Collection…");
+      expect(labels).toContain("Add tag…");
+      expect(labels).toContain("Favorite");
+    });
+
+    it("offers removing from a Collection only inside one", async () => {
+      renderScreen();
+      await tableReady();
+
+      const outside = await openMenuOn("Track 2");
+      expect(
+        within(outside).queryByRole("menuitem", { name: /Remove from/ }),
+      ).not.toBeInTheDocument();
+      await userEvent.keyboard("{Escape}");
+
+      await openCollection();
+      const inside = await openMenuOn("Track 2");
+      expect(
+        within(inside).getByRole("menuitem", { name: "Remove from “Warmups”" }),
+      ).toBeInTheDocument();
+    });
+
+    it("offers no membership operations inside a Smart Collection (DEC-061)", async () => {
+      // ORG-06 refuses them; a menu entry whose only outcome is an error is
+      // not an offer.
+      renderScreen();
+      await tableReady();
+      const tree = await screen.findByRole("tree", { name: "Collections" });
+      await userEvent.click(within(tree).getByText("Recent techno"));
+      await waitFor(() => expect(lastBrowse()).toMatchObject({ scope: "smart" }));
+
+      const menu = await openMenuOn("Track 2");
+
+      expect(
+        within(menu).queryByRole("menuitem", { name: /Remove from/ }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("the payload that crosses the bridge", () => {
+    it("sends the ids when the user picked tracks", async () => {
+      renderScreen();
+      await tableReady();
+      await userEvent.click(screen.getByText("Track 1"));
+      fireEvent.click(screen.getByText("Track 3"), { shiftKey: true });
+      await screen.findByText(/3 tracks selected/);
+
+      const menu = await openMenuOn("Track 2");
+      await userEvent.click(within(menu).getByRole("menuitem", { name: "Favorite" }));
+
+      await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
+      expect(lastBatch()).toEqual({
+        selection: { track_ids: [1, 2, 3] },
+        operation: { kind: "set_favorite", value: true },
+      });
+    });
+
+    it("sends the question when the selection is everything matching", async () => {
+      renderScreen();
+      await tableReady();
+      await userEvent.keyboard("{Control>}a{/Control}");
+      await screen.findByText(/everything matching/);
+
+      const menu = await openMenuOn("Track 2");
+      await userEvent.click(within(menu).getByRole("menuitem", { name: "Favorite" }));
+
+      await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
+      const payload = lastBatch().selection as Record<string, unknown>;
+      expect(payload.track_ids).toBeUndefined();
+      expect(payload.query).toMatchObject({ playlist_id: null, collection_id: null });
+    });
+
+    it("sends the tracks taken back out of everything matching", async () => {
+      // The toolbar says "2 tracks selected"; the batch has to mean two.
+      renderScreen();
+      await tableReady();
+      await userEvent.keyboard("{Control>}a{/Control}");
+      await screen.findByText(/everything matching/);
+      fireEvent.click(screen.getByText("Track 3"), { ctrlKey: true });
+      await screen.findByText(/2 tracks selected/);
+
+      const menu = await openMenuOn("Track 2");
+      await userEvent.click(within(menu).getByRole("menuitem", { name: "Favorite" }));
+
+      await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
+      expect((lastBatch().selection as Record<string, unknown>).exclude_track_ids).toEqual([3]);
+    });
+
+    it("acts on the row under the pointer when it is outside the selection", async () => {
+      renderScreen();
+      await tableReady();
+      await userEvent.click(screen.getByText("Track 1"));
+      await screen.findByText("1 track selected");
+
+      const menu = await openMenuOn("Track 3");
+      await userEvent.click(within(menu).getByRole("menuitem", { name: "Favorite" }));
+
+      await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
+      expect(lastBatch().selection).toEqual({ track_ids: [3] });
+    });
+
+    it("carries the Collection scope into the batch's query", async () => {
+      renderScreen();
+      await tableReady();
+      await openCollection();
+      await userEvent.keyboard("{Control>}a{/Control}");
+      await screen.findByText(/everything matching/);
+
+      const menu = await openMenuOn("Track 2");
+      await userEvent.click(within(menu).getByRole("menuitem", { name: "Favorite" }));
+
+      await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
+      expect((lastBatch().selection as Record<string, unknown>).query).toMatchObject({
+        scope: "collection",
+        collection_id: 12,
+      });
+    });
+  });
+
+  describe("the operations themselves", () => {
+    it("rates from the submenu", async () => {
+      renderScreen();
+      await tableReady();
+
+      const menu = await openMenuOn("Track 2");
+      await userEvent.click(within(menu).getByRole("menuitem", { name: /Rate/ }));
+      await userEvent.click(screen.getByRole("menuitem", { name: "★★★★" }));
+
+      await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
+      expect(lastBatch().operation).toEqual({ kind: "set_rating", value: 4 });
+    });
+
+    it("clears a rating rather than setting it to zero (DEC-057)", async () => {
+      renderScreen();
+      await tableReady();
+
+      const menu = await openMenuOn("Track 2");
+      await userEvent.click(within(menu).getByRole("menuitem", { name: /Rate/ }));
+      await userEvent.click(screen.getByRole("menuitem", { name: "Clear rating" }));
+
+      await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
+      expect(lastBatch().operation).toEqual({ kind: "set_rating", value: null });
+    });
+
+    it("removes from the Collection the table is showing", async () => {
+      renderScreen();
+      await tableReady();
+      await openCollection();
+
+      const menu = await openMenuOn("Track 2");
+      await userEvent.click(
+        within(menu).getByRole("menuitem", { name: "Remove from “Warmups”" }),
+      );
+
+      await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
+      expect(lastBatch().operation).toEqual({
+        kind: "remove_from_collection",
+        value: 12,
+      });
+    });
+
+    it("adds to a Collection chosen from the picker", async () => {
+      renderScreen();
+      await tableReady();
+
+      const menu = await openMenuOn("Track 2");
+      await userEvent.click(
+        within(menu).getByRole("menuitem", { name: "Add to Collection…" }),
+      );
+      await userEvent.click(await screen.findByRole("option", { name: /Warmups/ }));
+
+      await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
+      expect(lastBatch().operation).toEqual({ kind: "add_to_collection", value: 12 });
+    });
+
+    it("will not add tracks to a folder or a Smart Collection", async () => {
+      renderScreen();
+      await tableReady();
+
+      const menu = await openMenuOn("Track 2");
+      await userEvent.click(
+        within(menu).getByRole("menuitem", { name: "Add to Collection…" }),
+      );
+
+      expect(await screen.findByRole("option", { name: /Sets/ })).toBeDisabled();
+      expect(screen.getByRole("option", { name: /Recent techno/ })).toBeDisabled();
+    });
+
+    it("tags with an existing tag", async () => {
+      renderScreen();
+      await tableReady();
+
+      const menu = await openMenuOn("Track 2");
+      await userEvent.click(within(menu).getByRole("menuitem", { name: "Add tag…" }));
+      await userEvent.click(await screen.findByRole("option", { name: /Peak-time/ }));
+
+      await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
+      expect(lastBatch().operation).toEqual({ kind: "add_tag", value: 21 });
+    });
+
+    it("makes a tag by typing a name, and tags with the one it got back", async () => {
+      // `create_or_get`: a name that already exists in another capitalization
+      // comes back as the tag that exists, and that decision stays in the
+      // engine where the unique index enforces it.
+      renderScreen();
+      await tableReady();
+
+      const menu = await openMenuOn("Track 2");
+      await userEvent.click(within(menu).getByRole("menuitem", { name: "Add tag…" }));
+      const filter = await screen.findByRole("textbox", { name: "Type to narrow the list" });
+      fireEvent.change(filter, { target: { value: "Closer" } });
+      await userEvent.click(screen.getByRole("button", { name: /Create “Closer”/ }));
+
+      await waitFor(() => expect(bridge.createTag).toHaveBeenCalledWith({ name: "Closer" }));
+      await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
+      expect(lastBatch().operation).toEqual({ kind: "add_tag", value: 22 });
+    });
+
+    it("says what happened, in the counts the engine answered with", async () => {
+      bridge.applyBatch.mockResolvedValue({
+        applied: {
+          batch_id: "b1",
+          operation: "add_tag",
+          target: "Peak-time",
+          total: 52,
+          changed: 40,
+          unchanged: 12,
+          failed: 0,
+          cancelled: false,
+        },
+      });
+      renderScreen();
+      await tableReady();
+
+      const menu = await openMenuOn("Track 2");
+      await userEvent.click(within(menu).getByRole("menuitem", { name: "Add tag…" }));
+      await userEvent.click(await screen.findByRole("option", { name: /Peak-time/ }));
+
+      expect(await screen.findByText(/40 tracks .* 12 already had it/)).toBeInTheDocument();
+    });
+
+    it("says so when the engine refuses", async () => {
+      bridge.applyBatch.mockRejectedValue(new Error("No tag with id 21"));
+      renderScreen();
+      await tableReady();
+
+      const menu = await openMenuOn("Track 2");
+      await userEvent.click(within(menu).getByRole("menuitem", { name: "Favorite" }));
+
+      expect(await screen.findByText("No tag with id 21")).toBeInTheDocument();
+    });
+
+    it("re-reads the table and the tree afterwards", async () => {
+      // The DoD: the table and the pane agree about what happened without a
+      // manual refresh.
+      renderScreen();
+      await tableReady();
+      const browses = bridge.browseLibrary.mock.calls.length;
+      const trees = bridge.getCollections.mock.calls.length;
+
+      const menu = await openMenuOn("Track 2");
+      await userEvent.click(within(menu).getByRole("menuitem", { name: "Favorite" }));
+
+      await waitFor(() =>
+        expect(bridge.browseLibrary.mock.calls.length).toBeGreaterThan(browses),
+      );
+      expect(bridge.getCollections.mock.calls.length).toBeGreaterThan(trees);
+    });
+  });
+
+  describe("a batch big enough to be a job", () => {
+    beforeEach(() => {
+      bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+      bridge.browseLibrary.mockImplementation(async (params: Record<string, unknown>) => ({
+        ...browseAnswer(params, TRACKS),
+        total: 47_913,
+      }));
+    });
+
+    it("asks before it starts, naming the count and the operation", async () => {
+      renderScreen();
+      await tableReady();
+      await userEvent.keyboard("{Control>}a{/Control}");
+      await screen.findByText(/everything matching/);
+
+      const menu = await openMenuOn("Track 2");
+      await userEvent.click(within(menu).getByRole("menuitem", { name: "Favorite" }));
+
+      expect(await screen.findByText("Favorite 47,913 tracks?")).toBeInTheDocument();
+      expect(bridge.applyBatch).not.toHaveBeenCalled();
+    });
+
+    it("says there is no undo, because there is not (DEC-008)", async () => {
+      renderScreen();
+      await tableReady();
+      await userEvent.keyboard("{Control>}a{/Control}");
+      await screen.findByText(/everything matching/);
+      const menu = await openMenuOn("Track 2");
+      await userEvent.click(within(menu).getByRole("menuitem", { name: "Favorite" }));
+
+      expect(await screen.findByText(/no undo/i)).toBeInTheDocument();
+    });
+
+    it("does it once it is confirmed", async () => {
+      renderScreen();
+      await tableReady();
+      await userEvent.keyboard("{Control>}a{/Control}");
+      await screen.findByText(/everything matching/);
+      const menu = await openMenuOn("Track 2");
+      await userEvent.click(within(menu).getByRole("menuitem", { name: "Favorite" }));
+      await screen.findByText("Favorite 47,913 tracks?");
+
+      await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+
+      await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
+    });
+
+    it("does nothing when it is refused", async () => {
+      renderScreen();
+      await tableReady();
+      await userEvent.keyboard("{Control>}a{/Control}");
+      await screen.findByText(/everything matching/);
+      const menu = await openMenuOn("Track 2");
+      await userEvent.click(within(menu).getByRole("menuitem", { name: "Favorite" }));
+      await screen.findByText("Favorite 47,913 tracks?");
+
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(bridge.applyBatch).not.toHaveBeenCalled();
+      expect(screen.queryByText("Favorite 47,913 tracks?")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("the toolbar", () => {
+    it("offers the same operations as the menu, for the selection", async () => {
+      renderScreen();
+      await tableReady();
+      await userEvent.click(screen.getByText("Track 1"));
+      await screen.findByText("1 track selected");
+
+      await userEvent.click(screen.getByRole("button", { name: "Actions…" }));
+      const menu = await screen.findByRole("menu");
+
+      const labels = within(menu)
+        .getAllByRole("menuitem")
+        .map((node) => node.textContent);
+      expect(labels).toEqual([
+        "Add to Collection…",
+        "Add tag…",
+        "Remove tag…",
+        "Rate▸",
+        "Favorite",
+        "Remove favorite",
+      ]);
+      // Two dividers, between the three groups — not three, which would draw
+      // a line along the top of a menu with nothing above it.
+      expect(within(menu).getAllByRole("separator")).toHaveLength(2);
+    });
+
+    it("acts on the selection, not on a row", async () => {
+      renderScreen();
+      await tableReady();
+      await userEvent.click(screen.getByText("Track 1"));
+      fireEvent.click(screen.getByText("Track 3"), { shiftKey: true });
+      await screen.findByText(/3 tracks selected/);
+
+      await userEvent.click(screen.getByRole("button", { name: "Actions…" }));
+      const menu = await screen.findByRole("menu");
+      await userEvent.click(within(menu).getByRole("menuitem", { name: "Favorite" }));
+
+      await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
+      expect(lastBatch().selection).toEqual({ track_ids: [1, 2, 3] });
+    });
+  });
+});
+
+/**
+ * Dragging rows (ORG-11).
+ *
+ * The table becomes the source ORG-09 built its drop target for, and the two
+ * halves are finally exercised together.
+ */
+describe("dragging rows out of the table (ORG-11)", () => {
+  beforeEach(() => {
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+  });
+
+  /** A DataTransfer that remembers what was put on it, as the real one does. */
+  function transfer(initial: Record<string, string> = {}) {
+    const data: Record<string, string> = { ...initial };
+    return {
+      dropEffect: "none",
+      effectAllowed: "none",
+      get types() {
+        return Object.keys(data);
+      },
+      getData: (format: string) => data[format] ?? "",
+      setData: (format: string, value: string) => {
+        data[format] = value;
+      },
+    } as unknown as DataTransfer;
+  }
+
+  function rowFor(text: string): HTMLElement {
+    return screen.getByText(text).closest("[role=row]") as HTMLElement;
+  }
+
+  it("carries the row it started on when nothing is selected", async () => {
+    renderScreen();
+    await tableReady();
+
+    const dataTransfer = transfer();
+    fireEvent.dragStart(rowFor("Track 2"), { dataTransfer });
+
+    expect(dataTransfer.getData("application/x-cuepoint-track-ids")).toBe("[2]");
+  });
+
+  it("carries the whole selection when the row belongs to it", async () => {
+    renderScreen();
+    await tableReady();
+    await userEvent.click(screen.getByText("Track 1"));
+    fireEvent.click(screen.getByText("Track 3"), { shiftKey: true });
+    await screen.findByText(/3 tracks selected/);
+
+    const dataTransfer = transfer();
+    fireEvent.dragStart(rowFor("Track 2"), { dataTransfer });
+
+    expect(dataTransfer.getData("application/x-cuepoint-track-ids")).toBe("[1,2,3]");
+  });
+
+  it("carries only the row it started on when that row is outside the selection", async () => {
+    // The same rule the context menu follows: right-clicking — or dragging —
+    // outside a selection acts on what is under the pointer.
+    renderScreen();
+    await tableReady();
+    await userEvent.click(screen.getByText("Track 1"));
+    fireEvent.click(screen.getByText("Track 2"), { ctrlKey: true });
+    await screen.findByText(/2 tracks selected/);
+
+    const dataTransfer = transfer();
+    fireEvent.dragStart(rowFor("Track 3"), { dataTransfer });
+
+    expect(dataTransfer.getData("application/x-cuepoint-track-ids")).toBe("[3]");
+  });
+
+  it("carries a described selection as a question, never as ids (DEC-045)", async () => {
+    renderScreen();
+    await tableReady();
+    await userEvent.keyboard("{Control>}a{/Control}");
+    await screen.findByText(/everything matching/);
+
+    const dataTransfer = transfer();
+    fireEvent.dragStart(rowFor("Track 2"), { dataTransfer });
+
+    expect(dataTransfer.getData("application/x-cuepoint-track-ids")).toBe("");
+    expect(dataTransfer.getData("application/x-cuepoint-selection-query")).toBe("3");
+  });
+
+  it("adds the dropped tracks to the Collection they landed on", async () => {
+    renderScreen();
+    await tableReady();
+    const tree = await screen.findByRole("tree", { name: "Collections" });
+    await userEvent.click(within(tree).getByRole("button", { name: "Expand Sets" }));
+
+    const dataTransfer = transfer();
+    fireEvent.dragStart(rowFor("Track 2"), { dataTransfer });
+    fireEvent.drop(within(tree).getByText("Warmups").closest("[role=treeitem]")!, {
+      dataTransfer,
+    });
+
+    await waitFor(() =>
+      expect(bridge.addTracksToCollection).toHaveBeenCalledWith({
+        collection_id: 12,
+        track_ids: [2],
+      }),
+    );
+  });
+
+  it("sends a described selection through the batch path instead", async () => {
+    // `addTracksToCollection` takes ids and only the batch path takes a query,
+    // so a 47,913-track drop cannot go the same way a three-track one does.
+    renderScreen();
+    await tableReady();
+    await userEvent.keyboard("{Control>}a{/Control}");
+    await screen.findByText(/everything matching/);
+    const tree = await screen.findByRole("tree", { name: "Collections" });
+    await userEvent.click(within(tree).getByRole("button", { name: "Expand Sets" }));
+
+    const dataTransfer = transfer();
+    fireEvent.dragStart(rowFor("Track 2"), { dataTransfer });
+    fireEvent.drop(within(tree).getByText("Warmups").closest("[role=treeitem]")!, {
+      dataTransfer,
+    });
+
+    await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
+    expect(bridge.addTracksToCollection).not.toHaveBeenCalled();
+    // And the pane says nothing: the batch reports its own counts, and an
+    // "Added 0 tracks" beside them would be an outcome the pane invented.
+    expect(screen.queryByText(/Added 0 tracks/)).not.toBeInTheDocument();
+    const payload = bridge.applyBatch.mock.calls[0]![0] as Record<string, unknown>;
+    expect((payload.selection as Record<string, unknown>).track_ids).toBeUndefined();
+    expect(payload.operation).toEqual({ kind: "add_to_collection", value: 12 });
+  });
+});
+
+/**
+ * Rearranging a Collection (ORG-11, DEC-058).
+ *
+ * A reorder writes a position, and a position only means something in the
+ * Collection's own order. Everything else is refused out loud, because a user
+ * dragging a row inside a Collection has said plainly what they meant.
+ */
+describe("rearranging a Collection (ORG-11)", () => {
+  beforeEach(() => {
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+  });
+
+  function transfer(initial: Record<string, string> = {}) {
+    const data: Record<string, string> = { ...initial };
+    return {
+      dropEffect: "none",
+      effectAllowed: "none",
+      get types() {
+        return Object.keys(data);
+      },
+      getData: (format: string) => data[format] ?? "",
+      setData: (format: string, value: string) => {
+        data[format] = value;
+      },
+    } as unknown as DataTransfer;
+  }
+
+  function rowFor(text: string): HTMLElement {
+    return screen.getByText(text).closest("[role=row]") as HTMLElement;
+  }
+
+  function drag(
+    type: "dragover" | "drop",
+    element: Element,
+    dataTransfer: DataTransfer,
+    clientY = 0,
+  ) {
+    const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientY });
+    Object.defineProperty(event, "dataTransfer", { value: dataTransfer });
+    fireEvent(element, event);
+  }
+
+  async function openWarmups() {
+    const tree = await screen.findByRole("tree", { name: "Collections" });
+    await userEvent.click(within(tree).getByRole("button", { name: "Expand Sets" }));
+    await userEvent.click(within(tree).getByText("Warmups"));
+    await waitFor(() => expect(lastBrowse()).toMatchObject({ collectionId: 12 }));
+  }
+
+  it("moves the entry the row came from, to the gap it was dropped in", async () => {
+    renderScreen();
+    await tableReady();
+    await openWarmups();
+
+    const dataTransfer = transfer();
+    // The second row, not the first: an offset that is zero either way would
+    // not say the entry read is the one the drag started on.
+    fireEvent.dragStart(rowFor("Track 2"), { dataTransfer });
+    drag("dragover", rowFor("Track 3"), dataTransfer, 5);
+    drag("drop", rowFor("Track 3"), dataTransfer, 5);
+
+    await waitFor(() =>
+      expect(bridge.getCollectionEntries).toHaveBeenCalledWith({
+        collectionId: 12,
+        offset: 1,
+        limit: 1,
+      }),
+    );
+    // Dropped past the third row from the second: taking it out moved the rest
+    // up one, so it lands at 2 rather than 3.
+    expect(bridge.reorderCollectionEntry).toHaveBeenCalledWith({
+      entry_id: 500,
+      position: 2,
+    });
+  });
+
+  it("re-reads the table and the tree once it has moved", async () => {
+    renderScreen();
+    await tableReady();
+    await openWarmups();
+    const browses = bridge.browseLibrary.mock.calls.length;
+
+    const dataTransfer = transfer();
+    fireEvent.dragStart(rowFor("Track 1"), { dataTransfer });
+    drag("dragover", rowFor("Track 3"), dataTransfer, 5);
+    drag("drop", rowFor("Track 3"), dataTransfer, 5);
+
+    await waitFor(() =>
+      expect(bridge.browseLibrary.mock.calls.length).toBeGreaterThan(browses),
+    );
+  });
+
+  it("refuses, out loud, while the table is sorted by something else", async () => {
+    renderScreen();
+    await tableReady();
+    await openWarmups();
+    await userEvent.click(screen.getByRole("button", { name: /^BPM/ }));
+    await waitFor(() => expect(lastBrowse()).toMatchObject({ sort: "bpm" }));
+
+    const dataTransfer = transfer();
+    fireEvent.dragStart(rowFor("Track 1"), { dataTransfer });
+    drag("dragover", rowFor("Track 3"), dataTransfer, 5);
+    drag("drop", rowFor("Track 3"), dataTransfer, 5);
+
+    expect(await screen.findByText(/own order/)).toBeInTheDocument();
+    expect(bridge.reorderCollectionEntry).not.toHaveBeenCalled();
+  });
+
+  it("refuses a drag of several tracks, and says why", async () => {
+    // The position a row came from is the only one the renderer knows without
+    // reading the whole membership.
+    renderScreen();
+    await tableReady();
+    await openWarmups();
+    await userEvent.click(screen.getByText("Track 1"));
+    fireEvent.click(screen.getByText("Track 3"), { shiftKey: true });
+    await screen.findByText(/3 tracks selected/);
+
+    const dataTransfer = transfer();
+    fireEvent.dragStart(rowFor("Track 1"), { dataTransfer });
+    drag("dragover", rowFor("Track 3"), dataTransfer, 5);
+    drag("drop", rowFor("Track 3"), dataTransfer, 5);
+
+    expect(await screen.findByText(/one at a time/)).toBeInTheDocument();
+    expect(bridge.reorderCollectionEntry).not.toHaveBeenCalled();
+  });
+
+  it("offers no reorder outside a Collection at all", async () => {
+    // Not a refusal: there is nothing to rearrange, so the table never marks a
+    // place a drop could land.
+    renderScreen();
+    await tableReady();
+
+    const dataTransfer = transfer();
+    fireEvent.dragStart(rowFor("Track 1"), { dataTransfer });
+    drag("dragover", rowFor("Track 3"), dataTransfer, 5);
+
+    expect(rowFor("Track 3")).not.toHaveAttribute("data-drop");
+  });
+
+  it("marks the gap a drop would land in, inside one", async () => {
+    renderScreen();
+    await tableReady();
+    await openWarmups();
+
+    const dataTransfer = transfer();
+    fireEvent.dragStart(rowFor("Track 1"), { dataTransfer });
+    drag("dragover", rowFor("Track 3"), dataTransfer, 5);
+
+    expect(rowFor("Track 3")).toHaveAttribute("data-drop", "after");
   });
 });

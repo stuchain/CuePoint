@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 6: Organization, Detailed Step Specifications
 
-Status: **ORG-01…ORG-10 implemented; ORG-11…ORG-13 specified, not implemented.** The
+Status: **ORG-01…ORG-11 implemented; ORG-12 and ORG-13 specified, not implemented.** The
 thirteen steps below are the inventory the roadmap has carried as a placeholder since Phase 0.
 Per the process, no implementation happens from this document — each step needs an explicit
 "Implement ORG-NN" instruction, scoped to exactly that step, and its outcome is recorded under the
@@ -1957,7 +1957,7 @@ which Phase 6 has been holding for ORG-13 since ORG-07.
 
 ---
 
-## ORG-11 — Selection Actions, the Context Menu, and the Batch Path
+## ORG-11 — Selection Actions, the Context Menu, and the Batch Path ✅ IMPLEMENTED 2026-09-08
 
 **Objective**: Make DEC-045's selection model earn its shape: act on one track, twelve, or every
 track matching a query.
@@ -2007,6 +2007,153 @@ what happened without a manual refresh.
 shows at scale, which is why ORG-13 measures it rather than trusting a fixture.
 
 **Complexity**: **L**
+
+### ✅ IMPLEMENTED 2026-09-08
+
+**Outcome**: Complete. `trackMenu.ts` is the list of operations, `libraryBatch.ts` the shape and
+the sentences, `useLibraryBatch.ts` the one path that runs them, `PickerDialog.tsx` the way a
+Collection or a tag is chosen out of hundreds. `TrackContextMenu.tsx` learned submenus,
+`TrackTable.tsx` learned to be a drag source and a reorder target, `SelectionActions.tsx` gained
+a single Actions button, and `collectionTree.ts` gained the rules for when a Collection can be
+rearranged. One engine change, below.
+
+**DEC-045's shape was one field short, and it showed the moment a user interface used it.** A
+described selection is "everything matching, *minus the three I clicked out*" — that minus is in
+the renderer's model and in the count on screen, and `BatchSelection` had nowhere to put it.
+Sending the query alone applies the batch to tracks the user deselected; sending the ids instead
+puts 47,913 numbers on the wire, which is the mistake the shape exists to prevent. So
+`BatchSelection` gained `exclude_track_ids` on its query branch — bounded by what a person can
+click, refused beside a list of ids (which already says exactly what it means), and refused as a
+whole when it excludes everything it matched, because a batch over nothing is a request that
+cannot be honoured rather than a batch of zero. It is the only engine change in the step, and it
+needed no new route: the desktop path forwards the selection without looking at it, so the sweep
+was the two type declarations, which a contract test now compares field for field.
+
+**One vocabulary for both surfaces is a fact about a module, not a promise about two
+components.** `organizationMenuItems` builds the array; the row menu appends it under the
+playback entries, and the toolbar's Actions button opens *the same menu* with the same array.
+The alternative — a toolbar with its own five buttons — is a second list that drifts, and the
+drift is invisible until someone compares two menus side by side.
+
+**The context menu grew submenus rather than six more rows.** A rating is six choices, and a
+menu that already had nine entries would have had fifteen. The submenu costs the keyboard
+nothing: ArrowRight opens, ArrowLeft closes, Escape closes the child before the parent, and
+while one is open *every* key belongs to it — otherwise the parent list moves underneath
+somebody who is reading the child.
+
+**"Add to Collection…" and "Tag…" are one dialog.** With three Collections a submenu reads fine
+and with two hundred it is a list nobody can navigate; a tag vocabulary is worse and grows
+faster. So both go through a filter box over a list, and the difference between them is data:
+the tree indents and draws its folders and Smart Collections as unchoosable — a tree with those
+removed is a list whose indentation lies — while a tag can be *made* by typing a name, because
+`create_or_get` makes that the whole gesture. A Collection cannot be made here: a new one needs
+a place in the tree, and this dialog has no way to ask about one.
+
+**The confirmation is about scale, not about damage.** Nothing here deletes a track. But "add
+47,913 tracks to a Collection" is rarely what somebody meant to click, and DEC-008 chose history
+over an undo stack, so the way back is reading what happened rather than reversing it — which
+the dialog says, and the toast repeats for any batch that changed more than one track. It asks
+at exactly the number the engine forks a job at: a confirmation for work that finished on the
+request thread is a warning about nothing, and a job started without one is the opposite
+mistake. A test holds the two numbers together.
+
+**The toast reports what happened, not what was asked for.** `changed` and `unchanged` are
+different sentences — "tagged 40 tracks, 12 already had it" is true and "tagged 52 tracks" is
+not — and each operation has its own words for both halves, so "were already ★★★" and "were
+already there" never become one generic clause. A batch that stopped halfway says so first.
+
+**A reorder moves one row, and the reason is not a shortcut.** `reorder_entry` takes a
+*position*, and the only position the renderer can know without reading a whole membership is
+the one the drag started from: the table shows a window, so the row index of any *other*
+selected track is simply not in hand. Rather than fetch 50,000 entries to find out, a multi-row
+drag inside a Collection is refused with a sentence. The other three refusals are about what a
+position means: sorted by BPM, or narrowed by a search or a filter, a row's place on screen is
+not its place in the Collection, and writing one as the other scrambles the order silently. The
+fourth is DEC-058's — a Collection holding a track twice collapses to one row at the earliest of
+its positions, so index and position stop being the same number.
+
+Every one of those refusals is **said out loud**, which is the opposite of ORG-09's rule and
+deliberately so: there, a drop onto a folder was never offered because the user was aiming at
+something else. Here they are already inside the Collection and have plainly said what they
+meant, so a drop that quietly does nothing teaches them the feature is broken. Outside a
+Collection the drop is not offered at all, because then they *are* aiming at the pane.
+
+**A drag carries what the gesture means.** A row inside the selection carries the selection; a
+row outside it carries itself — the rule the context menu has followed since PLAYER-09, because
+dragging and right-clicking are the same gesture with a different hand. And a described
+selection carries the *question*: a mime type with no ids in it at all, because the drop target
+is the same page and reads the query itself. That last one is why the pane's drop callback
+changed shape: `addTracksToCollection` takes ids and only the batch path takes a query, so a
+47,913-track drop cannot go the way a three-track drop does. It returns `silent` when it went
+the other way, so the pane does not announce an outcome it does not have.
+
+**Two things are not offered, rather than refused.** Membership operations on a Smart Collection
+— ORG-06 refuses them, so the menu does not list them and the picker draws them unchoosable
+(DEC-061). And nothing here can touch a Rekordbox playlist: the mirror has no handlers to give
+(ORG-09), and a selection dropped on it still gets the one loud refusal DEC-031 earned.
+
+**Two pieces of dead code went with the step rather than staying.** `PickerDialog` guarded its
+click handler against a row it had already marked `disabled`, which the DOM never lets through;
+and `libraryBatch`'s rating formatter carried a null branch both its callers had already
+narrowed away. A branch no test can tell from its absence is a branch that is not there.
+
+**Guards: 65 of 65 fail when the thing they protect is broken.** The selection's shape, eleven
+ways: a batch applying to the tracks a user took back out, a selection that is both ids and
+exclusions, the exclusions never leaving the request body, an exclusion that is not a list taken
+anyway, only one process declaring the field, a described selection sent as ids, the exclusions
+dropped in the renderer, and the scope, the Collection, the filters or a cleared rating's null
+lost on the way. What it says, nine ways: a confirmation with no count, one track described as
+several, a toast counting what it looked at rather than what it changed, the unchanged and the
+failed going unmentioned, a batch that stopped halfway reported as finished, nothing pointing at
+the History, two operations sharing one verb, and the renderer confirming at a number the engine
+does not fork at. What the menu offers, six ways: removing from a Collection offered outside
+one, the Collection unnamed, a menu for nothing selected, a clear that writes a zero, two
+favorite entries doing the same thing, and the organization block running into the playback one.
+The submenu, six ways: a parent that acts instead of opening, ArrowLeft closing the whole menu,
+the arrows moving the parent while a child is open, a parent that does not say it opens one,
+ArrowRight that does not open it, and a child that stays open when the pointer leaves. The
+picker, six ways: a case-sensitive filter, a folder that can be chosen, a keyboard that lands on
+rows that cannot be, Enter that does nothing, a highlight left on a row the filter removed, and
+an offer to make a tag that already exists. The table's rows, three ways: every table's rows
+draggable, a drop always landing above the row it was over, and a refused drag marked and
+accepted. Running it, five ways: forty thousand tracks starting without a question, a
+confirmation that applies nothing, a job whose counts are never read, a failed batch leaving the
+table stale, and a refused write reported as one that happened. Rearranging, nine ways: any
+ordering allowed, a filtered view allowed, duplicates allowed, a row landing one place short, a
+refusal that is a silent false, several rows moved from one known position, the entry read from
+the top rather than from the drag, a rearranged Collection not re-read, and a reorder offered
+outside a Collection. And the page's own wiring, ten ways: a right-click outside the selection
+acting on it, a described selection dragged as ids, a dragged row taking a selection it is not
+in, the table and the pane left stale after a batch, a query dropped as ids, the toolbar acting
+on a row, a divider along the top of the toolbar's menu, the pane inventing an outcome, a drag
+carrying both read as ids, and a query selection not recognized as tracks at all.
+
+Seven of those started as survivors and each closed with a test: nothing had set a filter and
+watched it travel; nothing compared the past-tense verbs, so "Removed 40 tracks" could have read
+"Added"; every reorder test dragged the first row, where the offset is zero either way; every
+drag test dragged a row that was *in* the selection; nothing counted the dividers in the
+toolbar's menu; and nothing checked that the pane stays quiet about a batch it did not run. The
+seventh was the picker's disabled row, where the test was clicking a button the DOM had already
+disabled — the guard beside it was the dead one, and the mutation now removes the attribute that
+actually does the work.
+
+**Verification**: `npm test` in the renderer — 1,776 passed across 76 files, 148 of them new and
+four of the files; `npm run typecheck`, `npm run lint` and `npm run build:check` clean, and `npm
+run build` in the desktop app; `python -m pytest src/tests/unit` — 4,330 passed and 45 skipped,
+ten of the passes new; `ruff check src/` and `ruff format --check src/` clean; `mypy` on the two
+changed modules reports the same 22 pre-existing `no-any-return` findings it reported before the
+step and no new ones; `PYTHONPATH=src python scripts/smoke_engine_health.py`,
+`check_no_qt_in_core.py` and `check_desktop_version_coupling.py` all OK. The three failures in
+`test_code_quality_step_5_7.py` are unrelated and predate this step. Electron E2E was not run:
+`engineClient.ts` changed, but only by gaining an optional field on a type it already forwards
+without inspecting, and no preload channel, IPC handler or supervisor method moved.
+
+Four things this step deliberately did not do. It did not add **multi-row reordering**, for the
+reason above — the positions are not in hand, and reading a membership to find them is the thing
+DEC-040 spends the whole phase avoiding. It did not build the **filter bar's save button or the
+tag manager**, which are ORG-12's. It did not **measure the everything-matching path at scale**;
+ORG-13 does that, which is why its risk note says so. And it did not touch the changelog, which
+Phase 6 has been holding for ORG-13 since ORG-07.
 
 ---
 

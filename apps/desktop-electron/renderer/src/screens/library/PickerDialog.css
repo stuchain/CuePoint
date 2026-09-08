@@ -1,0 +1,119 @@
+/*
+ * Choosing one thing out of a list, by typing (ORG-11).
+ *
+ * A filter box above a list that scrolls: two hundred Collections and a
+ * thousand tags both have to fit in a dialog, and neither can be a submenu.
+ * Every value is a token — PIXEL_DESIGN_SYSTEM.md §2.
+ */
+
+.cp-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.cp-picker__filter {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--space-xs) var(--space-sm);
+  border: var(--border-width) solid var(--border-muted);
+  background: var(--bg-input);
+  color: var(--fg-primary);
+  font-family: var(--font-data);
+  font-size: var(--font-size-sm);
+}
+
+.cp-picker__filter:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent-primary);
+  outline-offset: 0;
+}
+
+.cp-picker__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-height: calc(260px * var(--scale));
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  border: var(--border-width) solid var(--border-muted);
+  background: var(--bg-panel-alt);
+}
+
+.cp-picker__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  width: 100%;
+  min-height: calc(var(--hit-min) * 0.7);
+  padding: var(--space-xs) var(--space-sm);
+  border: 0;
+  background: transparent;
+  color: var(--fg-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* One highlight for pointer and keyboard, as the context menu does it. */
+.cp-picker__item--active:not(:disabled) {
+  background: var(--accent-primary);
+  color: var(--fg-inverse);
+}
+
+.cp-picker__item:disabled {
+  color: var(--fg-muted);
+  cursor: default;
+}
+
+.cp-picker__icon {
+  width: calc(var(--icon-size) * 0.5);
+  height: calc(var(--icon-size) * 0.5);
+  flex: 0 0 auto;
+}
+
+.cp-picker__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cp-picker__hint {
+  flex: 0 0 auto;
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+}
+
+.cp-picker__item--active .cp-picker__hint {
+  color: var(--fg-inverse);
+}
+
+.cp-picker__empty {
+  padding: var(--space-sm);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.cp-picker__create {
+  align-self: flex-start;
+  padding: var(--space-xs) var(--space-sm);
+  border: var(--border-width) solid var(--border-muted);
+  background: var(--bg-input);
+  color: var(--fg-primary);
+  font-family: var(--font-pixel);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.cp-picker__create:hover {
+  border-color: var(--accent-primary);
+}
+
+.cp-picker__create:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent-primary);
+  outline-offset: calc(1px * var(--scale));
+}

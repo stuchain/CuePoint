@@ -17,6 +17,19 @@ export const TRACK_IDS_MIME = "application/x-cuepoint-track-ids";
 /** A node being dragged inside the Collections tree (ORG-09's own). */
 export const COLLECTION_NODE_MIME = "application/x-cuepoint-collection-node";
 
+/**
+ * A drag of "everything matching the current query" (ORG-11, DEC-045).
+ *
+ * Its payload is deliberately nothing. A described selection is 47,913 tracks
+ * and the whole point of DEC-045 is that those numbers never travel; the drop
+ * target and the drag source are the same page, so what it needs is the
+ * *knowledge* that the selection is the query, and it reads the query itself.
+ */
+export const SELECTION_QUERY_MIME = "application/x-cuepoint-selection-query";
+
+/** What a drag of table rows is carrying. */
+export type DraggedTracks = { ids: number[] } | { query: true };
+
 interface DragLike {
   types?: readonly string[] | DOMStringList;
   getData(format: string): string;
@@ -56,6 +69,26 @@ export function draggedTrackIds(transfer: DragLike | null): number[] {
   }
 }
 
+/** Mark a drag as carrying the whole current selection, which is a query. */
+export function setDraggedQuerySelection(transfer: DragLike, count: number): void {
+  transfer.setData(SELECTION_QUERY_MIME, String(count));
+  transfer.setData("text/plain", `${count} tracks`);
+}
+
+/**
+ * What a drag of table rows carries, or null when it carries neither.
+ *
+ * One reader for both payloads, so a drop target cannot handle the list and
+ * forget the query — which at 47,913 tracks is the difference between adding
+ * a library to a Collection and adding nothing at all.
+ */
+export function draggedTracks(transfer: DragLike | null): DraggedTracks | null {
+  if (!transfer) return null;
+  if (has(transfer, SELECTION_QUERY_MIME)) return { query: true };
+  const ids = draggedTrackIds(transfer);
+  return ids.length > 0 ? { ids } : null;
+}
+
 /** Put a Collection node on a drag. */
 export function setDraggedNodeId(transfer: DragLike, nodeId: number): void {
   transfer.setData(COLLECTION_NODE_MIME, String(nodeId));
@@ -72,5 +105,15 @@ export function draggedNodeId(transfer: DragLike | null): number | null {
 /** True when a drag is carrying anything this app put on it. */
 export function isCuePointDrag(transfer: DragLike | null): boolean {
   if (!transfer) return false;
-  return has(transfer, TRACK_IDS_MIME) || has(transfer, COLLECTION_NODE_MIME);
+  return (
+    has(transfer, TRACK_IDS_MIME) ||
+    has(transfer, SELECTION_QUERY_MIME) ||
+    has(transfer, COLLECTION_NODE_MIME)
+  );
+}
+
+/** True when a drag is carrying tracks of either kind. */
+export function isTrackDrag(transfer: DragLike | null): boolean {
+  if (!transfer) return false;
+  return has(transfer, TRACK_IDS_MIME) || has(transfer, SELECTION_QUERY_MIME);
 }

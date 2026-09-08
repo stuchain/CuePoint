@@ -786,6 +786,12 @@ def _selection(data: Dict[str, Any]) -> Any:
     shape refuses that itself. A query selection is the view the user is
     looking at, minus its ordering: a batch is a set, and which end of it was
     at the top changes nothing about what it applies to.
+
+    A query selection may also carry ``exclude_track_ids`` (ORG-11): "everything
+    matching, except these" is what select-all-then-deselect means, and the
+    count the user is reading already says so. The list is bounded by what a
+    person can click, so DEC-045's rule that a 47,913-track selection never
+    crosses as 47,913 numbers is untouched.
     """
     from cuepoint.engine.library_api import resolve_scope
     from cuepoint.services.batch_service import BatchSelection
@@ -810,13 +816,19 @@ def _selection(data: Dict[str, Any]) -> Any:
         if scope.rules.rules
         else sent
     )
+    excluded = (
+        _require_ids(selection, "exclude_track_ids")
+        if selection.get("exclude_track_ids")
+        else ()
+    )
     return BatchSelection.matching(
         BrowseQuery(
             query=_optional_str(query, "q") or "",
             playlist_id=_optional_int(query, "playlist_id"),
             collection_id=scope.collection_id,
             rules=rules,
-        )
+        ),
+        exclude=excluded,
     )
 
 

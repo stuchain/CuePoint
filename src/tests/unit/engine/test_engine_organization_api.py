@@ -1190,6 +1190,61 @@ class TestTheBatchRoute:
         )
         assert payload["applied"]["total"] == 3
 
+    def test_a_query_selection_can_take_tracks_back_out(self, engine, ids):  # noqa: F811
+        """Select all, then deselect two: the count and the effect must agree.
+
+        A query with no exclusions applied to every track would be the batch
+        doing more than the toolbar promised, and there is no way for a user to
+        find that out except by looking at what it did.
+        """
+        payload = ok(
+            engine,
+            "/api/v1/library/batch",
+            {
+                "selection": {"query": {}, "exclude_track_ids": ids[:2]},
+                "operation": {"kind": "set_rating", "value": 2},
+            },
+        )
+        assert payload["applied"]["total"] == TRACK_COUNT - 2
+
+        detail = ok(engine, f"/api/v1/library/tracks/{ids[0]}/metadata", {"notes": "x"})
+        assert detail["metadata"]["rating"] is None
+
+    def test_an_empty_exclusion_list_is_not_an_error(self, engine, ids):  # noqa: F811
+        payload = ok(
+            engine,
+            "/api/v1/library/batch",
+            {
+                "selection": {"query": {}, "exclude_track_ids": []},
+                "operation": {"kind": "set_favorite", "value": True},
+            },
+        )
+        assert payload["applied"]["total"] == TRACK_COUNT
+
+    def test_an_exclusion_that_is_not_a_list_of_ids_is_refused(self, engine):  # noqa: F811
+        status, payload = post(
+            engine,
+            "/api/v1/library/batch",
+            {
+                "selection": {"query": {}, "exclude_track_ids": "everything"},
+                "operation": {"kind": "set_favorite", "value": True},
+            },
+        )
+        assert status == 400
+        assert "exclude_track_ids" in payload["error"]["message"]
+
+    def test_excluding_everything_is_refused_by_name(self, engine, ids):  # noqa: F811
+        status, payload = post(
+            engine,
+            "/api/v1/library/batch",
+            {
+                "selection": {"query": {}, "exclude_track_ids": list(ids)},
+                "operation": {"kind": "set_favorite", "value": True},
+            },
+        )
+        assert status == 400
+        assert "names no tracks" in payload["error"]["message"]
+
     def test_a_large_selection_starts_a_job(self, engine, ids, monkeypatch):  # noqa: F811
         from cuepoint.engine import batch_jobs
 

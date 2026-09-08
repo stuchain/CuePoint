@@ -11,11 +11,15 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   COLLECTION_NODE_MIME,
+  SELECTION_QUERY_MIME,
   TRACK_IDS_MIME,
   draggedNodeId,
   draggedTrackIds,
+  draggedTracks,
   isCuePointDrag,
+  isTrackDrag,
   setDraggedNodeId,
+  setDraggedQuerySelection,
   setDraggedTrackIds,
 } from "./collectionDrag";
 
@@ -127,5 +131,64 @@ describe("the format itself", () => {
     const setData = vi.fn();
     setDraggedTrackIds({ types: [], getData: () => "", setData }, [1]);
     expect(setData).toHaveBeenCalledWith(TRACK_IDS_MIME, "[1]");
+  });
+});
+
+describe("a selection that is a query (ORG-11, DEC-045)", () => {
+  it("carries no ids at all", () => {
+    // 47,913 tracks are a question. The whole point of DEC-045 is that those
+    // numbers never travel, and the drop target reads the query itself.
+    const drag = transfer();
+    setDraggedQuerySelection(drag, 47_913);
+    expect(drag.getData(TRACK_IDS_MIME)).toBe("");
+    expect(draggedTracks(drag)).toEqual({ query: true });
+  });
+
+  it("says how many, for whatever the platform shows while dragging", () => {
+    const drag = transfer();
+    setDraggedQuerySelection(drag, 12);
+    expect(drag.getData("text/plain")).toBe("12 tracks");
+  });
+
+  it("is recognized as one of ours", () => {
+    const drag = transfer();
+    setDraggedQuerySelection(drag, 3);
+    expect(isCuePointDrag(drag)).toBe(true);
+    expect(isTrackDrag(drag)).toBe(true);
+  });
+});
+
+describe("reading what a drag of rows carries", () => {
+  it("answers with the ids when it has them", () => {
+    const drag = transfer();
+    setDraggedTrackIds(drag, [7, 8]);
+    expect(draggedTracks(drag)).toEqual({ ids: [7, 8] });
+  });
+
+  it("prefers the query when a drag somehow carries both", () => {
+    // One reader for both payloads, so a target cannot handle the list and
+    // silently drop the query — which at 47,913 tracks is the difference
+    // between adding a library and adding nothing.
+    const drag = transfer();
+    setDraggedTrackIds(drag, [7]);
+    setDraggedQuerySelection(drag, 47_913);
+    expect(draggedTracks(drag)).toEqual({ query: true });
+  });
+
+  it("answers null for a drag carrying neither", () => {
+    expect(draggedTracks(transfer({ Files: "" }))).toBeNull();
+    expect(draggedTracks(transfer({ [TRACK_IDS_MIME]: "[]" }))).toBeNull();
+    expect(draggedTracks(null)).toBeNull();
+  });
+
+  it("does not read a node drag as tracks", () => {
+    const drag = transfer();
+    setDraggedNodeId(drag, 4);
+    expect(draggedTracks(drag)).toBeNull();
+    expect(isTrackDrag(drag)).toBe(false);
+  });
+
+  it("is a mime type of our own, not text", () => {
+    expect(SELECTION_QUERY_MIME).toBe("application/x-cuepoint-selection-query");
   });
 });

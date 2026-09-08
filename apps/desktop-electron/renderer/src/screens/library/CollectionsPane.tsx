@@ -39,11 +39,12 @@ import {
 } from "./collectionTree";
 import {
   COLLECTION_NODE_MIME,
-  TRACK_IDS_MIME,
   draggedNodeId,
-  draggedTrackIds,
+  draggedTracks,
   isCuePointDrag,
+  isTrackDrag,
   setDraggedNodeId,
+  type DraggedTracks,
 } from "./collectionDrag";
 import "./CollectionsPane.css";
 
@@ -66,10 +67,24 @@ export interface CollectionsPaneProps {
   onMove: (id: number, parentId: number | null) => Promise<{ ok: boolean; error?: string }>;
   onPreviewDelete: (id: number) => Promise<CollectionSubtree | null>;
   onDelete: (id: number) => Promise<{ ok: boolean; error?: string }>;
+  /**
+   * Tracks dropped on a Collection (ORG-09's target, ORG-11's source).
+   *
+   * Either the ids, or "everything the current query matches" — which is what
+   * a 47,913-track selection is, and is never a list of ids (DEC-045). The
+   * page resolves the second, because the query is the page's.
+   */
   onDropTracks: (
     collectionId: number,
-    trackIds: number[],
-  ) => Promise<{ ok: boolean; error?: string; added?: number; skipped?: number }>;
+    tracks: DraggedTracks,
+  ) => Promise<{
+    ok: boolean;
+    error?: string;
+    added?: number;
+    skipped?: number;
+    /** The page already said what happened — do not say it twice. */
+    silent?: boolean;
+  }>;
   /** Said out loud: a toast, a status line — the page decides. */
   onNotify?: (message: string, tone: "info" | "warning") => void;
 }
@@ -165,7 +180,7 @@ export function CollectionsPane({
     if (!transfer) return null;
     const types = Array.from(transfer.types ?? []);
 
-    if (types.includes(TRACK_IDS_MIME)) {
+    if (isTrackDrag(transfer)) {
       // Tracks go into a Collection. Not a folder, which holds nodes, and not
       // a Smart Collection, which holds a question (DEC-061).
       return target && holdsTracks(target) ? "tracks" : null;
@@ -204,13 +219,17 @@ export function CollectionsPane({
     event.preventDefault();
 
     if (kind === "tracks" && target) {
-      const trackIds = draggedTrackIds(event.dataTransfer);
-      if (trackIds.length === 0) return;
-      const result = await onDropTracks(target.id, trackIds);
+      const carried = draggedTracks(event.dataTransfer);
+      if (!carried) return;
+      const result = await onDropTracks(target.id, carried);
       if (!result.ok) {
         say(result.error ?? "Could not add those tracks.", "warning");
         return;
       }
+      // A selection that is a query goes through the batch path, which
+      // confirms, follows a job and reports its own counts. Announcing "added
+      // 0 tracks" beside that would be the pane inventing an outcome.
+      if (result.silent) return;
       const added = result.added ?? 0;
       const skipped = result.skipped ?? 0;
       const tracks = `${added} ${added === 1 ? "track" : "tracks"}`;

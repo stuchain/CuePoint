@@ -287,6 +287,56 @@ class TestTheSelection:
         found = service.resolve(BatchSelection.matching(query))
         assert found == list(reversed(ids))
 
+    def test_everything_matching_can_leave_tracks_out(self, service, ids):
+        """DEC-045's other half, which ORG-11 is the first caller to need.
+
+        Select all, then ctrl-click three tracks back out: what the count on
+        screen says is "everything matching, minus these". Sending the query
+        without them would apply to three tracks the user had taken out, and
+        sending the ids instead would put 47,913 numbers on the wire — which is
+        the pair of mistakes the shape exists to prevent.
+        """
+        everything = BrowseQuery()
+        found = service.resolve(
+            BatchSelection.matching(everything, exclude=[ids[0], ids[2]])
+        )
+        assert ids[0] not in found
+        assert ids[2] not in found
+        assert len(found) == len(ids) - 2
+
+    def test_an_exclusion_named_twice_takes_one_track_out(self, service, ids):
+        found = service.resolve(
+            BatchSelection.matching(BrowseQuery(), exclude=[ids[0], ids[0]])
+        )
+        assert len(found) == len(ids) - 1
+
+    def test_an_exclusion_of_a_track_that_did_not_match_changes_nothing(
+        self, service, ids
+    ):
+        found = service.resolve(BatchSelection.matching(BrowseQuery(), exclude=[999]))
+        assert found == service.resolve(BatchSelection.matching(BrowseQuery()))
+
+    def test_excluding_everything_is_refused_rather_than_reported_as_zero(
+        self, service, ids
+    ):
+        # A batch over nothing is a request that cannot be honoured, and this
+        # is the way a user reaches one: select all, then deselect all of it.
+        with pytest.raises(ValueError, match="names no tracks"):
+            service.resolve(BatchSelection.matching(BrowseQuery(), exclude=list(ids)))
+
+    def test_nothing_is_applied_to_a_track_taken_back_out(self, service, db, ids):
+        service.apply_batch(
+            BatchSelection.matching(BrowseQuery(), exclude=[ids[0]]),
+            BatchOperation(OPERATION_SET_RATING, 3),
+        )
+        assert ids[0] not in rated(db)
+
+    def test_a_selection_of_ids_cannot_also_exclude_ids(self):
+        # Two answers to "which tracks", with nothing saying which wins. A
+        # selection made of ids already lists exactly what it means.
+        with pytest.raises(ValueError, match="cannot also exclude"):
+            BatchSelection(track_ids=[1], exclude_track_ids=[2])
+
     def test_a_selection_is_ids_or_a_query_never_both(self):
         with pytest.raises(ValueError, match="never both and never neither"):
             BatchSelection(track_ids=[1], query=BrowseQuery())
