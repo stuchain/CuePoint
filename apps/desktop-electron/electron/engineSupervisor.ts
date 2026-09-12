@@ -289,6 +289,8 @@ export class EngineSupervisor {
     playlistId?: number | null;
     filters?: FilterRuleSet | null;
     limit?: number;
+    scope?: "collection" | "smart";
+    collectionId?: number | null;
   }): Promise<LibraryFacet> {
     return this.client().getLibraryFacet(params);
   }

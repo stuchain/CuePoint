@@ -84,3 +84,91 @@
 .cp-filter-bar__chip button:hover {
   color: var(--accent-danger);
 }
+
+/* The new field kinds (ORG-12). A tag is chosen from chips and a rating from
+   stars, because both are things a user recognizes and neither is a number
+   anyone would type. */
+
+.cp-filter-bar__tags,
+.cp-filter-bar__stars {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.cp-filter-bar__tag,
+.cp-filter-bar__star {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: calc(2px * var(--scale)) var(--space-xs);
+  background: var(--bg-input);
+  border: calc(1px * var(--scale)) solid var(--border-outline);
+  color: var(--fg-primary);
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.cp-filter-bar__tag--on,
+.cp-filter-bar__star--on {
+  background: var(--accent-primary);
+  color: var(--fg-inverse);
+}
+
+.cp-filter-bar__tag-count {
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+.cp-filter-bar__tag--on .cp-filter-bar__tag-count {
+  color: inherit;
+}
+
+.cp-filter-bar__star {
+  font-family: var(--font-data);
+}
+
+/* What the rules belong to, and what can be done about it. */
+
+.cp-filter-bar__saved {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.cp-filter-bar__status {
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.cp-filter-bar__status--modified {
+  color: var(--accent-warning);
+}
+
+/* A refused question, beside the clauses that caused it rather than only
+   under the table it emptied. */
+
+.cp-filter-bar__refusal {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg-input);
+  border: calc(1px * var(--scale)) solid var(--accent-danger);
+  color: var(--accent-danger);
+  font-size: var(--font-size-xs);
+}
+
+.cp-filter-bar__refusal button {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}

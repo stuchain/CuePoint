@@ -184,6 +184,7 @@ const VOCABULARY: LibraryFilterVocabulary = {
       label: "Genre",
       facetable: true,
       integer: false,
+      unit: null,
       operators: ["is", "contains"],
     },
   ],
@@ -330,6 +331,12 @@ interface Bridge {
   /** The one entry point every organization action goes through (ORG-11). */
   applyBatch: ReturnType<typeof vi.fn>;
   createTag: ReturnType<typeof vi.fn>;
+  /** The filter bar's save button and the tag manager (ORG-12). */
+  saveSmartCollection: ReturnType<typeof vi.fn>;
+  updateSmartCollection: ReturnType<typeof vi.fn>;
+  updateTag: ReturnType<typeof vi.fn>;
+  deleteTag: ReturnType<typeof vi.fn>;
+  mergeTags: ReturnType<typeof vi.fn>;
   getCollectionEntries: ReturnType<typeof vi.fn>;
   reorderCollectionEntry: ReturnType<typeof vi.fn>;
   showItemInFolder: ReturnType<typeof vi.fn>;
@@ -414,6 +421,27 @@ function install(overrides: Partial<Bridge> = {}) {
     createTag: vi.fn().mockResolvedValue({
       tag: { id: 22, name: "Closer", category: null, colour: null, created_at: "2026-09-08" },
     }),
+    saveSmartCollection: vi.fn(async (params: { name: string; rules: unknown }) => ({
+      collection: {
+        ...COLLECTIONS[2],
+        id: 30,
+        name: params.name,
+        rules: params.rules,
+        sort: null,
+        dir: null,
+      },
+    })),
+    updateSmartCollection: vi.fn(async (params: { id: number; rules: unknown }) => ({
+      collection: { ...COLLECTIONS[2], id: params.id, rules: params.rules },
+    })),
+    updateTag: vi.fn().mockResolvedValue({
+      tag: { id: 21, name: "Peak time", category: "energy", colour: null, created_at: "2026-01-01" },
+    }),
+    // Deliberately not the tag's own `track_count`: the toast must report what
+    // the engine did, and identical numbers would hide it reporting the
+    // warning's count instead.
+    deleteTag: vi.fn().mockResolvedValue({ untagged: 7 }),
+    mergeTags: vi.fn().mockResolvedValue({ moved: 4 }),
     getCollectionEntries: vi.fn().mockResolvedValue({
       collection_id: 12,
       entries: [
@@ -2284,5 +2312,415 @@ describe("rearranging a Collection (ORG-11)", () => {
     drag("dragover", rowFor("Track 3"), dataTransfer, 5);
 
     expect(rowFor("Track 3")).toHaveAttribute("data-drop", "after");
+  });
+});
+
+describe("the filter bar saves a Smart Collection (ORG-12)", () => {
+  beforeEach(() => {
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+  });
+
+  /** Open a Smart Collection the way a user does: by clicking it in the pane. */
+  async function openRecentTechno() {
+    const tree = await screen.findByRole("tree", { name: "Collections" });
+    await userEvent.click(within(tree).getByText("Recent techno"));
+    await waitFor(() => expect(lastBrowse()).toMatchObject({ scope: "smart" }));
+  }
+
+  async function addAFilter(value: string) {
+    await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
+    fireEvent.change(screen.getByLabelText("Value"), { target: { value } });
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+  }
+
+  it("loads a Smart Collection's rules into the bar", async () => {
+    // Visibly the same clauses a user would have built by hand, because they
+    // are the same clauses. DEC-016's whole point, on screen.
+    renderScreen();
+    await tableReady();
+    await openRecentTechno();
+
+    const chips = await screen.findByLabelText("Active filters");
+    expect(within(chips).getByText("Genre is Techno")).toBeInTheDocument();
+  });
+
+  it("names the Collection the rules belong to", async () => {
+    renderScreen();
+    await tableReady();
+    await openRecentTechno();
+
+    expect(await screen.findByText("Smart Collection “Recent techno”")).toBeInTheDocument();
+  });
+
+  it("asks for it by id rather than sending a copy of its rules", async () => {
+    // The engine resolves the saved rules, so the table shows what the Smart
+    // Collection *is*. Sending them as well would AND them with themselves.
+    renderScreen();
+    await tableReady();
+    await openRecentTechno();
+
+    expect(lastBrowse()).toMatchObject({ scope: "smart", collectionId: 13 });
+    expect(lastBrowse().filters).toBeNull();
+  });
+
+  it("shows it as modified once a clause is added, and writes nothing", async () => {
+    renderScreen();
+    await tableReady();
+    await openRecentTechno();
+    await addAFilter("House");
+
+    expect(await screen.findByText(/modified, not saved/)).toBeInTheDocument();
+    expect(bridge.updateSmartCollection).not.toHaveBeenCalled();
+  });
+
+  it("shows the modified rules in the table rather than the saved ones", async () => {
+    // A user who adds a clause and sees the same rows has been told nothing
+    // about what they just did.
+    renderScreen();
+    await tableReady();
+    await openRecentTechno();
+    await addAFilter("House");
+
+    await waitFor(() => {
+      // `scope` is left out rather than sent as null, which is how the browse
+      // params have always spelled "no scope" (ORG-08).
+      expect(lastBrowse().scope).toBeUndefined();
+      expect(lastBrowse().collectionId).toBeNull();
+      expect(lastBrowse().filters).toMatchObject({
+        rules: [
+          { field: "genre", operator: "is", value: "Techno" },
+          { field: "genre", operator: "is", value: "House" },
+        ],
+      });
+    });
+  });
+
+  it("writes the rules over the Collection when asked to", async () => {
+    renderScreen();
+    await tableReady();
+    await openRecentTechno();
+    await addAFilter("House");
+
+    await userEvent.click(await screen.findByRole("button", { name: /^Update/ }));
+
+    await waitFor(() =>
+      expect(bridge.updateSmartCollection).toHaveBeenCalledWith({
+        id: 13,
+        rules: {
+          match: "all",
+          rules: [
+            { field: "genre", operator: "is", value: "Techno" },
+            { field: "genre", operator: "is", value: "House" },
+          ],
+        },
+        sort: undefined,
+        dir: undefined,
+      }),
+    );
+  });
+
+  it("goes back to asking by id once the update lands", async () => {
+    renderScreen();
+    await tableReady();
+    await openRecentTechno();
+    await addAFilter("House");
+    await userEvent.click(await screen.findByRole("button", { name: /^Update/ }));
+
+    await waitFor(() => expect(lastBrowse()).toMatchObject({ scope: "smart" }));
+    expect(screen.queryByText(/modified/)).not.toBeInTheDocument();
+  });
+
+  it("keeps the rules as a plain filter when asked to instead", async () => {
+    renderScreen();
+    await tableReady();
+    await openRecentTechno();
+    await addAFilter("House");
+
+    await userEvent.click(await screen.findByRole("button", { name: "Keep as a filter" }));
+
+    expect(bridge.updateSmartCollection).not.toHaveBeenCalled();
+    // No Collection any more — the rules are the user's, unattached.
+    expect(screen.queryByText(/Smart Collection “/)).not.toBeInTheDocument();
+    expect(
+      within(screen.getByLabelText("Active filters")).getByText("Genre is House"),
+    ).toBeInTheDocument();
+  });
+
+  it("takes a Smart Collection's rules away when the user leaves it", async () => {
+    // They came with it and they go with it: leaving them behind would narrow
+    // a playlist by clauses nobody typed there.
+    renderScreen();
+    await tableReady();
+    await openRecentTechno();
+
+    const playlists = await screen.findByRole("tree", { name: "Playlists" });
+    await userEvent.click(within(playlists).getByText("Friday"));
+
+    await waitFor(() => expect(lastBrowse().filters).toBeNull());
+    expect(screen.queryByLabelText("Active filters")).not.toBeInTheDocument();
+  });
+
+  it("saves the bar's rules with no translation step", async () => {
+    // The acceptance criterion: saving requires no conversion. What crosses
+    // the wire is the object the bar handed over.
+    renderScreen();
+    await tableReady();
+    await addAFilter("House");
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Save as Smart Collection…" }),
+    );
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Housey" } });
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(bridge.saveSmartCollection).toHaveBeenCalledWith({
+        name: "Housey",
+        rules: {
+          match: "all",
+          rules: [{ field: "genre", operator: "is", value: "House" }],
+        },
+        parent_id: null,
+        sort: undefined,
+        dir: undefined,
+      }),
+    );
+  });
+
+  it("opens what it just saved", async () => {
+    renderScreen();
+    await tableReady();
+    await addAFilter("House");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Save as Smart Collection…" }),
+    );
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Housey" } });
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(lastBrowse()).toMatchObject({ scope: "smart", collectionId: 30 }),
+    );
+    expect(await screen.findByText("Smart Collection “Housey”")).toBeInTheDocument();
+    // And the dialog is gone, rather than sitting over what it just made.
+    expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
+  });
+
+  it("produces the same tracks saved as it did unsaved", async () => {
+    // The rules the table was asked with before saving, and the rules the
+    // Collection was saved with, are the same object graph. Anything else
+    // would mean the filter and the Collection disagree about the question.
+    //
+    // Two clauses, not one: with a single rule a reordering, a re-wrapping or
+    // a rebuild are all indistinguishable from sending it untouched.
+    renderScreen();
+    await tableReady();
+    await addAFilter("House");
+    await addAFilter("Techno");
+    await waitFor(() =>
+      expect((lastBrowse().filters as { rules: unknown[] } | null)?.rules).toHaveLength(2),
+    );
+    const asked = lastBrowse().filters;
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Save as Smart Collection…" }),
+    );
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Housey" } });
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(bridge.saveSmartCollection).toHaveBeenCalled());
+    const saved = bridge.saveSmartCollection.mock.calls[0][0] as { rules: unknown };
+    expect(saved.rules).toEqual(asked);
+  });
+
+  it("says what the engine said rather than closing as though it worked", async () => {
+    install({
+      saveSmartCollection: vi
+        .fn()
+        .mockRejectedValue(new Error("A Collection is already called that")),
+    });
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+    renderScreen();
+    await tableReady();
+    await addAFilter("House");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Save as Smart Collection…" }),
+    );
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Housey" } });
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByText(/already called that/)).toBeInTheDocument();
+  });
+});
+
+describe("a question the engine refused (ORG-12)", () => {
+  beforeEach(() => {
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+  });
+
+  it("names the clause rather than showing an empty table", async () => {
+    // "No tracks match this search" over a refusal sends somebody looking for
+    // tracks that were never asked for.
+    install({
+      browseLibrary: vi
+        .fn()
+        .mockRejectedValue(new Error("Genre cannot be filtered with 'gte'")),
+    });
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+    renderScreen();
+
+    const said = await screen.findAllByText(/Genre cannot be filtered/);
+    expect(said.length).toBeGreaterThan(0);
+    expect(screen.queryByText("No tracks match this search.")).not.toBeInTheDocument();
+  });
+
+  it("puts the refusal in the table rather than a sentence about matching", async () => {
+    // With a filter active the empty state would otherwise read "No tracks
+    // match this search" — which sends somebody looking for tracks that were
+    // never asked for.
+    install({
+      browseLibrary: vi
+        .fn()
+        .mockRejectedValue(new Error("Genre cannot be filtered with 'gte'")),
+    });
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+    renderScreen();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Add filter" }));
+    fireEvent.change(screen.getByLabelText("Value"), { target: { value: "House" } });
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() =>
+      expect(screen.queryByText("No tracks match this search.")).not.toBeInTheDocument(),
+    );
+    expect(screen.getAllByText(/Genre cannot be filtered/).length).toBeGreaterThan(1);
+  });
+
+  it("offers to ask again", async () => {
+    install({
+      browseLibrary: vi.fn().mockRejectedValue(new Error("The engine is not answering")),
+    });
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+    renderScreen();
+
+    const retry = await screen.findByRole("button", { name: "Try again" });
+    const before = bridge.browseLibrary.mock.calls.length;
+    await userEvent.click(retry);
+    await waitFor(() =>
+      expect(bridge.browseLibrary.mock.calls.length).toBeGreaterThan(before),
+    );
+  });
+});
+
+describe("the tag manager (ORG-12)", () => {
+  beforeEach(() => {
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+  });
+
+  async function openManager() {
+    await userEvent.click(await screen.findByRole("button", { name: "Tags…" }));
+    return screen.findByRole("list", { name: "Tags" });
+  }
+
+  it("opens from the bar that uses the vocabulary", async () => {
+    renderScreen();
+    await tableReady();
+    const list = await openManager();
+    expect(within(list).getByText("Peak-time")).toBeInTheDocument();
+  });
+
+  it("shows what carries each tag", async () => {
+    renderScreen();
+    await tableReady();
+    const list = await openManager();
+    expect(within(list).getByText("energy · 9 tracks")).toBeInTheDocument();
+  });
+
+  it("renames one, sending only the name", async () => {
+    renderScreen();
+    await tableReady();
+    await openManager();
+    await userEvent.click(screen.getByRole("button", { name: /Peak-time/ }));
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Peak time" } });
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(bridge.updateTag).toHaveBeenCalledWith({ id: 21, name: "Peak time" }),
+    );
+  });
+
+  it("re-reads the table after a rename, because a rule may match differently", async () => {
+    renderScreen();
+    await tableReady();
+    await openManager();
+    await userEvent.click(screen.getByRole("button", { name: /Peak-time/ }));
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Peak time" } });
+    const browses = bridge.browseLibrary.mock.calls.length;
+    const reads = bridge.getTags.mock.calls.length;
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(bridge.browseLibrary.mock.calls.length).toBeGreaterThan(browses),
+    );
+    // Counted from just before the write: the vocabulary is read on mount and
+    // again when the manager opens, so "more than once" was already true.
+    await waitFor(() =>
+      expect(bridge.getTags.mock.calls.length).toBeGreaterThan(reads),
+    );
+  });
+
+  it("re-reads the Inspector, because a rename changes a chip on every track", async () => {
+    renderScreen();
+    await tableReady();
+    await userEvent.click(screen.getByText("Track 1"));
+    await waitFor(() => expect(bridge.getLibraryTrack).toHaveBeenCalled());
+
+    await openManager();
+    await userEvent.click(screen.getByRole("button", { name: /Peak-time/ }));
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Peak time" } });
+    const reads = bridge.getLibraryTrack.mock.calls.length;
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(bridge.getLibraryTrack.mock.calls.length).toBeGreaterThan(reads),
+    );
+  });
+
+  it("asks before deleting, with the count the engine gave", async () => {
+    renderScreen();
+    await tableReady();
+    await openManager();
+    await userEvent.click(screen.getByRole("button", { name: /Peak-time/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Delete…" }));
+
+    expect(bridge.deleteTag).not.toHaveBeenCalled();
+    expect(screen.getByRole("alertdialog")).toHaveTextContent("comes off 9 tracks");
+  });
+
+  it("deletes once confirmed and reports the engine's number", async () => {
+    renderScreen();
+    await tableReady();
+    await openManager();
+    await userEvent.click(screen.getByRole("button", { name: /Peak-time/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Delete…" }));
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+    await waitFor(() => expect(bridge.deleteTag).toHaveBeenCalledWith({ id: 21 }));
+    // The engine's count, not the one the confirmation warned about.
+    expect(await screen.findByText(/7 tracks lost it/)).toBeInTheDocument();
+  });
+
+  it("says what the engine said when a write is refused", async () => {
+    install({
+      updateTag: vi.fn().mockRejectedValue(new Error("A tag is already called that")),
+    });
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+    renderScreen();
+    await tableReady();
+    await openManager();
+    await userEvent.click(screen.getByRole("button", { name: /Peak-time/ }));
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Closer" } });
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByText(/already called that/)).toBeInTheDocument();
   });
 });

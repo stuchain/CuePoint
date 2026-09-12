@@ -31,6 +31,7 @@ const VOCABULARY: LibraryFilterVocabulary = {
       type: "text",
       label: "Genre",
       facetable: true,
+      unit: null,
       integer: false,
       operators: ["is", "contains", "any_of", "is_empty"],
     },
@@ -39,6 +40,7 @@ const VOCABULARY: LibraryFilterVocabulary = {
       type: "number",
       label: "BPM",
       facetable: false,
+      unit: null,
       integer: false,
       operators: ["gte", "between", "is_empty"],
     },
@@ -47,6 +49,7 @@ const VOCABULARY: LibraryFilterVocabulary = {
       type: "number",
       label: "Rating",
       facetable: true,
+      unit: "stars",
       integer: true,
       operators: ["gte", "is_empty"],
     },
@@ -74,6 +77,62 @@ const GENRE_FACET: LibraryFacet = {
   total_values: 3,
   range: null,
 };
+
+/** The vocabulary with CuePoint's own three kinds in it (ORG-05, ORG-12). */
+const ORGANIZATION_VOCABULARY: LibraryFilterVocabulary = {
+  ...VOCABULARY,
+  operators: {
+    ...VOCABULARY.operators,
+    has_tag: { arity: "single" },
+    in_collection: { arity: "single" },
+  },
+  fields: [
+    ...VOCABULARY.fields,
+    {
+      name: "favorite",
+      type: "bool",
+      label: "Favorite",
+      facetable: true,
+      unit: null,
+      integer: false,
+      operators: ["is"],
+    },
+    {
+      name: "tag",
+      type: "tag",
+      label: "Tag",
+      facetable: true,
+      unit: null,
+      integer: false,
+      operators: ["has_tag", "any_of", "is_empty"],
+    },
+    {
+      name: "collection",
+      type: "collection",
+      label: "Collection",
+      facetable: false,
+      unit: null,
+      integer: false,
+      operators: ["in_collection"],
+    },
+  ],
+};
+
+const TAG_FACET: LibraryFacet = {
+  field: "tag",
+  values: [
+    { value: "7", label: "Peak-time", count: 412 },
+    { value: "9", label: "Closer", count: 8 },
+  ],
+  truncated: false,
+  total_values: 2,
+  range: null,
+};
+
+const COLLECTIONS = [
+  { id: 2, name: "Sets", depth: 0, selectable: false },
+  { id: 4, name: "Closers", depth: 1, selectable: true },
+];
 
 function show(
   props: Partial<React.ComponentProps<typeof FilterBar>> = {},
@@ -146,43 +205,18 @@ describe("building a clause", () => {
     ]);
   });
 
-  it("does not offer a field kind it has no control for", () => {
-    // ORG-05 put tag, Collection and favorite rules in the engine, and the
-    // vocabulary endpoint describes them so ORG-12 does not have to hard-code
-    // them. ORG-12 also brings their controls. Offering "Tag" with a text box
-    // in the meantime would ask a user to type a database id.
-    show({
-      vocabulary: {
-        ...VOCABULARY,
-        fields: [
-          ...VOCABULARY.fields,
-          {
-            name: "tag",
-            type: "tag",
-            label: "Tag",
-            facetable: true,
-            integer: false,
-            operators: ["has_tag", "any_of", "is_empty"],
-          },
-          {
-            name: "favorite",
-            type: "bool",
-            label: "Favorite",
-            facetable: true,
-            integer: false,
-            operators: ["is"],
-          },
-        ],
-      },
-    });
+  it("offers every field kind the engine describes (ORG-12)", () => {
+    // The acceptance criterion, as one assertion: no field the engine offers
+    // is missing from the bar. ORG-05 put tag, Collection and favorite rules
+    // in the engine and the bar had controls for none of them; it now has all
+    // three, so the list is the engine's whole answer.
+    show({ vocabulary: ORGANIZATION_VOCABULARY });
     openBuilder();
 
     const options = within(screen.getByLabelText("Field")).getAllByRole("option");
-    expect(options.map((option) => option.textContent)).toEqual([
-      "Genre",
-      "BPM",
-      "Rating",
-    ]);
+    expect(options.map((option) => option.getAttribute("value"))).toEqual(
+      ORGANIZATION_VOCABULARY.fields.map((entry) => entry.name),
+    );
   });
 
   it("offers only the operators that field allows", () => {
@@ -350,13 +384,14 @@ describe("the values a field takes", () => {
     expect(document.querySelector("#cp-filter-values")).toBeNull();
   });
 
-  it("shows a rating as stars while it is typed", () => {
+  it("shows a rating as stars rather than as a number to type (ORG-12)", () => {
     show();
     openBuilder();
     chooseField("rating");
-    fireEvent.change(screen.getByLabelText("Value"), { target: { value: "4" } });
 
-    expect(screen.getByText("★★★★")).toBeInTheDocument();
+    const four = screen.getByRole("button", { name: "★★★★" });
+    fireEvent.click(four);
+    expect(four).toHaveAttribute("aria-pressed", "true");
   });
 });
 
@@ -501,7 +536,59 @@ describe("the hooks behind it", () => {
       q: "deadmau5",
       playlistId: 7,
       filters: query.filters,
+      collectionId: null,
     });
+  });
+
+  it("asks for a facet scoped by the Collection the table is in (ORG-12)", async () => {
+    // A tag list inside a Collection has to offer the tags that Collection's
+    // tracks carry. The library's would offer one that empties the table the
+    // moment it is chosen.
+    const query = {
+      ...DEFAULT_LIBRARY_QUERY,
+      scope: "collection" as const,
+      collectionId: 4,
+    };
+    const { result } = renderHook(() => useFacet(query));
+
+    act(() => result.current.load("tag"));
+
+    await waitFor(() => expect(result.current.facet).not.toBeNull());
+    expect(getLibraryFacet).toHaveBeenCalledWith(
+      expect.objectContaining({ scope: "collection", collectionId: 4 }),
+    );
+  });
+
+  it("re-reads a facet when the table moves to another scope", async () => {
+    // The callback closes over the query. One that did not list the scope in
+    // its dependencies would keep answering for the Collection the user left,
+    // which is the same bug as not passing the scope at all and harder to see.
+    const { result, rerender } = renderHook(({ query }) => useFacet(query), {
+      initialProps: { query: DEFAULT_LIBRARY_QUERY },
+    });
+
+    act(() => result.current.load("genre"));
+    await waitFor(() => expect(result.current.facet).not.toBeNull());
+
+    rerender({
+      query: { ...DEFAULT_LIBRARY_QUERY, scope: "collection" as const, collectionId: 4 },
+    });
+    act(() => result.current.load("genre"));
+
+    await waitFor(() => expect(getLibraryFacet).toHaveBeenCalledTimes(2));
+    expect(getLibraryFacet.mock.calls[1][0]).toMatchObject({
+      scope: "collection",
+      collectionId: 4,
+    });
+  });
+
+  it("leaves the scope out when the table is in none", async () => {
+    const { result } = renderHook(() => useFacet(DEFAULT_LIBRARY_QUERY));
+
+    act(() => result.current.load("genre"));
+
+    await waitFor(() => expect(result.current.facet).not.toBeNull());
+    expect("scope" in getLibraryFacet.mock.calls[0][0]).toBe(false);
   });
 
   it("asks for nothing until a field is chosen", () => {
@@ -527,5 +614,379 @@ describe("the hooks behind it", () => {
     act(() => result.current.clear());
 
     expect(result.current.facet).toBeNull();
+  });
+});
+
+describe("the controls CuePoint's own fields need (ORG-12)", () => {
+  const openOn = (field: string, props = {}) => {
+    const handles = show({ vocabulary: ORGANIZATION_VOCABULARY, ...props });
+    openBuilder();
+    chooseField(field);
+    return handles;
+  };
+
+  describe("a favorite", () => {
+    it("is chosen rather than typed", () => {
+      openOn("favorite");
+      expect(screen.getByLabelText("Favorite").tagName).toBe("SELECT");
+    });
+
+    it("adds a clause whose value is a boolean, not the word", () => {
+      const { onFiltersChange } = openOn("favorite");
+      fireEvent.change(screen.getByLabelText("Favorite"), { target: { value: "true" } });
+      fireEvent.click(screen.getByRole("button", { name: "Add" }));
+      expect(onFiltersChange).toHaveBeenCalledWith({
+        match: "all",
+        rules: [{ field: "favorite", operator: "is", value: true }],
+      });
+    });
+
+    it("offers 'no' as well, which is a question of its own", () => {
+      const { onFiltersChange } = openOn("favorite");
+      fireEvent.change(screen.getByLabelText("Favorite"), { target: { value: "false" } });
+      fireEvent.click(screen.getByRole("button", { name: "Add" }));
+      expect(onFiltersChange).toHaveBeenCalledWith({
+        match: "all",
+        rules: [{ field: "favorite", operator: "is", value: false }],
+      });
+    });
+  });
+
+  describe("a tag", () => {
+    it("is chosen from the facet, by name", () => {
+      // The rule carries the id because a rule has to survive a rename; the
+      // chip a user clicks carries the name, because nobody knows an id.
+      openOn("tag", { facet: TAG_FACET });
+      expect(screen.getByRole("button", { name: /Peak-time/ })).toBeInTheDocument();
+    });
+
+    it("shows how many tracks carry each one", () => {
+      openOn("tag", { facet: TAG_FACET });
+      expect(screen.getByRole("button", { name: /Peak-time/ })).toHaveTextContent("412");
+    });
+
+    it("adds a clause carrying the id, not the name", () => {
+      const { onFiltersChange } = openOn("tag", { facet: TAG_FACET });
+      fireEvent.click(screen.getByRole("button", { name: /Peak-time/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Add" }));
+      expect(onFiltersChange).toHaveBeenCalledWith({
+        match: "all",
+        rules: [{ field: "tag", operator: "has_tag", value: 7 }],
+      });
+    });
+
+    it("says which chip is chosen", () => {
+      openOn("tag", { facet: TAG_FACET });
+      fireEvent.click(screen.getByRole("button", { name: /Peak-time/ }));
+      expect(screen.getByRole("button", { name: /Peak-time/ })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      expect(screen.getByRole("button", { name: /Closer/ })).toHaveAttribute(
+        "aria-pressed",
+        "false",
+      );
+    });
+
+    it("holds one at a time for an operator that takes one", () => {
+      const { onFiltersChange } = openOn("tag", { facet: TAG_FACET });
+      fireEvent.click(screen.getByRole("button", { name: /Peak-time/ }));
+      fireEvent.click(screen.getByRole("button", { name: /Closer/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Add" }));
+      expect(onFiltersChange).toHaveBeenCalledWith({
+        match: "all",
+        rules: [{ field: "tag", operator: "has_tag", value: 9 }],
+      });
+    });
+
+    it("collects several for an operator that takes a list", () => {
+      const { onFiltersChange } = openOn("tag", { facet: TAG_FACET });
+      chooseOperator("any_of");
+      fireEvent.click(screen.getByRole("button", { name: /Peak-time/ }));
+      fireEvent.click(screen.getByRole("button", { name: /Closer/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Add" }));
+      expect(onFiltersChange).toHaveBeenCalledWith({
+        match: "all",
+        rules: [{ field: "tag", operator: "any_of", value: [7, 9] }],
+      });
+    });
+
+    it("asks for no value at all when the operator takes none", () => {
+      const { onFiltersChange } = openOn("tag", { facet: TAG_FACET });
+      chooseOperator("is_empty");
+      expect(screen.queryByRole("button", { name: /Peak-time/ })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Add" }));
+      expect(onFiltersChange).toHaveBeenCalledWith({
+        match: "all",
+        rules: [{ field: "tag", operator: "is_empty" }],
+      });
+    });
+
+    it("says there are none rather than showing an empty row", () => {
+      openOn("tag");
+      expect(screen.getByText("No tags here yet.")).toBeInTheDocument();
+    });
+
+    it("does not put tag ids in the text suggestions", () => {
+      // A datalist of "7" and "9" attached to nothing at all.
+      openOn("tag", { facet: TAG_FACET });
+      expect(document.querySelector("#cp-filter-values")).toBeNull();
+    });
+
+    it("does not buy a pass over the library for a yes-or-no control", () => {
+      // A favorite is facetable — "how many tracks are starred" is a real
+      // question — and its control has nowhere to put the answer.
+      const onRequestFacet = vi.fn();
+      show({ vocabulary: ORGANIZATION_VOCABULARY, onRequestFacet });
+      openBuilder();
+      onRequestFacet.mockClear();
+      chooseField("favorite");
+      expect(onRequestFacet).not.toHaveBeenCalled();
+    });
+
+    it("still asks for the values of a field whose control shows them", () => {
+      const onRequestFacet = vi.fn();
+      show({ vocabulary: ORGANIZATION_VOCABULARY, onRequestFacet });
+      openBuilder();
+      chooseField("tag");
+      expect(onRequestFacet).toHaveBeenCalledWith("tag");
+    });
+
+    it("leaves the other tags choosable once one is chosen", () => {
+      // The facet is computed over every filter except this field's own, so
+      // choosing one tag must not empty the row it was chosen from.
+      const handles = show({ vocabulary: ORGANIZATION_VOCABULARY, facet: TAG_FACET });
+      openBuilder();
+      chooseField("tag");
+      fireEvent.click(screen.getByRole("button", { name: /Peak-time/ }));
+      expect(screen.getByRole("button", { name: /Closer/ })).toBeEnabled();
+      expect(handles).toBeDefined();
+    });
+  });
+
+  describe("a Collection", () => {
+    it("is chosen from the tree", () => {
+      openOn("collection", { collections: COLLECTIONS });
+      const options = within(screen.getByLabelText("Collection")).getAllByRole("option");
+      expect(options.map((option) => option.textContent?.trim())).toEqual([
+        "Choose…",
+        "Sets",
+        "Closers",
+      ]);
+    });
+
+    it("draws a folder and refuses to let it be chosen", () => {
+      // A folder holds nodes, not tracks. A tree with its folders removed is a
+      // list whose indentation lies.
+      openOn("collection", { collections: COLLECTIONS });
+      const options = within(screen.getByLabelText("Collection")).getAllByRole("option");
+      expect(options[1]).toBeDisabled();
+      expect(options[2]).not.toBeDisabled();
+    });
+
+    it("adds a clause carrying the id", () => {
+      const { onFiltersChange } = openOn("collection", { collections: COLLECTIONS });
+      fireEvent.change(screen.getByLabelText("Collection"), { target: { value: "4" } });
+      fireEvent.click(screen.getByRole("button", { name: "Add" }));
+      expect(onFiltersChange).toHaveBeenCalledWith({
+        match: "all",
+        rules: [{ field: "collection", operator: "in_collection", value: 4 }],
+      });
+    });
+
+    it("says so rather than sending nothing when none was chosen", () => {
+      const { onFiltersChange } = openOn("collection", { collections: COLLECTIONS });
+      fireEvent.click(screen.getByRole("button", { name: "Add" }));
+      expect(onFiltersChange).not.toHaveBeenCalled();
+      expect(screen.getByRole("alert")).toHaveTextContent("Choose a collection");
+    });
+  });
+
+  describe("a rating", () => {
+    it("is chosen in stars rather than typed as a number", () => {
+      openOn("rating");
+      expect(screen.getByRole("button", { name: "★★★★" })).toBeInTheDocument();
+    });
+
+    it("offers unrated as one of the choices", () => {
+      openOn("rating");
+      expect(screen.getByRole("button", { name: "unrated" })).toBeInTheDocument();
+    });
+
+    it("adds the number behind the stars", () => {
+      const { onFiltersChange } = openOn("rating");
+      fireEvent.click(screen.getByRole("button", { name: "★★★★" }));
+      fireEvent.click(screen.getByRole("button", { name: "Add" }));
+      expect(onFiltersChange).toHaveBeenCalledWith({
+        match: "all",
+        rules: [{ field: "rating", operator: "gte", value: 4 }],
+      });
+    });
+
+    it("draws stars for any layer the engine calls stars, not for `rating` alone", () => {
+      // DEC-057's two layers. The bar holds no list of their names.
+      show({
+        vocabulary: {
+          ...ORGANIZATION_VOCABULARY,
+          fields: [
+            {
+              name: "cuepoint_rating",
+              type: "number",
+              label: "CuePoint rating",
+              facetable: false,
+              unit: "stars",
+              integer: true,
+              operators: ["gte"],
+            },
+          ],
+        },
+      });
+      openBuilder();
+      expect(screen.getByRole("button", { name: "★★★★★" })).toBeInTheDocument();
+    });
+
+    it("types a number for a field the engine gave no unit", () => {
+      openOn("bpm");
+      expect(screen.getByLabelText("Value")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "★★★★" })).not.toBeInTheDocument();
+    });
+  });
+
+  describe("reading the chips back", () => {
+    it("names a tag rather than showing the id the rule carries", () => {
+      show({
+        vocabulary: ORGANIZATION_VOCABULARY,
+        filters: { match: "all", rules: [{ field: "tag", operator: "has_tag", value: 7 }] },
+        names: { tag: new Map([[7, "Peak-time"]]) },
+      });
+      expect(screen.getByText("Tag has Peak-time")).toBeInTheDocument();
+    });
+
+    it("names a Collection the same way", () => {
+      show({
+        vocabulary: ORGANIZATION_VOCABULARY,
+        filters: {
+          match: "all",
+          rules: [{ field: "collection", operator: "in_collection", value: 4 }],
+        },
+        names: { collection: new Map([[4, "Closers"]]) },
+      });
+      expect(screen.getByText("Collection is in Closers")).toBeInTheDocument();
+    });
+  });
+});
+
+describe("saving what was narrowed (ORG-12)", () => {
+  const HOUSE: FilterRuleSet = {
+    match: "all",
+    rules: [{ field: "genre", operator: "is", value: "House" }],
+  };
+  const HOUSE_AND_FAST: FilterRuleSet = {
+    match: "all",
+    rules: [...HOUSE.rules, { field: "bpm", operator: "gte", value: 128 }],
+  };
+  const SMART = { id: 4, name: "Closers", saved: HOUSE };
+
+  it("offers to save a rule set that is not already a Collection's", () => {
+    const onSaveSmart = vi.fn();
+    show({ filters: HOUSE, onSaveSmart });
+    fireEvent.click(screen.getByRole("button", { name: "Save as Smart Collection…" }));
+    expect(onSaveSmart).toHaveBeenCalled();
+  });
+
+  it("offers nothing to save when there are no rules", () => {
+    show({ filters: null, onSaveSmart: vi.fn() });
+    expect(screen.queryByRole("button", { name: /Save as/ })).not.toBeInTheDocument();
+  });
+
+  it("names the Collection whose rules are on screen", () => {
+    show({ filters: HOUSE, smart: SMART });
+    expect(screen.getByText("Smart Collection “Closers”")).toBeInTheDocument();
+  });
+
+  it("offers no update while the rules are still what was saved", () => {
+    show({ filters: HOUSE, smart: SMART, onUpdateSmart: vi.fn() });
+    expect(screen.queryByRole("button", { name: /Update/ })).not.toBeInTheDocument();
+  });
+
+  it("says it is modified once the rules differ", () => {
+    show({ filters: HOUSE_AND_FAST, smart: SMART });
+    expect(screen.getByText(/modified/)).toBeInTheDocument();
+  });
+
+  it("offers to update the Collection, by name", () => {
+    const onUpdateSmart = vi.fn();
+    show({ filters: HOUSE_AND_FAST, smart: SMART, onUpdateSmart });
+    fireEvent.click(screen.getByRole("button", { name: "Update “Closers”" }));
+    expect(onUpdateSmart).toHaveBeenCalled();
+  });
+
+  it("offers to keep the rules as a plain filter instead", () => {
+    // Narrowing a saved question is a thing people do all day. Rewriting one
+    // is a thing they do deliberately, and neither is the obvious default.
+    const onDetachSmart = vi.fn();
+    show({ filters: HOUSE_AND_FAST, smart: SMART, onDetachSmart });
+    fireEvent.click(screen.getByRole("button", { name: "Keep as a filter" }));
+    expect(onDetachSmart).toHaveBeenCalled();
+  });
+
+  it("does not write anything by itself", () => {
+    // The bar holds no query and issues no request; editing a chip while a
+    // Smart Collection is open reports the rules and nothing more.
+    const onUpdateSmart = vi.fn();
+    const { onFiltersChange } = show({
+      filters: HOUSE_AND_FAST,
+      smart: SMART,
+      onUpdateSmart,
+    });
+    fireEvent.click(screen.getAllByRole("button", { name: /^Remove filter/ })[1]);
+    expect(onFiltersChange).toHaveBeenCalled();
+    expect(onUpdateSmart).not.toHaveBeenCalled();
+  });
+
+  it("offers a second Collection as well as an update, once modified", () => {
+    show({
+      filters: HOUSE_AND_FAST,
+      smart: SMART,
+      onSaveSmart: vi.fn(),
+      onUpdateSmart: vi.fn(),
+    });
+    expect(
+      screen.getByRole("button", { name: "Save as a new Smart Collection…" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Update “Closers”" })).toBeInTheDocument();
+  });
+});
+
+describe("a question the engine refused (ORG-12)", () => {
+  it("says what it said, beside the clauses that caused it", () => {
+    show({ problem: "Genre cannot be filtered with 'gte'" });
+    expect(screen.getByRole("alert")).toHaveTextContent("Genre cannot be filtered");
+  });
+
+  it("offers to ask again", () => {
+    const onRetry = vi.fn();
+    show({ problem: "The engine is not answering", onRetry });
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(onRetry).toHaveBeenCalled();
+  });
+
+  it("says nothing when there is nothing wrong", () => {
+    show();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+});
+
+describe("the tag vocabulary (ORG-12)", () => {
+  it("is reachable from the bar that uses it", () => {
+    const onManageTags = vi.fn();
+    show({ onManageTags });
+    fireEvent.click(screen.getByRole("button", { name: "Tags…" }));
+    expect(onManageTags).toHaveBeenCalled();
+  });
+
+  it("is not offered by a bar that was given no way to open it", () => {
+    show();
+    expect(screen.queryByRole("button", { name: "Tags…" })).not.toBeInTheDocument();
   });
 });

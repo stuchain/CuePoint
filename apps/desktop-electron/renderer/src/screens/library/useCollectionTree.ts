@@ -67,6 +67,14 @@ export interface CollectionTreeController {
   saveSmart: (
     name: string,
     rules: FilterRuleSet,
+    parentId?: number | null,
+    sort?: string,
+    dir?: "asc" | "desc",
+  ) => Promise<WriteResult>;
+  /** Replace a Smart Collection's rules, never quietly (ORG-12). */
+  updateSmart: (
+    id: number,
+    rules: FilterRuleSet,
     sort?: string,
     dir?: "asc" | "desc",
   ) => Promise<WriteResult>;
@@ -271,10 +279,29 @@ export function useCollectionTree(
   );
 
   const saveSmart = useCallback(
-    (name: string, rules: FilterRuleSet, sort?: string, dir?: "asc" | "desc") => {
+    (
+      name: string,
+      rules: FilterRuleSet,
+      parentId?: number | null,
+      sort?: string,
+      dir?: "asc" | "desc",
+    ) => {
       const bridge = window.cuepoint?.saveSmartCollection;
       return write(
-        bridge ? () => bridge({ name, rules, sort, dir }) : undefined,
+        bridge
+          ? () => bridge({ name, rules, parent_id: parentId ?? null, sort, dir })
+          : undefined,
+        (payload) => ({ ok: true, node: payload.collection }),
+      );
+    },
+    [write],
+  );
+
+  const updateSmart = useCallback(
+    (id: number, rules: FilterRuleSet, sort?: string, dir?: "asc" | "desc") => {
+      const bridge = window.cuepoint?.updateSmartCollection;
+      return write(
+        bridge ? () => bridge({ id, rules, sort, dir }) : undefined,
         (payload) => ({ ok: true, node: payload.collection }),
       );
     },
@@ -299,5 +326,6 @@ export function useCollectionTree(
     remove,
     addTracks,
     saveSmart,
+    updateSmart,
   };
 }

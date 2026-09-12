@@ -159,6 +159,11 @@ OPERATORS_BY_TYPE: Dict[str, Tuple[str, ...]] = {
     TYPE_COLLECTION: (OP_IN_COLLECTION, OP_NOT_IN_COLLECTION),
 }
 
+#: A rating's unit. Declared here rather than in a renderer so the five-star
+#: scale has one owner: the same registry that says a rating is a whole number
+#: says what those numbers are (ORG-12).
+UNIT_STARS = "stars"
+
 #: Operators that take no value at all.
 VALUELESS_OPERATORS = (OP_IS_EMPTY, OP_IS_NOT_EMPTY)
 
@@ -226,6 +231,14 @@ class FieldSpec:
             therefore needs its join. Stated rather than sniffed out of the
             expression text, so adding a fourth metadata field cannot forget
             it and the join cannot be added for a query that does not need one.
+        unit: What the number means, when a plain number is not the whole of
+            it. ``"stars"`` says a value is a rating on the five-star scale a
+            user sees, so a control can offer five stars rather than a box to
+            type ``4`` into. Sent with the field list for the same reason the
+            operators are (DEC-043): a renderer that decided for itself which
+            fields were ratings would draw stars beside a field this registry
+            had moved on from. A field with no unit is a plain value, and a
+            unit a renderer does not recognize is one too.
     """
 
     name: str
@@ -236,6 +249,7 @@ class FieldSpec:
     column: Optional[str] = None
     link: Optional[LinkTable] = None
     metadata: bool = False
+    unit: Optional[str] = None
 
     @property
     def operators(self) -> Tuple[str, ...]:
@@ -293,6 +307,7 @@ FIELDS: Tuple[FieldSpec, ...] = (
         integer=True,
         column=f"COALESCE({METADATA_ALIAS}.rating, tracks.rating)",
         metadata=True,
+        unit=UNIT_STARS,
     ),
     FieldSpec("play_count", TYPE_NUMBER, "Play count", integer=True),
     FieldSpec("bitrate", TYPE_NUMBER, "Bitrate", facetable=True, integer=True),
@@ -305,6 +320,7 @@ FIELDS: Tuple[FieldSpec, ...] = (
         "Rekordbox rating",
         integer=True,
         column="tracks.rating",
+        unit=UNIT_STARS,
     ),
     FieldSpec(
         "cuepoint_rating",
@@ -313,6 +329,7 @@ FIELDS: Tuple[FieldSpec, ...] = (
         integer=True,
         column=f"{METADATA_ALIAS}.rating",
         metadata=True,
+        unit=UNIT_STARS,
     ),
     FieldSpec(
         "favorite",
@@ -804,6 +821,9 @@ def describe_fields() -> List[Dict[str, Any]]:
             "label": spec.label,
             "facetable": spec.facetable,
             "integer": spec.integer,
+            # Always present, null included: a key a renderer has to test for
+            # is a key a renderer forgets to test for.
+            "unit": spec.unit,
             "operators": list(spec.operators),
         }
         for spec in FIELDS
@@ -837,6 +857,7 @@ __all__: Sequence[str] = (
     "TYPE_NUMBER",
     "TYPE_TAG",
     "TYPE_TEXT",
+    "UNIT_STARS",
     "describe_fields",
     "describe_operators",
     "field_spec",

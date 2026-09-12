@@ -301,10 +301,11 @@ export interface LibraryFacet {
 
 export interface LibraryFilterField {
   name: string;
-  type: "text" | "number" | "date";
+  type: "text" | "number" | "date" | "bool" | "tag" | "collection";
   label: string;
   facetable: boolean;
   integer: boolean;
+  unit: string | null;
   operators: string[];
 }
 

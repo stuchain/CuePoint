@@ -12,6 +12,11 @@
  * others choosable. It is asked when a value list is opened rather than
  * eagerly: a facet is a pass over the library, and there is no reason to make
  * it for a field nobody looked at.
+ *
+ * **Every scope the table has, CuePoint's included.** ORG-08 taught the facet
+ * endpoint about Collections and ORG-12 is what asks: a tag list inside a
+ * Collection has to offer the tags that Collection's tracks carry, because one
+ * from elsewhere in the library empties the table the moment it is chosen.
  */
 import { useCallback, useEffect, useState } from "react";
 
@@ -92,6 +97,8 @@ export function useFacet(query: LibraryQuery): FacetState {
         q: query.q.trim() || undefined,
         playlistId: query.playlistId,
         filters: query.filters,
+        ...(query.scope ? { scope: query.scope } : {}),
+        collectionId: query.collectionId,
       })
         .then((next) => {
           // A facet for a field nobody is looking at any more is not an error,
@@ -104,7 +111,7 @@ export function useFacet(query: LibraryQuery): FacetState {
           setError(cause instanceof Error ? cause.message : String(cause));
         });
     },
-    [query.q, query.playlistId, query.filters],
+    [query.q, query.playlistId, query.filters, query.scope, query.collectionId],
   );
 
   const clear = useCallback(() => {

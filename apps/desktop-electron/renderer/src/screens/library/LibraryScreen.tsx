@@ -44,7 +44,7 @@ import type {
   RefreshDiff,
   TagUsage,
 } from "../../api/cuepointBridge.types";
-import { FilterBar } from "./FilterBar";
+import { FilterBar, type FilterCollectionOption } from "./FilterBar";
 import { LibraryHeader } from "./LibraryHeader";
 import { LIBRARY_COLUMNS } from "./libraryColumns";
 import { LibraryPane } from "./LibraryPane";
@@ -61,6 +61,7 @@ import {
   holdsTracks,
   iconForKind,
   movedPosition,
+  rulesOf,
 } from "./collectionTree";
 import {
   draggedTracks,
@@ -70,6 +71,11 @@ import {
   type DraggedTracks,
 } from "./collectionDrag";
 import { PickerDialog, type PickerItem } from "./PickerDialog";
+import { SaveSmartDialog, type FolderOption } from "./SaveSmartDialog";
+import { TagManagerDialog } from "./TagManagerDialog";
+import { smartQuery, type SmartAttachment } from "./smartFilter";
+import { deletedLine, mergedLine, type TagPatch } from "./tagManager";
+import type { ValueNames } from "./filterText";
 import { batchSelection, type BatchAction } from "./libraryBatch";
 import { organizationMenuItems } from "./trackMenu";
 import { useLibraryBatch } from "./useLibraryBatch";
@@ -191,6 +197,20 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
     target: BatchTarget;
   } | null>(null);
   const [tags, setTags] = useState<TagUsage[]>([]);
+  /**
+   * The rules the bar is showing, which are not always the query's (ORG-12).
+   *
+   * While a Smart Collection is open and unchanged the table asks for it by
+   * id and `query.filters` is empty, so the bar's copy is the only place the
+   * rules are. `smartQuery` is what keeps the two in step.
+   */
+  const [barRules, setBarRules] = useState<FilterRuleSet | null>(null);
+  const [smart, setSmart] = useState<SmartAttachment | null>(null);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savingError, setSavingError] = useState<string | null>(null);
+  const [tagsOpen, setTagsOpen] = useState(false);
+  const [tagError, setTagError] = useState<string | null>(null);
   /** Where a row drag started, which is the only Collection position in hand. */
   const draggingRow = useRef<{ index: number; count: number } | null>(null);
   const detail = useTrackDetail(selection.selection.lastId);
@@ -212,6 +232,18 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
     },
   });
 
+  /**
+   * Let go of the Smart Collection the bar was editing, rules and all.
+   *
+   * Its rules came with it and they go with it: leaving them in the bar would
+   * narrow a playlist by clauses the user never typed there, and they would
+   * have no way of knowing where they came from.
+   */
+  const leaveSmart = useCallback(() => {
+    setSmart(null);
+    setBarRules(null);
+  }, []);
+
   const scopeTo = useCallback(
     (node: LibraryPlaylistNode | null) => {
       // The pane hands over a tree node and the Inspector hands over a plain
@@ -224,18 +256,21 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
       // Collection still highlighted beside it would be a lie about what the
       // table is showing.
       collections.select(null);
+      const dropped = smart !== null;
+      leaveSmart();
       setQuery((previous) => ({
         ...previous,
         playlistId: node?.id ?? null,
         scope: null,
         collectionId: null,
+        ...(dropped ? { filters: null } : {}),
         // A set list is an order; a folder or the whole library is not
         // (DEC-044), so the scope decides what the table opens on.
         sort: defaultSortForScope(inTree),
         dir: "asc",
       }));
     },
-    [collections, playlists],
+    [collections, leaveSmart, playlists, smart],
   );
 
   const scopeToCollection = useCallback(
@@ -249,16 +284,45 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
       }
       playlists.select(null);
       const order = defaultSortForCollection(node);
+
+      if (node.kind === "smart") {
+        // Opening a Smart Collection puts its rules in the bar — visibly the
+        // same clauses a user would have built by hand, because they *are* the
+        // same clauses (DEC-016). The table still asks for it by id, so the
+        // rules resolve on the engine's side rather than being sent twice.
+        const attached: SmartAttachment = {
+          id: node.id,
+          name: node.name,
+          saved: rulesOf(node),
+        };
+        setSmart(attached);
+        setBarRules(attached.saved);
+        setQuery((previous) => ({
+          ...previous,
+          playlistId: null,
+          sort: order.sort,
+          dir: order.dir,
+          ...smartQuery(attached, attached.saved),
+        }));
+        return;
+      }
+
+      // A plain Collection is a scope of its own. Rules a Smart Collection
+      // brought with it leave with it; rules the user built by hand stay,
+      // which is the same rule `scopeTo` follows for a playlist.
+      const dropped = smart !== null;
+      leaveSmart();
       setQuery((previous) => ({
         ...previous,
         playlistId: null,
-        scope: node.kind === "smart" ? "smart" : "collection",
+        scope: "collection",
         collectionId: node.id,
+        ...(dropped ? { filters: null } : {}),
         sort: order.sort,
         dir: order.dir,
       }));
     },
-    [collections, playlists],
+    [collections, leaveSmart, playlists, smart],
   );
 
   // The Inspector belongs to the shell (SHELL-05); the page hands its content
@@ -345,6 +409,92 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
     [batch],
   );
 
+  // ------------------------------------------------- rules, saved and edited
+
+  /**
+   * The bar changed its rules.
+   *
+   * Everything the page has to decide about a rule set is in `smartQuery`:
+   * whether the table asks a Collection by id or asks these rules directly.
+   * Nothing here knows which of the three cases it is in.
+   */
+  const changeFilters = useCallback(
+    (next: FilterRuleSet | null) => {
+      setBarRules(next);
+      setQuery((previous) => ({ ...previous, ...smartQuery(smart, next) }));
+    },
+    [smart],
+  );
+
+  /** Keep the rules and let go of the Collection they came from. */
+  const detachSmart = useCallback(() => {
+    setSmart(null);
+    setQuery((previous) => ({ ...previous, ...smartQuery(null, barRules) }));
+    collections.select(null);
+  }, [barRules, collections]);
+
+  /**
+   * Write the bar's rules over the Smart Collection they came from.
+   *
+   * Only when asked. The whole reason the bar tracks "modified" is that a
+   * saved rule set must not change because somebody narrowed a view.
+   */
+  const updateSmart = useCallback(async () => {
+    if (!smart || !barRules) return;
+    setSaving(true);
+    const result = await collections.updateSmart(smart.id, barRules);
+    setSaving(false);
+    if (!result.ok) {
+      push(result.error ?? "Could not update that Smart Collection.", "warning");
+      return;
+    }
+    const saved: SmartAttachment = { id: smart.id, name: smart.name, saved: barRules };
+    setSmart(saved);
+    // Unmodified again, so the table goes back to asking the engine for the
+    // Collection rather than for a copy of its rules.
+    setQuery((previous) => ({ ...previous, ...smartQuery(saved, barRules) }));
+    push(`Updated “${smart.name}”.`, "success");
+  }, [barRules, collections, push, smart]);
+
+  /** Save the bar's rules as a new Smart Collection, and open it. */
+  const saveSmart = useCallback(
+    async (name: string, parentId: number | null) => {
+      if (!barRules) return;
+      setSaving(true);
+      setSavingError(null);
+      const result = await collections.saveSmart(name, barRules, parentId);
+      setSaving(false);
+      if (!result.ok || !result.node) {
+        setSavingError(result.error ?? "Could not save that Smart Collection.");
+        return;
+      }
+      setSaveOpen(false);
+      // Saved and opened, so what was just made is what is on screen. The node
+      // the engine answered with carries the rules it stored, which is what
+      // the bar now holds — not the copy that was sent.
+      const node = result.node;
+      const attached: SmartAttachment = {
+        id: node.id,
+        name: node.name,
+        saved: rulesOf(node),
+      };
+      setSmart(attached);
+      setBarRules(attached.saved);
+      collections.select(node);
+      playlists.select(null);
+      const order = defaultSortForCollection(node);
+      setQuery((previous) => ({
+        ...previous,
+        playlistId: null,
+        sort: order.sort,
+        dir: order.dir,
+        ...smartQuery(attached, attached.saved),
+      }));
+      push(`Saved “${node.name}”.`, "success");
+    },
+    [barRules, collections, playlists, push],
+  );
+
   /** The library's tags, read when a picker needs them and again after a change. */
   const loadTags = useCallback(async () => {
     const bridge = window.cuepoint?.getTags;
@@ -363,6 +513,40 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
       if (kind !== "collection") void loadTags();
     },
     [loadTags],
+  );
+
+  // The vocabulary is read once at the start rather than only when a picker
+  // opens: a chip that says "Tag has Peak-time" needs the name behind the id
+  // the rule carries, and a Smart Collection can be opened before any picker.
+  useEffect(() => {
+    void loadTags();
+  }, [loadTags]);
+
+  // ------------------------------------------------------- the tag vocabulary
+
+  /**
+   * One write against the tag vocabulary, and everything it makes stale.
+   *
+   * A rename changes what every chip says, a merge and a delete change which
+   * tracks a rule matches, and all three change the counts in the pane. The
+   * table is re-read for the same reason ORG-11's batch re-reads it: what is
+   * on screen has to be what the engine has.
+   */
+  const runTagWrite = useCallback(
+    async (run: () => Promise<string>) => {
+      setTagError(null);
+      try {
+        const said = await run();
+        await loadTags();
+        window_.reload();
+        collections.reload();
+        detail.reload();
+        push(said, "success");
+      } catch (error) {
+        setTagError(error instanceof Error ? error.message : "That change did not go through.");
+      }
+    },
+    [collections, detail, loadTags, push, window_],
   );
 
   /** The organization entries, for whichever surface asked for them. */
@@ -544,6 +728,79 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
       }
     },
     [collections, push, query, scopedCollection, window_],
+  );
+
+  const saveTag = useCallback(
+    (id: number, patch: TagPatch) =>
+      void runTagWrite(async () => {
+        const bridge = window.cuepoint?.updateTag;
+        if (!bridge) throw new Error("This build cannot edit tags.");
+        const { tag } = await bridge({ id, ...patch });
+        return `Saved “${tag.name}”.`;
+      }),
+    [runTagWrite],
+  );
+
+  const deleteTag = useCallback(
+    (tag: TagUsage) =>
+      void runTagWrite(async () => {
+        const bridge = window.cuepoint?.deleteTag;
+        if (!bridge) throw new Error("This build cannot edit tags.");
+        const { untagged } = await bridge({ id: tag.id });
+        return deletedLine(tag.name, untagged);
+      }),
+    [runTagWrite],
+  );
+
+  const mergeTags = useCallback(
+    (source: TagUsage, target: TagUsage) =>
+      void runTagWrite(async () => {
+        const bridge = window.cuepoint?.mergeTags;
+        if (!bridge) throw new Error("This build cannot edit tags.");
+        const { moved } = await bridge({ source_id: source.id, target_id: target.id });
+        return mergedLine(source.name, target.name, moved);
+      }),
+    [runTagWrite],
+  );
+
+  // ---------------------------------------------- what the bar is offered
+
+  /** Every Collection a membership clause can name, folders drawn and unchoosable. */
+  const filterCollections = useMemo(
+    (): FilterCollectionOption[] =>
+      flattenCollections(collections.tree).map((node) => ({
+        id: node.id,
+        name: node.name,
+        depth: node.depth,
+        selectable: holdsTracks(node),
+      })),
+    [collections.tree],
+  );
+
+  /** The folders a new Smart Collection can go in. Only folders hold nodes. */
+  const folders = useMemo(
+    (): FolderOption[] =>
+      flattenCollections(collections.tree)
+        .filter((node) => node.kind === "folder")
+        .map((node) => ({ id: node.id, name: node.name, depth: node.depth })),
+    [collections.tree],
+  );
+
+  /**
+   * The names behind the ids a membership rule carries.
+   *
+   * A rule names a tag and a Collection by id so it survives a rename
+   * (ORG-05); a chip has to read as the name anyway, so the page — which has
+   * both vocabularies — hands the lookup to the bar.
+   */
+  const ruleNames = useMemo(
+    (): ValueNames => ({
+      tag: new Map(tags.map((tag) => [tag.id, tag.name])),
+      collection: new Map(
+        flattenCollections(collections.tree).map((node) => [node.id, node.name]),
+      ),
+    }),
+    [collections.tree, tags],
   );
 
   /** What the open picker offers: the tree, or the tag vocabulary. */
@@ -765,14 +1022,18 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
 
   const filtered = query.q.trim() !== "" || (query.filters?.rules.length ?? 0) > 0;
   const emptyState = useMemo(() => {
-    // Three different problems, three different answers. "No tracks" over a
-    // filtered view sends someone looking for a broken import.
+    // A refused question first. The engine names the clause it could not
+    // honour, and "No tracks match this search" over a refusal sends someone
+    // looking for tracks that were never asked for (ORG-12).
+    if (window_.error) return window_.error;
+    // Then three different problems, three different answers. "No tracks"
+    // over a filtered view sends someone looking for a broken import.
     if (filtered) return "No tracks match this search.";
     if (query.playlistId != null) return "This playlist is empty.";
-    if (query.scope === "smart") return "Nothing matches these rules right now.";
+    if (smart || query.scope === "smart") return "Nothing matches these rules right now.";
     if (query.scope === "collection") return "This Collection is empty. Drop tracks onto it.";
     return "No tracks yet.";
-  }, [filtered, query.playlistId, query.scope]);
+  }, [filtered, query.playlistId, query.scope, smart, window_.error]);
 
   const revealPath = useMemo(() => {
     const id = onlySelectedId(selection.selection, window_.total);
@@ -872,15 +1133,32 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
           <div ref={searchRef}>
             <FilterBar
               vocabulary={vocabulary}
-              filters={query.filters}
-              onFiltersChange={(filters: FilterRuleSet | null) =>
-                setQuery((previous) => ({ ...previous, filters }))
-              }
+              // The bar's rules, not the query's: a Smart Collection that is
+              // still what it saved resolves on the engine's side, so the
+              // query carries an id where the bar carries the clauses.
+              filters={barRules}
+              onFiltersChange={changeFilters}
               query={query.q}
               onQueryChange={(q) => setQuery((previous) => ({ ...previous, q }))}
               total={window_.total}
               facet={facet.facet}
               onRequestFacet={facet.load}
+              collections={filterCollections}
+              names={ruleNames}
+              smart={smart}
+              onSaveSmart={() => {
+                setSavingError(null);
+                setSaveOpen(true);
+              }}
+              onUpdateSmart={() => void updateSmart()}
+              onDetachSmart={detachSmart}
+              onManageTags={() => {
+                setTagError(null);
+                setTagsOpen(true);
+                void loadTags();
+              }}
+              problem={window_.error}
+              onRetry={window_.retry}
             />
           </div>
 
@@ -1028,14 +1306,6 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
             <Button variant="secondary" onClick={() => setPickerOpen(true)}>
               Columns…
             </Button>
-            {window_.error && (
-              <span className="library-screen__error" role="alert">
-                {window_.error}{" "}
-                <button type="button" onClick={window_.retry}>
-                  Try again
-                </button>
-              </span>
-            )}
           </div>
         </div>
       </div>
@@ -1056,6 +1326,30 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
         applying={busy === "applying"}
         onCancel={() => setDiff(null)}
         onApply={(options) => void handleApply(options)}
+      />
+
+      <SaveSmartDialog
+        open={saveOpen}
+        rules={barRules}
+        vocabulary={vocabulary}
+        names={ruleNames}
+        folders={folders}
+        // Where the tree is pointing, so the obvious folder is already chosen.
+        defaultParentId={collections.selected?.parent_id ?? null}
+        busy={saving}
+        error={savingError}
+        onSave={(name, parentId) => void saveSmart(name, parentId)}
+        onClose={() => setSaveOpen(false)}
+      />
+
+      <TagManagerDialog
+        open={tagsOpen}
+        tags={tags}
+        error={tagError}
+        onSave={saveTag}
+        onDelete={deleteTag}
+        onMerge={mergeTags}
+        onClose={() => setTagsOpen(false)}
       />
     </div>
   );

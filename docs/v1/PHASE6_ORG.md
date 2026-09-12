@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 6: Organization, Detailed Step Specifications
 
-Status: **ORG-01…ORG-11 implemented; ORG-12 and ORG-13 specified, not implemented.** The
+Status: **ORG-01…ORG-12 implemented; ORG-13 specified, not implemented.** The
 thirteen steps below are the inventory the roadmap has carried as a placeholder since Phase 0.
 Per the process, no implementation happens from this document — each step needs an explicit
 "Implement ORG-NN" instruction, scoped to exactly that step, and its outcome is recorded under the
@@ -2157,7 +2157,7 @@ Phase 6 has been holding for ORG-13 since ORG-07.
 
 ---
 
-## ORG-12 — The Filter Bar Saves a Smart Collection
+## ORG-12 — The Filter Bar Saves a Smart Collection ✅ IMPLEMENTED 2026-09-12
 
 **Objective**: Close DEC-043's loop — the rules a user builds to narrow the table become a saved
 Smart Collection without being rebuilt in a different vocabulary.
@@ -2202,6 +2202,158 @@ engine offers is missing from the bar; saving requires no translation step.
 vocabulary-driven test forbids.
 
 **Complexity**: **M**
+
+### ✅ IMPLEMENTED 2026-09-12
+
+**Outcome**: Complete. `filterText.ts` gained the three field kinds it had been dropping,
+`smartFilter.ts` is the model for "these rules, and the Collection they came from",
+`tagManager.ts` the vocabulary's own sentences, and `FilterBar.tsx` the controls and the
+save button. `SaveSmartDialog.tsx` names a filter and gives it a place; `TagManagerDialog.tsx`
+renames, recolours, categorizes, merges and deletes. One engine change, below.
+
+**DEC-043 was only half kept, and the missing half was ours.** The rule was that a renderer must
+not be able to build a clause the engine refuses, and the engine answers with the field list so
+it cannot. The other direction had no rule: ORG-05 taught the engine to filter by tag, by
+Collection membership and by favorite, the vocabulary endpoint described all three, and
+`buildableFields` filtered them straight back out — honest while there were no controls for them,
+and a feature nobody could reach afterwards. The bar now offers the engine's whole answer, and
+two tests hold it there: one compares the field select's options against the vocabulary, and one
+in the Python suite asserts the renderer has a branch for every kind in `FIELD_TYPES`. The
+acceptance criterion is those two assertions rather than a reading of the code.
+
+**The one engine change is the engine saying what a number means.** A rating is stars, and the
+bar has to know that to draw five of them instead of a box to type `4` into. The version of this
+that does not involve the engine is a list of rating field names in the renderer — which is
+exactly the risk this step's own note names, and which would draw a number box beside the fourth
+layer on the day one is added. So `FieldSpec` gained `unit`, `describe_fields` sends it for every
+field, and the three rating layers declare `UNIT_STARS`. The renderer's `isStars` compares
+against the unit and never against a name, which is what gives DEC-057's two layers and the
+effective value one control between them. A field with no unit is a plain value, and so is a unit
+this build does not recognize — so the next unit the engine declares is additive rather than a
+break.
+
+**The contract sweep found a drift nothing had caught.** `engineClient.ts`'s copy of
+`LibraryFilterField` still said `type: "text" | "number" | "date"`, three kinds behind ORG-05.
+The desktop contract test compares the two copies field for field now, and compares the kinds on
+the `type:` line, so the next one cannot go unnoticed. The same sweep closed a second gap: the
+facet endpoint has taken a scope since ORG-08 and the bridge could not pass one, so a tag list
+opened inside a Collection would have offered the whole library's tags — every one of which
+empties the table the moment it is chosen.
+
+**Opening a Smart Collection loads its rules, and editing them does not rewrite it.** The bar
+holds one rule set. While it is still what the Collection saved, the table asks for the
+Collection *by id* — the `scope: "smart"` path ORG-08 built — so the engine resolves the saved
+rules and they are not sent twice. The moment the rules differ, the table asks for the rules on
+screen instead, because a user who takes a clause out and sees the same rows has been told
+nothing about what they just did. The bar says "modified, not saved" and offers three things:
+update the Collection, save a second one, or keep the rules as a plain filter. None of them is
+the default, because narrowing a saved question is something people do all day and rewriting one
+is something they do deliberately, and a build that guessed between them would lose work nobody
+knew they had.
+
+**Saving translates nothing, and that is asserted rather than reviewed.** The rule set that
+crosses the wire is the object the bar handed over — `toEqual` against what the table was asked
+with a moment earlier, in the page's own test. LIBUI-02 said Phase 6 would inherit the filter
+model rather than convert it; a conversion step here would be a second definition of what a rule
+means, and the two would drift the first time either changed.
+
+**A tag and a Collection are chosen, never typed.** Both are named by id in a rule, because both
+can be renamed and a saved question that changed meaning when somebody fixed a spelling would be
+worse than one that kept it (ORG-05). So a tag is a row of chips built from the tag facet, with
+the count beside each; a Collection is the tree, indented, with its folders drawn and
+unchoosable — the same rule ORG-11's picker follows, because a tree with its folders removed is a
+list whose indentation lies. A chip still *reads* as the name: the page has both vocabularies and
+hands the lookup to the bar, and an id whose row is gone says so in words rather than showing a
+number.
+
+**The tag manager lives beside the filter bar rather than in Settings.** A tag is a browsing
+vocabulary, and the moment anyone notices "Peak Time" and "Peak-time" are two tags is the moment
+they are filtering by one of them. Nobody goes to Settings to fix that. Every tag carries the
+engine's usage count, which is what makes the two destructive gestures answerable: "delete
+Peak-time" is a click and "take Peak-time off 412 tracks" is a decision, and only one of them is
+a question. Both confirm with the number; neither is offered for a tag merging into itself, which
+the engine refuses anyway. A save sends only the fields that changed, because the update route
+writes a column when its key is present and three keys would record three history rows for one
+rename.
+
+**A refusal names its clause instead of emptying the table.** The engine's rule errors already
+name the field and the operator — `FilterRuleError` was built to, so a user can find which of six
+filters was refused. What reached them was "No tracks match this search." under an empty table,
+with the real message tucked beside the Columns button. The message now sits in the bar, beside
+the chips that caused it, with the retry; and the table's empty state is the refusal rather than
+a sentence about matching.
+
+**Two things that look like scope creep and are not.** `useTrackDetail` gained a `reload`,
+because renaming a tag changes a chip on every track that carries it and the Inspector would
+otherwise show a name that no longer exists until the selection moved. And `useCollectionTree`'s
+`saveSmart` gained the parent it never had — ORG-09 wrote the call with no way to say where the
+node goes, which was fine while nothing called it.
+
+**Guards: 86 of 86 fail when the thing they protect is broken.** What a field means, six ways:
+the vocabulary no longer saying what a number is, a rating layer losing its unit, the renderer
+naming the unit itself, the renderer deciding for itself which fields are ratings, one process
+describing a field the other does not, and the two disagreeing about which kinds exist. What can
+be built, six ways: the bar dropping the kinds it once had no control for, a favorite sent as
+the word rather than the boolean, a tag sent as whatever was typed, a zero or a negative id sent
+anyway, a list of ids crossing as text, and a value carried from one kind to another. What a
+chip says, five ways: a membership chip showing the id, a deleted row shown as a bare number, a
+tag claimed deleted while the names are still loading, a Collection id read out of the tag names,
+and a favorite reading `true`. The controls, ten ways: a tag or a Collection typed rather than
+chosen, a folder choosable, a rating typed as a number, no way to ask for unrated, chips that do
+not say which is chosen, ids offered as text suggestions, an operator taking one value collecting
+several, a chosen chip that cannot be let go, a list collecting the same id twice, and the
+membership operators reading as identifiers. The rules and their Collection, eleven ways: one
+more clause reading as unchanged, a changed value reading as unchanged, a range compared by
+identity, all-of and any-of reading alike, a Smart Collection resolved *and* its rules sent, an
+edit leaving the table on the saved rules, the bar clearing a scope it does not speak for, the
+bar not saying it has been changed, a rule set of nothing saved, and a name that is empty or too
+long sent anyway. Saving and updating, ten ways: an update offered for an unmodified Collection,
+no way to keep the rules without rewriting it, a name saved with its spaces, the folder dropped,
+no folder possible at all, an update writing something else, the rules translated on the way, what
+was just saved not opened, an update still reading as modified, and a failed save closing as
+though it worked. The vocabulary's own sentences, fifteen ways: a save writing every column, a
+category cleared with an empty name, a name saved untrimmed, a name or category the engine would
+refuse sent anyway, an unknown colour offered and painted, a delete that does not say its count,
+a costless delete warned about, a merge that hides the deletion or counts the wrong side, a
+finished delete reporting the warning's number rather than the engine's, the uncategorized shown
+first, a tag listed without its use, and the manager sorting the list it was handed. The
+manager's behaviour, six ways: a delete or a merge on one click, answering no running it anyway,
+a tag merged into itself, a save with nothing changed still writing, and an editor still showing
+a row the write removed. And what a write or a refusal makes stale, twelve ways: the table, the
+vocabulary and the Inspector each left unread after a tag changed, a refused write reported as
+one that happened, a yes-or-no control buying a pass over the library, a field whose control
+shows values never asking for them, a facet offering the library's values inside a Collection, a
+facet not re-read when the scope changes, a bridge that cannot carry a scope, a refusal not shown
+beside the clauses that caused it, no way to ask again, and a refusal reaching the user as an
+empty table.
+
+Eight of those started as survivors, and seven were holes in the tests rather than in the code: a
+one-clause filter made a reordering on the way to the engine invisible; nothing checked the save
+dialog closes after a save that *worked*; the delete fixture gave the tag's usage count and the
+engine's untagged count the same number, so reporting the wrong one looked right; two assertions
+counted from zero where the vocabulary is read on mount anyway, so "read again" was already true;
+and nothing covered the Inspector re-reading after a rename, the facet re-reading on a scope
+change, or the table's empty state carrying a refusal. The eighth was a mistake in the harness:
+`tags.slice().sort()` copies exactly as `[...tags].sort()` does, so the mutation was equivalent
+rather than a defect, and it was replaced with the in-place sort that is one.
+
+**Verification**: `npm test` in the renderer — 1,970 passed across 80 files, 194 of them new and
+four of the files; `npm run typecheck`, `npm run lint` and `npm run build:check` clean, and `npm
+run build` in the desktop app; `python -m pytest src/tests/unit` — 4,346 passed and 45 skipped,
+sixteen of the passes new; `ruff check src/` and `ruff format --check src/` clean; `mypy` on the
+one changed module reports the same 11 pre-existing findings it reported before the step and no
+new ones; `check_no_qt_in_core.py`, `check_desktop_version_coupling.py` and
+`smoke_engine_health.py` all OK. The three failures in `test_code_quality_step_5_7.py` are
+unrelated and predate this step. Electron E2E was not run: `engineClient.ts` and
+`engineSupervisor.ts` changed, but only by widening two type declarations on payloads they
+already forward without inspecting, and no preload channel, IPC handler or supervisor method
+moved.
+
+Three things this step deliberately did not do. It did not add **`match: "any"`** — the engine
+declares and refuses it (DEC-016), and a bar that offered it would be offering a clause the
+engine refuses, which is the one thing DEC-043 exists to prevent. It did not build the **nav
+destination, the empty states at scale, or the end-to-end journey**, which are ORG-13's. And it
+did not touch the changelog, which Phase 6 has been holding for ORG-13 since ORG-07.
 
 ---
 

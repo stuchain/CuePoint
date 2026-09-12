@@ -478,6 +478,53 @@ describe("desktop contract", () => {
       expect(fields(bridgeTypes)).toEqual(fields(engineClient));
     });
 
+    it("keeps them agreeing about a filterable field (ORG-12)", () => {
+      // The filter vocabulary is what stops the bar offering a clause the
+      // engine refuses (DEC-043), and one process describing a field
+      // differently from the other is exactly that bug with an extra hop in
+      // it. This caught one: `type` had said `"text" | "number" | "date"` in
+      // the client since before ORG-05 added three more kinds.
+      const fields = (source: string) => {
+        const start = source.indexOf("export interface LibraryFilterField");
+        const body = source.slice(start, source.indexOf("export interface", start + 10));
+        return [...body.matchAll(/^ +([a-z_]+)\??:/gm)].map((match) => match[1]!).sort();
+      };
+
+      expect(fields(bridgeTypes)).toContain("unit");
+      expect(fields(bridgeTypes)).toEqual(fields(engineClient));
+    });
+
+    it("declares the same field kinds on both sides (ORG-12)", () => {
+      const kinds = (source: string) => {
+        const start = source.indexOf("export interface LibraryFilterField");
+        const body = source.slice(start, source.indexOf("export interface", start + 10));
+        // The `type:` line alone. A prose comment about `"stars"` is not a
+        // field kind, and reading every quoted word would make it one.
+        const line = /^ +type: (.+);$/m.exec(body)?.[1] ?? "";
+        return [...line.matchAll(/"([a-z]+)"/g)].map((match) => match[1]!).sort();
+      };
+
+      expect(kinds(bridgeTypes)).toEqual(
+        ["bool", "collection", "date", "number", "tag", "text"].sort(),
+      );
+      expect(kinds(bridgeTypes)).toEqual(kinds(engineClient));
+    });
+
+    it("lets a facet be asked inside a Collection (ORG-08, used by ORG-12)", () => {
+      // The engine has taken a scope since ORG-08. A bridge that cannot pass
+      // one offers a filter control the library's values while the table shows
+      // a Collection's — a value that empties the table the moment it is
+      // chosen.
+      const facet = (source: string) => {
+        const start = source.indexOf("getLibraryFacet");
+        return source.slice(start, source.indexOf("}", start));
+      };
+      for (const source of [bridgeTypes, supervisor, engineClient]) {
+        expect(facet(source)).toContain("scope");
+        expect(facet(source)).toContain("collectionId");
+      }
+    });
+
     it("writes with POST and reads with GET", () => {
       // A GET that changed the library would be retried by anything that
       // retries GETs, and a batch applied twice is not a batch.

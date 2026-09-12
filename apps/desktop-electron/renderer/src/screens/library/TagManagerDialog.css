@@ -1,0 +1,110 @@
+/* The tag vocabulary (ORG-12). A list of what exists beside the fields of
+   whichever one is being worked on. */
+
+.cp-tag-manager {
+  display: flex;
+  gap: var(--space-md);
+  min-width: calc(520px * var(--scale));
+}
+
+.cp-tag-manager__list {
+  flex: 0 0 calc(240px * var(--scale));
+  max-height: calc(320px * var(--scale));
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--bg-input);
+  border: calc(1px * var(--scale)) solid var(--border-outline);
+}
+
+.cp-tag-manager__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  width: 100%;
+  padding: var(--space-xs) var(--space-sm);
+  border: none;
+  background: transparent;
+  color: var(--fg-primary);
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+  text-align: left;
+  cursor: pointer;
+}
+
+.cp-tag-manager__row:hover {
+  background: var(--bg-panel-alt);
+}
+
+.cp-tag-manager__row--on {
+  background: var(--accent-primary);
+  color: var(--fg-inverse);
+}
+
+.cp-tag-manager__swatch {
+  flex: 0 0 auto;
+  width: calc(8px * var(--scale));
+  height: calc(8px * var(--scale));
+  border: calc(1px * var(--scale)) solid var(--border-outline);
+}
+
+.cp-tag-manager__name {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cp-tag-manager__hint {
+  flex: 0 0 auto;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.cp-tag-manager__row--on .cp-tag-manager__hint {
+  color: inherit;
+}
+
+.cp-tag-manager__empty,
+.cp-tag-manager__note {
+  padding: var(--space-sm);
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.cp-tag-manager__editor {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.cp-tag-manager__actions,
+.cp-tag-manager__merge {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-sm);
+}
+
+.cp-tag-manager__problem {
+  margin: 0;
+  color: var(--accent-danger);
+  font-size: var(--font-size-xs);
+}
+
+/* The confirmation sits over the manager rather than replacing it: the count
+   it names is on the row behind it. */
+
+.cp-tag-manager__confirm {
+  margin-top: var(--space-md);
+  padding: var(--space-sm);
+  background: var(--bg-panel-alt);
+  border: calc(1px * var(--scale)) solid var(--accent-danger);
+}
+
+.cp-tag-manager__confirm p {
+  margin: 0 0 var(--space-sm);
+  font-size: var(--font-size-sm);
+}

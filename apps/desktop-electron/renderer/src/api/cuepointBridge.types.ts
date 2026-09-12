@@ -661,15 +661,20 @@ export interface LibraryFacet {
 
 export interface LibraryFilterField {
   name: string;
-  /**
-   * ORG-05 added `bool`, `tag` and `collection`. The bar renders the first
-   * three; `filterText.buildableFields` is what keeps it from offering a
-   * control it does not have yet (ORG-12 adds them).
-   */
+  /** All six kinds, each with a control in the bar since ORG-12. */
   type: "text" | "number" | "date" | "bool" | "tag" | "collection";
   label: string;
   facetable: boolean;
   integer: boolean;
+  /**
+   * What the number means, when a plain number is not the whole of it.
+   * `"stars"` is a rating on the five-star scale, so the bar offers five stars
+   * rather than a box to type `4` into — for every field the engine says is
+   * one, which is how all three rating layers get the same control without the
+   * renderer holding a list of their names (DEC-043). Null is a plain value,
+   * and so is a unit this build does not recognize.
+   */
+  unit: string | null;
   operators: string[];
 }
 
@@ -1137,6 +1142,13 @@ export interface CuePointBridge {
     playlistId?: number | null;
     filters?: FilterRuleSet | null;
     limit?: number;
+    /**
+     * CuePoint's own scope (ORG-08, used by ORG-12). A tag list inside a
+     * Collection offers the tags that Collection's tracks carry; the library's
+     * would offer one that empties the table the moment it is chosen.
+     */
+    scope?: "collection" | "smart";
+    collectionId?: number | null;
   }) => Promise<LibraryFacet>;
   getLibraryFilterFields?: () => Promise<LibraryFilterVocabulary>;
   getLibraryTrack?: (params: { trackId: number }) => Promise<LibraryTrackDetail>;
