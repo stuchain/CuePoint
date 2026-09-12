@@ -567,6 +567,15 @@ export interface LibrarySearchResponse {
    * produce responses nothing can tell apart (LIBUI-05).
    */
   filters?: FilterRuleSet | null;
+  /**
+   * What actually ran, a Smart Collection's saved clauses included (ORG-13).
+   *
+   * Separate from `filters`, which echoes the request: inside a Smart
+   * Collection the request carries no clauses at all — the scope carries the
+   * question (DEC-061) — and a staleness check comparing the two has to be
+   * comparing the same thing.
+   */
+  filters_applied?: FilterRuleSet | null;
   /** CuePoint's own scope, echoed back beside Rekordbox's (ORG-08). */
   collection_scope?: "collection" | "smart" | null;
   collection_id?: number | null;
@@ -994,12 +1003,20 @@ export interface RefreshCategory<T> {
   truncated: boolean;
 }
 
-/** How many Collections or Sets hold the tracks a refresh would delete. */
+/** Which Collections or Sets hold the tracks a refresh would delete, and how many. */
 export interface RefreshReferences {
   collection_count: number;
   set_count: number;
   referenced_track_count: number;
   referenced_track_ids: number[];
+  /**
+   * The Collections themselves (ORG-13).
+   *
+   * Always as long as `collection_count`. A Collection a refresh emptied says
+   * so rather than reading as one nobody has filled yet, and that needs the
+   * ids rather than the arithmetic.
+   */
+  collection_ids: number[];
   has_references: boolean;
 }
 

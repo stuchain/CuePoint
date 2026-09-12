@@ -113,6 +113,22 @@
   display: inline-flex;
 }
 
+/*
+ * The name has to survive its own controls (ORG-13).
+ *
+ * It is the only flexible item in the row — `flex: 1; min-width: 0`, so it can
+ * ellipsise — which also means it is what shrinks when the buttons appear. On a
+ * narrow pane it shrank to nothing, and the row that went blank was the one
+ * under the cursor: the only row anybody was reading. A Smart Collection now
+ * carries four buttons rather than two, so this had further to fall.
+ *
+ * The floor is on the name, not on the buttons, because a clipped glyph is a
+ * smaller loss than a row with no name on it.
+ */
+.cp-collections .cp-playlist-pane__name {
+  min-width: 6ch;
+}
+
 /* A Smart Collection whose saved rules cannot be run (ORG-06). */
 .cp-collections__broken {
   margin-left: var(--space-xs);

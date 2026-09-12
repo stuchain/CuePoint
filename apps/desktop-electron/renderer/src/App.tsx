@@ -114,6 +114,17 @@ function AppShell() {
         return (
           <LibraryScreen onOpenRekordboxInstructions={() => setRekordboxOpen(true)} />
         );
+      // DEC-062: Collections is a way into the Library page, not a second
+      // browser. Same screen, aimed at the tree — and `destinationToRemember`
+      // stores `library` for it, so the two entries never fight over which one
+      // the app reopens on.
+      case "collections":
+        return (
+          <LibraryScreen
+            focus="collections"
+            onOpenRekordboxInstructions={() => setRekordboxOpen(true)}
+          />
+        );
       case "match":
         return (
           <InKeyMainScreen

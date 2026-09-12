@@ -218,8 +218,10 @@ test.describe("Application shell navigation", () => {
 
       // Tab from the top and record where focus goes. Every shell region has to
       // appear, or some part of the app is mouse-only.
+      // Fifteen, not fourteen: ORG-13 enabled the Collections destination, so
+      // the rail is one stop longer and the regions after it move down by one.
       const reached: string[] = [];
-      for (let i = 0; i < 14; i += 1) {
+      for (let i = 0; i < 15; i += 1) {
         await window.keyboard.press("Tab");
         reached.push(
           await window.evaluate(() => {

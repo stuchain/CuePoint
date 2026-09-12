@@ -53,19 +53,36 @@ from typing import Any, Dict, List, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from cuepoint.persistence.activity_repository import ActivityRepository  # noqa: E402
+from cuepoint.persistence.collection_repository import (  # noqa: E402
+    CollectionRepository,
+)
 from cuepoint.persistence.library_source_repository import (  # noqa: E402
     LibrarySourceRepository,
 )
 from cuepoint.persistence.playlist_repository import PlaylistRepository  # noqa: E402
+from cuepoint.persistence.tag_repository import TagRepository  # noqa: E402
+from cuepoint.persistence.track_metadata_repository import (  # noqa: E402
+    TrackMetadataRepository,
+)
 from cuepoint.models.filter_rule import FilterRule, RuleSet  # noqa: E402
 from cuepoint.persistence.track_query import BrowseQuery  # noqa: E402
 from cuepoint.persistence.track_repository import TrackRepository  # noqa: E402
+from cuepoint.services.activity_service import ActivityService  # noqa: E402
+from cuepoint.services.batch_service import (  # noqa: E402
+    BatchOperation,
+    BatchSelection,
+    BatchService,
+)
+from cuepoint.services.collection_service import CollectionService  # noqa: E402
 from cuepoint.services.database_service import DatabaseService  # noqa: E402
 from cuepoint.services.library_import_service import (  # noqa: E402
     LibraryImportService,
 )
 from cuepoint.services.library_service import LibraryService  # noqa: E402
+from cuepoint.services.metadata_service import MetadataService  # noqa: E402
 from cuepoint.services.migration_runner import MigrationRunner  # noqa: E402
+from cuepoint.services.tag_service import TagService  # noqa: E402
 
 #: Default size. The number Phase 3 was designed against, so the default is the
 #: claim rather than something convenient.
@@ -220,6 +237,11 @@ def build_service(
     The repositories come back too: LIBUI-01's browse query is measured
     directly against them, because it is the read the Library table runs on
     every scroll and it is far too fast to see through an import.
+
+    The library service is given CuePoint's own two repositories because ORG-04
+    made them required: without the Collections one, ``references_for`` would
+    answer "nothing is holding these tracks" and wave DEC-011's deletion
+    through, which is why it has no default to fall back on.
     """
     database = DatabaseService(db_path=db_path)
     MigrationRunner(database).migrate()
@@ -230,7 +252,11 @@ def build_service(
         playlists,
         LibrarySourceRepository(database),
         database,
-        library_service=LibraryService(track_repository=tracks),
+        library_service=LibraryService(
+            track_repository=tracks,
+            collection_repository=CollectionRepository(database),
+            metadata_repository=TrackMetadataRepository(database),
+        ),
     )
     return service, tracks, playlists
 
@@ -402,6 +428,217 @@ def measure_browse(
     return measured
 
 
+#: What Phase 6 is measured against (ORG-13). A real library's organization is
+#: not proportional to its size — a DJ with 50,000 tracks has a few hundred
+#: Collections and a few dozen tags, and files the same track under several.
+DEFAULT_COLLECTIONS = 200
+DEFAULT_TAGS = 40
+#: Tag assignments. Four per track at 50,000 tracks: enough that a tag rule is
+#: a real join rather than a lookup against a handful of rows.
+ASSIGNMENTS_PER_TRACK = 4
+#: One Collection large enough to be the slow case for membership and reorder.
+BIG_COLLECTION_ENTRIES = 5_000
+
+
+def build_organization(database, tracks_repo, total: int):
+    """Wire CuePoint's own services over the same database.
+
+    Constructed here rather than through :func:`bootstrap_services`, which
+    reads the user's config to find a database. Nothing in this script may
+    touch ``~/.cuepoint``.
+    """
+    activity = ActivityService(ActivityRepository(database), tracks_repo)
+    tags = TagService(TagRepository(database), activity, database)
+    collections = CollectionService(
+        CollectionRepository(database), database, tracks_repo, activity
+    )
+    metadata = MetadataService(
+        TrackMetadataRepository(database), tracks_repo, activity, database
+    )
+    batch = BatchService(metadata, tags, collections, tracks_repo, activity, database)
+    return tags, collections, batch
+
+
+def seed_organization(tags_service, collections_service, ids, phases, total: int):
+    """Create the tree, the vocabulary and the memberships, and time it.
+
+    Returns ``(tag_ids, collection_ids, big_collection_id)``.
+    """
+    with Measured("organize", phases) as m:
+        # A tree with folders, so the read below walks something shaped like a
+        # real one rather than a flat list.
+        folder_ids = [
+            collections_service.create_folder(f"folder {index}").id
+            for index in range(8)
+        ]
+        collection_ids = []
+        for index in range(DEFAULT_COLLECTIONS):
+            parent = folder_ids[index % len(folder_ids)] if index % 3 else None
+            collection_ids.append(
+                collections_service.create_collection(
+                    f"collection {index:03d}", parent
+                ).id
+            )
+
+        tag_ids = [
+            tags_service.create_or_get(
+                f"tag {index:02d}", category=f"category {index % 5}"
+            ).id
+            for index in range(DEFAULT_TAGS)
+        ]
+
+        # Spread over the library rather than over the first few thousand
+        # tracks: a rule that matched a contiguous block would be answered by
+        # the browse index instead of by the join being measured.
+        for offset, tag_id in enumerate(tag_ids):
+            step = DEFAULT_TAGS // ASSIGNMENTS_PER_TRACK
+            members = ids[offset::step]
+            tags_service.assign(members, tag_id)
+
+        # Every Collection holds something, and the first holds a lot. Clamped
+        # to the library, so `--tracks 2000` measures a 2,000-entry Collection
+        # rather than failing on a slice that is not there.
+        big = collection_ids[0]
+        big_entries = min(BIG_COLLECTION_ENTRIES, len(ids))
+        collections_service.add_tracks(big, ids[:big_entries])
+        for index, collection_id in enumerate(collection_ids[1:], start=1):
+            collections_service.add_tracks(
+                collection_id, ids[index * 7 : index * 7 + 25]
+            )
+
+        m.detail = {
+            "tracks": total,
+            "collections": len(collection_ids),
+            "folders": len(folder_ids),
+            "tags": len(tag_ids),
+            "assignments": sum(
+                len(ids[offset :: DEFAULT_TAGS // ASSIGNMENTS_PER_TRACK])
+                for offset in range(DEFAULT_TAGS)
+            ),
+            "largest_collection": collections_service.counts(big)[0],
+        }
+    return tag_ids, collection_ids, big, big_entries
+
+
+def measure_organization(
+    track_repo,
+    tags_service,
+    collections_service,
+    batch_service,
+    tag_ids,
+    big,
+    big_entries,
+):
+    """Time the reads and writes Phase 6 added (ORG-13).
+
+    The same milliseconds-not-seconds rule as :func:`measure_browse`: a
+    Collection is a scope on the one browse path (DEC-023), so these run on
+    every click in the left pane and every redraw of the filter bar.
+    """
+    tag_rule = RuleSet(rules=(FilterRule("tag", "has_tag", tag_ids[0]),))
+    two_tags = RuleSet(
+        rules=(
+            FilterRule("tag", "has_tag", tag_ids[0]),
+            FilterRule("tag", "has_tag", tag_ids[1]),
+        )
+    )
+    membership = RuleSet(rules=(FilterRule("collection", "in_collection", big),))
+
+    cases = [
+        (
+            "Collection scope, first page",
+            lambda: track_repo.browse(
+                BrowseQuery(collection_id=big, sort="collection_position"), limit=100
+            ),
+        ),
+        (
+            "Collection scope, count",
+            lambda: track_repo.browse_count(BrowseQuery(collection_id=big)),
+        ),
+        (
+            "membership rule, first page",
+            lambda: track_repo.browse(BrowseQuery(rules=membership), limit=100),
+        ),
+        (
+            "membership rule, count",
+            lambda: track_repo.browse_count(BrowseQuery(rules=membership)),
+        ),
+        (
+            "tag rule, first page",
+            lambda: track_repo.browse(BrowseQuery(rules=tag_rule), limit=100),
+        ),
+        (
+            "tag rule, count",
+            lambda: track_repo.browse_count(BrowseQuery(rules=tag_rule)),
+        ),
+        (
+            "two tag rules, count",
+            lambda: track_repo.browse_count(BrowseQuery(rules=two_tags)),
+        ),
+        ("facet: tag", lambda: track_repo.facet_values(field="tag")),
+        (
+            "facet: tag under a filter",
+            lambda: track_repo.facet_values(BrowseQuery(rules=tag_rule), "tag"),
+        ),
+        ("the Collections tree", lambda: collections_service.tree()),
+        ("the tag vocabulary", lambda: tags_service.list_all()),
+    ]
+
+    measured = []
+    for name, call in cases:
+        outcome = call()
+        if isinstance(outcome, int):
+            rows = outcome
+        elif hasattr(outcome, "values"):
+            rows = len(outcome.values)
+        else:
+            rows = len(outcome)
+        measured.append({"name": name, "ms": _median_ms(call), "rows": rows})
+
+    # A reorder inside the big Collection. Measured on its own because it is a
+    # write in the middle of thousands of rows, which is where the position
+    # shuffle costs something; and undone each time, so the median is of the
+    # same move rather than of a row walking towards the front.
+    entries = collections_service.entries(big, limit=1, offset=big_entries // 2)
+    entry_id = entries[0].id
+    original = entries[0].position
+
+    def reorder():
+        collections_service.reorder_entry(entry_id, 0)
+        collections_service.reorder_entry(entry_id, original)
+
+    measured.append(
+        {
+            "name": f"reorder inside {big_entries:,} entries",
+            "ms": _median_ms(reorder),
+            "rows": big_entries,
+        }
+    )
+    return measured
+
+
+def measure_batch(batch_service, phases, total: int):
+    """The phase-level claim: one operation over everything a query matches.
+
+    DEC-045 says the ids never reach the renderer; DEC-063 says the work is a
+    job with one batch id. What is measured here is the engine's half — the
+    resolve and the chunked write — because that is the part that takes the
+    time and the part a 47,913-track library would find out about.
+    """
+    with Measured("batch: favorite everything matching", phases) as m:
+        result = batch_service.apply_batch(
+            BatchSelection.matching(BrowseQuery()),
+            BatchOperation(kind="set_favorite", value=True),
+        )
+        m.detail = {
+            "tracks": total,
+            "total": result.total,
+            "changed": result.changed,
+            "unchanged": result.unchanged,
+        }
+    return result
+
+
 def run(tracks: int, playlists: int, workspace: Path) -> Dict[str, Any]:
     """Run every phase and return the report."""
     phases: List[Phase] = []
@@ -432,6 +669,26 @@ def run(tracks: int, playlists: int, workspace: Path) -> Dict[str, Any]:
         }
 
     browse = measure_browse(track_repo, playlist_repo, tracks)
+
+    # CuePoint's own organization, over the same library (ORG-13). Built after
+    # the browse measurements so those are of a library nothing has organized,
+    # and before the refresh ones so the diff has Collections to warn about.
+    tags_service, collections_service, batch_service = build_organization(
+        service._db, track_repo, tracks
+    )
+    tag_ids, _collection_ids, big, big_entries = seed_organization(
+        tags_service, collections_service, ids, phases, tracks
+    )
+    organization = measure_organization(
+        track_repo,
+        tags_service,
+        collections_service,
+        batch_service,
+        tag_ids,
+        big,
+        big_entries,
+    )
+    batch_result = measure_batch(batch_service, phases, tracks)
 
     with Measured("diff, nothing changed", phases) as m:
         unchanged = service.compute_refresh_diff(str(base))
@@ -469,10 +726,15 @@ def run(tracks: int, playlists: int, workspace: Path) -> Dict[str, Any]:
             "added": diff.added.count,
             "changed": diff.changed.count,
             "removed": diff.removed.count,
+            # DEC-011, non-zero for the first time: the tracks this refresh
+            # would delete are filed in Collections, so the apply below has to
+            # be confirmed rather than simply run (ORG-13).
+            "referenced_tracks": diff.references.referenced_track_count,
+            "referencing_collections": diff.references.collection_count,
         }
 
     with Measured("apply refresh", phases) as m:
-        applied = service.apply_refresh(diff)
+        applied = service.apply_refresh(diff, confirm_references=True)
         m.detail = {
             "tracks": applied.track_count,
             "inserted": applied.tracks_inserted,
@@ -497,8 +759,38 @@ def run(tracks: int, playlists: int, workspace: Path) -> Dict[str, Any]:
     edited_diff = by_name["diff, edited"].detail
     if edited_diff["removed"] != removed or edited_diff["added"] != added:
         problems.append("the diff did not match the edit that was made")
+    if edited_diff["referencing_collections"] <= 0:
+        problems.append("the refresh deleted filed tracks without DEC-011 noticing")
+    if edited_diff["referenced_tracks"] > edited_diff["removed"]:
+        problems.append("DEC-011 warned about more tracks than the refresh removes")
     if by_name["apply refresh"].detail["deleted"] != removed:
         problems.append("the apply did not delete what the preview promised")
+    organized = by_name["organize"].detail
+    if organized["collections"] != DEFAULT_COLLECTIONS:
+        problems.append("not every Collection was created")
+    if organized["tags"] != DEFAULT_TAGS:
+        problems.append("not every tag was created")
+    largest = min(BIG_COLLECTION_ENTRIES, tracks)
+    if organized["largest_collection"] != largest:
+        problems.append("the large Collection did not hold what it was given")
+    batched = by_name["batch: favorite everything matching"].detail
+    if batched["total"] != tracks:
+        problems.append("the batch did not resolve the whole library")
+    if batched["changed"] != tracks:
+        problems.append("the batch did not change every track it resolved")
+    by_org = {case["name"]: case for case in organization}
+    if by_org["Collection scope, count"]["rows"] != largest:
+        problems.append("a Collection scope counted something other than its entries")
+    if by_org["membership rule, count"]["rows"] != largest:
+        problems.append("a membership rule and its scope disagreed")
+    if by_org["tag rule, count"]["rows"] <= 0:
+        problems.append("a tag rule that should match found nothing")
+    if by_org["two tag rules, count"]["rows"] > by_org["tag rule, count"]["rows"]:
+        problems.append("adding a tag rule found more tracks, not fewer")
+    if by_org["facet: tag"]["rows"] < DEFAULT_TAGS:
+        problems.append("the tag facet did not offer every tag")
+    if by_org["the tag vocabulary"]["rows"] != DEFAULT_TAGS:
+        problems.append("the tag vocabulary lost a tag")
     by_case = {case["name"]: case for case in browse}
     if by_case["count, whole library"]["rows"] != tracks:
         problems.append("browse counted a different library than was imported")
@@ -528,9 +820,17 @@ def run(tracks: int, playlists: int, workspace: Path) -> Dict[str, Any]:
     return {
         "tracks": tracks,
         "playlists": playlists,
+        "collections": DEFAULT_COLLECTIONS,
+        "tags": DEFAULT_TAGS,
         "database_mb": _mb(db_bytes),
         "phases": [asdict(p) for p in phases],
         "browse": browse,
+        "organization": organization,
+        "batch": {
+            "total": batch_result.total,
+            "changed": batch_result.changed,
+            "unchanged": batch_result.unchanged,
+        },
         "problems": problems,
     }
 
@@ -562,6 +862,12 @@ def report(result: Dict[str, Any]) -> None:
         print(f"{'browse query (LIBUI-01)':<34}{'median ms':>11}{'rows':>9}")
         print("-" * 54)
         for case in result["browse"]:
+            print(f"{case['name']:<34}{case['ms']:>11.2f}{case['rows']:>9,}")
+    if result.get("organization"):
+        print()
+        print(f"{'organization (ORG-13)':<34}{'median ms':>11}{'rows':>9}")
+        print("-" * 54)
+        for case in result["organization"]:
             print(f"{case['name']:<34}{case['ms']:>11.2f}{case['rows']:>9,}")
     if result["problems"]:
         print("\nPROBLEMS:")

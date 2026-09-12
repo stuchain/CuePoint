@@ -163,7 +163,16 @@ and CuePoint would then say nothing has changed when something has. Re-exporting
 from Rekordbox always fixes this, because a fresh export has a new modified
 time.
 
-## Two things worth knowing
+## Three things worth knowing
+
+### What you do in CuePoint stays in CuePoint
+
+**Collections, tags, ratings, favorites and notes are CuePoint's, and they are
+invisible in Rekordbox.** CuePoint reads your export and writes nothing back —
+not to the XML, not to your audio files — so nothing you organize here changes
+what Rekordbox shows you. Carrying it back out is a later release, and it will
+be something you ask for rather than something that happens. See
+[Organizing your library](organization.md).
 
 ### CuePoint does not check that your files are still there
 
@@ -196,6 +205,7 @@ Nothing is uploaded anywhere. The library never leaves your machine.
 
 ## See also
 
+- [Organizing your library](organization.md) — Collections, tags and ratings
 - [The CuePoint window](the-window.md) — navigation, search and the status strip
 - [Performance](performance.md#the-library) — measured timings at 50,000 tracks
 - [Troubleshooting](troubleshooting.md)

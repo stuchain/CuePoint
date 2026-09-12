@@ -96,6 +96,57 @@ deliberately so: with a filter in play CuePoint reads the library directly
 instead of through those indexes, which is five times faster than the
 alternative (35 ms rather than 178 ms).
 
+## Your own Collections, tags and ratings
+
+Everything CuePoint adds on top of Rekordbox — Collections, Smart Collections,
+tags, ratings, favorites and notes — is measured on the same library, with the
+organization a heavy user would build on top of it: **200 Collections in a tree
+of 8 folders, 40 tags across 199,940 tag assignments, and one Collection holding
+5,000 tracks.** Same machine, same script.
+
+| What you did | Time |
+| --- | --- |
+| Open a 5,000-track Collection | 9 ms |
+| Filter by "is in this Collection" | 4 ms |
+| Filter by a tag | 13 ms |
+| Filter by two tags | 11 ms |
+| Open the tag list to choose from | 60 ms |
+| Draw the Collections tree | 1 ms |
+| Open the tag manager | 15 ms |
+| Drag a track to a new place in a 5,000-track Collection | 9 ms |
+
+Building all of that in the first place — 200 Collections, 40 tags and 199,940
+assignments — takes 13 seconds, which is the only number here you would ever
+wait for, and it stands in for months of a real person's filing.
+
+**The tag list is the slow one, and it is slow for the same reason the genre
+list is**: answering "how many tracks carry each tag" means visiting every
+assignment, and there are two hundred thousand of them. It is the one number
+here you might notice, and it only happens when you open the list.
+
+**Opening a Collection was sixty times slower before this was measured.** On the
+same library, a 2,000-track Collection took 183 ms to show its first page and
+now takes 3: the database had been re-reading the whole Collection once for
+every track in it while working out the order, and it reads it once now. The
+cost grew with the square of the Collection's size, so the 5,000-track case in
+the table above was worse again.
+
+This is what a measurement is for. Nothing about the feature looked wrong, and a
+25-track Collection — which is what every test used — was instant either way.
+
+### Changing a lot of tracks at once
+
+| What you did | Time |
+| --- | --- |
+| Favorite every track in a 50,000-track library | 11.4 s |
+| Check a refresh that deletes tracks 72 Collections are using | 11.1 s |
+| Apply that refresh | 14.0 s |
+
+A change over everything a search matches runs in the background with a progress
+bar and a Cancel button, so the 11 seconds above are 11 seconds you can keep
+working through. CuePoint never sends fifty thousand track numbers anywhere: it
+sends the question, and the answer is worked out once, in the database.
+
 ## Memory while browsing
 
 The numbers above are the engine's. This one is the window's, measured in the

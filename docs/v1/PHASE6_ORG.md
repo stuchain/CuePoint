@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 6: Organization, Detailed Step Specifications
 
-Status: **ORG-01…ORG-12 implemented; ORG-13 specified, not implemented.** The
+Status: **ORG-01…ORG-13 implemented. Phase 6 is complete.** The
 thirteen steps below are the inventory the roadmap has carried as a placeholder since Phase 0.
 Per the process, no implementation happens from this document — each step needs an explicit
 "Implement ORG-NN" instruction, scoped to exactly that step, and its outcome is recorded under the
@@ -2357,7 +2357,7 @@ did not touch the changelog, which Phase 6 has been holding for ORG-13 since ORG
 
 ---
 
-## ORG-13 — The Page Comes Together
+## ORG-13 — The Page Comes Together ✅ IMPLEMENTED 2026-09-12
 
 **Objective**: The phase as one thing: the nav destination, the empty states, the numbers at scale,
 the documentation, and the end-to-end journey.
@@ -2406,6 +2406,198 @@ in a packaged build.
 that shows up.
 
 **Complexity**: **L**
+
+### ✅ IMPLEMENTED 2026-09-12
+
+**Outcome**: Complete. The Collections destination is enabled and resolves to the Library page
+with its tree focused; the table's six empty states are one pure module rendered from the engine's
+own answers; the phase's scale claims are measured and recorded; a restored backup is proved to
+bring CuePoint's work back; DEC-011's warning is exercised end to end with real numbers; the user
+guide has an organization page and the changelog the phase has been holding since ORG-07; and
+`e2e/organization.spec.ts` walks the phase-level list in one run of the packaged app.
+
+**One page, and the registry says which.** DEC-062 left two sidebar entries pointing at one page,
+and DEC-027 remembers exactly one destination — so without a rule the two ids fight over "where I
+was", and which one wins depends on a link somebody clicked once rather than on where they spent
+the session. The registry now declares it: a destination may name the `pageId` whose page it
+renders, and everything that persists resolves through it. Collections keeps its own path, its own
+row and its own arrival gesture; it is simply never *remembered* as a second identity for a page
+that already has one. Five tests hold the property rather than the case — no path remembers an
+entry point, no stored id resolves to one, and no `pageId` chains, names something undeclared, or
+names something disabled.
+
+**Focus is an act, so it arrives as a token that changed.** The obvious shape is a boolean, and a
+boolean is wrong twice: it pulls the caret back out of whatever the user did next on every render,
+and it cannot express "put me there again". A counter the pane consumes does both. A collapsed
+section opens first and focuses on the second pass, which is what makes the nav entry do something
+rather than appear to do nothing; a library with no Collections lands on the button that makes the
+first one, because there is no row to land on and that is the only useful thing there.
+
+**The empty states were written against fixtures, and fixtures are kinder than engines.** ORG-13's
+spec asked that each one render from a real engine response, and the way to mean that is one file
+with two readers: `test_empty_state_fixture.py` starts the real engine over a real database in
+each state a user can reach and asserts the checked-in JSON still matches, and the renderer tests
+render from that same JSON. The first assertion it ever made found the gap. **An untagged library
+does not answer with no rows.** It answers with one — "no tag, 3 tracks" — and the filter bar's
+"No tags here yet." had been unreachable since ORG-12 because it counted rows rather than choices.
+Nothing in jsdom would ever have said so.
+
+**Six situations produce no rows and only one of them is "you have no music."** `libraryEmpty.ts`
+decides between them in one place, in order, because the order is the whole of it: a refusal beats
+everything (a refused question has no answer to report), a saved question shows its clauses (the
+answer to "why is this empty" is the question), a search beats a scope (the search is the newer
+fact), and a Collection a refresh emptied is told what happened rather than invited to be filled.
+That last one needed the engine: `ReferenceSummary` already had to find which Collections held the
+doomed tracks in order to count them, and threw the list away, so a page could say "2 Collections"
+and never which two. It carries them now, and the page keeps them for the session.
+
+**Duplicate and freeze had no way in.** ORG-08 built both routes and carried them through all six
+contract files; ORG-12 built the bar that saves the rules; nothing ever offered the gestures, so
+the phase-level sentence "duplicates independently, and freezes into a static Collection" was
+unreachable. They are row actions on a Smart Collection and on nothing else, because the engine
+refuses them for a folder and for a plain Collection and a control that can only fail is a cursor
+that lies. A duplicate happens on one click — a second saved question costs nothing and deleting
+it costs nothing — and says the two are separate from now on, which is the one thing a user could
+reasonably get wrong. A freeze asks first, because it stores an answer that will quietly stop
+being true, and the confirmation says both halves: the copy stops changing, and the original does
+not.
+
+**Three defects the end-to-end run found, each invisible to every unit test.**
+
+*A Smart Collection showed an empty table however many tracks it matched.* Two causes, both in the
+same echo. The browse response read `collection_id` off the *result* — which carries it for a
+Collection, because the query is narrowed by it, and not for a Smart Collection, which resolves to
+rules (DEC-061) — so a smart scope answered `null`. And `filters` echoed the clauses that *ran*,
+saved ones included, while an unmodified Smart Collection sends none at all. Either one alone was
+enough: the renderer compares the echo against its own request to tell a late response from a
+current one (LIBUI-05), and a response that names a question nobody asked is discarded. Both keys
+now echo the request; what actually ran is reported beside them as `filters_applied`, so nothing
+is lost and nothing is confused. The renderer's fake bridge had echoed both correctly all along,
+which is exactly why no renderer test could have found this.
+
+*Rating a track was impossible in most of the window.* The context menu is eleven entries, which
+at the larger scales is 818 pixels in a 735-pixel window — so its last entries ran off the bottom
+with no way to reach them, and the Rate submenu, anchored to its parent, started below the last
+visible pixel. The menu scrolls now, and the submenu is placed in script against the viewport: it
+opens leftwards when the menu is clamped against the right edge, and never begins below the
+window. It had to leave the scrolling box to do that, since a scrolling box clips both axes
+whatever CSS says.
+
+*A row's name disappeared under its own buttons.* The name is the only flexible item in a pane row
+— `flex: 1; min-width: 0`, so it can ellipsise — which also makes it what shrinks when the hover
+controls appear. On a narrow pane it shrank to nothing, and the row that went blank was the one
+under the cursor. ORG-13 gave a Smart Collection four buttons rather than two, so it had further
+to fall. The floor is on the name rather than on the buttons: a clipped glyph is a smaller loss
+than a row with no name on it.
+
+**The bench had been broken since ORG-04, and the measurement found worse.** `bench_library.py`
+could not construct a `LibraryService` any more — ORG-04 made the Collections repository a
+required argument precisely so a mis-wired service could not answer "nothing references these" and
+wave a deletion through — so nobody had run the scale claim in four steps. Repaired, extended with
+Phase 6's own fixture (200 Collections in a tree of 8 folders, 40 tags, 199,940 assignments and a
+5,000-entry Collection), and run: **opening a 2,000-track Collection took 183 ms and now takes 3,**
+on the same database. The ordering expression asked SQLite for `MIN(position)` itself, which it
+answered by flattening the scope CTE back into `collection_tracks` and seeking it by
+`collection_id` — re-reading every entry in the Collection once per candidate row. It is
+quadratic, so it was invisible at the 25 entries every test used and grew with the square of the
+size the phase is specified against. Grouping once in the CTE makes it a materialized
+one-row-per-track table the lookup can index; no schema change, no migration.
+
+**The measurements, recorded in `docs/user-guide/performance.md`.** Collection scope 9 ms;
+membership rule 4 ms; tag rule 13 ms; two tag rules 11 ms; the tag facet 60 ms (the slowest read
+here, and for the same reason the genre list is — two hundred thousand assignments to visit); the
+Collections tree 1 ms; the tag vocabulary 15 ms; a reorder inside 5,000 entries 9 ms; and a
+favorite over all 50,000 tracks 11.4 s as a cancellable job. The refresh that follows it warns
+about 500 tracks held by 72 Collections and takes 14 s to apply. Numbers are measured or not
+claimed: the bench asserts thirteen things about its own results and refuses to report them if any
+is wrong, DEC-011's non-zero answer included.
+
+**A restore is the only way back, and now it is proved.** This is the first phase whose data
+exists nowhere else — a track can be re-imported, a rating cannot — so a silently incomplete
+restore would be a failure nobody noticed until it had cost them everything. A library is built
+with one of everything Phase 6 can make, backed up, destroyed the way a real loss looks (the rows
+gone, the database still there), restored, and read back **through the services**: the tree, the
+membership and its order, a Smart Collection's rules *and* that they still resolve, the tags with
+their colours and categories, the ratings, the notes, and DEC-008's history behind them. The two
+properties around it are tested too — a corrupt backup is refused rather than written over a
+working library, and a restore chosen by mistake is itself recoverable.
+
+**The end-to-end journey, in one run of the packaged app.** Arrive on the Collections destination
+and land on the Library page with one screen in it; make a folder and a Collection and name them;
+drag a three-track selection in; reorder it and reload and find the order kept; tag the selection
+from the context menu, making the tag on the way; rate one track and check that CuePoint's rating
+moved and Rekordbox's did not; build a filter and save it, asserting the stored rule set equals
+what the bar built; freeze it and check the frozen copy holds six tracks and names what it came
+from; then take exactly the tracks the Collection holds out of the export, see DEC-011's warning
+with its real numbers, find the apply button disabled until the box is ticked, and afterwards find
+the Collection empty, the tree intact, and the Smart Collection still answering over what is left.
+
+Two other specs were fixed along the way. `libraryBrowse.spec.ts` had been looking for "All tracks"
+inside the Playlists tree since ORG-09 moved it into its own — broken for four steps, because
+nothing had run the E2E suite. `shell.spec.ts` tabs a fixed number of times to prove every shell
+region is keyboard-reachable, and the rail is one stop longer now.
+
+**Guards: 57 of 57 fail when the thing they protect is broken.** One page and not two, eight ways:
+the destination turned off, made a page of its own, resolving to itself, remembered as a second
+identity, reopening on the way in rather than the page, taking the shell down when its `pageId`
+names nothing, and the route rendering the wrong screen or the right one without aiming at the
+tree. Being put in the tree, six ways: the page never asking, the pane never told, the pane
+grabbing focus unasked, the ask becoming a flag that keeps taking it back, a folded section focused
+without being opened, and an empty one with nothing to land on. The sentences, eleven ways: a
+refusal read as an empty answer or shown with rules that never ran, a saved question that does not
+say why, the Collection that keeps asking left unnamed, a search inside a saved question read as
+the question failing, a saved question recognised only by its name or only by its scope, a
+refresh-emptied Collection invited to be filled, an empty one not told how, a search read as an
+empty playlist, and clauses listed under a sentence that is not about them. What the page feeds
+it, five ways: never remembering which Collections a refresh emptied, claiming every empty one
+was, handing it no rules, and dropping the rules or the hint from the page. An untagged library,
+two ways: a chip drawn for the tracks that have no tag, and rows counted where choices were meant.
+Duplicate and freeze, twelve ways: neither offered, both offered on a folder, a freeze on the click
+that asks for it, a confirmation that does not say the copy stops changing or that the original
+survives, answering no running it anyway, a count the engine did not give, a copy that does not say
+it is separate, a name invented in the renderer, the engine's count dropped, a tree not re-read
+after a row was added to it, and a refused write reported as one that happened. The menu, three
+ways: a submenu always rightwards, never pulled above the bottom, and never positioned at all.
+DEC-011, three ways: Collections counted without being named, not serialized for the renderer, and
+a count that stops agreeing with the list it came from. The browse echo, three ways: a smart scope
+that will not say which Collection it was, an echo naming rules the caller never sent, and what ran
+no longer reported. Plus the Collection order worked out once per row rather than once, a restore
+that is not checked before it overwrites a working library, and one chosen by mistake that cannot
+be undone.
+
+Five of those started as survivors, and none of the five was a hole in the code. Three were tests
+that could not have failed: the App tests run without a bridge, so the Library page was its import
+prompt and there was no tree for the Collections route to be aiming at; the pane's focus test
+re-rendered with the same callback identities, which React skips either way, so the guard that
+consumes the token was never reached; and the reference check was asserted to *count* Collections
+and never to name them. The fourth is a performance property with no behavioural shadow — the rows
+come back in the same order either way, which is exactly why a quadratic read went unnoticed — so
+its guard is a query-plan assertion rather than a row assertion. The fifth was a refusal that
+looked like a failure: restoring a corrupt backup raises either way and leaves the library intact
+either way, so the test now pins the difference that matters to a user — a backup error rather
+than a restore error, and no pre-restore safety copy taken for work that never began.
+
+**Verification**: `npm test` in the renderer — 2,051 passed across 82 files, 81 of them new and two
+of the files; `npm run typecheck`, `npm run lint` and `npm run build:check` clean, and `npm run
+build` in the desktop app; `python -m pytest src/tests/unit` — 4,371 passed and 45 skipped, 25 of
+the passes new; `ruff check src/` and `ruff format --check src/` clean; `mypy` on the four changed
+engine modules reports the same 35 findings before and after the step, verified against a stash;
+`check_no_qt_in_core.py`, `check_desktop_version_coupling.py` and `smoke_engine_health.py` all OK.
+`python scripts/bench_library.py` at 50,000 tracks reports every phase producing the result it
+promised. The three failures in `test_code_quality_step_5_7.py` are unrelated and predate
+this phase.
+
+**Playwright, in two runs rather than one.** The whole suite was run against the packaged app: 34
+passed, one skipped by design (the memory spec is opt-in), and two failed — `libraryBrowse` and
+`shell`, both broken before this step and repaired here. Those two were then re-run green
+alongside each other, and `organization.spec.ts` green on its own. Every spec has passed; no single
+run has covered all of them since the last source change.
+
+**What this step deliberately did not do.** It did not add per-field revert of CuePoint values, or
+export, or OR logic, or anything else in the deferred list below — each has its reason recorded
+there. It did not build a Collections *page*: DEC-062 amended DEC-020 precisely so there would not
+be a second table, a second selection model and a second filter bar to drift from the ones Phase 4
+built.
 
 ---
 

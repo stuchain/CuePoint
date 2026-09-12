@@ -42,6 +42,23 @@ interface NavDestinationBase {
   group: NavGroup;
   /** False for a destination declared but not yet built. */
   enabled: boolean;
+  /**
+   * The destination whose page this one shows, when it is not its own page.
+   *
+   * DEC-062 put CuePoint's Collections in the Library page's left pane rather
+   * than behind a second browser, and then kept the Collections entry in the
+   * sidebar: it is a way *in*, aimed at the tree. Two sidebar entries, one
+   * page — and DEC-027's launch memory has to resolve one of them, or the two
+   * ids fight over which is "where I was" and the answer depends on which
+   * link was clicked last.
+   *
+   * So the page has an owner, declared here. Everything that asks "which page
+   * is this" goes through :func:`pageDestination`, and the one thing that
+   * persists — the last-visited id — stores the owner. The entry point keeps
+   * its own path and its own sidebar row; it just does not get remembered as
+   * a second identity for a page that already has one.
+   */
+  pageId?: string;
 }
 
 /**
@@ -58,8 +75,9 @@ export const HOME_DESTINATION_ID = "tools";
 
 export const NAV_DESTINATIONS: readonly NavDestination[] = [
   // Not built yet (DEC-020). Each is enabled by the phase that builds it.
+  // Collections is enabled and points into Library's own page (DEC-062).
   { id: "library", label: "Library", path: "/library", group: "workspace", icon: "library", enabled: true },
-  { id: "collections", label: "Collections", path: "/collections", group: "workspace", icon: "collections", enabled: false },
+  { id: "collections", label: "Collections", path: "/collections", group: "workspace", icon: "collections", enabled: true, pageId: "library" },
   { id: "clean", label: "Clean", path: "/clean", group: "workspace", icon: "clean", enabled: false },
   { id: "discover", label: "Discover", path: "/discover", group: "workspace", icon: "discover", enabled: false },
   { id: "prepare", label: "Prepare", path: "/prepare", group: "workspace", icon: "prepare", enabled: false },
@@ -99,6 +117,21 @@ export function findDestinationById(
  * Exact-path lookup. Query strings are not part of a destination's identity —
  * `/results?filter=needs_review` is still Results — so callers pass a pathname.
  */
+/**
+ * The destination that owns the page this one renders — itself, usually.
+ *
+ * An entry point declaring a `pageId` that names nothing resolves to itself
+ * rather than throwing: a sidebar row that leads somewhere is better than a
+ * shell that will not mount, and the registry test catches the typo instead.
+ */
+export function pageDestination(
+  destination: NavDestination,
+  destinations: readonly NavDestination[] = NAV_DESTINATIONS,
+): NavDestination {
+  if (!destination.pageId) return destination;
+  return findDestinationById(destination.pageId, destinations) ?? destination;
+}
+
 export function findDestinationByPath(
   pathname: string,
   destinations: readonly NavDestination[] = NAV_DESTINATIONS,

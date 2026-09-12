@@ -459,17 +459,33 @@ def search_library(
         # CuePoint's scope, echoed under its own names rather than folded into
         # the two above: ``scope`` has meant "which playlist" since DEC-023 and
         # changing what it means would break every caller reading it.
+        #
+        # **Both echo what was asked, not how it was compiled** (ORG-13). A
+        # Collection narrows the query and so the id reaches the result; a
+        # Smart Collection resolves to *rules* (DEC-061) and the id does not,
+        # so reading it off the result answered null for every smart scope.
+        # A renderer comparing the echo to its own request then threw away the
+        # answer to its own question, and a Smart Collection showed an empty
+        # table however many tracks it matched.
         "collection_scope": scope,
-        "collection_id": getattr(result, "collection_id", None),
+        "collection_id": collection_id,
         # The filters too, so a caller can tell a late response from a current
         # one by what it answers rather than by bookkeeping it has to keep in
         # step (LIBUI-05). Without this, adding a filter — which changes
         # neither the scope, the sort nor the text — produces two requests
         # whose responses are indistinguishable.
-        # The rules that were actually run, saved ones included, so a caller
-        # can tell a late response from a current one by what it answers
-        # (LIBUI-05) and can see what a Smart Collection resolved to.
-        "filters": rules.validated().to_dict(),
+        #
+        # **The clauses the caller sent, not the clauses that ran** (ORG-13).
+        # Echoing the combined set looked more informative and broke the one
+        # thing the echo is for: inside a Smart Collection the caller sends no
+        # filters at all — the scope carries the question (DEC-061) — so the
+        # response came back naming rules the request never mentioned, and a
+        # renderer comparing the two discarded every answer it got. What a
+        # saved rule set resolved to is already readable from the node itself.
+        "filters": (filters or RuleSet()).validated().to_dict(),
+        # What actually ran, saved clauses included, under its own name — so
+        # nothing is lost and nothing is confused with the echo above.
+        "filters_applied": rules.validated().to_dict(),
     }
     ids = getattr(result, "track_ids", None)
     if ids is not None:

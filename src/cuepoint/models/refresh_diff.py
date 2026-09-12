@@ -203,9 +203,9 @@ class RefreshDiff:
             describe destroying data that is actually being kept.
         playlists_added / playlists_changed / playlists_removed: The same for
             the mirrored tree.
-        references: How many Collections or Sets hold the removed tracks
-            (DEC-011). Zero until Phase 6 fills the seam; carried here so the
-            flow does not change shape when it does.
+        references: Which Collections or Sets hold the removed tracks, and how
+            many (DEC-011). ORG-04 filled the seam DEC-032 built empty, so this
+            is a real answer from Phase 6 onward rather than a standing zero.
     """
 
     xml_path: str

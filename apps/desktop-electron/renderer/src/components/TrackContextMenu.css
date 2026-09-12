@@ -15,6 +15,15 @@
   background: var(--bg-panel);
   box-shadow: var(--shadow-panel);
   outline: none;
+  /*
+   * Taller than the window is a menu whose last entries cannot be reached at
+   * all (ORG-13). Eleven entries at the larger scales come to 818px, which is
+   * more than a 735px window has — so the list scrolls rather than running off
+   * the bottom. A submenu escapes this box by being fixed rather than
+   * absolute, which is why it is positioned in script.
+   */
+  max-height: calc(100vh - 8px);
+  overflow-y: auto;
 }
 
 .cp-track-menu__item {
@@ -76,11 +85,19 @@
   color: var(--fg-inverse);
 }
 
+/*
+ * Fixed, not absolute, and placed in script (ORG-13).
+ *
+ * The parent list scrolls, and a scrolling box clips on both axes whatever CSS
+ * says — so a submenu laid out inside it would be cut off sideways. Fixed
+ * escapes that, and then the side and the height have to be worked out against
+ * the viewport, which is what `subPos` does.
+ */
 .cp-track-menu__submenu {
-  position: absolute;
-  top: 0;
-  left: 100%;
+  position: fixed;
   z-index: 61;
+  max-height: calc(100vh - 8px);
+  overflow-y: auto;
   min-width: calc(140px * var(--scale));
   padding: var(--space-xs) 0;
   border: var(--border-width) solid var(--border-outline);

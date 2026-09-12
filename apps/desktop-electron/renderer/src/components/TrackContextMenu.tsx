@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import "./TrackContextMenu.css";
 
 /**
@@ -49,11 +49,27 @@ export interface TrackContextMenuProps {
   label?: string;
 }
 
-/** Keeps the menu on screen when it opens near an edge. */
+/** Keeps a box on screen when it opens near an edge. */
 function clampToViewport(x: number, y: number, width: number, height: number) {
   const maxX = Math.max(0, window.innerWidth - width - 4);
   const maxY = Math.max(0, window.innerHeight - height - 4);
   return { left: Math.min(x, maxX), top: Math.min(y, maxY) };
+}
+
+/**
+ * Where a submenu goes, given the entry that opened it (ORG-13).
+ *
+ * Beside its parent, on whichever side has room, and never below the window.
+ * Both cases are real: the menu is clamped *against* the right edge when it was
+ * opened near one, so a submenu that always opened rightwards opened off
+ * screen; and a menu long enough to scroll has entries near the bottom whose
+ * child would start below the last visible pixel. Either way the list cannot be
+ * clicked at all, which is how "rate this track" became unreachable.
+ */
+function placeSubmenu(parent: DOMRect, width: number, height: number) {
+  const room = window.innerWidth - parent.right - 4;
+  const left = room >= width ? parent.right : Math.max(4, parent.left - width);
+  return { left, top: clampToViewport(left, parent.top, width, height).top };
 }
 
 export function TrackContextMenu({ x, y, items, onClose, label }: TrackContextMenuProps) {
@@ -63,6 +79,15 @@ export function TrackContextMenu({ x, y, items, onClose, label }: TrackContextMe
   /** The parent entry whose children are showing, and where the keys go. */
   const [openId, setOpenId] = useState<string | null>(null);
   const [subActive, setSubActive] = useState(0);
+  /**
+   * Where the open submenu sits, in viewport coordinates (ORG-13).
+   *
+   * Null until it has been measured, which is one frame; it is rendered
+   * offscreen rather than at the wrong place for that frame, so the list never
+   * appears somewhere and then jumps.
+   */
+  const [subPos, setSubPos] = useState<{ left: number; top: number } | null>(null);
+  const subRef = useRef<HTMLDivElement>(null);
   // Whatever had focus before, so it can have it back.
   const restoreTo = useRef<HTMLElement | null>(null);
 
@@ -83,6 +108,20 @@ export function TrackContextMenu({ x, y, items, onClose, label }: TrackContextMe
       restoreTo.current?.focus?.();
     };
   }, [x, y]);
+
+  // Measured after the submenu exists, because its size is what decides the
+  // side. A layout effect, so the move happens before the browser paints.
+  useLayoutEffect(() => {
+    if (openId === null) {
+      setSubPos(null);
+      return;
+    }
+    const child = subRef.current;
+    const parent = child?.parentElement?.querySelector<HTMLElement>('[role="menuitem"]');
+    if (!child || !parent) return;
+    const box = child.getBoundingClientRect();
+    setSubPos(placeSubmenu(parent.getBoundingClientRect(), box.width, box.height));
+  }, [openId]);
 
   const close = useCallback(() => onClose(), [onClose]);
 
@@ -242,7 +281,19 @@ export function TrackContextMenu({ x, y, items, onClose, label }: TrackContextMe
               )}
             </button>
             {showing && (
-              <div className="cp-track-menu__submenu" role="menu" aria-label={item.label}>
+              <div
+                ref={subRef}
+                className="cp-track-menu__submenu"
+                role="menu"
+                aria-label={item.label}
+                style={
+                  subPos
+                    ? { left: subPos.left, top: subPos.top }
+                    : // Out of the way while it is measured, rather than at a
+                      // guess that would be visibly corrected.
+                      { left: 0, top: 0, visibility: "hidden" }
+                }
+              >
                 {item.items!.map((child) => {
                   const childIndex = subItems.indexOf(child);
                   return (

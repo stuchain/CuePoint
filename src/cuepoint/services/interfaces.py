@@ -745,9 +745,8 @@ class ILibraryService(ABC):
     def references_for(self, track_ids: Iterable[int]) -> "ReferenceSummary":
         """Return what Collections and Sets hold these tracks (DEC-011).
 
-        Consulted before a refresh deletes anything. Answers zero until Phase 6
-        builds Collections — which is the true answer, not a placeholder — and
-        Phase 6's whole job here is replacing that one body.
+        Consulted before a refresh deletes anything. ORG-04 gave it Collections
+        to find; Sets stay zero until Phase 10.
         """
         ...
 

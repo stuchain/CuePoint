@@ -98,6 +98,10 @@ function paneWith(
     onMove: vi.fn(async () => ({ ok: true })),
     onPreviewDelete: vi.fn(async () => SUBTREE),
     onDelete: vi.fn(async () => ({ ok: true })),
+    // Wired as the page wires them (ORG-13): a pane given neither offers
+    // neither, which is its own test below.
+    onDuplicateSmart: vi.fn(async () => ({ ok: true })),
+    onFreezeSmart: vi.fn(async () => ({ ok: true, frozen: 12 })),
     onDropTracks: vi.fn(async () => ({ ok: true, added: 2, skipped: 0 })),
     onNotify: vi.fn(),
   };
@@ -519,6 +523,15 @@ describe("the hook behind it", () => {
         added_track_ids: [7, 8],
         skipped_track_ids: [],
       })),
+      duplicateSmartCollection: vi.fn(async () => ({
+        collection: node(6, "Recent techno copy", "smart", null),
+      })),
+      freezeSmartCollection: vi.fn(async () => ({
+        collection: node(7, "Recent techno (frozen)", "collection", null),
+        source_id: 5,
+        source_name: "Recent techno",
+        track_count: 412,
+      })),
     };
   });
 
@@ -625,6 +638,87 @@ describe("the hook behind it", () => {
 
     expect(outcome).toEqual({ ok: true, added: 2, skipped: 0 });
   });
+
+  it("lets the engine name a duplicate rather than naming it here", async () => {
+    // `_suffixed_name` trims to the column's limit, so a Collection already at
+    // the limit duplicates instead of failing with a message about a name the
+    // user never typed. A renderer that appended " copy" itself would hit that.
+    const { result } = renderHook(() => useCollectionTree());
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+
+    await act(async () => {
+      await result.current.duplicateSmart(5);
+    });
+
+    const bridge = (window as unknown as { cuepoint: Record<string, ReturnType<typeof vi.fn>> })
+      .cuepoint;
+    expect(bridge.duplicateSmartCollection).toHaveBeenCalledWith({ id: 5, name: null });
+  });
+
+  it("carries the engine's frozen count back to the caller", async () => {
+    const { result } = renderHook(() => useCollectionTree());
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+
+    const outcome = await result.current.freezeSmart(5);
+
+    expect(outcome.ok).toBe(true);
+    expect(outcome.frozen).toBe(412);
+  });
+
+  it("re-reads the tree after a freeze, which adds a row to it", async () => {
+    const { result } = renderHook(() => useCollectionTree());
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+
+    await act(async () => {
+      await result.current.freezeSmart(5);
+    });
+
+    await waitFor(() => expect(getCollections).toHaveBeenCalledTimes(2));
+  });
+
+  it("re-reads the tree after a duplicate too", async () => {
+    const { result } = renderHook(() => useCollectionTree());
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+
+    await act(async () => {
+      await result.current.duplicateSmart(5);
+    });
+
+    await waitFor(() => expect(getCollections).toHaveBeenCalledTimes(2));
+  });
+
+  it("says a build without the routes cannot do either", async () => {
+    (window as unknown as { cuepoint: Record<string, unknown> }).cuepoint = {
+      getCollections,
+    };
+    const { result } = renderHook(() => useCollectionTree());
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+
+    expect(await result.current.duplicateSmart(5)).toEqual({
+      ok: false,
+      error: "This build cannot edit Collections.",
+    });
+    expect(await result.current.freezeSmart(5)).toEqual({
+      ok: false,
+      error: "This build cannot edit Collections.",
+    });
+  });
+
+  it("turns a refused freeze into a message", async () => {
+    // DEC-060: a Smart Collection whose tag was deleted cannot be frozen,
+    // because storing "no tracks" would record an answer it never gave.
+    (window as unknown as { cuepoint: Record<string, unknown> }).cuepoint
+      .freezeSmartCollection = vi.fn(async () => {
+      throw new Error("Its rules name a tag that no longer exists");
+    });
+    const { result } = renderHook(() => useCollectionTree());
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+
+    expect(await result.current.freezeSmart(5)).toEqual({
+      ok: false,
+      error: "Its rules name a tag that no longer exists",
+    });
+  });
 });
 
 describe("at the size a real library reaches (ORG-09's DoD)", () => {
@@ -674,5 +768,299 @@ describe("at the size a real library reaches (ORG-09's DoD)", () => {
     fireEvent.click(rowFor("Set 19-8"));
 
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ name: "Set 19-8" }));
+  });
+});
+
+/**
+ * Being asked for (ORG-13, DEC-062).
+ *
+ * The Collections nav destination resolves to the Library page "with the
+ * Collections tree focused". Focus is an act, so it arrives as a token that
+ * changed rather than a flag that is true — and a flag is exactly what these
+ * tests rule out: it would pull the caret back on every render, out of
+ * whatever the user had gone on to do.
+ */
+describe("when something asks to be put in the tree", () => {
+  it("does nothing on its own", () => {
+    // Zero is "nobody has asked". A pane that grabbed focus on mount would
+    // take it from the page every time the Library opened.
+    paneWith();
+    expect(document.body.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it("focuses the tree's tab stop when asked", () => {
+    paneWith(NODES, [1], { focusToken: 1 });
+
+    expect(document.activeElement).toHaveAttribute("role", "treeitem");
+    expect(document.activeElement).toHaveTextContent("Sets");
+  });
+
+  it("does not ask again for the same token", () => {
+    const { view, tree } = paneWith(NODES, [1], { focusToken: 1 });
+    expect(document.activeElement).toHaveAttribute("role", "treeitem");
+
+    // Somewhere else entirely, then an unrelated re-render. The page hands a
+    // fresh `onToggleSection` on every render — which is what makes this the
+    // real case rather than one React would skip anyway.
+    const elsewhere = document.createElement("button");
+    document.body.appendChild(elsewhere);
+    elsewhere.focus();
+    view.rerender(
+      <CollectionsPane
+        tree={tree}
+        rows={collectionRows(tree, [1])}
+        selected={null}
+        focusToken={1}
+        onToggleSection={vi.fn()}
+        onSelect={vi.fn()}
+        onExpand={vi.fn()}
+        onCreate={vi.fn(async () => ({ ok: true }))}
+        onRename={vi.fn(async () => ({ ok: true }))}
+        onMove={vi.fn(async () => ({ ok: true }))}
+        onPreviewDelete={vi.fn(async () => SUBTREE)}
+        onDelete={vi.fn(async () => ({ ok: true }))}
+        onDropTracks={vi.fn(async () => ({ ok: true }))}
+      />,
+    );
+
+    expect(document.activeElement).toBe(elsewhere);
+  });
+
+  it("answers a second ask", () => {
+    // Clicking Collections again, having wandered off, must work.
+    const { view, tree } = paneWith(NODES, [1], { focusToken: 1 });
+    const elsewhere = document.createElement("button");
+    document.body.appendChild(elsewhere);
+    elsewhere.focus();
+
+    view.rerender(
+      <CollectionsPane
+        tree={tree}
+        rows={collectionRows(tree, [1])}
+        selected={null}
+        focusToken={2}
+        onSelect={vi.fn()}
+        onExpand={vi.fn()}
+        onCreate={vi.fn(async () => ({ ok: true }))}
+        onRename={vi.fn(async () => ({ ok: true }))}
+        onMove={vi.fn(async () => ({ ok: true }))}
+        onPreviewDelete={vi.fn(async () => SUBTREE)}
+        onDelete={vi.fn(async () => ({ ok: true }))}
+        onDropTracks={vi.fn(async () => ({ ok: true }))}
+      />,
+    );
+
+    expect(document.activeElement).toHaveAttribute("role", "treeitem");
+  });
+
+  it("opens the section first when it was folded away", () => {
+    // A collapsed section has nothing to focus, and silently focusing nothing
+    // would be a nav entry that appears to do nothing at all.
+    const onToggleSection = vi.fn();
+    paneWith(NODES, [1], { collapsed: true, focusToken: 1, onToggleSection });
+
+    expect(onToggleSection).toHaveBeenCalledWith(false);
+  });
+
+  it("focuses once the section it opened is open", () => {
+    const { view, tree } = paneWith(NODES, [1], { collapsed: true, focusToken: 1 });
+    expect(document.activeElement).toBe(document.body);
+
+    view.rerender(
+      <CollectionsPane
+        tree={tree}
+        rows={collectionRows(tree, [1])}
+        selected={null}
+        collapsed={false}
+        focusToken={1}
+        onSelect={vi.fn()}
+        onExpand={vi.fn()}
+        onCreate={vi.fn(async () => ({ ok: true }))}
+        onRename={vi.fn(async () => ({ ok: true }))}
+        onMove={vi.fn(async () => ({ ok: true }))}
+        onPreviewDelete={vi.fn(async () => SUBTREE)}
+        onDelete={vi.fn(async () => ({ ok: true }))}
+        onDropTracks={vi.fn(async () => ({ ok: true }))}
+      />,
+    );
+
+    expect(document.activeElement).toHaveAttribute("role", "treeitem");
+  });
+
+  it("lands on the invitation when there are no Collections", () => {
+    // An empty tree has no row to focus, and the one useful thing in the
+    // section is the button that makes the first one.
+    paneWith([], [], { focusToken: 1 });
+
+    expect(document.activeElement).toHaveTextContent("Create your first Collection");
+  });
+});
+
+/**
+ * Duplicating and freezing a Smart Collection (ORG-13, DEC-061).
+ *
+ * ORG-08 built both routes and carried them through all six contract files;
+ * ORG-12 built the bar that saves the rules. Nothing offered either gesture,
+ * so the phase-level acceptance sentence — "duplicates independently, and
+ * freezes into a static Collection" — had no way in. These are that way in.
+ *
+ * The two are deliberately unalike. A duplicate is cheap and reversible: it
+ * makes a second saved question, and deleting it costs nothing. A freeze is
+ * neither — it stores an answer that will silently stop being true — so it
+ * says what it is about to do first.
+ */
+describe("a Smart Collection's own gestures", () => {
+  it("offers duplicate and freeze on a Smart Collection", () => {
+    paneWith();
+    expect(
+      screen.getByRole("button", { name: "Duplicate Recent techno" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Freeze Recent techno" }),
+    ).toBeInTheDocument();
+  });
+
+  it("offers neither on a folder or a plain Collection", () => {
+    // The engine refuses both for anything that is not a saved question, so
+    // offering them would be drawing a control that can only fail — the same
+    // rule the drop targets follow.
+    paneWith();
+    for (const name of ["Sets", "Warmups", "Peak"]) {
+      expect(screen.queryByRole("button", { name: `Duplicate ${name}` })).toBeNull();
+      expect(screen.queryByRole("button", { name: `Freeze ${name}` })).toBeNull();
+    }
+  });
+
+  it("duplicates on one click, because a copy costs nothing", async () => {
+    const onDuplicateSmart = vi.fn(async () => ({ ok: true }));
+    paneWith(NODES, [1], { onDuplicateSmart });
+
+    await userEvent.click(screen.getByRole("button", { name: "Duplicate Recent techno" }));
+
+    expect(onDuplicateSmart).toHaveBeenCalledWith(5);
+  });
+
+  it("says the copy is separate from now on", async () => {
+    // The one thing a user could reasonably get wrong: that the two stay in
+    // step. They do not, and that is the reason to duplicate.
+    const onNotify = vi.fn();
+    paneWith(NODES, [1], { onDuplicateSmart: vi.fn(async () => ({ ok: true })), onNotify });
+
+    await userEvent.click(screen.getByRole("button", { name: "Duplicate Recent techno" }));
+
+    await waitFor(() =>
+      expect(onNotify).toHaveBeenCalledWith(
+        expect.stringMatching(/separate from now on/),
+        "info",
+      ),
+    );
+  });
+
+  it("says what the engine said when a duplicate is refused", async () => {
+    const onNotify = vi.fn();
+    paneWith(NODES, [1], {
+      onDuplicateSmart: vi.fn(async () => ({ ok: false, error: "That name is taken" })),
+      onNotify,
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Duplicate Recent techno" }));
+
+    await waitFor(() =>
+      expect(onNotify).toHaveBeenCalledWith("That name is taken", "warning"),
+    );
+  });
+
+  it("does not freeze on the click that asks for it", async () => {
+    const onFreezeSmart = vi.fn(async () => ({ ok: true, frozen: 12 }));
+    paneWith(NODES, [1], { onFreezeSmart });
+
+    await userEvent.click(screen.getByRole("button", { name: "Freeze Recent techno" }));
+
+    expect(onFreezeSmart).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toHaveTextContent(/Freeze Recent techno\?/);
+  });
+
+  it("says the copy stops changing, which is the whole point", async () => {
+    paneWith(NODES, [1], { onFreezeSmart: vi.fn(async () => ({ ok: true })) });
+
+    await userEvent.click(screen.getByRole("button", { name: "Freeze Recent techno" }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent(/matches right now/);
+    expect(dialog).toHaveTextContent(/starts matching tomorrow/);
+    // And that the Smart Collection itself survives, which is the fear that
+    // would otherwise stop someone using it.
+    expect(dialog).toHaveTextContent(/left exactly as it is/);
+  });
+
+  it("freezes once confirmed", async () => {
+    const onFreezeSmart = vi.fn(async () => ({ ok: true, frozen: 412 }));
+    paneWith(NODES, [1], { onFreezeSmart });
+
+    await userEvent.click(screen.getByRole("button", { name: "Freeze Recent techno" }));
+    await userEvent.click(screen.getByRole("button", { name: "Freeze it" }));
+
+    await waitFor(() => expect(onFreezeSmart).toHaveBeenCalledWith(5));
+  });
+
+  it("reports the engine's count rather than the tree's", async () => {
+    // The row it makes shows a number too, and the two are computed by
+    // different code; this one is what actually got written.
+    const onNotify = vi.fn();
+    paneWith(NODES, [1], {
+      onFreezeSmart: vi.fn(async () => ({ ok: true, frozen: 412 })),
+      onNotify,
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Freeze Recent techno" }));
+    await userEvent.click(screen.getByRole("button", { name: "Freeze it" }));
+
+    await waitFor(() =>
+      expect(onNotify).toHaveBeenCalledWith(
+        expect.stringMatching(/Froze 412 tracks from Recent techno/),
+        "info",
+      ),
+    );
+  });
+
+  it("does nothing when the answer is no", async () => {
+    const onFreezeSmart = vi.fn(async () => ({ ok: true }));
+    paneWith(NODES, [1], { onFreezeSmart });
+
+    await userEvent.click(screen.getByRole("button", { name: "Freeze Recent techno" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(onFreezeSmart).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("says what the engine said when a freeze is refused", async () => {
+    // The case the engine names: a Smart Collection whose tag was deleted
+    // cannot be frozen, because "no tracks" is not its answer.
+    const onNotify = vi.fn();
+    paneWith(NODES, [1], {
+      onFreezeSmart: vi.fn(async () => ({
+        ok: false,
+        error: "Its rules cannot be run",
+      })),
+      onNotify,
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Freeze Recent techno" }));
+    await userEvent.click(screen.getByRole("button", { name: "Freeze it" }));
+
+    await waitFor(() =>
+      expect(onNotify).toHaveBeenCalledWith("Its rules cannot be run", "warning"),
+    );
+  });
+
+  it("offers nothing at all to a build without the routes", () => {
+    // Every method added after the bridge existed is optional: the renderer
+    // runs in a browser tab, and an older shell exposes none of these.
+    paneWith(NODES, [1], { onDuplicateSmart: undefined, onFreezeSmart: undefined });
+
+    expect(screen.queryByRole("button", { name: "Duplicate Recent techno" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Freeze Recent techno" })).toBeNull();
   });
 });

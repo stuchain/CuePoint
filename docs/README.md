@@ -18,6 +18,7 @@ For end users: installation, usage, troubleshooting.
 | [User Guide](user-guide/getting-started.md) | Features, workflows, glossary |
 | [The CuePoint window](user-guide/the-window.md) | Navigation, search, Track Inspector, status strip, keyboard shortcuts |
 | [Your library](user-guide/library.md) | Importing and refreshing a Rekordbox collection, and what a refresh deletes |
+| [Organizing your library](user-guide/organization.md) | Collections, Smart Collections, tags, ratings and changing many tracks at once |
 | [Workflows](user-guide/workflows.md) | Common workflows |
 | [Troubleshooting](user-guide/troubleshooting.md) | Common errors and fixes |
 | [Glossary](user-guide/glossary.md) | Terms (candidate, confidence, etc.) |

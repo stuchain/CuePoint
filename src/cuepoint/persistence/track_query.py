@@ -154,19 +154,32 @@ _SCOPE_PREDICATE = (
 # is: the ordering below has to reach the same rows, and an expression in
 # ORDER BY cannot carry its own bound parameter without changing where every
 # other parameter falls.
+# **The GROUP BY is load-bearing, not tidiness** (ORG-13). Written without it,
+# the ordering below has to say ``MIN(position)`` itself, and SQLite answers
+# that by flattening the CTE back into ``collection_tracks`` and seeking it by
+# ``collection_id`` — which re-reads every entry in the Collection once per
+# candidate row. Measured on a 1,980-entry Collection that is 183 ms for the
+# first page, against 3 ms with the aggregate here; it is quadratic, so a
+# 5,000-entry Collection is worse again. Grouping once makes the CTE a
+# materialized one-row-per-track table that the correlated lookup can index by
+# ``track_id``, and clicking a Collection in the pane is the most ordinary
+# gesture in the phase.
+#
+# DEC-058 lets a track be in a Collection twice; it appears once, at the
+# earliest position it holds — the rule the playlist expression follows, for
+# the same reason, and now stated once here rather than in the ORDER BY.
 _COLLECTION_CTE = (
     "collection_scope(track_id, position) AS ("
-    "SELECT track_id, position FROM collection_tracks WHERE collection_id = ?"
+    "SELECT track_id, MIN(position) FROM collection_tracks "
+    "WHERE collection_id = ? GROUP BY track_id"
     ") "
 )
 
 _COLLECTION_PREDICATE = "tracks.id IN (SELECT track_id FROM collection_scope)"
 
-# The earliest place the track holds in the Collection. DEC-058 lets a track be
-# in one twice; it appears once, where it first appears — the same rule the
-# playlist expression follows, for the same reason.
+#: The track's place in the Collection, already reduced to one row per track.
 _COLLECTION_POSITION_EXPR = (
-    "(SELECT MIN(cs.position) FROM collection_scope cs WHERE cs.track_id = tracks.id)"
+    "(SELECT cs.position FROM collection_scope cs WHERE cs.track_id = tracks.id)"
 )
 
 # The earliest position the track holds anywhere in the scope. A track listed

@@ -273,3 +273,35 @@
   cursor: pointer;
   text-decoration: underline;
 }
+
+/* The table's empty state, which is a small paragraph rather than a line
+   (ORG-13). A Smart Collection that matches nothing shows the rules it is
+   asking, because the answer to "why is this empty" is the question. */
+.library-screen__empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+  max-width: 52ch;
+  text-align: center;
+}
+
+.library-screen__empty-headline {
+  margin: 0;
+}
+
+.library-screen__empty-rules {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: var(--font-data);
+  color: var(--fg-primary);
+}
+
+.library-screen__empty-hint {
+  margin: 0;
+  color: var(--fg-muted);
+}

@@ -212,7 +212,13 @@ test.describe("Phase 4 end to end (LIBUI-10)", () => {
         .toBe("Track 1");
 
       // --- back to the whole library ------------------------------------
-      await tree.getByText("All tracks", { exact: true }).click();
+      // "All tracks" is its own tree, above both sections: it belongs to
+      // neither the Rekordbox mirror nor CuePoint's Collections, and ORG-09
+      // moved it out of the Playlists tree when it added the second one.
+      await window
+        .getByRole("tree", { name: "Everything" })
+        .getByText("All tracks", { exact: true })
+        .click();
       await expect
         .poll(async () => (await visibleTitles(window)).length, { timeout: 30_000 })
         .toBeGreaterThan(4);

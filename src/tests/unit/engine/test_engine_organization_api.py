@@ -973,6 +973,84 @@ class TestTheScope:
         ]
         assert saved["total"] == unsaved["total"] == TRACK_COUNT // 2
 
+    def test_every_scope_echoes_the_collection_it_was_asked_about(
+        self,
+        engine,  # noqa: F811
+        tracks,
+        warmups,
+    ):
+        """The echo says what was asked, not how it was compiled (ORG-13).
+
+        A renderer tells a late response from a current one by comparing the
+        two scope keys against its own request (LIBUI-05). A Collection narrows
+        the query and so its id reaches the result; a Smart Collection resolves
+        to *rules* and its id does not — and reading the echo off the result
+        answered null for every smart scope. The renderer then discarded the
+        answer to its own question, and a Smart Collection showed an empty table
+        however many tracks it matched. Found end to end in ORG-13; the fake
+        bridge the renderer tests use had always echoed it correctly.
+        """
+        node = ok(
+            engine,
+            "/api/v1/collections/smart/save",
+            {"name": "Techno", "rules": TECHNO},
+        )["collection"]
+
+        smart = get_json(
+            engine,
+            "/api/v1/library/search",
+            mode="browse",
+            scope="smart",
+            collection_id=node["id"],
+        )
+        assert (smart["collection_scope"], smart["collection_id"]) == (
+            "smart",
+            node["id"],
+        )
+        assert smart["total"] > 0
+
+        collection = get_json(
+            engine,
+            "/api/v1/library/search",
+            mode="browse",
+            scope="collection",
+            collection_id=warmups["id"],
+        )
+        assert (collection["collection_scope"], collection["collection_id"]) == (
+            "collection",
+            warmups["id"],
+        )
+
+    def test_a_smart_scope_echoes_no_filters_because_none_were_sent(
+        self,
+        engine,  # noqa: F811
+        tracks,
+    ):
+        """The second half of the same rule (ORG-13).
+
+        Inside an unmodified Smart Collection the caller sends no clauses — the
+        scope carries the question (DEC-061). Echoing the resolved clauses
+        under ``filters`` made the response name rules the request never
+        mentioned, so a renderer comparing the two threw away every answer and
+        the table stayed empty. What ran is still reported, under its own name.
+        """
+        node = ok(
+            engine,
+            "/api/v1/collections/smart/save",
+            {"name": "Techno", "rules": TECHNO},
+        )["collection"]
+        payload = get_json(
+            engine,
+            "/api/v1/library/search",
+            mode="browse",
+            scope="smart",
+            collection_id=node["id"],
+        )
+
+        assert payload["filters"]["rules"] == []
+        assert payload["filters_applied"] == TECHNO
+        assert payload["total"] > 0
+
     def test_a_smart_scope_opens_in_the_sort_it_was_saved_with(
         self,
         engine,  # noqa: F811
@@ -1016,7 +1094,12 @@ class TestTheScope:
             ),
         )
         assert [t["title"] for t in narrowed["tracks"]] == ["Track 1"]
-        assert len(narrowed["filters"]["rules"]) == 2
+        # Two echoes, two questions (ORG-13): what ran is the saved clause and
+        # the sent one; what was *asked* is the sent one alone, which is what a
+        # caller compares against its own request.
+        assert len(narrowed["filters_applied"]["rules"]) == 2
+        assert len(narrowed["filters"]["rules"]) == 1
+        assert narrowed["filters"]["rules"][0]["field"] == "title"
 
     def test_a_broken_smart_scope_is_refused_by_the_clause(
         self,

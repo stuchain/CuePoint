@@ -166,6 +166,7 @@ class TestTheSeamAnswersToday:
             "set_count",
             "referenced_track_count",
             "referenced_track_ids",
+            "collection_ids",
             "has_references",
         }
 

@@ -220,6 +220,9 @@ class TestTodaysCallerIsUntouched:
             # what "scope" has meant since DEC-023.
             "collection_scope",
             "collection_id",
+            # ...plus ORG-13's, which says what a saved scope resolved to
+            # without disturbing what "filters" echoes.
+            "filters_applied",
         }
 
     def test_it_answers_as_a_search_unless_told_otherwise(self, engine, seeded):

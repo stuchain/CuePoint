@@ -1,6 +1,6 @@
 # CuePoint — Evolution Roadmap
 
-Status: **Phases 0, 1, 2, 3 and 4 complete. Decision Rounds 1–8 resolved (DEC-001…DEC-064).**
+Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–8 resolved (DEC-001…DEC-064).**
 Phase 2's ten steps are implemented and recorded in `PHASE2_SHELL.md`. Phase 3's twelve steps are
 implemented and recorded in `PHASE3_LIBRARY.md` (LIBRARY-01…LIBRARY-12), unblocked by Decision
 Round 5 (DEC-030…DEC-037). Phase 4's ten steps are specified in `PHASE4_LIBUI.md`
@@ -9,8 +9,8 @@ implemented and the phase-level acceptance is met in a packaged build. Phase 5's
 specified in `PHASE5_PLAYER.md` (PLAYER-01…PLAYER-12), unblocked by Decision Round 7
 (DEC-049…DEC-056), and all of them are implemented; the phase is not complete, and what is left is
 non-code (see below). Phase 6's thirteen steps are specified in `PHASE6_ORG.md`
-(ORG-01…ORG-13), unblocked by Decision Round 8 (DEC-057…DEC-064); ORG-01 through ORG-12 are
-implemented and ORG-13 is not.
+(ORG-01…ORG-13), unblocked by Decision Round 8 (DEC-057…DEC-064). Complete: all thirteen steps
+are implemented and the phase-level acceptance is met in a packaged build.
 Audio-analysis scope is the one remaining deferred item, to be resolved before the phase it affects
 starts; crossfade was resolved by DEC-056 in Round 7, and Smart Collection export/duplication by
 DEC-061 in Round 8. This roadmap shows the shape of what's ahead; it is not a commitment to
@@ -162,7 +162,7 @@ resampler is true on Windows and false on macOS.
 
 Step specifications: `PHASE5_PLAYER.md`.
 
-## Phase 6 — Organization (ORG-01 … ORG-13)
+## Phase 6 — Organization (ORG-01 … ORG-13) ✅ Complete
 
 Collections-only per DEC-006 (no separate local-Playlist concept). Tags are flat with optional
 categories, not hierarchical (DEC-015). Smart Collections are flat AND-only for v1, schema left
@@ -213,9 +213,15 @@ menu and by the toolbar's Actions button, applied through ORG-07's single entry 
 above the engine's own threshold and followed as a job past it. It also closed the gap that model
 had carried since Phase 4 — "everything matching, minus the three I clicked out" now crosses the
 wire as the question plus a handful of exclusions, so what the toolbar counts and what the batch
-touches are finally the same tracks.
+touches are finally the same tracks. ORG-12 gave the filter bar the three field kinds it had been
+dropping and taught it to save what it built, with no translation step between the rules on screen
+and the rules stored. ORG-13 closed the phase: the Collections destination resolves to the Library
+page rather than a second browser, every empty state is rendered from a real engine response rather
+than a hand-written shape, the scale claims are measured and recorded at 50,000 tracks with Phase
+6's own organization on top of them, a restored backup is proved to bring Collections, tags and
+metadata back together, and the whole journey runs end to end in a packaged build.
 
-Step specifications: `PHASE6_ORG.md` (ORG-01…ORG-13; ORG-01 through ORG-12 implemented).
+Step specifications: `PHASE6_ORG.md` (ORG-01…ORG-13, all implemented).
 
 ## Phase 7 — Clean / Beatport (CLEAN-01 … CLEAN-13)
 

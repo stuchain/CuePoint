@@ -31,6 +31,11 @@ function navLink(name: string): HTMLElement {
  * presence of a `.screen` element. */
 const ROUTES = [
   { link: "Tools", marker: /Select a tool to get started/i },
+  // Both of the workspace entries. Without `window.cuepoint` the Library page
+  // is its import prompt, which is the same prompt either way in — and that
+  // sameness is the point of DEC-062 (ORG-13).
+  { link: "Library", marker: /No collection imported yet/i },
+  { link: "Collections", marker: /No collection imported yet/i },
   { link: "inKey", marker: /CuePoint \/ inKey/i },
   { link: "inCrate", marker: /CuePoint \/ inCrate/i },
   { link: "Results", marker: /Sync with Rekordbox/i },
@@ -206,6 +211,56 @@ describe("App shell", () => {
       expect(localStorage.getItem(LAST_DESTINATION_STORAGE_KEY)).toBe("results");
     });
   });
+
+  /**
+   * DEC-062: two entries in the sidebar, one page behind them.
+   *
+   * The registry tests prove the rule; these prove the app obeys it, which is
+   * the part that would otherwise be true in a module and false in a shell.
+   */
+  describe("the Collections destination (ORG-13)", () => {
+    it("is in the sidebar beside Library", () => {
+      render(<App />);
+      expect(navLink("Library")).toBeInTheDocument();
+      expect(navLink("Collections")).toBeInTheDocument();
+    });
+
+    it("renders the Library page rather than a second browser", async () => {
+      const user = userEvent.setup();
+      const { container } = render(<App />);
+
+      await user.click(navLink("Collections"));
+
+      expect(await screen.findByText(/No collection imported yet/i)).toBeInTheDocument();
+      expect(container.querySelectorAll("main.app-main .screen")).toHaveLength(1);
+      expect(consoleError).not.toHaveBeenCalled();
+    });
+
+    it("remembers the page, not the way in", async () => {
+      const user = userEvent.setup();
+      render(<App />);
+
+      await user.click(navLink("Collections"));
+      await screen.findByText(/No collection imported yet/i);
+
+      expect(localStorage.getItem(LAST_DESTINATION_STORAGE_KEY)).toBe("library");
+    });
+
+    it("reopens on the Library page after a visit through Collections", async () => {
+      // The failure this rule prevents: reopening aimed at a tree the user
+      // last looked at an hour of browsing ago.
+      const user = userEvent.setup();
+      const first = render(<App />);
+      await user.click(navLink("Collections"));
+      await screen.findByText(/No collection imported yet/i);
+      first.unmount();
+      window.location.hash = "";
+
+      render(<App />);
+
+      expect(window.location.hash).toBe("#/library");
+    });
+  });
 });
 
 describe("the Library page inside the shell (LIBUI-10)", () => {
@@ -289,6 +344,32 @@ describe("the Library page inside the shell (LIBUI-10)", () => {
         filters: null,
       })),
       getLibraryPlaylists: vi.fn().mockResolvedValue({ playlists: [], total: 0 }),
+      // One Collection, so the tree the Collections destination aims at has a
+      // row in it to land on (ORG-13).
+      getCollections: vi.fn().mockResolvedValue({
+        collections: [
+          {
+            id: 4,
+            parent_id: null,
+            kind: "collection",
+            name: "Openers",
+            position: 0,
+            depth: 0,
+            rules: null,
+            sort: null,
+            dir: null,
+            frozen_from_id: null,
+            frozen_at: null,
+            entry_count: 0,
+            track_count: 0,
+            broken: false,
+            problem: null,
+            created_at: "2026-01-01",
+            updated_at: "2026-01-01",
+          },
+        ],
+        total: 1,
+      }),
       getLibraryFilterFields: vi
         .fn()
         .mockResolvedValue({ fields: [], operators: {}, facetable: [], sortable: ["artist"] }),
@@ -331,6 +412,26 @@ describe("the Library page inside the shell (LIBUI-10)", () => {
     // The Inspector is the shell's, and the page reached it.
     const inspector = screen.getByRole("complementary", { name: /track inspector/i });
     await waitFor(() => expect(within(inspector).getByText("Contact")).toBeInTheDocument());
+  });
+
+  it("puts the keyboard in the Collections tree when that is the way in", async () => {
+    // The half of DEC-062 the registry cannot express: arriving through the
+    // Collections entry has to *do* something on the page it lands on.
+    render(<App />);
+    await userEvent.click(navLink("Collections"));
+
+    await screen.findByRole("table", { name: "Library tracks" });
+    const tree = await screen.findByRole("tree", { name: "Collections" });
+    await waitFor(() => expect(tree.contains(document.activeElement)).toBe(true));
+  });
+
+  it("leaves the keyboard alone when Library is the way in", async () => {
+    render(<App />);
+    await userEvent.click(navLink("Library"));
+
+    await screen.findByRole("table", { name: "Library tracks" });
+    const tree = await screen.findByRole("tree", { name: "Collections" });
+    expect(tree.contains(document.activeElement)).toBe(false);
   });
 
   it("empties the Inspector when the user leaves the page", async () => {

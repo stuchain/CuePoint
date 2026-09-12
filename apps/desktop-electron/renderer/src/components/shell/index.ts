@@ -56,6 +56,7 @@ export {
   findDestinationById,
   findDestinationByPath,
   homeDestination,
+  pageDestination,
   HOME_DESTINATION_ID,
   NAV_DESTINATIONS,
 } from "./navRegistry";

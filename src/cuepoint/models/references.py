@@ -10,14 +10,11 @@ happens without a prompt, and one that a Collection or Set is using has to be
 warned about first — "N tracks removed from Rekordbox are used in M Collections
 and Sets".
 
-Collections arrive in Phase 6 and Sets in Phase 10, so the honest answer today
-is **zero**, and it is a real answer rather than a placeholder: there is nothing
-in this build that can reference a track, so nothing does. DEC-032 chose to
-build the question now anyway, because a refresh that grows a confirmation step
-later is a refresh whose service, API, tests and UI all move again.
+Phase 6 gave the question teeth. ORG-04 filled the seam DEC-032 had built
+empty, so a Collection holding a track Rekordbox no longer has is now a real
+answer rather than the zero every earlier build could only return. Sets stay
+zero until Phase 10.
 
-What Phase 6 has to satisfy
----------------------------
 :meth:`~cuepoint.services.interfaces.ILibraryService.references_for` takes the
 library ids of the tracks a refresh would delete and returns one of these. The
 counts are of *referencing things*, not of references: a Collection holding
@@ -42,11 +39,17 @@ class ReferenceSummary:
         referenced_track_ids: The library ids that are referenced by something,
             so a preview can point at them rather than only counting. A subset
             of what was asked about, never all of it by default.
+        collection_ids: Which Collections those are (ORG-13). The repository
+            already knows them to count them, and a user whose Collection was
+            emptied by a refresh is owed the name rather than the arithmetic —
+            so they are carried rather than discarded. Sorted, distinct, and
+            always consistent with ``collection_count``.
     """
 
     collection_count: int = 0
     set_count: int = 0
     referenced_track_ids: Tuple[int, ...] = field(default_factory=tuple)
+    collection_ids: Tuple[int, ...] = field(default_factory=tuple)
 
     @property
     def referenced_track_count(self) -> int:
@@ -69,12 +72,13 @@ class ReferenceSummary:
             "set_count": self.set_count,
             "referenced_track_count": self.referenced_track_count,
             "referenced_track_ids": list(self.referenced_track_ids),
+            "collection_ids": list(self.collection_ids),
             "has_references": self.has_references,
         }
 
 
-#: The answer for a library with no Collections and no Sets, which is every
-#: library this build can produce. Named rather than written out at each call
-#: site so that the day it stops being the answer, there is one place that
-#: stopped being right.
+#: The answer for a removal nothing has filed anywhere: the uneventful case,
+#: and still the common one. Named rather than written out at each call site so
+#: that "nothing else is holding these" is one value rather than four zeros
+#: repeated wherever the question is asked.
 NO_REFERENCES = ReferenceSummary()

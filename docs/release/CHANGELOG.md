@@ -8,6 +8,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Your own Collections, beside the Rekordbox playlists in the Library page's
+  left pane. Make folders and Collections, drag tracks into them, arrange them
+  in the order you want, and move or rename them later. A delete says what it
+  removes before removing it, and no Collection operation ever deletes a track
+- Smart Collections: build a filter in the Library bar and save it. It keeps
+  answering as your library grows, so a track imported next month that matches
+  the rules appears in it. Open one and its rules load back into the bar;
+  change them and it offers to update it, save a second one, or keep the change
+  as an ordinary filter. Duplicate one to start a separate saved filter, or
+  freeze one to keep what it matches right now as an ordinary Collection
+- Tags, with a manager beside the filter bar: rename, recolour, categorize,
+  merge two into one, or delete. Every tag shows how many tracks carry it, and
+  both destructive actions say that number before they happen. Filter by tag
+  from the same bar, choosing from the tags your library actually uses
+- CuePoint's own rating, favorite and notes for a track, kept separate from
+  what Rekordbox imported. The Inspector edits them, shows which layer an
+  effective rating came from, keeps every imported field read-only, and lists
+  the track's change history. Clearing a CuePoint rating falls back to
+  Rekordbox's rather than making the track unrated
+- Changing many tracks at once: rate, favorite, tag or file everything your
+  current search and filters match — tens of thousands of tracks if that is
+  what it matches. It asks first with the number, then runs in the background
+  with progress and a Cancel button, and records what it did on every track
+- A Collections entry in the navigation rail, which opens the Library page with
+  the Collections tree focused rather than a second browser
+
 - CuePoint plays your music. Double-click a track in the Library and it plays,
   with the view you were looking at — filtered, sorted, scoped to a playlist —
   becoming the queue in the order on screen. A player bar appears along the
@@ -30,6 +56,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the same track plays normally the next time you ask for it
 
 ### Changed
+- A refresh that would delete tracks you have filed in a Collection now says so
+  before it does it, with the number of tracks and the number of Collections,
+  and asks you to confirm. The warning has existed since the refresh did; this
+  is the first release in which anything could trigger it
 - The window is now laid out as an application frame rather than a centered page.
   Screens sit at the top of a content area that scrolls on its own, and the menu
   bar occupies its own row instead of floating over the content. Previously long

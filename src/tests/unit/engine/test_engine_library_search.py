@@ -184,6 +184,7 @@ class TestResponseShape:
             "filters",
             "collection_scope",
             "collection_id",
+            "filters_applied",
         }
         assert payload["query"] == "deadmau5"
         assert payload["total"] == 2

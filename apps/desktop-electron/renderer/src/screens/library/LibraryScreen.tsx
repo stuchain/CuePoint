@@ -75,7 +75,8 @@ import { SaveSmartDialog, type FolderOption } from "./SaveSmartDialog";
 import { TagManagerDialog } from "./TagManagerDialog";
 import { smartQuery, type SmartAttachment } from "./smartFilter";
 import { deletedLine, mergedLine, type TagPatch } from "./tagManager";
-import type { ValueNames } from "./filterText";
+import { describeRule, type ValueNames } from "./filterText";
+import { emptyStateFor } from "./libraryEmpty";
 import { batchSelection, type BatchAction } from "./libraryBatch";
 import { organizationMenuItems } from "./trackMenu";
 import { useLibraryBatch } from "./useLibraryBatch";
@@ -118,9 +119,20 @@ const BUSY_LABEL: Record<Exclude<Busy, null>, string> = {
 export interface LibraryScreenProps {
   /** Opens the "how do I export from Rekordbox" dialog the shell owns. */
   onOpenRekordboxInstructions?: () => void;
+  /**
+   * Which part of the page the user asked for (DEC-062, ORG-13).
+   *
+   * The Collections nav destination renders this same page aimed at the tree.
+   * It is a prop rather than a route read here, so the page stays a component
+   * that is handed what it needs and the routing stays in `App.tsx`.
+   */
+  focus?: "collections";
 }
 
-export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProps) {
+export function LibraryScreen({
+  onOpenRekordboxInstructions,
+  focus,
+}: LibraryScreenProps) {
   const { push } = useToast();
   const [summary, setSummary] = useState<LibrarySummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -211,6 +223,28 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
   const [savingError, setSavingError] = useState<string | null>(null);
   const [tagsOpen, setTagsOpen] = useState(false);
   const [tagError, setTagError] = useState<string | null>(null);
+  /**
+   * Collections this session's last refresh took tracks out of (DEC-011).
+   *
+   * The preview already had to work out which ones to warn about, so this is
+   * the answer it gave, kept long enough to say something better than "drop
+   * tracks onto it" to someone whose tracks have just gone.
+   */
+  const [emptiedByRefresh, setEmptiedByRefresh] = useState<ReadonlySet<number>>(
+    () => new Set(),
+  );
+  /**
+   * Bumped to put the keyboard in the Collections tree (ORG-13).
+   *
+   * A count rather than a flag: arriving on the Collections destination is an
+   * event, and a flag that stayed true would pull focus back out of whatever
+   * the user did next on every render.
+   */
+  const [collectionsFocus, setCollectionsFocus] = useState(0);
+
+  useEffect(() => {
+    if (focus === "collections") setCollectionsFocus((token) => token + 1);
+  }, [focus]);
   /** Where a row drag started, which is the only Collection position in hand. */
   const draggingRow = useRef<{ index: number; count: number } | null>(null);
   const detail = useTrackDetail(selection.selection.lastId);
@@ -990,6 +1024,10 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
       const results = window.cuepoint?.getJobResults;
       if (!start || !results || !diff) return;
 
+      // Read before the apply clears it: after this the diff is gone, and it
+      // is the only thing that knows which Collections were about to lose
+      // tracks (DEC-011).
+      const emptied = new Set(diff.references?.collection_ids ?? []);
       const done = await run("applying", () =>
         start({ diff_id: diff.diff_id, confirm_references: confirmReferences }),
       );
@@ -1013,6 +1051,7 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
       // A refresh can delete tracks a Collection holds (DEC-011), so the
       // counts beside its name are stale the moment it lands.
       collections.reload();
+      if (mounted.current) setEmptiedByRefresh(emptied);
       push("Library refreshed.", "success");
     },
     [collections, diff, loadSummary, playlists, push, run, window_],
@@ -1021,19 +1060,47 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
   // ------------------------------------------------------------------ render
 
   const filtered = query.q.trim() !== "" || (query.filters?.rules.length ?? 0) > 0;
-  const emptyState = useMemo(() => {
-    // A refused question first. The engine names the clause it could not
-    // honour, and "No tracks match this search" over a refusal sends someone
-    // looking for tracks that were never asked for (ORG-12).
-    if (window_.error) return window_.error;
-    // Then three different problems, three different answers. "No tracks"
-    // over a filtered view sends someone looking for a broken import.
-    if (filtered) return "No tracks match this search.";
-    if (query.playlistId != null) return "This playlist is empty.";
-    if (smart || query.scope === "smart") return "Nothing matches these rules right now.";
-    if (query.scope === "collection") return "This Collection is empty. Drop tracks onto it.";
-    return "No tracks yet.";
-  }, [filtered, query.playlistId, query.scope, smart, window_.error]);
+  const empty = useMemo(
+    () =>
+      emptyStateFor({
+        error: window_.error,
+        filtered,
+        scope: query.scope,
+        playlistId: query.playlistId,
+        smartName: smart?.name ?? null,
+        rules: (barRules?.rules ?? []).map((rule) =>
+          describeRule(vocabulary, rule, ruleNames),
+        ),
+        emptiedByRefresh:
+          query.collectionId != null && emptiedByRefresh.has(query.collectionId),
+      }),
+    [
+      barRules,
+      emptiedByRefresh,
+      filtered,
+      query.collectionId,
+      query.playlistId,
+      query.scope,
+      ruleNames,
+      smart,
+      vocabulary,
+      window_.error,
+    ],
+  );
+
+  const emptyState = (
+    <div className="library-screen__empty-state">
+      <p className="library-screen__empty-headline">{empty.headline}</p>
+      {empty.rules.length > 0 && (
+        <ul className="library-screen__empty-rules" aria-label="The rules being asked">
+          {empty.rules.map((rule, index) => (
+            <li key={`${rule}-${index}`}>{rule}</li>
+          ))}
+        </ul>
+      )}
+      {empty.hint && <p className="library-screen__empty-hint">{empty.hint}</p>}
+    </div>
+  );
 
   const revealPath = useMemo(() => {
     const id = onlySelectedId(selection.selection, window_.total);
@@ -1127,6 +1194,7 @@ export function LibraryScreen({ onOpenRekordboxInstructions }: LibraryScreenProp
           onSelectCollection={(node) => scopeToCollection(node)}
           onDropTracks={dropTracks}
           onNotify={(message, tone) => push(message, tone === "warning" ? "warning" : "success")}
+          collectionsFocusToken={collectionsFocus}
         />
 
         <div className="library-screen__main">

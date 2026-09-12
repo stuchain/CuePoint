@@ -22,7 +22,7 @@
  * whose tag or Collection has been deleted; showing the rule that broke is
  * more useful than hiding it, so the row is drawn, marked, and still opens.
  */
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Modal } from "../../components/Modal";
 import { PixelIcon } from "../../components/PixelIcon";
@@ -56,6 +56,19 @@ export interface CollectionsPaneProps {
   error?: string | null;
   collapsed?: boolean;
   onToggleSection?: (collapsed: boolean) => void;
+  /**
+   * Bumped when something outside the pane asks to be put in it (ORG-13).
+   *
+   * The Collections nav destination resolves to the Library page "with the
+   * Collections tree focused" (DEC-062), and focus is an act rather than a
+   * state — so it arrives as a number that changed rather than a flag that is
+   * true, which would re-focus on every unrelated render and steal the caret
+   * from whatever the user had gone on to do.
+   *
+   * A collapsed section expands first and focuses on the next pass. Zero is
+   * "nobody has asked", so the pane never grabs focus on mount.
+   */
+  focusToken?: number;
   onSelect: (node: CollectionNode | null) => void;
   onExpand: (id: number, expanded: boolean) => void;
   onCreate: (
@@ -67,6 +80,18 @@ export interface CollectionsPaneProps {
   onMove: (id: number, parentId: number | null) => Promise<{ ok: boolean; error?: string }>;
   onPreviewDelete: (id: number) => Promise<CollectionSubtree | null>;
   onDelete: (id: number) => Promise<{ ok: boolean; error?: string }>;
+  /**
+   * A second saved question, starting out identical (DEC-061, ORG-13).
+   *
+   * Offered on a Smart Collection row and nowhere else: duplicating a folder
+   * or a plain Collection is a different question with a different answer, and
+   * the engine refuses both.
+   */
+  onDuplicateSmart?: (id: number) => Promise<{ ok: boolean; error?: string }>;
+  /** Store what a Smart Collection matches right now, as a Collection. */
+  onFreezeSmart?: (
+    id: number,
+  ) => Promise<{ ok: boolean; error?: string; frozen?: number }>;
   /**
    * Tracks dropped on a Collection (ORG-09's target, ORG-11's source).
    *
@@ -100,6 +125,7 @@ export function CollectionsPane({
   error = null,
   collapsed = false,
   onToggleSection,
+  focusToken = 0,
   onSelect,
   onExpand,
   onCreate,
@@ -107,6 +133,8 @@ export function CollectionsPane({
   onMove,
   onPreviewDelete,
   onDelete,
+  onDuplicateSmart,
+  onFreezeSmart,
   onDropTracks,
   onNotify,
 }: CollectionsPaneProps) {
@@ -119,6 +147,36 @@ export function CollectionsPane({
   } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  /** The Smart Collection a freeze is being confirmed for (DEC-061). */
+  const [freezing, setFreezing] = useState<CollectionTreeNode | null>(null);
+  const [frozenBusy, setFrozenBusy] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+  // The last token acted on. Held in a ref rather than state because consuming
+  // it must not itself cause a render — and because the effect below has to be
+  // able to run twice for one token: once to expand, once to focus.
+  const answered = useRef(0);
+
+  useEffect(() => {
+    if (focusToken === answered.current) return;
+    if (collapsed) {
+      // Expand and let the effect run again against the open section. The
+      // token stays unanswered, which is what makes the second pass happen.
+      onToggleSection?.(false);
+      return;
+    }
+    answered.current = focusToken;
+    const section = sectionRef.current;
+    if (!section) return;
+    // The tree's one tab stop, the empty state's button, or the fold — in that
+    // order, because a section with no Collections in it has no tree row to
+    // land on and the first useful thing there is "create one".
+    const target =
+      section.querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]') ??
+      section.querySelector<HTMLElement>(".cp-collections__empty button") ??
+      section.querySelector<HTMLElement>(".cp-collections__fold");
+    target?.focus();
+    target?.scrollIntoView?.({ block: "nearest" });
+  }, [collapsed, focusToken, onToggleSection]);
 
   const say = useCallback(
     (message: string, tone: "info" | "warning") => {
@@ -163,6 +221,31 @@ export function CollectionsPane({
     setPending(null);
     if (!result.ok) say(result.error ?? "Could not delete that.", "warning");
     else say(`Deleted ${pending.node.name}.`, "info");
+  };
+
+  const duplicate = async (node: CollectionTreeNode) => {
+    if (!onDuplicateSmart) return;
+    const result = await onDuplicateSmart(node.id);
+    if (!result.ok) say(result.error ?? "Could not duplicate that.", "warning");
+    else say(`Copied ${node.name}. The two are separate from now on.`, "info");
+  };
+
+  const confirmFreeze = async () => {
+    if (!freezing || !onFreezeSmart) return;
+    setFrozenBusy(true);
+    const result = await onFreezeSmart(freezing.id);
+    setFrozenBusy(false);
+    const node = freezing;
+    setFreezing(null);
+    if (!result.ok) {
+      say(result.error ?? "Could not freeze that.", "warning");
+      return;
+    }
+    const count = result.frozen ?? 0;
+    say(
+      `Froze ${count} ${count === 1 ? "track" : "tracks"} from ${node.name}.`,
+      "info",
+    );
   };
 
   /**
@@ -272,7 +355,11 @@ export function CollectionsPane({
   }));
 
   return (
-    <nav className="cp-playlist-pane cp-collections" aria-label="Collections">
+    <nav
+      ref={sectionRef}
+      className="cp-playlist-pane cp-collections"
+      aria-label="Collections"
+    >
       <div className="cp-playlist-pane__head">
         <button
           type="button"
@@ -356,6 +443,36 @@ export function CollectionsPane({
           }}
           actions={(row) => (
             <span className="cp-collections__row-actions">
+              {row.kind === "smart" && onDuplicateSmart && (
+                <button
+                  type="button"
+                  className="cp-collections__action"
+                  aria-label={`Duplicate ${row.name}`}
+                  title="Duplicate — a second, separate saved filter"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    const node = nodeFor(row.key);
+                    if (node) void duplicate(node);
+                  }}
+                >
+                  ⧉
+                </button>
+              )}
+              {row.kind === "smart" && onFreezeSmart && (
+                <button
+                  type="button"
+                  className="cp-collections__action"
+                  aria-label={`Freeze ${row.name}`}
+                  title="Freeze — keep what it matches now, as a Collection"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    const node = nodeFor(row.key);
+                    if (node) setFreezing(node);
+                  }}
+                >
+                  ❄
+                </button>
+              )}
               <button
                 type="button"
                 className="cp-collections__action"
@@ -409,6 +526,25 @@ export function CollectionsPane({
           aria-hidden
         />
       )}
+
+      <Modal
+        open={freezing !== null}
+        title={`Freeze ${freezing?.name ?? ""}?`}
+        onClose={() => setFreezing(null)}
+        primaryAction={{
+          label: "Freeze it",
+          onClick: () => void confirmFreeze(),
+          loading: frozenBusy,
+        }}
+        secondaryAction={{ label: "Cancel", onClick: () => setFreezing(null) }}
+      >
+        <p>
+          This makes a Collection holding the tracks {freezing?.name} matches
+          right now. It is a copy: a track that starts matching tomorrow joins{" "}
+          {freezing?.name} and not the frozen one.
+        </p>
+        <p>{freezing?.name} itself is left exactly as it is.</p>
+      </Modal>
 
       <Modal
         open={pending !== null}

@@ -55,6 +55,8 @@ export interface LibraryPaneProps {
     silent?: boolean;
   }>;
   onNotify?: (message: string, tone: "info" | "warning") => void;
+  /** Bumped to put the keyboard in the Collections tree (ORG-13, DEC-062). */
+  collectionsFocusToken?: number;
 }
 
 export function LibraryPane({
@@ -66,6 +68,7 @@ export function LibraryPane({
   onSelectCollection,
   onDropTracks,
   onNotify,
+  collectionsFocusToken = 0,
 }: LibraryPaneProps) {
   return (
     <div className="cp-library-pane">
@@ -106,6 +109,7 @@ export function LibraryPane({
         error={collections.error}
         collapsed={collections.collapsed}
         onToggleSection={collections.setCollapsed}
+        focusToken={collectionsFocusToken}
         onSelect={onSelectCollection}
         onExpand={collections.expand}
         onCreate={collections.create}
@@ -113,6 +117,8 @@ export function LibraryPane({
         onMove={collections.move}
         onPreviewDelete={collections.previewDelete}
         onDelete={collections.remove}
+        onDuplicateSmart={collections.duplicateSmart}
+        onFreezeSmart={collections.freezeSmart}
         onDropTracks={onDropTracks}
         onNotify={onNotify}
       />

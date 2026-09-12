@@ -22,13 +22,14 @@ import { HOME_DESTINATION_ID, NAV_DESTINATIONS } from "./navRegistry";
  * The real registry now declares not-yet-built destinations (DEC-020), so the
  * disabled cases below run against real data rather than a fixture.
  *
- * Collections, not Library: LIBRARY-11 enabled Library, and a test whose
- * "disabled" example is enabled proves nothing while still passing its
- * neighbours. Phase 6 will have to move this along again, which is the cost of
- * testing against the real registry and worth paying — the alternative is a
- * fixture that cannot go stale because it is not describing anything real.
+ * Clean, not Collections: ORG-13 enabled Collections, exactly as LIBRARY-11
+ * enabled Library before it, and a test whose "disabled" example is enabled
+ * proves nothing while still passing its neighbours. Phase 7 will have to move
+ * this along again, which is the cost of testing against the real registry and
+ * worth paying — the alternative is a fixture that cannot go stale because it
+ * is not describing anything real.
  */
-const DISABLED_ID = "collections";
+const DISABLED_ID = "clean";
 
 afterEach(() => {
   localStorage.clear();
@@ -73,7 +74,46 @@ describe("destinationToRemember", () => {
   });
 
   it("does not remember a disabled destination", () => {
-    expect(destinationToRemember("/collections")).toBeNull();
+    expect(destinationToRemember("/clean")).toBeNull();
+  });
+});
+
+/**
+ * DEC-062's rule: the Library page has two sidebar entries and one identity.
+ *
+ * Collections is a way in, aimed at the tree. If it were remembered as itself,
+ * the app would reopen pointing at a tree the user last looked at an hour of
+ * browsing ago — and which of the two ids "where I was" meant would depend on
+ * which link was clicked, not on where the user actually spent the session.
+ */
+describe("one page, not two ids (DEC-062)", () => {
+  it("remembers the Library page when the user came in through Collections", () => {
+    expect(destinationToRemember("/collections")?.id).toBe("library");
+  });
+
+  it("remembers the Library page when the user came in through Library", () => {
+    expect(destinationToRemember("/library")?.id).toBe("library");
+  });
+
+  it("never remembers an id that is only a way into another page", () => {
+    // The property, rather than the one case: every path in the registry
+    // remembers something that owns its own page.
+    for (const destination of NAV_DESTINATIONS) {
+      const remembered = destinationToRemember(destination.path);
+      if (remembered) expect(remembered.pageId).toBeUndefined();
+    }
+  });
+
+  it("opens the page when an older build stored the way in", () => {
+    // Nothing this build writes can be "collections", but a hand-edited value
+    // or a downgrade could be, and it must not reopen on a focus gesture.
+    expect(resolveLaunchDestination("collections").id).toBe("library");
+  });
+
+  it("resolves every stored id to something that owns its own page", () => {
+    for (const destination of NAV_DESTINATIONS) {
+      expect(resolveLaunchDestination(destination.id).pageId).toBeUndefined();
+    }
   });
 });
 

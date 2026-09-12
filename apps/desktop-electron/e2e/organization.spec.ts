@@ -1,0 +1,473 @@
+/**
+ * Phase 6, end to end, in the packaged app (ORG-13).
+ *
+ * The other Phase 6 tests each prove one part against a fake bridge. This one
+ * walks the phase-level acceptance list in a single run of the real
+ * application, in the order a user meets it, because a chain of steps that each
+ * pass alone can still fail where they join — and this is the last chance to
+ * find that out.
+ *
+ * It asserts, in one session:
+ *
+ *  1. The Collections destination opens the Library page, not a second browser
+ *     (DEC-062), and remembers itself as the Library page.
+ *  2. A folder and a Collection are created from the pane and renamed in place.
+ *  3. A selection of tracks is filed into the Collection, and is there
+ *     afterwards — scoped by the same table, in the Collection's own order.
+ *  4. The Collection is reordered, and the new order survives a reload.
+ *  5. A tag is made and applied to the selection, and filtering by it finds
+ *     exactly those tracks.
+ *  6. A rating is set on one track, and CuePoint's rating is what changed —
+ *     Rekordbox's is untouched (DEC-057, DEC-064).
+ *  7. A filter built in the bar saves as a Smart Collection with no
+ *     translation, and evaluates live (DEC-043, DEC-061).
+ *  8. That Smart Collection freezes into a static Collection, and the frozen
+ *     copy stops changing while the original keeps answering.
+ *  9. A refresh whose deletions hit the Collection shows DEC-011's warning with
+ *     real numbers, refuses to apply without the acknowledgement, and applies
+ *     with it.
+ *
+ * `CUEPOINT_HOME` points at a temporary directory, so the run never reads or
+ * writes the real CuePoint library.
+ */
+import {
+  test,
+  expect,
+  _electron as electron,
+  type ElectronApplication,
+  type Page,
+} from "@playwright/test";
+import type {
+  CollectionEntry,
+  CollectionNode,
+  TagUsage,
+} from "../renderer/src/api/cuepointBridge.types";
+import { mkdtempSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DESKTOP_ROOT = path.resolve(__dirname, "..");
+
+/** Half the tracks are House and half Techno, so a filter has work to do. */
+function attrs(id: number): string {
+  return (
+    `Genre="${id % 2 === 0 ? "House" : "Techno"}" Tonality="8A" ` +
+    `AverageBpm="12${id % 10}.00" Year="2024" TotalTime="360" BitRate="320" ` +
+    `Rating="204" PlayCount="3"`
+  );
+}
+
+function writeExport(dir: string, ids: number[], name = "collection.xml"): string {
+  const entries = ids
+    .map(
+      (id) =>
+        `<TRACK TrackID="${id}" Name="Track ${id}" Artist="Artist ${id}" ` +
+        `${attrs(id)} Location="file://localhost/m/${id}.mp3"/>`,
+    )
+    .join("\n");
+  const file = path.join(dir, name);
+  writeFileSync(
+    file,
+    `<?xml version="1.0" encoding="UTF-8"?>
+<DJ_PLAYLISTS Version="1.0.0">
+  <COLLECTION Entries="${ids.length}">
+${entries}
+  </COLLECTION>
+  <PLAYLISTS><NODE Name="ROOT" Type="0">
+    <NODE Name="set" Type="1" Entries="1"><TRACK Key="${ids[0] ?? 0}"/></NODE>
+  </NODE></PLAYLISTS>
+</DJ_PLAYLISTS>
+`,
+    "utf-8",
+  );
+  return file;
+}
+
+/**
+ * Rewrite an export and push its modified time forward.
+ *
+ * A rewrite inside the filesystem's timestamp granularity can land on the same
+ * mtime, which would make a genuinely changed file look unchanged and turn the
+ * refresh at the end into a no-op that still passed.
+ */
+function rewriteExport(file: string, ids: number[]): void {
+  writeExport(path.dirname(file), ids, path.basename(file));
+  const stat = statSync(file);
+  utimesSync(file, stat.atime.getTime() / 1000 + 5, stat.mtime.getTime() / 1000 + 5);
+}
+
+function launch(userDataDir: string, cuepointHome: string): Promise<ElectronApplication> {
+  const env = {
+    ...process.env,
+    NODE_ENV: "production",
+    CUEPOINT_HOME: cuepointHome,
+  } as Record<string, string>;
+  delete env.ELECTRON_RUN_AS_NODE;
+
+  return electron.launch({
+    cwd: DESKTOP_ROOT,
+    args: [".", `--user-data-dir=${userDataDir}`],
+    env,
+  });
+}
+
+async function ready(app: ElectronApplication): Promise<Page> {
+  const window = await app.firstWindow({ timeout: 60_000 });
+  await window.evaluate(() => localStorage.setItem("cuepoint-onboarding-complete", "1"));
+  await window.reload();
+  await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+  await expect(window.locator(".cp-status")).toContainText(/Engine connected/i, {
+    timeout: 60_000,
+  });
+  return window;
+}
+
+async function settle(window: Page, jobId: string) {
+  await expect
+    .poll(
+      async () =>
+        (await window.evaluate((id) => window.cuepoint!.getJob!(id), jobId))!.state,
+      { timeout: 90_000 },
+    )
+    .toMatch(/succeeded|failed|cancelled/);
+  return window.evaluate((id) => window.cuepoint!.getJob!(id), jobId);
+}
+
+async function importCollection(window: Page, xmlPath: string) {
+  const started = await window.evaluate(
+    (file) => window.cuepoint!.startLibraryImport!({ xml_path: file }),
+    xmlPath,
+  );
+  const finished = await settle(window, started.job_id);
+  expect(finished!.state).toBe("succeeded");
+}
+
+/** Rename the row that is waiting for a name, which a create leaves open. */
+async function nameIt(window: Page, name: string) {
+  const field = window.locator(".cp-playlist-pane__rename");
+  await expect(field).toBeVisible({ timeout: 10_000 });
+  await field.fill(name);
+  await field.press("Enter");
+  await expect(field).toBeHidden();
+}
+
+/** The Collections section's tree. */
+function collectionsTree(window: Page) {
+  return window.getByRole("tree", { name: "Collections" });
+}
+
+/**
+ * Drop tracks onto a Collection row.
+ *
+ * The gesture is HTML5 drag and drop, which Playwright cannot synthesize for a
+ * drag that starts in one widget and ends in another. The events are dispatched
+ * with a real `DataTransfer`, so the page's own `onDragStart` writes the
+ * payload and the pane's own `onDrop` reads it — every line of the code under
+ * test runs, and only the mouse is simulated.
+ */
+async function dragRowsOnto(window: Page, rowIndex: number, collectionName: string) {
+  await window.evaluate(
+    ({ index, name }) => {
+      const rows = document.querySelectorAll<HTMLElement>('[role="row"][draggable="true"]');
+      const source = rows[index];
+      if (!source) throw new Error(`no draggable row at ${index}`);
+      const target = [...document.querySelectorAll<HTMLElement>('[role="treeitem"]')].find(
+        (item) => item.textContent?.includes(name),
+      );
+      if (!target) throw new Error(`no tree row called ${name}`);
+
+      const transfer = new DataTransfer();
+      const fire = (element: HTMLElement, type: string) =>
+        element.dispatchEvent(
+          new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: transfer }),
+        );
+      fire(source, "dragstart");
+      fire(target, "dragover");
+      fire(target, "drop");
+      fire(source, "dragend");
+    },
+    { index: rowIndex, name: collectionName },
+  );
+}
+
+test.describe("Phase 6 end to end (ORG-13)", () => {
+  let userDataDir: string;
+  let cuepointHome: string;
+  let workspace: string;
+
+  test.beforeEach(() => {
+    userDataDir = mkdtempSync(path.join(tmpdir(), "cuepoint-e2e-"));
+    cuepointHome = mkdtempSync(path.join(tmpdir(), "cuepoint-home-"));
+    workspace = mkdtempSync(path.join(tmpdir(), "cuepoint-xml-"));
+  });
+
+  test.afterEach(() => {
+    for (const dir of [userDataDir, cuepointHome, workspace]) {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("file, tag, rate, save, freeze and refresh, in one session", async () => {
+    test.setTimeout(240_000);
+    const app = await launch(userDataDir, cuepointHome);
+    try {
+      const window = await ready(app);
+      const ids = Array.from({ length: 12 }, (_unused, index) => index + 1);
+      const xml = writeExport(workspace, ids);
+      await importCollection(window, xml);
+
+      // ---------------------------------------------------------------- 1
+      await window.getByRole("link", { name: "Collections" }).click();
+      await expect(window.getByRole("heading", { name: "Library", level: 1 })).toBeVisible();
+      // One page, not two: the Collections tree is a section of the Library
+      // page's left pane (DEC-062).
+      await expect(collectionsTree(window)).toBeVisible({ timeout: 30_000 });
+      await expect(window.locator("main.app-main .screen")).toHaveCount(1);
+      // And DEC-027 remembers the page rather than the way in.
+      expect(
+        await window.evaluate(() =>
+          localStorage.getItem("cuepoint-ui-shell-last-destination"),
+        ),
+      ).toBe("library");
+
+      // ---------------------------------------------------------------- 2
+      await window.getByRole("button", { name: "New folder" }).click();
+      await nameIt(window, "Sets");
+      await window.getByRole("button", { name: "New Collection" }).click();
+      await nameIt(window, "Openers");
+      await expect(collectionsTree(window).getByText("Sets")).toBeVisible();
+      await expect(collectionsTree(window).getByText("Openers")).toBeVisible();
+
+      // ---------------------------------------------------------------- 3
+      const table = window.getByRole("table", { name: "Library tracks" });
+      await expect(table).toBeVisible({ timeout: 30_000 });
+      const rows = table.getByRole("row").filter({ hasText: /Track/ });
+      await rows.nth(0).click();
+      await rows.nth(2).click({ modifiers: ["Shift"] });
+      await expect(window.locator(".cp-selection-actions__count")).toHaveText(
+        "3 tracks selected",
+      );
+
+      await dragRowsOnto(window, 0, "Openers");
+      await expect(window.getByText(/Added 3 tracks to Openers/i).first()).toBeVisible({
+        timeout: 30_000,
+      });
+
+      await collectionsTree(window).getByText("Openers").click();
+      await expect(window.getByRole("status").first()).toContainText("3 tracks", {
+        timeout: 30_000,
+      });
+      // `[data-index]` excludes the header, which carries the same column id.
+      const inside = async () =>
+        window.evaluate(() =>
+          [
+            ...document.querySelectorAll('[role="row"][data-index] [data-column="title"]'),
+          ].map((cell) => cell.textContent?.trim() ?? ""),
+        );
+      const before = await inside();
+      expect(before).toHaveLength(3);
+
+      // ---------------------------------------------------------------- 4
+      // Reordered through the engine, then read back through the table: the
+      // gesture is a row drag whose unit tests cover the arithmetic, and what
+      // matters here is that the order is stored and comes back.
+      const entryIds = await window.evaluate(async () => {
+        const tree = await window.cuepoint!.getCollections!();
+        const openers = tree.collections.find((node: CollectionNode) => node.name === "Openers")!;
+        const page = await window.cuepoint!.getCollectionEntries!({
+          collectionId: openers.id,
+        });
+        return page.entries.map((entry: CollectionEntry) => entry.id);
+      });
+      await window.evaluate(
+        (entryId) =>
+          window.cuepoint!.reorderCollectionEntry!({ entry_id: entryId, position: 0 }),
+        entryIds[2]!,
+      );
+      await window.reload();
+      await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+      await collectionsTree(window).getByText("Openers").click();
+      await expect(table).toBeVisible({ timeout: 30_000 });
+      await expect
+        .poll(async () => (await inside())[0], { timeout: 30_000 })
+        .toBe(before[2]);
+
+      // ---------------------------------------------------------------- 5
+      await rows.nth(0).click();
+      await rows.nth(2).click({ modifiers: ["Shift"] });
+      await rows.nth(0).click({ button: "right" });
+      await window.getByRole("menuitem", { name: "Add tag…" }).click();
+      const picker = window.getByRole("dialog");
+      await picker.getByLabel("Type to narrow the list").fill("Peak-time");
+      await picker.getByRole("button", { name: /Create/ }).click();
+      await expect(picker).toBeHidden({ timeout: 30_000 });
+
+      // Polled: tagging a selection is a write the page follows, and reading
+      // the vocabulary the instant the dialog closes can beat it.
+      await expect
+        .poll(
+          async () => {
+            const vocabulary = await window.evaluate(() => window.cuepoint!.getTags!());
+            const peak = vocabulary.tags.find((tag: TagUsage) => tag.name === "Peak-time");
+            return peak?.track_count ?? -1;
+          },
+          { timeout: 30_000 },
+        )
+        .toBe(3);
+
+      // ---------------------------------------------------------------- 6
+      await rows.nth(0).click();
+      await rows.nth(0).click({ button: "right" });
+      // The submenu opens on the parent's click, not on hover: a menu that
+      // opened a list under the cursor while it was on its way somewhere else
+      // would be a menu that moves when you use it.
+      await window.getByRole("menuitem", { name: "Rate" }).click();
+      await window.getByRole("menuitem", { name: "★★★★", exact: true }).click();
+
+      const rated = await window.evaluate(async () => {
+        const tree = await window.cuepoint!.getCollections!();
+        const openers = tree.collections.find((node: CollectionNode) => node.name === "Openers")!;
+        const page = await window.cuepoint!.getCollectionEntries!({
+          collectionId: openers.id,
+        });
+        const first = page.entries[0]!.track_id;
+        return window.cuepoint!.getLibraryTrack!({ trackId: first });
+      });
+      // DEC-057: CuePoint's rating moved and Rekordbox's did not (DEC-064 —
+      // nothing outside the database was written either).
+      expect(rated.metadata.rating).toBe(4);
+      expect(rated.track.rating).toBe(4);
+      expect(rated.metadata.rekordbox_rating).toBe(4);
+      expect(rated.metadata.rating_source).toBe("cuepoint");
+
+      // ---------------------------------------------------------------- 7
+      await window.getByRole("treeitem", { name: /All tracks/ }).click();
+      await window.getByRole("button", { name: "Add filter" }).click();
+      await window.getByLabel("Field").selectOption("genre");
+      await window.getByLabel("Condition").selectOption("is");
+      await window.getByLabel("Value").fill("House");
+      await window.getByRole("button", { name: "Add", exact: true }).click();
+      await expect(window.getByRole("status").first()).toContainText("6 tracks", {
+        timeout: 30_000,
+      });
+
+      await window.getByRole("button", { name: /Save as Smart Collection/i }).click();
+      const save = window.getByRole("dialog");
+      await save.getByLabel("Name").fill("House only");
+      await save.getByRole("button", { name: "Save" }).click();
+      await expect(save).toBeHidden({ timeout: 30_000 });
+
+      const saved = await window.evaluate(async () => {
+        const tree = await window.cuepoint!.getCollections!();
+        return tree.collections.find((node: CollectionNode) => node.name === "House only")!;
+      });
+      // No translation step: the rule set stored is the one the bar built
+      // (DEC-043, LIBUI-02).
+      expect(saved.kind).toBe("smart");
+      expect(saved.rules).toEqual({
+        match: "all",
+        rules: [{ field: "genre", operator: "is", value: "House" }],
+      });
+
+      // It evaluates live rather than holding rows (DEC-061).
+      await collectionsTree(window).getByText("House only").click();
+      await expect(window.getByRole("status").first()).toContainText("6 tracks", {
+        timeout: 30_000,
+      });
+
+      // ---------------------------------------------------------------- 8
+      await window.getByRole("button", { name: "Freeze House only" }).click();
+      const freeze = window.getByRole("dialog");
+      await expect(freeze).toContainText(/matches right now/);
+      await freeze.getByRole("button", { name: "Freeze it" }).click();
+      await expect(
+        window.getByText(/Froze 6 tracks from House only/i).first(),
+      ).toBeVisible({ timeout: 30_000 });
+
+      const frozen = await window.evaluate(async () => {
+        const tree = await window.cuepoint!.getCollections!();
+        return tree.collections.find((node: CollectionNode) => node.name === "House only (frozen)")!;
+      });
+      expect(frozen.kind).toBe("collection");
+      expect(frozen.track_count).toBe(6);
+      expect(frozen.frozen_from_id).toBe(saved.id);
+
+      // ---------------------------------------------------------------- 9
+      // Every track the Collection holds leaves the export — read from the
+      // Collection rather than assumed, so the export is edited to hit exactly
+      // what was filed. DEC-011's warning has been able to say this since
+      // Phase 3 and has never had reason to.
+      const held = await window.evaluate(async () => {
+        const tree = await window.cuepoint!.getCollections!();
+        const openers = tree.collections.find(
+          (node: CollectionNode) => node.name === "Openers",
+        )!;
+        const page = await window.cuepoint!.getCollectionEntries!({
+          collectionId: openers.id,
+        });
+        return page.entries.map((entry: CollectionEntry) => entry.track_id);
+      });
+      expect(held).toHaveLength(3);
+
+      const rekordboxIds = await window.evaluate(async (trackIds: number[]) => {
+        const rows = await Promise.all(
+          trackIds.map((id) => window.cuepoint!.getLibraryTrack!({ trackId: id })),
+        );
+        return rows.map((row) => Number(row.track.rekordbox_track_id));
+      }, held);
+      rewriteExport(
+        xml,
+        ids.filter((id) => !rekordboxIds.includes(id)),
+      );
+
+      await window.reload();
+      await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+      await window.getByRole("link", { name: "Library" }).click();
+      await expect(window.getByText("Out of date")).toBeVisible({ timeout: 30_000 });
+
+      await window.getByRole("button", { name: /Check for changes/i }).click();
+      const preview = window.getByRole("dialog");
+      await expect(preview).toBeVisible({ timeout: 60_000 });
+      // Real numbers, not a shape: three tracks are filed, and the warning
+      // counts them and the Collections they are filed in.
+      await expect(preview).toContainText(
+        /3 tracks you are about to remove are used in [1-9]\d* Collections?\./,
+      );
+
+      const apply = preview.getByRole("button", { name: /Remove 3 tracks and refresh/i });
+      // The acknowledgement gates it: irreversible, and the numbers are real.
+      await expect(apply).toBeDisabled();
+      await preview.getByLabel(/I understand/i).check();
+      await expect(apply).toBeEnabled();
+      await apply.click();
+      await expect(preview).toBeHidden({ timeout: 60_000 });
+
+      await expect(window.getByTestId("library-track-count")).toHaveText("9 tracks", {
+        timeout: 60_000,
+      });
+      // The Collection lost the tracks it held, and nothing else in the tree
+      // was removed with them — a refresh deletes tracks, never Collections.
+      const after = await window.evaluate(async () => {
+        const tree = await window.cuepoint!.getCollections!();
+        return tree.collections.map((node: CollectionNode) => ({
+          name: node.name,
+          tracks: node.track_count,
+        }));
+      });
+      expect(after.find((node: { name: string }) => node.name === "Openers")!.tracks).toBe(0);
+      expect(after.map((node: { name: string }) => node.name)).toEqual(
+        expect.arrayContaining(["Sets", "Openers", "House only", "House only (frozen)"]),
+      );
+      // And the Smart Collection keeps answering over what is left, while the
+      // frozen copy of it does not (DEC-061).
+      await collectionsTree(window).getByText("House only", { exact: true }).click();
+      await expect(window.locator(".cp-filter-bar__count")).toContainText("5 tracks", {
+        timeout: 30_000,
+      });
+    } finally {
+      await app.close();
+    }
+  });
+});

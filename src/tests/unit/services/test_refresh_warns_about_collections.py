@@ -135,6 +135,18 @@ class TestThePreviewSaysSo:
         assert diff.references.collection_count == 1
         assert diff.references.referenced_track_ids == (filed["track"],)
 
+    def test_it_names_the_collections_and_not_only_their_number(
+        self, importer, filed, two_tracks
+    ):
+        """ORG-13: which ones, not just how many.
+
+        The repository has to find them to count them, and a page that can only
+        say "1 Collection" cannot tell the user afterwards *which* Collection a
+        refresh emptied — so the ids are carried rather than discarded.
+        """
+        diff = importer.compute_refresh_diff(two_tracks)
+        assert diff.references.collection_ids == (filed["collection"],)
+
     def test_an_unfiled_removal_still_warns_about_nothing(
         self, importer, imported, two_tracks
     ):
@@ -160,6 +172,12 @@ class TestThePreviewSaysSo:
         diff = importer.compute_refresh_diff(two_tracks)
         assert diff.references.collection_count == 2
         assert diff.references.referenced_track_count == 1
+        # And the count is a count *of* that list, rather than a second number
+        # arrived at separately.
+        assert sorted(diff.references.collection_ids) == sorted(
+            [filed["collection"], second.id]
+        )
+        assert len(diff.references.collection_ids) == (diff.references.collection_count)
 
     def test_only_the_filed_track_is_named(
         self, importer, tracks, collections, filed, tmp_path
@@ -209,6 +227,19 @@ class TestThePreviewSaysSo:
         collections.add_tracks(safe.id, [int(tracks.find_by_rekordbox_id("1").id)])
         diff = importer.compute_refresh_diff(two_tracks)
         assert diff.references.has_references is False
+        assert diff.references.collection_ids == ()
+
+    def test_the_named_collection_is_the_one_holding_the_doomed_track(
+        self, importer, tracks, collections, filed, two_tracks
+    ):
+        """Naming the wrong Collection would be worse than naming none."""
+        safe = collections.create_collection("Safe")
+        collections.add_tracks(safe.id, [int(tracks.find_by_rekordbox_id("1").id)])
+
+        diff = importer.compute_refresh_diff(two_tracks)
+
+        assert diff.references.collection_ids == (filed["collection"],)
+        assert safe.id not in diff.references.collection_ids
 
 
 class TestApplyingIt:

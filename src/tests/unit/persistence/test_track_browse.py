@@ -466,6 +466,44 @@ class TestCollectionScope:
         query = BrowseQuery(collection_id=warmups, sort="collection_position")
         assert ids(seeded.browse(query)).index("3") == 1
 
+    def test_it_reads_the_collection_once_rather_than_once_per_track(
+        self, db, seeded, warmups
+    ):
+        """The order costs one pass, not one per candidate row (ORG-13).
+
+        A plan assertion rather than a row assertion, because the rows are the
+        same either way — which is exactly why this went unnoticed. Written
+        without the aggregate, the ordering expression asks SQLite for
+        ``MIN(position)`` itself, and SQLite answers by flattening the scope
+        back into ``collection_tracks`` and seeking it by ``collection_id``:
+        every entry in the Collection, re-read once per candidate row. That is
+        quadratic, so it is invisible at the handful of entries every other test
+        here uses and was 183 ms for a first page at two thousand.
+
+        What makes it one pass is the ``GROUP BY`` in the CTE: it forces the
+        scope to be materialized one row per track, which the correlated lookup
+        can then index by ``track_id``. The plan says so.
+        """
+        sql, params = build_select(
+            BrowseQuery(collection_id=warmups, sort="collection_position"), limit=100
+        )
+        plan = [
+            str(row[-1])
+            for row in db.connect().execute("EXPLAIN QUERY PLAN " + sql, params)
+        ]
+
+        # The scope is built once, as its own table...
+        assert any("MATERIALIZE collection_scope" in step for step in plan), plan
+        # ...and the per-row lookup reads that table rather than going back to
+        # `collection_tracks`, which is the difference between one pass and one
+        # pass per row.
+        after = plan[
+            next(
+                i for i, step in enumerate(plan) if "CORRELATED SCALAR SUBQUERY" in step
+            ) :
+        ]
+        assert not any("collection_tracks" in step for step in after), plan
+
     def test_that_order_is_refused_without_the_scope(self, seeded):
         with pytest.raises(BrowseQueryError, match="needs a collection"):
             seeded.browse(BrowseQuery(sort="collection_position"))

@@ -78,6 +78,23 @@ export interface CollectionTreeController {
     sort?: string,
     dir?: "asc" | "desc",
   ) => Promise<WriteResult>;
+  /**
+   * A second saved question that starts out identical (DEC-061, ORG-13).
+   *
+   * It links nothing: editing either leaves the other alone, which is the
+   * whole reason to duplicate rather than to reference.
+   */
+  duplicateSmart: (id: number, name?: string | null) => Promise<WriteResult>;
+  /**
+   * Store a Smart Collection's answer as a Collection that never changes.
+   *
+   * The count comes back because it is the sentence worth saying: "frozen 412
+   * tracks" is what happened, and the tree alone would only show a new row.
+   */
+  freezeSmart: (
+    id: number,
+    name?: string | null,
+  ) => Promise<WriteResult & { frozen?: number }>;
 }
 
 function messageOf(cause: unknown): string {
@@ -297,6 +314,32 @@ export function useCollectionTree(
     [write],
   );
 
+  const duplicateSmart = useCallback(
+    (id: number, name?: string | null) => {
+      const bridge = window.cuepoint?.duplicateSmartCollection;
+      return write(
+        bridge ? () => bridge({ id, name: name ?? null }) : undefined,
+        (payload) => ({ ok: true, node: payload.collection }),
+      );
+    },
+    [write],
+  );
+
+  const freezeSmart = useCallback(
+    (id: number, name?: string | null) => {
+      const bridge = window.cuepoint?.freezeSmartCollection;
+      return write(
+        bridge ? () => bridge({ id, name: name ?? null }) : undefined,
+        (payload) => ({
+          ok: true,
+          node: payload.collection,
+          frozen: payload.track_count,
+        }),
+      );
+    },
+    [write],
+  );
+
   const updateSmart = useCallback(
     (id: number, rules: FilterRuleSet, sort?: string, dir?: "asc" | "desc") => {
       const bridge = window.cuepoint?.updateSmartCollection;
@@ -327,5 +370,7 @@ export function useCollectionTree(
     addTracks,
     saveSmart,
     updateSmart,
+    duplicateSmart,
+    freezeSmart,
   };
 }

@@ -10,6 +10,7 @@ Quick links:
 - [User guide](user-guide/getting-started.md)
 - [The CuePoint window](user-guide/the-window.md) (navigation, search, inspector, shortcuts)
 - [Your library](user-guide/library.md) (importing and refreshing a Rekordbox collection)
+- [Organizing your library](user-guide/organization.md) (Collections, tags, ratings and saved filters)
 - [Feature implementation designs](feature/README.md) (inCrate and others)
 - [UI overhaul](ui-overhaul/README.md) (lab layout → production rollout)
 - [Contributing](https://github.com/stuchain/CuePoint/blob/main/.github/CONTRIBUTING.md)

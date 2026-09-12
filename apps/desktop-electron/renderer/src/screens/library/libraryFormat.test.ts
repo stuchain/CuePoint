@@ -59,6 +59,7 @@ function diff(overrides: Partial<RefreshDiff> = {}): RefreshDiff {
       set_count: 0,
       referenced_track_count: 0,
       referenced_track_ids: [],
+      collection_ids: [],
       has_references: false,
     },
     ...overrides,
@@ -220,6 +221,7 @@ describe("referenceWarning (DEC-011)", () => {
         set_count: 1,
         referenced_track_count: 3,
         referenced_track_ids: [1, 2, 3],
+        collection_ids: [4, 9],
         has_references: true,
       },
     });
@@ -237,6 +239,7 @@ describe("referenceWarning (DEC-011)", () => {
         set_count: 2,
         referenced_track_count: 1,
         referenced_track_ids: [1],
+        collection_ids: [],
         has_references: true,
       },
     });
@@ -277,6 +280,7 @@ describe("appliedLine", () => {
         set_count: 0,
         referenced_track_count: 0,
         referenced_track_ids: [],
+        collection_ids: [],
         has_references: false,
       },
       duration_seconds: 0.6,

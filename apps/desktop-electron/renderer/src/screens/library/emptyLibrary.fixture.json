@@ -1,0 +1,131 @@
+{
+  "_comment": "Real engine responses, produced by src/tests/unit/engine/test_empty_state_fixture.py. Do not hand-edit: regenerate with CUEPOINT_WRITE_FIXTURES=1 and read the diff.",
+  "empty_collection": {
+    "browse": {
+      "collection_id": 1,
+      "collection_scope": "collection",
+      "dir": "asc",
+      "filters": {
+        "match": "all",
+        "rules": []
+      },
+      "filters_applied": {
+        "match": "all",
+        "rules": []
+      },
+      "library_empty": false,
+      "limit": 100,
+      "mode": "browse",
+      "offset": 0,
+      "query": "",
+      "scope": null,
+      "sort": "collection_position",
+      "total": 0,
+      "tracks": []
+    },
+    "collection": {
+      "broken": false,
+      "depth": 0,
+      "dir": null,
+      "entry_count": 0,
+      "frozen_at": null,
+      "frozen_from_id": null,
+      "id": 1,
+      "kind": "collection",
+      "name": "Shortlist",
+      "parent_id": null,
+      "position": 0,
+      "problem": null,
+      "rules": null,
+      "sort": null,
+      "track_count": 0
+    }
+  },
+  "refused_rule": {
+    "payload": {
+      "error": {
+        "code": "INVALID_REQUEST",
+        "message": "Tag 'has_tag' names tag 9999, which no longer exists"
+      }
+    },
+    "status": 400
+  },
+  "smart_matches_nothing": {
+    "browse": {
+      "collection_id": 2,
+      "collection_scope": "smart",
+      "dir": "asc",
+      "filters": {
+        "match": "all",
+        "rules": []
+      },
+      "filters_applied": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "genre",
+            "operator": "is",
+            "value": "Gabber"
+          }
+        ]
+      },
+      "library_empty": false,
+      "limit": 100,
+      "mode": "browse",
+      "offset": 0,
+      "query": "",
+      "scope": null,
+      "sort": "artist",
+      "total": 0,
+      "tracks": []
+    },
+    "collection": {
+      "broken": false,
+      "depth": 0,
+      "dir": null,
+      "entry_count": 0,
+      "frozen_at": null,
+      "frozen_from_id": null,
+      "id": 2,
+      "kind": "smart",
+      "name": "Gabber",
+      "parent_id": null,
+      "position": 1,
+      "problem": null,
+      "rules": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "genre",
+            "operator": "is",
+            "value": "Gabber"
+          }
+        ]
+      },
+      "sort": null,
+      "track_count": 0
+    }
+  },
+  "untouched": {
+    "collections": {
+      "collections": [],
+      "total": 0
+    },
+    "tag_facet": {
+      "field": "tag",
+      "range": null,
+      "total_values": 1,
+      "truncated": false,
+      "values": [
+        {
+          "count": 3,
+          "value": null
+        }
+      ]
+    },
+    "tags": {
+      "categories": [],
+      "tags": []
+    }
+  }
+}

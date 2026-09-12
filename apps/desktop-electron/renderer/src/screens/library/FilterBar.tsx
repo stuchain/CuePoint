@@ -210,6 +210,13 @@ export function FilterBar({
     }
 
     if (field.type === "tag") {
+      // The chips, which are not the same as the facet's rows: a library with
+      // no tags in it still answers with one row — "no tag, 3 tracks" — and a
+      // hint that keyed on the row count would never show in the one state it
+      // exists for (ORG-13, found against a real engine response).
+      const choosable = suggestions.filter(
+        (value) => value.value !== null && Number.isFinite(Number(value.value)),
+      );
       // Chips rather than a list of ids: a tag's value is its id because a
       // rule has to survive a rename (ORG-05), and no one has ever known one.
       return (
@@ -218,12 +225,11 @@ export function FilterBar({
           role="group"
           aria-label={arity === "list" ? "Tags — choose any" : "Tags"}
         >
-          {suggestions.length === 0 && (
+          {choosable.length === 0 && (
             <span className="cp-filter-bar__hint">No tags here yet.</span>
           )}
-          {suggestions.map((value) => {
+          {choosable.map((value) => {
             const id = Number(value.value);
-            if (!Number.isFinite(id) || value.value === null) return null;
             const on = chosen.includes(id);
             return (
               <button

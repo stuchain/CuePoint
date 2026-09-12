@@ -396,13 +396,6 @@ class LibraryService(ILibraryService):
         rather than finding out afterwards — DEC-003's deletion takes the
         CuePoint-side data with it and cannot be undone.
 
-        **Zero is the true answer today, not a stub.** Collections arrive in
-        Phase 6 and Sets in Phase 10; until then nothing in this build can
-        reference a track, so nothing does. The question is asked now because
-        DEC-032 chose to build the seam rather than reshape the refresh flow
-        later, and because a caller that already consults it needs no change
-        when the answer becomes interesting.
-
         **ORG-04 replaced the body, and nothing else.** The signature, the
         return type and every caller are as LIBRARY-08 wrote them, which was the
         whole point of building the seam before there was anything to find.
@@ -424,7 +417,10 @@ class LibraryService(ILibraryService):
                 iterable is valid and answers zero.
 
         Returns:
-            A :class:`~cuepoint.models.references.ReferenceSummary`.
+            A :class:`~cuepoint.models.references.ReferenceSummary`, carrying
+            *which* Collections as well as how many (ORG-13). The repository
+            has to find them to count them, and a page that can only say "2
+            Collections" cannot tell the user which two were emptied.
         """
         # Consumed rather than ignored: a caller passing a generator must not
         # find it silently untouched.
@@ -434,4 +430,5 @@ class LibraryService(ILibraryService):
             collection_count=len(collection_ids),
             set_count=0,
             referenced_track_ids=tuple(referenced),
+            collection_ids=tuple(collection_ids),
         )

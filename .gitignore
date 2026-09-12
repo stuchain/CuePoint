@@ -169,6 +169,12 @@ src/output/
 # repo invariants at edit time, so they are source and must survive a clone.
 !.claude/settings.json
 
+# Recorded engine responses (exception to user-output *.json above). These are
+# produced by a test that starts the real engine and asserted against by both
+# languages, so they are source: without them the renderer's empty states have
+# nothing real to render from (ORG-13).
+!apps/**/*.fixture.json
+
 # Test files
 test_output/
 test_results/

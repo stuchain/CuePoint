@@ -106,6 +106,7 @@ function diff(overrides: Partial<RefreshDiff> = {}): RefreshDiff {
       set_count: 0,
       referenced_track_count: 0,
       referenced_track_ids: [],
+      collection_ids: [],
       has_references: false,
     },
     ...overrides,
@@ -126,6 +127,7 @@ const APPLIED = {
     set_count: 0,
     referenced_track_count: 0,
     referenced_track_ids: [],
+    collection_ids: [],
     has_references: false,
   },
   duration_seconds: 0.6,
@@ -466,7 +468,9 @@ function install(overrides: Partial<Bridge> = {}) {
   (window as unknown as { cuepoint?: unknown }).cuepoint = bridge;
 }
 
-function renderScreen(props: { onOpenRekordboxInstructions?: () => void } = {}) {
+function renderScreen(
+  props: { onOpenRekordboxInstructions?: () => void; focus?: "collections" } = {},
+) {
   return render(
     <ScaleProvider>
       <ToastProvider>
@@ -816,6 +820,7 @@ describe("the reference warning (DEC-011)", () => {
       set_count: 1,
       referenced_track_count: 2,
       referenced_track_ids: [7, 8],
+      collection_ids: [1, 2],
       has_references: true,
     },
   });
@@ -2722,5 +2727,198 @@ describe("the tag manager (ORG-12)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
     expect(await screen.findByText(/already called that/)).toBeInTheDocument();
+  });
+});
+
+/**
+ * DEC-062: the Collections destination is a way into this page, not a page.
+ *
+ * What is asserted here is the half that is not in `navRegistry` — arriving
+ * that way actually puts the keyboard in the tree, and arriving the ordinary
+ * way does not move it.
+ */
+describe("arriving on the Collections destination (ORG-13)", () => {
+  beforeEach(() => {
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+  });
+
+  it("puts the keyboard in the Collections tree", async () => {
+    renderScreen({ focus: "collections" });
+    await tableReady();
+
+    const tree = await screen.findByRole("tree", { name: "Collections" });
+    await waitFor(() => expect(tree.contains(document.activeElement)).toBe(true));
+    // The tree's one tab stop, which is a row rather than the container.
+    expect(document.activeElement).toHaveAttribute("role", "treeitem");
+  });
+
+  it("leaves the focus alone when the page was opened as Library", async () => {
+    renderScreen();
+    await tableReady();
+
+    const tree = await screen.findByRole("tree", { name: "Collections" });
+    expect(tree.contains(document.activeElement)).toBe(false);
+  });
+
+  it("does not take the focus back on a later render", async () => {
+    // A flag would; a token that has been answered does not. Typing in the
+    // search box is the ordinary thing a user does next.
+    renderScreen({ focus: "collections" });
+    await tableReady();
+    const tree = await screen.findByRole("tree", { name: "Collections" });
+    await waitFor(() => expect(tree.contains(document.activeElement)).toBe(true));
+
+    const search = screen.getByLabelText("Search");
+    search.focus();
+    fireEvent.change(search, { target: { value: "techno" } });
+
+    await waitFor(() => expect(lastBrowse()).toMatchObject({ q: "techno" }));
+    expect(document.activeElement).toBe(search);
+  });
+
+  it("offers the first Collection to a library that has none", async () => {
+    // Nothing to focus in an empty tree, so the gesture lands on the one thing
+    // worth doing there.
+    install({ getCollections: vi.fn().mockResolvedValue({ collections: [], total: 0 }) });
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+    renderScreen({ focus: "collections" });
+    await tableReady();
+
+    await waitFor(() =>
+      expect(document.activeElement).toHaveTextContent("Create your first Collection"),
+    );
+  });
+});
+
+describe("the table's empty state (ORG-13)", () => {
+  /** A library with rows, and a scope that has none of them. */
+  function emptyUnderScope() {
+    install({
+      browseLibrary: vi.fn(async (params: Record<string, unknown>) =>
+        browseAnswer(params, params.scope ? [] : TRACKS),
+      ),
+    });
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+  }
+
+  it("shows a Smart Collection's rules, because they are the reason", async () => {
+    emptyUnderScope();
+    renderScreen();
+    await tableReady();
+
+    const tree = await screen.findByRole("tree", { name: "Collections" });
+    await userEvent.click(within(tree).getByText("Recent techno"));
+
+    expect(
+      await screen.findByText("Nothing matches these rules right now."),
+    ).toBeInTheDocument();
+    // The clause itself, in the words ORG-12 writes it in.
+    const rules = await screen.findByRole("list", { name: "The rules being asked" });
+    expect(rules).toHaveTextContent("Genre is Techno");
+  });
+
+  it("names the Collection that keeps asking", async () => {
+    emptyUnderScope();
+    renderScreen();
+    await tableReady();
+
+    const tree = await screen.findByRole("tree", { name: "Collections" });
+    await userEvent.click(within(tree).getByText("Recent techno"));
+
+    expect(await screen.findByText(/Recent techno keeps asking this/)).toBeInTheDocument();
+  });
+
+  it("invites tracks into a Collection nothing has filled", async () => {
+    emptyUnderScope();
+    renderScreen();
+    await tableReady();
+
+    const tree = await screen.findByRole("tree", { name: "Collections" });
+    await userEvent.click(within(tree).getByRole("button", { name: "Expand Sets" }));
+    await userEvent.click(within(tree).getByText("Warmups"));
+
+    expect(await screen.findByText("This Collection is empty.")).toBeInTheDocument();
+    expect(screen.getByText(/Drop tracks onto it/)).toBeInTheDocument();
+  });
+
+  it("says a refresh emptied the Collection it warned about", async () => {
+    // DEC-011's warning, followed through to its consequence: the user was
+    // told two tracks in a Collection were about to go, said yes, and now
+    // that Collection is empty. "Drop tracks onto it" would be answering a
+    // question nobody asked.
+    emptyUnderScope();
+    bridge.getJobResults
+      .mockResolvedValueOnce({
+        id: "job-preview",
+        state: "succeeded",
+        result: diff({
+          references: {
+            collection_count: 1,
+            set_count: 0,
+            referenced_track_count: 2,
+            referenced_track_ids: [7, 8],
+            collection_ids: [12],
+            has_references: true,
+          },
+        }),
+      })
+      .mockResolvedValue({ id: "job-apply", state: "succeeded", result: APPLIED });
+
+    renderScreen();
+    await tableReady();
+
+    await userEvent.click(screen.getByRole("button", { name: /Check for changes/i }));
+    const dialog = await screen.findByRole("dialog");
+    // The warning is real now, with real numbers.
+    expect(dialog).toHaveTextContent(
+      /2 tracks you are about to remove are used in 1 Collection/,
+    );
+    await userEvent.click(within(dialog).getByLabelText(/I understand/i));
+    await userEvent.click(within(dialog).getByRole("button", { name: /Remove 2 tracks/i }));
+    await waitFor(() => expect(bridge.startLibraryRefreshApply).toHaveBeenCalled());
+
+    const tree = await screen.findByRole("tree", { name: "Collections" });
+    await userEvent.click(within(tree).getByRole("button", { name: "Expand Sets" }));
+    await userEvent.click(within(tree).getByText("Warmups"));
+
+    expect(await screen.findByText(/no longer in your Rekordbox export/)).toBeInTheDocument();
+    expect(screen.queryByText(/Drop tracks onto it/)).not.toBeInTheDocument();
+  });
+
+  it("does not say that about a Collection the refresh never named", async () => {
+    // The warning named one node; a different one being empty has a different
+    // cause, and claiming this one would be inventing it.
+    emptyUnderScope();
+    bridge.getJobResults
+      .mockResolvedValueOnce({
+        id: "job-preview",
+        state: "succeeded",
+        result: diff({
+          references: {
+            collection_count: 1,
+            set_count: 0,
+            referenced_track_count: 2,
+            referenced_track_ids: [7, 8],
+            collection_ids: [999],
+            has_references: true,
+          },
+        }),
+      })
+      .mockResolvedValue({ id: "job-apply", state: "succeeded", result: APPLIED });
+
+    renderScreen();
+    await tableReady();
+    await userEvent.click(screen.getByRole("button", { name: /Check for changes/i }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByLabelText(/I understand/i));
+    await userEvent.click(within(dialog).getByRole("button", { name: /Remove 2 tracks/i }));
+    await waitFor(() => expect(bridge.startLibraryRefreshApply).toHaveBeenCalled());
+
+    const tree = await screen.findByRole("tree", { name: "Collections" });
+    await userEvent.click(within(tree).getByRole("button", { name: "Expand Sets" }));
+    await userEvent.click(within(tree).getByText("Warmups"));
+
+    expect(await screen.findByText(/Drop tracks onto it/)).toBeInTheDocument();
+    expect(screen.queryByText(/no longer in your Rekordbox export/)).not.toBeInTheDocument();
   });
 });

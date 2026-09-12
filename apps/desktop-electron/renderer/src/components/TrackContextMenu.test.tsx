@@ -163,6 +163,102 @@ describe("the menu", () => {
     vi.restoreAllMocks();
   });
 
+  describe("a submenu against an edge (ORG-13)", () => {
+    /**
+     * jsdom lays nothing out, so every box would be zero and every placement
+     * would be "there is room". Each element is given the size its stylesheet
+     * implies, keyed off what it is.
+     */
+    function laidOut(parentRight: number, parentTop: number) {
+      vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+        function (this: HTMLElement) {
+          const submenu = this.classList.contains("cp-track-menu__submenu");
+          const item = this.getAttribute("role") === "menuitem";
+          if (submenu) return rect(0, 0, 140, 300);
+          if (item) return rect(parentRight - 200, parentTop, 200, 30);
+          return rect(0, 0, 200, 160);
+        },
+      );
+    }
+
+    function rect(left: number, top: number, width: number, height: number): DOMRect {
+      return {
+        width,
+        height,
+        left,
+        top,
+        right: left + width,
+        bottom: top + height,
+        x: left,
+        y: top,
+        toJSON: () => ({}),
+      } as DOMRect;
+    }
+
+    const withSubmenu: TrackContextMenuItem[] = [
+      { id: "play", label: "Play", onSelect: vi.fn() },
+      {
+        id: "rate",
+        label: "Rate",
+        onSelect: () => undefined,
+        items: [
+          { id: "rate-4", label: "★★★★", onSelect: vi.fn() },
+          { id: "rate-5", label: "★★★★★", onSelect: vi.fn() },
+        ],
+      },
+    ];
+
+    it("opens to the left when there is no room on the right", async () => {
+      // The menu is clamped against the edge, so the submenu's usual side is
+      // off screen — and a list drawn off screen cannot be clicked at all.
+      laidOut(window.innerWidth, 10);
+      render(
+        <TrackContextMenu
+          x={window.innerWidth}
+          y={10}
+          items={withSubmenu}
+          onClose={vi.fn()}
+        />,
+      );
+
+      await userEvent.click(screen.getByRole("menuitem", { name: "Rate" }));
+
+      const submenu = screen.getByRole("menu", { name: "Rate" });
+      expect(parseFloat(submenu.style.left)).toBe(window.innerWidth - 200 - 140);
+      vi.restoreAllMocks();
+    });
+
+    it("opens to the right when there is room", async () => {
+      laidOut(220, 10);
+      render(<TrackContextMenu x={20} y={10} items={withSubmenu} onClose={vi.fn()} />);
+
+      await userEvent.click(screen.getByRole("menuitem", { name: "Rate" }));
+
+      expect(parseFloat(screen.getByRole("menu", { name: "Rate" }).style.left)).toBe(220);
+      vi.restoreAllMocks();
+    });
+
+    it("never starts below the bottom of the window", async () => {
+      // A menu long enough to scroll has entries near the bottom, and a child
+      // that began at its parent's top would begin off screen.
+      laidOut(220, window.innerHeight - 20);
+      render(
+        <TrackContextMenu
+          x={20}
+          y={window.innerHeight - 20}
+          items={withSubmenu}
+          onClose={vi.fn()}
+        />,
+      );
+
+      await userEvent.click(screen.getByRole("menuitem", { name: "Rate" }));
+
+      const top = parseFloat(screen.getByRole("menu", { name: "Rate" }).style.top);
+      expect(top + 300).toBeLessThanOrEqual(window.innerHeight);
+      vi.restoreAllMocks();
+    });
+  });
+
   it("describes what it acts on", () => {
     open({ label: "Actions for 3 tracks" });
 

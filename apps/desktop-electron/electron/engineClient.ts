@@ -351,11 +351,20 @@ export interface LibrarySearchResponse {
   sort?: string;
   dir?: "asc" | "desc";
   /**
-   * The rule set the response was computed for, echoed like the rest — a
-   * filter changes neither scope, sort nor text, so without it two requests
-   * produce responses nothing can tell apart (LIBUI-05).
+   * The rule set the request carried, echoed like the rest — a filter changes
+   * neither scope, sort nor text, so without it two requests produce responses
+   * nothing can tell apart (LIBUI-05).
    */
   filters?: FilterRuleSet | null;
+  /**
+   * What actually ran, a Smart Collection's saved clauses included (ORG-13).
+   *
+   * Separate from `filters`, which echoes the request: inside a Smart
+   * Collection the request carries no clauses at all — the scope carries the
+   * question (DEC-061) — and a staleness check comparing the two has to be
+   * comparing the same thing.
+   */
+  filters_applied?: FilterRuleSet | null;
   /** CuePoint's own scope, echoed back beside Rekordbox's (ORG-08). */
   collection_scope?: "collection" | "smart" | null;
   collection_id?: number | null;
