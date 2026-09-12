@@ -60,6 +60,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   before it does it, with the number of tracks and the number of Collections,
   and asks you to confirm. The warning has existed since the refresh did; this
   is the first release in which anything could trigger it
+- Any long job can be stopped from the status strip, not just a match. Import,
+  refresh and a change over many tracks all show a Stop beside their progress,
+  and stopping one keeps whatever it had already done
 - The window is now laid out as an application frame rather than a centered page.
   Screens sit at the top of a content area that scrolls on its own, and the menu
   bar occupies its own row instead of floating over the content. Previously long
@@ -67,6 +70,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   status chrome off-screen as those are added
 
 ### Fixed
+- Opening a Collection with thousands of tracks in it took over a second to
+  show the first page and now takes a few milliseconds. The order was being
+  worked out by re-reading the whole Collection once for every track in it
 - On macOS your keyboard's media keys did nothing, and CuePoint never said why.
   macOS only hands the play, next and previous keys to an app the user has
   allowed under Privacy & Security → Accessibility, and until then it refuses

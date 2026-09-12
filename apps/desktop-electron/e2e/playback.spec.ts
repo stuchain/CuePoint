@@ -281,12 +281,12 @@ test.describe("Phase 5 end to end", () => {
       } else if (landed.some(Boolean)) {
         expect(status).toBe("held");
       } else {
-        // A global shortcut is a machine-wide resource, so any other running
-        // application can already own these — including a second copy of this
-        // app, which is exactly what happens when Playwright's other worker is
-        // mid-spec. Holding none of them is the documented, acceptable outcome
-        // and the app says so; asserting all three would be asserting that no
-        // other program on the machine wants the media keys.
+        // A global shortcut is a machine-wide resource, so another running
+        // application can already own these. Holding none of them is the
+        // documented, acceptable outcome and the app says so; asserting all
+        // three would be asserting that no other program on this machine wants
+        // the media keys. The suite no longer competes with itself for them —
+        // that is why it runs one worker (see `playwright.config.ts`).
         expect(status).toBe("taken");
       }
 

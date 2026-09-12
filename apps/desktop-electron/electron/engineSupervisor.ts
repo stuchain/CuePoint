@@ -511,8 +511,8 @@ export class EngineSupervisor {
     return this.client().createIncratePlaylist(body);
   }
 
-  async cancelMatchJob(jobId: string): Promise<{ id: string; state: string }> {
-    return this.client().cancelMatchJob(jobId);
+  async cancelJob(jobId: string): Promise<{ id: string; state: string }> {
+    return this.client().cancelJob(jobId);
   }
 
   async getBeatportTokenStatus(): Promise<{ configured: boolean; masked: string | null }> {

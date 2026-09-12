@@ -1134,7 +1134,13 @@ export interface CuePointBridge {
     name: string;
     tracks: IncrateDiscoverTrack[];
   }) => Promise<IncratePlaylistResponse>;
-  cancelMatchJob: (jobId: string) => Promise<{ id: string; state: string }>;
+  /**
+   * Ask a running job to stop — any job, not only a match (ORG-13).
+   *
+   * One store, one cancel, and every job type checks it. Work already applied
+   * stays applied and the job says how far it got (DEC-063).
+   */
+  cancelJob: (jobId: string) => Promise<{ id: string; state: string }>;
   getBeatportTokenStatus: () => Promise<BeatportTokenStatus>;
   setBeatportToken: (token: string) => Promise<BeatportTokenStatus>;
   testBeatportToken: (body?: { token?: string }) => Promise<BeatportTokenTestResult>;

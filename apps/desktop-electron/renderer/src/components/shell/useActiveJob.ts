@@ -63,6 +63,10 @@ const JOB_VERBS: Record<string, string> = {
   library_import: "Importing",
   library_refresh_preview: "Checking",
   library_refresh_apply: "Refreshing",
+  // ORG-07's batch. Without its own verb it fell through to "Working", which
+  // is the fallback for a job type this build has never heard of — and this
+  // build writes them.
+  library_batch: "Updating",
 };
 
 /** A short description of what a job is doing, for the strip. */

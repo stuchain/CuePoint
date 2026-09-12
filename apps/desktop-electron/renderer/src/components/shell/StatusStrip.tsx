@@ -50,6 +50,37 @@ export function StatusStrip() {
     }
   };
 
+  /**
+   * Stopping the job the strip is reporting (ORG-13).
+   *
+   * Here rather than on the page that started it, because this is where a
+   * running job is visible from anywhere in the app — and because a batch over
+   * everything a query matches can outlive the screen it was started from,
+   * which is the whole point of it being a job. inKey keeps its own Cancel
+   * beside its progress; every other job had none, so "cancellable" was true
+   * of the engine and unavailable to the user.
+   *
+   * Work already applied stays applied and the job reports how far it got
+   * (DEC-063), so this asks rather than undoes — which is what the label says.
+   */
+  const [cancelling, setCancelling] = useState(false);
+  const canCancel =
+    job !== null && job.state === "running" && Boolean(window.cuepoint?.cancelJob);
+
+  const cancel = async () => {
+    if (!job) return;
+    setCancelling(true);
+    try {
+      await window.cuepoint?.cancelJob?.(job.id);
+    } catch {
+      // A cancel that cannot be delivered is not worth an error of its own:
+      // the job carries on and the strip keeps saying so, which is the honest
+      // outcome either way.
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "a") {
@@ -130,6 +161,19 @@ export function StatusStrip() {
             )}
             {activeCount > 1 && (
               <span className="cp-status__more">+{activeCount - 1} more</span>
+            )}
+            {canCancel && (
+              <button
+                type="button"
+                className="cp-status__cancel"
+                onClick={() => void cancel()}
+                disabled={cancelling}
+                // Named, because the strip can be reporting any of four kinds
+                // of work and "Cancel" alone would not say which stops.
+                aria-label={`Stop ${jobLabel(job).toLowerCase()}`}
+              >
+                {cancelling ? "Stopping…" : "Stop"}
+              </button>
             )}
           </span>
         ) : (

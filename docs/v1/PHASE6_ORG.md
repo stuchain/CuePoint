@@ -2537,7 +2537,31 @@ inside the Playlists tree since ORG-09 moved it into its own — broken for four
 nothing had run the E2E suite. `shell.spec.ts` tabs a fixed number of times to prove every shell
 region is keyboard-reachable, and the rail is one stop longer now.
 
-**Guards: 57 of 57 fail when the thing they protect is broken.** One page and not two, eight ways:
+**The three things the acceptance list asked for in a packaged build and had only in tests.** A
+duplicate was unit-tested and never performed; the journey now makes one, checks it starts out
+identical, edits it, and checks the original still asks what it asked. Nothing quit and relaunched
+the app, so "survives a restart" was proved one level down against a reopened database; the journey
+now closes the app and comes back to find the tree, the membership, the rules and the tag where it
+left them. And a change over everything a query matches had never run through the built app at all.
+
+That last one is why it was worth doing. **It did not work.** The renderer spells "no filters" as
+`null` and sends the key either way; the engine accepted the key's absence and refused its `null`,
+so the most ordinary selection there is — everything matching, with nothing filtered — came back a
+400. No job was ever started. It reached the user as a warning about their request, which is why
+nothing had caught it: every unit test built a selection with filters in it, and the acceptance
+sentence had never been walked end to end.
+
+Two smaller things fell out of the same run. The batch had no verb of its own in the status strip,
+so it reported as "Working" — the fallback for a job type this build has never heard of, and this
+build writes them. And **the job was cancellable with nothing to cancel it**: the engine has had
+one cancel since Phase 1 and every job type checks it, but the only way to reach it was inKey's own
+button, so a change over 47,913 tracks could be watched and not stopped. The strip has a Stop now,
+beside the progress it belongs to, because that is where a running job is visible from anywhere —
+which is the point of it being a job. The bridge method it calls was named `cancelMatchJob` while
+inKey was the only caller; it is `cancelJob` across all six contract files now, which is what the
+route has always been.
+
+**Guards: 69 of 69 fail when the thing they protect is broken.** One page and not two, eight ways:
 the destination turned off, made a page of its own, resolving to itself, remembered as a second
 identity, reopening on the way in rather than the page, taking the shell down when its `pageId`
 names nothing, and the route rendering the wrong screen or the right one without aiming at the
@@ -2563,7 +2587,13 @@ a count that stops agreeing with the list it came from. The browse echo, three w
 that will not say which Collection it was, an echo naming rules the caller never sent, and what ran
 no longer reported. Plus the Collection order worked out once per row rather than once, a restore
 that is not checked before it overwrites a working library, and one chosen by mistake that cannot
-be undone.
+be undone. Stopping a job, seven ways: no way to stop a running one, a stop offered for one that
+has finished, a stop that does not say which work it ends, a build with no cancel drawing the
+button anyway, a stop aimed at some other job, a refused stop taking the strip down with it, and a
+batch with no verb of its own. The gates, three ways: the lint gate unwired, a second formatter
+beside ruff, and mypy wired in where it would block every commit. And everything matching with
+nothing filtered, two ways: `null` filters refused as a bad request, and filters that are neither
+`null` nor a rule set let through.
 
 Five of those started as survivors, and none of the five was a hole in the code. Three were tests
 that could not have failed: the App tests run without a bridge, so the Library page was its import
@@ -2577,31 +2607,39 @@ looked like a failure: restoring a corrupt backup raises either way and leaves t
 either way, so the test now pins the difference that matters to a user — a backup error rather
 than a restore error, and no pre-restore safety copy taken for work that never began.
 
-**Verification**: `npm test` in the renderer — 2,051 passed across 82 files, 81 of them new and two
+**Verification**: `npm test` in the renderer — 2,058 passed across 82 files, 88 of them new and two
 of the files; `npm run typecheck`, `npm run lint` and `npm run build:check` clean, and `npm run
-build` in the desktop app; `python -m pytest src/tests/unit` — 4,371 passed and 45 skipped, 25 of
-the passes new; `ruff check src/` and `ruff format --check src/` clean; `mypy` on the four changed
-engine modules reports the same 35 findings before and after the step, verified against a stash;
-`check_no_qt_in_core.py`, `check_desktop_version_coupling.py` and `smoke_engine_health.py` all OK.
-`python scripts/bench_library.py` at 50,000 tracks reports every phase producing the result it
-promised. The three failures in `test_code_quality_step_5_7.py` are unrelated and predate
-this phase.
+build` in the desktop app; `python -m pytest src/tests/unit` — **4,377 passed and 45 skipped, with
+nothing failing**, 31 of the passes new; `ruff check src/` and `ruff format --check src/` clean;
+`mypy` on the four changed engine modules reports the same 35 findings before and after the step,
+verified against a stash; `check_no_qt_in_core.py`, `check_desktop_version_coupling.py` and
+`smoke_engine_health.py` all OK. `python scripts/bench_library.py` at 50,000 tracks reports every
+phase producing the result it promised.
 
-**The whole Playwright suite passes against the packaged app**: 36 passed, one skipped by design
-(the memory spec is opt-in), run twice. Three specs had to be repaired to get there, and only one
-of them was this step's. `libraryBrowse` had been looking for "All tracks" inside the Playlists
+**The Python suite had three failing tests before this step and has none after.** They asserted
+that the pre-commit config runs black, isort and flake8; it has run ruff for three phases, and
+every step since has reported them and left them. A fourth in the same class passed and should not
+have: it looked for "mypy" and found it in the comment explaining that mypy is deliberately *not*
+wired in. All four now read the parsed hooks — ruff lints and formats, the tools it replaced are
+absent so two formatters cannot fight over the same file, the hygiene hooks are there, and mypy is
+absent *and* explained, because an absence with no reason gets "fixed" by the next person to look.
+
+**The whole Playwright suite passes against the packaged app**: 37 passed, one skipped by design
+(the memory spec is opt-in), run three times in a row. Two specs had to be repaired to get there
+and neither was this step's: `libraryBrowse` had been looking for "All tracks" inside the Playlists
 tree since ORG-09 moved it into its own, and `shell` tabs a fixed number of times to prove every
-region is keyboard-reachable, which the longer rail moved past — both broken before this step,
-because nothing had run the suite in four of them.
+region is keyboard-reachable, which the longer rail moved past. Both had been broken for four steps
+because nothing had run the suite.
 
-The third is Phase 5's, and it was the suite's own scheduling. `playback` asserted that all three
-media keys register, which is a **machine-wide** resource: Playwright runs two workers, so a second
-copy of the app launching mid-spec already owns them, and which run fails depends on timing.
-Adding a seventh Electron-launching spec is what made it show. The app already has a word for that
-case — `taken`, as distinct from macOS's `unavailable` — so the assertion is now that its word
-matches what it actually got, in all three cases. That is the property the status exists for, and
-it is the same under any scheduling; asserting all three land would be asserting that nothing else
-on the machine wants the media keys.
+**The suite now runs one worker, and that is a finding rather than a retreat.** Two was right while
+every spec was small. Two things this step added made it wrong. The media keys are a *machine-wide*
+resource, so a second copy of the app launching mid-spec already holds them, and which run fails
+depends on timing. And the batch spec below imports 50,000 tracks and changes all of them, which
+starves whatever runs beside it — the player coalesces a run of failures on a 400ms timer, and a
+starved renderer splits one run into two reports. Both are real contention rather than flaky tests,
+and the honest answer is to stop the suite competing with itself rather than to weaken assertions
+until they stop noticing. A suite whose result depends on which spec happened to be running
+alongside is not a gate; the ninety seconds it costs is the cheapest thing in this phase.
 
 **What this step deliberately did not do.** It did not add per-field revert of CuePoint values, or
 export, or OR logic, or anything else in the deferred list below — each has its reason recorded
@@ -2611,7 +2649,15 @@ built.
 
 ---
 
-## Phase-level acceptance
+## Phase-level acceptance ✅ MET 2026-09-13
+
+Every item below was checked in a packaged build. Where a number is claimed it was measured and is
+recorded in `docs/user-guide/performance.md`; where behaviour is claimed there is a test that fails
+without it. Items 1, 2, 3, 4, 5, 6 and 9 are walked end to end in
+`apps/desktop-electron/e2e/organization.spec.ts`, item 7 in the batch test beside it, and item 10
+in `libraryBrowse.spec.ts` and `PlaylistPane.test.tsx`. Item 1's backup and restore half is
+`test_backup_restores_organization.py`, which reads the restored library back through the services
+rather than through SQL.
 
 Phase 6 is complete when, in a **packaged build**:
 

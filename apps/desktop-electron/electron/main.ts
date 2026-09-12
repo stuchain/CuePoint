@@ -310,7 +310,7 @@ function registerIpcHandlers(): void {
   ipcMain.handle("engine:getIncrateDiscoverOptions", () => engine.getIncrateDiscoverOptions());
   ipcMain.handle("engine:runIncrateDiscover", (_event, body) => engine.runIncrateDiscover(body));
   ipcMain.handle("engine:createIncratePlaylist", (_event, body) => engine.createIncratePlaylist(body));
-  ipcMain.handle("engine:cancelMatchJob", (_event, jobId: string) => engine.cancelMatchJob(jobId));
+  ipcMain.handle("engine:cancelJob", (_event, jobId: string) => engine.cancelJob(jobId));
   ipcMain.handle("engine:getBeatportTokenStatus", () => engine.getBeatportTokenStatus());
   ipcMain.handle("engine:setBeatportToken", (_event, token: string) => engine.setBeatportToken(token));
   ipcMain.handle("engine:testBeatportToken", (_event, body) => engine.testBeatportToken(body));

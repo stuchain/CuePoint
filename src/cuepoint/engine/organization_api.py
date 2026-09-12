@@ -810,7 +810,16 @@ def _selection(data: Dict[str, Any]) -> Any:
     scope = resolve_scope(
         _optional_str(query, "scope"), _optional_int(query, "collection_id")
     )
-    sent = _rule_set(query["filters"], "filters") if "filters" in query else RuleSet()
+    # `null` means the same as absent (ORG-13). The renderer's own query type
+    # spells "no filters" as `null`, and it sends the key either way — so an
+    # engine that took absent and refused null turned the most ordinary
+    # selection there is, everything matching with no filter on, into a 400.
+    # Nothing downstream can tell the two apart, so nothing here should.
+    sent = (
+        _rule_set(query.get("filters"), "filters")
+        if query.get("filters")
+        else RuleSet()
+    )
     rules = (
         RuleSet(rules=tuple(scope.rules.rules) + tuple(sent.rules))
         if scope.rules.rules

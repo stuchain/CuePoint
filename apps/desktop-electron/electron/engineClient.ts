@@ -1058,7 +1058,16 @@ export class EngineClient {
     return readJson(res);
   }
 
-  async cancelMatchJob(jobId: string): Promise<{ id: string; state: string }> {
+  /**
+   * Ask a running job to stop.
+   *
+   * Named for the route rather than for its first caller (ORG-13): the engine
+   * has one job store and one cancel, and every job type checks it — a match,
+   * an import, a refresh, and a batch over everything a query matches. It was
+   * called `cancelMatchJob` while inKey was the only thing that ran one, which
+   * made it read as unavailable to everything since.
+   */
+  async cancelJob(jobId: string): Promise<{ id: string; state: string }> {
     const res = await fetch(this.url(`/api/v1/jobs/${jobId}/cancel`), {
       method: "POST",
       headers: this.headers(),

@@ -1255,6 +1255,42 @@ class TestTheBatchRoute:
         )
         assert payload["applied"]["changed"] == TRACK_COUNT // 2
 
+    def test_no_filters_spelled_as_null_is_no_filters(self, engine, peak):  # noqa: F811
+        """`null` means the same as absent (ORG-13).
+
+        The renderer's query type spells "no filters" as ``null`` and sends the
+        key either way, so an engine that accepted the key's absence and
+        refused its ``null`` turned the most ordinary selection there is —
+        everything matching, with nothing filtered — into a 400. It reached the
+        user as a warning about their request rather than as the batch they
+        asked for, and no job was ever started.
+        """
+        payload = ok(
+            engine,
+            "/api/v1/library/batch",
+            {
+                "selection": {"query": {"q": "", "filters": None}},
+                "operation": {"kind": "add_tag", "value": peak["id"]},
+            },
+        )
+        assert payload["applied"]["changed"] == TRACK_COUNT
+
+    def test_filters_that_are_neither_null_nor_a_rule_set_are_still_refused(
+        self,
+        engine,  # noqa: F811
+        peak,
+    ):
+        status, payload = post(
+            engine,
+            "/api/v1/library/batch",
+            {
+                "selection": {"query": {"filters": "techno"}},
+                "operation": {"kind": "add_tag", "value": peak["id"]},
+            },
+        )
+        assert status == 400
+        assert "filters" in payload["error"]["message"]
+
     def test_a_collection_scoped_selection(self, engine, warmups, ids):  # noqa: F811
         ok(
             engine,

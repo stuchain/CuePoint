@@ -38,9 +38,11 @@ import {
   type Page,
 } from "@playwright/test";
 import type {
+  ActivityEvent,
   CollectionEntry,
   CollectionNode,
   TagUsage,
+  TrackFieldChange,
 } from "../renderer/src/api/cuepointBridge.types";
 import { mkdtempSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -211,7 +213,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
 
   test("file, tag, rate, save, freeze and refresh, in one session", async () => {
     test.setTimeout(240_000);
-    const app = await launch(userDataDir, cuepointHome);
+    let app = await launch(userDataDir, cuepointHome);
     try {
       const window = await ready(app);
       const ids = Array.from({ length: 12 }, (_unused, index) => index + 1);
@@ -378,6 +380,8 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       });
 
       // ---------------------------------------------------------------- 8
+      // Selected a moment ago, so the row holds the focus that shows its
+      // controls; see the note on the duplicate below.
       await window.getByRole("button", { name: "Freeze House only" }).click();
       const freeze = window.getByRole("dialog");
       await expect(freeze).toContainText(/matches right now/);
@@ -393,6 +397,52 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       expect(frozen.kind).toBe("collection");
       expect(frozen.track_count).toBe(6);
       expect(frozen.frozen_from_id).toBe(saved.id);
+
+      // A duplicate is the other half of the same sentence: a second saved
+      // question that starts out identical and is never linked again.
+      //
+      // The row is clicked first rather than hovered: its controls appear on
+      // hover *or* focus, and only focus survives a re-render — the freeze
+      // above took the focus with its dialog, and a hover that the toast lands
+      // on is a hover that ends mid-click.
+      await collectionsTree(window).getByText("House only", { exact: true }).click();
+      await window.getByRole("button", { name: "Duplicate House only" }).click();
+      await expect(
+        window.getByText(/separate from now on/i).first(),
+      ).toBeVisible({ timeout: 30_000 });
+
+      const copy = await window.evaluate(async () => {
+        const tree = await window.cuepoint!.getCollections!();
+        return tree.collections.find(
+          (node: CollectionNode) => node.name === "House only copy",
+        )!;
+      });
+      expect(copy.kind).toBe("smart");
+      expect(copy.id).not.toBe(saved.id);
+      expect(copy.rules).toEqual(saved.rules);
+
+      // Independent: editing the copy leaves the original asking what it asked.
+      await window.evaluate(
+        (id) =>
+          window.cuepoint!.updateSmartCollection!({
+            id,
+            rules: {
+              match: "all",
+              rules: [{ field: "genre", operator: "is", value: "Techno" }],
+            },
+          }),
+        copy.id,
+      );
+      const bothAfter = await window.evaluate(async () => {
+        const tree = await window.cuepoint!.getCollections!();
+        return tree.collections
+          .filter((node: CollectionNode) => node.name.startsWith("House only"))
+          .map((node: CollectionNode) => ({ name: node.name, rules: node.rules }));
+      });
+      const original = bothAfter.find(
+        (node: { name: string }) => node.name === "House only",
+      )!;
+      expect(original.rules).toEqual(saved.rules);
 
       // ---------------------------------------------------------------- 9
       // Every track the Collection holds leaves the export — read from the
@@ -415,7 +465,9 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
         const rows = await Promise.all(
           trackIds.map((id) => window.cuepoint!.getLibraryTrack!({ trackId: id })),
         );
-        return rows.map((row) => Number(row.track.rekordbox_track_id));
+        return rows.map((row: { track: { rekordbox_track_id: string } }) =>
+          Number(row.track.rekordbox_track_id),
+        );
       }, held);
       rewriteExport(
         xml,
@@ -466,6 +518,169 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       await expect(window.locator(".cp-filter-bar__count")).toContainText("5 tracks", {
         timeout: 30_000,
       });
+      // --------------------------------------------------------------- 10
+      // Quit and come back. Everything above lives only in CuePoint's own
+      // database, so this is the one check that says the phase's data is
+      // durable rather than merely present.
+      await app.close();
+      app = await launch(userDataDir, cuepointHome);
+      const reopened = await ready(app);
+
+      const survived = await reopened.evaluate(async () => {
+        const tree = await window.cuepoint!.getCollections!();
+        const vocabulary = await window.cuepoint!.getTags!();
+        const openers = tree.collections.find(
+          (node: CollectionNode) => node.name === "Openers",
+        )!;
+        const page = await window.cuepoint!.getCollectionEntries!({
+          collectionId: openers.id,
+        });
+        return {
+          names: tree.collections.map((node: CollectionNode) => node.name),
+          smart: tree.collections.find(
+            (node: CollectionNode) => node.name === "House only",
+          )!.rules,
+          tags: vocabulary.tags.map((tag: TagUsage) => [tag.name, tag.track_count]),
+          entries: page.entries.length,
+        };
+      });
+
+      expect(survived.names).toEqual(
+        expect.arrayContaining([
+          "Sets",
+          "Openers",
+          "House only",
+          "House only copy",
+          "House only (frozen)",
+        ]),
+      );
+      expect(survived.smart).toEqual(saved.rules);
+      // The tag itself outlives the tracks it was on: the refresh above took
+      // all three, and a vocabulary that deleted a tag when its last track
+      // went would lose the word a user chose (ORG-03).
+      expect(survived.tags).toEqual([["Peak-time", 0]]);
+      expect(survived.entries).toBe(0);
+    } finally {
+      await app.close();
+    }
+  });
+
+  /**
+   * The phase's seventh acceptance sentence, at the size it names.
+   *
+   * A change over "everything matching" is the one gesture in Phase 6 that
+   * cannot be checked at three tracks: what makes it a job rather than a
+   * request is the number, and what makes the number safe is that the ids
+   * never leave the engine (DEC-045). So this imports a library big enough for
+   * the job to exist, applies one operation to all of it, stops it part way,
+   * and then lets a second run finish.
+   */
+  test("changes everything a query matches, as a job that can be stopped", async () => {
+    test.setTimeout(240_000);
+    const app = await launch(userDataDir, cuepointHome);
+    try {
+      const window = await ready(app);
+      const ids = Array.from({ length: 50_000 }, (_unused, index) => index + 1);
+      await importCollection(window, writeExport(workspace, ids, "big.xml"));
+
+      await window.getByRole("link", { name: "Library" }).click();
+      await expect(window.getByTestId("library-track-count")).toHaveText("50,000 tracks", {
+        timeout: 60_000,
+      });
+      const table = window.getByRole("table", { name: "Library tracks" });
+      await expect(table).toBeVisible({ timeout: 30_000 });
+
+      // Everything matching, which is never a list of ids.
+      await window.getByRole("button", { name: "Select all" }).click();
+      await expect(window.locator(".cp-selection-actions__count")).toContainText(
+        "50,000 tracks selected (everything matching)",
+      );
+
+      await window.getByRole("button", { name: "Actions…" }).click();
+      await window.getByRole("menuitem", { name: "Favorite", exact: true }).click();
+
+      // Above the threshold it asks first, with the number, because there is
+      // no undo (DEC-008).
+      const confirm = window.getByRole("dialog");
+      await expect(confirm).toContainText("Favorite 50,000 tracks?");
+      await expect(confirm).toContainText(/no undo/i);
+      await confirm.getByRole("button", { name: "Apply" }).click();
+
+      // It is a job, it says so from the shell, and it can be stopped there.
+      const strip = window.locator(".cp-status");
+      await expect(strip.locator(".cp-status__job-label")).toContainText(/Updating/, {
+        timeout: 60_000,
+      });
+      await expect(strip.getByRole("progressbar", { name: /job progress/i })).toBeVisible();
+      const stop = strip.getByRole("button", { name: /^stop /i });
+      await expect(stop).toBeVisible({ timeout: 30_000 });
+      await stop.click();
+
+      // Stopped, and what it had already applied stays applied (DEC-063).
+      await expect
+        .poll(
+          async () =>
+            (
+              await window.evaluate(
+                () => window.cuepoint!.listJobs!({ state: "all", limit: 5 }),
+              )
+            ).jobs[0]!.state,
+          { timeout: 90_000 },
+        )
+        .toMatch(/cancelled|succeeded/);
+
+      const favorited = async () =>
+        (
+          await window.evaluate(() =>
+            window.cuepoint!.browseLibrary!({
+              limit: 1,
+              filters: {
+                match: "all",
+                rules: [{ field: "favorite", operator: "is", value: true }],
+              },
+            }),
+          )
+        ).total;
+      const partial = await favorited();
+      expect(partial).toBeGreaterThan(0);
+
+      // Run it again and let it finish: every track, one activity event for
+      // the whole batch, and one batch id across the history it wrote. The
+      // selection is still what it was — stopping the work does not un-choose
+      // the tracks — so this picks up where the last one left off.
+      await expect(window.locator(".cp-selection-actions__count")).toContainText(
+        "(everything matching)",
+      );
+      await window.getByRole("button", { name: "Actions…" }).click();
+      await window.getByRole("menuitem", { name: "Favorite", exact: true }).click();
+      await window.getByRole("dialog").getByRole("button", { name: "Apply" }).click();
+
+      await expect.poll(favorited, { timeout: 180_000 }).toBe(50_000);
+
+      const events = await window.evaluate(() =>
+        window.cuepoint!.getRecentActivity!({ limit: 20 }),
+      );
+      const batches = events.events.filter((event: ActivityEvent) =>
+        event.type.startsWith("library.batch"),
+      );
+      // One event for the whole run, not one per track (DEC-029).
+      expect(batches.length).toBeGreaterThan(0);
+      expect(batches.length).toBeLessThanOrEqual(2);
+
+      const history = await window.evaluate(async () => {
+        const page = await window.cuepoint!.browseLibrary!({ limit: 1 });
+        const id = page.tracks[0]!.id!;
+        return window.cuepoint!.getTrackHistory!({ trackId: id });
+      });
+      const favorites = history.changes.filter(
+        (change: TrackFieldChange) => change.field === "favorite",
+      );
+      expect(favorites.length).toBeGreaterThan(0);
+      // Written under a batch id, which is what makes the run one thing a
+      // later phase can look at or take back (DEC-063).
+      expect(
+        favorites.every((change: TrackFieldChange) => Boolean(change.batch_id)),
+      ).toBe(true);
     } finally {
       await app.close();
     }

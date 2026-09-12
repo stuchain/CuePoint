@@ -325,3 +325,103 @@ describe("jobs", () => {
     expect(await screen.findByText("No jobs running")).toBeInTheDocument();
   });
 });
+
+/**
+ * Stopping the job the strip is reporting (ORG-13).
+ *
+ * The engine has had one cancel since Phase 1 and every job type checks it,
+ * but the only way to reach it was inKey's own button — so a batch over
+ * everything a query matches was a cancellable job with nothing to cancel it.
+ * It belongs here because this is where a running job is visible from anywhere
+ * in the app, which is the point of it being a job at all.
+ */
+describe("stopping a job", () => {
+  let cancelJob: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    cancelJob = vi.fn().mockResolvedValue({ id: "job-1", state: "cancelled" });
+  });
+
+  it("is offered for a job that is running", async () => {
+    listJobs.mockResolvedValue({ jobs: [job()], active_count: 1 });
+    bridge({ cancelJob });
+
+    render(<StatusStrip />);
+
+    expect(await screen.findByRole("button", { name: /stop matching/i })).toBeEnabled();
+  });
+
+  it("names the work rather than saying only 'stop'", async () => {
+    // The strip reports five kinds of work; "Cancel" alone would not say which
+    // one a click stops.
+    listJobs.mockResolvedValue({
+      jobs: [job({ type: "library_batch", progress: undefined })],
+      active_count: 1,
+    });
+    bridge({ cancelJob });
+
+    render(<StatusStrip />);
+
+    expect(
+      await screen.findByRole("button", { name: "Stop updating" }),
+    ).toBeInTheDocument();
+  });
+
+  it("gives a batch its own verb rather than the unknown-job fallback", async () => {
+    // "Working" is what the strip says about a job type it has never heard of,
+    // and this build writes them (ORG-07).
+    listJobs.mockResolvedValue({
+      jobs: [job({ type: "library_batch" })],
+      active_count: 1,
+    });
+
+    render(<StatusStrip />);
+
+    expect(await screen.findByText("Updating 3/10")).toBeInTheDocument();
+  });
+
+  it("asks the engine to stop that job", async () => {
+    listJobs.mockResolvedValue({ jobs: [job({ id: "job-7" })], active_count: 1 });
+    bridge({ cancelJob });
+    render(<StatusStrip />);
+
+    (await screen.findByRole("button", { name: /stop matching/i })).click();
+
+    await waitFor(() => expect(cancelJob).toHaveBeenCalledWith("job-7"));
+  });
+
+  it("is not offered for a job that has already finished", async () => {
+    // Cancelling a finished job is a request the engine answers by doing
+    // nothing, and a button that does nothing is worse than no button.
+    listJobs.mockResolvedValue({ jobs: [job({ state: "succeeded" })], active_count: 1 });
+    bridge({ cancelJob });
+
+    render(<StatusStrip />);
+
+    await screen.findByText(/Matching/);
+    expect(screen.queryByRole("button", { name: /stop/i })).toBeNull();
+  });
+
+  it("is not offered by a build whose bridge cannot cancel", async () => {
+    listJobs.mockResolvedValue({ jobs: [job()], active_count: 1 });
+
+    render(<StatusStrip />);
+
+    await screen.findByText("Matching 3/10");
+    expect(screen.queryByRole("button", { name: /stop/i })).toBeNull();
+  });
+
+  it("survives a cancel the engine refuses", async () => {
+    // The job carries on and the strip keeps saying so, which is the honest
+    // outcome — an error of its own would be reporting a second problem.
+    listJobs.mockResolvedValue({ jobs: [job()], active_count: 1 });
+    bridge({ cancelJob: vi.fn().mockRejectedValue(new Error("gone")) });
+    render(<StatusStrip />);
+
+    const stop = await screen.findByRole("button", { name: /stop matching/i });
+    stop.click();
+
+    await waitFor(() => expect(stop).toBeEnabled());
+    expect(screen.getByText("Matching 3/10")).toBeInTheDocument();
+  });
+});

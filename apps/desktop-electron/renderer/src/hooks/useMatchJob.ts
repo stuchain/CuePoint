@@ -282,7 +282,7 @@ export function useMatchJob({ onComplete, onCancelled, onError }: UseMatchJobOpt
     const jobId = activeJobIdRef.current;
     if (!running || !jobId) return;
 
-    if (!window.cuepoint?.cancelMatchJob) {
+    if (!window.cuepoint?.cancelJob) {
       if (mockTimerRef.current != null) {
         window.clearTimeout(mockTimerRef.current);
         mockTimerRef.current = null;
@@ -299,7 +299,7 @@ export function useMatchJob({ onComplete, onCancelled, onError }: UseMatchJobOpt
 
     setCancelling(true);
     try {
-      await window.cuepoint.cancelMatchJob(jobId);
+      await window.cuepoint.cancelJob(jobId);
     } catch (error) {
       setCancelling(false);
       onError?.(error instanceof Error ? error.message : "Failed to cancel job");

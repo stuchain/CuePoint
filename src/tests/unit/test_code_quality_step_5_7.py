@@ -335,36 +335,67 @@ class TestMakefileTargets:
 
 
 class TestPreCommitHooks:
-    """Test that pre-commit hooks are configured correctly."""
+    """What the pre-commit config actually runs.
+
+    Written against the parsed hooks rather than against words in the file.
+    The four assertions here used to be substring checks, and all four were
+    wrong in a way only a reader would notice: three looked for black, isort
+    and flake8, which ruff replaced, so they had been failing for three phases;
+    and the fourth looked for "mypy" and passed — on the comment explaining
+    that mypy is deliberately *not* wired in. A test satisfied by a sentence
+    saying the opposite is worse than one that fails.
+    """
 
     @property
     def root_path(self) -> Path:
         """Get the root path of the project."""
         return Path(__file__).parent.parent.parent.parent
 
-    def test_precommit_config_has_black_hook(self):
-        """Test that pre-commit config has black hook."""
-        config = self.root_path / ".pre-commit-config.yaml"
-        content = config.read_text()
-        assert "black" in content.lower(), "Black hook not found in pre-commit config"
+    @property
+    def config_path(self) -> Path:
+        return self.root_path / ".pre-commit-config.yaml"
 
-    def test_precommit_config_has_isort_hook(self):
-        """Test that pre-commit config has isort hook."""
-        config = self.root_path / ".pre-commit-config.yaml"
-        content = config.read_text()
-        assert "isort" in content.lower(), "isort hook not found in pre-commit config"
+    @property
+    def hook_ids(self) -> set:
+        """Every hook id the config configures."""
+        import yaml
 
-    def test_precommit_config_has_flake8_hook(self):
-        """Test that pre-commit config has flake8 hook."""
-        config = self.root_path / ".pre-commit-config.yaml"
-        content = config.read_text()
-        assert "flake8" in content.lower(), "flake8 hook not found in pre-commit config"
+        config = yaml.safe_load(self.config_path.read_text(encoding="utf-8"))
+        return {
+            hook["id"]
+            for repo in config.get("repos", [])
+            for hook in repo.get("hooks", [])
+        }
 
-    def test_precommit_config_has_mypy_hook(self):
-        """Test that pre-commit config has mypy hook."""
-        config = self.root_path / ".pre-commit-config.yaml"
-        content = config.read_text()
-        assert "mypy" in content.lower(), "mypy hook not found in pre-commit config"
+    def test_precommit_lints_with_ruff(self):
+        assert "ruff-check" in self.hook_ids
+
+    def test_precommit_formats_with_ruff(self):
+        assert "ruff-format" in self.hook_ids
+
+    def test_precommit_does_not_also_run_the_tools_ruff_replaced(self):
+        """One formatter and one linter, or they fight over the same files.
+
+        black, isort and flake8 were the gates before ruff. Leaving any of them
+        configured beside it would mean two tools reformatting the same file on
+        every commit, each undoing the other.
+        """
+        assert self.hook_ids.isdisjoint({"black", "isort", "flake8"})
+
+    def test_precommit_keeps_the_file_hygiene_hooks(self):
+        """The ones that rewrite a file and abort the commit for re-staging."""
+        assert {"trailing-whitespace", "end-of-file-fixer"} <= self.hook_ids
+
+    def test_precommit_leaves_mypy_out_and_says_why(self):
+        """mypy is excluded deliberately (AGENTS.md), not forgotten.
+
+        `mypy src/` still reports errors on the current tree, so wiring it in
+        would block every commit rather than gate new work. The config has to
+        say that, because an absence with no explanation reads as an oversight
+        and gets "fixed" by the next person to look.
+        """
+        assert "mypy" not in self.hook_ids
+        assert "mypy" in self.config_path.read_text(encoding="utf-8").lower()
 
 
 class TestCodeQualityMetrics:

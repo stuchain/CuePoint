@@ -78,7 +78,7 @@ contextBridge.exposeInMainWorld("cuepoint", {
   getIncrateDiscoverOptions: () => ipcRenderer.invoke("engine:getIncrateDiscoverOptions"),
   runIncrateDiscover: (body) => ipcRenderer.invoke("engine:runIncrateDiscover", body),
   createIncratePlaylist: (body) => ipcRenderer.invoke("engine:createIncratePlaylist", body),
-  cancelMatchJob: (jobId) => ipcRenderer.invoke("engine:cancelMatchJob", jobId),
+  cancelJob: (jobId) => ipcRenderer.invoke("engine:cancelJob", jobId),
   getBeatportTokenStatus: () => ipcRenderer.invoke("engine:getBeatportTokenStatus"),
   setBeatportToken: (token) => ipcRenderer.invoke("engine:setBeatportToken", token),
   testBeatportToken: (body) => ipcRenderer.invoke("engine:testBeatportToken", body),
