@@ -2587,11 +2587,21 @@ engine modules reports the same 35 findings before and after the step, verified 
 promised. The three failures in `test_code_quality_step_5_7.py` are unrelated and predate
 this phase.
 
-**Playwright, in two runs rather than one.** The whole suite was run against the packaged app: 34
-passed, one skipped by design (the memory spec is opt-in), and two failed — `libraryBrowse` and
-`shell`, both broken before this step and repaired here. Those two were then re-run green
-alongside each other, and `organization.spec.ts` green on its own. Every spec has passed; no single
-run has covered all of them since the last source change.
+**The whole Playwright suite passes against the packaged app**: 36 passed, one skipped by design
+(the memory spec is opt-in), run twice. Three specs had to be repaired to get there, and only one
+of them was this step's. `libraryBrowse` had been looking for "All tracks" inside the Playlists
+tree since ORG-09 moved it into its own, and `shell` tabs a fixed number of times to prove every
+region is keyboard-reachable, which the longer rail moved past — both broken before this step,
+because nothing had run the suite in four of them.
+
+The third is Phase 5's, and it was the suite's own scheduling. `playback` asserted that all three
+media keys register, which is a **machine-wide** resource: Playwright runs two workers, so a second
+copy of the app launching mid-spec already owns them, and which run fails depends on timing.
+Adding a seventh Electron-launching spec is what made it show. The app already has a word for that
+case — `taken`, as distinct from macOS's `unavailable` — so the assertion is now that its word
+matches what it actually got, in all three cases. That is the property the status exists for, and
+it is the same under any scheduling; asserting all three land would be asserting that nothing else
+on the machine wants the media keys.
 
 **What this step deliberately did not do.** It did not add per-field revert of CuePoint values, or
 export, or OR logic, or anything else in the deferred list below — each has its reason recorded

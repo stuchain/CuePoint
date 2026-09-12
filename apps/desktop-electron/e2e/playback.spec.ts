@@ -266,17 +266,28 @@ test.describe("Phase 5 end to end", () => {
         window.cuepoint!.player!.mediaKeyStatus!(),
       );
 
+      // Three outcomes, and the app has a word for each. What has to hold in
+      // all three is that its word matches what it actually got — the
+      // distinction it used to lose, leaving the feature silently dead.
+      // Asserted through the status rather than the toast, which is raised
+      // during startup and would be a race to catch.
+      const landed = Object.values(keys.held);
+
       if (keys.gated) {
-        // The permission is missing: nothing may be held, and the app must know
-        // that this is a refusal rather than another application owning the
-        // keys — the distinction it used to lose, leaving the feature silently
-        // dead. Asserted through the status rather than the toast, which is
-        // raised during startup and would be a race to catch.
-        expect(keys.held).toEqual({ playPause: false, next: false, previous: false });
+        // macOS, permission missing: nothing may be held, and it is a refusal
+        // rather than another application getting there first.
+        expect(landed).toEqual([false, false, false]);
         expect(status).toBe("unavailable");
-      } else {
-        expect(keys.held).toEqual({ playPause: true, next: true, previous: true });
+      } else if (landed.some(Boolean)) {
         expect(status).toBe("held");
+      } else {
+        // A global shortcut is a machine-wide resource, so any other running
+        // application can already own these — including a second copy of this
+        // app, which is exactly what happens when Playwright's other worker is
+        // mid-spec. Holding none of them is the documented, acceptable outcome
+        // and the app says so; asserting all three would be asserting that no
+        // other program on the machine wants the media keys.
+        expect(status).toBe("taken");
       }
 
       // --- quit, relaunch: nothing resumes and nothing is remembered --------
