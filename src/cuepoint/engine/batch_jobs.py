@@ -43,9 +43,11 @@ from cuepoint.engine.jobs import Job, JobState, JobStore, _ensure_services
 from cuepoint.exceptions.cuepoint_exceptions import CuePointException
 from cuepoint.services.batch_service import (
     BATCH_JOB_THRESHOLD,
+    OPERATION_ACCEPT_MATCH,
     OPERATION_ADD_TAG,
     OPERATION_ADD_TO_COLLECTION,
     OPERATION_REMOVE_FROM_COLLECTION,
+    OPERATION_REJECT_MATCH,
     OPERATION_REMOVE_TAG,
     OPERATION_SET_FAVORITE,
     OPERATION_SET_RATING,
@@ -77,6 +79,8 @@ _PROGRESS_MESSAGES = {
     OPERATION_REMOVE_TAG: "Removing a tag",
     OPERATION_ADD_TO_COLLECTION: "Adding to a Collection",
     OPERATION_REMOVE_FROM_COLLECTION: "Removing from a Collection",
+    OPERATION_ACCEPT_MATCH: "Accepting matches",
+    OPERATION_REJECT_MATCH: "Rejecting matches",
 }
 
 

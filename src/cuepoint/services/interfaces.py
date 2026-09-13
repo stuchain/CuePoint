@@ -1036,6 +1036,64 @@ class IMatchRepository(ABC):
         """Write a track's match state, refusing evidence that is not its own."""
         ...
 
+    @abstractmethod
+    def delete_match(self, track_id: int) -> bool:
+        """Remove a track's state, keeping every attempt; True if one was there."""
+        ...
+
+    @abstractmethod
+    def latest_answered_attempt(self, track_id: int) -> Optional["MatchAttempt"]:
+        """Return a track's newest attempt that matched or judged a candidate."""
+        ...
+
+    @abstractmethod
+    def has_candidates(self, attempt_id: int) -> bool:
+        """True when an attempt scored at least one candidate."""
+        ...
+
+
+class IMatchStateService(ABC):
+    """Interface for each track's match state and a user's decisions (DEC-067).
+
+    The state rule decides automatically as attempts are stored; a user's
+    accept or reject is never changed by it, only flagged when a newer attempt
+    disagrees. Deciding applies nothing (DEC-004).
+    """
+
+    @abstractmethod
+    def apply_attempt(self, attempt: "MatchAttempt") -> Optional["TrackMatch"]:
+        """Bring a track's state up to date with an attempt just stored."""
+        ...
+
+    @abstractmethod
+    def accept(
+        self, track_id: int, candidate_id: int, batch_id: Optional[str] = None
+    ) -> "TrackMatch":
+        """Accept any candidate of any of the track's attempts."""
+        ...
+
+    @abstractmethod
+    def reject(self, track_id: int, batch_id: Optional[str] = None) -> "TrackMatch":
+        """Say that no candidate is this track."""
+        ...
+
+    @abstractmethod
+    def clear_decision(
+        self, track_id: int, batch_id: Optional[str] = None
+    ) -> Optional["TrackMatch"]:
+        """Return a track to what its latest answered attempt says."""
+        ...
+
+    @abstractmethod
+    def accept_proposed(self, track_id: int, batch_id: Optional[str] = None) -> bool:
+        """Accept the proposed candidate unless a user decided; True if changed."""
+        ...
+
+    @abstractmethod
+    def reject_proposed(self, track_id: int, batch_id: Optional[str] = None) -> bool:
+        """Reject the proposal unless a user decided; True if changed."""
+        ...
+
 
 class IMatchJobRepository(ABC):
     """Interface for a match job's plan and its progress (DEC-065).

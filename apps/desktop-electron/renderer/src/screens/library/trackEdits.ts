@@ -180,6 +180,26 @@ function truncate(text: string): string {
   return text.length > VALUE_LIMIT ? `${text.slice(0, VALUE_LIMIT - 1)}…` : text;
 }
 
+/**
+ * What a match decision did, as a sentence (CLEAN-04, DEC-067).
+ *
+ * The engine records the whole decision — state, who decided, the attempt and
+ * candidate — because revert needs all of it; drawn as a from/to pair it would
+ * read "[object Object]". A user's accept or reject is a decision; anything the
+ * track returned to afterwards is that decision being cleared.
+ */
+function matchDecisionTitle(value: unknown): string {
+  const decision =
+    value !== null && typeof value === "object"
+      ? (value as { state?: unknown; decided_by?: unknown })
+      : null;
+  if (decision?.decided_by === "user") {
+    if (decision.state === "accepted") return "Accepted the Beatport match";
+    if (decision.state === "rejected") return "Rejected the Beatport match";
+  }
+  return "Cleared the match decision";
+}
+
 /** One history value as text: absent is an em dash, never an empty gap. */
 function valueText(field: string, value: unknown): string {
   if (value === null || value === undefined || value === "") return "—";
@@ -215,6 +235,10 @@ export function historyLine(change: TrackFieldChange): HistoryLine {
       from: null,
       to: null,
     };
+  }
+
+  if (change.field === "match_state") {
+    return { ...base, title: matchDecisionTitle(change.new_value), from: null, to: null };
   }
 
   return {

@@ -46,9 +46,10 @@ Which rule sets need it is :func:`requires_metadata`; writing it is
 
 from __future__ import annotations
 
-from typing import Any, List, Sequence, Tuple
+from typing import Any, FrozenSet, List, Sequence, Tuple
 
 from cuepoint.models.filter_rule import (
+    METADATA_ALIAS,
     OP_AFTER,
     OP_ANY_OF,
     OP_BEFORE,
@@ -351,20 +352,27 @@ def compile_rule_set(rules: RuleSet) -> Tuple[str, Tuple[Any, ...]]:
     return (f"({joined})" if len(clauses) > 1 else joined), tuple(params)
 
 
-def requires_metadata(rules: RuleSet) -> bool:
-    """True when a rule set reads CuePoint's metadata table.
+def required_joins(rules: RuleSet) -> FrozenSet[str]:
+    """The joined tables a rule set reads, by alias.
 
-    Asked so the join is written only when it is needed. It is a cheap join —
-    ``track_metadata.track_id`` is the table's primary key, so it is one probe
-    per row — but "cheap" over fifty thousand rows is still fifty thousand
-    probes, and every browse query the Library page has ever run would pay
-    them for nothing. A filter bar with no CuePoint clause in it produces the
-    same SQL it produced before ORG-05.
+    Asked so a join is written only when it is needed. Each is cheap — every
+    joined table here is reached by its primary key, one probe per row — but
+    "cheap" over fifty thousand rows is still fifty thousand probes, and every
+    browse query the Library page has ever run would pay them for nothing. A
+    filter bar with no CuePoint or match clause in it produces the same SQL it
+    produced before ORG-05.
 
     Takes a rule set whose fields are known; an unknown one raises, exactly as
     compiling it would.
     """
-    return any(field_spec(rule.field).metadata for rule in rules.rules)
+    return frozenset(
+        alias for rule in rules.rules for alias in field_spec(rule.field).joins
+    )
+
+
+def requires_metadata(rules: RuleSet) -> bool:
+    """True when a rule set reads CuePoint's metadata table (ORG-05)."""
+    return METADATA_ALIAS in required_joins(rules)
 
 
 __all__: Sequence[str] = (
@@ -372,5 +380,6 @@ __all__: Sequence[str] = (
     "compile_rule",
     "compile_rule_set",
     "escape_like",
+    "required_joins",
     "requires_metadata",
 )

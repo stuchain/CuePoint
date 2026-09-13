@@ -47,6 +47,7 @@ GUARDED = (
     "cuepoint/services/match_record.py",
     "cuepoint/services/match_input.py",
     "cuepoint/services/match_service.py",
+    "cuepoint/services/match_state.py",
     "cuepoint/services/database_service.py",
     "cuepoint/services/migration_runner.py",
     "cuepoint/services/library_service.py",

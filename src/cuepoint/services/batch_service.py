@@ -77,6 +77,7 @@ from cuepoint.services.interfaces import (
     IBatchService,
     ICollectionService,
     IDatabaseService,
+    IMatchStateService,
     IMetadataService,
     ITagService,
     ITrackRepository,
@@ -84,14 +85,17 @@ from cuepoint.services.interfaces import (
 
 _logger = logging.getLogger(__name__)
 
-#: The six things a batch can do. One vocabulary, so ORG-11's context menu and
-#: its selection toolbar do not each invent their own verbs.
+#: The things a batch can do. One vocabulary, so ORG-11's context menu and its
+#: selection toolbar do not each invent their own verbs — and CLEAN-04's match
+#: decisions joined it rather than starting a second one.
 OPERATION_SET_RATING = "set_rating"
 OPERATION_SET_FAVORITE = "set_favorite"
 OPERATION_ADD_TAG = "add_tag"
 OPERATION_REMOVE_TAG = "remove_tag"
 OPERATION_ADD_TO_COLLECTION = "add_to_collection"
 OPERATION_REMOVE_FROM_COLLECTION = "remove_from_collection"
+OPERATION_ACCEPT_MATCH = "accept_match"
+OPERATION_REJECT_MATCH = "reject_match"
 
 BATCH_OPERATIONS: Tuple[str, ...] = (
     OPERATION_SET_RATING,
@@ -100,7 +104,12 @@ BATCH_OPERATIONS: Tuple[str, ...] = (
     OPERATION_REMOVE_TAG,
     OPERATION_ADD_TO_COLLECTION,
     OPERATION_REMOVE_FROM_COLLECTION,
+    OPERATION_ACCEPT_MATCH,
+    OPERATION_REJECT_MATCH,
 )
+
+#: Operations that take no value: what they decide is already on each track.
+_VALUELESS_OPERATIONS = (OPERATION_ACCEPT_MATCH, OPERATION_REJECT_MATCH)
 
 #: The activity event a batch records (DEC-029, DEC-063). One per batch,
 #: carrying the counts; the per-track detail lives in ``track_history``.
@@ -214,6 +223,13 @@ class BatchOperation:
                 # not a mistake worth being lenient about.
                 raise ValueError(f"Favorite must be true or false, not {self.value!r}")
             return replace(self, kind=kind, value=self.value)
+        if kind in _VALUELESS_OPERATIONS:
+            # Refused rather than ignored: a caller that sent a candidate id
+            # believes it chose one, and a batch accepts what each track
+            # proposes instead.
+            if self.value is not None:
+                raise ValueError(f"{kind} takes no value, not {self.value!r}")
+            return replace(self, kind=kind, value=None)
         return replace(self, kind=kind, value=_as_id(self.value, kind))
 
 
@@ -297,6 +313,7 @@ class BatchService(IBatchService):
         track_repository: ITrackRepository,
         activity_service: IActivityService,
         database_service: IDatabaseService,
+        match_state_service: IMatchStateService,
     ) -> None:
         """Initialize the service.
 
@@ -309,6 +326,7 @@ class BatchService(IBatchService):
             activity_service: Where the one event per batch is recorded.
             database_service: Used only to open the transaction a chunk shares.
                 No SQL is run here.
+            match_state_service: Match decisions, with their history (CLEAN-04).
         """
         self._metadata = metadata_service
         self._tags = tag_service
@@ -316,6 +334,7 @@ class BatchService(IBatchService):
         self._tracks = track_repository
         self._activity = activity_service
         self._db = database_service
+        self._states = match_state_service
 
     def resolve(self, selection: BatchSelection) -> List[int]:
         """Turn a selection into the ids it names, once.
@@ -502,6 +521,10 @@ class BatchService(IBatchService):
             return _Tagging(self._tags, operation.value, adding=False)
         if operation.kind == OPERATION_ADD_TO_COLLECTION:
             return _AddToCollection(self._collections, operation.value)
+        if operation.kind == OPERATION_ACCEPT_MATCH:
+            return _DecideMatch(self._states, accepting=True)
+        if operation.kind == OPERATION_REJECT_MATCH:
+            return _DecideMatch(self._states, accepting=False)
         # The last one rather than an else-raise: ``validated`` has already
         # refused everything that is not in the vocabulary, and a branch no
         # test can reach is a branch that is not there.
@@ -723,6 +746,38 @@ class _RemoveFromCollection(_Applier):
 
     def describe(self, result: BatchResult) -> str:
         return f"Removed {_tracks(result.changed)} from {result.target!r}"
+
+
+class _DecideMatch(_Applier):
+    """Accept or reject what the matcher proposed (CLEAN-04, DEC-067).
+
+    One class for both, as tagging is, because they are the same act inverted.
+    A batch runs over a query that may name forty thousand tracks, so it
+    decides only what nobody has: a track a user already accepted or rejected
+    is left as it is and counted unchanged, and so is a track never matched.
+    Overriding a person's decision is a per-track act, which is the protection
+    DEC-067 exists for.
+    """
+
+    def __init__(self, states: IMatchStateService, *, accepting: bool) -> None:
+        self._states = states
+        self._accepting = accepting
+        self.operation = OPERATION_ACCEPT_MATCH if accepting else OPERATION_REJECT_MATCH
+
+    def target(self) -> str:
+        return "Beatport match"
+
+    def apply(self, track_ids: Sequence[int], batch_id: str) -> int:
+        decide = (
+            self._states.accept_proposed
+            if self._accepting
+            else self._states.reject_proposed
+        )
+        return sum(1 for track_id in track_ids if decide(int(track_id), batch_id))
+
+    def describe(self, result: BatchResult) -> str:
+        verb = "Accepted" if self._accepting else "Rejected"
+        return f"{verb} the Beatport match for {_tracks(result.changed)}"
 
 
 # ---------------------------------------------------------------------------

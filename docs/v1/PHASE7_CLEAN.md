@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 7: Clean, Detailed Step Specifications
 
-Status: **Specified. CLEAN-01 to CLEAN-03 implemented.** The fourteen steps below replace the
+Status: **Specified. CLEAN-01 to CLEAN-04 implemented.** The fourteen steps below replace the
 roadmap's placeholder inventory (CLEAN-01…CLEAN-13, which Round 9's answers outgrew by one). Per
 the process, no implementation happens from this document — each step needs an explicit
 "Implement CLEAN-NN" instruction, scoped to exactly that step, and its outcome is recorded under the
@@ -927,7 +927,7 @@ least one test fail:
 
 ---
 
-## CLEAN-04 — Match States, Decisions and Apply's Source
+## CLEAN-04 — Match States, Decisions and Apply's Source ✅ IMPLEMENTED 2026-09-13
 
 **Objective**: Derive each track's state from its attempts, let a user decide, protect that decision
 from a re-match, and name the candidate that "apply" copies from (DEC-067, DEC-004).
@@ -983,6 +983,179 @@ user's decision, proved by test.
 erases review work, which is why the table is written out and tested row by row.
 
 **Complexity**: **M**
+
+### ✅ IMPLEMENTED 2026-09-13
+
+**Outcome**: Complete.
+
+- `services/match_state.py` implements `IMatchStateService`:
+  - the pure state rule, `automatic_state`;
+  - `accept`, `reject` and `clear_decision`, each recording history;
+  - `accept_proposed` and `reject_proposed`, for the batch path.
+- Bootstrap hands `apply_attempt` to CLEAN-03's match job as its state rule, so a match now reports
+  "K accepted, J need review" and writes each track's state in the transaction that stores its
+  attempt.
+- `MatchRepository` gains `delete_match`, `latest_answered_attempt` and `has_candidates`.
+- `BatchService` gains `accept_match` and `reject_match`, which take no value. The batch job names
+  them "Accepting matches" and "Rejecting matches".
+- The rule vocabulary gains four fields:
+  - `match_state`: text and facetable, with `not_matched` for a track with no row;
+  - `match_decided_by`: text and facetable;
+  - `match_disputed`: yes/no and facetable;
+  - `match_score`: a number, the score of the candidate the state points at.
+- The renderer's history panel says what a match decision was, as a sentence (`trackEdits.ts`).
+
+**Where it is visible.** The filter bar builds its field list from the engine, so the four fields
+appear in it, and they work: "needs review" can already be a filter and a Smart Collection. Nothing
+in the app can produce a state yet, because the routes that start a match or decide one are
+CLEAN-11's. The existing `/api/v1/library/batch` route accepts the two new operations, which is an
+additive change; the renderer's `BatchOperation` type gains them with CLEAN-11's bridge sweep.
+
+**What building it settled, and why.**
+
+- **A failed attempt writes no state.** The specification lets an error keep a previous state, but
+  gives a never-matched track `no_match` on an error. The second half would contradict DEC-067's own
+  sentence, "an error is not evidence that there is no match". And CLEAN-03 found that the matcher
+  reports a failed search as an empty result. So neither an error nor an empty result changes any
+  state. A track whose only attempts failed stays "not matched", which is true, and the next match
+  that is not a re-match asks it again. An empty result after an accept leaves the accept alone,
+  just as an error does.
+- **The dispute flag follows the newest answer.**
+  - For a user's accept: a winner that is a different Beatport track sets the flag to that
+    attempt, a winner that is the accepted track clears it, and an answer with no winner leaves it
+    as it was.
+  - For a user's reject: a winner other than the refused candidate sets it, and the same winner or
+    no winner at all clears it.
+  - An agreeing re-match clears the flag because the flag exists to prompt a look, and a
+    disagreement the matcher has since abandoned is not worth one.
+  - Tracks are compared by Beatport id, which survives a slug change, or by URL when an id is
+    unknown.
+- **A reject remembers what it refused.** It rests on the candidate the state points at, or on the
+  latest answered attempt's winner, so the same proposal coming back stays quiet. A track never
+  matched cannot be rejected.
+- **Clearing returns to the latest *answered* attempt.** Newer failures are skipped, for the first
+  point's reason. With no answer at all the state row is deleted and the track is "not matched"
+  again; every attempt stays (DEC-066).
+- **A batch decides only what nobody has.** A batch accept confirms the candidate the state
+  proposes, and a batch reject refuses it. A track a user already decided, or one never matched, is
+  counted unchanged, and a track deleted mid-batch is counted failed. A batch runs over a query that
+  may name tens of thousands of tracks; overriding a person's decision is a per-track act. DEC-067's
+  entry now carries a dated note on these three rules.
+- **A decision's history value is the decision.** The value records the state, who decided, the
+  attempt, the candidate and any newer attempt — not the state word. Accepting the second candidate
+  instead of the first changes no word, but it changes what "apply" copies (CLEAN-05), and
+  CLEAN-06's revert needs every part of it. A decision that changes nothing writes nothing. The
+  rule's own writes record no history: a match over a library would otherwise write fifty thousand
+  rows nobody asked to see, and the attempts are already their record. The renderer draws the value
+  as a sentence ("Accepted the Beatport match") rather than "[object Object]".
+- **`AUTO_ACCEPT_SCORE` is held to both copies of the boundary.** The matcher's
+  `_confidence_label` has one, and `process_track` spells the same boundary inline. A test checks
+  95 and the float just below it against each.
+- **One join registry instead of a metadata flag.**
+  - `FieldSpec.metadata` became `FieldSpec.joins`, a tuple of aliases, with `metadata` kept as a
+    property.
+  - `track_query.JOINS` writes each join once, in dependency order, and only when a rule or a facet
+    names it.
+  - The join alias is `tmatch`, not `match`, which is an SQLite keyword.
+  - CLEAN-07 to CLEAN-09's per-track tables will join through the same registry.
+- **`not_matched` is the anti-join, spelled as a value.** `match_state` is
+  `COALESCE(tmatch.state, 'not_matched')` over a LEFT JOIN on `track_match`'s key. The facet counts
+  every track exactly once, and "not matched" is what the join finds nothing for. The constant
+  lives with the model (`STATE_NOT_MATCHED`), and a test holds the filter's values to the stored
+  states plus that one.
+
+**Measured** at 50,000 tracks, 25,000 of them with a state. Times are the median of five runs.
+
+| Operation | Time |
+| --- | --- |
+| Count, `genre` is House (for comparison) | 0.8 ms |
+| Count, `match_state` is `not_matched` / `needs_review` | 8.5 / 8.3 ms |
+| Count, `match_decided_by` is user · `match_disputed` is true | 5.9 · 6.8 ms |
+| Count, `match_score` ≥ 95 (both joins) | 12.0 ms |
+| Count, rating is 5 and `match_state` is accepted (three joins) | 7.4 ms |
+| Facet, `match_state` over the library / within House | 58.8 / 41.4 ms |
+| Facet, `match_decided_by` · `match_disputed` | 40.1 · 32.4 ms |
+| Range, `match_score` | 17.5 ms |
+| A page of 100 by artist, needs review (without a rule: 1.1 ms) | 1.4 ms |
+
+A stored attempt with 40 candidates costs 2.59 ms per track without the state rule and 2.79 ms with
+it, or 2.86 ms on a re-match with an existing state. That is under a hundredth of a track's
+matching time. No index was added: every join is on a primary key, and a facet over an expression
+could not use one.
+
+**Tests**:
+
+- `services/test_match_state.py` (67 tests) covers:
+  - the boundary against `_confidence_label` and against `process_track`'s label;
+  - every row of the table, including the boundary itself, a failed guard, each failure after each
+    state, and no history from the rule;
+  - an accept and a reject each followed by agreeing, disagreeing, no-winner and failed re-matches;
+  - the flag clearing and following the newest disagreement, and a changed slug still agreeing;
+  - the property: for every sequence of three re-matches drawn from six kinds (216 sequences, both
+    decisions), nothing but the flag moves;
+  - accepting a non-winning candidate of an older attempt, and it sticking;
+  - accept, reject and clear, each clearing a dispute, refusing another track's candidate, writing
+    nothing for a no-op, and recording its exact history;
+  - no metadata written by any of them;
+  - the batch forms leaving users' decisions and unmatched tracks alone.
+  - the history value's exact shape, against literal values.
+- `persistence/test_match_filters.py` (27 tests), over a library holding every state, covers:
+  - each state finding exactly its tracks, and `not_matched` following a state row's absence;
+  - the text operators;
+  - every facet value counting what its rule finds, leaving its own rule out and honouring the
+    others;
+  - who decided, the dispute flag, and the decided candidate's score, not the winner's;
+  - the joins: written only when named, once each, in order, beside the metadata join without
+    multiplying a row, with an unregistered alias refused;
+  - the vocabulary crossing the wire.
+- `engine/test_match_decision_jobs.py` (9 tests) covers:
+  - a query selection above the threshold accepted as a job with one batch id, its progress
+    message, its one activity event, and no metadata written;
+  - a batch reject leaving a user's rejects and the unmatched tracks alone, and a batch accept not
+    turning a reject into an accept;
+  - a value refused before any job;
+  - a deleted track counted failed;
+  - the existing batch route taking a decision;
+  - a match run through the bootstrapped container writing states as it stores.
+- `services/test_batch_edits.py` now builds `BatchService` with the decision service, and its
+  vocabulary test names eight operations.
+- `trackEdits.test.ts` covers the history sentence for an accept, a reject, a cleared decision,
+  and a value that is not a decision.
+- `match_state.py` joined the mypy gate and, like the other services that open a transaction
+  without running SQL, the persistence boundary's allowlist.
+
+The tests were checked against twenty-four mutations written into the source:
+
+- the boundary made exclusive;
+- a failed guard auto-accepted;
+- an error or empty result writing a state;
+- the rule overwriting a user's decision;
+- a disagreement never flagged;
+- a flag never cleared;
+- no winner disagreeing with a reject;
+- tracks compared by page only;
+- a decision recording no history;
+- a no-op decision written;
+- a reject forgetting its candidate;
+- clearing from a failed attempt;
+- a batch accept or reject overriding a user;
+- the history value dropping its candidate;
+- an empty attempt counted as having candidates;
+- the latest answer counting an empty result;
+- `not_matched` spelled differently;
+- the flag read from the wrong column;
+- the winner's score in place of the decided candidate's;
+- only the metadata join written;
+- a batch decision taking a value;
+- a batch reject accepting;
+- the match job not given the state rule.
+
+Twenty-three failed at least one test at once. The history value dropping its candidate did not:
+the history test compared the stored value with the same helper that wrote it, so a field missing
+from both went unnoticed. A test now pins the value's shape against literal values, which is the
+shape CLEAN-06's revert will read, and that mutation now fails two tests.
+
+**Complexity**: **M**, as estimated.
 
 ---
 

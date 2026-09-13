@@ -48,6 +48,7 @@ from cuepoint.models.filter_rule import FilterRule, RuleSet
 from cuepoint.models.library_track import LibraryTrack
 from cuepoint.persistence.activity_repository import ActivityRepository
 from cuepoint.persistence.collection_repository import CollectionRepository
+from cuepoint.persistence.match_repository import MatchRepository
 from cuepoint.persistence.tag_repository import TagRepository
 from cuepoint.persistence.track_metadata_repository import TrackMetadataRepository
 from cuepoint.persistence.track_query import BrowseQuery, BrowseQueryError
@@ -56,8 +57,10 @@ from cuepoint.services.activity_service import ActivityService
 from cuepoint.services.batch_service import (
     BATCH_OPERATIONS,
     EVENT_BATCH_APPLIED,
+    OPERATION_ACCEPT_MATCH,
     OPERATION_ADD_TAG,
     OPERATION_ADD_TO_COLLECTION,
+    OPERATION_REJECT_MATCH,
     OPERATION_REMOVE_FROM_COLLECTION,
     OPERATION_REMOVE_TAG,
     OPERATION_SET_FAVORITE,
@@ -70,6 +73,7 @@ from cuepoint.services.batch_service import (
 from cuepoint.services.collection_service import CollectionService
 from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.interfaces import IBatchService
+from cuepoint.services.match_state import MatchStateService
 from cuepoint.services.metadata_service import MetadataService
 from cuepoint.services.migration_runner import MigrationRunner
 from cuepoint.services.tag_service import TagService
@@ -131,8 +135,13 @@ def collections(db, tracks, activity) -> CollectionService:
 
 
 @pytest.fixture
-def service(db, metadata, tags, collections, tracks, activity) -> BatchService:
-    return BatchService(metadata, tags, collections, tracks, activity, db)
+def states(db, tracks, activity) -> MatchStateService:
+    return MatchStateService(MatchRepository(db), tracks, activity, db)
+
+
+@pytest.fixture
+def service(db, metadata, tags, collections, tracks, activity, states) -> BatchService:
+    return BatchService(metadata, tags, collections, tracks, activity, db, states)
 
 
 @pytest.fixture
@@ -453,7 +462,8 @@ class TestTheTargetIsFixedOnce:
 
 @pytest.mark.unit
 class TestTheVocabulary:
-    def test_every_operation_is_one_of_six(self):
+    def test_every_operation_is_one_of_eight(self):
+        # ORG-07's six, and CLEAN-04's two match decisions in the same vocabulary.
         assert BATCH_OPERATIONS == (
             OPERATION_SET_RATING,
             OPERATION_SET_FAVORITE,
@@ -461,6 +471,8 @@ class TestTheVocabulary:
             OPERATION_REMOVE_TAG,
             OPERATION_ADD_TO_COLLECTION,
             OPERATION_REMOVE_FROM_COLLECTION,
+            OPERATION_ACCEPT_MATCH,
+            OPERATION_REJECT_MATCH,
         )
 
     def test_an_unknown_operation_is_refused_by_name(self, service, ids):
@@ -1215,7 +1227,7 @@ class TestTheResult:
 @pytest.mark.unit
 class TestNothingHalfDone:
     def test_a_batch_whose_event_cannot_be_written_fails_loudly(
-        self, db, metadata, tags, collections, tracks, ids, warmups
+        self, db, metadata, tags, collections, tracks, ids, warmups, states
     ):
         """The event is the last thing a batch writes, and it is not optional.
 
@@ -1226,7 +1238,9 @@ class TestNothingHalfDone:
         counts nothing recorded — the caller finds out that the library moved
         and the record of it did not.
         """
-        broken = BatchService(metadata, tags, collections, tracks, Refuses(), db)
+        broken = BatchService(
+            metadata, tags, collections, tracks, Refuses(), db, states
+        )
         with pytest.raises(RuntimeError, match="feed is unavailable"):
             broken.apply_batch(
                 BatchSelection.of_ids(ids[:3]),

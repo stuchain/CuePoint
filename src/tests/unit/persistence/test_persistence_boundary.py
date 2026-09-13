@@ -65,6 +65,10 @@ _ALLOWED = {
     # rows (DEC-065). It opens that transaction and lets three repositories
     # write inside it; the SQL is theirs.
     "services/match_service.py",
+    # CLEAN-04's decisions, for the reason metadata_service is here: a decision
+    # and the history entry recording it succeed or fail together (DEC-008), and
+    # the state rule joins the transaction a match job stores an attempt in.
+    "services/match_state.py",
 }
 _ALLOWED_PREFIXES = ("persistence/", "migrations/")
 

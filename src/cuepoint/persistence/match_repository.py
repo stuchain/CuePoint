@@ -291,6 +291,51 @@ class MatchRepository(IMatchRepository):
             ).fetchone()
         return TrackMatch.from_row(row)
 
+    def delete_match(self, track_id: int) -> bool:
+        """Remove a track's state, making it "not matched" again.
+
+        Only the state goes: every attempt stays (DEC-066). Returns whether a
+        state was there.
+        """
+        with self._db.transaction(join_existing=True) as conn:
+            cursor = conn.execute(
+                "DELETE FROM track_match WHERE track_id = ?", (int(track_id),)
+            )
+            return int(cursor.rowcount) > 0
+
+    def latest_answered_attempt(self, track_id: int) -> Optional[MatchAttempt]:
+        """Return a track's newest attempt that answered anything, or ``None``.
+
+        Answered means CLEAN-03's rule: a match, or at least one candidate
+        judged. An error or an empty result is what a failed search looks like,
+        and a state derived from one would be a guess.
+        """
+        row = (
+            self._db.connect()
+            .execute(
+                f"{_SELECT_ATTEMPT} WHERE track_id = ?"
+                " AND (outcome = 'matched' OR (outcome = 'no_match' AND EXISTS"
+                " (SELECT 1 FROM match_candidates AS c"
+                " WHERE c.attempt_id = match_attempts.id)))"
+                " ORDER BY id DESC LIMIT 1",
+                (int(track_id),),
+            )
+            .fetchone()
+        )
+        return None if row is None else MatchAttempt.from_row(row)
+
+    def has_candidates(self, attempt_id: int) -> bool:
+        """True when an attempt scored at least one candidate."""
+        row = (
+            self._db.connect()
+            .execute(
+                "SELECT EXISTS (SELECT 1 FROM match_candidates WHERE attempt_id = ?)",
+                (int(attempt_id),),
+            )
+            .fetchone()
+        )
+        return bool(row[0])
+
 
 # ------------------------------------------------------------------ helpers
 

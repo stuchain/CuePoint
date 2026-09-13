@@ -38,15 +38,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
+from cuepoint.models.match_attempt import STATE_NOT_MATCHED
+
 #: Field types. The type decides which operators are allowed and how a value is
 #: coerced; it is not the SQLite storage class.
 TYPE_TEXT = "text"
 TYPE_NUMBER = "number"
 TYPE_DATE = "date"
 
-#: A yes/no field. Only ``favorite`` today, and it is never missing: a track
-#: with no CuePoint metadata row at all is not favorited, which is an answer
-#: rather than a gap (ORG-05, DEC-057).
+#: A yes/no field — ``favorite`` and ``match_disputed`` — and never missing: a
+#: track with no CuePoint metadata row is not favorited, and one with no match
+#: state is not disputed, which are answers rather than gaps (ORG-05, CLEAN-04).
 TYPE_BOOL = "bool"
 
 #: Membership in a vocabulary rather than a value on the track. Both of these
@@ -176,6 +178,12 @@ LIST_OPERATORS = (OP_ANY_OF, OP_BETWEEN)
 #: writes the join has to establish the same name.
 METADATA_ALIAS = "meta"
 
+#: The aliases a track's match state and the candidate it points at are joined
+#: under (CLEAN-04), named here for the same reason. Not ``match``, which is an
+#: SQLite keyword.
+MATCH_ALIAS = "tmatch"
+MATCH_CANDIDATE_ALIAS = "tcandidate"
+
 
 @dataclass(frozen=True)
 class LinkTable:
@@ -227,10 +235,13 @@ class FieldSpec:
         link: The table a membership field is answered from. Mutually
             exclusive with ``column``: a field is either something a track has
             or something a track is in.
-        metadata: Whether the expression reads the CuePoint metadata table, and
-            therefore needs its join. Stated rather than sniffed out of the
-            expression text, so adding a fourth metadata field cannot forget
-            it and the join cannot be added for a query that does not need one.
+        joins: The joined tables the expression reads, by alias —
+            :data:`METADATA_ALIAS` for CuePoint's layer (ORG-05),
+            :data:`MATCH_ALIAS` and :data:`MATCH_CANDIDATE_ALIAS` for a track's
+            match state and its candidate (CLEAN-04). Stated rather than sniffed
+            out of the expression text, so a new field cannot forget a join and
+            no join is added for a query that does not need one. A field that
+            reads a joined table's alias through another names both.
         unit: What the number means, when a plain number is not the whole of
             it. ``"stars"`` says a value is a rating on the five-star scale a
             user sees, so a control can offer five stars rather than a box to
@@ -248,8 +259,13 @@ class FieldSpec:
     integer: bool = False
     column: Optional[str] = None
     link: Optional[LinkTable] = None
-    metadata: bool = False
+    joins: Tuple[str, ...] = ()
     unit: Optional[str] = None
+
+    @property
+    def metadata(self) -> bool:
+        """True when the expression reads CuePoint's metadata table."""
+        return METADATA_ALIAS in self.joins
 
     @property
     def operators(self) -> Tuple[str, ...]:
@@ -306,7 +322,7 @@ FIELDS: Tuple[FieldSpec, ...] = (
         facetable=True,
         integer=True,
         column=f"COALESCE({METADATA_ALIAS}.rating, tracks.rating)",
-        metadata=True,
+        joins=(METADATA_ALIAS,),
         unit=UNIT_STARS,
     ),
     FieldSpec("play_count", TYPE_NUMBER, "Play count", integer=True),
@@ -328,7 +344,7 @@ FIELDS: Tuple[FieldSpec, ...] = (
         "CuePoint rating",
         integer=True,
         column=f"{METADATA_ALIAS}.rating",
-        metadata=True,
+        joins=(METADATA_ALIAS,),
         unit=UNIT_STARS,
     ),
     FieldSpec(
@@ -337,17 +353,56 @@ FIELDS: Tuple[FieldSpec, ...] = (
         "Favorite",
         facetable=True,
         column=f"COALESCE({METADATA_ALIAS}.favorite, 0)",
-        metadata=True,
+        joins=(METADATA_ALIAS,),
     ),
     FieldSpec(
         "notes",
         TYPE_TEXT,
         "Notes",
         column=f"{METADATA_ALIAS}.notes",
-        metadata=True,
+        joins=(METADATA_ALIAS,),
     ),
     FieldSpec("tag", TYPE_TAG, "Tag", facetable=True, link=_TAG_LINK),
     FieldSpec("collection", TYPE_COLLECTION, "Collection", link=_COLLECTION_LINK),
+    # --- Matching (CLEAN-04, DEC-067) ---------------------------------------
+    # "Not matched" is a track with no state row, so it is the tracks the join
+    # finds nothing for: the COALESCE is the anti-join, spelled as the value a
+    # facet counts and a chip shows.
+    FieldSpec(
+        "match_state",
+        TYPE_TEXT,
+        "Match state",
+        facetable=True,
+        column=f"COALESCE({MATCH_ALIAS}.state, '{STATE_NOT_MATCHED}')",
+        joins=(MATCH_ALIAS,),
+    ),
+    FieldSpec(
+        "match_decided_by",
+        TYPE_TEXT,
+        "Match decided by",
+        facetable=True,
+        column=f"{MATCH_ALIAS}.decided_by",
+        joins=(MATCH_ALIAS,),
+    ),
+    # A newer attempt disagrees with the user's decision (DEC-067). A track
+    # with no state has nothing to disagree with, so it reads as not disputed.
+    FieldSpec(
+        "match_disputed",
+        TYPE_BOOL,
+        "Match disputed",
+        facetable=True,
+        column=f"({MATCH_ALIAS}.newer_attempt_id IS NOT NULL)",
+        joins=(MATCH_ALIAS,),
+    ),
+    # The score of the candidate the state points at: the winner of an
+    # automatic state, the one a user accepted, or the one they rejected.
+    FieldSpec(
+        "match_score",
+        TYPE_NUMBER,
+        "Match score",
+        column=f"{MATCH_CANDIDATE_ALIAS}.score",
+        joins=(MATCH_ALIAS, MATCH_CANDIDATE_ALIAS),
+    ),
 )
 
 _FIELDS_BY_NAME: Dict[str, FieldSpec] = {spec.name: spec for spec in FIELDS}
@@ -849,6 +904,8 @@ __all__: Sequence[str] = (
     "FIELD_TYPES",
     "MATCH_ALL",
     "MATCH_ANY",
+    "MATCH_ALIAS",
+    "MATCH_CANDIDATE_ALIAS",
     "METADATA_ALIAS",
     "OPERATORS_BY_TYPE",
     "TYPE_BOOL",

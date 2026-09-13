@@ -38,9 +38,11 @@ from __future__ import annotations
 
 import sqlite3
 from dataclasses import dataclass, replace
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from cuepoint.models.filter_rule import (
+    MATCH_ALIAS,
+    MATCH_CANDIDATE_ALIAS,
     METADATA_ALIAS,
     TYPE_BOOL,
     TYPE_NUMBER,
@@ -52,7 +54,7 @@ from cuepoint.persistence.filter_sql import (
     LIKE_ESCAPE,
     compile_rule_set,
     escape_like,
-    requires_metadata,
+    required_joins,
 )
 
 #: Rows per window. A table shows tens of rows; a window covers the viewport
@@ -207,6 +209,44 @@ _METADATA_JOIN = (
     f" LEFT JOIN track_metadata AS {METADATA_ALIAS}"
     f" ON {METADATA_ALIAS}.track_id = tracks.id"
 )
+
+# A track's match state (CLEAN-04), joined the same way and for the same
+# reasons: a LEFT JOIN, because "not matched" is a track with no row and must
+# not disappear from a view that mentions matching; and a primary key on the far
+# side, so no row is ever multiplied. The candidate a state points at is reached
+# through the state, by the candidate's primary key, which is why a field
+# reading the candidate names both joins.
+_MATCH_JOIN = (
+    f" LEFT JOIN track_match AS {MATCH_ALIAS} ON {MATCH_ALIAS}.track_id = tracks.id"
+)
+_MATCH_CANDIDATE_JOIN = (
+    f" LEFT JOIN match_candidates AS {MATCH_CANDIDATE_ALIAS}"
+    f" ON {MATCH_CANDIDATE_ALIAS}.id = {MATCH_ALIAS}.candidate_id"
+)
+
+#: Every join a field may name, keyed by the alias it establishes, in the order
+#: they are written: a join that reads another's alias comes after it.
+JOINS: Dict[str, str] = {
+    METADATA_ALIAS: _METADATA_JOIN,
+    MATCH_ALIAS: _MATCH_JOIN,
+    MATCH_CANDIDATE_ALIAS: _MATCH_CANDIDATE_JOIN,
+}
+
+
+def _joins(names: Iterable[str]) -> str:
+    """The FROM-clause joins for a set of aliases, each once, in dependency order.
+
+    Raises:
+        BrowseQueryError: If an alias names no join. That is a registry written
+            wrong rather than a request, and it is refused here rather than
+            turned into SQL that names a table nobody joined.
+    """
+    wanted = set(names)
+    unknown = wanted - set(JOINS)
+    if unknown:
+        raise BrowseQueryError(f"No join is registered for {sorted(unknown)}")
+    return "".join(sql for alias, sql in JOINS.items() if alias in wanted)
+
 
 # The tag facet counts assignments and only then looks up names — the same
 # group-then-join ORG-03 measured for the tag list, and the same reason. Joining
@@ -472,16 +512,16 @@ class Predicate:
     params: Tuple[object, ...] = ()
 
 
-def _predicate(query: BrowseQuery, *, metadata: bool = False) -> Predicate:
+def _predicate(query: BrowseQuery, *, joins: Iterable[str] = ()) -> Predicate:
     """Build the predicate shared by the rows and the count.
 
     One function so a count can never be taken of a different set of rows than
     the query returns — the failure that makes a table say "showing 100 of 340"
     over 200 rows.
 
-    ``metadata`` forces the CuePoint join on for a caller that reads that table
-    in its projection rather than in its rules: a facet on ``favorite`` groups
-    by a column no rule mentioned.
+    ``joins`` adds joins for a caller that reads a joined table in its
+    projection rather than in its rules: a facet on ``favorite`` or
+    ``match_state`` groups by a column no rule mentioned.
     """
     clauses: List[str] = []
     params: List[object] = []
@@ -512,7 +552,7 @@ def _predicate(query: BrowseQuery, *, metadata: bool = False) -> Predicate:
         params.extend(filter_params)
 
     where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
-    join = _METADATA_JOIN if metadata or requires_metadata(query.rules) else ""
+    join = _joins(set(joins) | required_joins(query.rules))
     return Predicate(cte=cte, join=join, where=where, params=tuple(params))
 
 
@@ -814,7 +854,7 @@ def build_facet_values(
     """
     spec = _column_facet_spec(field)
     scoped = facet_query(query, spec.name)
-    parts = _predicate(scoped, metadata=spec.metadata)
+    parts = _predicate(scoped, joins=spec.joins)
     present = _has_value(spec)
     filtered = f"{parts.where} AND {present}" if parts.where else f" WHERE {present}"
     return (
@@ -841,7 +881,7 @@ def build_facet_value_count(
     """
     spec = _column_facet_spec(field)
     scoped = facet_query(query, spec.name)
-    parts = _predicate(scoped, metadata=spec.metadata)
+    parts = _predicate(scoped, joins=spec.joins)
     present = _has_value(spec)
     return (
         f"{parts.cte}SELECT "
@@ -872,7 +912,7 @@ def build_facet_range(query: BrowseQuery, field: str) -> Tuple[str, Tuple[object
             f"{spec.label} is a {spec.type} field; a range needs a number field"
         )
     scoped = facet_query(query, spec.name)
-    parts = _predicate(scoped, metadata=spec.metadata)
+    parts = _predicate(scoped, joins=spec.joins)
     column = _facet_column(spec)
     return (
         f"{parts.cte}SELECT min({column}) AS low, max({column}) AS high, "

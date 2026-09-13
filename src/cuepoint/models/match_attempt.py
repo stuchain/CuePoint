@@ -65,6 +65,10 @@ STATE_ACCEPTED = "accepted"
 STATE_REJECTED = "rejected"
 MATCH_STATES = (STATE_NO_MATCH, STATE_NEEDS_REVIEW, STATE_ACCEPTED, STATE_REJECTED)
 
+#: What the filter vocabulary calls a track with no state (CLEAN-04). Never
+#: stored, for the reason above; a filter or a facet reads a missing row as it.
+STATE_NOT_MATCHED = "not_matched"
+
 #: Who put the track in that state. A user's decision survives any re-match.
 DECIDED_BY_AUTO = "auto"
 DECIDED_BY_USER = "user"

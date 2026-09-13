@@ -46,6 +46,7 @@ from cuepoint.services.interfaces import (
     IMatchJobRepository,
     IMatchRepository,
     IMatchService,
+    IMatchStateService,
     IMigrationRunner,
     IOnboardingService,
     IPrivacyService,
@@ -82,6 +83,7 @@ from cuepoint.services.batch_service import BatchService
 from cuepoint.services.collection_service import CollectionService
 from cuepoint.services.library_service import LibraryService
 from cuepoint.services.match_service import MatchService
+from cuepoint.services.match_state import MatchStateService
 from cuepoint.services.metadata_service import MetadataService
 from cuepoint.services.tag_service import TagService
 from cuepoint.services.processor_service import ProcessorService
@@ -243,6 +245,19 @@ def bootstrap_services() -> None:
 
     container.register_factory(IMatchJobRepository, create_match_job_repository)
 
+    # Each track's match state and a user's decisions (CLEAN-04, DEC-067). The
+    # match job's state rule and the batch path's decisions both go through it,
+    # so there is one place that knows a user's decision is never overwritten.
+    def create_match_state_service() -> IMatchStateService:
+        return MatchStateService(
+            match_repository=container.resolve(IMatchRepository),
+            track_repository=container.resolve(ITrackRepository),
+            activity_service=container.resolve(IActivityService),
+            database_service=container.resolve(IDatabaseService),
+        )
+
+    container.register_factory(IMatchStateService, create_match_state_service)
+
     def create_metadata_service() -> IMetadataService:
         return MetadataService(
             metadata_repository=container.resolve(ITrackMetadataRepository),
@@ -310,6 +325,7 @@ def bootstrap_services() -> None:
             track_repository=container.resolve(ITrackRepository),
             activity_service=container.resolve(IActivityService),
             database_service=container.resolve(IDatabaseService),
+            match_state_service=container.resolve(IMatchStateService),
         )
 
     container.register_factory(IBatchService, create_batch_service)
@@ -330,6 +346,7 @@ def bootstrap_services() -> None:
             batch_service=container.resolve(IBatchService),
             activity_service=container.resolve(IActivityService),
             database_service=container.resolve(IDatabaseService),
+            state_rule=container.resolve(IMatchStateService).apply_attempt,
         )
 
     container.register_factory(IMatchService, create_match_service)

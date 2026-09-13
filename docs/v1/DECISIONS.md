@@ -1748,6 +1748,26 @@ decisions would let one click erase an afternoon of review.
 
 **Decided with**: User · **Date**: 2026-09-13
 
+### Implemented (2026-09-13, CLEAN-04) — failures, disputes and batches
+
+**What building it settled**: Three questions the decision leaves open, answered so that no path
+erases review work.
+
+- *An attempt that failed is not evidence.* An error, or a search that returned no candidates at
+  all (what an outage looks like, CLEAN-03), changes no state. A track whose only attempts failed
+  stays "not matched" rather than becoming "no match", and a later match asks it again.
+- *The flag follows the newest answer.* A re-match whose winner differs from the candidate a user
+  accepted flags the decision, and one that agrees again clears the flag. A reject remembers the
+  candidate it refused, so the same proposal coming back stays quiet and a different one is
+  flagged. An answer with no winner agrees with a reject and says nothing about an accept.
+  Candidates are compared by Beatport id.
+- *A batch decides only what nobody has.* A batch accept or reject runs over a query that may name
+  tens of thousands of tracks, so it confirms or refuses what the matcher proposed and leaves a
+  user's own decisions exactly as they are. Overriding a decision is a per-track act.
+
+**Why the decision stands**: Each answer applies the decision's own reasons — a re-match never
+changes a user's accept or reject, and one click cannot erase an afternoon of review.
+
 ---
 
 ## DEC-068 — Applied Values Are a CuePoint Layer, and Revertable

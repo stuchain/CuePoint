@@ -226,6 +226,32 @@ describe("a history entry as a line", () => {
     expect(line.to).toBeNull();
   });
 
+  it("says what a match decision was, never drawing the decision object", () => {
+    const decision = (state: string, decidedBy: string) => ({
+      state,
+      decided_by: decidedBy,
+      attempt_id: 7,
+      candidate_id: state === "no_match" ? null : 70,
+      newer_attempt_id: null,
+    });
+    const line = (old_value: unknown, new_value: unknown) =>
+      historyLine(change({ field: "match_state", old_value, new_value }));
+
+    expect(line(null, decision("accepted", "user")).title).toBe("Accepted the Beatport match");
+    expect(line(decision("needs_review", "auto"), decision("rejected", "user")).title).toBe(
+      "Rejected the Beatport match",
+    );
+    expect(line(decision("accepted", "user"), decision("needs_review", "auto")).title).toBe(
+      "Cleared the match decision",
+    );
+    expect(line(decision("rejected", "user"), null).title).toBe("Cleared the match decision");
+    expect(line(null, "not an object").title).toBe("Cleared the match decision");
+
+    const accepted = line(null, decision("accepted", "user"));
+    expect(accepted.from).toBeNull();
+    expect(accepted.to).toBeNull();
+  });
+
   it("says what a favorite change was", () => {
     expect(historyLine(change({ field: "favorite", new_value: true })).title).toBe(
       "Favorited",
