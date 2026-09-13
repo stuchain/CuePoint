@@ -172,6 +172,18 @@ class TestBootstrapRegistration:
     def test_job_repository_is_registered(self, container):
         assert container.is_registered(IJobRepository)
 
+    def test_match_repository_is_registered_and_usable(self, container, tmp_path):
+        """Resolving migrates first, so the match tables exist (CLEAN-02)."""
+        from cuepoint.persistence.match_repository import MatchRepository
+        from cuepoint.services.interfaces import IMatchRepository
+
+        container.resolve(IConfigService).set(
+            "database.path", str(tmp_path / "match.db")
+        )
+        repository = container.resolve(IMatchRepository)
+        assert isinstance(repository, MatchRepository)
+        assert repository.latest_attempt(1) is None
+
     def test_backup_service_is_registered(self, container):
         assert container.is_registered(IBackupService)
 

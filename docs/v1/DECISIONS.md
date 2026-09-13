@@ -1684,6 +1684,23 @@ exactly what a user needs when a re-match disagrees with the last one.
 
 **Decided with**: User · **Date**: 2026-09-13
 
+### Measured (2026-09-13, CLEAN-02) — the premise holds, at twice the estimate
+
+**What was measured**: The real matcher ran through `process_track` against live Beatport for ten
+tracks: eight well-known ones and two invented titles that nothing matches. It scored 40.3
+candidates per attempt, from 10 to 54, rather than twenty, and the two without a match stored 40
+and 41. Stored through `MatchRepository`, a candidate costs 346 bytes with its indexes and an
+attempt row 1.6 KB, most of that the queries tried. One attempt for each of 50,000 tracks is
+therefore about two million candidate rows and 780 MB, and each re-match of the whole library adds
+as much again.
+
+**Why the decision stands**: That is the same order as the estimate, and ordinary for SQLite.
+The matcher's own caps would allow 380 candidates per track (6.2 GB at 50,000 tracks), but only if
+each of forty query variants returned a page of results never seen before. Live searches for
+variants of one title overlap heavily, which is why a track with no match stored no more than one
+with a match. Storing every candidate is unchanged. CLEAN-14's scale step measures the review
+queue against these numbers, as the implications above already say.
+
 ---
 
 ## DEC-067 — Auto-Accept at the High Tier; A User's Decision Sticks

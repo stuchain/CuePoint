@@ -1,9 +1,10 @@
 # CuePoint v1.0.0 — Phase 7: Clean, Detailed Step Specifications
 
-Status: **Specified. CLEAN-01 implemented.** The fourteen steps below replace the roadmap's
-placeholder inventory (CLEAN-01…CLEAN-13, which Round 9's answers outgrew by one). Per the process,
-no implementation happens from this document — each step needs an explicit "Implement CLEAN-NN"
-instruction, scoped to exactly that step, and its outcome is recorded under the step afterwards.
+Status: **Specified. CLEAN-01 and CLEAN-02 implemented.** The fourteen steps below replace the
+roadmap's placeholder inventory (CLEAN-01…CLEAN-13, which Round 9's answers outgrew by one). Per
+the process, no implementation happens from this document — each step needs an explicit
+"Implement CLEAN-NN" instruction, scoped to exactly that step, and its outcome is recorded under the
+step afterwards.
 
 Depends on Phase 1 (`PHASE1_FOUNDATION.md`), Phase 2 (`PHASE2_SHELL.md`), Phase 3
 (`PHASE3_LIBRARY.md`), Phase 4 (`PHASE4_LIBUI.md`) and Phase 6 (`PHASE6_ORG.md`), all complete, and
@@ -427,11 +428,16 @@ The tests were then checked against nine in-memory mutations; each one made at l
 
 "Plays" in the DoD needs no test of its own: nothing the player reads changed.
 
+**Amended by CLEAN-02**: `match_candidates.title_sim` and `artist_sim` were declared `INTEGER`,
+following `BeatportCandidate`'s annotation, but the matcher's similarities are fractional. `m0012`
+rebuilds the table with both as `REAL`, and `MatchCandidate` now accepts any number from 0 to 100.
+CLEAN-02's outcome records how that was found and why it is a migration rather than an edit.
+
 **Complexity**: **M**, as estimated.
 
 ---
 
-## CLEAN-02 — Storing a Match Attempt
+## CLEAN-02 — Storing a Match Attempt ✅ IMPLEMENTED 2026-09-13
 
 **Objective**: Turn one `TrackResult` into a stored attempt with every candidate, and read attempts
 back — the persistence half of DEC-066, testable without a job or a network.
@@ -477,6 +483,158 @@ this step's outcome with the numbers it used.
 **Risks**: Medium. The mapping is simple; the risk is the size, which is why it is measured here.
 
 **Complexity**: **S**
+
+### ✅ IMPLEMENTED 2026-09-13
+
+**Outcome**: Complete.
+
+- `services/match_record.py` turns one `TrackResult` into attempt fields and candidate rows, with
+  no database, clock or network.
+- `persistence/match_repository.py` implements `IMatchRepository`, which is registered in
+  bootstrap. It:
+  - stores an attempt whole;
+  - reads attempts newest first and candidates by rank;
+  - reads and writes `track_match` for CLEAN-04.
+- `migrations/m0012_match_similarity.py` corrects a CLEAN-01 column type (below).
+
+Nothing calls the repository yet. CLEAN-03's job is its first caller.
+
+**What reading the matcher found, and what was done about it.**
+
+- **The similarities are fractional.** `score_components` returns RapidFuzz's `token_set_ratio`,
+  which is a float: "Sunrise" against "Sunset Boulevard" scores 43.478…. `BeatportCandidate`'s
+  `int` annotation is wrong about that, and CLEAN-01 followed the annotation, so `MatchCandidate`
+  refused real matcher output. Rounding would store something other than what was scored, and the
+  final score is computed from the unrounded value.
+  - `m0012` rebuilds `match_candidates` with `title_sim` and `artist_sim` as `REAL`.
+  - It is a migration rather than an edit to `m0011`. `m0011` was committed and the runner keeps no
+    checksums, so a database already at version 11 would never see an edited DDL.
+  - The rebuild runs inside the runner's transaction with foreign keys on. It sets `track_match`'s
+    rows aside and restores them, every candidate keeps its id, and `sqlite_sequence` keeps its
+    high-water mark.
+  - The rebuilt DDL differs from `m0011`'s only in the two types.
+- **The matcher's winner flag is not the pipeline's winner.** Two things break the flag:
+  - The matcher flags the first candidate sharing the best one's URL, and a URL can be scored
+    twice.
+  - `process_track` declines a best candidate that scores under `MIN_ACCEPT_SCORE` but leaves the
+    flag set.
+
+  So `is_winner` marks `TrackResult.best_match`, found by identity, and only a `matched` attempt
+  has a winner. An error attempt has neither a winner nor a score, even when the result carries a
+  best match.
+
+**Decisions taken beyond the design.**
+
+- **An attempt is whole or absent, even inside a caller's transaction.** `add_attempt` writes
+  under a `SAVEPOINT`. CLEAN-03 commits an attempt and its plan row together, and a caller that
+  catches the error still cannot commit half an attempt. The attempt model is built before any
+  write.
+- **Values are converted only where a column needs it.**
+  - Blank text is stored as null.
+  - BPM text becomes a number and the release year a whole number. A value that cannot be read is
+    stored as null rather than refusing an attempt that took forty-five seconds of Beatport time.
+  - `beatport_track_id` is read from the URL, the way the matcher reads it.
+  - The matcher's numbers are copied unchanged, and a non-finite one refuses the attempt.
+- **The question is stable JSON.** It holds the title, artist, key and year, plus the mix flags
+  `process_track` parses, with sorted keys, so the same question is always the same text.
+- **Times.** `finished_at` defaults to now in UTC, and `started_at` to that less
+  `processing_time`; CLEAN-03 can pass both. "Newest first" orders by id, never by a clock.
+- **`set_match` refuses evidence that is not the track's own**, which foreign keys cannot
+  express:
+  - the attempt must be one of the track's;
+  - a named candidate must come from that attempt;
+  - a newer attempt must be the track's, and newer.
+
+  Accepting a candidate from an older attempt (CLEAN-04) is therefore a state that rests on that
+  older attempt.
+- **`MatchAttempt` refuses a blank `job_id`**, and `matcher_version` defaults to the engine
+  version.
+
+**The size measurement** (DEC-066's premise). `scripts/bench_match_storage.py` runs the real
+matcher through `process_track` against a stubbed Beatport: twelve title shapes at three breadths.
+It stores the results and measures bytes from used pages after `VACUUM`. Offline, a candidate costs
+321 bytes with its indexes.
+
+| Breadth | Candidates per track | Rows at 50,000 | Size at 50,000 |
+| --- | --- | --- | --- |
+| One page per query, the track on top (exits early) | 23.8 | 1.19 M | 489 MB |
+| The same page for every query, nothing matches | 23.8 | 1.19 M | 489 MB |
+| A page never seen for every query, nothing matches | 380.4 | 19.0 M | 6.2 GB |
+| DEC-066's estimate | 20 | 1.00 M | 429 MB |
+
+The bench brackets a real library but cannot place one. A manual smoke therefore ran the same
+pipeline against live Beatport, with browser automation off and a scratch home directory, for ten
+tracks: eight well-known ones and two invented titles that nothing matches.
+
+- The eight well-known tracks all matched, after 2 to 12 queries, with 10 to 54 candidates each.
+- The two invented titles ran 10 and 13 queries and stored 41 and 40 candidates: no more than a
+  match. Live searches for variants of one title overlap heavily.
+- Across all ten: 40.3 candidates per attempt, 346 bytes per candidate and 1,638 bytes per attempt
+  row.
+
+At 50,000 tracks that is about 2.0 million candidate rows and 780 MB per full-library match. That
+is twice the estimate but the same order, and ordinary for SQLite. It is not "far past the
+estimate", so DEC-066 stands, and its entry now carries a dated measurement note.
+
+A track took 5 to 35 s, averaging 24.7 s. If twelve parallel tracks each took as long as one alone,
+a 50,000-track match would take about 29 hours, which bears out cross-cutting fact 6's "hours, not
+minutes".
+
+**Tests**:
+
+- `services/test_match_record.py` (98 tests) covers:
+  - outcomes;
+  - the winner: a flagged twin, the flag alone, equality, a best match missing from its list;
+  - every candidate kept in order, with its numbers unchanged;
+  - text and blank text, the Beatport id, BPM and year conversions;
+  - refused non-candidates, the question, queries JSON, the version and the start time.
+
+  It also runs the real pipeline: `process_track` over the real matcher, with only search and page
+  parsing stubbed. That proves the similarities are fractional, the pipeline's winner is the one
+  stored, rejected candidates are kept, and nothing is re-fetched. It also proves that a best
+  candidate turned down for its score stores no winner.
+- `persistence/test_match_repository.py` (40 tests) covers:
+  - a winner, only rejected candidates, no candidates and an error, each round-tripping field for
+    field, compared against the matcher's own objects and not only against the mapping;
+  - order and the winner surviving;
+  - a second attempt changing no row of the first;
+  - newest first, even when the clock disagrees;
+  - a failing candidate row taking its attempt with it, alone and inside a caller's transaction
+    that carries on;
+  - a candidate the model refuses, an unknown track, a blank job id and a self-contradicting
+    result, each writing nothing;
+  - storing and reading with sockets, `requests` and the Beatport functions patched to fail;
+  - every `set_match` refusal leaving the existing state alone.
+- `persistence/test_match_similarity_migration.py` (15 tests) covers:
+  - both columns becoming `REAL`, with the DDL otherwise identical to `m0011`'s;
+  - a populated version-11 library keeping every row of every table, its candidate ids, its
+    sequence and its decision's reference;
+  - the upgraded schema equalling a fresh one;
+  - an empty table gaining no sequence.
+- `test_clean_models.py` (now 145 tests) accepts fractional similarities and refuses out-of-range,
+  non-finite and non-numeric ones. It also refuses a blank job id.
+- `test_service_interfaces.py` resolves `IMatchRepository` against a migrated database.
+- `match_record.py` joined the mypy gate. The repository and the migration already sit under
+  guarded directories.
+
+The tests were checked against twelve in-memory mutations, and each one made at least one test
+fail:
+
+- the matcher's flag used as the winner;
+- guard-rejected candidates dropped;
+- a best match outranking an error;
+- blank text kept;
+- similarities rounded;
+- BPM kept as text;
+- no savepoint rollback;
+- newest ordered by the clock;
+- no evidence check;
+- no sequence restore;
+- a similarity left `INTEGER`;
+- decisions lost in the rebuild.
+
+**Complexity**: **S**, as estimated for the mapping and the repository. The column fix and the live
+measurement brought the step closer to **M**.
 
 ---
 

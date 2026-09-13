@@ -38,6 +38,7 @@ if TYPE_CHECKING:
     from cuepoint.models.library_source import LibrarySource
     from cuepoint.models.references import ReferenceSummary
     from cuepoint.models.track_metadata import TrackMetadata
+    from cuepoint.models.match_attempt import MatchAttempt, MatchCandidate, TrackMatch
     from cuepoint.models.tag import Tag, TagUsage
     from cuepoint.models.collection import (
         AddResult,
@@ -955,6 +956,74 @@ class ITrackMetadataRepository(ABC):
     @abstractmethod
     def clear(self, track_id: int) -> bool:
         """Delete everything CuePoint knows about a track."""
+        ...
+
+
+class IMatchRepository(ABC):
+    """Interface for stored match attempts and each track's match state (DEC-066).
+
+    Every attempt is kept with every candidate it scored, and reading them back
+    never reaches Beatport. A re-match adds an attempt; nothing here updates or
+    deletes one — attempts leave only when their track does.
+    """
+
+    @abstractmethod
+    def add_attempt(
+        self,
+        track_id: int,
+        job_id: Optional[str],
+        result: TrackResult,
+        track: Track,
+        started_at: Optional[str] = None,
+        finished_at: Optional[str] = None,
+        matcher_version: Optional[str] = None,
+    ) -> "MatchAttempt":
+        """Store one matcher result as an attempt with all its candidates."""
+        ...
+
+    @abstractmethod
+    def get_attempt(self, attempt_id: int) -> Optional["MatchAttempt"]:
+        """Return one attempt, or None."""
+        ...
+
+    @abstractmethod
+    def attempts_for(self, track_id: int) -> List["MatchAttempt"]:
+        """Return a track's attempts, most recently stored first."""
+        ...
+
+    @abstractmethod
+    def latest_attempt(self, track_id: int) -> Optional["MatchAttempt"]:
+        """Return a track's most recently stored attempt, or None."""
+        ...
+
+    @abstractmethod
+    def candidates_for(self, attempt_id: int) -> List["MatchCandidate"]:
+        """Return an attempt's candidates in the order they were scored."""
+        ...
+
+    @abstractmethod
+    def get_candidate(self, candidate_id: int) -> Optional["MatchCandidate"]:
+        """Return one candidate, or None."""
+        ...
+
+    @abstractmethod
+    def winner_of(self, attempt_id: int) -> Optional["MatchCandidate"]:
+        """Return the candidate an attempt chose, or None."""
+        ...
+
+    @abstractmethod
+    def get_match(self, track_id: int) -> Optional["TrackMatch"]:
+        """Return a track's match state, or None when it was never matched."""
+        ...
+
+    @abstractmethod
+    def get_matches(self, track_ids: Iterable[int]) -> Dict[int, "TrackMatch"]:
+        """Return the states of the tracks that have one, keyed by track id."""
+        ...
+
+    @abstractmethod
+    def set_match(self, match: "TrackMatch") -> "TrackMatch":
+        """Write a track's match state, refusing evidence that is not its own."""
         ...
 
 

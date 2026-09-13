@@ -43,6 +43,7 @@ from cuepoint.services.interfaces import (
     IInventoryService,
     ILoggingService,
     IMatcherService,
+    IMatchRepository,
     IMigrationRunner,
     IOnboardingService,
     IPrivacyService,
@@ -64,6 +65,7 @@ from cuepoint.persistence.job_repository import JobRepository
 from cuepoint.persistence.library_source_repository import (
     LibrarySourceRepository,
 )
+from cuepoint.persistence.match_repository import MatchRepository
 from cuepoint.persistence.playlist_repository import PlaylistRepository
 from cuepoint.persistence.collection_repository import CollectionRepository
 from cuepoint.persistence.tag_repository import TagRepository
@@ -221,6 +223,14 @@ def bootstrap_services() -> None:
     container.register_factory(
         ITrackMetadataRepository, create_track_metadata_repository
     )
+
+    # Match attempts, their candidates and each track's match state (DEC-066).
+    # CLEAN-03's job and CLEAN-04's decisions reach those tables through this.
+    def create_match_repository() -> IMatchRepository:
+        container.resolve(IMigrationRunner).migrate()
+        return MatchRepository(database_service=container.resolve(IDatabaseService))
+
+    container.register_factory(IMatchRepository, create_match_repository)
 
     def create_metadata_service() -> IMetadataService:
         return MetadataService(

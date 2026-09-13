@@ -141,6 +141,8 @@ class MatchAttempt:
         """Validate the attempt, refusing anything its table would refuse."""
         _set(self, "id", optional_id(self.id, "id"))
         _set(self, "track_id", required_id(self.track_id, "track_id"))
+        if self.job_id is not None:
+            _set(self, "job_id", required_text(self.job_id, "job_id"))
         one_of(self.outcome, OUTCOMES, "outcome")
         _set(
             self,
@@ -243,7 +245,9 @@ class MatchCandidate:
         release_name, release_date, release_year: The release it is on.
         artwork_url, preview_url: Beatport's media for it.
         base_score: The similarity score before bonuses.
-        title_sim, artist_sim: The two similarities, 0–100.
+        title_sim, artist_sim: The two similarities, 0–100. Real numbers:
+            RapidFuzz's ratios are fractional, and the score is computed from
+            the unrounded value (``m0012``).
         bonus_year, bonus_key: The bonuses applied; either may be a penalty.
         reject_reason: Why a guard rejected it.
         query_index, query_text: The query that found it.
@@ -273,8 +277,8 @@ class MatchCandidate:
     artwork_url: Optional[str] = None
     preview_url: Optional[str] = None
     base_score: Optional[float] = None
-    title_sim: Optional[int] = None
-    artist_sim: Optional[int] = None
+    title_sim: Optional[float] = None
+    artist_sim: Optional[float] = None
     bonus_year: Optional[int] = None
     bonus_key: Optional[int] = None
     reject_reason: Optional[str] = None
@@ -305,8 +309,8 @@ class MatchCandidate:
         )
         _set(self, "base_score", optional_number(self.base_score, "base_score"))
         for name in ("title_sim", "artist_sim"):
-            similarity = optional_non_negative(getattr(self, name), name)
-            if similarity is not None and similarity > 100:
+            similarity = optional_number(getattr(self, name), name)
+            if similarity is not None and not 0 <= similarity <= 100:
                 raise ValueError(f"{name} must be between 0 and 100, got {similarity}")
             _set(self, name, similarity)
         for name in ("bonus_year", "bonus_key"):

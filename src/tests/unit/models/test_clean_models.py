@@ -270,9 +270,18 @@ class TestMatchCandidate:
             candidate(rank=-1)
 
     @pytest.mark.parametrize("name", ["title_sim", "artist_sim"])
-    def test_similarity_is_a_percentage(self, name):
+    @pytest.mark.parametrize("value", [0, 43.47826086956522, 100, 100.0])
+    def test_a_similarity_is_any_percentage_the_matcher_scores(self, name, value):
+        """RapidFuzz's ratios are fractional; ``m0012`` stores them as REAL."""
+        assert getattr(candidate(**{name: value}), name) == value
+
+    @pytest.mark.parametrize("name", ["title_sim", "artist_sim"])
+    @pytest.mark.parametrize(
+        "value", [101, 100.5, -0.5, float("nan"), float("inf"), "high", True]
+    )
+    def test_a_similarity_outside_a_percentage_is_refused(self, name, value):
         with pytest.raises(ValueError, match=name):
-            candidate(**{name: 101})
+            candidate(**{name: value})
 
     def test_a_bonus_may_be_a_penalty(self):
         assert candidate(bonus_key=-5).bonus_key == -5
@@ -284,6 +293,19 @@ class TestMatchCandidate:
     def test_a_score_is_required(self):
         with pytest.raises(ValueError, match="score"):
             candidate(score=None)
+
+
+class TestMatchAttemptJob:
+    def test_a_single_match_has_no_job(self):
+        assert attempt(job_id=None).job_id is None
+
+    def test_a_job_id_is_kept_as_given(self):
+        assert attempt(job_id="job-7").job_id == "job-7"
+
+    @pytest.mark.parametrize("blank", ["", "   ", 7])
+    def test_a_job_id_that_names_nothing_is_refused(self, blank):
+        with pytest.raises(ValueError, match="job_id"):
+            attempt(job_id=blank)
 
 
 class TestTrackMatch:
