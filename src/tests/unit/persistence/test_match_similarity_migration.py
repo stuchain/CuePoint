@@ -280,8 +280,12 @@ class TestUpgradingAVersionElevenLibrary:
         assert [m.version for m in MigrationRunner(populated).migrate()][0] == 12
 
     def test_every_row_of_every_table_survives(self, populated):
+        # Exactly version 12: a later migration may add a table of its own, and
+        # this is a statement about what the rebuild keeps, not about them.
         before = snapshot(populated)
-        MigrationRunner(populated).migrate()
+        MigrationRunner(
+            populated, migrations=[m for m in discover_migrations() if m.version <= 12]
+        ).migrate()
         assert snapshot(populated) == before
 
     def test_every_similarity_is_now_real(self, populated):

@@ -59,6 +59,12 @@ _ALLOWED = {
     # no SQL — it does not even know which tables the operation it was handed
     # will touch.
     "services/batch_service.py",
+    # CLEAN-03's match job, for the same reason and with the same limit. A
+    # finished track's attempt, its plan row and its state are one transaction,
+    # so a job killed mid-library has exactly as many stored attempts as done
+    # rows (DEC-065). It opens that transaction and lets three repositories
+    # write inside it; the SQL is theirs.
+    "services/match_service.py",
 }
 _ALLOWED_PREFIXES = ("persistence/", "migrations/")
 

@@ -43,7 +43,9 @@ from cuepoint.services.interfaces import (
     IInventoryService,
     ILoggingService,
     IMatcherService,
+    IMatchJobRepository,
     IMatchRepository,
+    IMatchService,
     IMigrationRunner,
     IOnboardingService,
     IPrivacyService,
@@ -65,6 +67,7 @@ from cuepoint.persistence.job_repository import JobRepository
 from cuepoint.persistence.library_source_repository import (
     LibrarySourceRepository,
 )
+from cuepoint.persistence.match_job_repository import MatchJobRepository
 from cuepoint.persistence.match_repository import MatchRepository
 from cuepoint.persistence.playlist_repository import PlaylistRepository
 from cuepoint.persistence.collection_repository import CollectionRepository
@@ -78,6 +81,7 @@ from cuepoint.services.backup_service import BackupService
 from cuepoint.services.batch_service import BatchService
 from cuepoint.services.collection_service import CollectionService
 from cuepoint.services.library_service import LibraryService
+from cuepoint.services.match_service import MatchService
 from cuepoint.services.metadata_service import MetadataService
 from cuepoint.services.tag_service import TagService
 from cuepoint.services.processor_service import ProcessorService
@@ -232,6 +236,13 @@ def bootstrap_services() -> None:
 
     container.register_factory(IMatchRepository, create_match_repository)
 
+    # A match job's plan and progress (DEC-065): what makes resuming one a query.
+    def create_match_job_repository() -> IMatchJobRepository:
+        container.resolve(IMigrationRunner).migrate()
+        return MatchJobRepository(database_service=container.resolve(IDatabaseService))
+
+    container.register_factory(IMatchJobRepository, create_match_job_repository)
+
     def create_metadata_service() -> IMetadataService:
         return MetadataService(
             metadata_repository=container.resolve(ITrackMetadataRepository),
@@ -302,6 +313,26 @@ def bootstrap_services() -> None:
         )
 
     container.register_factory(IBatchService, create_batch_service)
+
+    # Matching library tracks as a resumable job (CLEAN-03, DEC-065). It takes
+    # the batch service for one thing, resolving a selection, so a match and a
+    # batch cannot disagree about which tracks a selection names; and the
+    # processor for another, ``process_track``, which is the whole of matching.
+    # The database service is the transaction an attempt and its plan row
+    # commit in; no SQL is run here.
+    def create_match_service() -> IMatchService:
+        return MatchService(
+            processor_service=container.resolve(IProcessorService),
+            config_service=container.resolve(IConfigService),
+            track_repository=container.resolve(ITrackRepository),
+            match_repository=container.resolve(IMatchRepository),
+            match_job_repository=container.resolve(IMatchJobRepository),
+            batch_service=container.resolve(IBatchService),
+            activity_service=container.resolve(IActivityService),
+            database_service=container.resolve(IDatabaseService),
+        )
+
+    container.register_factory(IMatchService, create_match_service)
 
     # Library database backups (DEC-009). Resolving this does not open the
     # database or write anything; backup_on_launch() is called explicitly.

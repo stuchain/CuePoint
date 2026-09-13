@@ -21,6 +21,8 @@ from typing import (
     Iterable,
     List,
     Optional,
+    Sequence,
+    Set,
     Tuple,
 )
 
@@ -38,7 +40,15 @@ if TYPE_CHECKING:
     from cuepoint.models.library_source import LibrarySource
     from cuepoint.models.references import ReferenceSummary
     from cuepoint.models.track_metadata import TrackMetadata
-    from cuepoint.models.match_attempt import MatchAttempt, MatchCandidate, TrackMatch
+    from cuepoint.models.match_attempt import (
+        MatchAttempt,
+        MatchCandidate,
+        MatchJobTrack,
+        MatchPlan,
+        ResumableMatch,
+        TrackMatch,
+    )
+    from cuepoint.services.match_service import MatchDraft, MatchJobResult
     from cuepoint.models.tag import Tag, TagUsage
     from cuepoint.models.collection import (
         AddResult,
@@ -1024,6 +1034,125 @@ class IMatchRepository(ABC):
     @abstractmethod
     def set_match(self, match: "TrackMatch") -> "TrackMatch":
         """Write a track's match state, refusing evidence that is not its own."""
+        ...
+
+
+class IMatchJobRepository(ABC):
+    """Interface for a match job's plan and its progress (DEC-065).
+
+    The plan is written once and flagged track by track, so resuming an
+    interrupted job is a query. Nothing here reaches Beatport or stores an
+    attempt; that is :class:`IMatchRepository`'s.
+    """
+
+    @abstractmethod
+    def existing(self, track_ids: Iterable[int]) -> List[int]:
+        """Return the ids that are library tracks, once each, in order."""
+        ...
+
+    @abstractmethod
+    def settled(self, track_ids: Iterable[int]) -> Set[int]:
+        """Return the tracks a match that is not a re-match leaves out."""
+        ...
+
+    @abstractmethod
+    def create(
+        self,
+        job_id: str,
+        track_ids: Sequence[int],
+        *,
+        rematch: bool,
+        selected: int,
+        created_at: str,
+    ) -> "MatchPlan":
+        """Write a job's plan and one waiting row per track, in one transaction."""
+        ...
+
+    @abstractmethod
+    def take_over(self, from_job_id: str, job_id: str, created_at: str) -> "MatchPlan":
+        """Move an interrupted job's waiting tracks to the job resuming it."""
+        ...
+
+    @abstractmethod
+    def mark_done(self, job_id: str, position: int) -> None:
+        """Flag one waiting track finished, refusing one that is not waiting."""
+        ...
+
+    @abstractmethod
+    def mark_waiting(self, job_id: str, positions: Iterable[int]) -> int:
+        """Put finished tracks back in the queue; returns how many moved."""
+        ...
+
+    @abstractmethod
+    def get(self, job_id: str) -> Optional["MatchPlan"]:
+        """Return a job's plan, or None."""
+        ...
+
+    @abstractmethod
+    def waiting(self, job_id: str) -> List["MatchJobTrack"]:
+        """Return a job's tracks not yet done, in plan order."""
+        ...
+
+    @abstractmethod
+    def progress(self, job_id: str) -> Tuple[int, int]:
+        """Return (tracks in the plan, tracks done)."""
+        ...
+
+    @abstractmethod
+    def resumable(self) -> List["ResumableMatch"]:
+        """Return every job with tracks still waiting, newest first."""
+        ...
+
+    @abstractmethod
+    def interrupted(self, job_type: str) -> List["ResumableMatch"]:
+        """Return resumable jobs whose job record still says they are running."""
+        ...
+
+
+class IMatchService(ABC):
+    """Interface for matching library tracks on Beatport as a resumable job.
+
+    DEC-065's input change: a scope the Library browses, resolved once into a
+    plan, matched through ``process_track`` with the settings the CLI uses, one
+    stored attempt per track.
+    """
+
+    @abstractmethod
+    def prepare(
+        self, selection: "BatchSelection", rematch: bool = False
+    ) -> "MatchDraft":
+        """Resolve a selection into the tracks a match job will cover."""
+        ...
+
+    @abstractmethod
+    def write_plan(self, job_id: str, draft: "MatchDraft") -> "MatchPlan":
+        """Write a prepared selection as a job's plan."""
+        ...
+
+    @abstractmethod
+    def resumable(self) -> List["ResumableMatch"]:
+        """Return every match job with tracks still waiting."""
+        ...
+
+    @abstractmethod
+    def check_resumable(self, job_id: str) -> "ResumableMatch":
+        """Return a job that can be resumed, or raise saying why it cannot."""
+        ...
+
+    @abstractmethod
+    def take_over(self, from_job_id: str, job_id: str) -> "MatchPlan":
+        """Give a new job the tracks an interrupted one left."""
+        ...
+
+    @abstractmethod
+    def run(
+        self,
+        job_id: str,
+        *,
+        on_progress: Optional[Callable[["MatchJobResult"], None]] = None,
+        should_cancel: Optional[Callable[[], bool]] = None,
+    ) -> "MatchJobResult":
+        """Match every waiting track of a job's plan."""
         ...
 
 

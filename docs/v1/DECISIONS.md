@@ -1658,6 +1658,27 @@ Automatic matching on import was declined: it starts slow network scraping witho
 
 **Decided with**: User · **Date**: 2026-09-13
 
+### Implemented (2026-09-13, CLEAN-03) — what "skipped" and "continues" had to mean
+
+**What building it found**: Two implications above needed a sharper reading to hold.
+
+- *Tracks already matched are skipped.* CLEAN-03 extends "tracks with a decision" to tracks already
+  answered, but an attempt existing does not make it an answer. The matcher reports a failed search
+  as an empty result rather than an error, so a match run during an outage stores attempts that look
+  like "nothing on Beatport". A track is therefore left out only when a user decided it, or when an
+  attempt found a match or judged candidates and chose none. A track with only errors or empty
+  results is asked again. A run of 25 tracks in a row with no candidates at all stops the job and
+  puts those tracks back, so a lost connection costs a minute rather than a library.
+- *A cancel or a restart continues.* Resuming has to know what was answered *since* the plan was
+  written: a whole-library match resumed after matching one overlapping playlist must not ask
+  Beatport twice. `m0013` records each job's options — whether it was a re-match, its counts, and
+  the highest attempt id stored when its plan was written — and a resume leaves out tracks answered
+  after that point.
+
+**Why the decision stands**: Both refine how the implications are carried out, and neither changes
+what was decided. A match still resolves its scope once, resumes only when asked, and never
+re-matches a user's decision unless the user asks for a re-match.
+
 ---
 
 ## DEC-066 — Every Match Attempt Is Kept, With All Its Candidates

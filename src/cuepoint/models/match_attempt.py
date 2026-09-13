@@ -3,8 +3,8 @@
 
 """Match attempts, their candidates, and each track's match state (CLEAN-01).
 
-The types over the matching half of ``m0011_clean``. Four of them, because the
-tables answer four different questions:
+The types over the matching half of ``m0011_clean`` and ``m0013_match_jobs``.
+Four of them answer four different questions about matching:
 
 - :class:`MatchAttempt` — *what was asked, and what came back*: one run of the
   matcher for one track, kept forever (DEC-066).
@@ -15,6 +15,9 @@ tables answer four different questions:
   and whether a later attempt disagrees with a user's decision (DEC-067).
 - :class:`MatchJobTrack` — *how far a match job got*: one row of its plan
   (DEC-065).
+
+Two more describe a match job as a whole: :class:`MatchPlan`, *what it was
+asked to do*, and :class:`ResumableMatch`, *a job with tracks left*.
 
 "Not matched" has no type. It is the absence of a :class:`TrackMatch`, which
 is what makes "tracks never matched" an anti-join rather than a state someone
@@ -502,15 +505,18 @@ class MatchJobTrack:
     """One track in a match job's plan (DEC-065).
 
     The plan is written once when the job starts, and ``done`` is committed as
-    each track finishes, so an interrupted job resumes from the first row that
-    is not done. ``track_id`` is not a foreign key: a track a refresh deletes
+    each track finishes, so an interrupted job resumes from the rows that are
+    not done. ``track_id`` is not a foreign key: a track a refresh deletes
     mid-job is skipped and counted, not cascaded out of the plan.
 
     Attributes:
         job_id: The job this plan belongs to.
         position: The track's place in the plan, from 0.
         track_id: The library track to match.
-        done: Whether the track has been matched in this job.
+        done: Whether the job has finished with the track — matched it, in the
+            same transaction that stored the attempt, or skipped it because it
+            was deleted or has no title. A row that is not done is what a
+            resume picks up (CLEAN-03).
     """
 
     job_id: str
@@ -544,6 +550,115 @@ class MatchJobTrack:
             track_id=data["track_id"],
             done=data.get("done", 0),
         )
+
+
+@dataclass(frozen=True)
+class MatchPlan:
+    """What one match job was asked to do (CLEAN-03, ``m0013``).
+
+    Written in the same transaction as the job's plan rows, and never changed:
+    a resume writes a new one for the job that takes the remaining tracks over.
+
+    Attributes:
+        job_id: The job.
+        rematch: Whether tracks already decided or answered were kept in.
+        selected: How many library tracks the job was handed — the selection,
+            or for a resume, the tracks its original had left.
+        excluded: How many of those were left out before matching.
+        attempt_watermark: The highest attempt id stored when the plan was
+            written; a larger id was stored after it. A resume keeps its
+            original's.
+        created_at: When the plan was written.
+        resumed_from: The job whose remaining tracks this one took over.
+    """
+
+    job_id: str
+    rematch: bool
+    selected: int
+    excluded: int
+    attempt_watermark: int
+    created_at: str
+    resumed_from: Optional[str] = None
+
+    def __post_init__(self) -> None:
+        """Validate the plan, refusing anything its table would refuse."""
+        _set(self, "job_id", required_text(self.job_id, "job_id"))
+        _set(self, "rematch", flag(self.rematch, "rematch"))
+        _set(self, "selected", non_negative(self.selected, "selected"))
+        _set(self, "excluded", non_negative(self.excluded, "excluded"))
+        if self.excluded > self.selected:
+            raise ValueError(
+                f"A plan cannot leave out {self.excluded} of {self.selected} tracks"
+            )
+        _set(
+            self,
+            "attempt_watermark",
+            non_negative(self.attempt_watermark, "attempt_watermark"),
+        )
+        _set(self, "created_at", required_text(self.created_at, "created_at"))
+        if self.resumed_from is not None:
+            _set(self, "resumed_from", required_text(self.resumed_from, "resumed_from"))
+            if self.resumed_from == self.job_id:
+                raise ValueError("A match job cannot resume itself")
+
+    @property
+    def planned(self) -> int:
+        """How many tracks the plan holds: selected, less what was left out."""
+        return self.selected - self.excluded
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Return the persisted row, with ``rematch`` as 0/1."""
+        return {
+            "job_id": self.job_id,
+            "resumed_from": self.resumed_from,
+            "rematch": 1 if self.rematch else 0,
+            "selected": self.selected,
+            "excluded": self.excluded,
+            "attempt_watermark": self.attempt_watermark,
+            "created_at": self.created_at,
+        }
+
+    @classmethod
+    def from_row(cls, row: Any) -> "MatchPlan":
+        """Build a plan from a database row (``sqlite3.Row`` or mapping)."""
+        data = dict(row)
+        return cls(
+            job_id=data["job_id"],
+            resumed_from=data.get("resumed_from"),
+            rematch=data["rematch"],
+            selected=data["selected"],
+            excluded=data["excluded"],
+            attempt_watermark=data["attempt_watermark"],
+            created_at=data["created_at"],
+        )
+
+
+@dataclass(frozen=True)
+class ResumableMatch:
+    """A match job with tracks still waiting, which a user can resume (DEC-065).
+
+    Attributes:
+        plan: What the job was asked to do.
+        remaining: How many of its tracks are not done. At least one — a plan
+            with nothing left is not resumable — and never more than it planned.
+    """
+
+    plan: MatchPlan
+    remaining: int
+
+    def __post_init__(self) -> None:
+        """Refuse a count the plan could not have."""
+        _set(self, "remaining", non_negative(self.remaining, "remaining"))
+        if not 1 <= self.remaining <= self.plan.planned:
+            raise ValueError(
+                f"A resumable job has between 1 and {self.plan.planned} tracks"
+                f" left, not {self.remaining}"
+            )
+
+    @property
+    def job_id(self) -> str:
+        """The job to resume."""
+        return self.plan.job_id
 
 
 def _set(instance: Any, name: str, value: Any) -> None:

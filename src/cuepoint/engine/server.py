@@ -126,6 +126,16 @@ def _resolve_job_repository() -> Optional[Any]:
         return None
 
     try:
+        # Before the stale records below are closed out, while "still running"
+        # still means "interrupted": a match job a restart cut short is offered
+        # for resumption in the activity feed, never resumed unasked (DEC-065).
+        from cuepoint.engine.match_jobs import offer_interrupted_matches
+
+        offer_interrupted_matches()
+    except Exception:  # noqa: BLE001 — an offer must not stop jobs being recorded
+        pass
+
+    try:
         # Anything still marked running belongs to a process that is gone.
         repository.mark_interrupted(datetime.now(timezone.utc).isoformat())
     except Exception:  # noqa: BLE001

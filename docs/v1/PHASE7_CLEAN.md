@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 7: Clean, Detailed Step Specifications
 
-Status: **Specified. CLEAN-01 and CLEAN-02 implemented.** The fourteen steps below replace the
+Status: **Specified. CLEAN-01 to CLEAN-03 implemented.** The fourteen steps below replace the
 roadmap's placeholder inventory (CLEAN-01…CLEAN-13, which Round 9's answers outgrew by one). Per
 the process, no implementation happens from this document — each step needs an explicit
 "Implement CLEAN-NN" instruction, scoped to exactly that step, and its outcome is recorded under the
@@ -638,7 +638,7 @@ measurement brought the step closer to **M**.
 
 ---
 
-## CLEAN-03 — The Match Job Over a Library Scope
+## CLEAN-03 — The Match Job Over a Library Scope ✅ IMPLEMENTED 2026-09-13
 
 **Objective**: Match any scope the Library browses, as a resumable background job that stores an
 attempt per track as it goes (DEC-065).
@@ -702,6 +702,228 @@ Beatport time, and where threads writing to SQLite meet the single-writer rule �
 workers match, and one writer commits.
 
 **Complexity**: **L**
+
+### ✅ IMPLEMENTED 2026-09-13
+
+**Outcome**: Complete.
+
+- `services/match_service.py` implements `IMatchService`. It resolves a selection into a plan,
+  writes the plan, runs it and hands an interrupted job's remaining tracks to a new one.
+- `services/match_input.py` is the adapter, `library_track_to_track`.
+- `persistence/match_job_repository.py` implements `IMatchJobRepository`: every query about a plan.
+- `engine/match_jobs.py` runs a match as a `clean_match` job (`start_match_job`,
+  `resume_match_job`) and offers interrupted jobs for resumption (`offer_interrupted_matches`).
+- `migrations/m0013_match_jobs.py` and the `MatchPlan` and `ResumableMatch` models record what each
+  job was asked to do (below).
+- `server._resolve_job_repository` offers interrupted matches just before it closes stale job
+  records.
+
+Nothing reaches the renderer yet. CLEAN-11 adds the routes. The status strip has no verb for
+`clean_match` and falls back to "Working"; CLEAN-11 adds one with the route that can start the job.
+
+**What building it found, and what was done about it.**
+
+- **A plan cannot be resumed correctly from its rows alone.** Suppose a user matches the whole
+  library, the laptop closes at track 20,000, and they then match one playlist that overlaps what
+  is left. Resuming must not ask Beatport those tracks again. Telling "answered since the plan"
+  from "answered before it" needs a point in the attempt history, and whether a user's decision
+  keeps a track out depends on whether the job was a re-match. The rows hold neither.
+  - `m0013` adds `match_jobs`, holding `rematch`, `selected`, `excluded`, `attempt_watermark` and
+    `resumed_from`.
+  - The watermark is the highest attempt id when the plan was written. Ids only grow, so it needs
+    no clock.
+  - A resume keeps its original's watermark, so a resume of a resume compares against the same
+    point.
+- **"Tracks with any attempt" was the wrong exclusion.** The matcher reports a failed search as an
+  empty result, not an error: `track_urls` swallows the failure. So a match run during an outage
+  stores attempts that look exactly like "nothing on Beatport", and the specified rule would have
+  left those tracks out of every later match.
+  - A track is left out only when a user decided it, or when an attempt *answered* it: found a
+    match, or judged at least one candidate and chose none.
+  - A track with only errors or empty results is asked again. That costs a few empty queries, not
+    a track's candidate fetches.
+  - Live, invented titles still drew about forty candidates (CLEAN-02), which is what makes an
+    empty result a signal.
+- **An outage would still burn through a library in minutes.** An empty track takes seconds, since
+  there is nothing to fetch. `SEARCH_OUTAGE_STREAK` (25) tracks in a row with no candidates at all
+  stop the job. Those tracks are put back in the queue and their attempts stay stored (DEC-066).
+  The job ends `FAILED` with `MATCH_SEARCH_UNAVAILABLE` and its counts, so resuming once the network
+  is back asks those tracks again. An error neither breaks nor extends the streak, because it says
+  nothing about search.
+- **The matcher cannot be cancelled mid-track.** `ProcessingController` never reaches
+  `core/matcher.py`, whose loop checks only its time budget, and cross-cutting fact 4 keeps the
+  matcher unchanged. So "cancellation inside `process_track`" is not available. A cancel stops new
+  tracks at once, and the tracks already being matched finish and are stored: they are real
+  answers, each bounded by `PER_TRACK_TIME_BUDGET_SEC`. The progress line says "finishing N in
+  progress" while they do.
+- **The refresh conflict is one-way.** A match job refuses to *start* while a refresh applies,
+  because it would resolve its scope against a library being rewritten. A refresh may start while a
+  match runs: a whole-library match takes hours, and "a refresh that deletes a queued track mid-job
+  is counted and skipped" assumes exactly that. So the match job does not join the library job
+  group, whose members exclude each other in both directions. A deleted track is skipped whether it
+  is found missing before its turn or its attempt is refused by the foreign key while it was being
+  matched.
+- **A refresh's transaction can outlast SQLite's busy timeout.** A refresh applies in one
+  transaction, and a large one holds the write lock longer than the 5-second busy timeout.
+  - A commit that meets a lock is retried for up to 120 seconds rather than dropped.
+  - Any other refusal — a full disk, a read-only file — stops the job with `MATCH_STORAGE_FAILED`
+    and keeps the plan, rather than matching for hours with nowhere to put the results.
+
+**Decisions taken beyond the design.**
+
+- **Where `start` and `resume` live.** They are in `engine/match_jobs.py`; the service offers
+  `prepare`, `write_plan`, `take_over` and `run`. A service does not hold a job, as with
+  `batch_jobs` and `library_jobs`. A selection that names nothing, or only settled tracks, is
+  refused before any job exists. A refusal to re-match says how to ask for one.
+- **Each result commits as it arrives, not in plan order.** The writer hands the pool at most one
+  track per worker, in plan order, so a cancel has nothing queued to unwind. A slow track never
+  holds finished ones in memory. With one worker, attempt ids follow the plan exactly.
+- **A resume moves the waiting rows** to the new job, keeping their positions. The original keeps
+  what it finished, which is its record, and is never offered twice. Every track answered since is
+  left out as the new job takes over; for a job that was not a re-match, so is every decided track.
+- **Resolution checks the library.** Ids no longer in it are dropped, and `selected` counts library
+  tracks. A track with no title is skipped without asking, as the CLI's parser does.
+- **The adapter calls the CLI's own rule for title and artist** (`track_from_rbtrack`), including
+  the artist taken from an "Artist - Title" title and the "Unknown Artist" placeholder, rather
+  than restating it. A year `Track` would refuse is dropped, not fatal: the matcher never reads it.
+- **CLEAN-04 plugs in through `StateRule`.** It is a callable run inside the attempt's transaction.
+  Until it is plugged in, progress says "found" and "not found", and once it is, "accepted" and
+  "need review". A result the database refuses for that track alone, such as a rule that raises,
+  takes its attempt and its done flag with it. It is counted "not saved" and left waiting.
+- **Every ending is an answer.**
+  - Finished: `SUCCEEDED`.
+  - Cancelled: `CANCELLED`.
+  - Searches came back empty: `FAILED` with `MATCH_SEARCH_UNAVAILABLE`.
+  - The first three carry the counts.
+  - The database refused: `FAILED` with `MATCH_STORAGE_FAILED`.
+  - Anything else: `FAILED` with `CLEAN_MATCH_FAILED`.
+
+  There is one `clean.match` activity event per run, including a run stopped by an error, and no
+  time estimate anywhere.
+- **Resumption is offered once.** A `clean.match.interrupted` event is recorded for each resumable
+  job whose record still says running when the engine first resolves its job repository. That is
+  just before `mark_interrupted` closes those records, so each interruption is offered exactly once
+  and nothing is resumed.
+- **`match_attempts.job_id` stays unindexed.** CLEAN-01 deferred it to this step, and no query here
+  reads by it.
+
+**Measured** at 50,000 tracks. Half of them have a stored attempt, with 40 candidates for each
+answer and none for an error or an empty result: 800,000 candidates in all, plus 5,000 user
+decisions. Each read is the second of two passes.
+
+| Operation | Time |
+| --- | --- |
+| `existing` over 50,000 ids | 53 ms |
+| `settled` over 50,000 ids | 81 ms |
+| `create`, a 27,500-row plan | 68 ms |
+| `create`, a 50,000-row re-match plan | 132 ms |
+| `waiting`, 30,000 rows left | 151 ms |
+| `take_over`, 30,000 rows | 178 ms |
+| `resumable` | 15 ms |
+| One track's commit: attempt, 40 candidates, done flag | 2.7 ms |
+
+Every statement finds its rows through an index. `settled` uses the track key,
+`idx_match_attempts_track`, the covering `idx_match_candidates_attempt` and the `track_match` key,
+and marking a track done uses the plan's primary key. Starting a whole-library match costs a
+quarter of a second. A track's commit is about a ten-thousandth of the 25 seconds a track takes to
+match live (CLEAN-02).
+
+**Tests**:
+
+- `services/test_match_input.py` (30 tests) covers:
+  - every field mapped;
+  - the library id as `track_id`;
+  - title and artist compared with the CLI's rule over six shapes;
+  - untitled and unstored tracks refused;
+  - the year bounds checked against `Track` itself;
+  - imported values read while an override exists for every field.
+- `models/test_match_plan.py` (25 tests) covers the plan and a resumable job: what they hold, their
+  round trip and every refusal.
+- `persistence/test_match_jobs_migration.py` (24 tests) covers:
+  - the model being exactly the table;
+  - its key, its lack of references and indexes;
+  - every CHECK and NOT NULL;
+  - a populated version-12 library upgrading with every row kept, to a schema equal to a fresh one.
+- `persistence/test_match_job_repository.py` (45 tests) covers:
+  - library ids, deduplicated, in order, past one statement's parameter limit;
+  - what settles a track: a match, judged candidates and a user's decision do; an error, an empty
+    result and an automatic state do not;
+  - plans written in order with their options and watermark, and refusals that write nothing,
+    including inside a caller's transaction;
+  - finishing a track twice refused, and putting tracks back;
+  - a take-over that keeps positions, carries options and watermark, leaves out what was answered
+    or decided since (a re-match only the former), keeps the first watermark across a chain, may
+    leave an empty plan, and moves nothing when refused;
+  - resumable and interrupted jobs.
+- `services/test_match_service.py` (55 tests), against the real services with a stubbed
+  `process_track`, covers:
+  - fifty attempts in plan order, and one per track with eight workers;
+  - an id selection and its query planning the same;
+  - a Collection, a Rekordbox playlist and an id selection each naming a track twice;
+  - skipped and settled tracks and the counts that say so;
+  - every outcome, including the matcher raising or returning something else;
+  - imported values reaching the matcher and the stored question;
+  - the settings and the worker count;
+  - tracks deleted before and during matching, and a track with no title;
+  - a cancel at track 20 leaving 20 attempts and 30 waiting rows, and a resume finishing the 30 with
+    nothing matched twice, also with six workers and tracks in flight;
+  - the outage stop, its put-back, its resume and its streak rules;
+  - the state rule inside the transaction, and a failing rule taking its attempt with it;
+  - a lock waited out, a lock that never clears, and a database that refuses;
+  - the wording.
+- `engine/test_match_jobs.py` (23 tests) covers:
+  - a job's counts, progress and terminal state;
+  - a query resolved once;
+  - settled tracks left out and a re-match;
+  - refusals before any job;
+  - a second match refused with the running job's id;
+  - no start during a refresh, while a refresh may start during a match and its deletion is
+    skipped;
+  - every ending's state and code;
+  - cancel then resume;
+  - resume refusals, including a job still finishing;
+  - the offer after a restart, made once, resuming nothing, then resumable.
+  - The acceptance criterion: a 1,000-track scope over a stubbed matcher with eight workers runs,
+    is cancelled after 300 tracks, resumes and completes with exactly one attempt and one done row
+    per track. A second run answers library searches over HTTP throughout the match, the slowest
+    under a second.
+- `integration/test_clean_match_equivalence.py` (2 tests) matches one export through
+  `process_playlist_from_xml` and, after importing it, through a match job. It uses the same real
+  `ProcessorService`, and only the search is stubbed, answering from what it is asked. It runs at
+  one worker (the XML path's sequential loop) and at three (its pool), and compares:
+  - the matcher's questions;
+  - every `TrackResult` field but the clock and the path's spelling;
+  - the settings;
+  - how many tracks were matched at once.
+- The persistence boundary allows `match_service.py`, which opens the transaction and runs no SQL.
+  `match_input.py` and `match_service.py` joined the mypy gate.
+- `m0012`'s row-survival test now migrates to version 12 exactly, since `m0013` adds a table of its
+  own.
+
+The tests were checked against nineteen mutations written into the source, and each one made at
+least one test fail:
+
+- an empty result counted as an answer;
+- a user's decision not settling a track;
+- a resume leaving the original's waiting rows behind;
+- a track finishable twice;
+- any job treated as interrupted;
+- the watermark ignored;
+- ids not deduplicated;
+- a cancel ignored;
+- empty results not put back;
+- the outage streak never stopping a job;
+- the done flag committed apart from its attempt;
+- an error breaking the streak;
+- a lock never waited out;
+- ids no longer in the library planned;
+- a skipped track not marked done;
+- a match starting during a refresh;
+- the artist not built by the CLI's rule;
+- an implausible year refusing the track;
+- an interrupted match not offered.
+
+**Complexity**: **L**, as estimated.
 
 ---
 
