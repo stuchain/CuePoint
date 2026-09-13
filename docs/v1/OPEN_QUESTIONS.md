@@ -1370,3 +1370,298 @@ Whether Phase 6 uses it decides whether rating a track modifies files on disk.
 
 **Recommendation**: **A**. Same discipline as DEC-051 kept for the player, and it keeps Phase 6
 clear of "I rated one track and CuePoint modified four hundred files" as a failure mode.
+
+---
+
+## DECISION ROUND 9 — CLEAN ✅ Resolved 2026-09-13
+
+Asked before writing Phase 7's step specifications. Round 1 settled the one rule this phase was
+known to need — DEC-004, accept and apply are separate — and Rounds 3, 5 and 6 left it three
+obligations: re-home inKey into Clean (DEC-021), move it onto the library (DEC-036), and converge
+`ResultsTable` onto `TrackTable` (DEC-041). DEC-037 left it missing-file detection, and Phase 6
+left it duplicates, health, artwork and per-field revert of CuePoint values. None of that says what
+a match runs over, what survives a re-match, where an applied value is stored, or whether anything
+is written to disk.
+
+Five of these came from reading the code rather than the roadmap: inKey still reads its tracks from
+an XML or M3U file on every run, so no result is attached to a library track; match results exist
+only as per-run CSV and JSONL files, so nothing survives a re-match; `_confidence_label()`'s
+"high" tier (≥95) is a display label and gates nothing; the existing `REVERTABLE_FIELDS` path
+writes Rekordbox-owned columns on `tracks`, which the next refresh overwrites; and neither
+`tag_writer.py` nor the Beatport page parser handles artwork at all — `artwork_url` exists on
+`BeatportCandidate` and is never populated.
+
+Outcomes are DEC-065…DEC-076 in `DECISIONS.md`. One answer went against the recommendation — Q-075,
+artwork — and is noted as such below. Q-064 was re-asked after the user asked what "a Clean match"
+meant; the clarified wording is the one recorded.
+
+---
+
+### Q-064 — What a match runs over
+
+**Status**: Resolved → DEC-065 (Option A chosen: library tracks only)
+
+**Question**: inKey matches tracks read from an XML playlist or an M3U file on each run. A "match"
+here is inKey's existing process — build queries from a track's title and artist, search Beatport,
+score candidates, reject the wrong ones with a reason, keep the best. When it moves into Clean,
+where are the tracks chosen from?
+
+- **Option A — Library tracks only.** Any scope the Library already browses — a Rekordbox
+  playlist, a Collection, a Smart Collection, the current filter or a selection — as a resumable
+  job that skips tracks already decided unless asked to re-match. XML/M3U input retires with inKey.
+- **Option B — Library, plus playlist files.** Tracks from a file that are not in the library get a
+  one-off result that is not stored, as today.
+- **Option C — Library, plus automatic matching on import.** New tracks from each import or refresh
+  are queued without being asked.
+
+**Recommendation**: **A**. A result has to belong to a track to be stored (Q-065), reviewed, applied
+(Q-067) or counted (Q-074). B keeps a second, unstored kind of result alive for one input path. C
+starts slow network scraping nobody asked for.
+
+---
+
+### Q-065 — How much match history is kept
+
+**Status**: Resolved → DEC-066 (Option A chosen: every attempt, all candidates)
+
+**Question**: GAP_ANALYSIS §C requires match history to survive re-matching, and AGENTS.md requires
+matching to stay reviewable — candidates, rejection reasons, confidence. How much is stored?
+
+- **Option A — Every attempt, with all its candidates**, scores, rejection reasons and queries. A
+  re-match adds an attempt and overwrites nothing.
+- **Option B — The latest attempt in full**; older attempts reduced to a summary row.
+- **Option C — The decision only**; candidates stay in per-run files.
+
+**Recommendation**: **A**. Roughly a million candidate rows at 50,000 tracks is ordinary for SQLite,
+and B and C both discard exactly the evidence a user needs to understand why a match changed.
+
+---
+
+### Q-066 — What auto-accepts, and what a re-match does to a user's decision
+
+**Status**: Resolved → DEC-067 (Option A chosen: the high tier, fixed; user decisions stick)
+
+**Question**: DEC-004 auto-marks high-confidence matches accepted but does not say where "high"
+is, or whether re-running a match can undo review work.
+
+- **Option A — ≥95 with every guard passed, as a named constant.** Anything else with a candidate
+  needs review. A re-match never changes a user's accept or reject; a better candidate is flagged.
+- **Option B — The same, with the threshold a user setting.**
+- **Option C — ≥95 fixed, and a re-match re-evaluates everything**, including user decisions.
+
+**Recommendation**: **A**. ≥95 is the matcher's existing "high" boundary, so no new number is
+invented. A setting invites tuning a threshold nobody can see the effect of; C lets a re-run erase
+an afternoon of review.
+
+---
+
+### Q-067 — Where applied Beatport values are stored
+
+**Status**: Resolved → DEC-068 (Option A chosen: a CuePoint override layer, with revert)
+
+**Question**: Applying an accepted match writes key, BPM, genre, label and year. Those columns on
+`tracks` belong to Rekordbox and are rewritten by every refresh.
+
+- **Option A — A CuePoint override layer** beside the imported columns: effective value is the
+  override when set, otherwise Rekordbox's; per-field history under a batch id; per-field and
+  per-batch revert built, closing Phase 6's deferred revert.
+- **Option B — Write into the `tracks` columns.**
+- **Option C — The override layer, with revert still deferred.**
+
+**Recommendation**: **A**. It is DEC-057's model reused for the same problem. B is silently undone
+by the next refresh and leaves Phase 8 unable to choose whose value to export. Applying a batch of
+Beatport values is the operation a user most wants to take back, which is why C is not enough.
+
+---
+
+### Q-068 — Whether a user can type metadata by hand
+
+**Status**: Resolved → DEC-069 (Option A chosen: the fields Beatport supplies)
+
+**Question**: GAP_ANALYSIS §C lists a batch metadata editor as missing. With Q-067's layer in place,
+may a user edit values directly rather than only apply them from a match?
+
+- **Option A — Yes, for key, BPM, genre, label and year**, single and batch, into the same layer.
+  Title, artist and remixer stay Rekordbox's.
+- **Option B — Yes, for every text field**, including title, artist, remixer and album.
+- **Option C — No; values come only from an accepted match.**
+
+**Recommendation**: **A**. Nearly free once the layer exists. Title, artist and remixer are what
+matching searches on and what DEC-002's identity fallback reads, so B would force matching to choose
+between an edited title and an imported one.
+
+---
+
+### Q-069 — Whether Phase 7 writes audio-file tags
+
+**Status**: Resolved → DEC-070 (Option A chosen: an explicit job that records what it replaced)
+
+**Question**: inKey's Sync Tags writes Key, Comment, Year, Label, BPM and Genre into audio files
+today. Retiring inKey without a replacement removes a capability users have; DEC-064 kept
+`tag_writer.py` for Phases 7 and 8.
+
+- **Option A — A separate, user-initiated "Write tags to files" job** over effective values:
+  previewed, cancellable, recording each file's previous tag values before writing so the write is
+  auditable and reversible. Today's field toggles, key format and WAV rule carry over.
+- **Option B — Port today's sync unchanged**, without recording prior values.
+- **Option C — Defer to Phase 8**; Phase 7 writes only the database.
+
+**Recommendation**: **A**. B carries forward a write that cannot be undone into a phase that has
+just built revert for everything else. C is a regression for anyone who uses inKey today.
+
+---
+
+### Q-070 — What happens to inKey, Results and their extras
+
+**Status**: Resolved → DEC-071 (Option A chosen: retire into Clean)
+
+**Question**: DEC-021 and DEC-041 require inKey to be re-homed and `ResultsTable` to converge.
+Around them sit past-search history (per-run CSVs read back by `history_api.py`), CSV/JSON/Excel
+export, and the candidate dialog.
+
+- **Option A — Retire into Clean.** Tools loses inKey and Results; `TrackTable` replaces
+  `ResultsTable` and `CandidateDialog`; past searches stop being a screen, their files stay on disk
+  unimported; export survives as "export review list".
+- **Option B — Retire, and import past CSV runs** into match history.
+- **Option C — Keep inKey beside Clean** for now, amending DEC-021 and DEC-041.
+
+**Recommendation**: **A**. B imports results whose candidates were matched against a different track
+list with no reliable way to attach them to library tracks. C keeps two match flows alive.
+
+---
+
+### Q-071 — Where Clean lives in the UI
+
+**Status**: Resolved → DEC-072 (Option A chosen: its own page, with hooks in the Library)
+
+**Question**: DEC-062 folded Collections into the Library page rather than a second browser. Does
+Clean follow that, or earn a page?
+
+- **Option A — Its own page**: a review queue by match state with side-by-side candidate comparison,
+  plus Missing files, Duplicates and Health. The Library gains a "Match on Beatport" action, a
+  match-state column and filter; the Inspector gains a Beatport comparison (DEC-047).
+- **Option B — Folded into the Library**, with review in the Inspector.
+- **Option C — A separate page each** for review, duplicates, missing files and health.
+
+**Recommendation**: **A**. Comparing a track with five candidates does not fit an Inspector column,
+which is the difference from DEC-062's case. C spreads four views of one job across four
+destinations.
+
+---
+
+### Q-072 — How missing files are found, and whether CuePoint fixes them
+
+**Status**: Resolved → DEC-073 (Option A chosen: a scan job; relocation stays in Rekordbox)
+
+**Question**: DEC-037 deferred file-existence checks here. Checking 50,000 paths is a slow scan, and
+a found-missing file raises the question of relocating it.
+
+- **Option A — A cancellable "Check files" job**, also run after each import or refresh; status and
+  check time stored and filterable. No relocation: paths are Rekordbox's, fixed there with its own
+  Relocate and brought in by a refresh.
+- **Option B — The same, plus a relocation override** stored by CuePoint and used by the player and
+  tag writer.
+- **Option C — Scan automatically on every launch.**
+
+**Recommendation**: **A**. B creates a path that disagrees with Rekordbox until Phase 8 exports it,
+and every consumer of `file_path` would need to know which to use. C puts 50,000 file checks in
+front of startup on a disconnected drive.
+
+---
+
+### Q-073 — What a duplicate is, and what can be done about one
+
+**Status**: Resolved → DEC-074 (Option A chosen: metadata signals, nothing deleted)
+
+**Question**: No track-duplicate detection exists (CURRENT_ARCHITECTURE §13).
+
+- **Option A — Groups from metadata signals**: same normalized path, same accepted Beatport track
+  id, or same normalized artist + title + mix within ±2 s. Each group says why. "Not duplicates" is
+  remembered; tag, Collection and reveal actions; nothing is deleted.
+- **Option B — Also hash audio contents.**
+- **Option C — Identical normalized artist and title only.**
+
+**Recommendation**: **A**. B reads every file in the library; acoustic fingerprinting belongs to
+Phase 12. C misses both the strongest signal (the same Beatport release) and the most common real
+duplicate (one file imported twice). Deleting is out because a refresh re-adds the track and the
+file is user data.
+
+---
+
+### Q-074 — What Library Health is
+
+**Status**: Resolved → DEC-075 (Option A chosen: counts, no score)
+
+**Question**: GAP_ANALYSIS §C lists a health score as missing. Is it a number?
+
+- **Option A — Concrete counts**, each opening the Library filtered to exactly those tracks.
+- **Option B — A 0–100 score** with the counts beneath.
+- **Option C — Defer health**; ship the detections only.
+
+**Recommendation**: **A**. A score needs weights nobody can justify, and "explain, don't silently
+decide" is the principle DEC-004 already applied to this phase.
+
+---
+
+### Q-075 — Whether artwork is in Phase 7
+
+**Status**: Resolved → DEC-076 (Option C chosen: embedded and Beatport artwork — **against the
+recommendation**, which was to defer; follow-up resolved as "embed only where missing", also
+against its recommendation, which was display only)
+
+**Question**: Phase 6 deferred artwork here. Nothing populates `artwork_url` and `tag_writer.py`
+neither reads nor writes pictures.
+
+- **Option A — Defer.**
+- **Option B — Beatport artwork for accepted matches**, cached as thumbnails and displayed.
+- **Option C — Embedded artwork read from files, plus Beatport artwork.**
+
+**Follow-up**: should the file-tag job (DEC-070) also embed Beatport artwork into files?
+
+- **Display only** — nothing written.
+- **Optional embed toggle**, replacing existing artwork after recording it.
+- **Embed only where the file has none**, never replacing.
+
+**Recommendation**: **A**, then **display only** — artwork is not a cleaning task, and both sources
+are new code. **Chosen**: C, and embed where missing. The user wants artwork visible and wants files
+without any to receive it. Never replacing existing artwork keeps the write additive, which is the
+property that makes it acceptable inside DEC-070's recorded, reversible job.
+
+---
+
+### Q-076 — Does the refresh warning count more than Collections
+
+**Status**: Resolved → DEC-011, amended 2026-09-13 (Option A chosen: count everything the user
+authored). Raised while writing `PHASE7_CLEAN.md`; the user delegated the choice.
+
+**Question**: A refresh that deletes a track cascades its CuePoint rating, note, tags and, from
+Phase 7, its match decisions and applied values. `references_for()` counts only Collections and
+Sets. Should the DEC-011 warning count the rest?
+
+- **Option A — Count every track carrying data that cannot be recomputed**: Collection membership, a
+  rating, favorite or note, a tag, a user's match decision, an override. Re-derivable data
+  (attempts, auto states, file status, duplicates, artwork state) is not counted.
+- **Option B — Add only Phase 7's data**: review decisions and applied values.
+- **Option C — Leave DEC-011 as it is.**
+
+**Recommendation**: **A**. B draws the line by phase rather than by what a user would lose, and
+leaves a rated, tagged track deletable with no specific warning. C lets a routine refresh erase
+review work silently. A keeps the common case — deleting tracks nobody touched — prompt-free.
+
+---
+
+### Q-077 — Thumbnails or original images
+
+**Status**: Resolved → DEC-076, amended 2026-09-13 (Option A chosen: real thumbnails, Pillow at
+runtime). Raised while writing `PHASE7_CLEAN.md`; the user delegated the choice.
+
+**Question**: DEC-076 says artwork is cached as thumbnails. Making them needs Pillow, which is only
+a build dependency today.
+
+- **Option A — Pillow at runtime**, behind one guarded decoder; the cache holds bounded thumbnails
+  only; embedded images are fetched, validated and re-encoded at write time.
+- **Option B — Cache originals**, scaled by the renderer; no new dependency.
+
+**Recommendation**: **A**. B's cache is unbounded and every table cell decodes a full-size image.
+A's cost is a native dependency with a security history, which the decoder guard and the pin answer.
+A bounded image re-encoded before it goes into a user's file is also the more professional artifact.

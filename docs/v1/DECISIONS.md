@@ -234,6 +234,34 @@ applying a removal, not just diff track IDs.
 
 **Decided with**: User · **Date**: 2026-09-01
 
+### Amendment (2026-09-13) — the warning counts everything the user authored
+
+**What the Phase 7 specification found**: DEC-011 was written in Round 2, when a Collection or Set
+was the only CuePoint data anyone had imagined attaching to a track. By Phase 7 a refresh that
+deletes a track also cascades its CuePoint rating, favorite and note (DEC-057), its tags (DEC-015),
+and — from Phase 7 — the user's match decisions (DEC-067) and applied or typed values (DEC-068,
+DEC-069). `references_for()` counted only Collections and Sets, so a refresh could destroy an
+afternoon of review work with no warning beyond the plain deletion count. Raised as Q-076.
+
+**Amended decision**: The refresh warning counts every removed track carrying data that cannot be
+recomputed: Collection or Set membership, a CuePoint rating, favorite or note, a tag, a match
+decision made by the user, or an override. The warning states each non-zero kind ("12 tracks removed
+from Rekordbox carry your own work: 3 in 2 Collections, 5 rated or noted, 4 tagged, 6 reviewed or
+edited").
+
+**Amended implications**:
+- Data a scan or a re-match re-derives — match attempts, `auto` states, file status, duplicate
+  groups, artwork state — is not counted. The rule is "counted when it cannot be recomputed", so a
+  future phase knows which side of the line its data falls on.
+- `ReferenceSummary` is extended, not renamed; `has_references` becomes true for any counted kind.
+  Built in CLEAN-05, the first step whose data a refresh could otherwise delete silently.
+
+**Unchanged from the original decision**: a removal that touches none of it applies without a
+prompt. The common case stays frictionless, which was half of DEC-011's reason.
+
+**Decided with**: User (delegated: "take the most professional and better long term decisions") ·
+**Date**: 2026-09-13
+
 ---
 
 ## DEC-012 — Double-Click Behavior
@@ -1600,3 +1628,370 @@ question with its own safety properties that belongs to the export phase.
   disagree (DEC-030).
 
 **Decided with**: User · **Date**: 2026-09-06
+
+---
+
+## DEC-065 — A Match Runs Over Library Tracks
+
+**Status**: Approved · **Implements**: DEC-036, DEC-021
+
+**Decision**: A Beatport match in Clean runs over library tracks, chosen from any scope the Library
+already browses — a Rekordbox playlist, a Collection, a Smart Collection, the current filter, or a
+selection. Choosing an XML or M3U file to match retires with inKey.
+
+**Reason**: Every other decision in this round stores something against a track — an attempt, a
+decision, an applied value, a file status. A result for a track that is not in the library has
+nowhere to live, so keeping file input means keeping a second, unstored kind of result for one path.
+Automatic matching on import was declined: it starts slow network scraping without being asked.
+
+**Implications**:
+- A match is a background job over a scope resolved to track ids **once, at start**, as DEC-063 set
+  for batches; it reports how many tracks it covered.
+- The job is resumable: per-track progress is stored, so a cancel or an engine restart continues
+  rather than starts over. Tracks with a decision are skipped unless the user asks to re-match them.
+- `core/matcher.py` does not change. What changes is the input — library tracks adapted to what the
+  processor consumes, in place of `process_playlist_from_xml` / `process_playlist_from_m3u`.
+- The Python CLI (`main.py --xml … --playlist …`) keeps its XML input and its per-run files. Public
+  CLI flags are an AGENTS.md invariant, and nothing in this phase asks to break them.
+- Batch playlist mode and `BatchPlaylistPicker` retire with inKey: a scope already covers several
+  playlists through a Collection or a filter.
+
+**Decided with**: User · **Date**: 2026-09-13
+
+---
+
+## DEC-066 — Every Match Attempt Is Kept, With All Its Candidates
+
+**Status**: Approved · **Related**: DEC-004, DEC-008
+
+**Decision**: Each match attempt for a track is stored with every candidate it considered — score,
+component similarities, the guard's rejection reason where one fired, and the queries run. A
+re-match adds an attempt; it overwrites nothing.
+
+**Reason**: AGENTS.md requires matching to stay deterministic and reviewable, and the only evidence
+of why a match changed is the attempt before it. At 50,000 tracks this is on the order of a million
+candidate rows, ordinary for SQLite. Keeping only the latest attempt or only the decision discards
+exactly what a user needs when a re-match disagrees with the last one.
+
+**Implications**:
+- New tables for attempts and candidates, keyed to `tracks.id`. What happens to a track's attempts
+  when a refresh deletes the track (DEC-003) is the phase spec's to state; it may not be left to
+  whatever the foreign key happens to do.
+- The candidate a user sees is the stored one, not a re-fetch — reviewing never touches the network.
+- Storage size and the review-queue query are measured at 50,000 tracks in the phase's scale step,
+  as ORG-13 did.
+- The CLI's per-run `_candidates.csv`, `_queries.csv` and `_audit.jsonl` are unchanged.
+
+**Decided with**: User · **Date**: 2026-09-13
+
+---
+
+## DEC-067 — Auto-Accept at the High Tier; A User's Decision Sticks
+
+**Status**: Approved · **Fills**: DEC-004
+
+**Decision**: An attempt whose best candidate scores ≥95 with every guard passed is marked accepted
+automatically. Any other attempt with a candidate needs review; an attempt with none is "no match".
+The threshold is a named constant, not a setting. A re-match never changes an accept or reject the
+user made; if it finds a different best candidate, the track is flagged, not changed.
+
+**Reason**: ≥95 is `_confidence_label()`'s existing "high" boundary, so no new number is invented. A
+user setting invites tuning a threshold whose effect nobody can see. Letting a re-run overwrite
+decisions would let one click erase an afternoon of review.
+
+**Implications**:
+- States a track can be in: not matched, no match, needs review, accepted (auto), accepted (user),
+  rejected (user) — plus the flag for "a newer attempt disagrees with your decision". The phase spec
+  fixes the exact names; the auto/user distinction must survive into the stored state.
+- An auto-accept is not sticky: a re-match may replace it. Only a user's decision is protected.
+- Accepting applies nothing (DEC-004). Applying is DEC-068.
+- `output_writer._get_review_indices()`'s score-below-70 rule belongs to the CLI's review file and
+  does not define Clean's states.
+
+**Decided with**: User · **Date**: 2026-09-13
+
+---
+
+## DEC-068 — Applied Values Are a CuePoint Layer, and Revertable
+
+**Status**: Approved · **Related**: DEC-057, DEC-004, DEC-008, DEC-063
+
+**Decision**: Applying a match writes key, BPM, genre, label and year into a CuePoint override layer
+beside the imported columns. The effective value is the override when set, otherwise Rekordbox's. A
+refresh never writes the layer. Every applied field records history under a batch id, and per-field
+and per-batch revert are built for CuePoint-owned values.
+
+**Reason**: It is DEC-057's model — keep the source value, record CuePoint's, resolve at read time —
+applied to the same problem a second time rather than solved a second way. Writing into `tracks`
+would be undone by the next refresh and would leave Phase 8 unable to choose whose value to export.
+A batch of applied Beatport values is exactly the operation a user wants to take back, which is
+why revert is built now rather than deferred again.
+
+**Implications**:
+- A sibling table, for the reason ORG-01 gave: `TrackRepository.update` writes every column from a
+  `LibraryTrack`, so overrides stored on `tracks` would be erased by any import-shaped update.
+- The existing `REVERTABLE_FIELDS` path writes Rekordbox-owned columns and is not the mechanism for
+  this layer. It stays as it is.
+- Revert covers every CuePoint-owned field, including Phase 6's rating, favorite and notes — closing
+  Phase 6's "per-field revert of CuePoint values" deferral. Whether "revert this batch" also reaches
+  Phase 6's tag and Collection batches is the phase spec's to state.
+- Filter and sort vocabulary: the plain "Key", "BPM", "Genre", "Label" and "Year" mean the effective
+  value, as "Rating" does under DEC-060. The imported value stays addressable.
+- History `source` distinguishes an applied match from a hand edit (DEC-069) and from an import.
+- The Inspector shows the imported value, the accepted Beatport value and the effective value with
+  its source, beside Phase 4's read-only record rather than in place of it (DEC-047).
+
+**Decided with**: User · **Date**: 2026-09-13
+
+---
+
+## DEC-069 — Hand Edits Reach the Fields Beatport Supplies
+
+**Status**: Approved · **Related**: DEC-068, DEC-063
+
+**Decision**: A user can edit key, BPM, genre, label and year by hand, for one track or a batch,
+into the same override layer DEC-068 builds. Title, artist, remixer and album stay Rekordbox's.
+
+**Reason**: Once the layer exists this is nearly free, and it is the batch metadata editor
+GAP_ANALYSIS §C lists as missing. Title, artist and remixer are what matching searches on and what
+DEC-002's path-fallback identity reads; making them editable would force matching to choose between
+an edited title and an imported one.
+
+**Implications**:
+- Batches go through DEC-063's path: inline below the threshold, a job above it, history under one
+  batch id either way.
+- Validation — accepted key notations, BPM range, year range — is the phase spec's to fix, and the
+  engine rejects what the UI would not build (DEC-060's rule, reapplied).
+- A hand edit and an applied match write the same layer; the later one wins, and history says which
+  was which.
+
+**Decided with**: User · **Date**: 2026-09-13
+
+---
+
+## DEC-070 — Writing File Tags Is an Explicit Job That Records What It Replaced
+
+**Status**: Approved · **Related**: DEC-064, DEC-051, DEC-008
+
+**Decision**: "Write tags to files" is a separate action the user starts, over a scope, writing
+effective values into audio files through `data/tag_writer.py`. It shows a preview, runs as a
+cancellable job, and records each file's previous tag values before writing, so every write is
+auditable and can be restored. Today's field toggles, key format and WAV rule carry over.
+
+**Reason**: inKey's Sync Tags is a capability users have today, and retiring inKey without a
+replacement is a regression. Porting it unchanged would carry a write that cannot be undone into the
+phase that builds revert for everything else. Recording the old values costs a read per file and
+turns the one destructive action in this phase into a reversible one.
+
+**Implications**:
+- The first write to user files since inKey. Nothing else in Phase 7 writes outside the database.
+- Only today's fields — Key, Comment, Year, Label, BPM, Genre — plus artwork where a file has none
+  (DEC-076). CuePoint ratings, tags and notes are not written into files; that stays Phase 8's
+  question (DEC-064).
+- Values written are effective values, so an accepted but unapplied match changes no file.
+- The preview states the files, the fields and what will be skipped — WAV, missing files (DEC-073),
+  unchanged values — before anything is written.
+- A restore writes the recorded values back. The record is required; how restore is offered is the
+  phase spec's to state.
+- One activity event per job with counts (DEC-029). A file that fails is reported and skipped; the
+  job is not a transaction, as DEC-063 said of batches.
+- Rekordbox sees new tags only when it re-reads the file. The user docs say so.
+
+**Decided with**: User · **Date**: 2026-09-13
+
+---
+
+## DEC-071 — inKey and Results Retire Into Clean
+
+**Status**: Approved · **Implements**: DEC-021, DEC-041, DEC-036
+
+**Decision**: By the end of Phase 7 the Tools group no longer carries inKey or Results. `TrackTable`
+replaces `ResultsTable` and `CandidateDialog`. Past searches stop being a screen: their CSV files
+stay where they are on disk and are not imported. CSV/JSON/Excel export survives as "export review
+list" from Clean.
+
+**Reason**: DEC-021 and DEC-041 assigned both moves to this phase. Importing past runs was declined:
+those candidates were matched against a playlist file, with no reliable way to attach them to
+library tracks. Keeping inKey beside Clean would keep two match flows alive and amend two decisions
+for no gain.
+
+**Implications**:
+- Retiring a screen means searching its callers first: `MatchResultsContext`, `PastSearchesPanel`,
+  `BatchPlaylistPicker`, `reviewUtils`, `syncTagsUtils`, `ToolSelectionScreen`'s inKey entry, and
+  the `/match` and `/results` routes, which redirect rather than 404 for anyone with a remembered
+  destination (DEC-027).
+- Engine endpoints that only inKey uses — match jobs over files, `/api/v1/history/*`,
+  `/api/v1/tags/sync`, `/api/v1/export` — are replaced or removed through all six contract files,
+  and the removal is documented in the changelog, because AGENTS.md treats API shapes as preserved
+  unless a breaking change is explicit. This decision is that explicit request.
+- DEC-041 expected an in-memory `TrackTable` data source over match results. With DEC-066 storing
+  them, the review queue is a windowed engine query like the library's. The phase spec confirms that
+  rather than building an adapter nothing would use.
+- The CLI and its output files are untouched (DEC-065).
+
+**Decided with**: User · **Date**: 2026-09-13
+
+---
+
+## DEC-072 — Clean Is Its Own Page, With Hooks in the Library
+
+**Status**: Approved · **Related**: DEC-020, DEC-062, DEC-047, DEC-045
+
+**Decision**: The `clean` nav destination becomes a page: a review queue of tracks by match state
+with side-by-side candidate comparison, and Missing files, Duplicates and Health. The Library gains
+"Match on Beatport" among its selection actions, a match-state column, and match state as a filter
+field. The Inspector gains a Beatport comparison beside its existing zones.
+
+**Reason**: DEC-062 folded Collections into the Library because a second browser would duplicate a
+table, a selection model and a filter bar. Review is a different job: comparing one track with five
+candidates does not fit an Inspector column. The hooks keep Clean from becoming the only place a
+match state is visible.
+
+**Implications**:
+- The review queue and the Health links use `TrackTable`, DEC-045's selection model and the one
+  query path (DEC-023, DEC-040); the page is new surface, not a new table.
+- Match state enters the rule vocabulary (DEC-043, DEC-060), so "needs review" can be saved as a
+  Smart Collection and Health's links are ordinary filters.
+- "Match on Beatport" joins ORG-11's single operations list, offered by the context menu and the
+  Actions button alike.
+- Whether the four parts are tabs or sections is the phase spec's call.
+
+**Decided with**: User · **Date**: 2026-09-13
+
+---
+
+## DEC-073 — Missing Files Are Found by a Scan Job and Fixed in Rekordbox
+
+**Status**: Approved · **Fills**: DEC-037 · **Related**: DEC-054
+
+**Decision**: A cancellable "Check files" job checks every track's file, and runs after each import
+or refresh as well as on request. Each track's status and the time it was checked are stored by
+CuePoint, and are filterable. CuePoint does not relocate files: the path is Rekordbox's, fixed there
+with Rekordbox's own Relocate and brought in by a refresh.
+
+**Reason**: DEC-037 deferred this because a 50,000-path check is a slow scan with its own progress
+and failure modes — which is a job. A CuePoint relocation would create a path that disagrees with
+Rekordbox until Phase 8 exports it, and every consumer of `file_path` would need to know which to
+trust. Scanning on launch was declined because it puts the scan in front of startup on a
+disconnected drive.
+
+**Implications**:
+- Status lives in a CuePoint table, not on `tracks`, for DEC-068's reason. A refresh that changes a
+  track's path makes its status stale, and the phase spec says how that is shown.
+- A disconnected drive produces one coalesced finding, not 50,000 — DEC-054's lesson, applied to the
+  scan.
+- The player's DEC-054 behaviour does not change: a failed play still writes nothing.
+- Clean shows the expected path and reveals the nearest folder that does exist.
+- The DEC-070 job skips files the scan found missing, and says so in its preview.
+
+**Decided with**: User · **Date**: 2026-09-13
+
+---
+
+## DEC-074 — Duplicates Are Metadata Groups, and Nothing Is Deleted
+
+**Status**: Approved · **Related**: DEC-003, DEC-066, DEC-067
+
+**Decision**: Tracks are grouped as possible duplicates when they share a normalized file path,
+share an accepted Beatport track id, or share a normalized artist, title and mix with durations
+within ±2 s. Each group states which signal grouped it. A group can be marked "not duplicates",
+which is remembered. Tag, add-to-Collection and reveal are offered. Nothing deletes a track or a
+file.
+
+**Reason**: The path signal catches one file imported twice, the Beatport id catches the same
+release under different metadata, and the text signal catches the rest. Hashing audio would read
+every file, and acoustic fingerprinting belongs to Phase 12. Deleting is out because a refresh
+re-adds a deleted track (DEC-003) and the file is user data.
+
+**Implications**:
+- Normalization reuses what matching already uses (`mix_parser`, the matcher's text normalization)
+  rather than a third implementation.
+- "Not duplicates" survives a refresh and a rescan; a group that gains a new member is shown again.
+- Whether groups are stored or computed on demand is the phase spec's call, measured at 50,000
+  tracks.
+
+**Decided with**: User · **Date**: 2026-09-13
+
+---
+
+## DEC-075 — Library Health Is Counts, Not a Score
+
+**Status**: Approved · **Related**: DEC-043, DEC-072
+
+**Decision**: Library Health is a panel of concrete counts — missing files, tracks in duplicate
+groups, not matched, needs review, and tracks missing key, BPM, genre or artwork — each opening the
+Library filtered to exactly those tracks. There is no score.
+
+**Reason**: A 0–100 score needs weights nobody can justify, and would replace a list of things to do
+with a number to worry about. It is DEC-004's "explain, don't silently decide", applied to the
+summary.
+
+**Implications**:
+- Every count is expressible as a rule (DEC-043), and the count shown is that rule's count — so what
+  Health says and what the click shows cannot disagree.
+- "Missing key" and the like read effective values (DEC-068): a key applied from Beatport is not
+  missing.
+
+**Decided with**: User · **Date**: 2026-09-13
+
+---
+
+## DEC-076 — Artwork Is Shown From Files and Beatport, and Embedded Only Where Missing
+
+**Status**: Approved · **Against recommendation** (deferral) · **Related**: DEC-070, DEC-066
+
+**Decision**: Artwork embedded in audio files is read, and Beatport artwork is fetched for accepted
+matches. Both are cached as thumbnails and shown in the Inspector and the table. The DEC-070 job may
+embed Beatport artwork into a file that has none; it never replaces artwork a file already has.
+
+**Reason**: The user wants artwork visible, and wants files without any to receive it. Deferral was
+recommended because artwork is not a cleaning task and both sources are new code. Never replacing
+existing artwork keeps the write additive, which is what makes it acceptable inside a recorded,
+reversible job.
+
+**Implications**:
+- New code on both sides: `tag_writer.py` neither reads nor writes pictures today, and the Beatport
+  page parser never populates `BeatportCandidate.artwork_url`. The parser change must not alter
+  scoring, and tests mock Beatport, as AGENTS.md requires.
+- The thumbnail cache is regenerable and is not part of the DEC-009 backup; the database records
+  where artwork came from, not the image.
+- Beatport artwork is fetched for accepted matches only, lazily, and its absence offline is an
+  empty state, not an error.
+- Embedding records "had no artwork" before writing, so a restore removes what was added (DEC-070).
+- WAV is skipped for artwork as for every other tag.
+
+**Decided with**: User · **Date**: 2026-09-13
+
+### Amendment (2026-09-13) — real thumbnails, with Pillow at runtime
+
+**What the Phase 7 specification found**: "Cached as thumbnails" needs something to make thumbnails.
+Pillow is the standard Python choice, and is today only a build dependency
+(`requirements-build.txt`, used by `scripts/generate_icons.py`). The first draft of CLEAN-09 avoided
+it by caching original images and scaling them in the renderer. At 50,000 tracks that means an
+unbounded cache of images that are often a megabyte or more, decoded at full size to draw a 20-pixel
+table cell. Raised as Q-077.
+
+**Amended decision**: Pillow becomes a runtime dependency of the engine, at the version already
+pinned. Every image CuePoint decodes — embedded or fetched — passes through one guarded decoder. The
+cache holds bounded thumbnails only. An image embedded into a file is fetched at write time,
+validated by the same decoder, and re-encoded.
+
+**Amended implications**:
+- The decoder guard is part of the decision, not an implementation detail: a byte cap before
+  decoding, an allow-list of formats checked from the decoded image, Pillow's decompression-bomb
+  check treated as a refusal, EXIF orientation applied, all metadata stripped. Image decoders are a
+  classic attack surface, and CuePoint's input is untrusted twice over.
+- Thumbnails come in two named sizes derived from the layout at 3×, so integer scales never
+  upsample. The cache has a size cap with least-recently-used eviction and stays outside the DEC-009
+  backup.
+- No full-size image is kept. What is embedded into a user's file is a re-encoded, bounded JPEG, not
+  the raw bytes a server returned.
+- The packaged engine must be proved to make a thumbnail on Windows and macOS. The sidecar import
+  guard test covers Pillow.
+
+**Unchanged from the original decision**: both sources, display in the Inspector and the table,
+embedding only where a file has no artwork, and the record that lets a restore remove what was
+added.
+
+**Decided with**: User (delegated: "take the most professional and better long term decisions") ·
+**Date**: 2026-09-13

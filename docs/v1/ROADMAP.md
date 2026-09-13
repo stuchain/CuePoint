@@ -1,6 +1,6 @@
 # CuePoint — Evolution Roadmap
 
-Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–8 resolved (DEC-001…DEC-064).**
+Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–9 resolved (DEC-001…DEC-076).**
 Phase 2's ten steps are implemented and recorded in `PHASE2_SHELL.md`. Phase 3's twelve steps are
 implemented and recorded in `PHASE3_LIBRARY.md` (LIBRARY-01…LIBRARY-12), unblocked by Decision
 Round 5 (DEC-030…DEC-037). Phase 4's ten steps are specified in `PHASE4_LIBUI.md`
@@ -10,7 +10,10 @@ specified in `PHASE5_PLAYER.md` (PLAYER-01…PLAYER-12), unblocked by Decision R
 (DEC-049…DEC-056), and all of them are implemented; the phase is not complete, and what is left is
 non-code (see below). Phase 6's thirteen steps are specified in `PHASE6_ORG.md`
 (ORG-01…ORG-13), unblocked by Decision Round 8 (DEC-057…DEC-064). Complete: all thirteen steps
-are implemented and the phase-level acceptance is met in a packaged build.
+are implemented and the phase-level acceptance is met in a packaged build. Phase 7's fourteen steps
+are specified in `PHASE7_CLEAN.md` (CLEAN-01…CLEAN-14), unblocked by Decision Round 9
+(DEC-065…DEC-076); none is implemented. The two open points that document raised are settled as
+amendments to DEC-011 and DEC-076.
 Audio-analysis scope is the one remaining deferred item, to be resolved before the phase it affects
 starts; crossfade was resolved by DEC-056 in Round 7, and Smart Collection export/duplication by
 DEC-061 in Round 8. This roadmap shows the shape of what's ahead; it is not a commitment to
@@ -223,12 +226,33 @@ metadata back together, and the whole journey runs end to end in a packaged buil
 
 Step specifications: `PHASE6_ORG.md` (ORG-01…ORG-13, all implemented).
 
-## Phase 7 — Clean / Beatport (CLEAN-01 … CLEAN-13)
+## Phase 7 — Clean / Beatport (CLEAN-01 … CLEAN-14) — specified, not started
 
 Metadata precedence settled by DEC-004 (auto-mark accepted, explicit apply step). The one phase
 most dominated by "reuse, don't rebuild" —
 `core/matcher.py` is mature and stays as-is; this phase is mostly persistence + review-UI +
 duplicate/missing-file/health detection (all currently missing) wrapped around it.
+
+Round 9 settled the shape. A match runs over library tracks from any scope the Library browses, as a
+resumable job; XML and M3U input retire with inKey, while the CLI keeps its own (DEC-065). Every
+attempt is kept with all its candidates, so a re-match adds evidence rather than replacing it
+(DEC-066). An attempt auto-accepts at the matcher's existing ≥95 tier with every guard passed, and a
+user's own accept or reject survives any re-match (DEC-067). Applying writes key, BPM, genre, label
+and year into a CuePoint override layer that no refresh touches, with per-field and per-batch revert
+— closing Phase 6's deferred revert (DEC-068) — and the same five fields can be edited by hand
+(DEC-069). Writing tags into audio files stays, as an explicit previewed job that records every
+value it replaces (DEC-070). inKey, Results, past searches and `ResultsTable` retire into Clean
+(DEC-071), which is its own page with hooks in the Library and Inspector (DEC-072). Missing files
+are found by a scan job and fixed in Rekordbox, not relocated by CuePoint (DEC-073); duplicates are
+metadata groups and nothing is deleted (DEC-074); health is counts, not a score (DEC-075). Artwork
+is in — read from files, fetched from Beatport for accepted matches, and embedded only into files
+that have none (DEC-076, against the recommendation to defer).
+
+Step specifications: `PHASE7_CLEAN.md` (CLEAN-01…CLEAN-14, none implemented). Writing them grew the
+placeholder by one step and raised two open points, both settled as amendments (Q-076, Q-077):
+DEC-011's refresh warning now counts every track carrying the user's own data — ratings, notes,
+tags, review decisions and applied values as well as Collections — and DEC-076's artwork is cached
+as real thumbnails, making Pillow a runtime dependency behind one guarded decoder.
 
 ## Phase 8 — Rekordbox Export (EXPORT-01 … EXPORT-08)
 
