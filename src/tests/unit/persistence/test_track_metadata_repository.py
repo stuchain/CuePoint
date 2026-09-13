@@ -228,3 +228,71 @@ class TestDeletingATrackTakesItsMetadata:
         repo.set_rating(ids[0], 4)
         TrackRepository(db).delete(ids[0])
         assert repo.count() == 0
+
+
+def _write_overrides(db, track_id: int) -> None:
+    """Store every override column directly, as CLEAN-05's writes will."""
+    with db.transaction() as conn:
+        conn.execute(
+            "INSERT INTO track_metadata"
+            " (track_id, favorite, key, bpm, genre, label, year,"
+            "  created_at, updated_at)"
+            " VALUES (?, 0, '8A', 126.5, 'Techno', 'Drumcode', 2019, 'now', 'now')"
+            " ON CONFLICT(track_id) DO UPDATE SET key = excluded.key,"
+            " bpm = excluded.bpm, genre = excluded.genre, label = excluded.label,"
+            " year = excluded.year",
+            (track_id,),
+        )
+
+
+class TestTheOverrideColumns:
+    """CLEAN-01 widens the record; the reads must carry every column.
+
+    ``MetadataService.clear`` records what it forgets from this read, so a
+    column the read left out would be forgotten with no history row at all.
+    """
+
+    def test_get_reads_every_override(self, db, repo, ids):
+        _write_overrides(db, ids[0])
+        record = repo.get(ids[0])
+        assert (record.key, record.bpm, record.genre, record.label, record.year) == (
+            "8A",
+            126.5,
+            "Techno",
+            "Drumcode",
+            2019,
+        )
+
+    def test_get_many_reads_every_override(self, db, repo, ids):
+        _write_overrides(db, ids[1])
+        assert repo.get_many(ids)[ids[1]].has_overrides
+
+    def test_a_row_holding_only_overrides_is_a_record(self, db, repo, ids):
+        _write_overrides(db, ids[0])
+        assert repo.get(ids[0]) is not None
+        assert repo.count() == 1
+
+    def test_writing_a_rating_leaves_the_overrides_alone(self, db, repo, ids):
+        # The upsert touches one column; the "INSERT OR REPLACE written in a
+        # hurry" would null every override beside it.
+        _write_overrides(db, ids[0])
+        repo.set_rating(ids[0], 5)
+        repo.set_notes(ids[0], "late")
+        repo.set_favorite(ids[0], True)
+        record = repo.get(ids[0])
+        assert record.rating == 5
+        assert (record.key, record.year) == ("8A", 2019)
+
+    def test_clear_removes_the_overrides_with_the_record(self, db, repo, ids):
+        _write_overrides(db, ids[0])
+        assert repo.clear(ids[0]) is True
+        assert repo.get(ids[0]) is None
+
+    def test_an_untouched_track_has_no_override(self, repo, ids):
+        record = repo.set_rating(ids[0], 3)
+        assert not record.has_overrides
+
+    def test_the_imported_values_are_not_touched(self, db, tracks, repo, ids):
+        before = tracks.get(ids[0]).to_dict()
+        _write_overrides(db, ids[0])
+        assert tracks.get(ids[0]).to_dict() == before

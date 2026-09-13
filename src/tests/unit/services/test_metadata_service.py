@@ -25,15 +25,22 @@ from __future__ import annotations
 import pytest
 
 from cuepoint.models.library_track import LibraryTrack
+from cuepoint.models.track_metadata import OVERRIDE_FIELDS
 from cuepoint.persistence.activity_repository import ActivityRepository
 from cuepoint.persistence.track_metadata_repository import TrackMetadataRepository
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.activity_service import ActivityService
 from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.metadata_service import (
+    FIELD_BPM,
     FIELD_FAVORITE,
+    FIELD_GENRE,
+    FIELD_KEY,
+    FIELD_LABEL,
     FIELD_NOTES,
     FIELD_RATING,
+    FIELD_YEAR,
+    OVERRIDE_HISTORY_FIELDS,
     SOURCE_USER,
     MetadataService,
 )
@@ -213,6 +220,63 @@ class TestHistory:
     ):
         assert service.clear(rated) is False
         assert history(activity, rated) == []
+
+    def test_clear_records_each_override_it_forgets(self, db, service, activity, rated):
+        # CLEAN-01: the record grew five columns, and "forget everything"
+        # has to say what it forgot for each of them — one row per override,
+        # and none for the rating, favorite and note that were never set.
+        with db.transaction() as conn:
+            conn.execute(
+                "INSERT INTO track_metadata"
+                " (track_id, favorite, key, bpm, genre, label, year,"
+                "  created_at, updated_at)"
+                " VALUES (?, 0, '8A', 126.5, 'Techno', 'Drumcode', 2019, 'now', 'now')",
+                (rated,),
+            )
+
+        assert service.clear(rated) is True
+
+        recorded = sorted(
+            (e.field_name, e.old_value, e.new_value) for e in history(activity, rated)
+        )
+        assert recorded == sorted(
+            [
+                (FIELD_KEY, "8A", None),
+                (FIELD_BPM, 126.5, None),
+                (FIELD_GENRE, "Techno", None),
+                (FIELD_LABEL, "Drumcode", None),
+                (FIELD_YEAR, 2019, None),
+            ]
+        )
+        assert service.get(rated) is None
+
+    def test_clear_records_only_the_overrides_that_were_set(
+        self, db, service, activity, rated
+    ):
+        service.set_rating(rated, 4)
+        with db.transaction() as conn:
+            conn.execute(
+                "UPDATE track_metadata SET key = '8A' WHERE track_id = ?", (rated,)
+            )
+
+        service.clear(rated, batch_id="batch-9")
+
+        forgotten = [e for e in history(activity, rated) if e.new_value is None]
+        assert sorted((e.field_name, e.old_value) for e in forgotten) == [
+            (FIELD_KEY, "8A"),
+            (FIELD_RATING, 4),
+        ]
+        assert {e.batch_id for e in forgotten} == {"batch-9"}
+
+    def test_every_override_column_has_its_own_history_field(self):
+        # One table drives ``clear``; a column missing from it would be
+        # forgotten silently.
+        assert [column for column, _ in OVERRIDE_HISTORY_FIELDS] == list(
+            OVERRIDE_FIELDS
+        )
+        names = [name for _, name in OVERRIDE_HISTORY_FIELDS]
+        assert len(set(names)) == len(names)
+        assert all(name.startswith("cuepoint_") for name in names)
 
     def test_a_batch_id_is_carried_onto_the_entry(self, service, activity, rated):
         # DEC-063 needs this to exist before ORG-07 can group anything by it.

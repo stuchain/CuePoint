@@ -14,6 +14,11 @@ Results are deliberately **not** stored here. A match run's results are
 thousands of rows of candidate data; persisting them would bloat the database
 for something only useful while the app is open. DEC-007 chose durable job
 *records*, not crash-resumable job *state*.
+
+That still holds for this table. Phase 7 keeps match attempts in tables of
+their own (``match_attempts`` and ``match_candidates``, m0011, DEC-066) and a
+match job's per-track plan in ``match_job_tracks`` (DEC-065) — never in
+``progress_json``.
 """
 
 from __future__ import annotations

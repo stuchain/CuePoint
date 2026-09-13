@@ -41,8 +41,12 @@ from cuepoint.models.track_metadata import (
 from cuepoint.persistence.id_chunks import CHUNK_SIZE, chunked, unique_ids
 from cuepoint.services.interfaces import IDatabaseService, ITrackMetadataRepository
 
+# The override columns (CLEAN-01) are read with the rest so a record is never
+# half-loaded: ``MetadataService.clear`` records what it forgets from this
+# read, and a column missing here would be forgotten without a history row.
 _SELECT = (
-    "SELECT track_id, rating, favorite, notes, created_at, updated_at"
+    "SELECT track_id, rating, favorite, notes, created_at, updated_at,"
+    " key, bpm, genre, label, year"
     " FROM track_metadata"
 )
 

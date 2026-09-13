@@ -27,10 +27,21 @@ to Rekordbox's. ``rating = 0`` means the user gave it no stars, which is a
 judgement rather than the absence of one. DEC-034 drew that distinction for the
 imported columns and DEC-047 kept it in the Inspector; it holds here too, which
 is why clearing an override is not the same call as rating something zero.
+
+Five more overrides (CLEAN-01, DEC-068)
+---------------------------------------
+Phase 7 adds key, BPM, genre, label and year to the same record, on the same
+terms: each is ``None`` for "no override", in which case Rekordbox's value shows
+through, and a value when a match was applied or the user typed one. This type
+refuses what is not that kind of value at all — a BPM that is not a number, a
+year that is not a whole one — and stores blank text as no override. The
+vocabulary rules (a BPM's range, a key's notation, a genre's length) belong to
+CLEAN-05, which owns writing them.
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
@@ -51,6 +62,10 @@ SOURCE_REKORDBOX_RATING = "rekordbox"
 #: every read of the track slow.
 MAX_NOTES_LENGTH = 10_000
 
+#: The fields CuePoint can override (DEC-068), named as the ``tracks`` columns
+#: they sit beside.
+OVERRIDE_FIELDS = ("key", "bpm", "genre", "label", "year")
+
 
 @dataclass
 class TrackMetadata:
@@ -68,6 +83,11 @@ class TrackMetadata:
             of it.
         created_at: When CuePoint first recorded anything about this track.
         updated_at: When it last changed.
+        key: The key override, or ``None``.
+        bpm: The BPM override, or ``None``.
+        genre: The genre override, or ``None``.
+        label: The label override, or ``None``.
+        year: The year override, or ``None``.
     """
 
     track_id: int
@@ -76,6 +96,11 @@ class TrackMetadata:
     notes: Optional[str] = None
     created_at: str = field(default_factory=utc_now_iso)
     updated_at: str = field(default_factory=utc_now_iso)
+    key: Optional[str] = None
+    bpm: Optional[float] = None
+    genre: Optional[str] = None
+    label: Optional[str] = None
+    year: Optional[int] = None
 
     def __post_init__(self) -> None:
         """Normalize and validate, refusing anything that is not this data."""
@@ -83,6 +108,16 @@ class TrackMetadata:
         self.rating = normalize_rating(self.rating)
         self.favorite = bool(self.favorite)
         self.notes = normalize_notes(self.notes)
+        self.key = normalize_override_text(self.key, "key")
+        self.bpm = normalize_override_bpm(self.bpm)
+        self.genre = normalize_override_text(self.genre, "genre")
+        self.label = normalize_override_text(self.label, "label")
+        self.year = normalize_override_year(self.year)
+
+    @property
+    def has_overrides(self) -> bool:
+        """True when any of :data:`OVERRIDE_FIELDS` holds a value."""
+        return any(getattr(self, name) is not None for name in OVERRIDE_FIELDS)
 
     @property
     def is_empty(self) -> bool:
@@ -91,7 +126,12 @@ class TrackMetadata:
         The state a row should not be kept in: nothing to show, nothing to
         resolve against, and one more row to read on every browse.
         """
-        return self.rating is None and not self.favorite and not self.notes
+        return (
+            self.rating is None
+            and not self.favorite
+            and not self.notes
+            and not self.has_overrides
+        )
 
     def touch(self) -> None:
         """Mark the record as updated now."""
@@ -111,6 +151,11 @@ class TrackMetadata:
             "notes": self.notes,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
+            "key": self.key,
+            "bpm": self.bpm,
+            "genre": self.genre,
+            "label": self.label,
+            "year": self.year,
         }
 
     @classmethod
@@ -125,6 +170,11 @@ class TrackMetadata:
             notes=data.get("notes"),
             created_at=data.get("created_at") or utc_now_iso(),
             updated_at=data.get("updated_at") or utc_now_iso(),
+            key=data.get("key"),
+            bpm=data.get("bpm"),
+            genre=data.get("genre"),
+            label=data.get("label"),
+            year=data.get("year"),
         )
 
 
@@ -179,6 +229,65 @@ def normalize_notes(value: Any) -> Optional[str]:
             f"A note may be at most {MAX_NOTES_LENGTH} characters, got {len(text)}"
         )
     return text
+
+
+def normalize_override_text(value: Any, name: str) -> Optional[str]:
+    """Return a text override trimmed, or ``None`` for no override.
+
+    Blank is no override, for :func:`normalize_notes`'s reason: ``""`` and
+    ``NULL`` would read differently in the table and identically to a user —
+    and here the difference would matter, because an empty override would hide
+    Rekordbox's value behind nothing.
+
+    Raises:
+        ValueError: If the value is not text. A key of ``8`` is a mistake
+            upstream, not the key "8".
+    """
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValueError(f"The {name} override must be text, got {value!r}")
+    text = value.strip()
+    return text or None
+
+
+def normalize_override_bpm(value: Any) -> Optional[float]:
+    """Return a BPM override as a number, or ``None`` for no override.
+
+    Raises:
+        ValueError: If the value is not a finite number.
+    """
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        raise ValueError(f"The bpm override must be a number, got {value!r}")
+    try:
+        bpm = float(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"The bpm override must be a number, got {value!r}") from None
+    if not math.isfinite(bpm):
+        raise ValueError(f"The bpm override must be a finite number, got {value!r}")
+    return bpm
+
+
+def normalize_override_year(value: Any) -> Optional[int]:
+    """Return a year override as a whole number, or ``None`` for no override.
+
+    Raises:
+        ValueError: If the value is not a whole number.
+    """
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        raise ValueError(f"The year override must be a whole number, got {value!r}")
+    try:
+        year = int(value)
+        whole = year == float(value)
+    except (TypeError, ValueError, OverflowError):
+        whole = False
+    if not whole:
+        raise ValueError(f"The year override must be a whole number, got {value!r}")
+    return year
 
 
 def effective_rating(

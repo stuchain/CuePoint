@@ -62,7 +62,7 @@ nobody reads twice.
 
 from __future__ import annotations
 
-from typing import Dict, Iterable, Optional
+from typing import Dict, Iterable, Optional, Tuple
 
 from cuepoint.models.track_metadata import (
     TrackMetadata,
@@ -85,6 +85,26 @@ from cuepoint.services.interfaces import (
 FIELD_RATING = "cuepoint_rating"
 FIELD_FAVORITE = "favorite"
 FIELD_NOTES = "notes"
+
+#: The override fields (DEC-068), named the way ``cuepoint_rating`` is and for
+#: its reason: ``tracks.key`` is Rekordbox's, and a history calling both "key"
+#: would be unreadable beside an import that changed the other one.
+FIELD_KEY = "cuepoint_key"
+FIELD_BPM = "cuepoint_bpm"
+FIELD_GENRE = "cuepoint_genre"
+FIELD_LABEL = "cuepoint_label"
+FIELD_YEAR = "cuepoint_year"
+
+#: Each override column on :class:`TrackMetadata` and the history field it is
+#: recorded under. One table, so ``clear`` cannot forget a column it was never
+#: told about.
+OVERRIDE_HISTORY_FIELDS: Tuple[Tuple[str, str], ...] = (
+    ("key", FIELD_KEY),
+    ("bpm", FIELD_BPM),
+    ("genre", FIELD_GENRE),
+    ("label", FIELD_LABEL),
+    ("year", FIELD_YEAR),
+)
 
 #: Who made the change, as ``track_history.source`` records it. The import
 #: writes its own source, so a History tab can tell "you changed this" from
@@ -247,6 +267,12 @@ class MetadataService(IMetadataService):
                     track_id, FIELD_FAVORITE, bool(before.favorite), False, batch_id
                 )
                 self._record(track_id, FIELD_NOTES, before.notes, None, batch_id)
+                # One row per override that was set; an unset one is a no-op
+                # and ``record_field_change`` writes nothing for it.
+                for column, history_field in OVERRIDE_HISTORY_FIELDS:
+                    self._record(
+                        track_id, history_field, getattr(before, column), None, batch_id
+                    )
         return removed
 
     # --------------------------------------------------------------- helpers

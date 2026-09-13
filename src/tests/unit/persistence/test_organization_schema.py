@@ -215,7 +215,18 @@ class TestMigration:
     def test_track_history_gains_a_batch_id(self, db):
         assert "batch_id" in columns_of(db, "track_history")
 
-    def test_the_columns_are_the_ones_the_phase_needs(self, db):
+    def test_the_columns_are_the_ones_the_phase_needs(self, tmp_path):
+        # Asserted at version 9 exactly: m0011 adds override columns to
+        # ``track_metadata``, and this test is about what *this* migration made.
+        # ``test_clean_schema`` asserts the table as it is now.
+        db = DatabaseService(db_path=tmp_path / "v9.db")
+        try:
+            MigrationRunner(db, migrations=_migrations_up_to(9)).migrate()
+            self._assert_columns(db)
+        finally:
+            db.close_all()
+
+    def _assert_columns(self, db):
         assert columns_of(db, "track_metadata") == {
             "track_id",
             "rating",

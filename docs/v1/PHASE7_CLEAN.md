@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 7: Clean, Detailed Step Specifications
 
-Status: **Specified. No step implemented.** The fourteen steps below replace the roadmap's
+Status: **Specified. CLEAN-01 implemented.** The fourteen steps below replace the roadmap's
 placeholder inventory (CLEAN-01…CLEAN-13, which Round 9's answers outgrew by one). Per the process,
 no implementation happens from this document — each step needs an explicit "Implement CLEAN-NN"
 instruction, scoped to exactly that step, and its outcome is recorded under the step afterwards.
@@ -227,7 +227,7 @@ calls the number "tracks matched" is a bug.
 
 ---
 
-## CLEAN-01 — The Clean Schema
+## CLEAN-01 — The Clean Schema ✅ IMPLEMENTED 2026-09-13
 
 **Objective**: One migration that lands every table and column this phase needs, plus the domain
 models over them. Nothing behaves yet.
@@ -331,6 +331,103 @@ likely to be questioned later are argued above: overrides on `track_metadata`, s
 groups, no foreign key on job progress, and `SET NULL` on the write record.
 
 **Complexity**: **M**
+
+### ✅ IMPLEMENTED 2026-09-13
+
+**Outcome**: Complete. `migrations/m0011_clean.py` adds five override columns to `track_metadata`
+and creates ten tables; `models/match_attempt.py` (`MatchAttempt`, `MatchCandidate`, `TrackMatch`,
+`MatchJobTrack`), `models/file_status.py`, `models/duplicate_group.py`, `models/artwork.py` and
+`models/file_write.py` are the types over them, with `models/row_values.py` holding the value
+checks they share. `m0003_jobs.py`'s docstring points at the new tables. No service reads or writes
+any of it, which is the step as specified; the one existing path that had to learn about it is
+`MetadataService.clear`.
+
+**Where the implementation went past the letter of the design, and why.**
+
+- **Every `BeatportCandidate` field is a column**, not only the ones the design listed. The design's
+  own sentence is "the fields `BeatportCandidate` carries", and it omitted five of them
+  (`release_date`, `subgenre`, `preview_url`, `candidate_index`, `elapsed_ms`). A field dropped
+  here is evidence no later migration can recover, while a column costs nothing when null. A test
+  compares the dataclass with the table, so the next field added to the candidate fails there.
+- **Three indexes the design did not name**, on `track_match.attempt_id`, `candidate_id` and
+  `newer_attempt_id`. They follow ORG-01's rule (index every column that references another
+  table), and they were measured before being kept. With two attempts of twenty candidates and a
+  user decision per track, deleting 2,000 of 5,000 tracks takes 0.20 s with them and 25.77 s
+  without, because each deleted candidate otherwise scans `track_match`. Deleting 20,000 of 50,000
+  tracks (800,000 candidates) takes 2.21 s with them. The candidate index is
+  `UNIQUE (attempt_id, rank)`, so it is also the rule that an attempt ranks each candidate once.
+- **Small constraints where a wrong value would sit silently**:
+  - `CHECK (… IN (0, 1))` on `guard_ok`, `is_winner` and `done`;
+  - the signal vocabulary on `duplicate_dismissals` as well as on groups;
+  - `DEFAULT 'unknown'` on `track_artwork.embedded`;
+  - `NOT NULL` on both attempt timestamps, since an attempt is stored once it has finished.
+- **No foreign key from any `job_id` to `jobs`.** Job rows are never deleted, and a job row is
+  written only when the engine has a repository, which is best-effort. A plan, attempt or write
+  record must not depend on that. `match_attempts.best_candidate_id` is not a foreign key either:
+  the attempt is inserted before its candidates, and `is_winner` records the verdict on the
+  candidate itself.
+- **Relationships between columns live in the models, not in CHECKs**, for m0009's reason: a
+  CHECK cannot be dropped without rebuilding a table of user decisions. The models refuse:
+  - an accepted match without a candidate, and a no-match state that names one;
+  - a dispute on anything but a user's decision;
+  - an error attempt with no error text;
+  - a missing file with a size;
+  - an artwork hash without a present picture, and a checked state with no check time;
+  - a skipped or failed write with no reason.
+- **The dismissal fingerprint is defined now**: `duplicate_group.member_hash` is SHA-256 over the
+  sorted, de-duplicated member ids. `DuplicateDismissal.covers` compares it against the group as it
+  currently is, which is DEC-074's "a group that gains a member is shown again" as a tested
+  function.
+- **`TrackMetadata` gained the five overrides**, and they have the imported columns' types (a test
+  compares the two tables). The model refuses what is not that kind of value — non-text key,
+  genre or label; a BPM that is not a finite number; a year that is not a whole number — and
+  stores blank text as no override. Ranges and key notation are CLEAN-05's.
+  `TrackMetadataRepository` reads the new columns, and `MetadataService.clear` records one
+  `cuepoint_key`/`_bpm`/`_genre`/`_label`/`_year` history row per override it forgets, driven by
+  one table (`OVERRIDE_HISTORY_FIELDS`) so a column cannot be forgotten without a record.
+- **The override columns share names with `tracks`' columns.** Every browse statement already
+  qualifies its columns. A test runs browse, count, ids, sort, filter, search, facet and range
+  with the metadata join in place and contradicting overrides stored, and asserts the imported
+  values answer. That makes it the regression test for an ambiguous column and the proof that
+  nothing reads overrides before CLEAN-05.
+
+**Tests**:
+
+- `persistence/test_clean_schema.py` (112 tests):
+  - every CHECK vocabulary is read out of `sqlite_master` and compared with the model constants,
+    and each value is accepted, with its upper-case form and a stray word refused;
+  - required columns refuse null;
+  - every model's fields equal its table's columns;
+  - every index serves a reference, a key or the named `file_writes.job_id` query, every
+    referencing column is indexed, and the deliberately unindexed columns stay so;
+  - deleting a track takes its attempts, candidates, state, file status, artwork, membership and
+    overrides, keeps `file_writes` with `track_id` null and its path intact, and removes nothing
+    of another track's, nor any group, dismissal or job plan;
+  - an attempt or candidate a decision points at cannot be deleted;
+  - a populated version-10 database has every row of every existing table unchanged after the
+    upgrade, and the same schema as a fresh one.
+- `models/test_clean_models.py` (120 tests) covers every refusal and round trip.
+- `test_track_metadata_repository.py` and `test_metadata_service.py` cover the widened read and
+  `clear`.
+- `test_organization_schema.py`'s column assertion is now pinned to version 9, which is what it
+  describes.
+- The CLEAN-01 modules and `metadata_service.py` joined `test_mypy_foundation.py`'s guarded paths.
+
+The tests were then checked against nine in-memory mutations; each one made at least one test fail:
+
+- `CASCADE` on the write record;
+- a dropped reference index;
+- a narrowed vocabulary;
+- a cascading decision reference;
+- a speculative index;
+- a missing candidate column;
+- non-cascading duplicate membership;
+- an unqualified sort column;
+- a repository read that omits the overrides.
+
+"Plays" in the DoD needs no test of its own: nothing the player reads changed.
+
+**Complexity**: **M**, as estimated.
 
 ---
 
