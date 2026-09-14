@@ -70,6 +70,12 @@ from dataclasses import dataclass, replace
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from cuepoint.models.track_metadata import normalize_rating
+from cuepoint.services.match_apply import chosen_fields
+from cuepoint.services.override_values import (
+    NOTATION_CLASSIC,
+    normalize_override,
+    require_field,
+)
 from cuepoint.persistence.id_chunks import chunked, unique_ids
 from cuepoint.persistence.track_query import BrowseQuery
 from cuepoint.services.interfaces import (
@@ -77,6 +83,7 @@ from cuepoint.services.interfaces import (
     IBatchService,
     ICollectionService,
     IDatabaseService,
+    IMatchApplyService,
     IMatchStateService,
     IMetadataService,
     ITagService,
@@ -96,6 +103,8 @@ OPERATION_ADD_TO_COLLECTION = "add_to_collection"
 OPERATION_REMOVE_FROM_COLLECTION = "remove_from_collection"
 OPERATION_ACCEPT_MATCH = "accept_match"
 OPERATION_REJECT_MATCH = "reject_match"
+OPERATION_APPLY_MATCH = "apply_match"
+OPERATION_SET_OVERRIDE = "set_override"
 
 BATCH_OPERATIONS: Tuple[str, ...] = (
     OPERATION_SET_RATING,
@@ -106,6 +115,8 @@ BATCH_OPERATIONS: Tuple[str, ...] = (
     OPERATION_REMOVE_FROM_COLLECTION,
     OPERATION_ACCEPT_MATCH,
     OPERATION_REJECT_MATCH,
+    OPERATION_APPLY_MATCH,
+    OPERATION_SET_OVERRIDE,
 )
 
 #: Operations that take no value: what they decide is already on each track.
@@ -223,6 +234,14 @@ class BatchOperation:
                 # not a mistake worth being lenient about.
                 raise ValueError(f"Favorite must be true or false, not {self.value!r}")
             return replace(self, kind=kind, value=self.value)
+        if kind == OPERATION_APPLY_MATCH:
+            # The fields, each once, in the order asked for; which values
+            # they take is each track's own accepted candidate.
+            return replace(
+                self, kind=kind, value=tuple(chosen_fields(_listed(self.value)))
+            )
+        if kind == OPERATION_SET_OVERRIDE:
+            return replace(self, kind=kind, value=_override_request(self.value))
         if kind in _VALUELESS_OPERATIONS:
             # Refused rather than ignored: a caller that sent a candidate id
             # believes it chose one, and a batch accepts what each track
@@ -314,6 +333,7 @@ class BatchService(IBatchService):
         activity_service: IActivityService,
         database_service: IDatabaseService,
         match_state_service: IMatchStateService,
+        match_apply_service: IMatchApplyService,
     ) -> None:
         """Initialize the service.
 
@@ -327,6 +347,7 @@ class BatchService(IBatchService):
             database_service: Used only to open the transaction a chunk shares.
                 No SQL is run here.
             match_state_service: Match decisions, with their history (CLEAN-04).
+            match_apply_service: Applying accepted matches (CLEAN-05).
         """
         self._metadata = metadata_service
         self._tags = tag_service
@@ -335,6 +356,7 @@ class BatchService(IBatchService):
         self._activity = activity_service
         self._db = database_service
         self._states = match_state_service
+        self._apply = match_apply_service
 
     def resolve(self, selection: BatchSelection) -> List[int]:
         """Turn a selection into the ids it names, once.
@@ -525,6 +547,10 @@ class BatchService(IBatchService):
             return _DecideMatch(self._states, accepting=True)
         if operation.kind == OPERATION_REJECT_MATCH:
             return _DecideMatch(self._states, accepting=False)
+        if operation.kind == OPERATION_APPLY_MATCH:
+            return _ApplyMatch(self._apply, self._metadata, operation.value)
+        if operation.kind == OPERATION_SET_OVERRIDE:
+            return _SetOverride(self._metadata, operation.value)
         # The last one rather than an else-raise: ``validated`` has already
         # refused everything that is not in the vocabulary, and a branch no
         # test can reach is a branch that is not there.
@@ -780,9 +806,128 @@ class _DecideMatch(_Applier):
         return f"{verb} the Beatport match for {_tracks(result.changed)}"
 
 
+class _ApplyMatch(_Applier):
+    """Copy chosen fields from each track's accepted match (CLEAN-05, DEC-068).
+
+    A track that is not accepted is left as it is and counted unchanged, and a
+    field its candidate has no value for is skipped rather than written empty,
+    so an override the user already has is never erased by a batch.
+    """
+
+    operation = OPERATION_APPLY_MATCH
+
+    def __init__(
+        self,
+        apply: IMatchApplyService,
+        metadata: IMetadataService,
+        fields: Sequence[str],
+    ) -> None:
+        self._apply = apply
+        self._metadata = metadata
+        self._fields = tuple(fields)
+        self._notation = ""
+
+    def target(self) -> str:
+        return ", ".join(_FIELD_WORDS[name] for name in self._fields)
+
+    def begin(self) -> None:
+        # Asked once for the whole batch: the notation is the library's, and
+        # counting fifty thousand keys per track would be the whole cost.
+        self._notation = self._metadata.key_notation()
+
+    def apply(self, track_ids: Sequence[int], batch_id: str) -> int:
+        return sum(
+            1
+            for track_id in track_ids
+            if self._apply.apply_decided(
+                int(track_id), self._fields, batch_id, self._notation
+            )
+        )
+
+    def describe(self, result: BatchResult) -> str:
+        return f"Applied the Beatport {result.target} to {_tracks(result.changed)}"
+
+
+class _SetOverride(_Applier):
+    """Type one override onto tracks, or clear it (CLEAN-05, DEC-069)."""
+
+    operation = OPERATION_SET_OVERRIDE
+
+    def __init__(self, metadata: IMetadataService, request: Dict[str, Any]) -> None:
+        self._metadata = metadata
+        self._field: str = request["field"]
+        self._value = request["value"]
+        self._notation = ""
+
+    def target(self) -> str:
+        words = _FIELD_WORDS[self._field]
+        return (
+            f"no {words} override" if self._value is None else f"{words} {self._value}"
+        )
+
+    def begin(self) -> None:
+        self._notation = self._metadata.key_notation()
+
+    def apply(self, track_ids: Sequence[int], batch_id: str) -> int:
+        before = self._metadata.get_many(track_ids)
+        changed = 0
+        for track_id in track_ids:
+            record = self._metadata.set_override(
+                int(track_id),
+                self._field,
+                self._value,
+                batch_id=batch_id,
+                notation=self._notation,
+            )
+            previous = before.get(int(track_id))
+            if (getattr(previous, self._field) if previous else None) != getattr(
+                record, self._field
+            ):
+                changed += 1
+        return changed
+
+    def describe(self, result: BatchResult) -> str:
+        words = _FIELD_WORDS[self._field]
+        if self._value is None:
+            return f"Cleared the {words} override on {_tracks(result.changed)}"
+        return f"Set the {words} to {self._value} on {_tracks(result.changed)}"
+
+
 # ---------------------------------------------------------------------------
 # Small shared pieces
 # ---------------------------------------------------------------------------
+
+#: How each override field is named in a sentence.
+_FIELD_WORDS = {
+    "key": "key",
+    "bpm": "BPM",
+    "genre": "genre",
+    "label": "label",
+    "year": "year",
+}
+
+
+def _listed(value: Any) -> Sequence[Any]:
+    """A list of fields from a request, refusing anything that is not one."""
+    if not isinstance(value, (list, tuple)):
+        raise ValueError(f"apply_match needs a list of fields, not {value!r}")
+    return value
+
+
+def _override_request(value: Any) -> Dict[str, Any]:
+    """Validate ``{"field": ..., "value": ...}`` for a batch hand edit.
+
+    The value is checked here, before any track is touched, so a bad BPM is a
+    refusal of the batch rather than forty thousand failures. A key is checked
+    against every notation and stored in the library's own when applied.
+    """
+    if not isinstance(value, dict) or set(value) != {"field", "value"}:
+        raise ValueError(
+            'set_override needs {"field": ..., "value": ...}, not ' + repr(value)
+        )
+    field = require_field(value["field"])
+    typed = normalize_override(field, value["value"], NOTATION_CLASSIC)
+    return {"field": field, "value": value["value"] if field == "key" else typed}
 
 
 def _require_collection_named(

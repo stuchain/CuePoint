@@ -56,10 +56,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the same track plays normally the next time you ask for it
 
 ### Changed
-- A refresh that would delete tracks you have filed in a Collection now says so
-  before it does it, with the number of tracks and the number of Collections,
-  and asks you to confirm. The warning has existed since the refresh did; this
-  is the first release in which anything could trigger it
+- A refresh that would delete tracks carrying your own work now says so before
+  it does it, and asks you to confirm. It names each kind with its number:
+  tracks filed in Collections, rated or noted, tagged, and reviewed or edited
+  in CuePoint. A refresh whose deletions carry none of it still goes ahead
+  without asking
 - Any long job can be stopped from the status strip, not just a match. Import,
   refresh and a change over many tracks all show a Stop beside their progress,
   and stopping one keeps whatever it had already done

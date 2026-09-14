@@ -50,6 +50,7 @@ from cuepoint.models.filter_rule import (
     RuleSet,
     field_spec,
 )
+from cuepoint.models.track_metadata import OVERRIDE_FIELDS
 from cuepoint.persistence.filter_sql import (
     LIKE_ESCAPE,
     compile_rule_set,
@@ -116,11 +117,15 @@ class SortTerm:
             ``deadmau5`` after ``Zomby``, which reads as a broken sort.
         nullable: Whether the column can be null, and therefore needs the
             explicit nulls-last treatment when ascending.
+        joins: The joined tables the expression reads, by alias, as a filter
+            field names them. Sorting by an effective value (DEC-068) reads
+            CuePoint's layer, so the join is there even when no rule is.
     """
 
     sql: str
     text: bool = False
     nullable: bool = False
+    joins: Tuple[str, ...] = ()
 
 
 # The scope is a recursive walk rather than a single id: selecting a folder
@@ -266,6 +271,12 @@ _TAG_OUTER_JOIN = " LEFT JOIN track_tags ON track_tags.track_id = tracks.id"
 # search rather than a useful one.
 _SEARCH_COLUMNS = ("title", "artist", "album", "label")
 
+#: The joins a text search reads: the columns above, as their filter fields
+#: read them. Only ``label`` is overridable today.
+SEARCH_JOINS: Tuple[str, ...] = tuple(
+    sorted({alias for column in _SEARCH_COLUMNS for alias in field_spec(column).joins})
+)
+
 
 def search_clause(query: str) -> Tuple[Optional[str], str, Tuple[str, ...]]:
     """Build the WHERE fragment and parameters for a text query.
@@ -278,15 +289,27 @@ def search_clause(query: str) -> Tuple[Optional[str], str, Tuple[str, ...]]:
 
     Columns are table-qualified so the fragment is safe to drop into a query
     that has more than one table in scope, as a scoped browse does.
+
+    Each column is read as its filter field reads it, so the label searched is
+    the effective one (DEC-068): a label a user typed is found by typing it.
+    The fragment therefore needs the metadata join, which
+    :data:`SEARCH_JOINS` names for every statement that uses it.
     """
     text = (query or "").strip()
     if not text:
         return None, "", ()
     pattern = f"%{escape_like(text)}%"
     sql = " OR ".join(
-        f"tracks.{column} LIKE ? ESCAPE '{LIKE_ESCAPE}'" for column in _SEARCH_COLUMNS
+        f"{field_spec(column).expression} LIKE ? ESCAPE '{LIKE_ESCAPE}'"
+        for column in _SEARCH_COLUMNS
     )
     return pattern, f"({sql})", tuple(pattern for _ in _SEARCH_COLUMNS)
+
+
+def _field_term(name: str, text: bool = False) -> SortTerm:
+    """A nullable sort term reading what the filter field ``name`` reads."""
+    spec = field_spec(name)
+    return SortTerm(spec.expression, text=text, nullable=True, joins=spec.joins)
 
 
 _ARTIST = SortTerm("tracks.artist", text=True)
@@ -300,11 +323,14 @@ _PRIMARY: Dict[str, Tuple[SortTerm, ...]] = {
     "artist": (_ARTIST, _TITLE),
     "title": (_TITLE, _ARTIST),
     "album": (SortTerm("tracks.album", text=True, nullable=True),),
-    "label": (SortTerm("tracks.label", text=True, nullable=True),),
-    "genre": (SortTerm("tracks.genre", text=True, nullable=True),),
-    "key": (SortTerm("tracks.key", text=True, nullable=True),),
-    "bpm": (SortTerm("tracks.bpm", nullable=True),),
-    "year": (SortTerm("tracks.year", nullable=True),),
+    # The five fields CuePoint can override sort by the value a user sees
+    # (DEC-068): the expression the filter field of the same name compiles
+    # to, read from the registry rather than written a second time.
+    "label": (_field_term("label", text=True),),
+    "genre": (_field_term("genre", text=True),),
+    "key": (_field_term("key", text=True),),
+    "bpm": (_field_term("bpm"),),
+    "year": (_field_term("year"),),
     "duration_seconds": (SortTerm("tracks.duration_seconds", nullable=True),),
     "rating": (SortTerm("tracks.rating", nullable=True),),
     "play_count": (SortTerm("tracks.play_count", nullable=True),),
@@ -345,6 +371,11 @@ def sort_terms(sort: str) -> Tuple[SortTerm, ...]:
     if sort in ("artist", "title"):
         return primary
     return primary + _SECONDARY
+
+
+def sort_joins(sort: str) -> Tuple[str, ...]:
+    """The joins an ordering reads. A count needs none: it does not sort."""
+    return tuple(alias for term in sort_terms(sort) for alias in term.joins)
 
 
 def clamp_limit(limit: Optional[int]) -> int:
@@ -542,9 +573,11 @@ def _predicate(query: BrowseQuery, *, joins: Iterable[str] = ()) -> Predicate:
     cte = f"WITH RECURSIVE {', '.join(ctes)}" if ctes else ""
 
     pattern, sql, search_params = search_clause(query.query)
+    searched: Tuple[str, ...] = ()
     if pattern is not None:
         clauses.append(sql)
         params.extend(search_params)
+        searched = SEARCH_JOINS
 
     filter_sql, filter_params = compile_rule_set(query.rules)
     if filter_sql:
@@ -552,7 +585,7 @@ def _predicate(query: BrowseQuery, *, joins: Iterable[str] = ()) -> Predicate:
         params.extend(filter_params)
 
     where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
-    join = _joins(set(joins) | required_joins(query.rules))
+    join = _joins(set(joins) | set(searched) | required_joins(query.rules))
     return Predicate(cte=cte, join=join, where=where, params=tuple(params))
 
 
@@ -568,7 +601,7 @@ def build_select(
         BrowseQueryError: Via :meth:`BrowseQuery.validated`.
     """
     valid = query.validated()
-    parts = _predicate(valid)
+    parts = _predicate(valid, joins=sort_joins(valid.sort))
     sql = (
         f"{parts.cte}SELECT tracks.* FROM tracks{parts.join}{parts.where} "
         f"{_order_by(valid)} LIMIT ? OFFSET ?"
@@ -587,7 +620,7 @@ def build_select_ids(
     a row index means anything when the window moves.
     """
     valid = query.validated()
-    parts = _predicate(valid)
+    parts = _predicate(valid, joins=sort_joins(valid.sort))
     sql = (
         f"{parts.cte}SELECT tracks.id FROM tracks{parts.join}{parts.where} "
         f"{_order_by(valid)} LIMIT ? OFFSET ?"
@@ -618,10 +651,14 @@ def build_select_queue(
     paging a long queue cannot repeat or skip a track where sort values tie.
     """
     valid = query.validated()
-    parts = _predicate(valid)
+    # Key and BPM as a DJ sees them (DEC-068): a player bar showing the key
+    # Rekordbox guessed beside the one the user corrected shows the wrong one.
+    parts = _predicate(valid, joins=(METADATA_ALIAS, *sort_joins(valid.sort)))
+    key = field_spec("key").expression
+    bpm = field_spec("bpm").expression
     sql = (
-        f"{parts.cte}SELECT tracks.id, tracks.title, tracks.artist, tracks.key, "
-        f"tracks.bpm, tracks.duration_seconds, tracks.file_path "
+        f"{parts.cte}SELECT tracks.id, tracks.title, tracks.artist, {key} AS key, "
+        f"{bpm} AS bpm, tracks.duration_seconds, tracks.file_path "
         f"FROM tracks{parts.join}{parts.where} "
         f"{_order_by(valid)} LIMIT ? OFFSET ?"
     )
@@ -698,8 +735,12 @@ def _group_by(spec: FieldSpec) -> str:
     against the index migration 0008 creates for exactly this. Numbers have no
     case, so they group as themselves.
     """
-    column = _facet_column(spec)
-    if spec.type in (TYPE_NUMBER, TYPE_BOOL):
+    return _grouping(_facet_column(spec), spec.type)
+
+
+def _grouping(column: str, type_: str) -> str:
+    """Group ``column`` as a field of ``type_`` groups: text without case."""
+    if type_ in (TYPE_NUMBER, TYPE_BOOL):
         return column
     return f"{column} COLLATE NOCASE"
 
@@ -742,13 +783,72 @@ def _has_value(spec: FieldSpec) -> str:
     same thing. A number is missing only when it is null, because zero plays is
     an answer and a zero rating is a rating (DEC-034).
     """
-    column = _facet_column(spec)
-    if spec.type in (TYPE_NUMBER, TYPE_BOOL):
+    return _value_present(_facet_column(spec), spec.type)
+
+
+def _value_present(column: str, type_: str) -> str:
+    """ "``column`` holds a value", for a field of ``type_``."""
+    if type_ in (TYPE_NUMBER, TYPE_BOOL):
         # A yes/no is never missing — a track with no CuePoint row is simply
         # not favorited — so this is always true for it, and the "no value"
         # bucket a text field needs is correctly empty.
         return f"{column} IS NOT NULL"
     return f"({column} IS NOT NULL AND {column} <> '')"
+
+
+def _layers(spec: FieldSpec) -> Optional[Tuple[str, str]]:
+    """``(imported column, override column)`` for an effective field, else None.
+
+    The five fields CuePoint can override (DEC-068). Their expression is
+    ``COALESCE(override, imported)``, which is what makes a split grouping of
+    them exact — a test holds the registry to that shape.
+    """
+    if spec.name not in OVERRIDE_FIELDS:
+        return None
+    return f"tracks.{spec.name}", f"{METADATA_ALIAS}.{spec.name}"
+
+
+def _layered_facet_rows(spec: FieldSpec, *, present_only: bool) -> Optional[str]:
+    """An unfiltered effective facet's groups, counted one layer at a time.
+
+    Grouping ``COALESCE(meta.x, tracks.x)`` over the library joins every track
+    and sorts the result, because no index spans two tables. But the effective
+    value partitions the library exactly: a track whose override is null shows
+    its imported value, and every other track shows its override. So the
+    imported half groups ``tracks.x`` through migration 0008's facet index, the
+    override half groups the far smaller ``track_metadata``, and the caller
+    merges the two by the same collation. Measured at 50,000 tracks with 10,000
+    overrides, the genre list's two queries fall from 62 ms to 36 ms, and their
+    answers are identical — which a test asserts against the joined shape.
+
+    Only for a facet with nothing else narrowing it: any rule, search or scope
+    needs the join for its own sake, and there the joined scan is what ran
+    before CLEAN-05 too.
+
+    Each row is ``(raw_value, has_value, n)``; ``present_only`` drops the
+    groups with no value, as the value list does.
+    """
+    layers = _layers(spec)
+    if layers is None:
+        return None
+    imported, override = layers
+
+    def half(column: str, source: str, condition: str) -> str:
+        present = _value_present(column, spec.type)
+        where = f"{condition} AND {present}" if present_only else condition
+        return (
+            f"SELECT min({column}) AS raw_value, {present} AS has_value, "
+            f"count(*) AS n FROM {source} WHERE {where} "
+            f"GROUP BY {_grouping(column, spec.type)}"
+        )
+
+    return (
+        half(imported, f"tracks{JOINS[METADATA_ALIAS]}", f"{override} IS NULL")
+        + " UNION ALL "
+        + half(
+            override, f"track_metadata AS {METADATA_ALIAS}", f"{override} IS NOT NULL"
+        )
+    )
 
 
 def _column_facet_spec(field: str) -> FieldSpec:
@@ -855,6 +955,19 @@ def build_facet_values(
     spec = _column_facet_spec(field)
     scoped = facet_query(query, spec.name)
     parts = _predicate(scoped, joins=spec.joins)
+    layered = (
+        None
+        if parts.where or parts.cte
+        else _layered_facet_rows(spec, present_only=True)
+    )
+    if layered is not None:
+        return (
+            f"SELECT min(raw_value) AS raw_value, sum(n) AS n FROM ({layered}) "
+            f"GROUP BY {_grouping('raw_value', spec.type)} "
+            "ORDER BY n DESC, raw_value COLLATE NOCASE ASC "
+            "LIMIT ?",
+            (clamp_facet_limit(limit) + 1,),
+        )
     present = _has_value(spec)
     filtered = f"{parts.where} AND {present}" if parts.where else f" WHERE {present}"
     return (
@@ -882,6 +995,22 @@ def build_facet_value_count(
     spec = _column_facet_spec(field)
     scoped = facet_query(query, spec.name)
     parts = _predicate(scoped, joins=spec.joins)
+    layered = (
+        None
+        if parts.where or parts.cte
+        else _layered_facet_rows(spec, present_only=False)
+    )
+    if layered is not None:
+        # The same two sums over the merged groups. A merged group has a value
+        # when either half's does; both halves agree, since they group alike.
+        return (
+            "SELECT "
+            "sum(CASE WHEN has_value THEN 1 ELSE 0 END) AS values_count, "
+            "sum(CASE WHEN has_value THEN 0 ELSE n END) AS missing FROM "
+            f"(SELECT max(has_value) AS has_value, sum(n) AS n FROM ({layered}) "
+            f"GROUP BY {_grouping('raw_value', spec.type)})",
+            (),
+        )
     present = _has_value(spec)
     return (
         f"{parts.cte}SELECT "

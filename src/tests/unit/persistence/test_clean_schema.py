@@ -1149,15 +1149,18 @@ class TestUpgradingARealDatabase:
 # ------------------------------------------------- nothing reads the overrides
 
 
-class TestBrowseStillReadsTheImportedValues:
+class TestBothLayersUnderTheirNames:
     """The override columns share their names with ``tracks``' columns.
 
     Every browse, count, facet and search below joins ``track_metadata`` —
     a rating rule forces the join — while each track carries overrides that
     contradict its imported values. An unqualified column anywhere in that SQL
     fails here as "ambiguous column name"; a column resolved against the wrong
-    table fails as a wrong order or a wrong answer. CLEAN-05 is the step that
-    changes what these names mean, and it changes these tests when it does.
+    table fails as a wrong order or a wrong answer.
+
+    CLEAN-05 changed what the plain names mean, as CLEAN-01 said it would: they
+    read the effective value (DEC-068), and ``<field>_rekordbox`` reads the
+    imported one. Both are asserted, so neither layer can go missing.
     """
 
     @pytest.fixture
@@ -1194,10 +1197,12 @@ class TestBrowseStillReadsTheImportedValues:
         )
 
     @pytest.mark.parametrize("sort", list(OVERRIDE_FIELDS))
-    def test_sorting_orders_by_the_imported_value(self, library, sort):
+    def test_sorting_orders_by_the_effective_value(self, library, sort):
+        # Each override reverses the imported order, so the effective order is
+        # the imported one backwards.
         query = self.rated(sort=sort, query="T")
         rows = library.browse(query, limit=10)
-        assert [row.rekordbox_track_id for row in rows] == ["1", "2"]
+        assert [row.rekordbox_track_id for row in rows] == ["2", "1"]
         assert library.browse_count(query) == 2
         assert library.browse_ids(query, limit=10) == [int(row.id) for row in rows]
 
@@ -1214,31 +1219,51 @@ class TestBrowseStillReadsTheImportedValues:
     @pytest.mark.parametrize(
         "rule, expected",
         [
-            (FilterRule(field="genre", operator="is", value="House"), ["1"]),
-            (FilterRule(field="bpm", operator="gt", value=125), ["2"]),
-            (FilterRule(field="year", operator="lt", value=2005), ["1"]),
-            (FilterRule(field="label", operator="contains", value="Drum"), ["2"]),
+            (FilterRule(field="genre", operator="is", value="House"), ["2"]),
+            (FilterRule(field="bpm", operator="gt", value=125), ["1"]),
+            (FilterRule(field="year", operator="lt", value=2005), ["2"]),
+            (FilterRule(field="label", operator="contains", value="Drum"), ["1"]),
+            (FilterRule(field="key", operator="is", value="Am"), ["2"]),
+            (FilterRule(field="genre_rekordbox", operator="is", value="House"), ["1"]),
+            (FilterRule(field="bpm_rekordbox", operator="gt", value=125), ["2"]),
+            (FilterRule(field="year_rekordbox", operator="lt", value=2005), ["1"]),
+            (
+                FilterRule(field="label_rekordbox", operator="contains", value="Drum"),
+                ["2"],
+            ),
+            (FilterRule(field="key_rekordbox", operator="is", value="Am"), ["1"]),
+            (FilterRule(field="cuepoint_genre", operator="is", value="House"), ["2"]),
         ],
     )
-    def test_a_filter_reads_the_imported_value(self, library, rule, expected):
+    def test_a_filter_reads_the_layer_its_name_says(self, library, rule, expected):
         query = self.rated(rule)
         rows = library.browse(query, limit=10)
         assert sorted(row.rekordbox_track_id for row in rows) == expected
         assert library.browse_count(query) == len(expected)
 
-    def test_a_search_reads_the_imported_label(self, library):
-        rows = library.browse(self.rated(query="Defected"), limit=10)
-        assert [row.rekordbox_track_id for row in rows] == ["1"]
+    def test_a_search_reads_the_effective_label(self, library):
+        # Track 1 was imported as Defected and overridden to Drumcode; track 2
+        # the other way round. A text search finds what a user sees (DEC-068).
+        query = self.rated(query="Defected")
+        rows = library.browse(query, limit=10)
+        assert [row.rekordbox_track_id for row in rows] == ["2"]
+        assert library.browse_count(query) == 1
 
-    def test_a_facet_counts_the_imported_values(self, db, library):
+    def test_a_facet_counts_each_layer_under_its_name(self, db, library):
         with db.transaction() as conn:
             conn.execute("UPDATE track_metadata SET genre = 'Ambient'")
-        facet = library.facet_values(self.rated(), field="genre")
-        assert {value.value: value.count for value in facet.values} == {
+        effective = library.facet_values(self.rated(), field="genre")
+        imported = library.facet_values(self.rated(), field="genre_rekordbox")
+        assert {value.value: value.count for value in effective.values} == {
+            "Ambient": 2
+        }
+        assert {value.value: value.count for value in imported.values} == {
             "House": 1,
             "Techno": 1,
         }
 
-    def test_a_range_reads_the_imported_bpm(self, library):
-        span = library.facet_range(self.rated(), field="bpm")
-        assert (span.minimum, span.maximum) == (120.0, 130.0)
+    def test_a_range_reads_each_layer_under_its_name(self, library):
+        effective = library.facet_range(self.rated(), field="bpm")
+        imported = library.facet_range(self.rated(), field="bpm_rekordbox")
+        assert (effective.minimum, effective.maximum) == (100.0, 140.0)
+        assert (imported.minimum, imported.maximum) == (120.0, 130.0)

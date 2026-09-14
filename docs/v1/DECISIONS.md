@@ -262,6 +262,26 @@ prompt. The common case stays frictionless, which was half of DEC-011's reason.
 **Decided with**: User (delegated: "take the most professional and better long term decisions") ·
 **Date**: 2026-09-13
 
+### Implemented (2026-09-14, CLEAN-05) — five kinds, each with its number
+
+**What building it settled**:
+
+- *Reviewed and edited are two kinds, not one.* A match decision and an override are different
+  losses, and a user deciding whether to go ahead needs to know which it is. The preview says "12
+  tracks you are about to remove carry your own work: 3 in 2 Collections, 5 rated or noted, 4
+  tagged, 6 reviewed, 2 edited. Removing them removes that too." The engine's refusal says the same
+  kinds for a caller that never saw a preview.
+- *The Collection kind carries a track count too.* `collection_track_count` joins the summary, so
+  "3 in 2 Collections" has its number, as every other kind does.
+- *A record that no longer says anything is not work.* A CuePoint metadata row whose rating,
+  favorite, note and overrides are all empty, and a decision cleared back to automatic, are not
+  counted.
+- *Four questions per chunk of 500*, beside the Collection one, so a refresh deleting 20,000 tracks
+  asks a bounded number of questions rather than one per track.
+
+**Why the decision stands**: It is the amendment's rule applied without exceptions: counted when it
+cannot be recomputed, and a removal carrying none of it still goes ahead without a prompt.
+
 ---
 
 ## DEC-012 — Double-Click Behavior
@@ -1801,6 +1821,31 @@ why revert is built now rather than deferred again.
 
 **Decided with**: User · **Date**: 2026-09-13
 
+### Implemented (2026-09-14, CLEAN-05) — one notation, every reader, and what apply skips
+
+**What building it settled**:
+
+- *A key override is stored in the notation the library already uses.* The specification says
+  "the one Rekordbox's imported `key` column already uses", but that column holds whichever notation
+  the user chose in Rekordbox. So the notation is read from the library: Camelot when most imported
+  keys are Camelot, classic otherwise and when there are none. An override in the other notation
+  would make the plain `key` field hold `8A` on one track and `Am` for the same key on the next, and
+  a facet would count one key twice. Enharmonic spellings are stored as one key.
+- *Every reader of the plain names reads the effective value*: filters, facets, ranges, sorts,
+  saved Smart Collections, the play queue's key and BPM, and the text search, which finds a label a
+  user typed. The row payload keeps its plain fields as imported and adds `effective_*` and
+  `overridden`, because DEC-057 keeps the two layers distinguishable on the wire. The refresh diff
+  and the match adapter read the import, and a test on each says so.
+- *Apply refuses for one track and skips for a batch.* Applying a named field the accepted candidate
+  has no value for refuses the whole apply, because writing nothing silently would tell the user it
+  was applied. A batch over thousands of tracks applies what each candidate has and leaves the rest
+  as it was. Neither ever writes an empty value over an override, and a track nobody accepted is
+  left alone.
+
+**Why the decision stands**: The layer is DEC-057's model applied a second time, and each answer
+keeps it one model: one stored form per value, one meaning per name, and nothing erased by a write
+that had nothing to write.
+
 ---
 
 ## DEC-069 — Hand Edits Reach the Fields Beatport Supplies
@@ -1824,6 +1869,22 @@ an edited title and an imported one.
   was which.
 
 **Decided with**: User · **Date**: 2026-09-13
+
+### Implemented (2026-09-14, CLEAN-05) — the vocabulary
+
+**What building it settled**:
+
+- *Key*: classic (`Am`, `F#`), Camelot (`8A`), short (`Amin`) or spelled out (`A minor`, Beatport's
+  `A min`), with ♯ and ♭ as well as `#` and `b`. Stored in the library's notation (DEC-068's note).
+- *BPM*: 20 to 300, at most two decimals. *Year*: a whole number, 1900 to next year. *Genre and
+  label*: trimmed, 1 to 200 characters.
+- *Blank is refused, not read as a clear.* Clearing is `null`. A caller that sent `""` for a genre
+  believes it set one, and clearing it would silently show Rekordbox's genre instead.
+- *A batch hand edit is validated before any track is touched*, so a bad BPM refuses the batch
+  rather than failing forty thousand times.
+
+**Why the decision stands**: The engine refuses exactly what the UI will not build, and each refusal
+names the field and the value.
 
 ---
 

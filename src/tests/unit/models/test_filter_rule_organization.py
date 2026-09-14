@@ -88,9 +88,12 @@ class TestTheRegistryGrew:
             assert not (spec.column and spec.link), spec.name
 
     def test_a_plain_field_is_still_its_own_column(self):
-        assert field_spec("genre").expression == "tracks.genre"
-        assert field_spec("genre").is_membership is False
-        assert field_spec("genre").metadata is False
+        # ``colour`` has one layer; ``genre`` has two since CLEAN-05.
+        assert field_spec("colour").expression == "tracks.colour"
+        assert field_spec("colour").is_membership is False
+        assert field_spec("colour").metadata is False
+        assert field_spec("genre_rekordbox").expression == "tracks.genre"
+        assert field_spec("genre_rekordbox").metadata is False
 
 
 class TestRatingMeansWhatTheUserSees:

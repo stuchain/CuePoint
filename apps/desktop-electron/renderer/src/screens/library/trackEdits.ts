@@ -143,6 +143,11 @@ export function historySourceLabel(source: string): string {
  */
 const FIELD_LABELS: Record<string, string> = {
   cuepoint_rating: "Your rating",
+  cuepoint_key: "Your key",
+  cuepoint_bpm: "Your BPM",
+  cuepoint_genre: "Your genre",
+  cuepoint_label: "Your label",
+  cuepoint_year: "Your year",
   favorite: "Favorite",
   notes: "Your notes",
   tag: "Tag",

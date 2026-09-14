@@ -75,10 +75,11 @@ Filters and the lists of choices behind them, on the same 50,000-track library:
 | --- | --- |
 | Apply a filter | 13 ms |
 | Add two more rules to it | 12 ms |
-| Open the genre, label or rating list | 7–12 ms |
+| Open the rating list | 7 ms |
+| Open the genre, key or label list | 35–43 ms |
 | Open the artist list (900 artists) | 12 ms |
 | Re-open a list while other filters are on | 35 ms |
-| Read the BPM range | 16 ms |
+| Read the BPM range | 23 ms |
 
 The lists of choices — every genre in your library and how many tracks each has
 — are the expensive part, because answering means visiting every track. Seven
@@ -90,6 +91,15 @@ They cost 4.9 MB of database file and about 5% of an import time
 (10.40 s → 10.92 s). Artist, album and remixer are deliberately left out of
 them: those lists are long tails rather than a handful of choices, an index
 each would be far larger, and they still answer inside the same budget.
+
+The genre, key and label lists count the value you see, which is your own
+correction where you have made one. That means reading two tables rather than
+one, measured with 10,000 corrected tracks in the library: 35–43 ms rather than
+11–13 ms. The tracks you have not corrected are still counted through the
+indexes above, and only the corrections are counted separately. Counting both
+together in one pass took 59–68 ms. Filtering and sorting by those five fields
+cost the same kind of difference: a first page sorted by BPM takes 25 ms rather
+than 14.
 
 Re-opening a list while other filters are on is the slowest of these, and
 deliberately so: with a filter in play CuePoint reads the library directly

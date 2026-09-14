@@ -70,6 +70,13 @@ from cuepoint.models.track_metadata import (
     normalize_notes,
     normalize_rating,
 )
+from cuepoint.persistence.activity_repository import SOURCE_BEATPORT, SOURCE_CUEPOINT
+from cuepoint.services.override_values import (
+    NOTATION_CLASSIC,
+    normalize_override,
+    notation_from_counts,
+    require_field,
+)
 from cuepoint.services.interfaces import (
     IActivityService,
     IDatabaseService,
@@ -110,6 +117,13 @@ OVERRIDE_HISTORY_FIELDS: Tuple[Tuple[str, str], ...] = (
 #: writes its own source, so a History tab can tell "you changed this" from
 #: "the last refresh changed this" (DEC-008).
 SOURCE_USER = "cuepoint"
+
+#: Where an override can come from (DEC-068, DEC-069): a value applied from a
+#: Beatport match, or one a user typed. The Inspector reads which from the
+#: latest history row for the field, so history is the only record of it.
+OVERRIDE_SOURCES = (SOURCE_BEATPORT, SOURCE_CUEPOINT)
+
+_HISTORY_FIELD_FOR = dict(OVERRIDE_HISTORY_FIELDS)
 
 
 class MetadataService(IMetadataService):
@@ -242,6 +256,65 @@ class MetadataService(IMetadataService):
             )
         return record
 
+    def set_override(
+        self,
+        track_id: int,
+        field: str,
+        value: object,
+        source: str = SOURCE_USER,
+        batch_id: Optional[str] = None,
+        notation: Optional[str] = None,
+    ) -> TrackMetadata:
+        """Set or clear one of the five overrides, recording who supplied it.
+
+        ``None`` clears the override and Rekordbox's value shows through again.
+        A value that changes nothing writes nothing: no row, no history.
+
+        Args:
+            track_id: The track.
+            field: ``key``, ``bpm``, ``genre``, ``label`` or ``year``.
+            value: The value, validated by ``override_values``.
+            source: ``beatport`` for an applied match, ``cuepoint`` for a hand
+                edit. History records it under ``cuepoint_<field>``.
+            batch_id: Set when this is one of many writes from one action.
+            notation: The key notation to store in, when the caller has already
+                asked :meth:`key_notation` — a batch asks once, not per track.
+
+        Raises:
+            ValueError: If the track does not exist, the field cannot be
+                overridden, the source is not one of the two, or the value is
+                not one the field can hold. The message names the field.
+        """
+        track_id = int(track_id)
+        self._require_track(track_id)
+        name = require_field(field)
+        if source not in OVERRIDE_SOURCES:
+            raise ValueError(
+                f"An override comes from {' or '.join(OVERRIDE_SOURCES)}, not {source!r}"
+            )
+        if name == "key":
+            wanted = normalize_override(name, value, notation or self.key_notation())
+        else:
+            wanted = normalize_override(name, value, NOTATION_CLASSIC)
+
+        with self._db.transaction(join_existing=True):
+            before = self._metadata.get(track_id)
+            previous = getattr(before, name) if before is not None else None
+            if previous == wanted:
+                return (
+                    before if before is not None else TrackMetadata(track_id=track_id)
+                )
+            record = self._metadata.set_override(track_id, name, wanted)
+            self._record(
+                track_id, _HISTORY_FIELD_FOR[name], previous, wanted, batch_id, source
+            )
+        return record
+
+    def key_notation(self) -> str:
+        """The notation key overrides are stored in: the one the library uses."""
+        camelot, other = self._tracks.key_notation_counts()
+        return notation_from_counts(camelot, other)
+
     def clear(self, track_id: int, batch_id: Optional[str] = None) -> bool:
         """Forget everything CuePoint knows about a track.
 
@@ -284,6 +357,7 @@ class MetadataService(IMetadataService):
         old_value: object,
         new_value: object,
         batch_id: Optional[str],
+        source: str = SOURCE_USER,
     ) -> None:
         """Append one history entry, unless nothing actually changed."""
         self._activity.record_field_change(
@@ -291,7 +365,7 @@ class MetadataService(IMetadataService):
             field_name=field,
             old_value=old_value,
             new_value=new_value,
-            source=SOURCE_USER,
+            source=source,
             batch_id=batch_id,
         )
 

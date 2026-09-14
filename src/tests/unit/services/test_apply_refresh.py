@@ -25,6 +25,7 @@ import pytest
 from cuepoint.exceptions.cuepoint_exceptions import DatabaseError, ValidationError
 from cuepoint.models.references import NO_REFERENCES, ReferenceSummary
 from cuepoint.persistence.activity_repository import ActivityRepository
+from cuepoint.persistence.authored_data_repository import AuthoredDataRepository
 from cuepoint.persistence.collection_repository import CollectionRepository
 from cuepoint.persistence.track_metadata_repository import (
     TrackMetadataRepository,
@@ -491,7 +492,10 @@ class TestTheApplyAsksTheSeam:
             sources,
             db,
             library_service=Recording(
-                tracks, CollectionRepository(db), TrackMetadataRepository(db)
+                tracks,
+                CollectionRepository(db),
+                TrackMetadataRepository(db),
+                AuthoredDataRepository(db),
             ),
         )
         doomed = sorted(tracks.find_by_rekordbox_id(rid).id for rid in ("2", "3"))
@@ -540,7 +544,10 @@ class TestTheApplyAsksTheSeam:
             sources,
             db,
             library_service=Looking(
-                tracks, CollectionRepository(db), TrackMetadataRepository(db)
+                tracks,
+                CollectionRepository(db),
+                TrackMetadataRepository(db),
+                AuthoredDataRepository(db),
             ),
         )
         edited = write_export(
@@ -573,7 +580,10 @@ class TestTheApplyAsksTheSeam:
             sources,
             db,
             library_service=Recording(
-                tracks, CollectionRepository(db), TrackMetadataRepository(db)
+                tracks,
+                CollectionRepository(db),
+                TrackMetadataRepository(db),
+                AuthoredDataRepository(db),
             ),
         )
         diff = service.compute_refresh_diff(imported)
@@ -608,7 +618,10 @@ class TestTheApplyAsksTheSeam:
             sources,
             db,
             library_service=Holding(
-                tracks, CollectionRepository(db), TrackMetadataRepository(db)
+                tracks,
+                CollectionRepository(db),
+                TrackMetadataRepository(db),
+                AuthoredDataRepository(db),
             ),
         )
         edited = write_export(
@@ -642,7 +655,10 @@ class TestTheApplyAsksTheSeam:
             sources,
             db,
             library_service=Holding(
-                tracks, CollectionRepository(db), TrackMetadataRepository(db)
+                tracks,
+                CollectionRepository(db),
+                TrackMetadataRepository(db),
+                AuthoredDataRepository(db),
             ),
         )
         edited = write_export(

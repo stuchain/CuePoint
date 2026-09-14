@@ -58,12 +58,14 @@ from cuepoint.services.batch_service import (
     BATCH_OPERATIONS,
     EVENT_BATCH_APPLIED,
     OPERATION_ACCEPT_MATCH,
+    OPERATION_APPLY_MATCH,
     OPERATION_ADD_TAG,
     OPERATION_ADD_TO_COLLECTION,
     OPERATION_REJECT_MATCH,
     OPERATION_REMOVE_FROM_COLLECTION,
     OPERATION_REMOVE_TAG,
     OPERATION_SET_FAVORITE,
+    OPERATION_SET_OVERRIDE,
     OPERATION_SET_RATING,
     BatchOperation,
     BatchResult,
@@ -73,6 +75,7 @@ from cuepoint.services.batch_service import (
 from cuepoint.services.collection_service import CollectionService
 from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.interfaces import IBatchService
+from cuepoint.services.match_apply import MatchApplyService
 from cuepoint.services.match_state import MatchStateService
 from cuepoint.services.metadata_service import MetadataService
 from cuepoint.services.migration_runner import MigrationRunner
@@ -140,8 +143,17 @@ def states(db, tracks, activity) -> MatchStateService:
 
 
 @pytest.fixture
-def service(db, metadata, tags, collections, tracks, activity, states) -> BatchService:
-    return BatchService(metadata, tags, collections, tracks, activity, db, states)
+def apply(db, metadata, tracks) -> MatchApplyService:
+    return MatchApplyService(MatchRepository(db), metadata, tracks, db)
+
+
+@pytest.fixture
+def service(
+    db, metadata, tags, collections, tracks, activity, states, apply
+) -> BatchService:
+    return BatchService(
+        metadata, tags, collections, tracks, activity, db, states, apply
+    )
 
 
 @pytest.fixture
@@ -462,8 +474,9 @@ class TestTheTargetIsFixedOnce:
 
 @pytest.mark.unit
 class TestTheVocabulary:
-    def test_every_operation_is_one_of_eight(self):
-        # ORG-07's six, and CLEAN-04's two match decisions in the same vocabulary.
+    def test_every_operation_is_one_of_ten(self):
+        # ORG-07's six, CLEAN-04's two match decisions, and CLEAN-05's apply
+        # and override, in the same vocabulary.
         assert BATCH_OPERATIONS == (
             OPERATION_SET_RATING,
             OPERATION_SET_FAVORITE,
@@ -473,6 +486,8 @@ class TestTheVocabulary:
             OPERATION_REMOVE_FROM_COLLECTION,
             OPERATION_ACCEPT_MATCH,
             OPERATION_REJECT_MATCH,
+            OPERATION_APPLY_MATCH,
+            OPERATION_SET_OVERRIDE,
         )
 
     def test_an_unknown_operation_is_refused_by_name(self, service, ids):
@@ -1227,7 +1242,7 @@ class TestTheResult:
 @pytest.mark.unit
 class TestNothingHalfDone:
     def test_a_batch_whose_event_cannot_be_written_fails_loudly(
-        self, db, metadata, tags, collections, tracks, ids, warmups, states
+        self, db, metadata, tags, collections, tracks, ids, warmups, states, apply
     ):
         """The event is the last thing a batch writes, and it is not optional.
 
@@ -1239,7 +1254,7 @@ class TestNothingHalfDone:
         and the record of it did not.
         """
         broken = BatchService(
-            metadata, tags, collections, tracks, Refuses(), db, states
+            metadata, tags, collections, tracks, Refuses(), db, states, apply
         )
         with pytest.raises(RuntimeError, match="feed is unavailable"):
             broken.apply_batch(

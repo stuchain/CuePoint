@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 7: Clean, Detailed Step Specifications
 
-Status: **Specified. CLEAN-01 to CLEAN-04 implemented.** The fourteen steps below replace the
+Status: **Specified. CLEAN-01 to CLEAN-05 implemented.** The fourteen steps below replace the
 roadmap's placeholder inventory (CLEAN-01…CLEAN-13, which Round 9's answers outgrew by one). Per
 the process, no implementation happens from this document — each step needs an explicit
 "Implement CLEAN-NN" instruction, scoped to exactly that step, and its outcome is recorded under the
@@ -1159,7 +1159,7 @@ shape CLEAN-06's revert will read, and that mutation now fails two tests.
 
 ---
 
-## CLEAN-05 — The Override Layer: Apply, Hand Edits, Effective Values
+## CLEAN-05 — The Override Layer: Apply, Hand Edits, Effective Values ✅ IMPLEMENTED 2026-09-14
 
 **Objective**: Write key, BPM, genre, label and year into CuePoint's layer — from an accepted
 candidate or by hand — and make the plain field names mean the effective value everywhere (DEC-068,
@@ -1247,6 +1247,238 @@ Collection at once. The mitigation is ORG-05's: the change is one registry edit 
 tests assert the new meaning rather than the absence of errors.
 
 **Complexity**: **L**
+
+### ✅ IMPLEMENTED 2026-09-14
+
+**Outcome**: Complete.
+
+- `services/override_values.py` holds the vocabulary, pure and engine-side: key parsing and
+  formatting, the library's notation, the BPM, year and text rules, and `candidate_value`, what
+  apply would copy from a candidate.
+- `MetadataService` gains `set_override(track_id, field, value, source, batch_id, notation)` and
+  `key_notation()`. History is recorded as `cuepoint_key` … `cuepoint_year`, with source `beatport`
+  or `cuepoint`, and a write that changes nothing records nothing. `clear` already forgot the five
+  columns with one row each (CLEAN-01), and now has a test that says so.
+- `services/match_apply.py` implements `IMatchApplyService`:
+  - `apply_match(track_id, fields)` for one track;
+  - `apply_decided`, the batch form.
+- `BatchService` gains two operations:
+  - `apply_match`, whose value is the field list;
+  - `set_override`, whose value is `{"field", "value"}`.
+
+  The batch job names them "Applying Beatport values" and "Editing tracks". The existing
+  `/api/v1/library/batch` route accepts both, which is an additive change. The renderer's
+  `BatchOperation` type gains them with CLEAN-11's bridge sweep.
+- The vocabulary:
+  - `key`, `bpm`, `genre`, `label` and `year` read `COALESCE(meta.<field>, tracks.<field>)`;
+  - `<field>_rekordbox` reads the import and `cuepoint_<field>` the override alone;
+  - facets, ranges and sorts follow the plain names, and a sort brings its own join (`SortTerm.joins`);
+  - the play queue carries the effective key and BPM;
+  - the text search reads the effective label.
+- The row payload adds `effective_key` … `effective_year` and `overridden`. The plain fields stay
+  what Rekordbox imported, as `rating` does beside `effective_rating`. The table's Label, Genre, Key,
+  BPM and Year columns draw the effective value, and the history panel names the five fields
+  ("Your BPM").
+- `persistence/authored_data_repository.py` answers which tracks carry each kind of the user's work.
+  `ReferenceSummary` gains `collection_track_count`, `rated_track_count`, `tagged_track_count`,
+  `reviewed_track_count` and `edited_track_count`. `LibraryService.references_for` combines it with
+  the Collection answer. The engine's refusal and the preview's warning name each non-zero kind with
+  its number, and the acknowledgement reads "I understand this removes my own work on these tracks
+  too".
+
+**Where it is visible.** The refresh preview's warning, which now appears for a deletion carrying a
+rating, a note, a tag, a review decision or an override, and not only a Collection. The filter bar
+builds its field list from the engine, so the `_rekordbox` and `cuepoint_` names appear in it. Nothing
+in the app can apply a match or type an override yet: the routes are CLEAN-11's and the controls
+CLEAN-13's.
+
+**What building it settled, and why.**
+
+- **A key is stored in the library's own notation.** The specification names "the one Rekordbox's
+  imported `key` column already uses". That column holds whichever notation the user chose in
+  Rekordbox, so the notation is read from it: Camelot when most imported keys are Camelot, classic
+  otherwise and when there are none. One query counts it, and a batch asks once, not per track.
+  Enharmonic spellings are one stored key, spelled as Rekordbox's classic display spells it. The
+  alternative, a fixed notation, would make the plain `key` field hold `8A` on one track and `Am`
+  for the same key on the next. DEC-068 carries a dated note.
+- **Blank is refused, not read as a clear.** Clearing is `None`. A caller that sent `""` believes
+  it set a value, and clearing silently would show Rekordbox's value in its place. Beatport's
+  spelled-out keys (`A min`, `F Minor`) are accepted, because apply copies them.
+- **Apply refuses for one track and skips for a batch.** A named field the accepted candidate has
+  no usable value for refuses the whole single apply, so nothing is half applied and nothing reports
+  success it did not have. A batch over thousands of tracks applies what each candidate has, and
+  counts a track nobody accepted as unchanged. Neither writes an empty value over an override. Every
+  field of one apply shares one batch id, generated when the caller gives none.
+- **A batch hand edit is validated before any track is touched.** A bad BPM refuses the batch
+  rather than failing once per track. A key is validated against every notation and stored in the
+  library's at apply time.
+- **Every reader of the plain names moved, including two the specification did not list.** The play
+  queue shows the key and BPM a DJ corrected, not the ones Rekordbox guessed. The text search finds a
+  label a user typed. Both `browse` and the global `search` join for it, and `search` still returns
+  the imported record. The rating sort is untouched: ORG-05 left it reading the imported column the
+  table's Rating column shows.
+- **The warning's kinds are five, each with a number.** "Reviewed" and "edited" are separate kinds,
+  because a decision and a corrected value are different losses. `collection_track_count` gives
+  "3 in 2 Collections" its number. A metadata row with nothing left in it, and a decision cleared
+  back to automatic, are not counted. Four questions per chunk of 500, beside the Collection one.
+  DEC-011's amendment carries a dated note.
+- **The bridge's new counts are required, not optional.** The engine always sends them. An optional
+  field let a fixture without them render "carry your own work: in 1 Collection" with no number, a
+  sentence no engine could produce. The type now says what the wire carries.
+
+**Measured** at 50,000 tracks with 10,000 overrides, against the previous commit on the same
+library in the same run. Before CLEAN-05 the plain names read the import; after, the effective
+value. Times are the median of five runs.
+
+| Operation | Before | After |
+| --- | --- | --- |
+| Count, `genre` is House · `key` is 8A · `year` is 2005 | 0.4 · 0.1 · 0.1 ms | 11.6 · 12.0 · 11.4 ms |
+| Count, `bpm` is 125 | 8.8 ms | 16.9 ms |
+| First page of 100 sorted by each of the five | 13.6–14.9 ms | 25.1–25.8 ms |
+| The same, within House | 10.2–15.1 ms | 23.5–23.7 ms |
+| Every id in order, by each | 82–97 ms | 94–106 ms |
+| Facet over the library, `genre` · `key` · `label` | 11.2 · 10.9 · 12.5 ms | 34.9 · 43.2 · 41.2 ms |
+| Facet within rating 5, `genre` · `key` · `label` | 43.8 · 43.4 · 47.3 ms | 41.6 · 43.6 · 45.6 ms |
+| Range, `bpm` · `year` | 12.1 · 5.2 ms | 23.2 · 16.2 ms |
+| Text search, page · count | 3.6 · 19.4 ms | 5.2 · 28.2 ms |
+| The whole queue, by BPM · by title | 408 · 269 ms | 418 · 289 ms |
+| A page at offset 25,000, by each of the five | 359–473 ms | 370–465 ms |
+
+`references_for` over 20,000 tracks carrying 10,000 overrides takes 30 ms, and so does the library's
+key notation, which a batch asks once.
+
+- **Every first page, count, facet and range stays inside Phase 4's 50 ms budget.** The fallback,
+  had a sort crossed it, was a stored effective column per field, kept by triggers and indexed. No
+  sort crossed it, so nothing is stored twice.
+- **The facets were the one regression worth fixing, and it was fixed.** The first measurement
+  grouped `COALESCE(meta.x, tracks.x)` over the join: 59–68 ms over the library, against 11–13 ms
+  before, because no index spans two tables. An unfiltered effective facet now counts a layer at a
+  time. Tracks with no override go through migration 0008's index, overrides are counted on their
+  own, and the two are merged by the same collation. The answer is identical, which a test asserts
+  page by page against the joined scan. With a rule in play the join is needed anyway, and those
+  numbers are what they were.
+- **Deep pages were already over the budget, and are unchanged.** A page at offset 25,000 costs
+  340–475 ms before and after for every sort but artist and title. That includes `play_count`,
+  `date_added` and `duration_seconds` (342, 371 and 369 ms). LIBUI-01 found that no single-column
+  index can serve an ordering that falls back to artist and title, and the effective value changes
+  none of that. It is recorded here as found, not as a cost of this step.
+
+**Tests**:
+
+- `services/test_override_values.py` (122 tests) covers:
+  - every key notation, accidental and enharmonic spelling, and the refusals naming the value;
+  - the notation rule, including a tie and an empty library;
+  - each BPM, year and text boundary on both sides, and blank refused;
+  - `candidate_value` treating an empty or unusable value as none.
+- `services/test_overrides.py` (58 tests) covers:
+  - hand edits: stored and recorded as `cuepoint`, the key in the library's notation, clearing
+    falling back, a no-op writing nothing, clearing what was never set creating no row, each refusal
+    naming its field, the batch id, and `clear` writing one history row per override;
+  - apply: exactly the chosen fields under one batch id, from the candidate a user accepted rather
+    than the winner, refusing an undecided track and a missing field without writing anything, an
+    apply and a later hand edit each winning in turn, and no decision changed;
+  - both batch operations, their sentences, the notation asked once, and bad requests refused before
+    any track;
+  - a batch apply keeping an override its candidate has no value for;
+  - the library's notation counted from real rows: every Camelot code including 10A to 12A, lower
+    case and padding, and what only looks like Camelot.
+- `services/test_overrides_survive.py` (10 tests) runs the real import and refresh over real XML.
+  It covers:
+  - re-import, refresh, restart and backup/restore each keeping every override;
+  - the refresh diff measuring Rekordbox's change from Rekordbox's value;
+  - the match adapter asking Beatport about the imported record.
+- `persistence/test_effective_values.py` (36 tests) covers:
+  - each field found by its override and not by what it covers, while `_rekordbox` still finds it;
+  - a saved Smart Collection with a `bpm` rule changing membership as overrides are applied and
+    cleared;
+  - facets, ranges and sorts over effective values, with a facet count equal to its rule's count;
+  - the queue, the row payload and the text search;
+  - every whole-library facet, at three page sizes, equal to the joined scan over a library of case
+    variants, blanks, missing values and a cleared override, and the registry held to the
+    `COALESCE(override, imported)` shape the split relies on.
+- `services/test_references_carry_user_work.py` (29 tests) covers:
+  - each kind alone reporting that kind alone, and an override of any one of the five fields
+    counting as an edit;
+  - attempts, automatic states, file status, artwork, emptied rows and removed tags reporting
+    nothing;
+  - a track carrying everything counted once;
+  - the Collection-only shape unchanged field for field;
+  - the refresh refusing a rated-only deletion, and applying one carrying nothing;
+  - the refusal's wording, and four questions per chunk.
+- `engine/test_override_jobs.py` (19 tests) runs through the bootstrapped container. It covers:
+  - a query apply above the threshold as a job, with its batch id, source, notation, skipped labels,
+    untouched unaccepted tracks, one event, and a re-apply writing nothing;
+  - setting and clearing a genre over a query;
+  - nine bad requests refused before any job;
+  - the existing batch route.
+- `RefreshPreviewDialog.test.tsx` (3 tests) covers a rated-only deletion that needs the box ticked,
+  an unreferenced one that does not, and a new preview not inheriting the tick.
+- Rewritten for the new meaning, not loosened:
+  - CLEAN-01's layer tests now assert both names;
+  - the facet index plans use the `_rekordbox` names, and both of an unfiltered effective facet's
+    queries are held to the same index, while a narrowed one joins;
+  - the SQL-shape tests write the join once for an effective field and none for an imported one.
+  - The refresh warning's renderer tests and the organization E2E spec assert the new sentence.
+- `match_apply.py` and `override_values.py` joined the mypy gate. `match_apply.py` joined the
+  persistence boundary's allowlist, as the other services that open a transaction without running
+  SQL did.
+
+The tests were checked against forty-two mutations written into the source:
+
+- **Validation:**
+  - a notation tie stored as Camelot;
+  - an accidental ignored;
+  - BPM unbounded, or keeping any number of decimals;
+  - year unbounded;
+  - blank text read as a clear;
+  - text length unbounded;
+  - a candidate's BPM not rounded.
+- **The write:**
+  - a no-op recorded;
+  - history ignoring the source;
+  - a key always stored classic;
+  - the notation count missing 10A to 12A.
+- **Apply:**
+  - an unaccepted track applied;
+  - a missing field written as a clear;
+  - a batch id per field;
+  - an apply recorded as a hand edit;
+  - a batch apply clearing a field its candidate lacks;
+  - an unchanged field counted as changed;
+  - the batch notation never asked;
+  - a batch hand edit not validated up front.
+- **Effective values:**
+  - the plain name reading the import;
+  - the import winning the coalesce;
+  - `_rekordbox` reading the effective value;
+  - a sort without its join;
+  - search reading the imported label;
+  - the queue playing imported values;
+  - a row naming nothing as overridden;
+  - the effective value preferring the import;
+  - a row's effective values being the import.
+- **The warning:**
+  - a favorite or note not counted;
+  - an automatic state counted as reviewed;
+  - a year override not counted;
+  - only the first chunk asked;
+  - an edit alone not asking first;
+  - referenced tracks limited to Collections;
+  - the refusal forgetting edits.
+- **The split facet:**
+  - the imported half counting overridden tracks too;
+  - either query merging its halves with case;
+  - the value list keeping groups with no value;
+  - the split running under a filter;
+  - the split never used.
+
+The first run missed three: the notation count missing 10A to 12A, a batch apply clearing a field its
+candidate lacks, and a year override not counted. Each had a test that exercised the code but not
+the case, because the fixture used only 8A and 9A, no track had an override to lose, and the edited
+kind was set through BPM alone. A test now covers each case, and all forty-two mutations fail at
+least one test.
+
+**Complexity**: **L**, as estimated.
 
 ---
 

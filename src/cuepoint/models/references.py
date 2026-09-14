@@ -44,12 +44,30 @@ class ReferenceSummary:
             emptied by a refresh is owed the name rather than the arithmetic —
             so they are carried rather than discarded. Sorted, distinct, and
             always consistent with ``collection_count``.
+        collection_track_count: How many of the tracks a Collection holds
+            (CLEAN-05), so a warning can say "3 in 2 Collections".
+        rated_track_count: Tracks carrying a CuePoint rating, favorite or note.
+        tagged_track_count: Tracks carrying a tag.
+        reviewed_track_count: Tracks whose match a user decided (DEC-067).
+        edited_track_count: Tracks carrying an override, applied or typed
+            (DEC-068, DEC-069).
+
+    What is counted is what cannot be recomputed (DEC-011, as amended): match
+    attempts and automatic states come back by matching again, and file
+    status, duplicate groups and artwork by scanning again, so none of them is
+    here. Every count is of tracks, and a track carrying several kinds is one
+    referenced track.
     """
 
     collection_count: int = 0
     set_count: int = 0
     referenced_track_ids: Tuple[int, ...] = field(default_factory=tuple)
     collection_ids: Tuple[int, ...] = field(default_factory=tuple)
+    collection_track_count: int = 0
+    rated_track_count: int = 0
+    tagged_track_count: int = 0
+    reviewed_track_count: int = 0
+    edited_track_count: int = 0
 
     @property
     def referenced_track_count(self) -> int:
@@ -60,10 +78,18 @@ class ReferenceSummary:
     def has_references(self) -> bool:
         """True when deleting these tracks would change something else.
 
-        The condition DEC-011 turns into a prompt. False means the removal is
-        the uneventful case and goes ahead without one.
+        The condition DEC-011 turns into a prompt: any Collection or Set, and
+        since CLEAN-05 any rating, note, tag, review decision or override. False
+        means the removal is the uneventful case and goes ahead without one.
         """
-        return bool(self.collection_count or self.set_count)
+        return bool(
+            self.collection_count
+            or self.set_count
+            or self.rated_track_count
+            or self.tagged_track_count
+            or self.reviewed_track_count
+            or self.edited_track_count
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize for the API. A public shape; extend rather than rename."""
@@ -74,6 +100,11 @@ class ReferenceSummary:
             "referenced_track_ids": list(self.referenced_track_ids),
             "collection_ids": list(self.collection_ids),
             "has_references": self.has_references,
+            "collection_track_count": self.collection_track_count,
+            "rated_track_count": self.rated_track_count,
+            "tagged_track_count": self.tagged_track_count,
+            "reviewed_track_count": self.reviewed_track_count,
+            "edited_track_count": self.edited_track_count,
         }
 
 

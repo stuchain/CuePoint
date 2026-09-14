@@ -29,8 +29,11 @@ from cuepoint.models.filter_rule import (
 )
 from cuepoint.models.library_track import LibraryTrack, QueueTrack
 from cuepoint.models.track_metadata import (
+    OVERRIDE_FIELDS,
     TrackMetadata,
     effective_rating,
+    effective_value,
+    overridden_fields,
     rating_source,
 )
 from cuepoint.persistence.track_query import (
@@ -122,13 +125,18 @@ def track_to_dict(
     Notes are deliberately absent: ten thousand characters times a hundred rows
     is a megabyte a window, and the one place that shows a note reads one track.
 
+    CLEAN-05 added ``effective_key``, ``effective_bpm``, ``effective_genre``,
+    ``effective_label`` and ``effective_year`` — each the override when there is
+    one (DEC-068) — and ``overridden``, the names of the fields an override
+    supplies. Additive, as every change to this shape has been.
+
     ``metadata`` is what the window read in one query (ORG-02). ``None`` means
     the track has nothing recorded, which is the common case and is not a
     missing answer — the imported rating shows through and the favorite is
     false.
     """
     cuepoint_rating = metadata.rating if metadata is not None else None
-    return {
+    payload: Dict[str, Any] = {
         "id": track.id,
         "rekordbox_track_id": track.rekordbox_track_id,
         "title": track.title,
@@ -152,6 +160,16 @@ def track_to_dict(
         "rating_source": rating_source(track.rating, cuepoint_rating),
         "favorite": bool(metadata.favorite) if metadata is not None else False,
     }
+    # CLEAN-05 (DEC-068): the five overridable fields as a user sees them, and
+    # which of them CuePoint's layer supplied, so the table can mark an
+    # override without asking again. The plain names above stay what Rekordbox
+    # imported, as ``rating`` does.
+    for name in OVERRIDE_FIELDS:
+        payload[f"effective_{name}"] = effective_value(
+            getattr(track, name), getattr(metadata, name) if metadata else None
+        )
+    payload["overridden"] = list(overridden_fields(metadata))
+    return payload
 
 
 #: The two things this endpoint can be asked. ``search`` is what global search

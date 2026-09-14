@@ -440,8 +440,8 @@ class TestCompiledShape:
         assert compile_rule_set(RuleSet()) == ("", ())
 
     def test_one_rule_needs_no_extra_brackets(self):
-        sql, _ = compile_rule_set(RuleSet(rules=(rule("bpm", "is", 128),)))
-        assert sql == "tracks.bpm = ?"
+        sql, _ = compile_rule_set(RuleSet(rules=(rule("play_count", "is", 12),)))
+        assert sql == "tracks.play_count = ?"
 
     def test_several_rules_are_bracketed_and_anded(self):
         sql, _ = compile_rule_set(

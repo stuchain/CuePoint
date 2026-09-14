@@ -25,6 +25,7 @@ import pytest
 from cuepoint.models.references import NO_REFERENCES, ReferenceSummary
 from cuepoint.persistence.library_source_repository import LibrarySourceRepository
 from cuepoint.persistence.playlist_repository import PlaylistRepository
+from cuepoint.persistence.authored_data_repository import AuthoredDataRepository
 from cuepoint.persistence.collection_repository import CollectionRepository
 from cuepoint.persistence.track_metadata_repository import (
     TrackMetadataRepository,
@@ -76,6 +77,7 @@ def library(db):
         track_repository=TrackRepository(db),
         collection_repository=CollectionRepository(db),
         metadata_repository=TrackMetadataRepository(db),
+        authored_repository=AuthoredDataRepository(db),
     )
 
 
@@ -130,6 +132,7 @@ class TestTheSeamAnswersToday:
             track_repository=TrackRepository(db),
             collection_repository=ReadsNothing(),  # type: ignore[arg-type]
             metadata_repository=TrackMetadataRepository(db),
+            authored_repository=AuthoredDataRepository(db),
         )
         consumed = []
 
@@ -168,6 +171,12 @@ class TestTheSeamAnswersToday:
             "referenced_track_ids",
             "collection_ids",
             "has_references",
+            # CLEAN-05 (DEC-011 amended): the kinds of a user's own work.
+            "collection_track_count",
+            "rated_track_count",
+            "tagged_track_count",
+            "reviewed_track_count",
+            "edited_track_count",
         }
 
 
@@ -268,6 +277,7 @@ class TestTheDiffCarriesTheSummary:
             track_repository=service._tracks,
             collection_repository=CollectionRepository(db),
             metadata_repository=TrackMetadataRepository(db),
+            authored_repository=AuthoredDataRepository(db),
         )
         service.import_rekordbox_xml(self._export(tmp_path, [1, 2, 3], "a.xml"))
         removed_id = service._tracks.find_by_rekordbox_id("3").id

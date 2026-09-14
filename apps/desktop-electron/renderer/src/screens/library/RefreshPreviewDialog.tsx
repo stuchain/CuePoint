@@ -149,7 +149,7 @@ export function RefreshPreviewDialog({
                   checked={acknowledged}
                   onChange={(event) => setAcknowledged(event.target.checked)}
                 />
-                <span>I understand this changes my Collections and Sets too</span>
+                <span>I understand this removes my own work on these tracks too</span>
               </label>
             )}
 

@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import pytest
 
+from cuepoint.persistence.authored_data_repository import AuthoredDataRepository
 from cuepoint.persistence.collection_repository import CollectionRepository
 from cuepoint.persistence.library_source_repository import LibrarySourceRepository
 from cuepoint.persistence.playlist_repository import PlaylistRepository
@@ -71,6 +72,7 @@ def library(db, tracks):
         track_repository=tracks,
         collection_repository=CollectionRepository(db),
         metadata_repository=TrackMetadataRepository(db),
+        authored_repository=AuthoredDataRepository(db),
     )
 
 

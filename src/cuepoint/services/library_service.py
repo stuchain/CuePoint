@@ -33,6 +33,7 @@ from cuepoint.persistence.track_query import (
     clamp_offset,
 )
 from cuepoint.services.interfaces import (
+    IAuthoredDataRepository,
     ICollectionRepository,
     ILibraryService,
     ITrackMetadataRepository,
@@ -118,6 +119,7 @@ class LibraryService(ILibraryService):
         track_repository: ITrackRepository,
         collection_repository: ICollectionRepository,
         metadata_repository: ITrackMetadataRepository,
+        authored_repository: IAuthoredDataRepository,
     ) -> None:
         """Wire the library to the tracks it reads and what else knows about them.
 
@@ -137,6 +139,10 @@ class LibraryService(ILibraryService):
         self._tracks = track_repository
         self._collections = collection_repository
         self._metadata = metadata_repository
+        # No default either, for ``collection_repository``'s reason: it is what
+        # makes a refresh warn before deleting a track a user rated, tagged,
+        # reviewed or edited (DEC-011, as amended in CLEAN-05).
+        self._authored = authored_repository
 
     def _browse_query(
         self,
@@ -405,6 +411,12 @@ class LibraryService(ILibraryService):
         changed, and a track filed in two Collections twice over is one track
         that is referenced. Sets stay zero until Phase 10.
 
+        **CLEAN-05 grew the body again, and the summary, and nothing else.**
+        DEC-011 as amended counts every removed track carrying work nothing can
+        recompute: a CuePoint rating, favorite or note, a tag, a user's match
+        decision, or an override. Attempts, automatic states and scan results
+        are not counted, because matching or scanning again brings them back.
+
         There is no early return for an empty request, and no special case for
         "found nothing". Both were written and both were removed: a mutation
         run showed each could be deleted with every test still passing, because
@@ -425,10 +437,20 @@ class LibraryService(ILibraryService):
         # Consumed rather than ignored: a caller passing a generator must not
         # find it silently untouched.
         wanted = list(track_ids)
-        collection_ids, referenced = self._collections.references_for(wanted)
+        collection_ids, collected = self._collections.references_for(wanted)
+        authored = self._authored.tracks_carrying(wanted)
+        # A track carrying several kinds is one referenced track, and the order
+        # stays the sorted one ORG-04 gave, so a Collection-only answer is the
+        # same list it always was.
+        referenced = sorted({*collected, *authored.track_ids})
         return ReferenceSummary(
             collection_count=len(collection_ids),
             set_count=0,
             referenced_track_ids=tuple(referenced),
             collection_ids=tuple(collection_ids),
+            collection_track_count=len(collected),
+            rated_track_count=len(authored.rated),
+            tagged_track_count=len(authored.tagged),
+            reviewed_track_count=len(authored.reviewed),
+            edited_track_count=len(authored.edited),
         )

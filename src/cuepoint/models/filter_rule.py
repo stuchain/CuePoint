@@ -296,19 +296,64 @@ class FieldSpec:
 _TAG_LINK = LinkTable("track_tags", "tag_id")
 _COLLECTION_LINK = LinkTable("collection_tracks", "collection_id")
 
+
+def _effective(name: str, type_: str, label: str, **options: Any) -> FieldSpec:
+    """A field that means CuePoint's override when there is one (DEC-068).
+
+    ORG-05's ``rating`` shape, applied to key, BPM, genre, label and year: the
+    plain name reads ``COALESCE(meta.<name>, tracks.<name>)``, so a filter, a
+    facet or a saved Smart Collection means the value a user sees.
+    """
+    return FieldSpec(
+        name,
+        type_,
+        label,
+        column=f"COALESCE({METADATA_ALIAS}.{name}, tracks.{name})",
+        joins=(METADATA_ALIAS,),
+        **options,
+    )
+
+
+def _layers(name: str, type_: str, label: str, **options: Any) -> Tuple[FieldSpec, ...]:
+    """The imported value and the override, each under a name of its own.
+
+    ``<name>_rekordbox`` is the column Rekordbox wrote, and ``cuepoint_<name>``
+    the override alone: the three-name shape ORG-05 gave rating, so the person
+    who wants exactly one layer can still ask for it.
+    """
+    return (
+        FieldSpec(
+            f"{name}_rekordbox",
+            type_,
+            f"Rekordbox {label}",
+            column=f"tracks.{name}",
+            **options,
+        ),
+        FieldSpec(
+            f"cuepoint_{name}",
+            type_,
+            f"CuePoint {label}",
+            column=f"{METADATA_ALIAS}.{name}",
+            joins=(METADATA_ALIAS,),
+            **options,
+        ),
+    )
+
+
 FIELDS: Tuple[FieldSpec, ...] = (
     FieldSpec("title", TYPE_TEXT, "Title"),
     FieldSpec("artist", TYPE_TEXT, "Artist", facetable=True),
     FieldSpec("remixer", TYPE_TEXT, "Remixer", facetable=True),
     FieldSpec("album", TYPE_TEXT, "Album", facetable=True),
-    FieldSpec("label", TYPE_TEXT, "Label", facetable=True),
-    FieldSpec("genre", TYPE_TEXT, "Genre", facetable=True),
-    FieldSpec("key", TYPE_TEXT, "Key", facetable=True),
+    # DEC-068: these five mean the effective value, as rating does below.
+    _effective("label", TYPE_TEXT, "Label", facetable=True),
+    _effective("genre", TYPE_TEXT, "Genre", facetable=True),
+    _effective("key", TYPE_TEXT, "Key", facetable=True),
     FieldSpec("colour", TYPE_TEXT, "Colour", facetable=True),
     FieldSpec("comment", TYPE_TEXT, "Comment"),
     FieldSpec("file_path", TYPE_TEXT, "File path"),
-    FieldSpec("bpm", TYPE_NUMBER, "BPM"),
-    FieldSpec("year", TYPE_NUMBER, "Year", facetable=True, integer=True),
+    _effective("bpm", TYPE_NUMBER, "BPM"),
+    _effective("year", TYPE_NUMBER, "Year", facetable=True, integer=True),
     # DEC-057: the plain word "rating" means the value the user sees, which is
     # theirs when they have set one and Rekordbox's otherwise. This is where
     # that is true rather than asserted — a filter for "rated 5" finds a track
@@ -362,6 +407,12 @@ FIELDS: Tuple[FieldSpec, ...] = (
         column=f"{METADATA_ALIAS}.notes",
         joins=(METADATA_ALIAS,),
     ),
+    # --- Each override layer on its own (CLEAN-05) ---------------------
+    *_layers("key", TYPE_TEXT, "key"),
+    *_layers("bpm", TYPE_NUMBER, "BPM"),
+    *_layers("genre", TYPE_TEXT, "genre"),
+    *_layers("label", TYPE_TEXT, "label"),
+    *_layers("year", TYPE_NUMBER, "year", integer=True),
     FieldSpec("tag", TYPE_TAG, "Tag", facetable=True, link=_TAG_LINK),
     FieldSpec("collection", TYPE_COLLECTION, "Collection", link=_COLLECTION_LINK),
     # --- Matching (CLEAN-04, DEC-067) ---------------------------------------

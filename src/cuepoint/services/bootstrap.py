@@ -27,6 +27,7 @@ from cuepoint.services.interfaces import (
     ICollectionService,
     IActivityRepository,
     IActivityService,
+    IAuthoredDataRepository,
     IBackupService,
     IBatchService,
     IBeatportService,
@@ -43,6 +44,7 @@ from cuepoint.services.interfaces import (
     IInventoryService,
     ILoggingService,
     IMatcherService,
+    IMatchApplyService,
     IMatchJobRepository,
     IMatchRepository,
     IMatchService,
@@ -64,6 +66,7 @@ from cuepoint.services.migration_runner import MigrationRunner
 from cuepoint.services.onboarding_service import OnboardingService
 from cuepoint.services.privacy_service import PrivacyService
 from cuepoint.persistence.activity_repository import ActivityRepository
+from cuepoint.persistence.authored_data_repository import AuthoredDataRepository
 from cuepoint.persistence.job_repository import JobRepository
 from cuepoint.persistence.library_source_repository import (
     LibrarySourceRepository,
@@ -82,6 +85,7 @@ from cuepoint.services.backup_service import BackupService
 from cuepoint.services.batch_service import BatchService
 from cuepoint.services.collection_service import CollectionService
 from cuepoint.services.library_service import LibraryService
+from cuepoint.services.match_apply import MatchApplyService
 from cuepoint.services.match_service import MatchService
 from cuepoint.services.match_state import MatchStateService
 from cuepoint.services.metadata_service import MetadataService
@@ -189,9 +193,20 @@ def bootstrap_services() -> None:
             track_repository=container.resolve(ITrackRepository),
             collection_repository=container.resolve(ICollectionRepository),
             metadata_repository=container.resolve(ITrackMetadataRepository),
+            authored_repository=container.resolve(IAuthoredDataRepository),
         )
 
     container.register_factory(ILibraryService, create_library_service)
+
+    # Which tracks carry a user's own work (DEC-011, as amended in CLEAN-05):
+    # what a refresh has to warn about before it deletes them.
+    def create_authored_data_repository() -> IAuthoredDataRepository:
+        container.resolve(IMigrationRunner).migrate()
+        return AuthoredDataRepository(
+            database_service=container.resolve(IDatabaseService)
+        )
+
+    container.register_factory(IAuthoredDataRepository, create_authored_data_repository)
 
     # Durable job records (DEC-007). Like the track repository, resolving this
     # applies migrations first, so the jobs table is guaranteed to exist.
@@ -326,9 +341,22 @@ def bootstrap_services() -> None:
             activity_service=container.resolve(IActivityService),
             database_service=container.resolve(IDatabaseService),
             match_state_service=container.resolve(IMatchStateService),
+            match_apply_service=container.resolve(IMatchApplyService),
         )
 
     container.register_factory(IBatchService, create_batch_service)
+
+    # Copying an accepted match's values into CuePoint's layer (CLEAN-05,
+    # DEC-068). Separate from deciding, as DEC-004 separates the two acts.
+    def create_match_apply_service() -> IMatchApplyService:
+        return MatchApplyService(
+            match_repository=container.resolve(IMatchRepository),
+            metadata_service=container.resolve(IMetadataService),
+            track_repository=container.resolve(ITrackRepository),
+            database_service=container.resolve(IDatabaseService),
+        )
+
+    container.register_factory(IMatchApplyService, create_match_apply_service)
 
     # Matching library tracks as a resumable job (CLEAN-03, DEC-065). It takes
     # the batch service for one thing, resolving a selection, so a match and a

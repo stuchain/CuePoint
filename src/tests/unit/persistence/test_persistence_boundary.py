@@ -69,6 +69,9 @@ _ALLOWED = {
     # and the history entry recording it succeed or fail together (DEC-008), and
     # the state rule joins the transaction a match job stores an attempt in.
     "services/match_state.py",
+    # CLEAN-05's apply: every field of one apply and its history share one
+    # transaction, so an apply is whole or absent. No SQL is run there.
+    "services/match_apply.py",
 }
 _ALLOWED_PREFIXES = ("persistence/", "migrations/")
 

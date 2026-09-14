@@ -128,26 +128,37 @@ export function removalWarning(diff: RefreshDiff): string | null {
 }
 
 /**
- * DEC-011's warning: something else is using tracks that would be deleted.
+ * DEC-011's warning: tracks that would be deleted carry the user's own work.
  *
- * Zero in every library this build can produce — Collections arrive in Phase 6
- * and Sets in Phase 10 — so this returns null today. It is written now because
- * the flow that has to show it, and the acknowledgement that clears it, are
- * what would otherwise have to be retrofitted around a working refresh.
+ * Since CLEAN-05 that is not only a Collection or Set holding them but a
+ * CuePoint rating, favorite or note, a tag, a match decision or an override —
+ * everything a refresh would take that nothing can put back (DEC-011 as
+ * amended). Each kind the engine counted is named once; a kind with none is
+ * left out, and a refresh whose deletions touch none of it shows nothing.
  */
 export function referenceWarning(diff: RefreshDiff): string | null {
   const references = diff.references;
   if (!references || !references.has_references) return null;
-  const holders = [
-    references.collection_count > 0
-      ? pluralize(references.collection_count, "Collection")
-      : null,
-    references.set_count > 0 ? pluralize(references.set_count, "Set") : null,
-  ].filter(Boolean);
+  const kinds: string[] = [];
+  if (references.collection_count > 0) {
+    const holders = pluralize(references.collection_count, "Collection");
+    kinds.push(`${formatCount(references.collection_track_count)} in ${holders}`);
+  }
+  if (references.set_count > 0) kinds.push(`in ${pluralize(references.set_count, "Set")}`);
+  const counted: Array<[number, string]> = [
+    [references.rated_track_count, "rated or noted"],
+    [references.tagged_track_count, "tagged"],
+    [references.reviewed_track_count, "reviewed"],
+    [references.edited_track_count, "edited"],
+  ];
+  for (const [count, words] of counted) {
+    if (count > 0) kinds.push(`${formatCount(count)} ${words}`);
+  }
+  const one = references.referenced_track_count === 1;
   return (
     `${pluralize(references.referenced_track_count, "track")} you are about to ` +
-    `remove ${references.referenced_track_count === 1 ? "is" : "are"} used in ` +
-    `${holders.join(" and ")}. Removing them changes those too.`
+    `remove ${one ? "carries" : "carry"} your own work: ${kinds.join(", ")}. ` +
+    `Removing ${one ? "it" : "them"} removes that too.`
   );
 }
 

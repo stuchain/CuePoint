@@ -34,8 +34,12 @@ from typing import Any, Dict, Iterable, Optional
 
 from cuepoint.models.library_track import utc_now_iso
 from cuepoint.models.track_metadata import (
+    OVERRIDE_FIELDS,
     TrackMetadata,
     normalize_notes,
+    normalize_override_bpm,
+    normalize_override_text,
+    normalize_override_year,
     normalize_rating,
 )
 from cuepoint.persistence.id_chunks import CHUNK_SIZE, chunked, unique_ids
@@ -134,6 +138,27 @@ class TrackMetadataRepository(ITrackMetadataRepository):
             ValueError: If the note is longer than the model allows.
         """
         return self._set("notes", normalize_notes(notes), int(track_id))
+
+    def set_override(self, track_id: int, field: str, value: Any) -> TrackMetadata:
+        """Set or clear one override column, and return the stored record.
+
+        The column is one of :data:`OVERRIDE_FIELDS`, checked here because it is
+        interpolated; the value is the model's kind of value, and the vocabulary
+        rules (a BPM's range, a key's notation) are the service's.
+
+        Raises:
+            ValueError: If the field cannot be overridden or the value is not
+                that kind of value.
+        """
+        if field not in OVERRIDE_FIELDS:
+            raise ValueError(f"{field!r} is not an override field")
+        if field == "bpm":
+            stored: Any = normalize_override_bpm(value)
+        elif field == "year":
+            stored = normalize_override_year(value)
+        else:
+            stored = normalize_override_text(value, field)
+        return self._set(field, stored, int(track_id))
 
     def clear(self, track_id: int) -> bool:
         """Delete everything CuePoint knows about a track.

@@ -108,6 +108,11 @@ function diff(overrides: Partial<RefreshDiff> = {}): RefreshDiff {
       referenced_track_ids: [],
       collection_ids: [],
       has_references: false,
+      collection_track_count: 0,
+      rated_track_count: 0,
+      tagged_track_count: 0,
+      reviewed_track_count: 0,
+      edited_track_count: 0,
     },
     ...overrides,
   };
@@ -129,6 +134,11 @@ const APPLIED = {
     referenced_track_ids: [],
     collection_ids: [],
     has_references: false,
+    collection_track_count: 0,
+    rated_track_count: 0,
+    tagged_track_count: 0,
+    reviewed_track_count: 0,
+    edited_track_count: 0,
   },
   duration_seconds: 0.6,
   summary_line: "Library refreshed",
@@ -822,6 +832,11 @@ describe("the reference warning (DEC-011)", () => {
       referenced_track_ids: [7, 8],
       collection_ids: [1, 2],
       has_references: true,
+      collection_track_count: 2,
+      rated_track_count: 0,
+      tagged_track_count: 0,
+      reviewed_track_count: 0,
+      edited_track_count: 0,
     },
   });
 
@@ -843,7 +858,7 @@ describe("the reference warning (DEC-011)", () => {
   it("names the Collections and Sets that would change", async () => {
     const dialog = await openPreview();
 
-    expect(within(dialog).getByText(/2 Collections and 1 Set/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/2 in 2 Collections, in 1 Set/)).toBeInTheDocument();
   });
 
   it("will not apply until the extra warning is acknowledged", async () => {
@@ -2859,6 +2874,11 @@ describe("the table's empty state (ORG-13)", () => {
             referenced_track_ids: [7, 8],
             collection_ids: [12],
             has_references: true,
+            collection_track_count: 2,
+            rated_track_count: 0,
+            tagged_track_count: 0,
+            reviewed_track_count: 0,
+            edited_track_count: 0,
           },
         }),
       })
@@ -2871,7 +2891,7 @@ describe("the table's empty state (ORG-13)", () => {
     const dialog = await screen.findByRole("dialog");
     // The warning is real now, with real numbers.
     expect(dialog).toHaveTextContent(
-      /2 tracks you are about to remove are used in 1 Collection/,
+      /2 tracks you are about to remove carry your own work: 2 in 1 Collection/,
     );
     await userEvent.click(within(dialog).getByLabelText(/I understand/i));
     await userEvent.click(within(dialog).getByRole("button", { name: /Remove 2 tracks/i }));
@@ -2901,6 +2921,11 @@ describe("the table's empty state (ORG-13)", () => {
             referenced_track_ids: [7, 8],
             collection_ids: [999],
             has_references: true,
+            collection_track_count: 2,
+            rated_track_count: 0,
+            tagged_track_count: 0,
+            reviewed_track_count: 0,
+            edited_track_count: 0,
           },
         }),
       })

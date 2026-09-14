@@ -46,6 +46,7 @@ from cuepoint.services.metadata_service import (
     FIELD_FAVORITE,
     FIELD_NOTES,
     FIELD_RATING,
+    OVERRIDE_HISTORY_FIELDS,
 )
 from cuepoint.services.tag_service import FIELD_TAG
 
@@ -106,7 +107,13 @@ class TestHistoryLabels:
 
     def test_cuepoints_own_fields_are_labelled(self, source: str) -> None:
         labels = _field_labels(source)
-        for field in (FIELD_RATING, FIELD_FAVORITE, FIELD_NOTES, FIELD_TAG):
+        for field in (
+            FIELD_RATING,
+            FIELD_FAVORITE,
+            FIELD_NOTES,
+            FIELD_TAG,
+            *(history for _, history in OVERRIDE_HISTORY_FIELDS),
+        ):
             assert field in labels, f"No history label for {field!r}"
 
     def test_your_rating_is_never_labelled_the_same_as_rekordboxs(

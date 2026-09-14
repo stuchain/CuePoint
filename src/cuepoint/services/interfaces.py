@@ -40,6 +40,7 @@ if TYPE_CHECKING:
     from cuepoint.models.library_source import LibrarySource
     from cuepoint.models.references import ReferenceSummary
     from cuepoint.models.track_metadata import TrackMetadata
+    from cuepoint.persistence.authored_data_repository import AuthoredTracks
     from cuepoint.models.match_attempt import (
         MatchAttempt,
         MatchCandidate,
@@ -921,6 +922,11 @@ class ITrackRepository(ABC):
         """Insert or update a whole collection in one transaction (DEC-002)."""
         ...
 
+    @abstractmethod
+    def key_notation_counts(self) -> Tuple[int, int]:
+        """Return (Camelot keys, other keys) among the imported keys (CLEAN-05)."""
+        ...
+
 
 class ITrackMetadataRepository(ABC):
     """Interface for CuePoint's own per-track metadata (DEC-057).
@@ -966,6 +972,25 @@ class ITrackMetadataRepository(ABC):
     @abstractmethod
     def clear(self, track_id: int) -> bool:
         """Delete everything CuePoint knows about a track."""
+        ...
+
+    @abstractmethod
+    def set_override(self, track_id: int, field: str, value: Any) -> "TrackMetadata":
+        """Set or clear one override column (DEC-068)."""
+        ...
+
+
+class IAuthoredDataRepository(ABC):
+    """Interface for which tracks carry work a user did (DEC-011, CLEAN-05).
+
+    Ratings, notes and favorites, tags, a user's match decisions and overrides:
+    what a refresh deleting those tracks would take with it, and nothing could
+    recompute.
+    """
+
+    @abstractmethod
+    def tracks_carrying(self, track_ids: Iterable[int]) -> "AuthoredTracks":
+        """Return which of the tracks carry each kind of user work."""
         ...
 
 
@@ -1211,6 +1236,28 @@ class IMatchService(ABC):
         should_cancel: Optional[Callable[[], bool]] = None,
     ) -> "MatchJobResult":
         """Match every waiting track of a job's plan."""
+        ...
+
+
+class IMatchApplyService(ABC):
+    """Interface for copying a decided match's values into CuePoint's layer.
+
+    Applying is its own act (DEC-004): accepting a match writes nothing, and
+    applying writes only the fields asked for, from the accepted candidate.
+    """
+
+    @abstractmethod
+    def apply_match(
+        self, track_id: int, fields: Iterable[str], batch_id: Optional[str] = None
+    ) -> "TrackMetadata":
+        """Apply the chosen fields from a track's accepted candidate."""
+        ...
+
+    @abstractmethod
+    def apply_decided(
+        self, track_id: int, fields: Sequence[str], batch_id: str, notation: str
+    ) -> bool:
+        """Batch form: apply what the accepted candidate has; True if changed."""
         ...
 
 
@@ -1726,6 +1773,24 @@ class IMetadataService(ABC):
     @abstractmethod
     def clear(self, track_id: int, batch_id: Optional[str] = None) -> bool:
         """Forget everything CuePoint knows about a track, recording each loss."""
+        ...
+
+    @abstractmethod
+    def set_override(
+        self,
+        track_id: int,
+        field: str,
+        value: Any,
+        source: str = "cuepoint",
+        batch_id: Optional[str] = None,
+        notation: Optional[str] = None,
+    ) -> "TrackMetadata":
+        """Set or clear an override, recording who supplied it (DEC-068, DEC-069)."""
+        ...
+
+    @abstractmethod
+    def key_notation(self) -> str:
+        """The key notation overrides are stored in: the library's own."""
         ...
 
 

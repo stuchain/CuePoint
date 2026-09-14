@@ -534,10 +534,24 @@ class TestTheJoinIsOnlyWrittenWhenItIsNeeded:
     def test_a_rekordbox_only_filter_writes_no_join(self):
         from cuepoint.persistence.track_query import build_count
 
-        sql, _ = build_count(
-            BrowseQuery(rules=RuleSet(rules=(rule("genre", "is", "House"),)))
-        )
-        assert "track_metadata" not in sql
+        # ``colour`` has one layer. ``genre`` has two since CLEAN-05, and its
+        # imported name is the Rekordbox-only form of it.
+        for only_rekordbox in (
+            rule("colour", "is", "Red"),
+            rule("genre_rekordbox", "is", "House"),
+        ):
+            sql, _ = build_count(BrowseQuery(rules=RuleSet(rules=(only_rekordbox,))))
+            assert "track_metadata" not in sql
+
+    def test_an_effective_field_writes_the_join_once(self):
+        from cuepoint.persistence.track_query import build_count
+
+        for effective in ("key", "bpm", "genre", "label", "year"):
+            value = 1 if effective in ("bpm", "year") else "x"
+            sql, _ = build_count(
+                BrowseQuery(rules=RuleSet(rules=(rule(effective, "is", value),)))
+            )
+            assert sql.count("LEFT JOIN track_metadata") == 1, effective
 
     def test_a_tag_rule_writes_no_join_either(self):
         # A tag lives in its own link table; it needs nothing from the

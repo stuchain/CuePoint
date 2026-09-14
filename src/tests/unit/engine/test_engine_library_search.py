@@ -224,6 +224,14 @@ class TestResponseShape:
             "effective_rating",
             "rating_source",
             "favorite",
+            # CLEAN-05: the five overridable fields as a user sees them, and which
+            # of them an override supplies. The plain names stay imported.
+            "effective_key",
+            "effective_bpm",
+            "effective_genre",
+            "effective_label",
+            "effective_year",
+            "overridden",
         }
 
     def test_total_is_the_match_count_not_the_page_length(self, seeded, engine):

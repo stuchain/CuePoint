@@ -42,6 +42,8 @@ from cuepoint.persistence.track_query import (
     build_tag_facet_totals,
     build_tag_facet_values,
     clamp_facet_limit,
+    JOINS,
+    SEARCH_JOINS,
     search_clause,
 )
 from cuepoint.services.interfaces import IDatabaseService, ITrackRepository
@@ -88,6 +90,11 @@ _UPDATE_SQL = (
 )
 
 _SELECT = "SELECT * FROM tracks"
+
+
+def _search_joins() -> str:
+    """The joins a text search reads through (CLEAN-05): the effective label."""
+    return "".join(JOINS[alias] for alias in SEARCH_JOINS)
 
 
 @dataclass(frozen=True)
@@ -361,8 +368,10 @@ class TrackRepository(ITrackRepository):
         rows = (
             self._db.connect()
             .execute(
-                f"{_SELECT} WHERE {sql} "
-                "ORDER BY artist COLLATE NOCASE, title COLLATE NOCASE "
+                # ``tracks.*`` rather than ``*``: the metadata table the label is
+                # searched through has columns named key, bpm and genre too.
+                f"SELECT tracks.* FROM tracks{_search_joins()} WHERE {sql} "
+                "ORDER BY tracks.artist COLLATE NOCASE, tracks.title COLLATE NOCASE "
                 "LIMIT ? OFFSET ?",
                 (*params, int(limit), int(offset)),
             )
@@ -381,7 +390,9 @@ class TrackRepository(ITrackRepository):
             return 0
         row = (
             self._db.connect()
-            .execute(f"SELECT count(*) AS n FROM tracks WHERE {sql}", params)
+            .execute(
+                f"SELECT count(*) AS n FROM tracks{_search_joins()} WHERE {sql}", params
+            )
             .fetchone()
         )
         return int(row["n"]) if row is not None else 0
@@ -585,6 +596,27 @@ class TrackRepository(ITrackRepository):
         """Return the number of tracks in the library."""
         row = self._db.connect().execute("SELECT count(*) AS n FROM tracks").fetchone()
         return int(row["n"]) if row is not None else 0
+
+    def key_notation_counts(self) -> Tuple[int, int]:
+        """Return ``(Camelot keys, other keys)`` among the imported keys.
+
+        What decides the notation an override is stored in (CLEAN-05): the
+        one most of the library already uses. Counted here, in one pass over
+        the column, rather than by reading fifty thousand keys into Python.
+        """
+        row = (
+            self._db.connect()
+            .execute(
+                "SELECT"
+                " COALESCE(SUM(CASE WHEN TRIM(key) GLOB '[1-9][ABab]'"
+                " OR TRIM(key) GLOB '1[0-2][ABab]' THEN 1 ELSE 0 END), 0) AS camelot,"
+                " COALESCE(SUM(CASE WHEN TRIM(key) <> '' THEN 1 ELSE 0 END), 0) AS keyed"
+                " FROM tracks WHERE key IS NOT NULL"
+            )
+            .fetchone()
+        )
+        camelot = int(row["camelot"])
+        return camelot, int(row["keyed"]) - camelot
 
     def exists(self, rekordbox_track_id: str) -> bool:
         """Return True if a track with this Rekordbox TrackID is stored."""

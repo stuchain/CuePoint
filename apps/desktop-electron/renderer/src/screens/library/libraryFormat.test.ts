@@ -61,6 +61,11 @@ function diff(overrides: Partial<RefreshDiff> = {}): RefreshDiff {
       referenced_track_ids: [],
       collection_ids: [],
       has_references: false,
+      collection_track_count: 0,
+      rated_track_count: 0,
+      tagged_track_count: 0,
+      reviewed_track_count: 0,
+      edited_track_count: 0,
     },
     ...overrides,
   };
@@ -223,12 +228,17 @@ describe("referenceWarning (DEC-011)", () => {
         referenced_track_ids: [1, 2, 3],
         collection_ids: [4, 9],
         has_references: true,
+        collection_track_count: 3,
+        rated_track_count: 0,
+        tagged_track_count: 0,
+        reviewed_track_count: 0,
+        edited_track_count: 0,
       },
     });
     const warning = referenceWarning(withRefs)!;
     expect(warning).toContain("3 tracks");
-    expect(warning).toContain("2 Collections");
-    expect(warning).toContain("1 Set");
+    expect(warning).toContain("3 in 2 Collections");
+    expect(warning).toContain("in 1 Set");
     expect(needsReferenceConfirmation(withRefs)).toBe(true);
   });
 
@@ -241,14 +251,66 @@ describe("referenceWarning (DEC-011)", () => {
         referenced_track_ids: [1],
         collection_ids: [],
         has_references: true,
+        collection_track_count: 0,
+        rated_track_count: 0,
+        tagged_track_count: 0,
+        reviewed_track_count: 0,
+        edited_track_count: 0,
       },
     });
     const warning = referenceWarning(setsOnly)!;
     expect(warning).toContain("2 Sets");
     expect(warning).not.toContain("Collection");
-    // Singular subject, singular verb: "1 track ... is used", not "are used".
+    // Singular subject, singular verb: "1 track ... carries", not "carry".
     expect(warning).toContain("1 track");
-    expect(warning).toContain("is used in");
+    expect(warning).toContain("carries your own work");
+  });
+
+  it("names every kind of the user's own work, each once (DEC-011 as amended)", () => {
+    const everything = diff({
+      tracks: { ...diff().tracks, removed: category(20) },
+      references: {
+        collection_count: 2,
+        set_count: 0,
+        referenced_track_count: 12,
+        referenced_track_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+        collection_ids: [4, 9],
+        has_references: true,
+        collection_track_count: 3,
+        rated_track_count: 5,
+        tagged_track_count: 4,
+        reviewed_track_count: 6,
+        edited_track_count: 2,
+      },
+    });
+    expect(referenceWarning(everything)).toBe(
+      "12 tracks you are about to remove carry your own work: 3 in 2 Collections, " +
+        "5 rated or noted, 4 tagged, 6 reviewed, 2 edited. Removing them removes that too.",
+    );
+  });
+
+  it("asks for acknowledgement when only a rating would be lost", () => {
+    const ratedOnly = diff({
+      tracks: { ...diff().tracks, removed: category(1) },
+      references: {
+        collection_count: 0,
+        set_count: 0,
+        referenced_track_count: 1,
+        referenced_track_ids: [7],
+        collection_ids: [],
+        has_references: true,
+        collection_track_count: 0,
+        rated_track_count: 1,
+        tagged_track_count: 0,
+        reviewed_track_count: 0,
+        edited_track_count: 0,
+      },
+    });
+    expect(needsReferenceConfirmation(ratedOnly)).toBe(true);
+    expect(referenceWarning(ratedOnly)).toBe(
+      "1 track you are about to remove carries your own work: 1 rated or noted. " +
+        "Removing it removes that too.",
+    );
   });
 });
 
@@ -282,6 +344,11 @@ describe("appliedLine", () => {
         referenced_track_ids: [],
         collection_ids: [],
         has_references: false,
+        collection_track_count: 0,
+        rated_track_count: 0,
+        tagged_track_count: 0,
+        reviewed_track_count: 0,
+        edited_track_count: 0,
       },
       duration_seconds: 0.6,
       summary_line: "Library refreshed",

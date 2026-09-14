@@ -43,7 +43,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from cuepoint.models.library_track import utc_now_iso
 
@@ -288,6 +288,23 @@ def normalize_override_year(value: Any) -> Optional[int]:
     if not whole:
         raise ValueError(f"The year override must be a whole number, got {value!r}")
     return year
+
+
+def effective_value(imported: Any, override: Any) -> Any:
+    """Return the value to show for an overridable field (DEC-068).
+
+    The override when there is one, otherwise what Rekordbox imported. The rule
+    ``effective_rating`` states for a rating, stated once for the other five, and
+    the one the SQL coalesce in ``models/filter_rule.py`` mirrors.
+    """
+    return imported if override is None else override
+
+
+def overridden_fields(record: Optional["TrackMetadata"]) -> Tuple[str, ...]:
+    """The override fields a record holds a value for, in :data:`OVERRIDE_FIELDS` order."""
+    if record is None:
+        return ()
+    return tuple(name for name in OVERRIDE_FIELDS if getattr(record, name) is not None)
 
 
 def effective_rating(

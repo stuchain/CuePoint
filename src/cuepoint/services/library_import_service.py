@@ -227,6 +227,36 @@ class RefreshSummary:
         return "Library refreshed — " + ", ".join(parts)
 
 
+def _kinds_of_work(references: ReferenceSummary) -> str:
+    """Each non-zero kind of work a refresh would delete, as one phrase.
+
+    The engine's form of the renderer's ``referenceWarning``, for a caller that
+    reaches the refusal without a preview.
+    """
+    parts = []
+    if references.collection_count:
+        parts.append(
+            f"{references.collection_track_count} in "
+            f"{_counted(references.collection_count, 'Collection')}"
+        )
+    if references.set_count:
+        parts.append(f"in {_counted(references.set_count, 'Set')}")
+    for count, words in (
+        (references.rated_track_count, "rated or noted"),
+        (references.tagged_track_count, "tagged"),
+        (references.reviewed_track_count, "reviewed"),
+        (references.edited_track_count, "edited"),
+    ):
+        if count:
+            parts.append(f"{count} {words}")
+    return ", ".join(parts)
+
+
+def _counted(count: int, noun: str) -> str:
+    """``1 Collection``, ``2 Collections``: a count with its noun agreeing."""
+    return f"{count} {noun}" if count == 1 else f"{count} {noun}s"
+
+
 class LibraryImportService(ILibraryImportService):
     """Imports and refreshes a Rekordbox export into the persistent library."""
 
@@ -579,16 +609,24 @@ class LibraryImportService(ILibraryImportService):
         if references.has_references and not confirmed:
             raise ValidationError(
                 message=(
-                    f"{references.referenced_track_count} tracks removed from "
-                    f"Rekordbox are used in {references.collection_count} "
-                    f"Collections and {references.set_count} Sets. Confirm to "
-                    "remove them and everything attached to them."
+                    f"{_counted(references.referenced_track_count, 'track')} removed "
+                    "from Rekordbox "
+                    f"{'carries' if references.referenced_track_count == 1 else 'carry'}"
+                    " your own work: "
+                    f"{_kinds_of_work(references)}. Confirm to remove "
+                    f"{'it' if references.referenced_track_count == 1 else 'them'}"
+                    " and everything attached."
                 ),
                 error_code="LIBRARY_REFRESH_NEEDS_CONFIRMATION",
                 context={
                     "collection_count": references.collection_count,
                     "set_count": references.set_count,
                     "referenced_track_count": references.referenced_track_count,
+                    "collection_track_count": references.collection_track_count,
+                    "rated_track_count": references.rated_track_count,
+                    "tagged_track_count": references.tagged_track_count,
+                    "reviewed_track_count": references.reviewed_track_count,
+                    "edited_track_count": references.edited_track_count,
                 },
             )
         return references

@@ -483,9 +483,10 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       const preview = window.getByRole("dialog");
       await expect(preview).toBeVisible({ timeout: 60_000 });
       // Real numbers, not a shape: three tracks are filed, and the warning
-      // counts them and the Collections they are filed in.
+      // counts them and the Collections they are filed in. Filing is the only
+      // work they carry, so it is the only kind named (DEC-011 as amended).
       await expect(preview).toContainText(
-        /3 tracks you are about to remove are used in [1-9]\d* Collections?\./,
+        /3 tracks you are about to remove carry your own work: 3 in [1-9]\d* Collections?\. Removing them removes that too\./,
       );
 
       const apply = preview.getByRole("button", { name: /Remove 3 tracks and refresh/i });

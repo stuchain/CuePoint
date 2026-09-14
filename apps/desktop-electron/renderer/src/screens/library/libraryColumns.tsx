@@ -33,6 +33,17 @@ export function formatBpm(bpm: number | null): string {
  * with no rating shows nothing; one rated zero shows "unrated", because those
  * are different facts (DEC-034).
  */
+/**
+ * The value a user sees for a field CuePoint can override (DEC-068).
+ *
+ * `resolved` is what the engine resolved; it is absent only from rows built
+ * before CLEAN-05, where the imported value is all there is. A resolved null
+ * means neither layer has a value, and is kept rather than falling back.
+ */
+export function effective<T>(resolved: T | null | undefined, imported: T | null): T | null {
+  return resolved === undefined ? imported : resolved;
+}
+
 export function formatRating(rating: number | null): string {
   return rating == null ? "" : starsFor(rating);
 }
@@ -77,7 +88,7 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     sortKey: "label",
     minWidthPx: 90,
     defaultWidthPx: 140,
-    render: (track) => track.label ?? "",
+    render: (track) => effective(track.effective_label, track.label) ?? "",
   },
   {
     id: "genre",
@@ -85,7 +96,7 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     sortKey: "genre",
     minWidthPx: 90,
     defaultWidthPx: 130,
-    render: (track) => track.genre ?? "",
+    render: (track) => effective(track.effective_genre, track.genre) ?? "",
   },
   {
     id: "key",
@@ -93,7 +104,7 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     sortKey: "key",
     minWidthPx: 56,
     defaultWidthPx: 70,
-    render: (track) => track.key ?? "",
+    render: (track) => effective(track.effective_key, track.key) ?? "",
   },
   {
     id: "bpm",
@@ -102,7 +113,7 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     minWidthPx: 56,
     defaultWidthPx: 72,
     align: "right",
-    render: (track) => formatBpm(track.bpm),
+    render: (track) => formatBpm(effective(track.effective_bpm, track.bpm)),
   },
   {
     id: "duration_seconds",
@@ -129,7 +140,10 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     minWidthPx: 56,
     defaultWidthPx: 72,
     align: "right",
-    render: (track) => (track.year == null ? "" : String(track.year)),
+    render: (track) => {
+      const year = effective(track.effective_year, track.year);
+      return year == null ? "" : String(year);
+    },
   },
   {
     id: "play_count",

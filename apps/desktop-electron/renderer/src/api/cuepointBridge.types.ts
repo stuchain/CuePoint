@@ -540,6 +540,19 @@ export interface LibraryTrackRow {
   effective_rating: number | null;
   rating_source: "cuepoint" | "rekordbox" | null;
   favorite: boolean;
+  /**
+   * The five fields CuePoint can override, as a user sees them (CLEAN-05,
+   * DEC-068): the override when there is one, otherwise the plain field above,
+   * which stays what Rekordbox imported. `overridden` names the fields an
+   * override supplies. Optional only because fixtures written before CLEAN-05
+   * describe valid rows; the engine always sends them.
+   */
+  effective_key?: string | null;
+  effective_bpm?: number | null;
+  effective_genre?: string | null;
+  effective_label?: string | null;
+  effective_year?: number | null;
+  overridden?: Array<"key" | "bpm" | "genre" | "label" | "year">;
 }
 
 export interface LibrarySearchResponse {
@@ -1018,6 +1031,17 @@ export interface RefreshReferences {
    */
   collection_ids: number[];
   has_references: boolean;
+  /**
+   * The rest of what a user authored on those tracks (DEC-011 as amended,
+   * CLEAN-05). Each counts tracks, and a track carrying several is one
+   * referenced track. Always sent: a sentence that names a kind has its
+   * number.
+   */
+  collection_track_count: number;
+  rated_track_count: number;
+  tagged_track_count: number;
+  reviewed_track_count: number;
+  edited_track_count: number;
 }
 
 /**

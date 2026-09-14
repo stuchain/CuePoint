@@ -153,22 +153,35 @@ class TestCollation:
 
 
 class TestTheyAreActuallyUsed:
-    @pytest.mark.parametrize("field", ["genre", "key", "label", "colour"])
+    @pytest.mark.parametrize(
+        "facet, column",
+        [
+            ("genre_rekordbox", "genre"),
+            ("key_rekordbox", "key"),
+            ("label_rekordbox", "label"),
+            ("colour", "colour"),
+        ],
+    )
     def test_a_text_facet_reads_the_index_and_does_not_group_by_hand(
-        self, seeded, db, field
+        self, seeded, db, facet, column
     ):
-        sql, params = build_facet_values(BrowseQuery(), field)
+        # The imported columns these indexes were built for. Since CLEAN-05 the
+        # plain names mean the effective value (DEC-068) and group across two
+        # tables, which the effective test below states the price of.
+        sql, params = build_facet_values(BrowseQuery(), facet)
         detail = plan(db, sql, params)
-        assert f"idx_tracks_{field}_facet" in detail
+        assert f"idx_tracks_{column}_facet" in detail
         # "USE TEMP B-TREE FOR GROUP BY" means SQLite read and sorted the whole
         # library instead — which is the cost this migration exists to remove.
         assert "TEMP B-TREE FOR GROUP BY" not in detail.upper()
 
-    @pytest.mark.parametrize("field", ["bitrate", "year"])
-    def test_a_numeric_facet_reads_the_index(self, seeded, db, field):
-        sql, params = build_facet_values(BrowseQuery(), field)
+    @pytest.mark.parametrize(
+        "facet, column", [("bitrate", "bitrate"), ("year_rekordbox", "year")]
+    )
+    def test_a_numeric_facet_reads_the_index(self, seeded, db, facet, column):
+        sql, params = build_facet_values(BrowseQuery(), facet)
         detail = plan(db, sql, params)
-        assert f"idx_tracks_{field}_facet" in detail
+        assert f"idx_tracks_{column}_facet" in detail
         assert "TEMP B-TREE FOR GROUP BY" not in detail.upper()
 
     def test_the_imported_rating_still_groups_from_the_index(self, seeded, db):
@@ -206,8 +219,35 @@ class TestTheyAreActuallyUsed:
         assert "idx_tracks_rating_facet" in detail
         assert "TEMP B-TREE FOR GROUP BY" in detail.upper()
 
+    @pytest.mark.parametrize("field", ["genre", "key", "label", "year"])
+    def test_an_effective_facet_still_reads_the_imported_index(self, seeded, db, field):
+        """CLEAN-05 kept these indexes earning their place.
+
+        ``genre`` now means ``COALESCE(meta.genre, tracks.genre)``, a grouping
+        key spanning two tables that no index can serve. An unfiltered facet is
+        therefore counted a layer at a time: the tracks with no override group
+        their imported column through this index, and the overrides group on
+        their own. Both of a facet's queries are held to it; that the answers
+        are the joined shape's is asserted in ``test_effective_values``.
+        """
+        for sql, params in (
+            build_facet_values(BrowseQuery(), field),
+            build_facet_value_count(BrowseQuery(), field),
+        ):
+            assert f"idx_tracks_{field}_facet" in plan(db, sql, params)
+
+    @pytest.mark.parametrize("field", ["genre", "key", "label", "year"])
+    def test_a_narrowed_effective_facet_joins_as_its_rules_do(self, db, field):
+        """With a rule in play the join is needed anyway, so the joined shape runs."""
+        narrowed = BrowseQuery(
+            rules=RuleSet(rules=(FilterRule(field="rating", operator="is", value=5),))
+        )
+        sql, _ = build_facet_values(narrowed, field)
+        assert "UNION ALL" not in sql
+        assert "UNION ALL" in build_facet_values(BrowseQuery(), field)[0]
+
     def test_the_totals_query_reads_the_index_too(self, seeded, db):
-        sql, params = build_facet_value_count(BrowseQuery(), "genre")
+        sql, params = build_facet_value_count(BrowseQuery(), "genre_rekordbox")
         detail = plan(db, sql, params)
         assert "idx_tracks_genre_facet" in detail
         assert "TEMP B-TREE FOR GROUP BY" not in detail.upper()
