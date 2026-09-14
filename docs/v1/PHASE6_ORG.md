@@ -2694,7 +2694,9 @@ Phase 6 is complete when, in a **packaged build**:
   Rekordbox-owned columns through `REVERTABLE_FIELDS`; CuePoint's fields live in another table and
   reverting them needs a second write path. DEC-063 explicitly requires only that the batch id be
   written, so the capability is preserved without the UI. The History tab shows the changes today;
-  a disabled revert with a reason is honest, a broken one is not.
+  a disabled revert with a reason is honest, a broken one is not. *Closed 2026-09-14 by CLEAN-06*
+  (`services/revert_service.py`): every CuePoint field reverts, one change or one batch at a time;
+  the controls are CLEAN-13's.
 - **Exporting Collections, tags or ratings** — Phase 8 (DEC-064). Including whether a Smart
   Collection exports its current membership (DEC-061 left that open deliberately).
 - **OR logic and nested rule groups** — DEC-016. The wire shape carries `match` and the compiler has

@@ -65,8 +65,11 @@ DELIBERATELY_UNINDEXED = (
     "idx_track_metadata_favorite",
     "idx_track_metadata_rating",
     "idx_tags_category",
-    "idx_track_history_batch",
 )
+
+#: Left out by this migration and added later by the step that wrote its query,
+#: with a measurement: CLEAN-06's batch revert (``m0014``).
+INDEXED_LATER = ("idx_track_history_batch",)
 
 _PRE_0009_HISTORY_INSERT = (
     "INSERT INTO track_history"
@@ -198,6 +201,15 @@ class TestMigration:
         # ORG-02, ORG-03, ORG-05 and ORG-07 add these against the queries that
         # need them, with a measurement — the discipline LIBUI-01 paid for.
         assert set(DELIBERATELY_UNINDEXED).isdisjoint(index_names(db))
+
+    def test_what_a_later_step_indexed_this_migration_did_not(self, db, tmp_path):
+        at_nine = DatabaseService(db_path=tmp_path / "v9-index.db")
+        try:
+            MigrationRunner(at_nine, migrations=_migrations_up_to(9)).migrate()
+            assert set(INDEXED_LATER).isdisjoint(index_names(at_nine))
+        finally:
+            at_nine.close_all()
+        assert set(INDEXED_LATER) <= index_names(db)
 
     def test_every_index_is_on_a_referencing_column_or_a_constraint(self, db):
         # The justification for each index, asserted rather than trusted to a

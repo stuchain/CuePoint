@@ -47,8 +47,8 @@ What is recorded
 ----------------
 One activity event per batch, carrying the operation and the counts (DEC-029) —
 not one per track. The per-track detail is the history rows, which is where a
-user looks for it, and every one of them carries the batch id that makes "revert
-this batch" buildable later without an undo stack (DEC-008, DEC-063).
+user looks for it, and every one of them carries the batch id that "revert this
+batch" reverts it by, without an undo stack (CLEAN-06, DEC-008, DEC-063).
 
 Collection membership is the exception, and deliberately so: it is not a field
 of a track. ORG-04 records membership as an entry row with its own identity

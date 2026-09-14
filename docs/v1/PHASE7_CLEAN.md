@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 7: Clean, Detailed Step Specifications
 
-Status: **Specified. CLEAN-01 to CLEAN-05 implemented.** The fourteen steps below replace the
+Status: **Specified. CLEAN-01 to CLEAN-06 implemented.** The fourteen steps below replace the
 roadmap's placeholder inventory (CLEAN-01…CLEAN-13, which Round 9's answers outgrew by one). Per
 the process, no implementation happens from this document — each step needs an explicit
 "Implement CLEAN-NN" instruction, scoped to exactly that step, and its outcome is recorded under the
@@ -1482,7 +1482,7 @@ least one test.
 
 ---
 
-## CLEAN-06 — Revert for CuePoint's Fields, Per Field and Per Batch
+## CLEAN-06 — Revert for CuePoint's Fields, Per Field and Per Batch ✅ IMPLEMENTED 2026-09-14
 
 **Objective**: Take back any CuePoint-owned change, one field at a time or a whole batch at once —
 closing the deferral Phase 6 carried and making DEC-063's batch id worth what it cost (DEC-068).
@@ -1532,6 +1532,206 @@ membership, can be taken back, individually or as the batch it was made in.
 to lose data.
 
 **Complexity**: **M**
+
+### ✅ IMPLEMENTED 2026-09-14
+
+**Outcome**: Complete.
+
+- `services/revert_service.py` implements `IRevertService`:
+  - `revert_change(change_id)` reverts one recorded change;
+  - `check_batch(batch_id)` refuses what cannot be reverted and counts the rest;
+  - `revert_batch(batch_id, on_progress, should_cancel)` reverts a whole batch.
+
+  Each of the ten fields is written back through its owner: `set_rating`, `set_favorite`,
+  `set_notes`, `set_override` for the five overrides, `restore_decision` for `match_state`, and
+  `assign` or `unassign` for `tag`. So a revert validates and records exactly as a forward edit does.
+- `ActivityService` names `CUEPOINT_REVERTABLE_FIELDS` beside `REVERTABLE_FIELDS`, and each path
+  refuses the other's fields by name. `revert_field_change`'s event gains `revert_of` beside
+  `reverted_change_id`, an additive change, so both paths' events read alike.
+- `MatchStateService.restore_decision` puts a recorded decision back. `clear_decision`'s body is
+  now shared with it as `_derive`, and `match_state.user_part` says which part of a decision a
+  person owns.
+- `ActivityRepository` gains five reads and still no mutator, so the append-only guard holds:
+  `batch_change_ids`, `batch_field_counts`, `get_field_changes`, `previous_change` and
+  `batch_events`.
+- Migration 0014 adds `idx_track_history_batch` on `(batch_id, id)`, partial on
+  `batch_id IS NOT NULL`: the index migration 0009 left for the step that wrote its query.
+- `engine/batch_jobs.py` gains `revert_or_start`, `start_revert_job` and `run_revert_job`. Running
+  and finishing a counted job is now one function, `_run_counted`, shared by a batch edit and a
+  batch revert. A revert job is a `library_batch` job, so it is exclusive with the import, the
+  refresh and other batches, and the status strip already shows it.
+
+**Where it is visible.** Nowhere yet. The routes are CLEAN-11's (`POST /api/v1/library/revert` and
+`/revert/batch`) and the controls CLEAN-13's. The refusals below are written for that UI to show.
+
+**What building it settled, and why.**
+
+- **A restored override keeps its provenance.** The Inspector reads a value's source from the latest
+  history row (CLEAN-05). A revert that restored a Beatport value under `cuepoint` would relabel it,
+  so the source is read from the change that set the restored value. Clearing an override, and a
+  value history does not explain, record `cuepoint`.
+- **Staleness compares what a person owns, not every byte.**
+  - A tag is present or absent. Renaming `peaktime` to `Peaktime` does not make its assignment
+    stale.
+  - A match decision compares state, attempt and candidate. A re-match moves the dispute flag and
+    replaces automatic states without recording history, and neither is the user's work. Comparing
+    whole values would have refused the revert of every decision a re-match had looked at.
+- **A decision comes back as a person made it; an automatic state is re-derived.**
+  - A recorded user decision is restored with the flag it carried. It is judged only by an attempt
+    newer than every attempt it refers to, so a runner-up accepted knowingly is not flagged by the
+    attempt it was chosen from.
+  - A recorded automatic state is not replayed. Its evidence may be older than the newest attempt,
+    so the track returns to what that attempt says, which is `clear_decision`'s rule.
+- **The result is ORG-07's batch result plus two fields.** `changed` is the changes reverted. The
+  added fields are `skipped`, the rows refused as stale, and `revert_of`, the batch reverted.
+  Anything that reads a `library_batch` job's answer reads a revert's.
+- **A row that fails is rolled back alone.** A chunk that raises is retried one row per
+  transaction. That is stricter than ORG-07's retry, which re-applies a chunk in one transaction,
+  and it is needed here: a revert writes through a service and then reads the field back, so a row
+  that failed part way must not be committed beside the rows around it. A test writes a value and
+  then fails, and asserts it is gone.
+- **A deleted or merged tag is re-created by name** when its removal is reverted. Its category and
+  colour belong to the vocabulary, not to a track, and history does not hold them. A tag re-created
+  this way and then un-reverted stays in the vocabulary, unused.
+- **What a batch revert refuses, before any job starts:**
+  - no batch named;
+  - an unknown batch;
+  - a batch whose activity event names Collection membership. Membership writes no history, so the
+    event is its only trace, and the refusal gives the specification's reason;
+  - a batch that recorded no change at all;
+  - a batch carrying any field this path does not write. The whole batch is refused, not the
+    CuePoint half of it.
+- **The threshold is counted in changes.** A batch above DEC-063's 1,000 is a job. It uses the same
+  chunks of 1,000, the same cancel and the same single event, whose summary quotes the batch it
+  reverted: "Reverted 5,000 changes of “Rated 5000 tracks 4 stars”".
+- **A revert that finds nothing to write records nothing.** That is possible only for a decision,
+  when a re-match has already moved the flag the revert would restore. A batch counts it as
+  unchanged.
+
+**Measured** at 50,000 tracks. History holds 1,000,000 changes: a whole-library rating batch,
+700,000 filler changes in batches of 5,000, and 250,000 single edits. Lookups are the median of
+five runs.
+
+| Operation | Without the index | With it |
+| --- | --- | --- |
+| Check a 50,000-change batch | 118.6 ms | 21.8 ms |
+| Read its ids, newest first | 136.1 ms | 34.3 ms |
+| Check a 5,000-change batch | 108.8 ms | 1.9 ms |
+| Rate all 50,000 tracks, median of three | 4.34 s | 4.29 s |
+| Database size | 136.1 MB | 151.7 MB |
+
+- **Reverting the 50,000-change batch takes 5.43 s**, and reverting that revert 5.52 s: about
+  110 µs a change. That is one chunk of 1,000 every 110 ms, which is the cancel latency. One change
+  reverts in 1.15 ms.
+- **The index earns its place.** Without it, every batch lookup scans the whole history table,
+  which grows with every edit a user makes and never shrinks. Its write cost is inside the noise of
+  three runs (3.67–4.61 s with it, 4.18–4.68 s without). It takes 15.6 MB for 700,000 batched
+  changes, about 22 bytes each, and single edits, which carry no batch id, are not in it.
+
+**Tests**:
+
+- `services/test_revert.py` (108 tests) covers:
+  - every one of the ten fields reverting through its service, recording one new row and leaving
+    every earlier row byte for byte, and a revert of that revert putting the change back, with a
+    guard that the table covers exactly `CUEPOINT_REVERTABLE_FIELDS`;
+  - the single revert's event and its `revert_of`, clearing falling back to Rekordbox's value, and
+    the owning service being the one called;
+  - provenance: a Beatport value restored as `beatport`, a hand edit restored as `cuepoint`, a first
+    apply cleared as `cuepoint`, a value history does not explain recorded as `cuepoint`, and a key
+    restored in the library's current notation;
+  - staleness, with nothing written: rating, notes, favorite and each override naming both values;
+    a tag taken off or put back since; a different decision since; the later change reverted first
+    unblocking the earlier one; a rename that does not count; and a re-match that moved only the flag
+    that does not count;
+  - decisions: a cleared decision restored after a re-match, judged by a newer attempt, keeping its
+    flag, keeping it through a later attempt with no winner, a runner-up not flagged by its own
+    attempt, a first decision on a never-answered track unmatching it, and an unreadable decision
+    refused;
+  - both paths refusing the other's fields, parametrized over every field of each, plus a field
+    neither owns, an unknown change, and the Rekordbox path still reverting its own;
+  - batches: rating, tag, a deleted tag, a merge, an apply, a decision, a hand edit and a `clear`
+    each reverting, including a `clear` of a favorite alone; a new batch id; one event; reverting
+    the revert; newest first; stale rows skipped and counted;
+  - refusals: both membership operations with the reason and nothing touched, an unknown batch, a
+    blank name, a batch that changed nothing, and a mixed batch;
+  - running in chunks: progress, a cancel leaving what was reverted, a failing row rolled back alone,
+    a vanished row counted as failed, and an unchanged row;
+  - the result's invariants and payload, the notation asked once for keys and never otherwise, and
+    the query plan reading the index.
+- `engine/test_revert_jobs.py` (6 tests) runs through the bootstrapped container. It covers:
+  - the specification's scale case: 5,000 changes reverting as a `library_batch` job under a new
+    batch id, and reverting that job's batch restoring the original;
+  - a batch at the threshold reverting inline;
+  - the job's exclusivity with another library job;
+  - a membership batch and an unknown batch refused before any job;
+  - a failed job carrying `LIBRARY_REVERT_FAILED`.
+- `persistence/test_history_batch_index_migration.py` (3 tests) covers a version 13 library
+  upgrading alone, every history row surviving, and the index's shape.
+- Updated rather than loosened:
+  - m0009's "nothing speculative is indexed" guard now names the batch index as added later, and
+    asserts that migration 0009 did not create it and the current schema has it;
+  - m0013's upgrade tests pin their runner at version 13.
+- `revert_service.py` joined the mypy gate and the persistence boundary's allowlist.
+
+The tests were checked against forty-three mutations written into the source:
+
+- **Staleness:**
+  - the check disabled;
+  - compared with the old value;
+  - a tag's ignored;
+  - a decision's compared with its flag;
+  - a tag matched case-sensitively.
+- **The batch:**
+  - walked oldest first;
+  - reusing the batch id;
+  - a stale row fatal;
+  - an unchanged row counted as reverted;
+  - the retry path without a transaction per row;
+  - a vanished row not counted;
+  - the cancel ignored;
+  - revert rows carrying no batch id;
+  - the notation asked for every key, or when there are none.
+- **What is written:**
+  - a rating restored to the new value;
+  - a favorite always restored as favorite;
+  - a favorite with no row read as nothing.
+- **Provenance:**
+  - always `cuepoint`;
+  - ignoring the restored value;
+  - taking whatever source came before.
+- **Refusals:**
+  - membership accepted;
+  - a mixed batch accepted;
+  - an empty batch called unknown;
+  - either path accepting the other's fields;
+  - a blank batch name accepted.
+- **Events and results:**
+  - no event for a single revert;
+  - either path's event losing `revert_of`;
+  - the summary never naming the batch;
+  - the result's invariant dropped;
+  - the payload hiding `skipped`.
+- **Decisions:**
+  - always re-derived;
+  - never judged;
+  - judged by any attempt;
+  - the restored flag dropped;
+  - the owned part including the flag.
+- **The job and the migration:**
+  - a revert never a job;
+  - the wrong failure code;
+  - the wrong progress message;
+  - the index not partial;
+  - the index without `id`.
+
+The first run missed two. **A favorite read as nothing with no row** survived because the one test
+reverting a `clear` also restored an override, and newest first that recreates the row before the
+favorite is reached. **The restored flag dropped** survived because every test's flag pointed at the
+newest attempt, and judging that attempt again produced the same flag. A test now covers each case:
+a `clear` of a favorite alone, and a later attempt with no winner, which leaves an accept's flag to
+the decision. All forty-three mutations fail at least one test.
+
+**Complexity**: **M**, as estimated.
 
 ---
 

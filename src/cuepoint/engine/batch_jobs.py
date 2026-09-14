@@ -36,7 +36,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from cuepoint.compat.gui_types import ProgressInfo
 from cuepoint.engine.jobs import Job, JobState, JobStore, _ensure_services
@@ -57,6 +57,9 @@ from cuepoint.services.batch_service import (
     BatchResult,
     BatchSelection,
 )
+
+if TYPE_CHECKING:
+    from cuepoint.services.revert_service import BatchRevert
 
 _logger = logging.getLogger(__name__)
 
@@ -108,9 +111,7 @@ def _batch_service() -> Any:
     return get_container().resolve(IBatchService)
 
 
-def _progress(
-    completed: int, total: int, operation: str, started: float
-) -> ProgressInfo:
+def _progress(completed: int, total: int, message: str, started: float) -> ProgressInfo:
     """Build a progress tick in the shape the status strip already reads.
 
     ``matched_count`` and ``unmatched_count`` are zero rather than repurposed,
@@ -124,7 +125,7 @@ def _progress(
         matched_count=0,
         unmatched_count=0,
         elapsed_time=time.monotonic() - started,
-        status_message=_PROGRESS_MESSAGES.get(operation, "Editing tracks"),
+        status_message=message,
     )
 
 
@@ -141,7 +142,38 @@ def run_batch_job(
     through, and its counts are an answer worth serving rather than an error.
     """
     service = _batch_service()
+    _run_counted(
+        job,
+        store,
+        _PROGRESS_MESSAGES.get(operation.kind, "Editing tracks"),
+        lambda on_progress, should_cancel: service.apply_batch(
+            BatchSelection.of_ids(track_ids),
+            operation,
+            on_progress=on_progress,
+            should_cancel=should_cancel,
+        ),
+        failure_code="LIBRARY_BATCH_FAILED",
+        noun="tracks",
+    )
 
+
+def _run_counted(
+    job: Job,
+    store: JobStore,
+    message: str,
+    work: Callable[[Callable[[int, int], None], Callable[[], bool]], Any],
+    *,
+    failure_code: str,
+    noun: str,
+) -> None:
+    """Run work that reports counts, and finish its job in every outcome.
+
+    Shared by a batch edit and a batch revert (CLEAN-06): both move through
+    committed chunks, honour a cancel between them, and answer with counts that
+    are worth serving even when cancelled. ``work`` is handed the progress and
+    cancel callbacks and returns a result with ``cancelled``, ``completed``,
+    ``total`` and ``to_dict()``.
+    """
     started = time.monotonic()
     last_reported = 0.0
 
@@ -154,18 +186,13 @@ def run_batch_job(
         ):
             return
         last_reported = now
-        store.report_progress(job, _progress(completed, total, operation.kind, started))
+        store.report_progress(job, _progress(completed, total, message, started))
 
     def should_cancel() -> bool:
         return bool(job.cancel_requested)
 
     try:
-        result = service.apply_batch(
-            BatchSelection.of_ids(track_ids),
-            operation,
-            on_progress=on_progress,
-            should_cancel=should_cancel,
-        )
+        result = work(on_progress, should_cancel)
     except CuePointException as exc:
         # A CuePoint error already carries a code worth reporting; a generic
         # JOB_FAILED would throw away the one thing that says what to do next.
@@ -174,7 +201,7 @@ def run_batch_job(
             job,
             state=JobState.FAILED,
             error={
-                "code": exc.error_code or "LIBRARY_BATCH_FAILED",
+                "code": exc.error_code or failure_code,
                 "message": exc.message,
             },
         )
@@ -184,7 +211,7 @@ def run_batch_job(
         store.finish(
             job,
             state=JobState.FAILED,
-            error={"code": "LIBRARY_BATCH_FAILED", "message": str(exc)},
+            error={"code": failure_code, "message": str(exc)},
         )
         return
 
@@ -198,14 +225,14 @@ def run_batch_job(
             error={
                 "code": "JOB_CANCELLED",
                 "message": (
-                    f"Cancelled after {result.completed} of {result.total} tracks"
+                    f"Cancelled after {result.completed} of {result.total} {noun}"
                 ),
             },
-            result=batch_result_to_dict(result),
+            result=result.to_dict(),
         )
         return
 
-    store.finish(job, state=JobState.SUCCEEDED, result=batch_result_to_dict(result))
+    store.finish(job, state=JobState.SUCCEEDED, result=result.to_dict())
 
 
 def start_batch_job(
@@ -266,3 +293,86 @@ def apply_or_start(
         return result, None
 
     return None, start_batch_job(store, track_ids, wanted)
+
+
+# ---------------------------------------------------------------------------
+# Reverting a batch (CLEAN-06)
+# ---------------------------------------------------------------------------
+
+#: What the status strip says while a batch is reverted.
+REVERT_PROGRESS_MESSAGE = "Reverting changes"
+
+
+def _revert_service() -> Any:
+    """Resolve the revert service, bootstrapping the container if needed."""
+    _ensure_services()
+
+    from cuepoint.services.interfaces import IRevertService
+    from cuepoint.utils.di_container import get_container
+
+    return get_container().resolve(IRevertService)
+
+
+def run_revert_job(job: Job, store: JobStore, batch_id: str) -> None:
+    """Revert every change in ``batch_id`` under ``job``.
+
+    The same job, progress and terminal states as a batch edit: a revert is a
+    batch too, over the batch's changes rather than a selection's tracks.
+    """
+    service = _revert_service()
+    _run_counted(
+        job,
+        store,
+        REVERT_PROGRESS_MESSAGE,
+        lambda on_progress, should_cancel: service.revert_batch(
+            batch_id, on_progress=on_progress, should_cancel=should_cancel
+        ),
+        failure_code="LIBRARY_REVERT_FAILED",
+        noun="changes",
+    )
+
+
+def start_revert_job(store: JobStore, batch_id: str) -> Job:
+    """Register and start a job reverting a batch.
+
+    A ``library_batch`` job, not a new type: it writes the same tables a batch
+    edit does, so it is exclusive with the import, the refresh and every other
+    batch for the reason a batch edit is, and the status strip already knows
+    how to show one.
+
+    Raises:
+        JobTypeBusyError: If any library job is already queued or running.
+    """
+    from cuepoint.engine.library_refresh import LIBRARY_JOB_TYPES
+
+    def runner(job: Job) -> None:
+        run_revert_job(job, store, batch_id)
+
+    return store.create_job(
+        job_type=JOB_TYPE_LIBRARY_BATCH,
+        runner=runner,
+        exclusive=True,
+        conflicts_with=LIBRARY_JOB_TYPES,
+    )
+
+
+def revert_or_start(
+    store: JobStore, batch_id: str
+) -> Tuple[Optional["BatchRevert"], Optional[Job]]:
+    """Revert a batch inline, or start a job for it, and say which happened.
+
+    DEC-063's threshold, counted in changes: a batch of more than
+    :data:`~cuepoint.services.batch_service.BATCH_JOB_THRESHOLD` changes runs as
+    a job. The batch is checked first, so a Collection membership batch, an
+    unknown id or a batch that recorded nothing is a refusal rather than a job
+    that fails.
+
+    Raises:
+        ValueError: If the batch cannot be reverted.
+        JobTypeBusyError: If a library job is already running.
+    """
+    service = _revert_service()
+    total = service.check_batch(batch_id)
+    if total <= BATCH_JOB_THRESHOLD:
+        return service.revert_batch(batch_id), None
+    return None, start_revert_job(store, batch_id)

@@ -30,6 +30,14 @@ from cuepoint.services.interfaces import (
     IActivityService,
     ITrackRepository,
 )
+from cuepoint.services.match_state import FIELD_MATCH_STATE
+from cuepoint.services.metadata_service import (
+    FIELD_FAVORITE,
+    FIELD_NOTES,
+    FIELD_RATING,
+    OVERRIDE_HISTORY_FIELDS,
+)
+from cuepoint.services.tag_service import FIELD_TAG
 
 # Event types. Strings rather than an enum so adding one needs no migration.
 EVENT_FIELD_CHANGED = "track_field_changed"
@@ -50,6 +58,22 @@ REVERTABLE_FIELDS = frozenset(
         "bpm",
         "year",
         "duration_seconds",
+    }
+)
+
+#: The history fields CuePoint owns, which ``RevertService`` reverts (CLEAN-06,
+#: DEC-068). A second path rather than a wider :data:`REVERTABLE_FIELDS`: those
+#: are written by setting an attribute on the imported record, and these live in
+#: CuePoint's own tables. Named here, beside the Rekordbox set, so each path can
+#: refuse the other's fields by name rather than calling them unknown.
+CUEPOINT_REVERTABLE_FIELDS = frozenset(
+    {
+        FIELD_RATING,
+        FIELD_FAVORITE,
+        FIELD_NOTES,
+        *(history_field for _, history_field in OVERRIDE_HISTORY_FIELDS),
+        FIELD_MATCH_STATE,
+        FIELD_TAG,
     }
 )
 
@@ -191,6 +215,14 @@ class ActivityService(IActivityService):
         change = self._activity.get_field_change(change_id)
         if change is None:
             raise ValueError(f"Unknown field change: {change_id}")
+        if change.field_name in CUEPOINT_REVERTABLE_FIELDS:
+            # Refused by name rather than as unknown: CuePoint's fields live in
+            # its own tables, and writing one onto the imported record would
+            # put a value where the next refresh erases it.
+            raise ValueError(
+                f"Field is CuePoint's own, not Rekordbox's: {change.field_name}."
+                " It is reverted as a CuePoint field"
+            )
         if change.field_name not in REVERTABLE_FIELDS:
             raise ValueError(f"Field is not revertable: {change.field_name}")
 
@@ -219,6 +251,9 @@ class ActivityService(IActivityService):
                 "track_id": change.track_id,
                 "field": change.field_name,
                 "reverted_change_id": change_id,
+                # The name CLEAN-06's revert path uses, added beside the one
+                # this event always carried, so both paths can be read alike.
+                "revert_of": change_id,
                 "restored_value": change.old_value,
             },
         )

@@ -77,7 +77,7 @@ one person's decision is a per-track act (:meth:`~MatchStateService.accept`,
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from cuepoint.models.library_track import utc_now_iso
 from cuepoint.models.match_attempt import (
@@ -243,6 +243,43 @@ def decision_value(match: Optional[TrackMatch]) -> Optional[Dict[str, Any]]:
     }
 
 
+def user_part(value: Optional[Dict[str, Any]]) -> Optional[Tuple[Any, Any, Any]]:
+    """What of a recorded state a person owns: ``None`` unless a user decided.
+
+    A user's decision is its state, attempt and candidate. The dispute flag is
+    not theirs — the rule moves it as attempts arrive — and an automatic state
+    is not theirs at all, because a re-match replaces it (DEC-067). CLEAN-06
+    compares this rather than the whole value, so a re-match that moved only
+    what the rule owns does not make a person's decision stale.
+    """
+    if not isinstance(value, dict) or value.get("decided_by") != DECIDED_BY_USER:
+        return None
+    return (value.get("state"), value.get("attempt_id"), value.get("candidate_id"))
+
+
+def _decision_from(track_id: int, recorded: Dict[str, Any]) -> TrackMatch:
+    """Rebuild a user's decision from its history value, decided now."""
+    try:
+        return TrackMatch(
+            track_id=track_id,
+            state=str(recorded["state"]),
+            decided_by=DECIDED_BY_USER,
+            attempt_id=int(recorded["attempt_id"]),
+            candidate_id=_optional_id(recorded.get("candidate_id")),
+            newer_attempt_id=_optional_id(recorded.get("newer_attempt_id")),
+            decided_at=utc_now_iso(),
+        )
+    except (KeyError, TypeError) as exc:
+        raise ValueError(
+            f"The recorded decision for track {track_id} cannot be read"
+            f" ({exc}): {recorded!r}"
+        ) from None
+
+
+def _optional_id(value: Any) -> Optional[int]:
+    return None if value is None else int(value)
+
+
 def _id(attempt: MatchAttempt) -> int:
     if attempt.id is None:
         raise ValueError("Only a stored attempt can decide a state")
@@ -379,20 +416,46 @@ class MatchStateService(IMatchStateService):
         """
         track_id = self._require_track(track_id)
         with self._db.transaction(join_existing=True):
-            existing = self._matches.get_match(track_id)
-            attempt = self._matches.latest_answered_attempt(track_id)
-            derived = (
-                None
-                if attempt is None
-                else automatic_state(self._evidence(attempt), None, None, utc_now_iso())
-            )
-            if derived is None:
-                if existing is None:
-                    return None
-                self._matches.delete_match(track_id)
-                self._record(track_id, existing, None, batch_id)
-                return None
-            return self._decide(existing, derived, batch_id)
+            return self._derive(track_id, batch_id)
+
+    def restore_decision(
+        self,
+        track_id: int,
+        recorded: Optional[Dict[str, Any]],
+        batch_id: Optional[str] = None,
+    ) -> Optional[TrackMatch]:
+        """Put back a decision as history recorded it (CLEAN-06, DEC-068).
+
+        What is restored is what a person owns, and nothing the rule would
+        re-derive:
+
+        - **A recorded user decision** comes back as it was — its state, its
+          attempt, its candidate and the flag it carried. An attempt stored
+          after everything that decision knew about is then judged against it,
+          exactly as the rule would have judged it had the decision stood.
+        - **A recorded automatic state, or none**, is not replayed as a stale
+          snapshot. The track returns to what its latest answered attempt says,
+          which is :meth:`clear_decision`: an automatic state is derived from
+          evidence, and the evidence may be newer than the history row.
+
+        Raises:
+            ValueError: If the track does not exist, or the recorded decision
+                cannot be read or no longer rests on the track's own evidence.
+                Nothing is written.
+        """
+        track_id = self._require_track(track_id)
+        with self._db.transaction(join_existing=True):
+            if user_part(recorded) is None:
+                return self._derive(track_id, batch_id)
+            assert recorded is not None  # user_part is None for no decision
+            wanted = _decision_from(track_id, recorded)
+            latest = self._matches.latest_answered_attempt(track_id)
+            known = max(wanted.attempt_id, wanted.newer_attempt_id or 0)
+            if latest is not None and _id(latest) > known:
+                wanted = _judge_decision(
+                    self._evidence(latest), wanted, self._pointed_at(wanted)
+                )
+            return self._decide(self._matches.get_match(track_id), wanted, batch_id)
 
     def accept_proposed(self, track_id: int, batch_id: Optional[str] = None) -> bool:
         """Accept what the matcher proposed, unless a user already decided.
@@ -435,6 +498,26 @@ class MatchStateService(IMatchStateService):
             return True
 
     # --------------------------------------------------------------- helpers
+
+    def _derive(self, track_id: int, batch_id: Optional[str]) -> Optional[TrackMatch]:
+        """Return a track to the automatic state its evidence gives it.
+
+        Runs inside the caller's transaction.
+        """
+        existing = self._matches.get_match(track_id)
+        attempt = self._matches.latest_answered_attempt(track_id)
+        derived = (
+            None
+            if attempt is None
+            else automatic_state(self._evidence(attempt), None, None, utc_now_iso())
+        )
+        if derived is None:
+            if existing is None:
+                return None
+            self._matches.delete_match(track_id)
+            self._record(track_id, existing, None, batch_id)
+            return None
+        return self._decide(existing, derived, batch_id)
 
     def _decide(
         self,
@@ -501,4 +584,5 @@ __all__ = (
     "automatic_state",
     "decision_value",
     "same_beatport_track",
+    "user_part",
 )

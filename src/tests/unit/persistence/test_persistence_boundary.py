@@ -72,6 +72,10 @@ _ALLOWED = {
     # CLEAN-05's apply: every field of one apply and its history share one
     # transaction, so an apply is whole or absent. No SQL is run there.
     "services/match_apply.py",
+    # CLEAN-06's revert: a revert and its activity event are one transaction,
+    # and a batch revert commits a chunk of changes at a time as ORG-07's batch
+    # does. The writes are the owning services'; no SQL is run there.
+    "services/revert_service.py",
 }
 _ALLOWED_PREFIXES = ("persistence/", "migrations/")
 

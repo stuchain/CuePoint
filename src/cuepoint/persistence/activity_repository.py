@@ -13,8 +13,9 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from cuepoint.persistence.id_chunks import CHUNK_SIZE, chunked, unique_ids
 from cuepoint.services.interfaces import IActivityRepository, IDatabaseService
 
 # Where a change came from. Kept as plain strings rather than an enum so a new
@@ -250,3 +251,99 @@ class ActivityRepository(IActivityRepository):
 
         row = self._db.connect().execute(sql, params).fetchone()
         return int(row["n"]) if row is not None else 0
+
+    # ---------------------------------------------------------------- batches
+
+    def batch_change_ids(self, batch_id: str) -> List[int]:
+        """Return the ids of every change in a batch, newest first (CLEAN-06).
+
+        Ids rather than rows: a batch over a whole library applying five fields
+        is a quarter of a million changes, and a revert reads them a chunk at a
+        time. Ids only grow, so id order is the order they were written in, and
+        ``idx_track_history_batch`` returns them in it.
+        """
+        rows = (
+            self._db.connect()
+            .execute(
+                "SELECT id FROM track_history WHERE batch_id = ? ORDER BY id DESC",
+                (str(batch_id),),
+            )
+            .fetchall()
+        )
+        return [int(row["id"]) for row in rows]
+
+    def batch_field_counts(self, batch_id: str) -> Dict[str, int]:
+        """Return how many changes a batch recorded per field.
+
+        One question answers both things a revert checks before it starts:
+        whether the batch recorded anything, and whether every field in it is
+        one the revert can write.
+        """
+        rows = (
+            self._db.connect()
+            .execute(
+                "SELECT field, count(*) AS n FROM track_history"
+                " WHERE batch_id = ? GROUP BY field",
+                (str(batch_id),),
+            )
+            .fetchall()
+        )
+        return {row["field"]: int(row["n"]) for row in rows}
+
+    def get_field_changes(self, change_ids: Sequence[int]) -> List[TrackFieldChange]:
+        """Return recorded changes in the order their ids were given.
+
+        Ids that are not there are left out. Read in chunks, so a chunk-sized
+        list never outgrows SQLite's parameter limit.
+        """
+        wanted = [int(change_id) for change_id in change_ids]
+        found: Dict[int, TrackFieldChange] = {}
+        connection = self._db.connect()
+        for chunk in chunked(unique_ids(wanted), CHUNK_SIZE):
+            placeholders = ", ".join("?" for _ in chunk)
+            for row in connection.execute(
+                f"SELECT * FROM track_history WHERE id IN ({placeholders})",
+                tuple(chunk),
+            ):
+                change = TrackFieldChange.from_row(row)
+                found[int(row["id"])] = change
+        return [found[change_id] for change_id in wanted if change_id in found]
+
+    def previous_change(
+        self, track_id: int, field_name: str, before_change_id: int
+    ) -> Optional[TrackFieldChange]:
+        """Return the latest change to a track's field recorded before another.
+
+        What a revert reads to learn where a value it is restoring came from:
+        the change that set it, which says ``beatport`` or ``cuepoint``.
+        """
+        row = (
+            self._db.connect()
+            .execute(
+                "SELECT * FROM track_history"
+                " WHERE track_id = ? AND field = ? AND id < ?"
+                " ORDER BY id DESC LIMIT 1",
+                (int(track_id), str(field_name), int(before_change_id)),
+            )
+            .fetchone()
+        )
+        return TrackFieldChange.from_row(row) if row is not None else None
+
+    def batch_events(self, batch_id: str) -> List[ActivityEvent]:
+        """Return the activity events describing a batch, newest first.
+
+        A batch's event carries its id in its detail (DEC-063). It is how a
+        batch that recorded no history at all is still recognised: Collection
+        membership writes none (ORG-04), so its event is the only trace of it.
+        """
+        rows = (
+            self._db.connect()
+            .execute(
+                "SELECT * FROM activity_events"
+                " WHERE json_extract(detail_json, '$.batch_id') = ?"
+                " ORDER BY id DESC",
+                (str(batch_id),),
+            )
+            .fetchall()
+        )
+        return [ActivityEvent.from_row(row) for row in rows]

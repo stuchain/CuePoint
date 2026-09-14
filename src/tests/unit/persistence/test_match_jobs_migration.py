@@ -149,6 +149,13 @@ class TestChecks:
             insert(db)
 
 
+def _through_13(service) -> MigrationRunner:
+    """A runner that stops at this migration: later ones are their own tests'."""
+    return MigrationRunner(
+        service, migrations=[m for m in discover_migrations() if m.version <= 13]
+    )
+
+
 class TestUpgradingAVersionTwelveLibrary:
     @pytest.fixture
     def populated(self, tmp_path):
@@ -172,13 +179,13 @@ class TestUpgradingAVersionTwelveLibrary:
         service.close_all()
 
     def test_it_applies_alone(self, populated):
-        assert [m.version for m in MigrationRunner(populated).migrate()] == [13]
+        assert [m.version for m in _through_13(populated).migrate()] == [13]
 
     def test_every_existing_row_survives_and_the_new_table_starts_empty(
         self, populated
     ):
         before = snapshot(populated)
-        MigrationRunner(populated).migrate()
+        _through_13(populated).migrate()
         after = snapshot(populated)
 
         assert after.pop("match_jobs") == []

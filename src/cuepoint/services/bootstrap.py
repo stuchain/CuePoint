@@ -53,6 +53,7 @@ from cuepoint.services.interfaces import (
     IOnboardingService,
     IPrivacyService,
     IProcessorService,
+    IRevertService,
     ITelemetryService,
     ILibraryImportService,
     ILibrarySourceRepository,
@@ -91,6 +92,7 @@ from cuepoint.services.match_state import MatchStateService
 from cuepoint.services.metadata_service import MetadataService
 from cuepoint.services.tag_service import TagService
 from cuepoint.services.processor_service import ProcessorService
+from cuepoint.services.revert_service import RevertService
 from cuepoint.services.telemetry_service import TelemetryService
 from cuepoint.utils.di_container import get_container
 
@@ -357,6 +359,24 @@ def bootstrap_services() -> None:
         )
 
     container.register_factory(IMatchApplyService, create_match_apply_service)
+
+    # Reverting CuePoint's own changes (CLEAN-06, DEC-068). It reads history
+    # through the repository and writes every revert through the service that
+    # owns the field, which is why it takes three of them: a revert validates
+    # and records exactly as the edit it undoes did.
+    def create_revert_service() -> IRevertService:
+        return RevertService(
+            activity_repository=container.resolve(IActivityRepository),
+            activity_service=container.resolve(IActivityService),
+            metadata_service=container.resolve(IMetadataService),
+            tag_service=container.resolve(ITagService),
+            match_state_service=container.resolve(IMatchStateService),
+            match_repository=container.resolve(IMatchRepository),
+            track_repository=container.resolve(ITrackRepository),
+            database_service=container.resolve(IDatabaseService),
+        )
+
+    container.register_factory(IRevertService, create_revert_service)
 
     # Matching library tracks as a resumable job (CLEAN-03, DEC-065). It takes
     # the batch service for one thing, resolving a selection, so a match and a

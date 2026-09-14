@@ -29,9 +29,9 @@ write-and-record, and they are not reused here on purpose: both work by setting
 an attribute on a ``LibraryTrack`` and calling ``TrackRepository.update``, which
 writes every column of the imported record. CuePoint's fields are not on that
 record — that is the whole point of DEC-057 — so they are not added to
-``REVERTABLE_FIELDS`` and they take this path instead. Reverting one is
-therefore not possible yet, and says so rather than half-working; ORG-10 shows
-the history and a later phase gives it its own revert.
+``REVERTABLE_FIELDS`` and they take this path instead. Reverting one takes it
+too: CLEAN-06's ``revert_service`` writes the old value back through these same
+methods, so a revert validates and records exactly as the edit it undoes did.
 
 The write and its record are one transaction
 -------------------------------------------

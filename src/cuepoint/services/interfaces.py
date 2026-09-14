@@ -84,6 +84,7 @@ if TYPE_CHECKING:
         BatchSelection,
     )
     from cuepoint.services.collection_service import FreezeResult, SmartResolution
+    from cuepoint.services.revert_service import BatchRevert, FieldRevert
     from cuepoint.services.library_service import (
         LibraryBrowseResult,
         LibrarySearchResult,
@@ -546,6 +547,33 @@ class IActivityRepository(ABC):
     @abstractmethod
     def history_count(self, track_id: Optional[int] = None) -> int:
         """Return the number of recorded field changes."""
+        ...
+
+    @abstractmethod
+    def batch_change_ids(self, batch_id: str) -> List[int]:
+        """Return the ids of every change in a batch, newest first."""
+        ...
+
+    @abstractmethod
+    def batch_field_counts(self, batch_id: str) -> Dict[str, int]:
+        """Return how many changes a batch recorded per field."""
+        ...
+
+    @abstractmethod
+    def get_field_changes(self, change_ids: Sequence[int]) -> List["TrackFieldChange"]:
+        """Return recorded changes in the order their ids were given."""
+        ...
+
+    @abstractmethod
+    def previous_change(
+        self, track_id: int, field_name: str, before_change_id: int
+    ) -> Optional["TrackFieldChange"]:
+        """Return the latest change to a track's field recorded before another."""
+        ...
+
+    @abstractmethod
+    def batch_events(self, batch_id: str) -> List["ActivityEvent"]:
+        """Return the activity events describing a batch, newest first."""
         ...
 
 
@@ -1119,6 +1147,16 @@ class IMatchStateService(ABC):
         """Reject the proposal unless a user decided; True if changed."""
         ...
 
+    @abstractmethod
+    def restore_decision(
+        self,
+        track_id: int,
+        recorded: Optional[Dict[str, Any]],
+        batch_id: Optional[str] = None,
+    ) -> Optional["TrackMatch"]:
+        """Put back a recorded user decision, or re-derive an automatic state."""
+        ...
+
 
 class IMatchJobRepository(ABC):
     """Interface for a match job's plan and its progress (DEC-065).
@@ -1236,6 +1274,36 @@ class IMatchService(ABC):
         should_cancel: Optional[Callable[[], bool]] = None,
     ) -> "MatchJobResult":
         """Match every waiting track of a job's plan."""
+        ...
+
+
+class IRevertService(ABC):
+    """Interface for reverting CuePoint's own changes (CLEAN-06, DEC-068).
+
+    A revert is written through the service that owns the field, appended as a
+    new change, and refused when the field has changed since. Rekordbox's
+    fields are ``IActivityService.revert_field_change``'s, and refused here.
+    """
+
+    @abstractmethod
+    def revert_change(self, change_id: int) -> "FieldRevert":
+        """Revert one recorded change to a CuePoint field."""
+        ...
+
+    @abstractmethod
+    def check_batch(self, batch_id: str) -> int:
+        """Refuse a batch that cannot be reverted; return its change count."""
+        ...
+
+    @abstractmethod
+    def revert_batch(
+        self,
+        batch_id: str,
+        *,
+        on_progress: Optional[Callable[[int, int], None]] = None,
+        should_cancel: Optional[Callable[[], bool]] = None,
+    ) -> "BatchRevert":
+        """Revert every change in a batch, newest first, under a new batch id."""
         ...
 
 

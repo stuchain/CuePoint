@@ -1623,6 +1623,15 @@ exactly the operation a user most wants to take back.
 
 **Decided with**: User · **Date**: 2026-09-06
 
+### Implemented (2026-09-14, CLEAN-06) — the batch id is read back
+
+"Revert this batch" is built (DEC-068). It reverts every history row carrying a batch id, newest
+first, under a new batch id of its own, so the revert can be reverted in turn. It uses the same
+threshold, counted in changes rather than tracks, the same committed chunks, the same cancel
+semantics and one event with the counts. Rows that changed since are skipped and counted.
+Migration 0014 adds the index on `track_history.batch_id` that migration 0009 left for the step
+that wrote its query, as a partial index, and `PHASE7_CLEAN.md` records the measurement.
+
 ---
 
 ## DEC-064 — Phase 6 Writes Nothing Outside the Database
@@ -1845,6 +1854,32 @@ why revert is built now rather than deferred again.
 **Why the decision stands**: The layer is DEC-057's model applied a second time, and each answer
 keeps it one model: one stored form per value, one meaning per name, and nothing erased by a write
 that had nothing to write.
+
+### Implemented (2026-09-14, CLEAN-06) — what a revert restores, and what makes one stale
+
+**What building it settled**:
+
+- *A revert restores a value with its provenance.* The Inspector reads where an override came from
+  off the latest history row. Reverting a hand edit that replaced a Beatport value puts the Beatport
+  value back, so the revert's row says `beatport`, read from the change that set the value.
+  Clearing an override is the user's act and says `cuepoint`.
+- *Staleness compares what a person owns.* A tag is present or absent, so renaming it does not make
+  its assignment stale. A match decision compares state, attempt and candidate. The dispute flag is
+  the rule's, and an automatic state is re-derived by every re-match, so neither makes a person's
+  decision stale.
+- *A decision comes back as a person made it; an automatic state is re-derived.* A recorded user
+  decision is restored with the flag it carried, then judged against any attempt newer than
+  everything it referred to, as the rule would have judged it. A recorded automatic state is not
+  replayed as a snapshot. The track returns to what its newest answered attempt says.
+- *Batch revert reaches every batch that recorded history* — ratings, favorites, tags, decisions,
+  applies and hand edits — and refuses Collection membership with the specification's reason.
+  Membership writes no history, so such a batch is recognised by its activity event.
+- *A deleted or merged tag is re-created by name* when a removal is reverted. Its category and
+  colour belong to the vocabulary, not to any track, and history does not hold them.
+
+**Why the decision stands**: "Revertable" was the decision's promise, and each answer keeps a revert
+from becoming a second way to lose work: nothing later is overwritten, nothing re-derivable is
+frozen, and nothing is right only sometimes.
 
 ---
 
