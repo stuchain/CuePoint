@@ -38,6 +38,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
+from cuepoint.models.file_status import FILE_NOT_CHECKED
 from cuepoint.models.match_attempt import STATE_NOT_MATCHED
 
 #: Field types. The type decides which operators are allowed and how a value is
@@ -183,6 +184,15 @@ METADATA_ALIAS = "meta"
 #: SQLite keyword.
 MATCH_ALIAS = "tmatch"
 MATCH_CANDIDATE_ALIAS = "tcandidate"
+
+#: The alias a track's last file check is joined under (CLEAN-07).
+FILES_ALIAS = "tfiles"
+
+# A check answers for the path it checked (DEC-073). A row for any other path —
+# a refresh moved the file — says nothing about the file the library now names,
+# so it reads exactly as no row does. `tracks.file_path` is never null, and a
+# checked path is never blank, so an unchecked track never compares equal.
+_FILE_CHECK_CURRENT = f"{FILES_ALIAS}.checked_path = tracks.file_path"
 
 
 @dataclass(frozen=True)
@@ -453,6 +463,34 @@ FIELDS: Tuple[FieldSpec, ...] = (
         "Match score",
         column=f"{MATCH_CANDIDATE_ALIAS}.score",
         joins=(MATCH_ALIAS, MATCH_CANDIDATE_ALIAS),
+    ),
+    # --- Files (CLEAN-07, DEC-073) ------------------------------------------
+    # "Not checked" is no check for the current path: never checked, or checked
+    # before a refresh changed the path. Both are the same answer, and a stale
+    # "present" shown as present would be the wrong one.
+    FieldSpec(
+        "file_status",
+        TYPE_TEXT,
+        "File status",
+        facetable=True,
+        column=(
+            f"CASE WHEN {_FILE_CHECK_CURRENT} THEN {FILES_ALIAS}.status"
+            f" ELSE '{FILE_NOT_CHECKED}' END"
+        ),
+        joins=(FILES_ALIAS,),
+    ),
+    # The day of the current path's last check, in the user's own time zone, as
+    # `date_added` is Rekordbox's day rather than a UTC instant. A stale check
+    # has no date, for the reason it has no status.
+    FieldSpec(
+        "file_checked_at",
+        TYPE_DATE,
+        "File checked",
+        column=(
+            f"CASE WHEN {_FILE_CHECK_CURRENT}"
+            f" THEN date({FILES_ALIAS}.checked_at, 'localtime') END"
+        ),
+        joins=(FILES_ALIAS,),
     ),
 )
 
@@ -953,6 +991,7 @@ __all__: Sequence[str] = (
     "FACETABLE_FIELDS",
     "FIELDS",
     "FIELD_TYPES",
+    "FILES_ALIAS",
     "MATCH_ALL",
     "MATCH_ANY",
     "MATCH_ALIAS",

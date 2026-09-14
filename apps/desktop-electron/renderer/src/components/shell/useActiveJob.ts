@@ -67,6 +67,10 @@ const JOB_VERBS: Record<string, string> = {
   // is the fallback for a job type this build has never heard of — and this
   // build writes them.
   library_batch: "Updating",
+  // CLEAN-07's file check. It follows every import and refresh on its own, so
+  // it appears here whether or not anyone asked for it, and has to say what it
+  // is doing: "Checking" alone is already the refresh preview's verb.
+  file_check: "Checking files",
 };
 
 /** A short description of what a job is doing, for the strip. */

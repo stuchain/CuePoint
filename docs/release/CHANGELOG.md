@@ -54,6 +54,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and marked in the queue rather than stopping the session, and are reported
   once for the whole run rather than once each. Nothing about it is permanent:
   the same track plays normally the next time you ask for it
+- CuePoint now checks that your tracks' files are still there, after every
+  import and every refresh, in the background with its own progress and Stop.
+  The Library's filter bar can find missing, unreadable and not-yet-checked
+  files, and when a whole drive is unplugged the Activity panel says so in one
+  line — "4,812 tracks on E:\ — the drive is not connected" — instead of
+  listing thousands of missing files. Nothing is moved or deleted: a moved file
+  is fixed in Rekordbox with Relocate, then a refresh
 
 ### Changed
 - A refresh that would delete tracks carrying your own work now says so before
@@ -71,6 +78,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   status chrome off-screen as those are added
 
 ### Fixed
+- A change could fail with "database is locked" when another one finished at
+  the same moment — an edit landing as an import completed, for instance. Each
+  change read the library before writing to it, and if anything else saved in
+  between, the database refused it at once rather than letting it wait its
+  turn. Changes now claim their turn before they read, so they wait briefly
+  instead of failing
 - Opening a Collection with thousands of tracks in it took over a second to
   show the first page and now takes a few milliseconds. The order was being
   worked out by re-reading the whole Collection once for every track in it

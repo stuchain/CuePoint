@@ -11,7 +11,8 @@ the path the library holds — a stale answer shown as stale rather than as
 silently wrong.
 
 No row means the track has never been checked, which is DEC-037's "unchecked"
-and not the same as missing.
+and not the same as missing. A row for another path means the same thing, and
+the filter vocabulary reads both as :data:`FILE_NOT_CHECKED` (CLEAN-07).
 """
 
 from __future__ import annotations
@@ -37,6 +38,21 @@ FILE_UNREADABLE = "unreadable"
 
 FILE_STATUSES = (FILE_PRESENT, FILE_MISSING, FILE_UNREADABLE)
 
+#: The file is missing because the drive or share it is on is not there, so the
+#: path itself was never looked at (CLEAN-07). Every file under a root that does
+#: not exist is missing, and one finding says so instead of thousands.
+REASON_ROOT_UNAVAILABLE = "root_unavailable"
+
+FILE_REASONS = (REASON_ROOT_UNAVAILABLE,)
+
+#: What the filter vocabulary calls a track with no check for its current path:
+#: never checked, or checked at a path a refresh has since changed. Never
+#: stored; it is the join finding nothing current, spelled as a value.
+FILE_NOT_CHECKED = "not_checked"
+
+#: Every value ``file_status`` takes in a filter.
+FILTER_FILE_STATUSES = (FILE_NOT_CHECKED, *FILE_STATUSES)
+
 
 @dataclass(frozen=True)
 class TrackFileStatus:
@@ -49,6 +65,9 @@ class TrackFileStatus:
         checked_at: When.
         size_bytes: The file's size when it was found. A missing file has no
             size, and one is refused rather than stored.
+        reason: Why a missing file is missing, when that is known without
+            looking at the path: one of :data:`FILE_REASONS`. Only a missing
+            file has one.
     """
 
     track_id: int
@@ -56,6 +75,7 @@ class TrackFileStatus:
     checked_path: str
     checked_at: str
     size_bytes: Optional[int] = None
+    reason: Optional[str] = None
 
     def __post_init__(self) -> None:
         """Validate the check."""
@@ -68,6 +88,12 @@ class TrackFileStatus:
         )
         if self.status == FILE_MISSING and self.size_bytes is not None:
             raise ValueError("A missing file cannot have a size")
+        if self.reason is not None:
+            one_of(self.reason, FILE_REASONS, "reason")
+            if self.status != FILE_MISSING:
+                raise ValueError(
+                    f"Only a missing file has a reason, not a {self.status} one"
+                )
 
     @property
     def is_present(self) -> bool:
@@ -95,6 +121,7 @@ class TrackFileStatus:
             "checked_path": self.checked_path,
             "size_bytes": self.size_bytes,
             "checked_at": self.checked_at,
+            "reason": self.reason,
         }
 
     @classmethod
@@ -107,4 +134,5 @@ class TrackFileStatus:
             checked_path=data["checked_path"],
             size_bytes=data.get("size_bytes"),
             checked_at=data["checked_at"],
+            reason=data.get("reason"),
         )

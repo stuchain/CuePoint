@@ -40,6 +40,13 @@ describe("jobLabel", () => {
     expect(jobLabel(job({ type: "library_refresh_apply" }))).toBe("Refreshing 3/10");
   });
 
+  it("names a file check apart from a refresh preview", () => {
+    // CLEAN-07: a check follows every import and refresh unasked, so the strip
+    // shows it to people who did not start it, and "Checking" alone already
+    // means the preview.
+    expect(jobLabel(job({ type: "file_check" }))).toBe("Checking files 3/10");
+  });
+
   it("says queued before a job starts, whatever its type", () => {
     expect(jobLabel(job({ state: "queued" }))).toBe("Queued 3/10");
     expect(jobLabel(job({ type: "library_import", state: "queued" }))).toBe(

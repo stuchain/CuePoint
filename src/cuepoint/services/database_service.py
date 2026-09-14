@@ -240,6 +240,17 @@ class DatabaseService(IDatabaseService):
         records the source, and a half-applied version of that would be data
         loss rather than an inconvenience.
 
+        It begins ``IMMEDIATE``: the write lock is taken when the unit of work
+        starts, waiting on the busy timeout for any other writer, rather than at
+        its first write. Every caller writes, and most read first — an import
+        resolves identities, an edit reads the value it replaces — and in WAL
+        mode a deferred transaction that has read cannot wait for a lock: when
+        another connection commits between its first read and its first write,
+        SQLite fails it at once with "database is locked", whatever the busy
+        timeout says. That was rare while writes came from one place at a time.
+        CLEAN-07's file check commits beside imports, refreshes and edits, and a
+        test caught an import failing that way (CLEAN-07's outcome records it).
+
         Args:
             join_existing: Participate in an already-open transaction instead of
                 refusing. The caller that opened it decides the outcome.
@@ -262,7 +273,7 @@ class DatabaseService(IDatabaseService):
                 context={"db_path": str(self.db_path)},
             )
 
-        connection.execute("BEGIN")
+        connection.execute("BEGIN IMMEDIATE")
         try:
             yield connection
         except BaseException:

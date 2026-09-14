@@ -24,6 +24,7 @@ import pytest
 
 from cuepoint.models.beatport_candidate import BeatportCandidate
 from cuepoint.models.filter_rule import (
+    FILES_ALIAS,
     MATCH_ALIAS,
     MATCH_CANDIDATE_ALIAS,
     METADATA_ALIAS,
@@ -371,7 +372,12 @@ class TestTheJoins:
     def test_every_alias_a_field_names_is_a_registered_join(self):
         for spec in FIELDS:
             assert set(spec.joins) <= set(JOINS), spec.name
-        assert list(JOINS) == [METADATA_ALIAS, MATCH_ALIAS, MATCH_CANDIDATE_ALIAS]
+        assert list(JOINS) == [
+            METADATA_ALIAS,
+            MATCH_ALIAS,
+            MATCH_CANDIDATE_ALIAS,
+            FILES_ALIAS,
+        ]
 
     def test_an_alias_with_no_join_is_refused(self):
         with pytest.raises(BrowseQueryError, match="No join"):

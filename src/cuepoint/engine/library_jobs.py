@@ -146,6 +146,15 @@ def run_library_import_job(job: Job, store: JobStore, xml_path: str) -> None:
     del summary
     store.finish(job, state=JobState.SUCCEEDED)
 
+    # DEC-073: every import is followed by a check of the library's files,
+    # started once this job is finished so the check does not find it running.
+    # Imported here for the reason LIBRARY_JOB_TYPES is below: the file check
+    # module imports this one's job type.
+    from cuepoint.engine.file_check_jobs import check_after_library_job
+    from cuepoint.services.file_check_service import TRIGGER_IMPORT
+
+    check_after_library_job(store, TRIGGER_IMPORT)
+
 
 def start_library_import_job(
     store: JobStore, xml_path: str, *, demo: bool = False

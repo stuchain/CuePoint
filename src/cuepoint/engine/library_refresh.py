@@ -479,6 +479,14 @@ def run_refresh_apply_job(
         result=refresh_summary_to_dict(summary, stored.diff_id),
     )
 
+    # DEC-073: an applied refresh is followed by a check of the library's
+    # files, as an import is. Imported here because the file check module
+    # imports this one's job type.
+    from cuepoint.engine.file_check_jobs import check_after_library_job
+    from cuepoint.services.file_check_service import TRIGGER_REFRESH
+
+    check_after_library_job(store, TRIGGER_REFRESH)
+
 
 def start_refresh_apply_job(
     store: JobStore,

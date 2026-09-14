@@ -174,12 +174,39 @@ what Rekordbox shows you. Carrying it back out is a later release, and it will
 be something you ask for rather than something that happens. See
 [Organizing your library](organization.md).
 
-### CuePoint does not check that your files are still there
+### CuePoint checks that your files are still there — and never moves them
 
-The library records where each track's file was according to Rekordbox. It does
-**not** check that the file is still on disk, and a track whose file has moved
-or been deleted looks exactly like any other track in CuePoint today. Finding
-missing files is a later release.
+After every import and every refresh, CuePoint looks for each track's file where
+Rekordbox says it is. The check runs in the background: the status strip shows
+**Checking files** with its progress and a Stop button, and the Activity panel
+records what it found. It only looks — nothing is read, moved, renamed or
+deleted, and CuePoint never writes to your audio files while doing it.
+
+Each track ends up with a **File status** you can filter by in the Library:
+
+| File status | Means |
+| --- | --- |
+| Present | The file is there and can be opened |
+| Missing | Nothing is at that path |
+| Unreadable | Something is there but cannot be opened — usually a permissions problem, or a folder where the file should be |
+| Not checked | Not checked yet, or Rekordbox has given the track a new path since the last check |
+
+**File checked** filters by the day a file was last checked.
+
+**An unplugged drive is one line, not thousands.** If every track on a drive is
+missing because the drive itself is not there, the Activity panel says so once —
+for example *4,812 tracks on E:\ — the drive is not connected* — and CuePoint
+does not look for each file on it. Plug the drive in and refresh, and the next
+check finds them.
+
+**Fix a moved file in Rekordbox.** The path belongs to Rekordbox: use its
+**Relocate** command on the missing track, export again, and refresh in
+CuePoint. The refresh brings in the new path and the check that follows it
+confirms the file.
+
+A large library on a spinning disk or a network share can take a while to check
+the first time; you can keep working while it runs, and stopping it keeps
+everything it already checked.
 
 ### inCrate keeps a separate inventory
 

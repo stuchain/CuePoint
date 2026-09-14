@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 7: Clean, Detailed Step Specifications
 
-Status: **Specified. CLEAN-01 to CLEAN-06 implemented.** The fourteen steps below replace the
+Status: **Specified. CLEAN-01 to CLEAN-07 implemented.** The fourteen steps below replace the
 roadmap's placeholder inventory (CLEAN-01…CLEAN-13, which Round 9's answers outgrew by one). Per
 the process, no implementation happens from this document — each step needs an explicit
 "Implement CLEAN-NN" instruction, scoped to exactly that step, and its outcome is recorded under the
@@ -1735,7 +1735,7 @@ the decision. All forty-three mutations fail at least one test.
 
 ---
 
-## CLEAN-07 — Checking Files
+## CLEAN-07 — Checking Files ✅ IMPLEMENTED 2026-09-14
 
 **Objective**: Find out which tracks' files exist, as a job, and store the answer (DEC-073, closing
 DEC-037).
@@ -1784,6 +1784,271 @@ will not show; the step records a measurement against a real external drive, not
 directory.
 
 **Complexity**: **M**
+
+### ✅ IMPLEMENTED 2026-09-14
+
+**Outcome**: Complete, with one measurement the specification asks for still owed: a real
+external drive and a network share (see the last point under "Measured").
+
+- `services/file_check_service.py` implements `IFileCheckService`:
+  - `resolve(selection)` names the library tracks a selection holds, refusing none;
+  - `library()` returns every track;
+  - `check(track_ids, trigger, on_progress, should_cancel)` checks, commits in chunks, records
+    the activity events and answers with a `FileCheckResult`.
+
+  Beside it are the path functions the check and CLEAN-12's reveal need: `check_file`, `path_root`,
+  `root_available`, `nearest_existing_folder` and `describe_unavailable`.
+- `persistence/file_status_repository.py` holds the SQL. `record` upserts one row per track and
+  skips a track that has left the library, naming it in its own `WHERE EXISTS`.
+- `engine/file_check_jobs.py` runs a `file_check` job:
+  - `start_file_check_job(store, selection)` on request, resolving first;
+  - `check_after_library_job(store, trigger)`, which `run_library_import_job` and
+    `run_refresh_apply_job` call once they have succeeded.
+- Migration 0015 adds `track_files.reason`, with `root_unavailable` its one value, enforced by a
+  CHECK. `TrackFileStatus.reason` lets only a missing file have one.
+- The rule vocabulary gains two fields through a fourth registered join, `tfiles`:
+  - `file_status`: text and facetable, one of `present`, `missing`, `unreadable` and
+    `not_checked`;
+  - `file_checked_at`: a date.
+- `DatabaseService.transaction()` begins `IMMEDIATE` (see "A bug building it found").
+- The status strip names the job "Checking files" (`useActiveJob.ts`).
+
+**Where it is visible.** Here the step goes past its "none yet". A check now follows every
+import and refresh on its own, so the status strip shows it and the Activity panel records it. The
+filter bar builds its fields from the engine, so "File status" and "File checked" appear there and
+work. The changelog, under Added, and the Library guide (`docs/user-guide/library.md`) say so,
+replacing the guide's sentence that CuePoint does not check files. The route that starts a check on
+request is CLEAN-11's.
+
+**What building it settled, and why.**
+
+- **A drive is asked about before its files.** The specification coalesced a disconnected drive
+  once "more than a stated fraction of a chunk is missing and every missing path shares a root that
+  does not exist". A root that does not exist makes every path under it missing by definition, so
+  the check asks about a root the first time it meets one. It records that root's tracks `missing`
+  with the reason `root_unavailable`, without looking at their paths, and records one line per
+  root. There is no fraction to tune. The fraction's other job, catching a drive unplugged during
+  a check, is kept: after any chunk with a plain miss under a root, that root is asked again, and
+  if it has gone, the chunk's misses take the reason and the rest of its tracks are not looked at.
+  A drive plugged back in mid-check is picked up by the next check.
+- **A root is what a user plugs in, read from the path's shape:**
+  - `E:\`, from either slash;
+  - `\\server\share`;
+  - `/Volumes/<name>`, `/media/<user>/<name>`, `/run/media/<user>/<name>` and `/mnt/<name>`;
+  - `/` for any other absolute path, which always exists.
+
+  The platform running the engine plays no part, as in `location_to_path`, so a Windows library
+  read on a Mac says its drive is not connected. A relative path names no place, and is recorded
+  missing without being looked at, rather than being resolved against the engine's working
+  folder.
+- **What counts as unreadable.**
+  - A `stat` refused by permission means something may well be there and permission would fix it.
+  - Something that is not a regular file is unreadable without being opened, because opening a
+    named pipe waits for a writer.
+  - Only an answer of "not found" or a name the system refuses is missing.
+- **A reason is stored, so it needed a migration.** CLEAN-01's `track_files` had nowhere to say
+  why a file was missing, and the Missing files view has to tell "the drive is not connected" from
+  "this file was deleted". `track_files` holds findings a rescan recomputes, so a later widening of
+  the CHECK costs a scan, not data.
+- **"Not checked" is no check for the current path.** `file_status` reads
+  `CASE WHEN tfiles.checked_path = tracks.file_path THEN tfiles.status ELSE 'not_checked' END`.
+  So a row for another path reads exactly like no row. Paths compare exactly, as `is_stale_for`
+  does, and a test holds the SQL and the model to the same answer. `file_checked_at` is that
+  check's day in the user's time zone, as `date_added` is Rekordbox's day, and a stale check has
+  none.
+- **What waits for what.**
+  - A check refuses to start while an import or a refresh apply runs. The specification named only
+    the refresh; an import rewrites the same paths, and a check started beside one is work that
+    import's own check repeats.
+  - Neither waits for a check, one-way on purpose as CLEAN-03's match is: a check over a slow share
+    can take a long time, and nothing a refresh does leaves a check's rows wrong.
+  - A library job that finishes while a check runs gets its check once that one ends. The
+    follow-up is remembered per job store under a lock shared with the running check's finish, so
+    it is neither lost nor started twice, including after a check that failed.
+  - Checks started unasked cover the whole library, read when the job starts.
+  - An interrupted check is closed out at the next start like any job and not resumed. A new check
+    repeats it, and every chunk it committed is still there.
+- **Files are looked at on eight threads.** The first spinning-disk run took 438.8 s for 50,000
+  files. On files it had not touched, a `stat` took 8 µs and opening took 30 ms, and eight threads
+  brought opening to 1.6 ms. So the calling thread keeps everything with an order — each root asked
+  once, the cancel asked before each new look, each answer put back against its track, and the
+  rows — and a pool only looks. At most one look per worker is in flight, so a cancel finishes
+  those and starts no more. The cost is on warm, local files, where the pool's handoffs outweigh
+  the I/O: 50,000 cached files on the SSD took 8.8 s pooled against 4.6 s one at a time. That is
+  seconds in the background, against minutes on the disks a library actually lives on.
+- **A chunk waits out another job's write.** A 50,000-track import holds the write lock for longer
+  than SQLite's five-second busy timeout. A chunk that finds the database busy has written nothing,
+  so it is tried again for up to 120 s, and any other failure is raised at once.
+- **Events.**
+  - One `clean.files.checked` per check, with its counts and trigger.
+  - One `clean.files.unreachable` per unavailable root, recorded after the counts so a feed read
+    newest first shows the finding on top, for example "4,812 tracks on E:\ — the drive is not
+    connected" (a network share "cannot be reached").
+  - A check of an empty library records nothing.
+  - Both are best-effort, as an import's event is.
+
+**A bug building it found.** An existing test, `test_the_library_is_never_left_half_imported`,
+failed once the follow-up checks existed: an import died with "database is locked" in a
+millisecond, with a five-second busy timeout. `transaction()` began a deferred `BEGIN`. In WAL mode a
+deferred transaction that has read cannot wait for the write lock, and when another connection
+commits before its first write, SQLite fails it at once (`SQLITE_BUSY_SNAPSHOT`). Nearly every unit
+of work reads first: an import resolves identities, an edit reads the value it replaces, and a tag
+merge reads both tags' tracks. So any of them could fail whenever something else committed in the
+gap — rare while one thing wrote at a time, routine once a check commits beside an import.
+
+Every call site that opens its own transaction was audited, and all of them write. So `BEGIN
+IMMEDIATE`, which takes the write lock when the unit of work starts and waits on the busy timeout,
+is the fix. `regression/test_regression_write_after_read_snapshot.py` reproduces it: a unit of work
+reads, another thread commits, the first writes. It fails with "database is locked" on the old
+`BEGIN` and passes on the new one. The changelog records the fix under Fixed.
+
+**Measured** on this Windows machine. Its three disks are internal: an NVMe SSD, a SATA SSD and a
+SATA spinning disk. Vocabulary times are medians of five, from two runs.
+
+| Measurement | Result |
+| --- | --- |
+| 50,000 paths on the NVMe SSD (45,000 files just created, 5,000 missing), one at a time: first run / again | 26.50 s / 4.61 s |
+| The same with eight workers: first run / again | 10.57 s / 8.80 s |
+| The same check with the filesystem answered in memory (database and bookkeeping): one at a time / pooled | 1.09 s / 2.65 s |
+| Spinning disk, files not touched before: `stat` / `stat` and open, one at a time / on eight threads | 8 µs / 29.9 ms / 1.6 ms |
+| Spinning disk through the service, pooled: 13,404 untouched files (all that were left) | 27.70 s, 2.07 ms a file |
+| Spinning disk, the first run over 50,000 real files, one at a time | 438.8 s, 8.8 ms a file |
+| 50,000 tracks on a drive letter that does not exist | 0.86–1.39 s, no path looked at |
+| Asking a drive letter that does not exist / a network share whose server does not exist | under 1 ms / 1.26 s |
+| Count, `genre` is House (for comparison) | 5.2–5.3 ms |
+| Count, `file_status` is `missing` / `not_checked` | 33.8–34.7 / 33.0–33.5 ms |
+| Count, `file_checked_at` before a date | 61.0–87.1 ms |
+| Facet, `file_status` over 50,000 checked tracks | 204–285 ms |
+| A page of 100 by artist, `file_status` is `missing` (without a rule: 1.4–2.3 ms) | 39.9–54.6 ms |
+
+- **Where the facet's time goes.** Its statement alone takes 118.9 ms. Grouping by the stored
+  status alone takes 24.0 ms, and the staleness comparison takes it to 93.1 ms: the facet builder
+  evaluates a field's expression four times a row, and this one compares two paths. That is DEC-073's
+  staleness rule stated in SQL. The only cheaper design would delete check rows from inside the
+  import, coupling Rekordbox's tables to CuePoint's, which DEC-068 rules out. Counts, which CLEAN-11's
+  Health uses, stay near 34 ms, and no index can serve a comparison across two tables.
+- **The dead share.** The first question took 1.26 s. Later questions under the same share were
+  answered from Windows' cache of the failure, so the saving on Windows is the first question and
+  the thousands of rows that would otherwise each say "missing" for one reason.
+- **Owed: a real external drive and a network share.** The risk the specification names is a
+  sleeping USB drive or a share, and this machine has neither. The internal spinning disk, with the
+  cache of its files cold, is the nearest measurement taken here. A USB drive woken from sleep and a
+  real share should be measured by a check over a library on each, before CLEAN-14's scale pass.
+
+**Tests**:
+
+- `services/test_file_check.py` (87 tests) covers:
+  - one path on a temporary directory: present with its size, missing, through a missing folder,
+    a folder that is unreadable even where opening would succeed, a file that will not open,
+    POSIX permission (skipped on Windows), a `stat` refused by permission, a name the system
+    refuses, a named pipe never opened (skipped where there are none), and the file left untouched;
+  - roots for fourteen path shapes and four that name no place; a root there, not there and
+    refusing; the one-line wording for a drive, a volume and a share;
+  - the nearest folder: its own, a moved file's, nested missing folders, a file where a folder
+    should be, an unplugged volume and the folder above it, never `/`, and a drive letter on Windows;
+  - a check against a real directory stores each answer against the path checked, the vocabulary
+    reads it, a path changed afterwards reads as not checked, and a second check replaces the
+    first;
+  - order by path, ids that are not tracks, a track deleted while its file is looked at, a
+    relative path never looked at, nothing written but `track_files` and the feed, and a refused
+    trigger;
+  - a disconnected drive: 4,812 of 5,000 tracks on a missing root with none of their paths looked
+    at, the root asked once and one finding, a real unmounted volume, a drive unplugged after 600
+    looks explaining its chunk's misses, misses on a present drive staying plain, and two drives
+    giving two findings;
+  - cancelling exactly before the next look with one worker, and within a pool's worth with eight;
+    a cancel before the first track; every chunk before a failure committed; and progress
+    reaching its total;
+  - the pool: looks overlapping and each answer landing on its own track, a look that raises
+    failing the check, and a pool of no workers refused;
+  - a busy database: a chunk retried until the database is free, a wait that runs out, busy told
+    apart from every other failure, and a real writer holding the lock past the busy timeout;
+  - the feed's sentence and detail, the finding recorded after the counts, and a feed that cannot
+    be written not failing the check;
+  - resolving, and the result's sentences, invariants and payload.
+- `persistence/test_file_filters.py` (29 tests), over a library holding every status, covers:
+  - each value finding exactly its tracks, a refresh's path change and its reversal, a
+    different-case path, and the text operators;
+  - each facet value counting what its rule finds, leaving its own rule out and honouring others;
+  - the SQL and the model agreeing on staleness;
+  - the local day, a check near midnight UTC, before, after, between, and a stale check having no
+    date;
+  - the join written only when named, once for two rules, and multiplying nothing beside the
+    metadata and match joins;
+  - the vocabulary crossing the wire;
+  - the repository replacing a check, round-tripping a reason, skipping a deleted track, joining a
+    caller's transaction, and returning paths in order.
+- `persistence/test_file_check_reason_migration.py` (6 tests) covers a version 14 library upgrading
+  alone, every check surviving with no reason, and the CHECK refusing three wrong values.
+- `engine/test_file_check_jobs.py` (16 tests) runs through the bootstrapped container and real job
+  threads. It covers:
+  - an import followed by a whole-library check, in that order in the `jobs` table;
+  - the DoD's disconnected drive as one line in the Activity feed;
+  - nothing after a cancelled or a failed import;
+  - an import beside the checks imports start never failing;
+  - a refresh moving a file, followed by a check of the new path, with five jobs in the log;
+  - a check refused beside an import and beside a refresh apply, with no follow-up held;
+  - a rewrite finishing during a check getting its check afterwards, once;
+  - a failed check still starting the follow-up waiting for it;
+  - a check exclusive with another;
+  - a selection by ids and by query;
+  - a selection of nothing refused before any job;
+  - a prompt cancel keeping what it looked at;
+  - an empty library recording nothing.
+- `regression/test_regression_write_after_read_snapshot.py` reproduces the bug above.
+- Updated rather than loosened:
+  - `test_clean_models.py`: 8 tests for the reason.
+  - `test_clean_schema.py`: holds the new CHECK to its model.
+  - `test_match_filters.py`: its join registry test names the fourth join.
+  - `useActiveJob.test.ts`: names the job.
+- `file_check_service.py` joined the mypy gate and the persistence boundary's allowlist.
+
+The tests were checked against fifty-one mutations written into the source:
+
+- **Looking at a path:** a `stat` refused by permission read as missing; the regular-file rule
+  dropped; the size not recorded; the file never opened.
+- **Roots and folders:** a volume root one level short; a network share not a root; a root refusing
+  to be looked at treated as unavailable; a relative path looked at; a root asked about for every
+  track; an unavailable root's files carrying no reason; no second look after a chunk's misses; the
+  nearest folder climbing past its root.
+- **The loop and the pool:** a cancel honoured only between chunks; the partial chunk dropped on a
+  cancel; a vanished track not counted; paths checked unsorted; ids that are not tracks not
+  counted; a track with no path checked; one worker by default; an answer paired with another look
+  still in flight; looks not bounded by the pool.
+- **The feed:** no finding for an unavailable root; an empty check recording an event; the event's
+  unavailable count dropped; the finding without its thousands separator.
+- **A busy database:** not waited out; a wrapped busy error not recognized; patience that never runs
+  out; the deferred `BEGIN`.
+- **Resolving:** a selection not narrowed to the library; the batch service's refusal leaking
+  through.
+- **The repository:** a row written for a track that is gone; every row reported written; paths
+  returned in id order.
+- **The model and the migration:** a reason on a present file; `from_row` forgetting the reason;
+  the CHECK dropped.
+- **The vocabulary:** a stale check reading its old status; the checked day in UTC; an inner join.
+- **The engine:** no check after an import; none after a refresh; a check after a cancelled import;
+  a waiting follow-up dropped; the follow-up never started; the import not a conflict; a check not
+  exclusive; a cancelled check reported as succeeded; the wrong progress message; a whole-library
+  follow-up checking nothing.
+- **The renderer:** the status strip with no verb for a check.
+
+The first run missed three.
+
+- **The nearest folder climbing past its root** survived because `/Volumes` does not exist on
+  Windows, so the unplugged-volume test passed either way. A test now answers `isdir` for
+  `/Volumes`, so that folder exists above a missing volume on any machine.
+- **The wrong progress message** survived because the engine test compared the message with the
+  constant that holds it. The test now asserts the words the strip shows.
+- **The third turned out to be equivalent.** It put answers back in the order they finished. Each
+  answer travels with its own track and root, so the list's order cannot be observed. It was
+  replaced by the bug it stood for, an answer paired with another look still in flight, and the
+  pool test catches that.
+
+All fifty-one mutations now fail at least one test. The "checked day in UTC" mutation can only fail
+where the local time zone is not UTC. It failed here, at UTC+3, and a machine running in UTC would
+not catch it.
+
+**Complexity**: **M**, as estimated.
 
 ---
 

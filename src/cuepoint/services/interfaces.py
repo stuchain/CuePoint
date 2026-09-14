@@ -37,6 +37,7 @@ if TYPE_CHECKING:
     # Annotations referencing them are quoted forward references.
     from cuepoint.incrate.beatport_api_models import DiscoveredTrack
     from cuepoint.migrations import Migration
+    from cuepoint.models.file_status import TrackFileStatus
     from cuepoint.models.library_source import LibrarySource
     from cuepoint.models.references import ReferenceSummary
     from cuepoint.models.track_metadata import TrackMetadata
@@ -84,6 +85,7 @@ if TYPE_CHECKING:
         BatchSelection,
     )
     from cuepoint.services.collection_service import FreezeResult, SmartResolution
+    from cuepoint.services.file_check_service import FileCheckResult
     from cuepoint.services.revert_service import BatchRevert, FieldRevert
     from cuepoint.services.library_service import (
         LibraryBrowseResult,
@@ -1304,6 +1306,69 @@ class IRevertService(ABC):
         should_cancel: Optional[Callable[[], bool]] = None,
     ) -> "BatchRevert":
         """Revert every change in a batch, newest first, under a new batch id."""
+        ...
+
+
+class IFileStatusRepository(ABC):
+    """Interface for what a file check found, per track (CLEAN-07, DEC-073).
+
+    Reads the paths to check and writes one row per track, replacing the last.
+    Nothing here touches the filesystem; that is :class:`IFileCheckService`'s.
+    """
+
+    @abstractmethod
+    def existing(self, track_ids: Iterable[int]) -> List[int]:
+        """Return the ids that are library tracks, once each, in order."""
+        ...
+
+    @abstractmethod
+    def library_ids(self) -> List[int]:
+        """Return every library track's id."""
+        ...
+
+    @abstractmethod
+    def paths(self, track_ids: Iterable[int]) -> List[Tuple[int, str]]:
+        """Return ``(track id, file path)`` for the ids that are tracks, in order."""
+        ...
+
+    @abstractmethod
+    def record(self, checks: Sequence["TrackFileStatus"]) -> Set[int]:
+        """Store checks, skipping tracks that are gone; return the ids written."""
+        ...
+
+    @abstractmethod
+    def get(self, track_id: int) -> Optional["TrackFileStatus"]:
+        """Return a track's stored check, or None."""
+        ...
+
+
+class IFileCheckService(ABC):
+    """Interface for checking whether tracks' files are there (CLEAN-07, DEC-073).
+
+    A check looks and records. It relocates nothing, reads nothing beyond
+    opening a file, and never writes outside the database.
+    """
+
+    @abstractmethod
+    def resolve(self, selection: "BatchSelection") -> List[int]:
+        """Return the library tracks a selection names, refusing none."""
+        ...
+
+    @abstractmethod
+    def library(self) -> List[int]:
+        """Return every library track, which may be none."""
+        ...
+
+    @abstractmethod
+    def check(
+        self,
+        track_ids: Sequence[int],
+        *,
+        trigger: str = "request",
+        on_progress: Optional[Callable[[int, int], None]] = None,
+        should_cancel: Optional[Callable[[], bool]] = None,
+    ) -> "FileCheckResult":
+        """Check each track's file, committing in chunks, and say what was found."""
         ...
 
 

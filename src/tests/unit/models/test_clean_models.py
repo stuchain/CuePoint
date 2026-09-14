@@ -47,6 +47,7 @@ from cuepoint.models.file_status import (
     FILE_MISSING,
     FILE_PRESENT,
     FILE_UNREADABLE,
+    REASON_ROOT_UNAVAILABLE,
     TrackFileStatus,
 )
 from cuepoint.models.file_write import (
@@ -400,6 +401,34 @@ class TestTrackFileStatus:
         check = TrackFileStatus(7, FILE_PRESENT, "/m/7.mp3", NOW, size_bytes=5)
         assert TrackFileStatus.from_row(check.to_dict()) == check
         assert check.is_present
+
+    def test_a_missing_file_can_say_its_root_was_unavailable(self):
+        # CLEAN-07: a drive that is not there explains every file on it.
+        check = TrackFileStatus(
+            7, FILE_MISSING, "E:/7.mp3", NOW, reason=REASON_ROOT_UNAVAILABLE
+        )
+        assert TrackFileStatus.from_row(check.to_dict()) == check
+        assert TrackFileStatus(7, FILE_MISSING, "/m/7.mp3", NOW).reason is None
+
+    @pytest.mark.parametrize("status", [FILE_PRESENT, FILE_UNREADABLE])
+    def test_only_a_missing_file_has_a_reason(self, status):
+        with pytest.raises(ValueError, match="Only a missing file"):
+            TrackFileStatus(7, status, "/m/7.mp3", NOW, reason=REASON_ROOT_UNAVAILABLE)
+
+    @pytest.mark.parametrize("reason", ["moved", "ROOT_UNAVAILABLE", "", 1])
+    def test_a_reason_outside_the_vocabulary_is_refused(self, reason):
+        with pytest.raises(ValueError, match="reason"):
+            TrackFileStatus(7, FILE_MISSING, "/m/7.mp3", NOW, reason=reason)
+
+    def test_a_row_from_before_the_reason_column_reads_as_no_reason(self):
+        row = {
+            "track_id": 7,
+            "status": FILE_MISSING,
+            "checked_path": "/m/7.mp3",
+            "size_bytes": None,
+            "checked_at": NOW,
+        }
+        assert TrackFileStatus.from_row(row).reason is None
 
 
 class TestDuplicates:

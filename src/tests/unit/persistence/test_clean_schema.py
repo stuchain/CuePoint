@@ -48,7 +48,12 @@ from cuepoint.models.duplicate_group import (
     DuplicateMember,
     member_hash,
 )
-from cuepoint.models.file_status import FILE_PRESENT, FILE_STATUSES, TrackFileStatus
+from cuepoint.models.file_status import (
+    FILE_PRESENT,
+    FILE_REASONS,
+    FILE_STATUSES,
+    TrackFileStatus,
+)
 from cuepoint.models.file_write import WRITE_OUTCOMES, WRITE_WRITTEN, FileWrite
 from cuepoint.models.filter_rule import FilterRule, RuleSet
 from cuepoint.models.library_track import LibraryTrack
@@ -121,6 +126,8 @@ VOCABULARIES = (
     ("track_match", "state", MATCH_STATES),
     ("track_match", "decided_by", DECIDERS),
     ("track_files", "status", FILE_STATUSES),
+    # Added by m0015 (CLEAN-07); held to its model the same way.
+    ("track_files", "reason", FILE_REASONS),
     ("duplicate_groups", "signal", SIGNALS),
     ("duplicate_dismissals", "signal", SIGNALS),
     ("track_artwork", "embedded", EMBEDDED_STATES),

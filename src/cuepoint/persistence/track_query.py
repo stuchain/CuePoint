@@ -41,6 +41,7 @@ from dataclasses import dataclass, replace
 from typing import Dict, Iterable, List, Optional, Tuple
 
 from cuepoint.models.filter_rule import (
+    FILES_ALIAS,
     MATCH_ALIAS,
     MATCH_CANDIDATE_ALIAS,
     METADATA_ALIAS,
@@ -229,12 +230,20 @@ _MATCH_CANDIDATE_JOIN = (
     f" ON {MATCH_CANDIDATE_ALIAS}.id = {MATCH_ALIAS}.candidate_id"
 )
 
+# A track's last file check (CLEAN-07), joined the same way again: a LEFT JOIN,
+# because a track never checked is exactly the track a view about files must
+# not lose, and the far side's primary key, so no row is multiplied.
+_FILES_JOIN = (
+    f" LEFT JOIN track_files AS {FILES_ALIAS} ON {FILES_ALIAS}.track_id = tracks.id"
+)
+
 #: Every join a field may name, keyed by the alias it establishes, in the order
 #: they are written: a join that reads another's alias comes after it.
 JOINS: Dict[str, str] = {
     METADATA_ALIAS: _METADATA_JOIN,
     MATCH_ALIAS: _MATCH_JOIN,
     MATCH_CANDIDATE_ALIAS: _MATCH_CANDIDATE_JOIN,
+    FILES_ALIAS: _FILES_JOIN,
 }
 
 

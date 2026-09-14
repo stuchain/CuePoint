@@ -2040,6 +2040,30 @@ disconnected drive.
 
 **Decided with**: User · **Date**: 2026-09-13
 
+### Implemented (2026-09-14, CLEAN-07) — what a check does, and what it waits for
+
+Nothing here changes the decision. What building it settled, recorded in full in
+`PHASE7_CLEAN.md` under CLEAN-07:
+
+- **A drive is asked about before its files.** The specification coalesced a disconnected drive
+  once a fraction of a chunk had gone missing. A root that does not exist makes every path under it
+  missing by definition, so the check asks the root the first time it meets it and records its
+  tracks `missing` with the reason `root_unavailable`, without looking at their paths. It asks again
+  after any chunk with a miss under that root, which catches a drive unplugged during the check.
+  Migration 0015 adds the `reason` column.
+- **"Not checked" is no check for the current path:** no row, or a row whose `checked_path` is no
+  longer `tracks.file_path`. Paths are compared exactly, as `TrackFileStatus.is_stale_for` does.
+- **A check refuses to start while an import or a refresh apply runs**; the specification named
+  only the refresh. Neither waits for a check. A library job that finishes while a check is running
+  gets its check once that one ends.
+- **Files are looked at on eight threads.** On a spinning disk, opening a file not touched recently
+  measured 30 ms and its `stat` 8 µs. The pool brought that to 1.6 ms a file. Roots, the cancel and
+  the rows stay on the job's thread.
+- **Every unit of work now begins `IMMEDIATE`.** A check committing beside an import made a latent
+  SQLite behaviour routine: a deferred transaction that has read cannot wait for the write lock,
+  and fails at once if anything commits before its first write. The regression test is
+  `regression/test_regression_write_after_read_snapshot.py`.
+
 ---
 
 ## DEC-074 — Duplicates Are Metadata Groups, and Nothing Is Deleted

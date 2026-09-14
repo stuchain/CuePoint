@@ -76,6 +76,10 @@ _ALLOWED = {
     # and a batch revert commits a chunk of changes at a time as ORG-07's batch
     # does. The writes are the owning services'; no SQL is run there.
     "services/revert_service.py",
+    # CLEAN-07's file check commits what it found a chunk at a time, as ORG-07's
+    # batch does, so a cancelled check keeps every chunk it finished. The rows
+    # are written by the file status repository; no SQL is run there.
+    "services/file_check_service.py",
 }
 _ALLOWED_PREFIXES = ("persistence/", "migrations/")
 
