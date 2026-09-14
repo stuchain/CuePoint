@@ -135,11 +135,19 @@ def recorded_state(job_id: str) -> Optional[str]:
 
 
 def job_log() -> List[Tuple[str, str]]:
+    """The jobs table in order, without the duplicate scans library jobs start.
+
+    A scan follows the same imports and refreshes a check does (CLEAN-08); its
+    place in the log is that step's to test, in ``test_duplicate_jobs.py``.
+    """
     return [
         (row["type"], row["state"])
         for row in database()
         .connect()
-        .execute("SELECT type, state FROM jobs ORDER BY created_at, rowid")
+        .execute(
+            "SELECT type, state FROM jobs WHERE type <> 'duplicate_scan'"
+            " ORDER BY created_at, rowid"
+        )
     ]
 
 
@@ -439,7 +447,8 @@ class TestWhatWaitsForWhat:
         export = write_export(tmp_path, [present], "collection.xml")
         imported = finished(store, start_library_import_job(store, export))
         assert imported.state is JobState.SUCCEEDED
-        assert pending_follow_up(store) == "import"
+        # The import asks for its check just after its state is set, so wait.
+        wait_until(lambda: pending_follow_up(store) == "import", "the check request")
         assert [job.id for job in checks_of(store)] == [started.job.id]
 
         gate.release.set()

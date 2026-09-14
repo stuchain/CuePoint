@@ -76,7 +76,6 @@ import ntpath
 import os
 import posixpath
 import re
-import sqlite3
 import stat
 import time
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
@@ -96,6 +95,7 @@ from cuepoint.models.library_track import utc_now_iso
 from cuepoint.persistence.id_chunks import unique_ids
 from cuepoint.persistence.track_query import BrowseQueryError
 from cuepoint.services.batch_service import BATCH_CHUNK_SIZE, BatchSelection
+from cuepoint.services.busy_wait import database_busy, write_waiting
 from cuepoint.services.interfaces import (
     IActivityService,
     IBatchService,
@@ -271,22 +271,6 @@ def nearest_existing_folder(path: str) -> Optional[str]:
         if parent == current:
             return None
         current = parent
-
-
-def database_busy(exc: BaseException) -> bool:
-    """True when SQLite said the database is locked or busy.
-
-    Raised as it is by a statement or by ``BEGIN``, or wrapped by the database
-    service when a commit fails, so the cause chain is followed.
-    """
-    current: Optional[BaseException] = exc
-    while current is not None:
-        if isinstance(current, sqlite3.OperationalError):
-            text = str(current).lower()
-            if "locked" in text or "busy" in text:
-                return True
-        current = current.__cause__
-    return False
 
 
 def describe_unavailable(root: str, tracks: int) -> str:
@@ -691,24 +675,16 @@ class FileCheckService(IFileCheckService):
         is tried again, for up to :data:`DATABASE_BUSY_PATIENCE_SECONDS`. Any
         other failure is raised at once, and so is a wait that runs out.
         """
-        waiting_since: Optional[float] = None
-        while True:
-            try:
-                with self._db.transaction():
-                    return self._files.record(checks)
-            except Exception as exc:  # noqa: BLE001 — re-raised unless busy
-                if not database_busy(exc):
-                    raise
-                now = time.monotonic()
-                if waiting_since is None:
-                    waiting_since = now
-                    _logger.info(
-                        "[files] the library is busy; waiting to save %d checks",
-                        len(checks),
-                    )
-                if now - waiting_since >= DATABASE_BUSY_PATIENCE_SECONDS:
-                    raise
-                time.sleep(_BUSY_RETRY_INTERVAL_SECONDS)
+        # The constants are read here, at the call, so a test can shorten them.
+        return write_waiting(
+            self._db,
+            lambda: self._files.record(checks),
+            patience_seconds=DATABASE_BUSY_PATIENCE_SECONDS,
+            interval_seconds=_BUSY_RETRY_INTERVAL_SECONDS,
+            on_wait=lambda: _logger.info(
+                "[files] the library is busy; waiting to save %d checks", len(checks)
+            ),
+        )
 
     def _explain_misses(
         self,

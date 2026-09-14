@@ -80,6 +80,13 @@ _ALLOWED = {
     # batch does, so a cancelled check keeps every chunk it finished. The rows
     # are written by the file status repository; no SQL is run there.
     "services/file_check_service.py",
+    # CLEAN-08's duplicate scan writes one signal's groups per transaction,
+    # and a dismissal with its fingerprint in one. The SQL is the duplicate
+    # repository's.
+    "services/duplicate_service.py",
+    # The one retry loop for a write that finds the database busy: it opens
+    # the transaction it retries, and runs no SQL of its own.
+    "services/busy_wait.py",
 }
 _ALLOWED_PREFIXES = ("persistence/", "migrations/")
 

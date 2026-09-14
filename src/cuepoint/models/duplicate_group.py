@@ -20,8 +20,9 @@ dismissal stores :func:`member_hash` of the member ids it was given, and
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Iterable, Optional, Tuple
 
 from cuepoint.models.row_values import one_of, optional_id, required_id, required_text
 
@@ -35,6 +36,15 @@ SIGNAL_BEATPORT = "beatport"
 SIGNAL_TEXT = "text"
 
 SIGNALS = (SIGNAL_PATH, SIGNAL_BEATPORT, SIGNAL_TEXT)
+
+#: What each signal means, as a sentence can say it.
+SIGNAL_LABELS = {
+    SIGNAL_PATH: "the same file",
+    SIGNAL_BEATPORT: "the same Beatport track",
+    SIGNAL_TEXT: "the same artist, title and mix",
+}
+
+_HASH = re.compile(r"[0-9a-f]{64}")
 
 
 def member_hash(track_ids: Iterable[int]) -> str:
@@ -63,12 +73,16 @@ class DuplicateGroup:
         group_key: What the signal produced — unique per signal.
         computed_at: When the group was last computed.
         id: Database primary key; ``None`` until persisted.
+        member_hash: :func:`member_hash` of the members the group was last
+            written with (CLEAN-08), which is what a dismissal is compared
+            against in SQL. Empty only for a group nothing has written yet.
     """
 
     signal: str
     group_key: str
     computed_at: str
     id: Optional[int] = None
+    member_hash: str = ""
 
     def __post_init__(self) -> None:
         """Validate the group."""
@@ -76,6 +90,10 @@ class DuplicateGroup:
         one_of(self.signal, SIGNALS, "signal")
         required_text(self.group_key, "group_key")
         required_text(self.computed_at, "computed_at")
+        if self.member_hash and not _HASH.fullmatch(self.member_hash):
+            raise ValueError(
+                f"member_hash must be a SHA-256 in hex, got {self.member_hash!r}"
+            )
 
     def to_dict(self) -> Dict[str, Any]:
         """Return the persisted row."""
@@ -84,6 +102,7 @@ class DuplicateGroup:
             "signal": self.signal,
             "group_key": self.group_key,
             "computed_at": self.computed_at,
+            "member_hash": self.member_hash,
         }
 
     @classmethod
@@ -95,7 +114,71 @@ class DuplicateGroup:
             signal=data["signal"],
             group_key=data["group_key"],
             computed_at=data["computed_at"],
+            member_hash=data.get("member_hash") or "",
         )
+
+
+@dataclass(frozen=True)
+class ScannedGroup:
+    """A group a scan found, before it is written (CLEAN-08).
+
+    Attributes:
+        signal: One of :data:`SIGNALS`.
+        group_key: What the signal produced.
+        track_ids: The members, sorted and de-duplicated; at least two.
+    """
+
+    signal: str
+    group_key: str
+    track_ids: Tuple[int, ...]
+
+    def __post_init__(self) -> None:
+        """Validate the group and put its members in order."""
+        one_of(self.signal, SIGNALS, "signal")
+        required_text(self.group_key, "group_key")
+        ids = tuple(
+            sorted({required_id(track_id, "track_id") for track_id in self.track_ids})
+        )
+        if len(ids) < 2:
+            raise ValueError("A duplicate group needs at least two tracks")
+        object.__setattr__(self, "track_ids", ids)
+
+    @property
+    def member_hash(self) -> str:
+        """The fingerprint of its members."""
+        return member_hash(self.track_ids)
+
+
+@dataclass(frozen=True)
+class DuplicateGroupMembers:
+    """A stored group as it is now: its members, and whether it is dismissed.
+
+    Attributes:
+        group: The group row.
+        track_ids: Its members now, sorted. A refresh can have taken some away
+            since the scan.
+        dismissed: Whether a dismissal covers exactly these members.
+    """
+
+    group: DuplicateGroup
+    track_ids: Tuple[int, ...]
+    dismissed: bool = False
+
+    @property
+    def shown(self) -> bool:
+        """True when a user should see it: two or more members, not dismissed."""
+        return len(self.track_ids) >= 2 and not self.dismissed
+
+    def to_dict(self) -> Dict[str, Any]:
+        """The group as an answer."""
+        return {
+            "id": self.group.id,
+            "signal": self.group.signal,
+            "group_key": self.group.group_key,
+            "computed_at": self.group.computed_at,
+            "track_ids": list(self.track_ids),
+            "dismissed": self.dismissed,
+        }
 
 
 @dataclass(frozen=True)

@@ -188,6 +188,10 @@ MATCH_CANDIDATE_ALIAS = "tcandidate"
 #: The alias a track's last file check is joined under (CLEAN-07).
 FILES_ALIAS = "tfiles"
 
+#: The view of the duplicate groups a user is shown, one row per track per
+#: signal (CLEAN-08, migration 0016).
+DUPLICATE_SIGNALS_VIEW = "duplicate_track_signals"
+
 # A check answers for the path it checked (DEC-073). A row for any other path —
 # a refresh moved the file — says nothing about the file the library now names,
 # so it reads exactly as no row does. `tracks.file_path` is never null, and a
@@ -245,6 +249,13 @@ class FieldSpec:
         link: The table a membership field is answered from. Mutually
             exclusive with ``column``: a field is either something a track has
             or something a track is in.
+        values: The table a *multi-valued text* field is answered from
+            (CLEAN-08): a track has any number of rows there, each carrying a
+            word. ``duplicate_signal`` is one, because a track can be grouped
+            by its path and by its title at once. Text operators ask whether
+            any of a track's values satisfies them, and ``is_empty`` whether it
+            has none. Kept apart from ``link``: a membership field's values are
+            ids a rule must be able to resolve, and these are words.
         joins: The joined tables the expression reads, by alias —
             :data:`METADATA_ALIAS` for CuePoint's layer (ORG-05),
             :data:`MATCH_ALIAS` and :data:`MATCH_CANDIDATE_ALIAS` for a track's
@@ -271,6 +282,7 @@ class FieldSpec:
     link: Optional[LinkTable] = None
     joins: Tuple[str, ...] = ()
     unit: Optional[str] = None
+    values: Optional[LinkTable] = None
 
     @property
     def metadata(self) -> bool:
@@ -296,6 +308,11 @@ class FieldSpec:
     def is_membership(self) -> bool:
         """True when this field is answered by an existence check."""
         return self.link is not None
+
+    @property
+    def is_multivalued(self) -> bool:
+        """True when a track can have several values for this field (CLEAN-08)."""
+        return self.values is not None
 
 
 #: Every filterable field. The column list is deliberately narrower than
@@ -491,6 +508,23 @@ FIELDS: Tuple[FieldSpec, ...] = (
             f" THEN date({FILES_ALIAS}.checked_at, 'localtime') END"
         ),
         joins=(FILES_ALIAS,),
+    ),
+    # --- Duplicates (CLEAN-08, DEC-074) --------------------------------------
+    # Both read the groups a user is shown: two or more members, and no
+    # dismissal made for exactly those members (migration 0016's view).
+    FieldSpec(
+        "in_duplicate_group",
+        TYPE_BOOL,
+        "In a duplicate group",
+        facetable=True,
+        column=f"(tracks.id IN (SELECT track_id FROM {DUPLICATE_SIGNALS_VIEW}))",
+    ),
+    FieldSpec(
+        "duplicate_signal",
+        TYPE_TEXT,
+        "Duplicate signal",
+        facetable=True,
+        values=LinkTable(DUPLICATE_SIGNALS_VIEW, "signal"),
     ),
 )
 
@@ -991,6 +1025,7 @@ __all__: Sequence[str] = (
     "FACETABLE_FIELDS",
     "FIELDS",
     "FIELD_TYPES",
+    "DUPLICATE_SIGNALS_VIEW",
     "FILES_ALIAS",
     "MATCH_ALL",
     "MATCH_ANY",

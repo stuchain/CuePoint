@@ -2090,6 +2090,27 @@ re-adds a deleted track (DEC-003) and the file is user data.
 
 **Decided with**: User · **Date**: 2026-09-13
 
+### Implemented (2026-09-14, CLEAN-08) — what groups a track, and what hides a group
+
+Nothing here changes the decision. What building it settled, recorded in full in
+`PHASE7_CLEAN.md` under CLEAN-08:
+
+- **Groups are stored, and "shown" is SQL.** A group carries the fingerprint of its members, and
+  migration 0016's view `duplicate_track_signals` holds exactly the groups a user sees: two or more
+  members, and no dismissal made for exactly those members. The filter fields and the Duplicates
+  list read the same view.
+- **The text key keeps the mix's own words.** `normalize_text` discards mix words and
+  `_parse_mix_flags` loses remixer names for "Title - Remixer Remix", so neither alone could keep
+  two remixes apart. Bracketed phrases and trailing mix segments the matcher's `MIX_PATTERNS`
+  recognize are kept as words; only a featured-artist credit and "Original Mix" are dropped. The
+  one way this errs is by not grouping.
+- **Lengths agree within two seconds of a group's shortest**, not of a neighbour, and a track with
+  no length is not grouped by text.
+- **A Beatport group is an accepted candidate's Beatport id**, or its page when no id was parsed.
+- **A dismissal can be taken back**, and both answers are recorded in the activity feed.
+- **A scan follows every import, applied refresh and match job**, and refuses to start beside an
+  import or a refresh apply.
+
 ---
 
 ## DEC-075 — Library Health Is Counts, Not a Score

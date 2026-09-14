@@ -61,6 +61,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   line — "4,812 tracks on E:\ — the drive is not connected" — instead of
   listing thousands of missing files. Nothing is moved or deleted: a moved file
   is fixed in Rekordbox with Relocate, then a refresh
+- CuePoint now looks for possible duplicates after every import, refresh and
+  match: one file in your collection twice, two tracks matched to the same
+  Beatport track, or the same artist, title and mix with lengths within two
+  seconds. The Library's filter bar can find tracks in a duplicate group, and by
+  what grouped them. Nothing is deleted, merged or changed
 
 ### Changed
 - A refresh that would delete tracks carrying your own work now says so before
@@ -78,6 +83,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   status chrome off-screen as those are added
 
 ### Fixed
+- Opening CuePoint for the first time after installing or updating could fail
+  to prepare the library if several parts of the app reached for it at once.
+  Each asked which schema updates were missing, and the second then repeated an
+  update the first had just applied. Each update now applies exactly once,
+  however many ask for it
 - A change could fail with "database is locked" when another one finished at
   the same moment — an edit landing as an import completed, for instance. Each
   change read the library before writing to it, and if anything else saved in

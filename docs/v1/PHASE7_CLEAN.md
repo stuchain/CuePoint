@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 7: Clean, Detailed Step Specifications
 
-Status: **Specified. CLEAN-01 to CLEAN-07 implemented.** The fourteen steps below replace the
+Status: **Specified. CLEAN-01 to CLEAN-08 implemented.** The fourteen steps below replace the
 roadmap's placeholder inventory (CLEAN-01…CLEAN-13, which Round 9's answers outgrew by one). Per
 the process, no implementation happens from this document — each step needs an explicit
 "Implement CLEAN-NN" instruction, scoped to exactly that step, and its outcome is recorded under the
@@ -2052,7 +2052,7 @@ not catch it.
 
 ---
 
-## CLEAN-08 — Finding Duplicates
+## CLEAN-08 — Finding Duplicates ✅ IMPLEMENTED 2026-09-14
 
 **Objective**: Group possible duplicates by three signals, remember dismissals, and never delete
 anything (DEC-074).
@@ -2096,6 +2096,239 @@ patched `os`). The rule fields count what the groups say.
 group states its signal and why nothing acts without a person.
 
 **Complexity**: **M**
+
+### ✅ IMPLEMENTED 2026-09-14
+
+**Outcome**: Complete.
+
+- `services/duplicate_service.py` implements `IDuplicateService`:
+  - `scan(signals, trigger, should_cancel)` rebuilds each signal in one transaction;
+  - `groups(signal, include_dismissed)` lists the stored groups of two or more;
+  - `dismiss(group_id)` marks a group "not duplicates" for the members it has now, and
+    `restore(group_id)` takes that back.
+- `services/duplicate_keys.py` holds the text signal's pure functions: `title_parts`, `artist_key`,
+  `text_key`, `duration_clusters` and `text_groups`.
+- `persistence/duplicate_repository.py` holds the SQL. The path and Beatport signals are grouped
+  by `GROUP BY`, and the text signal's columns are streamed.
+- `engine/duplicate_jobs.py` runs a `duplicate_scan` job on request, and `scan_after` starts one
+  whenever an import, an applied refresh or a match job finishes.
+- Migration 0016 adds `duplicate_groups.member_hash` and the view `duplicate_track_signals`: one row
+  per track per signal for every group that is shown.
+- The rule vocabulary gains two fields:
+  - `in_duplicate_group`: a yes/no field, facetable;
+  - `duplicate_signal`: text, facetable. It is the first field a track can hold several values
+    of, answered through a new `FieldSpec.values`.
+- The status strip names the job "Finding duplicates".
+- Two pieces of CLEAN-07 became shared so this step could reuse rather than copy them:
+  - `engine/follow_ups.py`, the "start it now, or once the running one finishes" mechanism, which
+    the file check and the scan both use;
+  - `services/busy_wait.py`, the retry for a write that finds the database busy.
+
+**Where it is visible.** A scan follows every import, refresh and match job, so the status strip
+shows it and the Activity panel records what it found. The filter bar builds its fields from the
+engine, so "In a duplicate group" and "Duplicate signal" appear there and work. The changelog and
+the Library guide say so. Routes, the Duplicates view and its dismiss control are CLEAN-11's and
+CLEAN-12's.
+
+**What building it settled, and why.**
+
+- **Groups are stored, and "shown" is a SQL question.** DEC-075's Health count and the filter bar
+  both need "is this track in an undismissed group" as a predicate. A dismissal stores a SHA-256 of
+  its members, which SQLite cannot compute, so each group now stores the same fingerprint when it is
+  written. The view compares the two, and requires two or more members still present, so a refresh
+  that deletes one of a pair hides it at once rather than at the next scan. The fields, the
+  Duplicates list and a scan's counts all read from that.
+- **The text key keeps the mix's own words.** The specification asked for normalized artist, base
+  title and mix type through `normalize_text` and `_parse_mix_flags`, and a probe of both on real
+  title shapes showed neither can carry identity alone:
+  - `normalize_text` reduces "Track (Extended Mix)" to `track`, because the matcher scores mixes
+    separately;
+  - `_parse_mix_flags` reports "Track - CamelPhat Remix" and "Track - Other Remix" as the same mix,
+    a remix with no remixer, and so would group two different remixes — the false positive the
+    specification names as this step's risk.
+
+  So a title is split into a base and its mix phrases. Every bracketed phrase is a mix phrase, as
+  is a trailing " - …" segment that the matcher's `MIX_PATTERNS` recognize, and both keep their
+  words. Only a featured-artist credit and "Original Mix" are dropped. So:
+  - a plain title and its Original Mix group, and so do "(CamelPhat Remix)" and
+    "- CamelPhat Remix";
+  - an Extended and an Original, two remixers, Part 1 and Part 2, and "(Bootleg)" never do;
+  - the one way the key errs is by not grouping.
+
+  Artists go through the matcher's `split_artists`, and their order stops mattering.
+- **Lengths agree within two seconds of the group's shortest**, not of the neighbouring track. So
+  300, 302 and 304 seconds make a pair and a single track, never one group spanning four seconds.
+  The shortest length is part of the key, so two recordings sharing a name and far apart in length
+  are two groups. A track with no length is not grouped by text; the other signals still see it.
+- **A Beatport group is an accepted candidate's Beatport id**, automatic or a user's, or its page
+  when no id was parsed. A candidate only proposed is not evidence.
+- **A group keeps its id across scans**, so a group open on screen is still the same group after
+  the scan that follows an import. A member that left the library while the scan ran is skipped
+  rather than failing the signal, and a group left with fewer than two is deleted.
+- **Dismissing.**
+  - A dismissal is made for the members the group has now, and the same fingerprint is written onto
+    the group in the same transaction, so the view and the list agree the moment it returns.
+  - A group of one and a group already dismissed are refused.
+  - `restore` takes a dismissal back, which DEC-074 did not name but a mis-click needs.
+  - Both are recorded in the Activity feed.
+- **What follows what.**
+  - A scan follows every import, applied refresh and match job. A match job counts only if it got as
+    far as writing its plan; one refused before that asks for nothing.
+  - A scan refuses to start beside an import or a refresh apply, and neither waits for a scan, as
+    with the file check.
+  - A match job neither conflicts with a scan nor waits for one; the scan it asks for reads the
+    states it wrote.
+  - Groups are therefore as of the last scan. A single decision made between scans can leave a
+    Beatport group one scan behind, and each group carries `computed_at`.
+- **The text signal runs with the others.** The specification allowed it to run only on request if
+  it proved slow. At 50,000 tracks it takes 1.6 s, so it does not.
+- **`duplicate_signal` is multi-valued, not a single value.** A file imported twice is usually also
+  the same title twice, so a single value per track would have made "signal is text" silently miss
+  it. `FieldSpec.values` names a table of words, beside `link` for id membership:
+  - `is path` means "grouped by path", and `is not path` is its exact complement;
+  - a facet counts a track once under each signal it has;
+  - the field still crosses the wire as `text`, so the renderer's filter bar and its contract test
+    needed nothing.
+
+**Two bugs building it found.**
+
+- **Two threads migrating one database.** A stray follow-up job logged "Migration 0005 … failed:
+  duplicate column name". The engine migrates on the first repository a request resolves, and a
+  first launch sends several requests at once. `MigrationRunner.migrate()` read the pending list,
+  then applied it, so a second runner replayed DDL the first had just committed. Each migration's
+  transaction now asks, once it holds the lock, whether its version is already recorded, and skips
+  it if so. `regression/test_regression_concurrent_migrate.py` covers it twice: deterministically,
+  with a runner holding a stale pending list, and with four threads racing a fresh database. The
+  changelog records the fix under Fixed.
+- **Engine tests outliving their jobs.** That stray job belonged to a previous test. Its match
+  job's follow-up scan was still running when the next test replaced the container. A new
+  `tests/unit/engine/conftest.py` waits, after each engine test, for the job threads that test
+  started. Two tests with the same race in their own assertions now wait for the follow-up
+  request rather than asserting it the instant the import's state is set: CLEAN-07's check and
+  this step's scan.
+
+**Measured** at 50,000 tracks, with 300 files imported twice, 1,000 records spelled plain and
+"Original Mix" a second apart, and 20,000 accepted matches, 400 of which share 200 Beatport ids.
+Vocabulary times are medians of five.
+
+| Measurement | Result |
+| --- | --- |
+| First scan / rescan with nothing changed | 1.75 s / 1.72 s |
+| Path signal (300 groups) | 47–63 ms |
+| Beatport signal (200 groups) | 31 ms |
+| Text signal (1,000 groups): streaming the rows / keying and grouping them | 76 ms / 1,546 ms |
+| Dismissing a group | 3.7 ms |
+| Count, `genre` is House (for comparison) | 5.4 ms |
+| Count, `in_duplicate_group` is true | 14.5 ms |
+| Count, `duplicate_signal` is text / is not path | 1.7 / 8.2 ms |
+| Facet, `duplicate_signal` / `in_duplicate_group` | 46.4 / 89.2 ms |
+| A page of 100 by artist, `in_duplicate_group` is true | 5.1 ms |
+| Listing every group shown (1,499) | 15.6 ms |
+
+**Tests**:
+
+- `services/test_duplicate_keys.py` (52 tests) covers:
+  - twenty-two title shapes split into base and mix;
+  - spellings that must share a key and seven near-misses that must not;
+  - what is not enough for a key;
+  - lengths clustered from the shortest, with three seconds as two clusters and no chaining;
+  - text groups keyed by their shortest length, with untimed, zero-length and keyless tracks
+    left out.
+- `services/test_duplicates.py` (40 tests) covers:
+  - **each signal:** a group and its near-miss — a path spelled two ways and another path; an
+    accepted Beatport track and another, a proposal, and a page fallback; the same record within two
+    seconds, and three seconds apart, another mix, another artist;
+  - **several groups:** a track in a path group and a text group, and no group of one stored;
+  - **rebuilding:** ids kept, a pair dissolved at once and on rescan when a refresh deletes a member,
+    a group no longer found removed, a member that moved away leaving a group still found, a member
+    that left mid-scan skipped with the right fingerprint and its pair deleted, and bad replacements
+    refused;
+  - **dismissing:** hidden and surviving a rescan, shown again for a new member, a dismissal made
+    after a refresh took a member hiding the group as it is, restored, refusals, events, and the
+    stored fingerprint covering the group;
+  - **nothing else touched:** every statement SQLite ran during a scan, a dismissal and a restore
+    wrote only the duplicate tables and the feed, with `os` and `open` patched to fail;
+  - **scanning:** the event and its counts, an empty result, a cancel before the first signal,
+    between signals and while titles are read, a busy database waited out, another failure raised, a
+    broken feed not failing a scan, and unknown signals and triggers refused;
+  - the result's invariants and payload.
+- `persistence/test_duplicate_filters.py` (26 tests) covers:
+  - `in_duplicate_group` and its facet, a shrunken pair and a restored dismissal;
+  - `duplicate_signal` under twelve operators, `is not` as the exact complement of `is` for every
+    signal, and wildcards in a value;
+  - facet counts equal to rule counts, a facet leaving its own rule out and honouring others, and
+    a facet inside a playlist scope;
+  - the vocabulary's shape and the view's `NOT IN` safety.
+- `persistence/test_duplicate_scan_migration.py` (6 tests) covers:
+  - a version 15 library upgrading alone, with every group, member and dismissal kept;
+  - the view hiding exactly dismissed groups, groups of one, and a pair whose member was deleted.
+- `engine/test_duplicate_jobs.py` (13 tests) runs through the bootstrapped container and real job
+  threads. It covers:
+  - an import followed by a check and a scan, in that order in the `jobs` table;
+  - an applied refresh followed by a scan;
+  - a match job followed by one only if it wrote its plan;
+  - a scan refused beside an import and a refresh apply;
+  - a rewrite finishing during a scan getting its scan afterwards, once;
+  - a failed scan still starting the one waiting for it;
+  - exclusivity with another scan;
+  - named signals scanned and answered, bad signal lists refused before any job, and a cancel.
+- `regression/test_regression_concurrent_migrate.py` (2 tests) covers the migration bug above.
+- `models/test_clean_models.py` gains 11 tests for the fingerprint, `ScannedGroup` and
+  `DuplicateGroupMembers`.
+- Updated rather than loosened:
+  - `test_match_jobs.py` counts match jobs, not every job;
+  - `test_file_check_jobs.py` leaves the scans in its job log to this step and waits for its
+    follow-up request;
+  - `useActiveJob.test.ts` names the job;
+  - the persistence boundary and the mypy gate name the new modules.
+
+The tests were checked against fifty-four mutations written into the source:
+
+- **The text key:** an Original Mix kept in the key; a featured artist kept; mix phrases thrown
+  away; a trailing mix segment kept in the base; every trailing segment taken as a mix; artists in
+  the order listed; lengths chained from a neighbour; the tolerance exclusive; a zero length
+  grouped; the shortest length left out of the key; a text group of one kept.
+- **The repository:** tracks with no path grouped; a proposed candidate grouped; the page fallback
+  lost; a group no longer found kept; a group given a new id every scan; a member that left kept; a
+  vanished member inserted; the fingerprint of the members found not written; a group left with one
+  member kept; a dismissal not written onto its group; dismissed groups listed.
+- **The service:** a group of one dismissed; a dismissed group dismissed again; an undismissed group
+  restored; a cancel between signals ignored; a cancel while titles are read ignored; a busy
+  database not waited out; no event for a scan; an event for a scan that did nothing; a dismissal
+  recorded as a restore.
+- **The view and the vocabulary:** the view showing dismissed groups; the view showing groups of
+  one; `is not` no longer the complement of `is`; `is_empty` inverted; wildcards in a value not
+  escaped; the facet ignoring the view; the no-signal bucket counting the whole library;
+  `in_duplicate_group` reading raw memberships.
+- **The engine:** no scan after an import, a refresh or a match; a scan after a match that never
+  planned; a waiting follow-up dropped; the waiting scan never started; the import not a conflict;
+  a cancelled scan reported as succeeded; the wrong progress message; unknown signals accepted
+  before a job.
+- **Migrations and models:** `migrate` replaying what another runner applied; a fingerprint of any
+  shape; a scanned group of one; `from_row` forgetting the fingerprint.
+- **The renderer:** the status strip with no verb for a scan.
+
+The first run missed four, and each was a gap a real case could fall through.
+
+- **A zero length grouped** survived because the only zero-length test paired it with a 300-second
+  track, which could not be grouped with it anyway. A test now has two tracks that both have no
+  length.
+- **A member that left kept** survived because the test removed the whole group rather than one of
+  its members. A test now moves one of three tracks to another path and asserts the group that is
+  still found has exactly the two that stayed.
+- **A group left with one member kept** survived because the listing hides groups of one whatever
+  the table holds. The test now asserts the stored rows.
+- **A dismissal not written onto its group** survived because in every test the group's fingerprint
+  already equalled the dismissal's. That is not true when a refresh deletes one of three members
+  and the user dismisses the remaining pair before the next scan: without the write, the group
+  stays shown. A test now covers exactly that.
+
+All fifty-four mutations now fail at least one test. Two considered were left out as equivalent:
+counting a facet's memberships instead of its distinct tracks (a track is in at most one group per
+signal, so the two counts agree), and building a dismissal's fingerprint from the group's stored one
+(they differ only in the case the last test above covers, through the write that test protects).
+
+**Complexity**: **M**, as estimated.
 
 ---
 

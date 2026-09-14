@@ -35,6 +35,8 @@ from cuepoint.services.interfaces import (
     IConfigService,
     IDatabaseService,
     IExportService,
+    IDuplicateRepository,
+    IDuplicateService,
     IFileCheckService,
     IFileStatusRepository,
     IIncrateDiscoveryService,
@@ -70,6 +72,7 @@ from cuepoint.services.onboarding_service import OnboardingService
 from cuepoint.services.privacy_service import PrivacyService
 from cuepoint.persistence.activity_repository import ActivityRepository
 from cuepoint.persistence.authored_data_repository import AuthoredDataRepository
+from cuepoint.persistence.duplicate_repository import DuplicateRepository
 from cuepoint.persistence.file_status_repository import FileStatusRepository
 from cuepoint.persistence.job_repository import JobRepository
 from cuepoint.persistence.library_source_repository import (
@@ -88,6 +91,7 @@ from cuepoint.services.activity_service import ActivityService
 from cuepoint.services.backup_service import BackupService
 from cuepoint.services.batch_service import BatchService
 from cuepoint.services.collection_service import CollectionService
+from cuepoint.services.duplicate_service import DuplicateService
 from cuepoint.services.file_check_service import FileCheckService
 from cuepoint.services.library_service import LibraryService
 from cuepoint.services.match_apply import MatchApplyService
@@ -402,6 +406,22 @@ def bootstrap_services() -> None:
         )
 
     container.register_factory(IFileCheckService, create_file_check_service)
+
+    # Possible duplicates and a user's "not duplicates" (CLEAN-08, DEC-074).
+    def create_duplicate_repository() -> IDuplicateRepository:
+        container.resolve(IMigrationRunner).migrate()
+        return DuplicateRepository(database_service=container.resolve(IDatabaseService))
+
+    container.register_factory(IDuplicateRepository, create_duplicate_repository)
+
+    def create_duplicate_service() -> IDuplicateService:
+        return DuplicateService(
+            duplicate_repository=container.resolve(IDuplicateRepository),
+            activity_service=container.resolve(IActivityService),
+            database_service=container.resolve(IDatabaseService),
+        )
+
+    container.register_factory(IDuplicateService, create_duplicate_service)
 
     # Matching library tracks as a resumable job (CLEAN-03, DEC-065). It takes
     # the batch service for one thing, resolving a selection, so a match and a

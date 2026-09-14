@@ -635,3 +635,70 @@ class TestTrackMetadataOverrides:
         }
         record = TrackMetadata.from_row(row)
         assert record.rating == 2 and not record.has_overrides
+
+
+class TestDuplicateScanModels:
+    """What CLEAN-08 added to the duplicate types."""
+
+    def test_a_group_carries_the_fingerprint_it_was_written_with(self):
+        from cuepoint.models.duplicate_group import DuplicateGroup, member_hash
+
+        fingerprint = member_hash([2, 1])
+        group = DuplicateGroup(
+            SIGNAL_TEXT, "a|t||300", NOW, id=4, member_hash=fingerprint
+        )
+        assert DuplicateGroup.from_row(group.to_dict()) == group
+        assert DuplicateGroup(SIGNAL_TEXT, "k", NOW).member_hash == ""
+
+    @pytest.mark.parametrize("fingerprint", ["abc", "g" * 64, "A" * 64])
+    def test_a_fingerprint_that_is_not_a_sha256_is_refused(self, fingerprint):
+        from cuepoint.models.duplicate_group import DuplicateGroup
+
+        with pytest.raises(ValueError, match="member_hash"):
+            DuplicateGroup(SIGNAL_TEXT, "k", NOW, member_hash=fingerprint)
+
+    def test_a_scanned_group_puts_its_members_in_order_once(self):
+        from cuepoint.models.duplicate_group import ScannedGroup, member_hash
+
+        group = ScannedGroup(SIGNAL_PATH, "/m/a.mp3", (3, 1, 3))
+        assert group.track_ids == (1, 3)
+        assert group.member_hash == member_hash([1, 3])
+
+    @pytest.mark.parametrize(
+        "fields",
+        [
+            dict(signal=SIGNAL_PATH, group_key="k", track_ids=(1, 1)),
+            dict(signal=SIGNAL_PATH, group_key="k", track_ids=(0, 1)),
+            dict(signal="sound", group_key="k", track_ids=(1, 2)),
+            dict(signal=SIGNAL_PATH, group_key="", track_ids=(1, 2)),
+        ],
+    )
+    def test_a_scanned_group_that_is_not_a_group_is_refused(self, fields):
+        from cuepoint.models.duplicate_group import ScannedGroup
+
+        with pytest.raises(ValueError):
+            ScannedGroup(**fields)
+
+    def test_a_stored_group_is_shown_only_with_two_members_and_no_dismissal(self):
+        from cuepoint.models.duplicate_group import (
+            DuplicateGroup,
+            DuplicateGroupMembers,
+        )
+
+        group = DuplicateGroup(SIGNAL_BEATPORT, "id:1", NOW, id=9)
+        assert DuplicateGroupMembers(group, (1, 2)).shown
+        assert not DuplicateGroupMembers(group, (1, 2), dismissed=True).shown
+        assert not DuplicateGroupMembers(group, (1,)).shown
+        assert DuplicateGroupMembers(group, (1, 2)).to_dict() == {
+            "id": 9,
+            "signal": SIGNAL_BEATPORT,
+            "group_key": "id:1",
+            "computed_at": NOW,
+            "track_ids": [1, 2],
+            "dismissed": False,
+        }
+
+    def test_every_signal_has_words(self):
+        from cuepoint.models.duplicate_group import SIGNAL_LABELS, SIGNALS
+
+        assert set(SIGNAL_LABELS) == set(SIGNALS)

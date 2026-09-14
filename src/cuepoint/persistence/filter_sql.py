@@ -185,6 +185,77 @@ def _compile_membership(
     )
 
 
+def _values(spec: FieldSpec) -> LinkTable:
+    """The value table for a multi-valued field."""
+    if spec.values is None:  # pragma: no cover - guarded by the caller's dispatch
+        raise FilterRuleError(f"{spec.label} is not a multi-valued field")
+    return spec.values
+
+
+def _tracks_whose_values(
+    spec: FieldSpec, condition: str, params: Tuple[Any, ...], *, negated: bool
+) -> Tuple[str, Tuple[Any, ...]]:
+    """ "Some value of this track satisfies ``condition``", or its negation.
+
+    The membership shape again, for the same reasons: a set of track ids rather
+    than a join, so a track with two values is one row. ``NOT IN`` is the exact
+    complement, so a track with no values at all satisfies "is not path" as
+    plainly as one grouped only by title. The value table's track column is
+    never null, which is what makes ``NOT IN`` safe.
+    """
+    table = _values(spec)
+    where = f" WHERE {condition}" if condition else ""
+    inner = f"SELECT {table.track_column} FROM {table.table}{where}"
+    keyword = "NOT IN" if negated else "IN"
+    return f"tracks.id {keyword} ({inner})", params
+
+
+def _compile_values(
+    spec: FieldSpec, operator: str, value: Any
+) -> Tuple[str, Tuple[Any, ...]]:
+    """Compile a text rule over a multi-valued field (CLEAN-08).
+
+    ``is path`` is "grouped by path", whatever else the track is grouped by,
+    and ``is not path`` is its exact complement. The words compare as a text
+    column does: without case, and with LIKE wildcards in a value escaped.
+    """
+    column = _values(spec).value_column
+    if operator == OP_IS_EMPTY:
+        return _tracks_whose_values(spec, "", (), negated=True)
+    if operator == OP_IS_NOT_EMPTY:
+        return _tracks_whose_values(spec, "", (), negated=False)
+    if operator in (OP_IS, OP_IS_NOT):
+        return _tracks_whose_values(
+            spec,
+            f"{column} = ? COLLATE NOCASE",
+            (value,),
+            negated=operator == OP_IS_NOT,
+        )
+    if operator == OP_ANY_OF:
+        parts = " OR ".join(f"{column} = ? COLLATE NOCASE" for _ in value)
+        return _tracks_whose_values(spec, f"({parts})", tuple(value), negated=False)
+    shapes = {
+        OP_CONTAINS: ("%{}%", False),
+        OP_NOT_CONTAINS: ("%{}%", True),
+        OP_STARTS_WITH: ("{}%", False),
+        OP_ENDS_WITH: ("%{}", False),
+    }
+    if operator in shapes:
+        shape, negated = shapes[operator]
+        return _tracks_whose_values(
+            spec,
+            f"{column} LIKE ? {_ESCAPE_CLAUSE}",
+            (shape.format(escape_like(value)),),
+            negated=negated,
+        )
+
+    # Unreachable while the model and this module agree; see `compile_rule`.
+    raise FilterRuleError(
+        f"{spec.label} cannot be filtered with {operator!r} — the filter model "
+        "allows it but the query builder does not implement it"
+    )
+
+
 def _empty_test(spec: FieldSpec, *, negated: bool) -> str:
     """ "Has no value" for this field's type.
 
@@ -258,9 +329,12 @@ def compile_rule(rule: FilterRule) -> Tuple[str, Tuple[Any, ...]]:
     operator = checked.operator
     value = checked.value
 
-    # Before anything reads a column: a membership field does not have one.
+    # Before anything reads a column: a membership field does not have one,
+    # and neither does a multi-valued one.
     if spec.is_membership:
         return _compile_membership(spec, operator, value)
+    if spec.is_multivalued:
+        return _compile_values(spec, operator, value)
 
     column = _column(spec)
 

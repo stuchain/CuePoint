@@ -146,14 +146,16 @@ def run_library_import_job(job: Job, store: JobStore, xml_path: str) -> None:
     del summary
     store.finish(job, state=JobState.SUCCEEDED)
 
-    # DEC-073: every import is followed by a check of the library's files,
-    # started once this job is finished so the check does not find it running.
-    # Imported here for the reason LIBRARY_JOB_TYPES is below: the file check
-    # module imports this one's job type.
+    # DEC-073 and DEC-074: every import is followed by a check of the library's
+    # files and a scan for duplicates, started once this job is finished so
+    # neither finds it running. Imported here for the reason LIBRARY_JOB_TYPES
+    # is below: both modules import this one's job type.
+    from cuepoint.engine.duplicate_jobs import scan_after
     from cuepoint.engine.file_check_jobs import check_after_library_job
     from cuepoint.services.file_check_service import TRIGGER_IMPORT
 
     check_after_library_job(store, TRIGGER_IMPORT)
+    scan_after(store, TRIGGER_IMPORT)
 
 
 def start_library_import_job(

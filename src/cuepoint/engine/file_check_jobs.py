@@ -40,20 +40,13 @@ can be neither lost nor started twice.
 from __future__ import annotations
 
 import logging
-import threading
 import time
-import weakref
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Sequence
 
 from cuepoint.compat.gui_types import ProgressInfo
-from cuepoint.engine.jobs import (
-    Job,
-    JobState,
-    JobStore,
-    JobTypeBusyError,
-    _ensure_services,
-)
+from cuepoint.engine.follow_ups import FollowUps
+from cuepoint.engine.jobs import Job, JobState, JobStore, _ensure_services
 from cuepoint.engine.library_jobs import JOB_TYPE_LIBRARY_IMPORT
 from cuepoint.engine.library_refresh import JOB_TYPE_LIBRARY_REFRESH_APPLY
 from cuepoint.exceptions.cuepoint_exceptions import CuePointException
@@ -75,12 +68,6 @@ PROGRESS_MESSAGE = "Checking files"
 #: How often a tick is handed to the job store, as for every other job. A check
 #: reports after every track, and on a local drive that is thousands a second.
 _PROGRESS_REPORT_INTERVAL_SECONDS = 0.1
-
-#: Follow-up checks waiting for a running check to finish, per store: the
-#: trigger of the library job that asked. Weakly keyed, so a store a test threw
-#: away is not kept alive by a follow-up it will never run.
-_follow_ups: "weakref.WeakKeyDictionary[JobStore, str]" = weakref.WeakKeyDictionary()
-_follow_ups_lock = threading.Lock()
 
 
 @dataclass(frozen=True)
@@ -246,37 +233,21 @@ def check_after_library_job(store: JobStore, trigger: str) -> Optional[Job]:
         follow-up waits for it; another library job means that job will start a
         check of its own when it finishes.
     """
-    try:
-        with _follow_ups_lock:
-            try:
-                return _create(store, None, trigger)
-            except JobTypeBusyError as exc:
-                if exc.job_type == JOB_TYPE_FILE_CHECK:
-                    _follow_ups[store] = trigger
-                    _logger.info(
-                        "[files] a check is running; the %s check follows it", trigger
-                    )
-                else:
-                    _logger.info(
-                        "[files] the %s check is left to the %s job now running",
-                        trigger,
-                        exc.job_type,
-                    )
-                return None
-    except Exception as exc:  # noqa: BLE001 — must not fail a finished job
-        _logger.warning("[files] could not start the %s check: %s", trigger, exc)
-        return None
+    return _FOLLOW_UPS.request(store, trigger)
 
 
 def _start_follow_up(store: JobStore) -> None:
     """Start the follow-up a library job left waiting for this check, if any."""
-    with _follow_ups_lock:
-        trigger = _follow_ups.pop(store, None)
-    if trigger is not None:
-        check_after_library_job(store, trigger)
+    _FOLLOW_UPS.job_finished(store)
 
 
 def pending_follow_up(store: JobStore) -> Optional[str]:
     """Return the trigger of a follow-up waiting on ``store``, or None."""
-    with _follow_ups_lock:
-        return _follow_ups.get(store)
+    return _FOLLOW_UPS.pending(store)
+
+
+_FOLLOW_UPS = FollowUps(
+    JOB_TYPE_FILE_CHECK,
+    "check",
+    lambda store, trigger: _create(store, None, trigger),
+)

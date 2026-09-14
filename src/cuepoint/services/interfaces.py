@@ -19,6 +19,7 @@ from typing import (
     Callable,
     Dict,
     Iterable,
+    Iterator,
     List,
     Optional,
     Sequence,
@@ -37,6 +38,11 @@ if TYPE_CHECKING:
     # Annotations referencing them are quoted forward references.
     from cuepoint.incrate.beatport_api_models import DiscoveredTrack
     from cuepoint.migrations import Migration
+    from cuepoint.models.duplicate_group import (
+        DuplicateDismissal,
+        DuplicateGroupMembers,
+        ScannedGroup,
+    )
     from cuepoint.models.file_status import TrackFileStatus
     from cuepoint.models.library_source import LibrarySource
     from cuepoint.models.references import ReferenceSummary
@@ -85,6 +91,7 @@ if TYPE_CHECKING:
         BatchSelection,
     )
     from cuepoint.services.collection_service import FreezeResult, SmartResolution
+    from cuepoint.services.duplicate_service import DuplicateScanResult
     from cuepoint.services.file_check_service import FileCheckResult
     from cuepoint.services.revert_service import BatchRevert, FieldRevert
     from cuepoint.services.library_service import (
@@ -1369,6 +1376,100 @@ class IFileCheckService(ABC):
         should_cancel: Optional[Callable[[], bool]] = None,
     ) -> "FileCheckResult":
         """Check each track's file, committing in chunks, and say what was found."""
+        ...
+
+
+class IDuplicateRepository(ABC):
+    """Interface for duplicate groups, their members and dismissals (CLEAN-08).
+
+    Finds the path and Beatport groups by SQL, streams what the text signal
+    reads, and writes one signal's groups at a time. Never writes a track.
+    """
+
+    @abstractmethod
+    def path_groups(self) -> List["ScannedGroup"]:
+        """Tracks sharing a normalized file path."""
+        ...
+
+    @abstractmethod
+    def beatport_groups(self) -> List["ScannedGroup"]:
+        """Tracks whose accepted candidates are one Beatport track."""
+        ...
+
+    @abstractmethod
+    def text_rows(
+        self,
+    ) -> Iterator[Tuple[int, Optional[str], Optional[str], Optional[int]]]:
+        """Every track's id, artist, title and length, streamed."""
+        ...
+
+    @abstractmethod
+    def replace_signal(
+        self, signal: str, groups: Sequence["ScannedGroup"], computed_at: str
+    ) -> int:
+        """Make one signal's stored groups the groups found, in the caller's transaction."""
+        ...
+
+    @abstractmethod
+    def dismiss(self, dismissal: "DuplicateDismissal", group_id: int) -> None:
+        """Store a dismissal and its fingerprint on the group."""
+        ...
+
+    @abstractmethod
+    def undismiss(self, signal: str, group_key: str) -> bool:
+        """Forget a dismissal; return whether there was one."""
+        ...
+
+    @abstractmethod
+    def groups(
+        self, signal: Optional[str] = None, *, include_dismissed: bool = False
+    ) -> List["DuplicateGroupMembers"]:
+        """Groups of two or more, dismissed ones only when asked."""
+        ...
+
+    @abstractmethod
+    def group(self, group_id: int) -> Optional["DuplicateGroupMembers"]:
+        """A group as it is now, or None."""
+        ...
+
+    @abstractmethod
+    def dismissal(self, signal: str, group_key: str) -> Optional["DuplicateDismissal"]:
+        """The dismissal for a signal and key, if any."""
+        ...
+
+
+class IDuplicateService(ABC):
+    """Interface for finding possible duplicates and answering about them (DEC-074).
+
+    Nothing here deletes or edits a track or opens a file.
+    """
+
+    @abstractmethod
+    def scan(
+        self,
+        signals: Optional[Sequence[str]] = None,
+        *,
+        trigger: str = "request",
+        should_cancel: Optional[Callable[[], bool]] = None,
+    ) -> "DuplicateScanResult":
+        """Rebuild the stored groups, one transaction per signal."""
+        ...
+
+    @abstractmethod
+    def groups(
+        self, signal: Optional[str] = None, *, include_dismissed: bool = False
+    ) -> List["DuplicateGroupMembers"]:
+        """The stored groups of two or more."""
+        ...
+
+    @abstractmethod
+    def dismiss(self, group_id: int) -> "DuplicateGroupMembers":
+        """Mark a group "not duplicates" for the members it has now."""
+        ...
+
+    @abstractmethod
+    def restore(self, group_id: int) -> "DuplicateGroupMembers":
+        """Take a dismissal back."""
         ...
 
 

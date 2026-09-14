@@ -939,6 +939,66 @@ def build_tag_facet_totals(query: BrowseQuery) -> Tuple[str, Tuple[object, ...]]
     )
 
 
+def _values_scope(
+    query: BrowseQuery, spec: FieldSpec
+) -> Tuple[str, Tuple[object, ...]]:
+    """A ``WITH`` clause naming the view's tracks ``facet_scope`` (CLEAN-08).
+
+    The browse query's own scope CTEs come first, because their parameters are
+    bound first; the facet's scope is appended to the same clause, so every
+    parameter appears exactly once however often the scope is read.
+    """
+    parts = _predicate(facet_query(query, spec.name))
+    scope = (
+        f"facet_scope AS (SELECT tracks.id AS id FROM tracks{parts.join}{parts.where})"
+    )
+    if parts.cte:
+        return f"{parts.cte.rstrip()}, {scope} ", parts.params
+    return f"WITH {scope} ", parts.params
+
+
+def _values_facet_values(
+    query: BrowseQuery, spec: FieldSpec, limit: Optional[int]
+) -> Tuple[str, Tuple[object, ...]]:
+    """Which words a multi-valued field takes in the view, and how many tracks each.
+
+    A track with two values counts once under each, as a tag facet counts a
+    track under each of its tags. The counts can therefore add up to more than
+    the view, and each one is exactly the count of its own rule.
+    """
+    table = spec.values
+    assert table is not None
+    with_clause, params = _values_scope(query, spec)
+    return (
+        f"{with_clause}SELECT min(v.{table.value_column}) AS raw_value, "
+        f"count(DISTINCT v.{table.track_column}) AS n "
+        f"FROM {table.table} AS v "
+        f"WHERE v.{table.track_column} IN (SELECT id FROM facet_scope) "
+        f"GROUP BY v.{table.value_column} COLLATE NOCASE "
+        "ORDER BY n DESC, raw_value COLLATE NOCASE ASC "
+        "LIMIT ?",
+        (*params, clamp_facet_limit(limit) + 1),
+    )
+
+
+def _values_facet_count(
+    query: BrowseQuery, spec: FieldSpec
+) -> Tuple[str, Tuple[object, ...]]:
+    """How many words, and how many tracks in the view have none (CLEAN-08)."""
+    table = spec.values
+    assert table is not None
+    with_clause, params = _values_scope(query, spec)
+    return (
+        f"{with_clause}SELECT "
+        f"(SELECT count(DISTINCT lower(v.{table.value_column})) "
+        f"FROM {table.table} AS v "
+        f"WHERE v.{table.track_column} IN (SELECT id FROM facet_scope)) AS values_count, "
+        f"(SELECT count(*) FROM facet_scope WHERE id NOT IN "
+        f"(SELECT {table.track_column} FROM {table.table})) AS missing",
+        params,
+    )
+
+
 def build_facet_values(
     query: BrowseQuery, field: str, limit: Optional[int] = None
 ) -> Tuple[str, Tuple[object, ...]]:
@@ -961,6 +1021,8 @@ def build_facet_values(
     the library is mostly made of. One row more than the limit is asked for, so
     the caller can tell whether there are more without a second query.
     """
+    if field_spec(field).is_multivalued:
+        return _values_facet_values(query, field_spec(field), limit)
     spec = _column_facet_spec(field)
     scoped = facet_query(query, spec.name)
     parts = _predicate(scoped, joins=spec.joins)
@@ -1001,6 +1063,8 @@ def build_facet_value_count(
     One grouped scan answers both: the subquery groups the same way the value
     query does, and the two sums split it into values and the gap.
     """
+    if field_spec(field).is_multivalued:
+        return _values_facet_count(query, field_spec(field))
     spec = _column_facet_spec(field)
     scoped = facet_query(query, spec.name)
     parts = _predicate(scoped, joins=spec.joins)

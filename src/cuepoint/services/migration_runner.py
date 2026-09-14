@@ -127,7 +127,8 @@ class MigrationRunner(IMigrationRunner):
 
         applied: List[Migration] = []
         for migration in pending:
-            self._apply(migration)
+            if not self._apply(migration):
+                continue
             applied.append(migration)
             _logger.info(
                 "[database] applied migration %04d (%s)",
@@ -136,12 +137,31 @@ class MigrationRunner(IMigrationRunner):
             )
         return applied
 
-    def _apply(self, migration: Migration) -> None:
+    def _apply(self, migration: Migration) -> bool:
+        """Apply one migration unless another connection already has.
+
+        The pending list is read before any migration runs, and on a fresh
+        database two threads can both read it: the engine migrates on the first
+        repository a request resolves, and a first launch sends several
+        requests at once. The transaction begins ``IMMEDIATE``, so the second
+        waits for the first; once it holds the lock it asks again whether this
+        version is recorded, and skips it if so, rather than running the same
+        DDL twice and failing on a column that already exists.
+
+        Returns:
+            True when this call applied it; False when it was already applied.
+        """
         connection = self._db.connect()
         connection.execute(_CREATE_VERSION_TABLE)
 
         try:
             with self._db.transaction() as conn:
+                already = conn.execute(
+                    f"SELECT 1 FROM {SCHEMA_VERSION_TABLE} WHERE version = ?",
+                    (migration.version,),
+                ).fetchone()
+                if already is not None:
+                    return False
                 # Statement by statement, never executescript(): that would
                 # implicitly COMMIT and take the DDL outside this transaction.
                 for statement in split_sql_statements(migration.sql):
@@ -170,6 +190,7 @@ class MigrationRunner(IMigrationRunner):
                     "migration_module": migration.module_name,
                 },
             ) from exc
+        return True
 
     def _applied_versions(self) -> set[int]:
         connection = self._db.connect()

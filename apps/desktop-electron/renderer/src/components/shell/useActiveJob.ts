@@ -71,6 +71,9 @@ const JOB_VERBS: Record<string, string> = {
   // it appears here whether or not anyone asked for it, and has to say what it
   // is doing: "Checking" alone is already the refresh preview's verb.
   file_check: "Checking files",
+  // CLEAN-08's duplicate scan, which follows every import, refresh and
+  // match job on its own.
+  duplicate_scan: "Finding duplicates",
 };
 
 /** A short description of what a job is doing, for the strip. */

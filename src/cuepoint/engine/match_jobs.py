@@ -42,7 +42,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from cuepoint.compat.gui_types import ProgressInfo
 from cuepoint.engine.jobs import Job, JobState, JobStore, _ensure_services
@@ -124,6 +124,31 @@ def _progress(result: MatchJobResult, started: float) -> ProgressInfo:
 
 
 def run_match_job(job: Job, store: JobStore, prepare: Callable[[Any], Any]) -> None:
+    """Match under ``job``, then scan for duplicates if the plan was written.
+
+    A scan follows every match job that got as far as its plan (DEC-074), in
+    whatever state it ended: a cancelled or failed match has still stored the
+    tracks it finished, and their accepted Beatport ids are a signal.
+    """
+    prepared: List[bool] = []
+
+    def prepare_then_note(service: Any) -> None:
+        prepare(service)
+        prepared.append(True)
+
+    try:
+        _run_match_job(job, store, prepare_then_note)
+    finally:
+        if prepared:
+            # Imported here: the duplicate job module imports the library job
+            # modules this one does.
+            from cuepoint.engine.duplicate_jobs import scan_after
+            from cuepoint.services.duplicate_service import TRIGGER_MATCH
+
+            scan_after(store, TRIGGER_MATCH)
+
+
+def _run_match_job(job: Job, store: JobStore, prepare: Callable[[Any], Any]) -> None:
     """Write or take over a plan, then match it, under ``job``.
 
     Sets the terminal state itself in every outcome: a cancelled match has

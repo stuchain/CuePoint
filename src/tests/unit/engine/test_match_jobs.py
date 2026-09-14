@@ -304,7 +304,9 @@ class TestStarting:
         finished(start_match_job(store, BatchSelection.of_ids(ids[:2])).job)
         with pytest.raises(ValueError, match="Re-match them"):
             start_match_job(store, BatchSelection.of_ids(ids[:2]))
-        assert len(store.list_all()) == 1
+        # One match job: the refusal started none. The duplicate scan that
+        # follows the first match is CLEAN-08's, and is not a match job.
+        assert [job.type for job in store.list_all()].count(JOB_TYPE_CLEAN_MATCH) == 1
 
 
 class TestOneAtATime:

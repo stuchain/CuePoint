@@ -163,7 +163,7 @@ and CuePoint would then say nothing has changed when something has. Re-exporting
 from Rekordbox always fixes this, because a fresh export has a new modified
 time.
 
-## Three things worth knowing
+## Four things worth knowing
 
 ### What you do in CuePoint stays in CuePoint
 
@@ -207,6 +207,32 @@ confirms the file.
 A large library on a spinning disk or a network share can take a while to check
 the first time; you can keep working while it runs, and stopping it keeps
 everything it already checked.
+
+### CuePoint points out possible duplicates — and never removes them
+
+After every import, refresh and match, CuePoint looks for tracks that may be the
+same recording. The status strip shows **Finding duplicates** while it looks,
+and the Activity panel records what it found. Each group says why its tracks
+were put together:
+
+| Grouped by | Means |
+| --- | --- |
+| File path | One file is in your Rekordbox collection twice |
+| Beatport track | Two tracks were matched to the same Beatport track |
+| Artist and title | The same artist, title and mix, with lengths within two seconds of each other |
+
+Filter the Library with **In a duplicate group**, or with **Duplicate signal**
+to see one kind. A track can be in more than one group, for example when a file
+imported twice is also the same title twice.
+
+The artist-and-title signal is the one that can be wrong: two different
+recordings can share a name. That is why every group names what grouped it. A
+plain title and its "Original Mix" count as one mix; an Extended Mix, a
+remix by someone else or "Part 2" do not.
+
+**CuePoint never deletes, merges or edits a duplicate.** A track removed in
+CuePoint would come back with the next refresh, and the file is yours. If you
+want a duplicate gone, remove it in Rekordbox and refresh.
 
 ### inCrate keeps a separate inventory
 
