@@ -33,9 +33,27 @@ import type { Selection } from "./trackSelection";
  */
 export const BATCH_JOB_THRESHOLD = 1_000;
 
+/**
+ * The operations the Library's menu and toolbar offer.
+ *
+ * Six of the engine's batch operations, not all of them: accepting, rejecting
+ * and applying matches, and hand edits, are Clean's (CLEAN-12, CLEAN-13), with
+ * sentences of their own. Extracted from the wire type so a renamed operation
+ * fails to compile here rather than at the engine.
+ */
+export type LibraryBatchKind = Extract<
+  BatchOperation["kind"],
+  | "set_rating"
+  | "set_favorite"
+  | "add_tag"
+  | "remove_tag"
+  | "add_to_collection"
+  | "remove_from_collection"
+>;
+
 /** One operation, with what it applies named for the sentences below. */
 export interface BatchAction {
-  kind: BatchOperation["kind"];
+  kind: LibraryBatchKind;
   value?: number | boolean | null;
   /** A tag's name, a Collection's name, or the value itself. */
   target: string;

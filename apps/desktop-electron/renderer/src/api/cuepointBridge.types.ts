@@ -288,7 +288,7 @@ export interface JobResultsResponse {
    * refresh preview's diff, or what an apply did. Served here rather than on
    * the status payload, which is polled for every job.
    */
-  result?: RefreshDiff | RefreshApplied | Record<string, unknown>;
+  result?: RefreshDiff | RefreshApplied | TagWritePreview | TagWriteResult | TagRestoreResult | Record<string, unknown>;
 }
 
 export type ExportFormat = "csv" | "json" | "xlsx";
@@ -553,6 +553,16 @@ export interface LibraryTrackRow {
   effective_label?: string | null;
   effective_year?: number | null;
   overridden?: Array<"key" | "bpm" | "genre" | "label" | "year">;
+  /**
+   * Where the track stands with Clean (CLEAN-11), each read through its filter's
+   * own expression, so a row marked "needs review" is a row that filter finds.
+   * Null when the engine did not read them for this row. Optional for
+   * CLEAN-05's reason: fixtures written before this step describe valid rows.
+   */
+  match_state?: MatchState | null;
+  match_disputed?: boolean | null;
+  file_status?: FileStatus | null;
+  artwork?: ArtworkState | null;
 }
 
 export interface LibrarySearchResponse {
@@ -908,8 +918,14 @@ export interface BatchOperation {
     | "add_tag"
     | "remove_tag"
     | "add_to_collection"
-    | "remove_from_collection";
-  value?: number | boolean | null;
+    | "remove_from_collection"
+    // CLEAN-04's decisions, which take no value, and CLEAN-05's apply (the
+    // field list) and hand edit ({ field, value }).
+    | "accept_match"
+    | "reject_match"
+    | "apply_match"
+    | "set_override";
+  value?: number | boolean | null | string[] | { field: string; value: unknown };
 }
 
 export interface ActivityEvent {
@@ -1128,6 +1144,362 @@ export interface EngineJobList {
 /** The two thumbnail sizes the engine makes (CLEAN-09): a table row, the Inspector. */
 export type ArtworkSize = "row" | "inspector";
 
+/**
+ * Clean (CLEAN-11).
+ *
+ * Mirrors `clean_api.py`'s explicit field lists, and `engineClient.ts`'s copy of
+ * them; the desktop contract test compares the two. Every value a renderer
+ * might offer a user to choose — a state, a signal, a key format — is spelled
+ * here as the engine spells it.
+ */
+export type MatchState = "not_matched" | "no_match" | "needs_review" | "accepted" | "rejected";
+export type FileStatus = "present" | "missing" | "unreadable" | "not_checked";
+export type ArtworkState = "embedded" | "beatport" | "none" | "unknown";
+export type DuplicateSignal = "path" | "beatport" | "text";
+export type OverrideField = "key" | "bpm" | "genre" | "label" | "year";
+
+/** A job Clean started, in the shape every job route answers with. */
+export interface CleanJobStarted {
+  job_id: string;
+  id: string;
+  state: string;
+}
+
+export interface MatchStarted extends CleanJobStarted {
+  selected: number;
+  excluded: number;
+  planned: number;
+  resumed_from: string | null;
+}
+
+export interface ResumableMatch {
+  job_id: string;
+  remaining: number;
+  planned: number;
+  selected: number;
+  excluded: number;
+  rematch: boolean;
+  created_at: string;
+  resumed_from: string | null;
+}
+
+export interface ResumableMatches {
+  jobs: ResumableMatch[];
+  total: number;
+}
+
+/** Where one track stands with Beatport, and who put it there (DEC-067). */
+export interface TrackMatchState {
+  track_id: number;
+  state: MatchState;
+  decided_by: "auto" | "user" | null;
+  attempt_id: number | null;
+  candidate_id: number | null;
+  newer_attempt_id: number | null;
+  disputed: boolean;
+  decided_at: string | null;
+}
+
+/** One run of the matcher for one track: what was asked, what came back. */
+export interface MatchAttempt {
+  id: number;
+  track_id: number;
+  job_id: string | null;
+  outcome: "matched" | "no_match" | "error";
+  score: number | null;
+  best_candidate_id: number | null;
+  error: string | null;
+  input: Record<string, unknown>;
+  queries: unknown[];
+  matcher_version: string | null;
+  started_at: string;
+  finished_at: string;
+}
+
+/** Everything the matcher scored, rejected candidates and their reasons included. */
+export interface MatchCandidate {
+  id: number;
+  attempt_id: number;
+  rank: number;
+  is_winner: boolean;
+  guard_ok: boolean;
+  reject_reason: string | null;
+  score: number;
+  base_score: number | null;
+  title_sim: number | null;
+  artist_sim: number | null;
+  bonus_year: number | null;
+  bonus_key: number | null;
+  beatport_track_id: string | null;
+  url: string;
+  title: string | null;
+  artists: string | null;
+  remixers: string | null;
+  label: string | null;
+  genre: string | null;
+  subgenre: string | null;
+  key: string | null;
+  bpm: number | null;
+  release_name: string | null;
+  release_date: string | null;
+  release_year: number | null;
+  artwork_url: string | null;
+  preview_url: string | null;
+  query_index: number | null;
+  query_text: string | null;
+  candidate_index: number | null;
+  elapsed_ms: number | null;
+}
+
+export interface TrackMatches {
+  track_id: number;
+  state: TrackMatchState;
+  /** The candidate the state points at: accepted, rejected, or proposed. */
+  candidate: MatchCandidate | null;
+  /** Newest first. */
+  attempts: MatchAttempt[];
+  total: number;
+}
+
+export interface AttemptCandidates {
+  attempt_id: number;
+  track_id: number;
+  candidates: MatchCandidate[];
+  total: number;
+}
+
+/** One track decided (`match`), or a selection applied inline or as a job. */
+export interface DecisionOutcome {
+  match?: TrackMatchState;
+  applied?: BatchResult;
+  job_id?: string;
+  id?: string;
+  state?: string;
+}
+
+/** One track applied (`track`, as the Library draws it), or a selection. */
+export interface ApplyOutcome {
+  track?: LibraryTrackRow;
+  applied?: BatchResult;
+  job_id?: string;
+  id?: string;
+  state?: string;
+}
+
+export interface FieldRevert {
+  change_id: number;
+  track_id: number;
+  field: string;
+  previous_value: unknown;
+  restored_value: unknown;
+  /** False when the field already held the value, so nothing was written. */
+  changed: boolean;
+}
+
+/** ORG-07's batch result plus what a revert adds: the stale rows it skipped. */
+export interface BatchRevertResult extends BatchResult {
+  skipped: number;
+  revert_of: string;
+}
+
+export interface BatchRevertOutcome {
+  reverted?: BatchRevertResult;
+  job_id?: string;
+  id?: string;
+  state?: string;
+}
+
+export interface FileCheckStarted extends CleanJobStarted {
+  tracks: number;
+}
+
+/** Tracks one signal put together, as it is now (DEC-074). */
+export interface DuplicateGroup {
+  id: number;
+  signal: DuplicateSignal;
+  group_key: string;
+  computed_at: string;
+  track_ids: number[];
+  dismissed: boolean;
+}
+
+export interface DuplicateGroupList {
+  groups: DuplicateGroup[];
+  total: number;
+}
+
+export interface DuplicateScanStarted extends CleanJobStarted {
+  signals: DuplicateSignal[];
+}
+
+export interface ArtworkScanStarted extends CleanJobStarted {
+  tracks: number;
+  fetch_beatport: boolean;
+}
+
+/** What a tag write writes (DEC-070). Absent options take the engine's defaults. */
+export interface TagWriteOptions {
+  key_format?: "normal" | "camelot" | "short";
+  write_key?: boolean;
+  write_year?: boolean;
+  write_bpm?: boolean;
+  write_label?: boolean;
+  write_genre?: boolean;
+  write_comment?: boolean;
+  comment_text?: string;
+  /** Off by default: putting a picture into a file is something a person asks for. */
+  embed_missing_artwork?: boolean;
+}
+
+/** What a tag write would do, before it does anything. A write names `preview_id`. */
+export interface TagWritePreview {
+  preview_id: string;
+  options: Required<TagWriteOptions>;
+  total: number;
+  /** Files a write will change. */
+  files: number;
+  /** For each field, artwork included, how many files it will be written into. */
+  fields: Record<string, number>;
+  /** For each reason, how many files will be skipped, with a few examples. */
+  skipped: Record<
+    string,
+    { count: number; examples: Array<{ track_id: number | null; file_path: string }> }
+  >;
+  field_skipped: Record<string, Record<string, number>>;
+  /** A bounded sample of what changes, file by file. */
+  changes: Array<{
+    track_id: number;
+    file_path: string;
+    fields: Record<string, { from: string | null; to: string }>;
+    artwork: boolean;
+  }>;
+  cancelled: boolean;
+  computed_at: string;
+  duration_seconds: number;
+  summary_line: string;
+}
+
+export interface TagPreviewOutcome {
+  /** Present when the preview was answered inline. */
+  preview?: TagWritePreview;
+  /** Present, with the job's identity, when it runs as a job. */
+  preview_id?: string;
+  job_id?: string;
+  id?: string;
+  state?: string;
+}
+
+export interface TagWriteStarted extends CleanJobStarted {
+  preview_id: string;
+}
+
+export interface TagRestoreStarted extends CleanJobStarted {
+  /** Recorded writes the restore will undo. */
+  writes: number;
+  /** Of those, written by a job the engine never saw finish. */
+  unconfirmed: number;
+  restored_job_id: string | null;
+  track_id: number | null;
+}
+
+export interface TagWriteProblem {
+  track_id: number | null;
+  file_path: string;
+  field: string | null;
+  message: string;
+}
+
+/** A tag write job's answer, from its results. */
+export interface TagWriteResult {
+  job_id: string;
+  preview_id: string;
+  total: number;
+  completed: number;
+  written: number;
+  failed: number;
+  skipped: Record<string, number>;
+  fields: Record<string, number>;
+  field_skipped: Record<string, Record<string, number>>;
+  failed_fields: number;
+  problems: TagWriteProblem[];
+  problems_truncated: boolean;
+  cancelled: boolean;
+  duration_seconds: number;
+  summary_line: string;
+}
+
+/** A tag restore job's answer, from its results. */
+export interface TagRestoreResult {
+  job_id: string;
+  restored_job_id: string | null;
+  track_id: number | null;
+  total: number;
+  completed: number;
+  restored: number;
+  already: number;
+  skipped: number;
+  failed: number;
+  files: number;
+  problems: TagWriteProblem[];
+  problems_truncated: boolean;
+  cancelled: boolean;
+  duration_seconds: number;
+  summary_line: string;
+}
+
+/** One row of the record of what a tag write replaced in a file. */
+export interface FileWriteRecord {
+  id: number;
+  job_id: string;
+  track_id: number | null;
+  file_path: string;
+  field: string;
+  old_value: unknown;
+  /** False when the file was never read, so there is nothing to restore. */
+  old_value_read: boolean;
+  new_value: unknown;
+  outcome: "written" | "skipped" | "failed" | "restored";
+  reason: string | null;
+  written_at: string;
+  /** A write that may not have happened: the engine stopped before confirming it. */
+  pending: boolean;
+  restore_of: number | null;
+}
+
+export interface TagWriteRecord {
+  job_id: string | null;
+  track_id: number | null;
+  writes: FileWriteRecord[];
+  total: number;
+  unconfirmed: number;
+  restorable: number;
+  restorable_unconfirmed: number;
+  limit: number;
+  offset: number;
+}
+
+/** One Library Health count and the rules that produced it (DEC-075). */
+export interface HealthCount {
+  id: string;
+  label: string;
+  count: number;
+  rules: FilterRuleSet;
+}
+
+export interface LibraryHealth {
+  track_count: number;
+  counts: HealthCount[];
+}
+
+export type ReviewExportFormat = "csv" | "json" | "excel";
+
+export interface ReviewExportResult {
+  file_path: string;
+  format: ReviewExportFormat;
+  count: number;
+  columns: string[];
+}
+
 export interface CuePointBridge {
   getEngineStatus: () => Promise<EngineStatus>;
   /** Absent when running in a browser tab, or in an older shell. */
@@ -1316,6 +1688,73 @@ export interface CuePointBridge {
     selection: BatchSelection;
     operation: BatchOperation;
   }) => Promise<BatchOutcome>;
+  // Clean (CLEAN-11). Optional, like every method added after the bridge
+  // existed. What a state, a hand edit or a tag write may be is the engine's.
+  startCleanMatch?: (params: {
+    selection: BatchSelection;
+    rematch?: boolean;
+  }) => Promise<MatchStarted>;
+  resumeCleanMatch?: (params: { job_id: string }) => Promise<MatchStarted>;
+  getResumableMatches?: () => Promise<ResumableMatches>;
+  getTrackMatches?: (params: { trackId: number }) => Promise<TrackMatches>;
+  getMatchCandidates?: (params: { attemptId: number }) => Promise<AttemptCandidates>;
+  decideMatch?: (params: {
+    decision: "accept" | "reject" | "clear";
+    track_id?: number;
+    candidate_id?: number;
+    selection?: BatchSelection;
+  }) => Promise<DecisionOutcome>;
+  applyMatch?: (params: {
+    fields: OverrideField[];
+    track_id?: number;
+    selection?: BatchSelection;
+  }) => Promise<ApplyOutcome>;
+  setTrackOverrides?: (params: {
+    trackId: number;
+    key?: string | null;
+    bpm?: number | null;
+    genre?: string | null;
+    label?: string | null;
+    year?: number | null;
+  }) => Promise<{ track: LibraryTrackRow }>;
+  revertChange?: (params: { change_id: number }) => Promise<{ revert: FieldRevert }>;
+  revertBatch?: (params: { batch_id: string }) => Promise<BatchRevertOutcome>;
+  startFileCheck?: (params: { selection: BatchSelection }) => Promise<FileCheckStarted>;
+  startDuplicateScan?: (params?: {
+    signals?: DuplicateSignal[];
+  }) => Promise<DuplicateScanStarted>;
+  getDuplicateGroups?: (params?: {
+    signal?: DuplicateSignal;
+    includeDismissed?: boolean;
+  }) => Promise<DuplicateGroupList>;
+  dismissDuplicateGroup?: (params: { group_id: number }) => Promise<{ group: DuplicateGroup }>;
+  restoreDuplicateGroup?: (params: { group_id: number }) => Promise<{ group: DuplicateGroup }>;
+  startArtworkScan?: (params: {
+    selection: BatchSelection;
+    fetch_beatport?: boolean;
+  }) => Promise<ArtworkScanStarted>;
+  previewTagWrite?: (params: {
+    selection: BatchSelection;
+    options?: TagWriteOptions;
+  }) => Promise<TagPreviewOutcome>;
+  startTagWrite?: (params: { preview_id: string }) => Promise<TagWriteStarted>;
+  startTagRestore?: (params: {
+    job_id?: string;
+    track_id?: number;
+  }) => Promise<TagRestoreStarted>;
+  getTagWrites?: (params: {
+    jobId?: string;
+    trackId?: number;
+    limit?: number;
+    offset?: number;
+  }) => Promise<TagWriteRecord>;
+  getLibraryHealth?: () => Promise<LibraryHealth>;
+  exportReviewList?: (params: {
+    selection: BatchSelection;
+    format: ReviewExportFormat;
+    file_path: string;
+    overwrite?: boolean;
+  }) => Promise<ReviewExportResult>;
   startLibraryImport?: (params: {
     xml_path: string;
   }) => Promise<LibraryImportStarted>;

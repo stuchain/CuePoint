@@ -7,16 +7,82 @@ Export Service Implementation
 Service for exporting results to various formats.
 """
 
+import csv
+import json
 import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Mapping, Optional, Sequence
 
 from cuepoint.exceptions.cuepoint_exceptions import ExportError
 from cuepoint.models.result import TrackResult
 from cuepoint.services.interfaces import IExportService, ILoggingService
 from cuepoint.services.output_writer import write_csv_files
+
+#: The formats :meth:`ExportService.export_table` writes.
+TABLE_FORMAT_CSV = "csv"
+TABLE_FORMAT_JSON = "json"
+TABLE_FORMAT_EXCEL = "excel"
+TABLE_FORMATS = (TABLE_FORMAT_CSV, TABLE_FORMAT_JSON, TABLE_FORMAT_EXCEL)
+
+
+def _cell(value: Any) -> Any:
+    """A value as a CSV or Excel cell: booleans as words, missing as empty."""
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return value
+
+
+def _write_csv_table(
+    path: str, columns: Sequence[str], rows: Sequence[Mapping[str, Any]]
+) -> None:
+    with open(path, "w", newline="", encoding="utf-8-sig") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(list(columns))
+        for row in rows:
+            writer.writerow([_cell(row.get(column)) for column in columns])
+
+
+def _write_json_table(
+    path: str, columns: Sequence[str], rows: Sequence[Mapping[str, Any]]
+) -> None:
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(
+            [{column: row.get(column) for column in columns} for row in rows],
+            handle,
+            indent=2,
+            ensure_ascii=False,
+        )
+
+
+def _write_excel_table(
+    path: str,
+    columns: Sequence[str],
+    rows: Sequence[Mapping[str, Any]],
+    sheet_title: str,
+) -> None:
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font
+    except ImportError as exc:
+        raise ExportError(
+            message="Excel export requires openpyxl. Install with: pip install openpyxl",
+            error_code="EXPORT_EXCEL_MISSING_DEPENDENCY",
+            context={"filepath": path},
+        ) from exc
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = sheet_title[:31] or "Export"
+    sheet.append(list(columns))
+    for cell in sheet[1]:
+        cell.font = Font(bold=True)
+    for row in rows:
+        sheet.append([_cell(row.get(column)) for column in columns])
+    workbook.save(path)
+    workbook.close()
 
 
 class ExportService(IExportService):
@@ -304,6 +370,88 @@ class ExportService(IExportService):
                 error_code="EXPORT_JSON_ERROR",
                 context={"filepath": filepath, "track_count": len(results)},
             ) from e
+
+    def export_table(
+        self,
+        columns: Sequence[str],
+        rows: Sequence[Mapping[str, Any]],
+        filepath: str,
+        file_format: str,
+        overwrite: bool = False,
+        sheet_title: str = "Export",
+    ) -> None:
+        """Export rows of named columns to CSV, JSON or Excel (CLEAN-11).
+
+        A row source that is not a :class:`TrackResult`, beside the three
+        methods that export one. Each format is written to a temporary file in
+        the destination's folder and renamed over it, so a reader never sees
+        half a file and a failure leaves any existing file as it was.
+
+        - CSV is UTF-8 with a byte-order mark, so a spreadsheet opens accented
+          titles as written; a value becomes its text and a missing one an
+          empty cell.
+        - JSON is a list of objects with exactly ``columns`` as keys.
+        - Excel has a styled header row.
+
+        Raises:
+            ExportError: If the format is unknown, the path is refused, or the
+                file cannot be written.
+        """
+        if file_format not in TABLE_FORMATS:
+            raise ExportError(
+                message=f"Unknown export format {file_format!r}. Formats: "
+                + ", ".join(TABLE_FORMATS),
+                error_code="EXPORT_INVALID_FORMAT",
+                context={"filepath": filepath},
+            )
+        is_valid, error_msg = self._validate_export_path(filepath, len(rows), overwrite)
+        if not is_valid:
+            raise ExportError(
+                message=f"Cannot export to {filepath}: {error_msg}",
+                error_code="EXPORT_PATH_REFUSED",
+                context={"filepath": filepath, "row_count": len(rows)},
+            )
+
+        file_path = Path(filepath)
+        temp_file: Optional[str] = None
+        try:
+            temp_fd, temp_file = tempfile.mkstemp(
+                suffix=".tmp", dir=str(file_path.parent), prefix="cuepoint_export_"
+            )
+            os.close(temp_fd)
+            if file_format == TABLE_FORMAT_CSV:
+                _write_csv_table(temp_file, columns, rows)
+            elif file_format == TABLE_FORMAT_JSON:
+                _write_json_table(temp_file, columns, rows)
+            else:
+                _write_excel_table(temp_file, columns, rows, sheet_title)
+            Path(temp_file).replace(file_path)
+            temp_file = None
+        except ExportError:
+            raise
+        except Exception as exc:
+            if self.logging_service:
+                self.logging_service.error(
+                    f"Failed to export to {filepath}: {exc}",
+                    exc_info=exc,
+                    extra={"filepath": filepath},
+                )
+            raise ExportError(
+                message=f"Failed to export to {filepath}: {exc}",
+                error_code="EXPORT_WRITE_FAILED",
+                context={"filepath": filepath, "row_count": len(rows)},
+            ) from exc
+        finally:
+            if temp_file and os.path.exists(temp_file):
+                try:
+                    os.unlink(temp_file)
+                except OSError:
+                    pass
+        if self.logging_service:
+            self.logging_service.info(
+                f"Exported {len(rows)} rows as {file_format}: {filepath}",
+                extra={"filepath": filepath, "row_count": len(rows)},
+            )
 
     def export_to_excel(
         self, results: List[TrackResult], filepath: str, overwrite: bool = False

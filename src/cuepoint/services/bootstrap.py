@@ -39,6 +39,8 @@ from cuepoint.services.interfaces import (
     IArtworkRepository,
     IArtworkService,
     IFileWriteRepository,
+    IHealthService,
+    IReviewExportService,
     ITagWriteService,
     IDuplicateRepository,
     IDuplicateService,
@@ -104,6 +106,8 @@ from cuepoint.services.artwork_service import ArtworkService, FetchGate
 from cuepoint.services.duplicate_service import DuplicateService
 from cuepoint.services.file_check_service import FileCheckService
 from cuepoint.services.library_service import LibraryService
+from cuepoint.services.health_service import HealthService
+from cuepoint.services.review_export_service import ReviewExportService
 from cuepoint.services.match_apply import MatchApplyService
 from cuepoint.services.match_service import MatchService
 from cuepoint.services.match_state import MatchStateService
@@ -395,6 +399,24 @@ def bootstrap_services() -> None:
         )
 
     container.register_factory(IRevertService, create_revert_service)
+
+    # Library Health (CLEAN-11, DEC-075): counts of rule sets, answered by the
+    # count the Library table shows, so a number and its click cannot disagree.
+    def create_health_service() -> IHealthService:
+        return HealthService(track_repository=container.resolve(ITrackRepository))
+
+    container.register_factory(IHealthService, create_health_service)
+
+    # "Export review list" (CLEAN-11): a selection resolved through the batch
+    # path, read through the rule vocabulary, written by the export service.
+    def create_review_export_service() -> IReviewExportService:
+        return ReviewExportService(
+            batch_service=container.resolve(IBatchService),
+            track_repository=container.resolve(ITrackRepository),
+            export_service=container.resolve(IExportService),
+        )
+
+    container.register_factory(IReviewExportService, create_review_export_service)
 
     # Checking whether tracks' files are there (CLEAN-07, DEC-073). The check
     # resolves a selection through the batch service, as a match does, so a

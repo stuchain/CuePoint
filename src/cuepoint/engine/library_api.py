@@ -28,6 +28,7 @@ from cuepoint.models.filter_rule import (
     field_spec,
 )
 from cuepoint.models.library_track import LibraryTrack, QueueTrack
+from cuepoint.models.track_clean_state import TrackCleanState
 from cuepoint.models.track_metadata import (
     OVERRIDE_FIELDS,
     TrackMetadata,
@@ -103,7 +104,9 @@ def queue_track_to_dict(track: QueueTrack) -> Dict[str, Any]:
 
 
 def track_to_dict(
-    track: LibraryTrack, metadata: Optional[TrackMetadata] = None
+    track: LibraryTrack,
+    metadata: Optional[TrackMetadata] = None,
+    clean: Optional[TrackCleanState] = None,
 ) -> Dict[str, Any]:
     """Serialize a library track for the API.
 
@@ -169,7 +172,20 @@ def track_to_dict(
             getattr(track, name), getattr(metadata, name) if metadata else None
         )
     payload["overridden"] = list(overridden_fields(metadata))
+    # CLEAN-11: where the track stands with Beatport, whether a newer attempt
+    # disputes a user's decision, what the last file check found and what
+    # artwork would show — each read through its filter's own expression, so a
+    # row marked "needs review" is a row that filter finds. ``clean`` is what
+    # the window read in one query; a caller that did not read it gets nulls,
+    # which say "not read" rather than a default that would be a claim.
+    answers = clean.to_dict() if clean is not None else {}
+    for name in CLEAN_ROW_FIELDS:
+        payload[name] = answers.get(name)
     return payload
+
+
+#: The four Clean answers a row carries (CLEAN-11), in the order it carries them.
+CLEAN_ROW_FIELDS = ("match_state", "match_disputed", "file_status", "artwork")
 
 
 #: The two things this endpoint can be asked. ``search`` is what global search
@@ -458,8 +474,9 @@ def search_library(
         result = service.search_tracks(query, limit=limit, offset=offset)
 
     found = getattr(result, "metadata", {}) or {}
+    clean = getattr(result, "clean", {}) or {}
     tracks: List[Dict[str, Any]] = [
-        track_to_dict(t, found.get(t.id)) for t in result.tracks
+        track_to_dict(t, found.get(t.id), clean.get(t.id)) for t in result.tracks
     ]
     payload: Dict[str, Any] = {
         "query": result.query,
@@ -686,8 +703,9 @@ def library_track_detail(track_id: int) -> Dict[str, Any]:
     )
 
     record = resolve_metadata_service().get(int(track_id))
+    clean = service.clean_states([int(track_id)]).get(int(track_id))
     return {
-        "track": track_to_dict(track, record),
+        "track": track_to_dict(track, record, clean),
         "playlists": holders,
         "playlist_count": len(holders),
         "metadata": metadata_to_dict(int(track_id), track.rating, record),

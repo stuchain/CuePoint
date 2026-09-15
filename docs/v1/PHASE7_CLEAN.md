@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 7: Clean, Detailed Step Specifications
 
-Status: **Specified. CLEAN-01 to CLEAN-10 implemented.** The fourteen steps below replace the
+Status: **Specified. CLEAN-01 to CLEAN-11 implemented.** The fourteen steps below replace the
 roadmap's placeholder inventory (CLEAN-01…CLEAN-13, which Round 9's answers outgrew by one). Per
 the process, no implementation happens from this document — each step needs an explicit
 "Implement CLEAN-NN" instruction, scoped to exactly that step, and its outcome is recorded under the
@@ -2831,7 +2831,7 @@ on how its tags were loaded.
 
 ---
 
-## CLEAN-11 — The Clean API, Health, and the Desktop Contract
+## CLEAN-11 — The Clean API, Health, and the Desktop Contract ✅ IMPLEMENTED 2026-09-15
 
 **Objective**: Expose CLEAN-02 through CLEAN-10 to the renderer through all six contract files, and
 compute Library Health as rule counts (DEC-075).
@@ -2915,6 +2915,291 @@ verification pass, with CLEAN-09's thumbnail proof.
 by extending the contract test per route.
 
 **Complexity**: **L**
+
+### ✅ IMPLEMENTED 2026-09-15
+
+**Outcome**: Complete for Windows. The packaged-engine proof on macOS is owed, with CLEAN-09's
+thumbnail proof, in Phase 5's macOS verification pass.
+
+- `engine/clean_api.py` answers twenty-two routes: the table's, plus two it did not list (below).
+  It is dispatched as `organization_api.py` is. `server.py` asks it whether it handles a path and
+  sends what it answers through `_handle_routed`, which the organization routes now share.
+
+  | Method and path | Delegates to |
+  | --- | --- |
+  | `POST /api/v1/clean/match` · `/match/resume` | `start_match_job` · `resume_match_job` |
+  | `GET /api/v1/clean/match/resumable` | `IMatchService.resumable` |
+  | `GET /api/v1/library/tracks/{id}/matches` | the state, its candidate, every attempt |
+  | `GET /api/v1/clean/attempts/{id}/candidates` | `IMatchRepository.candidates_for` |
+  | `POST /api/v1/clean/decide` | `IMatchStateService`, or `apply_or_start` for a selection |
+  | `POST /api/v1/clean/apply` | `IMatchApplyService.apply_match`, or `apply_or_start` |
+  | `POST /api/v1/library/tracks/{id}/overrides` | `IMetadataService.set_overrides` |
+  | `POST /api/v1/library/revert` · `/revert/batch` | `IRevertService.revert_change` · `revert_or_start` |
+  | `POST /api/v1/clean/files/check` | `start_file_check_job` |
+  | `POST /api/v1/clean/duplicates/scan` · `/dismiss` · `/restore`, `GET /clean/duplicates` | `start_duplicate_scan_job`, `IDuplicateService` |
+  | `POST /api/v1/clean/artwork/scan` | `start_artwork_scan_job` |
+  | `POST /api/v1/clean/tags/preview` · `/write` · `/restore`, `GET /clean/tags/writes` | `tag_write_jobs`, `IFileWriteRepository` |
+  | `GET /api/v1/clean/health` | `IHealthService.report` |
+  | `POST /api/v1/clean/export` | `IReviewExportService.export` |
+
+- `services/health_service.py` implements `IHealthService`: nine `(id, label, RuleSet)` rules, each
+  counted by `browse_count`, which is `build_count`, the count the Library table shows.
+- `services/review_export_service.py` implements `IReviewExportService`, "Export review list". It
+  reads a new row source, `ITrackRepository.review_rows`, and writes through a new
+  `ExportService.export_table`, not the retired `TrackResult` export.
+- **Rows carry where each track stands.** `models/track_clean_state.py` holds four answers:
+  `match_state`, `match_disputed`, `file_status` and `artwork`. `track_query.build_clean_states`
+  reads each through its vocabulary expression, one query per window (`ITrackRepository.clean_states`,
+  `ILibraryService.clean_states`). `track_to_dict` adds the four fields to every search and browse
+  row and to the Inspector's track, an additive change.
+- `IFileWriteRepository` gains `page`, `counts` and `restorable_counts`. `TagWriteService.restorable_count`
+  now counts in SQL rather than reading every row.
+- `IMetadataService.set_overrides` edits several of one track's overrides in one transaction.
+- `organization_api.parse_selection` is the one selection parser every route that takes a selection
+  uses.
+- **The desktop contract.** The twenty-two methods are carried through `engineClient.ts`,
+  `engineSupervisor.ts`, `main.ts`, `preload.cjs` and `cuepointBridge.types.ts`.
+  - The bridge names the domain types the design lists: `MatchAttempt`, `MatchCandidate`,
+    `MatchState`, `FileStatus`, `DuplicateGroup`, `HealthCount` and `TagWritePreview`. It also names
+    `TagWriteResult` and `TagRestoreResult`, which a job's result may now be.
+  - `BatchOperation` gains CLEAN-04's and CLEAN-05's four operations, and `LibraryTrackRow` the four
+    Clean fields.
+  - The status strip names a `clean_match` job "Matching on Beatport".
+
+**Where it is visible.** Nowhere a person can act yet: the Clean page is CLEAN-12's and the Library
+and Inspector controls CLEAN-13's. Rows now carry their Clean state, which nothing draws. No
+changelog entry, for that reason.
+
+**What building it settled, and why.**
+
+- **Statuses are stated once, per module** (`clean_api.status_for`).
+  - A refusal is 400 with the service's message.
+  - Something named that is not there is 404: a track or an attempt in the path, a duplicate group,
+    a match job, or a tag write preview (`TAG_WRITE_PREVIEW_NOT_FOUND`, with its `preview_id`, as a
+    refresh diff is).
+  - A busy library is 409 `LIBRARY_BUSY` with the running job's id and type. A revert of a field
+    changed since is 409 `REVERT_STALE` with the change's id.
+  - ORG-08 answered a body-named missing thing with 400, because its services said both with
+    `ValueError`. The services this module reaches raise `LookupError` for that, so it can be told
+    apart honestly.
+- **Every Clean route refuses a field it does not take, and booleans are booleans.** A mistyped
+  option silently ignored is a request that did something other than what its sender believes. On
+  routes that write files and decide matches, that is not tolerable, and `"false"` is not false.
+  ORG-08's routes are left as they are, since changing what they accept is not this step's.
+- **A selection's decisions cannot be cleared.** Accept and reject go through DEC-063's batch and
+  touch only tracks nobody decided (CLEAN-04). Clearing a selection would undo people's decisions in
+  bulk, which CLEAN-04 settled is a per-track act. The refusal says the bulk form: revert the batch
+  that made them.
+- **A decision answers under `match`, not `state`.** Every job answer carries `state` as the job's,
+  and `/decide` answers either kind.
+- **An edit to one track answers its row**, as the Library draws it: an apply and a hand edit return
+  `{"track": …}` with the effective values, the overridden fields and the Clean answers.
+- **Several overrides are one transaction, in the service.** The first version opened the transaction
+  in the handler. The persistence boundary test refused an engine module holding the database, so
+  `set_overrides` moved into `MetadataService`, beside `set_override`, and asks the key notation
+  once.
+- **Two routes beyond the table.** The renderer cannot resume a match it cannot list
+  (`GET /clean/match/resumable`), and CLEAN-08's `restore` of a dismissed group, which a mis-click
+  needs, had no way in (`POST /clean/duplicates/restore`). Both are additive.
+- **The file-write record is read a page at a time.** A write over a whole library records a row per
+  field per file — 350,000 rows for 50,000 files and seven fields — so `/tags/writes` pages (500 by
+  default, at most 5,000) and counts in SQL. It carries `total` and `unconfirmed`, and
+  `restorable` and `restorable_unconfirmed`. The restore's answer carries `unconfirmed` for the
+  writes it covers, so CLEAN-13 can say "N writes may not have finished" before the restore.
+- **A row's Clean answers are nulls when not read**, never defaults: `not_matched` would be a claim.
+- **Export writes where a save dialog chose, and nowhere else by accident.** The path must be
+  absolute and carry the format's suffix. An existing file is replaced only with `overwrite`, and
+  otherwise refused with 409 `EXPORT_FILE_EXISTS`. The file is written beside its destination and
+  renamed, so a failure leaves an existing file as it was. CSV carries a byte-order mark, so a
+  spreadsheet opens accented titles as written. The columns are a public shape: added at the end,
+  never renamed.
+- **Health does not count the unknown as missing** (DEC-075's note): `not_checked` files and
+  `unknown` artwork are left out.
+- **`filter-fields` needed nothing.** Every field this phase added reached the vocabulary through
+  the registry as its step landed (CLEAN-04 to CLEAN-09), and a request naming none of them answers
+  as it did; the existing DEC-023 guards still pass.
+- **Found building the packaged proof, and fixed**: rebuilding the sidecar on Windows failed with
+  "Access is denied" replacing `dist/cuepoint-engine.exe`, and the proof then ran the previous
+  build's engine. A one-file PyInstaller build runs as a bootloader that starts the engine as a
+  child. `build_engine_sidecar.py`'s health smoke terminated only the bootloader, so every build
+  left an engine running and holding the executable open. Three such engines, from earlier builds
+  and proofs, were found running with their parents gone. The smoke now stops the process tree
+  (`taskkill /T` on Windows; elsewhere the bootloader forwards the signal).
+  `scripts/test_engine_sidecar_smoke.py` reproduces the shape with a parent that starts a sleeping
+  child. The terminate-only stop was shown to leave that child running.
+- **Found by the type-checker**: the Library toolbar's batch sentences switch over every
+  `BatchOperation` kind, and the four added kinds left them without an answer. The toolbar offers
+  six operations, not ten, so `LibraryBatchKind` names those six, extracted from the wire type so a
+  renamed operation still fails to compile there.
+
+**Measured** at 50,000 tracks. The library had 20,000 attempts (half accepted, half needing
+review), a file check for every track (5% missing, 1% unreadable), 25,000 artwork records, a
+duplicate scan that put every track in a group (the worst case), and a 350,000-row tag write record
+for one job. Times are medians of five.
+
+| Operation | Time |
+| --- | --- |
+| Health report, all nine counts | 227.8 ms |
+| A page of 100 rows, Clean answers included | 2.1 ms |
+| The Clean answers alone, for those 100 rows | 0.7 ms |
+| `search_library` in browse mode, a page of 100 · within one genre | 4.6 · 13.2 ms |
+| The file-write record: a page of 500 at offset 300,000 | 28.5 ms |
+| Its counts · its restorable counts, 350,000 rows | 70.8 · 139.9 ms |
+| Review export, all 50,000 tracks to CSV (7.6 MB) | 1.15 s |
+
+- **A row's Clean answers cost 0.7 ms a page**, one query by primary key per window. The page stays
+  inside Phase 4's budget.
+- **Health is the sum of nine counts**, and two of them carry the report.
+
+  | Count | Tracks | Time |
+  | --- | --- | --- |
+  | Missing or unreadable files | 3,000 | 20.9 ms |
+  | In a duplicate group | 50,000 | 70.2 ms |
+  | Not matched · needs review · disputed | 30,000 · 10,000 · 0 | 8.3 · 8.0 · 7.3 ms |
+  | No key · no BPM · no genre | 12,500 · 7,143 · 12,500 | 6.9 · 12.9 · 7.0 ms |
+  | No artwork | 7,834 | 69.2 ms |
+
+  Each is the count the Library shows for the same filter, and the two slow ones are those fields'
+  own costs as CLEAN-08 and CLEAN-09 built them: a membership test against the view of shown groups,
+  with every track in a group here, and the artwork expression's three joins. The panel is read once
+  when it opens, not per keystroke, so a quarter of a second is tolerable. Making those two fields
+  cheaper would change the vocabulary's SQL for every filter that uses them, which is not this
+  step's. It is recorded here as found.
+- **The record is read a page at a time, and counted in SQL.** A page at offset 300,000 costs 28.5 ms,
+  and CLEAN-10's `restorable_count` no longer materializes 350,000 rows to count them.
+
+**Packaged engine.** On Windows, the sidecar was built from this tree (`dist/cuepoint-engine.exe`,
+77.8 MB) and started against a library in its own `CUEPOINT_HOME`. The library held an MP3, an AIFF,
+a FLAC and an Ogg Vorbis file, each checked present, and the FLAC had an accepted match whose
+artwork URL is on Beatport's image host.
+
+The picture was served locally, and nothing was fetched from Beatport. The engine ran with
+`HTTPS_PROXY` pointing at a local CONNECT proxy and `REQUESTS_CA_BUNDLE` at a local certificate
+authority, so `geo-media.beatport.com` was answered by a local HTTPS server. No production code
+changes to allow it. Through the routes alone:
+
+- `/tags/preview` answered inline: 4 files would change (key, year, label, genre and comment in
+  each, and 1 picture). The picture was asked for at 1,400 pixels, through the proxy.
+- `/tags/write` ran as a job: 4 files written, the picture embedded into the FLAC, none failed or
+  skipped. Every file's tags read back changed.
+- A second `/tags/write` of the same preview was refused, 404 `TAG_WRITE_PREVIEW_NOT_FOUND`.
+- `/tags/writes` held 21 rows, none unconfirmed, 21 restorable.
+- `/tags/restore` by the job restored 21 fields in 4 files, none skipped or failed. **Every file's
+  tags, the FLAC's pictures included, read back exactly as they were before the write.**
+- `/clean/health` answered from the packaged engine.
+
+**macOS is owed**, with Phase 5's macOS verification pass.
+
+**Tests**:
+
+- `engine/test_engine_clean_api.py` (116 tests) runs every route through an engine on a temporary
+  database with real audio files. A match job's runner is replaced before any route starts one, so
+  Beatport is never reached. It covers:
+  - the wire: the token on reads and writes, an unknown path, a body that is not JSON or not an
+    object, a field no route takes named in the refusal, and the track routes that existed still
+    answering;
+  - matching: a selection and a query started with their counts, settled tracks left out unless
+    `rematch`, a non-boolean flag, an empty or absent selection, a second match refused with the
+    running job's id and type, an interrupted job listed field for field and resumed, and an
+    unknown job, a job with nothing left, and a job id that is not text;
+  - reading matches: a track never matched, attempts newest first with the state and its candidate
+    and the attempt's explicit shape, candidates in rank with a rejected one's reason kept, and
+    unknown or malformed tracks and attempts;
+  - decisions: accepting a runner-up, reject then clear, clearing a never-answered track, five
+    malformed decisions, another track's candidate, an unknown track, both or neither of a track and
+    a selection, a selection accepted inline and rejected as a job, clearing a selection refused
+    with the way to do it, and a selection naming a candidate;
+  - apply, hand edits and revert: one track answering its row, a selection, an undecided track,
+    five kinds of wrong field list, several overrides with their history and source, a clear
+    falling back, a refused value writing none of the request, an unknown field, nothing to set,
+    unknown and malformed tracks, a change reverted, a stale revert as 409 with the change's id, an
+    unknown or malformed change, and a batch reverted inline and as a job;
+  - files, duplicates and artwork: a check started with its rows then saying `missing`; a scan, its
+    listing, dismissal, the dismissed listing and restore; every signal by default; an unknown group;
+    malformed listings and signals; an artwork scan, a non-boolean fetch flag, and a scan refused
+    beside a file check;
+  - tag writes: a preview inline and as a job keeping the job's id and served from its results,
+    four kinds of bad options, a write by preview id refused the second time, an unknown preview,
+    the record's shape, a restore by job and by track, a write interrupted after its record showing
+    unconfirmed rows in the record and in the restore's answer, paging, malformed record reads and
+    restores, and a preview refused beside a running write;
+  - Health, over a library holding every problem: every count equal to the Library's total for
+    its own rules, each count finding exactly the track it is about, a key edited in no longer
+    missing, the shape, and an empty library counting nothing;
+  - rows: each track's match state, file status, artwork and dispute flag equal to what the filter
+    of that name selects, and global search and the Inspector carrying them;
+  - export: a CSV of states and decided candidates with its header spelled out, JSON, Excel and the
+    `xlsx` name, an existing file replaced only when asked, and five refusals that write nothing.
+- `persistence/test_clean_projections.py` (15 tests) covers:
+  - the builders refusing no ids;
+  - `clean_states` agreeing with each filter over 1,203 tracks, past one chunk, and absent ids;
+  - review rows in the order given with the candidate the state points at and an override's
+    effective value;
+  - the record's pages, counts and restorable counts agreeing with `restorable` through a confirmed
+    and a pending restore;
+  - `set_overrides` as one transaction, one history row per field, the notation asked once, and
+    its refusals.
+- `services/test_export_table.py` (9 tests) covers each format's columns and cells, the byte-order
+  mark, an unknown format, an existing file kept or replaced, and a failed write leaving the
+  previous file and no temporary.
+- `models/test_track_clean_state.py` (21 tests) covers every answer the vocabulary gives, every
+  refusal, and a row's flags.
+- `scripts/test_engine_sidecar_smoke.py` (3 tests) covers the process tree stopped on Windows, and
+  the signal used elsewhere.
+- `desktopContract.test.ts` gains a Clean section (130 cases). It covers:
+  - each of the twenty-two methods on the preload, in the main process, in the supervisor, in the
+    client and on the bridge;
+  - the documented paths;
+  - POST for every write and GET for every read;
+  - a tag write by preview id;
+  - the domain types and a job result that may be a tag preview, write or restore;
+  - the four row fields and the four batch operations on both sides;
+  - thirteen shapes compared field for field between the two processes.
+- `useActiveJob.test.ts` names a Clean match apart from inKey's.
+- Extended rather than loosened: the search row's documented field set gains the four Clean fields.
+  The mypy gate gains `clean_api.py`, `health_service.py`, `review_export_service.py` and
+  `track_clean_state.py`.
+
+The tests were checked against forty-five mutations written into the source, each run against its
+own tests:
+
+- **Statuses**: busy as a 400; a preview not found as a plain 404; a stale revert as a 400; a
+  `LookupError` as a 500.
+- **Bodies**: booleans read for truthiness; unknown fields ignored; a boolean accepted as an id; a
+  track and a selection both allowed.
+- **Decisions**: clearing a selection allowed; an accept without a candidate; a decision answered
+  under `state`; the dispute flag always false.
+- **Tag writes**: the restore's and the record's unconfirmed counts dropped; the record's offset
+  ignored; a preview job answering no preview id.
+- **Edits and export**: several overrides written one by one; an export path not held to absolute,
+  to its suffix, or to asking before overwriting.
+- **Health**: unreadable files left out; unknown artwork counted; "disputed" read as "decided by a
+  user"; needs review counting not matched; a missing key read from the import; the library size
+  taken from the rule count.
+- **Rows**: a row, global search or the Inspector dropping its Clean answers; two answers read in
+  swapped order; review rows reading no candidate.
+- **The record**: every row counted unconfirmed; a confirmed restore still restorable; a pending
+  restore taking a write out; a page ignoring its offset; `restorable_count` reading the wrong half.
+- **Several overrides**: no transaction; the notation asked per field.
+- **Export**: no byte-order mark; a boolean as Python text; `None` as a word; a failed write
+  leaving its temporary; JSON keeping every key; a dispute exported as a number; the columns
+  reordered.
+
+Forty-three failed at least one test. The two that did not:
+
+- **The dispute flag always false** was a gap. No test read a disputed state through
+  `/matches`, only through the filter. A test now disputes a user's accept with a newer attempt and
+  reads `disputed` and `newer_attempt_id` from the route, and the mutation fails it.
+- **Two Clean answers read in swapped order** is equivalent. Each column is selected under its own
+  name and read back by name, so the tuple's order cannot change an answer.
+
+Two more gaps were closed before the run, having been spotted while writing it. The Health fixture's
+only user-decided track was the disputed one, which would have let "disputed" be read as "decided
+by a user". The export test compared the columns with the constant that produces them, which would
+have let a reordering through. The fixture now holds a user's undisputed rejection, and the test
+spells the header out. The mutations for both fail.
+
+**Complexity**: **L**, as estimated.
 
 ---
 

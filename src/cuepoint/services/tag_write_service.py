@@ -1231,8 +1231,12 @@ class TagWriteService(ITagWriteService):
     def restorable_count(
         self, *, job_id: Optional[str] = None, track_id: Optional[int] = None
     ) -> int:
-        """How many recorded writes a restore of a job or a track would undo."""
-        return len(self._writes.restorable(job_id=job_id, track_id=track_id))
+        """How many recorded writes a restore of a job or a track would undo.
+
+        Counted in SQL rather than by reading every row: a write over a whole
+        library records hundreds of thousands (CLEAN-11).
+        """
+        return self._writes.restorable_counts(job_id=job_id, track_id=track_id)[0]
 
     def restore(
         self,

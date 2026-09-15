@@ -699,6 +699,107 @@ def build_count(query: BrowseQuery) -> Tuple[str, Tuple[object, ...]]:
 
 
 # ---------------------------------------------------------------------------
+# Clean's projections of a set of tracks (CLEAN-11)
+# ---------------------------------------------------------------------------
+
+#: What a Library row carries about Clean. Each is read through its vocabulary
+#: expression, so a row and the filter of the same name cannot disagree.
+CLEAN_STATE_FIELDS: Tuple[str, ...] = (
+    "match_state",
+    "match_disputed",
+    "file_status",
+    "artwork",
+)
+
+#: The track half of an exported review row: what the Library shows for the
+#: track, effective values included (DEC-068), and where it stands.
+REVIEW_TRACK_FIELDS: Tuple[str, ...] = (
+    "artist",
+    "title",
+    "remixer",
+    "album",
+    "key",
+    "bpm",
+    "genre",
+    "label",
+    "year",
+    "file_path",
+    "match_state",
+    "match_decided_by",
+    "match_disputed",
+    "match_score",
+)
+
+#: The candidate half: the candidate the state points at, as Beatport shows it.
+REVIEW_CANDIDATE_COLUMNS: Tuple[str, ...] = (
+    "beatport_track_id",
+    "url",
+    "title",
+    "artists",
+    "remixers",
+    "label",
+    "genre",
+    "key",
+    "bpm",
+    "release_name",
+    "release_date",
+    "release_year",
+)
+
+
+def _field_joins(names: Iterable[str]) -> Tuple[str, ...]:
+    """Every join the named fields' expressions read through."""
+    joins: List[str] = []
+    for name in names:
+        joins.extend(field_spec(name).joins)
+    return tuple(joins)
+
+
+def _id_list(count: int) -> str:
+    """``?, ?, …`` for ``count`` ids.
+
+    Raises:
+        BrowseQueryError: If there are none, which is a caller's bug rather than
+            a request: ``IN ()`` is not SQL.
+    """
+    if count < 1:
+        raise BrowseQueryError("A projection by id needs at least one id")
+    return ", ".join("?" for _ in range(count))
+
+
+def build_clean_states(count: int) -> str:
+    """Build the read of :data:`CLEAN_STATE_FIELDS` for ``count`` track ids."""
+    columns = ", ".join(
+        f"{field_spec(name).expression} AS {name}" for name in CLEAN_STATE_FIELDS
+    )
+    return (
+        f"SELECT tracks.id AS id, {columns}"
+        f" FROM tracks{_joins(_field_joins(CLEAN_STATE_FIELDS))}"
+        f" WHERE tracks.id IN ({_id_list(count)})"
+    )
+
+
+def build_review_rows(count: int) -> str:
+    """Build the read of an exported review row for ``count`` track ids."""
+    track = ", ".join(
+        f"{field_spec(name).expression} AS {name}" for name in REVIEW_TRACK_FIELDS
+    )
+    candidate = ", ".join(
+        f"{MATCH_CANDIDATE_ALIAS}.{column} AS candidate_{column}"
+        for column in REVIEW_CANDIDATE_COLUMNS
+    )
+    joins = set(_field_joins(REVIEW_TRACK_FIELDS)) | {
+        MATCH_ALIAS,
+        MATCH_CANDIDATE_ALIAS,
+    }
+    return (
+        f"SELECT tracks.id AS id, {track}, {MATCH_ALIAS}.decided_at"
+        f" AS match_decided_at, {candidate} FROM tracks{_joins(joins)}"
+        f" WHERE tracks.id IN ({_id_list(count)})"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Facets (LIBUI-02)
 # ---------------------------------------------------------------------------
 

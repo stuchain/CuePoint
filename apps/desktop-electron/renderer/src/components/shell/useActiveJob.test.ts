@@ -65,6 +65,14 @@ describe("jobLabel", () => {
     expect(jobLabel(job({ type: "tag_restore" }))).toBe("Restoring tags 3/10");
   });
 
+  it("names a Clean match apart from inKey's", () => {
+    // CLEAN-11 made a library match startable; inKey's file-based run keeps
+    // "Matching" until CLEAN-14 retires it, and the strip must say which runs.
+    const clean = jobLabel(job({ type: "clean_match" }));
+    expect(clean).toBe("Matching on Beatport 3/10");
+    expect(clean).not.toBe(jobLabel(job({ type: "match" })));
+  });
+
   it("says queued before a job starts, whatever its type", () => {
     expect(jobLabel(job({ state: "queued" }))).toBe("Queued 3/10");
     expect(jobLabel(job({ type: "library_import", state: "queued" }))).toBe(

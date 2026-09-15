@@ -292,6 +292,71 @@ function registerIpcHandlers(): void {
   ipcMain.handle("engine:applyBatch", (_event, params) =>
     engine.applyBatch(params),
   );
+
+  // Clean (CLEAN-11). Thin forwards, as ORG-08's are: what a match state, a
+  // hand edit or a tag write may be is decided in Python.
+  ipcMain.handle("engine:startCleanMatch", (_event, params) =>
+    engine.startCleanMatch(params),
+  );
+  ipcMain.handle("engine:resumeCleanMatch", (_event, params) =>
+    engine.resumeCleanMatch(params),
+  );
+  ipcMain.handle("engine:getResumableMatches", () => engine.getResumableMatches());
+  ipcMain.handle("engine:getTrackMatches", (_event, params) =>
+    engine.getTrackMatches(params),
+  );
+  ipcMain.handle("engine:getMatchCandidates", (_event, params) =>
+    engine.getMatchCandidates(params),
+  );
+  ipcMain.handle("engine:decideMatch", (_event, params) =>
+    engine.decideMatch(params),
+  );
+  ipcMain.handle("engine:applyMatch", (_event, params) =>
+    engine.applyMatch(params),
+  );
+  ipcMain.handle("engine:setTrackOverrides", (_event, params) =>
+    engine.setTrackOverrides(params),
+  );
+  ipcMain.handle("engine:revertChange", (_event, params) =>
+    engine.revertChange(params),
+  );
+  ipcMain.handle("engine:revertBatch", (_event, params) =>
+    engine.revertBatch(params),
+  );
+  ipcMain.handle("engine:startFileCheck", (_event, params) =>
+    engine.startFileCheck(params),
+  );
+  ipcMain.handle("engine:startDuplicateScan", (_event, params) =>
+    engine.startDuplicateScan(params),
+  );
+  ipcMain.handle("engine:getDuplicateGroups", (_event, params) =>
+    engine.getDuplicateGroups(params),
+  );
+  ipcMain.handle("engine:dismissDuplicateGroup", (_event, params) =>
+    engine.dismissDuplicateGroup(params),
+  );
+  ipcMain.handle("engine:restoreDuplicateGroup", (_event, params) =>
+    engine.restoreDuplicateGroup(params),
+  );
+  ipcMain.handle("engine:startArtworkScan", (_event, params) =>
+    engine.startArtworkScan(params),
+  );
+  ipcMain.handle("engine:previewTagWrite", (_event, params) =>
+    engine.previewTagWrite(params),
+  );
+  ipcMain.handle("engine:startTagWrite", (_event, params) =>
+    engine.startTagWrite(params),
+  );
+  ipcMain.handle("engine:startTagRestore", (_event, params) =>
+    engine.startTagRestore(params),
+  );
+  ipcMain.handle("engine:getTagWrites", (_event, params) =>
+    engine.getTagWrites(params),
+  );
+  ipcMain.handle("engine:getLibraryHealth", () => engine.getLibraryHealth());
+  ipcMain.handle("engine:exportReviewList", (_event, params) =>
+    engine.exportReviewList(params),
+  );
   ipcMain.handle("engine:startLibraryImport", (_event, params) =>
     engine.startLibraryImport(params),
   );

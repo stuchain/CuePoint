@@ -586,7 +586,7 @@ describe("desktop contract", () => {
       expect(row).not.toContain("notes");
     });
 
-    it("can scope a browse to a Collection without a second query path", () => {
+    it("can scope a browse to a Collection without a second query path (ORG-08)", () => {
       // DEC-023: browsing is one endpoint with more parameters, and ORG-08's
       // scope is two more of them rather than a route of its own.
       const method = engineClient.slice(
@@ -596,6 +596,199 @@ describe("desktop contract", () => {
       expect(method).toContain("/api/v1/library/search");
       expect(method).toContain('query.set("scope"');
       expect(method).toContain('query.set("collection_id"');
+    });
+  });
+
+  describe("Clean (CLEAN-11)", () => {
+    // The largest single sweep of the contract so far: twenty-two methods
+    // across six files. The generic checks compare the files with each other,
+    // so a method missing from all of them passes every one; these name what
+    // has to exist, as ORG-08's did.
+    const methods = [
+      "startCleanMatch",
+      "resumeCleanMatch",
+      "getResumableMatches",
+      "getTrackMatches",
+      "getMatchCandidates",
+      "decideMatch",
+      "applyMatch",
+      "setTrackOverrides",
+      "revertChange",
+      "revertBatch",
+      "startFileCheck",
+      "startDuplicateScan",
+      "getDuplicateGroups",
+      "dismissDuplicateGroup",
+      "restoreDuplicateGroup",
+      "startArtworkScan",
+      "previewTagWrite",
+      "startTagWrite",
+      "startTagRestore",
+      "getTagWrites",
+      "getLibraryHealth",
+      "exportReviewList",
+    ];
+
+    /** One client method's body: from its signature to the next member. */
+    const clientMethod = (name: string) => {
+      const start = engineClient.indexOf(`async ${name}(`);
+      const next = engineClient.indexOf("\n  async ", start + 1);
+      return engineClient.slice(start, next === -1 ? undefined : next);
+    };
+
+    it.each(methods)("exposes %s on the preload", (method) => {
+      expect(invokedChannels(preload)).toContain(`engine:${method}`);
+    });
+
+    it.each(methods)("handles engine:%s in the main process", (method) => {
+      expect(handledChannels(main)).toContain(`engine:${method}`);
+    });
+
+    it.each(methods)("forwards %s through the supervisor", (method) => {
+      expect(supervisorMethodsDeclared(supervisor)).toContain(method);
+    });
+
+    it.each(methods)("has a typed client method for %s", (method) => {
+      expect(engineClient).toContain(`async ${method}(`);
+    });
+
+    it.each(methods)("declares %s on the renderer bridge type", (method) => {
+      expect(bridgeTypes).toContain(`${method}?:`);
+    });
+
+    it("hits the documented paths", () => {
+      for (const path of [
+        "/api/v1/clean/match",
+        "/api/v1/clean/match/resume",
+        "/api/v1/clean/match/resumable",
+        "/api/v1/clean/decide",
+        "/api/v1/clean/apply",
+        "/api/v1/library/revert",
+        "/api/v1/library/revert/batch",
+        "/api/v1/clean/files/check",
+        "/api/v1/clean/duplicates/scan",
+        "/api/v1/clean/duplicates",
+        "/api/v1/clean/duplicates/dismiss",
+        "/api/v1/clean/duplicates/restore",
+        "/api/v1/clean/artwork/scan",
+        "/api/v1/clean/tags/preview",
+        "/api/v1/clean/tags/write",
+        "/api/v1/clean/tags/restore",
+        "/api/v1/clean/tags/writes",
+        "/api/v1/clean/health",
+        "/api/v1/clean/export",
+      ]) {
+        expect(engineClient).toContain(path);
+      }
+      // The three that carry an id in the path, built rather than literal.
+      expect(clientMethod("getTrackMatches")).toContain("/matches`");
+      expect(clientMethod("getMatchCandidates")).toContain("/candidates`");
+      expect(clientMethod("setTrackOverrides")).toContain("/overrides`");
+    });
+
+    it("writes with POST and reads with GET", () => {
+      // A GET that decided a match or wrote a file would be retried by anything
+      // that retries GETs — and a tag write repeated is a second write.
+      const reads = [
+        "getResumableMatches",
+        "getTrackMatches",
+        "getMatchCandidates",
+        "getDuplicateGroups",
+        "getTagWrites",
+        "getLibraryHealth",
+      ];
+      for (const name of methods) {
+        const body = clientMethod(name);
+        if (reads.includes(name)) {
+          expect(body, name).toContain("getJson");
+          expect(body, name).not.toContain("postJson");
+        } else {
+          expect(body, name).toContain("postJson");
+        }
+      }
+    });
+
+    it("writes tags by the id of a preview a person saw (DEC-070)", () => {
+      expect(clientMethod("startTagWrite")).toContain("preview_id");
+      expect(bridgeTypes).toContain("startTagWrite?: (params: { preview_id: string })");
+    });
+
+    it("declares the domain types the specification names", () => {
+      for (const shape of [
+        "interface MatchAttempt",
+        "interface MatchCandidate",
+        "type MatchState",
+        "type FileStatus",
+        "interface DuplicateGroup",
+        "interface HealthCount",
+        "interface TagWritePreview",
+        "interface TagWriteResult",
+        "interface TagRestoreResult",
+        "interface FileWriteRecord",
+      ]) {
+        expect(bridgeTypes).toContain(shape);
+      }
+    });
+
+    it("lets a job's result be read as a tag preview, write or restore", () => {
+      // A preview above the threshold is a job, and its preview arrives as the
+      // job's result. A bridge type without it would type-check a renderer into
+      // believing that job answers nothing it can show.
+      expect(bridgeTypes).toContain("| TagWritePreview");
+      expect(bridgeTypes).toContain("| TagWriteResult");
+      expect(bridgeTypes).toContain("| TagRestoreResult");
+    });
+
+    it("carries where each track stands on a row (CLEAN-11)", () => {
+      const row = (source: string) =>
+        source.slice(
+          source.indexOf("export interface LibraryTrackRow"),
+          source.indexOf("\n}", source.indexOf("export interface LibraryTrackRow")),
+        );
+      for (const source of [bridgeTypes, engineClient]) {
+        for (const field of ["match_state", "match_disputed", "file_status", "artwork"]) {
+          expect(row(source)).toContain(field);
+        }
+      }
+    });
+
+    it("offers the batch operations CLEAN-04 and CLEAN-05 added", () => {
+      for (const source of [bridgeTypes, engineClient]) {
+        const operation = source.slice(
+          source.indexOf("export interface BatchOperation"),
+          source.indexOf("\n}", source.indexOf("export interface BatchOperation")),
+        );
+        for (const kind of ["accept_match", "reject_match", "apply_match", "set_override"]) {
+          expect(operation).toContain(`"${kind}"`);
+        }
+      }
+    });
+
+    it.each([
+      "TrackMatchState",
+      "MatchAttempt",
+      "MatchCandidate",
+      "TrackMatches",
+      "ResumableMatch",
+      "FieldRevert",
+      "DuplicateGroup",
+      "FileWriteRecord",
+      "TagWriteRecord",
+      "TagRestoreStarted",
+      "HealthCount",
+      "LibraryHealth",
+      "ReviewExportResult",
+    ])("keeps the engine and the renderer agreeing about %s", (shape) => {
+      // Two copies of one shape, one in each process, compared as the track
+      // row and the Collection node are.
+      const fields = (source: string) => {
+        const start = source.indexOf(`export interface ${shape} `);
+        const body = source.slice(start, source.indexOf("\n}", start));
+        return [...body.matchAll(/^ {2}([a-z_]+)\??:/gm)].map((match) => match[1]!).sort();
+      };
+
+      expect(fields(bridgeTypes).length).toBeGreaterThan(0);
+      expect(fields(bridgeTypes)).toEqual(fields(engineClient));
     });
   });
 });

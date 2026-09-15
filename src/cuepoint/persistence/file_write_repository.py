@@ -26,7 +26,7 @@ Transactions join a caller's, as everywhere here.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Optional, Sequence
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from cuepoint.models.file_status import FILE_NOT_CHECKED
 from cuepoint.models.file_write import WRITE_FAILED, WRITE_WRITTEN, FileWrite
@@ -81,6 +81,21 @@ _TARGETS = (
     " LEFT JOIN track_files AS files ON files.track_id = tracks.id"
     " WHERE tracks.id IN ({placeholders})"
 )
+
+
+def _scope(
+    job_id: Optional[str], track_id: Optional[int], alias: str = "file_writes"
+) -> Tuple[str, object]:
+    """The WHERE clause naming a job's or a track's rows, and its one parameter.
+
+    Raises:
+        ValueError: Unless exactly one of the two is given.
+    """
+    if (job_id is None) == (track_id is None):
+        raise ValueError("Name a job or a track, not both or neither")
+    if job_id is not None:
+        return f"{alias}.job_id = ?", str(job_id)
+    return f"{alias}.track_id = ?", int(track_id)  # type: ignore[arg-type]
 
 
 @dataclass(frozen=True)
@@ -202,6 +217,76 @@ class FileWriteRepository(IFileWriteRepository):
             FileWrite.from_row(row)
             for row in self._db.connect().execute(sql, tuple(parameters))
         ]
+
+    def page(
+        self,
+        *,
+        job_id: Optional[str] = None,
+        track_id: Optional[int] = None,
+        limit: int = 1000,
+        offset: int = 0,
+    ) -> List[FileWrite]:
+        """One page of a job's or a track's rows, in the order recorded (CLEAN-11).
+
+        A write over a whole library records a row per field per file, so the
+        record is read a page at a time rather than whole.
+
+        Raises:
+            ValueError: Unless exactly one of ``job_id`` and ``track_id`` is given.
+        """
+        scope, parameter = _scope(job_id, track_id)
+        return [
+            FileWrite.from_row(row)
+            for row in self._db.connect().execute(
+                f"{_SELECT} WHERE {scope} ORDER BY id LIMIT ? OFFSET ?",
+                (parameter, max(1, int(limit)), max(0, int(offset))),
+            )
+        ]
+
+    def counts(
+        self, *, job_id: Optional[str] = None, track_id: Optional[int] = None
+    ) -> Tuple[int, int]:
+        """``(rows, unconfirmed rows)`` a job or a track recorded (CLEAN-11).
+
+        Raises:
+            ValueError: Unless exactly one of ``job_id`` and ``track_id`` is given.
+        """
+        scope, parameter = _scope(job_id, track_id)
+        row = (
+            self._db.connect()
+            .execute(
+                "SELECT count(*) AS n, COALESCE(SUM(pending), 0) AS pending"
+                f" FROM file_writes WHERE {scope}",
+                (parameter,),
+            )
+            .fetchone()
+        )
+        return int(row["n"]), int(row["pending"])
+
+    def restorable_counts(
+        self, *, job_id: Optional[str] = None, track_id: Optional[int] = None
+    ) -> Tuple[int, int]:
+        """``(writes a restore would undo, of those unconfirmed)``, counted in SQL.
+
+        The same rows as :meth:`restorable`, without reading them.
+
+        Raises:
+            ValueError: Unless exactly one of ``job_id`` and ``track_id`` is given.
+        """
+        scope, parameter = _scope(job_id, track_id, alias="w")
+        row = (
+            self._db.connect()
+            .execute(
+                "SELECT count(*) AS n, COALESCE(SUM(w.pending), 0) AS pending"
+                f" FROM file_writes AS w WHERE w.outcome = 'written' AND {scope}"
+                " AND NOT EXISTS (SELECT 1 FROM file_writes AS r"
+                " WHERE r.restore_of = w.id AND r.outcome = 'restored'"
+                " AND r.pending = 0)",
+                (parameter,),
+            )
+            .fetchone()
+        )
+        return int(row["n"]), int(row["pending"])
 
     # ----------------------------------------------------------------- write
 

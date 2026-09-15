@@ -58,6 +58,9 @@ if TYPE_CHECKING:
     from cuepoint.models.library_source import LibrarySource
     from cuepoint.models.references import ReferenceSummary
     from cuepoint.models.track_metadata import TrackMetadata
+    from cuepoint.models.track_clean_state import TrackCleanState
+    from cuepoint.services.health_service import HealthReport
+    from cuepoint.services.review_export_service import ReviewExport
     from cuepoint.persistence.authored_data_repository import AuthoredTracks
     from cuepoint.models.match_attempt import (
         MatchAttempt,
@@ -279,6 +282,34 @@ class IExportService(ABC):
     def export_to_excel(self, results: List[TrackResult], filepath: str) -> None:
         """Export results to Excel file."""
         pass
+
+    @abstractmethod
+    def export_table(
+        self,
+        columns: Sequence[str],
+        rows: Sequence[Dict[str, Any]],
+        filepath: str,
+        file_format: str,
+        overwrite: bool = False,
+        sheet_title: str = "Export",
+    ) -> None:
+        """Export rows of named columns as CSV, JSON or Excel (CLEAN-11)."""
+        pass
+
+
+class IReviewExportService(ABC):
+    """Interface for "Export review list": match states and decided candidates."""
+
+    @abstractmethod
+    def export(
+        self,
+        selection: "BatchSelection",
+        file_format: str,
+        file_path: str,
+        overwrite: bool = False,
+    ) -> "ReviewExport":
+        """Write a selection's review rows to a file."""
+        ...
 
 
 class IMatcherService(ABC):
@@ -803,6 +834,11 @@ class ILibraryService(ABC):
         ...
 
     @abstractmethod
+    def clean_states(self, track_ids: Iterable[int]) -> Dict[int, "TrackCleanState"]:
+        """Return what each track's row says about Clean, keyed by id (CLEAN-11)."""
+        ...
+
+    @abstractmethod
     def references_for(self, track_ids: Iterable[int]) -> "ReferenceSummary":
         """Return what Collections and Sets hold these tracks (DEC-011).
 
@@ -974,6 +1010,16 @@ class ITrackRepository(ABC):
     @abstractmethod
     def key_notation_counts(self) -> Tuple[int, int]:
         """Return (Camelot keys, other keys) among the imported keys (CLEAN-05)."""
+        ...
+
+    @abstractmethod
+    def clean_states(self, track_ids: Iterable[int]) -> Dict[int, "TrackCleanState"]:
+        """Return what each track's row says about Clean, keyed by id (CLEAN-11)."""
+        ...
+
+    @abstractmethod
+    def review_rows(self, track_ids: Iterable[int]) -> List[Dict[str, Any]]:
+        """Return an exported review row per track, in the order given (CLEAN-11)."""
         ...
 
 
@@ -1539,6 +1585,32 @@ class IFileWriteRepository(ABC):
         ...
 
     @abstractmethod
+    def page(
+        self,
+        *,
+        job_id: Optional[str] = None,
+        track_id: Optional[int] = None,
+        limit: int = 1000,
+        offset: int = 0,
+    ) -> List["FileWrite"]:
+        """One page of a job's or a track's rows, in the order recorded."""
+        ...
+
+    @abstractmethod
+    def counts(
+        self, *, job_id: Optional[str] = None, track_id: Optional[int] = None
+    ) -> Tuple[int, int]:
+        """(rows, unconfirmed rows) a job or a track recorded."""
+        ...
+
+    @abstractmethod
+    def restorable_counts(
+        self, *, job_id: Optional[str] = None, track_id: Optional[int] = None
+    ) -> Tuple[int, int]:
+        """(writes a restore would undo, of those unconfirmed)."""
+        ...
+
+    @abstractmethod
     def record(self, rows: Sequence["FileWrite"]) -> List[int]:
         """Insert rows and return their ids, in order."""
         ...
@@ -1704,6 +1776,20 @@ class IDuplicateService(ABC):
     @abstractmethod
     def restore(self, group_id: int) -> "DuplicateGroupMembers":
         """Take a dismissal back."""
+        ...
+
+
+class IHealthService(ABC):
+    """Interface for Library Health: counts, each the count of a rule set (DEC-075).
+
+    No score. Each count is answered by the same query path the Library browses
+    with, and carries the rules that produced it, so the number shown and the
+    tracks a click opens cannot disagree.
+    """
+
+    @abstractmethod
+    def report(self) -> "HealthReport":
+        """Count every Health rule over the library."""
         ...
 
 
@@ -2254,6 +2340,17 @@ class IMetadataService(ABC):
         notation: Optional[str] = None,
     ) -> "TrackMetadata":
         """Set or clear an override, recording who supplied it (DEC-068, DEC-069)."""
+        ...
+
+    @abstractmethod
+    def set_overrides(
+        self,
+        track_id: int,
+        values: Dict[str, Any],
+        source: str = "cuepoint",
+        batch_id: Optional[str] = None,
+    ) -> "TrackMetadata":
+        """Set or clear several of one track's overrides in one transaction."""
         ...
 
     @abstractmethod

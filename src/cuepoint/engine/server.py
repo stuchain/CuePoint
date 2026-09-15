@@ -84,6 +84,13 @@ from cuepoint.engine.incrate_api import (
     run_incrate_reset,
     run_playlist_create,
 )
+from cuepoint.engine.clean_api import (
+    handle_get as clean_get,
+    handle_post as clean_post,
+    handles_get as clean_handles_get,
+    handles_post as clean_handles_post,
+    status_for as clean_status,
+)
 from cuepoint.engine.organization_api import (
     handle_get as organization_get,
     handle_post as organization_post,
@@ -680,6 +687,13 @@ def make_handler(
             if artwork:
                 self._handle_artwork(artwork.group(1), parsed.query)
                 return
+            if clean_handles_get(path):
+                # Before the track prefix below, for the organization routes'
+                # reason: it would read "7/matches" as a track id (CLEAN-11).
+                self._handle_routed(
+                    lambda: clean_get(path, parse_qs(parsed.query)), clean_status
+                )
+                return
             if organization_handles_get(path):
                 # Before the prefix below, which would read the whole of
                 # "7/history" as a track id and refuse it as one.
@@ -889,10 +903,24 @@ def make_handler(
                     401, error_payload("UNAUTHORIZED", "Missing or invalid token")
                 )
                 return
+            self._handle_routed(run, organization_status)
+
+        def _handle_routed(self, run, status_for) -> None:
+            """Answer one route of a module that maps its own refusals.
+
+            ORG-08's shape, shared by the organization and Clean modules: the
+            module says whether it handles a path and what each refusal is;
+            this sends the answer.
+            """
+            if not self._authorized():
+                self._send_json(
+                    401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                )
+                return
             try:
                 status, payload = run()
             except Exception as exc:  # noqa: BLE001 — mapped, not swallowed
-                status, payload = organization_status(exc)
+                status, payload = status_for(exc)
             self._send_json(status, payload)
 
         def do_POST(self) -> None:  # noqa: N802
@@ -1109,6 +1137,13 @@ def make_handler(
                     self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
                     return
                 self._send_json(200, {"ok": ok, "message": message})
+                return
+
+            if clean_handles_post(path):
+                raw = self._read_body()
+                self._handle_routed(
+                    lambda: clean_post(path, raw, job_store=job_store), clean_status
+                )
                 return
 
             if organization_handles_post(path):

@@ -23,6 +23,7 @@ from typing import Dict, Iterable, List, Optional
 from cuepoint.models.filter_rule import Facet, FacetRange, RuleSet, field_spec
 from cuepoint.models.library_track import LibraryTrack, QueueTrack
 from cuepoint.models.references import ReferenceSummary
+from cuepoint.models.track_clean_state import TrackCleanState
 from cuepoint.models.track_metadata import TrackMetadata
 from cuepoint.persistence.track_query import (
     BROWSE_LIMIT_DEFAULT,
@@ -75,6 +76,8 @@ class LibrarySearchResult:
     #: (ORG-08, DEC-057). Absent for a track with nothing recorded, because the
     #: absence *is* the answer — one query per window, never one per row.
     metadata: Dict[int, TrackMetadata] = field(default_factory=dict)
+    #: What each row says about Clean (CLEAN-11), read in one query per window.
+    clean: Dict[int, TrackCleanState] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -106,6 +109,8 @@ class LibraryBrowseResult:
     collection_id: Optional[int] = None
     #: CuePoint's own layer for the rows in this window (ORG-08, DEC-057).
     metadata: Dict[int, TrackMetadata] = field(default_factory=dict)
+    #: What each row in this window says about Clean (CLEAN-11).
+    clean: Dict[int, TrackCleanState] = field(default_factory=dict)
     #: Populated instead of ``tracks`` when queue entries were asked for
     #: (PLAYER-05). Never populated at the same time as the others.
     queue_tracks: Optional[List[QueueTrack]] = None
@@ -175,6 +180,16 @@ class LibraryService(ILibraryService):
             [track.id for track in tracks if track.id is not None]
         )
 
+    def _clean_for(self, tracks: List[LibraryTrack]) -> Dict[int, TrackCleanState]:
+        """Read what one window's rows say about Clean, in one query (CLEAN-11)."""
+        ids = [track.id for track in tracks if track.id is not None]
+        return self._tracks.clean_states(ids) if ids else {}
+
+    def clean_states(self, track_ids: Iterable[int]) -> Dict[int, TrackCleanState]:
+        """Return what each track's row says about Clean, keyed by id (CLEAN-11)."""
+        ids = list(track_ids)
+        return self._tracks.clean_states(ids) if ids else {}
+
     def get_track(self, track_id: int) -> Optional[LibraryTrack]:
         """Return a track by its library id, or None."""
         return self._tracks.get(track_id)
@@ -226,6 +241,7 @@ class LibraryService(ILibraryService):
             limit=safe_limit,
             offset=safe_offset,
             metadata=self._metadata_for(found),
+            clean=self._clean_for(found),
         )
 
     def browse_tracks(
@@ -268,6 +284,7 @@ class LibraryService(ILibraryService):
             sort=browse.sort,
             direction=browse.direction,
             metadata=self._metadata_for(rows),
+            clean=self._clean_for(rows),
         )
 
     def browse_track_ids(

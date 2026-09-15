@@ -841,6 +841,20 @@ def _selection(data: Dict[str, Any]) -> Any:
     )
 
 
+def parse_selection(data: Dict[str, Any]) -> Any:
+    """Build a selection from a request body's ``selection`` (DEC-045).
+
+    The one parser every route that acts on a selection uses — a batch, a match,
+    a file check, a tag write (CLEAN-11) — so "these tracks" means the same
+    thing to each of them.
+
+    Raises:
+        ApiError: 400 if the selection is not one.
+        FilterRuleError: If its filters are not a rule set.
+    """
+    return _selection(data)
+
+
 def _operation(data: Dict[str, Any]) -> Any:
     """Build the batch's verb from a request body."""
     from cuepoint.services.batch_service import BatchOperation

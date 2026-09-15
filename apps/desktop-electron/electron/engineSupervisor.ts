@@ -34,6 +34,26 @@ import {
   type TagVocabulary,
   type TrackHistory,
   type TrackMetadata,
+  type ApplyOutcome,
+  type ArtworkScanStarted,
+  type AttemptCandidates,
+  type BatchRevertOutcome,
+  type DecisionOutcome,
+  type DuplicateGroup,
+  type DuplicateGroupList,
+  type DuplicateScanStarted,
+  type FieldRevert,
+  type FileCheckStarted,
+  type LibraryHealth,
+  type LibraryTrackRow,
+  type MatchStarted,
+  type ResumableMatches,
+  type ReviewExportResult,
+  type TagPreviewOutcome,
+  type TagRestoreStarted,
+  type TagWriteRecord,
+  type TagWriteStarted,
+  type TrackMatches,
 } from "./engineClient";
 import { getBundledEnginePath, shouldUseBundledEngine } from "./engineLaunch";
 
@@ -414,6 +434,111 @@ export class EngineSupervisor {
 
   async applyBatch(params: { selection: BatchSelection; operation: BatchOperation }): Promise<BatchOutcome> {
     return this.client().applyBatch(params);
+  }
+
+  // Clean (CLEAN-11). One forward per client method, for ORG-08's reason: a
+  // method missing here is a runtime failure nothing type-checks.
+
+  async startCleanMatch(params: Parameters<EngineClient["startCleanMatch"]>[0]): Promise<MatchStarted> {
+    return this.client().startCleanMatch(params);
+  }
+
+  async resumeCleanMatch(params: { job_id: string }): Promise<MatchStarted> {
+    return this.client().resumeCleanMatch(params);
+  }
+
+  async getResumableMatches(): Promise<ResumableMatches> {
+    return this.client().getResumableMatches();
+  }
+
+  async getTrackMatches(params: { trackId: number }): Promise<TrackMatches> {
+    return this.client().getTrackMatches(params);
+  }
+
+  async getMatchCandidates(params: { attemptId: number }): Promise<AttemptCandidates> {
+    return this.client().getMatchCandidates(params);
+  }
+
+  async decideMatch(params: Parameters<EngineClient["decideMatch"]>[0]): Promise<DecisionOutcome> {
+    return this.client().decideMatch(params);
+  }
+
+  async applyMatch(params: Parameters<EngineClient["applyMatch"]>[0]): Promise<ApplyOutcome> {
+    return this.client().applyMatch(params);
+  }
+
+  async setTrackOverrides(
+    params: Parameters<EngineClient["setTrackOverrides"]>[0],
+  ): Promise<{ track: LibraryTrackRow }> {
+    return this.client().setTrackOverrides(params);
+  }
+
+  async revertChange(params: { change_id: number }): Promise<{ revert: FieldRevert }> {
+    return this.client().revertChange(params);
+  }
+
+  async revertBatch(params: { batch_id: string }): Promise<BatchRevertOutcome> {
+    return this.client().revertBatch(params);
+  }
+
+  async startFileCheck(params: { selection: BatchSelection }): Promise<FileCheckStarted> {
+    return this.client().startFileCheck(params);
+  }
+
+  async startDuplicateScan(
+    params?: Parameters<EngineClient["startDuplicateScan"]>[0],
+  ): Promise<DuplicateScanStarted> {
+    return this.client().startDuplicateScan(params);
+  }
+
+  async getDuplicateGroups(
+    params?: Parameters<EngineClient["getDuplicateGroups"]>[0],
+  ): Promise<DuplicateGroupList> {
+    return this.client().getDuplicateGroups(params);
+  }
+
+  async dismissDuplicateGroup(params: { group_id: number }): Promise<{ group: DuplicateGroup }> {
+    return this.client().dismissDuplicateGroup(params);
+  }
+
+  async restoreDuplicateGroup(params: { group_id: number }): Promise<{ group: DuplicateGroup }> {
+    return this.client().restoreDuplicateGroup(params);
+  }
+
+  async startArtworkScan(
+    params: Parameters<EngineClient["startArtworkScan"]>[0],
+  ): Promise<ArtworkScanStarted> {
+    return this.client().startArtworkScan(params);
+  }
+
+  async previewTagWrite(
+    params: Parameters<EngineClient["previewTagWrite"]>[0],
+  ): Promise<TagPreviewOutcome> {
+    return this.client().previewTagWrite(params);
+  }
+
+  async startTagWrite(params: { preview_id: string }): Promise<TagWriteStarted> {
+    return this.client().startTagWrite(params);
+  }
+
+  async startTagRestore(
+    params: Parameters<EngineClient["startTagRestore"]>[0],
+  ): Promise<TagRestoreStarted> {
+    return this.client().startTagRestore(params);
+  }
+
+  async getTagWrites(params: Parameters<EngineClient["getTagWrites"]>[0]): Promise<TagWriteRecord> {
+    return this.client().getTagWrites(params);
+  }
+
+  async getLibraryHealth(): Promise<LibraryHealth> {
+    return this.client().getLibraryHealth();
+  }
+
+  async exportReviewList(
+    params: Parameters<EngineClient["exportReviewList"]>[0],
+  ): Promise<ReviewExportResult> {
+    return this.client().exportReviewList(params);
   }
 
   async startLibraryImport(params: {

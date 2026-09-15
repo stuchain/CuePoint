@@ -122,11 +122,31 @@ def _smoke_test_executable(exe: Path) -> None:
             f"(the process was still running but never answered {url})"
         )
     finally:
+        _stop_process_tree(proc)
+
+
+def _stop_process_tree(proc: subprocess.Popen, system: Optional[str] = None) -> None:
+    """Stop a sidecar and every process it started.
+
+    A one-file PyInstaller build runs as a bootloader that unpacks and starts
+    the engine as a child. On Windows, terminating the bootloader leaves that
+    child running — still listening, and still holding the executable open, so
+    the next build fails with "Access is denied" replacing it. ``taskkill /T``
+    takes the tree. Elsewhere the bootloader forwards the signal to its child.
+    """
+    if (system or sys.platform) == "win32":
+        subprocess.run(
+            ["taskkill", "/T", "/F", "/PID", str(proc.pid)],
+            capture_output=True,
+            check=False,
+        )
+    else:
         proc.terminate()
-        try:
-            proc.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            proc.kill()
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait(timeout=5)
 
 
 def main() -> int:

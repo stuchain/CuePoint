@@ -79,6 +79,10 @@ const JOB_VERBS: Record<string, string> = {
   // CLEAN-10's tag write, in its three parts. The one job that changes audio
   // files says so in words of its own, and a preview that only reads them
   // must not read as the write.
+  // CLEAN-03's match over a library scope, which CLEAN-11 made startable. Not
+  // inKey's "Matching": that verb belongs to the file-based run CLEAN-14
+  // retires, and a strip showing both would not say which one is running.
+  clean_match: "Matching on Beatport",
   tag_write_preview: "Reading tags",
   tag_write: "Writing tags",
   tag_restore: "Restoring tags",

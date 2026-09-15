@@ -62,7 +62,7 @@ nobody reads twice.
 
 from __future__ import annotations
 
-from typing import Dict, Iterable, Optional, Tuple
+from typing import Dict, Iterable, Mapping, Optional, Tuple
 
 from cuepoint.models.track_metadata import (
     TrackMetadata,
@@ -308,6 +308,43 @@ class MetadataService(IMetadataService):
             self._record(
                 track_id, _HISTORY_FIELD_FOR[name], previous, wanted, batch_id, source
             )
+        return record
+
+    def set_overrides(
+        self,
+        track_id: int,
+        values: Mapping[str, object],
+        source: str = SOURCE_USER,
+        batch_id: Optional[str] = None,
+    ) -> TrackMetadata:
+        """Set or clear several of one track's overrides as one edit (CLEAN-11).
+
+        One transaction for every field named, so a refused value leaves the
+        others unwritten too: an Inspector that sent a BPM and a key has not
+        half-saved when the key is refused. The library's key notation is asked
+        once. Each field records its own history row, as :meth:`set_override`
+        does.
+
+        Raises:
+            ValueError: If nothing is named, or as :meth:`set_override` for any
+                field. Nothing is written.
+        """
+        if not values:
+            raise ValueError("Name at least one field to set")
+        names = [require_field(name) for name in values]
+        notation = self.key_notation() if "key" in names else None
+        record: Optional[TrackMetadata] = None
+        with self._db.transaction(join_existing=True):
+            for name in names:
+                record = self.set_override(
+                    track_id,
+                    name,
+                    values[name],
+                    source=source,
+                    batch_id=batch_id,
+                    notation=notation,
+                )
+        assert record is not None  # at least one field was named
         return record
 
     def key_notation(self) -> str:

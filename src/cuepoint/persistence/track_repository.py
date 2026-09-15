@@ -29,10 +29,14 @@ from cuepoint.models.filter_rule import (
     FacetValue,
     field_spec,
 )
+from cuepoint.models.track_clean_state import TrackCleanState
+from cuepoint.persistence.id_chunks import CHUNK_SIZE, chunked, unique_ids
 from cuepoint.persistence.rule_references import check_rule_references
 from cuepoint.persistence.track_query import (
     BrowseQuery,
+    build_clean_states,
     build_count,
+    build_review_rows,
     build_facet_range,
     build_facet_value_count,
     build_facet_values,
@@ -617,6 +621,35 @@ class TrackRepository(ITrackRepository):
         )
         camelot = int(row["camelot"])
         return camelot, int(row["keyed"]) - camelot
+
+    def clean_states(self, track_ids: Iterable[int]) -> Dict[int, TrackCleanState]:
+        """Return what each existing track's row says about Clean (CLEAN-11).
+
+        One query per chunk: a window of a hundred rows asks once, not a
+        hundred times. Ids that are not library tracks are absent.
+        """
+        wanted = unique_ids(track_ids)
+        found: Dict[int, TrackCleanState] = {}
+        connection = self._db.connect()
+        for chunk in chunked(wanted, CHUNK_SIZE):
+            for row in connection.execute(build_clean_states(len(chunk)), chunk):
+                state = TrackCleanState.from_row(row)
+                found[state.track_id] = state
+        return found
+
+    def review_rows(self, track_ids: Iterable[int]) -> List[Dict[str, Any]]:
+        """Return an exported review row per existing track, in the order given.
+
+        The track's effective values and match state beside the candidate the
+        state points at, every candidate column prefixed ``candidate_``.
+        """
+        wanted = unique_ids(track_ids)
+        found: Dict[int, Dict[str, Any]] = {}
+        connection = self._db.connect()
+        for chunk in chunked(wanted, CHUNK_SIZE):
+            for row in connection.execute(build_review_rows(len(chunk)), chunk):
+                found[int(row["id"])] = dict(row)
+        return [found[track_id] for track_id in wanted if track_id in found]
 
     def exists(self, rekordbox_track_id: str) -> bool:
         """Return True if a track with this Rekordbox TrackID is stored."""

@@ -131,6 +131,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that on the first run after packaging and about eight seconds on later ones.
   The build broke on exactly the run that mattered and passed on every re-run;
   the check now waits long enough to be about liveness rather than latency
+- Building the engine sidecar a second time on Windows failed with "Access is
+  denied". The build's health check stopped only the small launcher a one-file
+  build starts with, not the engine the launcher had started, so every build
+  left an engine running in the background holding the file the next build had
+  to replace. The check now stops the engine with its launcher
 - Installed builds of CuePoint shipped without the engine that does the work.
   The packaging step looked for it under a directory name the build never
   produced, and packaging treats a missing file as a warning rather than an

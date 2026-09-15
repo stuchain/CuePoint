@@ -72,6 +72,32 @@ contextBridge.exposeInMainWorld("cuepoint", {
     ipcRenderer.invoke("engine:getTrackHistory", params),
   applyBatch: (params) =>
     ipcRenderer.invoke("engine:applyBatch", params),
+
+  // Clean (CLEAN-11).
+  startCleanMatch: (params) => ipcRenderer.invoke("engine:startCleanMatch", params),
+  resumeCleanMatch: (params) => ipcRenderer.invoke("engine:resumeCleanMatch", params),
+  getResumableMatches: () => ipcRenderer.invoke("engine:getResumableMatches"),
+  getTrackMatches: (params) => ipcRenderer.invoke("engine:getTrackMatches", params),
+  getMatchCandidates: (params) => ipcRenderer.invoke("engine:getMatchCandidates", params),
+  decideMatch: (params) => ipcRenderer.invoke("engine:decideMatch", params),
+  applyMatch: (params) => ipcRenderer.invoke("engine:applyMatch", params),
+  setTrackOverrides: (params) => ipcRenderer.invoke("engine:setTrackOverrides", params),
+  revertChange: (params) => ipcRenderer.invoke("engine:revertChange", params),
+  revertBatch: (params) => ipcRenderer.invoke("engine:revertBatch", params),
+  startFileCheck: (params) => ipcRenderer.invoke("engine:startFileCheck", params),
+  startDuplicateScan: (params) => ipcRenderer.invoke("engine:startDuplicateScan", params),
+  getDuplicateGroups: (params) => ipcRenderer.invoke("engine:getDuplicateGroups", params),
+  dismissDuplicateGroup: (params) =>
+    ipcRenderer.invoke("engine:dismissDuplicateGroup", params),
+  restoreDuplicateGroup: (params) =>
+    ipcRenderer.invoke("engine:restoreDuplicateGroup", params),
+  startArtworkScan: (params) => ipcRenderer.invoke("engine:startArtworkScan", params),
+  previewTagWrite: (params) => ipcRenderer.invoke("engine:previewTagWrite", params),
+  startTagWrite: (params) => ipcRenderer.invoke("engine:startTagWrite", params),
+  startTagRestore: (params) => ipcRenderer.invoke("engine:startTagRestore", params),
+  getTagWrites: (params) => ipcRenderer.invoke("engine:getTagWrites", params),
+  getLibraryHealth: () => ipcRenderer.invoke("engine:getLibraryHealth"),
+  exportReviewList: (params) => ipcRenderer.invoke("engine:exportReviewList", params),
   startLibraryImport: (params) =>
     ipcRenderer.invoke("engine:startLibraryImport", params),
   startLibraryRefreshPreview: (params) =>

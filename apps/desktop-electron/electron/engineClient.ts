@@ -44,6 +44,11 @@ export interface LibraryTrackRow {
   /** Which of the two layers `effective_rating` came from (DEC-057). */
   rating_source: "cuepoint" | "rekordbox" | null;
   favorite: boolean;
+  /** CLEAN-11: where the track stands, read through each filter's expression. */
+  match_state?: MatchStateValue | null;
+  match_disputed?: boolean | null;
+  file_status?: FileStatusValue | null;
+  artwork?: ArtworkStateValue | null;
 }
 
 /**
@@ -222,8 +227,12 @@ export interface BatchOperation {
     | "add_tag"
     | "remove_tag"
     | "add_to_collection"
-    | "remove_from_collection";
-  value?: number | boolean | null;
+    | "remove_from_collection"
+    | "accept_match"
+    | "reject_match"
+    | "apply_match"
+    | "set_override";
+  value?: number | boolean | null | string[] | { field: string; value: unknown };
 }
 
 /** One clause of a filter (DEC-043). The vocabulary comes from the engine. */
@@ -471,6 +480,291 @@ export interface ActivityFeed {
   /** Every event ever recorded, not the page length. */
   total: number;
   limit: number;
+}
+
+/**
+ * Clean (CLEAN-11).
+ *
+ * Mirrors `clean_api.py`'s explicit field lists, and `cuepointBridge.types.ts`'s
+ * copy of them; the desktop contract test compares the two.
+ */
+export type MatchStateValue =
+  | "not_matched"
+  | "no_match"
+  | "needs_review"
+  | "accepted"
+  | "rejected";
+export type FileStatusValue = "present" | "missing" | "unreadable" | "not_checked";
+export type ArtworkStateValue = "embedded" | "beatport" | "none" | "unknown";
+
+/** A job Clean started, in the shape every job route answers with. */
+export interface CleanJobStarted {
+  job_id: string;
+  id: string;
+  state: string;
+}
+
+export interface MatchStarted extends CleanJobStarted {
+  selected: number;
+  excluded: number;
+  planned: number;
+  resumed_from: string | null;
+}
+
+export interface ResumableMatch {
+  job_id: string;
+  remaining: number;
+  planned: number;
+  selected: number;
+  excluded: number;
+  rematch: boolean;
+  created_at: string;
+  resumed_from: string | null;
+}
+
+export interface ResumableMatches {
+  jobs: ResumableMatch[];
+  total: number;
+}
+
+export interface TrackMatchState {
+  track_id: number;
+  state: MatchStateValue;
+  decided_by: "auto" | "user" | null;
+  attempt_id: number | null;
+  candidate_id: number | null;
+  newer_attempt_id: number | null;
+  disputed: boolean;
+  decided_at: string | null;
+}
+
+export interface MatchAttempt {
+  id: number;
+  track_id: number;
+  job_id: string | null;
+  outcome: "matched" | "no_match" | "error";
+  score: number | null;
+  best_candidate_id: number | null;
+  error: string | null;
+  input: Record<string, unknown>;
+  queries: unknown[];
+  matcher_version: string | null;
+  started_at: string;
+  finished_at: string;
+}
+
+export interface MatchCandidate {
+  id: number;
+  attempt_id: number;
+  rank: number;
+  is_winner: boolean;
+  guard_ok: boolean;
+  reject_reason: string | null;
+  score: number;
+  base_score: number | null;
+  title_sim: number | null;
+  artist_sim: number | null;
+  bonus_year: number | null;
+  bonus_key: number | null;
+  beatport_track_id: string | null;
+  url: string;
+  title: string | null;
+  artists: string | null;
+  remixers: string | null;
+  label: string | null;
+  genre: string | null;
+  subgenre: string | null;
+  key: string | null;
+  bpm: number | null;
+  release_name: string | null;
+  release_date: string | null;
+  release_year: number | null;
+  artwork_url: string | null;
+  preview_url: string | null;
+  query_index: number | null;
+  query_text: string | null;
+  candidate_index: number | null;
+  elapsed_ms: number | null;
+}
+
+export interface TrackMatches {
+  track_id: number;
+  state: TrackMatchState;
+  candidate: MatchCandidate | null;
+  attempts: MatchAttempt[];
+  total: number;
+}
+
+export interface AttemptCandidates {
+  attempt_id: number;
+  track_id: number;
+  candidates: MatchCandidate[];
+  total: number;
+}
+
+/** One track decided inline, or a selection applied inline or as a job. */
+export interface DecisionOutcome {
+  match?: TrackMatchState;
+  applied?: BatchResult;
+  job_id?: string;
+  id?: string;
+  state?: string;
+}
+
+export interface ApplyOutcome {
+  track?: LibraryTrackRow;
+  applied?: BatchResult;
+  job_id?: string;
+  id?: string;
+  state?: string;
+}
+
+export interface FieldRevert {
+  change_id: number;
+  track_id: number;
+  field: string;
+  previous_value: unknown;
+  restored_value: unknown;
+  changed: boolean;
+}
+
+export interface BatchRevertResult extends BatchResult {
+  skipped: number;
+  revert_of: string;
+}
+
+export interface BatchRevertOutcome {
+  reverted?: BatchRevertResult;
+  job_id?: string;
+  id?: string;
+  state?: string;
+}
+
+export interface FileCheckStarted extends CleanJobStarted {
+  tracks: number;
+}
+
+export interface DuplicateGroup {
+  id: number;
+  signal: "path" | "beatport" | "text";
+  group_key: string;
+  computed_at: string;
+  track_ids: number[];
+  dismissed: boolean;
+}
+
+export interface DuplicateGroupList {
+  groups: DuplicateGroup[];
+  total: number;
+}
+
+export interface DuplicateScanStarted extends CleanJobStarted {
+  signals: string[];
+}
+
+export interface ArtworkScanStarted extends CleanJobStarted {
+  tracks: number;
+  fetch_beatport: boolean;
+}
+
+export interface TagWriteOptions {
+  key_format?: "normal" | "camelot" | "short";
+  write_key?: boolean;
+  write_year?: boolean;
+  write_bpm?: boolean;
+  write_label?: boolean;
+  write_genre?: boolean;
+  write_comment?: boolean;
+  comment_text?: string;
+  embed_missing_artwork?: boolean;
+}
+
+export interface TagWritePreview {
+  preview_id: string;
+  options: Required<TagWriteOptions>;
+  total: number;
+  files: number;
+  fields: Record<string, number>;
+  skipped: Record<string, { count: number; examples: Array<{ track_id: number | null; file_path: string }> }>;
+  field_skipped: Record<string, Record<string, number>>;
+  changes: Array<{
+    track_id: number;
+    file_path: string;
+    fields: Record<string, { from: string | null; to: string }>;
+    artwork: boolean;
+  }>;
+  cancelled: boolean;
+  computed_at: string;
+  duration_seconds: number;
+  summary_line: string;
+}
+
+export interface TagPreviewOutcome {
+  preview?: TagWritePreview;
+  preview_id?: string;
+  job_id?: string;
+  id?: string;
+  state?: string;
+}
+
+export interface TagWriteStarted extends CleanJobStarted {
+  preview_id: string;
+}
+
+export interface TagRestoreStarted extends CleanJobStarted {
+  writes: number;
+  unconfirmed: number;
+  restored_job_id: string | null;
+  track_id: number | null;
+}
+
+export interface FileWriteRecord {
+  id: number;
+  job_id: string;
+  track_id: number | null;
+  file_path: string;
+  field: string;
+  old_value: unknown;
+  old_value_read: boolean;
+  new_value: unknown;
+  outcome: "written" | "skipped" | "failed" | "restored";
+  reason: string | null;
+  written_at: string;
+  pending: boolean;
+  restore_of: number | null;
+}
+
+export interface TagWriteRecord {
+  job_id: string | null;
+  track_id: number | null;
+  writes: FileWriteRecord[];
+  total: number;
+  unconfirmed: number;
+  restorable: number;
+  restorable_unconfirmed: number;
+  limit: number;
+  offset: number;
+}
+
+export interface HealthCount {
+  id: string;
+  label: string;
+  count: number;
+  rules: FilterRuleSet;
+}
+
+export interface LibraryHealth {
+  track_count: number;
+  counts: HealthCount[];
+}
+
+export type ReviewExportFormat = "csv" | "json" | "excel";
+
+export interface ReviewExportResult {
+  file_path: string;
+  format: ReviewExportFormat;
+  count: number;
+  columns: string[];
 }
 
 export class EngineClient {
@@ -941,6 +1235,180 @@ export class EngineClient {
       headers: this.headers(),
     });
     return readJson(res);
+  }
+
+  // -------------------------------------------------------------------------
+  // Clean (CLEAN-11)
+  //
+  // Mutations are POSTs to action paths and reads are GETs, as ORG-08's. Work
+  // that runs as a job answers with its identity and is followed through the
+  // existing job endpoints, so there is no second progress mechanism.
+  // -------------------------------------------------------------------------
+
+  /** Match a selection on Beatport as a resumable job (DEC-065). */
+  async startCleanMatch(params: {
+    selection: BatchSelection;
+    rematch?: boolean;
+  }): Promise<MatchStarted> {
+    return this.postJson("/api/v1/clean/match", params);
+  }
+
+  /** Start a job over the tracks an interrupted match job left. */
+  async resumeCleanMatch(params: { job_id: string }): Promise<MatchStarted> {
+    return this.postJson("/api/v1/clean/match/resume", params);
+  }
+
+  /** Match jobs with tracks still waiting, newest first. */
+  async getResumableMatches(): Promise<ResumableMatches> {
+    return this.getJson("/api/v1/clean/match/resumable");
+  }
+
+  /** A track's state, its decided candidate, and every attempt, newest first. */
+  async getTrackMatches(params: { trackId: number }): Promise<TrackMatches> {
+    const id = encodeURIComponent(String(params.trackId));
+    return this.getJson(`/api/v1/library/tracks/${id}/matches`);
+  }
+
+  /** One attempt's candidates, in the order the matcher scored them. */
+  async getMatchCandidates(params: { attemptId: number }): Promise<AttemptCandidates> {
+    const id = encodeURIComponent(String(params.attemptId));
+    return this.getJson(`/api/v1/clean/attempts/${id}/candidates`);
+  }
+
+  /** Accept a candidate, reject, or clear — one track, or a selection (DEC-067). */
+  async decideMatch(params: {
+    decision: "accept" | "reject" | "clear";
+    track_id?: number;
+    candidate_id?: number;
+    selection?: BatchSelection;
+  }): Promise<DecisionOutcome> {
+    return this.postJson("/api/v1/clean/decide", params);
+  }
+
+  /** Copy chosen fields from decided candidates into CuePoint's layer (DEC-004). */
+  async applyMatch(params: {
+    fields: Array<"key" | "bpm" | "genre" | "label" | "year">;
+    track_id?: number;
+    selection?: BatchSelection;
+  }): Promise<ApplyOutcome> {
+    return this.postJson("/api/v1/clean/apply", params);
+  }
+
+  /** Hand-edit a track's key, BPM, genre, label or year; `null` clears (DEC-068). */
+  async setTrackOverrides(params: {
+    trackId: number;
+    key?: string | null;
+    bpm?: number | null;
+    genre?: string | null;
+    label?: string | null;
+    year?: number | null;
+  }): Promise<{ track: LibraryTrackRow }> {
+    const { trackId, ...body } = params;
+    return this.postJson(
+      `/api/v1/library/tracks/${encodeURIComponent(String(trackId))}/overrides`,
+      body,
+    );
+  }
+
+  /** Revert one recorded change to a CuePoint field (CLEAN-06). */
+  async revertChange(params: { change_id: number }): Promise<{ revert: FieldRevert }> {
+    return this.postJson("/api/v1/library/revert", params);
+  }
+
+  /** Revert every change a batch made, inline or as a job (CLEAN-06). */
+  async revertBatch(params: { batch_id: string }): Promise<BatchRevertOutcome> {
+    return this.postJson("/api/v1/library/revert/batch", params);
+  }
+
+  /** Check the files of a selection (DEC-073). */
+  async startFileCheck(params: { selection: BatchSelection }): Promise<FileCheckStarted> {
+    return this.postJson("/api/v1/clean/files/check", params);
+  }
+
+  /** Scan for duplicates by some signals, or all of them (DEC-074). */
+  async startDuplicateScan(params?: {
+    signals?: Array<"path" | "beatport" | "text">;
+  }): Promise<DuplicateScanStarted> {
+    return this.postJson("/api/v1/clean/duplicates/scan", params ?? {});
+  }
+
+  /** The stored duplicate groups, dismissed ones only when asked. */
+  async getDuplicateGroups(params?: {
+    signal?: "path" | "beatport" | "text";
+    includeDismissed?: boolean;
+  }): Promise<DuplicateGroupList> {
+    const query = new URLSearchParams();
+    if (params?.signal) query.set("signal", params.signal);
+    if (params?.includeDismissed) query.set("include_dismissed", "true");
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    return this.getJson(`/api/v1/clean/duplicates${suffix}`);
+  }
+
+  async dismissDuplicateGroup(params: { group_id: number }): Promise<{ group: DuplicateGroup }> {
+    return this.postJson("/api/v1/clean/duplicates/dismiss", params);
+  }
+
+  async restoreDuplicateGroup(params: { group_id: number }): Promise<{ group: DuplicateGroup }> {
+    return this.postJson("/api/v1/clean/duplicates/restore", params);
+  }
+
+  /** Read a selection's artwork, optionally fetching Beatport's (DEC-076). */
+  async startArtworkScan(params: {
+    selection: BatchSelection;
+    fetch_beatport?: boolean;
+  }): Promise<ArtworkScanStarted> {
+    return this.postJson("/api/v1/clean/artwork/scan", params);
+  }
+
+  /** What a tag write would change: inline, or a job whose id is the preview's. */
+  async previewTagWrite(params: {
+    selection: BatchSelection;
+    options?: TagWriteOptions;
+  }): Promise<TagPreviewOutcome> {
+    return this.postJson("/api/v1/clean/tags/preview", params);
+  }
+
+  /** Write what a preview planned, once (DEC-070). */
+  async startTagWrite(params: { preview_id: string }): Promise<TagWriteStarted> {
+    return this.postJson("/api/v1/clean/tags/write", params);
+  }
+
+  /** Restore what a write job, or every write to a track, replaced. */
+  async startTagRestore(params: {
+    job_id?: string;
+    track_id?: number;
+  }): Promise<TagRestoreStarted> {
+    return this.postJson("/api/v1/clean/tags/restore", params);
+  }
+
+  /** A page of a write job's or a track's record, unconfirmed rows counted. */
+  async getTagWrites(params: {
+    jobId?: string;
+    trackId?: number;
+    limit?: number;
+    offset?: number;
+  }): Promise<TagWriteRecord> {
+    const query = new URLSearchParams();
+    if (params.jobId) query.set("job_id", params.jobId);
+    if (params.trackId != null) query.set("track_id", String(params.trackId));
+    if (params.limit != null) query.set("limit", String(params.limit));
+    if (params.offset != null) query.set("offset", String(params.offset));
+    return this.getJson(`/api/v1/clean/tags/writes?${query.toString()}`);
+  }
+
+  /** Library Health: counts, each with the rules a click opens (DEC-075). */
+  async getLibraryHealth(): Promise<LibraryHealth> {
+    return this.getJson("/api/v1/clean/health");
+  }
+
+  /** "Export review list": a selection's match states and decided candidates. */
+  async exportReviewList(params: {
+    selection: BatchSelection;
+    format: ReviewExportFormat;
+    file_path: string;
+    overwrite?: boolean;
+  }): Promise<ReviewExportResult> {
+    return this.postJson("/api/v1/clean/export", params);
   }
 
   /**

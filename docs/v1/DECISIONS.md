@@ -2166,6 +2166,22 @@ summary.
 
 **Decided with**: User · **Date**: 2026-09-13
 
+### Implemented (2026-09-15, CLEAN-11) — nine rule sets, each answered by the Library's count
+
+Nothing here changes the decision. What building it settled, recorded in full in
+`PHASE7_CLEAN.md` under CLEAN-11:
+
+- **The counts are rule sets in one list** (`services/health_service.py`): missing or unreadable
+  files, tracks in a duplicate group, not matched, needs review, disputed, no key, no BPM, no genre,
+  and no artwork. Each is counted by `build_count`, the count the Library table shows, and
+  `GET /api/v1/clean/health` returns its rules beside the number.
+- **What is unknown is not counted as missing.** A file never checked is not a missing file, and a
+  file whose artwork has not been read is not a track with no artwork: the counts read `missing`
+  and `unreadable`, and artwork `none`, and leave `not_checked` and `unknown` out.
+- **A test holds every count to the Library.** Over a library holding every problem, each count
+  equals the total the Library's search returns for the rules the count carries, and finds exactly
+  the tracks it is about.
+
 ---
 
 ## DEC-076 — Artwork Is Shown From Files and Beatport, and Embedded Only Where Missing
