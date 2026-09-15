@@ -2692,8 +2692,10 @@ acceptable, and none of them is optional.
 API table names — `/tags/preview`, `/tags/write` and `/tags/restore` map onto `preview_or_start`,
 `start_tag_write_job` and `start_tag_restore_job` — and CLEAN-13 draws the dialog. The Library
 guide's note that Rekordbox reads new tags only when told to re-read a file comes with that dialog,
-because a guide section for an action nobody can take would mislead. The year fix below is visible
-now, in Sync Tags and the CLI, and the changelog says so.
+because a guide section for an action nobody can take would mislead; CLEAN-13's specification now
+names that section and what it says. The packaged engine cannot be driven without a route, so the
+proof that it writes and restores tags is part of CLEAN-11's definition of done, and of Phase 5's
+macOS pass. The year fix below is visible now, in Sync Tags and the CLI, and the changelog says so.
 
 **What building it settled, and why.**
 
@@ -2770,12 +2772,16 @@ now, in Sync Tags and the CLI, and the changelog says so.
 
 - **Restore returns tag values, not bytes.** mutagen keeps the padding a tag grew, so a restored file
   is usually larger than before: 2.7 MB in all across the 500 files below, after a write that added
-  12.1 MB. An MP3 that had no ID3 tag keeps an empty one. Every value reads back identical.
+  12.1 MB. An MP3 that had no ID3 tag keeps an empty one. Every value reads back identical. This is
+  the design, not a debt: identical bytes would need a copy of every file's tag block, or of the
+  file, kept for every write, and the padding is room a later write reuses, which every tagger
+  leaves. The Library guide says so (CLEAN-13).
 - **The forward writer saves ID3v2.4**, as it always has, so a v2.3 file becomes v2.4, and mutagen
   translates its other date frames on the way. Values are unchanged by that translation.
 - **A write interrupted by the engine stopping leaves pending rows.** Nothing reconciles them on
-  start: a restore handles them by looking at the file, and `pending_count` is there for CLEAN-11
-  and CLEAN-13 to show.
+  start: a restore handles them by looking at the file. Showing them is specified in the steps that
+  have somewhere to show them: CLEAN-11's `GET /tags/writes` and restore answer mark them, and
+  CLEAN-13 shows them as unfinished with Restore offered.
 - **The boundary test lists one exception**: `rekordbox.is_writable` writes and deletes a probe file
   in CuePoint's own output or cache folder for the CLI's preflight check, never user data. The test
   pins that it writes only that probe.
@@ -2854,6 +2860,7 @@ explicit field lists; `jobs_api.py`'s envelope; `batch_jobs.apply_or_start`; `ex
 | `POST /api/v1/clean/duplicates/scan` · `GET /api/v1/clean/duplicates` · `POST /api/v1/clean/duplicates/dismiss` | CLEAN-08 |
 | `POST /api/v1/clean/artwork/scan` · `GET /api/v1/library/tracks/{id}/artwork` | CLEAN-09 |
 | `POST /api/v1/clean/tags/preview` · `/tags/write` · `/tags/restore` | CLEAN-10 |
+| `GET /api/v1/clean/tags/writes` | CLEAN-10's record for a write job or a track, unconfirmed writes marked |
 | `GET /api/v1/clean/health` | DEC-075's counts, each with its rule set |
 | `POST /api/v1/clean/export` | "Export review list": a selection's match states and decided candidates as CSV, JSON or Excel |
 
@@ -2873,6 +2880,17 @@ with the same byte-identical guard for requests that name none of them.
   clause named. Response shapes use explicit field lists. Bridge types name the domain:
   `MatchAttempt`, `MatchCandidate`, `MatchState`, `FileStatus`, `DuplicateGroup`, `HealthCount`,
   `TagWritePreview`.
+- **Tag writes (CLEAN-10).** The three tag routes map onto `tag_write_jobs`: `/tags/preview` onto
+  `preview_or_start` (a preview inline, or a job whose result carries `preview_id`),
+  `/tags/write` onto `start_tag_write_job(preview_id)`, and `/tags/restore` onto
+  `start_tag_restore_job` with exactly one of a job id or a track id. A preview that is unknown,
+  expired or already written is a refusal naming it (`PreviewNotFoundError`), not a failed job.
+  **Unconfirmed writes are shown, not hidden**: a write stopped mid-job — the engine closed or
+  crashed — leaves `file_writes` rows with `pending = 1`, a record of a write that may not have
+  happened. `GET /tags/writes` returns a job's or a track's rows with `pending` and `restore_of`
+  in the projection and a count of unconfirmed rows, and `/tags/restore`'s answer says how many
+  of the writes it covers are unconfirmed, so CLEAN-13 can say "N writes may not have finished —
+  restore them" rather than leave them invisible.
 - Export reuses `export_service` with a new row source; it does not route through the retired
   `TrackResult` export.
 - **inKey's routes are not removed here.** They are removed in CLEAN-14, after the page that
@@ -2881,10 +2899,17 @@ with the same byte-identical guard for requests that name none of them.
 **Tests**: Every route: happy path, refusal, plausible wrong shape. Each health count equals the
 count of `search` with its returned rule set, over a fixture library with every problem present. The
 DEC-023 guard on `search`. The contract test enumerates every new method. Error envelopes on
-existing routes are unchanged.
+existing routes are unchanged. The tag routes: a preview answered inline and as a job, a write by
+preview id refused a second time, a restore by job and by track, and a write interrupted after its
+record shows its rows as unconfirmed in `/tags/writes` and in the restore's answer.
 
 **Acceptance criteria / DoD**: The renderer can express every Clean operation without a second query
-path; `PYTHONPATH=src python scripts/smoke_engine_health.py` passes.
+path; `PYTHONPATH=src python scripts/smoke_engine_health.py` passes. **The packaged engine writes
+and restores tags**: on Windows, the sidecar built from this tree previews, writes and restores an
+MP3, an AIFF, a FLAC and an Ogg file through the routes, embedding a picture into one that has none
+(served locally, not fetched from Beatport), and every file's tags read back as they were — the
+proof CLEAN-10 could not make before a route existed. The same proof on macOS joins Phase 5's macOS
+verification pass, with CLEAN-09's thumbnail proof.
 
 **Risks**: Medium-high, for ORG-08's reason: a large surface and a silent supervisor gap, mitigated
 by extending the contract test per route.
@@ -2984,17 +3009,31 @@ operations list; `libraryColumns.tsx` and the column picker; `FilterBar` and `us
   and its reason for Collection membership; a batch's activity entry offers "revert this batch".
 - **Write tags to files…** opens a dialog that shows the options, runs the preview job, shows its
   answer, and only then offers Write. After a write, the activity entry offers Restore.
+- **Unconfirmed writes are surfaced.** When a write job or a track has unconfirmed rows (CLEAN-11's
+  `/tags/writes`), the activity entry and the track's history say that those writes may not have
+  finished and offer Restore, which treats a file still holding its old value as already restored.
+  They are never shown as completed writes.
+- **User docs**: the Library guide gains a "Writing tags to files" section, shipped with the dialog
+  rather than before it. It says: Rekordbox reads new tags only after it is told to re-read a file
+  ("Reload Tag"), and until then keeps showing the old values; the preview is a read and changes
+  nothing; which files are skipped and why — WAV, formats other than MP3, AIFF, FLAC and Ogg Vorbis,
+  and files that are missing or were never checked; artwork is added only to files with none, and
+  only when asked; a restore puts every tag value back but a file can stay slightly larger than
+  before, because the tag keeps the room it grew; and what "may not have finished" means and what
+  to do about it.
 - **Artwork** thumbnail in the Inspector header and the optional column, via the preload method
   CLEAN-09 defined; empty state when there is none.
 
 **Tests**: Component tests: the operations list includes the new items in both surfaces; overridden
 cells are marked and name their source; the Beatport zone shows three values per field and applies
 one; hand-edit validation shows the engine's refusal; revert is enabled for CuePoint fields and
-disabled with a reason for membership; the write dialog cannot write before a preview has answered.
+disabled with a reason for membership; the write dialog cannot write before a preview has answered;
+unconfirmed writes are shown as unfinished with Restore offered, never as completed.
 Existing Library and Inspector tests pass unchanged.
 
 **Acceptance criteria / DoD**: Every Clean fact about a track is visible in the Library and
-Inspector, and every per-track Clean action is reachable from the context menu.
+Inspector, and every per-track Clean action is reachable from the context menu. The Library guide's
+"Writing tags to files" section ships with the dialog.
 
 **Risks**: Medium. The Inspector is now four zones; its width budget at 1× is checked, not assumed.
 
