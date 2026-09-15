@@ -74,6 +74,8 @@ const JOB_VERBS: Record<string, string> = {
   // CLEAN-08's duplicate scan, which follows every import, refresh and
   // match job on its own.
   duplicate_scan: "Finding duplicates",
+  // CLEAN-09's artwork scan, which follows every whole-library file check.
+  artwork_scan: "Reading artwork",
 };
 
 /** A short description of what a job is doing, for the strip. */

@@ -163,7 +163,7 @@ and CuePoint would then say nothing has changed when something has. Re-exporting
 from Rekordbox always fixes this, because a fresh export has a new modified
 time.
 
-## Four things worth knowing
+## Five things worth knowing
 
 ### What you do in CuePoint stays in CuePoint
 
@@ -233,6 +233,40 @@ remix by someone else or "Part 2" do not.
 **CuePoint never deletes, merges or edits a duplicate.** A track removed in
 CuePoint would come back with the next refresh, and the file is yours. If you
 want a duplicate gone, remove it in Rekordbox and refresh.
+
+### CuePoint reads your artwork — and never changes it
+
+After every file check, CuePoint reads the picture each of your files carries.
+The status strip shows **Reading artwork** while it does, and the Activity panel
+records how many files have a picture. Only files the check found are opened.
+
+For a track whose Beatport match you accepted, CuePoint also knows Beatport's
+artwork for that release. It is downloaded only when it is needed, only from
+Beatport, and never for a match you have not accepted. Offline, it is simply not
+there — nothing fails.
+
+Filter the Library with **Artwork**:
+
+| Value | Means |
+| --- | --- |
+| `embedded` | The file carries its own picture |
+| `beatport` | The file has none, and Beatport's artwork for the accepted match is used |
+| `none` | The file was read and carries no picture, and there is no Beatport artwork |
+| `unknown` | The file has not been read yet where it is now |
+
+A picture is only opened if it is a JPEG, PNG, WebP, GIF or BMP of a sensible
+size. Anything else is counted as unreadable and left alone, because a picture
+from an unknown file or a website is exactly the kind of thing that should not
+be opened blindly.
+
+CuePoint keeps small copies of the artwork for display, never the originals, in
+a cache that is capped at 512 MB and is not part of your backups. **Clear cache
+now** in the Privacy dialog empties it, as does **Clear cache on exit**; the
+copies are made again as they are needed.
+
+**Reading artwork writes nothing to your files.** Adding Beatport's artwork to a
+file that has none is a later, separate step, and it will never replace a
+picture a file already has.
 
 ### inCrate keeps a separate inventory
 

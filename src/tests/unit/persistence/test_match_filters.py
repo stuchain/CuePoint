@@ -24,6 +24,7 @@ import pytest
 
 from cuepoint.models.beatport_candidate import BeatportCandidate
 from cuepoint.models.filter_rule import (
+    ARTWORK_ALIAS,
     FILES_ALIAS,
     MATCH_ALIAS,
     MATCH_CANDIDATE_ALIAS,
@@ -377,6 +378,7 @@ class TestTheJoins:
             MATCH_ALIAS,
             MATCH_CANDIDATE_ALIAS,
             FILES_ALIAS,
+            ARTWORK_ALIAS,
         ]
 
     def test_an_alias_with_no_join_is_refused(self):

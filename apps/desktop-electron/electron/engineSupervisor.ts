@@ -17,6 +17,7 @@ import {
   type LibraryRefreshStarted,
   type LibrarySearchResponse,
   type LibrarySummary,
+  type ArtworkSize,
   type LibraryTrackDetail,
   type FilterRuleSet,
   type BatchOperation,
@@ -301,6 +302,13 @@ export class EngineSupervisor {
 
   async getLibraryTrack(params: { trackId: number }): Promise<LibraryTrackDetail> {
     return this.client().getLibraryTrack(params);
+  }
+
+  async getTrackArtwork(params: {
+    trackId: number;
+    size: ArtworkSize;
+  }): Promise<Uint8Array | null> {
+    return this.client().getTrackArtwork(params);
   }
 
   // CuePoint's own organization (ORG-08). One forward per client method:

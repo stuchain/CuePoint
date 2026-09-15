@@ -169,6 +169,11 @@ src/output/
 # repo invariants at edit time, so they are source and must survive a clone.
 !.claude/settings.json
 
+# Test oracle (exception to user-output *.json above). The scores the recorded
+# Beatport pages produced before CLEAN-09 touched the parser; without it the
+# scoring-unchanged test has nothing to compare against.
+!src/tests/fixtures/beatport/scoring_baseline.json
+
 # Recorded engine responses (exception to user-output *.json above). These are
 # produced by a test that starts the real engine and asserted against by both
 # languages, so they are source: without them the renderer's empty states have

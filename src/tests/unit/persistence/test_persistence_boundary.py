@@ -84,6 +84,10 @@ _ALLOWED = {
     # and a dismissal with its fingerprint in one. The SQL is the duplicate
     # repository's.
     "services/duplicate_service.py",
+    # CLEAN-09's artwork scan commits what it read a chunk at a time, and a
+    # display records what it learned in a transaction of its own. The SQL is
+    # the artwork repository's.
+    "services/artwork_service.py",
     # The one retry loop for a write that finds the database busy: it opens
     # the transaction it retries, and runs no SQL of its own.
     "services/busy_wait.py",

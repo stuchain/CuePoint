@@ -58,6 +58,6 @@ sentry-sdk>=2.0.0,<3
 # Build tool (PyInstaller for packaging)
 pyinstaller==6.17.0
 
-# Icon generation (generate_icons.py: logo.png -> icon.ico / icon.icns)
+# Artwork thumbnails at runtime (CLEAN-09), and icon generation at build
+# time (generate_icons.py). One version for both: requirements.txt's pin.
 Pillow==12.1.1
-

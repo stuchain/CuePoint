@@ -2194,3 +2194,33 @@ added.
 
 **Decided with**: User (delegated: "take the most professional and better long term decisions") ·
 **Date**: 2026-09-13
+
+### Implemented (2026-09-15, CLEAN-09) — what is read, fetched, refused and kept
+
+Nothing here changes the decision or its amendment. What building it settled, recorded in full in
+`PHASE7_CLEAN.md` under CLEAN-09:
+
+- **One guard, with named limits.** `data/artwork_image.py` refuses input over 16 MiB unread, lets
+  Pillow try only the JPEG, PNG, WebP, GIF and BMP decoders, refuses a canvas over 36 megapixels
+  from its header, treats Pillow's bomb warning as a refusal, decodes fully, applies EXIF
+  orientation and returns a fresh RGB image that carries no metadata. A refusal is recorded against
+  the exact picture (its hash) or Beatport URL, so it is never decoded again, and a different
+  picture or URL is a new question.
+- **Thumbnails, not originals.** Two sizes, 108 px (a 36-pixel table row at 3×) and 288 px (the
+  Inspector's 96-pixel box at 3×), JPEG at quality 85, both made from one decode. The cache is
+  capped at 512 MiB, evicts least recently used down to 90 %, keys every file by a SHA-256 so no
+  key is ever a path, lives in the platform cache directory (under `CUEPOINT_HOME` when that is
+  set), is outside the backup, and is emptied by "Clear cache".
+- **A scan reads, a display decodes.** An `artwork_scan` follows every whole-library file check,
+  opens only files that check found present at their current path, and records presence and a hash
+  per track without decoding anything. What a display learns — a file read for the first time, a
+  refusal — is recorded too, best-effort.
+- **Beatport's image is an accepted match's, from Beatport's hosts only.** The parser reads the
+  page's own `track-details` release image, then its `og:`/`twitter:` image, and keeps only HTTPS
+  URLs on `beatport.com` and its subdomains; redirects are not followed. An attempt stored before
+  CLEAN-09 has its page read once, and the answer — including "none" — is kept with that page
+  (migration 0017's `beatport_page`), so a different accepted match is asked again. At most four
+  requests run at once across the engine, a failure is not retried for ten minutes, and a fetch over
+  a scope stops after twenty failures in a row.
+- **Vocabulary**: `artwork` is `embedded`, `beatport`, `none` or `unknown` — what the table would
+  show, with a file answer read at another path counting as not read.

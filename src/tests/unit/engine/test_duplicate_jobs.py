@@ -24,6 +24,7 @@ from typing import Any, Callable, Dict, List, Sequence, Tuple
 import pytest
 
 from cuepoint.engine import match_jobs
+from cuepoint.engine.artwork_jobs import JOB_TYPE_ARTWORK_SCAN
 from cuepoint.engine.duplicate_jobs import (
     JOB_TYPE_DUPLICATE_SCAN,
     pending_scan,
@@ -235,11 +236,21 @@ class TestWhatFollows:
         assert scan.state is JobState.SUCCEEDED
         assert scan.result is not None and scan.result["trigger"] == "import"
         assert scan.result["groups"] == 1
-        assert job_log() == [
-            (JOB_TYPE_LIBRARY_IMPORT, "succeeded"),
-            (JOB_TYPE_FILE_CHECK, "succeeded"),
-            (JOB_TYPE_DUPLICATE_SCAN, "succeeded"),
-        ]
+        # The check's own follow-up (CLEAN-09) is created when the check ends,
+        # so it may come before or after the scan in the log.
+        wait_until(
+            lambda: (JOB_TYPE_ARTWORK_SCAN, "succeeded") in job_log(),
+            "the artwork scan after the check",
+        )
+        assert job_log()[0] == (JOB_TYPE_LIBRARY_IMPORT, "succeeded")
+        assert sorted(job_log()) == sorted(
+            [
+                (JOB_TYPE_LIBRARY_IMPORT, "succeeded"),
+                (JOB_TYPE_FILE_CHECK, "succeeded"),
+                (JOB_TYPE_DUPLICATE_SCAN, "succeeded"),
+                (JOB_TYPE_ARTWORK_SCAN, "succeeded"),
+            ]
+        )
         assert [event["text"] for event in scanned_events()] == [1]
 
     def test_an_applied_refresh_is_followed_by_a_scan(self, store, tmp_path):

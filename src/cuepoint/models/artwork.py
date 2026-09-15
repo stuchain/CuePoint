@@ -31,6 +31,15 @@ EMBEDDED_PRESENT = "present"
 
 EMBEDDED_STATES = (EMBEDDED_UNKNOWN, EMBEDDED_NONE, EMBEDDED_PRESENT)
 
+#: Why a file's picture could not be used (CLEAN-09): its tags could not be
+#: read, or the image guard refused the picture for one of its reasons.
+REFUSED_TAGS = "tags"
+IMAGE_REFUSALS = ("too_large", "format", "dimensions", "corrupt")
+EMBEDDED_REFUSALS = (REFUSED_TAGS, *IMAGE_REFUSALS)
+
+#: Why Beatport's image was refused. A download that failed is not one.
+BEATPORT_REFUSALS = IMAGE_REFUSALS
+
 
 @dataclass(frozen=True)
 class TrackArtwork:
@@ -41,11 +50,24 @@ class TrackArtwork:
         embedded: One of :data:`EMBEDDED_STATES`.
         embedded_hash: A hash of the embedded picture, so a changed picture is
             noticed. Only a picture that is present has one.
-        beatport_url: Beatport's artwork for the accepted match, if any.
-        cache_key: The key of the cached thumbnail, if one was made.
+        beatport_url: Beatport's artwork for the accepted match, if any; ``""``
+            when its page was read and names none.
+        cache_key: Reserved by CLEAN-01 and not written: a thumbnail's key is
+            derived from its source (CLEAN-09), so it cannot disagree with it.
         checked_at: When the file was last read. Required once the answer is
             anything but "unknown": an answer has to have been found at some
             moment.
+        checked_path: The path that was read (CLEAN-09). An answer about
+            another path is an answer about nothing; see :meth:`is_stale_for`.
+        embedded_refused: Why the file's picture could not be used, from
+            :data:`EMBEDDED_REFUSALS`: its tags could not be read (the answer
+            then stays "unknown"), or the image guard refused a picture that
+            is present.
+        beatport_refused: Why Beatport's image at ``beatport_url`` was refused,
+            from :data:`BEATPORT_REFUSALS`.
+        beatport_page: The Beatport track page ``beatport_url`` was read from
+            (CLEAN-09). An answer for another page is an answer for another
+            candidate.
     """
 
     track_id: int
@@ -54,6 +76,10 @@ class TrackArtwork:
     beatport_url: Optional[str] = None
     cache_key: Optional[str] = None
     checked_at: Optional[str] = None
+    checked_path: Optional[str] = None
+    embedded_refused: Optional[str] = None
+    beatport_refused: Optional[str] = None
+    beatport_page: Optional[str] = None
 
     def __post_init__(self) -> None:
         """Validate the record and the relationships between its columns."""
@@ -63,11 +89,31 @@ class TrackArtwork:
             raise ValueError("Only an embedded picture that is present has a hash")
         if self.embedded != EMBEDDED_UNKNOWN and not (self.checked_at or "").strip():
             raise ValueError("A file that was read must say when it was read")
+        if self.embedded_refused is not None:
+            one_of(self.embedded_refused, EMBEDDED_REFUSALS, "embedded_refused")
+            if self.embedded_refused == REFUSED_TAGS:
+                if self.embedded != EMBEDDED_UNKNOWN:
+                    raise ValueError(
+                        "A file whose tags could not be read has no answer"
+                    )
+            elif self.embedded != EMBEDDED_PRESENT:
+                raise ValueError("Only a picture that is present can be refused")
+        if self.beatport_refused is not None:
+            one_of(self.beatport_refused, BEATPORT_REFUSALS, "beatport_refused")
+            if not (self.beatport_url or "").strip():
+                raise ValueError("A refused Beatport image must name its URL")
 
     @property
     def has_embedded(self) -> bool:
         """True when the file is known to carry a picture."""
         return self.embedded == EMBEDDED_PRESENT
+
+    def is_stale_for(self, current_path: Optional[str]) -> bool:
+        """True when the file answer was not read at the track's current path.
+
+        A row from before CLEAN-09 recorded no path, and is stale for every one.
+        """
+        return self.checked_path is None or self.checked_path != (current_path or "")
 
     @property
     def needs_embedding(self) -> bool:
@@ -87,6 +133,10 @@ class TrackArtwork:
             "beatport_url": self.beatport_url,
             "cache_key": self.cache_key,
             "checked_at": self.checked_at,
+            "checked_path": self.checked_path,
+            "embedded_refused": self.embedded_refused,
+            "beatport_refused": self.beatport_refused,
+            "beatport_page": self.beatport_page,
         }
 
     @classmethod
@@ -100,4 +150,8 @@ class TrackArtwork:
             beatport_url=data.get("beatport_url"),
             cache_key=data.get("cache_key"),
             checked_at=data.get("checked_at"),
+            checked_path=data.get("checked_path"),
+            embedded_refused=data.get("embedded_refused"),
+            beatport_refused=data.get("beatport_refused"),
+            beatport_page=data.get("beatport_page"),
         )

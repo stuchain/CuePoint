@@ -38,7 +38,13 @@ from typing import Any, Dict, Iterable, List, Set
 import pytest
 
 from cuepoint.migrations import discover_migrations
-from cuepoint.models.artwork import EMBEDDED_PRESENT, EMBEDDED_STATES, TrackArtwork
+from cuepoint.models.artwork import (
+    BEATPORT_REFUSALS,
+    EMBEDDED_PRESENT,
+    EMBEDDED_REFUSALS,
+    EMBEDDED_STATES,
+    TrackArtwork,
+)
 from cuepoint.models.beatport_candidate import BeatportCandidate
 from cuepoint.models.duplicate_group import (
     SIGNAL_TEXT,
@@ -131,6 +137,9 @@ VOCABULARIES = (
     ("duplicate_groups", "signal", SIGNALS),
     ("duplicate_dismissals", "signal", SIGNALS),
     ("track_artwork", "embedded", EMBEDDED_STATES),
+    # Added by m0017 (CLEAN-09).
+    ("track_artwork", "embedded_refused", EMBEDDED_REFUSALS),
+    ("track_artwork", "beatport_refused", BEATPORT_REFUSALS),
     ("file_writes", "outcome", WRITE_OUTCOMES),
 )
 

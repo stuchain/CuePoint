@@ -52,6 +52,11 @@ describe("jobLabel", () => {
     expect(jobLabel(job({ type: "duplicate_scan" }))).toBe("Finding duplicates 3/10");
   });
 
+  it("names an artwork scan", () => {
+    // CLEAN-09: a scan follows every whole-library file check unasked.
+    expect(jobLabel(job({ type: "artwork_scan" }))).toBe("Reading artwork 3/10");
+  });
+
   it("says queued before a job starts, whatever its type", () => {
     expect(jobLabel(job({ state: "queued" }))).toBe("Queued 3/10");
     expect(jobLabel(job({ type: "library_import", state: "queued" }))).toBe(

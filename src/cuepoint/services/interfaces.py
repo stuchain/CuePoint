@@ -43,7 +43,9 @@ if TYPE_CHECKING:
         DuplicateGroupMembers,
         ScannedGroup,
     )
+    from cuepoint.models.artwork import TrackArtwork
     from cuepoint.models.file_status import TrackFileStatus
+    from cuepoint.persistence.artwork_repository import EmbeddedRecord
     from cuepoint.models.library_source import LibrarySource
     from cuepoint.models.references import ReferenceSummary
     from cuepoint.models.track_metadata import TrackMetadata
@@ -91,6 +93,7 @@ if TYPE_CHECKING:
         BatchSelection,
     )
     from cuepoint.services.collection_service import FreezeResult, SmartResolution
+    from cuepoint.services.artwork_service import ArtworkScanResult
     from cuepoint.services.duplicate_service import DuplicateScanResult
     from cuepoint.services.file_check_service import FileCheckResult
     from cuepoint.services.revert_service import BatchRevert, FieldRevert
@@ -1376,6 +1379,102 @@ class IFileCheckService(ABC):
         should_cancel: Optional[Callable[[], bool]] = None,
     ) -> "FileCheckResult":
         """Check each track's file, committing in chunks, and say what was found."""
+        ...
+
+
+class IArtworkRepository(ABC):
+    """Interface for what CuePoint knows about each track's artwork (CLEAN-09).
+
+    Never reads a file and never fetches anything; that is
+    :class:`IArtworkService`'s.
+    """
+
+    @abstractmethod
+    def get(self, track_id: int) -> Optional["TrackArtwork"]:
+        """A track's artwork record, or None."""
+        ...
+
+    @abstractmethod
+    def library_ids(self) -> List[int]:
+        """Every library track's id."""
+        ...
+
+    @abstractmethod
+    def existing(self, track_ids: Iterable[int]) -> List[int]:
+        """The ids that are library tracks, once each, in order."""
+        ...
+
+    @abstractmethod
+    def present_files(self, track_ids: Iterable[int]) -> List[Tuple[int, str]]:
+        """``(track id, path)`` for tracks whose current file was found present."""
+        ...
+
+    @abstractmethod
+    def file_is_present(self, track_id: int) -> Optional[bool]:
+        """Whether the check found the current file present; None if unchecked."""
+        ...
+
+    @abstractmethod
+    def accepted_candidate(self, track_id: int) -> Optional[Tuple[str, Optional[str]]]:
+        """``(page, artwork URL)`` of a track's accepted match, if any."""
+        ...
+
+    @abstractmethod
+    def accepted_tracks(self, track_ids: Iterable[int]) -> List[int]:
+        """The tracks, in order, that have an accepted match."""
+        ...
+
+    @abstractmethod
+    def record_embedded(self, records: Sequence["EmbeddedRecord"]) -> Set[int]:
+        """Store what a scan read; return the tracks written."""
+        ...
+
+    @abstractmethod
+    def refuse_embedded(self, track_id: int, embedded_hash: str, reason: str) -> bool:
+        """Record that the guard refused a track's picture."""
+        ...
+
+    @abstractmethod
+    def record_beatport(
+        self,
+        track_id: int,
+        beatport_page: str,
+        beatport_url: str,
+        refused: Optional[str] = None,
+    ) -> bool:
+        """Store the image a Beatport page names for a track, "" for none."""
+        ...
+
+
+class IArtworkService(ABC):
+    """Interface for reading, fetching and showing artwork (CLEAN-09, DEC-076)."""
+
+    @abstractmethod
+    def thumbnail(self, track_id: int, size: str) -> Optional[bytes]:
+        """A track's artwork as a JPEG at a named size, or None."""
+        ...
+
+    @abstractmethod
+    def resolve(self, selection: "BatchSelection") -> List[int]:
+        """The library tracks a selection names, refusing none."""
+        ...
+
+    @abstractmethod
+    def library(self) -> List[int]:
+        """Every library track."""
+        ...
+
+    @abstractmethod
+    def scan(
+        self,
+        track_ids: Sequence[int],
+        *,
+        trigger: str = "request",
+        fetch_beatport: bool = False,
+        on_progress: Optional[Callable[[int, int], None]] = None,
+        should_cancel: Optional[Callable[[], bool]] = None,
+    ) -> "ArtworkScanResult":
+        """Read each present file's picture, and optionally fetch Beatport's."""
         ...
 
 

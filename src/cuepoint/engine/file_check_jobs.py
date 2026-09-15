@@ -193,6 +193,13 @@ def _run(
         )
         return
     store.finish(job, state=JobState.SUCCEEDED, result=payload)
+    if track_ids is None:
+        # CLEAN-09: a whole-library check is followed by an artwork scan, which
+        # reads only the files this check found present. Imported here because
+        # the artwork job module imports this one.
+        from cuepoint.engine.artwork_jobs import artwork_scan_after
+
+        artwork_scan_after(store, trigger)
 
 
 def _create(store: JobStore, track_ids: Optional[Sequence[int]], trigger: str) -> Job:

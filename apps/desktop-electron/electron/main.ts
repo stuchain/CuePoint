@@ -211,6 +211,11 @@ function registerIpcHandlers(): void {
   ipcMain.handle("engine:getLibraryTrack", (_event, params) =>
     engine.getLibraryTrack(params),
   );
+  // CLEAN-09: a thumbnail crosses as bytes. The preload turns them into an
+  // object URL, so no path and no original image reaches the renderer.
+  ipcMain.handle("engine:getTrackArtwork", (_event, params) =>
+    engine.getTrackArtwork(params),
+  );
 
   // CuePoint's own organization (ORG-08). Every one of these is a thin
   // forward: the main process supervises and bridges, and every rule

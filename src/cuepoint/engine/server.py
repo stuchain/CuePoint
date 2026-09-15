@@ -107,6 +107,7 @@ _logger = logging.getLogger(__name__)
 ALLOWED_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 JOB_ROUTE = re.compile(r"^/api/v1/jobs/([^/]+)(?:/(results|events))?$")
 JOB_CANCEL_ROUTE = re.compile(r"^/api/v1/jobs/([^/]+)/cancel$")
+ARTWORK_ROUTE = re.compile(r"^/api/v1/library/tracks/(\d+)/artwork$")
 
 
 def _resolve_job_repository() -> Optional[Any]:
@@ -210,6 +211,55 @@ def make_handler(
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+
+        def _send_image(self, body: bytes) -> None:
+            self.send_response(200)
+            self.send_header("Content-Type", "image/jpeg")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body)
+
+        def _send_no_content(self) -> None:
+            self.send_response(204)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
+        def _handle_artwork(self, raw_track_id: str, query: str) -> None:
+            """A track's artwork thumbnail as JPEG bytes (CLEAN-09).
+
+            204 when the track has none, which the renderer draws as an empty
+            state; never a path, never the original image.
+            """
+            if not self._authorized():
+                self._send_json(
+                    401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                )
+                return
+            sizes = parse_qs(query).get("size", [])
+            if len(sizes) != 1:
+                self._send_json(
+                    400,
+                    error_payload("INVALID_REQUEST", "size is required, once"),
+                )
+                return
+            from cuepoint.engine.artwork_jobs import track_thumbnail
+
+            try:
+                body = track_thumbnail(int(raw_track_id), sizes[0])
+            except ValueError as exc:
+                self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                return
+            except LookupError as exc:
+                self._send_json(404, error_payload("TRACK_NOT_FOUND", str(exc)))
+                return
+            except Exception as exc:  # noqa: BLE001 — surface to API client
+                self._send_json(500, error_payload("ARTWORK_FAILED", str(exc)))
+                return
+            if body is None:
+                self._send_no_content()
+                return
+            self._send_image(body)
 
         def _authorized(self) -> bool:
             if not config.token:
@@ -625,6 +675,10 @@ def make_handler(
                     self._send_json(500, error_payload("FACET_FAILED", str(exc)))
                     return
                 self._send_json(200, payload)
+                return
+            artwork = ARTWORK_ROUTE.match(path)
+            if artwork:
+                self._handle_artwork(artwork.group(1), parsed.query)
                 return
             if organization_handles_get(path):
                 # Before the prefix below, which would read the whole of

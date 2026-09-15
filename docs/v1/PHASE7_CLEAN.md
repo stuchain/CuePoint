@@ -2332,7 +2332,7 @@ signal, so the two counts agree), and building a dismissal's fingerprint from th
 
 ---
 
-## CLEAN-09 — Artwork: Reading, Fetching, Caching
+## CLEAN-09 — Artwork: Reading, Fetching, Caching ✅ IMPLEMENTED 2026-09-15
 
 **Objective**: Know whether each file has embedded artwork, fetch Beatport artwork for accepted
 matches, and cache both for display — the reading half of DEC-076.
@@ -2406,6 +2406,184 @@ native dependency to the packaged engine, with a security history to match; the 
 are the mitigation, and Pillow is updated like any other pinned runtime dependency.
 
 **Complexity**: **M**
+
+### ✅ IMPLEMENTED 2026-09-15
+
+**Outcome**: Complete for Windows. The packaged-engine proof on macOS is owed, with the rest of the
+macOS verification pass.
+
+- `data/artwork_image.py` is the one decoder, behind the guard. `decode_image` refuses, in order:
+  - input over 16 MiB, before any decoder runs;
+  - any format but JPEG, PNG, WebP, GIF and BMP, decided by Pillow trying only those decoders;
+  - a canvas over 36 megapixels, from its header, and Pillow's bomb warning as well as its error;
+  - a truncated or corrupt image, by decoding in full.
+
+  It then applies EXIF orientation, composites transparency onto black and returns a fresh RGB
+  image that carries no metadata. `make_thumbnail` never enlarges. A refusal is `ArtworkRefused`
+  with a reason: `too_large`, `format`, `dimensions` or `corrupt`.
+- `data/artwork.py` reads a file's embedded picture without decoding it: ID3 `APIC` (MP3, AIFF,
+  WAV), FLAC pictures, Ogg `METADATA_BLOCK_PICTURE` and the older `COVERART`, and MP4 `covr`. The
+  first front cover wins, else the first picture. It never raises; a malformed tag or an unreadable
+  file is reported as an error the scan counts.
+- `data/beatport.py` finds a track page's artwork and `core/matcher.py` stores it on the candidate
+  as `artwork_url`. The parser's nine-value return is unchanged, because callers and tests unpack
+  it: the page's artwork goes into a bounded memory keyed by Beatport track id, which the matcher
+  reads once the score is decided.
+- `services/artwork_cache.py` is the thumbnail cache. `services/artwork_service.py` holds
+  `thumbnail(track_id, size)`, `scan(...)` and the `FetchGate` every Beatport request goes through.
+  `persistence/artwork_repository.py` holds the SQL.
+- `engine/artwork_jobs.py` runs `artwork_scan`, which follows every whole-library file check and
+  can be started over a selection, optionally fetching Beatport's images.
+- `GET /api/v1/library/tracks/{id}/artwork?size=row|inspector` answers:
+  - 200 with a JPEG;
+  - 204 when the track has no artwork;
+  - 400 for a missing, repeated or unknown size;
+  - 404 for an unknown track;
+  - 401 without the token.
+
+  `engineClient.getTrackArtwork`, the supervisor, main's `engine:getTrackArtwork` and the preload
+  carry it. The preload turns the bytes into an object URL and offers `releaseTrackArtwork` to free
+  it, so no path, custom protocol or original image reaches the renderer.
+- Migration 0017 adds `checked_path`, `embedded_refused`, `beatport_refused` and `beatport_page` to
+  `track_artwork`. The vocabulary gains `artwork`: `embedded`, `beatport`, `none` or `unknown`,
+  facetable.
+- Pillow 12.1.1 is in `requirements.txt`, at the version the build already pinned. The engine
+  sidecar spec names the five decoder plugins, and the sidecar import test holds the spec, the
+  allow-list and the pin to each other.
+- The status strip names the job "Reading artwork". Privacy's "Clear cache now" and "Clear cache on
+  exit" empty the thumbnails too.
+
+**Where it is visible.** The status strip and the Activity panel show every scan. The filter bar
+builds its fields from the engine, so "Artwork" appears there and works. The changelog and the
+Library guide say so. Drawing the thumbnails in the table and the Inspector is CLEAN-12's.
+
+**What building it settled, and why.**
+
+- **A scan reads, a display decodes.** At 50,000 tracks a scan that decoded every picture would
+  spend minutes on images nobody may look at. A scan records presence and a SHA-256 of the picture's
+  bytes, and opens only files the check found present at the path the track has now. It is one
+  follow-up after the file check, not a second follow-up of the import, so it never opens a file
+  that is not there.
+- **Thumbnails are 108 and 288 pixels**: the table's 36-pixel row and the Inspector's 96-pixel box,
+  each at 3×. Both are made from one decode, so the second size never costs a second read or
+  download. Identical pictures share a key, so a release's ten tracks store one pair.
+- **The cache** is capped at 512 MiB. When a write takes it over, it evicts least recently used
+  down to 90 %; a read touches the file, because Windows keeps no access times. Every file is named
+  by a SHA-256, so no key is ever a path, and a write is a rename so no reader sees half a file. It
+  lives in the platform cache directory, or under `CUEPOINT_HOME` when that is set, so tests and a
+  second profile keep their own. It is outside the backup.
+- **A display records what it learns**: a file read for the first time, a picture the guard
+  refused, a page looked up. So the table, the vocabulary and the next display agree without a
+  scan. Those writes are best-effort: a display never fails, and never waits longer than the busy
+  timeout, because a job holds the database.
+- **A refusal is recorded against exactly what was refused**: the picture's hash, or the Beatport
+  URL. The same picture is never decoded again. A retagged file or a different image is a new
+  question, and a rescan that finds another picture clears the refusal.
+- **Beatport's image is an accepted match's, from Beatport's hosts only.**
+  - **Where it is read from.** The recorded page has no JSON-LD. The track's release artwork is
+    `release.image_url` in the page's `track-details` query, and is also its `og:image`. The same
+    data holds charts and recommendations with other releases' images, so only `track-details` is
+    read, then the page's meta.
+  - **Which URLs are kept.** Only HTTPS on `beatport.com` and its subdomains. A URL that only looks
+    like Beatport's is not kept: `beatport.com.evil.example`, `beatport.com@evil.example`,
+    `http://`.
+  - **How it is downloaded.** Downloads do not follow redirects. They read at most one chunk past
+    the byte cap, so an oversized image is refused without being read whole. They fetch Beatport's
+    500-pixel size, the smallest above the largest thumbnail.
+- **An attempt stored before this step is looked up once, against its page.** Its answer, "none"
+  included, is kept with `beatport_page`. Keeping it without the page was the first version, and it
+  had a bug: accept a different candidate and the previous page's image was shown for it. The
+  vocabulary uses a looked-up image only when its page is the accepted candidate's.
+- **Offline is an empty state.**
+  - One `FetchGate` for the engine keeps at most four artwork requests in flight, whoever asks.
+    That is well under a match run's fifteen candidate workers.
+  - A failed request is remembered for ten minutes, so a table scrolling past a hundred tracks does
+    not ask a hundred times. The memory is bounded.
+  - A fetch over a scope stops after twenty failures in a row, rather than spending a timeout on
+    every remaining track, and says Beatport could not be reached.
+- **What waits for what.** A scan refuses to start beside an import, a refresh apply or a file
+  check: the first two rewrite the paths it reads, and the third decides which files it may open.
+  None of them waits for a scan. A check that ends during a scan gets its scan afterwards, once,
+  through the shared follow-up mechanism.
+
+**Found, and fixed here.**
+
+- **The scoring baseline would not have been committed.** `.gitignore` ignores every `*.json` as
+  user output, so the file the scoring test compares against was invisible to git, and the test
+  would fail on a fresh clone. A negation for that one file is added, beside the others with the
+  same reason.
+- **"Clear cache" would have missed the thumbnails** whenever `CUEPOINT_HOME` moves them. The
+  engine's clear now empties the thumbnail directory as well as the platform cache.
+- **Recorded Beatport pages carried a session token.** A page served by Beatport embeds the
+  anonymous store session it was served with (`anonSession.access_token`, a JWT with scope
+  `app:prostore user:anon` and a ten-minute life). The page recorded for this step had one, and so
+  did `search_page_sample.html`, committed earlier; that token expired on 2026-06-24 and grants no
+  account access. Both are now redacted, which changes nothing any parser reads. A test asserts no
+  recorded page carries a JWT, so the next recording cannot bring one back unnoticed.
+
+**Found, and not fixed here (cross-cutting fact 4).** The recorded page shows that the track parser
+no longer reads Beatport's current page shape. For Strobe by deadmau5 it returns:
+
+- title "Strobe Original Mix", from the `<h1>` fallback;
+- an empty artist;
+- no genre, release or year.
+
+The page carries all of these in `track-details`, as `track_name`, `mix_name`, `artists`, `genre`
+and `release`. So live matching against Beatport very likely fails the artist guard: the recorded
+baseline has no winner for "Strobe by deadmau5". Fixing the parser changes scores, which this
+phase's matcher rule forbids a step to do on the side. It is raised for its own step, with the
+baseline this step recorded as the before-picture. This step did not move a single score:
+`scoring_baseline.json` was written by the unchanged parser, and every recorded page scores, wins
+and is rejected identically after the change.
+
+**Measured**, at 50,000 real MP3 files: 5,000 releases of ten tracks each, every file carrying its
+release's 600 × 600 JPEG cover (a mean of 103 KB; 5.4 GB in all), every file checked present.
+
+| Measurement | Result |
+| --- | --- |
+| Scan, first / again with the OS file cache warm | 48.3 s / 32.4 s |
+| Artwork state known after the scan | 50,000 of 50,000 present files |
+| First thumbnail of a release (read, guard, both sizes), median / p95 | 11.1 ms / 12.8 ms |
+| A cached thumbnail, median / p95 | 0.25 ms / 5.2 ms |
+| Every track's row thumbnail, then every track's Inspector thumbnail | 93 s, then 36 s |
+| Thumbnail cache for that library | 65.3 MB in 10,000 files (2.5 KB at 108 px, 10.6 KB at 288 px) |
+| Count, `artwork` is `embedded` | 33.9 ms |
+
+Thumbnails are about 13 KB a picture at both sizes, so the 512 MiB cap holds both sizes for about
+42,000 distinct pictures, and row thumbnails alone for about 200,000. A library of 50,000 tracks
+with a different picture on every one would reach the cap, and then the least recently viewed
+Inspector-size thumbnails are made again when next opened.
+
+**Packaged engine.** On Windows, the sidecar was built from this tree and started against a
+library holding one FLAC per allowed format (JPEG, PNG, WebP, GIF and BMP), one with a TIFF
+picture, and one with none. For every allowed format, `dist/cuepoint-engine.exe` answered a JPEG
+at 108 × 54 and 288 × 144. It answered 204 for the TIFF, recording it refused as `format`, and 204
+for the file with no picture. **macOS is owed**, with Phase 5's macOS verification pass.
+
+**Mutation testing.** Eighty-seven hand-written mutations of this step's code — the guard, the
+reader, the parser's artwork, the cache, the repository, the vocabulary, the service, the job, the
+route and the model — were each run against their own tests. Five anchors did not apply on the first
+run and were corrected and run again. Seven mutations survived, and each was a gap:
+
+- **Every Pillow decoder tried** was caught only by the format check made after opening. A test now
+  asserts that only the allowed decoders are ever asked to parse a header.
+- **An empty Ogg picture read as a picture** survived because only FLAC's empty picture was tested.
+- **A refusal of an older Beatport image blocking a newer one** survived because every test refused
+  one image per track. A test now accepts a second candidate after the first image was refused.
+- **Failures broken by a success still counting towards "unreachable"** survived because the offline
+  test failed every track. A test now alternates failures and successes past the limit.
+- **A track deleted while a scan ran counted as read** survived because no test deleted one between
+  listing the files and writing what they held.
+- **A success that finishes after a failure of the same request not clearing it** survived because
+  it needs two requests racing through the gate; a test now races them.
+- **The Beatport size fetched** was pinned only through its constant, which the tests also used. A
+  test now names the 500-pixel URL literally.
+
+All eighty-six others now fail at least one test. One is left as equivalent: dropping the guard's
+own check for a zero-width or zero-height canvas, which Pillow refuses as unidentifiable first. The
+check stays, so the guard does not depend on that.
+
+**Complexity**: **M**, as estimated.
 
 ---
 

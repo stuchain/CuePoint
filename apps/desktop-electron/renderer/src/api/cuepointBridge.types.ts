@@ -1125,6 +1125,9 @@ export interface EngineJobList {
   active_count: number;
 }
 
+/** The two thumbnail sizes the engine makes (CLEAN-09): a table row, the Inspector. */
+export type ArtworkSize = "row" | "inspector";
+
 export interface CuePointBridge {
   getEngineStatus: () => Promise<EngineStatus>;
   /** Absent when running in a browser tab, or in an older shell. */
@@ -1199,6 +1202,17 @@ export interface CuePointBridge {
   }) => Promise<LibraryFacet>;
   getLibraryFilterFields?: () => Promise<LibraryFilterVocabulary>;
   getLibraryTrack?: (params: { trackId: number }) => Promise<LibraryTrackDetail>;
+  /**
+   * A track's artwork thumbnail as an object URL, or null when it has none
+   * (CLEAN-09). The file's own picture first, then Beatport's for an accepted
+   * match. The URL holds the image in memory until `releaseTrackArtwork` is
+   * called with it.
+   */
+  getTrackArtwork?: (params: {
+    trackId: number;
+    size: ArtworkSize;
+  }) => Promise<string | null>;
+  releaseTrackArtwork?: (url: string) => void;
   // CuePoint's own organization (ORG-08). Optional like every method added
   // after the bridge existed: the renderer runs in a browser tab too, and an
   // older shell exposes none of these.

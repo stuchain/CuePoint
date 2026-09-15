@@ -517,6 +517,51 @@ class TestTrackArtwork:
         )
         assert TrackArtwork.from_row(record.to_dict()) == record
 
+    def test_what_clean_09_added_round_trips_too(self):
+        record = TrackArtwork(
+            7,
+            EMBEDDED_PRESENT,
+            embedded_hash="ab12",
+            beatport_url="https://geo-media.beatport.com/image/1.jpg",
+            checked_at=NOW,
+            checked_path="/m/7.mp3",
+            embedded_refused="corrupt",
+            beatport_refused="too_large",
+            beatport_page="https://www.beatport.com/track/x/1",
+        )
+        assert TrackArtwork.from_row(record.to_dict()) == record
+
+    def test_unreadable_tags_leave_the_answer_unknown(self):
+        assert TrackArtwork(7, embedded_refused="tags").embedded == EMBEDDED_UNKNOWN
+        with pytest.raises(ValueError, match="no answer"):
+            TrackArtwork(7, EMBEDDED_NONE, checked_at=NOW, embedded_refused="tags")
+
+    @pytest.mark.parametrize("embedded", [EMBEDDED_UNKNOWN, EMBEDDED_NONE])
+    def test_only_a_present_picture_can_be_refused_by_the_guard(self, embedded):
+        with pytest.raises(ValueError, match="present"):
+            TrackArtwork(7, embedded, checked_at=NOW, embedded_refused="format")
+
+    def test_a_refusal_reason_outside_the_vocabulary_is_refused(self):
+        with pytest.raises(ValueError, match="embedded_refused"):
+            TrackArtwork(7, EMBEDDED_PRESENT, checked_at=NOW, embedded_refused="ugly")
+        with pytest.raises(ValueError, match="beatport_refused"):
+            TrackArtwork(
+                7, beatport_url="https://beatport.com/a.jpg", beatport_refused="tags"
+            )
+
+    @pytest.mark.parametrize("url", [None, "", "  "])
+    def test_a_refused_beatport_image_names_its_url(self, url):
+        with pytest.raises(ValueError, match="URL"):
+            TrackArtwork(7, beatport_url=url, beatport_refused="corrupt")
+
+    def test_an_answer_read_at_another_path_is_stale(self):
+        read = TrackArtwork(7, EMBEDDED_NONE, checked_at=NOW, checked_path="/m/a.mp3")
+
+        assert not read.is_stale_for("/m/a.mp3")
+        assert read.is_stale_for("/n/a.mp3")
+        assert read.is_stale_for(None)
+        assert TrackArtwork(7).is_stale_for("/m/a.mp3")
+
 
 class TestFileWrite:
     def write(self, **overrides) -> FileWrite:

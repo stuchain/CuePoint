@@ -101,6 +101,36 @@ describe("desktop contract", () => {
     });
   });
 
+  describe("track artwork (CLEAN-09)", () => {
+    // The first method that answers bytes rather than JSON. The preload turns
+    // them into an object URL, so it has a release method no channel backs.
+    it("is exposed by the preload, with a way to release what it made", () => {
+      expect(invokedChannels(preload)).toContain("engine:getTrackArtwork");
+      expect(preload).toContain("URL.createObjectURL");
+      expect(preload).toContain("releaseTrackArtwork");
+      expect(preload).toContain("URL.revokeObjectURL");
+    });
+
+    it("is handled by the main process", () => {
+      expect(handledChannels(main)).toContain("engine:getTrackArtwork");
+    });
+
+    it("has a client method on the thumbnail route", () => {
+      expect(engineClient).toContain("async getTrackArtwork");
+      expect(engineClient).toContain("/artwork?");
+    });
+
+    it("is forwarded by the supervisor", () => {
+      expect(supervisorMethodsDeclared(supervisor)).toContain("getTrackArtwork");
+    });
+
+    it("is declared on the renderer bridge type", () => {
+      expect(bridgeTypes).toContain("getTrackArtwork");
+      expect(bridgeTypes).toContain("releaseTrackArtwork");
+      expect(bridgeTypes).toContain("ArtworkSize");
+    });
+  });
+
   describe("library import and summary (LIBRARY-06)", () => {
     // Named the same way library search is, for the same reason: the generic
     // checks above only compare the files against each other, so a method

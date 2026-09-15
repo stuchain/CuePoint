@@ -96,3 +96,56 @@ class TestEngineSidecarHiddenImports:
         discovered = {migration.module_name for migration in discover_migrations()}
 
         assert discovered == set(_migration_modules_on_disk())
+
+
+#: Pillow loads each image decoder by importing its plugin module at runtime, so
+#: a bundle built from the module graph alone can open no image at all (CLEAN-09).
+_ARTWORK_IMPORTS = (
+    "PIL.BmpImagePlugin",
+    "PIL.GifImagePlugin",
+    "PIL.JpegImagePlugin",
+    "PIL.PngImagePlugin",
+    "PIL.WebPImagePlugin",
+    "cuepoint.data.artwork",
+    "cuepoint.data.artwork_image",
+)
+
+
+@pytest.mark.unit
+class TestEngineSidecarMakesThumbnails:
+    def test_pillow_is_not_excluded_from_the_engine(self):
+        spec = _SPEC.read_text(encoding="utf-8")
+        excludes = spec[spec.index("excludes=") :]
+        excludes = excludes[: excludes.index("]")]
+
+        assert '"PIL"' not in excludes and "'PIL'" not in excludes
+
+    @pytest.mark.parametrize("module", _ARTWORK_IMPORTS)
+    def test_every_decoder_the_guard_allows_is_bundled(self, module):
+        assert f'"{module}"' in _SPEC.read_text(encoding="utf-8")
+
+    def test_the_bundled_plugins_are_the_guards_allow_list(self):
+        from cuepoint.data.artwork_image import ALLOWED_FORMATS
+
+        named = {
+            module.split(".")[1].removesuffix("ImagePlugin").upper()
+            for module in _ARTWORK_IMPORTS
+            if module.startswith("PIL.")
+        }
+        assert named == set(ALLOWED_FORMATS)
+
+    @pytest.mark.parametrize("module", _ARTWORK_IMPORTS)
+    def test_each_import_resolves(self, module):
+        import importlib
+
+        importlib.import_module(module)
+
+    def test_pillow_is_a_pinned_runtime_dependency_in_one_version(self):
+        runtime = (_REPO_ROOT / "requirements.txt").read_text(encoding="utf-8")
+        build = (_REPO_ROOT / "requirements-build.txt").read_text(encoding="utf-8")
+        pins = [line for line in runtime.splitlines() if line.startswith("Pillow")]
+
+        assert pins == ["Pillow==12.1.1"]
+        assert [
+            line for line in build.splitlines() if line.startswith("Pillow")
+        ] == pins

@@ -29,6 +29,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import pytest
 
+from cuepoint.engine.artwork_jobs import JOB_TYPE_ARTWORK_SCAN
 from cuepoint.engine.file_check_jobs import (
     JOB_TYPE_FILE_CHECK,
     check_after_library_job,
@@ -308,9 +309,15 @@ class TestAfterAnImport:
             check.result["present"],
             check.result["missing"],
         ) == ("import", 2, 1, 1)
+        # A whole-library check is followed by an artwork scan (CLEAN-09).
+        wait_until(
+            lambda: (JOB_TYPE_ARTWORK_SCAN, "succeeded") in job_log(),
+            "the artwork scan",
+        )
         assert job_log() == [
             (JOB_TYPE_LIBRARY_IMPORT, "succeeded"),
             (JOB_TYPE_FILE_CHECK, "succeeded"),
+            (JOB_TYPE_ARTWORK_SCAN, "succeeded"),
         ]
         assert check.created_at >= imported.updated_at
         assert set(statuses().values()) == {(FILE_PRESENT, None), (FILE_MISSING, None)}
@@ -383,6 +390,10 @@ class TestAfterARefresh:
         finished(store, start_library_import_job(store, first))
         wait_until(lambda: len(checks_of(store)) == 1, "the import's check")
         finished(store, checks_of(store)[0])
+        wait_until(
+            lambda: (JOB_TYPE_ARTWORK_SCAN, "succeeded") in job_log(),
+            "the import's artwork scan",
+        )
 
         # Rekordbox's Relocate, then a re-export: same track, new path.
         second = write_export(tmp_path, [str(moved)], "collection-2.xml")
@@ -402,12 +413,18 @@ class TestAfterARefresh:
 
         assert check.result is not None and check.result["trigger"] == "refresh"
         assert statuses() == {moved.as_posix(): (FILE_PRESENT, None)}
+        wait_until(
+            lambda: job_log().count((JOB_TYPE_ARTWORK_SCAN, "succeeded")) == 2,
+            "the refresh's artwork scan",
+        )
         assert job_log() == [
             (JOB_TYPE_LIBRARY_IMPORT, "succeeded"),
             (JOB_TYPE_FILE_CHECK, "succeeded"),
+            (JOB_TYPE_ARTWORK_SCAN, "succeeded"),
             (JOB_TYPE_LIBRARY_REFRESH_PREVIEW, "succeeded"),
             (JOB_TYPE_LIBRARY_REFRESH_APPLY, "succeeded"),
             (JOB_TYPE_FILE_CHECK, "succeeded"),
+            (JOB_TYPE_ARTWORK_SCAN, "succeeded"),
         ]
 
 

@@ -192,6 +192,38 @@ FILES_ALIAS = "tfiles"
 #: signal (CLEAN-08, migration 0016).
 DUPLICATE_SIGNALS_VIEW = "duplicate_track_signals"
 
+#: The alias a track's artwork record is joined under (CLEAN-09).
+ARTWORK_ALIAS = "tart"
+
+#: The four answers ``artwork`` gives: what the table would show.
+ARTWORK_EMBEDDED = "embedded"
+ARTWORK_BEATPORT = "beatport"
+ARTWORK_NONE = "none"
+ARTWORK_UNKNOWN = "unknown"
+ARTWORK_VALUES = (ARTWORK_EMBEDDED, ARTWORK_BEATPORT, ARTWORK_NONE, ARTWORK_UNKNOWN)
+
+# Beatport's image for an accepted match: the candidate's, or the one read later
+# from that candidate's own page (an attempt stored before CLEAN-09). A refusal
+# recorded for exactly that image means there is nothing of Beatport's to show.
+_BEATPORT_IMAGE = (
+    "COALESCE(NULLIF(tcandidate.artwork_url, ''),"
+    f" CASE WHEN {ARTWORK_ALIAS}.beatport_page = tcandidate.url"
+    f" THEN NULLIF({ARTWORK_ALIAS}.beatport_url, '') END)"
+)
+_ARTWORK_EXPRESSION = (
+    "CASE"
+    f" WHEN {ARTWORK_ALIAS}.checked_path = tracks.file_path"
+    f" AND {ARTWORK_ALIAS}.embedded = 'present'"
+    f" AND {ARTWORK_ALIAS}.embedded_refused IS NULL THEN '{ARTWORK_EMBEDDED}'"
+    f" WHEN tmatch.state = 'accepted' AND {_BEATPORT_IMAGE} IS NOT NULL"
+    f" AND COALESCE({ARTWORK_ALIAS}.beatport_refused IS NOT NULL"
+    f" AND {ARTWORK_ALIAS}.beatport_url = {_BEATPORT_IMAGE}, 0) = 0"
+    f" THEN '{ARTWORK_BEATPORT}'"
+    f" WHEN {ARTWORK_ALIAS}.checked_path = tracks.file_path"
+    f" AND {ARTWORK_ALIAS}.embedded IN ('none', 'present') THEN '{ARTWORK_NONE}'"
+    f" ELSE '{ARTWORK_UNKNOWN}' END"
+)
+
 # A check answers for the path it checked (DEC-073). A row for any other path —
 # a refresh moved the file — says nothing about the file the library now names,
 # so it reads exactly as no row does. `tracks.file_path` is never null, and a
@@ -525,6 +557,18 @@ FIELDS: Tuple[FieldSpec, ...] = (
         "Duplicate signal",
         facetable=True,
         values=LinkTable(DUPLICATE_SIGNALS_VIEW, "signal"),
+    ),
+    # --- Artwork (CLEAN-09, DEC-076) ---------------------------------------
+    # What the table would show: the file's own picture, else Beatport's image
+    # for an accepted match, else nothing — and "unknown" when the file has not
+    # been read at the path the track has now.
+    FieldSpec(
+        "artwork",
+        TYPE_TEXT,
+        "Artwork",
+        facetable=True,
+        column=_ARTWORK_EXPRESSION,
+        joins=(ARTWORK_ALIAS, MATCH_ALIAS, MATCH_CANDIDATE_ALIAS),
     ),
 )
 
@@ -1025,6 +1069,8 @@ __all__: Sequence[str] = (
     "FACETABLE_FIELDS",
     "FIELDS",
     "FIELD_TYPES",
+    "ARTWORK_ALIAS",
+    "ARTWORK_VALUES",
     "DUPLICATE_SIGNALS_VIEW",
     "FILES_ALIAS",
     "MATCH_ALL",

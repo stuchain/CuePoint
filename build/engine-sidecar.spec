@@ -52,6 +52,17 @@ hiddenimports = (
         "cuepoint.utils.privacy",
         "cuepoint.ui.gui_interface",
         "cuepoint.ui.controllers.export_controller",
+        # CLEAN-09: Pillow finds its image decoders by importing plugin
+        # modules at runtime. Every format the artwork guard allows is named,
+        # so a packaged engine can make a thumbnail from each of them.
+        # src/tests/unit/scripts/test_engine_sidecar_imports.py guards this.
+        "PIL.BmpImagePlugin",
+        "PIL.GifImagePlugin",
+        "PIL.JpegImagePlugin",
+        "PIL.PngImagePlugin",
+        "PIL.WebPImagePlugin",
+        "cuepoint.data.artwork",
+        "cuepoint.data.artwork_image",
     ]
 )
 

@@ -7,6 +7,9 @@ export interface EngineApiError {
   message: string;
 }
 
+/** The two thumbnail sizes the engine makes (CLEAN-09): a table row, the Inspector. */
+export type ArtworkSize = "row" | "inspector";
+
 async function readJson<T>(res: Response): Promise<T> {
   const body = (await res.json()) as T & { error?: EngineApiError };
   if (!res.ok) {
@@ -608,6 +611,36 @@ export class EngineClient {
       { headers: this.headers() },
     );
     return readJson(res);
+  }
+
+  /**
+   * A track's artwork thumbnail as JPEG bytes, or null when it has none (CLEAN-09).
+   *
+   * The engine answers 204 for "no artwork", which is an empty state rather
+   * than an error; offline, a Beatport image that cannot be fetched is the same.
+   */
+  async getTrackArtwork(params: {
+    trackId: number;
+    size: ArtworkSize;
+  }): Promise<Uint8Array | null> {
+    const query = new URLSearchParams({ size: params.size });
+    const res = await fetch(
+      this.url(
+        `/api/v1/library/tracks/${encodeURIComponent(String(params.trackId))}/artwork?${query.toString()}`,
+      ),
+      { headers: this.headers() },
+    );
+    if (res.status === 204) {
+      return null;
+    }
+    if (!res.ok) {
+      await readJson(res);
+      throw new Error(`Engine request failed (${res.status})`);
+    }
+    if (!(res.headers.get("Content-Type") ?? "").startsWith("image/jpeg")) {
+      throw new Error("The engine answered artwork with something other than a JPEG");
+    }
+    return new Uint8Array(await res.arrayBuffer());
   }
 
   /**

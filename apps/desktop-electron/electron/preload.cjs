@@ -10,6 +10,18 @@ contextBridge.exposeInMainWorld("cuepoint", {
   getLibraryFacet: (params) => ipcRenderer.invoke("engine:getLibraryFacet", params),
   getLibraryFilterFields: () => ipcRenderer.invoke("engine:getLibraryFilterFields"),
   getLibraryTrack: (params) => ipcRenderer.invoke("engine:getLibraryTrack", params),
+  // A track's artwork (CLEAN-09). The engine's JPEG bytes become an object URL
+  // here, so the renderer draws an image without a path, a custom protocol or
+  // the bytes crossing into its own code. The URL holds the image in memory
+  // until it is released.
+  getTrackArtwork: async (params) => {
+    const bytes = await ipcRenderer.invoke("engine:getTrackArtwork", params);
+    if (!bytes) return null;
+    return URL.createObjectURL(new Blob([bytes], { type: "image/jpeg" }));
+  },
+  releaseTrackArtwork: (url) => {
+    if (typeof url === "string" && url.startsWith("blob:")) URL.revokeObjectURL(url);
+  },
 
   // CuePoint's own organization (ORG-08).
   getCollections: () => ipcRenderer.invoke("engine:getCollections"),

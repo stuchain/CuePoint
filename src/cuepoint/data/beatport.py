@@ -72,6 +72,10 @@ except ImportError:
                 pass
 
 
+import threading  # noqa: E402
+from collections import OrderedDict  # noqa: E402
+from urllib.parse import urlparse  # noqa: E402
+
 from cuepoint.core.mix_parser import (
     _extract_remixer_names_from_title,
     _merge_name_lists,
@@ -82,6 +86,130 @@ from cuepoint.utils.http_cache import CacheInvalidation
 from cuepoint.utils.utils import retry_with_backoff, vlog
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Artwork (CLEAN-09, DEC-076)
+#
+# A track page names its release's artwork twice: as `release.image_url` in the
+# page's `__NEXT_DATA__`, and in its `og:image` and `twitter:image` tags. Both
+# are a URL template whose size is `{w}x{h}`, recorded here as the page gives
+# it and sized when an image is fetched (`artwork_url_at_size`).
+#
+# `parse_track_page` keeps returning the nine values it always has: the matcher,
+# the providers and their tests unpack exactly that, and none of them scores
+# artwork. So the artwork a page named is remembered here, by track, and the
+# matcher puts it on the candidate it builds. Nothing about a score reads it,
+# which `tests/unit/data/test_beatport_artwork.py` holds against a baseline of
+# every recorded page scored before this existed.
+# ---------------------------------------------------------------------------
+
+#: Artwork is only ever fetched from Beatport's own hosts, over HTTPS. A page or
+#: a database that named anywhere else is not followed.
+_ARTWORK_HOST = "beatport.com"
+
+_ARTWORK_SIZE_PLACEHOLDER = "{w}x{h}"
+_ARTWORK_SIZE_SEGMENT = re.compile(r"/image_size/\d+x\d+/")
+_TRACK_ID_IN_URL = re.compile(r"/track/[^/]*/(\d+)")
+
+#: Pages whose artwork is remembered at once. A match run parses a few hundred
+#: pages per track at most; this is far more than one run needs and bounded.
+_PAGE_ARTWORK_LIMIT = 4096
+
+_page_artwork: "OrderedDict[str, Optional[str]]" = OrderedDict()
+_page_artwork_lock = threading.Lock()
+
+
+def is_beatport_artwork_url(url: Optional[str]) -> bool:
+    """True for an HTTPS URL on Beatport's own hosts."""
+    if not isinstance(url, str) or not url.strip():
+        return False
+    parsed = urlparse(url.strip())
+    host = (parsed.hostname or "").lower()
+    return parsed.scheme == "https" and (
+        host == _ARTWORK_HOST or host.endswith("." + _ARTWORK_HOST)
+    )
+
+
+def artwork_url_at_size(url: str, size: int) -> str:
+    """The artwork URL for a square image of ``size`` pixels.
+
+    Fills a ``{w}x{h}`` template, or replaces the ``/image_size/WxH/`` segment
+    of a URL that already names a size.
+    """
+    if _ARTWORK_SIZE_PLACEHOLDER in url:
+        return url.replace(_ARTWORK_SIZE_PLACEHOLDER, f"{size}x{size}")
+    return _ARTWORK_SIZE_SEGMENT.sub(f"/image_size/{size}x{size}/", url, count=1)
+
+
+def artwork_url_from_page(soup: BeautifulSoup) -> Optional[str]:
+    """The track's release artwork on a Beatport track page, as the page gives it."""
+    found = _release_image_url(soup)
+    if found is None:
+        for attrs in (
+            {"property": "og:image"},
+            {"name": "twitter:image"},
+            {"property": "twitter:image"},
+        ):
+            tag = soup.find("meta", attrs=attrs)
+            content = tag.get("content") if tag is not None else None
+            if isinstance(content, str) and content.strip():
+                found = content.strip()
+                break
+    return found if is_beatport_artwork_url(found) else None
+
+
+def _release_image_url(soup: BeautifulSoup) -> Optional[str]:
+    """``release.image_url`` of the page's own track, from ``__NEXT_DATA__``.
+
+    Only the track-details query is read: the same data holds the charts and
+    recommendations the page shows, each with images of other releases.
+    """
+    tag = soup.find("script", id="__NEXT_DATA__")
+    if tag is None or not tag.string:
+        return None
+    try:
+        data = json.loads(tag.string)
+    except ValueError:
+        return None
+    state = ((data.get("props") or {}).get("pageProps") or {}).get("dehydratedState")
+    queries = (state or {}).get("queries") or []
+    for query in queries:
+        if not isinstance(query, dict):
+            continue
+        key = query.get("queryKey")
+        if not (
+            isinstance(key, list) and key and str(key[0]).startswith("track-details")
+        ):
+            continue
+        track = (query.get("state") or {}).get("data")
+        release = track.get("release") if isinstance(track, dict) else None
+        image = release.get("image_url") if isinstance(release, dict) else None
+        if isinstance(image, str) and image.strip():
+            return image.strip()
+    return None
+
+
+def _artwork_key(url: str) -> str:
+    """Remembered by track id, so two slugs for one track share an answer."""
+    found = _TRACK_ID_IN_URL.search(url or "")
+    return f"id:{found.group(1)}" if found else f"url:{url}"
+
+
+def remember_page_artwork(url: str, artwork_url: Optional[str]) -> None:
+    """Remember the artwork a parsed page named, dropping the oldest past the limit."""
+    key = _artwork_key(url)
+    with _page_artwork_lock:
+        _page_artwork[key] = artwork_url
+        _page_artwork.move_to_end(key)
+        while len(_page_artwork) > _PAGE_ARTWORK_LIMIT:
+            _page_artwork.popitem(last=False)
+
+
+def page_artwork_url(url: str) -> Optional[str]:
+    """The artwork a parsed page for this track named, if one was parsed."""
+    with _page_artwork_lock:
+        return _page_artwork.get(_artwork_key(url))
 
 
 def beatport_search_direct(idx: int, query: str, max_results: int) -> List[str]:
@@ -525,6 +653,11 @@ def parse_track_page(
             return "", "", None, None, None, None, None, None, None
 
         info = {}
+        try:
+            remember_page_artwork(url, artwork_url_from_page(soup))
+        except Exception:  # noqa: BLE001 — artwork must never cost a parse
+            pass
+
         info.update(_parse_structured_json_ld(soup))
         if not info.get("title") or not info.get("artists"):
             info.update(_parse_next_data(soup))

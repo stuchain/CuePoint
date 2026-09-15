@@ -9,6 +9,7 @@ This should be called at application startup.
 """
 
 import os
+import threading
 
 from cuepoint.services.beatport_api import BeatportApi
 from cuepoint.services.beatport_api_client import BeatportApiClient
@@ -35,6 +36,8 @@ from cuepoint.services.interfaces import (
     IConfigService,
     IDatabaseService,
     IExportService,
+    IArtworkRepository,
+    IArtworkService,
     IDuplicateRepository,
     IDuplicateService,
     IFileCheckService,
@@ -72,6 +75,7 @@ from cuepoint.services.onboarding_service import OnboardingService
 from cuepoint.services.privacy_service import PrivacyService
 from cuepoint.persistence.activity_repository import ActivityRepository
 from cuepoint.persistence.authored_data_repository import AuthoredDataRepository
+from cuepoint.persistence.artwork_repository import ArtworkRepository
 from cuepoint.persistence.duplicate_repository import DuplicateRepository
 from cuepoint.persistence.file_status_repository import FileStatusRepository
 from cuepoint.persistence.job_repository import JobRepository
@@ -91,6 +95,8 @@ from cuepoint.services.activity_service import ActivityService
 from cuepoint.services.backup_service import BackupService
 from cuepoint.services.batch_service import BatchService
 from cuepoint.services.collection_service import CollectionService
+from cuepoint.services.artwork_cache import ArtworkCache, default_artwork_cache_dir
+from cuepoint.services.artwork_service import ArtworkService, FetchGate
 from cuepoint.services.duplicate_service import DuplicateService
 from cuepoint.services.file_check_service import FileCheckService
 from cuepoint.services.library_service import LibraryService
@@ -422,6 +428,41 @@ def bootstrap_services() -> None:
         )
 
     container.register_factory(IDuplicateService, create_duplicate_service)
+
+    # Artwork from files and Beatport, as bounded thumbnails (CLEAN-09, DEC-076).
+    # One cache for the process: its byte count and eviction are shared.
+    def create_artwork_repository() -> IArtworkRepository:
+        container.resolve(IMigrationRunner).migrate()
+        return ArtworkRepository(database_service=container.resolve(IDatabaseService))
+
+    container.register_factory(IArtworkRepository, create_artwork_repository)
+
+    # One fetch gate and one cache for the engine, so the bound on Beatport
+    # requests and the cache's byte count hold across every request thread. The
+    # cache follows its directory, which follows CUEPOINT_HOME.
+    artwork_gate = FetchGate()
+    artwork_caches: list[ArtworkCache] = []
+    artwork_cache_lock = threading.Lock()
+
+    def artwork_cache() -> ArtworkCache:
+        directory = default_artwork_cache_dir()
+        with artwork_cache_lock:
+            if not artwork_caches or artwork_caches[0].directory != directory:
+                artwork_caches[:] = [ArtworkCache(directory)]
+            return artwork_caches[0]
+
+    def create_artwork_service() -> IArtworkService:
+        return ArtworkService(
+            artwork_repository=container.resolve(IArtworkRepository),
+            track_repository=container.resolve(ITrackRepository),
+            batch_service=container.resolve(IBatchService),
+            activity_service=container.resolve(IActivityService),
+            database_service=container.resolve(IDatabaseService),
+            cache=artwork_cache(),
+            gate=artwork_gate,
+        )
+
+    container.register_factory(IArtworkService, create_artwork_service)
 
     # Matching library tracks as a resumable job (CLEAN-03, DEC-065). It takes
     # the batch service for one thing, resolving a selection, so a match and a

@@ -66,6 +66,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Beatport track, or the same artist, title and mix with lengths within two
   seconds. The Library's filter bar can find tracks in a duplicate group, and by
   what grouped them. Nothing is deleted, merged or changed
+- CuePoint now reads the artwork your files carry, after every file check, and
+  knows Beatport's artwork for the tracks whose match you accepted. The
+  Library's filter bar can find tracks by where their artwork comes from — the
+  file, Beatport, none, or not read yet. Pictures are made into small thumbnails
+  in a capped cache that "Clear cache" empties; an image that is not a JPEG,
+  PNG, WebP, GIF or BMP, or is too large, is refused rather than opened.
+  Offline, Beatport's artwork is simply not shown. Nothing is written to your
+  files
 
 ### Changed
 - A refresh that would delete tracks carrying your own work now says so before
