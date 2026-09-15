@@ -66,6 +66,22 @@ def _normalize_year(value: Optional[str]) -> Optional[str]:
     return None
 
 
+def _set_id3_year(tags, year: str, encoding: int) -> None:
+    """Set an ID3 tag's year so that the save keeps it.
+
+    mutagen reads a year as the v2.4 ``TDRC`` frame, translating a v2.3 ``TYER``
+    into one, and on saving translates between the two for the version written.
+    A ``TYER`` added beside a ``TDRC`` the file already had was therefore dropped
+    by every save, whichever version it wrote: the write reported success and the
+    file kept its old year. So the year is set as ``TDRC``, and any ``TYER`` is
+    removed.
+    """
+    from mutagen.id3 import TDRC
+
+    tags.delall("TYER")
+    tags["TDRC"] = TDRC(encoding=encoding, text=[year])
+
+
 def write_key_comment_year_to_file(
     file_path: str,
     key: Optional[str],
@@ -130,7 +146,7 @@ def _write_id3(
     bpm: Optional[str] = None,
     genre: Optional[str] = None,
 ) -> Tuple[str, Optional[str]]:
-    from mutagen.id3 import ID3, COMM, TKEY, TBPM, TCON, TPUB, TYER
+    from mutagen.id3 import ID3, COMM, TKEY, TBPM, TCON, TPUB
     from mutagen.id3 import ID3NoHeaderError
 
     try:
@@ -145,7 +161,7 @@ def _write_id3(
         audio.add(COMM(encoding=encoding, lang="XXX", desc="", text=[comment]))
     year_norm = _normalize_year(year)
     if year_norm:
-        audio["TYER"] = TYER(encoding=encoding, text=[year_norm])
+        _set_id3_year(audio, year_norm, encoding)
     if label:
         audio["TPUB"] = TPUB(encoding=encoding, text=[label])
     if bpm:
@@ -244,7 +260,7 @@ def _write_wav(
     """Write ID3v2.3 tags (Latin-1 only) to WAV; id3 chunk is always last. No LIST-INFO (ID3 is better supported)."""
     try:
         from mutagen.wave import WAVE
-        from mutagen.id3 import COMM, TKEY, TBPM, TCON, TPUB, TYER
+        from mutagen.id3 import COMM, TKEY, TBPM, TCON, TPUB
     except ImportError:
         return (STATUS_UNSUPPORTED_FORMAT, "mutagen not available")
     path_str = str(path)
@@ -268,7 +284,7 @@ def _write_wav(
         audio.tags.add(COMM(encoding=encoding, lang="XXX", desc="", text=[c]))
     year_norm = _normalize_year(year)
     if year_norm:
-        audio.tags["TYER"] = TYER(encoding=encoding, text=[year_norm])
+        _set_id3_year(audio.tags, year_norm, encoding)
     lb = _latin1_safe(label)
     if lb:
         audio.tags["TPUB"] = TPUB(encoding=encoding, text=[lb])
@@ -338,7 +354,7 @@ def _write_id3_in_container(
     """Write ID3 TKEY/COMM/TYER/TPUB/TBPM/TCON to AIFF via mutagen File container."""
     try:
         from mutagen import File
-        from mutagen.id3 import ID3, COMM, TKEY, TBPM, TCON, TPUB, TYER
+        from mutagen.id3 import ID3, COMM, TKEY, TBPM, TCON, TPUB
     except ImportError:
         return (STATUS_UNSUPPORTED_FORMAT, "mutagen not available")
     try:
@@ -359,7 +375,7 @@ def _write_id3_in_container(
         audio.tags.add(COMM(encoding=encoding, lang="XXX", desc="", text=[comment]))
     year_norm = _normalize_year(year)
     if year_norm:
-        audio.tags["TYER"] = TYER(encoding=encoding, text=[year_norm])
+        _set_id3_year(audio.tags, year_norm, encoding)
     if label:
         audio.tags["TPUB"] = TPUB(encoding=encoding, text=[label])
     if bpm:

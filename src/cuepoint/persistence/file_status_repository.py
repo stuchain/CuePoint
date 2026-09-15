@@ -108,6 +108,26 @@ class FileStatusRepository(IFileStatusRepository):
                     written.add(check.track_id)
         return written
 
+    def refresh_size(
+        self, track_id: int, checked_path: str, size_bytes: int, checked_at: str
+    ) -> bool:
+        """Record a present file's new size after CuePoint wrote to it (CLEAN-10).
+
+        Only a row that found the file present at this same path is touched: a
+        write does not make a missing file present, and a row for another path
+        answers for another file.
+
+        Returns:
+            True when the row was updated.
+        """
+        with self._db.transaction(join_existing=True) as conn:
+            cursor = conn.execute(
+                "UPDATE track_files SET size_bytes = ?, checked_at = ?"
+                " WHERE track_id = ? AND checked_path = ? AND status = 'present'",
+                (int(size_bytes), checked_at, int(track_id), checked_path),
+            )
+            return cursor.rowcount == 1
+
     def get(self, track_id: int) -> Optional[TrackFileStatus]:
         """Return a track's stored check, or ``None``."""
         row = (

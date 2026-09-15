@@ -20,6 +20,15 @@ A value of null and no value are different
 may never have opened the file), and the JSON text ``"null"`` when the file was
 read and the field was empty. A restore writes back the second and refuses the
 first, which is why the two are not collapsed here.
+
+Pending, and what a restore undid (CLEAN-10)
+--------------------------------------------
+A write is recorded before the file is touched, so until the file has been
+written and read back its row is ``pending``: a record of a write that may not
+have happened. A restore is recorded the same way, as ``restored`` rows naming
+the write they undid in ``restore_of`` — or ``skipped`` or ``failed`` rows, when
+the file had moved on or could not be written. Only a write can be restored,
+and only a restore row names one.
 """
 
 from __future__ import annotations
@@ -28,7 +37,7 @@ import json
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
-from cuepoint.models.row_values import one_of, optional_id, required_text
+from cuepoint.models.row_values import flag, one_of, optional_id, required_text
 
 #: The value was written.
 WRITE_WRITTEN = "written"
@@ -46,6 +55,9 @@ WRITE_OUTCOMES = (WRITE_WRITTEN, WRITE_SKIPPED, WRITE_FAILED, WRITE_RESTORED)
 
 #: The outcomes a reader cannot act on without being told why.
 _REASON_REQUIRED = (WRITE_SKIPPED, WRITE_FAILED)
+
+#: The outcomes recorded before the file is touched, and so pending until it is.
+_MAY_BE_PENDING = (WRITE_WRITTEN, WRITE_RESTORED)
 
 
 def _json_or_none(value: Any, name: str) -> Optional[str]:
@@ -80,6 +92,8 @@ class FileWrite:
         old_value_json: What the file held, as JSON; ``None`` if never read.
         new_value_json: What was written, as JSON.
         reason: Why. Required for a skip or a failure.
+        pending: True from the record until the file was written and read back.
+        restore_of: The write a restore row undid, or tried to.
     """
 
     job_id: str
@@ -92,6 +106,8 @@ class FileWrite:
     old_value_json: Optional[str] = None
     new_value_json: Optional[str] = None
     reason: Optional[str] = None
+    pending: bool = False
+    restore_of: Optional[int] = None
 
     def __post_init__(self) -> None:
         """Validate the record."""
@@ -106,6 +122,16 @@ class FileWrite:
         _json_or_none(self.new_value_json, "new_value_json")
         if self.outcome in _REASON_REQUIRED and not (self.reason or "").strip():
             raise ValueError(f"A {self.outcome} write must say why")
+        object.__setattr__(self, "pending", flag(self.pending, "pending"))
+        object.__setattr__(
+            self, "restore_of", optional_id(self.restore_of, "restore_of")
+        )
+        if self.pending and self.outcome not in _MAY_BE_PENDING:
+            raise ValueError(f"A {self.outcome} row is never pending")
+        if self.outcome == WRITE_WRITTEN and self.restore_of is not None:
+            raise ValueError("A write undoes nothing; only a restore names a write")
+        if self.outcome == WRITE_RESTORED and self.restore_of is None:
+            raise ValueError("A restore must name the write it undid")
 
     @property
     def old_value_was_read(self) -> bool:
@@ -127,6 +153,11 @@ class FileWrite:
         """True when the track this was written for is no longer in the library."""
         return self.track_id is None
 
+    @property
+    def is_restore(self) -> bool:
+        """True for a row a restore recorded."""
+        return self.restore_of is not None
+
     def to_dict(self) -> Dict[str, Any]:
         """Return the persisted row."""
         return {
@@ -140,6 +171,8 @@ class FileWrite:
             "outcome": self.outcome,
             "reason": self.reason,
             "written_at": self.written_at,
+            "pending": 1 if self.pending else 0,
+            "restore_of": self.restore_of,
         }
 
     @classmethod
@@ -157,4 +190,6 @@ class FileWrite:
             outcome=data["outcome"],
             reason=data.get("reason"),
             written_at=data["written_at"],
+            pending=data.get("pending", 0),
+            restore_of=data.get("restore_of"),
         )

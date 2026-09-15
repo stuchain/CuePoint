@@ -57,6 +57,14 @@ describe("jobLabel", () => {
     expect(jobLabel(job({ type: "artwork_scan" }))).toBe("Reading artwork 3/10");
   });
 
+  it("names a tag write apart from its preview and its restore", () => {
+    // CLEAN-10: the one job that writes audio files must not read as the
+    // preview that only reads them, nor as the restore that undoes it.
+    expect(jobLabel(job({ type: "tag_write_preview" }))).toBe("Reading tags 3/10");
+    expect(jobLabel(job({ type: "tag_write" }))).toBe("Writing tags 3/10");
+    expect(jobLabel(job({ type: "tag_restore" }))).toBe("Restoring tags 3/10");
+  });
+
   it("says queued before a job starts, whatever its type", () => {
     expect(jobLabel(job({ state: "queued" }))).toBe("Queued 3/10");
     expect(jobLabel(job({ type: "library_import", state: "queued" }))).toBe(

@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 7: Clean, Detailed Step Specifications
 
-Status: **Specified. CLEAN-01 to CLEAN-08 implemented.** The fourteen steps below replace the
+Status: **Specified. CLEAN-01 to CLEAN-10 implemented.** The fourteen steps below replace the
 roadmap's placeholder inventory (CLEAN-01…CLEAN-13, which Round 9's answers outgrew by one). Per
 the process, no implementation happens from this document — each step needs an explicit
 "Implement CLEAN-NN" instruction, scoped to exactly that step, and its outcome is recorded under the
@@ -2587,7 +2587,7 @@ check stays, so the guard does not depend on that.
 
 ---
 
-## CLEAN-10 — Writing Tags to Files, With a Record
+## CLEAN-10 — Writing Tags to Files, With a Record ✅ IMPLEMENTED 2026-09-15
 
 **Objective**: The one job in this phase that writes outside the database: effective values and
 missing artwork into audio files, previewed, recorded before writing, and restorable (DEC-070,
@@ -2652,6 +2652,176 @@ order, the byte-identical restore test and the boundary test are the three thing
 acceptable, and none of them is optional.
 
 **Complexity**: **L**
+
+### ✅ IMPLEMENTED 2026-09-15
+
+**Outcome**: Complete.
+
+- `services/tag_write_service.py` implements `ITagWriteService`:
+  - `resolve(selection)` names the library tracks a selection holds, refusing none;
+  - `preview(track_ids, options, preview_id=…)` reads every file in scope and writes none;
+  - `write(preview, job_id)` writes what a preview planned, one file at a time;
+  - `restorable_count(job_id=…|track_id=…)` and `restore(restore_job_id, job_id=…|track_id=…)`
+    write recorded old values back.
+
+  Each answers with a result — `TagWritePreview`, `TagWriteResult`, `TagRestoreResult` — and a
+  write and a restore each record one activity event, `clean.tags.written` and
+  `clean.tags.restored`, with their counts.
+- `data/tag_fields.py` reads, predicts and restores the fields the writer touches, and embeds and
+  removes a picture. `tag_writer.write_key_comment_year_to_file` still does every forward write.
+- `services/tag_write_options.py` holds today's options and defaults. `_normalize_sync_options`
+  moved there from `engine/sync_tags_api.py` as `normalize_sync_options`, which Sync Tags now
+  imports, so there is one definition. `TagWriteOptions` adds `embed_missing_artwork`, off by
+  default.
+- `persistence/file_write_repository.py` reads each track's effective values and file check
+  (`targets`) and holds the record: `record`, `confirm`, `fail`, `restorable`, `for_job`,
+  `for_track`, `pending_count`. `FileStatusRepository.refresh_size` records a written file's new
+  size.
+- `ArtworkService` gains `beatport_artwork_source(track_id)` and `embeddable_artwork(track_id)`. The
+  accepted match's artwork is resolved by one method, `_accepted_artwork`, which the thumbnail path
+  now uses too; thumbnails are unchanged.
+- `engine/tag_write_jobs.py` runs `tag_write_preview`, `tag_write` and `tag_restore`:
+  `preview_or_start`, `start_tag_preview_job`, `start_tag_write_job(preview_id)`,
+  `start_tag_restore_job(job_id=…|track_id=…)`, and the in-memory `TagWritePreviewStore`.
+- Migration 0018 adds `pending` and `restore_of` to `file_writes`, with a partial index on
+  `restore_of`. `FileWrite` carries both and holds the rules between them and `outcome`.
+- The status strip names the jobs "Reading tags", "Writing tags" and "Restoring tags".
+- `test_file_write_boundary.py` is the boundary test cross-cutting fact 2 asks for.
+
+**Where it is visible.** Nowhere a person can start it yet: CLEAN-11 exposes the three routes the
+API table names — `/tags/preview`, `/tags/write` and `/tags/restore` map onto `preview_or_start`,
+`start_tag_write_job` and `start_tag_restore_job` — and CLEAN-13 draws the dialog. The Library
+guide's note that Rekordbox reads new tags only when told to re-read a file comes with that dialog,
+because a guide section for an action nobody can take would mislead. The year fix below is visible
+now, in Sync Tags and the CLI, and the changelog says so.
+
+**What building it settled, and why.**
+
+- **A write writes a preview, named by its id.** The specification's `start(selection, options)`
+  would have computed the write a second time, unseen. Instead a preview is kept by id — the id of
+  the job that computed it above DEC-063's threshold, or one of its own when answered inline — and
+  `start_tag_write_job` names that id, as a refresh apply names its diff. The write takes the
+  preview out of the store, so a double request cannot write twice. At most four previews are kept.
+- **Each file is looked at again before it is written.** A track whose path, file check, effective
+  values for any enabled field, or accepted artwork changed since the preview is skipped as
+  `changed_since_preview`, not written with the old values or the new ones: neither is what a person
+  confirmed. A field the file already holds is not written, and a file holding every value already
+  is `nothing_to_write`.
+- **Values are recorded as the writer touches them, not as text.** A restore has to undo exactly
+  what a write did, so a field's value is the frames or comments the writer replaces, as JSON: every
+  `COMM` frame an ID3 comment write deletes (a player's `iTunNORM` as well as the typed comment),
+  both `KEY` and `INITIALKEY` in FLAC, the ID3v2.4 `TDRC` year. Two values compare equal exactly when
+  a restore would have nothing to do, and a field that was absent is `null`, which a restore
+  removes. The prediction of what the writer leaves is held to the writer by a test for every field
+  in every format, so `tag_writer` keeps doing the forward write.
+- **Recorded before written, pending until confirmed.** 0011's row could not tell a write that
+  happened from one that was recorded and then interrupted, nor say which write a restore undid.
+  So a row is committed with `pending = 1`, the file is written, the file is read back, and each row
+  is confirmed with what the file holds, or marked failed. A restore records rows of its own under
+  its job, `restored` (pending in the same way), or `skipped` with the reason when stale, or
+  `failed`, each naming its write in `restore_of`. A write is restorable until a confirmed restore
+  names it, so a stale or interrupted restore can be retried once the file holds CuePoint's value
+  again.
+- **Restore** takes a job or a track, newest write first, and writes each file once. A file that
+  already holds the recorded old value counts as restored without a write — the crash case. A field
+  holding something that is neither the old nor the new value is skipped and reported with what it
+  holds now (CLEAN-06's rule). Restoring a picture removes that picture, found by its hash, and
+  nothing else. A record whose track has left the library is restored by its job, from its path.
+- **Formats.** MP3, AIFF, FLAC and Ogg Vorbis. WAV is skipped by the rule both existing callers
+  apply. Every other container is skipped as `unsupported_format`: measured on the recorded M4A, the
+  writer's catch-all path "succeeds" by writing atoms named `KEY\x00`, `COMM` and `LABE` that no
+  player reads, which is not a write worth recording.
+- **What is written.** Effective values, so an accepted but unapplied match changes no file.
+  A key is written in the chosen notation — Rekordbox's classic spelling, Camelot or short — from
+  whatever notation it is stored in; a key that is not a key is not written (`key_unrecognized`),
+  because `Open 1m` in a Camelot field would not be Camelot. A BPM is written with up to two
+  decimals (`128`, `124.5`, `124.98`): Sync Tags wrote Beatport's whole-number BPMs, and an override
+  may have two decimals.
+- **Artwork (DEC-076).** Beatport's image is fetched at 1400 pixels — Beatport's full size; a manual
+  smoke fetched the recorded Strobe release's image at 1400 × 1400, 46 KB — through the engine's one
+  gate, decoded by CLEAN-09's guard, and re-encoded as a JPEG no larger than 1400 pixels with no
+  metadata. The preview fetches it to confirm it can be; the write fetches it again, because the
+  cache holds thumbnails only. It is embedded only when the file holds no picture of any kind at the
+  moment of writing, checked by the service after reading the file and again by `embed_front_cover`
+  against the tags it is about to save. A preview stops fetching after twenty failures in a row, as
+  a scan does. Embedding records the picture in `track_artwork`, and removing it records none.
+- **What waits for what.** A preview, a write and a restore refuse to start beside one another, an
+  import, a refresh apply, a file check or an artwork scan — the specification named the refresh and
+  the check; the import rewrites paths and the scan reads the same tags, so they are named too. None
+  of those waits for a tag job: they follow imports on their own, and a write that finds a file
+  changed under it skips it and says so. An inline preview makes the same check against the store.
+- **The job's options are strict.** Sync Tags reads a toggle with `bool()`, so `"false"` turns a
+  field on; for the one job that writes into files that is refused, and only then are the shared
+  defaults applied.
+- **After a write**, the file's size and check time in `track_files` are refreshed; tracks are not.
+
+**Found, and fixed here.**
+
+- **The existing writer never replaced a year.** It set a v2.3 `TYER` frame, but mutagen reads a year
+  as the v2.4 `TDRC` frame and translates between them when it saves, so in a file that already had
+  a date the new year was dropped on save and the old one kept, while the write reported success.
+  Nearly every purchased track carries a date, so "write year" did nothing for most real files in
+  Sync Tags and the CLI. The writer now sets `TDRC` and removes `TYER`, for MP3, AIFF and WAV. A
+  regression test beside the writer's own failed on the unfixed code for all six version and format
+  combinations and passes now.
+- **This document's status line** still said "CLEAN-01 to CLEAN-08 implemented" after CLEAN-09.
+
+**Found, and not changed.**
+
+- **Restore returns tag values, not bytes.** mutagen keeps the padding a tag grew, so a restored file
+  is usually larger than before: 2.7 MB in all across the 500 files below, after a write that added
+  12.1 MB. An MP3 that had no ID3 tag keeps an empty one. Every value reads back identical.
+- **The forward writer saves ID3v2.4**, as it always has, so a v2.3 file becomes v2.4, and mutagen
+  translates its other date frames on the way. Values are unchanged by that translation.
+- **A write interrupted by the engine stopping leaves pending rows.** Nothing reconciles them on
+  start: a restore handles them by looking at the file, and `pending_count` is there for CLEAN-11
+  and CLEAN-13 to show.
+- **The boundary test lists one exception**: `rekordbox.is_writable` writes and deletes a probe file
+  in CuePoint's own output or cache folder for the CLI's preflight check, never user data. The test
+  pins that it writes only that probe.
+
+**Measured**, on 500 real files: 125 each of MP3 (8.4 MB, the recorded tone's frames repeated), AIFF
+(10.5 MB of PCM), FLAC (the recorded tone) and Ogg Vorbis (a built stream). Every other file carried
+another tagger's tags — an MP3's `iTunNORM` comment included — and every third a picture. Every track
+had effective values, some overridden, and an accepted match whose 1400-pixel artwork a stub served.
+
+| Measurement | Result |
+| --- | --- |
+| Preview: read 500 files, fetch 332 images | 4.56 s |
+| Write: 500 files, 3,314 fields and pictures | 13.74 s; 33.3 ms a file median, 44.9 ms p95 |
+| Pictures skipped because the file had one | 168 of 168 |
+| Read back against the preview: 3,000 fields, 500 picture counts | 0 mismatches |
+| Restore: 3,314 recorded writes | 6.13 s; all restored, none stale, none failed |
+| Files whose tags read back identical to before the write | 500 of 500 |
+
+**Mutation testing.** Eighty-one hand-written mutations of this step's code — the service's
+preview, write and restore, the field reader and picture functions, the repository's SQL, the job
+module, the options, the model, the writer's year fix and the artwork service's embedding — were
+each run against their own tests. Ten survived the first run. Seven were gaps, each now closed by a
+test:
+
+- **Beatport's fetch size** was pinned only through its constant, which the tests also used. A test
+  now names the 1400-pixel URL literally — the same lesson as CLEAN-09's.
+- **An image the guard refused was fetched again** on the next preview without any test noticing.
+- **The image fetched at write time not being the previewed artwork** was caught only by the check
+  in front of it, which reads the accepted artwork a moment earlier.
+- **A picture embedded after the tag write had failed** survived because no failing write planned a
+  picture.
+- **A picture removal that removed nothing** was counted as restored.
+- **A restore row recorded as already confirmed** survived because no test crashed during a restore;
+  one now does, and the write stays restorable.
+- **A file with nothing to write being opened anyway** changed no answer except that such a file
+  cannot be reported unreadable; a test now counts what the preview opens.
+
+One more was a gap in CLEAN-09's tests, reached through the method this step shares with it: a scan
+fetching Beatport's images counted an accepted match whose page names no image as fetched, and a
+page that cannot be read as not a failure, without a test failing. Two scan tests now hold both.
+All seventy-eight others fail at least one test. Two are equivalent: removing the `TYER` frame
+beside a year, in `tag_fields` and in the writer, because mutagen turns every `TYER` into `TDRC` when
+it loads a tag, so there is never one left to remove. Both removals stay, so neither function depends
+on how its tags were loaded.
+
+**Complexity**: **L**, as estimated.
 
 ---
 

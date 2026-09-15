@@ -76,6 +76,12 @@ const JOB_VERBS: Record<string, string> = {
   duplicate_scan: "Finding duplicates",
   // CLEAN-09's artwork scan, which follows every whole-library file check.
   artwork_scan: "Reading artwork",
+  // CLEAN-10's tag write, in its three parts. The one job that changes audio
+  // files says so in words of its own, and a preview that only reads them
+  // must not read as the write.
+  tag_write_preview: "Reading tags",
+  tag_write: "Writing tags",
+  tag_restore: "Restoring tags",
 };
 
 /** A short description of what a job is doing, for the strip. */

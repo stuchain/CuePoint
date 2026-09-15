@@ -91,6 +91,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   status chrome off-screen as those are added
 
 ### Fixed
+- Writing tags to files — inKey's Sync Tags and the command line — never
+  changed the year of a file that already had one, which is nearly every
+  purchased track, and still reported success. The year written is now the
+  year the file holds
 - Opening CuePoint for the first time after installing or updating could fail
   to prepare the library if several parts of the app reached for it at once.
   Each asked which schema updates were missing, and the second then repeated an

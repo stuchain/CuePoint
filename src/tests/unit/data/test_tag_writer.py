@@ -170,6 +170,73 @@ class TestWriteKeyCommentYearToFile:
             Path(path).unlink(missing_ok=True)
 
 
+@pytest.mark.unit
+class TestYearReplacesAnExistingDate:
+    """A year written into a file that already held one (found building CLEAN-10).
+
+    What broke: the writer added a v2.3 ``TYER`` frame, but mutagen reads a year
+    as the v2.4 ``TDRC`` frame and translates between the two when it saves. So
+    in a file that already had a date, the new ``TYER`` was dropped beside the
+    existing ``TDRC`` on every save, whichever version was written, and the write
+    still reported success. Nearly every purchased track carries a date, so
+    "write year" silently did nothing for most real files, in inKey's Sync Tags
+    and the CLI alike. Easy to reintroduce: ``TYER`` is the frame the ID3v2.3
+    documentation names for a year.
+    """
+
+    @staticmethod
+    def dated(tmp_path, kind, version):
+        from mutagen.aiff import AIFF
+        from mutagen.id3 import ID3, TDRC, TYER
+        from mutagen.wave import WAVE
+
+        from tests.fixtures.audio_files import audio_copy
+
+        path = audio_copy(tmp_path, kind)
+        frame = (
+            TYER(encoding=0, text=["2001"])
+            if version == 3
+            else TDRC(encoding=0, text=["2001-05-02"])
+        )
+        if kind == "mp3":
+            tags = ID3()
+            tags.add(frame)
+            tags.save(str(path), v2_version=version)
+        else:
+            audio = AIFF(str(path)) if kind == "aiff" else WAVE(str(path))
+            audio.add_tags()
+            audio.tags.add(frame)
+            audio.save(v2_version=version)
+        return path
+
+    @staticmethod
+    def tags_of(path):
+        from mutagen.aiff import AIFF
+        from mutagen.id3 import ID3
+        from mutagen.wave import WAVE
+
+        suffix = path.suffix
+        if suffix == ".mp3":
+            return ID3(str(path))
+        return (AIFF if suffix == ".aiff" else WAVE)(str(path)).tags
+
+    @pytest.mark.parametrize(
+        "kind, version",
+        [("mp3", 3), ("mp3", 4), ("aiff", 3), ("aiff", 4), ("wav", 3), ("wav", 4)],
+    )
+    def test_the_year_written_is_the_year_the_file_holds(self, tmp_path, kind, version):
+        path = self.dated(tmp_path, kind, version)
+
+        status, error = write_key_comment_year_to_file(
+            str(path), None, None, "2019", None, None, None
+        )
+
+        assert (status, error) == (STATUS_OK, None)
+        tags = self.tags_of(path)
+        assert [str(text) for text in tags["TDRC"].text] == ["2019"]
+        assert not tags.getall("TYER")
+
+
 class TestBuildWavListInfoData:
     """Tests for _build_wav_list_info_data (RIFF LIST-INFO for WAV / Rekordbox)."""
 

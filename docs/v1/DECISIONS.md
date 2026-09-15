@@ -1953,6 +1953,39 @@ turns the one destructive action in this phase into a reversible one.
 
 **Decided with**: User · **Date**: 2026-09-13
 
+### Implemented (2026-09-15, CLEAN-10) — preview by id, record before write, restore by hash
+
+Nothing here changes the decision. What building it settled, recorded in full in
+`PHASE7_CLEAN.md` under CLEAN-10:
+
+- **A write writes a preview, by its id.** The preview reads every file in scope and writes none;
+  it is a job above DEC-063's threshold and kept under that job's id, or answered inline with an id
+  of its own. A write names the id, takes the preview out of the store so it is written once, and
+  looks at each file again first: a path, file check, effective value or accepted artwork that
+  changed since is skipped as `changed_since_preview`, never written with either version.
+- **Recorded before written, and pending until confirmed.** Migration 0018 adds `pending` and
+  `restore_of` to `file_writes`. A row is committed pending before the file is touched and
+  confirmed against what the file holds when read back, so a crash can leave a record of a write
+  that may not have happened, never a written file with no record. A restore records rows of its
+  own naming the write each undid; a write is restorable until such a restore is confirmed.
+- **Values are recorded as the writer touches them**, not as text: every `COMM` frame an ID3 comment
+  write deletes, both `KEY` and `INITIALKEY` in FLAC, the v2.4 `TDRC` year. So a restore returns
+  every field to exactly what it held, including fields that were absent. `data/tag_fields.py`
+  reads and restores them; `tag_writer` still does every forward write.
+- **Formats**: MP3, AIFF, FLAC and Ogg Vorbis. WAV is skipped by the existing rule. Every other
+  container is skipped as `unsupported_format`: the writer's catch-all path writes MP4 atoms no
+  player reads, which is not a write worth recording.
+- **Artwork (DEC-076)**: Beatport's 1400-pixel image, fetched at write time through the same gate
+  and guard as a thumbnail, re-encoded as a JPEG no larger than 1400 pixels with no metadata, and
+  embedded only when the file holds no picture of any kind — checked by the service and again by
+  the embedding function against the tags it saves. A restore removes that picture by its hash and
+  nothing else. Off unless asked for.
+- **The one boundary is a test.** `test_file_write_boundary.py` finds the writing functions of
+  `tag_writer.py`, `rekordbox.py` and `tag_fields.py` from their source and fails on any importer
+  beyond the CLI's existing paths, Sync Tags (until CLEAN-14) and the tag write service.
+- **Found and fixed**: the existing writer never replaced a year a file already had — nearly every
+  purchased track — while reporting success, in Sync Tags and the CLI alike.
+
 ---
 
 ## DEC-071 — inKey and Results Retire Into Clean

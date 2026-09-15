@@ -584,9 +584,40 @@ class TestFileWrite:
             self.write(outcome=outcome)
         assert self.write(outcome=outcome, reason="file is read-only").reason
 
+    @pytest.mark.parametrize(
+        "outcome, restore_of", [(WRITE_WRITTEN, None), (WRITE_RESTORED, 3)]
+    )
+    def test_a_write_or_restore_needs_no_reason(self, outcome, restore_of):
+        record = self.write(outcome=outcome, restore_of=restore_of)
+        assert record.outcome == outcome
+
+    def test_a_restore_names_the_write_it_undid_and_only_a_restore_does(self):
+        # CLEAN-10: a restore row points at its write; a write points at nothing.
+        with pytest.raises(ValueError, match="name the write"):
+            self.write(outcome=WRITE_RESTORED)
+        with pytest.raises(ValueError, match="only a restore"):
+            self.write(outcome=WRITE_WRITTEN, restore_of=3)
+        skipped = self.write(outcome=WRITE_SKIPPED, reason="stale", restore_of=3)
+        assert skipped.is_restore and not self.write().is_restore
+
     @pytest.mark.parametrize("outcome", [WRITE_WRITTEN, WRITE_RESTORED])
-    def test_a_write_or_restore_needs_no_reason(self, outcome):
-        assert self.write(outcome=outcome).outcome == outcome
+    def test_a_write_or_a_restore_may_be_pending(self, outcome):
+        record = self.write(
+            outcome=outcome,
+            pending=1,
+            restore_of=(3 if outcome == WRITE_RESTORED else None),
+        )
+        assert record.pending is True
+        assert FileWrite.from_row(record.to_dict()) == record
+
+    @pytest.mark.parametrize("outcome", [WRITE_SKIPPED, WRITE_FAILED])
+    def test_a_skip_or_a_failure_is_never_pending(self, outcome):
+        with pytest.raises(ValueError, match="never pending"):
+            self.write(outcome=outcome, reason="why", pending=True)
+
+    def test_pending_is_a_flag(self):
+        with pytest.raises(ValueError, match="pending"):
+            self.write(pending="yes")
 
     def test_never_read_is_not_read_and_empty(self):
         never = self.write(outcome=WRITE_FAILED, reason="locked", old_value_json=None)

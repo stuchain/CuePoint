@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from cuepoint.data.rekordbox import (
     get_track_locations,
@@ -12,10 +12,9 @@ from cuepoint.data.rekordbox import (
     write_tags_to_paths,
 )
 from cuepoint.models.result import TrackResult
+from cuepoint.services.tag_write_options import normalize_sync_options
 
 _services_bootstrapped = False
-
-_VALID_KEY_FORMATS = ("normal", "camelot", "short")
 
 
 def _ensure_services() -> None:
@@ -38,24 +37,6 @@ def parse_sync_tags_body(raw: bytes) -> Dict[str, Any]:
     if not isinstance(data, dict):
         raise ValueError("JSON body must be an object")
     return data
-
-
-def _normalize_sync_options(raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-    opts = raw if isinstance(raw, dict) else {}
-    key_format = str(opts.get("key_format") or "normal").strip().lower()
-    if key_format not in _VALID_KEY_FORMATS:
-        key_format = "normal"
-    comment_text = str(opts.get("comment_text") or "ok").strip() or "ok"
-    return {
-        "key_format": key_format,
-        "write_key": bool(opts.get("write_key", True)),
-        "write_year": bool(opts.get("write_year", True)),
-        "write_bpm": bool(opts.get("write_bpm", False)),
-        "write_label": bool(opts.get("write_label", True)),
-        "write_genre": bool(opts.get("write_genre", False)),
-        "write_comment": bool(opts.get("write_comment", True)),
-        "comment_text": comment_text,
-    }
 
 
 def _dict_to_track_result(item: Dict[str, Any]) -> TrackResult:
@@ -110,7 +91,7 @@ def run_sync_tags(body: Dict[str, Any]) -> Dict[str, Any]:
     """Write selected tags to audio files (M3U paths or Rekordbox XML locations)."""
     _ensure_services()
 
-    sync_options = _normalize_sync_options(body.get("sync_options"))
+    sync_options = normalize_sync_options(body.get("sync_options"))
     source = str(body.get("source") or "collection").strip().lower()
     mode = str(body.get("mode") or "single").strip().lower()
 

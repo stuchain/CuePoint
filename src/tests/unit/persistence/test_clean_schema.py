@@ -148,6 +148,8 @@ FLAGS = (
     ("match_candidates", "guard_ok"),
     ("match_candidates", "is_winner"),
     ("match_job_tracks", "done"),
+    # Added by m0018 (CLEAN-10).
+    ("file_writes", "pending"),
 )
 
 MODEL_TABLES = (

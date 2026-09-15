@@ -46,6 +46,15 @@ if TYPE_CHECKING:
     from cuepoint.models.artwork import TrackArtwork
     from cuepoint.models.file_status import TrackFileStatus
     from cuepoint.persistence.artwork_repository import EmbeddedRecord
+    from cuepoint.models.file_write import FileWrite
+    from cuepoint.persistence.file_write_repository import TagTarget
+    from cuepoint.services.artwork_service import EmbeddableArtwork
+    from cuepoint.services.tag_write_options import TagWriteOptions
+    from cuepoint.services.tag_write_service import (
+        TagRestoreResult,
+        TagWritePreview,
+        TagWriteResult,
+    )
     from cuepoint.models.library_source import LibrarySource
     from cuepoint.models.references import ReferenceSummary
     from cuepoint.models.track_metadata import TrackMetadata
@@ -1347,6 +1356,13 @@ class IFileStatusRepository(ABC):
         ...
 
     @abstractmethod
+    def refresh_size(
+        self, track_id: int, checked_path: str, size_bytes: int, checked_at: str
+    ) -> bool:
+        """Record a present file's size after CuePoint wrote to it (CLEAN-10)."""
+        ...
+
+    @abstractmethod
     def get(self, track_id: int) -> Optional["TrackFileStatus"]:
         """Return a track's stored check, or None."""
         ...
@@ -1475,6 +1491,125 @@ class IArtworkService(ABC):
         should_cancel: Optional[Callable[[], bool]] = None,
     ) -> "ArtworkScanResult":
         """Read each present file's picture, and optionally fetch Beatport's."""
+        ...
+
+    @abstractmethod
+    def beatport_artwork_source(self, track_id: int) -> Tuple[str, Optional[str]]:
+        """``(status, artwork URL)`` of a track's accepted match, fetching no image."""
+        ...
+
+    @abstractmethod
+    def embeddable_artwork(self, track_id: int) -> "EmbeddableArtwork":
+        """Beatport's image for a track, fetched, guarded and re-encoded to embed."""
+        ...
+
+
+class IFileWriteRepository(ABC):
+    """Interface for what a tag write reads and records (CLEAN-10, DEC-070).
+
+    Reads each track's effective values and file check, and records every field
+    written or restored before the file is touched. Never touches a file.
+    """
+
+    @abstractmethod
+    def targets(self, track_ids: Iterable[int]) -> List["TagTarget"]:
+        """Return the tracks that exist, with their effective values, in order."""
+        ...
+
+    @abstractmethod
+    def get(self, write_id: int) -> Optional["FileWrite"]:
+        """Return one row, or None."""
+        ...
+
+    @abstractmethod
+    def for_job(self, job_id: str) -> List["FileWrite"]:
+        """Every row a job recorded, in order."""
+        ...
+
+    @abstractmethod
+    def for_track(self, track_id: int) -> List["FileWrite"]:
+        """Every row recorded for a track, in order."""
+        ...
+
+    @abstractmethod
+    def restorable(
+        self, *, job_id: Optional[str] = None, track_id: Optional[int] = None
+    ) -> List["FileWrite"]:
+        """The writes of a job or a track not yet restored, newest first."""
+        ...
+
+    @abstractmethod
+    def record(self, rows: Sequence["FileWrite"]) -> List[int]:
+        """Insert rows and return their ids, in order."""
+        ...
+
+    @abstractmethod
+    def confirm(self, write_id: int, new_value_json: Optional[str]) -> bool:
+        """Mark a pending row done, with the value read back."""
+        ...
+
+    @abstractmethod
+    def fail(self, write_id: int, reason: str) -> bool:
+        """Mark a pending row as not having happened."""
+        ...
+
+    @abstractmethod
+    def pending_count(self) -> int:
+        """How many rows may not have happened."""
+        ...
+
+
+class ITagWriteService(ABC):
+    """Interface for writing tags to files, with a record (CLEAN-10, DEC-070)."""
+
+    @abstractmethod
+    def resolve(self, selection: "BatchSelection") -> List[int]:
+        """The library tracks a selection names, refusing none."""
+        ...
+
+    @abstractmethod
+    def preview(
+        self,
+        track_ids: Sequence[int],
+        options: "TagWriteOptions",
+        *,
+        preview_id: str,
+        on_progress: Optional[Callable[[int, int], None]] = None,
+        should_cancel: Optional[Callable[[], bool]] = None,
+    ) -> "TagWritePreview":
+        """Say what a write would change, reading every file and writing none."""
+        ...
+
+    @abstractmethod
+    def write(
+        self,
+        preview: "TagWritePreview",
+        job_id: str,
+        *,
+        on_progress: Optional[Callable[[int, int], None]] = None,
+        should_cancel: Optional[Callable[[], bool]] = None,
+    ) -> "TagWriteResult":
+        """Write what a preview planned, recording each field before writing it."""
+        ...
+
+    @abstractmethod
+    def restorable_count(
+        self, *, job_id: Optional[str] = None, track_id: Optional[int] = None
+    ) -> int:
+        """How many recorded writes a restore would undo."""
+        ...
+
+    @abstractmethod
+    def restore(
+        self,
+        restore_job_id: str,
+        *,
+        job_id: Optional[str] = None,
+        track_id: Optional[int] = None,
+        on_progress: Optional[Callable[[int, int], None]] = None,
+        should_cancel: Optional[Callable[[], bool]] = None,
+    ) -> "TagRestoreResult":
+        """Write recorded old values back, newest write first."""
         ...
 
 

@@ -38,6 +38,8 @@ from cuepoint.services.interfaces import (
     IExportService,
     IArtworkRepository,
     IArtworkService,
+    IFileWriteRepository,
+    ITagWriteService,
     IDuplicateRepository,
     IDuplicateService,
     IFileCheckService,
@@ -76,6 +78,8 @@ from cuepoint.services.privacy_service import PrivacyService
 from cuepoint.persistence.activity_repository import ActivityRepository
 from cuepoint.persistence.authored_data_repository import AuthoredDataRepository
 from cuepoint.persistence.artwork_repository import ArtworkRepository
+from cuepoint.persistence.file_write_repository import FileWriteRepository
+from cuepoint.services.tag_write_service import TagWriteService
 from cuepoint.persistence.duplicate_repository import DuplicateRepository
 from cuepoint.persistence.file_status_repository import FileStatusRepository
 from cuepoint.persistence.job_repository import JobRepository
@@ -463,6 +467,27 @@ def bootstrap_services() -> None:
         )
 
     container.register_factory(IArtworkService, create_artwork_service)
+
+    # Writing tags to files, with a record (CLEAN-10, DEC-070). The one service
+    # that writes audio files; the boundary test holds it to that.
+    def create_file_write_repository() -> IFileWriteRepository:
+        container.resolve(IMigrationRunner).migrate()
+        return FileWriteRepository(database_service=container.resolve(IDatabaseService))
+
+    container.register_factory(IFileWriteRepository, create_file_write_repository)
+
+    def create_tag_write_service() -> ITagWriteService:
+        return TagWriteService(
+            file_write_repository=container.resolve(IFileWriteRepository),
+            file_status_repository=container.resolve(IFileStatusRepository),
+            artwork_repository=container.resolve(IArtworkRepository),
+            artwork_service=container.resolve(IArtworkService),
+            batch_service=container.resolve(IBatchService),
+            activity_service=container.resolve(IActivityService),
+            database_service=container.resolve(IDatabaseService),
+        )
+
+    container.register_factory(ITagWriteService, create_tag_write_service)
 
     # Matching library tracks as a resumable job (CLEAN-03, DEC-065). It takes
     # the batch service for one thing, resolving a selection, so a match and a

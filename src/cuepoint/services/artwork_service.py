@@ -51,7 +51,7 @@ import time
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Sequence, TypeVar
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, TypeVar
 
 from cuepoint.data.artwork import EmbeddedRead, inspect_embedded
 from cuepoint.data.artwork_image import (
@@ -153,6 +153,20 @@ _READY = "ready"
 _NO_IMAGE = "none"
 _REFUSED = "refused"
 _FAILED = "failed"
+
+#: The same answers, for callers outside this module (CLEAN-10).
+ARTWORK_READY = _READY
+ARTWORK_NONE = _NO_IMAGE
+ARTWORK_REFUSED = _REFUSED
+ARTWORK_FAILED = _FAILED
+
+#: The side of the Beatport image fetched to embed into a file: Beatport's
+#: full-size artwork. The image is re-encoded no larger than
+#: :data:`EMBED_MAX_DIMENSION`, so what a file receives is bounded whatever the
+#: server sends — a 1400-pixel JPEG is a few hundred kilobytes beside a track of
+#: ten megabytes or more, and is the size Beatport's own downloads carry.
+EMBED_FETCH_SIZE = 1400
+EMBED_MAX_DIMENSION = 1400
 
 
 def size_pixels(size: str) -> int:
@@ -287,6 +301,30 @@ class FetchGate:
 class _BeatportLook:
     status: str
     images: Dict[int, bytes] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class EmbeddableArtwork:
+    """Beatport's image for a track, ready to embed, or why it is not.
+
+    Attributes:
+        status: :data:`ARTWORK_READY`, :data:`ARTWORK_NONE`,
+            :data:`ARTWORK_REFUSED` or :data:`ARTWORK_FAILED`.
+        source_url: The accepted match's artwork URL, when it has one.
+        jpeg: The re-encoded image, when ready.
+        width, height: Its size, when ready.
+    """
+
+    status: str
+    source_url: Optional[str] = None
+    jpeg: Optional[bytes] = None
+    width: int = 0
+    height: int = 0
+
+    @property
+    def ready(self) -> bool:
+        """True when there is an image to embed."""
+        return self.status == _READY and self.jpeg is not None
 
 
 @dataclass(frozen=True)
@@ -519,18 +557,19 @@ class ArtworkService(IArtworkService):
             return None
         return made[pixels]
 
-    def _beatport(
-        self, track_id: int, record: Optional[TrackArtwork], pixels: Optional[int]
-    ) -> _BeatportLook:
-        """Look at a track's Beatport image, fetching it if it is not cached.
+    def _accepted_artwork(
+        self, track_id: int, record: Optional[TrackArtwork]
+    ) -> Tuple[str, Optional[str], Optional[str]]:
+        """``(status, page, artwork URL)`` for a track's accepted match.
 
-        ``pixels`` is the size wanted; None wants every size, as a scan does.
+        Reads the candidate's own URL, else what its page was found to name,
+        else reads the page once and records the answer. Fetches no image.
         """
-        from cuepoint.data.beatport import artwork_url_at_size, is_beatport_artwork_url
+        from cuepoint.data.beatport import is_beatport_artwork_url
 
         accepted = self._artwork.accepted_candidate(track_id)
         if accepted is None:
-            return _BeatportLook(_NO_IMAGE)
+            return _NO_IMAGE, None, None
         page_url, candidate_artwork = accepted
         if candidate_artwork:
             artwork = candidate_artwork
@@ -545,13 +584,27 @@ class ArtworkService(IArtworkService):
                 f"page:{page_url}", lambda: self._lookup_page(page_url)
             )
             if looked is None:
-                return _BeatportLook(_FAILED)
+                return _FAILED, page_url, None
             self._write_quietly(
                 lambda: self._artwork.record_beatport(track_id, page_url, looked)
             )
             artwork = looked
         if not is_beatport_artwork_url(artwork):
-            return _BeatportLook(_NO_IMAGE)
+            return _NO_IMAGE, page_url, None
+        return _READY, page_url, artwork
+
+    def _beatport(
+        self, track_id: int, record: Optional[TrackArtwork], pixels: Optional[int]
+    ) -> _BeatportLook:
+        """Look at a track's Beatport image, fetching it if it is not cached.
+
+        ``pixels`` is the size wanted; None wants every size, as a scan does.
+        """
+        from cuepoint.data.beatport import artwork_url_at_size
+
+        status, page_url, artwork = self._accepted_artwork(track_id, record)
+        if status != _READY or page_url is None or artwork is None:
+            return _BeatportLook(status)
         if (
             record is not None
             and record.beatport_refused is not None
@@ -589,6 +642,66 @@ class ArtworkService(IArtworkService):
             )
             return _BeatportLook(_REFUSED)
         return _BeatportLook(_READY, made)
+
+    # ---------------------------------------------------------------- embed
+
+    def beatport_artwork_source(self, track_id: int) -> Tuple[str, Optional[str]]:
+        """``(status, artwork URL)`` of a track's accepted match, fetching no image.
+
+        ``ready`` with the URL; ``none`` when there is no accepted match or its
+        page names no Beatport image; ``failed`` when the page could not be read.
+        """
+        status, _page, artwork = self._accepted_artwork(
+            int(track_id), self._artwork.get(int(track_id))
+        )
+        return status, artwork
+
+    def embeddable_artwork(self, track_id: int) -> EmbeddableArtwork:
+        """Beatport's image for a track, as a clean, bounded JPEG to embed (CLEAN-10).
+
+        Fetched now — the cache holds thumbnails only — at
+        :data:`EMBED_FETCH_SIZE`, through the same gate and the same guard as a
+        thumbnail, and re-encoded no larger than :data:`EMBED_MAX_DIMENSION` with
+        no metadata. What goes into a user's file is never the bytes a server
+        returned (DEC-076). Never raises for an image; a refusal is recorded as
+        a thumbnail's is.
+        """
+        from cuepoint.data.beatport import artwork_url_at_size
+
+        record = self._artwork.get(int(track_id))
+        status, page_url, artwork = self._accepted_artwork(int(track_id), record)
+        if status != _READY or page_url is None or artwork is None:
+            return EmbeddableArtwork(status)
+        if (
+            record is not None
+            and record.beatport_refused is not None
+            and record.beatport_url == artwork
+        ):
+            return EmbeddableArtwork(_REFUSED, artwork)
+        source = artwork_url_at_size(artwork, EMBED_FETCH_SIZE)
+        data = self._gate.run(f"image:{source}", lambda: self._fetch_image(source))
+        if data is None:
+            return EmbeddableArtwork(_FAILED, artwork)
+        try:
+            image = decode_image(data)
+        except ArtworkRefused as refused:
+            reason, image_url = refused.reason, artwork
+            _logger.info(
+                "[artwork] track %s: Beatport's image is unreadable (%s)",
+                track_id,
+                reason,
+            )
+            self._write_quietly(
+                lambda: self._artwork.record_beatport(
+                    int(track_id), page_url, image_url, refused=reason
+                )
+            )
+            return EmbeddableArtwork(_REFUSED, artwork)
+        image.thumbnail((EMBED_MAX_DIMENSION, EMBED_MAX_DIMENSION))
+        width, height = image.size
+        return EmbeddableArtwork(
+            _READY, artwork, encode_jpeg(image), int(width), int(height)
+        )
 
     def _store_thumbnails(self, key: str, data: bytes) -> Dict[int, bytes]:
         """Decode once through the guard and cache every named size."""
@@ -793,9 +906,16 @@ def _report(
 
 
 __all__: Sequence[str] = (
+    "ARTWORK_FAILED",
+    "ARTWORK_NONE",
+    "ARTWORK_READY",
+    "ARTWORK_REFUSED",
     "ArtworkScanResult",
     "ArtworkService",
     "BEATPORT_FETCH_SIZE",
+    "EMBED_FETCH_SIZE",
+    "EMBED_MAX_DIMENSION",
+    "EmbeddableArtwork",
     "BEATPORT_FETCH_WORKERS",
     "EVENT_ARTWORK_SCANNED",
     "FetchGate",

@@ -88,6 +88,11 @@ _ALLOWED = {
     # display records what it learned in a transaction of its own. The SQL is
     # the artwork repository's.
     "services/artwork_service.py",
+    # CLEAN-10's tag write records every field before it touches a file and
+    # confirms it after, each in a transaction of its own, so a crash can never
+    # leave a written file with no record. The SQL is the file write, file
+    # status and artwork repositories'.
+    "services/tag_write_service.py",
     # The one retry loop for a write that finds the database busy: it opens
     # the transaction it retries, and runs no SQL of its own.
     "services/busy_wait.py",

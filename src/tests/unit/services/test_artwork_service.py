@@ -902,6 +902,33 @@ class TestFetchingOverAScope:
 
         assert web.fetched == []
 
+    def test_a_page_naming_no_image_is_neither_fetched_nor_refused(
+        self, service, tracks, db, activity, web
+    ):
+        # Found by CLEAN-10's mutation run: nothing held a scan's counts for an
+        # accepted match whose page was looked up and named no image.
+        [track] = add(tracks, db, ["/m/a.mp3"])
+        matched(db, tracks, activity, track, "1", None)
+        web.pages[page_of("1")] = ""
+
+        result = service.scan([track], fetch_beatport=True)
+
+        assert (result.fetched, result.refused, result.unreachable) == (0, 0, False)
+        assert web.fetched == []
+
+    def test_pages_that_cannot_be_read_count_towards_unreachable(
+        self, service, tracks, db, activity, web
+    ):
+        count = UNREACHABLE_AFTER_FAILURES + 25
+        ids = add(tracks, db, [f"/m/{n}.mp3" for n in range(count)])
+        for number, track in enumerate(ids):
+            matched(db, tracks, activity, track, str(number + 1), None)
+
+        result = service.scan(ids, fetch_beatport=True)
+
+        assert result.unreachable and result.fetched == 0
+        assert web.fetched == []
+
     def test_offline_it_stops_after_failures_in_a_row(
         self, service, tracks, db, activity, web
     ):
