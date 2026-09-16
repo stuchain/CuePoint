@@ -31,6 +31,7 @@ import { useRestorePlayerAudio } from "./components/player/playerAudioState";
 import { useRestorePlayerOrder } from "./components/player/playerOrderState";
 import { MatchResultsProvider } from "./context/MatchResultsContext";
 import {
+  CleanScreen,
   InCrateMainScreen,
   InKeyMainScreen,
   LibraryScreen,
@@ -38,6 +39,7 @@ import {
   SettingsExportScreen,
   ToolSelectionScreen,
 } from "./screens";
+import { libraryOpening } from "./screens/library/libraryLink";
 import { ScaleProvider } from "./tokens/ScaleContext";
 import { ThemeProvider } from "./tokens/ThemeContext";
 import { shouldShowOnboarding } from "./components/OnboardingDialog";
@@ -111,9 +113,16 @@ function AppShell() {
       case "tools":
         return <ToolSelectionScreen />;
       case "library":
+        // A Health count opens the Library on its rules (CLEAN-12, DEC-075);
+        // they arrive in the location's state and are handed over as a prop.
         return (
-          <LibraryScreen onOpenRekordboxInstructions={() => setRekordboxOpen(true)} />
+          <LibraryScreen
+            openWith={libraryOpening(location)}
+            onOpenRekordboxInstructions={() => setRekordboxOpen(true)}
+          />
         );
+      case "clean":
+        return <CleanScreen />;
       // DEC-062: Collections is a way into the Library page, not a second
       // browser. Same screen, aimed at the tree — and `destinationToRemember`
       // stores `library` for it, so the two entries never fight over which one

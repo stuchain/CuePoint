@@ -1022,6 +1022,11 @@ class ITrackRepository(ABC):
         """Return an exported review row per track, in the order given (CLEAN-11)."""
         ...
 
+    @abstractmethod
+    def get_many(self, track_ids: Iterable[int]) -> List["LibraryTrack"]:
+        """Return the tracks these ids name, once each, in the order given (CLEAN-12)."""
+        ...
+
 
 class ITrackMetadataRepository(ABC):
     """Interface for CuePoint's own per-track metadata (DEC-057).
@@ -1413,6 +1418,11 @@ class IFileStatusRepository(ABC):
         """Return a track's stored check, or None."""
         ...
 
+    @abstractmethod
+    def unavailable_paths(self) -> List[str]:
+        """Return the current paths the last check found on an unavailable root (CLEAN-12)."""
+        ...
+
 
 class IFileCheckService(ABC):
     """Interface for checking whether tracks' files are there (CLEAN-07, DEC-073).
@@ -1728,9 +1738,21 @@ class IDuplicateRepository(ABC):
 
     @abstractmethod
     def groups(
-        self, signal: Optional[str] = None, *, include_dismissed: bool = False
+        self,
+        signal: Optional[str] = None,
+        *,
+        include_dismissed: bool = False,
+        limit: Optional[int] = None,
+        offset: int = 0,
     ) -> List["DuplicateGroupMembers"]:
-        """Groups of two or more, dismissed ones only when asked."""
+        """Groups of two or more, dismissed ones only when asked, paged in SQL."""
+        ...
+
+    @abstractmethod
+    def count_groups(
+        self, signal: Optional[str] = None, *, include_dismissed: bool = False
+    ) -> int:
+        """How many groups :meth:`groups` would answer without a page (CLEAN-12)."""
         ...
 
     @abstractmethod
@@ -1763,9 +1785,21 @@ class IDuplicateService(ABC):
 
     @abstractmethod
     def groups(
-        self, signal: Optional[str] = None, *, include_dismissed: bool = False
+        self,
+        signal: Optional[str] = None,
+        *,
+        include_dismissed: bool = False,
+        limit: Optional[int] = None,
+        offset: int = 0,
     ) -> List["DuplicateGroupMembers"]:
-        """The stored groups of two or more."""
+        """The stored groups of two or more, a page at a time when asked."""
+        ...
+
+    @abstractmethod
+    def count_groups(
+        self, signal: Optional[str] = None, *, include_dismissed: bool = False
+    ) -> int:
+        """How many groups :meth:`groups` would answer without a page (CLEAN-12)."""
         ...
 
     @abstractmethod

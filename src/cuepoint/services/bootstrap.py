@@ -402,8 +402,14 @@ def bootstrap_services() -> None:
 
     # Library Health (CLEAN-11, DEC-075): counts of rule sets, answered by the
     # count the Library table shows, so a number and its click cannot disagree.
+    # When each detection last ran is the activity feed's (CLEAN-12), so Health
+    # and the Activity panel say the same thing.
     def create_health_service() -> IHealthService:
-        return HealthService(track_repository=container.resolve(ITrackRepository))
+        return HealthService(
+            track_repository=container.resolve(ITrackRepository),
+            activity_repository=container.resolve(IActivityRepository),
+            file_status_repository=container.resolve(IFileStatusRepository),
+        )
 
     container.register_factory(IHealthService, create_health_service)
 

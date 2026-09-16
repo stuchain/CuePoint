@@ -791,4 +791,63 @@ describe("desktop contract", () => {
       expect(fields(bridgeTypes)).toEqual(fields(engineClient));
     });
   });
+
+  describe("the Clean page (CLEAN-12)", () => {
+    // One method added and four answers widened. The widening is where a
+    // silent gap would be: a field the engine sends and one side never types
+    // is a comparison mark, a member list or a last-run time the page cannot
+    // draw, and nothing else would notice.
+    const clientMethod = (name: string) => {
+      const start = engineClient.indexOf(`async ${name}(`);
+      const next = engineClient.indexOf("\n  async ", start + 1);
+      return engineClient.slice(start, next === -1 ? undefined : next);
+    };
+
+    it("carries getTrackFolder through every file", () => {
+      expect(invokedChannels(preload)).toContain("engine:getTrackFolder");
+      expect(handledChannels(main)).toContain("engine:getTrackFolder");
+      expect(supervisorMethodsDeclared(supervisor)).toContain("getTrackFolder");
+      expect(engineClient).toContain("async getTrackFolder(");
+      expect(bridgeTypes).toContain("getTrackFolder?:");
+    });
+
+    it("asks for a folder by track id with a GET, never by path", () => {
+      // A reveal that took a path would be filesystem access handed to the
+      // renderer; one that names a library track reveals only what the
+      // library already points at.
+      const body = clientMethod("getTrackFolder");
+      expect(body).toContain("/folder`");
+      expect(body).toContain("getJson");
+      expect(body).not.toContain("postJson");
+      expect(bridgeTypes).toContain("getTrackFolder?: (params: { trackId: number })");
+    });
+
+    it("pages the duplicate listing", () => {
+      const body = clientMethod("getDuplicateGroups");
+      expect(body).toContain('"limit"');
+      expect(body).toContain('"offset"');
+    });
+
+    it.each([
+      "TrackFolder",
+      "ComparedTrack",
+      "CandidateDifferences",
+      "MatchCandidate",
+      "TrackMatches",
+      "ListedDuplicateGroup",
+      "DuplicateGroupList",
+      "HealthDetection",
+      "UnavailableRoot",
+      "LibraryHealth",
+    ])("keeps the engine and the renderer agreeing about %s", (shape) => {
+      const fields = (source: string) => {
+        const start = source.indexOf(`export interface ${shape} `);
+        const body = source.slice(start, source.indexOf("\n}", start));
+        return [...body.matchAll(/^ {2}([a-z_]+)\??:/gm)].map((match) => match[1]!).sort();
+      };
+
+      expect(fields(bridgeTypes).length).toBeGreaterThan(0);
+      expect(fields(bridgeTypes)).toEqual(fields(engineClient));
+    });
+  });
 });

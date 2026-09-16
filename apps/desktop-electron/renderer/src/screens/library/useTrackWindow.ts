@@ -74,6 +74,20 @@ export interface TrackWindow {
   reload: () => void;
   /** How many rows are held in memory, for tests and diagnostics. */
   loadedRows: number;
+  /**
+   * Which question the rows answer: changes with the query and with every
+   * reload (CLEAN-12).
+   */
+  identity: string;
+  /**
+   * True once a response to `identity` has landed.
+   *
+   * What a caller waits for after `reload` when it means to act on the rows
+   * the new answer holds: until then, the rows on screen are the old answer's.
+   * The review queue selects the next track this way after a decision takes
+   * one out of it.
+   */
+  answered: boolean;
 }
 
 function pageOf(index: number): number {
@@ -128,6 +142,7 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
   const [error, setError] = useState<string | null>(null);
   const [libraryEmpty, setLibraryEmpty] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [answeredIdentity, setAnsweredIdentity] = useState<string | null>(null);
 
   // What is being fetched, and what is worth keeping. Refs rather than state:
   // changing them must not re-render, and the effect that reads them runs
@@ -210,6 +225,7 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
             setTotal(response.total);
             setLibraryEmpty(response.library_empty);
             setLoaded(true);
+            setAnsweredIdentity(askedFor);
             setError(null);
             setStatus("ready");
             setPages((previous) => {
@@ -298,5 +314,7 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
     retry,
     reload,
     loadedRows,
+    identity,
+    answered: answeredIdentity === identity,
   };
 }

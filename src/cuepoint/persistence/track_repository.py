@@ -622,6 +622,24 @@ class TrackRepository(ITrackRepository):
         camelot = int(row["camelot"])
         return camelot, int(row["keyed"]) - camelot
 
+    def get_many(self, track_ids: Iterable[int]) -> List[LibraryTrack]:
+        """Return the tracks these ids name, once each, in the order given.
+
+        An id that names no track is left out rather than raised: a group or a
+        page read a moment ago can name a track a refresh has since removed.
+        Chunked, so a long list stays under SQLite's parameter limit.
+        """
+        wanted = unique_ids(track_ids)
+        found: Dict[int, LibraryTrack] = {}
+        connection = self._db.connect()
+        for chunk in chunked(wanted, CHUNK_SIZE):
+            placeholders = ", ".join("?" for _ in chunk)
+            for row in connection.execute(
+                f"{_SELECT} WHERE id IN ({placeholders})", chunk
+            ):
+                found[int(row["id"])] = LibraryTrack.from_row(row)
+        return [found[track_id] for track_id in wanted if track_id in found]
+
     def clean_states(self, track_ids: Iterable[int]) -> Dict[int, TrackCleanState]:
         """Return what each existing track's row says about Clean (CLEAN-11).
 

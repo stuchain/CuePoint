@@ -11,8 +11,9 @@
  *
  * It is extracted from `ResultsTable`, not a refactor of it: virtualization,
  * the sticky header, the resize handles and the themed scrollbar are the parts
- * that have worked for a year and are copied deliberately. The results screen
- * keeps using the original until Phase 7 (DEC-041).
+ * that have worked for a year and are copied deliberately. Match review runs
+ * on this table since CLEAN-12; the results screen keeps the original until
+ * CLEAN-14 retires it with inKey (DEC-041).
  *
  * **A row that has not arrived is still a row.** `getRow` returning undefined
  * renders a placeholder of exactly the same height. If height depended on
@@ -113,6 +114,15 @@ export interface TrackTableProps<Row> {
   activeIndex?: number | null;
 
   /**
+   * A row to keep in view whenever it changes (CLEAN-12).
+   *
+   * The keyboard's cursor, for a caller whose keys move through the rows: a
+   * reviewer pressing Down must not walk off the bottom of the table. The
+   * table only scrolls; which row is the cursor stays the caller's.
+   */
+  scrollToIndex?: number | null;
+
+  /**
    * A row's identity. Defaults to its index, which is only right for a source
    * that never re-windows; the library table passes the track id, because with
    * windowed data an index means nothing once the window moves.
@@ -186,6 +196,7 @@ export function TrackTable<Row>({
   acceptsRowDrop,
   onRowDrop,
   activeIndex = null,
+  scrollToIndex = null,
   getRowKey,
   emptyState,
   overscan = 10,
@@ -250,6 +261,13 @@ export function TrackTable<Row>({
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
     virtualizer.scrollToOffset(0);
   }, [resetKey, virtualizer]);
+
+  useEffect(() => {
+    if (scrollToIndex == null || scrollToIndex < 0 || scrollToIndex >= source.total) return;
+    // "auto": nothing moves while the row is already on screen, so walking
+    // through a visible page does not jolt the rows under the reader.
+    virtualizer.scrollToIndex(scrollToIndex, { align: "auto" });
+  }, [scrollToIndex, source.total, virtualizer]);
 
   const virtualRows = virtualizer.getVirtualItems();
   const firstIndex = virtualRows[0]?.index ?? 0;

@@ -29,6 +29,7 @@ import { InspectorSlotProvider, useInspectorContent } from "../../components/she
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import type {
   CollectionNode,
+  FilterRuleSet,
   LibraryFilterVocabulary,
   LibraryPlaylistNode,
   LibrarySearchResponse,
@@ -479,7 +480,11 @@ function install(overrides: Partial<Bridge> = {}) {
 }
 
 function renderScreen(
-  props: { onOpenRekordboxInstructions?: () => void; focus?: "collections" } = {},
+  props: {
+    onOpenRekordboxInstructions?: () => void;
+    focus?: "collections";
+    openWith?: { rules: FilterRuleSet; token: string } | null;
+  } = {},
 ) {
   return render(
     <ScaleProvider>
@@ -2945,5 +2950,60 @@ describe("the table's empty state (ORG-13)", () => {
 
     expect(await screen.findByText(/Drop tracks onto it/)).toBeInTheDocument();
     expect(screen.queryByText(/no longer in your Rekordbox export/)).not.toBeInTheDocument();
+  });
+});
+
+describe("opened on a Health count's rules (CLEAN-12)", () => {
+  const RULES: FilterRuleSet = {
+    match: "all",
+    rules: [{ field: "genre", operator: "is", value: "Techno" }],
+  };
+
+  beforeEach(() => {
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+  });
+
+  it("asks the whole library for exactly those rules", async () => {
+    renderScreen({ openWith: { rules: RULES, token: "nav-1" } });
+    await tableReady();
+    await waitFor(() => expect(lastBrowse()).toMatchObject({ filters: RULES, playlistId: null }));
+    expect(lastBrowse().scope).toBeUndefined();
+  });
+
+  it("shows the rules in the bar, where they can be read and changed", async () => {
+    renderScreen({ openWith: { rules: RULES, token: "nav-1" } });
+    await tableReady();
+    expect(await screen.findByText(/Genre is Techno/)).toBeInTheDocument();
+  });
+
+  it("applies a navigation once, and the next one again", async () => {
+    const { rerender } = renderScreen({ openWith: { rules: RULES, token: "nav-1" } });
+    await tableReady();
+    await waitFor(() => expect(lastBrowse()).toMatchObject({ filters: RULES }));
+
+    // The user narrows the view; a re-render of the same navigation keeps it.
+    const search = screen.getByLabelText("Search");
+    fireEvent.change(search, { target: { value: "acid" } });
+    await waitFor(() => expect(lastBrowse()).toMatchObject({ q: "acid" }));
+    const reopen = (token: string) =>
+      rerender(
+        <ScaleProvider>
+          <ToastProvider>
+            <LibraryScreen openWith={{ rules: RULES, token }} />
+          </ToastProvider>
+        </ScaleProvider>,
+      );
+    reopen("nav-1");
+    expect(lastBrowse()).toMatchObject({ q: "acid" });
+
+    // Clicking the count again is a new navigation, and opens it again.
+    reopen("nav-2");
+    await waitFor(() => expect(lastBrowse()).toMatchObject({ q: undefined, filters: RULES }));
+  });
+
+  it("opens as it always did without any", async () => {
+    renderScreen({ openWith: null });
+    await tableReady();
+    expect(lastBrowse().filters).toBeNull();
   });
 });

@@ -300,4 +300,31 @@ test.describe("The Library page (LIBRARY-11)", () => {
       await app.close();
     }
   });
+
+  test("fills a content region wider than the reading width", async () => {
+    // Found in CLEAN-12: App.css caps `.app-main .screen` at 1200px and loads
+    // after library.css, so the browser's own "the table wants the whole
+    // region" lost on any wide display. Zooming out gives the renderer a
+    // viewport wider than this machine's screen allows a window to be.
+    const app = await launch(userDataDir, cuepointHome);
+    try {
+      const window = await ready(app);
+      await importCollection(window, writeExport(workspace, [0, 1, 2]));
+      await app.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows()[0]!.webContents.setZoomFactor(0.4),
+      );
+      await openLibrary(window);
+      await window.getByRole("table", { name: "Library tracks" }).waitFor();
+
+      const widths = await window.evaluate(() => ({
+        main: document.querySelector(".app-main")!.getBoundingClientRect().width,
+        page: document.querySelector(".library-screen--browser")!.getBoundingClientRect().width,
+      }));
+      expect(widths.main).toBeGreaterThan(1300);
+      expect(widths.page).toBeGreaterThan(1250);
+      expect(widths.page).toBeGreaterThanOrEqual(widths.main - 2);
+    } finally {
+      await app.close();
+    }
+  });
 });

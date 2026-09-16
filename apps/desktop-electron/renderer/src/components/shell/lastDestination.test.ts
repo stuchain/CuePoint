@@ -22,14 +22,14 @@ import { HOME_DESTINATION_ID, NAV_DESTINATIONS } from "./navRegistry";
  * The real registry now declares not-yet-built destinations (DEC-020), so the
  * disabled cases below run against real data rather than a fixture.
  *
- * Clean, not Collections: ORG-13 enabled Collections, exactly as LIBRARY-11
- * enabled Library before it, and a test whose "disabled" example is enabled
- * proves nothing while still passing its neighbours. Phase 7 will have to move
- * this along again, which is the cost of testing against the real registry and
- * worth paying — the alternative is a fixture that cannot go stale because it
- * is not describing anything real.
+ * Discover, not Clean: CLEAN-12 enabled Clean, exactly as ORG-13 enabled
+ * Collections and LIBRARY-11 Library before it, and a test whose "disabled"
+ * example is enabled proves nothing while still passing its neighbours. Phase 9
+ * will have to move this along again, which is the cost of testing against the
+ * real registry and worth paying — the alternative is a fixture that cannot go
+ * stale because it is not describing anything real.
  */
-const DISABLED_ID = "clean";
+const DISABLED_ID = "discover";
 
 afterEach(() => {
   localStorage.clear();
@@ -74,7 +74,11 @@ describe("destinationToRemember", () => {
   });
 
   it("does not remember a disabled destination", () => {
-    expect(destinationToRemember("/clean")).toBeNull();
+    expect(destinationToRemember("/discover")).toBeNull();
+  });
+
+  it("remembers Clean now that it is a page (CLEAN-12)", () => {
+    expect(destinationToRemember("/clean")?.id).toBe("clean");
   });
 });
 

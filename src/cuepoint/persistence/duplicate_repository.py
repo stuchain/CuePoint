@@ -51,9 +51,13 @@ _GROUPS = (
     "EXISTS (SELECT 1 FROM duplicate_dismissals AS d WHERE d.signal = g.signal"
     " AND d.group_key = g.group_key AND d.member_hash = g.member_hash) AS dismissed "
     "FROM duplicate_groups AS g JOIN duplicate_members AS m ON m.group_id = g.id"
-    "{where} GROUP BY g.id HAVING count(m.track_id) >= {minimum}"
-    " ORDER BY g.signal, g.group_key"
+    "{where} GROUP BY g.id HAVING count(m.track_id) >= {minimum}{hidden}"
+    " ORDER BY g.signal, g.group_key{page}"
 )
+
+# Dismissed groups left out in SQL, so a page and its count describe the same
+# groups (CLEAN-12). `dismissed` is the column above; SQLite reads it by name.
+_NOT_DISMISSED = " AND NOT dismissed"
 
 _PATH_GROUPS = (
     "SELECT normalized_path AS group_key, group_concat(id) AS track_ids FROM tracks"
@@ -75,6 +79,12 @@ def _ids(text: Optional[str]) -> Tuple[int, ...]:
     if not text:
         return ()
     return tuple(sorted({int(part) for part in str(text).split(",")}))
+
+
+def _signal_where(signal: Optional[str]) -> Tuple[str, Tuple[object, ...]]:
+    if signal is None:
+        return "", ()
+    return " WHERE g.signal = ?", (signal,)
 
 
 def _members(row: sqlite3.Row) -> DuplicateGroupMembers:
@@ -251,28 +261,64 @@ class DuplicateRepository(IDuplicateRepository):
     # -------------------------------------------------------------- reading
 
     def groups(
-        self, signal: Optional[str] = None, *, include_dismissed: bool = False
+        self,
+        signal: Optional[str] = None,
+        *,
+        include_dismissed: bool = False,
+        limit: Optional[int] = None,
+        offset: int = 0,
     ) -> List[DuplicateGroupMembers]:
-        """Every group of two or more, optionally one signal's, newest scan's order.
+        """Groups of two or more, optionally one signal's, by signal and key.
 
-        Dismissed groups are left out unless asked for.
+        Dismissed groups are left out unless asked for. ``limit`` and ``offset``
+        page them in SQL (CLEAN-12): a page of fifty is read as fifty groups,
+        not as every group with fifty kept.
         """
-        where = " WHERE g.signal = ?" if signal is not None else ""
-        params: Tuple[object, ...] = (signal,) if signal is not None else ()
-        found = [
+        where, params = _signal_where(signal)
+        page = ""
+        if limit is not None:
+            page = " LIMIT ? OFFSET ?"
+            params = (*params, int(limit), max(0, int(offset)))
+        elif offset:
+            page = " LIMIT -1 OFFSET ?"
+            params = (*params, max(0, int(offset)))
+        return [
             _members(row)
             for row in self._db.connect().execute(
-                _GROUPS.format(where=where, minimum=2), params
+                _GROUPS.format(
+                    where=where,
+                    minimum=2,
+                    hidden="" if include_dismissed else _NOT_DISMISSED,
+                    page=page,
+                ),
+                params,
             )
         ]
-        return [group for group in found if include_dismissed or not group.dismissed]
+
+    def count_groups(
+        self, signal: Optional[str] = None, *, include_dismissed: bool = False
+    ) -> int:
+        """How many groups :meth:`groups` would answer without a page."""
+        where, params = _signal_where(signal)
+        inner = _GROUPS.format(
+            where=where,
+            minimum=2,
+            hidden="" if include_dismissed else _NOT_DISMISSED,
+            page="",
+        )
+        row = (
+            self._db.connect()
+            .execute(f"SELECT count(*) FROM ({inner})", params)
+            .fetchone()
+        )
+        return int(row[0]) if row is not None else 0
 
     def group(self, group_id: int) -> Optional[DuplicateGroupMembers]:
         """A group as it is now, whatever its size; None when there is no such group."""
         row = (
             self._db.connect()
             .execute(
-                _GROUPS.format(where=" WHERE g.id = ?", minimum=0),
+                _GROUPS.format(where=" WHERE g.id = ?", minimum=0, hidden="", page=""),
                 (int(group_id),),
             )
             .fetchone()

@@ -79,6 +79,8 @@ contextBridge.exposeInMainWorld("cuepoint", {
   getResumableMatches: () => ipcRenderer.invoke("engine:getResumableMatches"),
   getTrackMatches: (params) => ipcRenderer.invoke("engine:getTrackMatches", params),
   getMatchCandidates: (params) => ipcRenderer.invoke("engine:getMatchCandidates", params),
+  // CLEAN-12's reveal: a track id in, the file or its nearest folder out.
+  getTrackFolder: (params) => ipcRenderer.invoke("engine:getTrackFolder", params),
   decideMatch: (params) => ipcRenderer.invoke("engine:decideMatch", params),
   applyMatch: (params) => ipcRenderer.invoke("engine:applyMatch", params),
   setTrackOverrides: (params) => ipcRenderer.invoke("engine:setTrackOverrides", params),

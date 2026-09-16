@@ -1,0 +1,616 @@
+/*
+ * The Clean page (CLEAN-12).
+ *
+ * Built on the Library browser's layout rules (library.css), for their reasons:
+ * the page fills the content region and scrolls nothing itself, and every table
+ * gets a floor so a small window overflows a column rather than drawing a
+ * table zero pixels tall.
+ */
+
+.clean-screen {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  gap: 0;
+  padding: 0;
+}
+
+/* A table wants the whole region. `.screen` is in the selector for the same
+   reason as the Library's: App.css's reading width otherwise wins. */
+.app-main .screen.clean-screen {
+  max-width: none;
+}
+
+.clean-screen--waiting {
+  gap: var(--space-lg);
+}
+
+.clean-screen__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm) var(--space-lg);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: var(--border-width) solid var(--border-muted);
+}
+
+/* The tabs take the rest of the title's row: the queue needs the height more
+   than a sentence under the title does. */
+.clean-screen__header > .cp-tabs {
+  flex: 1;
+  min-width: min(100%, calc(320px * var(--scale)));
+}
+
+.clean-screen__intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.clean-screen__body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ------------------------------------------------------------ shared parts */
+
+.clean-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.clean-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: var(--border-width) solid var(--border-muted);
+}
+
+.clean-toolbar__spacer {
+  flex: 1;
+}
+
+.clean-toolbar__count {
+  align-self: center;
+  font-size: var(--font-size-sm);
+}
+
+.clean-toolbar__check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  align-self: center;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.clean-note {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: var(--border-width) solid var(--border-muted);
+}
+
+.clean-note__text {
+  margin: 0;
+  max-width: 80ch;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+/* A disconnected drive is the one finding a user has to act on before any row
+   below it means anything, so it is not muted. */
+.clean-note__finding {
+  margin: 0;
+  padding: var(--space-xs) var(--space-sm);
+  border: var(--border-width) solid var(--border-outline);
+  background: var(--accent-warning);
+  color: var(--fg-inverse);
+  font-weight: 700;
+}
+
+.clean-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  max-width: 56ch;
+  margin: 0 auto;
+  padding: var(--space-md);
+  text-align: center;
+}
+
+.clean-empty__headline {
+  margin: 0;
+}
+
+.clean-empty__hint {
+  margin: 0;
+  color: var(--fg-muted);
+}
+
+/* ---------------------------------------------------------------- review */
+
+/*
+ * The queue and the comparison share the height, each scrolling itself. The
+ * comparison gets the larger share because it is what a reviewer reads; the
+ * queue keeps a floor so the cursor is always somewhere visible. Below both
+ * floors the page scrolls rather than squeezing either to nothing.
+ */
+.clean-review {
+  display: grid;
+  grid-template-rows:
+    auto minmax(calc(120px * var(--scale)), 1fr) auto
+    minmax(calc(200px * var(--scale)), 1.5fr);
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.clean-missing {
+  display: grid;
+  grid-template-rows: auto auto minmax(calc(140px * var(--scale)), 1fr) auto;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.clean-review__table,
+.clean-missing__table {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+
+.clean-review__selection {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
+  border-top: calc(1px * var(--scale)) solid var(--border-muted);
+}
+
+/* ------------------------------------------------------------ comparison */
+
+/* Its own share of the height, scrolled on its own. Its parts never shrink:
+   a shrunk table grew a scrollbar of its own inside the panel's, and showed
+   one row of candidates at 1×. */
+.clean-compare {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-sm) var(--space-md);
+  border-top: var(--border-width-heavy) solid var(--border-outline);
+  background: var(--bg-panel-alt);
+}
+
+.clean-compare > * {
+  flex-shrink: 0;
+}
+
+.clean-compare__empty,
+.clean-compare__problem {
+  margin: 0;
+  color: var(--fg-muted);
+}
+
+.clean-compare__problem {
+  color: var(--accent-danger);
+}
+
+.clean-compare__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-md);
+}
+
+/* The Inspector thumbnail size CLEAN-09 made, drawn at a whole-pixel size so
+   the pixel system's integer scales never blur it. */
+.clean-compare__art {
+  width: calc(64px * var(--scale));
+  height: calc(64px * var(--scale));
+  object-fit: cover;
+  border: var(--border-width) solid var(--border-outline);
+  image-rendering: auto;
+}
+
+.clean-compare__art--none {
+  background: var(--bg-app);
+}
+
+.clean-compare__heading {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.clean-compare__title {
+  margin: 0;
+  font-size: var(--font-size-md);
+  overflow-wrap: anywhere;
+}
+
+.clean-compare__artist,
+.clean-compare__state {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--fg-muted);
+}
+
+.clean-compare__state {
+  color: var(--fg-primary);
+  font-weight: 700;
+}
+
+.clean-compare__scroll {
+  overflow-x: auto;
+  border: var(--border-width) solid var(--border-outline);
+}
+
+.clean-compare__table {
+  border-collapse: collapse;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-data);
+  min-width: 100%;
+}
+
+.clean-compare__table th,
+.clean-compare__table td {
+  padding: var(--space-xs) var(--space-sm);
+  border-bottom: calc(1px * var(--scale)) solid var(--border-muted);
+  text-align: left;
+  vertical-align: top;
+  min-width: calc(120px * var(--scale));
+  max-width: calc(260px * var(--scale));
+  overflow-wrap: anywhere;
+}
+
+.clean-compare__table tbody th {
+  position: sticky;
+  left: 0;
+  min-width: calc(110px * var(--scale));
+  background: var(--bg-panel-alt);
+  color: var(--fg-muted);
+  font-weight: 400;
+}
+
+.clean-compare__track-head {
+  color: var(--fg-primary);
+}
+
+.clean-compare__candidate-head {
+  vertical-align: bottom;
+}
+
+/* A hit target that stays usable at 1×: a button the height of a table row,
+   not a line of text. */
+.clean-compare__pick {
+  min-height: calc(24px * var(--scale));
+  padding: 0 var(--space-sm);
+  border: var(--border-width) solid var(--border-outline);
+  background: var(--bg-panel);
+  color: var(--fg-primary);
+  font-family: var(--font-pixel);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.clean-compare__pick[aria-pressed="true"] {
+  background: var(--accent-info);
+  color: var(--fg-inverse);
+}
+
+.clean-compare__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-top: var(--space-xs);
+}
+
+/* The chosen candidate's column, so a reviewer can see what A would accept. */
+.clean-compare__col--chosen {
+  box-shadow:
+    inset var(--border-width) 0 0 var(--accent-info),
+    inset calc(-1 * var(--border-width)) 0 0 var(--accent-info);
+}
+
+/* A difference is marked with a glyph and words as well as this colour. */
+.clean-compare__cell--differs {
+  background: var(--accent-warning);
+  color: var(--fg-inverse);
+}
+
+.clean-compare__mark {
+  font-weight: 700;
+}
+
+.clean-compare__cell--refused {
+  color: var(--accent-danger);
+}
+
+.clean-compare__score-row th,
+.clean-compare__score-row td {
+  color: var(--fg-muted);
+}
+
+.clean-compare__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.clean-compare__apply {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm) var(--space-md);
+  margin: 0;
+  padding: var(--space-sm);
+  border: var(--border-width) solid var(--border-muted);
+}
+
+.clean-compare__apply legend {
+  padding: 0 var(--space-xs);
+  font-size: var(--font-size-xs);
+}
+
+.clean-compare__apply-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.clean-compare__apply-value {
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+}
+
+.clean-compare__keys,
+.clean-compare__status {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--fg-muted);
+}
+
+.clean-compare__status {
+  color: var(--fg-primary);
+}
+
+/* ------------------------------------------------------------ duplicates */
+
+.clean-duplicates,
+.clean-health {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.clean-duplicates__list {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-md);
+  padding: var(--space-md);
+}
+
+.clean-groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clean-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border: var(--border-width) solid var(--border-outline);
+  background: var(--bg-panel);
+}
+
+.clean-group--dismissed {
+  opacity: 0.75;
+}
+
+.clean-group__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.clean-group__title {
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+
+.clean-group__why {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--fg-muted);
+}
+
+.clean-group__members {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clean-group__member {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+  grid-template-areas:
+    "track facts reveal"
+    "path path reveal";
+  align-items: center;
+  gap: 2px var(--space-sm);
+  padding-bottom: var(--space-xs);
+  border-bottom: calc(1px * var(--scale)) solid var(--border-muted);
+}
+
+.clean-group__track {
+  grid-area: track;
+  overflow-wrap: anywhere;
+}
+
+.clean-group__name {
+  font-weight: 700;
+}
+
+.clean-group__facts {
+  grid-area: facts;
+  font-size: var(--font-size-xs);
+  color: var(--fg-muted);
+}
+
+.clean-group__path {
+  grid-area: path;
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+  color: var(--fg-muted);
+  overflow-wrap: anywhere;
+}
+
+.clean-group__member > .cp-button {
+  grid-area: reveal;
+}
+
+.clean-group__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+/* ---------------------------------------------------------------- health */
+
+.clean-health {
+  gap: var(--space-md);
+  padding-bottom: var(--space-lg);
+}
+
+.clean-health__intro,
+.clean-health__heading {
+  margin: 0;
+  padding: 0 var(--space-md);
+}
+
+.clean-health__intro {
+  padding-top: var(--space-md);
+  color: var(--fg-muted);
+}
+
+.clean-health__heading {
+  font-size: var(--font-size-md);
+}
+
+.clean-health__counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(180px * var(--scale)), 1fr));
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0 var(--space-md);
+  list-style: none;
+}
+
+.clean-health__count {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  width: 100%;
+  min-height: calc(56px * var(--scale));
+  padding: var(--space-sm);
+  border: var(--border-width) solid var(--border-outline);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-bevel-panel);
+  color: var(--fg-primary);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.clean-health__count:hover,
+.clean-health__count:focus-visible {
+  background: var(--bg-panel-alt);
+}
+
+.clean-health__count[data-zero="true"] {
+  color: var(--fg-muted);
+}
+
+.clean-health__number {
+  font-family: var(--font-pixel);
+  font-size: var(--font-size-lg);
+}
+
+.clean-health__label {
+  font-size: var(--font-size-xs);
+}
+
+.clean-health__detections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0 var(--space-md);
+  list-style: none;
+}
+
+.clean-health__detection {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  border: var(--border-width) solid var(--border-muted);
+}
+
+.clean-health__detection-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.clean-health__detection-label {
+  font-weight: 700;
+}
+
+.clean-health__detection-when,
+.clean-health__detection-summary {
+  font-size: var(--font-size-xs);
+  color: var(--fg-muted);
+}

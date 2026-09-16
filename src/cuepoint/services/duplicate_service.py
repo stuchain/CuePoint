@@ -320,16 +320,42 @@ class DuplicateService(IDuplicateService):
     # --------------------------------------------------------------- groups
 
     def groups(
-        self, signal: Optional[str] = None, *, include_dismissed: bool = False
+        self,
+        signal: Optional[str] = None,
+        *,
+        include_dismissed: bool = False,
+        limit: Optional[int] = None,
+        offset: int = 0,
     ) -> List[DuplicateGroupMembers]:
         """The stored groups of two or more, dismissed ones only when asked.
+
+        ``limit`` and ``offset`` page them (CLEAN-12); without ``limit`` every
+        group from ``offset`` on is answered.
+
+        Raises:
+            ValueError: If the signal is unknown, or the page is not one.
+        """
+        if signal is not None:
+            validate_signals([signal])
+        if limit is not None and int(limit) < 1:
+            raise ValueError(f"limit must be at least 1, not {limit!r}")
+        if int(offset) < 0:
+            raise ValueError(f"offset cannot be negative, not {offset!r}")
+        return self._groups.groups(
+            signal, include_dismissed=include_dismissed, limit=limit, offset=offset
+        )
+
+    def count_groups(
+        self, signal: Optional[str] = None, *, include_dismissed: bool = False
+    ) -> int:
+        """How many groups :meth:`groups` would answer without a page.
 
         Raises:
             ValueError: If the signal is unknown.
         """
         if signal is not None:
             validate_signals([signal])
-        return self._groups.groups(signal, include_dismissed=include_dismissed)
+        return self._groups.count_groups(signal, include_dismissed=include_dismissed)
 
     def dismiss(self, group_id: int) -> DuplicateGroupMembers:
         """Mark a group "not duplicates" for the members it has now.

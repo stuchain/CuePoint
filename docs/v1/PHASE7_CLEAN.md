@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 7: Clean, Detailed Step Specifications
 
-Status: **Specified. CLEAN-01 to CLEAN-11 implemented.** The fourteen steps below replace the
+Status: **Specified. CLEAN-01 to CLEAN-12 implemented.** The fourteen steps below replace the
 roadmap's placeholder inventory (CLEAN-01…CLEAN-13, which Round 9's answers outgrew by one). Per
 the process, no implementation happens from this document — each step needs an explicit
 "Implement CLEAN-NN" instruction, scoped to exactly that step, and its outcome is recorded under the
@@ -3203,7 +3203,7 @@ spells the header out. The mutations for both fail.
 
 ---
 
-## CLEAN-12 — The Clean Page
+## CLEAN-12 — The Clean Page ✅ IMPLEMENTED 2026-09-16
 
 **Objective**: The `clean` destination: a review queue with side-by-side candidate comparison, and
 the Missing files, Duplicates and Health views (DEC-072).
@@ -3257,6 +3257,317 @@ apply, and see Health change, without leaving the page.
 design system; contrast and hit targets are checked at 1×, 2× and 3×.
 
 **Complexity**: **L**
+
+### ✅ IMPLEMENTED 2026-09-16
+
+**Outcome**: Complete. Clean is in the sidebar, and a user can match a playlist, review it with the
+keyboard, accept and apply, and see Health change without leaving the page. This was checked in the
+running app, against a real engine over a sandboxed library.
+
+- **The page** is `screens/clean/CleanScreen.tsx`: the title and four tabs, Review, Missing files,
+  Duplicates and Health, over one read of Library Health they share.
+  - The tab last used is remembered under `cuepoint-clean-section` (`cleanSections.ts`).
+  - Health is read again when a tab is chosen and after anything the page starts ends.
+  - A library with nothing imported gets one sentence and a way to the Library.
+- **Review** (`ReviewView.tsx`) is the Library's `TrackTable` over the Library's windowed browse
+  (`useTrackWindow`, `useTrackSelection`), scoped by a rule set.
+  - **What it can show.** "Show" picks the match state: needs review by default, disputed, accepted,
+    rejected, no match or not matched. "In" picks the whole library, a Rekordbox playlist or
+    folder, a Collection or a Smart Collection (`cleanRules.ts`).
+  - **What the table asks.** A change of either changes the rule set and the scope and nothing else;
+    the rules are the same the engine's Health counts.
+  - **The toolbar.** It matches the selection or everything shown, optionally again for what is
+    already matched. It also exports the review list.
+  - **The Inspector** describes the selected track, as it does in the Library.
+- **The comparison** (`ComparisonPanel.tsx`) draws the track's imported values beside every
+  candidate of the attempt being looked at.
+  - **Rows.** Title, artists, mix, remixers, label, genre, key, BPM, year, release and artwork, then
+    the score and its parts, the guard's verdict in words, and the query that found it.
+  - **Differences** are marked with a glyph, hidden words and a colour, so they are not told by
+    colour alone.
+  - **Candidates.** The first five are drawn, and the chosen one wherever it ranks; "Show all" draws
+    the rest. Each is badged as the matcher's pick, proposed, accepted, rejected or refused.
+  - **Attempts.** Earlier ones are a choice in the panel's header.
+  - **Actions.** Accept the chosen candidate, reject, clear a decision you made, re-match, and move
+    on. Apply appears only once a candidate is accepted, with a box per field showing what it would
+    copy.
+- **The keyboard** (`reviewKeyboard.ts`): Up and Down move through the queue, Left and Right choose a
+  candidate, A accepts, R rejects and N moves on.
+  - **Who owns a key.** A key belongs to a field being typed in, a dialog, a menu, a list or a tree
+    before it belongs to the queue. A key held with Ctrl, Alt or the command key belongs to the
+    shell, and so does a capital.
+  - **The cursor.** `TrackTable` gained `scrollToIndex`, which keeps it in view.
+  - **The shortcuts dialog** and the window guide list the keys.
+- **Missing files** (`MissingFilesView.tsx`) is the same table scoped to missing or unreadable files.
+  - **Columns.** The expected path is one.
+  - **What the page says.** One sentence says fixes happen in Rekordbox with Relocate and a refresh.
+    A disconnected drive is one line above the table.
+  - **Actions.** "Show in folder" goes to the nearest folder that exists, and "check again" re-checks
+    what is shown or selected.
+- **Duplicates** (`DuplicatesView.tsx`) lists groups fifty at a time: signal, why the signal
+  groups, and each track's title, length, bitrate, file status and path.
+  - **Per group.** Not duplicates (and back), tag these tracks, add them to a Collection, and show
+    each file.
+  - **Tagging and collecting** go through ORG-11's batch entry point. There is no delete control, and
+    a test holds it to that.
+- **Health** (`HealthView.tsx`) draws each count as a button that opens the Library with exactly the
+  rules the engine returned.
+  - **Detections.** When each detection last ran — files checked, duplicates looked for, artwork
+    read — is shown with what it found and a button to run it again.
+  - **Drives.** A disconnected drive is one line here too.
+- **Empty states** come from real engine responses (`cleanEmpty.ts`).
+  `src/tests/unit/engine/test_clean_empty_state_fixture.py` walks a real engine through an
+  untouched library, a checked one, a scanned one and a matched one, and writes
+  `cleanEmpty.fixture.json`, which the renderer renders from. The states:
+  - nothing matched yet, with a button to show what is not matched;
+  - nothing needs review;
+  - files never checked, with a button to check;
+  - no missing files, with when they were checked;
+  - duplicates never looked for, with a button;
+  - no duplicates.
+- **The Library opens on a rule set** (`libraryLink.ts`). A Health count navigates with its rules in
+  the location's state. `App.tsx` hands them to `LibraryScreen` as `openWith`, which applies them
+  once per navigation, to the whole library, with the rules in the bar.
+- **The engine** grew what the page needed, additively:
+  - **Comparison.** `GET /library/tracks/{id}/matches` answers `track`, its imported values. Every
+    candidate there and from `/clean/attempts/{id}/candidates` answers `mix` and `differs`
+    (`services/match_comparison.py`).
+  - **Health.** `GET /clean/health` answers `detections` and `unavailable_roots`.
+  - **Duplicates.** `GET /clean/duplicates` takes `limit` (at most 500) and `offset`, and answers
+    each group's `members` as Library rows, with `limit` and `offset` echoed. Without `limit` it
+    lists every group, as before.
+  - **Reveal.** A new route, `GET /api/v1/library/tracks/{id}/folder`, answers `file_path`,
+    `file_exists` and the nearest existing `folder`, or `null` when nothing on the path exists.
+  - **Beneath them.** `ITrackRepository.get_many`, `IFileStatusRepository.unavailable_paths`, and
+    `groups(limit, offset)` and `count_groups` on the duplicate repository and service.
+- **The desktop contract.** `getTrackFolder` crosses all six files, and the widened shapes are
+  compared field for field (`desktopContract.test.ts`).
+- **The status strip, the Activity panel and every existing screen** are unchanged. `ResultsTable`
+  and inKey stay until CLEAN-14. The comment in `trackTableSource.ts` that expected an in-memory
+  match-results source is corrected: DEC-041's convergence is the windowed source with a rule set,
+  and no second implementation was needed.
+
+**What building it settled, and why.**
+
+- **Tabs, not sections**, the choice DEC-072 left to this specification. Each part is a table or
+  list a person works through. Four stacked would put three screens of scrolling between a reviewer
+  and the queue.
+- **Differences are the engine's answer.** The rules they need are Python's:
+  - key notations and enharmonics (`override_values.parse_key`), so `8A` and `A Minor` agree;
+  - the matcher's text normalization, so accents, case and bracketed qualifiers such as Beatport's
+    "Techno (Peak Time / Driving)" do not count;
+  - mix parsing, so a plain title and "Original Mix" are the same version.
+
+  BPMs are compared as whole numbers, because Beatport publishes whole BPMs, and 127.98 is 128 to a
+  DJ. Either side empty is `null`, not a difference, so it is not marked. A renderer copy of these
+  rules would mark every Camelot user's keys as different. Nothing here scores: `core/matcher.py` is
+  untouched, and only its helpers are read.
+- **A candidate's Beatport image is not drawn.** DEC-076 as amended shows artwork only through its
+  guarded decoder, and that route serves Beatport's image only for an accepted match. The panel
+  shows the track's own thumbnail and says, per candidate, whether Beatport has artwork. After an
+  accept, the track's thumbnail is Beatport's.
+- **"Last checked" is the activity feed's, not the job table's.** Every file check, duplicate scan
+  and artwork scan records its event however it was started — an import, a refresh, a match or a
+  person — and the feed is what the Activity panel shows, so Health and Activity cannot disagree.
+  The job table records a job only when its store was given a repository.
+- **A disconnected drive is read from the current checks**, grouped by root: tracks missing with
+  reason `root_unavailable` at the path they have now. A refresh that moved a track off the drive
+  has answered for it. The line says "at the last check", because the drive may be back.
+- **The review keeps its place.** A decision takes a track out of "needs review", so the cursor stays
+  at the same row and the next track moves into it. That row is the next track only once the queue
+  has been read again, so `useTrackWindow` now says which question its rows answer (`identity`) and
+  whether that answer has landed (`answered`), and the page waits for both.
+- **Decisions are said in the panel, not in a toast.** Reviewing thousands of tracks with a toast per
+  key would be a stack of toasts. A polite status line under the panel says the last thing done;
+  refusals still arrive as toasts, in the engine's words.
+- **Export asks one question, not two.** The operating system's save dialog already asks about
+  replacing a file, so the page sends `overwrite: true` for the path it chose. Excel is `xlsx` to
+  the dialog and `excel` to the engine.
+- **Duplicates are paged in SQL.** Measured at 25,000 groups, the listing read every group and kept
+  fifty. The repository now filters dismissed groups and pages in the query, and counts with the
+  same statement, which halved a page's time (below).
+- **Re-match and "match again what is already matched"** are the engine's `rematch`. A match with
+  nothing left to do is refused by the engine, and its sentence is shown.
+- **Composite widgets keep their keys.** Found by reading the player's queue list: a focused list,
+  tree, menu or dialog keeps bare keys, so arrowing through the queue panel does not move the review
+  queue.
+- **Found running the page in the app, and fixed:**
+  - **The comparison showed one row at 1×.** The panel's parts shrank inside its own scrolling, so
+    the table grew a second scrollbar. The queue and the panel now each have a share of the height
+    and scroll on their own, and the title and tabs share one row.
+  - **The Clean page and the Library table stopped at 1,200 pixels** on any display wider than
+    that. `App.css` caps `.app-main .screen` at the reading width with the same specificity as
+    `.app-main .library-screen--browser`, and loads later, so the Library's "the table wants the
+    whole region" had always lost. Both selectors now name `.screen`. An E2E test measures it, and
+    fails on the old CSS (1,200 against a 1,920-pixel region).
+- **Found running the E2E suite, and brought up to date:**
+  - **SHELL-10's keyboard walk.** It needed one more Tab for the new sidebar entry, as ORG-13's did.
+  - **ORG-13's journey.** It expected the refresh warning's sentence from before CLEAN-05, which now
+    also names rated and tagged tracks.
+
+**Checked in the running app.** The packaged renderer and a real engine ran over a sandboxed library.
+It held six files, one of them absent, and seeded attempts; Beatport was never reached.
+
+- **Reviewing.** Down selected the first track and Right chose the second candidate. A accepted it,
+  and the next track took the cursor.
+- **Applying.** A candidate accepted and applied showed its genre as the track's effective value.
+- **Health.** It counted one missing file, and its link opened the Library on "File status is any of
+  missing, unreadable" with that one track.
+- **Scales.** Screenshots were taken at 1×, and at 2× and 3× with the page zoomed so the viewport was
+  2,560 × 1,600 and 3,840 × 2,400. This display cannot hold a window that large; the zoom reproduces
+  the layout, not the pixel density.
+  - **Hit targets.** The candidate buttons, tabs and toolbar kept their size at each scale.
+  - **Contrast.** Marked differences use the warning colour with inverse text, as the refresh
+    warning does.
+
+**Measured** at 50,000 tracks, median of five after a warm-up. The library held 10,000 tracks found
+missing on two disconnected drives, 100,000 activity events, a text scan that paired every track
+(25,000 groups), and an attempt with 25 candidates.
+
+| Operation | Time |
+| --- | --- |
+| Health report, as CLEAN-11 answered it | 164.9 ms |
+| Health report with last runs and disconnected drives | 209.1 ms |
+| The 10,000 unavailable paths · grouped into drives | 26.1 · 36.9 ms |
+| A page of 50 duplicate groups with members (paged in the list: 349.9 ms) | 169.5 ms |
+| The same at offset 20,000 | 212.3 ms |
+| Every group with members, unpaged | 2,310 ms |
+| A track's matches, compared | 3.8 ms |
+| 25 candidates, compared | 10.2 ms |
+| A track's nearest folder | 2.9 ms |
+
+- **Health grew by about 45 ms**, most of it grouping 10,000 paths into drives. It is read once per
+  visit.
+- **A duplicate page is still 170 ms in this worst case**: SQLite groups every member before it can
+  page, and the count groups them again. At CLEAN-14's scale target of 1,500 groups it is a
+  fraction of that. Making CLEAN-08's grouping page first would change its query for every caller,
+  so it is recorded here and left for when a real library needs it.
+- **The unpaged listing** (2.3 s here) is what CLEAN-11's callers get when they ask for everything.
+  The page never does.
+
+**Tests**:
+
+- `services/test_match_comparison.py` (56 tests) holds each field's rule.
+  - **Differences.** Titles without their brackets, artists and remixers as sets, the mix as the
+    kind of version, label and genre as normalized text, keys in every notation (enharmonics
+    included), BPMs as whole numbers rounded half up, and the release year.
+  - **Nothing to compare.** Either side empty is `null`.
+  - **The mix a title names.** Featuring clauses and numbers are left out, and a bare
+    "Original Mix" is found.
+  - **The track side.** It carries the imported values.
+- `services/test_health_detections.py` (8 tests), without an engine:
+  - a detection never run is `null`;
+  - each reads its own newest event;
+  - without a feed nothing is claimed;
+  - disconnected drives are grouped by root, most tracks first, with a rootless path left out.
+- `persistence/test_clean_page_reads.py` (11 tests):
+  - **`get_many`.** In the order given, once each, a missing id left out, past one chunk.
+  - **`unavailable_paths`.** Only missing on an unavailable root, at the current path.
+  - **Duplicate groups paged in SQL.** Pages are slices of the whole listing, a dismissed group is
+    left out of the page and the count, and bad pages and signals are refused.
+- `engine/test_clean_empty_state_fixture.py` (6 tests) produces `cleanEmpty.fixture.json` from a
+  real engine, asserts it is unchanged, checks each state is the one it claims to be, and checks
+  that no path reaches the fixture.
+- `engine/test_engine_clean_api.py` grows to 131 tests:
+  - the comparison through `/matches` and `/candidates`;
+  - the folder route: a present file, a moved one, nothing on the path, unknown and malformed
+    tracks, and the token;
+  - duplicate members as Library rows, overrides included;
+  - paging, counted whole, and non-numeric pages;
+  - Health's shape, last runs and disconnected drives.
+- **Renderer.** Each file sits beside what it tests:
+  - `cleanRules.test.ts` (19) holds the page's rules to the fixture's, and checks scope values and
+    the tree order of scope options.
+  - `cleanEmpty.test.ts` (16) renders every empty state from the fixture.
+  - `comparison.test.ts` (15) covers the default choice, what is drawn, stepping, badges, rows and
+    apply values.
+  - `reviewKeyboard.test.ts` (21) covers every key, modifiers, capitals and Caps Lock, fields,
+    dialogs, menus, lists and trees.
+  - The rest: `cleanFormat.test.ts` (15), `cleanSections.test.ts` (5), `cleanColumns.test.ts` (4),
+    `libraryLink.test.ts` (11).
+- `CleanScreen.test.tsx` (45) drives the page over a faked bridge.
+  - **The page.** Tabs and their memory; the page before an import.
+  - **The review scope.** It changes the rule set and not the source, and a playlist scope is the
+    Library's.
+  - **The comparison.** Differences marked, and a rejection reason in words.
+  - **Keyboard review.** Move, choose the second candidate, accept, see the next track take the
+    cursor, reject, and move on. Keys are left alone while typing, while the page's own dialog is
+    open, and when another handler took them.
+  - **Apply.** Offered only after an accept, with only the chosen fields.
+  - **Matching.** A match of everything shown, a re-match, and a refused match.
+  - **Export.** Where the save dialog chose, and nothing when it is cancelled.
+  - **Empty states** from the recorded engine responses, in every part.
+  - **Missing files.** The disconnected-drive line, the nearest folder, nothing on the path, and
+    check again.
+  - **Duplicates.** Members, dismissal, tagging through the batch path, showing a file, and no
+    delete, remove or trash control anywhere.
+  - **Health.** Each of the nine counts opens the Library with exactly its rules; never-run checks,
+    running one, last runs, and a refusal.
+- **Extended rather than loosened:**
+  - `useTrackWindow.test.tsx`: `answered` waits for the reload's answer, and a failure is not one.
+  - `trackTableScroll.test.tsx` (3): the cursor is asked for when it moves, not again while it
+    stays, and never past the end.
+  - `LibraryScreen.test.tsx`: opened on a Health count's rules, applied once per navigation.
+  - `keyboardShortcuts.test.ts`: every review key is listed, and none is modified.
+  - `navRegistry.test.ts` and `lastDestination.test.ts`: Clean is enabled, and Discover is the
+    disabled example.
+  - `desktopContract.test.ts`: 13 new cases for `getTrackFolder` and the widened shapes.
+  - The mypy gate gains `match_comparison.py`.
+- **E2E**:
+  - `cleanPage.spec.ts` (3) runs against the real engine: the page before an import; the queue, the
+    missing file and Health, with a count opening the Library on its one track; the remembered tab;
+    and the page filling a wide region.
+  - `libraryPage.spec.ts` gains the Library's width, which fails on the old CSS.
+
+The tests were checked against ninety-six mutations written into the source, each run against its
+own tests. Forty-two were in the engine:
+
+- **The comparison**: featuring clauses and numbers kept as a mix; a bare "Original Mix" missed;
+  "Original" counted as a version; titles compared with their brackets; an empty side marked;
+  artists as ordered text; keys as text; BPMs exactly, or rounded to even; the wrong year and
+  remixer fields.
+- **The routes**: differences, the track side, members, or a member's CuePoint values dropped;
+  candidates compared without their track; a present file sent to its folder; a missing one sent
+  nowhere; the folder route unanswered; the total counted from the page; the limit unclamped.
+- **The reads**: `get_many` keeping duplicates, answering in id order, or reading one chunk; stale
+  or ordinary missing files counted as unavailable; dismissed groups paged in; the offset ignored;
+  the count including dismissed groups; bad pages accepted.
+- **Health**: drives unordered; a rootless path counted; the oldest run read; every detection
+  reading the file check's event; last runs or drives left out.
+
+Fifty-four were in the renderer:
+
+- **Rules and scopes**: disputed read as a state; a playlist read as a Collection; siblings
+  unordered; a Collection folder choosable; orphans dropped.
+- **Empty states**: every branch told apart wrongly.
+- **The comparison**: the choice, the drawing, badges, differences, apply before accepting,
+  unticked fields applied, and clear offered for the matcher's decision.
+- **Keys**: modifiers, capitals, fields, dialogs, and keys already handled.
+- **Review**: selecting before the queue is read again; the matcher's pick accepted instead of the
+  chosen one; the re-match flag.
+- **Export**: overwrite, the Excel suffix, and a cancelled dialog.
+- **Health, duplicates and missing files**: a count's rules; Health not read again; a dismissal;
+  tagging; paging; reveal; check again, both what it checks and what it reads after; the drive
+  line.
+- **The rest**: the remembered tab; the disputed marker; what a match left out; rules from a
+  location; the navigation token, scope and bar; `answered`; the table's scroll; Clean's flag.
+
+The first run caught thirty-seven in the engine and fifty in the renderer.
+
+- **Two were ambiguous anchors** in the harness, fixed and caught on the rerun.
+- **One is equivalent.** Reading the newest or oldest of the latest runs is the same when one is
+  asked for.
+- **Six were gaps, each closed with a test and then caught:**
+  - BPMs rounded to even: 127.5 is 128 either way, and 126.5 is not.
+  - A member's CuePoint values dropped.
+  - A capital decision, which Caps Lock makes lowercase.
+  - The page's keys while its own dialog is open.
+  - A key another handler already took.
+  - The disputed marker in the queue.
+- **One hung rather than failed.** "The same navigation applied again" re-applied the rules on every
+  render, a render loop that stopped the test run until it was killed. That is caught, the slow way.
+
+**Complexity**: **L**, as estimated.
 
 ---
 

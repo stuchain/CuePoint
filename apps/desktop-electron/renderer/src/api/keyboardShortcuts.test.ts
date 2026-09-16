@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { filterShortcuts, KEYBOARD_SHORTCUTS } from "./keyboardShortcuts";
+import { REVIEW_KEYS } from "../screens/clean/reviewKeyboard";
 
 describe("keyboardShortcuts", () => {
   it("filters by action name", () => {
@@ -27,5 +28,25 @@ describe("the Library's shortcuts (LIBUI-10)", () => {
 
     expect(focus.map((row) => row.context).sort()).toEqual(["Library", "Results"]);
     expect(new Set(focus.map((row) => row.action)).size).toBe(1);
+  });
+});
+
+describe("the review queue's shortcuts (CLEAN-12)", () => {
+  it("documents every key the queue binds, as the queue names them", () => {
+    const clean = KEYBOARD_SHORTCUTS.filter((row) => row.context === "Clean");
+    const keys = Object.values(REVIEW_KEYS);
+
+    // Each command's key appears in the dialog: arrows as a pair, letters alone.
+    for (const key of keys) {
+      expect(clean.some((row) => row.shortcut.split(" / ").includes(key)), key).toBe(true);
+    }
+    expect(clean).toHaveLength(5);
+  });
+
+  it("binds no modified key, so none can collide with a shell shortcut", () => {
+    const clean = KEYBOARD_SHORTCUTS.filter((row) => row.context === "Clean");
+    for (const row of clean) {
+      expect(row.shortcut).not.toMatch(/Ctrl|Alt|Shift|Cmd/);
+    }
   });
 });

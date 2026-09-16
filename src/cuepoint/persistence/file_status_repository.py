@@ -22,7 +22,11 @@ from __future__ import annotations
 
 from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
-from cuepoint.models.file_status import TrackFileStatus
+from cuepoint.models.file_status import (
+    FILE_MISSING,
+    REASON_ROOT_UNAVAILABLE,
+    TrackFileStatus,
+)
 from cuepoint.persistence.id_chunks import CHUNK_SIZE, chunked, unique_ids
 from cuepoint.services.interfaces import IDatabaseService, IFileStatusRepository
 
@@ -127,6 +131,24 @@ class FileStatusRepository(IFileStatusRepository):
                 (int(size_bytes), checked_at, int(track_id), checked_path),
             )
             return cursor.rowcount == 1
+
+    def unavailable_paths(self) -> List[str]:
+        """Return the paths the last check found on a root that was not there.
+
+        Only a check of the path each track has now: a refresh that moved a
+        track off a disconnected drive has answered for it, and its old finding
+        is not a finding about the library any more (CLEAN-07's staleness rule).
+        """
+        return [
+            str(row["checked_path"])
+            for row in self._db.connect().execute(
+                "SELECT f.checked_path FROM track_files AS f"
+                " JOIN tracks AS t ON t.id = f.track_id"
+                " AND f.checked_path = t.file_path"
+                " WHERE f.status = ? AND f.reason = ?",
+                (FILE_MISSING, REASON_ROOT_UNAVAILABLE),
+            )
+        ]
 
     def get(self, track_id: int) -> Optional[TrackFileStatus]:
         """Return a track's stored check, or ``None``."""

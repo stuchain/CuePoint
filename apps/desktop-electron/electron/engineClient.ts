@@ -585,14 +585,52 @@ export interface MatchCandidate {
   query_text: string | null;
   candidate_index: number | null;
   elapsed_ms: number | null;
+  mix: string | null;
+  differs: CandidateDifferences | null;
+}
+
+/** Whether a candidate differs from the track, per field; null when nothing to compare. */
+export interface CandidateDifferences {
+  title: boolean | null;
+  artists: boolean | null;
+  mix: boolean | null;
+  remixers: boolean | null;
+  label: boolean | null;
+  genre: boolean | null;
+  key: boolean | null;
+  bpm: boolean | null;
+  year: boolean | null;
+}
+
+/** A track's imported values, the side of the comparison candidates are marked against. */
+export interface ComparedTrack {
+  title: string;
+  artist: string;
+  mix: string | null;
+  remixer: string | null;
+  album: string | null;
+  label: string | null;
+  genre: string | null;
+  key: string | null;
+  bpm: number | null;
+  year: number | null;
 }
 
 export interface TrackMatches {
   track_id: number;
+  track: ComparedTrack;
   state: TrackMatchState;
   candidate: MatchCandidate | null;
   attempts: MatchAttempt[];
   total: number;
+}
+
+/** Where "show in folder" can take a person for one track (CLEAN-12). */
+export interface TrackFolder {
+  track_id: number;
+  file_path: string;
+  file_exists: boolean;
+  folder: string | null;
 }
 
 export interface AttemptCandidates {
@@ -653,9 +691,16 @@ export interface DuplicateGroup {
   dismissed: boolean;
 }
 
+/** A group as the listing answers it: with its members as Library rows. */
+export interface ListedDuplicateGroup extends DuplicateGroup {
+  members: LibraryTrackRow[];
+}
+
 export interface DuplicateGroupList {
-  groups: DuplicateGroup[];
+  groups: ListedDuplicateGroup[];
   total: number;
+  limit: number | null;
+  offset: number;
 }
 
 export interface DuplicateScanStarted extends CleanJobStarted {
@@ -753,9 +798,25 @@ export interface HealthCount {
   rules: FilterRuleSet;
 }
 
+export interface HealthDetection {
+  id: string;
+  label: string;
+  job_type: string;
+  last_run_at: string | null;
+  last_summary: string | null;
+}
+
+export interface UnavailableRoot {
+  root: string;
+  tracks: number;
+  summary: string;
+}
+
 export interface LibraryHealth {
   track_count: number;
   counts: HealthCount[];
+  detections: HealthDetection[];
+  unavailable_roots: UnavailableRoot[];
 }
 
 export type ReviewExportFormat = "csv" | "json" | "excel";
@@ -1275,6 +1336,12 @@ export class EngineClient {
     return this.getJson(`/api/v1/clean/attempts/${id}/candidates`);
   }
 
+  /** The file, or the nearest folder still there, for "show in folder" (CLEAN-12). */
+  async getTrackFolder(params: { trackId: number }): Promise<TrackFolder> {
+    const id = encodeURIComponent(String(params.trackId));
+    return this.getJson(`/api/v1/library/tracks/${id}/folder`);
+  }
+
   /** Accept a candidate, reject, or clear — one track, or a selection (DEC-067). */
   async decideMatch(params: {
     decision: "accept" | "reject" | "clear";
@@ -1336,10 +1403,14 @@ export class EngineClient {
   async getDuplicateGroups(params?: {
     signal?: "path" | "beatport" | "text";
     includeDismissed?: boolean;
+    limit?: number;
+    offset?: number;
   }): Promise<DuplicateGroupList> {
     const query = new URLSearchParams();
     if (params?.signal) query.set("signal", params.signal);
     if (params?.includeDismissed) query.set("include_dismissed", "true");
+    if (params?.limit != null) query.set("limit", String(params.limit));
+    if (params?.offset != null) query.set("offset", String(params.offset));
     const suffix = query.toString() ? `?${query.toString()}` : "";
     return this.getJson(`/api/v1/clean/duplicates${suffix}`);
   }

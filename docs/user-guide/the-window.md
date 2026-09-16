@@ -96,6 +96,18 @@ previous matching runs.
 | **Ctrl+,** | Settings |
 | **F1** or **Ctrl+?** | All keyboard shortcuts |
 
+In Clean's review queue:
+
+| Shortcut | Does |
+| --- | --- |
+| **Up** / **Down** | Previous or next track |
+| **Left** / **Right** | Choose another candidate |
+| **A** | Accept the chosen candidate |
+| **R** | Reject the match |
+| **N** | Next track without deciding |
+
+These keys do nothing while you are typing in a field or have a dialog open.
+
 Every part of the window can be reached with **Tab** alone, in the order it
 appears on screen: search, navigation, page, Inspector, status strip. Dialogs
 take focus when they open, keep **Tab** inside themselves, close on **Escape**,

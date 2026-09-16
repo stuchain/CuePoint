@@ -52,6 +52,10 @@ from cuepoint.persistence.track_query import BrowseQueryError
 WRITES_LIMIT_DEFAULT = 500
 WRITES_LIMIT_MAX = 5000
 
+#: The most duplicate groups one page of the listing holds (CLEAN-12). Without
+#: ``limit`` the listing is every group, as CLEAN-11 answered it.
+DUPLICATES_LIMIT_MAX = 500
+
 #: What a decision may be. ``clear`` returns a track to what its latest answered
 #: attempt says.
 DECISION_ACCEPT = "accept"
@@ -66,6 +70,7 @@ EXPORT_SUFFIXES = {"csv": ".csv", "json": ".json", "excel": ".xlsx"}
 _MATCHES_ROUTE = re.compile(r"^/api/v1/library/tracks/([^/]+)/matches$")
 _OVERRIDES_ROUTE = re.compile(r"^/api/v1/library/tracks/([^/]+)/overrides$")
 _CANDIDATES_ROUTE = re.compile(r"^/api/v1/clean/attempts/([^/]+)/candidates$")
+_FOLDER_ROUTE = re.compile(r"^/api/v1/library/tracks/([^/]+)/folder$")
 
 
 class CleanUnavailableError(RuntimeError):
@@ -149,6 +154,21 @@ def candidate_to_dict(candidate: Any) -> Dict[str, Any]:
     }
 
 
+def compared_candidate_to_dict(candidate: Any, track: Optional[Any]) -> Dict[str, Any]:
+    """A candidate, the version its title names, and how it differs from the track.
+
+    What the Clean page's comparison draws (CLEAN-12). ``differs`` is null when
+    there is no track to compare with.
+    """
+    from cuepoint.services.match_comparison import differences, mix_of
+
+    return {
+        **candidate_to_dict(candidate),
+        "mix": mix_of(candidate.title),
+        "differs": None if track is None else differences(track, candidate),
+    }
+
+
 def match_state_to_dict(track_id: int, match: Optional[Any]) -> Dict[str, Any]:
     """Serialize where a track stands. A track with no state is ``not_matched``."""
     from cuepoint.models.match_attempt import STATE_NOT_MATCHED
@@ -213,10 +233,12 @@ def _track_row(track_id: int) -> Dict[str, Any]:
     return track_to_dict(track, record, clean)
 
 
-def _require_track(track_id: int) -> None:
-    """Raise a 404 unless the track is in the library."""
-    if _service("ILibraryService").get_track(int(track_id)) is None:
+def _require_track(track_id: int) -> Any:
+    """Return the library track, or raise a 404."""
+    track = _service("ILibraryService").get_track(int(track_id))
+    if track is None:
         raise not_found("TRACK_NOT_FOUND", f"No track with id {track_id}")
+    return track
 
 
 # ---------------------------------------------------------------------------
@@ -380,8 +402,14 @@ def resumable_matches(params: Dict[str, List[str]]) -> Dict[str, Any]:
 
 
 def track_matches(track_id: int) -> Dict[str, Any]:
-    """A track's state, the candidate it points at, and every attempt, newest first."""
-    _require_track(track_id)
+    """A track's state, the candidate it points at, and every attempt, newest first.
+
+    ``track`` is the track's imported values, the side of the comparison the
+    candidates are marked against (CLEAN-12).
+    """
+    from cuepoint.services.match_comparison import compared_track
+
+    track = _require_track(track_id)
     repository = _service("IMatchRepository")
     match = repository.get_match(int(track_id))
     candidate = (
@@ -392,25 +420,64 @@ def track_matches(track_id: int) -> Dict[str, Any]:
     attempts = repository.attempts_for(int(track_id))
     return {
         "track_id": int(track_id),
+        "track": compared_track(track),
         "state": match_state_to_dict(int(track_id), match),
-        "candidate": None if candidate is None else candidate_to_dict(candidate),
+        "candidate": (
+            None if candidate is None else compared_candidate_to_dict(candidate, track)
+        ),
         "attempts": [attempt_to_dict(attempt) for attempt in attempts],
         "total": len(attempts),
     }
 
 
 def attempt_candidates(attempt_id: int) -> Dict[str, Any]:
-    """One attempt's candidates, in the order the matcher scored them."""
+    """One attempt's candidates, in the order the matcher scored them.
+
+    Each is marked against the track as it was imported. An attempt outlives
+    nothing it belongs to — deleting a track deletes its attempts — so the track
+    is there; ``differs`` is null only if it is not.
+    """
     repository = _service("IMatchRepository")
     attempt = repository.get_attempt(int(attempt_id))
     if attempt is None:
         raise not_found("ATTEMPT_NOT_FOUND", f"No match attempt with id {attempt_id}")
+    track = _service("ILibraryService").get_track(int(attempt.track_id))
     candidates = repository.candidates_for(int(attempt_id))
     return {
         "attempt_id": attempt.id,
         "track_id": attempt.track_id,
-        "candidates": [candidate_to_dict(candidate) for candidate in candidates],
+        "candidates": [
+            compared_candidate_to_dict(candidate, track) for candidate in candidates
+        ],
         "total": len(candidates),
+    }
+
+
+def track_folder(track_id: int) -> Dict[str, Any]:
+    """Where "show in folder" can take a person for one track (CLEAN-07, CLEAN-12).
+
+    ``file_exists`` says the file itself can be shown. Otherwise ``folder`` is
+    the nearest folder on its path that still exists, and ``null`` says plainly
+    that nothing on the path does — the drive itself is gone. The renderer
+    names a library track, never a path, so this reveals nothing about a place
+    the library does not already point at.
+    """
+    import os
+
+    from cuepoint.services.file_check_service import nearest_existing_folder
+
+    track = _require_track(track_id)
+    path = str(track.file_path or "")
+    exists = bool(path) and os.path.isfile(path)
+    return {
+        "track_id": int(track_id),
+        "file_path": path,
+        "file_exists": exists,
+        "folder": (
+            os.path.dirname(path)
+            if exists
+            else (nearest_existing_folder(path) if path else None)
+        ),
     }
 
 
@@ -583,13 +650,58 @@ def scan_duplicates(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str
     return _started(started.job, started.to_dict())
 
 
+def _member_rows(track_ids: Sequence[int]) -> Dict[int, Dict[str, Any]]:
+    """Library rows for a page of group members, read in three queries."""
+    from cuepoint.engine.library_api import track_to_dict
+
+    if not track_ids:
+        return {}
+    tracks = _service("ITrackRepository").get_many(track_ids)
+    ids = [int(track.id) for track in tracks if track.id is not None]
+    metadata = _service("IMetadataService").get_many(ids) if ids else {}
+    clean = _service("ILibraryService").clean_states(ids) if ids else {}
+    return {
+        int(track.id): track_to_dict(track, metadata.get(track.id), clean.get(track.id))
+        for track in tracks
+        if track.id is not None
+    }
+
+
 def duplicate_groups(params: Dict[str, List[str]]) -> Dict[str, Any]:
-    """The stored groups of two or more, dismissed ones only when asked."""
-    groups = _service("IDuplicateService").groups(
-        _query_value(params, "signal"),
-        include_dismissed=_query_bool(params, "include_dismissed"),
+    """The stored groups of two or more, dismissed ones only when asked.
+
+    Each group carries ``members``: its tracks as the Library draws them, so a
+    person can tell two files apart without opening each (CLEAN-12). ``limit``
+    and ``offset`` page the groups; without ``limit`` every group is listed, as
+    CLEAN-11 answered, and ``total`` is always every group.
+    """
+    signal = _query_value(params, "signal")
+    include_dismissed = _query_bool(params, "include_dismissed")
+    requested = _query_int(params, "limit")
+    limit = (
+        None if requested is None else max(1, min(int(requested), DUPLICATES_LIMIT_MAX))
     )
-    return {"groups": [group.to_dict() for group in groups], "total": len(groups)}
+    offset = max(0, _query_int(params, "offset") or 0)
+    service = _service("IDuplicateService")
+    page = service.groups(
+        signal, include_dismissed=include_dismissed, limit=limit, offset=offset
+    )
+    total = service.count_groups(signal, include_dismissed=include_dismissed)
+    rows = _member_rows([track_id for group in page for track_id in group.track_ids])
+    return {
+        "groups": [
+            {
+                **group.to_dict(),
+                "members": [
+                    rows[track_id] for track_id in group.track_ids if track_id in rows
+                ],
+            }
+            for group in page
+        ],
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }
 
 
 def dismiss_duplicates(
@@ -799,6 +911,7 @@ def handles_get(path: str) -> bool:
         path in _GET_ROUTES
         or _MATCHES_ROUTE.match(path) is not None
         or _CANDIDATES_ROUTE.match(path) is not None
+        or _FOLDER_ROUTE.match(path) is not None
     )
 
 
@@ -815,6 +928,9 @@ def handle_get(path: str, params: Dict[str, List[str]]) -> Tuple[int, Dict[str, 
     match = _CANDIDATES_ROUTE.match(path)
     if match:
         return 200, attempt_candidates(_path_int(match.group(1), "attempt id"))
+    match = _FOLDER_ROUTE.match(path)
+    if match:
+        return 200, track_folder(_path_int(match.group(1), "track id"))
     handler = _GET_ROUTES.get(path)
     if handler is None:
         raise not_found("NOT_FOUND", "Unknown path")
@@ -870,6 +986,7 @@ __all__: Sequence[str] = (
     "CleanUnavailableError",
     "attempt_to_dict",
     "candidate_to_dict",
+    "compared_candidate_to_dict",
     "file_write_to_dict",
     "handle_get",
     "handle_post",

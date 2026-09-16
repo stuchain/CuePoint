@@ -308,6 +308,10 @@ function registerIpcHandlers(): void {
   ipcMain.handle("engine:getMatchCandidates", (_event, params) =>
     engine.getMatchCandidates(params),
   );
+  // CLEAN-12: the renderer names a track, never a path.
+  ipcMain.handle("engine:getTrackFolder", (_event, params) =>
+    engine.getTrackFolder(params),
+  );
   ipcMain.handle("engine:decideMatch", (_event, params) =>
     engine.decideMatch(params),
   );

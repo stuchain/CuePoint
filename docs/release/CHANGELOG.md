@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- A Clean page in the navigation, with four parts. **Review** lists tracks by
+  where they stand with Beatport — needs review first — for the whole library,
+  a playlist or a Collection. Select a track to see it beside every candidate
+  the matcher found, with each difference marked and the reason a candidate was
+  refused. Accept one, reject the match, clear your own decision, apply chosen
+  fields from an accepted match, or match again. Up and Down move through the
+  queue, Left and Right choose a candidate, A accepts, R rejects and N moves on.
+  Match a selection or everything shown, and export the list as CSV, JSON or
+  Excel. **Missing files** lists files that are not where Rekordbox says, shows
+  the nearest folder that still exists, and says a disconnected drive in one
+  line; fixing a file still happens in Rekordbox. **Duplicates** shows possible
+  duplicates with what put them together, and lets you mark a group as not
+  duplicates, tag its tracks or add them to a Collection — nothing is deleted.
+  **Health** counts what needs attention, each number opening the Library on
+  exactly those tracks, and says when each check last ran
 - Your own Collections, beside the Rekordbox playlists in the Library page's
   left pane. Make folders and Collections, drag tracks into them, arrange them
   in the order you want, and move or rename them later. A delete says what it
@@ -91,6 +106,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   status chrome off-screen as those are added
 
 ### Fixed
+- The Library table stopped at 1,200 pixels wide on a large display instead of
+  using the whole window
 - Writing tags to files — inKey's Sync Tags and the command line — never
   changed the year of a file that already had one, which is nearly every
   purchased track, and still reported success. The year written is now the

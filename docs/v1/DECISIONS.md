@@ -2045,6 +2045,20 @@ match state is visible.
 
 **Decided with**: User · **Date**: 2026-09-13
 
+### Implemented (2026-09-16, CLEAN-12) — the page, as tabs over the Library's own query
+
+Nothing here changes the decision. What building it settled, recorded in full in
+`PHASE7_CLEAN.md` under CLEAN-12:
+
+- **Tabs**: Review, Missing files, Duplicates and Health, the last one used remembered.
+- **Review and Missing files are the Library's `TrackTable`** over the Library's windowed browse
+  with a rule set, so DEC-041's convergence needed no in-memory source.
+- **The comparison's differences are the engine's answer**, because the same key in two notations
+  is not a difference and only the engine knows the notations.
+- **A candidate's Beatport image is not drawn**: DEC-076 as amended shows artwork only through its
+  guarded decoder, which serves Beatport's image for an accepted match only.
+- The Library and Inspector hooks are CLEAN-13's.
+
 ---
 
 ## DEC-073 — Missing Files Are Found by a Scan Job and Fixed in Rekordbox
@@ -2181,6 +2195,15 @@ Nothing here changes the decision. What building it settled, recorded in full in
 - **A test holds every count to the Library.** Over a library holding every problem, each count
   equals the total the Library's search returns for the rules the count carries, and finds exactly
   the tracks it is about.
+
+### Implemented (2026-09-16, CLEAN-12) — the panel, and when each count was last looked at
+
+- **Each count is a link** that opens the whole Library with exactly the rules the engine returned;
+  the page builds no rule of its own.
+- **Health says when each detection last ran** — files checked, duplicates looked for, artwork
+  read — from the activity event each run records, so "no missing files" and "never checked" are
+  told apart, and a run button starts each again.
+- **A disconnected drive is one line**, grouped by root from the current file checks (DEC-073).
 
 ---
 

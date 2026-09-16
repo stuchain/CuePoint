@@ -1249,10 +1249,61 @@ export interface MatchCandidate {
   query_text: string | null;
   candidate_index: number | null;
   elapsed_ms: number | null;
+  /** The version its title names, as written: "Extended Mix" (CLEAN-12). */
+  mix: string | null;
+  /** How it differs from the track's imported values, answered by the engine. */
+  differs: CandidateDifferences | null;
+}
+
+/**
+ * Per field, whether a candidate differs from the track (CLEAN-12).
+ *
+ * `null` means one side has nothing to compare, which is not a difference. The
+ * engine answers it, because the same key in two notations is not a difference
+ * and only the engine knows the notations.
+ */
+export interface CandidateDifferences {
+  title: boolean | null;
+  artists: boolean | null;
+  mix: boolean | null;
+  remixers: boolean | null;
+  label: boolean | null;
+  genre: boolean | null;
+  key: boolean | null;
+  bpm: boolean | null;
+  year: boolean | null;
+}
+
+/** A track's imported values: the side of the comparison candidates are marked against. */
+export interface ComparedTrack {
+  title: string;
+  artist: string;
+  mix: string | null;
+  remixer: string | null;
+  album: string | null;
+  label: string | null;
+  genre: string | null;
+  key: string | null;
+  bpm: number | null;
+  year: number | null;
+}
+
+/**
+ * Where "show in folder" can take a person for one track (CLEAN-12).
+ *
+ * The file itself when it exists; otherwise the nearest folder on its path that
+ * does, and `null` when nothing on the path exists — the drive is gone.
+ */
+export interface TrackFolder {
+  track_id: number;
+  file_path: string;
+  file_exists: boolean;
+  folder: string | null;
 }
 
 export interface TrackMatches {
   track_id: number;
+  track: ComparedTrack;
   state: TrackMatchState;
   /** The candidate the state points at: accepted, rejected, or proposed. */
   candidate: MatchCandidate | null;
@@ -1323,9 +1374,18 @@ export interface DuplicateGroup {
   dismissed: boolean;
 }
 
+/** A group as the listing answers it, with its members as Library rows (CLEAN-12). */
+export interface ListedDuplicateGroup extends DuplicateGroup {
+  members: LibraryTrackRow[];
+}
+
 export interface DuplicateGroupList {
-  groups: DuplicateGroup[];
+  groups: ListedDuplicateGroup[];
+  /** Every group, whatever page was asked for. */
   total: number;
+  /** Null when every group was asked for. */
+  limit: number | null;
+  offset: number;
 }
 
 export interface DuplicateScanStarted extends CleanJobStarted {
@@ -1486,9 +1546,28 @@ export interface HealthCount {
   rules: FilterRuleSet;
 }
 
+/** A scan behind the counts, and when it last ran; null when it never has (CLEAN-12). */
+export interface HealthDetection {
+  id: string;
+  label: string;
+  /** The job that runs it again. */
+  job_type: string;
+  last_run_at: string | null;
+  last_summary: string | null;
+}
+
+/** A disconnected drive or share, as one finding rather than thousands (DEC-073). */
+export interface UnavailableRoot {
+  root: string;
+  tracks: number;
+  summary: string;
+}
+
 export interface LibraryHealth {
   track_count: number;
   counts: HealthCount[];
+  detections: HealthDetection[];
+  unavailable_roots: UnavailableRoot[];
 }
 
 export type ReviewExportFormat = "csv" | "json" | "excel";
@@ -1698,6 +1777,7 @@ export interface CuePointBridge {
   getResumableMatches?: () => Promise<ResumableMatches>;
   getTrackMatches?: (params: { trackId: number }) => Promise<TrackMatches>;
   getMatchCandidates?: (params: { attemptId: number }) => Promise<AttemptCandidates>;
+  getTrackFolder?: (params: { trackId: number }) => Promise<TrackFolder>;
   decideMatch?: (params: {
     decision: "accept" | "reject" | "clear";
     track_id?: number;
@@ -1726,6 +1806,8 @@ export interface CuePointBridge {
   getDuplicateGroups?: (params?: {
     signal?: DuplicateSignal;
     includeDismissed?: boolean;
+    limit?: number;
+    offset?: number;
   }) => Promise<DuplicateGroupList>;
   dismissDuplicateGroup?: (params: { group_id: number }) => Promise<{ group: DuplicateGroup }>;
   restoreDuplicateGroup?: (params: { group_id: number }) => Promise<{ group: DuplicateGroup }>;

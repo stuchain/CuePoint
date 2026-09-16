@@ -65,6 +65,7 @@ GUARDED = (
     "cuepoint/models/track_clean_state.py",
     "cuepoint/services/health_service.py",
     "cuepoint/services/review_export_service.py",
+    "cuepoint/services/match_comparison.py",
     "cuepoint/engine/clean_api.py",
     "cuepoint/services/override_values.py",
     "cuepoint/services/database_service.py",

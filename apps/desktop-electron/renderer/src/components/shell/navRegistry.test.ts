@@ -82,9 +82,9 @@ describe("navRegistry", () => {
   });
 
   it("still has the not-yet-built destinations turned off", () => {
-    // Library came on in LIBRARY-11 and Collections in ORG-13; the rest wait
-    // for their phase.
-    for (const id of ["clean", "discover", "prepare"]) {
+    // Library came on in LIBRARY-11, Collections in ORG-13 and Clean in
+    // CLEAN-12; the rest wait for their phase.
+    for (const id of ["discover", "prepare"]) {
       expect(findDestinationById(id)?.enabled).toBe(false);
     }
   });
@@ -94,6 +94,7 @@ describe("navRegistry", () => {
     expect(enabled).toEqual([
       "library",
       "collections",
+      "clean",
       "tools",
       "match",
       "incrate",

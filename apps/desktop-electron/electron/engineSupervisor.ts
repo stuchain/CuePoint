@@ -53,6 +53,7 @@ import {
   type TagRestoreStarted,
   type TagWriteRecord,
   type TagWriteStarted,
+  type TrackFolder,
   type TrackMatches,
 } from "./engineClient";
 import { getBundledEnginePath, shouldUseBundledEngine } from "./engineLaunch";
@@ -457,6 +458,10 @@ export class EngineSupervisor {
 
   async getMatchCandidates(params: { attemptId: number }): Promise<AttemptCandidates> {
     return this.client().getMatchCandidates(params);
+  }
+
+  async getTrackFolder(params: { trackId: number }): Promise<TrackFolder> {
+    return this.client().getTrackFolder(params);
   }
 
   async decideMatch(params: Parameters<EngineClient["decideMatch"]>[0]): Promise<DecisionOutcome> {

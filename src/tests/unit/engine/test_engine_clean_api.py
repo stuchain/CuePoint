@@ -552,6 +552,18 @@ class TestReadingMatches:
         payload = ok(get(engine, f"/api/v1/library/tracks/{track_id}/matches"))
         assert payload == {
             "track_id": track_id,
+            "track": {
+                "title": "Never",
+                "artist": "An Artist",
+                "mix": None,
+                "remixer": None,
+                "album": None,
+                "label": None,
+                "genre": None,
+                "key": None,
+                "bpm": None,
+                "year": None,
+            },
             "state": {
                 "track_id": track_id,
                 "state": "not_matched",
@@ -652,6 +664,57 @@ class TestReadingMatches:
         refused(
             get(engine, "/api/v1/clean/attempts/x/candidates"), 400, "INVALID_REQUEST"
         )
+
+    def test_candidates_say_where_they_differ_from_the_track(self, engine):
+        # CLEAN-12's comparison. The same key in two notations, a BPM Rekordbox
+        # analysed a hair off Beatport's and a genre Beatport qualifies are not
+        # differences; the version and the label are.
+        [track_id] = add_tracks(
+            track(
+                "Compared",
+                title="A Title (Extended Mix)",
+                artist="An Artist & Guest",
+                key="8A",
+                bpm=127.98,
+                genre="Techno",
+                label="Label One",
+            )
+        )
+        stored = attempt(
+            track_id,
+            candidate(
+                1,
+                title="A Title (Original Mix)",
+                artists="Guest, An Artist",
+                key="A Minor",
+                bpm=128.0,
+                genre="Techno (Peak Time / Driving)",
+                label="Label Two",
+                release_year=2020,
+            ),
+        )
+        expected = {
+            "title": False,
+            "artists": False,
+            "mix": True,
+            "remixers": None,
+            "label": True,
+            "genre": False,
+            "key": False,
+            "bpm": False,
+            "year": None,
+        }
+
+        matches = ok(get(engine, f"/api/v1/library/tracks/{track_id}/matches"))
+        assert matches["track"]["mix"] == "Extended Mix"
+        assert matches["track"]["key"] == "8A"
+        assert matches["candidate"]["mix"] == "Original Mix"
+        assert matches["candidate"]["differs"] == expected
+
+        listed = ok(get(engine, f"/api/v1/clean/attempts/{stored.id}/candidates"))
+        [only] = listed["candidates"]
+        assert only["differs"] == expected
+        assert only["mix"] == "Original Mix"
 
 
 # ---------------------------------------------------------------- decisions
@@ -1224,6 +1287,59 @@ class TestDuplicates:
             get(engine, "/api/v1/clean/duplicates", **params), 400, "INVALID_REQUEST"
         )
 
+    def test_each_group_carries_its_members_as_library_rows(self, engine, store):
+        ids = self.scanned(engine, store)
+
+        [group] = ok(get(engine, "/api/v1/clean/duplicates"))["groups"]
+
+        assert [member["id"] for member in group["members"]] == group["track_ids"]
+        assert sorted(member["id"] for member in group["members"]) == sorted(ids[:2])
+        assert {member["title"] for member in group["members"]} == {"Same Song"}
+        member = group["members"][0]
+        for field in ("file_path", "file_status", "match_state", "effective_key"):
+            assert field in member, field
+
+    def test_a_member_shows_the_values_a_user_sees(self, engine, store):
+        # Members are Library rows, so a key typed in is the key shown: two
+        # copies told apart by their effective values, not Rekordbox's.
+        ids = self.scanned(engine, store)
+        ok(post(engine, f"/api/v1/library/tracks/{ids[0]}/overrides", {"key": "Am"}))
+
+        [group] = ok(get(engine, "/api/v1/clean/duplicates"))["groups"]
+
+        [edited] = [m for m in group["members"] if m["id"] == ids[0]]
+        [other] = [m for m in group["members"] if m["id"] == ids[1]]
+        assert (edited["effective_key"], edited["overridden"]) == ("Am", ["key"])
+        assert (other["effective_key"], other["overridden"]) == (None, [])
+
+    def test_groups_are_paged_and_counted_whole(self, engine, store):
+        add_tracks(
+            track("A1", title="First Song", duration_seconds=200),
+            track("A2", title="First Song", duration_seconds=200),
+            track("B1", title="Second Song", duration_seconds=200),
+            track("B2", title="Second Song", duration_seconds=200),
+        )
+        payload = ok(post(engine, "/api/v1/clean/duplicates/scan", {}), 202)
+        finished(store, payload["job_id"])
+
+        whole = ok(get(engine, "/api/v1/clean/duplicates"))
+        assert (whole["total"], whole["limit"], whole["offset"]) == (2, None, 0)
+        first = ok(get(engine, "/api/v1/clean/duplicates", limit=1))
+        second = ok(get(engine, "/api/v1/clean/duplicates", limit=1, offset=1))
+
+        assert (first["total"], first["limit"], len(first["groups"])) == (2, 1, 1)
+        assert second["offset"] == 1
+        assert [g["id"] for g in first["groups"] + second["groups"]] == [
+            g["id"] for g in whole["groups"]
+        ]
+        assert ok(get(engine, "/api/v1/clean/duplicates", limit=0))["limit"] == 1
+
+    @pytest.mark.parametrize("params", [{"limit": "many"}, {"offset": "x"}])
+    def test_a_page_that_is_not_a_number(self, engine, params):
+        refused(
+            get(engine, "/api/v1/clean/duplicates", **params), 400, "INVALID_REQUEST"
+        )
+
     @pytest.mark.parametrize("signals", ["text", ["colour"], [1]])
     def test_signals_that_are_not_signals(self, engine, signals):
         refused(
@@ -1231,6 +1347,64 @@ class TestDuplicates:
             400,
             "INVALID_REQUEST",
         )
+
+
+@pytest.mark.unit
+class TestTheNearestFolder:
+    """Where "show in folder" takes a person, for a file that may not be there."""
+
+    def test_a_file_that_is_there_is_shown_itself(self, engine, tmp_path):
+        present = tmp_path / "present.mp3"
+        present.write_bytes(b"x")
+        [track_id] = add_tracks(track("Here", file_path=str(present)))
+
+        payload = ok(get(engine, f"/api/v1/library/tracks/{track_id}/folder"))
+
+        assert payload == {
+            "track_id": track_id,
+            "file_path": str(present),
+            "file_exists": True,
+            "folder": str(tmp_path),
+        }
+
+    def test_a_missing_file_leads_to_the_nearest_folder_still_there(
+        self, engine, tmp_path
+    ):
+        gone = tmp_path / "moved" / "deeper" / "gone.mp3"
+        [track_id] = add_tracks(track("Gone", file_path=str(gone)))
+
+        payload = ok(get(engine, f"/api/v1/library/tracks/{track_id}/folder"))
+
+        assert payload["file_exists"] is False
+        assert payload["folder"] == str(tmp_path)
+
+    def test_nothing_on_the_path_is_said_plainly(self, engine):
+        path = "/Volumes/CuePoint-No-Such-Drive/Music/a.mp3"
+        [track_id] = add_tracks(track("Unplugged", file_path=path))
+
+        payload = ok(get(engine, f"/api/v1/library/tracks/{track_id}/folder"))
+
+        assert (payload["file_exists"], payload["folder"]) == (False, None)
+
+    def test_an_unknown_track(self, engine):
+        refused(
+            get(engine, "/api/v1/library/tracks/99999/folder"), 404, "TRACK_NOT_FOUND"
+        )
+
+    def test_a_track_id_that_is_not_a_number(self, engine):
+        refused(
+            get(engine, "/api/v1/library/tracks/abc/folder"),
+            400,
+            "INVALID_REQUEST",
+            "track id",
+        )
+
+    def test_the_token_is_required(self, engine):
+        [track_id] = add_tracks(track("Private"))
+        status, payload = call(
+            engine, "GET", f"/api/v1/library/tracks/{track_id}/folder", token=None
+        )
+        assert status == 401, payload
 
 
 @pytest.mark.unit
@@ -1669,14 +1843,92 @@ class TestHealth:
 
     def test_the_shape(self, engine, troubled):
         report = ok(get(engine, "/api/v1/clean/health"))
-        assert set(report) == {"track_count", "counts"}
+        assert set(report) == {
+            "track_count",
+            "counts",
+            "detections",
+            "unavailable_roots",
+        }
         assert set(report["counts"][0]) == {"id", "label", "count", "rules"}
         assert report["counts"][0]["rules"]["match"] == "all"
+        assert [d["id"] for d in report["detections"]] == [
+            "files",
+            "duplicates",
+            "artwork",
+        ]
 
     def test_an_empty_library_counts_nothing(self, engine):
         report = ok(get(engine, "/api/v1/clean/health"))
         assert report["track_count"] == 0
         assert {count["count"] for count in report["counts"]} == {0}
+        assert report["unavailable_roots"] == []
+        assert [d["last_run_at"] for d in report["detections"]] == [None] * 3
+
+    def test_each_detection_says_when_it_last_ran(self, engine, store):
+        ids = add_tracks(track("Checked"), track("Also checked"))
+        before = {
+            d["id"]: d for d in ok(get(engine, "/api/v1/clean/health"))["detections"]
+        }
+        assert before["files"]["last_run_at"] is None
+
+        started = ok(
+            post(
+                engine, "/api/v1/clean/files/check", {"selection": ids_selection(*ids)}
+            ),
+            202,
+        )
+        finished(store, started["job_id"])
+        scanned = ok(post(engine, "/api/v1/clean/duplicates/scan", {}), 202)
+        finished(store, scanned["job_id"])
+
+        after = {
+            d["id"]: d for d in ok(get(engine, "/api/v1/clean/health"))["detections"]
+        }
+        feed = resolve("IActivityRepository")
+        [checked] = feed.recent_events(limit=1, event_type="clean.files.checked")
+        [looked] = feed.recent_events(limit=1, event_type="clean.duplicates.scanned")
+        assert (after["files"]["last_run_at"], after["files"]["last_summary"]) == (
+            checked.created_at,
+            checked.summary,
+        )
+        assert after["duplicates"]["last_run_at"] == looked.created_at
+        assert after["artwork"]["last_run_at"] is None
+        assert after["files"]["job_type"] == "file_check"
+
+    def test_a_disconnected_drive_is_one_line_per_root(self, engine):
+        on_e = add_tracks(
+            track("E1", file_path="E:\\Music\\a.mp3"),
+            track("E2", file_path="E:\\Music\\Deeper\\b.mp3"),
+        )
+        [moved] = add_tracks(track("Moved", file_path="D:\\Music\\c.mp3"))
+        record_files(
+            *(
+                TrackFileStatus(
+                    track_id,
+                    FILE_MISSING,
+                    path,
+                    NOW,
+                    reason="root_unavailable",
+                )
+                for track_id, path in zip(
+                    on_e, ["E:\\Music\\a.mp3", "E:\\Music\\Deeper\\b.mp3"]
+                )
+            ),
+            # Found on a missing drive at a path the track no longer has.
+            TrackFileStatus(
+                moved, FILE_MISSING, "F:\\Old\\c.mp3", NOW, reason="root_unavailable"
+            ),
+        )
+
+        report = ok(get(engine, "/api/v1/clean/health"))
+
+        assert report["unavailable_roots"] == [
+            {
+                "root": "E:\\",
+                "tracks": 2,
+                "summary": "2 tracks on E:\\ — the drive is not connected",
+            }
+        ]
 
 
 @pytest.mark.unit

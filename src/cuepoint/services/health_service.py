@@ -32,7 +32,7 @@ What each count reads
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple
 
 from cuepoint.models.filter_rule import (
     ARTWORK_NONE,
@@ -45,7 +45,22 @@ from cuepoint.models.filter_rule import (
 from cuepoint.models.file_status import FILE_MISSING, FILE_UNREADABLE
 from cuepoint.models.match_attempt import STATE_NEEDS_REVIEW, STATE_NOT_MATCHED
 from cuepoint.persistence.track_query import BrowseQuery
-from cuepoint.services.interfaces import IHealthService, ITrackRepository
+from cuepoint.services.artwork_service import EVENT_ARTWORK_SCANNED
+from cuepoint.services.duplicate_service import EVENT_DUPLICATES_SCANNED
+from cuepoint.services.file_check_service import (
+    EVENT_FILES_CHECKED,
+    UnavailableRoot,
+    path_root,
+)
+from cuepoint.services.interfaces import (
+    IActivityRepository,
+    IFileStatusRepository,
+    IHealthService,
+    ITrackRepository,
+)
+
+if TYPE_CHECKING:
+    from cuepoint.persistence.activity_repository import ActivityEvent
 
 
 @dataclass(frozen=True)
@@ -107,6 +122,73 @@ HEALTH_RULES: Tuple[HealthRule, ...] = (
 
 
 @dataclass(frozen=True)
+class HealthDetection:
+    """One of the scans whose findings Health counts, and how to tell when it ran.
+
+    Attributes:
+        id: A stable identifier a renderer keys on.
+        label: What the panel calls it.
+        job_type: The job that runs it, which the panel starts to run it again.
+        event_type: The activity event every run records, finished or stopped.
+    """
+
+    id: str
+    label: str
+    job_type: str
+    event_type: str
+
+
+#: The detections behind the counts (CLEAN-12). When each last ran is read from
+#: the activity feed rather than the job table: every run records its event
+#: whatever started it — an import, a refresh, a match or a person — and the
+#: feed is what the Activity panel shows, so the two cannot disagree.
+HEALTH_DETECTIONS: Tuple[HealthDetection, ...] = (
+    HealthDetection("files", "Files checked", "file_check", EVENT_FILES_CHECKED),
+    HealthDetection(
+        "duplicates",
+        "Duplicates looked for",
+        "duplicate_scan",
+        EVENT_DUPLICATES_SCANNED,
+    ),
+    HealthDetection("artwork", "Artwork read", "artwork_scan", EVENT_ARTWORK_SCANNED),
+)
+
+
+@dataclass(frozen=True)
+class DetectionRun:
+    """A detection and its latest recorded run, if it has ever run."""
+
+    detection: HealthDetection
+    last: Optional["ActivityEvent"] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """The detection as the panel reads it: never run is ``null``, not a date."""
+        return {
+            "id": self.detection.id,
+            "label": self.detection.label,
+            "job_type": self.detection.job_type,
+            "last_run_at": self.last.created_at if self.last is not None else None,
+            "last_summary": self.last.summary if self.last is not None else None,
+        }
+
+
+def unavailable_roots(paths: Iterable[str]) -> Tuple[UnavailableRoot, ...]:
+    """Group paths found on a missing root into one finding per root.
+
+    Most tracks first, then by root, so the same library answers in the same
+    order. A path with no root — relative, or empty — is nobody's drive and is
+    left out.
+    """
+    counts: Dict[str, int] = {}
+    for path in paths:
+        root = path_root(path)
+        if root is not None:
+            counts[root] = counts.get(root, 0) + 1
+    ordered = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+    return tuple(UnavailableRoot(root, tracks) for root, tracks in ordered)
+
+
+@dataclass(frozen=True)
 class HealthCount:
     """One rule and how many tracks it finds."""
 
@@ -129,12 +211,21 @@ class HealthReport:
 
     track_count: int
     counts: Tuple[HealthCount, ...]
+    detections: Tuple[DetectionRun, ...] = ()
+    unavailable_roots: Tuple[UnavailableRoot, ...] = ()
 
     def to_dict(self) -> Dict[str, Any]:
-        """The report as an answer. A public shape; extend rather than rename."""
+        """The report as an answer. A public shape; extend rather than rename.
+
+        CLEAN-12 extended it with ``detections``, when each scan last ran, and
+        ``unavailable_roots``, a disconnected drive as one line rather than as
+        thousands of missing files (DEC-073).
+        """
         return {
             "track_count": self.track_count,
             "counts": [count.to_dict() for count in self.counts],
+            "detections": [run.to_dict() for run in self.detections],
+            "unavailable_roots": [root.to_dict() for root in self.unavailable_roots],
         }
 
 
@@ -145,13 +236,31 @@ class HealthService(IHealthService):
         self,
         track_repository: ITrackRepository,
         rules: Tuple[HealthRule, ...] = HEALTH_RULES,
+        *,
+        activity_repository: Optional[IActivityRepository] = None,
+        file_status_repository: Optional[IFileStatusRepository] = None,
+        detections: Tuple[HealthDetection, ...] = HEALTH_DETECTIONS,
     ) -> None:
-        """Count through ``track_repository``, whose count the Library table shows."""
+        """Count through ``track_repository``, whose count the Library table shows.
+
+        Without an activity repository every detection reads as never run, and
+        without a file-status repository no root is reported unavailable: a
+        report that cannot know says nothing rather than something untrue.
+        """
         self._tracks = track_repository
         self._rules = rules
+        self._activity = activity_repository
+        self._files = file_status_repository
+        self._detections = detections
+
+    def _last_run(self, detection: HealthDetection) -> DetectionRun:
+        if self._activity is None:
+            return DetectionRun(detection)
+        latest = self._activity.recent_events(limit=1, event_type=detection.event_type)
+        return DetectionRun(detection, latest[0] if latest else None)
 
     def report(self) -> HealthReport:
-        """Count every rule over the whole library."""
+        """Count every rule over the whole library, and say when each scan last ran."""
         return HealthReport(
             track_count=self._tracks.count(),
             counts=tuple(
@@ -160,13 +269,25 @@ class HealthService(IHealthService):
                 )
                 for rule in self._rules
             ),
+            detections=tuple(
+                self._last_run(detection) for detection in self._detections
+            ),
+            unavailable_roots=(
+                unavailable_roots(self._files.unavailable_paths())
+                if self._files is not None
+                else ()
+            ),
         )
 
 
 __all__ = (
+    "HEALTH_DETECTIONS",
     "HEALTH_RULES",
+    "DetectionRun",
     "HealthCount",
+    "HealthDetection",
     "HealthReport",
     "HealthRule",
     "HealthService",
+    "unavailable_roots",
 )

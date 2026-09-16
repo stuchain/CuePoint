@@ -25,6 +25,15 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   // gesture — put the cursor where the narrowing happens.
   { context: "Library", action: "Focus search", shortcut: "Ctrl+F" },
   { context: "Library", action: "Select all matching tracks", shortcut: "Ctrl+A" },
+  // Clean's review queue (CLEAN-12). Bare keys, because reviewing thousands of
+  // tracks is a keyboard job; they are not taken while typing in a field or
+  // inside a dialog, and none of them is modified, so none collides with a
+  // shell shortcut.
+  { context: "Clean", action: "Previous or next track in the review queue", shortcut: "Up / Down" },
+  { context: "Clean", action: "Choose another candidate", shortcut: "Left / Right" },
+  { context: "Clean", action: "Accept the chosen candidate", shortcut: "A" },
+  { context: "Clean", action: "Reject the match", shortcut: "R" },
+  { context: "Clean", action: "Next track without deciding", shortcut: "N" },
   // Escape is not listed again here: "Cancel operation" above is what it
   // means everywhere, and clearing a selection is backing out of one. Two rows
   // would be two meanings for one key, which is the thing SHELL-10 forbids.

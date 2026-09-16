@@ -317,6 +317,36 @@ describe("a library that changed under a query that did not", () => {
     expect(calls[1]).toEqual({ offset: 0, limit: PAGE_SIZE });
   });
 
+  it("says the new answer has not landed until it has (CLEAN-12)", async () => {
+    // What the review queue waits for before selecting the next track: until
+    // the reload is answered, the rows held are the old answer's.
+    const { result } = renderHook(() => useTrackWindow(query()));
+    await waitFor(() => expect(result.current.answered).toBe(true));
+    const before = result.current.identity;
+
+    let release: (() => void) | null = null;
+    browseLibrary.mockImplementation(
+      (params: Call & Record<string, unknown>) =>
+        new Promise<LibrarySearchResponse>((resolve) => {
+          release = () => resolve(respond(params));
+        }),
+    );
+    act(() => result.current.reload());
+
+    expect(result.current.identity).not.toBe(before);
+    expect(result.current.answered).toBe(false);
+    await waitFor(() => expect(release).not.toBeNull());
+    await act(async () => release!());
+    await waitFor(() => expect(result.current.answered).toBe(true));
+  });
+
+  it("is not answered by a failure", async () => {
+    browseLibrary.mockRejectedValue(new Error("engine down"));
+    const { result } = renderHook(() => useTrackWindow(query()));
+    await waitFor(() => expect(result.current.status).toBe("error"));
+    expect(result.current.answered).toBe(false);
+  });
+
   it("lets go of the rows it was holding", async () => {
     const { result } = renderHook(() => useTrackWindow(query()));
     await waitFor(() => expect(result.current.source.getRow(0)?.id).toBe(1));

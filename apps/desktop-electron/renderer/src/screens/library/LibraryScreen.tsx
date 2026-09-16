@@ -77,6 +77,7 @@ import { smartQuery, type SmartAttachment } from "./smartFilter";
 import { deletedLine, mergedLine, type TagPatch } from "./tagManager";
 import { describeRule, type ValueNames } from "./filterText";
 import { emptyStateFor } from "./libraryEmpty";
+import type { LibraryOpening } from "./libraryLink";
 import { batchSelection, type BatchAction } from "./libraryBatch";
 import { organizationMenuItems } from "./trackMenu";
 import { useLibraryBatch } from "./useLibraryBatch";
@@ -127,11 +128,20 @@ export interface LibraryScreenProps {
    * that is handed what it needs and the routing stays in `App.tsx`.
    */
   focus?: "collections";
+  /**
+   * Rules to open the whole library filtered by (CLEAN-12, DEC-075).
+   *
+   * What a Health count hands over. Applied once per navigation — its token is
+   * the navigation's — so clicking the same count again opens it again, and a
+   * later render does not undo whatever the user did with the bar since.
+   */
+  openWith?: LibraryOpening | null;
 }
 
 export function LibraryScreen({
   onOpenRekordboxInstructions,
   focus,
+  openWith,
 }: LibraryScreenProps) {
   const { push } = useToast();
   const [summary, setSummary] = useState<LibrarySummary | null>(null);
@@ -245,6 +255,24 @@ export function LibraryScreen({
   useEffect(() => {
     if (focus === "collections") setCollectionsFocus((token) => token + 1);
   }, [focus]);
+
+  /**
+   * Open on the rules a Health count sent (CLEAN-12).
+   *
+   * The whole library, those rules in the bar, and nothing else: a playlist or
+   * Collection left selected would narrow the count, and the number shown on
+   * Health is a count of the library.
+   */
+  const openedWith = useRef<string | null>(null);
+  useEffect(() => {
+    if (!openWith || openedWith.current === openWith.token) return;
+    openedWith.current = openWith.token;
+    playlists.select(null);
+    collections.select(null);
+    setSmart(null);
+    setBarRules(openWith.rules);
+    setQuery({ ...DEFAULT_LIBRARY_QUERY, filters: openWith.rules });
+  }, [collections, openWith, playlists]);
   /** Where a row drag started, which is the only Collection position in hand. */
   const draggingRow = useRef<{ index: number; count: number } | null>(null);
   const detail = useTrackDetail(selection.selection.lastId);

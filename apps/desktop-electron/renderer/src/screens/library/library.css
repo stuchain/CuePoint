@@ -212,8 +212,11 @@
   padding: 0;
 }
 
-/* A table wants the whole region; the reading width for prose does not apply. */
-.app-main .library-screen--browser {
+/* A table wants the whole region; the reading width for prose does not apply.
+   `.screen` in the selector is load-bearing: App.css caps `.app-main .screen`
+   at the reading width with the same specificity and loads later, so without
+   it this rule lost and the table stopped at 1200px on any wide display. */
+.app-main .screen.library-screen--browser {
   max-width: none;
 }
 

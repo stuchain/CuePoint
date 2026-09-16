@@ -9,8 +9,9 @@
  * would change to say so.
  *
  * **`ResultsTable` is not being refactored.** DEC-041 chose to extract rather
- * than rewrite: the results screen keeps the component that has worked for a
- * year until Phase 7 converges them. An edit to it during Phase 4 is a
+ * than rewrite. CLEAN-12 converged match review onto `TrackTable` through the
+ * windowed source; the results screen keeps the component that has worked for
+ * a year until CLEAN-14 deletes it with inKey. An edit to it before then is a
  * decision nobody took.
  */
 import { describe, expect, it } from "vitest";
@@ -84,8 +85,9 @@ describe("ResultsTable is left alone", () => {
   });
 
   it("does not import the new table", () => {
-    // The convergence is Phase 7's, with its own tests. A quiet swap now would
-    // change the results screen with nothing asserting what it now does.
+    // The convergence happened beside it (CLEAN-12), not inside it; CLEAN-14
+    // removes it. A quiet swap would change the results screen with nothing
+    // asserting what it now does.
     expect(imports(resultsTable).filter((path) => path.includes("TrackTable"))).toEqual([]);
   });
 });

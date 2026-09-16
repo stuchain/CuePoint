@@ -1,0 +1,852 @@
+{
+  "_comment": "Real engine responses, produced by src/tests/unit/engine/test_clean_empty_state_fixture.py. Do not hand-edit: regenerate with CUEPOINT_WRITE_FIXTURES=1 and read the diff.",
+  "checked": {
+    "health": {
+      "counts": [
+        {
+          "count": 0,
+          "id": "missing_files",
+          "label": "Missing or unreadable files",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "file_status",
+                "operator": "any_of",
+                "value": [
+                  "missing",
+                  "unreadable"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "count": 0,
+          "id": "duplicates",
+          "label": "In a duplicate group",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "in_duplicate_group",
+                "operator": "is",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "count": 3,
+          "id": "not_matched",
+          "label": "Not matched",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "match_state",
+                "operator": "is",
+                "value": "not_matched"
+              }
+            ]
+          }
+        },
+        {
+          "count": 0,
+          "id": "needs_review",
+          "label": "Needs review",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "match_state",
+                "operator": "is",
+                "value": "needs_review"
+              }
+            ]
+          }
+        },
+        {
+          "count": 0,
+          "id": "disputed",
+          "label": "Disputed by a newer match",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "match_disputed",
+                "operator": "is",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "count": 3,
+          "id": "missing_key",
+          "label": "No key",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "key",
+                "operator": "is_empty"
+              }
+            ]
+          }
+        },
+        {
+          "count": 3,
+          "id": "missing_bpm",
+          "label": "No BPM",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "bpm",
+                "operator": "is_empty"
+              }
+            ]
+          }
+        },
+        {
+          "count": 3,
+          "id": "missing_genre",
+          "label": "No genre",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "genre",
+                "operator": "is_empty"
+              }
+            ]
+          }
+        },
+        {
+          "count": 0,
+          "id": "no_artwork",
+          "label": "No artwork",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "artwork",
+                "operator": "is",
+                "value": "none"
+              }
+            ]
+          }
+        }
+      ],
+      "detections": [
+        {
+          "id": "files",
+          "job_type": "file_check",
+          "label": "Files checked",
+          "last_run_at": "<recorded>",
+          "last_summary": "Checked 3 files: 3 present, 0 missing"
+        },
+        {
+          "id": "duplicates",
+          "job_type": "duplicate_scan",
+          "label": "Duplicates looked for",
+          "last_run_at": null,
+          "last_summary": null
+        },
+        {
+          "id": "artwork",
+          "job_type": "artwork_scan",
+          "label": "Artwork read",
+          "last_run_at": null,
+          "last_summary": null
+        }
+      ],
+      "track_count": 3,
+      "unavailable_roots": []
+    },
+    "missing_files": {
+      "collection_id": null,
+      "collection_scope": null,
+      "dir": "asc",
+      "filters": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "file_status",
+            "operator": "any_of",
+            "value": [
+              "missing",
+              "unreadable"
+            ]
+          }
+        ]
+      },
+      "filters_applied": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "file_status",
+            "operator": "any_of",
+            "value": [
+              "missing",
+              "unreadable"
+            ]
+          }
+        ]
+      },
+      "library_empty": false,
+      "limit": 100,
+      "mode": "browse",
+      "offset": 0,
+      "query": "",
+      "scope": null,
+      "sort": "artist",
+      "total": 0,
+      "tracks": []
+    }
+  },
+  "matched": {
+    "health": {
+      "counts": [
+        {
+          "count": 0,
+          "id": "missing_files",
+          "label": "Missing or unreadable files",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "file_status",
+                "operator": "any_of",
+                "value": [
+                  "missing",
+                  "unreadable"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "count": 0,
+          "id": "duplicates",
+          "label": "In a duplicate group",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "in_duplicate_group",
+                "operator": "is",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "count": 0,
+          "id": "not_matched",
+          "label": "Not matched",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "match_state",
+                "operator": "is",
+                "value": "not_matched"
+              }
+            ]
+          }
+        },
+        {
+          "count": 0,
+          "id": "needs_review",
+          "label": "Needs review",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "match_state",
+                "operator": "is",
+                "value": "needs_review"
+              }
+            ]
+          }
+        },
+        {
+          "count": 0,
+          "id": "disputed",
+          "label": "Disputed by a newer match",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "match_disputed",
+                "operator": "is",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "count": 3,
+          "id": "missing_key",
+          "label": "No key",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "key",
+                "operator": "is_empty"
+              }
+            ]
+          }
+        },
+        {
+          "count": 3,
+          "id": "missing_bpm",
+          "label": "No BPM",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "bpm",
+                "operator": "is_empty"
+              }
+            ]
+          }
+        },
+        {
+          "count": 3,
+          "id": "missing_genre",
+          "label": "No genre",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "genre",
+                "operator": "is_empty"
+              }
+            ]
+          }
+        },
+        {
+          "count": 0,
+          "id": "no_artwork",
+          "label": "No artwork",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "artwork",
+                "operator": "is",
+                "value": "none"
+              }
+            ]
+          }
+        }
+      ],
+      "detections": [
+        {
+          "id": "files",
+          "job_type": "file_check",
+          "label": "Files checked",
+          "last_run_at": "<recorded>",
+          "last_summary": "Checked 3 files: 3 present, 0 missing"
+        },
+        {
+          "id": "duplicates",
+          "job_type": "duplicate_scan",
+          "label": "Duplicates looked for",
+          "last_run_at": "<recorded>",
+          "last_summary": "Found no possible duplicates"
+        },
+        {
+          "id": "artwork",
+          "job_type": "artwork_scan",
+          "label": "Artwork read",
+          "last_run_at": null,
+          "last_summary": null
+        }
+      ],
+      "track_count": 3,
+      "unavailable_roots": []
+    },
+    "needs_review": {
+      "collection_id": null,
+      "collection_scope": null,
+      "dir": "asc",
+      "filters": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "match_state",
+            "operator": "is",
+            "value": "needs_review"
+          }
+        ]
+      },
+      "filters_applied": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "match_state",
+            "operator": "is",
+            "value": "needs_review"
+          }
+        ]
+      },
+      "library_empty": false,
+      "limit": 100,
+      "mode": "browse",
+      "offset": 0,
+      "query": "",
+      "scope": null,
+      "sort": "artist",
+      "total": 0,
+      "tracks": []
+    }
+  },
+  "rules": {
+    "missing_files": {
+      "match": "all",
+      "rules": [
+        {
+          "field": "file_status",
+          "operator": "any_of",
+          "value": [
+            "missing",
+            "unreadable"
+          ]
+        }
+      ]
+    },
+    "needs_review": {
+      "match": "all",
+      "rules": [
+        {
+          "field": "match_state",
+          "operator": "is",
+          "value": "needs_review"
+        }
+      ]
+    }
+  },
+  "scanned": {
+    "duplicates": {
+      "groups": [],
+      "limit": null,
+      "offset": 0,
+      "total": 0
+    },
+    "health": {
+      "counts": [
+        {
+          "count": 0,
+          "id": "missing_files",
+          "label": "Missing or unreadable files",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "file_status",
+                "operator": "any_of",
+                "value": [
+                  "missing",
+                  "unreadable"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "count": 0,
+          "id": "duplicates",
+          "label": "In a duplicate group",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "in_duplicate_group",
+                "operator": "is",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "count": 3,
+          "id": "not_matched",
+          "label": "Not matched",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "match_state",
+                "operator": "is",
+                "value": "not_matched"
+              }
+            ]
+          }
+        },
+        {
+          "count": 0,
+          "id": "needs_review",
+          "label": "Needs review",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "match_state",
+                "operator": "is",
+                "value": "needs_review"
+              }
+            ]
+          }
+        },
+        {
+          "count": 0,
+          "id": "disputed",
+          "label": "Disputed by a newer match",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "match_disputed",
+                "operator": "is",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "count": 3,
+          "id": "missing_key",
+          "label": "No key",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "key",
+                "operator": "is_empty"
+              }
+            ]
+          }
+        },
+        {
+          "count": 3,
+          "id": "missing_bpm",
+          "label": "No BPM",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "bpm",
+                "operator": "is_empty"
+              }
+            ]
+          }
+        },
+        {
+          "count": 3,
+          "id": "missing_genre",
+          "label": "No genre",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "genre",
+                "operator": "is_empty"
+              }
+            ]
+          }
+        },
+        {
+          "count": 0,
+          "id": "no_artwork",
+          "label": "No artwork",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "artwork",
+                "operator": "is",
+                "value": "none"
+              }
+            ]
+          }
+        }
+      ],
+      "detections": [
+        {
+          "id": "files",
+          "job_type": "file_check",
+          "label": "Files checked",
+          "last_run_at": "<recorded>",
+          "last_summary": "Checked 3 files: 3 present, 0 missing"
+        },
+        {
+          "id": "duplicates",
+          "job_type": "duplicate_scan",
+          "label": "Duplicates looked for",
+          "last_run_at": "<recorded>",
+          "last_summary": "Found no possible duplicates"
+        },
+        {
+          "id": "artwork",
+          "job_type": "artwork_scan",
+          "label": "Artwork read",
+          "last_run_at": null,
+          "last_summary": null
+        }
+      ],
+      "track_count": 3,
+      "unavailable_roots": []
+    }
+  },
+  "untouched": {
+    "duplicates": {
+      "groups": [],
+      "limit": null,
+      "offset": 0,
+      "total": 0
+    },
+    "health": {
+      "counts": [
+        {
+          "count": 0,
+          "id": "missing_files",
+          "label": "Missing or unreadable files",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "file_status",
+                "operator": "any_of",
+                "value": [
+                  "missing",
+                  "unreadable"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "count": 0,
+          "id": "duplicates",
+          "label": "In a duplicate group",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "in_duplicate_group",
+                "operator": "is",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "count": 3,
+          "id": "not_matched",
+          "label": "Not matched",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "match_state",
+                "operator": "is",
+                "value": "not_matched"
+              }
+            ]
+          }
+        },
+        {
+          "count": 0,
+          "id": "needs_review",
+          "label": "Needs review",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "match_state",
+                "operator": "is",
+                "value": "needs_review"
+              }
+            ]
+          }
+        },
+        {
+          "count": 0,
+          "id": "disputed",
+          "label": "Disputed by a newer match",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "match_disputed",
+                "operator": "is",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "count": 3,
+          "id": "missing_key",
+          "label": "No key",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "key",
+                "operator": "is_empty"
+              }
+            ]
+          }
+        },
+        {
+          "count": 3,
+          "id": "missing_bpm",
+          "label": "No BPM",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "bpm",
+                "operator": "is_empty"
+              }
+            ]
+          }
+        },
+        {
+          "count": 3,
+          "id": "missing_genre",
+          "label": "No genre",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "genre",
+                "operator": "is_empty"
+              }
+            ]
+          }
+        },
+        {
+          "count": 0,
+          "id": "no_artwork",
+          "label": "No artwork",
+          "rules": {
+            "match": "all",
+            "rules": [
+              {
+                "field": "artwork",
+                "operator": "is",
+                "value": "none"
+              }
+            ]
+          }
+        }
+      ],
+      "detections": [
+        {
+          "id": "files",
+          "job_type": "file_check",
+          "label": "Files checked",
+          "last_run_at": null,
+          "last_summary": null
+        },
+        {
+          "id": "duplicates",
+          "job_type": "duplicate_scan",
+          "label": "Duplicates looked for",
+          "last_run_at": null,
+          "last_summary": null
+        },
+        {
+          "id": "artwork",
+          "job_type": "artwork_scan",
+          "label": "Artwork read",
+          "last_run_at": null,
+          "last_summary": null
+        }
+      ],
+      "track_count": 3,
+      "unavailable_roots": []
+    },
+    "missing_files": {
+      "collection_id": null,
+      "collection_scope": null,
+      "dir": "asc",
+      "filters": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "file_status",
+            "operator": "any_of",
+            "value": [
+              "missing",
+              "unreadable"
+            ]
+          }
+        ]
+      },
+      "filters_applied": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "file_status",
+            "operator": "any_of",
+            "value": [
+              "missing",
+              "unreadable"
+            ]
+          }
+        ]
+      },
+      "library_empty": false,
+      "limit": 100,
+      "mode": "browse",
+      "offset": 0,
+      "query": "",
+      "scope": null,
+      "sort": "artist",
+      "total": 0,
+      "tracks": []
+    },
+    "needs_review": {
+      "collection_id": null,
+      "collection_scope": null,
+      "dir": "asc",
+      "filters": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "match_state",
+            "operator": "is",
+            "value": "needs_review"
+          }
+        ]
+      },
+      "filters_applied": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "match_state",
+            "operator": "is",
+            "value": "needs_review"
+          }
+        ]
+      },
+      "library_empty": false,
+      "limit": 100,
+      "mode": "browse",
+      "offset": 0,
+      "query": "",
+      "scope": null,
+      "sort": "artist",
+      "total": 0,
+      "tracks": []
+    }
+  }
+}
