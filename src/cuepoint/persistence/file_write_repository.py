@@ -99,6 +99,28 @@ def _scope(
 
 
 @dataclass(frozen=True)
+class InterruptedTagJob:
+    """A tag write or restore the engine stopped in the middle of (CLEAN-13).
+
+    Attributes:
+        job_id: The job, whose record still says it is running.
+        job_type: ``tag_write`` or ``tag_restore``.
+        recorded: The rows it recorded.
+        unconfirmed: Of those, the ones still pending: a write or a restore
+            that may not have happened.
+        write_job_ids: The write jobs a restore of this one's work names — the
+            job itself for a write, and the writes it was undoing for a
+            restore — in the order they were recorded.
+    """
+
+    job_id: str
+    job_type: str
+    recorded: int
+    unconfirmed: int
+    write_job_ids: Tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class TagTarget:
     """A track as a tag write sees it: its file and its effective values.
 
@@ -355,6 +377,50 @@ class FileWriteRepository(IFileWriteRepository):
             )
             return cursor.rowcount == 1
 
+    def interrupted_jobs(self, job_types: Sequence[str]) -> List[InterruptedTagJob]:
+        """Tag jobs whose record still says they are running, and what they recorded.
+
+        Asked once as the engine starts, before stale job records are closed
+        out, for :func:`~cuepoint.engine.match_jobs.offer_interrupted_matches`'s
+        reason: a record still running then belongs to a process that is gone.
+        A job that recorded nothing touched no file and is not listed.
+        """
+        kinds = [str(kind) for kind in job_types]
+        if not kinds:
+            return []
+        connection = self._db.connect()
+        rows = connection.execute(
+            "SELECT w.job_id AS job_id, j.type AS job_type, count(*) AS n,"
+            " COALESCE(SUM(w.pending), 0) AS pending, MIN(w.id) AS first"
+            " FROM file_writes AS w JOIN jobs AS j ON j.id = w.job_id"
+            f" WHERE j.type IN ({', '.join('?' for _ in kinds)})"
+            " AND j.state IN ('queued', 'running')"
+            " GROUP BY w.job_id, j.type ORDER BY first",
+            tuple(kinds),
+        ).fetchall()
+        found: List[InterruptedTagJob] = []
+        for row in rows:
+            job_id = str(row["job_id"])
+            undone = [
+                str(named["job_id"])
+                for named in connection.execute(
+                    "SELECT w.job_id AS job_id, MIN(r.id) AS first"
+                    " FROM file_writes AS r JOIN file_writes AS w ON w.id = r.restore_of"
+                    " WHERE r.job_id = ? GROUP BY w.job_id ORDER BY first",
+                    (job_id,),
+                )
+            ]
+            found.append(
+                InterruptedTagJob(
+                    job_id=job_id,
+                    job_type=str(row["job_type"]),
+                    recorded=int(row["n"]),
+                    unconfirmed=int(row["pending"]),
+                    write_job_ids=tuple(undone) if undone else (job_id,),
+                )
+            )
+        return found
+
     def pending_count(self) -> int:
         """How many rows record a write or restore that may not have happened."""
         row = (
@@ -365,4 +431,9 @@ class FileWriteRepository(IFileWriteRepository):
         return int(row["n"]) if row is not None else 0
 
 
-__all__: Sequence[str] = ("FileWriteRepository", "TagTarget", "WRITE_WRITTEN")
+__all__: Sequence[str] = (
+    "FileWriteRepository",
+    "InterruptedTagJob",
+    "TagTarget",
+    "WRITE_WRITTEN",
+)

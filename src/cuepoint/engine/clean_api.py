@@ -230,7 +230,8 @@ def _track_row(track_id: int) -> Dict[str, Any]:
         raise not_found("TRACK_NOT_FOUND", f"No track with id {track_id}")
     record = _service("IMetadataService").get(int(track_id))
     clean = library.clean_states([int(track_id)]).get(int(track_id))
-    return track_to_dict(track, record, clean)
+    sources = library.override_sources([int(track_id)]).get(int(track_id))
+    return track_to_dict(track, record, clean, sources)
 
 
 def _require_track(track_id: int) -> Any:
@@ -651,7 +652,7 @@ def scan_duplicates(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str
 
 
 def _member_rows(track_ids: Sequence[int]) -> Dict[int, Dict[str, Any]]:
-    """Library rows for a page of group members, read in three queries."""
+    """Library rows for a page of group members, read in four queries."""
     from cuepoint.engine.library_api import track_to_dict
 
     if not track_ids:
@@ -659,9 +660,13 @@ def _member_rows(track_ids: Sequence[int]) -> Dict[int, Dict[str, Any]]:
     tracks = _service("ITrackRepository").get_many(track_ids)
     ids = [int(track.id) for track in tracks if track.id is not None]
     metadata = _service("IMetadataService").get_many(ids) if ids else {}
-    clean = _service("ILibraryService").clean_states(ids) if ids else {}
+    library = _service("ILibraryService")
+    clean = library.clean_states(ids) if ids else {}
+    sources = library.override_sources(ids) if ids else {}
     return {
-        int(track.id): track_to_dict(track, metadata.get(track.id), clean.get(track.id))
+        int(track.id): track_to_dict(
+            track, metadata.get(track.id), clean.get(track.id), sources.get(track.id)
+        )
         for track in tracks
         if track.id is not None
     }

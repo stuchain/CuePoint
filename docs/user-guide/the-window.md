@@ -54,8 +54,9 @@ If you sized it on a large monitor and later open CuePoint on a smaller screen,
 it shrinks to fit rather than pushing the page off-screen — and returns to your
 chosen width when there is room again.
 
-The Inspector is empty for now. It fills in as the pages that select tracks
-arrive.
+On the Library and Clean pages it shows everything CuePoint knows about the
+selected track: its artwork, your own values, its Beatport match, what Rekordbox
+sent, and its history. See [The Inspector](library.md#the-inspector).
 
 ## The status strip
 
@@ -76,8 +77,15 @@ running before the window was reloaded.
 ## Activity
 
 Click **Activity** in the status strip, or press **Ctrl+Shift+A**, for a list of
-what CuePoint has done, newest first. Today that means library backups and every
-engine start; imports and edits join it as those features arrive.
+what CuePoint has done, newest first: backups, engine starts, imports and
+refreshes, file checks, matches, edits to many tracks at once, and tags written
+to files.
+
+Some entries can be acted on where they are listed. A change to many tracks
+offers **Revert this batch**, and a tag write offers **Restore**; each asks once
+more before it does anything. See
+[Taking a change back](library.md#taking-a-change-back) and
+[Restoring](library.md#restoring).
 
 This is not the same as **past searches**, which lists the result files from
 previous matching runs.

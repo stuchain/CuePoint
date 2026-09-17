@@ -107,6 +107,7 @@ def track_to_dict(
     track: LibraryTrack,
     metadata: Optional[TrackMetadata] = None,
     clean: Optional[TrackCleanState] = None,
+    sources: Optional[Dict[str, str]] = None,
 ) -> Dict[str, Any]:
     """Serialize a library track for the API.
 
@@ -172,6 +173,14 @@ def track_to_dict(
             getattr(track, name), getattr(metadata, name) if metadata else None
         )
     payload["overridden"] = list(overridden_fields(metadata))
+    # CLEAN-13: where each of those came from — ``beatport`` or ``cuepoint`` —
+    # so a marked cell can say so. Only overridden fields are named, and one
+    # whose source was not read is left out rather than guessed.
+    payload["override_sources"] = {
+        name: (sources or {})[name]
+        for name in payload["overridden"]
+        if name in (sources or {})
+    }
     # CLEAN-11: where the track stands with Beatport, whether a newer attempt
     # disputes a user's decision, what the last file check found and what
     # artwork would show — each read through its filter's own expression, so a
@@ -184,8 +193,15 @@ def track_to_dict(
     return payload
 
 
-#: The four Clean answers a row carries (CLEAN-11), in the order it carries them.
-CLEAN_ROW_FIELDS = ("match_state", "match_disputed", "file_status", "artwork")
+#: The Clean answers a row carries (CLEAN-11), in the order it carries them.
+#: CLEAN-13 added the score, which the Library's Match score column draws.
+CLEAN_ROW_FIELDS = (
+    "match_state",
+    "match_disputed",
+    "match_score",
+    "file_status",
+    "artwork",
+)
 
 
 #: The two things this endpoint can be asked. ``search`` is what global search
@@ -475,8 +491,10 @@ def search_library(
 
     found = getattr(result, "metadata", {}) or {}
     clean = getattr(result, "clean", {}) or {}
+    sources = getattr(result, "sources", {}) or {}
     tracks: List[Dict[str, Any]] = [
-        track_to_dict(t, found.get(t.id), clean.get(t.id)) for t in result.tracks
+        track_to_dict(t, found.get(t.id), clean.get(t.id), sources.get(t.id))
+        for t in result.tracks
     ]
     payload: Dict[str, Any] = {
         "query": result.query,
@@ -704,8 +722,9 @@ def library_track_detail(track_id: int) -> Dict[str, Any]:
 
     record = resolve_metadata_service().get(int(track_id))
     clean = service.clean_states([int(track_id)]).get(int(track_id))
+    sources = service.override_sources([int(track_id)]).get(int(track_id))
     return {
-        "track": track_to_dict(track, record, clean),
+        "track": track_to_dict(track, record, clean, sources),
         "playlists": holders,
         "playlist_count": len(holders),
         "metadata": metadata_to_dict(int(track_id), track.rating, record),

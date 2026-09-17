@@ -357,7 +357,7 @@ class TestTheJoins:
 
         assert count(tracks, *both) == 1
         rows = tracks.browse(
-            BrowseQuery(rules=rules(("match_state", "is_not", "x"))), 100
+            BrowseQuery(rules=rules(("match_state", "is_not_empty"))), 100
         )
         assert len(rows) == len({row.id for row in rows}) == len(NAMES)
 

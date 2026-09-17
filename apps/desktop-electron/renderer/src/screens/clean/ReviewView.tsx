@@ -15,7 +15,7 @@
  * **Matching is a job the status strip follows**, like every job. The page
  * waits for it to end to read the queue again, and says what it started.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type {
   BatchSelection,
@@ -69,6 +69,7 @@ import { reviewCommand, type ReviewCommand } from "./reviewKeyboard";
 import { useCleanJob, type CleanMessageTone } from "./useCleanJob";
 import { useScopeOptions } from "./useScopeOptions";
 import { useTrackMatches } from "./useTrackMatches";
+import type { CleanOpening } from "./cleanLink";
 
 const PLAIN = { shiftKey: false, ctrlKey: false, metaKey: false };
 
@@ -98,9 +99,14 @@ function messageOf(cause: unknown): string {
 export interface ReviewViewProps {
   health: LibraryHealth | null;
   onHealthChanged: () => void;
+  /**
+   * A track the Library asked to open (CLEAN-13). The queue is set to the
+   * track's own state, and the comparison shows it until a row is chosen.
+   */
+  focus?: CleanOpening | null;
 }
 
-export function ReviewView({ health, onHealthChanged }: ReviewViewProps) {
+export function ReviewView({ health, onHealthChanged, focus = null }: ReviewViewProps) {
   const { push } = useToast();
   const [scope, setScope] = useState<ReviewScope>(DEFAULT_REVIEW_SCOPE);
   const [where, setWhere] = useState(WHOLE_LIBRARY);
@@ -115,7 +121,35 @@ export function ReviewView({ health, onHealthChanged }: ReviewViewProps) {
   const columns = useColumnLayout<LibraryTrackRow>(REVIEW_TABLE_LAYOUT_KEY, REVIEW_COLUMNS);
   const window_ = useTrackWindow(query);
   const selection = useTrackSelection(query, window_.total, window_.source.getRow);
-  const trackId = selection.selection.lastId;
+  const [focused, setFocused] = useState<number | null>(null);
+  const trackId = selection.selection.lastId ?? focused;
+
+  // Opened on one track: its own state's queue, the whole library, and the
+  // track in the comparison until the reviewer picks a row.
+  const focusToken = useRef<string | null>(null);
+  useEffect(() => {
+    if (!focus || focusToken.current === focus.token) return;
+    focusToken.current = focus.token;
+    setFocused(focus.trackId);
+    const read = window.cuepoint?.getLibraryTrack;
+    if (!read) return;
+    let cancelled = false;
+    read({ trackId: focus.trackId })
+      .then(({ track }) => {
+        if (cancelled) return;
+        const state = track.match_disputed ? "disputed" : track.match_state;
+        if (state && isReviewScope(state)) setScope(state);
+        setWhere(WHOLE_LIBRARY);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [focus]);
+
+  useEffect(() => {
+    if (selection.selection.lastId != null) setFocused(null);
+  }, [selection.selection.lastId]);
   const cursor = selection.selection.anchor;
   const matches = useTrackMatches(trackId);
   const detail = useTrackDetail(trackId);
@@ -401,6 +435,13 @@ export function ReviewView({ health, onHealthChanged }: ReviewViewProps) {
       }
       onReveal={() => reveal(trackId)}
       onError={(text) => push(text, "warning")}
+      onMessage={(text) => push(text, "success")}
+      onTrackChanged={() => {
+        window_.reload();
+        matches.reload();
+        detail.reload();
+        onHealthChanged();
+      }}
     />,
   );
 

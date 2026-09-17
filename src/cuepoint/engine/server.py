@@ -144,6 +144,16 @@ def _resolve_job_repository() -> Optional[Any]:
         pass
 
     try:
+        # The same moment, for the same reason: a tag write or restore a
+        # restart cut short is offered for restoring, never restored unasked
+        # (CLEAN-13, DEC-070).
+        from cuepoint.engine.tag_write_jobs import offer_interrupted_tag_jobs
+
+        offer_interrupted_tag_jobs()
+    except Exception:  # noqa: BLE001 — an offer must not stop jobs being recorded
+        pass
+
+    try:
         # Anything still marked running belongs to a process that is gone.
         repository.mark_interrupted(datetime.now(timezone.utc).isoformat())
     except Exception:  # noqa: BLE001

@@ -336,7 +336,7 @@ class TestTheJoin:
         rows = tracks.browse(
             BrowseQuery(
                 rules=rules(
-                    ("file_status", "is_not", "x"),
+                    ("file_status", "is_not_empty"),
                     ("match_state", "is", "not_matched"),
                     ("rating_rekordbox", "is_empty"),
                 )

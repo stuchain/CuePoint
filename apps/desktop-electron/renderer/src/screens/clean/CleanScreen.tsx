@@ -10,7 +10,7 @@
  * The page adds surface, not machinery: no second query path, no in-memory
  * results, no rule the engine does not already state.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type { LibrarySummary } from "../../api/cuepointBridge.types";
@@ -21,6 +21,7 @@ import { DuplicatesView } from "./DuplicatesView";
 import { HealthView } from "./HealthView";
 import { MissingFilesView } from "./MissingFilesView";
 import { ReviewView } from "./ReviewView";
+import type { CleanOpening } from "./cleanLink";
 import {
   CLEAN_SECTIONS,
   loadCleanSection,
@@ -31,9 +32,28 @@ import { useCleanHealth } from "./useCleanHealth";
 import "../screens.css";
 import "./clean.css";
 
-export function CleanScreen() {
+export interface CleanScreenProps {
+  /**
+   * A track to open in the review queue (CLEAN-13), from the Inspector's link.
+   * Applied once per navigation, as the Library's `openWith` is.
+   */
+  openWith?: CleanOpening | null;
+}
+
+export function CleanScreen({ openWith = null }: CleanScreenProps = {}) {
   const navigate = useNavigate();
-  const [section, setSection] = useState<CleanSection>(loadCleanSection);
+  const [section, setSection] = useState<CleanSection>(() =>
+    openWith ? "review" : loadCleanSection(),
+  );
+  const opened = useRef<string | null>(null);
+  const [focus, setFocus] = useState<CleanOpening | null>(null);
+
+  useEffect(() => {
+    if (!openWith || opened.current === openWith.token) return;
+    opened.current = openWith.token;
+    setSection("review");
+    setFocus(openWith);
+  }, [openWith]);
   const cleanHealth = useCleanHealth();
   const { reload: reloadHealth } = cleanHealth;
   const [summary, setSummary] = useState<LibrarySummary | null | undefined>(undefined);
@@ -110,7 +130,11 @@ export function CleanScreen() {
       </header>
       <div className="clean-screen__body" role="tabpanel" aria-label={label}>
         {section === "review" && (
-          <ReviewView health={cleanHealth.health} onHealthChanged={reloadHealth} />
+          <ReviewView
+            health={cleanHealth.health}
+            onHealthChanged={reloadHealth}
+            focus={focus}
+          />
         )}
         {section === "missing" && (
           <MissingFilesView health={cleanHealth.health} onHealthChanged={reloadHealth} />

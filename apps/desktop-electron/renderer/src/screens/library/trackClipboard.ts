@@ -15,6 +15,9 @@ import type { TrackColumnDef } from "../../components/table";
 
 /** What a cell contributes to a copy. */
 export function cellText<Row>(column: TrackColumnDef<Row>, row: Row): string {
+  // A column that draws more than text says what its text is (CLEAN-13): an
+  // overridden BPM copies as the BPM shown, not as the imported field.
+  if (column.text) return column.text(row);
   const rendered = column.render(row);
   if (typeof rendered === "string") return rendered;
   if (typeof rendered === "number") return String(rendered);

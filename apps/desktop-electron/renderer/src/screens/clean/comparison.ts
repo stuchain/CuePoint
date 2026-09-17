@@ -15,7 +15,7 @@ import type {
   OverrideField,
   TrackMatchState,
 } from "../../api/cuepointBridge.types";
-import { formatBpm } from "../library/libraryColumns";
+import { formatBpm } from "../library/trackValues";
 import { rejectReasonText } from "./cleanFormat";
 
 /** Absent is a dash, never a zero and never blank: a blank cell reads as a bug. */

@@ -105,6 +105,45 @@ class TrackMetadataRepository(ITrackMetadataRepository):
                 found[record.track_id] = record
         return found
 
+    def override_sources(self, track_ids: Iterable[int]) -> Dict[int, Dict[str, str]]:
+        """Where each track's overrides came from, keyed by track and column (CLEAN-13).
+
+        History is the only record of it (CLEAN-05): the latest row for an
+        override's history field says ``beatport`` for an applied value and
+        ``cuepoint`` for a typed one. Only overrides that are set now are
+        answered, so a cleared override that history remembers says nothing.
+        One query per chunk, and only for tracks that hold an override, so a
+        window with none asks nothing of ``track_history``.
+        """
+        held = {
+            track_id: [
+                name for name in OVERRIDE_FIELDS if getattr(record, name) is not None
+            ]
+            for track_id, record in self.get_many(track_ids).items()
+        }
+        wanted = [track_id for track_id, names in held.items() if names]
+        found: Dict[int, Dict[str, str]] = {}
+        if not wanted:
+            return found
+        column_for = {f"cuepoint_{name}": name for name in OVERRIDE_FIELDS}
+        fields = ", ".join("?" for _ in column_for)
+        connection = self._db.connect()
+        for chunk in chunked(wanted, CHUNK_SIZE):
+            placeholders = ", ".join("?" for _ in chunk)
+            rows = connection.execute(
+                "SELECT h.track_id, h.field, h.source FROM track_history AS h"
+                " WHERE h.id IN (SELECT MAX(id) FROM track_history"
+                f" WHERE track_id IN ({placeholders}) AND field IN ({fields})"
+                " GROUP BY track_id, field)",
+                (*chunk, *column_for),
+            ).fetchall()
+            for row in rows:
+                track_id = int(row["track_id"])
+                name = column_for[row["field"]]
+                if name in held[track_id]:
+                    found.setdefault(track_id, {})[name] = str(row["source"])
+        return found
+
     def count(self) -> int:
         """Return how many tracks have any CuePoint metadata at all."""
         row = (

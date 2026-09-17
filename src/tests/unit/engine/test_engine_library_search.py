@@ -232,11 +232,15 @@ class TestResponseShape:
             "effective_label",
             "effective_year",
             "overridden",
+            # CLEAN-13: where each override came from.
+            "override_sources",
             # CLEAN-11: where the track stands with Beatport, whether a newer
             # attempt disputes a user's decision, the last file check and the
             # artwork a row would show — each its filter's own expression.
             "match_state",
             "match_disputed",
+            # CLEAN-13: the score of the candidate the state points at.
+            "match_score",
             "file_status",
             "artwork",
         }

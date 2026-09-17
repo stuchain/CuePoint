@@ -554,6 +554,12 @@ export interface LibraryTrackRow {
   effective_year?: number | null;
   overridden?: Array<"key" | "bpm" | "genre" | "label" | "year">;
   /**
+   * Where each override came from (CLEAN-13): applied from a Beatport match, or
+   * typed by a person — the latest history row for it. Only overridden fields
+   * are named.
+   */
+  override_sources?: Partial<Record<"key" | "bpm" | "genre" | "label" | "year", OverrideSource>>;
+  /**
    * Where the track stands with Clean (CLEAN-11), each read through its filter's
    * own expression, so a row marked "needs review" is a row that filter finds.
    * Null when the engine did not read them for this row. Optional for
@@ -561,9 +567,14 @@ export interface LibraryTrackRow {
    */
   match_state?: MatchState | null;
   match_disputed?: boolean | null;
+  /** The score of the candidate the state points at (CLEAN-13). */
+  match_score?: number | null;
   file_status?: FileStatus | null;
   artwork?: ArtworkState | null;
 }
+
+/** Where an override came from (CLEAN-05): applied from Beatport, or typed. */
+export type OverrideSource = "beatport" | "cuepoint";
 
 export interface LibrarySearchResponse {
   query: string;
@@ -708,6 +719,19 @@ export interface LibraryFilterField {
    */
   unit: string | null;
   operators: string[];
+  /**
+   * The fixed values a text field holds, each with its name (CLEAN-13), or null
+   * for a field whose values are the library's own. A field with choices is
+   * offered as a choice rather than a text box, and a chip reads the name.
+   * Optional because vocabularies recorded before CLEAN-13 describe valid
+   * fields; the engine always sends it.
+   */
+  choices?: LibraryFilterChoice[] | null;
+}
+
+export interface LibraryFilterChoice {
+  value: string;
+  label: string;
 }
 
 /** How many values an operator takes, as the engine describes it. */

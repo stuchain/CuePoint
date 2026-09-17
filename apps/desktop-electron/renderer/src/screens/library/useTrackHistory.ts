@@ -3,9 +3,8 @@
  *
  * DEC-008 chose per-field history over an undo stack, and this is the first
  * place that promise is visible: what changed, what it was, who changed it.
- * Read-only in this phase — CuePoint's own fields are deliberately not in
- * `REVERTABLE_FIELDS`, and a revert button that worked for four fields and
- * refused for three would be worse than none.
+ * Since CLEAN-13 CuePoint's own changes offer Revert, which is one more write
+ * this re-reads after.
  *
  * It re-reads after every accepted write rather than appending locally,
  * because the engine decides what counts as a change: re-saving the same note

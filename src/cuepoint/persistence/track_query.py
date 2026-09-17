@@ -38,7 +38,7 @@ from __future__ import annotations
 
 import sqlite3
 from dataclasses import dataclass, replace
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from cuepoint.models.filter_rule import (
     ARTWORK_ALIAS,
@@ -330,8 +330,32 @@ def _field_term(name: str, text: bool = False) -> SortTerm:
     return SortTerm(spec.expression, text=text, nullable=True, joins=spec.joins)
 
 
+def _ranked_term(name: str, order: Sequence[str]) -> SortTerm:
+    """A sort term that orders a field's fixed values by ``order``, not by spelling.
+
+    Match state and file status are words with a meaning, and their alphabetical
+    order is none: ascending puts what needs a person first (CLEAN-13). A value
+    the order does not name sorts after the named ones rather than failing.
+    """
+    spec = field_spec(name)
+    ranks = " ".join(f"WHEN '{value}' THEN {rank}" for rank, value in enumerate(order))
+    return SortTerm(
+        f"(CASE {spec.expression} {ranks} ELSE {len(order)} END)", joins=spec.joins
+    )
+
+
 _ARTIST = SortTerm("tracks.artist", text=True)
 _TITLE = SortTerm("tracks.title", text=True)
+
+#: How the Clean columns sort ascending (CLEAN-13): what needs a person first.
+MATCH_STATE_ORDER: Tuple[str, ...] = (
+    "needs_review",
+    "no_match",
+    "rejected",
+    "accepted",
+    "not_matched",
+)
+FILE_STATUS_ORDER: Tuple[str, ...] = ("missing", "unreadable", "present", "not_checked")
 
 # What each sort orders by first. `artist` and `title` are NOT NULL with a ''
 # default (migration 0002), so neither needs nulls-last; everything added by
@@ -357,6 +381,11 @@ _PRIMARY: Dict[str, Tuple[SortTerm, ...]] = {
     # COLLATE NOCASE: there are no letters in it, and the collation would only
     # make the term harder to serve from an index.
     "date_added": (SortTerm("tracks.date_added", nullable=True),),
+    # Clean's columns (CLEAN-13), each read through its filter field, so a
+    # sorted column and a filter on it read the same value.
+    "match_state": (_ranked_term("match_state", MATCH_STATE_ORDER),),
+    "match_score": (_field_term("match_score"),),
+    "file_status": (_ranked_term("file_status", FILE_STATUS_ORDER),),
     PLAYLIST_POSITION: (SortTerm(_POSITION_EXPR),),
     COLLECTION_POSITION: (SortTerm(_COLLECTION_POSITION_EXPR),),
 }
@@ -707,6 +736,7 @@ def build_count(query: BrowseQuery) -> Tuple[str, Tuple[object, ...]]:
 CLEAN_STATE_FIELDS: Tuple[str, ...] = (
     "match_state",
     "match_disputed",
+    "match_score",
     "file_status",
     "artwork",
 )

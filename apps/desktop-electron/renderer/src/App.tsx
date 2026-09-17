@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { HashRouter, Route, Routes, useLocation } from "react-router-dom";
+import { HashRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import {
   AboutDialog,
   AppMenuBar,
@@ -40,6 +40,7 @@ import {
   ToolSelectionScreen,
 } from "./screens";
 import { libraryOpening } from "./screens/library/libraryLink";
+import { cleanOpening, cleanTrackState } from "./screens/clean/cleanLink";
 import { ScaleProvider } from "./tokens/ScaleContext";
 import { ThemeProvider } from "./tokens/ThemeContext";
 import { shouldShowOnboarding } from "./components/OnboardingDialog";
@@ -47,6 +48,7 @@ import "./App.css";
 
 function AppShell() {
   const location = useLocation();
+  const navigate = useNavigate();
   // What the current page has put in the Inspector (LIBUI-10). The panel lives
   // here rather than in the page so it survives navigation (SHELL-05).
   const [supportOpen, setSupportOpen] = useState(false);
@@ -119,10 +121,12 @@ function AppShell() {
           <LibraryScreen
             openWith={libraryOpening(location)}
             onOpenRekordboxInstructions={() => setRekordboxOpen(true)}
+            onOpenInClean={(trackId) => navigate("/clean", { state: cleanTrackState(trackId) })}
           />
         );
       case "clean":
-        return <CleanScreen />;
+        // The Inspector's link opens one track's review (CLEAN-13).
+        return <CleanScreen openWith={cleanOpening(location)} />;
       // DEC-062: Collections is a way into the Library page, not a second
       // browser. Same screen, aimed at the tree — and `destinationToRemember`
       // stores `library` for it, so the two entries never fight over which one
@@ -132,6 +136,7 @@ function AppShell() {
           <LibraryScreen
             focus="collections"
             onOpenRekordboxInstructions={() => setRekordboxOpen(true)}
+            onOpenInClean={(trackId) => navigate("/clean", { state: cleanTrackState(trackId) })}
           />
         );
       case "match":

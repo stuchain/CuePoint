@@ -13,19 +13,14 @@
  */
 import type { LibraryTrackRow } from "../../api/cuepointBridge.types";
 import type { TrackColumnDef } from "../../components/table";
+import { fileStatusLabel } from "../clean/cleanFormat";
+import { matchCell } from "../clean/cleanColumns";
 import { starsFor } from "./filterText";
+import { artworkText, effectiveText, formatScore } from "./libraryClean";
+import { OverriddenValue, RowArtwork } from "./libraryCells";
+import { formatDuration } from "./trackValues";
 
-/** Minutes and seconds, the way a deck shows a track length. */
-export function formatDuration(seconds: number | null): string {
-  if (seconds == null) return "";
-  const minutes = Math.floor(seconds / 60);
-  return `${minutes}:${String(Math.round(seconds % 60)).padStart(2, "0")}`;
-}
-
-/** One decimal, because 128 and 128.5 are different tracks to mix. */
-export function formatBpm(bpm: number | null): string {
-  return bpm == null ? "" : bpm.toFixed(1);
-}
+export { effective, formatBpm, formatDuration } from "./trackValues";
 
 /**
  * Stars, not a number — the parser converted Rekordbox's 0/51/…/255 encoding
@@ -33,17 +28,6 @@ export function formatBpm(bpm: number | null): string {
  * with no rating shows nothing; one rated zero shows "unrated", because those
  * are different facts (DEC-034).
  */
-/**
- * The value a user sees for a field CuePoint can override (DEC-068).
- *
- * `resolved` is what the engine resolved; it is absent only from rows built
- * before CLEAN-05, where the imported value is all there is. A resolved null
- * means neither layer has a value, and is kept rather than falling back.
- */
-export function effective<T>(resolved: T | null | undefined, imported: T | null): T | null {
-  return resolved === undefined ? imported : resolved;
-}
-
 export function formatRating(rating: number | null): string {
   return rating == null ? "" : starsFor(rating);
 }
@@ -88,7 +72,8 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     sortKey: "label",
     minWidthPx: 90,
     defaultWidthPx: 140,
-    render: (track) => effective(track.effective_label, track.label) ?? "",
+    render: (track) => <OverriddenValue row={track} field="label" />,
+    text: (track) => effectiveText(track, "label"),
   },
   {
     id: "genre",
@@ -96,7 +81,8 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     sortKey: "genre",
     minWidthPx: 90,
     defaultWidthPx: 130,
-    render: (track) => effective(track.effective_genre, track.genre) ?? "",
+    render: (track) => <OverriddenValue row={track} field="genre" />,
+    text: (track) => effectiveText(track, "genre"),
   },
   {
     id: "key",
@@ -104,7 +90,8 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     sortKey: "key",
     minWidthPx: 56,
     defaultWidthPx: 70,
-    render: (track) => effective(track.effective_key, track.key) ?? "",
+    render: (track) => <OverriddenValue row={track} field="key" />,
+    text: (track) => effectiveText(track, "key"),
   },
   {
     id: "bpm",
@@ -113,7 +100,8 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     minWidthPx: 56,
     defaultWidthPx: 72,
     align: "right",
-    render: (track) => formatBpm(effective(track.effective_bpm, track.bpm)),
+    render: (track) => <OverriddenValue row={track} field="bpm" />,
+    text: (track) => effectiveText(track, "bpm"),
   },
   {
     id: "duration_seconds",
@@ -140,10 +128,8 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     minWidthPx: 56,
     defaultWidthPx: 72,
     align: "right",
-    render: (track) => {
-      const year = effective(track.effective_year, track.year);
-      return year == null ? "" : String(year);
-    },
+    render: (track) => <OverriddenValue row={track} field="year" />,
+    text: (track) => effectiveText(track, "year"),
   },
   {
     id: "play_count",
@@ -197,6 +183,45 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     minWidthPx: 120,
     defaultWidthPx: 240,
     render: (track) => track.file_path,
+  },
+  // Clean (CLEAN-13): hidden until asked for, like every column past the
+  // ones a DJ reads. Each sorts by the engine's own name for it.
+  {
+    id: "match_state",
+    hiddenByDefault: true,
+    header: "Match",
+    sortKey: "match_state",
+    minWidthPx: 90,
+    defaultWidthPx: 150,
+    render: matchCell,
+  },
+  {
+    id: "match_score",
+    hiddenByDefault: true,
+    header: "Score",
+    sortKey: "match_score",
+    minWidthPx: 56,
+    defaultWidthPx: 72,
+    align: "right",
+    render: (track) => formatScore(track.match_score),
+  },
+  {
+    id: "file_status",
+    hiddenByDefault: true,
+    header: "File status",
+    sortKey: "file_status",
+    minWidthPx: 80,
+    defaultWidthPx: 110,
+    render: (track) => fileStatusLabel(track.file_status),
+  },
+  {
+    id: "artwork",
+    hiddenByDefault: true,
+    header: "Artwork",
+    minWidthPx: 56,
+    defaultWidthPx: 64,
+    render: (track) => <RowArtwork row={track} />,
+    text: (track) => artworkText(track.artwork),
   },
 ];
 

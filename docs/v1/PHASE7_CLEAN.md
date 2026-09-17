@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 7: Clean, Detailed Step Specifications
 
-Status: **Specified. CLEAN-01 to CLEAN-12 implemented.** The fourteen steps below replace the
+Status: **Specified. CLEAN-01 to CLEAN-13 implemented.** The fourteen steps below replace the
 roadmap's placeholder inventory (CLEAN-01…CLEAN-13, which Round 9's answers outgrew by one). Per
 the process, no implementation happens from this document — each step needs an explicit
 "Implement CLEAN-NN" instruction, scoped to exactly that step, and its outcome is recorded under the
@@ -3571,7 +3571,7 @@ The first run caught thirty-seven in the engine and fifty in the renderer.
 
 ---
 
-## CLEAN-13 — Clean in the Library and the Inspector
+## CLEAN-13 — Clean in the Library and the Inspector ✅ IMPLEMENTED 2026-09-17
 
 **Objective**: Make match state, overrides, file status and artwork visible and actionable where
 users already browse, so Clean is not the only place they exist (DEC-072, DEC-069, DEC-047).
@@ -3634,6 +3634,253 @@ Inspector, and every per-track Clean action is reachable from the context menu. 
 **Risks**: Medium. The Inspector is now four zones; its width budget at 1× is checked, not assumed.
 
 **Complexity**: **L**
+
+### ✅ IMPLEMENTED 2026-09-17
+
+**Outcome**: Complete. Every Clean fact about a track is visible in the Library and the Inspector,
+every per-track Clean action is in the one operations list, and the Library guide's "Writing tags to
+files" section ships with the dialog. This was checked in the running app, against a real engine
+over a sandboxed library of real MP3 files.
+
+- **The operations list** (`libraryClean.ts::cleanMenuItems`) is appended to ORG-11's, so the row
+  menu and the Actions button render the same entries: Match on Beatport, Re-match, Accept match,
+  Reject match, Apply Beatport values…, Edit metadata…, Check files and Write tags to files….
+  - **Offered by a build that has Clean.** Each entry needs its own route on the bridge
+    (`decideMatch`, `applyMatch`, `setTrackOverrides`, `startFileCheck`, `previewTagWrite`), so
+    ORG-11's tests, whose bridge has none of them, pass unchanged.
+  - **Revealing a file** stays the row menu's and the toolbar's own "Show in folder", which now goes
+    to the nearest existing folder through CLEAN-12's `revealTrack` when the build can.
+  - **Deciding, applying and hand edits over a selection** go through ORG-11's batch path
+    (`useLibraryBatch`, now with `run` for a dialog that has already confirmed): the same
+    confirmation above the threshold, the same counts, the same revert. `libraryBatch.ts` has
+    sentences for all ten operations. Matching and checking files are jobs (`useCleanJob`).
+- **Columns** (`libraryColumns.tsx`): Match, Score, File status and Artwork, hidden by default, each
+  sortable but the last.
+  - **The five overridable cells** draw the effective value with a mark (`libraryCells.tsx`): "B" for
+    Beatport, a dot for a typed value. The mark's accessible name and tooltip say the source and
+    what Rekordbox has underneath.
+  - **A copy reads what is shown.** `TrackColumnDef` gained `text`, which `trackClipboard` uses when
+    a cell draws more than text.
+  - **Row artwork** is fetched only for rows whose artwork answer is `embedded` or `beatport`, four
+    at a time, and released when the row leaves the table.
+- **The filter bar** offers a field's fixed values as a choice for `is` and `is not`, and as toggles
+  for `any of`; `contains` and its kin keep a text box. A chip reads the value's name.
+- **The Inspector** (`TrackDetailPanel.tsx`) is now, from the top: the artwork (`TrackArtwork.tsx`,
+  with *No artwork* when there is none), Yours, Beatport, the imported record, membership and
+  History.
+  - **Beatport** (`TrackBeatportSection.tsx`): the decision line, the decided candidate, the
+    artwork answer, and per field the Rekordbox, Beatport and current values with the current
+    value's source. Apply is offered per field for an accepted match with a value, and not for a
+    value already Beatport's. "Open on the Clean page" is the last line.
+  - **Yours** gained the five values (`TrackOverrides.tsx`): Enter or leaving a field saves, empty
+    clears, and the engine's refusal is shown under the field. Letters in a number field are the
+    only thing refused before asking.
+  - **The imported record** is unchanged and read-only, field for field.
+- **History** (`TrackHistorySection.tsx`) offers Revert on every row of a field CuePoint owns
+  (`CUEPOINT_HISTORY_FIELDS`, held to the engine's list by a test) and on no row of Rekordbox's. Below
+  the rows, the file-write record for the track (`useTrackWrites.ts`) says how many values can be
+  restored and how many of those may not have finished, with Restore for the track.
+- **Activity** (`ActivityOffer.tsx`, `activityActions.ts`): a batch's entry offers "Revert this
+  batch" — disabled, with the engine's reason, for Collection membership, and for a batch that
+  changed nothing — and a tag write's entry reads its record and offers Restore. Both ask once more.
+- **The Clean page** opens on one track from the Inspector's link (`cleanLink.ts`): the queue is
+  set to the track's own state, disputed included, and the comparison shows the track until a row
+  is chosen.
+- **The Library guide** gained "Clean in the Library" and "Writing tags to files", and lost three
+  sentences that had stopped being true: the Inspector is read-only, double-clicking does nothing,
+  and nothing is ever written to your files. The window and organization guides were brought up to
+  date the same way.
+
+**What the engine gained.** Four additive answers, carried through the contract.
+
+- **A row's match score** (`TrackCleanState.match_score`, read through the `match_score` filter
+  expression), which the Score column draws.
+- **Where each override came from** (`override_sources` on every row, the Inspector's detail, the
+  row an edit or an apply answers with, and duplicate members). History is the only record of it
+  (CLEAN-05), so `TrackMetadataRepository.override_sources` reads the latest history row per
+  override field for the tracks in a window that hold an override: one query per chunk, none for a
+  window without overrides, and a cleared override says nothing.
+- **Sorting** by `match_state`, `match_score` and `file_status`. The first and last sort by meaning
+  — what needs a person first (`MATCH_STATE_ORDER`, `FILE_STATUS_ORDER`) — not by spelling.
+- **Fixed value sets in the vocabulary.** `FieldSpec.choices` names the values of `match_state`,
+  `match_decided_by`, `file_status`, `artwork` and `duplicate_signal` with their labels, and
+  `describe_fields` sends them (null for every other field). `is`, `is not` and `any of` on those
+  fields refuse a word outside the set, naming the set; case is forgiven and the canonical word
+  kept, as SQL already compared them.
+- **An interrupted write is offered for restoring.** A write or restore the engine stopped in the
+  middle of recorded neither of its events, so nothing but the record knew. As the engine starts,
+  beside the interrupted-match offer and before stale job records are closed,
+  `offer_interrupted_tag_jobs` records `clean.tags.interrupted` for each such job that recorded
+  anything: its recorded and unconfirmed counts, and the write jobs a restore of its work names (the
+  job itself, or the writes a stopped restore was undoing). The sentence never calls an unconfirmed
+  write written. Offered once: the next start finds the record closed.
+
+**What building it settled, and why.**
+
+- **Revert for Collection membership is drawn in Activity, not History.** Membership writes no
+  history (ORG-04), so History has no row to put a control on; its batches are recorded in Activity,
+  and that is where the disabled control and its reason are.
+- **"There is no undo" stopped being true, so it stopped being said.** A batch's toast and
+  confirmation now say it can be reverted from Activity, except membership, which says there is no
+  undo. ORG-11's test and ORG-13's journey asserted the old sentence; both were changed to assert the
+  new one, and a test was added that membership still says no undo. This is the one place existing
+  Library tests changed rather than passing unchanged, and it is deliberate: they were asserting a
+  sentence this step made false.
+- **The tag-write dialog sends every option, and starts with the comment off.** The engine's
+  inherited default writes "ok" over a file's comment, which a person should choose. Key, year and
+  label start on, BPM and genre off, as they always have.
+- **A write that started and then failed is offered for restoring**, because it may have written
+  files; one refused before it started goes back to the options, because its preview is gone.
+- **Hand edits over a selection are one batch per field.** Each is recorded, counted and revertable
+  on its own, and the engine checks a value before touching a track, so a refusal leaves nothing
+  half-applied; the dialog says which fields already went through when a later one is refused.
+- **One track is edited through its own route**, which checks every field in one transaction.
+- **Refusals reach the renderer in the engine's words.** Electron wrapped every rejected call as
+  "Error invoking remote method '…': Error: …", so every refusal in the app — not only this step's —
+  carried that prefix. The preload now unwraps every method's rejection (`withEngineWords`), and
+  `preloadErrors.test.ts` runs the preload with a fake `electron` to hold it.
+- **The Library is told when Activity changes it.** A revert or a restore started from the shell's
+  Activity panel announces `cuepoint:library-changed` (`api/libraryChanges.ts`), and the Library
+  reads its table, Inspector and tree again.
+
+**Found running it in the app, and fixed:**
+
+- **The Clean page scrolled the whole window** once a track was selected: the comparison's
+  visually hidden text is absolutely placed, and its scroll box was not its containing block, so it
+  stretched the document to 1,880 pixels in a 735-pixel window. `.clean-compare__scroll` is now
+  positioned. An E2E test measures it, and fails on the old CSS.
+- **The engine's refusal carried Electron's prefix** (above).
+- **A value being typed was wiped** when an earlier field's save came back and the track was read
+  again. Only the fields whose value changed are reset now; a test holds it.
+- **The typed-value mark was invisible** in the pixel face, which has no dot; the marks use the data
+  face.
+- **The tag-write dialog was taller than a 1× window** with its buttons below the fold; the options
+  sit side by side, and a finished write has one way out.
+- **A reverted batch still offered Revert** in its own entry; it no longer does.
+
+**Found running the E2E suite, and not changed.** Forty-one passed and one was skipped.
+
+- **Two imports time out, as they did before this step:** LIBRARY-10's 250,000-track refresh label
+  and ORG-13's 50,000-track batch, each still importing at ninety seconds.
+- **PLAYER-10's failed queue sometimes splits its one message in two** ("3 tracks could not be
+  played", then the rest). It failed three runs in five on the tree before this step, so it is a
+  timing flake of that step's coalescing, recorded here rather than fixed in passing.
+- **PLAYER-09's media-key check** failed once while the mutation runs loaded the machine, and passed
+  alone; the configuration already names the keys as machine-wide.
+
+**Checked in the running app.** A sandboxed library of five copies of the fixture MP3 and one missing
+file, with seeded attempts; Beatport was never reached.
+
+- **Inspector.** Apply from the Beatport zone, a typed BPM, and a refused year (1800) with the
+  engine's sentence under the field; the table's marks named "Key applied from Beatport" and "BPM
+  typed by you".
+- **Menus and dialogs.** The row menu with all eight Clean entries; a preview, a write of one real
+  file and the reminder about Reload Tag; a genre set on six tracks and reverted from Activity.
+- **Filter bar.** Match state offered as a choice.
+- **Width.** At the Inspector's narrowest (220 CSS pixels at 1×) nothing overflowed sideways.
+- **Scales.** The Library with the Inspector and the menu were captured at 1×, and at 2× and 3× with
+  the page zoomed so the viewport was 2,528 × 1,470 and 3,792 × 2,205; the zoom reproduces the
+  layout, not the pixel density.
+- **The Clean link** opened the track in the accepted queue.
+
+**Measured** at 50,000 tracks with 30,000 attempts, 10,000 tracks holding overrides (half of them
+edited twice) and every file checked; median of five after a warm-up.
+
+| Operation | Time |
+| --- | --- |
+| A browse window of 100 rows | 3.5 ms |
+| The same without reading override sources | 2.9 ms |
+| Override sources for 100 overridden tracks · 100 plain tracks | 1.3 · 0.4 ms |
+| A window at offset 25,000 | 5.6 ms |
+| First window sorted by match state · file status · BPM | 35.6 · 38.8 · 38.7 ms |
+| First window sorted by match score | 155.1 ms |
+| Count of "match state is any of needs review, rejected" | 13.5 ms |
+
+- **Reading sources costs about 0.6 ms a window.**
+- **Sorting by score is the slow one.** Each track's score is read from `match_candidates`, whose
+  rows are wide, one lookup per track. A covering index on `(id, score)` measured 46 ms, but SQLite
+  uses it only when forced (`INDEXED BY`), which would reach into the join every Clean query shares,
+  and it needs a migration. The column is hidden by default and a sort is one gesture, so it is
+  recorded here for CLEAN-14's scale pass rather than taken now.
+
+**Tests**:
+
+- **Engine.**
+  - `persistence/test_clean_columns.py` (27): each sort by meaning and reversed, the score as a
+    number with none last, every row once; the row's score; override sources from the latest row,
+    a cleared override silent beside one that is set, a later rating leaving a source alone, past
+    one chunk; the choices sent, named and
+    refused, case forgiven, `contains` untouched, and Health's rules valid.
+  - `engine/test_engine_clean_library.py` (17): score and sources on the browse, the detail, an
+    edit's answer, an apply's answer and duplicate members; the sorts offered and one used; the
+    vocabulary's choices and a refused word; interrupted writes and restores offered with their
+    counts and write jobs, finished and empty jobs not offered, a restart offering once; each
+    sentence.
+  - `engine/test_clean_library_contract.py` (7): the renderer's lists of revertable fields,
+    membership operations, skip reasons, feed events and choice operators are the engine's.
+  - Extended rather than loosened: the row shape, the sort-coverage count, the clean state's shape,
+    and two join tests whose placeholder value (`"x"`) the choices now refuse.
+- **Renderer.**
+  - **Pure modules.** `libraryClean.test.ts` (32), `activityActions.test.ts` (13),
+    `tagWriting.test.ts` (24), `metadataEdits.test.ts` (9) and `libraryBatchClean.test.ts` (22).
+  - `filterChoices.test.tsx` (8): the choice, the toggles, `contains` keeping its box, no facet asked.
+  - `TrackDetailPanel.clean.test.tsx` (30): the Beatport zone's three values per field and one
+    applied, a refused apply, dispute, the link; the imported record read-only; artwork and its
+    release; typed values saved as numbers and text, the engine's refusal, one save for Enter and
+    blur, typing kept across a re-read; Revert for CuePoint's rows only, a stale revert's refusal;
+    unconfirmed writes shown as unfinished with Restore, never as written.
+  - `ActivityOffer.test.tsx` (11): revert after asking, as a job, refused, disabled with its reason
+    for membership; restore after asking, unconfirmed writes as unfinished, a stopped restore's
+    writes restored in turn.
+  - `WriteTagsDialog.test.tsx` (13): **no Write before a preview has answered**, a preview thrown
+    away when an option changes, nothing to write, a preview as a job, write and restore, a failed
+    write offered for restoring, a refused one sent back to the options, stop.
+  - `LibraryScreen.clean.test.tsx` (15): the entries in both surfaces, each entry's request, a
+    refusal in the edit dialog, marks and their words, a copy of the value shown, the columns, and a
+    change announced elsewhere.
+  - `CleanScreen.test.tsx` gains 4 for opening one track; `desktopContract.test.ts` gains 4 for the
+    widened row and filter field; `electron/preloadErrors.test.ts` (4) holds the unwrapped
+    refusals.
+- **E2E** (`e2e/cleanLibrary.spec.ts`, 4, against the real engine): a typed value marked, refused
+  and reverted; a batch edit reverted from Activity, the Clean columns and a choice filter; a
+  preview, a write into a real MP3 and a restore from Activity, with the file checked for the key
+  frame each way; the Beatport zone applying a field and opening the Clean page without the window
+  scrolling. `cleanPage.spec.ts` reads the chip's new words.
+
+The tests were checked against sixty-six mutations written into the source, each run against its own
+tests: forty-four in the renderer, one in the preload and twenty-one in the engine.
+
+- **Renderer**: marks on imported values, their words and sources; the score's decimal; re-match;
+  apply offered before accepting or twice; Revert on Rekordbox's rows; membership and empty batches
+  offered; interrupted writes not offered; unconfirmed writes counted as written; revert and restore
+  without asking, restores together, the library not told; Write before a preview, the comment on,
+  zero skips listed, a stale preview kept, a failed write not restorable; letters sent as numbers,
+  empty not a clear; edits after a refusal, typing not choosing Set, one track as a batch; decisions
+  offered without Clean, a decision's value, membership revertable, clearing said as setting; double
+  saves, drafts reset, unchanged values sent; every field applied, the page not told; the copy's
+  text; choices for `contains`, chips' words, choice order; the focused track kept, a disputed track
+  opened in its state, a string track id; library changes not heard.
+- **Preload**: the wrapper left on.
+- **Engine**: the score not read; state and file orders ignored; the oldest source read; a cleared
+  override answered; a rating read as an override; one chunk read; sources left off the row, the
+  detail, an edit's answer and members; unknown choices accepted; choices case-sensitive or not
+  described; stopped writes not offered; a restore naming itself; unconfirmed rows not counted; the
+  offer not wired; a write's sentence for a restore; unconfirmed counted as written; the contract
+  list drifting.
+
+The first run caught forty-one of forty-four in the renderer, the one in the preload, and eighteen
+of twenty-one in the engine.
+
+- **One was equivalent.** Filtering out an empty menu group changed nothing, because an empty group
+  adds nothing; the filter was removed.
+- **Five were gaps**, each closed with a test and then caught:
+  - a save sent twice when a field loses focus while its first save is on its way;
+  - the linked track coming back when the reviewer lets go of the row they chose;
+  - a cleared override answered, which the test missed because its track held no other override
+    and so was never asked about;
+  - a rating's history row read as an override's, which a track holding only a rating could not
+    show;
+  - only the first chunk of sources read, which two overridden tracks could not show.
 
 ---
 

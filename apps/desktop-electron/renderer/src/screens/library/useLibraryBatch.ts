@@ -47,6 +47,13 @@ export interface LibraryBatchController {
   busy: boolean;
   /** Ask for a batch. Confirms first when it is large enough to be a job. */
   start: (run: BatchRun) => Promise<void>;
+  /**
+   * Run a batch a dialog has already confirmed (CLEAN-13), without asking
+   * again. A refusal goes to `onRefused` when given — where the dialog shows it
+   * beside the value it names — and to the page otherwise. Resolves true when
+   * the engine accepted it.
+   */
+  run: (run: BatchRun, options?: { onRefused?: (message: string) => void }) => Promise<boolean>;
   /** Run the pending batch. */
   confirm: () => Promise<void>;
   /** Drop it. */
@@ -88,11 +95,14 @@ export function useLibraryBatch({
   }, []);
 
   const apply = useCallback(
-    async (run: BatchRun) => {
+    async (
+      run: BatchRun,
+      onRefused?: (message: string) => void,
+    ): Promise<boolean> => {
       const bridge = window.cuepoint?.applyBatch;
       if (!bridge) {
         onMessage("Editing tracks needs the desktop app with the engine connected.", "warning");
-        return;
+        return false;
       }
 
       setBusy(true);
@@ -104,8 +114,9 @@ export function useLibraryBatch({
         });
       } catch (cause) {
         if (alive.current) setBusy(false);
-        onMessage(messageOf(cause), "warning");
-        return;
+        if (onRefused) onRefused(messageOf(cause));
+        else onMessage(messageOf(cause), "warning");
+        return false;
       }
 
       // Applied on the request thread: the counts are already here.
@@ -113,14 +124,14 @@ export function useLibraryBatch({
         if (alive.current) setBusy(false);
         onMessage(batchSummary(run.action, outcome.applied), "success");
         onApplied();
-        return;
+        return true;
       }
 
       const jobId = outcome.job_id ?? outcome.id;
       if (!jobId) {
         if (alive.current) setBusy(false);
         onMessage("The engine answered without counts and without a job.", "warning");
-        return;
+        return false;
       }
 
       // Progress belongs to the status strip (SHELL-07), which is already
@@ -137,14 +148,14 @@ export function useLibraryBatch({
         // A failed batch still changed whatever it reached before it failed,
         // so the page re-reads rather than trusting what is on screen.
         onApplied();
-        return;
+        return false;
       }
 
       const results = window.cuepoint?.getJobResults;
       if (!results) {
         onMessage("Done.", "success");
         onApplied();
-        return;
+        return true;
       }
       try {
         const payload = await results(jobId);
@@ -159,6 +170,7 @@ export function useLibraryBatch({
         onMessage("Done.", "success");
       }
       onApplied();
+      return true;
     },
     [onApplied, onMessage],
   );
@@ -182,11 +194,18 @@ export function useLibraryBatch({
 
   const cancel = useCallback(() => setPending(null), []);
 
+  const runConfirmed = useCallback(
+    (run: BatchRun, options?: { onRefused?: (message: string) => void }) =>
+      apply(run, options?.onRefused),
+    [apply],
+  );
+
   return {
     pending,
     question: pending ? describeBatch(pending.action, pending.count) : null,
     busy,
     start,
+    run: runConfirmed,
     confirm,
     cancel,
   };

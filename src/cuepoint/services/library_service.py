@@ -78,6 +78,8 @@ class LibrarySearchResult:
     metadata: Dict[int, TrackMetadata] = field(default_factory=dict)
     #: What each row says about Clean (CLEAN-11), read in one query per window.
     clean: Dict[int, TrackCleanState] = field(default_factory=dict)
+    #: Where each row's overrides came from, per column (CLEAN-13).
+    sources: Dict[int, Dict[str, str]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -111,6 +113,8 @@ class LibraryBrowseResult:
     metadata: Dict[int, TrackMetadata] = field(default_factory=dict)
     #: What each row in this window says about Clean (CLEAN-11).
     clean: Dict[int, TrackCleanState] = field(default_factory=dict)
+    #: Where each row's overrides came from, per column (CLEAN-13).
+    sources: Dict[int, Dict[str, str]] = field(default_factory=dict)
     #: Populated instead of ``tracks`` when queue entries were asked for
     #: (PLAYER-05). Never populated at the same time as the others.
     queue_tracks: Optional[List[QueueTrack]] = None
@@ -185,6 +189,21 @@ class LibraryService(ILibraryService):
         ids = [track.id for track in tracks if track.id is not None]
         return self._tracks.clean_states(ids) if ids else {}
 
+    def _sources_for(self, tracks: List[LibraryTrack]) -> Dict[int, Dict[str, str]]:
+        """Read where one window's overrides came from (CLEAN-13)."""
+        return self.override_sources(
+            [track.id for track in tracks if track.id is not None]
+        )
+
+    def override_sources(self, track_ids: Iterable[int]) -> Dict[int, Dict[str, str]]:
+        """Return where each track's current overrides came from (CLEAN-13).
+
+        ``beatport`` for a value applied from a match, ``cuepoint`` for one a
+        person typed, keyed by track and then by override column.
+        """
+        ids = list(track_ids)
+        return self._metadata.override_sources(ids) if ids else {}
+
     def clean_states(self, track_ids: Iterable[int]) -> Dict[int, TrackCleanState]:
         """Return what each track's row says about Clean, keyed by id (CLEAN-11)."""
         ids = list(track_ids)
@@ -242,6 +261,7 @@ class LibraryService(ILibraryService):
             offset=safe_offset,
             metadata=self._metadata_for(found),
             clean=self._clean_for(found),
+            sources=self._sources_for(found),
         )
 
     def browse_tracks(
@@ -285,6 +305,7 @@ class LibraryService(ILibraryService):
             direction=browse.direction,
             metadata=self._metadata_for(rows),
             clean=self._clean_for(rows),
+            sources=self._sources_for(rows),
         )
 
     def browse_track_ids(

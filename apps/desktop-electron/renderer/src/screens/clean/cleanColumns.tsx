@@ -9,7 +9,7 @@
  */
 import type { LibraryTrackRow } from "../../api/cuepointBridge.types";
 import type { TrackColumnDef } from "../../components/table";
-import { effective, formatBpm } from "../library/libraryColumns";
+import { effective, formatBpm } from "../library/trackValues";
 import { fileStatusLabel, matchStateLabel } from "./cleanFormat";
 
 export const REVIEW_TABLE_LAYOUT_KEY = "cuepoint-clean-review-table-layout";

@@ -1,0 +1,181 @@
+/*
+ * The Library's Clean dialogs (CLEAN-13): editing metadata, applying Beatport
+ * values, and writing tags to files. Every value is a token.
+ */
+
+.clean-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-width: 0;
+}
+
+.clean-dialog__lead,
+.clean-dialog__note,
+.clean-dialog__hint {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.clean-dialog__headline {
+  margin: 0;
+  font-weight: 700;
+}
+
+.clean-dialog__problem {
+  margin: 0;
+  color: var(--accent-danger);
+  font-size: var(--font-size-xs);
+}
+
+.clean-dialog__fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.clean-dialog__field {
+  display: grid;
+  grid-template-columns: minmax(4rem, auto) minmax(0, 10rem) minmax(0, 1fr);
+  gap: var(--space-xs) var(--space-sm);
+  align-items: center;
+}
+
+.clean-dialog__field .clean-dialog__problem {
+  grid-column: 1 / -1;
+}
+
+.clean-dialog__label {
+  font-size: var(--font-size-xs);
+}
+
+.clean-dialog__select,
+.clean-dialog__input {
+  min-width: 0;
+  min-height: var(--hit-min);
+  padding: var(--space-xs);
+  border: calc(1px * var(--scale)) solid var(--border-muted);
+  background: var(--bg-input);
+  color: var(--fg-primary);
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+}
+
+.clean-dialog__input:disabled,
+.clean-dialog__select:disabled {
+  color: var(--fg-disabled);
+}
+
+.clean-dialog__input[aria-invalid="true"] {
+  border-color: var(--accent-danger);
+}
+
+.clean-dialog__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  align-items: flex-start;
+}
+
+.clean-dialog__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: var(--space-sm);
+  border: calc(1px * var(--scale)) solid var(--border-muted);
+}
+
+/* Checkboxes side by side, so the dialog fits a 1x window with its buttons. */
+.clean-dialog__group--grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(7rem * var(--scale)), 1fr));
+  column-gap: var(--space-md);
+  row-gap: 0;
+  flex: 1 1 20rem;
+}
+
+.clean-dialog__group--grid .clean-dialog__check:last-child,
+.clean-dialog__group--grid .clean-dialog__inline {
+  grid-column: 1 / -1;
+}
+
+.clean-dialog__group legend {
+  padding: 0 var(--space-xs);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.clean-dialog__check,
+.clean-dialog__inline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-height: var(--hit-min);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.clean-dialog__inline {
+  flex-wrap: wrap;
+}
+
+.clean-dialog__answer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  border: calc(1px * var(--scale)) solid var(--border-muted);
+  background: var(--bg-panel-alt);
+}
+
+.clean-dialog__lines {
+  display: flex;
+  flex-direction: column;
+  gap: calc(2px * var(--scale));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+}
+
+.clean-dialog__skipped {
+  color: var(--fg-muted);
+}
+
+.clean-dialog__changes {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+  table-layout: fixed;
+}
+
+.clean-dialog__changes caption {
+  padding-bottom: var(--space-xs);
+  color: var(--fg-muted);
+  text-align: left;
+}
+
+.clean-dialog__changes th,
+.clean-dialog__changes td {
+  padding: calc(2px * var(--scale)) var(--space-xs);
+  border-bottom: calc(1px * var(--scale)) solid var(--border-muted);
+  text-align: left;
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+
+.clean-dialog__changes th:first-child {
+  width: 35%;
+}
+
+.clean-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}

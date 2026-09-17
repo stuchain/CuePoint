@@ -29,7 +29,8 @@ import {
   holdsTracks,
   iconForKind,
 } from "../library/collectionTree";
-import { formatDuration } from "../library/libraryColumns";
+import { formatDuration } from "../library/trackValues";
+import { batchConsequence } from "../library/libraryBatch";
 import { useLibraryBatch } from "../library/useLibraryBatch";
 import { duplicatesEmptyState } from "./cleanEmpty";
 import { fileStatusLabel, signalExplanation, signalLabel, trackCount } from "./cleanFormat";
@@ -409,10 +410,7 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
         secondaryAction={{ label: "Cancel", onClick: batch.cancel }}
       >
         <p>{batch.question}</p>
-        <p>
-          It runs in the background, and there is no undo — every change is recorded in each
-          track&rsquo;s History.
-        </p>
+        {batch.pending && <p>{batchConsequence(batch.pending.action.kind)}</p>}
       </Modal>
     </div>
   );

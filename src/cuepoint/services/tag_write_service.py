@@ -150,6 +150,11 @@ _logger = logging.getLogger(__name__)
 EVENT_TAGS_WRITTEN = "clean.tags.written"
 EVENT_TAGS_RESTORED = "clean.tags.restored"
 
+#: Recorded once, as the engine starts, for each write or restore a stop cut
+#: short (CLEAN-13). Neither of the two above is recorded for such a job, so
+#: without this its writes would be invisible everywhere but the record.
+EVENT_TAGS_INTERRUPTED = "clean.tags.interrupted"
+
 #: The record's name for an embedded picture, beside the tag fields.
 FIELD_ARTWORK = "artwork"
 WRITE_FIELDS: Tuple[str, ...] = (*TAG_FIELDS, FIELD_ARTWORK)
@@ -306,6 +311,33 @@ def _dumps(value: Any) -> str:
 
 def _count(number: int, noun: str) -> str:
     return f"{number:,} {noun}{'' if number == 1 else 's'}"
+
+
+def describe_interrupted_tags(restoring: bool, recorded: int, unconfirmed: int) -> str:
+    """Offer a stopped write or restore for restoring, in one sentence (CLEAN-13).
+
+    An unconfirmed row is a value CuePoint recorded and may not have written;
+    the sentence says how many, and never calls them written.
+    """
+    if restoring:
+        head = "Restoring tags stopped when CuePoint closed"
+        if unconfirmed:
+            return (
+                f"{head}: {_count(unconfirmed, 'value')} may not have been put back."
+                " Restore again to finish"
+            )
+        return f"{head} before every file was put back. Restore again to finish"
+    head = "Writing tags stopped when CuePoint closed"
+    written = recorded - unconfirmed
+    if unconfirmed:
+        return (
+            f"{head}: {_count(unconfirmed, 'value')} may not have finished"
+            f" writing, and {written:,} did. Restore them to put the files back"
+        )
+    return (
+        f"{head} after writing {_count(written, 'value')}."
+        " Restore them to put the files back"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1569,6 +1601,7 @@ def _report(
 
 __all__: Sequence[str] = (
     "ARTWORK_ABSENT",
+    "EVENT_TAGS_INTERRUPTED",
     "EVENT_TAGS_RESTORED",
     "EVENT_TAGS_WRITTEN",
     "FIELD_ARTWORK",
@@ -1585,6 +1618,7 @@ __all__: Sequence[str] = (
     "TagWriteService",
     "WRITE_FIELDS",
     "bpm_text",
+    "describe_interrupted_tags",
     "key_text",
     "written_values",
 )

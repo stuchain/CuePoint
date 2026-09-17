@@ -263,7 +263,11 @@
   font-weight: 700;
 }
 
+/* The containing block of the text only a screen reader reads: without it,
+   those absolutely placed spans escape this box's clipping and give the whole
+   window a scroll bar as tall as the comparison (found in CLEAN-13). */
 .clean-compare__scroll {
+  position: relative;
   overflow-x: auto;
   border: var(--border-width) solid var(--border-outline);
 }

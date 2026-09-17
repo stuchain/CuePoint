@@ -850,4 +850,33 @@ describe("desktop contract", () => {
       expect(fields(bridgeTypes)).toEqual(fields(engineClient));
     });
   });
+
+  describe("Clean in the Library (CLEAN-13)", () => {
+    // No method added: three answers widened. A row that one side types
+    // without its score or its override sources is a column or a marker the
+    // Library cannot draw, and a filter field without its choices is a text
+    // box where a choice belongs.
+    it.each(["LibraryTrackRow", "LibraryFilterField", "LibraryFilterChoice"])(
+      "keeps the engine and the renderer agreeing about %s",
+      (shape) => {
+        const fields = (source: string) => {
+          const start = source.indexOf(`export interface ${shape} `);
+          const body = source.slice(start, source.indexOf("\n}", start));
+          return [...body.matchAll(/^ {2}([a-z_]+)\??:/gm)].map((match) => match[1]!).sort();
+        };
+
+        expect(fields(bridgeTypes).length).toBeGreaterThan(0);
+        expect(fields(bridgeTypes)).toEqual(fields(engineClient));
+      },
+    );
+
+    it("carries the score, the override sources and the choices", () => {
+      for (const source of [bridgeTypes, engineClient]) {
+        expect(source).toContain("match_score?: number | null;");
+        expect(source).toContain("override_sources?:");
+        expect(source).toContain('export type OverrideSource = "beatport" | "cuepoint";');
+        expect(source).toContain("choices");
+      }
+    });
+  });
 });

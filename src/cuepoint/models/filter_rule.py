@@ -38,8 +38,22 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
-from cuepoint.models.file_status import FILE_NOT_CHECKED
-from cuepoint.models.match_attempt import STATE_NOT_MATCHED
+from cuepoint.models.duplicate_group import SIGNAL_BEATPORT, SIGNAL_PATH, SIGNAL_TEXT
+from cuepoint.models.file_status import (
+    FILE_MISSING,
+    FILE_NOT_CHECKED,
+    FILE_PRESENT,
+    FILE_UNREADABLE,
+)
+from cuepoint.models.match_attempt import (
+    DECIDED_BY_AUTO,
+    DECIDED_BY_USER,
+    STATE_ACCEPTED,
+    STATE_NEEDS_REVIEW,
+    STATE_NO_MATCH,
+    STATE_NOT_MATCHED,
+    STATE_REJECTED,
+)
 
 #: Field types. The type decides which operators are allowed and how a value is
 #: coerced; it is not the SQLite storage class.
@@ -303,6 +317,12 @@ class FieldSpec:
             fields were ratings would draw stars beside a field this registry
             had moved on from. A field with no unit is a plain value, and a
             unit a renderer does not recognize is one too.
+        choices: The fixed set of values a text field can hold, each with what a
+            person calls it (CLEAN-13). A match state is one of five words and
+            nothing else, so the bar offers the five rather than a text box,
+            and ``is``, ``is not`` and ``any of`` refuse a word outside them:
+            a misspelled state would otherwise match nothing, quietly. Empty for
+            a field whose values are the library's own.
     """
 
     name: str
@@ -315,6 +335,7 @@ class FieldSpec:
     joins: Tuple[str, ...] = ()
     unit: Optional[str] = None
     values: Optional[LinkTable] = None
+    choices: Tuple[Tuple[str, str], ...] = ()
 
     @property
     def metadata(self) -> bool:
@@ -354,6 +375,41 @@ class FieldSpec:
 #: public contract for no one's benefit.
 _TAG_LINK = LinkTable("track_tags", "tag_id")
 _COLLECTION_LINK = LinkTable("collection_tracks", "collection_id")
+
+#: The fixed value sets (CLEAN-13), in the order a person reads them, with what
+#: each is called. The words are the engine's; the labels are what the filter
+#: bar shows and what a chip says.
+MATCH_STATE_CHOICES: Tuple[Tuple[str, str], ...] = (
+    (STATE_NEEDS_REVIEW, "Needs review"),
+    (STATE_ACCEPTED, "Accepted"),
+    (STATE_REJECTED, "Rejected"),
+    (STATE_NO_MATCH, "No match"),
+    (STATE_NOT_MATCHED, "Not matched"),
+)
+MATCH_DECIDER_CHOICES: Tuple[Tuple[str, str], ...] = (
+    (DECIDED_BY_AUTO, "CuePoint"),
+    (DECIDED_BY_USER, "You"),
+)
+FILE_STATUS_CHOICES: Tuple[Tuple[str, str], ...] = (
+    (FILE_PRESENT, "Present"),
+    (FILE_MISSING, "Missing"),
+    (FILE_UNREADABLE, "Unreadable"),
+    (FILE_NOT_CHECKED, "Not checked"),
+)
+DUPLICATE_SIGNAL_CHOICES: Tuple[Tuple[str, str], ...] = (
+    (SIGNAL_PATH, "Same file"),
+    (SIGNAL_BEATPORT, "Same Beatport track"),
+    (SIGNAL_TEXT, "Same artist, title and mix"),
+)
+ARTWORK_CHOICES: Tuple[Tuple[str, str], ...] = (
+    (ARTWORK_EMBEDDED, "In the file"),
+    (ARTWORK_BEATPORT, "From Beatport"),
+    (ARTWORK_NONE, "None"),
+    (ARTWORK_UNKNOWN, "Not read yet"),
+)
+
+#: The operators that name one of a field's choices, and so refuse any other word.
+CHOICE_OPERATORS = (OP_IS, OP_IS_NOT, OP_ANY_OF)
 
 
 def _effective(name: str, type_: str, label: str, **options: Any) -> FieldSpec:
@@ -485,6 +541,7 @@ FIELDS: Tuple[FieldSpec, ...] = (
         facetable=True,
         column=f"COALESCE({MATCH_ALIAS}.state, '{STATE_NOT_MATCHED}')",
         joins=(MATCH_ALIAS,),
+        choices=MATCH_STATE_CHOICES,
     ),
     FieldSpec(
         "match_decided_by",
@@ -493,6 +550,7 @@ FIELDS: Tuple[FieldSpec, ...] = (
         facetable=True,
         column=f"{MATCH_ALIAS}.decided_by",
         joins=(MATCH_ALIAS,),
+        choices=MATCH_DECIDER_CHOICES,
     ),
     # A newer attempt disagrees with the user's decision (DEC-067). A track
     # with no state has nothing to disagree with, so it reads as not disputed.
@@ -527,6 +585,7 @@ FIELDS: Tuple[FieldSpec, ...] = (
             f" ELSE '{FILE_NOT_CHECKED}' END"
         ),
         joins=(FILES_ALIAS,),
+        choices=FILE_STATUS_CHOICES,
     ),
     # The day of the current path's last check, in the user's own time zone, as
     # `date_added` is Rekordbox's day rather than a UTC instant. A stale check
@@ -557,6 +616,7 @@ FIELDS: Tuple[FieldSpec, ...] = (
         "Duplicate signal",
         facetable=True,
         values=LinkTable(DUPLICATE_SIGNALS_VIEW, "signal"),
+        choices=DUPLICATE_SIGNAL_CHOICES,
     ),
     # --- Artwork (CLEAN-09, DEC-076) ---------------------------------------
     # What the table would show: the file's own picture, else Beatport's image
@@ -569,6 +629,7 @@ FIELDS: Tuple[FieldSpec, ...] = (
         facetable=True,
         column=_ARTWORK_EXPRESSION,
         joins=(ARTWORK_ALIAS, MATCH_ALIAS, MATCH_CANDIDATE_ALIAS),
+        choices=ARTWORK_CHOICES,
     ),
 )
 
@@ -702,7 +763,27 @@ def _coerce_one(value: Any, spec: FieldSpec, operator: str) -> Any:
         return _coerce_bool(value, spec, operator)
     if spec.type in (TYPE_TAG, TYPE_COLLECTION):
         return _coerce_id(value, spec, operator)
-    return _coerce_text(value, spec, operator)
+    text = _coerce_text(value, spec, operator)
+    if spec.choices and operator in CHOICE_OPERATORS:
+        return _coerce_choice(text, spec, operator)
+    return text
+
+
+def _coerce_choice(text: str, spec: FieldSpec, operator: str) -> str:
+    """Refuse a word a fixed-value field never holds (CLEAN-13).
+
+    Compared ignoring case, as text comparisons are in SQL, so ``PATH`` still
+    means ``path``; the rule keeps the canonical word.
+    """
+    wanted = text.strip().casefold()
+    allowed = [value for value, _ in spec.choices]
+    for value in allowed:
+        if value.casefold() == wanted:
+            return value
+    raise FilterRuleError(
+        f"{spec.label} is never {text!r} ({operator}). It is one of: "
+        + ", ".join(allowed)
+    )
 
 
 @dataclass(frozen=True)
@@ -1047,6 +1128,13 @@ def describe_fields() -> List[Dict[str, Any]]:
             # is a key a renderer forgets to test for.
             "unit": spec.unit,
             "operators": list(spec.operators),
+            # CLEAN-13: the values a fixed-value field can hold, each with its
+            # name, or null. Present always, for ``unit``'s reason.
+            "choices": (
+                [{"value": value, "label": label} for value, label in spec.choices]
+                if spec.choices
+                else None
+            ),
         }
         for spec in FIELDS
     ]

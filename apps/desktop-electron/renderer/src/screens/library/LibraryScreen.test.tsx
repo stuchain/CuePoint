@@ -1974,7 +1974,9 @@ describe("organizing a selection (ORG-11)", () => {
       expect(bridge.applyBatch).not.toHaveBeenCalled();
     });
 
-    it("says there is no undo, because there is not (DEC-008)", async () => {
+    it("says the batch can be reverted from Activity (DEC-008, CLEAN-13)", async () => {
+      // No undo stack, but since CLEAN-13 a batch is reverted as one from
+      // Activity, and the confirmation says where rather than "no undo".
       renderScreen();
       await tableReady();
       await userEvent.keyboard("{Control>}a{/Control}");
@@ -1982,7 +1984,21 @@ describe("organizing a selection (ORG-11)", () => {
       const menu = await openMenuOn("Track 2");
       await userEvent.click(within(menu).getByRole("menuitem", { name: "Favorite" }));
 
+      expect(await screen.findByText(/reverted from Activity/i)).toBeInTheDocument();
+      expect(screen.queryByText(/no undo/i)).toBeNull();
+    });
+
+    it("still says there is no undo for Collection membership (DEC-058)", async () => {
+      renderScreen();
+      await tableReady();
+      await userEvent.keyboard("{Control>}a{/Control}");
+      await screen.findByText(/everything matching/);
+      const menu = await openMenuOn("Track 2");
+      await userEvent.click(within(menu).getByRole("menuitem", { name: "Add to Collection…" }));
+      await userEvent.click(await screen.findByRole("option", { name: /Warmups/ }));
+
       expect(await screen.findByText(/no undo/i)).toBeInTheDocument();
+      expect(screen.queryByText(/reverted from Activity/i)).toBeNull();
     });
 
     it("does it once it is confirmed", async () => {

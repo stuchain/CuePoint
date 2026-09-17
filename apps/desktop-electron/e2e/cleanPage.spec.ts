@@ -154,7 +154,7 @@ test.describe("The Clean page (CLEAN-12)", () => {
       const library = window.getByRole("table", { name: "Library tracks" });
       await expect(library.getByText("Gone")).toBeVisible();
       await expect(library.getByText("Present One")).toHaveCount(0);
-      await expect(window.getByText(/File status is any of missing, unreadable/)).toBeVisible();
+      await expect(window.getByText(/File status is any of Missing, Unreadable/)).toBeVisible();
     } finally {
       await app.close();
     }

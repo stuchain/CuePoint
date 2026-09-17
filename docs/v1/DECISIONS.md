@@ -2059,6 +2059,21 @@ Nothing here changes the decision. What building it settled, recorded in full in
   guarded decoder, which serves Beatport's image for an accepted match only.
 - The Library and Inspector hooks are CLEAN-13's.
 
+### Implemented (2026-09-17, CLEAN-13) — the Library and Inspector hooks
+
+Nothing here changes the decision. What building it settled, recorded in full in
+`PHASE7_CLEAN.md` under CLEAN-13:
+
+- **One operations list.** The Clean entries are appended to ORG-11's, so the context menu and the
+  Actions button offer the same eight, each only in a build whose engine has Clean.
+- **The Inspector is four zones and a picture**: Yours (with the five values of DEC-069), Beatport,
+  the imported record, which stays read-only (DEC-047), and History, which offers Revert for
+  CuePoint's own changes.
+- **Revert for Collection membership is shown disabled in Activity**, where membership batches are
+  recorded; History has no membership rows to put it on.
+- **A write the engine stopped in the middle of is offered for restoring** in Activity, with how many
+  of its writes may not have finished (DEC-070).
+
 ---
 
 ## DEC-073 — Missing Files Are Found by a Scan Job and Fixed in Rekordbox

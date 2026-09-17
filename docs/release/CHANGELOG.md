@@ -8,6 +8,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Clean in the Library. Four columns — match state, match score, file status
+  and artwork — are in the column list, and sort with what needs you first.
+  Key, BPM, genre, label and year show your own value with a small mark saying
+  whether it came from Beatport or from you. A track's right-click menu and the
+  Actions button offer Match on Beatport, Re-match, Accept match, Reject match,
+  Apply Beatport values…, Edit metadata…, Check files and Write tags to files…,
+  for one track or everything selected. Filters whose values are a fixed list
+  — match state, file status, artwork and the rest — offer them as a choice
+- The Inspector shows a track's artwork, a Beatport part — where the track
+  stands, the match that was decided, and for each of the five fields what
+  Rekordbox sent, what Beatport has and what you see now, with Apply beside
+  each — and lets you type your own key, BPM, genre, label and year, with the
+  reason shown when a value is refused. **Open on the Clean page** goes to the
+  track's review
+- Taking changes back. The Inspector's History offers **Revert** on every
+  change you made in CuePoint, and a change to many tracks is reverted as one
+  from its entry in Activity. Adding tracks to or removing them from a
+  Collection cannot be reverted, and its entry says so
+- Writing tags to files, from the Library. Choose the fields, preview what
+  would change — the preview only reads — and only then write. The write and
+  every restore are listed in Activity with **Restore**, which puts back every
+  value the write replaced. A write that CuePoint closed in the middle of is
+  listed as one whose writes may not have finished, never as a finished write,
+  with Restore offered
 - A Clean page in the navigation, with four parts. **Review** lists tracks by
   where they stand with Beatport — needs review first — for the whole library,
   a playlist or a Collection. Select a track to see it beside every candidate
@@ -91,6 +115,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   files
 
 ### Changed
+- A change to many tracks no longer says there is no undo: it says the batch
+  can be reverted from Activity, except for Collection membership, which still
+  cannot be
+- A filter chip names a fixed value the way the choice does — "File status is
+  Missing" rather than "missing" — and a filter naming a value that field never
+  holds is refused rather than matching nothing
 - A refresh that would delete tracks carrying your own work now says so before
   it does it, and asks you to confirm. It names each kind with its number:
   tracks filed in Collections, rated or noted, tagged, and reviewed or edited
@@ -106,6 +136,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   status chrome off-screen as those are added
 
 ### Fixed
+- A refusal from the engine was shown with "Error invoking remote method …" in
+  front of it, in every dialog and panel; it now reads as the engine wrote it
+- On the Clean page, a selected track's comparison made the whole window
+  scroll, carrying the navigation and status strip off-screen
 - The Library table stopped at 1,200 pixels wide on a large display instead of
   using the whole window
 - Writing tags to files — inKey's Sync Tags and the command line — never

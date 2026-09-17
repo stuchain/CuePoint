@@ -31,6 +31,7 @@ import { ScaleProvider } from "../../tokens/ScaleContext";
 import { CleanScreen } from "./CleanScreen";
 import fixture from "./cleanEmpty.fixture.json";
 import { CLEAN_SECTION_STORAGE_KEY } from "./cleanSections";
+import { cleanOpening, cleanTrackState } from "./cleanLink";
 
 const UNTOUCHED = fixture.untouched.health as LibraryHealth;
 const MATCHED = fixture.matched.health as LibraryHealth;
@@ -975,5 +976,83 @@ describe("Health", () => {
     bridge.getLibraryHealth!.mockRejectedValue(new Error("The library is unavailable"));
     renderClean("health");
     expect(await screen.findByRole("alert")).toHaveTextContent("The library is unavailable");
+  });
+});
+
+describe("opening one track from the Library (CLEAN-13)", () => {
+  function Opened() {
+    const location = useLocation();
+    return <CleanScreen openWith={cleanOpening(location)} />;
+  }
+
+  function renderOpened(trackId: number) {
+    return render(
+      <ScaleProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[{ pathname: "/clean", state: cleanTrackState(trackId) }]}>
+            <Routes>
+              <Route path="/clean" element={<Opened />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ScaleProvider>,
+    );
+  }
+
+  beforeEach(() => {
+    install();
+    queue = [track(1), track(2, { match_state: "accepted" }), track(3)];
+  });
+
+  it("opens the review on the track's own state, with the track in the comparison", async () => {
+    bridge.getTrackMatches!.mockImplementation(async ({ trackId }: { trackId: number }) =>
+      matchesFor(trackId, stateFor(trackId, { state: "accepted", decided_by: "user" })),
+    );
+    // Whatever tab was last used, a link to a track opens the review.
+    localStorage.setItem(CLEAN_SECTION_STORAGE_KEY, "health");
+    renderOpened(2);
+
+    const scope = await screen.findByRole("combobox", { name: "Show" });
+    await waitFor(() => expect(scope).toHaveValue("accepted"));
+    await waitFor(() =>
+      expect(lastBrowse()).toMatchObject({
+        filters: { match: "all", rules: [{ field: "match_state", operator: "is", value: "accepted" }] },
+      }),
+    );
+    const comparison = await screen.findByRole("region", { name: "Comparison" });
+    expect(await within(comparison).findByRole("heading", { name: "Track 2" })).toBeInTheDocument();
+    expect(bridge.getLibraryTrack).toHaveBeenCalledWith({ trackId: 2 });
+    expect(bridge.getTrackMatches).toHaveBeenCalledWith({ trackId: 2 });
+  });
+
+  it("opens a disputed track in the disputed queue", async () => {
+    queue = [track(2, { match_state: "rejected", match_disputed: true })];
+    renderOpened(2);
+    const scope = await screen.findByRole("combobox", { name: "Show" });
+    await waitFor(() => expect(scope).toHaveValue("disputed"));
+  });
+
+  it("lets go of the track once a row is chosen", async () => {
+    renderOpened(1);
+    const comparison = await screen.findByRole("region", { name: "Comparison" });
+    expect(await within(comparison).findByRole("heading", { name: "Track 1" })).toBeInTheDocument();
+    const table = await screen.findByRole("table", { name: "Review queue" });
+    fireEvent.click(await within(table).findByText("Track 3"));
+    expect(await within(comparison).findByRole("heading", { name: "Track 3" })).toBeInTheDocument();
+
+    // Letting go of the row does not bring the linked track back.
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    expect(
+      await within(screen.getByRole("region", { name: "Comparison" })).findByText(
+        "Choose a track to compare it with what Beatport found.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("ignores a location that carries no track", () => {
+    expect(cleanOpening({ state: { cuepointCleanTrack: "2" }, key: "k" })).toBeNull();
+    expect(cleanOpening({ state: { cuepointCleanTrack: 0 }, key: "k" })).toBeNull();
+    expect(cleanOpening({ state: null, key: "k" })).toBeNull();
+    expect(cleanOpening({ state: cleanTrackState(4), key: "k" })).toEqual({ trackId: 4, token: "k" });
   });
 });

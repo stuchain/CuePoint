@@ -7,6 +7,7 @@ import {
   formatEventType,
   sortNewestFirst,
 } from "./activityFormat";
+import { ActivityOffer } from "./ActivityOffer";
 import "./ActivityPanel.css";
 
 export interface ActivityPanelProps {
@@ -26,22 +27,25 @@ type Status = "loading" | "ready" | "unavailable" | "error";
  * this app — the past-searches panel, which lists exported match-run CSVs — and
  * two features sharing that word would be a lasting confusion.
  *
- * Read-only. The table supports reverting a field change (DEC-008), but a
- * revert button here would act on fields nothing can yet edit, so it belongs to
- * the phases that make fields editable.
+ * Since CLEAN-13 an entry can be acted on where it is recorded: a batch offers
+ * "Revert this batch", disabled with its reason for Collection membership, and
+ * a tag write offers Restore — saying first how many of its writes may not
+ * have finished, and never calling those done.
  */
 export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
   const [feed, setFeed] = useState<ActivityFeed | null>(null);
   const [status, setStatus] = useState<Status>("loading");
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(() => {
+  const load = useCallback((quiet = false) => {
     const read = window.cuepoint?.getRecentActivity;
     if (!read) {
       setStatus("unavailable");
       return;
     }
-    setStatus("loading");
+    // A reload after an action keeps the list on screen, so what the entry
+    // said about the action stays readable while the feed catches up.
+    if (!quiet) setStatus("loading");
     void read({ limit: 50 })
       .then((result) => {
         setFeed(result);
@@ -68,7 +72,7 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
       title="Activity"
       onClose={onClose}
       size="wide"
-      secondaryAction={{ label: "Refresh", onClick: load }}
+      secondaryAction={{ label: "Refresh", onClick: () => load() }}
     >
       <div className="cp-activity">
         {status === "loading" && <p className="cp-activity__note">Loading activity…</p>}
@@ -108,6 +112,7 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
                     <span className="cp-activity__summary-text">
                       {event.summary}
                       {detail && <span className="cp-activity__detail"> {detail}</span>}
+                      <ActivityOffer event={event} onDone={() => load(true)} />
                     </span>
                   </li>
                 );

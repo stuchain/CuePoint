@@ -17,7 +17,7 @@
 import { useCallback, useId, useMemo, useState } from "react";
 
 import { PixelIcon } from "../../components/PixelIcon";
-import type { TrackMetadata } from "../../api/cuepointBridge.types";
+import type { LibraryTrackRow, TrackMetadata } from "../../api/cuepointBridge.types";
 import {
   NOTES_MAX_LENGTH,
   RATING_STARS,
@@ -27,6 +27,7 @@ import {
   nextRating,
   starLabel,
 } from "./trackEdits";
+import { TrackOverrides } from "./TrackOverrides";
 import { useTrackMetadata } from "./useTrackMetadata";
 import { useTrackTags, type TrackTag } from "./useTrackTags";
 
@@ -39,11 +40,26 @@ export interface TrackYoursProps {
   onError: (message: string) => void;
   /** Fired after every accepted write, so the History section re-reads. */
   onSaved?: () => void;
+  /**
+   * The track, when this build can type the five values CuePoint overrides
+   * (CLEAN-13). Absent, the zone is ORG-10's: rating, favorite, notes, tags.
+   */
+  track?: LibraryTrackRow & { id: number };
+  /** Fired after a typed value is saved, which changes what the table shows. */
+  onValueSaved?: () => void;
 }
 
 const STARS = Array.from({ length: RATING_STARS }, (_, index) => index + 1);
 
-export function TrackYours({ trackId, metadata, tags, onError, onSaved }: TrackYoursProps) {
+export function TrackYours({
+  trackId,
+  metadata,
+  tags,
+  onError,
+  onSaved,
+  track,
+  onValueSaved,
+}: TrackYoursProps) {
   const editor = useTrackMetadata({ trackId, metadata, onError, onSaved });
   const tagging = useTrackTags({ trackId, tags, onError, onSaved });
   const [draftTag, setDraftTag] = useState("");
@@ -250,6 +266,8 @@ export function TrackYours({ trackId, metadata, tags, onError, onSaved }: TrackY
           </button>
         </div>
       </div>
+
+      {track && <TrackOverrides track={track} onSaved={onValueSaved ?? onSaved ?? (() => undefined)} />}
     </section>
   );
 }

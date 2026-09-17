@@ -1,6 +1,44 @@
 const { contextBridge, ipcRenderer, webUtils } = require("electron");
 
-contextBridge.exposeInMainWorld("cuepoint", {
+/**
+ * Electron hands a rejected `invoke` back as
+ * "Error invoking remote method '<channel>': Error: <message>". The message is
+ * the engine's, written for a person — "bpm must be between 20 and 300" — and
+ * the rest is plumbing. Every method's rejection is given its own words back
+ * (CLEAN-13), so a refusal shown beside a field reads as the engine said it.
+ */
+const REMOTE_PREFIX = /^Error invoking remote method '[^']*': (?:[A-Za-z]*Error: )?/;
+
+function engineWords(error) {
+  if (error instanceof Error && REMOTE_PREFIX.test(error.message)) {
+    return new Error(error.message.replace(REMOTE_PREFIX, ""));
+  }
+  return error;
+}
+
+/** The same API, with every promise's rejection in the engine's words. */
+function withEngineWords(api) {
+  const wrapped = {};
+  for (const [name, value] of Object.entries(api)) {
+    if (typeof value === "function") {
+      wrapped[name] = (...args) => {
+        const result = value(...args);
+        return result && typeof result.then === "function"
+          ? result.catch((error) => {
+              throw engineWords(error);
+            })
+          : result;
+      };
+    } else if (value && typeof value === "object") {
+      wrapped[name] = withEngineWords(value);
+    } else {
+      wrapped[name] = value;
+    }
+  }
+  return wrapped;
+}
+
+contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   getEngineStatus: () => ipcRenderer.invoke("engine:status"),
   restartEngine: () => ipcRenderer.invoke("engine:restart"),
   startMatchJob: (body) => ipcRenderer.invoke("engine:startMatchJob", body),
@@ -226,4 +264,4 @@ contextBridge.exposeInMainWorld("cuepoint", {
       };
     },
   },
-});
+}));

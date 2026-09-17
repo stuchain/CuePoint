@@ -101,6 +101,13 @@ together in one pass took 59–68 ms. Filtering and sorting by those five fields
 cost the same kind of difference: a first page sorted by BPM takes 25 ms rather
 than 14.
 
+With CuePoint's Clean facts in the table — 30,000 tracks matched and 10,000
+corrected — a window of 100 rows takes 3.5 ms, of which reading where each
+correction came from is about half a millisecond. Sorting the first page by
+match state or file status takes 36–39 ms. Sorting it by match score takes
+155 ms, because each score is read from the stored Beatport candidates one
+track at a time; that column is hidden until you ask for it.
+
 Re-opening a list while other filters are on is the slowest of these, and
 deliberately so: with a filter in play CuePoint reads the library directly
 instead of through those indexes, which is five times faster than the

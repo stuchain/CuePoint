@@ -78,9 +78,13 @@ import { deletedLine, mergedLine, type TagPatch } from "./tagManager";
 import { describeRule, type ValueNames } from "./filterText";
 import { emptyStateFor } from "./libraryEmpty";
 import type { LibraryOpening } from "./libraryLink";
-import { batchSelection, type BatchAction } from "./libraryBatch";
+import { batchConsequence, batchSelection, type BatchAction } from "./libraryBatch";
+import { cleanMenuItems } from "./libraryClean";
 import { organizationMenuItems } from "./trackMenu";
 import { useLibraryBatch } from "./useLibraryBatch";
+import { useLibraryClean } from "./useLibraryClean";
+import { useLibraryChanges } from "../../api/libraryChanges";
+import { revealTrack } from "../clean/revealTrack";
 import { useCollectionTree } from "./useCollectionTree";
 import { followJob } from "./followJob";
 import { appliedLine, jobErrorMessage } from "./libraryFormat";
@@ -109,6 +113,8 @@ type Busy = null | "importing" | "checking" | "applying";
 interface BatchTarget {
   selection: BatchSelection;
   count: number;
+  /** The one track, when the target is exactly one known track (CLEAN-13). */
+  trackId?: number | null;
 }
 
 const BUSY_LABEL: Record<Exclude<Busy, null>, string> = {
@@ -136,12 +142,18 @@ export interface LibraryScreenProps {
    * later render does not undo whatever the user did with the bar since.
    */
   openWith?: LibraryOpening | null;
+  /**
+   * Open a track on the Clean page (CLEAN-13). A prop for `focus`'s reason:
+   * routing stays in `App.tsx`. Absent, the Inspector offers no link.
+   */
+  onOpenInClean?: (trackId: number) => void;
 }
 
 export function LibraryScreen({
   onOpenRekordboxInstructions,
   focus,
   openWith,
+  onOpenInClean,
 }: LibraryScreenProps) {
   const { push } = useToast();
   const [summary, setSummary] = useState<LibrarySummary | null>(null);
@@ -288,11 +300,46 @@ export function LibraryScreen({
     onMessage: (message, tone) => push(message, tone),
     onApplied: () => {
       // The table and the pane agree about what happened without a manual
-      // refresh: the rows are re-read and the tree's counts with them.
+      // refresh: the rows are re-read and the tree's counts with them — and
+      // the Inspector, whose values a Clean batch changes (CLEAN-13).
       window_.reload();
       collections.reload();
+      detail.reload();
     },
   });
+
+  const clean = useLibraryClean({
+    batch,
+    onMessage: (message, tone) => push(message, tone),
+    onChanged: () => {
+      window_.reload();
+      detail.reload();
+    },
+  });
+
+  // A revert or a restore started from Activity changed what this page shows.
+  useLibraryChanges(() => {
+    window_.reload();
+    detail.reload();
+    collections.reload();
+  });
+
+  /**
+   * Show a track's file, or the nearest folder when it has moved (CLEAN-12's
+   * reveal). A build without the folder route shows the path as it always did.
+   */
+  const reveal = useCallback(
+    (trackId: number | null | undefined, path: string) => {
+      if (trackId != null && window.cuepoint?.getTrackFolder) {
+        void revealTrack(trackId).then((outcome) => {
+          if (outcome) push(outcome.message, outcome.tone);
+        });
+        return;
+      }
+      void window.cuepoint?.showItemInFolder?.(path);
+    },
+    [push],
+  );
 
   /**
    * Let go of the Smart Collection the bar was editing, rules and all.
@@ -402,8 +449,14 @@ export function LibraryScreen({
       onSelectCollection={(collection) =>
         scopeToCollection(findCollection(collections.tree, collection.id))
       }
-      onReveal={(path) => void window.cuepoint?.showItemInFolder?.(path)}
+      onReveal={(path) => reveal(detail.detail?.track.id, path)}
       onError={(message) => push(message, "warning")}
+      onTrackChanged={() => {
+        window_.reload();
+        detail.reload();
+      }}
+      onOpenInClean={onOpenInClean}
+      onMessage={(message) => push(message, "success")}
     />,
   );
 
@@ -457,8 +510,16 @@ export function LibraryScreen({
       // prevent, and `rows` here is already a capped sample.
       const target: BatchTarget =
         inSelection && selection.count > 0
-          ? { selection: batchSelection(selection.selection, query), count: selection.count }
-          : { selection: { track_ids: row.id == null ? [] : [row.id] }, count: 1 };
+          ? {
+              selection: batchSelection(selection.selection, query),
+              count: selection.count,
+              trackId: selection.count === 1 ? row.id : null,
+            }
+          : {
+              selection: { track_ids: row.id == null ? [] : [row.id] },
+              count: 1,
+              trackId: row.id,
+            };
       setMenu({ x, y, rows, index, target, kind: "row" });
     },
     [query, selection],
@@ -613,8 +674,8 @@ export function LibraryScreen({
 
   /** The organization entries, for whichever surface asked for them. */
   const actionItems = useCallback(
-    (target: BatchTarget): TrackContextMenuItem[] =>
-      organizationMenuItems(
+    (target: BatchTarget): TrackContextMenuItem[] => [
+      ...organizationMenuItems(
         {
           count: target.count,
           collection: scopedCollection
@@ -648,7 +709,10 @@ export function LibraryScreen({
             runAction({ kind: "set_favorite", value: favorite, target: "favorite" }, target),
         },
       ),
-    [openPicker, runAction, scopedCollection],
+      // Clean's entries (CLEAN-13), in the same list both surfaces render.
+      ...cleanMenuItems({ count: target.count }, clean.handlersFor(target)),
+    ],
+    [clean, openPicker, runAction, scopedCollection],
   );
 
   const menuItems = useMemo((): TrackContextMenuItem[] => {
@@ -687,7 +751,7 @@ export function LibraryScreen({
         label: "Show in folder",
         separatorBefore: true,
         disabled: !path,
-        onSelect: () => void (path && window.cuepoint?.showItemInFolder?.(path)),
+        onSelect: () => path && reveal(rows[0]?.id, path),
       },
       {
         id: "copy",
@@ -701,7 +765,7 @@ export function LibraryScreen({
       },
       ...organization,
     ];
-  }, [actionItems, copyRows, menu, playback]);
+  }, [actionItems, copyRows, menu, playback, reveal]);
 
   /**
    * Tracks dropped on a Collection in the pane (ORG-09's target, ORG-11's source).
@@ -1367,10 +1431,7 @@ export function LibraryScreen({
             secondaryAction={{ label: "Cancel", onClick: batch.cancel }}
           >
             <p>{batch.question}</p>
-            <p>
-              It runs in the background, and there is no undo — every change is
-              recorded in each track&rsquo;s History.
-            </p>
+            {batch.pending && <p>{batchConsequence(batch.pending.action.kind)}</p>}
           </Modal>
 
           <SelectionActions
@@ -1380,7 +1441,9 @@ export function LibraryScreen({
             total={window_.total}
             busy={copying}
             onCopy={() => void handleCopy()}
-            onReveal={(path) => void window.cuepoint?.showItemInFolder?.(path)}
+            onReveal={(path) =>
+              reveal(onlySelectedId(selection.selection, window_.total), path)
+            }
             onClear={selection.clear}
             onSelectAll={selection.selectAllMatching}
             onActions={(anchor) =>
@@ -1392,6 +1455,10 @@ export function LibraryScreen({
                 target: {
                   selection: batchSelection(selection.selection, query),
                   count: selection.count,
+                  trackId:
+                    selection.count === 1
+                      ? onlySelectedId(selection.selection, window_.total)
+                      : null,
                 },
                 kind: "selection",
               })
@@ -1437,6 +1504,8 @@ export function LibraryScreen({
         onSave={(name, parentId) => void saveSmart(name, parentId)}
         onClose={() => setSaveOpen(false)}
       />
+
+      {clean.dialogs}
 
       <TagManagerDialog
         open={tagsOpen}

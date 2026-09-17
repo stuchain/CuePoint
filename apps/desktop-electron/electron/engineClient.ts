@@ -44,12 +44,26 @@ export interface LibraryTrackRow {
   /** Which of the two layers `effective_rating` came from (DEC-057). */
   rating_source: "cuepoint" | "rekordbox" | null;
   favorite: boolean;
+  /** CLEAN-05: the five overridable fields as a user sees them, and which an override supplies. */
+  effective_key?: string | null;
+  effective_bpm?: number | null;
+  effective_genre?: string | null;
+  effective_label?: string | null;
+  effective_year?: number | null;
+  overridden?: Array<"key" | "bpm" | "genre" | "label" | "year">;
+  /** CLEAN-13: where each override came from — a Beatport match or a person. */
+  override_sources?: Partial<Record<"key" | "bpm" | "genre" | "label" | "year", OverrideSource>>;
   /** CLEAN-11: where the track stands, read through each filter's expression. */
   match_state?: MatchStateValue | null;
   match_disputed?: boolean | null;
+  /** CLEAN-13: the score of the candidate the state points at. */
+  match_score?: number | null;
   file_status?: FileStatusValue | null;
   artwork?: ArtworkStateValue | null;
 }
+
+/** Where an override came from (CLEAN-05): applied from Beatport, or typed. */
+export type OverrideSource = "beatport" | "cuepoint";
 
 /**
  * CuePoint's own organization (ORG-08).
@@ -319,6 +333,13 @@ export interface LibraryFilterField {
   integer: boolean;
   unit: string | null;
   operators: string[];
+  /** CLEAN-13: the fixed values a field holds, each named; null for the library's own. */
+  choices: LibraryFilterChoice[] | null;
+}
+
+export interface LibraryFilterChoice {
+  value: string;
+  label: string;
 }
 
 /** How many values an operator takes, as the engine describes it. */

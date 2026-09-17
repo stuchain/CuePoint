@@ -17,6 +17,7 @@ import type {
   BatchOperation,
   BatchResult,
   BatchSelection,
+  OverrideField,
 } from "../../api/cuepointBridge.types";
 import { starsFor } from "./filterText";
 import type { LibraryQuery } from "./libraryQuery";
@@ -36,27 +37,34 @@ export const BATCH_JOB_THRESHOLD = 1_000;
 /**
  * The operations the Library's menu and toolbar offer.
  *
- * Six of the engine's batch operations, not all of them: accepting, rejecting
- * and applying matches, and hand edits, are Clean's (CLEAN-12, CLEAN-13), with
- * sentences of their own. Extracted from the wire type so a renamed operation
- * fails to compile here rather than at the engine.
+ * All ten of the engine's batch operations: ORG-11's six, and since CLEAN-13
+ * accepting, rejecting and applying matches and hand edits. Extracted from the
+ * wire type so a renamed operation fails to compile here rather than at the
+ * engine.
  */
-export type LibraryBatchKind = Extract<
-  BatchOperation["kind"],
-  | "set_rating"
-  | "set_favorite"
-  | "add_tag"
-  | "remove_tag"
-  | "add_to_collection"
-  | "remove_from_collection"
->;
+export type LibraryBatchKind = BatchOperation["kind"];
+
+/** A hand edit over a selection: one field, and its value or null to clear. */
+export interface OverrideEdit {
+  field: OverrideField;
+  value: string | number | null;
+}
 
 /** One operation, with what it applies named for the sentences below. */
 export interface BatchAction {
   kind: LibraryBatchKind;
-  value?: number | boolean | null;
-  /** A tag's name, a Collection's name, or the value itself. */
+  /**
+   * A rating, a flag, a tag or Collection id; the fields an apply copies; or a
+   * hand edit. Nothing for accepting and rejecting, which take none.
+   */
+  value?: number | boolean | null | OverrideField[] | OverrideEdit;
+  /** A tag's name, a Collection's name, the fields, or the value itself. */
   target: string;
+}
+
+/** Whether reverting a batch of this kind is offered (CLEAN-06): all but membership. */
+export function canRevertKind(kind: LibraryBatchKind): boolean {
+  return kind !== "add_to_collection" && kind !== "remove_from_collection";
 }
 
 /**
@@ -89,6 +97,10 @@ export function batchSelection(
 
 /** The operation as the engine takes it — the target is the renderer's own. */
 export function batchOperation(action: BatchAction): BatchOperation {
+  // Accepting and rejecting take no value, and the engine refuses one sent.
+  if (action.kind === "accept_match" || action.kind === "reject_match") {
+    return { kind: action.kind };
+  }
   return { kind: action.kind, value: action.value ?? null };
 }
 
@@ -113,7 +125,7 @@ function rating(value: unknown): string {
  *
  * Not because a batch is destructive to tracks — nothing here deletes one —
  * but because "add 47,913 tracks to a Collection" is rarely what somebody
- * meant to click, and there is no undo to fall back on (DEC-008).
+ * meant to click, and there is no undo stack to fall back on (DEC-008).
  */
 export function describeBatch(action: BatchAction, count: number): string {
   const many = tracks(count);
@@ -134,7 +146,23 @@ export function describeBatch(action: BatchAction, count: number): string {
       return `Add ${many} to “${action.target}”?`;
     case "remove_from_collection":
       return `Remove ${many} from “${action.target}”?`;
+    case "accept_match":
+      return `Accept the proposed Beatport match on ${many}?`;
+    case "reject_match":
+      return `Reject the proposed Beatport match on ${many}?`;
+    case "apply_match":
+      return `Apply Beatport's ${action.target} to ${many}?`;
+    case "set_override":
+      return isClearing(action)
+        ? `Clear your ${action.target} on ${many}?`
+        : `Set the ${action.target} on ${many}?`;
   }
+}
+
+/** A hand edit that clears rather than sets. */
+function isClearing(action: BatchAction): boolean {
+  const edit = action.value as OverrideEdit | undefined;
+  return action.kind === "set_override" && edit != null && edit.value === null;
 }
 
 /** The verb, once it has happened. */
@@ -152,6 +180,14 @@ function pastTense(action: BatchAction): string {
       return "Added";
     case "remove_from_collection":
       return "Removed";
+    case "accept_match":
+      return "Accepted the match on";
+    case "reject_match":
+      return "Rejected the match on";
+    case "apply_match":
+      return `Applied Beatport's ${action.target} to`;
+    case "set_override":
+      return isClearing(action) ? `Cleared your ${action.target} on` : `Set the ${action.target} on`;
   }
 }
 
@@ -170,6 +206,15 @@ function alreadyWere(action: BatchAction): string {
       return "were already there";
     case "remove_from_collection":
       return "were not in it";
+    // A batch decides only what nobody has decided (DEC-067), so a track
+    // someone already decided, or one never matched, is left as it was.
+    case "accept_match":
+    case "reject_match":
+      return "were already decided or had nothing proposed";
+    case "apply_match":
+      return "had no accepted match or already held those values";
+    case "set_override":
+      return isClearing(action) ? "had none" : "already had it";
   }
 }
 
@@ -201,10 +246,24 @@ export function batchSummary(action: BatchAction, result: BatchResult): string {
   const head = `${pastTense(action)} ${tracks(result.changed)}${destination(action)}`;
   const line = parts.length === 0 ? `${head}.` : `${head} — ${parts.join(", ")}.`;
   const opened = result.cancelled ? `Stopped early. ${line}` : line;
-  // No undo (DEC-008). The History section on each track is where a change
-  // that surprised somebody can actually be read, so the toast points at it —
-  // but not for a single track, where the toast would be longer than the edit.
-  return result.changed > 1
-    ? `${opened} There is no undo; each change is in the track's History.`
-    : opened;
+  // No undo stack (DEC-008), but a batch can be reverted as one since CLEAN-13
+  // drew the control for it, so the toast says where — except for Collection
+  // membership, which records no History and cannot be reverted (DEC-058).
+  // Not for a single track, where the toast would be longer than the edit.
+  if (result.changed <= 1) return opened;
+  return canRevertKind(action.kind)
+    ? `${opened} Each change is in the track's History, and the whole batch can be reverted from Activity.`
+    : `${opened} There is no undo for Collection changes.`;
+}
+
+/**
+ * What the confirmation adds under its question (DEC-063, CLEAN-13).
+ *
+ * The same distinction the toast draws: most batches can be reverted from
+ * Activity, and Collection membership cannot.
+ */
+export function batchConsequence(kind: LibraryBatchKind): string {
+  return canRevertKind(kind)
+    ? "It runs in the background. Every change is recorded in each track’s History, and the whole batch can be reverted from Activity."
+    : "It runs in the background, and there is no undo: adding tracks to or removing them from a Collection cannot be reverted.";
 }

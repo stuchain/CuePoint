@@ -47,7 +47,10 @@ if TYPE_CHECKING:
     from cuepoint.models.file_status import TrackFileStatus
     from cuepoint.persistence.artwork_repository import EmbeddedRecord
     from cuepoint.models.file_write import FileWrite
-    from cuepoint.persistence.file_write_repository import TagTarget
+    from cuepoint.persistence.file_write_repository import (
+        InterruptedTagJob,
+        TagTarget,
+    )
     from cuepoint.services.artwork_service import EmbeddableArtwork
     from cuepoint.services.tag_write_options import TagWriteOptions
     from cuepoint.services.tag_write_service import (
@@ -834,6 +837,11 @@ class ILibraryService(ABC):
         ...
 
     @abstractmethod
+    def override_sources(self, track_ids: Iterable[int]) -> Dict[int, Dict[str, str]]:
+        """Return where each track's current overrides came from (CLEAN-13)."""
+        ...
+
+    @abstractmethod
     def clean_states(self, track_ids: Iterable[int]) -> Dict[int, "TrackCleanState"]:
         """Return what each track's row says about Clean, keyed by id (CLEAN-11)."""
         ...
@@ -1052,6 +1060,11 @@ class ITrackMetadataRepository(ABC):
     @abstractmethod
     def count(self) -> int:
         """Return how many tracks have any CuePoint metadata."""
+        ...
+
+    @abstractmethod
+    def override_sources(self, track_ids: Iterable[int]) -> Dict[int, Dict[str, str]]:
+        """Return where each track's overrides came from, per override column."""
         ...
 
     @abstractmethod
@@ -1638,6 +1651,11 @@ class IFileWriteRepository(ABC):
     @abstractmethod
     def pending_count(self) -> int:
         """How many rows may not have happened."""
+        ...
+
+    @abstractmethod
+    def interrupted_jobs(self, job_types: Sequence[str]) -> List["InterruptedTagJob"]:
+        """Tag jobs a stopped engine left recorded as running, with what they recorded."""
         ...
 
 

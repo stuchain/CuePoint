@@ -21,6 +21,7 @@
 import type {
   FilterRule,
   FilterRuleSet,
+  LibraryFilterChoice,
   LibraryFilterField,
   LibraryFilterVocabulary,
 } from "../../api/cuepointBridge.types";
@@ -93,6 +94,58 @@ export function fieldOf(
 /** True when a field's value is a row id — a tag or a Collection (ORG-05). */
 export function isMembership(field: LibraryFilterField | null): boolean {
   return field?.type === "tag" || field?.type === "collection";
+}
+
+/**
+ * The fixed values a field holds, with their names, or an empty list (CLEAN-13).
+ *
+ * The engine names them; a field without them takes whatever is typed.
+ */
+export function choicesOf(field: LibraryFilterField | null): LibraryFilterChoice[] {
+  return field?.choices ?? [];
+}
+
+/**
+ * The operators that name a whole value, and so are offered as a choice.
+ *
+ * The engine's `CHOICE_OPERATORS`: "contains" and its kin ask about part of a
+ * word, and keep their text box.
+ */
+export const CHOICE_OPERATORS: readonly string[] = ["is", "is_not", "any_of"];
+
+/** Whether a clause on this field with this operator is offered as a choice. */
+export function offersChoices(field: LibraryFilterField | null, operator: string): boolean {
+  return choicesOf(field).length > 0 && CHOICE_OPERATORS.includes(operator);
+}
+
+/** What a chip says for one of a field's fixed values: its name, else the word. */
+function choiceLabel(field: LibraryFilterField | null, value: unknown): string | null {
+  const found = choicesOf(field).find((choice) => choice.value === value);
+  return found ? found.label : null;
+}
+
+/**
+ * Add or remove one fixed value from a draft's comma-separated list.
+ *
+ * The values are the engine's identifiers, which hold no commas; the list is
+ * kept in the order the engine names them, so a chip reads the same however
+ * the boxes were ticked.
+ */
+export function toggleChoice(
+  draft: DraftRule,
+  field: LibraryFilterField | null,
+  value: string,
+): DraftRule {
+  const chosen = draft.value
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part !== "");
+  const next = chosen.includes(value)
+    ? chosen.filter((entry) => entry !== value)
+    : [...chosen, value];
+  const order = choicesOf(field).map((choice) => choice.value);
+  next.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  return { ...draft, value: next.join(",") };
 }
 
 /** True when a field's numbers are stars, because the engine said so. */
@@ -169,7 +222,7 @@ function valueText(
   if (value === null || value === undefined || value === "") return "(none)";
   if (field?.type === "bool") return value === true || value === "true" ? "yes" : "no";
   if (isStars(field) && typeof value === "number") return starsFor(value);
-  return String(value);
+  return choiceLabel(field, value) ?? String(value);
 }
 
 /**

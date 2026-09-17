@@ -397,6 +397,47 @@ def run_tag_restore_job(
     )
 
 
+def offer_interrupted_tag_jobs() -> int:
+    """Record an activity event for each tag write or restore a restart cut short.
+
+    Called once as the engine starts, beside
+    :func:`~cuepoint.engine.match_jobs.offer_interrupted_matches` and before stale
+    job records are closed out (CLEAN-13). A stopped write records neither of
+    its usual events, so this is the only place a person learns its values may
+    not have finished — and where Restore is offered for them. It restores
+    nothing by itself: a restore writes files, and that is a person's call.
+
+    Returns:
+        How many were offered.
+    """
+    from cuepoint.services.interfaces import IActivityService, IFileWriteRepository
+    from cuepoint.services.tag_write_service import (
+        EVENT_TAGS_INTERRUPTED,
+        describe_interrupted_tags,
+    )
+    from cuepoint.utils.di_container import get_container
+
+    container = get_container()
+    writes = container.resolve(IFileWriteRepository)  # type: ignore[type-abstract]
+    activity = container.resolve(IActivityService)  # type: ignore[type-abstract]
+    offered = 0
+    for stopped in writes.interrupted_jobs((JOB_TYPE_TAG_WRITE, JOB_TYPE_TAG_RESTORE)):
+        restoring = stopped.job_type == JOB_TYPE_TAG_RESTORE
+        activity.record_event(
+            EVENT_TAGS_INTERRUPTED,
+            describe_interrupted_tags(restoring, stopped.recorded, stopped.unconfirmed),
+            {
+                "job_id": stopped.job_id,
+                "job_type": stopped.job_type,
+                "recorded": stopped.recorded,
+                "unconfirmed": stopped.unconfirmed,
+                "write_job_ids": list(stopped.write_job_ids),
+            },
+        )
+        offered += 1
+    return offered
+
+
 def _run(
     job: Job,
     store: JobStore,
@@ -471,6 +512,7 @@ __all__ = (
     "TAG_FILE_JOB_TYPES",
     "TagWritePreviewStore",
     "get_preview_store",
+    "offer_interrupted_tag_jobs",
     "preview_or_start",
     "refuse_if_busy",
     "start_tag_preview_job",

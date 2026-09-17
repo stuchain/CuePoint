@@ -89,9 +89,10 @@ imported. The Inspector shows both, and says which one you are looking at.
 - **Favorite** is a yes-or-no of its own, and filterable.
 - **Notes** are free text, for the thing that is not a tag.
 
-Every change is recorded. The Inspector's History tab shows what changed, when,
+Every change is recorded. The Inspector's History shows what changed, when,
 and what it was before — which is how you find out what a refresh did, and what
-you did last Tuesday.
+you did last Tuesday. A change you made in CuePoint has a **Revert** button
+there; see [Taking a change back](library.md#taking-a-change-back).
 
 ## Changing a lot of tracks at once
 
@@ -105,7 +106,10 @@ the background with a progress bar and a Cancel button, and you can keep working
 while it does. Cancelling stops it where it is; what was already changed stays
 changed, and the History of each track says what happened.
 
-There is no undo. That is why every step says its number first.
+There is no undo button, but a whole change can be taken back: its entry in the
+**Activity** panel offers **Revert this batch**. The exception is adding tracks
+to a Collection or removing them from one, which cannot be reverted — add or
+remove them again instead. That is why every step says its number first.
 
 ## What a refresh does to all of this
 

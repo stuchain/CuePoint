@@ -308,3 +308,47 @@
   margin: 0;
   color: var(--fg-muted);
 }
+
+/* An overridden value and its marker (CLEAN-13). The marker's tooltip names
+   where the value came from; the letter tells Beatport's from a typed one at
+   a glance, and neither is carried by colour alone. */
+.library-cell__overridden {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  max-width: 100%;
+}
+
+.library-cell__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: calc(12px * var(--scale));
+  height: calc(12px * var(--scale));
+  padding: 0 calc(2px * var(--scale));
+  /* The data face: the pixel face has no dot to draw. */
+  font-family: var(--font-data);
+  font-size: calc(var(--font-size-xs) * 0.8);
+  line-height: 1;
+  color: var(--fg-inverse);
+  background: var(--accent-primary);
+}
+
+.library-cell__mark--beatport {
+  background: var(--accent-info);
+}
+
+/* A row's thumbnail fits inside the row it is drawn in, at any scale. */
+.library-cell__artwork {
+  display: block;
+  height: calc(var(--row-height) - 4px * var(--scale));
+  width: auto;
+  aspect-ratio: 1;
+  object-fit: cover;
+  image-rendering: auto;
+}
+
+.library-cell__artwork-none {
+  color: var(--fg-muted);
+}

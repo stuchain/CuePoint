@@ -37,6 +37,7 @@ class TestTheVocabulary:
         assert state.to_dict() == {
             "match_state": "not_matched",
             "match_disputed": False,
+            "match_score": None,
             "file_status": "not_checked",
             "artwork": "unknown",
         }

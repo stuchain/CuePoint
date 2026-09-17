@@ -601,11 +601,11 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       await window.getByRole("button", { name: "Actions…" }).click();
       await window.getByRole("menuitem", { name: "Favorite", exact: true }).click();
 
-      // Above the threshold it asks first, with the number, because there is
-      // no undo (DEC-008).
+      // Above the threshold it asks first, with the number, and says the batch
+      // can be reverted as one from Activity (DEC-008, CLEAN-13).
       const confirm = window.getByRole("dialog");
       await expect(confirm).toContainText("Favorite 50,000 tracks?");
-      await expect(confirm).toContainText(/no undo/i);
+      await expect(confirm).toContainText(/reverted from Activity/i);
       await confirm.getByRole("button", { name: "Apply" }).click();
 
       // It is a job, it says so from the shell, and it can be stopped there.

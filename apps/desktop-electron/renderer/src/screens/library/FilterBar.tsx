@@ -32,16 +32,19 @@ import {
   arityOf,
   buildRule,
   buildableFields,
+  choicesOf,
   describeRule,
   emptyDraft,
   fieldOf,
   isMembership,
   isStars,
+  offersChoices,
   operatorLabel,
   removeRule,
   ruleCount,
   selectedIds,
   starsFor,
+  toggleChoice,
   toggleId,
   withField,
   type DraftRule,
@@ -140,7 +143,10 @@ export function FilterBar({
   useEffect(() => {
     if (!adding || !draft.field) return;
     const spec = fieldOf(vocabulary, draft.field);
-    if (spec?.facetable && spec.type !== "bool") onRequestFacet?.(draft.field);
+    // A field whose values the engine already named needs no pass either.
+    if (spec?.facetable && spec.type !== "bool" && choicesOf(spec).length === 0) {
+      onRequestFacet?.(draft.field);
+    }
   }, [adding, draft.field, vocabulary, onRequestFacet]);
 
   const field = fieldOf(vocabulary, draft.field);
@@ -250,6 +256,53 @@ export function FilterBar({
       );
     }
 
+    // A field with a fixed set of values offers them (CLEAN-13): a match
+    // state is one of five words, and a box to type one into is a box to
+    // misspell one into.
+    const choices = offersChoices(field, draft.operator) ? choicesOf(field) : [];
+    if (choices.length > 0 && arity === "single") {
+      return (
+        <Select
+          label={field.label}
+          value={draft.value}
+          options={[
+            { value: "", label: "Choose…" },
+            ...choices.map((choice) => ({ value: choice.value, label: choice.label })),
+          ]}
+          onChange={(event) =>
+            setDraft((previous) => ({ ...previous, value: event.target.value }))
+          }
+        />
+      );
+    }
+    if (choices.length > 0 && arity === "list") {
+      const picked = draft.value.split(",").map((part) => part.trim());
+      return (
+        <div
+          className="cp-filter-bar__tags"
+          role="group"
+          aria-label={`${field.label} — choose any`}
+        >
+          {choices.map((choice) => {
+            const on = picked.includes(choice.value);
+            return (
+              <button
+                key={choice.value}
+                type="button"
+                aria-pressed={on}
+                className={`cp-filter-bar__tag${on ? " cp-filter-bar__tag--on" : ""}`}
+                onClick={() =>
+                  setDraft((previous) => toggleChoice(previous, field, choice.value))
+                }
+              >
+                {choice.label}
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+
     if (isStars(field) && arity === "single") {
       // Stars because the engine says this field's numbers are stars — which
       // is what gives all three rating layers one control without the bar
@@ -289,7 +342,8 @@ export function FilterBar({
     );
   };
 
-  const textSuggestions = field && !isMembership(field) && suggestions.length > 0;
+  const textSuggestions =
+    field && !isMembership(field) && !offersChoices(field, draft.operator) && suggestions.length > 0;
 
   return (
     <div className="cp-filter-bar">

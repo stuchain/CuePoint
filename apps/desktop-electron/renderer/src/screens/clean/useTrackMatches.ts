@@ -21,6 +21,8 @@ export interface TrackMatchesState {
   candidates: MatchCandidate[];
   loading: boolean;
   error: string | null;
+  /** True when this build has no match route at all: say nothing (CLEAN-13). */
+  unavailable: boolean;
   chooseAttempt: (attemptId: number) => void;
   reload: () => void;
 }
@@ -29,7 +31,11 @@ function messageOf(cause: unknown): string {
   return cause instanceof Error ? cause.message : String(cause);
 }
 
-export function useTrackMatches(trackId: number | null): TrackMatchesState {
+/**
+ * `version` re-reads when it changes: the Inspector bumps it after any edit to
+ * the track, which the review queue's own `reload` does for the Clean page.
+ */
+export function useTrackMatches(trackId: number | null, version = 0): TrackMatchesState {
   const [matches, setMatches] = useState<TrackMatches | null>(null);
   const [attemptId, setAttemptId] = useState<number | null>(null);
   const [candidates, setCandidates] = useState<MatchCandidate[]>([]);
@@ -80,7 +86,7 @@ export function useTrackMatches(trackId: number | null): TrackMatchesState {
     return () => {
       cancelled = true;
     };
-  }, [trackId, reloads]);
+  }, [trackId, reloads, version]);
 
   useEffect(() => {
     const bridge = window.cuepoint?.getMatchCandidates;
@@ -99,10 +105,11 @@ export function useTrackMatches(trackId: number | null): TrackMatchesState {
     return () => {
       cancelled = true;
     };
-  }, [attemptId, reloads]);
+  }, [attemptId, reloads, version]);
 
   const reload = useCallback(() => setReloads((value) => value + 1), []);
   const chooseAttempt = useCallback((id: number) => setAttemptId(id), []);
 
-  return { matches, attemptId, candidates, loading, error, chooseAttempt, reload };
+  const unavailable = !window.cuepoint?.getTrackMatches;
+  return { matches, attemptId, candidates, loading, error, unavailable, chooseAttempt, reload };
 }

@@ -42,6 +42,7 @@ from cuepoint.models.rekordbox_playlist import (
 from cuepoint.persistence import track_query
 from cuepoint.persistence.collection_repository import CollectionRepository
 from cuepoint.persistence.playlist_repository import PlaylistRepository
+from tests.unit.persistence.test_clean_columns import CLEAN_SORTS
 from cuepoint.persistence.track_query import (
     BROWSE_LIMIT_DEFAULT,
     BROWSE_LIMIT_MAX,
@@ -312,10 +313,12 @@ class TestSorting:
     def test_every_sortable_column_is_covered_by_a_test(self):
         # Fails when a sort is added to the whitelist without a test, which is
         # how a column arrives that nobody ever ordered by.
-        covered = set(self.ATTRIBUTE) | {
-            track_query.PLAYLIST_POSITION,
-            track_query.COLLECTION_POSITION,
-        }
+        covered = (
+            set(self.ATTRIBUTE)
+            | {track_query.PLAYLIST_POSITION, track_query.COLLECTION_POSITION}
+            # Sorted by meaning rather than by value: test_clean_columns.py.
+            | set(CLEAN_SORTS)
+        )
         assert covered == set(SORTABLE_COLUMNS)
 
 
