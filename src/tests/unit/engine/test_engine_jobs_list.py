@@ -54,13 +54,12 @@ def _get_json(base: str, query: str) -> dict:
 def _start_held_job(store):
     """Start a real job that stays running until the returned event is set.
 
-    `create_match_job` runs its runner on a thread immediately, so a no-op
+    `create_job` runs its runner on a thread immediately, so a no-op
     runner would finish before the request under test could see it.
     """
     release = threading.Event()
-    job = store.create_match_job(
-        xml_path=None,
-        playlist_name=None,
+    job = store.create_job(
+        job_type="clean_match",
         demo=True,
         runner=lambda _job: release.wait(timeout=5),
     )

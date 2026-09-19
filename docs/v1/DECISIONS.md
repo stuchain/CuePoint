@@ -1708,6 +1708,14 @@ Automatic matching on import was declined: it starts slow network scraping witho
 what was decided. A match still resolves its scope once, resumes only when asked, and never
 re-matches a user's decision unless the user asks for a re-match.
 
+### Implemented (2026-09-19, CLEAN-14) — resuming is offered where a person sees it
+
+The engine could resume since CLEAN-03 and the bridge since CLEAN-11, but no screen offered it.
+CLEAN-14 adds the offer in two places: the Clean page's review queue says when a match stopped with
+tracks left, and an interrupted match's Activity entry offers **Resume**. Still only when asked;
+nothing resumes on its own. The file-based match this decision retired is removed with inKey
+(DEC-071), and the CLI keeps its own path unchanged.
+
 ---
 
 ## DEC-066 — Every Match Attempt Is Kept, With All Its Candidates
@@ -2017,6 +2025,21 @@ for no gain.
 - The CLI and its output files are untouched (DEC-065).
 
 **Decided with**: User · **Date**: 2026-09-13
+
+### Implemented (2026-09-19, CLEAN-14) — as decided, with the removal recorded
+
+Nothing here changes the decision. What building it settled, recorded in full in
+`PHASE7_CLEAN.md` under CLEAN-14 and in ADR-005:
+
+- **Removed through all six contract files**: `POST /api/v1/jobs/match`, `/api/v1/history/*`,
+  `POST /api/v1/tags/sync`, `POST /api/v1/export`, and `GET /api/v1/xml/playlists`, which only
+  inKey's playlist picker read. The job-results route no longer carries match rows. The changelog
+  records it as a breaking engine-API change.
+- **Redirects, not 404s**: `navRegistry.ts` declares retired destinations, so `/match`, `/results`
+  and a remembered id of either open Clean.
+- **Export** is Clean's review list; Settings no longer has one. **Past searches' CSV files** are
+  left where they are and not listed.
+- **The CLI is unchanged**; its smoke test and flags are as before.
 
 ---
 

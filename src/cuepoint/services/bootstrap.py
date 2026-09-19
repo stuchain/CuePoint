@@ -581,7 +581,7 @@ def bootstrap_services() -> None:
 
     container.register_factory(BeatportApi, create_beatport_api)
 
-    # inCrate Phase 1: Inventory service (import from XML, enrich via full inKey pipeline + workers)
+    # inCrate Phase 1: Inventory service (import from XML, enrich via shared matching pipeline + workers)
     def create_inventory_service() -> InventoryService:
         raw = config_service.get("incrate.inventory_db_path")
         db_path = (raw and str(raw).strip()) or default_inventory_db_path()

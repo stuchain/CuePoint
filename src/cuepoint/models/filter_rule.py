@@ -563,13 +563,15 @@ FIELDS: Tuple[FieldSpec, ...] = (
         joins=(MATCH_ALIAS,),
     ),
     # The score of the candidate the state points at: the winner of an
-    # automatic state, the one a user accepted, or the one they rejected.
+    # automatic state, the one a user accepted, or the one they rejected. Kept
+    # on the state itself (migration 0019), so sorting 50,000 tracks by it
+    # reads no candidate.
     FieldSpec(
         "match_score",
         TYPE_NUMBER,
         "Match score",
-        column=f"{MATCH_CANDIDATE_ALIAS}.score",
-        joins=(MATCH_ALIAS, MATCH_CANDIDATE_ALIAS),
+        column=f"{MATCH_ALIAS}.candidate_score",
+        joins=(MATCH_ALIAS,),
     ),
     # --- Files (CLEAN-07, DEC-073) ------------------------------------------
     # "Not checked" is no check for the current path: never checked, or checked

@@ -8,7 +8,7 @@
  *
  * That is the whole reason the interface exists. LIBUI-05 implements the
  * windowed one over the engine. Phase 4 expected Phase 7 to add an in-memory
- * one over match results so `ResultsTable` could converge here; CLEAN-12 made
+ * one over match results so the Results table could converge here; CLEAN-12 made
  * that unnecessary. Match results now belong to library tracks, so the review
  * queue is the same windowed source filtered by match state, and DEC-041's
  * convergence needed no second implementation at all.

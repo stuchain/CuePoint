@@ -24,7 +24,10 @@ The sidebar lists the pages available to you. Pages that are still being built
 are not shown at all rather than appearing and doing nothing.
 
 **Library** is where your Rekordbox collection lives — see
-[Your library](library.md). Double-clicking a track there plays it; the bar
+[Your library](library.md). **Clean** is where it is matched on Beatport and
+kept tidy — see [Clean](clean.md). Under **Tools**, **inCrate** discovers new
+music; the older **inKey** and **Results** pages became Clean, and a link to
+either opens Clean. Double-clicking a track there plays it; the bar
 along the bottom of the window is the player, and it appears the first time you
 play something — see [Playing music](player.md).
 
@@ -87,8 +90,8 @@ more before it does anything. See
 [Taking a change back](library.md#taking-a-change-back) and
 [Restoring](library.md#restoring).
 
-This is not the same as **past searches**, which lists the result files from
-previous matching runs.
+An interrupted Beatport match is listed here too, with **Resume**: resuming
+matches only the tracks it had not reached. See [Clean](clean.md#matching).
 
 ## Keyboard shortcuts
 

@@ -12,8 +12,9 @@ non-code (see below). Phase 6's thirteen steps are specified in `PHASE6_ORG.md`
 (ORG-01…ORG-13), unblocked by Decision Round 8 (DEC-057…DEC-064). Complete: all thirteen steps
 are implemented and the phase-level acceptance is met in a packaged build. Phase 7's fourteen steps
 are specified in `PHASE7_CLEAN.md` (CLEAN-01…CLEAN-14), unblocked by Decision Round 9
-(DEC-065…DEC-076); CLEAN-01 to CLEAN-13 are implemented. The two open points that document raised
-are settled as amendments to DEC-011 and DEC-076.
+(DEC-065…DEC-076); all fourteen are implemented and the phase-level acceptance is met in a packaged
+Windows build, with the macOS packaged checks owed alongside Phase 5's macOS pass. The two open
+points that document raised are settled as amendments to DEC-011 and DEC-076.
 Audio-analysis scope is the one remaining deferred item, to be resolved before the phase it affects
 starts; crossfade was resolved by DEC-056 in Round 7, and Smart Collection export/duplication by
 DEC-061 in Round 8. This roadmap shows the shape of what's ahead; it is not a commitment to
@@ -226,7 +227,7 @@ metadata back together, and the whole journey runs end to end in a packaged buil
 
 Step specifications: `PHASE6_ORG.md` (ORG-01…ORG-13, all implemented).
 
-## Phase 7 — Clean / Beatport (CLEAN-01 … CLEAN-14) — in progress
+## Phase 7 — Clean / Beatport (CLEAN-01 … CLEAN-14) — implemented; macOS packaged checks owed
 
 Metadata precedence settled by DEC-004 (auto-mark accepted, explicit apply step). The one phase
 most dominated by "reuse, don't rebuild" —
@@ -248,7 +249,8 @@ metadata groups and nothing is deleted (DEC-074); health is counts, not a score 
 is in — read from files, fetched from Beatport for accepted matches, and embedded only into files
 that have none (DEC-076, against the recommendation to defer).
 
-Step specifications: `PHASE7_CLEAN.md` (CLEAN-01…CLEAN-14; CLEAN-01 to CLEAN-13 implemented).
+Step specifications: `PHASE7_CLEAN.md` (CLEAN-01…CLEAN-14, all implemented; the acceptance is
+checked point by point under CLEAN-14, on Windows, with the macOS packaged checks owed).
 Writing them grew the placeholder by one step and raised two open points, both settled as
 amendments (Q-076, Q-077):
 DEC-011's refresh warning now counts every track carrying the user's own data — ratings, notes,

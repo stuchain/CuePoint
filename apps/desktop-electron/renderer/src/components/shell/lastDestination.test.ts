@@ -16,7 +16,7 @@ import {
   resolveLaunchDestination,
   saveLastDestinationId,
 } from "./lastDestination";
-import { HOME_DESTINATION_ID, NAV_DESTINATIONS } from "./navRegistry";
+import { HOME_DESTINATION_ID, NAV_DESTINATIONS, RETIRED_DESTINATIONS } from "./navRegistry";
 
 /**
  * The real registry now declares not-yet-built destinations (DEC-020), so the
@@ -62,9 +62,39 @@ describe("resolveLaunchDestination", () => {
   });
 });
 
+describe("a page that was retired (DEC-071)", () => {
+  it("reopens on Clean for someone who was last on inKey", () => {
+    expect(resolveLaunchDestination("match").id).toBe("clean");
+  });
+
+  it("reopens on Clean for someone who was last on Results", () => {
+    expect(resolveLaunchDestination("results").id).toBe("clean");
+  });
+
+  it("resolves every retired id to an enabled page of its own", () => {
+    for (const retired of RETIRED_DESTINATIONS) {
+      const page = resolveLaunchDestination(retired.id);
+      expect(page.enabled).toBe(true);
+      expect(page.pageId).toBeUndefined();
+      expect(page.id).not.toBe(HOME_DESTINATION_ID);
+    }
+  });
+
+  it("does not remember a retired path; the redirect's page is remembered", () => {
+    // The router sends /match on to /clean, and /clean is what gets stored.
+    expect(destinationToRemember("/match")).toBeNull();
+    expect(destinationToRemember("/results")).toBeNull();
+  });
+
+  it("reads a retired id from storage and still lands on Clean", () => {
+    localStorage.setItem(LAST_DESTINATION_STORAGE_KEY, "match");
+    expect(resolveLaunchDestination(loadLastDestinationId()).id).toBe("clean");
+  });
+});
+
 describe("destinationToRemember", () => {
   it("remembers a known destination", () => {
-    expect(destinationToRemember("/results")?.id).toBe("results");
+    expect(destinationToRemember("/incrate")?.id).toBe("incrate");
   });
 
   it("does not remember an unmatched path", () => {
@@ -141,7 +171,7 @@ describe("storage", () => {
       throw new Error("denied");
     });
 
-    expect(() => saveLastDestinationId("results")).not.toThrow();
+    expect(() => saveLastDestinationId("incrate")).not.toThrow();
     expect(loadLastDestinationId()).toBeNull();
     expect(resolveLaunchDestination(loadLastDestinationId()).id).toBe(HOME_DESTINATION_ID);
   });

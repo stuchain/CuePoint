@@ -104,14 +104,58 @@ than 14.
 With CuePoint's Clean facts in the table — 30,000 tracks matched and 10,000
 corrected — a window of 100 rows takes 3.5 ms, of which reading where each
 correction came from is about half a millisecond. Sorting the first page by
-match state or file status takes 36–39 ms. Sorting it by match score takes
-155 ms, because each score is read from the stored Beatport candidates one
-track at a time; that column is hidden until you ask for it.
+match state or file status takes 36–39 ms. Sorting it by match score took
+155 ms, because each score was read from the stored Beatport candidates one
+track at a time; since CLEAN-14 the score is kept beside the match, and it takes
+35 ms like the others — see [Clean](#clean).
 
 Re-opening a list while other filters are on is the slowest of these, and
 deliberately so: with a filter in play CuePoint reads the library directly
 instead of through those indexes, which is five times faster than the
 alternative (35 ms rather than 178 ms).
+
+## Clean
+
+Measured with `python scripts/bench_clean.py` on the same machine, on a
+50,000-track library carrying everything Clean adds: **30,000 matched tracks
+with 40 Beatport candidates each (1.2 million candidates), 8,000 of your
+decisions, 10,000 of your own values, 2,000 missing files, 1,500 possible
+duplicate groups, and artwork state for every track.** Forty candidates is
+what a live match stored per track when CLEAN-02 measured it.
+
+| What you did | Time |
+| --- | --- |
+| Open the review queue (12,000 tracks need review) | 15 ms |
+| Scroll to the end of it | 33 ms |
+| Sort it by score | 43 ms |
+| Open Health, every count | 313 ms |
+| One Health count, followed into the Library | 10–30 ms (no artwork: 155 ms) |
+| Sort the Library by BPM, key, match, score or file status | 35–47 ms |
+| Scroll to the end of the Library sorted by BPM | 131 ms |
+| Check every file (48,000 present, 2,000 missing) | 8.6 s |
+| Look for duplicates | 2.3 s |
+| Apply Beatport's values to 5,000 tracks | 3.2 s |
+| Revert that (25,000 changes) | 3.4 s |
+
+The library file is **299 MB** at this size, almost all of it the kept
+candidates: about 250 bytes each. A library that has not been matched is about
+20 MB. Compacting it gains little (293 MB), because nothing is ever deleted
+from it in normal use.
+
+**Scrolling deep into a sorted library became five times faster** while this
+was measured. A window far down a library sorted by anything but artist took
+0.6–0.75 s, because the database sorted whole rows — twenty columns and a
+path each — to find a hundred of them. It now sorts only the tracks' ids and
+what they are sorted by, then reads the hundred rows: 131 ms for BPM, 55 ms
+for title. Sorting by artist still uses its index and takes 3 ms.
+
+**No artwork is the slowest count** because it asks, for all 45,000 tracks
+without a picture of their own, whether an accepted Beatport match would give
+them one. Health is read once when you open it.
+
+The file check and the duplicate scan run in the background after every
+import and refresh, with a progress bar and **Stop**; the apply and its revert
+run in the background too.
 
 ## Your own Collections, tags and ratings
 

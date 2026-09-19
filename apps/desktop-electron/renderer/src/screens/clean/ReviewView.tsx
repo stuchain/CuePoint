@@ -46,6 +46,7 @@ import {
   decidedLine,
   exportedLine,
   matchStartedLine,
+  resumableLine,
   trackCount,
 } from "./cleanFormat";
 import {
@@ -68,6 +69,7 @@ import { revealTrack } from "./revealTrack";
 import { reviewCommand, type ReviewCommand } from "./reviewKeyboard";
 import { useCleanJob, type CleanMessageTone } from "./useCleanJob";
 import { useScopeOptions } from "./useScopeOptions";
+import { useResumableMatches } from "./useResumableMatches";
 import { useTrackMatches } from "./useTrackMatches";
 import type { CleanOpening } from "./cleanLink";
 
@@ -171,6 +173,9 @@ export function ReviewView({ health, onHealthChanged, focus = null }: ReviewView
   const [exporting, setExporting] = useState(false);
   const [columnsOpen, setColumnsOpen] = useState(false);
   const [copying, setCopying] = useState(false);
+  // Read again whenever a match ends: a stopped one can be resumed.
+  const [matchesEnded, setMatchesEnded] = useState(0);
+  const resumable = useResumableMatches(matchesEnded);
 
   const state = matches.matches?.state ?? null;
   const cursorRow = cursor == null ? null : (window_.source.getRow(cursor) ?? null);
@@ -185,9 +190,24 @@ export function ReviewView({ health, onHealthChanged, focus = null }: ReviewView
           ? detail.detail.track
           : null;
 
+  // A reviewer's choice survives the candidates being read again — a match
+  // ending, Health changing — as long as it is still one of them. Resetting it
+  // on every read let a background reload put the choice back to #1 between
+  // Right and A, so A accepted a candidate nobody chose (CLEAN-14). A new
+  // track or another attempt — the candidates of a different attempt — starts
+  // from the default again.
+  const choiceAttempt = useRef<number | null>(null);
   useEffect(() => {
-    setChosenId(defaultChoice(state, matches.candidates));
-  }, [matches.candidates, state]);
+    const sameAttempt = choiceAttempt.current === matches.attemptId;
+    choiceAttempt.current = matches.attemptId;
+    setChosenId((current) =>
+      sameAttempt &&
+      current != null &&
+      matches.candidates.some((candidate) => candidate.id === current)
+        ? current
+        : defaultChoice(state, matches.candidates),
+    );
+  }, [matches.attemptId, matches.candidates, state]);
 
   useEffect(() => {
     setShowAll(false);
@@ -300,14 +320,9 @@ export function ReviewView({ health, onHealthChanged, focus = null }: ReviewView
     [afterChange, push, row, trackId],
   );
 
-  const startMatch = useCallback(
-    (key: string, target: BatchSelection, again: boolean) => {
-      const bridge = window.cuepoint?.startCleanMatch;
-      if (!bridge) {
-        push("Matching needs the desktop app with the engine connected.", "warning");
-        return;
-      }
-      void jobs.run<MatchStarted>(key, () => bridge({ selection: target, rematch: again }), {
+  const followMatch = useCallback(
+    (key: string, start: () => Promise<MatchStarted>) => {
+      void jobs.run<MatchStarted>(key, start, {
         started: matchStartedLine,
         succeeded: "Matching finished.",
         onEnded: () => {
@@ -315,10 +330,34 @@ export function ReviewView({ health, onHealthChanged, focus = null }: ReviewView
           matches.reload();
           detail.reload();
           onHealthChanged();
+          setMatchesEnded((count) => count + 1);
         },
       });
     },
-    [detail, jobs, matches, onHealthChanged, push, window_],
+    [detail, jobs, matches, onHealthChanged, window_],
+  );
+
+  const startMatch = useCallback(
+    (key: string, target: BatchSelection, again: boolean) => {
+      const bridge = window.cuepoint?.startCleanMatch;
+      if (!bridge) {
+        push("Matching needs the desktop app with the engine connected.", "warning");
+        return;
+      }
+      followMatch(key, () => bridge({ selection: target, rematch: again }));
+    },
+    [followMatch, push],
+  );
+
+  // A match that stopped keeps its plan; resuming asks only about what it had
+  // not reached (DEC-065).
+  const resumeMatch = useCallback(
+    (jobId: string) => {
+      const bridge = window.cuepoint?.resumeCleanMatch;
+      if (!bridge) return;
+      followMatch("resume", () => bridge({ job_id: jobId }));
+    },
+    [followMatch],
   );
 
   const everything = useMemo(
@@ -485,57 +524,69 @@ export function ReviewView({ health, onHealthChanged, focus = null }: ReviewView
 
   return (
     <div className="clean-review">
-      <div className="clean-toolbar" role="toolbar" aria-label="Review queue">
-        <Select
-          label="Show"
-          id="clean-review-scope"
-          value={scope}
-          onChange={(event) => {
-            if (isReviewScope(event.target.value)) setScope(event.target.value);
-          }}
-          options={REVIEW_SCOPES.map((option) => ({ value: option.id, label: option.label }))}
-        />
-        <Select
-          label="In"
-          id="clean-review-where"
-          value={where}
-          onChange={(event) => setWhere(event.target.value)}
-          options={scopes}
-        />
-        <span className="clean-toolbar__spacer" />
-        <label className="clean-toolbar__check">
-          <input
-            type="checkbox"
-            checked={rematch}
-            onChange={(event) => setRematch(event.target.checked)}
+      <div className="clean-review__head">
+        <div className="clean-toolbar" role="toolbar" aria-label="Review queue">
+          <Select
+            label="Show"
+            id="clean-review-scope"
+            value={scope}
+            onChange={(event) => {
+              if (isReviewScope(event.target.value)) setScope(event.target.value);
+            }}
+            options={REVIEW_SCOPES.map((option) => ({ value: option.id, label: option.label }))}
           />
-          Match again what is already matched
-        </label>
-        <Button
-          variant="secondary"
-          disabled={selection.count === 0 || matching}
-          loading={jobs.running === "match-selection"}
-          onClick={() =>
-            startMatch("match-selection", batchSelection(selection.selection, query), rematch)
-          }
-        >
-          Match selection
-        </Button>
-        <Button
-          variant="secondary"
-          disabled={window_.total === 0 || matching}
-          loading={jobs.running === "match-all"}
-          onClick={() => startMatch("match-all", everything, rematch)}
-        >
-          {`Match all ${window_.total.toLocaleString()}`}
-        </Button>
-        <Button
-          variant="secondary"
-          disabled={window_.total === 0}
-          onClick={() => setExportOpen(true)}
-        >
-          Export review list…
-        </Button>
+          <Select
+            label="In"
+            id="clean-review-where"
+            value={where}
+            onChange={(event) => setWhere(event.target.value)}
+            options={scopes}
+          />
+          <span className="clean-toolbar__spacer" />
+          <label className="clean-toolbar__check">
+            <input
+              type="checkbox"
+              checked={rematch}
+              onChange={(event) => setRematch(event.target.checked)}
+            />
+            Match again what is already matched
+          </label>
+          <Button
+            variant="secondary"
+            disabled={selection.count === 0 || matching}
+            loading={jobs.running === "match-selection"}
+            onClick={() =>
+              startMatch("match-selection", batchSelection(selection.selection, query), rematch)
+            }
+          >
+            Match selection
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={window_.total === 0 || matching}
+            loading={jobs.running === "match-all"}
+            onClick={() => startMatch("match-all", everything, rematch)}
+          >
+            {`Match all ${window_.total.toLocaleString()}`}
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={window_.total === 0}
+            onClick={() => setExportOpen(true)}
+          >
+            Export review list…
+          </Button>
+        </div>
+        {resumable.jobs[0] && !matching && Boolean(window.cuepoint?.resumeCleanMatch) && (
+          <div className="clean-note clean-note--resume" role="region" aria-label="Resume a match">
+            <p className="clean-note__text">{resumableLine(resumable.jobs[0], resumable.total)}</p>
+            <div>
+              <Button variant="secondary" onClick={() => resumeMatch(resumable.jobs[0]!.job_id)}>
+                Resume
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="clean-review__table">

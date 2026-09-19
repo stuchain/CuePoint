@@ -116,6 +116,19 @@ def all_finished(store: JobStore) -> None:
     )
 
 
+def import_settled(store: JobStore) -> None:
+    """Wait for an import's own duplicate scan to have run, and everything else.
+
+    The scan follows the import on its own, and can be created after every job
+    the store holds has ended: waiting for "all finished" alone let a test start
+    its scan beside that one and be refused as busy.
+    """
+    wait_until(
+        lambda: len(jobs_of(store, JOB_TYPE_DUPLICATE_SCAN)) >= 1, "the import's scan"
+    )
+    all_finished(store)
+
+
 def job_log() -> List[Tuple[str, str]]:
     return [
         (row["type"], row["state"])
@@ -411,7 +424,7 @@ class TestOnRequest:
     def test_named_signals_are_scanned_and_answered(self, store, tmp_path):
         export = write_export(tmp_path, PAIR, "collection.xml")
         finished(store, start_library_import_job(store, export))
-        all_finished(store)
+        import_settled(store)
 
         started = start_duplicate_scan_job(store, ["text", "path"])
         assert started.to_dict() == {
@@ -438,7 +451,7 @@ class TestOnRequest:
             "collection.xml",
         )
         finished(store, start_library_import_job(store, export))
-        all_finished(store)
+        import_settled(store)
         monkeypatch.setattr(duplicate_service_module, "_CANCEL_EVERY_ROWS", 1)
         service = held()
         started = start_duplicate_scan_job(store, ["text"])

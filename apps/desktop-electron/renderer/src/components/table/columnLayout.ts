@@ -3,7 +3,7 @@
  *
  * **Order is part of the state, so the state is a list.** DEC-042 lets a user
  * move a column, which a map of visibility flags cannot express — and an array
- * of widths indexed by position, which `resultsTableLayout.ts` uses, would
+ * of widths indexed by position, which the retired Results table used, would
  * apply the artist column's width to whatever moved into slot two.
  *
  * **A stored layout is reconciled, never trusted.** A column added in a later

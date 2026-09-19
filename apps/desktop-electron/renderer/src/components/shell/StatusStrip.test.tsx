@@ -17,7 +17,7 @@ import type { EngineJobSummary } from "../../api/cuepointBridge.types";
 function job(overrides: Partial<EngineJobSummary> = {}): EngineJobSummary {
   return {
     id: "job-1",
-    type: "match",
+    type: "clean_match",
     state: "running",
     created_at: "2026-09-02T10:00:00Z",
     updated_at: "2026-09-02T10:00:00Z",
@@ -214,7 +214,7 @@ describe("jobs", () => {
 
     render(<StatusStrip />);
 
-    expect(await screen.findByText("Matching 3/10")).toBeInTheDocument();
+    expect(await screen.findByText("Matching on Beatport 3/10")).toBeInTheDocument();
     expect(screen.getByText("30%")).toBeInTheDocument();
     expect(screen.getByRole("progressbar", { name: /job progress/i })).toHaveAttribute(
       "value",
@@ -240,13 +240,13 @@ describe("jobs", () => {
     listJobs.mockResolvedValue({ jobs: [job()], active_count: 1 });
     await vi.advanceTimersByTimeAsync(4100);
 
-    await waitFor(() => expect(screen.getByText("Matching 3/10")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Matching on Beatport 3/10")).toBeInTheDocument());
   });
 
   it("follows progress over SSE rather than by polling", async () => {
     listJobs.mockResolvedValue({ jobs: [job()], active_count: 1 });
     render(<StatusStrip />);
-    await screen.findByText("Matching 3/10");
+    await screen.findByText("Matching on Beatport 3/10");
 
     sseHandler?.({
       id: "job-1",
@@ -254,14 +254,14 @@ describe("jobs", () => {
       progress: { completed_tracks: 8, total_tracks: 10, percentage: 80 },
     });
 
-    await waitFor(() => expect(screen.getByText("Matching 8/10")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Matching on Beatport 8/10")).toBeInTheDocument());
     expect(screen.getByText("80%")).toBeInTheDocument();
   });
 
   it("ignores an event for a different job", async () => {
     listJobs.mockResolvedValue({ jobs: [job()], active_count: 1 });
     render(<StatusStrip />);
-    await screen.findByText("Matching 3/10");
+    await screen.findByText("Matching on Beatport 3/10");
 
     sseHandler?.({
       id: "someone-elses-job",
@@ -270,7 +270,7 @@ describe("jobs", () => {
     });
 
     await vi.advanceTimersByTimeAsync(50);
-    expect(screen.getByText("Matching 3/10")).toBeInTheDocument();
+    expect(screen.getByText("Matching on Beatport 3/10")).toBeInTheDocument();
   });
 
   it("says how many other jobs are running", async () => {
@@ -296,7 +296,7 @@ describe("jobs", () => {
   it("stops following a job once it finishes", async () => {
     listJobs.mockResolvedValue({ jobs: [job()], active_count: 1 });
     render(<StatusStrip />);
-    await screen.findByText("Matching 3/10");
+    await screen.findByText("Matching on Beatport 3/10");
 
     listJobs.mockResolvedValue({ jobs: [], active_count: 0 });
     await vi.advanceTimersByTimeAsync(4100);
@@ -407,7 +407,7 @@ describe("stopping a job", () => {
 
     render(<StatusStrip />);
 
-    await screen.findByText("Matching 3/10");
+    await screen.findByText("Matching on Beatport 3/10");
     expect(screen.queryByRole("button", { name: /stop/i })).toBeNull();
   });
 
@@ -422,6 +422,6 @@ describe("stopping a job", () => {
     stop.click();
 
     await waitFor(() => expect(stop).toBeEnabled());
-    expect(screen.getByText("Matching 3/10")).toBeInTheDocument();
+    expect(screen.getByText("Matching on Beatport 3/10")).toBeInTheDocument();
   });
 });

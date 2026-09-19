@@ -6,10 +6,9 @@
  * second progress display on this page would be a second thing to keep in step
  * with the job payload for no gain.
  *
- * Prefers the SSE subscription the bridge exposes and falls back to polling —
- * the same order `useMatchJob` uses, for the same reason: the subscription
- * pushes on change and ends by itself, while polling is what a browser-lab
- * render or an older preload can still manage.
+ * Prefers the SSE subscription the bridge exposes and falls back to polling:
+ * the subscription pushes on change and ends by itself, while polling is what
+ * a browser-lab render or an older preload can still manage.
  */
 import type { EngineJobSummary, JobState } from "../../api/cuepointBridge.types";
 

@@ -34,6 +34,8 @@ Suggested first commits:
 | ADR-001 | [001-electron-shell.md](001-electron-shell.md) | Electron shell + React renderer |
 | ADR-002 | [002-engine-packaging.md](002-engine-packaging.md) | PyInstaller one-dir; dev module for spikes |
 | ADR-003 | [003-http-ipc.md](003-http-ipc.md) | HTTP on loopback + session token |
+| ADR-004 | [004-player-backend.md](004-player-backend.md) | Bundled mpv sidecar over JSON IPC |
+| ADR-005 | [005-matching-on-the-library.md](005-matching-on-the-library.md) | Desktop matching runs on library tracks; inKey's file-based routes removed |
 
 ## ADR quality bar (analytical)
 

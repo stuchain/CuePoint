@@ -302,7 +302,7 @@ then, if inCrate's results look out of date, re-import there too.
 
 ## Clean in the Library
 
-Everything the **Clean** page knows about a track is visible here too,
+Everything the [Clean](clean.md) page knows about a track is visible here too,
 and every Clean action on a track is in its right-click menu and behind
 **Actions…**.
 
@@ -442,7 +442,9 @@ again if you still want to.
 
 Your library is a single SQLite file in your CuePoint home directory
 (`~/.cuepoint/cuepoint.db` on macOS and Linux, `%USERPROFILE%\.cuepoint\` on
-Windows). About 20 MB for 50,000 tracks. CuePoint backs it up on launch, and the
+Windows). About 20 MB for 50,000 tracks, and more once they are matched:
+every Beatport candidate a match found is kept, about 300 MB for 30,000 matched
+tracks — see [Performance](performance.md#clean). CuePoint backs it up on launch, and the
 Activity panel lists those backups along with every import and refresh — which
 is where to look if you want to know what a refresh actually did.
 
@@ -451,6 +453,7 @@ Nothing is uploaded anywhere. The library never leaves your machine.
 ## See also
 
 - [Organizing your library](organization.md) — Collections, tags and ratings
+- [Clean](clean.md) — matching on Beatport, reviewing, missing files, duplicates and Health
 - [The CuePoint window](the-window.md#keyboard-shortcuts) — navigation, search, the status strip, and the keys for Clean's review queue
 - [Performance](performance.md#the-library) — measured timings at 50,000 tracks
 - [Troubleshooting](troubleshooting.md)

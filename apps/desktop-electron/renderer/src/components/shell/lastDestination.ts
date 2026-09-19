@@ -3,6 +3,7 @@ import {
   findDestinationById,
   homeDestination,
   pageDestination,
+  replacementFor,
   type NavDestination,
 } from "./navRegistry";
 
@@ -12,8 +13,8 @@ import {
  * The destination *id* is stored rather than its path, so a later phase can
  * move a page's URL without stranding everyone who was last on it.
  *
- * Reads follow the shape `loadResultsTableLayout()` established: never trust
- * what comes back, and fall back rather than throw. A stored value can be
+ * Reads follow the shape the first stored table layout established: never
+ * trust what comes back, and fall back rather than throw. A stored value can be
  * missing (first run), name a destination that no longer exists (a page was
  * removed), or name one that is declared but not enabled (a downgrade, or a
  * phase flag turned off). All three land on home, because the alternative is
@@ -22,6 +23,10 @@ import {
  * DEC-062 added a fourth: an id that is a way *into* a page rather than the
  * page. Both directions resolve through the registry's `pageId`, so a page
  * with two sidebar entries is still one remembered destination (ORG-13).
+ *
+ * DEC-071 added a fifth: an id whose page was retired into another. It opens
+ * the page that does that work now, not home — someone who last used inKey
+ * wants to be where matching happens.
  */
 export const LAST_DESTINATION_STORAGE_KEY = "cuepoint-ui-shell-last-destination";
 
@@ -54,6 +59,8 @@ export function resolveLaunchDestination(
   storedId: string | null,
   destinations?: readonly NavDestination[],
 ): NavDestination {
+  const replacement = replacementFor(storedId, destinations);
+  if (replacement) return pageDestination(replacement, destinations);
   const stored = findDestinationById(storedId, destinations);
   if (stored && stored.enabled) {
     const page = pageDestination(stored, destinations);

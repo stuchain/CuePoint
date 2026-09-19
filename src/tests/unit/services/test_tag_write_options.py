@@ -3,17 +3,18 @@
 
 """What a tag write writes: one definition of the options, held strictly (CLEAN-10).
 
-- **One definition**: Sync Tags and the tag write job share the same function,
-  so their defaults cannot drift apart.
+- **One definition** of the defaults, which inKey's Sync Tags shared until it
+  retired (CLEAN-14).
 - **Today's defaults** carry over, and artwork is off unless asked for.
-- **The job refuses what Sync Tags coerces**: ``"false"`` never turns a field on.
+- **The job refuses what Sync Tags coerced**: ``"false"`` never turns a field on.
 """
 
 from __future__ import annotations
 
+import importlib.util
+
 import pytest
 
-from cuepoint.engine import sync_tags_api
 from cuepoint.services import tag_write_options
 from cuepoint.services.tag_write_options import (
     KEY_FORMATS,
@@ -36,16 +37,16 @@ DEFAULTS = {
 
 @pytest.mark.unit
 class TestOneDefinition:
-    def test_sync_tags_uses_the_moved_function_itself(self):
-        assert sync_tags_api.normalize_sync_options is normalize_sync_options
-        assert not hasattr(sync_tags_api, "_normalize_sync_options")
+    def test_sync_tags_is_gone(self):
+        # inKey's Sync Tags retired (CLEAN-14); the job is the one writer.
+        assert importlib.util.find_spec("cuepoint.engine.sync_tags_api") is None
 
     def test_todays_defaults(self):
         assert normalize_sync_options(None) == DEFAULTS
         assert normalize_sync_options({}) == DEFAULTS
 
-    def test_sync_tags_stays_as_tolerant_as_it_was(self):
-        # Sync Tags' behaviour is unchanged by the move, lenience included.
+    def test_the_defaults_alone_stay_as_tolerant_as_sync_tags_was(self):
+        # The lenience is the helper's; the job refuses before reaching it.
         assert normalize_sync_options(
             {"key_format": "WHATEVER", "comment_text": "  ", "write_genre": "false"}
         ) == {**DEFAULTS, "write_genre": True}

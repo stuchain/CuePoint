@@ -1,5 +1,11 @@
 # Main Window and Navigation
 
+> **Status: historical.** This page describes the Qt main window, which the Electron
+> app replaced, and its matching screens, which retired into **Clean** in Phase 7
+> (DEC-071). The desktop app today is described in the
+> [user guide](../user-guide/the-window.md) and [Clean](../user-guide/clean.md);
+> the code paths named below may no longer exist.
+
 ## What it is (high-level)
 
 The **main window** is the primary GUI: it hosts the collection path, **mode** (single playlist vs batch), **playlist** selector, **Start Processing** button, and integrates menu bar, status bar, progress area, and results. It also handles:
@@ -13,31 +19,31 @@ The **main window** is the primary GUI: it hosts the collection path, **mode** (
 
 ## How it is implemented (code)
 
-- **Main window class**  
-  - **File:** `src/cuepoint/ui/main_window.py`  
+- **Main window class**
+  - **File:** `src/cuepoint/ui/main_window.py`
   - **Class:** `MainWindow(QMainWindow)` — `init_ui()`, `create_menu_bar()`, `setup_connections()`, `setup_shortcuts()`, `save_state()`, `restore_state()`, `closeEvent()`.
 
-- **Widgets**  
-  - **File selector:** `src/cuepoint/ui/widgets/file_selector.py` — path input + “Browse…” for collection XML.  
-  - **Playlist selector:** `src/cuepoint/ui/widgets/playlist_selector.py` — dropdown or list of playlist names (from `read_playlist_index` or parsed playlists).  
-  - **Mode:** radio buttons or group for “Single” vs “Batch” (batch = multiple playlists); `on_mode_changed()` shows/hides playlist selector or batch list.  
+- **Widgets**
+  - **File selector:** `src/cuepoint/ui/widgets/file_selector.py` — path input + “Browse…” for collection XML.
+  - **Playlist selector:** `src/cuepoint/ui/widgets/playlist_selector.py` — dropdown or list of playlist names (from `read_playlist_index` or parsed playlists).
+  - **Mode:** radio buttons or group for “Single” vs “Batch” (batch = multiple playlists); `on_mode_changed()` shows/hides playlist selector or batch list.
   - **Tool selection:** `src/cuepoint/ui/widgets/tool_selection_page.py` — `show_tool_selection_page()`, `show_main_interface()`, `on_tool_selected()`.
 
-- **File and recent**  
-  - **File:** `src/cuepoint/ui/main_window.py`  
+- **File and recent**
+  - **File:** `src/cuepoint/ui/main_window.py`
   - **Methods:** `on_file_open()`, `on_file_selected(file_path)`, `update_recent_files_menu()`, `on_open_recent_file(path)`, `save_recent_file(path)`, `clear_recent_files()`. Recent list is stored (e.g. QSettings or config) and shown in File menu.
 
-- **Drag and drop**  
-  - **File:** `src/cuepoint/ui/main_window.py`  
+- **Drag and drop**
+  - **File:** `src/cuepoint/ui/main_window.py`
   - **Methods:** `dragEnterEvent()`, `dropEvent()` — accept drags that contain a single file (or URL); on drop, set collection path and optionally load playlists.
 
-- **Menu bar**  
+- **Menu bar**
   - **File:** `src/cuepoint/ui/main_window.py` — `create_menu_bar()` — File (Open, Recent, Exit), Edit, View, Help (User guide, Onboarding, Shortcuts, Privacy, Terms, Licenses, Support policy, About, Changelog, Check for updates), and possibly Support (Log viewer, Export support bundle, Report issue, Diagnostics).
 
-- **State**  
+- **State**
   - **File:** `src/cuepoint/ui/main_window.py` — `save_state()` writes geometry, collection path, playlist name, mode to QSettings; `restore_state()` reads them and restores playlist selection (with deferred selection if XML must be reloaded).
 
-- **Controller**  
+- **Controller**
   - **File:** `src/cuepoint/ui/controllers/main_controller.py` (or GUIController) — coordinates MainWindow, processor_service, and progress/results; e.g. `start_processing()` is triggered from the main window and delegated to the controller.
 
 So: **what the feature is** = “main window with file/playlist/mode, recent files, drag-drop, menu, and state restore”; **how it’s implemented** = `main_window.py` + file_selector, playlist_selector, tool_selection_page + main_controller + QSettings for state.

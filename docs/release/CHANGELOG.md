@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Resuming a match. A match you stopped, or one CuePoint's closing cut short,
+  is offered on the Clean page with how many tracks it left, and an interrupted
+  one's Activity entry offers **Resume** too. Resuming matches only the tracks
+  it had not reached
+- A user guide page for Clean, and a Clean section in the performance guide
+  with timings measured on a 50,000-track library carrying 1.2 million stored
+  Beatport candidates
 - Clean in the Library. Four columns — match state, match score, file status
   and artwork — are in the column list, and sort with what needs you first.
   Key, BPM, genre, label and year show your own value with a small mark saying
@@ -115,6 +122,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   files
 
 ### Changed
+- **Clean is how matching is done.** The inKey and Results pages are gone from
+  Tools; import your collection in the Library and match a playlist, a
+  Collection or the whole library from Clean. A remembered page or a link to
+  inKey or Results opens Clean. Home's main button opens Clean. Settings no
+  longer has an Export panel: **Export review list…** on the Clean page does
+  that. Past searches are no longer listed; their CSV files stay where they
+  were saved. The command-line tool is unchanged
+- Scrolling deep into a Library sorted by anything but artist is about five
+  times faster (a window at the end of 50,000 tracks sorted by BPM: 0.75 s →
+  0.13 s), and sorting by match score is as fast as any other column
+  (155 ms → 35 ms). A library database is upgraded once, on first launch
 - A change to many tracks no longer says there is no undo: it says the batch
   can be reverted from Activity, except for Collection membership, which still
   cannot be
@@ -135,7 +153,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   screens scrolled the whole window, which would have carried the navigation and
   status chrome off-screen as those are added
 
+### Removed
+- **Breaking engine API change** (DEC-071, ADR-005). These routes and the
+  bridge methods behind them are removed, with inKey and Results:
+  `POST /api/v1/jobs/match` (`startMatchJob`), `GET /api/v1/history/recent`
+  and `GET /api/v1/history/load` (`getHistoryRecent`, `loadHistoryCsv`),
+  `POST /api/v1/tags/sync` (`syncTags`), `POST /api/v1/export`
+  (`exportResults`) and `GET /api/v1/xml/playlists` (`getXmlPlaylists`), with
+  the CSV and M3U open dialogs only inKey used. `GET /api/v1/jobs/{id}/results`
+  no longer carries `results` or `batch_results`, which only the file-based
+  match filled; `result` is unchanged. Use `/api/v1/clean/match`,
+  `/api/v1/clean/export` and `/api/v1/clean/tags/*` instead. Every removed
+  route answers 404 like any unknown path, after the token check
+- The Help menu's "Playlist (M3U) export instructions": the desktop app no
+  longer matches playlist files
+
 ### Fixed
+- A packaged build never reached its engine: the window looked for its preload
+  outside the installed app, so nothing in it could talk to CuePoint's engine
+- Quitting the packaged app on Windows left its engine running in the
+  background, holding the library database and a port, one more on every
+  launch. Quitting now stops the engine and everything it started
+- On the Clean page, a choice made with Left or Right could be put back to the
+  proposed candidate by a background refresh just before **A** was pressed, so
+  the wrong candidate was accepted
+- The engine's job store locked up for good when a job was stopped and its
+  work ended without saying so itself: every job request then waited forever
+- Restoring a library backup failed on Windows whenever another part of the
+  engine had used the database, because its connection was never closed
 - A refusal from the engine was shown with "Error invoking remote method …" in
   front of it, in every dialog and panel; it now reads as the engine wrote it
 - On the Clean page, a selected track's comparison made the whole window

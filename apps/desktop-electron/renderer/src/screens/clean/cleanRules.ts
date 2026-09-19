@@ -5,8 +5,8 @@
  * set, not a second query path (DEC-023, DEC-040). Changing what the queue
  * shows changes these rules and nothing else: the table, its window and its
  * selection are the Library's, and so is every answer. That is DEC-041's
- * convergence — the match results `ResultsTable` held in memory now come a
- * window at a time like any other rows.
+ * convergence — the match results the retired Results screen held in memory
+ * now come a window at a time like any other rows.
  *
  * The scope beside the rules — the whole library, a playlist, a Collection or a
  * Smart Collection — is `LibraryQuery`'s, so a review of one playlist is the

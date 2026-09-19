@@ -47,7 +47,6 @@ describe("pixel icon artwork", () => {
         "clean",
         "discover",
         "prepare",
-        "match",
         "incrate",
       ]),
     );

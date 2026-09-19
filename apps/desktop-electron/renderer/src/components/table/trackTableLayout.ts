@@ -3,12 +3,12 @@
  *
  * Pure functions, no React and no DOM beyond one CSS-variable read, so the
  * arithmetic that decides how wide a column is can be tested without rendering
- * anything — the split `resultsTableLayout.ts` established and the reason its
- * clamping has never regressed.
+ * anything — the split the Results table's layout module established, and the
+ * reason its clamping never regressed.
  *
- * Two things are deliberately different from `resultsTableLayout.ts`, which
- * this is extracted from rather than replacing (DEC-041 — the results screen
- * converges in Phase 7):
+ * Two things are deliberately different from that module, which this was
+ * extracted from rather than replacing (DEC-041); it retired with the Results
+ * screen in CLEAN-14:
  *
  * **Widths are keyed by column id, not by position.** The results table stores
  * an array indexed by column, which is correct only while the column order is

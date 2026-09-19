@@ -12,7 +12,7 @@
  * development.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import App from "./App";
@@ -36,9 +36,8 @@ const ROUTES = [
   // sameness is the point of DEC-062 (ORG-13).
   { link: "Library", marker: /No collection imported yet/i },
   { link: "Collections", marker: /No collection imported yet/i },
-  { link: "inKey", marker: /CuePoint \/ inKey/i },
+  { link: "Clean", marker: /^Clean$/ },
   { link: "inCrate", marker: /CuePoint \/ inCrate/i },
-  { link: "Results", marker: /Sync with Rekordbox/i },
   { link: "Settings", marker: /Beatport token/i },
 ];
 
@@ -205,10 +204,63 @@ describe("App shell", () => {
       const user = userEvent.setup();
       render(<App />);
 
-      await user.click(navLink("Results"));
-      await screen.findByText(/Sync with Rekordbox/i);
+      await user.click(navLink("inCrate"));
+      await screen.findByText(/CuePoint \/ inCrate/i);
 
-      expect(localStorage.getItem(LAST_DESTINATION_STORAGE_KEY)).toBe("results");
+      expect(localStorage.getItem(LAST_DESTINATION_STORAGE_KEY)).toBe("incrate");
+    });
+
+    it("reopens on Clean for someone who was last on inKey (DEC-071)", async () => {
+      localStorage.setItem(LAST_DESTINATION_STORAGE_KEY, "match");
+      const { container } = render(<App />);
+
+      await waitFor(() => expect(window.location.hash).toBe("#/clean"));
+      expect(within(container.querySelector("main.app-main") as HTMLElement).getByText(/^Clean$/)).toBeInTheDocument();
+      expect(consoleError).not.toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * DEC-071: inKey and Results are gone from Tools, and their paths land on
+   * Clean rather than on home, so a bookmark still arrives where matching is.
+   */
+  describe("the retired inKey and Results pages", () => {
+    it("are not in the sidebar", () => {
+      render(<App />);
+      const nav = screen.getByRole("navigation", { name: /main navigation/i });
+      expect(within(nav).queryByRole("link", { name: "inKey" })).toBeNull();
+      expect(within(nav).queryByRole("link", { name: "Results" })).toBeNull();
+      expect(within(nav).getByRole("link", { name: "Clean" })).toBeInTheDocument();
+    });
+
+    it.each(["#/match", "#/results"])("redirect %s to Clean", async (hash) => {
+      const { container } = render(<App />);
+      await screen.findByText(/Select a tool to get started/i);
+
+      // After mounting: launch points the URL at the remembered page, so a
+      // link followed inside the running app is what reaches the router.
+      act(() => {
+        window.location.hash = hash;
+      });
+
+      await waitFor(() => expect(window.location.hash).toBe("#/clean"));
+      const main = container.querySelector("main.app-main") as HTMLElement;
+      expect(await within(main).findByText(/^Clean$/)).toBeInTheDocument();
+      expect(within(main).queryByText(/Select a tool to get started/i)).toBeNull();
+      expect(consoleError).not.toHaveBeenCalled();
+    });
+
+    it("remembers Clean, not the retired page, after a redirect", async () => {
+      render(<App />);
+      await screen.findByText(/Select a tool to get started/i);
+
+      act(() => {
+        window.location.hash = "#/results";
+      });
+
+      await waitFor(() =>
+        expect(localStorage.getItem(LAST_DESTINATION_STORAGE_KEY)).toBe("clean"),
+      );
     });
   });
 

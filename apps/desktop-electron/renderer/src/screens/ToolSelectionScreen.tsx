@@ -1,14 +1,15 @@
 import { useNavigate } from "react-router-dom";
 import { Badge, Button } from "../components";
 import { hasEngineBridge } from "../api/cuepointBridge.types";
-import { toolOptions } from "../mocks/fixtures";
 import "./screens.css";
 
+/**
+ * Home. Matching is Clean's now (DEC-071), so the primary action opens Clean
+ * rather than the retired inKey screen; inCrate stays a Tool until Phase 9.
+ */
 export function ToolSelectionScreen() {
   const navigate = useNavigate();
   const engineAvailable = hasEngineBridge();
-  const inKey = toolOptions.find((tool) => tool.id === "inkey");
-  const inCrate = toolOptions.find((tool) => tool.id === "incrate");
 
   return (
     <div className="screen screen--center tool-landing">
@@ -16,7 +17,7 @@ export function ToolSelectionScreen() {
         <p className="tool-landing__brand">CuePoint</p>
         <h1 className="screen__title">Select a tool to get started</h1>
         <p className="screen__subtitle">
-          Match Rekordbox playlists to Beatport metadata, or explore crate workflows.
+          Match your library to Beatport metadata, or explore crate workflows.
         </p>
         {engineAvailable ? (
           <Badge variant="success">Engine connected</Badge>
@@ -29,20 +30,19 @@ export function ToolSelectionScreen() {
         <button
           type="button"
           className="tool-landing__primary"
-          onClick={() => navigate("/match")}
+          onClick={() => navigate("/clean")}
         >
-          <span className="tool-landing__primary-title">{inKey?.name ?? "inKey"}</span>
-          <span className="tool-landing__primary-desc">Beatport track matching</span>
+          <span className="tool-landing__primary-title">Clean</span>
+          <span className="tool-landing__primary-desc">
+            Match on Beatport, review matches and fix your library
+          </span>
         </button>
 
-        {inCrate && (
-          <PanelLikeTool
-            title={inCrate.name}
-            description={inCrate.description}
-            disabled={!inCrate.available}
-            onOpen={() => navigate("/incrate")}
-          />
-        )}
+        <PanelLikeTool
+          title="inCrate"
+          description="Discover and organize crate workflows (preview)."
+          onOpen={() => navigate("/incrate")}
+        />
       </div>
     </div>
   );
@@ -51,12 +51,10 @@ export function ToolSelectionScreen() {
 function PanelLikeTool({
   title,
   description,
-  disabled,
   onOpen,
 }: {
   title: string;
   description: string;
-  disabled?: boolean;
   onOpen: () => void;
 }) {
   return (
@@ -65,7 +63,7 @@ function PanelLikeTool({
         <h2 className="tool-landing__secondary-title">{title}</h2>
         <p className="tool-landing__secondary-desc">{description}</p>
       </div>
-      <Button variant="secondary" disabled={disabled} onClick={onOpen}>
+      <Button variant="secondary" onClick={onOpen}>
         Open {title}
       </Button>
     </div>

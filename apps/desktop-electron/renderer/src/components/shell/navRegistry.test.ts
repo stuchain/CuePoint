@@ -19,7 +19,11 @@ import {
   NAV_DESTINATIONS,
   NAV_GROUPS,
   pageDestination,
+  replacementFor,
+  RETIRED_DESTINATIONS,
+  retiredRedirects,
   type NavDestination,
+  type RetiredDestination,
 } from "./navRegistry";
 
 describe("navRegistry", () => {
@@ -96,9 +100,7 @@ describe("navRegistry", () => {
       "collections",
       "clean",
       "tools",
-      "match",
       "incrate",
-      "results",
       "settings",
     ]);
   });
@@ -159,15 +161,24 @@ describe("navRegistry", () => {
     expect(findDestinationById("collections")?.path).toBe("/collections");
   });
 
-  it("keeps today's screens in the Tools group (DEC-021)", () => {
-    for (const id of ["tools", "match", "incrate", "results"]) {
+  it("keeps today's remaining screens in the Tools group (DEC-021)", () => {
+    for (const id of ["tools", "incrate"]) {
       expect(findDestinationById(id)?.group).toBe("tools");
     }
   });
 
+  it("no longer carries inKey or Results (DEC-071)", () => {
+    const declared = NAV_DESTINATIONS.map((d) => d.id);
+    expect(declared).not.toContain("match");
+    expect(declared).not.toContain("results");
+    expect(NAV_DESTINATIONS.map((d) => d.label)).not.toContain("inKey");
+    expect(findDestinationByPath("/match")).toBeNull();
+    expect(findDestinationByPath("/results")).toBeNull();
+  });
+
   it("looks destinations up by id and by path", () => {
-    expect(findDestinationById("results")?.path).toBe("/results");
-    expect(findDestinationByPath("/results")?.id).toBe("results");
+    expect(findDestinationById("incrate")?.path).toBe("/incrate");
+    expect(findDestinationByPath("/incrate")?.id).toBe("incrate");
   });
 
   it("returns null for unknown lookups", () => {
@@ -180,7 +191,52 @@ describe("navRegistry", () => {
     // Callers pass a pathname; `/results?filter=needs_review` is still Results
     // and the caller strips the query, so an accidental full-URL lookup must
     // not silently half-work.
-    expect(findDestinationByPath("/results?filter=needs_review")).toBeNull();
+    expect(findDestinationByPath("/library?q=house")).toBeNull();
+  });
+});
+
+describe("retired destinations (DEC-071)", () => {
+  it("sends inKey and Results to Clean", () => {
+    expect(replacementFor("match")?.id).toBe("clean");
+    expect(replacementFor("results")?.id).toBe("clean");
+    expect(retiredRedirects()).toEqual([
+      { id: "match", from: "/match", to: "/clean" },
+      { id: "results", from: "/results", to: "/clean" },
+    ]);
+  });
+
+  it("never reuses a live destination's id or path", () => {
+    // A retired entry that shadowed a live one would redirect a real page away.
+    const ids = new Set(NAV_DESTINATIONS.map((d) => d.id));
+    const paths = new Set(NAV_DESTINATIONS.map((d) => d.path));
+    for (const retired of RETIRED_DESTINATIONS) {
+      expect(ids.has(retired.id)).toBe(false);
+      expect(paths.has(retired.path)).toBe(false);
+    }
+  });
+
+  it("names a replacement that is declared and enabled", () => {
+    for (const retired of RETIRED_DESTINATIONS) {
+      expect(findDestinationById(retired.replacedBy)?.enabled).toBe(true);
+    }
+  });
+
+  it("answers nothing for an id that was never retired", () => {
+    expect(replacementFor("library")).toBeNull();
+    expect(replacementFor("nope")).toBeNull();
+    expect(replacementFor(null)).toBeNull();
+  });
+
+  it("does not redirect to a replacement that is switched off", () => {
+    // A downgrade, or a phase flag turned off: home is better than a route to
+    // a page nothing renders.
+    const retired: RetiredDestination[] = [{ id: "old", path: "/old", replacedBy: "new" }];
+    const destinations: NavDestination[] = [
+      { id: "tools", label: "Tools", path: "/", group: "tools", icon: "home", enabled: true },
+      { id: "new", label: "New", path: "/new", group: "workspace", icon: "clean", enabled: false },
+    ];
+    expect(replacementFor("old", destinations, retired)).toBeNull();
+    expect(retiredRedirects(destinations, retired)).toEqual([]);
   });
 });
 

@@ -25,7 +25,8 @@ way, next to the code rather than here, because a single unit test reproduced
 them precisely:
 
 - `engine/jobs.py` returning `BeatportCandidate` objects the results endpoint
-  could not serialize — `tests/unit/engine/test_job_result_serialization.py`
+  could not serialize — pinned by `test_job_result_serialization.py` until the
+  file-based match and that test retired together (CLEAN-14)
 - migrations losing their DDL because `executescript` commits implicitly —
   `tests/unit/services/test_migration_runner.py`
 - config set through `ConfigService` never reaching the matching engine —

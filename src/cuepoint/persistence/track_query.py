@@ -544,17 +544,22 @@ class BrowseQuery:
         )
 
 
-def _order_by(query: BrowseQuery) -> str:
+def _order_by(query: BrowseQuery, keys: Optional[Sequence[str]] = None) -> str:
     """Build the ORDER BY clause, including the tiebreak.
 
     Ascending nullable terms carry the nulls-last policy; descending ones do
     not need it, because that is already SQLite's descending default.
+
+    ``keys`` replaces each term's expression, in order, with a column that
+    already holds its value — :func:`build_select` orders its page by the keys
+    its inner query read, under exactly the same rules.
     """
     ascending = query.direction == "asc"
     keyword = "ASC" if ascending else "DESC"
     parts: List[str] = []
-    for term in sort_terms(query.sort):
-        expression = f"{term.sql} COLLATE NOCASE" if term.text else term.sql
+    for index, term in enumerate(sort_terms(query.sort)):
+        value = term.sql if keys is None else keys[index]
+        expression = f"{value} COLLATE NOCASE" if term.text else value
         if term.nullable and ascending:
             if _SUPPORTS_NULLS_LAST:
                 parts.append(f"{expression} ASC NULLS LAST")
@@ -649,9 +654,24 @@ def build_select(
     """
     valid = query.validated()
     parts = _predicate(valid, joins=sort_joins(valid.sort))
+    # The page is chosen by ids and the rows read afterwards (CLEAN-14). Sorting
+    # whole rows, twenty columns and a path each, made a window deep into a
+    # library sorted by anything but artist cost 0.6 s at 50,000 tracks; sorting
+    # ids and their sort keys, then reading the hundred rows asked for, costs
+    # 0.09 s and answers the same rows in the same order. The outer query
+    # orders by the keys the inner one read, so the order is stated rather
+    # than left to how SQLite happens to join.
+    terms = sort_terms(valid.sort)
+    keys = [f"page.page_key{index}" for index in range(len(terms))]
+    read = "".join(
+        f", {term.sql} AS page_key{index}" for index, term in enumerate(terms)
+    )
     sql = (
-        f"{parts.cte}SELECT tracks.* FROM tracks{parts.join}{parts.where} "
+        f"{parts.cte}SELECT tracks.* FROM ("
+        f"SELECT tracks.id AS page_id{read} FROM tracks{parts.join}{parts.where} "
         f"{_order_by(valid)} LIMIT ? OFFSET ?"
+        f") AS page JOIN tracks ON tracks.id = page.page_id "
+        f"{_order_by(valid, keys)}"
     )
     return sql, (*parts.params, clamp_limit(limit), clamp_offset(offset))
 

@@ -15,7 +15,7 @@ npm run build
 
 - `src/tokens/` — CSS design tokens, integer scale helper
 - `src/components/` — Phase 1 component library + Storybook stories
-- `src/screens/` — Mock flows (tool pick, inKey, results, settings)
-- `src/mocks/` — Fixtures shaped like `gui_interface.py`
+- `src/screens/` — The pages: home, Library, Clean, inCrate and Settings
+- `src/api/` — The bridge types and the pure helpers the pages share
 
 Design sign-off checklist: [../docs/design-signoff.md](../docs/design-signoff.md)

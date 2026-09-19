@@ -87,10 +87,14 @@ class DatabaseService(IDatabaseService):
         self._resolved_path: Optional[Path] = None
         self._resolved_timeout: Optional[float] = None
 
-        # Connections are per-thread; the registry lets close_all() reach them.
+        # Connections are per-thread; the registry lets close_all() reach them,
+        # and records which thread each belongs to (see close_all()).
         self._local = threading.local()
-        self._connections: list[sqlite3.Connection] = []
+        self._connections: list[tuple[sqlite3.Connection, threading.Thread]] = []
         self._lock = threading.Lock()
+        # Bumped by close_all(), so a thread whose connection it had to leave
+        # open closes that one itself and opens a new one on its next use.
+        self._generation = 0
 
     def _resolve_path(self) -> Path:
         if self._explicit_path is not None:
@@ -146,7 +150,11 @@ class DatabaseService(IDatabaseService):
             self._local, "connection", None
         )
         if existing is not None:
-            return existing
+            if self._local.generation == self._generation:
+                return existing
+            # close_all() ran while this thread was alive and left its
+            # connection to it: close it here, on its own thread, and reopen.
+            self.close()
 
         # Opening is serialized across threads. Switching a database to WAL
         # needs a brief exclusive lock, and SQLite reports SQLITE_BUSY for a
@@ -159,8 +167,10 @@ class DatabaseService(IDatabaseService):
         # no-op.
         with self._lock:
             connection = self._open_connection()
-            self._connections.append(connection)
+            self._connections.append((connection, threading.current_thread()))
+            generation = self._generation
         self._local.connection = connection
+        self._local.generation = generation
         return connection
 
     def _open_connection(self) -> sqlite3.Connection:
@@ -180,10 +190,12 @@ class DatabaseService(IDatabaseService):
             connection = sqlite3.connect(
                 str(self.db_path),
                 timeout=self._busy_timeout_seconds,
-                # Connections are per-thread, so SQLite's own check is
-                # redundant; keeping it on would break the context manager
-                # returning a connection created in the same thread.
-                check_same_thread=True,
+                # Each thread gets its own connection from this service, so
+                # SQLite's own thread check adds nothing — and with it on,
+                # close_all() could not close the connection of a thread that
+                # has ended: the close raised, the connection stayed open
+                # holding the file, and a restore failed on Windows (CLEAN-14).
+                check_same_thread=False,
                 isolation_level=None,  # explicit transactions via transaction()
             )
         except sqlite3.Error as exc:
@@ -325,23 +337,39 @@ class DatabaseService(IDatabaseService):
             return
         self._local.connection = None
         with self._lock:
-            if connection in self._connections:
-                self._connections.remove(connection)
+            self._connections = [
+                entry for entry in self._connections if entry[0] is not connection
+            ]
         try:
             connection.close()
         except sqlite3.Error:
             pass
 
     def close_all(self) -> None:
-        """Close every connection opened by this service, across all threads.
+        """Close every connection no thread can still be using.
 
-        Intended for shutdown and test teardown. Connections belonging to other
-        threads must not be in use concurrently when this is called.
+        That is the calling thread's own, and those of threads that have ended
+        — an import's, a scan's workers', an HTTP request's. A thread that is
+        still alive may be in the middle of a statement, and closing a
+        connection under it crashes the process (CLEAN-14 found both halves:
+        leaving them all open made restores fail, closing them all crashed).
+        Its connection is left to it: the next time it asks for one, it closes
+        the old one itself and opens a new one.
+
+        Intended for restore, shutdown and test teardown.
         """
+        current = threading.current_thread()
         with self._lock:
-            connections = list(self._connections)
-            self._connections.clear()
-        for connection in connections:
+            self._generation += 1
+            closable = [
+                connection
+                for connection, owner in self._connections
+                if owner is current or not owner.is_alive()
+            ]
+            self._connections = [
+                entry for entry in self._connections if entry[0] not in closable
+            ]
+        for connection in closable:
             try:
                 connection.close()
             except sqlite3.Error:

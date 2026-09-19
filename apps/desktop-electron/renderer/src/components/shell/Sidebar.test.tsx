@@ -61,7 +61,7 @@ describe("Sidebar", () => {
       "aria-current",
       "page",
     );
-    expect(within(nav()).getByRole("link", { name: "Results" })).not.toHaveAttribute(
+    expect(within(nav()).getByRole("link", { name: "inCrate" })).not.toHaveAttribute(
       "aria-current",
     );
   });

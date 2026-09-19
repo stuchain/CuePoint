@@ -41,7 +41,6 @@ function withEngineWords(api) {
 contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   getEngineStatus: () => ipcRenderer.invoke("engine:status"),
   restartEngine: () => ipcRenderer.invoke("engine:restart"),
-  startMatchJob: (body) => ipcRenderer.invoke("engine:startMatchJob", body),
   searchLibrary: (params) => ipcRenderer.invoke("engine:searchLibrary", params),
   browseLibrary: (params) => ipcRenderer.invoke("engine:browseLibrary", params),
   getLibraryPlaylists: () => ipcRenderer.invoke("engine:getLibraryPlaylists"),
@@ -149,7 +148,6 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   getRecentActivity: (params) => ipcRenderer.invoke("engine:getRecentActivity", params),
   getJob: (jobId) => ipcRenderer.invoke("engine:getJob", jobId),
   getJobResults: (jobId) => ipcRenderer.invoke("engine:getJobResults", jobId),
-  exportResults: (body) => ipcRenderer.invoke("engine:exportResults", body),
   getIncrateInventory: (params) => ipcRenderer.invoke("engine:getIncrateInventory", params),
   importIncrateXml: (body) => ipcRenderer.invoke("engine:importIncrateXml", body),
   resetIncrateInventory: () => ipcRenderer.invoke("engine:resetIncrateInventory"),
@@ -160,10 +158,6 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   getBeatportTokenStatus: () => ipcRenderer.invoke("engine:getBeatportTokenStatus"),
   setBeatportToken: (token) => ipcRenderer.invoke("engine:setBeatportToken", token),
   testBeatportToken: (body) => ipcRenderer.invoke("engine:testBeatportToken", body),
-  getHistoryRecent: (params) => ipcRenderer.invoke("engine:getHistoryRecent", params),
-  loadHistoryCsv: (csvPath) => ipcRenderer.invoke("engine:loadHistoryCsv", csvPath),
-  getXmlPlaylists: (xmlPath) => ipcRenderer.invoke("engine:getXmlPlaylists", xmlPath),
-  syncTags: (body) => ipcRenderer.invoke("engine:syncTags", body),
   exportSupportBundle: (options) => ipcRenderer.invoke("support:exportBundle", options ?? {}),
   showItemInFolder: (filePath) => ipcRenderer.invoke("shell:showItemInFolder", filePath),
   getLogsDir: () => ipcRenderer.invoke("engine:getLogsDir"),
@@ -190,8 +184,6 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
     };
   },
   openXmlFileDialog: () => ipcRenderer.invoke("dialog:openXml"),
-  openCsvFileDialog: () => ipcRenderer.invoke("dialog:openCsv"),
-  openM3uFileDialog: () => ipcRenderer.invoke("dialog:openM3u"),
   resolveDroppedFilePath: (file) => {
     try {
       return webUtils.getPathForFile(file);

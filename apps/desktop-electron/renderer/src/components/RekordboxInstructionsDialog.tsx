@@ -3,10 +3,10 @@ import "./RekordboxInstructionsDialog.css";
 
 const STEPS = [
   "Open Rekordbox on your computer.",
-  "Select the playlist you want to export (or your full collection for batch mode).",
-  "Use File → Export collection in XML format (or export the selected playlist).",
+  "Use File → Export Collection in xml format.",
   "Save the XML file somewhere easy to find (Downloads works well).",
-  "In CuePoint inKey, browse or drag the XML onto the input panel, then start matching.",
+  "In CuePoint's Library, choose Import a collection… and pick the XML file.",
+  "To match on Beatport, open Clean and match a playlist, a Collection or the whole library.",
 ];
 
 interface RekordboxInstructionsDialogProps {
@@ -24,7 +24,8 @@ export function RekordboxInstructionsDialog({ open, onClose }: RekordboxInstruct
     >
       <div className="rekordbox-instructions">
         <p>
-          Rekordbox XML files contain playlist and track metadata CuePoint uses to search Beatport.
+          A Rekordbox XML export holds your collection and playlists. CuePoint imports it into its
+          library, and matches tracks on Beatport from there.
         </p>
         <ol>
           {STEPS.map((step) => (

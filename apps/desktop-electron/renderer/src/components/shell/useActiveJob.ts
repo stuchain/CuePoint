@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type {
   EngineJobSummary,
-  MatchJobStatus,
+  JobStatus,
 } from "../../api/cuepointBridge.types";
 
 /**
@@ -59,7 +59,6 @@ export function jobPercent(job: EngineJobSummary | null): number | null {
  * whether the irreversible half had started.
  */
 const JOB_VERBS: Record<string, string> = {
-  match: "Matching",
   library_import: "Importing",
   library_refresh_preview: "Checking",
   library_refresh_apply: "Refreshing",
@@ -79,9 +78,9 @@ const JOB_VERBS: Record<string, string> = {
   // CLEAN-10's tag write, in its three parts. The one job that changes audio
   // files says so in words of its own, and a preview that only reads them
   // must not read as the write.
-  // CLEAN-03's match over a library scope, which CLEAN-11 made startable. Not
-  // inKey's "Matching": that verb belongs to the file-based run CLEAN-14
-  // retires, and a strip showing both would not say which one is running.
+  // CLEAN-03's match over a library scope, which CLEAN-11 made startable. The
+  // only match there is since inKey's file-based run retired (CLEAN-14); it
+  // keeps "on Beatport" because that is where the work is happening.
   clean_match: "Matching on Beatport",
   tag_write_preview: "Reading tags",
   tag_write: "Writing tags",
@@ -164,7 +163,7 @@ export function useActiveJob(pollMs: number = JOB_POLL_MS): ActiveJobState {
 
     unsubscribe.current?.();
     subscribedTo.current = id;
-    unsubscribe.current = subscribe(id, (event: MatchJobStatus & { type?: string }) => {
+    unsubscribe.current = subscribe(id, (event: JobStatus) => {
       setState((prev) => {
         if (!prev.job || prev.job.id !== event.id) return prev;
         return {

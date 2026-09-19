@@ -35,7 +35,7 @@ never a state.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from cuepoint.models.row_values import (
@@ -424,6 +424,11 @@ class TrackMatch:
         newer_attempt_id: Set when a later attempt's winner disagrees with a
             user's decision (DEC-067). Only a user's decision can be disputed:
             an automatic state is simply replaced.
+        candidate_score: The score of ``candidate_id``, kept beside the state
+            so sorting and filtering by it read no candidate (migration 0019).
+            Filled by the repository from the candidate on every write, so a
+            value given here is not stored, and left out of equality: it
+            follows from ``candidate_id``.
     """
 
     track_id: int
@@ -433,6 +438,7 @@ class TrackMatch:
     decided_at: str
     candidate_id: Optional[int] = None
     newer_attempt_id: Optional[int] = None
+    candidate_score: Optional[float] = field(default=None, compare=False)
 
     def __post_init__(self) -> None:
         """Validate the state and the invariants the table leaves to code.
@@ -451,6 +457,11 @@ class TrackMatch:
             self,
             "newer_attempt_id",
             optional_id(self.newer_attempt_id, "newer_attempt_id"),
+        )
+        _set(
+            self,
+            "candidate_score",
+            optional_number(self.candidate_score, "candidate_score"),
         )
 
         if self.state == STATE_ACCEPTED and self.candidate_id is None:
@@ -487,6 +498,7 @@ class TrackMatch:
             "candidate_id": self.candidate_id,
             "newer_attempt_id": self.newer_attempt_id,
             "decided_at": self.decided_at,
+            "candidate_score": self.candidate_score,
         }
 
     @classmethod
@@ -501,6 +513,7 @@ class TrackMatch:
             candidate_id=data.get("candidate_id"),
             newer_attempt_id=data.get("newer_attempt_id"),
             decided_at=data["decided_at"],
+            candidate_score=data.get("candidate_score"),
         )
 
 

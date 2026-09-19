@@ -879,4 +879,71 @@ describe("desktop contract", () => {
       }
     });
   });
+
+  describe("inKey's routes are gone (CLEAN-14, DEC-071)", () => {
+    // A removal is the same six-file sweep as an addition, and a method left in
+    // one file is as silent as one missing from another: the renderer would
+    // type-check against a bridge the engine no longer answers.
+    const RETIRED_METHODS = [
+      "startMatchJob",
+      "exportResults",
+      "getHistoryRecent",
+      "loadHistoryCsv",
+      "getXmlPlaylists",
+      "syncTags",
+      "openCsvFileDialog",
+      "openM3uFileDialog",
+    ];
+    const RETIRED_ROUTES = [
+      "/api/v1/jobs/match",
+      "/api/v1/history/",
+      "/api/v1/tags/sync",
+      '"/api/v1/export"',
+      "/api/v1/xml/playlists",
+    ];
+    const FILES = { preload, main, engineClient, supervisor, bridgeTypes };
+
+    it.each(Object.entries(FILES))("%s names no retired bridge method", (_name, source) => {
+      for (const method of RETIRED_METHODS) {
+        expect(source).not.toMatch(new RegExp(`\b${method}\b`));
+      }
+    });
+
+    it("no channel for them is handled or invoked", () => {
+      const channels = [...handledChannels(main), ...invokedChannels(preload)];
+      for (const channel of [
+        "engine:startMatchJob",
+        "engine:exportResults",
+        "engine:getHistoryRecent",
+        "engine:loadHistoryCsv",
+        "engine:getXmlPlaylists",
+        "engine:syncTags",
+        "dialog:openCsv",
+        "dialog:openM3u",
+      ]) {
+        expect(channels).not.toContain(channel);
+      }
+    });
+
+    // The engine's side is src/tests/unit/engine/test_retired_inkey_routes.py:
+    // Vite will not read a file outside this app.
+    it("the client names no retired route", () => {
+      for (const route of RETIRED_ROUTES) {
+        expect(engineClient).not.toContain(route);
+      }
+    });
+
+    it("keeps what every other job uses", () => {
+      for (const method of ["getJob", "getJobResults", "cancelJob", "subscribeJobEvents"]) {
+        expect(preload).toContain(method);
+        expect(bridgeTypes).toContain(method);
+      }
+      expect(invokedChannels(preload)).toContain("dialog:saveExport");
+    });
+
+    it("offers resuming a match on the bridge", () => {
+      expect(invokedChannels(preload)).toContain("engine:resumeCleanMatch");
+      expect(invokedChannels(preload)).toContain("engine:getResumableMatches");
+    });
+  });
 });

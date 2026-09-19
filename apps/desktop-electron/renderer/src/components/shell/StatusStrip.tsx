@@ -56,9 +56,9 @@ export function StatusStrip() {
    * Here rather than on the page that started it, because this is where a
    * running job is visible from anywhere in the app — and because a batch over
    * everything a query matches can outlive the screen it was started from,
-   * which is the whole point of it being a job. inKey keeps its own Cancel
-   * beside its progress; every other job had none, so "cancellable" was true
-   * of the engine and unavailable to the user.
+   * which is the whole point of it being a job. Before this only inKey had a
+   * Cancel, beside its own progress, so "cancellable" was true of the engine
+   * and unavailable to the user for every other job.
    *
    * Work already applied stays applied and the job reports how far it got
    * (DEC-063), so this asks rather than undoes — which is what the label says.

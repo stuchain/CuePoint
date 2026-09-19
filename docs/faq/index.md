@@ -6,33 +6,37 @@ Common questions and where to find answers.
 
 ### What is CuePoint?
 
-CuePoint enriches Rekordbox XML playlists with Beatport metadata (BPM, key, artists, etc.). See [Quick Start](../getting-started/quick-start.md).
+CuePoint keeps a library of your Rekordbox collection, matches it to Beatport metadata (key, BPM, genre, label, year), and helps you keep it clean. See [Quick Start](../getting-started/quick-start.md).
 
 ### How do I get started?
 
 1. Export your Rekordbox collection as XML
-2. Import the XML in CuePoint
-3. Process to fetch Beatport metadata
-4. Review and export results
+2. Import it on the **Library** page
+3. Match it on Beatport from the **Clean** page
+4. Review the matches, apply the values you want, and export the review list
 
 See [First Steps](../getting-started/first-steps.md) and [Workflows](../user-guide/workflows.md).
 
 ### What do match scores mean?
 
-Scores above 80% are usually reliable. See [Glossary](../user-guide/glossary.md) for terms like *candidate*, *confidence*, and *low-confidence*.
+CuePoint accepts a match on its own only when it scores 95 or more and passes every check; everything else with a candidate waits for your review. See [Clean](../user-guide/clean.md). See [Glossary](../user-guide/glossary.md) for terms like *candidate*, *confidence*, and *low-confidence*.
 
 ### Something went wrong. Where do I look?
 
 See [Troubleshooting](../user-guide/troubleshooting.md) for common errors and fixes.
 
-### Does inCrate find tracks on Beatport the same way as inKey?
+### Where did inKey and Results go?
 
-Yes. When inCrate enriches your inventory (fills in missing labels from Beatport), it uses the **full inKey pipeline**:
+They became **Clean** (DEC-071). Import your collection once in the Library, then match a playlist, a Collection or the whole library from Clean, and review there. Past searches' CSV files stay where they were saved; CuePoint no longer lists them. See [Where inKey and Results went](../user-guide/clean.md#where-inkey-and-results-went). The command-line tool is unchanged.
 
-- **Same processing:** `IProcessorService.process_track(idx, track)` — same query generation (`make_search_queries`), matcher (`best_beatport_match`), scoring, guards, and early exit as inKey.
-- **Same parallelism:** Worker count comes from **processing.track_workers** (capped by **performance.max_workers**). With more than one worker, enrichment runs in a `ThreadPoolExecutor` just like inKey’s playlist processing.
+### Does inCrate find tracks on Beatport the same way as Clean?
 
-So track search, matching, and parallel workers are identical to inKey.
+Yes. When inCrate enriches your inventory (fills in missing labels from Beatport), it uses the **same matching pipeline** as Clean and the CLI:
+
+- **Same processing:** `IProcessorService.process_track(idx, track)` — same query generation (`make_search_queries`), matcher (`best_beatport_match`), scoring, guards, and early exit.
+- **Same parallelism:** Worker count comes from **processing.track_workers** (capped by **performance.max_workers**). With more than one worker, enrichment runs in a `ThreadPoolExecutor`, as a Clean match does.
+
+So track search, matching, and parallel workers are identical.
 
 ### Where can I see inCrate import progress logs?
 
@@ -50,26 +54,26 @@ During XML import, the app logs each phase (parsing, DB write, enrichment). To s
 
 When you click **Discover** in inCrate, the app does the following (in a background thread so the UI stays responsive):
 
-1. **Your choices**  
+1. **Your choices**
    It uses the **genres you selected** in “Genres (multi-select)” and a fixed date range: **charts** = past month (roughly 31 days to today), **new releases** = last 30 days.
 
-2. **Charts branch**  
-   - Reads **library artists** from your inventory (the Rekordbox collection you imported).  
-   - For **each selected genre**, calls the Beatport API to list charts in that date range.  
-   - For each chart, checks if the **chart author** is one of your library artists.  
-   - If yes, fetches that chart’s detail and adds **every track** on the chart to the result.  
+2. **Charts branch**
+   - Reads **library artists** from your inventory (the Rekordbox collection you imported).
+   - For **each selected genre**, calls the Beatport API to list charts in that date range.
+   - For each chart, checks if the **chart author** is one of your library artists.
+   - If yes, fetches that chart’s detail and adds **every track** on the chart to the result.
    So you only get chart tracks from DJs who are already in your collection.
 
-3. **New releases branch**  
-   - Reads **library labels** from your inventory (labels that were filled in during import/enrichment).  
-   - For each label, looks up the **Beatport label ID** (search by name), then asks the API for **releases in the last 30 days**.  
-   - For each release, adds all its **tracks** to the result.  
+3. **New releases branch**
+   - Reads **library labels** from your inventory (labels that were filled in during import/enrichment).
+   - For each label, looks up the **Beatport label ID** (search by name), then asks the API for **releases in the last 30 days**.
+   - For each release, adds all its **tracks** to the result.
    So you get new releases only from labels that appear in your collection.
 
-4. **Combine and dedupe**  
+4. **Combine and dedupe**
    Chart tracks and new-release tracks are merged, then **deduplicated by Beatport track ID** (each track appears once). Chart tracks are listed first, then new releases.
 
-5. **Show results**  
+5. **Show results**
    The resulting list is shown in the **Results** table. You can **Export CSV** or **Add to playlist** (Beatport) from there.
 
 **Requirements:** You need an **inventory** (Import a Rekordbox XML first) and a valid **Beatport API token** in Settings → inCrate. If you select no genres, the charts branch returns 0 tracks; new releases still run for all your library labels.

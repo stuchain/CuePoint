@@ -10,6 +10,7 @@ import type {
   FileStatus,
   MatchStarted,
   MatchState,
+  ResumableMatch,
   TrackMatchState,
 } from "../../api/cuepointBridge.types";
 
@@ -142,6 +143,20 @@ export function matchStartedLine(started: Pick<MatchStarted, "planned" | "exclud
   if (started.excluded <= 0) return head;
   const verb = started.excluded === 1 ? "is" : "are";
   return `${head} ${started.excluded.toLocaleString()} already matched or decided ${verb} left out.`;
+}
+
+/**
+ * A match that stopped with tracks left, offered for resuming (DEC-065).
+ *
+ * `total` is how many can be resumed; the newest is the one offered, and the
+ * others are counted rather than listed.
+ */
+export function resumableLine(newest: Pick<ResumableMatch, "remaining" | "planned">, total: number): string {
+  const head = `A match stopped with ${newest.remaining.toLocaleString()} of ${count(newest.planned, "track")} left.`;
+  if (total <= 1) return `${head} Resuming matches only those.`;
+  const others = total - 1;
+  const matches = others === 1 ? "other match" : "other matches";
+  return `${head} ${others.toLocaleString()} ${matches} can be resumed from Activity.`;
 }
 
 /** A decision taken from the review panel, said where the reviewer is looking. */

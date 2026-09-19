@@ -342,6 +342,8 @@ class TestTheJoins:
                     ("match_state", "is", "accepted"),
                     ("match_disputed", "is", False),
                     ("match_score", "gte", 90),
+                    # The candidate is read for Beatport's artwork.
+                    ("artwork", "is", "beatport"),
                 )
             )
         )
@@ -362,10 +364,11 @@ class TestTheJoins:
         assert len(rows) == len({row.id for row in rows}) == len(NAMES)
 
     def test_each_join_a_rule_set_needs_is_named(self):
-        assert required_joins(rules(("match_score", "gte", 1))) == {
-            MATCH_ALIAS,
-            MATCH_CANDIDATE_ALIAS,
-        }
+        # The score is kept on the state (migration 0019): no candidate read.
+        assert required_joins(rules(("match_score", "gte", 1))) == {MATCH_ALIAS}
+        assert MATCH_CANDIDATE_ALIAS in required_joins(
+            rules(("artwork", "is", "beatport"))
+        )
         assert required_joins(rules(("match_state", "is", "accepted"))) == {MATCH_ALIAS}
         assert requires_metadata(rules(("rating", "is", 1))) is True
         assert requires_metadata(rules(("match_state", "is", "accepted"))) is False

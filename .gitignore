@@ -174,6 +174,11 @@ src/output/
 # scoring-unchanged test has nothing to compare against.
 !src/tests/fixtures/beatport/scoring_baseline.json
 
+# Test fixture (exception to user-output *.json above). The Beatport answers the
+# end-to-end journey and the offline match test read (CLEAN-14); without it
+# neither can match anything.
+!src/tests/fixtures/beatport/journey/fixture.json
+
 # Recorded engine responses (exception to user-output *.json above). These are
 # produced by a test that starts the real engine and asserted against by both
 # languages, so they are source: without them the renderer's empty states have

@@ -30,14 +30,12 @@ test.describe("Electron desktop smoke (TC-UI-001)", () => {
       await expect(
         window.getByRole("navigation", { name: /main navigation/i }),
       ).toBeVisible({ timeout: 15_000 });
-      // Scoped to the navigation, and exact: screens carry their own "← Back to
-      // inKey" link, so an unscoped lookup is ambiguous on any screen but home
-      // — and which screen the app opens on now depends on stored state.
-      await expect(
-        window
-          .getByRole("navigation", { name: /main navigation/i })
-          .getByRole("link", { name: "inKey", exact: true }),
-      ).toBeVisible();
+      // Scoped to the navigation, and exact: a page can carry its own link of
+      // the same name, and which page the app opens on depends on stored state.
+      // Clean, because matching lives there since inKey retired (DEC-071).
+      const nav = window.getByRole("navigation", { name: /main navigation/i });
+      await expect(nav.getByRole("link", { name: "Clean", exact: true })).toBeVisible();
+      await expect(nav.getByRole("link", { name: "inKey", exact: true })).toHaveCount(0);
       // The navigation renders outside <Routes>, so asserting it alone passed
       // even while no route matched and the content area was empty. Assert the
       // screen too.

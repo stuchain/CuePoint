@@ -1,4 +1,19 @@
-import type { ProgressInfo, TrackResult } from "../mocks/types";
+/**
+ * A job's progress, as the engine's `progress_to_dict` sends it. Every job type
+ * reports through this one shape; most fill only the counts and the message.
+ */
+export interface ProgressInfo {
+  completed_tracks: number;
+  total_tracks: number;
+  matched_count: number;
+  unmatched_count: number;
+  current_track: { title: string; artists: string };
+  elapsed_time: number;
+  eta_seconds: number | null;
+  status_message: string | null;
+  reliability_state: string | null;
+  percentage: number;
+}
 
 /** Health of the bundled audio player (PLAYER-03). */
 export interface PlayerStatus {
@@ -241,48 +256,20 @@ export interface EngineStatus {
 
 export type JobState = "queued" | "running" | "succeeded" | "failed" | "cancelled";
 
-export interface MatchJobStatus {
+/** One job's status, from `getJob` and from its event stream. */
+export interface JobStatus {
   id: string;
+  /** The job's kind, e.g. `clean_match` or `library_import`. */
+  type?: string;
   state: JobState;
   progress?: Partial<ProgressInfo>;
   error?: { code: string; message: string };
   demo?: boolean;
 }
 
-export interface StartMatchJobRequest {
-  demo?: boolean;
-  demo_batch?: boolean;
-  xml_path?: string;
-  m3u_path?: string;
-  playlist_name?: string;
-  playlist_names?: string[];
-}
-
-export interface XmlPlaylistEntry {
-  path: string;
-  name: string;
-  display_name: string;
-  track_count: number;
-}
-
-export interface XmlPlaylistsResponse {
-  xml_path: string;
-  playlists: XmlPlaylistEntry[];
-  count: number;
-  tree?: unknown[];
-  playlist_paths?: string[];
-}
-
-export interface StartMatchJobResponse {
-  id: string;
-  state: string;
-}
-
 export interface JobResultsResponse {
   id: string;
   state: JobState;
-  results: TrackResult[];
-  batch_results?: Record<string, TrackResult[]>;
   /**
    * What a job produced when its answer is not a list of matched tracks — a
    * refresh preview's diff, or what an apply did. Served here rather than on
@@ -291,22 +278,8 @@ export interface JobResultsResponse {
   result?: RefreshDiff | RefreshApplied | TagWritePreview | TagWriteResult | TagRestoreResult | Record<string, unknown>;
 }
 
+/** The file type the save dialog filters on; Clean's export names Excel `xlsx` here. */
 export type ExportFormat = "csv" | "json" | "xlsx";
-
-export interface ExportResultsRequest {
-  format: ExportFormat;
-  file_path: string;
-  job_id?: string;
-  results?: TrackResult[];
-  playlist_name?: string;
-  overwrite?: boolean;
-}
-
-export interface ExportResultsResponse {
-  file_path: string;
-  format: string;
-  count: number;
-}
 
 export interface IncrateInventoryRow {
   id: number;
@@ -367,93 +340,6 @@ export type OpenXmlDialogResult =
   | { canceled: true }
   | { canceled: false; filePath: string };
 
-export type OpenCsvDialogResult = OpenXmlDialogResult;
-
-export type OpenM3uDialogResult = OpenXmlDialogResult;
-
-export interface HistoryFileEntry {
-  file_path: string;
-  file_name: string;
-  modified_at: string;
-  size_bytes: number;
-  playlist_name?: string | null;
-}
-
-export interface HistoryRecentResponse {
-  directory: string;
-  files: HistoryFileEntry[];
-  count: number;
-}
-
-export interface HistoryLoadResponse {
-  file_path: string;
-  file_name: string;
-  modified_at: string;
-  row_count: number;
-  matched_count: number;
-  unmatched_count: number;
-  review_count?: number;
-  results: TrackResult[];
-  meta?: {
-    playlist_name?: string;
-    xml_path?: string;
-    m3u_path?: string;
-    source?: string;
-  } | null;
-  related_files?: {
-    review_csv?: string | null;
-    review_candidates_csv?: string | null;
-    review_queries_csv?: string | null;
-    candidates_csv?: string | null;
-  };
-  rerun?: {
-    source?: string;
-    xml_path?: string | null;
-    playlist_name?: string | null;
-    m3u_path?: string | null;
-    xml_exists?: boolean;
-    m3u_exists?: boolean;
-    can_rerun?: boolean;
-  };
-}
-
-export interface SyncTagsResponse {
-  written: number;
-  failed: number;
-  errors: string[];
-  errors_truncated?: boolean;
-  wav_skipped: string[];
-  wav_skipped_count?: number;
-}
-
-export type SyncKeyFormat = "normal" | "camelot" | "short";
-
-/**
- * Tag-writing options. Part of the bridge contract because they travel to the
- * engine inside `SyncTagsRequest`; `syncTagsUtils` owns loading and persisting
- * them and re-exports this type for the UI.
- */
-export interface SyncTagsOptions {
-  key_format: SyncKeyFormat;
-  write_key: boolean;
-  write_year: boolean;
-  write_bpm: boolean;
-  write_label: boolean;
-  write_genre: boolean;
-  write_comment: boolean;
-  comment_text: string;
-}
-
-export interface SyncTagsRequest {
-  sync_options: SyncTagsOptions;
-  source?: "collection" | "playlist_file";
-  mode?: "single" | "batch" | "paths";
-  xml_path?: string;
-  playlist_name?: string;
-  results?: TrackResult[];
-  batch_results?: Record<string, TrackResult[]>;
-}
-
 export interface SupportBundleExportResult {
   canceled: boolean;
   bundle_path?: string;
@@ -478,14 +364,6 @@ export interface ClearOkResponse {
 export interface PrivacyExitPrefs {
   clearCacheOnExit: boolean;
   clearLogsOnExit: boolean;
-}
-
-export interface InKeyRerunRequest {
-  xmlPath?: string;
-  playlistName?: string;
-  m3uPath?: string;
-  source?: string;
-  autoStart?: boolean;
 }
 
 export type SaveExportDialogResult =
@@ -1608,10 +1486,8 @@ export interface CuePointBridge {
   /** Absent when running in a browser tab, or in an older shell. */
   player?: PlayerBridge;
   restartEngine?: () => Promise<EngineStatus>;
-  startMatchJob: (body: StartMatchJobRequest) => Promise<StartMatchJobResponse>;
-  getJob: (jobId: string) => Promise<MatchJobStatus>;
+  getJob: (jobId: string) => Promise<JobStatus>;
   getJobResults: (jobId: string) => Promise<JobResultsResponse>;
-  exportResults: (body: ExportResultsRequest) => Promise<ExportResultsResponse>;
   getIncrateInventory: (params?: {
     limit?: number;
     search?: string;
@@ -1874,10 +1750,6 @@ export interface CuePointBridge {
     confirm_references?: boolean;
   }) => Promise<LibraryRefreshStarted>;
   getLibrarySummary?: () => Promise<LibrarySummary>;
-  getHistoryRecent: (params?: { limit?: number }) => Promise<HistoryRecentResponse>;
-  loadHistoryCsv: (csvPath: string) => Promise<HistoryLoadResponse>;
-  getXmlPlaylists: (xmlPath: string) => Promise<XmlPlaylistsResponse>;
-  syncTags: (body: SyncTagsRequest) => Promise<SyncTagsResponse>;
   exportSupportBundle?: (options?: {
     include_logs?: boolean;
     include_config?: boolean;
@@ -1897,11 +1769,9 @@ export interface CuePointBridge {
   setPrivacyExitPrefs?: (prefs: PrivacyExitPrefs) => Promise<{ ok: boolean }>;
   subscribeJobEvents: (
     jobId: string,
-    onEvent: (event: MatchJobStatus & { type?: string }) => void,
+    onEvent: (event: JobStatus) => void,
   ) => () => void;
   openXmlFileDialog: () => Promise<OpenXmlDialogResult>;
-  openCsvFileDialog: () => Promise<OpenCsvDialogResult>;
-  openM3uFileDialog: () => Promise<OpenM3uDialogResult>;
   resolveDroppedFilePath?: (file: File) => string | null;
   saveExportFileDialog: (options: {
     defaultPath?: string;
@@ -1915,6 +1785,11 @@ declare global {
   }
 }
 
+/**
+ * True inside the desktop app. Asked of `getJob`, which every build of the
+ * bridge has; it used to be asked of the file-based match job, which retired
+ * with inKey (DEC-071).
+ */
 export function hasEngineBridge(): boolean {
-  return typeof window.cuepoint?.startMatchJob === "function";
+  return typeof window.cuepoint?.getJob === "function";
 }

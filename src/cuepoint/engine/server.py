@@ -23,15 +23,12 @@ from cuepoint.engine.config_api import (
 )
 from cuepoint.engine.api_errors import error_payload as _error_payload
 from cuepoint.engine.job_events import iter_job_events
-from cuepoint.engine.export_api import parse_export_body, run_export
-from cuepoint.engine.sync_tags_api import parse_sync_tags_body, run_sync_tags
 from cuepoint.engine.support_bundle_api import (
     parse_support_bundle_body,
     run_support_bundle,
 )
 from cuepoint.engine.logs_api import get_cuepoint_log_text, get_cuepoint_logs_dir
 from cuepoint.engine.privacy_api import clear_cache_now, clear_logs_now
-from cuepoint.engine.history_api import list_recent_history, load_history_csv
 from cuepoint.engine.activity_api import (
     RECENT_LIMIT_DEFAULT,
     ActivityUnavailableError,
@@ -98,15 +95,7 @@ from cuepoint.engine.organization_api import (
     handles_post as organization_handles_post,
     status_for as organization_status,
 )
-from cuepoint.engine.xml_api import list_xml_playlists
-from cuepoint.engine.jobs import (
-    JobStore,
-    JobTypeBusyError,
-    cancel_match_job,
-    parse_match_job_body,
-    start_match_job,
-    track_result_to_dict,
-)
+from cuepoint.engine.jobs import JobStore, JobTypeBusyError
 from cuepoint.version import __version__
 
 _logger = logging.getLogger(__name__)
@@ -334,17 +323,12 @@ def make_handler(
                 payload: Dict[str, Any] = {
                     "id": job.id,
                     "state": job.state.value,
-                    "results": [track_result_to_dict(r) for r in job.results],
                 }
-                if job.batch_results:
-                    payload["batch_results"] = {
-                        name: [track_result_to_dict(r) for r in rows]
-                        for name, rows in job.batch_results.items()
-                    }
-                # A job whose answer is not a list of matched tracks puts it
-                # here (LIBRARY-10's refresh diff is the first). Served from
-                # this route rather than the status one, because status is
-                # polled and this is asked for once.
+                # What the job produced (LIBRARY-10's refresh diff was the
+                # first). Served from this route rather than the status one,
+                # because status is polled and this is asked for once. The
+                # file-based match's `results` and `batch_results` retired
+                # with inKey (CLEAN-14).
                 if job.result is not None:
                     payload["result"] = job.result
                 self._send_json(200, payload)
@@ -806,84 +790,6 @@ def make_handler(
             if path.startswith("/api/v1/incrate/"):
                 self._handle_incrate_get(path, parsed.query)
                 return
-            if path == "/api/v1/history/recent":
-                if not self._authorized():
-                    self._send_json(
-                        401, error_payload("UNAUTHORIZED", "Missing or invalid token")
-                    )
-                    return
-                params = parse_qs(parsed.query)
-                limit_raw = params.get("limit", ["50"])[0]
-                try:
-                    limit = int(limit_raw)
-                except ValueError:
-                    self._send_json(
-                        400,
-                        error_payload("INVALID_REQUEST", "limit must be an integer"),
-                    )
-                    return
-                self._send_json(
-                    200, list_recent_history(max_files=max(1, min(limit, 200)))
-                )
-                return
-            if path == "/api/v1/history/load":
-                if not self._authorized():
-                    self._send_json(
-                        401, error_payload("UNAUTHORIZED", "Missing or invalid token")
-                    )
-                    return
-                params = parse_qs(parsed.query)
-                csv_path = params.get("path", [""])[0]
-                if not csv_path:
-                    self._send_json(
-                        400,
-                        error_payload(
-                            "INVALID_REQUEST", "path query parameter required"
-                        ),
-                    )
-                    return
-                try:
-                    payload = load_history_csv(csv_path)
-                except FileNotFoundError as exc:
-                    self._send_json(404, error_payload("FILE_NOT_FOUND", str(exc)))
-                    return
-                except ValueError as exc:
-                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
-                    return
-                except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(500, error_payload("HISTORY_LOAD_FAILED", str(exc)))
-                    return
-                self._send_json(200, payload)
-                return
-            if path == "/api/v1/xml/playlists":
-                if not self._authorized():
-                    self._send_json(
-                        401, error_payload("UNAUTHORIZED", "Missing or invalid token")
-                    )
-                    return
-                params = parse_qs(parsed.query)
-                xml_path = params.get("path", [""])[0]
-                if not xml_path:
-                    self._send_json(
-                        400,
-                        error_payload(
-                            "INVALID_REQUEST", "path query parameter required"
-                        ),
-                    )
-                    return
-                try:
-                    payload = list_xml_playlists(xml_path)
-                except FileNotFoundError as exc:
-                    self._send_json(404, error_payload("FILE_NOT_FOUND", str(exc)))
-                    return
-                except ValueError as exc:
-                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
-                    return
-                except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(500, error_payload("XML_PARSE_FAILED", str(exc)))
-                    return
-                self._send_json(200, payload)
-                return
             if path == "/api/v1/config/beatport-token":
                 if not self._authorized():
                     self._send_json(
@@ -997,55 +903,19 @@ def make_handler(
             ):
                 self._handle_refresh_post(path)
                 return
-            if path == "/api/v1/jobs/match":
-                try:
-                    body = parse_match_job_body(self._read_body())
-                    job = start_match_job(job_store, body)
-                except ValueError as exc:
-                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
-                    return
-                self._send_json(202, {"id": job.id, "state": job.state.value})
-                return
-
-            cancel_match = JOB_CANCEL_ROUTE.match(path)
-            if cancel_match:
-                job_id = cancel_match.group(1)
+            cancel = JOB_CANCEL_ROUTE.match(path)
+            if cancel:
+                job_id = cancel.group(1)
                 job = job_store.get(job_id)
                 if job is None:
                     self._send_json(
                         404, error_payload("JOB_NOT_FOUND", f"Job {job_id} not found")
                     )
                     return
-                cancelled = cancel_match_job(job_store, job_id)
+                cancelled = job_store.request_cancel(job_id)
                 self._send_json(
                     200, {"id": cancelled.id, "state": cancelled.state.value}
                 )
-                return
-
-            if path == "/api/v1/export":
-                try:
-                    body = parse_export_body(self._read_body())
-                    payload = run_export(body, job_store)
-                except ValueError as exc:
-                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
-                    return
-                except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(500, error_payload("EXPORT_FAILED", str(exc)))
-                    return
-                self._send_json(200, payload)
-                return
-
-            if path == "/api/v1/tags/sync":
-                try:
-                    body = parse_sync_tags_body(self._read_body())
-                    payload = run_sync_tags(body)
-                except ValueError as exc:
-                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
-                    return
-                except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(500, error_payload("SYNC_TAGS_FAILED", str(exc)))
-                    return
-                self._send_json(200, payload)
                 return
 
             if path == "/api/v1/support/bundle":

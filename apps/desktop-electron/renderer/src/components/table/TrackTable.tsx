@@ -6,14 +6,14 @@
  * rows are on screen — and nothing else. The query, the sort, the selection
  * and the persistence are all somebody else's state, passed in and handed
  * back, which is what lets one component serve the library table (LIBUI-10),
- * the match results (Phase 7) and inCrate (Phase 9) without learning about any
+ * the match review (Phase 7) and inCrate (Phase 9) without learning about any
  * of them.
  *
- * It is extracted from `ResultsTable`, not a refactor of it: virtualization,
- * the sticky header, the resize handles and the themed scrollbar are the parts
- * that have worked for a year and are copied deliberately. Match review runs
- * on this table since CLEAN-12; the results screen keeps the original until
- * CLEAN-14 retires it with inKey (DEC-041).
+ * It was extracted from the Results screen's table rather than refactored out
+ * of it: virtualization, the sticky header, the resize handles and the themed
+ * scrollbar had worked for a year and were copied deliberately. Match review
+ * runs on this table since CLEAN-12, and the original retired with inKey in
+ * CLEAN-14 (DEC-041, DEC-071).
  *
  * **A row that has not arrived is still a row.** `getRow` returning undefined
  * renders a placeholder of exactly the same height. If height depended on

@@ -245,9 +245,8 @@ class TestRunningAsAJob:
         self, library_db, store, tmp_path
     ):
         release = threading.Event()
-        match_job = store.create_match_job(
-            xml_path=None,
-            playlist_name=None,
+        match_job = store.create_job(
+            job_type="clean_match",
             demo=True,
             runner=lambda _job: release.wait(timeout=5),
         )
@@ -257,7 +256,7 @@ class TestRunningAsAJob:
         release.set()
 
         types = {job.id: job.type for job in store.list_all()}
-        assert types[match_job.id] == "match"
+        assert types[match_job.id] == "clean_match"
         assert types[import_job.id] == JOB_TYPE_LIBRARY_IMPORT
 
 
@@ -602,19 +601,38 @@ class TestOverTheHttpApi:
 class TestJobStoreStaysGeneral:
     """ "Generalized, not rewritten" is the bar; these pin what generalized means."""
 
-    def test_a_match_job_still_defaults_to_the_match_type(self, store):
+    def test_a_job_keeps_the_type_it_was_created_with(self, store):
         release = threading.Event()
-        job = store.create_match_job(
-            xml_path=None,
-            playlist_name=None,
-            demo=True,
-            runner=lambda _job: release.wait(timeout=5),
+        job = store.create_job(
+            job_type="clean_match", runner=lambda _job: release.wait(timeout=5)
         )
         try:
-            assert job.type == "match"
-            assert job.to_status_dict()["type"] == "match"
+            assert job.type == "clean_match"
+            assert job.to_status_dict()["type"] == "clean_match"
         finally:
             release.set()
+
+    def test_a_job_must_say_what_it_is(self):
+        # The file-based match it once defaulted to retired in CLEAN-14.
+        with pytest.raises(TypeError):
+            Job(id="no-type")  # type: ignore[call-arg]
+
+    def test_the_file_based_match_is_gone(self, store):
+        import cuepoint.engine.jobs as jobs
+
+        for name in (
+            "MatchJob",
+            "start_match_job",
+            "cancel_match_job",
+            "parse_match_job_body",
+            "track_result_to_dict",
+            "run_real_match_job",
+            "run_real_batch_match_job",
+            "run_real_m3u_match_job",
+            "run_demo_match_job",
+        ):
+            assert not hasattr(jobs, name), name
+        assert not hasattr(store, "create_match_job")
 
     def test_create_job_names_its_thread_after_the_type(self, store):
         seen = {}

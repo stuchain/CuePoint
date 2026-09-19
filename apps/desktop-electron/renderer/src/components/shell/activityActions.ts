@@ -2,7 +2,8 @@
  * What an Activity entry offers, as pure functions (CLEAN-13).
  *
  * The feed is where a batch and a tag write are recorded as one thing, so it
- * is where "revert this batch" and "restore these files" belong. What each
+ * is where "revert this batch" and "restore these files" belong — and, since
+ * CLEAN-14, "resume this match" for one CuePoint's closing cut short. What each
  * entry offers is decided from what the engine recorded in it; whether the
  * action is allowed is still the engine's answer — except Collection
  * membership, whose refusal never varies and is drawn as a disabled control
@@ -30,10 +31,14 @@ export const BATCH_EVENTS: ReadonlySet<string> = new Set(["library.batch", "libr
 export const TAG_WRITE_EVENT = "clean.tags.written";
 export const TAG_INTERRUPTED_EVENT = "clean.tags.interrupted";
 
+/** The activity event a match leaves when CuePoint closed before it finished (DEC-065). */
+export const MATCH_INTERRUPTED_EVENT = "clean.match.interrupted";
+
 /** What an activity entry offers, if anything. */
 export type ActivityOffer =
   | { kind: "revert-batch"; batchId: string; disabledReason: string | null }
   | { kind: "restore-tags"; jobIds: string[]; interrupted: boolean }
+  | { kind: "resume-match"; jobId: string }
   | null;
 
 function text(value: unknown): string | null {
@@ -65,7 +70,22 @@ export function activityOffer(event: ActivityEvent): ActivityOffer {
       : [];
     return ids.length > 0 ? { kind: "restore-tags", jobIds: ids, interrupted: true } : null;
   }
+  if (event.type === MATCH_INTERRUPTED_EVENT) {
+    const jobId = text(detail.job_id);
+    return jobId ? { kind: "resume-match", jobId } : null;
+  }
   return null;
+}
+
+/**
+ * What resuming started, or why the entry offers nothing now.
+ *
+ * `remaining` is null when the match can no longer be resumed — it was resumed
+ * already, from here or from the Clean page.
+ */
+export function resumeOfferLine(remaining: number | null): string {
+  if (remaining == null) return "Nothing is left to resume.";
+  return `${count(remaining, "track")} left to match.`;
 }
 
 // --------------------------------------------------- unconfirmed writes

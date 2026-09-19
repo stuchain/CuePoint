@@ -199,6 +199,12 @@ def fetch_image(url: str) -> Optional[bytes]:
 
     if not is_beatport_artwork_url(url):
         return None
+    from cuepoint.data import beatport_fixture
+
+    fixture = beatport_fixture.active()
+    if fixture is not None:
+        # End-to-end tests answer from files (CLEAN-14).
+        return fixture.image(url)
     try:
         import requests
 

@@ -59,8 +59,11 @@ export {
   pageDestination,
   HOME_DESTINATION_ID,
   NAV_DESTINATIONS,
+  RETIRED_DESTINATIONS,
+  replacementFor,
+  retiredRedirects,
 } from "./navRegistry";
-export type { NavDestination, NavGroup, NavGroupEntry } from "./navRegistry";
+export type { NavDestination, NavGroup, NavGroupEntry, RetiredDestination } from "./navRegistry";
 export {
   destinationToRemember,
   LAST_DESTINATION_STORAGE_KEY,

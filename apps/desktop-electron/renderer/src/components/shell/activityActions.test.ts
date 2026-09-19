@@ -16,6 +16,7 @@ import {
   MEMBERSHIP_REVERT_REASON,
   activityOffer,
   restoredLine,
+  resumeOfferLine,
   revertedLine,
   writesLine,
 } from "./activityActions";
@@ -82,6 +83,26 @@ describe("a tag write's entry", () => {
   it("offers nothing on a restore's own entry, or on anything else", () => {
     expect(activityOffer(event("clean.tags.restored", { job_id: "r-1" }))).toBeNull();
     expect(activityOffer(event("library.imported", { batch_id: "x" }))).toBeNull();
+  });
+});
+
+describe("an interrupted match's entry (CLEAN-14)", () => {
+  it("offers resuming the match it names", () => {
+    expect(
+      activityOffer(event("clean.match.interrupted", { job_id: "m-1", remaining: 12, planned: 50 })),
+    ).toEqual({ kind: "resume-match", jobId: "m-1" });
+  });
+
+  it("offers nothing without a job to resume", () => {
+    expect(activityOffer(event("clean.match.interrupted", {}))).toBeNull();
+    expect(activityOffer(event("clean.match.interrupted", { job_id: " " }))).toBeNull();
+    expect(activityOffer(event("clean.match", { job_id: "m-1" }))).toBeNull();
+  });
+
+  it("says how much is left, or that nothing is", () => {
+    expect(resumeOfferLine(12)).toBe("12 tracks left to match.");
+    expect(resumeOfferLine(1)).toBe("1 track left to match.");
+    expect(resumeOfferLine(null)).toBe("Nothing is left to resume.");
   });
 });
 

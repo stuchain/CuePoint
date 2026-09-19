@@ -1,8 +1,8 @@
 """Label enrichment for inventory rows with empty label.
 
-Uses the full inKey pipeline: IProcessorService.process_track() with the same
-query generation, matcher, scoring, and parallel workers (ThreadPoolExecutor)
-as inKey.
+Uses the matching pipeline Clean and the CLI share: IProcessorService.process_track()
+with the same query generation, matcher, scoring, and parallel workers
+(ThreadPoolExecutor).
 """
 
 import logging
@@ -44,12 +44,12 @@ def enrich_labels_for_empty(
     processor_service: Optional[Any] = None,
     config_service: Optional[Any] = None,
 ) -> int:
-    """Enrich inventory rows with empty label using the full inKey pipeline.
+    """Enrich inventory rows with empty label using the shared matching pipeline.
 
-    When processor_service and config_service are provided, uses the same flow as inKey:
+    When processor_service and config_service are provided, uses the same flow as a Clean match:
     - IProcessorService.process_track(idx, track) per row
     - TRACK_WORKERS / performance.max_workers for parallel ThreadPoolExecutor
-    - Same query generation, matcher, scoring, and candidate workers as inKey
+    - Same query generation, matcher, scoring, and candidate workers as Clean and the CLI
 
     When processor_service is None, falls back to single-threaded make_search_queries
     + best_beatport_match (no parallelism).
@@ -59,7 +59,7 @@ def enrich_labels_for_empty(
         beatport_service: Used only when processor_service is None (fallback).
         progress_callback: Optional callback(current_index, total_count) after each row.
         delay_seconds: Sleep between tracks in fallback path.
-        processor_service: Optional IProcessorService for full inKey pipeline + workers.
+        processor_service: Optional IProcessorService for shared matching pipeline + workers.
         config_service: Optional IConfigService for TRACK_WORKERS / max_workers.
 
     Returns:
@@ -86,7 +86,7 @@ def _enrich_with_processor(
     config_service: Any,
     progress_callback: Optional[Callable[[int, int], None]] = None,
 ) -> int:
-    """Use IProcessorService.process_track with parallel workers (same as inKey)."""
+    """Use IProcessorService.process_track with parallel workers (as a Clean match does)."""
     from cuepoint.models.config import SETTINGS
 
     conn = inventory_db.get_connection(db_path)

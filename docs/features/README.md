@@ -5,6 +5,11 @@ This folder documents **all** features of the CuePoint app—large and small. Ea
 1. **What the feature is** (high-level)
 2. **How it is implemented** (with code references)
 
+The **UI** pages describe the retired Qt window and its matching screens, and
+say so at the top. Since Phase 7 the desktop app matches library tracks from
+**Clean** ([user guide](../user-guide/clean.md), DEC-071); the file-based
+processing and export pages now describe the CLI, which is unchanged.
+
 ## Feature index
 
 | Area | Document | Description |

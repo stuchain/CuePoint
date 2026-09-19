@@ -10,6 +10,7 @@ import {
   formatWhen,
   matchStartedLine,
   matchStateLabel,
+  resumableLine,
   rejectReasonText,
   signalExplanation,
   signalLabel,
@@ -76,6 +77,24 @@ describe("duplicate signals", () => {
     expect(signalExplanation("text")).toMatch(/two seconds/);
     expect(signalExplanation("path")).toMatch(/same file/);
     expect(signalExplanation("beatport")).toMatch(/Beatport/);
+  });
+});
+
+describe("a match that can be resumed", () => {
+  it("says how much is left, and that only that is matched", () => {
+    expect(resumableLine({ remaining: 12, planned: 50 }, 1)).toBe(
+      "A match stopped with 12 of 50 tracks left. Resuming matches only those.",
+    );
+    expect(resumableLine({ remaining: 1, planned: 1 }, 1)).toBe(
+      "A match stopped with 1 of 1 track left. Resuming matches only those.",
+    );
+  });
+
+  it("counts the others rather than listing them", () => {
+    expect(resumableLine({ remaining: 1200, planned: 30000 }, 2)).toBe(
+      "A match stopped with 1,200 of 30,000 tracks left. 1 other match can be resumed from Activity.",
+    );
+    expect(resumableLine({ remaining: 3, planned: 9 }, 4)).toMatch(/3 other matches can be resumed/);
   });
 });
 

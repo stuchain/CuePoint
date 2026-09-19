@@ -46,11 +46,16 @@ the repository and starts the engine automatically.
 
 | Route | Screen |
 |-------|--------|
-| `/` | Tool selection |
-| `/match` | inKey main workflow |
+| `/` | Home (Tools) |
+| `/library` | Library: the imported collection |
+| `/collections` | The Library page, aimed at Collections |
+| `/clean` | Clean: matching, review, missing files, duplicates, Health |
 | `/incrate` | inCrate workflow |
-| `/results` | Virtualized results table |
-| `/settings` | Settings + export modal |
+| `/settings` | Settings |
+
+`/match` and `/results`, inKey's and Results' old addresses, redirect to
+`/clean` (DEC-071); `renderer/src/components/shell/navRegistry.ts` declares
+every destination and every retired one.
 
 ## Docs
 

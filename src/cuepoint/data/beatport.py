@@ -81,6 +81,7 @@ from cuepoint.core.mix_parser import (
     _merge_name_lists,
     _split_display_names,
 )
+from cuepoint.data import beatport_fixture
 from cuepoint.models.config import BASE_URL, SESSION, SETTINGS
 from cuepoint.utils.http_cache import CacheInvalidation
 from cuepoint.utils.utils import retry_with_backoff, vlog
@@ -353,6 +354,13 @@ def request_html(url: str) -> Optional[BeautifulSoup]:
         The cache hit status is tracked globally and can be retrieved using
         get_last_cache_hit() after calling this function.
     """
+    fixture = beatport_fixture.active()
+    if fixture is not None:
+        # End-to-end tests answer from files (CLEAN-14); the page is parsed as
+        # a live one would be.
+        html = fixture.page(url)
+        return None if html is None else BeautifulSoup(html, "lxml")
+
     to = (SETTINGS["CONNECT_TIMEOUT"], SETTINGS["READ_TIMEOUT"])
 
     def _is_empty_body(resp: requests.Response) -> bool:
@@ -853,6 +861,10 @@ def track_urls(
     """
     if os.environ.get("CUEPOINT_SKIP_BEATPORT", "").lower() in ("1", "true", "yes"):
         return []
+    fixture = beatport_fixture.active()
+    if fixture is not None:
+        # End-to-end tests answer from files (CLEAN-14).
+        return fixture.search(query, max_results)
 
     diag_enabled = bool(SETTINGS.get("TRACE") or SETTINGS.get("VERBOSE"))
     diag_steps: list[str] = []

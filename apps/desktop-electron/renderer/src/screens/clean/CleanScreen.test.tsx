@@ -34,6 +34,13 @@ import { CLEAN_SECTION_STORAGE_KEY } from "./cleanSections";
 import { cleanOpening, cleanTrackState } from "./cleanLink";
 
 const UNTOUCHED = fixture.untouched.health as LibraryHealth;
+
+/**
+ * How long a track's comparison may take to arrive: a table read, then its
+ * matches, then its candidates. Testing Library's one second is too tight for
+ * three answers when the whole renderer suite runs in parallel.
+ */
+const LOADED = { timeout: 3000 };
 const MATCHED = fixture.matched.health as LibraryHealth;
 
 function track(id: number, overrides: Partial<LibraryTrackRow> = {}): LibraryTrackRow {
@@ -127,7 +134,8 @@ function stateFor(trackId: number, overrides: Partial<TrackMatchState> = {}): Tr
     track_id: trackId,
     state: "needs_review",
     decided_by: null,
-    attempt_id: 100,
+    // Each track's own attempt, as ids are in a real library.
+    attempt_id: 100 + trackId,
     candidate_id: 1001,
     newer_attempt_id: null,
     disputed: false,
@@ -155,7 +163,7 @@ function matchesFor(trackId: number, state = stateFor(trackId)): TrackMatches {
     candidate: CANDIDATES.find((c) => c.id === state.candidate_id) ?? null,
     attempts: [
       {
-        id: 100,
+        id: 100 + trackId,
         track_id: trackId,
         job_id: "job-match",
         outcome: "matched",
@@ -537,10 +545,10 @@ describe("the review queue", () => {
     press("ArrowDown");
     await waitFor(() => expect(bridge.getTrackMatches).toHaveBeenCalledWith({ trackId: 1 }));
     const panel = await screen.findByRole("region", { name: "Comparison" });
-    await within(panel).findByRole("button", { name: "Accept #1" });
+    await within(panel).findByRole("button", { name: "Accept #1" }, LOADED);
 
     press("ArrowRight");
-    await within(panel).findByRole("button", { name: "Accept #2" });
+    await within(panel).findByRole("button", { name: "Accept #2" }, LOADED);
 
     press("a");
     await waitFor(() =>
@@ -568,6 +576,50 @@ describe("the review queue", () => {
     expect(bridge.decideMatch).toHaveBeenCalledTimes(2);
   });
 
+  it("keeps the reviewer's choice when the candidates are read again (CLEAN-14)", async () => {
+    // A match ending reads the track's candidates again. The choice made with
+    // Right must survive that, or A accepts a candidate nobody chose.
+    renderClean();
+    await screen.findByText("Track 1");
+    press("ArrowDown");
+    const panel = await screen.findByRole("region", { name: "Comparison" });
+    await within(panel).findByRole("button", { name: "Accept #1" }, LOADED);
+    press("ArrowRight");
+    await within(panel).findByRole("button", { name: "Accept #2" }, LOADED);
+    const reads = bridge.getMatchCandidates!.mock.calls.length;
+
+    fireEvent.click(screen.getByRole("button", { name: "Match all 3" }));
+    await screen.findByText("Matching finished.");
+    await waitFor(() =>
+      expect(bridge.getMatchCandidates!.mock.calls.length).toBeGreaterThan(reads),
+    );
+
+    expect(within(panel).getByRole("button", { name: "Accept #2" })).toBeInTheDocument();
+    press("a");
+    await waitFor(() =>
+      expect(bridge.decideMatch).toHaveBeenCalledWith({
+        decision: "accept",
+        track_id: 1,
+        candidate_id: 1002,
+      }),
+    );
+  });
+
+  it("starts a new track from its default choice", async () => {
+    renderClean();
+    await screen.findByText("Track 1");
+    press("ArrowDown");
+    const panel = await screen.findByRole("region", { name: "Comparison" });
+    await within(panel).findByRole("button", { name: "Accept #1" }, LOADED);
+    press("ArrowRight");
+    await within(panel).findByRole("button", { name: "Accept #2" }, LOADED);
+
+    press("ArrowDown");
+    await waitFor(() => expect(bridge.getTrackMatches).toHaveBeenLastCalledWith({ trackId: 2 }));
+    // Track 2's candidates are other rows; the choice starts again at #1.
+    await within(panel).findByRole("button", { name: "Accept #1" }, LOADED);
+  });
+
   it("ignores the keys while typing", async () => {
     renderClean();
     await screen.findByText("Track 1");
@@ -579,7 +631,7 @@ describe("the review queue", () => {
   it("leaves its keys alone while one of its dialogs is open", async () => {
     renderClean();
     fireEvent.click(await screen.findByText("Track 1"));
-    await screen.findByRole("button", { name: "Accept #1" });
+    await screen.findByRole("button", { name: "Accept #1" }, LOADED);
     fireEvent.click(screen.getByRole("button", { name: "Export review list…" }));
     await screen.findByRole("dialog");
 
@@ -594,7 +646,7 @@ describe("the review queue", () => {
   it("leaves a key alone that something else already handled", async () => {
     renderClean();
     fireEvent.click(await screen.findByText("Track 1"));
-    await screen.findByRole("button", { name: "Accept #1" });
+    await screen.findByRole("button", { name: "Accept #1" }, LOADED);
 
     const handled = new KeyboardEvent("keydown", { key: "a", cancelable: true, bubbles: true });
     handled.preventDefault();
@@ -634,7 +686,7 @@ describe("the review queue", () => {
   it("offers no apply before a match is accepted", async () => {
     renderClean();
     fireEvent.click(await screen.findByText("Track 1"));
-    await screen.findByRole("button", { name: "Accept #1" });
+    await screen.findByRole("button", { name: "Accept #1" }, LOADED);
     expect(screen.queryByRole("group", { name: "Apply from the accepted match" })).toBeNull();
     expect(screen.getByRole("button", { name: "Clear decision" })).toBeDisabled();
   });
@@ -675,6 +727,66 @@ describe("the review queue", () => {
         rematch: true,
       }),
     );
+  });
+
+  it("offers to resume a match that stopped, and resumes only what was left (CLEAN-14)", async () => {
+    const waiting = {
+      job_id: "job-old",
+      remaining: 2,
+      planned: 5,
+      selected: 5,
+      excluded: 0,
+      rematch: false,
+      created_at: "2026-09-17T10:00:00Z",
+      resumed_from: null,
+    };
+    let resumable = [waiting];
+    bridge.getResumableMatches = vi.fn(async () => ({ jobs: resumable, total: resumable.length }));
+    bridge.resumeCleanMatch = vi.fn(async () => {
+      resumable = [];
+      return {
+        job_id: "job-resumed",
+        id: "job-resumed",
+        state: "queued",
+        selected: 2,
+        excluded: 0,
+        planned: 2,
+        resumed_from: "job-old",
+      };
+    });
+    renderClean();
+    const offer = await screen.findByRole("region", { name: "Resume a match" });
+    expect(offer).toHaveTextContent("A match stopped with 2 of 5 tracks left. Resuming matches only those.");
+
+    fireEvent.click(within(offer).getByRole("button", { name: "Resume" }));
+
+    await waitFor(() => expect(bridge.resumeCleanMatch).toHaveBeenCalledWith({ job_id: "job-old" }));
+    expect(bridge.startCleanMatch).not.toHaveBeenCalled();
+    expect(await screen.findByText("Matching 2 tracks on Beatport.")).toBeInTheDocument();
+    await screen.findByText("Matching finished.");
+    // Read again once the match ended: nothing is left to offer.
+    await waitFor(() => expect(screen.queryByRole("region", { name: "Resume a match" })).toBeNull());
+    expect(bridge.getResumableMatches).toHaveBeenCalledTimes(2);
+  });
+
+  it("offers no resume when nothing stopped, or in a build that cannot", async () => {
+    bridge.getResumableMatches = vi.fn().mockResolvedValue({ jobs: [], total: 0 });
+    const { unmount } = renderClean();
+    await screen.findByText("Track 1");
+    await waitFor(() => expect(bridge.getResumableMatches).toHaveBeenCalled());
+    expect(screen.queryByRole("region", { name: "Resume a match" })).toBeNull();
+    unmount();
+
+    // A build whose bridge answers what can be resumed but cannot resume it.
+    bridge.getResumableMatches = vi.fn().mockResolvedValue({
+      jobs: [{ job_id: "x", remaining: 1, planned: 1, selected: 1, excluded: 0, rematch: false, created_at: "", resumed_from: null }],
+      total: 1,
+    });
+    delete bridge.resumeCleanMatch;
+    renderClean();
+    await screen.findByText("Track 1");
+    await waitFor(() => expect(bridge.getResumableMatches).toHaveBeenCalled());
+    expect(screen.queryByRole("region", { name: "Resume a match" })).toBeNull();
   });
 
   it("says why the engine refused a match", async () => {

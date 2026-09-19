@@ -1,26 +1,21 @@
 /**
- * The table stays generic, and the old one stays untouched (LIBUI-04, DEC-041).
+ * The table stays generic (LIBUI-04, DEC-041).
  *
- * Two boundaries, neither of which a behavioural test can see.
+ * A boundary a behavioural test cannot see.
  *
  * **`TrackTable` knows about no particular kind of track.** The moment it
  * imports `mocks/`, the match-result shape, or a library type, it is no longer
  * a component two more phases can adopt — and nothing about how it renders
  * would change to say so.
  *
- * **`ResultsTable` is not being refactored.** DEC-041 chose to extract rather
- * than rewrite. CLEAN-12 converged match review onto `TrackTable` through the
- * windowed source; the results screen keeps the component that has worked for
- * a year until CLEAN-14 deletes it with inKey. An edit to it before then is a
- * decision nobody took.
+ * The table it was extracted from retired with the Results screen in CLEAN-14;
+ * `retiredModules.test.ts` holds that nothing brings it back.
  */
 import { describe, expect, it } from "vitest";
 
 import trackTable from "./TrackTable.tsx?raw";
 import trackTableLayout from "./trackTableLayout.ts?raw";
 import trackTableSource from "./trackTableSource.ts?raw";
-import resultsTable from "../ResultsTable.tsx?raw";
-import resultsTableLayout from "../resultsTableLayout.ts?raw";
 
 /** Every module path a file imports. */
 function imports(source: string): string[] {
@@ -50,7 +45,7 @@ describe("TrackTable is generic", () => {
   );
 
   it("names no application row type in its code", () => {
-    // TrackResult is the match screen's; LibraryTrackRow is the library's.
+    // TrackResult was the retired match screen's; LibraryTrackRow is the library's.
     // Either one here would be a component pretending to be generic.
     for (const source of generic) {
       expect(codeOnly(source)).not.toContain("TrackResult");
@@ -69,25 +64,5 @@ describe("TrackTable is generic", () => {
   it("takes its columns and its rows as arguments", () => {
     expect(trackTable).toContain("columns:");
     expect(trackTable).toContain("source:");
-  });
-});
-
-describe("ResultsTable is left alone", () => {
-  it("still reads the match-result columns", () => {
-    // If Phase 4 had rewritten it in place, these would be gone.
-    expect(resultsTable).toContain("RESULTS_COLUMNS");
-    expect(resultsTable).toContain("TrackResult");
-  });
-
-  it("still uses its own layout module", () => {
-    expect(imports(resultsTable)).toContain("./resultsTableLayout");
-    expect(resultsTableLayout).toContain("RESULTS_LAYOUT_STORAGE_KEY");
-  });
-
-  it("does not import the new table", () => {
-    // The convergence happened beside it (CLEAN-12), not inside it; CLEAN-14
-    // removes it. A quiet swap would change the results screen with nothing
-    // asserting what it now does.
-    expect(imports(resultsTable).filter((path) => path.includes("TrackTable"))).toEqual([]);
   });
 });

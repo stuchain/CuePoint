@@ -60,7 +60,8 @@ from cuepoint.services.match_service import (
 _logger = logging.getLogger(__name__)
 
 #: The ``jobs`` table discriminator for a match over library tracks. Not
-#: ``"match"``: that is inKey's file-based run, which retires in CLEAN-14.
+#: ``"match"``: that was inKey's file-based run, which retired in CLEAN-14, and
+#: a database from before then still has rows of that type.
 JOB_TYPE_CLEAN_MATCH = "clean_match"
 
 #: What a match job refuses to start beside, besides another match job.

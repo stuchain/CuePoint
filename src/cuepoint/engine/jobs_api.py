@@ -111,10 +111,10 @@ def list_jobs(
         existing = merged.get(live["id"])
         if not live.get("type"):
             # A live job that cannot say what it is falls back to the persisted
-            # column, then to the historical default. A job that *can* say keeps
-            # its own answer: it is the source, and letting the sampled record
-            # win would relabel a running import as a match.
-            live["type"] = (existing or {}).get("type", "match")
+            # column. A job that *can* say keeps its own answer: it is the
+            # source, and letting the sampled record win would relabel a
+            # running import as something else.
+            live["type"] = (existing or {}).get("type", "")
         merged[live["id"]] = live
 
     jobs = list(merged.values())

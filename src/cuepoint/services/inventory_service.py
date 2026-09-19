@@ -44,7 +44,7 @@ class InventoryService(IInventoryService):
             config_service: Optional IConfigService for incrate.inventory_db_path, etc.
             beatport_service: Optional IBeatportService (used when processor_service is None).
             logging_service: Optional ILoggingService (currently unused).
-            processor_service: Optional IProcessorService for full inKey pipeline + parallel workers.
+            processor_service: Optional IProcessorService for shared matching pipeline (the one Clean and the CLI use) + parallel workers.
         """
         self._config = config_service
         self._beatport = beatport_service

@@ -12,8 +12,8 @@
  * never a hunt through the sidebar, the router and the fallback rule.
  *
  * Today's screens keep their identity as the Tools group (DEC-021). Phase 7
- * re-homes inKey into Clean and Phase 9 re-homes inCrate into Discover; until
- * then they stay exactly where users expect them.
+ * retired inKey and Results into Clean (DEC-071), and Phase 9 re-homes inCrate
+ * into Discover; until then it stays exactly where users expect it.
  *
  * This is data, deliberately. It holds no elements and no callbacks: `App.tsx`
  * maps an id to the element to render, because that is where the props and
@@ -83,14 +83,60 @@ export const NAV_DESTINATIONS: readonly NavDestination[] = [
   { id: "discover", label: "Discover", path: "/discover", group: "workspace", icon: "discover", enabled: false },
   { id: "prepare", label: "Prepare", path: "/prepare", group: "workspace", icon: "prepare", enabled: false },
 
-  // Today's screens, kept intact as Tools (DEC-021).
+  // Today's screens, kept intact as Tools (DEC-021). inKey and Results retired
+  // into Clean (DEC-071); see `RETIRED_DESTINATIONS`.
   { id: "tools", label: "Tools", path: "/", group: "tools", icon: "home", enabled: true },
-  { id: "match", label: "inKey", path: "/match", group: "tools", icon: "match", enabled: true },
   { id: "incrate", label: "inCrate", path: "/incrate", group: "tools", icon: "incrate", enabled: true },
-  { id: "results", label: "Results", path: "/results", group: "tools", icon: "filter", enabled: true },
 
   { id: "settings", label: "Settings", path: "/settings", group: "system", icon: "settings", enabled: true },
 ];
+
+/**
+ * A destination that no longer exists, and the one that replaced it.
+ *
+ * DEC-027 remembers the last page by id, and people keep links. Removing a
+ * page outright would send both to home, which says nothing about where the
+ * work went. A retired entry keeps its id and path so the launch memory and
+ * the router can each send them to the page that does that work now.
+ */
+export interface RetiredDestination {
+  id: string;
+  path: string;
+  /** The id of the destination that does this page's work now. */
+  replacedBy: string;
+}
+
+/** inKey and Results became Clean in Phase 7 (DEC-071). */
+export const RETIRED_DESTINATIONS: readonly RetiredDestination[] = [
+  { id: "match", path: "/match", replacedBy: "clean" },
+  { id: "results", path: "/results", replacedBy: "clean" },
+];
+
+/**
+ * The page a retired id now leads to, or null for an id that was never
+ * retired or whose replacement is not an enabled page.
+ */
+export function replacementFor(
+  id: string | null | undefined,
+  destinations: readonly NavDestination[] = NAV_DESTINATIONS,
+  retired: readonly RetiredDestination[] = RETIRED_DESTINATIONS,
+): NavDestination | null {
+  const entry = retired.find((candidate) => candidate.id === id);
+  if (!entry) return null;
+  const replacement = findDestinationById(entry.replacedBy, destinations);
+  return replacement?.enabled ? replacement : null;
+}
+
+/** Each retired path and the path it redirects to, for the router. */
+export function retiredRedirects(
+  destinations: readonly NavDestination[] = NAV_DESTINATIONS,
+  retired: readonly RetiredDestination[] = RETIRED_DESTINATIONS,
+): Array<{ id: string; from: string; to: string }> {
+  return retired.flatMap((entry) => {
+    const replacement = replacementFor(entry.id, destinations, retired);
+    return replacement ? [{ id: entry.id, from: entry.path, to: replacement.path }] : [];
+  });
+}
 
 /**
  * Every lookup takes the destination list as an optional argument.

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { HashRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import {
   AboutDialog,
   AppMenuBar,
@@ -8,7 +8,6 @@ import {
   OnboardingDialog,
   PrivacyDialog,
   RekordboxInstructionsDialog,
-  PlaylistExportInstructionsDialog,
   ShortcutsDialog,
   SupportBundleDialog,
   ToastProvider,
@@ -24,18 +23,16 @@ import {
   TrackInspector,
   InspectorSlotProvider,
   InspectorSlotOutlet,
+  retiredRedirects,
   useRememberDestination,
 } from "./components/shell";
 import { PlayerSlot } from "./components/player/PlayerSlot";
 import { useRestorePlayerAudio } from "./components/player/playerAudioState";
 import { useRestorePlayerOrder } from "./components/player/playerOrderState";
-import { MatchResultsProvider } from "./context/MatchResultsContext";
 import {
   CleanScreen,
   InCrateMainScreen,
-  InKeyMainScreen,
   LibraryScreen,
-  ResultsScreen,
   SettingsExportScreen,
   ToolSelectionScreen,
 } from "./screens";
@@ -59,7 +56,6 @@ function AppShell() {
   const [onboardingOpen, setOnboardingOpen] = useState(() => shouldShowOnboarding());
   const [rekordboxOpen, setRekordboxOpen] = useState(false);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
-  const [playlistExportInstructionsOpen, setPlaylistExportInstructionsOpen] = useState(false);
 
   useEffect(() => {
     document.title = "CuePoint";
@@ -139,16 +135,8 @@ function AppShell() {
             onOpenInClean={(trackId) => navigate("/clean", { state: cleanTrackState(trackId) })}
           />
         );
-      case "match":
-        return (
-          <InKeyMainScreen
-            onOpenPlaylistExportInstructions={() => setPlaylistExportInstructionsOpen(true)}
-          />
-        );
       case "incrate":
         return <InCrateMainScreen />;
-      case "results":
-        return <ResultsScreen />;
       case "settings":
         return <SettingsExportScreen />;
       default:
@@ -165,7 +153,6 @@ function AppShell() {
     onOpenLogViewer: () => setLogViewerOpen(true),
     onShowOnboarding: () => setOnboardingOpen(true),
     onOpenRekordboxInstructions: () => setRekordboxOpen(true),
-    onOpenPlaylistExportInstructions: () => setPlaylistExportInstructionsOpen(true),
   };
 
   return (
@@ -191,6 +178,17 @@ function AppShell() {
             />
           ))}
           {/*
+            A retired page's path lands on the page that replaced it (DEC-071),
+            so a bookmark or an old link still arrives somewhere real.
+          */}
+          {retiredRedirects().map((redirect) => (
+            <Route
+              key={redirect.id}
+              path={redirect.from}
+              element={<Navigate to={redirect.to} replace />}
+            />
+          ))}
+          {/*
             A path that matches no destination renders home rather than nothing.
             This is the belt to the registry's braces: DEC-027's fallback keeps
             a stale stored destination from landing here, and this keeps any
@@ -208,10 +206,6 @@ function AppShell() {
       <OnboardingDialog open={onboardingOpen} onComplete={() => setOnboardingOpen(false)} />
       <RekordboxInstructionsDialog open={rekordboxOpen} onClose={() => setRekordboxOpen(false)} />
       <LogViewerDialog open={logViewerOpen} onClose={() => setLogViewerOpen(false)} />
-      <PlaylistExportInstructionsDialog
-        open={playlistExportInstructionsOpen}
-        onClose={() => setPlaylistExportInstructionsOpen(false)}
-      />
     </>
   );
 }
@@ -226,11 +220,9 @@ export default function App() {
       <ThemeProvider>
         <ScaleProvider>
           <ToastProvider>
-            <MatchResultsProvider>
-              <InspectorSlotProvider>
-                <AppShell />
-              </InspectorSlotProvider>
-            </MatchResultsProvider>
+            <InspectorSlotProvider>
+              <AppShell />
+            </InspectorSlotProvider>
           </ToastProvider>
         </ScaleProvider>
       </ThemeProvider>

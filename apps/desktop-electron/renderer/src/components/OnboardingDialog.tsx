@@ -7,15 +7,15 @@ const STORAGE_KEY = "cuepoint-onboarding-complete";
 const SCREENS = [
   {
     title: "Welcome to CuePoint",
-    body: "Match your Rekordbox library to Beatport tracks, export results, and sync tags back to your collection.",
+    body: "Browse and organize your Rekordbox library, match it to Beatport, and keep it clean.",
   },
   {
-    title: "Collection XML",
-    body: "Export your Rekordbox collection as XML, then open it in inKey. Single playlist or batch mode — your choice.",
+    title: "Import your collection",
+    body: "Export your Rekordbox collection as XML, then import it in the Library. A refresh picks up later changes.",
   },
   {
-    title: "Results & export",
-    body: "Review matches on the Results screen, export CSV/JSON/Excel, or sync key/BPM tags with Rekordbox.",
+    title: "Clean",
+    body: "Match tracks on Beatport, review what needs a look, apply the values you want, and export the review list. Nothing is deleted.",
   },
 ];
 

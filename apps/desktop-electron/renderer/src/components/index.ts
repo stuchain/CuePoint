@@ -1,22 +1,15 @@
 export { AboutDialog } from "./AboutDialog";
 export { AppMenuBar } from "./AppMenuBar";
 export type { AppMenuActions } from "./AppMenuBar";
-export { CandidateDialog } from "./CandidateDialog";
 export { DiagnosticsDialog } from "./DiagnosticsDialog";
 export { OnboardingDialog, shouldShowOnboarding } from "./OnboardingDialog";
 export { PrivacyDialog } from "./PrivacyDialog";
 export { RekordboxInstructionsDialog } from "./RekordboxInstructionsDialog";
 export { LogViewerDialog } from "./LogViewerDialog";
-export { PlaylistExportInstructionsDialog } from "./PlaylistExportInstructionsDialog";
-export { RunSummaryDialog } from "./RunSummaryDialog";
 export { ShortcutsDialog } from "./ShortcutsDialog";
-export { SyncCompleteDialog } from "./SyncCompleteDialog";
-export { SyncTagsDialog } from "./SyncTagsDialog";
 export { SupportBundleDialog } from "./SupportBundleDialog";
-export { ExportResultsButton, ExportResultsModal } from "./ExportResultsModal";
-export { ResultsTable } from "./ResultsTable";
-// The Universal Track Table (LIBUI-04). Lives beside ResultsTable rather
-// than replacing it until Phase 7 converges them (DEC-041).
+// The Universal Track Table (LIBUI-04). It replaced ResultsTable when inKey
+// and Results retired in Phase 7 (DEC-041, DEC-071).
 export { TrackContextMenu } from "./TrackContextMenu";
 export type { TrackContextMenuItem, TrackContextMenuProps } from "./TrackContextMenu";
 export { TrackTable } from "./table/TrackTable";

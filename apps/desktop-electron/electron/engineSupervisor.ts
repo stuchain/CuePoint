@@ -57,6 +57,7 @@ import {
   type TrackMatches,
 } from "./engineClient";
 import { getBundledEnginePath, shouldUseBundledEngine } from "./engineLaunch";
+import { stopProcessTree } from "./processTree";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /** Repo root: works from source (`electron/`) and bundle (`electron-dist/`). */
@@ -242,15 +243,13 @@ export class EngineSupervisor {
     if (!this.child) return;
     const proc = this.child;
     this.child = null;
-    proc.kill();
+    // The tree, not the process: a packaged engine on Windows is a bootloader
+    // whose child outlived it, holding the port and the database (CLEAN-14).
+    stopProcessTree(proc);
     await new Promise<void>((resolve) => {
       proc.once("exit", () => resolve());
       setTimeout(() => {
-        try {
-          proc.kill("SIGKILL");
-        } catch {
-          /* ignore */
-        }
+        stopProcessTree(proc, { force: true });
         resolve();
       }, 2000);
     });
@@ -279,14 +278,6 @@ export class EngineSupervisor {
       throw new Error("Engine not running");
     }
     return new EngineClient(this.port, this.token, this.sessionId);
-  }
-
-  async startMatchJob(body: {
-    demo?: boolean;
-    xml_path?: string;
-    playlist_name?: string;
-  }): Promise<{ id: string; state: string }> {
-    return this.client().startMatchJob(body);
   }
 
   async searchLibrary(params: {
@@ -591,20 +582,10 @@ export class EngineSupervisor {
   async getJobResults(jobId: string): Promise<{
     id: string;
     state: string;
-    results: Record<string, unknown>[];
+    /** What the job produced, for a job that produces something. */
+    result?: Record<string, unknown>;
   }> {
     return this.client().getJobResults(jobId);
-  }
-
-  async exportResults(body: {
-    format: "csv" | "json" | "excel" | "xlsx";
-    file_path: string;
-    job_id?: string;
-    results?: Record<string, unknown>[];
-    playlist_name?: string;
-    overwrite?: boolean;
-  }): Promise<{ file_path: string; format: string; count: number }> {
-    return this.client().exportResults(body);
   }
 
   async getIncrateInventory(params?: {
@@ -665,22 +646,6 @@ export class EngineSupervisor {
     token?: string;
   }): Promise<{ ok: boolean; message: string }> {
     return this.client().testBeatportToken(body);
-  }
-
-  async getHistoryRecent(params?: { limit?: number }) {
-    return this.client().getHistoryRecent(params);
-  }
-
-  async loadHistoryCsv(csvPath: string) {
-    return this.client().loadHistoryCsv(csvPath);
-  }
-
-  async getXmlPlaylists(xmlPath: string) {
-    return this.client().getXmlPlaylists(xmlPath);
-  }
-
-  async syncTags(body: Record<string, unknown>) {
-    return this.client().syncTags(body);
   }
 
   async exportSupportBundle(body: {
@@ -806,6 +771,16 @@ export class EngineSupervisor {
   }
 }
 
-export function resolvePreloadPath(): string {
-  return path.join(REPO_ROOT, "apps", "desktop-electron", "electron", "preload.cjs");
+/**
+ * The runtime preload, beside the bundle that asks for it.
+ *
+ * `electron/preload.cjs` ships next to `electron-dist/` in both layouts —
+ * the source tree and `app.asar` (package.json's `build.files`) — so it is
+ * found from the bundle's own folder. It used to be found from the repository
+ * root, three folders up, which inside a packaged app is the install folder:
+ * the path named nothing, the window got no `window.cuepoint`, and a packaged
+ * build never reached its engine (found in CLEAN-14).
+ */
+export function resolvePreloadPath(bundleDir: string = __dirname): string {
+  return path.join(bundleDir, "..", "electron", "preload.cjs");
 }

@@ -79,11 +79,22 @@ _INSERT_CANDIDATE = (
     f"INSERT INTO match_candidates ({', '.join(_INSERTED_CANDIDATE)})"
     f" VALUES ({', '.join('?' for _ in _INSERTED_CANDIDATE)})"
 )
+#: Written from the candidate after every write, never from the model.
+_WRITTEN_MATCH_COLUMNS = tuple(c for c in _MATCH_COLUMNS if c != "candidate_score")
+
 _UPSERT_MATCH = (
-    f"INSERT INTO track_match ({', '.join(_MATCH_COLUMNS)})"
-    f" VALUES ({', '.join('?' for _ in _MATCH_COLUMNS)})"
+    f"INSERT INTO track_match ({', '.join(_WRITTEN_MATCH_COLUMNS)})"
+    f" VALUES ({', '.join('?' for _ in _WRITTEN_MATCH_COLUMNS)})"
     " ON CONFLICT(track_id) DO UPDATE SET "
-    + ", ".join(f"{c} = excluded.{c}" for c in _MATCH_COLUMNS if c != "track_id")
+    + ", ".join(
+        f"{c} = excluded.{c}" for c in _WRITTEN_MATCH_COLUMNS if c != "track_id"
+    )
+)
+
+_SET_CANDIDATE_SCORE = (
+    "UPDATE track_match SET candidate_score ="
+    " (SELECT score FROM match_candidates WHERE id = track_match.candidate_id)"
+    " WHERE track_id = ?"
 )
 
 _SAVEPOINT = "match_attempt"
@@ -285,7 +296,13 @@ class MatchRepository(IMatchRepository):
         values = match.to_dict()
         with self._db.transaction(join_existing=True) as conn:
             _check_evidence(conn, match)
-            conn.execute(_UPSERT_MATCH, tuple(values[c] for c in _MATCH_COLUMNS))
+            conn.execute(
+                _UPSERT_MATCH, tuple(values[c] for c in _WRITTEN_MATCH_COLUMNS)
+            )
+            # The score the state points at, kept beside it so a sort or a
+            # filter by it reads no candidate (migration 0019). Candidates never
+            # change, so it can only change here.
+            conn.execute(_SET_CANDIDATE_SCORE, (match.track_id,))
             row = conn.execute(
                 f"{_SELECT_MATCH} WHERE track_id = ?", (match.track_id,)
             ).fetchone()

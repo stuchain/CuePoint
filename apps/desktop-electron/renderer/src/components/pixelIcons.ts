@@ -387,8 +387,9 @@ const prepare = [
 ];
 
 /**
- * inKey: a quarter note. An eighth note's flag turned into a blob at 1x, and a
- * note is recognizable without one.
+ * Matching: a quarter note. An eighth note's flag turned into a blob at 1x, and
+ * a note is recognizable without one. Drawn for inKey's sidebar entry, which
+ * retired into Clean (DEC-071); kept in the set as the matching glyph.
  */
 const match = [
   "............",

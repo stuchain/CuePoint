@@ -26,10 +26,10 @@ export interface TrackInspectorProps {
  * moving between destinations never unmounts it. Width and visibility are
  * remembered.
  *
- * It holds no track data yet. Wiring it to the current `ResultsScreen`
- * selection was considered and rejected in DEC-024: that would build a panel
- * against the legacy `TrackResult` shape Phase 4 reworks, and duplicate
- * `CandidateDialog` in the meantime.
+ * It holds no track data of its own: each page puts its content in the slot
+ * (LIBUI-10). Wiring it to the old Results screen's selection was rejected in
+ * DEC-024, because it would have built a panel against a match-result shape
+ * that Phase 7 retired.
  */
 export function TrackInspector({ children }: TrackInspectorProps) {
   const [state, setState] = useState<InspectorState>(loadInspectorState);

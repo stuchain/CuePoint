@@ -1,8 +1,8 @@
 /**
  * One track beside the candidates Beatport found (CLEAN-12, DEC-066, DEC-004).
  *
- * The first dense comparison in the pixel design system, redrawn from
- * `CandidateDialog`'s layout rather than kept: a track's imported values in the
+ * The first dense comparison in the pixel design system, redrawn from the
+ * retired inKey candidate dialog's layout rather than kept: a track's imported values in the
  * first column, a column per candidate, and a row per field. Where a candidate
  * differs from the track the cell is marked — with a glyph and words as well as
  * a colour, because a difference told only by colour is one a colour-blind

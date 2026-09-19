@@ -1,17 +1,15 @@
-import { Link } from "react-router-dom";
 import { Button, Panel, TextField } from "../components";
-import { ExportResultsButton } from "../components/ExportResultsModal";
 import { hasEngineBridge } from "../api/cuepointBridge.types";
 import { useBeatportToken } from "../hooks/useBeatportToken";
 import { AudioSettingsPanel } from "./AudioSettingsPanel";
 import { ThemeSettingsPanel } from "./ThemeSettingsPanel";
-import { useMatchResults } from "../context/MatchResultsContext";
-import { sampleResults } from "../mocks/fixtures";
 import "./screens.css";
 
+/**
+ * Settings. Exporting matches moved to Clean's "Export review list" when
+ * Results retired (DEC-071), so this page holds settings only.
+ */
 export function SettingsExportScreen() {
-  const { results: engineResults, source } = useMatchResults();
-  const exportRows = source === "engine" && engineResults.length > 0 ? engineResults : sampleResults;
   const engineAvailable = hasEngineBridge();
   const {
     status,
@@ -33,12 +31,6 @@ export function SettingsExportScreen() {
 
   return (
     <div className="screen screen--stack screen--scroll">
-      <header className="screen-toolbar">
-        <Link to="/match" className="screen-toolbar__brand">
-          ← Back to inKey
-        </Link>
-      </header>
-
       <ThemeSettingsPanel />
 
       <AudioSettingsPanel />
@@ -74,14 +66,6 @@ export function SettingsExportScreen() {
           </div>
           {testMessage ? <p className="screen__muted">{testMessage}</p> : null}
         </div>
-      </Panel>
-
-      <Panel title="Export">
-        <p className="screen__muted">
-          Export matched metadata to CSV, JSON, or Excel
-          {engineAvailable ? " via the Python engine." : " (mock in browser)."}
-        </p>
-        <ExportResultsButton rows={exportRows} playlistName="cuepoint-export" variant="primary" />
       </Panel>
     </div>
   );

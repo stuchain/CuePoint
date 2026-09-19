@@ -1,14 +1,19 @@
-"""Tests for engine match job API (Phase 3 P0)."""
+"""Tests for the engine's job routes (Phase 3 P0).
+
+The file-based match these were first written against retired with inKey
+(CLEAN-14); the routes serve every job type, so a generic job stands in.
+"""
 
 import json
 import socket
-import time
+import threading
 import urllib.error
 import urllib.request
 
 import pytest
 
-from cuepoint.engine.jobs import JobStore
+from cuepoint.compat.gui_types import ProgressInfo
+from cuepoint.engine.jobs import JobState, JobStore
 from cuepoint.engine.server import EngineConfig, start_engine_thread
 
 
@@ -28,100 +33,93 @@ def _auth_request(
     return urllib.request.urlopen(req, timeout=5)
 
 
-def test_post_demo_match_job_and_poll_results():
+@pytest.fixture
+def engine():
     port = _free_port()
     token = "job-test-token"
     store = JobStore()
     config = EngineConfig(host="127.0.0.1", port=port, token=token)
     server, thread = start_engine_thread(config, store=store)
-    base = f"http://127.0.0.1:{port}"
     try:
-        with _auth_request(
-            f"{base}/api/v1/jobs/match",
-            token,
-            data=json.dumps({"demo": True}).encode("utf-8"),
-            method="POST",
-        ) as resp:
-            assert resp.status == 202
-            created = json.loads(resp.read().decode("utf-8"))
-        job_id = created["id"]
-        assert created["state"] in ("queued", "running")
-
-        succeeded = False
-        for _ in range(50):
-            with _auth_request(f"{base}/api/v1/jobs/{job_id}", token) as resp:
-                status = json.loads(resp.read().decode("utf-8"))
-            if status["state"] == "succeeded":
-                succeeded = True
-                assert status["progress"]["total_tracks"] == 5
-                break
-            time.sleep(0.05)
-        assert succeeded
-
-        with _auth_request(f"{base}/api/v1/jobs/{job_id}/results", token) as resp:
-            payload = json.loads(resp.read().decode("utf-8"))
-        assert len(payload["results"]) == 5
-        assert payload["results"][0]["title"].startswith("Demo Track")
-        matched = [row for row in payload["results"] if row["matched"]]
-        assert matched
-        assert matched[0].get("candidates")
-        assert len(matched[0]["candidates"]) >= 2
+        yield f"http://127.0.0.1:{port}", token, store
     finally:
         server.shutdown()
         thread.join(timeout=2)
 
 
-def test_post_demo_batch_match_job_returns_playlist_tabs():
-    port = _free_port()
-    token = "job-test-token"
-    store = JobStore()
-    config = EngineConfig(host="127.0.0.1", port=port, token=token)
-    server, thread = start_engine_thread(config, store=store)
-    base = f"http://127.0.0.1:{port}"
-    try:
-        with _auth_request(
-            f"{base}/api/v1/jobs/match",
-            token,
-            data=json.dumps({"demo": True, "demo_batch": True}).encode("utf-8"),
-            method="POST",
-        ) as resp:
-            assert resp.status == 202
-            created = json.loads(resp.read().decode("utf-8"))
-        job_id = created["id"]
+def _finished_job(store: JobStore, *, result=None):
+    done = threading.Event()
 
-        succeeded = False
-        for _ in range(80):
-            with _auth_request(f"{base}/api/v1/jobs/{job_id}", token) as resp:
-                status = json.loads(resp.read().decode("utf-8"))
-            if status["state"] == "succeeded":
-                succeeded = True
-                break
-            time.sleep(0.05)
-        assert succeeded
+    def runner(job):
+        store.report_progress(
+            job,
+            ProgressInfo(
+                completed_tracks=5,
+                total_tracks=5,
+                matched_count=0,
+                unmatched_count=0,
+                status_message="Done",
+            ),
+        )
+        store.finish(job, state=JobState.SUCCEEDED, result=result)
+        done.set()
 
-        with _auth_request(f"{base}/api/v1/jobs/{job_id}/results", token) as resp:
-            payload = json.loads(resp.read().decode("utf-8"))
-        batch = payload.get("batch_results") or {}
-        assert set(batch.keys()) == {"Warm Up", "Peak Time"}
-        assert len(batch["Warm Up"]) == 3
-        assert len(batch["Peak Time"]) == 3
-        assert batch["Warm Up"][0]["title"].startswith("Warm Up Track")
-    finally:
-        server.shutdown()
-        thread.join(timeout=2)
+    job = store.create_job(job_type="library_refresh_preview", runner=runner)
+    assert done.wait(timeout=5)
+    return job
 
 
-def test_get_unknown_job_returns_404():
-    port = _free_port()
-    token = "job-test-token"
-    config = EngineConfig(host="127.0.0.1", port=port, token=token)
-    server, thread = start_engine_thread(config)
-    try:
+def test_status_reports_type_state_and_progress(engine):
+    base, token, store = engine
+    job = _finished_job(store)
+
+    with _auth_request(f"{base}/api/v1/jobs/{job.id}", token) as resp:
+        status = json.loads(resp.read().decode("utf-8"))
+
+    assert status["id"] == job.id
+    assert status["type"] == "library_refresh_preview"
+    assert status["state"] == "succeeded"
+    assert status["progress"]["total_tracks"] == 5
+    assert "result" not in status
+
+
+def test_results_serve_what_the_job_produced(engine):
+    base, token, store = engine
+    job = _finished_job(store, result={"added": 3})
+
+    with _auth_request(f"{base}/api/v1/jobs/{job.id}/results", token) as resp:
+        payload = json.loads(resp.read().decode("utf-8"))
+
+    assert payload == {"id": job.id, "state": "succeeded", "result": {"added": 3}}
+
+
+def test_results_carry_no_match_rows_since_inkey_retired(engine):
+    # CLEAN-14 removed `results` and `batch_results`, which only the file-based
+    # match ever filled.
+    base, token, store = engine
+    job = _finished_job(store)
+
+    with _auth_request(f"{base}/api/v1/jobs/{job.id}/results", token) as resp:
+        payload = json.loads(resp.read().decode("utf-8"))
+
+    assert payload == {"id": job.id, "state": "succeeded"}
+
+
+def test_job_routes_need_the_token(engine):
+    base, _token, store = engine
+    job = _finished_job(store)
+
+    for suffix in ("", "/results"):
         with pytest.raises(urllib.error.HTTPError) as exc:
-            _auth_request(f"http://127.0.0.1:{port}/api/v1/jobs/does-not-exist", token)
+            urllib.request.urlopen(f"{base}/api/v1/jobs/{job.id}{suffix}", timeout=5)
+        assert exc.value.code == 401
+
+
+def test_get_unknown_job_returns_404(engine):
+    base, token, _store = engine
+    for suffix in ("", "/results", "/events"):
+        with pytest.raises(urllib.error.HTTPError) as exc:
+            _auth_request(f"{base}/api/v1/jobs/does-not-exist{suffix}", token)
         assert exc.value.code == 404
         body = json.loads(exc.value.read().decode("utf-8"))
         assert body["error"]["code"] == "JOB_NOT_FOUND"
-    finally:
-        server.shutdown()
-        thread.join(timeout=2)

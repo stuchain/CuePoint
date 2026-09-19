@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""What a tag write writes: the options inKey's Sync Tags has, and one more (DEC-070).
+"""What a tag write writes: the options inKey's Sync Tags had, and one more (DEC-070).
 
-One definition of the options and their defaults, used by inKey's Sync Tags
-(``engine/sync_tags_api.py``) until it retires and by CLEAN-10's job from now
-on. :func:`normalize_sync_options` moved here from the engine unchanged, so the
-two cannot drift apart: a key format, a toggle and a comment text mean the same
-thing, and default the same way, in both.
+One definition of the options and their defaults, for CLEAN-10's job.
+:func:`normalize_sync_options` moved here from the engine unchanged while inKey's
+Sync Tags still shared it, so the two could not drift apart; Sync Tags retired
+with inKey (CLEAN-14, DEC-071) and the defaults it defined carry on here.
 
 Today's options and defaults
 ----------------------------
@@ -20,10 +19,10 @@ Today's options and defaults
 CLEAN-10 adds ``embed_missing_artwork``, **off** by default: putting a picture
 into a user's files is new, and it is something a person asks for (DEC-076).
 
-Why the job is stricter than Sync Tags
---------------------------------------
-Sync Tags reads a toggle with ``bool(...)``, so ``"false"`` turns a field on.
-That is tolerable for a button the renderer drives; it is not for the one job
+Why the job is stricter than Sync Tags was
+------------------------------------------
+Sync Tags read a toggle with ``bool(...)``, so ``"false"`` turned a field on.
+That was tolerable for a button the renderer drove; it is not for the one job
 that writes into files, where a request that meant "no genre" must not write
 genre into ten thousand of them. :meth:`TagWriteOptions.from_request` refuses
 anything that is not exactly an option of the right type, and only then applies
@@ -60,7 +59,11 @@ _NAMES = frozenset(_FLAGS + _TEXTS)
 
 
 def normalize_sync_options(raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-    """Today's sync options with their defaults, tolerant of anything missing."""
+    """Each option with its default filled in, tolerant of anything missing.
+
+    Lenient on its own, as Sync Tags used it; :meth:`TagWriteOptions.from_request`
+    refuses a wrong type before it gets here.
+    """
     opts = raw if isinstance(raw, dict) else {}
     key_format = str(opts.get("key_format") or KEY_FORMAT_NORMAL).strip().lower()
     if key_format not in KEY_FORMATS:

@@ -1,44 +1,54 @@
 # Quick Start Guide
 
-Get started with CuePoint in 5 minutes!
+From a Rekordbox collection to matched, reviewed tracks in a few minutes.
 
-Open CuePoint and choose **inKey** for Rekordbox metadata enrichment (or **inCrate** for inventory and Beatport discovery). This guide covers **inKey**.
+## Step 1: Export your collection from Rekordbox
 
-## Step 1: Import Your Collection
+In Rekordbox, choose **File > Export Collection in xml format** and save the
+file somewhere easy to find. The **Help** menu in CuePoint has the same steps
+under **Rekordbox XML export…**.
 
-1. Open CuePoint
-2. Click **File > Import XML**
-3. Select your Rekordbox XML file
-4. Wait for import to complete
+## Step 2: Import it
 
-## Step 2: Enrich with Beatport Data
+1. Open CuePoint and go to **Library**.
+2. Choose **Import a collection…** and pick the XML file.
+3. Your tracks and playlists appear when the import finishes. The status strip
+   at the bottom shows its progress.
 
-1. Click **Process** or press `Ctrl+P` (Windows/Linux) or `Cmd+P` (macOS)
-2. CuePoint will automatically search Beatport for each track
-3. Progress is shown in the status bar
+CuePoint then checks that your files are where Rekordbox says they are, in the
+background.
 
-## Step 3: Review Results
+## Step 3: Match on Beatport
 
-1. Review matched tracks in the main table
-2. Check match scores (higher is better)
-3. Verify metadata looks correct
+1. Go to **Clean**.
+2. In **In**, choose the playlist to match — or leave it on the whole library.
+3. Choose **Show what is not matched**, then **Match all**.
 
-## Step 4: Export Results
+Matching runs in the background; you can keep working. Tracks CuePoint is
+certain about are accepted for you. The rest wait under **Needs review**.
 
-1. Click **File > Export**
-2. Choose format (CSV, JSON, or Excel)
-3. Select destination folder
-4. Click **Save**
+## Step 4: Review
 
-## Tips
+1. In **Show**, choose **Needs review**.
+2. Select a track. The comparison below shows it beside Beatport's candidates,
+   with differences marked.
+3. Press **Left** / **Right** to choose a candidate and **A** to accept it, or
+   **R** to reject the match. **Down** moves to the next track.
 
-- **Match Scores**: Scores above 80% are usually good matches
-- **Manual Review**: Always review matches before exporting
-- **Export Formats**: CSV for spreadsheets, JSON for programs, Excel for detailed analysis
+## Step 5: Use Beatport's values
 
-## Next Steps
+For an accepted match, **Apply from the accepted match** copies the fields you
+tick — key, BPM, genre, label, year — into your own values. Rekordbox's values
+stay underneath, and any change can be reverted from the track's History.
 
-- Read the [User Guide](../user-guide/features.md) for detailed feature information
-- Check [Troubleshooting](../user-guide/troubleshooting.md) if you encounter issues
-- Visit [FAQ](../faq/index.md) for common questions
+## Next steps
 
+- **Export review list…** on the Clean page saves the list as CSV, JSON or Excel.
+- [Write tags to files](../user-guide/library.md#writing-tags-to-files) to put
+  your values into the audio files; Rekordbox shows them after **Reload Tag**.
+- Read [Clean](../user-guide/clean.md) and [Your library](../user-guide/library.md)
+  for the details.
+- Check [Troubleshooting](../user-guide/troubleshooting.md) if something goes wrong.
+
+CuePoint never deletes or moves tracks or files, and never writes to your
+Rekordbox export.

@@ -1,0 +1,26 @@
+{
+  "searches": [
+    {
+      "contains": "tone one",
+      "urls": [
+        "https://www.beatport.com/track/tone-one/1001"
+      ]
+    },
+    {
+      "contains": "tone two",
+      "urls": [
+        "https://www.beatport.com/track/tone-twos/2002",
+        "https://www.beatport.com/track/tone-twos-extended/2001"
+      ]
+    }
+  ],
+  "pages": {
+    "https://www.beatport.com/track/tone-one/1001": "pages/1001.html",
+    "https://www.beatport.com/track/tone-twos/2002": "pages/2002.html",
+    "https://www.beatport.com/track/tone-twos-extended/2001": "pages/2001.html"
+  },
+  "images": {
+    "https://geo-media.beatport.com/image_size/500x500/journey-cover.jpg": "cover.jpg",
+    "https://geo-media.beatport.com/image_size/1400x1400/journey-cover.jpg": "cover.jpg"
+  }
+}

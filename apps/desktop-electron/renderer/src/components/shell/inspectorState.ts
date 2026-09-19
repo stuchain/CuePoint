@@ -2,8 +2,8 @@
  * Track Inspector layout state (DEC-018, DEC-024).
  *
  * DEC-018 names the mechanism explicitly: the same `localStorage` pattern the
- * results table already uses for column widths. So this follows
- * `resultsTableLayout.ts` — one key holding a small state object, a read that
+ * results table used for column widths. So this follows that module — one key
+ * holding a small state object, a read that
  * never trusts what it finds, and clamping applied on the way out rather than
  * on the way in.
  *

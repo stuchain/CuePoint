@@ -1,5 +1,6 @@
 /**
- * What one Activity entry offers: revert a batch, or restore written tags (CLEAN-13).
+ * What one Activity entry offers: revert a batch, or restore written tags (CLEAN-13),
+ * or resume a match CuePoint's closing cut short (CLEAN-14).
  *
  * Both take a second click. Reverting a batch undoes every change it made, and
  * restoring rewrites files, so the entry asks "Revert every change…?" in place
@@ -9,6 +10,12 @@
  * A tag write's entry reads its record first: how many values a restore would
  * put back, and how many of those the engine never saw finish. An unconfirmed
  * write is never shown as done (CLEAN-10).
+ *
+ * An interrupted match's entry asks the engine whether it can still be resumed:
+ * it may have been resumed already, from here or from the Clean page, and an
+ * offer that could only fail is not made. Resuming takes one click — it asks
+ * Beatport about the tracks the match had not reached, and changes nothing a
+ * person decided.
  */
 import { useCallback, useEffect, useState } from "react";
 
@@ -20,7 +27,14 @@ import type {
 import { announceLibraryChange } from "../../api/libraryChanges";
 import { followJob } from "../../screens/library/followJob";
 import { jobErrorMessage } from "../../screens/library/libraryFormat";
-import { activityOffer, restoredLine, revertedLine, writesLine } from "./activityActions";
+import { matchStartedLine } from "../../screens/clean/cleanFormat";
+import {
+  activityOffer,
+  restoredLine,
+  resumeOfferLine,
+  revertedLine,
+  writesLine,
+} from "./activityActions";
 
 function messageOf(cause: unknown): string {
   return cause instanceof Error ? cause.message : String(cause);
@@ -56,6 +70,8 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
   const [record, setRecord] = useState<Record_ | null>(null);
   /** A batch this entry reverted: it is not offered again from here. */
   const [reverted, setReverted] = useState(false);
+  /** Tracks an interrupted match has left; null once it cannot be resumed. */
+  const [remaining, setRemaining] = useState<number | null | undefined>(undefined);
 
   const jobIds = offer?.kind === "restore-tags" ? offer.jobIds.join(",") : "";
   const canRestore = Boolean(bridge?.getTagWrites && bridge.startTagRestore);
@@ -80,6 +96,47 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
       cancelled = true;
     };
   }, [canRestore, jobIds]);
+
+  const resumeJobId = offer?.kind === "resume-match" ? offer.jobId : "";
+  const canResume = Boolean(bridge?.getResumableMatches && bridge.resumeCleanMatch);
+
+  useEffect(() => {
+    if (!resumeJobId || !canResume) return;
+    let cancelled = false;
+    window
+      .cuepoint!.getResumableMatches!()
+      .then((answer) => {
+        if (cancelled) return;
+        const waiting = answer.jobs.find((job) => job.job_id === resumeJobId);
+        setRemaining(waiting ? waiting.remaining : null);
+      })
+      .catch(() => {
+        if (!cancelled) setRemaining(undefined);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [canResume, resumeJobId]);
+
+  const resume = useCallback(
+    async (jobId: string) => {
+      const start = window.cuepoint?.resumeCleanMatch;
+      if (!start) return;
+      setBusy(true);
+      try {
+        const started = await start({ job_id: jobId });
+        setSaid(matchStartedLine(started));
+        // Its tracks moved to the new job; this entry has nothing left.
+        setRemaining(null);
+        onDone();
+      } catch (cause) {
+        setSaid(messageOf(cause));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [onDone],
+  );
 
   const revert = useCallback(
     async (batchId: string) => {
@@ -134,6 +191,26 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
   );
 
   if (!offer) return null;
+
+  if (offer.kind === "resume-match") {
+    if (!canResume || remaining === undefined) return null;
+    return (
+      <span className="cp-activity__offer" aria-live="polite">
+        {!said && <span className="cp-activity__reason">{resumeOfferLine(remaining)}</span>}
+        {remaining !== null && (
+          <button
+            type="button"
+            className="cp-activity__action"
+            disabled={busy}
+            onClick={() => void resume(offer.jobId)}
+          >
+            {busy ? "Resuming…" : "Resume"}
+          </button>
+        )}
+        {said && <span className="cp-activity__said">{said}</span>}
+      </span>
+    );
+  }
 
   if (offer.kind === "revert-batch") {
     if (!bridge?.revertBatch) return null;

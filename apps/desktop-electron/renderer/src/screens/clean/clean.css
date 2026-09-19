@@ -618,3 +618,17 @@
   font-size: var(--font-size-xs);
   color: var(--fg-muted);
 }
+
+/* The toolbar and anything said under it are one row of the review grid. */
+.clean-review__head {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.clean-note--resume {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+}

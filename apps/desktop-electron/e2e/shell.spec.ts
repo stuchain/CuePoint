@@ -202,7 +202,7 @@ test.describe("Application shell navigation", () => {
 
       // Every destination is still reachable with labels hidden — the state
       // DEC-022 chose, where an icon is all there is to go on.
-      for (const label of ["Tools", "inKey", "inCrate", "Results", "Settings"]) {
+      for (const label of ["Library", "Collections", "Clean", "Tools", "inCrate", "Settings"]) {
         await expect(nav.getByRole("link", { name: label, exact: true })).toBeVisible();
       }
     } finally {
@@ -218,11 +218,11 @@ test.describe("Application shell navigation", () => {
 
       // Tab from the top and record where focus goes. Every shell region has to
       // appear, or some part of the app is mouse-only.
-      // Sixteen: ORG-13 enabled the Collections destination and CLEAN-12 the
-      // Clean one, so the rail is two stops longer than SHELL-10 wrote it and
-      // the regions after it move down by as many.
+      // Fourteen: ORG-13 enabled the Collections destination and CLEAN-12 the
+      // Clean one, and CLEAN-14 retired inKey and Results, so the rail is as
+      // long as SHELL-10 wrote it.
       const reached: string[] = [];
-      for (let i = 0; i < 16; i += 1) {
+      for (let i = 0; i < 14; i += 1) {
         await window.keyboard.press("Tab");
         reached.push(
           await window.evaluate(() => {

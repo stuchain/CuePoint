@@ -14,7 +14,7 @@ import { jobLabel, jobPercent } from "./useActiveJob";
 function job(overrides: Partial<EngineJobSummary> = {}): EngineJobSummary {
   return {
     id: "job-1",
-    type: "match",
+    type: "clean_match",
     state: "running",
     created_at: "2026-09-03T10:00:00Z",
     updated_at: "2026-09-03T10:00:00Z",
@@ -25,7 +25,7 @@ function job(overrides: Partial<EngineJobSummary> = {}): EngineJobSummary {
 
 describe("jobLabel", () => {
   it("names a match run", () => {
-    expect(jobLabel(job())).toBe("Matching 3/10");
+    expect(jobLabel(job())).toBe("Matching on Beatport 3/10");
   });
 
   it("names an import run", () => {
@@ -65,12 +65,10 @@ describe("jobLabel", () => {
     expect(jobLabel(job({ type: "tag_restore" }))).toBe("Restoring tags 3/10");
   });
 
-  it("names a Clean match apart from inKey's", () => {
-    // CLEAN-11 made a library match startable; inKey's file-based run keeps
-    // "Matching" until CLEAN-14 retires it, and the strip must say which runs.
-    const clean = jobLabel(job({ type: "clean_match" }));
-    expect(clean).toBe("Matching on Beatport 3/10");
-    expect(clean).not.toBe(jobLabel(job({ type: "match" })));
+  it("has no verb for inKey's retired file-based match (CLEAN-14)", () => {
+    // No build since CLEAN-14 starts one, and the strip shows only active
+    // jobs, which a restart closes out.
+    expect(jobLabel(job({ type: "match" }))).toBe("Working 3/10");
   });
 
   it("says queued before a job starts, whatever its type", () => {
@@ -88,7 +86,7 @@ describe("jobLabel", () => {
 
   it("omits the count when the total is not known yet", () => {
     expect(jobLabel(job({ progress: { completed_tracks: 0, total_tracks: 0 } }))).toBe(
-      "Matching",
+      "Matching on Beatport",
     );
     expect(
       jobLabel(job({ type: "library_import", progress: undefined })),

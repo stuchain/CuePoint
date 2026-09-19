@@ -1,10 +1,11 @@
 # CuePoint v1.0.0 — Phase 7: Clean, Detailed Step Specifications
 
-Status: **Specified. CLEAN-01 to CLEAN-13 implemented.** The fourteen steps below replace the
-roadmap's placeholder inventory (CLEAN-01…CLEAN-13, which Round 9's answers outgrew by one). Per
-the process, no implementation happens from this document — each step needs an explicit
-"Implement CLEAN-NN" instruction, scoped to exactly that step, and its outcome is recorded under the
-step afterwards.
+Status: **Implemented. All fourteen steps (CLEAN-01 to CLEAN-14); the phase acceptance is met in a
+packaged Windows build, and the macOS packaged checks are owed with Phase 5's macOS pass.** The
+fourteen steps below replace the roadmap's placeholder inventory (CLEAN-01…CLEAN-13, which Round
+9's answers outgrew by one). Per the process, no implementation happens from this document — each
+step needs an explicit "Implement CLEAN-NN" instruction, scoped to exactly that step, and its
+outcome is recorded under the step afterwards.
 
 Depends on Phase 1 (`PHASE1_FOUNDATION.md`), Phase 2 (`PHASE2_SHELL.md`), Phase 3
 (`PHASE3_LIBRARY.md`), Phase 4 (`PHASE4_LIBUI.md`) and Phase 6 (`PHASE6_ORG.md`), all complete, and
@@ -3884,7 +3885,7 @@ of twenty-one in the engine.
 
 ---
 
-## CLEAN-14 — inKey Retires; the Phase Comes Together
+## CLEAN-14 — inKey Retires; the Phase Comes Together ✅ IMPLEMENTED 2026-09-19
 
 **Objective**: Remove inKey, Results and past searches now that Clean replaces them, and close the
 phase: scale, backup, documentation, and the end-to-end journey (DEC-071, DEC-021, DEC-036,
@@ -3949,6 +3950,169 @@ Redirects. The backup test. The E2E journey in a packaged build.
 whatever earlier ones deferred.
 
 **Complexity**: **L**
+
+### ✅ IMPLEMENTED 2026-09-19
+
+**What was built.**
+
+- **inKey, Results and past searches are gone.** 38 renderer files and 10 engine files were
+  deleted, each after a search for its callers: the screens, `ResultsTable` and its layout,
+  `CandidateDialog`, the export, Sync Tags, run-summary and M3U-instructions dialogs,
+  `MatchResultsContext`, the five hooks, the five `api/` utilities, the whole `mocks/` folder, and
+  on the engine `history_api.py`, `sync_tags_api.py`, `export_api.py` and `xml_api.py` with their
+  tests. `SettingsExportScreen` and `TrackInspector.tsx` were read first: Settings lost its Export
+  panel and its "Back to inKey" link, and the Inspector only a comment. The search is recorded as a
+  test (`renderer/src/retiredModules.test.ts`): no file by a retired name, no import of one, and no
+  call of a removed bridge method anywhere in the renderer.
+- **Routes.** `navRegistry.ts` declares `RETIRED_DESTINATIONS` — `match` and `results`, each
+  replaced by `clean` — so the router redirects `/match` and `/results` to `/clean` and a stored
+  launch destination of either reopens on Clean rather than home. Home's main button opens Clean.
+- **Engine and contract.** `POST /api/v1/jobs/match`, `/api/v1/history/*`, `POST /api/v1/tags/sync`,
+  `POST /api/v1/export` and `GET /api/v1/xml/playlists` are removed through all six contract files,
+  with the CSV and M3U open dialogs only inKey used. `GET /jobs/{id}/results` no longer carries
+  `results`/`batch_results`. inCrate's enrichment was confirmed to use none of them (it calls
+  `IProcessorService.process_track` directly). `jobs.py` keeps the store and the job lifecycle; its
+  file-based runners, demo data and `MatchJob` name are gone, `Job` requires a type, and cancel is
+  `JobStore.request_cancel`. The CLI's files are untouched and its smoke test passes. The changelog
+  records the removal as a breaking engine-API change, with ADR-005.
+- **Resuming a match**, which the engine and bridge have offered since CLEAN-11 but no screen did:
+  the review page says when a match stopped with tracks left and offers **Resume**, and an
+  interrupted match's Activity entry offers it too. Phase acceptance 1 needs it in a packaged build.
+- **A Beatport fixture for end-to-end tests.** `CUEPOINT_BEATPORT_FIXTURE` names a JSON file, and
+  `data/beatport_fixture.py` answers the three network edges from it — the search in `track_urls`,
+  the page in `request_html` and the image in `fetch_image` — so the matcher parses, scores and
+  guards real pages offline, in a packaged engine as well. The journey's pages are in
+  `src/tests/fixtures/beatport/journey/`.
+- **Documentation.** A user guide page for Clean (`docs/user-guide/clean.md`), with the three plain
+  statements the step names; `features.md` and `quick-start.md` rewritten; the FAQ, docs index,
+  window and library guides updated; the `docs/features/` pages for the Qt window marked historical
+  and the file-based pipeline pages marked CLI-only; ADR-005 and a desktop-matching section in
+  `docs/development/architecture.md`; the changelog.
+
+**Found and fixed on the way** — each with a test that fails without the fix:
+
+- **Restoring a backup failed on Windows** whenever another thread had used the database:
+  `close_all` could not close a connection another thread opened (SQLite's thread check raised and
+  was swallowed), so the file stayed held. The first fix — close them all — crashed the test
+  process, because closing a connection under a thread mid-statement is a native crash. `close_all`
+  now closes its caller's connection and those of threads that have ended; a live thread's is left
+  to it and replaced on its next use (`test_regression_close_all_other_threads.py`).
+- **The job store locked up for good** when a runner returned on a cancel without setting its own
+  ending: `_run_job` called `_update`, which takes the same non-reentrant lock, from inside it. Only
+  the file-based runners ever set the ending themselves, so removing them exposed it
+  (`test_regression_cancelled_runner_deadlock.py`).
+- **A packaged build never reached its engine.** The preload was found three folders above the
+  bundle — the repository from source, the install folder in `app.asar` — so a packaged window had
+  no `window.cuepoint` (`electron/preloadPath.test.ts`).
+- **Quitting the packaged app on Windows left the engine running.** The one-file engine is a
+  bootloader and a child; `ChildProcess.kill()` ended the bootloader only, and the child kept the
+  database and a port. `electron/processTree.ts` stops the tree with `taskkill /T`; the build
+  script's smoke test already did.
+- **A reviewer's choice could be reset before A was pressed.** Every read of a track's candidates —
+  a match ending, Health changing — set the choice back to the proposal; it is now kept while it is
+  still one of the same attempt's candidates.
+- **Two slow sorts, one of them CLEAN-13's deferral.** A window deep into a library sorted by
+  anything but artist sorted whole rows (0.6–0.75 s at 50,000 tracks); `build_select` now chooses
+  the page by ids and sort keys and reads the hundred rows after, in one statement (0.13 s, the same
+  rows). Sorting by match score read every score from `match_candidates` (164 ms); migration 0019
+  keeps it on `track_match` as `candidate_score`, filled by `MatchRepository.set_match` (35 ms).
+- **Test races**: the duplicate-scan tests started a scan beside the import's own follow-up scan,
+  and the journey's second candidate tied the first on score, so which ranked first depended on
+  which page the matcher's workers fetched first. The fixture's second candidate now scores 91.1
+  against 94.0, and a test forbids a tie.
+
+**Scale** (`scripts/bench_clean.py`, recorded in `docs/user-guide/performance.md#clean`): 50,000
+tracks with 30,000 attempts of 40 candidates (1.2 million rows), 8,000 decisions, 10,000 overrides,
+2,000 missing files, 1,500 duplicate groups and artwork state for every track.
+
+| Measure | Time |
+| --- | --- |
+| Review queue, first window / last window / sorted by score | 15 / 33 / 43 ms |
+| Health, the whole report | 313 ms |
+| One Health count | 10–30 ms (no artwork: 155 ms) |
+| Sort by effective BPM / key / match score | 40 / 47 / 35 ms |
+| Last window sorted by BPM | 131 ms |
+| File check (48,000 present, 2,000 missing) | 8.6 s |
+| Duplicate scan | 2.3 s |
+| Apply Beatport values to 5,000 tracks / revert (25,000 changes) | 3.2 / 3.4 s |
+| Database size / after VACUUM | 299 / 293 MB |
+
+**Packaging (Windows).** The packaged engine imports Pillow and makes a thumbnail: the journey
+decodes Beatport's artwork for the accepted track in `release/win-unpacked`. Pillow adds 6,155,219
+bytes to the engine (77,758,564 bytes with it, 71,603,345 built without it: 7.9%).
+**macOS is owed**: this machine is Windows-only, so the packaged macOS engine's Pillow thumbnail,
+its size change and the journey on it are recorded as outstanding, beside Phase 5's macOS pass.
+
+**Backup and restore** (`test_backup_restores_clean.py`, 8 tests): attempts with every candidate,
+decisions, overrides with their sources, file status, a dismissal and a file-write record come back
+through the services, and the restored record still restores its file. The backup holds no image,
+the artwork cache is outside it, and a scan rebuilds the cache after it is deleted.
+
+**E2E** (`e2e/clean.spec.ts`, with Beatport stubbed at the engine): import, match a playlist,
+auto-accepted and needs-review, review from the keyboard choosing the second-best candidate, the
+engine holding that choice, apply its key and BPM, the Library marking them "applied from
+Beatport", revert, check every file with one missing, Health's count followed into the Library,
+tags previewed, written into a copied MP3 and restored, a refresh that would remove the reviewed
+track naming it and "1 reviewed" before anything is removed, and `/match` landing on Clean. It
+passes against the development app and three times in a row against the packaged build, which
+leaves no process behind.
+
+**Tests.**
+
+- Python: `test_beatport_fixture.py` (31), `test_clean_match_from_fixture.py` (2, offline, every
+  socket refused), `test_backup_restores_clean.py` (8), `test_retired_inkey_routes.py` (15),
+  `test_match_score_migration.py` (7), two regression files (7), the job route, cancel and event
+  tests rewritten over a generic job (11), and `test_track_browse.py` +16 (rows in the order their
+  ids come, every sort, both directions, every offset).
+- Renderer: `retiredModules.test.ts` (4), `ToolSelectionScreen.test.tsx` (4), the registry and
+  launch rules (+11), the App's redirects and launch (+5), the resume offer on the page (+2) and in Activity
+  (+7), `resumableLine` (+2), the choice surviving a reload (+2), and the contract test's CLEAN-14
+  section (+9).
+- Electron: `processTree.test.ts` (5), `preloadPath.test.ts` (3).
+
+**Checks run.** The full Python suite (7,162 passed, 67 skipped; earlier runs found the
+duplicate-scan race and the close_all crash above, both fixed), ruff, formatting, the Qt guard,
+version coupling, the engine smoke test; the renderer's 2,576 tests, type-check, lint and
+`build:check`; the Electron tests (393) and type-check; the E2E suite (44 passed, 1 skipped; the two
+failures are the 250,000-track refresh and the 50,000-track Organization batch timing out at 90 s,
+as before this step).
+
+## Phase 7 acceptance, checked (2026-09-19)
+
+In a packaged Windows build unless said otherwise; macOS is owed, as above.
+
+1. **Met.** A match over a playlist, Collection, Smart Collection or filter is a job, cancellable
+   and resumable without matching a track twice (CLEAN-03's 1,000-track acceptance; the journey
+   matches a playlist; Resume is offered on the page and in Activity).
+2. **Met.** ≥95 with guards accepts automatically, the rest with a candidate needs review, and a
+   user's decision survives a re-match (CLEAN-04; the journey's accepted and needs-review tracks).
+3. **Met.** Accepting writes no metadata; applying writes the override layer, which survives import,
+   refresh, restart and backup/restore (CLEAN-05, CLEAN-06, `test_backup_restores_clean.py`).
+4. **Met.** The five fields are editable singly and in batch with engine-side validation; title,
+   artist, remixer and album are not (CLEAN-05, CLEAN-13).
+5. **Met.** Plain names mean effective values in filters, sorts, facets and Smart Collections, and
+   the Rekordbox values stay addressable (CLEAN-05).
+6. **Met.** Every CuePoint change but Collection membership reverts per field and per batch, and a
+   stale revert is refused naming both values (CLEAN-06; the journey reverts an apply).
+7. **Met.** The file check finds missing and unreadable files, reports a disconnected drive once,
+   and offers no relocation (CLEAN-07; the journey's check).
+8. **Met.** Duplicate groups state their signal, dismissals persist until a group changes, and
+   nothing deletes a track or a file (CLEAN-08).
+9. **Met on Windows.** Artwork from files and Beatport as thumbnails from one guarded decoder in the
+   packaged engine (the journey's thumbnail), and embedding only into files with none (CLEAN-10).
+10. **Met.** Tag writes are previewed, recorded before writing, and restored; the file-write
+    boundary test holds that nothing else writes (the journey writes and restores a real MP3).
+11. **Met.** Every Health count equals its Library view (CLEAN-11's test; the journey follows one).
+12. **Met.** inKey and Results are gone from Tools, their routes redirect to Clean, and the CLI is
+    unchanged (this step).
+13. **Met.** A refresh deleting tracks with a rating, note, tag, decision, applied value or
+    membership warns with a count per kind; one touching none applies without a prompt (CLEAN-05;
+    the journey's refresh names the reviewed track).
+14. **Met, on Windows.** Scale numbers are measured and recorded; the full Python suite, renderer
+    gates, E2E (bar the two timeouts that predate this phase's last step), the Qt guard, version
+    coupling, the desktop-contract test and the file-write boundary test pass.
+15. **Met.** No decision in DEC-001…DEC-076 is contradicted; DEC-065 and DEC-071 carry
+    implementation notes.
 
 ---
 

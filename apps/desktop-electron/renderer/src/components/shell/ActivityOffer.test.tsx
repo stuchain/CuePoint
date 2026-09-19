@@ -268,3 +268,77 @@ describe("a tag write's entry", () => {
     expect(await within(entry).findByText(/The file is locked/)).toBeInTheDocument();
   });
 });
+
+describe("an interrupted match's entry (CLEAN-14)", () => {
+  const interrupted = () =>
+    event(1, "clean.match.interrupted", { job_id: "m-1", remaining: 12, planned: 50 }, "A match stopped");
+
+  beforeEach(() => {
+    bridge.getResumableMatches = vi.fn().mockResolvedValue({
+      jobs: [
+        {
+          job_id: "m-1",
+          remaining: 12,
+          planned: 50,
+          selected: 50,
+          excluded: 0,
+          rematch: false,
+          created_at: "2026-09-17T10:00:00Z",
+          resumed_from: null,
+        },
+      ],
+      total: 1,
+    });
+    bridge.resumeCleanMatch = vi.fn().mockResolvedValue({
+      job_id: "m-2",
+      id: "m-2",
+      state: "queued",
+      selected: 12,
+      excluded: 0,
+      planned: 12,
+      resumed_from: "m-1",
+    });
+  });
+
+  it("resumes the match in one click and says what started", async () => {
+    events = [interrupted()];
+    render(<ActivityPanel open onClose={() => undefined} />);
+    const entry = await row("A match stopped");
+    expect(await within(entry).findByText("12 tracks left to match.")).toBeInTheDocument();
+
+    await userEvent.click(within(entry).getByRole("button", { name: "Resume" }));
+
+    expect(bridge.resumeCleanMatch).toHaveBeenCalledWith({ job_id: "m-1" });
+    expect(await within(entry).findByText("Matching 12 tracks on Beatport.")).toBeInTheDocument();
+    expect(within(entry).queryByRole("button", { name: "Resume" })).toBeNull();
+    await waitFor(() => expect(bridge.getRecentActivity).toHaveBeenCalledTimes(2));
+  });
+
+  it("offers nothing to click once the match was resumed elsewhere", async () => {
+    bridge.getResumableMatches.mockResolvedValue({ jobs: [], total: 0 });
+    events = [interrupted()];
+    render(<ActivityPanel open onClose={() => undefined} />);
+    const entry = await row("A match stopped");
+    expect(await within(entry).findByText("Nothing is left to resume.")).toBeInTheDocument();
+    expect(within(entry).queryByRole("button", { name: "Resume" })).toBeNull();
+  });
+
+  it("shows a refusal in the engine's words, and keeps the offer", async () => {
+    bridge.resumeCleanMatch.mockRejectedValue(new Error("A match is already running: m-9"));
+    events = [interrupted()];
+    render(<ActivityPanel open onClose={() => undefined} />);
+    const entry = await row("A match stopped");
+    await within(entry).findByText("12 tracks left to match.");
+    await userEvent.click(within(entry).getByRole("button", { name: "Resume" }));
+    expect(await within(entry).findByText("A match is already running: m-9")).toBeInTheDocument();
+    expect(within(entry).getByRole("button", { name: "Resume" })).toBeEnabled();
+  });
+
+  it("offers nothing in a build that cannot resume", async () => {
+    delete bridge.resumeCleanMatch;
+    events = [interrupted()];
+    render(<ActivityPanel open onClose={() => undefined} />);
+    const entry = await row("A match stopped");
+    expect(within(entry).queryByRole("button")).toBeNull();
+  });
+});

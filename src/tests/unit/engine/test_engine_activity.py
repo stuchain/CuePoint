@@ -185,8 +185,9 @@ class TestErrors:
 class TestNamingSeparation:
     """The activity feed and the past-searches history are different things.
 
-    ``/api/v1/history/*`` lists exported match-run CSVs. Filing the activity
-    feed under the same word would be a confusion baked into the API.
+    ``/api/v1/history/*`` listed exported match-run CSVs until past searches
+    retired with inKey (CLEAN-14). Filing the activity feed under the same word
+    would have been a confusion baked into the API, and the word stays free.
     """
 
     def test_activity_is_not_served_under_history(self, engine):
@@ -195,11 +196,12 @@ class TestNamingSeparation:
 
         assert excinfo.value.code == 404
 
-    def test_the_history_endpoint_still_means_past_match_runs(self, engine, activity):
+    def test_the_retired_history_endpoint_does_not_serve_the_feed(
+        self, engine, activity
+    ):
         activity.record_event(event_type="test", summary="Not a past search")
 
-        history = _get_json(engine, "/api/v1/history/recent")
+        with pytest.raises(urllib.error.HTTPError) as excinfo:
+            _get(f"{engine}/api/v1/history/recent")
 
-        # Its shape is files, not events — the two endpoints do not overlap.
-        assert "files" in history
-        assert "events" not in history
+        assert excinfo.value.code == 404

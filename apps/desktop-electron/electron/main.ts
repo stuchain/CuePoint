@@ -200,7 +200,6 @@ function showSaveDialogFor(
 function registerIpcHandlers(): void {
   ipcMain.handle("engine:status", () => engine.getStatus());
   ipcMain.handle("engine:restart", () => engine.restart());
-  ipcMain.handle("engine:startMatchJob", (_event, body) => engine.startMatchJob(body));
   ipcMain.handle("engine:searchLibrary", (_event, params) => engine.searchLibrary(params));
   ipcMain.handle("engine:browseLibrary", (_event, params) => engine.browseLibrary(params));
   ipcMain.handle("engine:getLibraryPlaylists", () => engine.getLibraryPlaylists());
@@ -377,7 +376,6 @@ function registerIpcHandlers(): void {
   );
   ipcMain.handle("engine:getJob", (_event, jobId: string) => engine.getJob(jobId));
   ipcMain.handle("engine:getJobResults", (_event, jobId: string) => engine.getJobResults(jobId));
-  ipcMain.handle("engine:exportResults", (_event, body) => engine.exportResults(body));
   ipcMain.handle("engine:getIncrateInventory", (_event, params) => engine.getIncrateInventory(params));
   ipcMain.handle("engine:importIncrateXml", (_event, body) => engine.importIncrateXml(body));
   ipcMain.handle("engine:resetIncrateInventory", () => engine.resetIncrateInventory());
@@ -388,10 +386,6 @@ function registerIpcHandlers(): void {
   ipcMain.handle("engine:getBeatportTokenStatus", () => engine.getBeatportTokenStatus());
   ipcMain.handle("engine:setBeatportToken", (_event, token: string) => engine.setBeatportToken(token));
   ipcMain.handle("engine:testBeatportToken", (_event, body) => engine.testBeatportToken(body));
-  ipcMain.handle("engine:getHistoryRecent", (_event, params) => engine.getHistoryRecent(params));
-  ipcMain.handle("engine:loadHistoryCsv", (_event, csvPath: string) => engine.loadHistoryCsv(csvPath));
-  ipcMain.handle("engine:getXmlPlaylists", (_event, xmlPath: string) => engine.getXmlPlaylists(xmlPath));
-  ipcMain.handle("engine:syncTags", (_event, body) => engine.syncTags(body));
   ipcMain.handle("engine:getLogsDir", () => engine.getLogsDir());
   ipcMain.handle("engine:getCuepointLog", (_event, body) => engine.getCuepointLog(body));
   ipcMain.handle("engine:clearCuepointLogs", () => engine.clearCuepointLogs());
@@ -643,28 +637,6 @@ function registerIpcHandlers(): void {
     const result = await showOpenDialogFor(win, {
       properties: ["openFile"],
       filters: [{ name: "Rekordbox XML", extensions: ["xml"] }],
-    });
-    if (result.canceled || result.filePaths.length === 0) {
-      return { canceled: true as const };
-    }
-    return { canceled: false as const, filePath: result.filePaths[0] };
-  });
-  ipcMain.handle("dialog:openCsv", async () => {
-    const win = BrowserWindow.getFocusedWindow();
-    const result = await showOpenDialogFor(win, {
-      properties: ["openFile"],
-      filters: [{ name: "CuePoint CSV", extensions: ["csv"] }],
-    });
-    if (result.canceled || result.filePaths.length === 0) {
-      return { canceled: true as const };
-    }
-    return { canceled: false as const, filePath: result.filePaths[0] };
-  });
-  ipcMain.handle("dialog:openM3u", async () => {
-    const win = BrowserWindow.getFocusedWindow();
-    const result = await showOpenDialogFor(win, {
-      properties: ["openFile"],
-      filters: [{ name: "Playlist", extensions: ["m3u", "m3u8"] }],
     });
     if (result.canceled || result.filePaths.length === 0) {
       return { canceled: true as const };

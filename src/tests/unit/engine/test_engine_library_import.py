@@ -29,8 +29,8 @@ from pathlib import Path
 
 import pytest
 
-from cuepoint.engine.jobs import JobState, JobStore
-from cuepoint.engine.server import EngineConfig, get_job_store, start_engine_thread
+from cuepoint.engine.jobs import JobStore
+from cuepoint.engine.server import EngineConfig, start_engine_thread
 from cuepoint.services import database_service as database_service_module
 from cuepoint.utils.di_container import reset_container
 
@@ -614,17 +614,20 @@ class TestExistingEndpointsAreUnaffected:
         assert status == 200
         assert payload["total"] == 5
 
-    def test_a_match_job_can_still_be_started(self, engine):
-        status, payload = request(
+    def test_the_job_list_still_answers(self, engine, tmp_path):
+        # The file-based match this once started retired with inKey
+        # (CLEAN-14); the job routes every job type shares are unaffected.
+        _status, started = request(
+            engine,
+            "/api/v1/library/import",
+            method="POST",
+            body={"xml_path": write_export(tmp_path, 3)},
+        )
+        wait_for_job(engine, started["job_id"])
+        status, payload = request(engine, "/api/v1/jobs?state=all")
+        assert status == 200
+        assert started["job_id"] in {job["id"] for job in payload["jobs"]}
+        status, _payload = request(
             engine, "/api/v1/jobs/match", method="POST", body={"demo": True}
         )
-        assert status == 202
-        job = get_job_store().get(payload["id"])
-        assert job.type == "match"
-        deadline = time.monotonic() + 20
-        while time.monotonic() < deadline and job.state not in (
-            JobState.SUCCEEDED,
-            JobState.FAILED,
-            JobState.CANCELLED,
-        ):
-            time.sleep(0.02)
+        assert status == 404

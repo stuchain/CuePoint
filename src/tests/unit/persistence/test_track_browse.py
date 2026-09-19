@@ -348,7 +348,26 @@ class TestTiebreak:
         # small table, and this one cannot.
         sql, _ = build_select(BrowseQuery(sort="genre", direction=direction))
         keyword = "ASC" if direction == "asc" else "DESC"
-        assert sql.endswith(f"tracks.id {keyword} LIMIT ? OFFSET ?")
+        # Both orderings: the one that chooses the page (CLEAN-14 reads its ids
+        # first) and the one the page's rows come back in.
+        assert f"tracks.id {keyword} LIMIT ? OFFSET ?)" in sql
+        assert sql.endswith(f"tracks.id {keyword}")
+
+    @pytest.mark.parametrize(
+        "sort",
+        ["artist", "title", "genre", "bpm", "key", "year", "album", "match_state"],
+    )
+    @pytest.mark.parametrize("direction", ["asc", "desc"])
+    def test_rows_come_back_in_the_order_their_ids_do(self, seeded, sort, direction):
+        # CLEAN-14 chooses a page by ids, then reads its rows. Both halves must
+        # answer the same tracks in the same order, at every offset.
+        query = BrowseQuery(sort=sort, direction=direction)
+        total = seeded.browse_count(query)
+        for offset in range(0, total, 2):
+            rows = seeded.browse(query, limit=3, offset=offset)
+            assert [t.id for t in rows] == seeded.browse_ids(
+                query, limit=3, offset=offset
+            )
 
 
 class TestScope:
@@ -704,10 +723,22 @@ class TestQueryPlan:
         assert "idx_tracks_artist_title" in plan
 
     def test_the_default_order_needs_no_sort(self, seeded, db):
-        # "USE TEMP B-TREE FOR ORDER BY" means SQLite read every row and sorted
-        # them, which at 50,000 tracks is the difference the index exists for.
+        # "USE TEMP B-TREE FOR ORDER BY" inside the query that chooses the page
+        # means SQLite read every row and sorted them, which at 50,000 tracks is
+        # the difference the index exists for. The page itself — a hundred rows
+        # read by id (CLEAN-14) — is put back in order at the top, which is
+        # the only sort allowed.
         sql, params = build_select(BrowseQuery())
-        assert "TEMP B-TREE" not in self._plan(db, sql, params).upper()
+        rows = db.connect().execute(f"EXPLAIN QUERY PLAN {sql}", params).fetchall()
+        page = {
+            row["id"]
+            for row in rows
+            if "page" in str(row["detail"]).lower() and row["parent"] == 0
+        }
+        inside = [row for row in rows if row["parent"] in page]
+        assert inside, "the page is chosen by a query of its own"
+        assert not any("TEMP B-TREE" in str(row["detail"]).upper() for row in inside)
+        assert "COVERING INDEX" in self._plan(db, sql, params).upper()
 
     def test_a_scoped_query_uses_the_membership_index(self, seeded, tree, db):
         sql, params = build_select(BrowseQuery(playlist_id=tree["ROOT/SETS"]))

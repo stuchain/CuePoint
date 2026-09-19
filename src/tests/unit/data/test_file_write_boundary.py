@@ -19,8 +19,10 @@ Two halves, so that neither can drift:
   and ``main.py`` is parsed. A writer reached by name, through its module, a
   dotted import, the ``cuepoint.data`` package's re-exports, or a module name in
   a string is an import. The importers must be exactly the ones listed: the
-  CLI's existing paths, inKey's Sync Tags until it retires (CLEAN-14), and
-  CLEAN-10's tag write service.
+  existing paths through ``rekordbox.py`` and CLEAN-10's tag write service.
+  inKey's Sync Tags was the third until it retired (CLEAN-14, DEC-071); since
+  then no route reaches ``rekordbox.py``'s writers, which the package still
+  re-exports.
 """
 
 from __future__ import annotations
@@ -73,7 +75,7 @@ PROBES: Dict[str, FrozenSet[str]] = {
 #: The only modules, by repository path, that may reach each module's writers.
 ALLOWED_IMPORTERS: Dict[str, Set[str]] = {
     "cuepoint.data.tag_writer": {
-        # The CLI's and inKey's existing paths write through rekordbox.py.
+        # The existing paths write through rekordbox.py.
         "src/cuepoint/data/rekordbox.py",
         "src/cuepoint/services/tag_write_service.py",
         # A developer's debugging script for the same existing path.
@@ -81,9 +83,8 @@ ALLOWED_IMPORTERS: Dict[str, Set[str]] = {
     },
     "cuepoint.data.tag_fields": {"src/cuepoint/services/tag_write_service.py"},
     "cuepoint.data.rekordbox": {
-        # inKey's Sync Tags, which retires with inKey (CLEAN-14, DEC-071).
-        "src/cuepoint/engine/sync_tags_api.py",
-        # The package re-exports the writers it has always exported.
+        # The package re-exports the writers it has always exported. inKey's
+        # Sync Tags was the only runtime caller, and it retired (CLEAN-14).
         "src/cuepoint/data/__init__.py",
     },
 }
@@ -307,7 +308,8 @@ class TestTheBoundary:
         files = {path.relative_to(_REPO).as_posix() for path in _scanned_files()}
 
         assert len(files) > 300
-        assert "src/cuepoint/engine/sync_tags_api.py" in files
+        assert "src/cuepoint/engine/tag_write_jobs.py" in files
+        assert "src/cuepoint/engine/sync_tags_api.py" not in files
         assert "scripts/debug_sync_to_split_test.py" in files
         assert "main.py" in files
         assert not any(name.startswith("src/tests/") for name in files)
