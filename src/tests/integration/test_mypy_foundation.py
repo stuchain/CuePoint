@@ -64,6 +64,8 @@ GUARDED = (
     "cuepoint/engine/tag_write_jobs.py",
     "cuepoint/models/track_clean_state.py",
     "cuepoint/models/rekordbox_export.py",
+    "cuepoint/models/rekordbox_export_values.py",
+    "cuepoint/services/rekordbox_export_service.py",
     "cuepoint/services/health_service.py",
     "cuepoint/services/review_export_service.py",
     "cuepoint/services/match_comparison.py",

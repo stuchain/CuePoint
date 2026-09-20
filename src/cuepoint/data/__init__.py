@@ -27,6 +27,7 @@ from cuepoint.data.rekordbox_export import (
     PlaylistResult,
     TrackExportValues,
     patch_collection_xml,
+    plan_collection_xml,
     refuse_source_as_destination,
 )
 
@@ -39,6 +40,7 @@ __all__ = [
     "TrackExportValues",
     "get_track_locations",
     "patch_collection_xml",
+    "plan_collection_xml",
     "playlist_path_for_display",
     "refuse_source_as_destination",
 ]

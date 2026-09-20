@@ -12,7 +12,7 @@ DEC-002 identity lookups a Rekordbox refresh depends on.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple
 
 from cuepoint.models.library_track import (
     IdentityMatch,
@@ -29,6 +29,7 @@ from cuepoint.models.filter_rule import (
     FacetValue,
     field_spec,
 )
+from cuepoint.models.rekordbox_export_values import ExportTrackValues
 from cuepoint.models.track_clean_state import TrackCleanState
 from cuepoint.persistence.id_chunks import CHUNK_SIZE, chunked, unique_ids
 from cuepoint.persistence.rule_references import check_rule_references
@@ -94,6 +95,39 @@ _UPDATE_SQL = (
 )
 
 _SELECT = "SELECT * FROM tracks"
+
+# Both layers of the six exportable fields, for every track, in one statement
+# (EXPORT-04, DEC-079). Neither layer is resolved here: the COALESCE the browse
+# query uses is a mirror of ``effective_value``, and a third spelling inside the
+# one read that produces a file a user loads into Rekordbox is a third thing to
+# keep in step. ``ExportTrackValues`` resolves it in Python instead.
+#
+# Ordered by id so a paged read and a streamed one see the same sequence, and
+# so a failure part way through is a prefix rather than an arbitrary subset.
+_EXPORT_VALUES_SQL = (
+    "SELECT tracks.id AS id,"
+    " tracks.rekordbox_track_id AS rekordbox_track_id,"
+    " tracks.key AS key,"
+    " tracks.bpm AS bpm,"
+    " tracks.genre AS genre,"
+    " tracks.label AS label,"
+    " tracks.year AS year,"
+    " tracks.rating AS rating,"
+    " track_metadata.key AS override_key,"
+    " track_metadata.bpm AS override_bpm,"
+    " track_metadata.genre AS override_genre,"
+    " track_metadata.label AS override_label,"
+    " track_metadata.year AS override_year,"
+    " track_metadata.rating AS cuepoint_rating"
+    " FROM tracks"
+    " LEFT JOIN track_metadata ON track_metadata.track_id = tracks.id"
+    " ORDER BY tracks.id"
+)
+
+# Rows the export read materializes at a time. A whole-library export reads
+# every track, and 50,000 rows of fourteen columns is a list nobody needs in
+# memory at once when the caller consumes them one by one.
+EXPORT_VALUES_BATCH_SIZE = 2000
 
 
 def _search_joins() -> str:
@@ -621,6 +655,31 @@ class TrackRepository(ITrackRepository):
         )
         camelot = int(row["camelot"])
         return camelot, int(row["keyed"]) - camelot
+
+    def iter_export_values(
+        self, batch_size: int = EXPORT_VALUES_BATCH_SIZE
+    ) -> Iterator[ExportTrackValues]:
+        """Stream every track's two exportable layers, in id order (EXPORT-04).
+
+        A LEFT JOIN, so a track nobody has touched in CuePoint arrives with
+        five ``None`` overrides rather than being left out: the export writes
+        the effective value of every track in the file, and a track with no
+        overrides is one whose effective value is the import's own.
+
+        Streamed rather than returned as a list because the caller is building
+        a map of the whole library and does not need a second copy of it beside
+        the first.
+        """
+        cursor = self._db.connect().execute(_EXPORT_VALUES_SQL)
+        try:
+            while True:
+                rows = cursor.fetchmany(max(1, int(batch_size)))
+                if not rows:
+                    return
+                for row in rows:
+                    yield ExportTrackValues.from_row(row)
+        finally:
+            cursor.close()
 
     def get_many(self, track_ids: Iterable[int]) -> List[LibraryTrack]:
         """Return the tracks these ids name, once each, in the order given.

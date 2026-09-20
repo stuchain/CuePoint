@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 8: Rekordbox Export, Detailed Step Specifications
 
-Status: **EXPORT-01, EXPORT-02 and EXPORT-03 implemented; EXPORT-04…EXPORT-07 specified.**
+Status: **EXPORT-01…EXPORT-04 implemented; EXPORT-05…EXPORT-07 specified.**
 The seven steps below replace the roadmap's placeholder inventory (EXPORT-01…EXPORT-08, which
 Round 10's answers came in one under).
 Per the process, no implementation happens from this document — each step needs an explicit
@@ -668,7 +668,7 @@ tried by hand.
 
 ---
 
-## EXPORT-04 — The Preview
+## EXPORT-04 — The Preview ✅ IMPLEMENTED 2026-09-21
 
 **Objective**: One engine-side call that answers, for a chosen set of playlists and a source file,
 exactly what an export would write — computed, not estimated.
@@ -724,6 +724,147 @@ gains a special case the preview does not know about; the shared-code-path desig
 it, and the test is what catches a regression.
 
 **Complexity**: **M**
+
+**Outcome**: Complete. `services/rekordbox_export_service.py` answers `preview(collection_ids,
+key_format) -> ExportPreview`: the source and its staleness, the track count, what would change and
+in which fields, the two counts for the tracks the file and the library do not share, the
+missing-file count, the notation, each playlist with its path and its drops, and the parent folder's
+name with any collision. It writes nothing, and a test asserts nothing outside `bootstrap.py` and
+`interfaces.py` can even name it yet.
+
+**The anti-drift property is structural, not a second implementation kept in step.** This is the
+step's one real design decision and it was taken against the obvious reading of the specification.
+"The preview walks the same queries the write walks" could have been satisfied by a preview that
+calls the same repositories and then counts for itself; that is exactly the shape that drifts,
+because the counting is the part that gains a case. So `data/rekordbox_export.py` was split instead:
+`plan_collection_xml` is `patch_collection_xml` with `_write_atomically` left out, both go through
+one `_plan`, and the service turns the `PatchResult` either of them returns into the numbers to show
+through one `report`. A number in the preview and a number in the result are now the same expression
+evaluated once, and the test that runs a real export of the same plan compares the whole result
+rather than a few fields.
+
+**A plan, then a preview of it.** `plan(...)` produces what a write needs — the effective values per
+track, the playlist tree resolved to track ids in export order, the source, its staleness and the
+missing-file count — and `preview_of(plan)` walks it. EXPORT-05 takes the same plan to
+`patch_collection_xml` and reports through the same `report`, so the job needs to add a destination,
+a transaction and an activity event and nothing else. `ExportPlaylist.ref` carries the Collection's
+id out and back, which is what lets a result be reported against the right node when two Collections
+in different folders share a name.
+
+**Five decisions taken while implementing.**
+
+1. **The parse belongs in the preview, and DEC-084 said otherwise.** That decision's last
+   implication had the size guard, the parse and the serialization all inside the job "so a large
+   source file does not block the preview either". But the numbers DEC-084 itself requires the
+   preview to state — how many tracks would change, in which fields, and which ids the file does not
+   hold — cannot be known without reading the file. The preview therefore re-parses, applies the
+   size guard first exactly as the write does, and stops before serializing. DEC-084 now says that,
+   with the measurement beside it.
+2. **The track count is the file's own, not the library's.** The export patches the source rather
+   than generating a document, so what lands in the exported file is the source's `COLLECTION`.
+   Reporting the library's count would describe a file nobody is going to get, and the two DEC-082
+   counts either side of it — tracks the file holds that CuePoint does not know, tracks CuePoint
+   knows the file lacks — are what reconcile the two. A test asserts that arithmetic rather than
+   leaving a reader to do it.
+3. **Staleness has three answers, not two.** `stale` is True, False, or `None` when the import's own
+   `stat` failed and there is nothing to compare against — the same conservative shape
+   `SourceFileState.changed` already has, for the same reason: "I cannot tell" and "it is the same
+   file" lead a user to opposite actions. The signals that differ are named (`mtime`, `size`, or
+   both) with the recorded and actual values beside them.
+4. **Three refusals, because they are three different things to do.** `source_never_imported`
+   (import a library), `source_missing` (find the file again) and `source_unreadable` (a permission,
+   a lock, a dead share) are carried as reasons on a typed `ExportSourceError`, which is a
+   `ValidationError` so the engine's existing handling applies unchanged. The path is on the error,
+   not only in the sentence.
+5. **An explicitly chosen folder with nothing in it exports nothing.** EXPORT-02 argued that an
+   empty `CuePoint` folder in a DJ's tree is litter rather than a result, and the same applies one
+   level down: a folder carries no user content of its own, so a folder with no exported playlist
+   beneath it is not written — while an empty *Collection* still is, because a user who chose it
+   said something. The preview shows zero playlists, so the consequence is visible before anything
+   is confirmed.
+
+**The two layers are resolved once, in Python.** `models/rekordbox_export_values.py` holds
+`ExportTrackValues`: one row carrying both layers for one track, resolving each field through
+`effective_value` and `effective_rating` — which it imports rather than reimplements, asserted by
+identity rather than by grepping for a name. `TrackRepository.iter_export_values` streams them for
+the whole library in one `LEFT JOIN`, deliberately *not* resolving in SQL: the browse query already
+mirrors the rule as `COALESCE(override, imported)`, and a third spelling of it in the one read that
+produces a file a user loads into Rekordbox is a third thing to keep in step. A test runs the browse
+vocabulary's own expression over the same library and asserts the six values agree field by field,
+which is DEC-079's anti-drift requirement met from the direction that matters.
+
+**Two reads were added and one count was given a third answer.**
+`TrackRepository.iter_export_values` is above. `FileStatusRepository.missing_count()` returns
+`Optional[int]`: `None` when no track has ever been checked, which is DEC-088's "reports that it has
+not been checked rather than reporting zero" and the same distinction `missing_file_count`'s
+nullable column was made for in EXPORT-03. Both are declared on their interfaces, and
+`cuepoint/persistence/` is already inside the mypy gate.
+
+**Tests**: 130 in `test_rekordbox_export_preview.py`. The specification's eight are all there — a
+stale source reporting its signal and both values, an absent source refusing with the path named, a
+library with no source row refusing with its own reason, one override reporting one changed field
+and none reporting zero, a source already carrying the effective value contributing nothing, a
+never-checked library reporting unchecked rather than zero, a Smart Collection's entry count equal
+to its browse count, and the anti-drift test. Beyond them: a folder standing for everything beneath
+it at any depth, a Collection exporting at the path it is filed under, a folder nobody chose left
+out, the same node named twice exported once, an empty Collection as an empty playlist, a repeated
+track exporting twice against a `COLLECTION` that holds it once, a dropped reference counted once
+per appearance, drops summed across playlists, an existing `CuePoint` folder going to `CuePoint (2)`
+with the collision reported, a Smart Collection in its saved sort read back through
+`iter_playlist_nodes`, its membership paged at one id per query to prove a large one is not
+truncated, its broken rules refused where they are run, all three notations with Camelot rewriting
+every key the file spells classically, a key the converter cannot read writing nothing, a rating of
+zero stars beating a rated file, a `Rating="3"` some other tool wrote left alone, an unreadable
+file, a file that disappears between the check and the read, an oversized one refused before
+parsing, a malformed one refused by name, a source whose stat the import never recorded, a source
+that holds one track twice, and the preview proved to write no file and to leave the source byte for
+byte as it was.
+
+**Twenty-nine mutations were introduced deliberately to prove the tests bite.** Twenty-eight failed
+the suite; the twenty-ninth could not be expressed, and that was the useful one. It was "create a
+folder with nothing exported inside it", and it survived because the guard it broke was unreachable:
+a folder reaches the builder only when it is in `keep`, and `keep` holds nothing but exported
+playlists and their ancestors. The branch was a claim no test could check, so it is gone and the
+guarantee is where it actually lives. Three others survived the first run for a reason worth
+recording too — the fixture had one unknown track and one absent track, so swapping DEC-082's two
+counts changed nothing, and no source repeated a `TrackID`, so "tracks changed" and "elements
+patched" were the same number. Three tests were added to tell each pair apart and all three
+mutations then failed. The rest covered the never-checked count answered as zero, the missing count
+read as the checked count, the resolution taking the import over the override, the rating's two
+layers swapped, a blank Rekordbox id let through, the export read made an INNER JOIN, the two layers
+swapped in it, the stream stopping after one batch, the notation validated against nothing, only
+overridden tracks sent to the writer, an unknown collection id skipped instead of refused, the
+folders on a Collection's path dropped, a Collection's repeats deduplicated, a Smart Collection read
+as stored rows, its membership read one page and no more, staleness decided by the size alone, an
+unrecorded stat read as unchanged, a missing source reported rather than refused, an unreadable one
+reported as missing, a source row with no path taken as a source, the collision not reported, the
+key left in whatever notation it is stored in, a folder's contents not reached beyond one level, an
+element with no id counted as a track CuePoint knows, and — the one that would matter most — the
+preview writing a file.
+
+**Measured**, on a 20.8 MiB source of 50,000 tracks carrying 100,000 position marks and 50,000 tempo
+elements, with a 50,000-track library of which 10,000 carry a genre override, 20 Collections holding
+500 tracks each and one Smart Collection: **2.98 s** for the whole preview — 1.00 s to build the
+plan (50,000 tracks' two layers, 21 playlists resolved to 35,000 entries in order) and 1.99 s to
+walk the document. In Camelot, where every one of the 50,000 keys is rewritten rather than 10,000
+genres, it is 5.88 s. Writing the same plan for real costs 5.24 s on top and produces a 22.0 MiB
+file, and the preview and the export were asserted equal on that run as well as in the suite.
+
+**Two things the specification listed that were not used, and why.** `parse_selection` and
+`resolve_scope` read a scope off an HTTP request; the preview takes collection ids and a notation,
+and reading a request is EXPORT-06's. And the browse query's scope resolution is reached through
+`CollectionService.resolve` rather than directly, so a Smart Collection's membership here is the one
+the Library table shows — which is the property DEC-081 needs and a second call site could not
+promise.
+
+**Checks run**: the full `src/tests/unit` (7,147 passed, 46 skipped — 7,017 as EXPORT-03 left it
+plus the 130 new here, and nothing else moved), `src/tests/integration src/tests/regression
+src/tests/acceptance -m "not slow"` (368 passed, 19 skipped), `ruff check src/`, `ruff format
+--check src/`, `python scripts/check_no_qt_in_core.py`, `git diff --check`, and the mypy gates
+(`test_mypy_foundation.py`, `test_step55_mypy_validation.py`), with the new model and the new
+service added to `GUARDED`. `test_file_write_boundary.py` still passes unchanged:
+`plan_collection_xml` calls nothing that writes, so the module's writers are the same two functions
+they were.
 
 ---
 

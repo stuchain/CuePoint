@@ -257,7 +257,7 @@ DEC-011's refresh warning now counts every track carrying the user's own data �
 tags, review decisions and applied values as well as Collections — and DEC-076's artwork is cached
 as real thumbnails, making Pillow a runtime dependency behind one guarded decoder.
 
-## Phase 8 — Rekordbox Export (EXPORT-01 … EXPORT-07) — specified; EXPORT-01…EXPORT-03 done
+## Phase 8 — Rekordbox Export (EXPORT-01 … EXPORT-07) — specified; EXPORT-01…EXPORT-04 done
 
 No full-XML export exists today (only the narrow attribute-patch write) — this phase builds real
 export, carrying forward the existing "always write a new file, never silently overwrite the source"
@@ -278,6 +278,14 @@ the DDL settled four things the specification's column list left in tension with
 around it, recorded as an amendment to DEC-086; the one that mattered is that a library nobody has
 file-checked now records that fact rather than recording zero missing files, which DEC-088 refuses
 and a forward-only `NOT NULL DEFAULT 0` column could never have taken back.
+
+EXPORT-04 is the preview, and it is where DEC-084's "the preview cannot disagree with the result"
+stopped being a promise. Rather than a second walk that counts for itself, the writer was split:
+`plan_collection_xml` is the patch with the write left out, both halves go through one
+implementation, and `services/rekordbox_export_service.py` turns whichever of them ran into the
+numbers to show. A preview of a 50,000-track library with 10,000 overrides and 21 playlists takes
+3.0 s and writes nothing. It also corrected DEC-084, which had put the parse inside the job: the
+counts that decision requires the preview to state cannot be known without reading the source.
 
 Round 10's central finding came from the code rather than the roadmap: `POSITION_MARK` and `TEMPO`
 appear nowhere in `src/`, so CuePoint has never parsed a cue point or a beat grid. An XML generated

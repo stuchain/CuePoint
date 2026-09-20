@@ -40,6 +40,7 @@ from cuepoint.services.interfaces import (
     IArtworkService,
     IFileWriteRepository,
     IHealthService,
+    IRekordboxExportService,
     IReviewExportService,
     ITagWriteService,
     IDuplicateRepository,
@@ -108,6 +109,7 @@ from cuepoint.services.file_check_service import FileCheckService
 from cuepoint.services.library_service import LibraryService
 from cuepoint.services.health_service import HealthService
 from cuepoint.services.review_export_service import ReviewExportService
+from cuepoint.services.rekordbox_export_service import RekordboxExportService
 from cuepoint.services.match_apply import MatchApplyService
 from cuepoint.services.match_service import MatchService
 from cuepoint.services.match_state import MatchStateService
@@ -545,6 +547,23 @@ def bootstrap_services() -> None:
         )
 
     container.register_factory(ITagWriteService, create_tag_write_service)
+
+    # What a Rekordbox export would write (EXPORT-04, DEC-084). Five reads and
+    # no writes: the source file and its recorded state, both value layers for
+    # every track, CuePoint's tree with each Collection's own order, a Smart
+    # Collection resolved live through the service that owns that rule, and what
+    # the last file check found. EXPORT-05's job will take the same plan and
+    # write it, which is what keeps the preview and the result one accounting.
+    def create_rekordbox_export_service() -> IRekordboxExportService:
+        return RekordboxExportService(
+            track_repository=container.resolve(ITrackRepository),
+            collection_repository=container.resolve(ICollectionRepository),
+            collection_service=container.resolve(ICollectionService),
+            library_source_repository=container.resolve(ILibrarySourceRepository),
+            file_status_repository=container.resolve(IFileStatusRepository),
+        )
+
+    container.register_factory(IRekordboxExportService, create_rekordbox_export_service)
 
     # Matching library tracks as a resumable job (CLEAN-03, DEC-065). It takes
     # the batch service for one thing, resolving a selection, so a match and a

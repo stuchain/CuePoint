@@ -2668,8 +2668,13 @@ notices it.
   needed here.
 - The job appears in the status strip and records one activity event on success (DEC-029), carrying the
   destination and the counts.
-- `MAX_XML_SIZE_BYTES`, the parse and the serialization all run inside the job, so a large source file
-  does not block the preview either.
+- **The size guard and the serialization run inside the job. The parse does not — the preview needs
+  it** (corrected 2026-09-21 while implementing EXPORT-04). The numbers this decision requires the
+  preview to state include how many tracks would change and in which fields, and which track ids the
+  file does not contain; none of those can be known without reading the source. So the preview
+  re-parses it, applies the size guard first for the same reason the write does, and stops before
+  serializing. Measured at 3.0 s for 50,000 tracks with 10,000 overrides, which is a preview a user
+  asked for rather than something running behind them.
 
 **Decided with**: User · **Date**: 2026-09-20
 

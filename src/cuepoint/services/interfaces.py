@@ -62,6 +62,8 @@ if TYPE_CHECKING:
     from cuepoint.models.references import ReferenceSummary
     from cuepoint.models.track_metadata import TrackMetadata
     from cuepoint.models.track_clean_state import TrackCleanState
+    from cuepoint.models.rekordbox_export_values import ExportTrackValues
+    from cuepoint.services.rekordbox_export_service import ExportPlan, ExportPreview
     from cuepoint.services.health_service import HealthReport
     from cuepoint.services.review_export_service import ReviewExport
     from cuepoint.persistence.authored_data_repository import AuthoredTracks
@@ -312,6 +314,33 @@ class IReviewExportService(ABC):
         overwrite: bool = False,
     ) -> "ReviewExport":
         """Write a selection's review rows to a file."""
+        ...
+
+
+class IRekordboxExportService(ABC):
+    """Interface for what a Rekordbox export would write (EXPORT-04, DEC-084).
+
+    Not :class:`IExportService`, which is the CSV, JSON and Excel one reached
+    from Settings. Nothing declared here writes anything: the preview is
+    computed by walking the patch itself with the serialization skipped, and
+    EXPORT-05's job is what writes.
+
+    ``key_format`` carries no default on purpose. The vocabulary and its default
+    live in ``services/tag_write_options.py`` (DEC-089), and an interface that
+    spelled a notation here would be the second place to change when a fourth
+    one arrives.
+    """
+
+    @abstractmethod
+    def plan(self, collection_ids: Sequence[int], key_format: str) -> "ExportPlan":
+        """Work out everything an export of these Collections would write."""
+        ...
+
+    @abstractmethod
+    def preview(
+        self, collection_ids: Sequence[int], key_format: str
+    ) -> "ExportPreview":
+        """Return what that export would do, before it is asked to do it."""
         ...
 
 
@@ -1035,6 +1064,20 @@ class ITrackRepository(ABC):
         """Return the tracks these ids name, once each, in the order given (CLEAN-12)."""
         ...
 
+    @abstractmethod
+    def iter_export_values(
+        self, batch_size: int = 2000
+    ) -> Iterator["ExportTrackValues"]:
+        """Stream every track's imported and CuePoint values, in id order (EXPORT-04).
+
+        ``batch_size`` is how many rows are materialized at a time, and the
+        number here exists only so the method can be called without one. The
+        repository's ``EXPORT_VALUES_BATCH_SIZE`` is the real default; the two
+        differing would cost a read nothing, which is why it is spelled twice
+        where a vocabulary would not be.
+        """
+        ...
+
 
 class ITrackMetadataRepository(ABC):
     """Interface for CuePoint's own per-track metadata (DEC-057).
@@ -1434,6 +1477,11 @@ class IFileStatusRepository(ABC):
     @abstractmethod
     def unavailable_paths(self) -> List[str]:
         """Return the current paths the last check found on an unavailable root (CLEAN-12)."""
+        ...
+
+    @abstractmethod
+    def missing_count(self) -> Optional[int]:
+        """Return how many tracks have no file, or None if none was checked (DEC-088)."""
         ...
 
 

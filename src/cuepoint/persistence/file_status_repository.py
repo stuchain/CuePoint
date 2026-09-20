@@ -132,6 +132,31 @@ class FileStatusRepository(IFileStatusRepository):
             )
             return cursor.rowcount == 1
 
+    def missing_count(self) -> Optional[int]:
+        """How many tracks the last check found no file for, or ``None``.
+
+        ``None`` means no track has ever been checked, which DEC-088 requires
+        be said rather than answered with zero: "no missing files" and "nobody
+        has looked" are different facts, and an export that reported the second
+        as the first would be making a claim on the user's behalf.
+
+        Counted across the library rather than per track, because that is the
+        number the export states (DEC-088) and one statement answers it.
+        """
+        row = (
+            self._db.connect()
+            .execute(
+                "SELECT count(*) AS checked,"
+                " sum(CASE WHEN status = ? THEN 1 ELSE 0 END) AS missing"
+                " FROM track_files",
+                (FILE_MISSING,),
+            )
+            .fetchone()
+        )
+        if row is None or not int(row["checked"] or 0):
+            return None
+        return int(row["missing"] or 0)
+
     def unavailable_paths(self) -> List[str]:
         """Return the paths the last check found on a root that was not there.
 

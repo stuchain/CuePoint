@@ -241,6 +241,12 @@ class PatchResult:
 
     #: COLLECTION TRACK elements the source held.
     tracks_seen: int = 0
+    #: COLLECTION TRACK elements whose id is not in ``updates``, including any
+    #: element carrying no id at all. On a whole-library export — where
+    #: ``updates`` holds every track CuePoint has — this is DEC-082's "tracks
+    #: the file holds that CuePoint does not know", which is the visible sign
+    #: that a refresh is owed.
+    tracks_unknown: int = 0
     #: Distinct track ids this patch changed, counted once each.
     tracks_changed: int = 0
     #: Field name to the number of tracks whose value for it changed.
@@ -393,6 +399,40 @@ def refuse_source_as_destination(source_path: str, destination_path: str) -> Non
         )
 
 
+def plan_collection_xml(
+    source_path: str,
+    updates: Mapping[str, TrackExportValues],
+    playlists: Optional[Sequence[ExportNode]] = None,
+) -> PatchResult:
+    """Return what :func:`patch_collection_xml` would do, without writing.
+
+    EXPORT-04's preview, and the reason DEC-084's "the preview is computed, not
+    estimated" is a property of the code rather than a promise. This is not a
+    second implementation that walks the same file the same way: it is the
+    patch itself with the serialization skipped, so the only thing that can put
+    a number here and a number in the result apart is a genuine change between
+    the two reads.
+
+    Args:
+        source_path: The Rekordbox XML the library was imported from (DEC-035).
+        updates: As :func:`patch_collection_xml` takes them.
+        playlists: As :func:`patch_collection_xml` takes them.
+
+    Returns:
+        The same :class:`PatchResult` the write returns: every attribute that
+        would change, every track id the file does not hold, and what each
+        playlist would become — the folder's name included, so a collision is
+        reported before anything is written.
+
+    Raises:
+        FileNotFoundError: The source does not exist.
+        ValidationError: The source is too large, its encoding is not one this
+            can splice, it is not well-formed, or the tree is deeper than
+            :data:`MAX_EXPORT_DEPTH`.
+    """
+    return _plan(source_path, updates, playlists)[0]
+
+
 def patch_collection_xml(
     source_path: str,
     updates: Mapping[str, TrackExportValues],
@@ -423,7 +463,22 @@ def patch_collection_xml(
         OSError: Writing failed.
     """
     refuse_source_as_destination(source_path, destination_path)
+    result, data, edits = _plan(source_path, updates, playlists)
+    _write_atomically(data, edits, destination_path)
+    return result
 
+
+def _plan(
+    source_path: str,
+    updates: Mapping[str, TrackExportValues],
+    playlists: Optional[Sequence[ExportNode]],
+) -> Tuple[PatchResult, bytes, List[Tuple[int, int, bytes]]]:
+    """The whole of a patch except the write: what it would do, and the edits.
+
+    One implementation, two callers. The preview stops here; the export goes on
+    to :func:`_write_atomically`. That is what makes EXPORT-04's numbers and
+    EXPORT-05's numbers the same numbers rather than two that happen to agree.
+    """
     if not os.path.exists(source_path):
         raise FileNotFoundError(f"XML file not found: {source_path}")
     size = os.path.getsize(source_path)
@@ -451,6 +506,7 @@ def patch_collection_xml(
         if track_id is not None:
             seen_ids.add(track_id)
         if track_id is None or track_id not in updates:
+            result.tracks_unknown += 1
             continue
         changes = _changes_for(attrs, updates[track_id])
         if not changes:
@@ -474,8 +530,7 @@ def patch_collection_xml(
         result.playlist_folder = appended.folder
         result.playlist_folder_renamed = appended.renamed
 
-    _write_atomically(data, edits, destination_path)
-    return result
+    return result, data, edits
 
 
 # ------------------------------------------------------------------- internals
