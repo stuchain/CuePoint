@@ -1010,7 +1010,8 @@ surfaced by the audit but held back until the decisions they depend on are locke
 - ~~Crossfade support~~ — asked as Q-055 in Round 7 and resolved by DEC-056 (no crossfade in v1)
 - Audio analysis scope (which features are worth building at all — likely a Phase 12 conversation)
 - ~~Smart Collection export/duplication behavior~~ — asked as Q-060 in Round 8 and resolved by
-  DEC-061 (live, duplicable, freezable; direct export stays Phase 8's decision)
+  DEC-061 (live, duplicable, freezable), and the direct-export half it left to Phase 8 asked as
+  Q-082 in Round 10 and resolved by DEC-081 (exports as its membership at export time)
 
 **Resolved since first listed here**: crossfade became Q-055/DEC-056 in Round 7, asked before
 Phase 5's contract was written because a crossfade decides whether that contract needs a second
@@ -1665,3 +1666,319 @@ a build dependency today.
 **Recommendation**: **A**. B's cache is unbounded and every table cell decodes a full-size image.
 A's cost is a native dependency with a security history, which the decoder guard and the pin answer.
 A bounded image re-encoded before it goes into a user's file is also the more professional artifact.
+
+---
+
+## DECISION ROUND 10 — REKORDBOX EXPORT ✅ Resolved 2026-09-20
+
+Asked before writing Phase 8's step specifications. Nine rounds left this phase five obligations and
+no mechanism. DEC-064 said export is the explicit user-initiated write that carries CuePoint's
+organization outward, and named the mapping as this phase's to decide. DEC-061 left "whether a Smart
+Collection exports directly" here by name. DEC-057 and DEC-068 built two value layers so that this
+phase would have something to choose between. DEC-058 made a Collection ordered because a Rekordbox
+playlist is. DEC-038 assumed the export would map `duration_seconds` back to `TotalTime`. None of
+that says what artifact export produces, what it is allowed to lose, or where it goes.
+
+Six of these came from reading the code rather than the roadmap:
+
+- **Nothing parses or stores cue points or beat grids.** `POSITION_MARK` and `TEMPO` appear nowhere
+  in `src/` — no parser, no table, no column. `tracks` holds twenty columns of metadata and stops
+  there. An XML regenerated from the database would therefore hand a DJ back a library with every
+  hot cue, memory cue and beat grid stripped, silently. This single fact decides Q-078 and most of
+  what follows from it.
+- **The existing writer cannot add a playlist.** `write_updated_collection_xml` sets attributes on
+  `COLLECTION/TRACK` elements that already exist and preserves `PLAYLISTS` by never touching it. Its
+  safety property is exactly its narrowness, so carrying Collections outward is new code beside it
+  rather than a parameter on it.
+- **The importer reads `Tonality` verbatim.** `_library_track_from_element` stores
+  `_optional_text(get("Tonality"))` with no normalization, so whatever notation export writes is
+  what a later import puts into `tracks.key` — the column the matcher compares. Export is an input
+  to CuePoint's own importer, which is what turns Q-090 from a formatting detail into a decision.
+- **`library_source` already records staleness.** `xml_modified_at` and `xml_size_bytes` have been
+  stored since migration 0005, so Q-083 needs no new schema to answer.
+- **`Rating` has two encodings on the way in.** `_rating_to_stars` accepts both the multiples of 51
+  Rekordbox writes and the plain star count some tools emit. Reading tolerates both; writing has to
+  choose one.
+- **"Export" is already taken.** `services/export_service.py` means CSV, JSON and Excel. Phase 8's
+  service needs a name that does not collide with it.
+
+Outcomes are DEC-077…DEC-089 in `DECISIONS.md`. One answer went against the recommendation — Q-090,
+key notation — and is noted as such below. Q-090 was also asked late: it was first offered as a
+step-doc detail and became a question once the verbatim-`Tonality` finding showed that export's
+notation choice reaches CuePoint's own key column.
+
+---
+
+### Q-078 — How the exported XML is produced
+
+**Status**: Resolved → DEC-077 (Option A chosen: patch the source tree)
+
+**Question**: Rekordbox consumes an XML by loading it as a source in its tree, not by merging it into
+its own collection. What document does CuePoint hand it, and how is that document built?
+
+- **Option A — Patch the source XML tree.** Re-parse the file the library was imported from, set only
+  the attributes CuePoint owns, append CuePoint's playlists, write a new file. Everything CuePoint
+  never parsed survives because it is never rebuilt. Requires the source file to still be present.
+- **Option B — Generate the document from the database.** Build the whole XML from `tracks`,
+  `rekordbox_playlists` and `collections`. One code path, no dependency on the source file — and
+  every exported track loses its cues and grid, unless this phase first builds parsing and storage
+  for all of it.
+- **Option C — Patch, with generate as a fallback** when the source is missing.
+
+**Recommendation**: **A**. B's cost is not a rough edge, it is the destruction of the work a DJ cares
+about most, discovered on a CDJ. C keeps that outcome and hides it behind a fallback a user reaches
+exactly when they are least able to judge what it cost them. A extends a property this repository has
+held since the first attribute patch: the source is read, never written, and what CuePoint does not
+understand is preserved rather than reconstructed.
+
+---
+
+### Q-079 — What one export contains
+
+**Status**: Resolved → DEC-078 (Option A chosen: whole library plus chosen Collections)
+
+**Question**: Is an export a view of the library, or of a selection?
+
+- **Option A — The whole `COLLECTION`, the Rekordbox mirror untouched, plus the Collections the user
+  picked** as new `PLAYLISTS` nodes.
+- **Option B — Only the selected scope**: `COLLECTION` holds just those tracks, `PLAYLISTS` just that
+  node.
+- **Option C — Two separate actions**, "export metadata" and "export Collection".
+
+**Recommendation**: **A**. It matches how the file is actually used — loaded as a source and dragged
+from. B produces a document that looks like the user's library and is not one, which is the kind of
+file that gets confused with the real export a month later. C splits one intent into two flows, two
+previews and two sets of documentation, and users will want both halves at once.
+
+---
+
+### Q-080 — Whose value the export writes
+
+**Status**: Resolved → DEC-079 (Option A chosen: the effective value)
+
+**Question**: A track can carry an imported Rekordbox value and a CuePoint override for the same
+field (DEC-057, DEC-068). Which reaches the file?
+
+- **Option A — The effective value, per field**: the override when there is one, otherwise the
+  imported value, unchanged.
+- **Option B — The user chooses per field at export time**, as toggles in the preview.
+- **Option C — Only fields that hold an override** are touched at all.
+
+**Recommendation**: **A**. The rule already exists, in one place, as `effective_value` and
+`effective_rating`, mirrored as `COALESCE(override, imported)` in the browse SQL. Reusing it means
+what lands in Rekordbox is what the table and the Inspector showed. B is a second precedence rule
+beside that one, and DEC-057's note that two implementations disagree the day one is edited applies
+with more force when one of them writes a file. C sounds conservative but silently keeps a stale
+value for any field corrected by hand rather than by override.
+
+---
+
+### Q-081 — What happens to tags, notes and favorites
+
+**Status**: Resolved → DEC-080 (Option A chosen: they stay in CuePoint)
+
+**Question**: Rekordbox XML has no field for a tag set, a note or a favorite. DEC-064 promised export
+would carry "ratings and tags into whatever fields make sense, if any". Do they go?
+
+- **Option A — They stay in CuePoint.** Export carries the five override fields, the effective
+  rating, and Collections as playlists.
+- **Option B — Tags become playlists** under a folder of their own; notes go nowhere.
+- **Option C — An opt-in mapping into `Comment`**, with a chosen separator.
+
+**Recommendation**: **A**. C writes into the one attribute this codebase already contests — the match
+flow marks it, and a DEC-070 file write targets it — so the mapping's first effect would be to
+overwrite something another feature owns. B is defensible and genuinely useful, but sixty tags become
+sixty playlists with their own naming and collision rules, and it answers only a third of the
+question. A keeps export lossless in one direction instead of lossy in two, and leaves B available
+later as an addition rather than a correction.
+
+---
+
+### Q-082 — Whether a Smart Collection exports directly
+
+**Status**: Resolved → DEC-081 (Option A chosen: as its membership at export time). Closes the item
+DEC-061 deferred here by name.
+
+**Question**: A Smart Collection stores rules and never materializes membership (DEC-061). A
+Rekordbox playlist is a list of tracks. What does exporting one mean?
+
+- **Option A — Export its membership at that moment**, in its stored sort order, recording the rule
+  set and the count.
+- **Option B — Refuse; require "Freeze to Collection" first**, which DEC-061 built for this.
+- **Option C — Freeze as a side effect** of exporting.
+
+**Recommendation**: **A**. B is coherent but charges an extra step and a growing pile of frozen
+Collections for anyone who exports weekly, to avoid a snapshot that a rule set plus a timestamp fully
+explains. C creates objects the user did not ask for and leaves two near-identical Collections after
+two exports. A is what DEC-061 already contemplated when it said nothing here prevents it.
+
+---
+
+### Q-083 — A source file that changed or vanished
+
+**Status**: Resolved → DEC-082 (Option A chosen: detect, report, allow)
+
+**Question**: Patching depends on the source XML. It can have been re-exported from Rekordbox since
+CuePoint imported it, or moved, or deleted. What does export do?
+
+- **Option A — Detect against `library_source`, report in the preview, let the user proceed**: tracks
+  the file has and CuePoint does not are left untouched; tracks CuePoint has and the file lacks are
+  counted and dropped from appended playlists. A missing file blocks the export and says why.
+- **Option B — Refuse until the library is refreshed.**
+- **Option C — Patch whatever is on disk**, silently.
+
+**Recommendation**: **A**. C is the only genuinely unsafe one: a dropped reference becomes a playlist
+entry pointing at a `TrackID` the file does not have, discovered in Rekordbox. B buys a guarantee
+with a hard block on a routine action, triggered by an mtime that changes for reasons that do not
+matter — the kind of gate users learn to route around. A makes the difference visible with real
+numbers at the moment it matters, which is what DEC-032 already established for a refresh.
+
+---
+
+### Q-084 — Where the exported file goes
+
+**Status**: Resolved → DEC-083 (Option A chosen: save dialog, remembered folder, source refused)
+
+**Question**: The existing writer's safety property is "always a new file, never the source". How does
+that become a rule rather than a habit?
+
+- **Option A — A native save dialog** pre-filled with a dated name, starting in the folder used last,
+  with the source path refused by an explicit check.
+- **Option B — A fixed exports folder** with timestamped names and no dialog.
+- **Option C — One remembered path, overwritten after a confirm**, so Rekordbox's imported-XML entry
+  keeps pointing at the same file.
+
+**Recommendation**: **A**. C serves one workflow well and puts a single confirm between the user and
+the loss of their previous export. B never overwrites anything but grows without bound in a folder the
+user has to go and find. A is what a desktop app does, and turning "never the source" into a check the
+code makes is the part worth spending code on.
+
+---
+
+### Q-085 — How an export runs
+
+**Status**: Resolved → DEC-084 (Option A chosen: preview, then a job)
+
+**Question**: Inline, or as a background job?
+
+- **Option A — A preview that states exactly what will be written, then a cancellable background job**
+  with an activity event.
+- **Option B — Preview, then a synchronous write** behind a modal.
+- **Option C — One click, no preview.**
+
+**Recommendation**: **A**. It is the shape DEC-032, DEC-033 and DEC-070 already established, for the
+same reason each time: this is an outward-facing write, and every other one in CuePoint previews
+first. B blocks the UI on the fifty-thousand-track case, which is the case that matters. C removes the
+only step at which a stale source or a dropped reference can be noticed before Rekordbox notices it.
+
+---
+
+### Q-086 — Whether Phase 8 writes audio files
+
+**Status**: Resolved → DEC-085 (Option A chosen: XML only)
+
+**Question**: DEC-064 left "carrying CuePoint ratings and tags into audio files" to this phase.
+Does export touch files?
+
+- **Option A — No. Phase 8's only output is the XML.** DEC-070's job already writes the five Beatport
+  fields into files, previewed and recorded.
+- **Option B — Extend the DEC-070 job** with CuePoint rating and tags.
+- **Option C — A separate opt-in file-writing job.**
+
+**Recommendation**: **A**. B and C both need an ID3 mapping for a tag set that does not exist, so the
+mapping would be invented here and then depended on. More importantly, a phase whose single artifact
+is one new file has one failure mode; adding a file-writing path means "I exported my library" can
+mean four hundred modified files. DEC-070's existing job remains available for the fields that have an
+honest home in a file.
+
+---
+
+### Q-087 — What CuePoint remembers about an export
+
+**Status**: Resolved → DEC-086 (Option A chosen: a record per export, no per-track state)
+
+**Question**: Is an export recorded, and at what granularity?
+
+- **Option A — One row per export** — when, where, how many tracks, which Collections with which
+  counts, which source and whether it was stale — plus an activity event. No per-track state.
+- **Option B — Also stamp each exported track**, enabling "only what changed since last export".
+- **Option C — An activity event and nothing else.**
+
+**Recommendation**: **A**. B is the staleness bug DEC-061 refused for Smart Collections, reintroduced:
+every edit, apply, revert, refresh and batch would have to know it had just falsified a stamp, and the
+symptom of getting it wrong is an export that silently omits a track. C leaves "where did my last
+export go" as prose the UI cannot act on. A answers the question a user actually asks and invalidates
+nothing.
+
+---
+
+### Q-088 — Where export is reachable from
+
+**Status**: Resolved → DEC-087 (Options A and B chosen: Library Actions and the Collection context
+menu), **amended 2026-09-20** — Option A's surface turned out to be selection-scoped, so the entry
+moved to the Library header beside import and refresh. Raised by the Phase 8 specification as Q-091
+and settled there.
+
+**Question**: DEC-020's navigation registry declares the full target IA — Library, Collections, Clean,
+Discover, Prepare, Tools, inCrate, Settings — and has no export destination. So export is an action.
+Which surfaces offer it?
+
+- **Option A — The Library toolbar's Actions menu**, beside ORG-11's batch operations. (The menu this
+  named is drawn only when tracks are selected, which the amendment above corrects.)
+- **Option B — The Collection and Smart Collection context menu** in the left pane.
+- **Option C — A section in Settings.**
+- **Option D — A native File-menu item with an accelerator.**
+
+**Recommendation**: **A and B**. They are the two places a user already is when they have a scope in
+view, which is what makes the exported scope obvious rather than implied. C is the right home for the
+remembered destination and defaults, and the wrong home for the action. D has no scope context, so it
+can only ever mean "everything", and offering it invites the reading that the other two mean something
+narrower than they do.
+
+---
+
+### Q-089 — Tracks whose file is missing
+
+**Status**: Resolved → DEC-088 (Option A chosen: exported, and counted)
+
+**Question**: Phase 7 detects that a track's file is gone (DEC-073). Does export include it?
+
+- **Option A — Yes, unchanged, with the count stated in the preview.**
+- **Option B — Yes in `COLLECTION`, but excluded from appended playlists.**
+- **Option C — Block the export until they are resolved.**
+
+**Recommendation**: **A**. The `TRACK` element and its `Location` are Rekordbox's own; dropping one
+removes the track from the user's Rekordbox view, which DEC-073 was explicit CuePoint does not do. B
+makes an exported playlist quietly differ from the Collection on screen. C turns a routine action into
+a chore, since missing files are normal in any large library. A states the number and lets the user
+decide.
+
+---
+
+### Q-090 — Which key notation the export writes
+
+**Status**: Resolved → DEC-089 (Option C chosen: all three, shared with the file-tag path) —
+**against the recommendation**. Raised while reviewing the step-doc details, once the importer's
+verbatim `Tonality` read showed the choice reaches CuePoint's own key column.
+
+**Question**: Export writes `Tonality`, which Rekordbox displays as the key. `key_text(key,
+key_format)` already converts to classic (`Am`), Camelot (`8A`) or short (`Amin`) for the file-tag
+path. Which does export offer? The importer reads `Tonality` verbatim, so whatever is written becomes
+`tracks.key` on a later import of that file.
+
+- **Option A — Pin classic**, no control. The exported file round-trips: re-importing stores the keys
+  CuePoint already had, and `tracks.key` stays one notation across the library.
+- **Option B — Offer classic and Camelot**, remembered, with the re-import consequence stated in the
+  preview.
+- **Option C — Offer all three**, reusing the file-tag vocabulary, validator and converter.
+- **Option D — Offer the choice and normalize key on import**, so any notation round-trips.
+
+**Recommendation**: **A**. B and C both let a user produce a file whose re-import leaves `tracks.key`
+holding `8A` for some tracks and `Am` for others, in the column the matcher compares and the Clean
+page displays — a warning about a consequence two steps away, which is the kind users click past. C
+additionally offers `short`, a notation Rekordbox never produces. D is the honest fix and belongs to
+whichever phase revisits DEC-034's capture-as-Rekordbox-has-it rule, not to export.
+
+**Chosen**: **C**. The user chose one enum and one converter over a subset, accepting the mixed-column
+risk as opt-in. DEC-089 records the two mitigations that follow: the default is classic, and the
+preview states the consequence at the moment of choosing rather than in a footnote.

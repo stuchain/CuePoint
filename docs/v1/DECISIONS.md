@@ -847,6 +847,18 @@ it is recorded here rather than left to be inferred from the diff.
 **Decided with**: User (delegated: "do whatever you think better and most professional") ·
 **Date**: 2026-09-03
 
+### Amendment (2026-09-20) — the export never writes `TotalTime`
+
+**What the Phase 8 specification found**: this decision closed by saying "Phase 8's export maps it
+back to `TotalTime` in one line". Round 10 chose to patch the source XML rather than regenerate it
+(DEC-077), because CuePoint parses no cue points or beat grids and a generated document would strip
+them. A patch sets only the attributes CuePoint owns, and `TotalTime` is not one of them — the value
+is already in the file, written by Rekordbox.
+
+**Amended decision**: unchanged in substance. `duration_seconds` remains the only length column and
+the domain's name for it. The closing sentence about mapping it back is obsolete: no export writes
+`TotalTime`, in one line or otherwise.
+
 ---
 
 ## DEC-039 — The Library Page Is the Browser
@@ -1561,6 +1573,18 @@ that sentence false.
 
 **Decided with**: User · **Date**: 2026-09-06
 
+### Amendment (2026-09-20) — Phase 8 did decide, and it exports directly
+
+**What Round 10 settled**: the question this decision left open by name — whether a Smart Collection
+exports directly — was asked as Q-082 and answered by DEC-081. A Smart Collection exports as an
+ordinary Rekordbox playlist holding whoever matches its rules at the moment of export, in its stored
+sort order. Nothing is frozen and nothing is linked.
+
+**Amended decision**: unchanged in substance; the deferred clause is now resolved rather than open.
+Freezing is no longer "the answer in the meantime" — it is the way to keep a durable copy inside
+CuePoint, and the export record (DEC-086) is what explains a past export's membership without storing
+it.
+
 ---
 
 ## DEC-062 — Collections Live in the Library's Left Pane
@@ -1657,6 +1681,21 @@ question with its own safety properties that belongs to the export phase.
   disagree (DEC-030).
 
 **Decided with**: User · **Date**: 2026-09-06
+
+### Amendment (2026-09-20) — ratings are exported; tags, notes and favorites are not
+
+**What Round 10 settled**: this decision handed Phase 8 the mapping — "Collections into Rekordbox
+playlists, ratings and tags into whatever fields make sense, if any" — and the answer to the second
+half is "no field makes sense". DEC-080 exports the effective rating and the five override fields and
+leaves tags, notes and the favorite flag in CuePoint. Rekordbox XML has no field for a tag set, `Comments`
+is already claimed by the match flow and by DEC-070's file write, and My Tag is not in the XML at all.
+
+**Amended decision**: unchanged in substance — this phase still writes nothing outside the database, and
+export is still the explicit user-initiated write that carries organization outward. The promise is
+narrowed where it was conditional: Collections become playlists (DEC-078) and the rating is written
+(DEC-079), while tags, notes and favorites remain CuePoint's alone. The "if any" in the original sentence
+is doing the work. The user docs this decision already required must therefore keep saying that tags,
+notes and favorites do not appear in Rekordbox even after an export.
 
 ---
 
@@ -2334,3 +2373,438 @@ Nothing here changes the decision or its amendment. What building it settled, re
   a scope stops after twenty failures in a row.
 - **Vocabulary**: `artwork` is `embedded`, `beatport`, `none` or `unknown` — what the table would
   show, with a file answer read at another path counting as not read.
+
+---
+
+## DEC-077 — The Export Patches the Source XML and Never Regenerates It
+
+**Status**: Approved · **Related**: DEC-035, DEC-034, DEC-038 · **Amends**: DEC-038
+
+**Decision**: An export re-parses the Rekordbox XML the library was imported from (DEC-035's recorded
+source), sets only the attributes CuePoint owns on `COLLECTION/TRACK` elements that already exist,
+appends CuePoint's playlists to `PLAYLISTS`, and writes the result to a new file. The document is never
+built from the database.
+
+**Reason**: `POSITION_MARK` and `TEMPO` appear nowhere in `src/`. CuePoint has never parsed a cue point
+or a beat grid, has no table and no column for one, and DEC-034's "every useful field" was a list of
+metadata. A generated document would therefore return a library with every hot cue, memory cue and beat
+grid removed — the work a DJ has invested the most hours in, destroyed silently, and discovered on a
+CDJ in a booth. Patching inverts the default: instead of preserving what CuePoint remembered to carry,
+it preserves everything it never understood, which is the only discipline that scales to a vendor format
+this project does not control. It also extends the property `write_updated_collection_xml` has held
+since the first attribute patch — the source is read, never written.
+
+**Implications**:
+- The attributes the export sets are `Tonality`, `AverageBpm`, `Genre`, `Label`, `Year` and `Rating`,
+  and nothing else. `TotalTime` is never written, which retires DEC-038's note that the export would
+  map `duration_seconds` back to it — patching means the value is already in the file.
+- **The legacy write path is orphaned, and this phase retires it.** A caller search found no
+  production caller of `write_updated_collection_xml`, `build_rekordbox_updates`, its `_batch` twin,
+  `write_key_comment_year_to_playlist_tracks`, its `_batch` twin, or `write_tags_to_paths` — only
+  `data/__init__.py` re-exports and tests. `processor_service.py` imports readers from `rekordbox.py`
+  and nothing else; `tag_write_service.py` calls `tag_writer.write_key_comment_year_to_file` directly.
+  CLEAN-14 removed the routes and screens above this cluster and left it standing on the note that
+  "the CLI's own paths stay", which turned out not to describe it. EXPORT-01 deletes it in the same
+  change that introduces the new writer.
+- **What that dead code got wrong, recorded because the new writer must not repeat it**: it emits
+  `BPM` and `Comment`, while the parser and Rekordbox use `AverageBpm` and `Comments`, so the BPM and
+  the comment never reached Rekordbox at all. It also sets `Key` on a `COLLECTION/TRACK`, which is
+  Rekordbox's alternative spelling of `TrackID` on a playlist entry and sits in the importer's own
+  `TrackID or ID or Key` identity fallback. The cause was one `updates` dict serving two writers —
+  the file-tag path reads `attrs.get("Key")`, `("BPM")` and `("Comment")`, which are correct for it,
+  while the XML writer sets every key it is handed as an attribute. The export writes the six
+  attributes named above and takes no dict it did not build.
+- Unknown attributes, unknown elements, `PRODUCT`, comments and the declaration survive because nothing
+  rebuilds them. A test pins this by exporting a fixture with cue points, tempo marks and an invented
+  attribute and asserting they are byte-identical afterwards.
+- Export requires the source file. When it is gone, export cannot run (DEC-082).
+- `MAX_XML_SIZE_BYTES` already guards the parse and continues to.
+- The new service is not `services/export_service.py`, which means CSV, JSON and Excel. A distinct name
+  is required so that "export" in code never means two things.
+
+**Decided with**: User · **Date**: 2026-09-20
+
+---
+
+## DEC-078 — One Export Is the Whole Library Plus the Chosen Collections
+
+**Status**: Approved · **Related**: DEC-077, DEC-031, DEC-059
+
+**Decision**: An export writes the whole `COLLECTION` with CuePoint's values applied, leaves the
+mirrored Rekordbox `PLAYLISTS` tree exactly as the source has it, and appends the Collections, Smart
+Collections and folders the user selected as new nodes beside it.
+
+**Reason**: Rekordbox consumes an XML by loading it as a source in its tree and letting the user drag
+from it, so the useful artifact is a view of the library rather than a fragment of one. A
+selection-only document looks like the user's library and is not one, which is the file that gets
+confused with the real export a month later — and it makes the mirrored tree disappear for no reason,
+since DEC-077's patch preserves it for free. Splitting the action in two would give one intent two
+previews, two jobs and two sets of documentation, and the common case wants both halves at once.
+
+**Implications**:
+- The Collections the user ticks control which playlists are appended, never which tracks are in
+  `COLLECTION`. Export reads no track selection at all (DEC-087, as amended).
+- CuePoint's nodes go under a single named parent folder so the exported tree says which nodes CuePoint
+  added; a name collision with an existing top-level node is resolved and reported in the preview.
+- DEC-059's folder structure is carried as folder nodes, so a Collection exports at the path the user
+  filed it under.
+- A Collection's order is the exported playlist's order (DEC-058), and a track appearing twice in a
+  Collection appears twice in the playlist.
+
+**Decided with**: User · **Date**: 2026-09-20
+
+---
+
+## DEC-079 — The Export Writes the Effective Value
+
+**Status**: Approved · **Related**: DEC-057, DEC-068, DEC-069 · **Implements**: DEC-064
+
+**Decision**: For each of the five override fields and for the rating, the export writes the effective
+value — CuePoint's when there is one, otherwise the imported value unchanged. It sets an attribute only
+where that effective value differs from what the source file already holds, compared on the parsed value
+rather than on the text. There is no per-field choice at export time.
+
+**Reason**: The rule exists once already: `effective_value` and `effective_rating` in
+`models/track_metadata.py`, mirrored as `COALESCE(override, imported)` in the browse SQL. Reusing it
+means what lands in Rekordbox is precisely what the table and the Inspector showed, so the export needs
+no separate explanation of whose value won. DEC-057's warning that two implementations of this rule
+disagree the day one of them is edited applies with more force when one of them writes a file a user
+then loads into Rekordbox. Exporting only overridden fields would have silently preserved a stale value
+for anything corrected by DEC-069's hand edit rather than by an override.
+
+**Implications**:
+- `OVERRIDE_FIELDS` is the field list: `key`, `bpm`, `genre`, `label`, `year`. A hand edit stores an
+  override, so DEC-069's edits export by the same rule with no special case.
+- A field with no override and no imported value is left as the source file has it, which is usually
+  absent. The export does not write empty strings; null means "no value", exactly as DEC-068 has it.
+- **Writing only what differs** keeps "unchanged" literally true rather than nearly true. Re-serializing
+  a value the user never touched would still rewrite it, and for the rating it would visibly change it:
+  `_rating_to_stars` accepts both the multiples of 51 Rekordbox writes and a plain 0–5 some tools emit,
+  so a source carrying `Rating="3"` on an unrated-in-CuePoint track would come back as `Rating="153"`.
+  Comparing parsed values means that track is not touched at all. It also makes the exported diff
+  minimal, which is worth having when the artifact is a file someone loads into their Rekordbox.
+- Where a write *is* warranted, the rating is written in the multiples-of-51 encoding Rekordbox itself
+  writes. A `_stars_to_rating` beside `_rating_to_stars` is the only implementation, with a round-trip
+  test over 0–5.
+- A test asserts that the value the browse query reports for a track and the value the export writes for
+  it are the same value, so the two cannot drift.
+
+**Decided with**: User · **Date**: 2026-09-20
+
+---
+
+## DEC-080 — Tags, Notes and Favorites Stay in CuePoint
+
+**Status**: Approved · **Related**: DEC-015, DEC-057 · **Narrows**: DEC-064
+
+**Decision**: The export carries the five override fields, the effective rating, and Collections as
+playlists. CuePoint tags, notes and the favorite flag are not exported, into any attribute.
+
+**Reason**: Rekordbox XML has no field for a tag set, a note or a favorite. `Comments` is the only
+candidate, and it is already contested: the match flow marks it, and a DEC-070 file write targets it, so
+the mapping's first effect would be to overwrite a value another feature owns. Rekordbox's own My Tag is
+not in the XML at all, so it cannot be a target. Exporting tags as playlists is defensible and genuinely
+useful, but it turns sixty tags into sixty playlists with their own naming and collision rules, and it
+answers only a third of the question. Keeping the export lossless in one direction is better than making
+it lossy in two, and tags-as-playlists stays available later as an addition rather than a correction.
+
+**Implications**:
+- This narrows DEC-064's promise that the export would carry "ratings and tags into whatever fields make
+  sense, if any". Ratings go; tags do not. DEC-064 carries an amendment saying so rather than leaving the
+  narrowing to be inferred.
+- The user docs must say that tags, notes and favorites are CuePoint's alone and do not appear in
+  Rekordbox, next to the existing notes about the two collection imports (DEC-030) and about CuePoint's
+  organization being invisible until an export (DEC-064).
+- A user who wants a tag to reach Rekordbox has a supported route today: build a Smart Collection whose
+  rule is that tag (DEC-060) and export it (DEC-081).
+
+**Decided with**: User · **Date**: 2026-09-20
+
+---
+
+## DEC-081 — A Smart Collection Exports as Its Membership
+
+**Status**: Approved · **Closes**: the direct-export item DEC-061 deferred to this phase ·
+**Related**: DEC-061, DEC-016, DEC-060
+
+**Decision**: A Smart Collection exports as an ordinary Rekordbox playlist holding the tracks matching
+its rules at the moment of export, in its stored sort order. It is not frozen, and nothing is linked
+afterwards.
+
+**Reason**: DEC-061 said a Smart Collection stores rules and never materializes membership, and left
+this question here by name while noting nothing prevented it. Requiring a freeze first would charge an
+extra step and a growing pile of frozen Collections for anyone who exports weekly, in exchange for
+avoiding a snapshot that a rule set plus a timestamp fully explains. Freezing as a side effect would
+create objects the user never asked for and leave two near-identical Collections after two exports.
+
+**Implications**:
+- Evaluation reuses the existing count-plus-window path, so exporting a Smart Collection costs what
+  browsing it costs (ORG-06 measured the scope at 26.84 ms against a filter's 26.75 ms).
+- The export record (DEC-086) stores the rule set and the resulting count, so a past export can explain
+  which tracks it contained and why without that membership being stored anywhere.
+- Two exports a week apart can legitimately differ. The preview states the count before the write, and
+  "Freeze to Collection" remains the way to keep a durable copy inside CuePoint.
+- DEC-061's refusal of manual pinning is untouched: the export reads the rules, it does not offer a
+  chance to adjust the resulting list.
+
+**Decided with**: User · **Date**: 2026-09-20
+
+---
+
+## DEC-082 — A Changed Source Is Reported, Not Refused
+
+**Status**: Approved · **Related**: DEC-035, DEC-032, DEC-077
+
+**Decision**: Before an export, the source file is compared against `library_source`'s recorded
+`xml_modified_at` and `xml_size_bytes`. A difference is reported in the preview with its real numbers
+and does not block the export. A source file that is missing or unreadable blocks it, and says which
+file and why.
+
+**Reason**: This is DEC-032's rule for a refresh applied to a write in the other direction: state what
+will happen with real counts, then let the person decide. Refusing on any difference buys a guarantee by
+putting a hard block on a routine action, triggered by an mtime that changes for reasons that do not
+matter — the kind of gate users learn to route around. Patching silently is the only genuinely unsafe
+option, because an appended playlist could then reference a `TrackID` the file no longer contains, and
+Rekordbox would be the one to break the news.
+
+**Implications**:
+- Tracks the file holds that CuePoint does not know are left exactly as they are. They are counted in the
+  preview, because they are the visible sign that a refresh is owed.
+- Tracks CuePoint knows that the file lacks are counted, and are dropped from appended playlists so no
+  dangling reference reaches Rekordbox. The count is stated before the write, not after.
+- The preview offers "Refresh first" as an action, so the recommended path is one click rather than a
+  sentence.
+- Only the recorded size and modification time are compared. Nothing is hashed, so the check costs a
+  `stat` on a file that may be hundreds of megabytes.
+
+**Decided with**: User · **Date**: 2026-09-20
+
+---
+
+## DEC-083 — The Destination Is Chosen, Remembered, and Never the Source
+
+**Status**: Approved · **Related**: DEC-077, DEC-035
+
+**Decision**: Each export opens a native save dialog, pre-filled with a dated default name and starting
+in the folder used for the previous export. The source XML's own path is refused by an explicit check
+rather than by convention.
+
+**Reason**: "Always a new file, never the source" has been this repository's safety property since the
+first attribute patch, and it has been a habit of the call sites rather than a rule the code enforces.
+Making it a check is the part worth spending code on, because it is the one mistake whose cost is a
+user's Rekordbox library. A single remembered path overwritten after a confirm serves one workflow well
+and puts one confirmation between the user and the loss of their previous export; a fixed folder with
+timestamped names never overwrites anything but grows without bound somewhere the user has to go find.
+
+**Implications**:
+- The refusal compares resolved, normalized paths, so it is not defeated by a relative path, a trailing
+  separator, a case difference on Windows, or a symlink.
+- Only the folder is remembered, not the filename, so no export silently overwrites the previous one.
+  Overwriting some other existing file is the OS dialog's own confirmation, not a second one.
+- The remembered folder and the DEC-089 key format are the export's persisted preferences, and they live
+  where Settings keeps the rest.
+- The write keeps `write_updated_collection_xml`'s temp-file-then-`replace` pattern, so an interrupted
+  export cannot leave a half-written document at the destination.
+
+**Decided with**: User · **Date**: 2026-09-20
+
+---
+
+## DEC-084 — An Export Previews, Then Runs as a Job
+
+**Status**: Approved · **Related**: DEC-032, DEC-033, DEC-070, DEC-007
+
+**Decision**: An export previews before it writes. The preview states the number of tracks, how many
+carry a CuePoint value and in which fields, each playlist that will be appended with its count, the key
+notation chosen, and every warning DEC-082 and DEC-088 produce. Nothing is written until it is confirmed.
+The write then runs as a cancellable background job with an activity event.
+
+**Reason**: The shape is not new: DEC-032 previews a refresh, DEC-033 runs an import as a job, and
+DEC-070 previews the one thing in Phase 7 that touches a user's files. Each time for the same reason —
+an outward-facing write is confirmed with numbers, and a long one does not hold the UI. Fifty thousand
+tracks is the case that matters, and it is the case a modal would block. Removing the preview would
+remove the only moment at which a stale source or a dropped reference can be noticed before Rekordbox
+notices it.
+
+**Implications**:
+- The preview is computed, not estimated. It is the same query the write walks, so a number in the
+  preview and a number in the result cannot disagree except through a concurrent edit.
+- Cancelling before the `replace` leaves no file at the destination; the temp file is removed. There is
+  no partial export and no resume — an export is cheap to repeat, so DEC-065's resumability is not
+  needed here.
+- The job appears in the status strip and records one activity event on success (DEC-029), carrying the
+  destination and the counts.
+- `MAX_XML_SIZE_BYTES`, the parse and the serialization all run inside the job, so a large source file
+  does not block the preview either.
+
+**Decided with**: User · **Date**: 2026-09-20
+
+---
+
+## DEC-085 — Phase 8 Writes No Audio Files
+
+**Status**: Approved · **Related**: DEC-064, DEC-070, DEC-051
+
+**Decision**: The export's only output is the XML file. Phase 8 writes nothing into audio files.
+CuePoint ratings, tags, notes and favorites are not written into file tags.
+
+**Reason**: DEC-064 left this to the export phase, and the answer is the same discipline DEC-051 kept for
+the player and DEC-064 kept for organization: a phase whose single artifact is one new file has one
+failure mode. Adding a file-writing path means "I exported my library" can also mean four hundred
+modified files, which is exactly the outcome DEC-064 declined to introduce for a rating. There is also no
+honest tag frame for a tag set, so the mapping would have to be invented here and then depended on.
+
+**Implications**:
+- DEC-070's job is unchanged and remains the way the five Beatport fields reach a file, previewed and
+  recording every value it replaces.
+- `data/tag_writer.py` is untouched by this phase.
+- Exporting cannot modify, move, rename or delete any audio file. A test asserts that an export leaves
+  every file in the fixture library byte-identical.
+
+**Decided with**: User · **Date**: 2026-09-20
+
+---
+
+## DEC-086 — Each Export Is Recorded; No Track Carries Export State
+
+**Status**: Approved · **Related**: DEC-061, DEC-008, DEC-029
+
+**Decision**: Each export writes one row recording when it ran, the destination path, the source file and
+whether it was stale, the track count, the fields written, the key notation, and each exported playlist
+with its kind, its rule set where it had one, and its count. No per-track export state is stored, and
+there is no incremental "only what changed since last export".
+
+**Reason**: A per-track stamp is the staleness bug DEC-061 refused for Smart Collections, reintroduced
+where it is harder to see: every edit, apply, revert, refresh, import and batch would have to know it had
+just falsified a stamp, and the symptom of missing one is an export that silently omits a track the user
+changed. The row answers the question people actually ask — where did my last export go, what was in it —
+and invalidates nothing. An activity event alone would leave that answer as prose the UI cannot act on or
+pre-fill from.
+
+**Implications**:
+- One new table, written inside the export job's transaction, plus one activity event.
+- The recorded destination is what pre-fills the next save dialog's folder (DEC-083).
+- Deleting a track does not delete the history of an export that contained it: the row stores counts and
+  playlist identities, not track references, so it stays readable after a refresh removes tracks (DEC-003).
+- Nothing here claims the exported file still exists or is unmodified. The row records what CuePoint
+  wrote, not what is on disk now.
+
+**Decided with**: User · **Date**: 2026-09-20
+
+---
+
+## DEC-087 — Export Is an Action in the Library and the Collection Menu
+
+**Status**: Approved · **Related**: DEC-020, DEC-062, DEC-045
+
+**Decision**: Export is offered in the Library header and in the context menu of a Collection or
+Smart Collection in the left pane. It is not a navigation destination, not a Settings action, and
+not an application-menu item. (Amended 2026-09-20 — the original text named the selection Actions
+menu; see below.)
+
+**Reason**: DEC-020's registry declares the full target IA and contains no export destination, which is
+the correct shape — export is something done to a scope in view, not a place to go. Both chosen surfaces
+are where a user already is when they have that scope, which is what makes the exported scope obvious
+rather than implied. An application-menu item carries no scope, so it could only mean "everything", and
+offering it alongside the other two invites the reading that those mean something narrower.
+
+**Implications**:
+- Export is a library-scoped action beside import and refresh, not one of ORG-11's selection
+  operations.
+- The Collection context menu's entry pre-ticks that node; the header's entry opens with none ticked,
+  and both land in the same preview.
+- Settings holds the remembered destination folder and the default key notation (DEC-083, DEC-089), and
+  offers no way to start an export.
+- The nav registry is unchanged, so no `export` destination, icon or route is added.
+
+**Decided with**: User · **Date**: 2026-09-20
+
+### Amendment (2026-09-20) — the Library header, not the selection Actions menu
+
+**What the Phase 8 specification found**: this decision named "the Library toolbar's Actions menu,
+beside ORG-11's batch operations", on the understanding that it was a general toolbar menu. Reading
+`SelectionActions.tsx` showed it is not. The Actions button is rendered only when `count > 0`, so a
+library-wide operation placed there would be unreachable until the user selected tracks. Worse, the
+component's own design rule is that the toolbar menu and the row context menu are built from one
+array — "one vocabulary for both surfaces" — so an entry there is also an entry on a right-clicked
+track, where "Export…" means nothing. The specification raised this as Q-091 and it is settled here
+rather than left open.
+
+**Amended decision**: export is offered in the **Library header**, beside "Check for changes" and
+"Import a different collection…", and in the context menu of a Collection or Smart Collection. It is
+not in the selection Actions menu, not a navigation destination, not startable from Settings, and not
+an application-menu item.
+
+**Reason**: import and export are the two ends of the library's relationship with its source file, and
+`LibraryHeader.tsx` is already where that relationship is managed. A user looking for "send this back
+to Rekordbox" looks where "Import a different collection…" is. It also keeps export off a surface
+scoped to a track selection, which it never reads.
+
+**What this costs, and why it costs nothing**: the shortest path from "these 218 tracks" to "a playlist
+in Rekordbox" is no longer one action. It is two — "Add to Collection", which ORG-11 already offers on
+a selection, and then exporting that Collection. That is the better path: it produces a Collection with
+a name, a folder and a history, which can be re-exported, edited and seen, rather than an ephemeral
+playlist that exists only inside one exported file and has no identity in CuePoint. Keeping one kind of
+exportable object is what stops the export record (DEC-086), the preview and the docs from each having
+to describe two.
+
+---
+
+## DEC-088 — Tracks With Missing Files Are Exported and Counted
+
+**Status**: Approved · **Related**: DEC-073, DEC-003, DEC-077
+
+**Decision**: A track whose audio file is missing is exported unchanged, and the number of such tracks in
+scope is stated in the preview.
+
+**Reason**: The `TRACK` element and its `Location` are Rekordbox's own, and dropping one removes the track
+from the user's Rekordbox view — which DEC-073 was explicit CuePoint does not do, having refused even to
+relocate a file. Excluding them from appended playlists only would make an exported playlist quietly
+differ from the Collection on screen, and the difference would be invisible until someone counted. Blocking
+the export would turn a routine action into a chore, because missing files are normal in a large library.
+
+**Implications**:
+- The preview states the count and links to Clean's missing-file view, so the information is offered
+  without being enforced.
+- Whether a file is missing is read from Phase 7's existing `track_files` state, not checked during the
+  export. A never-checked library reports that it has not been checked rather than reporting zero.
+- No `Location` is ever rewritten. CuePoint does not fix paths (DEC-073), and an export is not the place
+  it starts.
+
+**Decided with**: User · **Date**: 2026-09-20
+
+---
+
+## DEC-089 — Three Key Notations, Shared With the File-Tag Path
+
+**Status**: Approved · **Against recommendation** (pin classic) · **Related**: DEC-070, DEC-034
+
+**Decision**: The export offers all three key notations — classic (`Am`), Camelot (`8A`) and short
+(`Amin`) — reusing the file-tag path's vocabulary, validator and converter. The default is classic, and
+the choice is remembered.
+
+**Reason**: One enum and one converter for "turn a key into text" is worth more than a subset that looks
+like it and is not, since two near-identical enums are how a validator ends up receiving the other one's
+value. Camelot in Rekordbox's key column is also a real workflow rather than a hypothetical, and the
+converter for it already exists.
+
+Pinning classic was recommended because the importer reads `Tonality` verbatim — `_optional_text(get(
+"Tonality"))`, no normalization — so re-importing an exported file writes that notation straight into
+`tracks.key`, the column the matcher compares and the Clean page displays. A library exported in Camelot
+and re-imported holds `8A` for those tracks and `Am` for the rest. The user accepted that risk as opt-in.
+
+**Implications**:
+- `key_text(key, key_format)` in `services/tag_write_service.py` is the only implementation, and
+  `KEY_FORMATS` in `services/tag_write_options.py` the only vocabulary. The export validates against it
+  rather than restating it.
+- The default is classic, so the mixed-notation outcome is never reached by a user who does not choose it.
+- The export preview states the consequence at the moment of choosing — that re-importing this file will
+  store that notation as CuePoint's key — rather than in a docs footnote.
+- The export record stores the notation used (DEC-086), which is the only thing that can later explain
+  why some tracks' keys read `8A`.
+- The two paths share a converter, not a setting. The file-tag dialog deliberately persists nothing, for
+  the reason its own default documents; the export remembers its notation the way it remembers its folder.
+- Normalizing key on import would make any notation round-trip. That belongs to whichever phase revisits
+  DEC-034's capture-as-Rekordbox-has-it rule, and is not assumed here.
+
+**Decided with**: User (against recommendation) · **Date**: 2026-09-20

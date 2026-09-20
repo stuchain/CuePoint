@@ -1,6 +1,6 @@
 # CuePoint — Evolution Roadmap
 
-Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–9 resolved (DEC-001…DEC-076).**
+Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–10 resolved (DEC-001…DEC-089).**
 Phase 2's ten steps are implemented and recorded in `PHASE2_SHELL.md`. Phase 3's twelve steps are
 implemented and recorded in `PHASE3_LIBRARY.md` (LIBRARY-01…LIBRARY-12), unblocked by Decision
 Round 5 (DEC-030…DEC-037). Phase 4's ten steps are specified in `PHASE4_LIBUI.md`
@@ -16,9 +16,9 @@ are specified in `PHASE7_CLEAN.md` (CLEAN-01…CLEAN-14), unblocked by Decision 
 Windows build, with the macOS packaged checks owed alongside Phase 5's macOS pass. The two open
 points that document raised are settled as amendments to DEC-011 and DEC-076.
 Audio-analysis scope is the one remaining deferred item, to be resolved before the phase it affects
-starts; crossfade was resolved by DEC-056 in Round 7, and Smart Collection export/duplication by
-DEC-061 in Round 8. This roadmap shows the shape of what's ahead; it is not a commitment to
-implement anything without an explicit "Implement <STEP-ID>" instruction.
+starts; crossfade was resolved by DEC-056 in Round 7, Smart Collection duplication by DEC-061 in
+Round 8, and its direct export by DEC-081 in Round 10. This roadmap shows the shape of what's ahead;
+it is not a commitment to implement anything without an explicit "Implement <STEP-ID>" instruction.
 
 No implementation happens from this document alone — every phase step requires an explicit
 "Implement <STEP-ID>" instruction, scoped to exactly that step.
@@ -257,11 +257,50 @@ DEC-011's refresh warning now counts every track carrying the user's own data �
 tags, review decisions and applied values as well as Collections — and DEC-076's artwork is cached
 as real thumbnails, making Pillow a runtime dependency behind one guarded decoder.
 
-## Phase 8 — Rekordbox Export (EXPORT-01 … EXPORT-08)
+## Phase 8 — Rekordbox Export (EXPORT-01 … EXPORT-08) — decided, not yet specified
 
 No full-XML export exists today (only the narrow attribute-patch write) — this phase builds real
-export, carrying forward the existing "always write a new file, never silently overwrite the
-source" safety property.
+export, carrying forward the existing "always write a new file, never silently overwrite the source"
+safety property. Decision Round 10 settled its shape (DEC-077…DEC-089), and the steps are specified
+in `PHASE8_EXPORT.md` (EXPORT-01…EXPORT-07 — one fewer than the placeholder). Writing them found
+that the legacy write path this phase was assumed to build on has no production caller at all:
+CLEAN-14 retired the routes and screens above it and left the cluster standing, so EXPORT-01 deletes
+it in the change that replaces it.
+
+Round 10's central finding came from the code rather than the roadmap: `POSITION_MARK` and `TEMPO`
+appear nowhere in `src/`, so CuePoint has never parsed a cue point or a beat grid. An XML generated
+from the database would therefore return a library with every hot cue, memory cue and grid stripped,
+silently. So the export **patches the source file** instead — re-parsing the XML the library was
+imported from, setting only the six attributes CuePoint owns, appending CuePoint's playlists,
+writing a new file — which preserves everything CuePoint never understood rather than everything it
+remembered to carry (DEC-077). That decision also retires DEC-038's note that the export maps
+`duration_seconds` back to `TotalTime`: a patch never writes it.
+
+One export is the whole `COLLECTION`, the mirrored Rekordbox tree untouched, plus the Collections
+the user picked as new nodes under a folder of CuePoint's own (DEC-078). Each field is written at
+its effective value — the override when there is one, otherwise the import — reusing the one
+implementation of that rule rather than restating it, so what reaches Rekordbox is what the table
+showed (DEC-079). Tags, notes and favorites stay in CuePoint, because `Comments` is already claimed
+and My Tag is not in the XML, which narrows DEC-064's conditional promise to ratings and Collections
+(DEC-080). A Smart Collection exports as its membership at that moment, closing the item DEC-061
+left here by name (DEC-081).
+
+The safety properties are where most of the decisions went. A source file that changed since import
+is detected against `library_source`, reported with real counts, and not refused; tracks the file no
+longer holds are dropped from appended playlists so no dangling reference reaches Rekordbox
+(DEC-082). The destination comes from a save dialog that remembers its folder and refuses the source
+path by an explicit check rather than by convention (DEC-083). The run previews with computed
+numbers and then runs as a cancellable job (DEC-084). Nothing outside the XML is written — no audio
+files, keeping DEC-064's discipline where Phase 7 relaxed it for one job (DEC-085). Each export
+records what it wrote, with no per-track export state, because that stamp is the staleness bug
+DEC-061 refused for Smart Collections (DEC-086). Export is an action in the Library header beside import and refresh, and in the Collection context
+menu — not a destination, since DEC-020's registry has no export entry and that stays true (DEC-087,
+amended: the selection Actions menu it first named is drawn only when tracks are selected). Tracks whose files are missing are exported and counted, since dropping a
+`TRACK` element would remove it from the user's Rekordbox view (DEC-088). All three key notations
+are offered, sharing the file-tag path's single converter, defaulting to classic (DEC-089, against
+the recommendation to pin classic — the importer reads `Tonality` verbatim, so a Camelot export
+re-imported leaves CuePoint's own key column holding two notations; the default and a preview
+warning are the mitigations).
 
 ## Phase 9 — Discover (DISCOVER-01 … DISCOVER-09)
 
