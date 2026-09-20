@@ -257,7 +257,7 @@ DEC-011's refresh warning now counts every track carrying the user's own data �
 tags, review decisions and applied values as well as Collections — and DEC-076's artwork is cached
 as real thumbnails, making Pillow a runtime dependency behind one guarded decoder.
 
-## Phase 8 — Rekordbox Export (EXPORT-01 … EXPORT-07) — specified; EXPORT-01 and EXPORT-02 done
+## Phase 8 — Rekordbox Export (EXPORT-01 … EXPORT-07) — specified; EXPORT-01…EXPORT-03 done
 
 No full-XML export exists today (only the narrow attribute-patch write) — this phase builds real
 export, carrying forward the existing "always write a new file, never silently overwrite the source"
@@ -271,6 +271,13 @@ EXPORT-01 and EXPORT-02 are implemented: `data/rekordbox_export.py` patches the 
 appends CuePoint's playlist tree in one pass over the source bytes, proved against a 50,000-track
 collection whose cue points, grids and untouched tracks come through byte-identical. Both are pure
 functions over files, so neither is reachable from the UI until EXPORT-07 wires the entry points.
+
+EXPORT-03 is implemented too: migration `m0020` lands the two tables DEC-086 needs — one row per
+export, one per playlist it wrote — with models beside them and nothing reading either yet. Landing
+the DDL settled four things the specification's column list left in tension with the decisions
+around it, recorded as an amendment to DEC-086; the one that mattered is that a library nobody has
+file-checked now records that fact rather than recording zero missing files, which DEC-088 refuses
+and a forward-only `NOT NULL DEFAULT 0` column could never have taken back.
 
 Round 10's central finding came from the code rather than the roadmap: `POSITION_MARK` and `TEMPO`
 appear nowhere in `src/`, so CuePoint has never parsed a cue point or a beat grid. An XML generated

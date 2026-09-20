@@ -2723,6 +2723,29 @@ pre-fill from.
 - Nothing here claims the exported file still exists or is unmodified. The row records what CuePoint
   wrote, not what is on disk now.
 
+**Amended 2026-09-20 (precision, found while landing the DDL in EXPORT-03 — the decision above is
+unchanged)**: four things the specification's column list left in tension with the decisions around
+it.
+
+- **A count nobody took is null, not zero.** The specification gave `missing_file_count` as `INTEGER
+  NOT NULL DEFAULT 0`, which contradicts DEC-088: that decision says in as many words that a library
+  which has never been file-checked reports that it has not been checked rather than reporting zero,
+  and a `NOT NULL DEFAULT 0` column can only make the claim it refuses. The column is nullable and
+  carries no default — null is "never checked", a number is a number that was counted. The schema is
+  forward-only, so this is a claim the row would otherwise have carried for the life of the product.
+  Every other count here is always known by the writer, so each of those stays `NOT NULL`.
+- **`source_stale` carries `CHECK (source_stale IN (0, 1))`**, as every other flag in this schema
+  does. A flag that can hold 2 is not a flag.
+- **`key_format` carries no `CHECK`.** DEC-089 keeps that vocabulary in
+  `services/tag_write_options.py` and says the export validates against it rather than restating it;
+  a `CHECK` here would be a restatement in the one place a forward-only schema could never revise,
+  so a fourth notation would need a migration to store. The value is refused where it is chosen,
+  before any export runs.
+- **`rekordbox_export_playlists.export_id` is indexed**, by m0009's rule: SQLite scans the whole
+  child table on a parent delete unless the referencing column is indexed, and that index is also
+  how every reader asks an export for its playlists. Nothing else here is indexed, because "the most
+  recent export" is already the last rowid.
+
 **Decided with**: User · **Date**: 2026-09-20
 
 ---

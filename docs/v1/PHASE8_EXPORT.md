@@ -1,8 +1,8 @@
 # CuePoint v1.0.0 — Phase 8: Rekordbox Export, Detailed Step Specifications
 
-Status: **EXPORT-01 and EXPORT-02 implemented; EXPORT-03…EXPORT-07 specified.** The seven steps
-below replace the roadmap's placeholder inventory (EXPORT-01…EXPORT-08, which Round 10's answers
-came in one under).
+Status: **EXPORT-01, EXPORT-02 and EXPORT-03 implemented; EXPORT-04…EXPORT-07 specified.**
+The seven steps below replace the roadmap's placeholder inventory (EXPORT-01…EXPORT-08, which
+Round 10's answers came in one under).
 Per the process, no implementation happens from this document — each step needs an explicit
 "Implement EXPORT-NN" instruction, scoped to exactly that step, and its outcome is recorded under
 the step afterwards. The one open point this specification raised — where export is reached from —
@@ -526,7 +526,7 @@ appended tree and finds every node, kind, path and entry where it should be.
 
 ---
 
-## EXPORT-03 — The Export Record Schema
+## EXPORT-03 — The Export Record Schema ✅ IMPLEMENTED 2026-09-20
 
 **Objective**: One migration landing the two tables DEC-086 needs, plus their models. Nothing reads
 or writes them yet.
@@ -578,6 +578,93 @@ database from before this step opens, migrates and browses; no service reads the
 into anything that churns.
 
 **Complexity**: **S**
+
+**Outcome**: Complete. `m0020_rekordbox_exports.py` creates `rekordbox_exports` and
+`rekordbox_export_playlists` with one index, and `models/rekordbox_export.py` holds
+`RekordboxExport` and `RekordboxExportPlaylist` — frozen dataclasses with `to_dict` and `from_row`,
+beside `FileWrite` and `Collection`. Nothing reads or writes either table, and a test asserts that
+rather than leaving it to review.
+
+**Four DDL decisions, taken against the specification's own column list and recorded as an amendment
+to DEC-086.**
+
+1. **`missing_file_count` is nullable and carries no default.** The specification gave it as `NOT
+   NULL DEFAULT 0`, which is the one thing DEC-088 says the record must not do: a library nobody has
+   file-checked "reports that it has not been checked rather than reporting zero", and a defaulted
+   column can only make the claim. Null is "never checked". This is the decision worth having taken
+   now rather than later — the schema is forward-only, so the row would have carried that claim for
+   the life of the product, and EXPORT-04's preview would have had nowhere to put an answer it is
+   explicitly required to give.
+2. **`source_stale` carries `CHECK (source_stale IN (0, 1))`**, as `guard_ok`, `is_winner`, `done`
+   and `pending` each do. A flag that can hold 2 is not a flag.
+3. **`key_format` carries no `CHECK`, deliberately.** DEC-089 puts that vocabulary in
+   `services/tag_write_options.py::KEY_FORMATS` and says the export validates against it rather than
+   restating it. A `CHECK` here would be a restatement in the one place a forward-only schema could
+   never revise, so a fourth notation would need a migration before a record could hold it. Two
+   tests pin the consequence: an invented notation stores, and the model accepts one too.
+4. **`rekordbox_export_playlists.export_id` is indexed**, which m0009's rule requires and the
+   specification did not name: SQLite scans the whole child table on a parent delete unless the
+   referencing column is indexed. `EXPLAIN QUERY PLAN` is asserted, not assumed. Nothing else is
+   indexed — "the most recent export", which DEC-083 pre-fills the next destination from, is already
+   the last rowid.
+
+**The models import from `cuepoint.models` and from nowhere else**, which every other model in the
+package already does and a test now pins for this one. That is why `key_format` is validated as
+required text rather than against `KEY_FORMATS`, which lives a layer up: the notation is refused
+where it is chosen, and the record stores what was used. The two kinds a playlist row can have are
+*not* spelled again either — `EXPORTED_KINDS` is `(KIND_COLLECTION, KIND_SMART)`, imported from
+`models/collection.py`, so a folder cannot become an exported playlist by anybody's oversight.
+
+**Three invariants the schema cannot express, held in the models.** `changed_track_count` may not
+exceed `track_count`, because the two are read side by side and a pair that cannot both be true is
+worth refusing where it is built. A failed export must say why and a written one must not carry an
+error, as `FileWrite` already requires of a skipped write. And a Smart Collection's row must record
+its rules while a Collection's must not — DEC-081 makes the rules the only thing that can later
+explain a smart count, and rules beside a Collection would suggest they had a part in a membership
+that was simply stored.
+
+**Tests**: 118 in `test_rekordbox_export_schema.py`. The specification's six are all there — a
+version-19 library holding tracks, overrides, Collections, entries, attempts, candidates, match
+state, a file check, a tag write, activity and the mirrored playlist tree migrates with every row
+of every table unchanged; the upgraded schema equals a fresh one; each CHECK refuses what is
+outside it; deleting an export takes its playlist rows and nothing else; deleting a Collection, the
+folder above it, or every track it counted leaves both rows intact; and both models round-trip
+through `from_row`. Beyond them: renaming a Collection does not rewrite the record, a deleted Smart
+Collection's rules and count survive, every column's nullability and default is asserted in both
+directions, a never-checked library and a checked-and-clean one are proved to be different rows and
+different records, ids are proved not to be reused after a delete (DEC-083 reads the last one), the
+parent delete is proved to use its index, every value `KEY_FORMATS` holds is proved storable, and
+the library still browses and still reads its Collections after the upgrade.
+
+**Twenty-two mutations were introduced deliberately to prove the tests bite**, and all twenty-two
+failed the suite: the null count defaulted to zero, the staleness CHECK dropped, the index dropped,
+the cascade dropped, `folder` added to the kinds, `running` added to the outcomes, `collection_id`
+made a cascading foreign key into `collections`, a `key_format` CHECK added,
+`dropped_reference_count` made nullable, `AUTOINCREMENT` removed, `entry_count` made nullable, a
+per-track column added to the playlist table, and in the models: the count comparison, the failure
+reason, the written-with-an-error refusal, both rule-set rules, `KIND_FOLDER` added to the kinds,
+the field-list shape check, the staleness flag read for truthiness, a null missing-count read back
+as zero, and the key vocabulary restated.
+
+**Two test defects of my own, both found by running rather than by reading**: a helper taking
+`export_id` positionally, so the one case that nulls that column could not go through it; and a
+parametrized negative-count case where the column under test was also the column being held at zero,
+so the second write undid the first and nothing was refused. A third was a test that searched the
+model's source text for each notation, which a docstring using the word "normal" would have failed —
+replaced by one that looks for a second vocabulary and one that proves the model accepts a notation
+it has never heard of.
+
+**One thing added outside this step's files**: `models/rekordbox_export.py` is now in
+`test_mypy_foundation.py`'s `GUARDED` list, beside every other model of its vintage. A new typed
+module that is not in that list is not type-checked, and nothing would have said so.
+
+**Checks run**: the full `src/tests/unit` (7,017 passed, 46 skipped — 6,899 as EXPORT-02 left
+it, plus the 118 new here, and nothing else moved), `src/tests/integration src/tests/regression
+src/tests/acceptance -m "not slow"` (368 passed, 19 skipped), `ruff check src/`, `ruff format
+--check src/` (596 files), `python scripts/check_no_qt_in_core.py`, `git diff --check`, and the mypy
+gates (`test_mypy_foundation.py`, `test_step55_mypy_validation.py`, 7 passed). The DoD's "a database
+from before this step opens, migrates and browses" is the version-19 fixture, asserted rather than
+tried by hand.
 
 ---
 
