@@ -1,11 +1,11 @@
 # CuePoint v1.0.0 — Phase 8: Rekordbox Export, Detailed Step Specifications
 
-Status: **Specified, not implemented.** The seven steps below replace the roadmap's placeholder
-inventory (EXPORT-01…EXPORT-08, which Round 10's answers came in one under). Per the process, no
-implementation happens from this document — each step needs an explicit "Implement EXPORT-NN"
-instruction, scoped to exactly that step, and its outcome is recorded under the step afterwards.
-The one open point this specification raised — where export is reached from — was settled while
-writing it, as an amendment to DEC-087; there are no open points.
+Status: **EXPORT-01 implemented; EXPORT-02…EXPORT-07 specified.** The seven steps below replace the
+roadmap's placeholder inventory (EXPORT-01…EXPORT-08, which Round 10's answers came in one under).
+Per the process, no implementation happens from this document — each step needs an explicit
+"Implement EXPORT-NN" instruction, scoped to exactly that step, and its outcome is recorded under
+the step afterwards. The one open point this specification raised — where export is reached from —
+was settled while writing it, as an amendment to DEC-087; there are no open points.
 
 Depends on Phase 1 (`PHASE1_FOUNDATION.md`), Phase 2 (`PHASE2_SHELL.md`), Phase 3
 (`PHASE3_LIBRARY.md`), Phase 4 (`PHASE4_LIBUI.md`), Phase 6 (`PHASE6_ORG.md`) and Phase 7
@@ -156,7 +156,7 @@ of track ids.
 
 ---
 
-## EXPORT-01 — The XML Patch Writer, Replacing the Orphaned One
+## EXPORT-01 — The XML Patch Writer, Replacing the Orphaned One ✅ IMPLEMENTED 2026-09-20
 
 **Objective**: One function that takes a source XML, a map of track id to attribute values, and a
 destination, and writes a patched copy that differs from the source in exactly those attributes.
@@ -239,6 +239,108 @@ alternative is decided in this step rather than discovered in EXPORT-05. Record 
 why.
 
 **Complexity**: **L**
+
+### ✅ IMPLEMENTED 2026-09-20
+
+**Outcome**: Complete. `data/rekordbox_export.py` holds `patch_collection_xml`, which splices
+attribute values into a copy of the source and touches nothing else; `_stars_to_rating` sits beside
+`_rating_to_stars` in `rekordbox.py`, derived from the same table so the two directions cannot
+disagree. The orphaned cluster is gone: `write_updated_collection_xml`, `build_rekordbox_updates`,
+its `_batch` twin, `write_key_comment_year_to_playlist_tracks`, its `_batch` twin and
+`write_tags_to_paths`, plus `_normal_key_value`, `_short_key`, `_rekordbox_classic_key` and
+`_camelot_to_classic`, which had no caller once the six went. `_CAMELOT_TO_CLASSIC` stayed:
+`services/override_values.py` reads the table. 535 lines left `rekordbox.py`.
+
+**The mechanism question the risk section left open, answered: expat offsets, not `ElementTree`.** A
+tree round-trip cannot make the byte promise — it drops comments, rewrites the declaration,
+re-escapes text its own way and normalizes empty elements — so a "patched" file would differ from
+its source in thousands of places nobody asked to change, and a diff would be useless for telling
+whether CuePoint did what it said. `xml.parsers.expat` gives the exact byte offset of every start
+tag, which is all a targeted rewrite needs, and it is a real parser: the fixture's `<TRACK
+TrackID="999">` inside an XML comment is not mistaken for an element, and a `TRACK` under
+`PLAYLISTS` is not either. Attribute values arrive unescaped, so comparison is on real values while
+the rewrite works on bytes.
+
+**Three decisions taken while implementing, each recorded where it belongs.**
+
+1. **The writer takes a rendered key, not a key and a notation.** The specification listed
+   `key_text` under "existing code reused", but it lives in `services/` and nothing in `data/`
+   imports from `services/` — checked, and true of every other module there. Rendering in the data
+   layer would have inverted the layering to save the caller one line. So `TrackExportValues.key` is
+   the text to put in `Tonality`, and `key_text` stays the one converter, a layer up. The tests
+   render through it, so the three notations are still proved end to end here.
+2. **The key is compared as rendered text, while BPM, year and rating are compared parsed.** DEC-079
+   said "compared on the parsed value" for all of them, which cannot be right for the key: parsed,
+   `Am` and `8A` are equal, so a Camelot export would silently write no Camelot. DEC-079 now says
+   this precisely and gives the reason.
+3. **`refuse_source_as_destination` lives here, not in EXPORT-05.** The specification put the
+   destination check in the job. A writer that can overwrite the source is a footgun whoever calls
+   it, so the check is at the lowest level that writes and EXPORT-05 will call the same function
+   rather than a second copy.
+
+**Measured**, on a 20.9 MiB source of 50,000 tracks carrying 100,000 position marks and 50,000 tempo
+elements, patching 10,000 tracks across all six fields — 60,000 attribute writes: **1.70 s**.
+Scaling is linear (12,500 / 25,000 / 50,000 tracks → 0.28 s / 0.55 s / 1.10 s at three fields), so
+nothing here is quadratic. Every position mark and tempo element survived, and the 11 MB tail of
+40,000 untouched tracks was byte-identical. An early 15.6 s reading was `tracemalloc` overhead, not
+the writer.
+
+**Tests**: `src/tests/unit/data/test_rekordbox_export.py`, 106 of them. The first asserts that
+changing one attribute leaves every other byte identical, by comparing the files rather than
+re-parsing them — the check that would have caught a generated document. Twelve parametrized
+fragments prove the cues, grid, `PRODUCT`, comment, unknown attribute, numeric entity, playlist tree
+and declaration all survive. A 500-track case makes 600 splices and then asserts the 400 untouched
+tracks are byte-identical, because a four-track fixture can hide an off-by-one. Eleven cover shapes
+a valid document may use and Rekordbox does not — whitespace around `=`, a start tag broken over
+lines, a tab separator, a paired tag with nothing to append after, an already-escaped value equal to
+ours, a `COLLECTION` deeper than the root, a decoy inside CDATA, a BPM past the parser's ceiling,
+and attributes in the reverse of the field order, which is the shape that needs the splices sorted
+rather than merely produced. The rest cover the differs-only rule field by field, both rating
+encodings, `Rating="3"` left alone and `Rating="3"` → `204`, zero stars as a rating against zero
+year as unknown, an absent attribute added, blank values never clearing one, all three notations,
+escaping for both quote styles, single-quoted attributes keeping their quoting, a BOM, both
+encodings' treatment of a non-ASCII value, a refused UTF-16 declaration, malformed XML, the oversize
+refusal proved to happen *before* parsing, the four ways of naming the source as the destination,
+atomicity under a failed `replace`, and that all ten retired names are gone from the module and the
+package.
+
+**Eight mutations were introduced deliberately to prove the tests bite**, and all eight failed the
+suite: `AverageBpm` → `BPM` (the orphaned writer's actual bug), ignoring the differs-only rule,
+dropping the escaping, patching playlist entries as well as collection tracks, stamping an extra
+attribute, comparing BPM as text, leaving the splices unsorted, and treating an ASCII-declared
+document as UTF-8. The unsorted one passed at first — the sort was defensive but unexercised,
+because every fixture happened to list its attributes in field order — which is why the
+reverse-order test exists.
+
+**Two bugs found and fixed.** The first was mine, in a test:
+`test_the_untouched_track_reads_back_unchanged` compared whole `LibraryTrack` objects, and
+`created_at`/`updated_at` default to the clock — so it passed alone and failed in the full
+directory, whenever the two parses fell in different microseconds. It now compares every field
+except those two, with a second test asserting those two are the only ones excluded. The second was
+in the writer, found by reading it back rather than by a failing test: a document declaring
+`us-ascii` was being spliced with UTF-8 bytes, which would have produced a file contradicting its
+own declaration — malformed, and refused by the next parser to open it. A non-ASCII value now goes
+into such a document as numeric character references, so the export still succeeds and the file
+stays valid. Rekordbox writes UTF-8, so this only bites on a collection from somewhere else.
+
+**Also**: `test_file_write_boundary.py` was updated as this step removed functions, and it caught
+something worth having caught — `rekordbox.py` no longer reaches `tag_writer` at all, so that
+allowance was stale. `ALLOWED_IMPORTERS` now records that CLEAN-10's service is the only route from
+the runtime into `tag_writer`, and that only the package re-export reaches the new patch.
+
+**Not done here, deliberately**: no CHANGELOG entry. Nothing a user can do changed — the writer has
+no caller until EXPORT-05 and no UI until EXPORT-07 — and inventing a user-facing line for an
+unreachable function would be describing a feature that does not exist yet. The phase's entry
+belongs in EXPORT-07 with the rest of its documentation.
+
+**Checks run**: the full `python -m pytest src/tests -m "not slow"` — **7,220 passed, 65 skipped** —
+plus, after the last tests were added, `src/tests/unit` (6,836 passed, 46 skipped),
+`src/tests/integration` and `src/tests/regression` (368 passed, 12 skipped), and
+`src/tests/unit/data` three consecutive times after the flake fix. `ruff check src/`, `ruff format
+--check src/` (593 files) and `python scripts/check_no_qt_in_core.py` are clean, and
+`test_step55_mypy_validation.py` type-checks the data layer green. `mypy src/` reports nothing
+attributable to either changed file; its 2,772 findings across 479 files are the repository's
+pre-existing baseline.
 
 ---
 
@@ -558,8 +660,8 @@ bar, which already holds "Check for changes" and "Import a different collection�
 - **Not the selection Actions menu**, which DEC-087 first named. That button is drawn only when
   `count > 0`, so a library-wide action there would be unreachable until tracks were selected; and
   `SelectionActions.tsx` builds the toolbar menu and the row context menu from one array by design,
-  so the entry would also appear on a right-clicked track. Import and export are the two ends of
-  the library's relationship with its source file, and the header is where that already lives.
+  so the entry would also appear on a right-clicked track. Import and export are the two ends of the
+  library's relationship with its source file, and the header is where that already lives.
 - **The route from a selection to a playlist is unchanged and deliberate**: "Add to Collection"
   (ORG-11), then export that Collection. Two steps, and the middle one produces an object with a
   name, a folder and a history that can be re-exported and edited — rather than an ephemeral
@@ -594,9 +696,9 @@ bar, which already holds "Check for changes" and "Import a different collection�
 
 **Tests**: Component tests for the dialog's text over each preview shape, including every warning
 and each notation's consequence line. Both entry points open the dialog with the right
-pre-selection, and a test asserts export appears in neither the selection Actions menu nor the
-track context menu. The confirm button is disabled while a refusal stands. An E2E pass in the
-packaged build: pick a destination, preview, export, and open the result in Rekordbox.
+pre-selection, and a test asserts export appears in neither the selection Actions menu nor the track
+context menu. The confirm button is disabled while a refusal stands. An E2E pass in the packaged
+build: pick a destination, preview, export, and open the result in Rekordbox.
 
 **Acceptance criteria / DoD**: The phase-level acceptance below, checked point by point and recorded
 under this step.

@@ -20,9 +20,13 @@ Two halves, so that neither can drift:
   dotted import, the ``cuepoint.data`` package's re-exports, or a module name in
   a string is an import. The importers must be exactly the ones listed: the
   existing paths through ``rekordbox.py`` and CLEAN-10's tag write service.
-  inKey's Sync Tags was the third until it retired (CLEAN-14, DEC-071); since
-  then no route reaches ``rekordbox.py``'s writers, which the package still
-  re-exports.
+  inKey's Sync Tags was the third until it retired (CLEAN-14, DEC-071), and
+  EXPORT-01 then deleted the writers it had been the only caller of.
+
+``rekordbox.py`` no longer writes anything but its own probe file, and no longer
+reaches ``tag_writer`` at all. The one writer in the data layer that touches a
+file a user chose is now ``rekordbox_export.py``'s patch, which writes the export
+and never the source (DEC-083), and never an audio file (DEC-085).
 """
 
 from __future__ import annotations
@@ -54,13 +58,12 @@ WRITING_FUNCTIONS: Dict[str, FrozenSet[str]] = {
     "cuepoint.data.tag_fields": frozenset(
         {"restore_tag_fields", "embed_front_cover", "remove_picture", "_save_id3"}
     ),
-    "cuepoint.data.rekordbox": frozenset(
-        {
-            "write_updated_collection_xml",
-            "write_key_comment_year_to_playlist_tracks",
-            "write_key_comment_year_to_playlist_tracks_batch",
-            "write_tags_to_paths",
-        }
+    # Nothing here writes any more (EXPORT-01). The entry stays so that a
+    # writing function added to this module fails this test rather than going
+    # unnoticed, and so `is_writable` keeps its PROBES exemption.
+    "cuepoint.data.rekordbox": frozenset(),
+    "cuepoint.data.rekordbox_export": frozenset(
+        {"patch_collection_xml", "_write_atomically"}
     ),
 }
 
@@ -75,16 +78,18 @@ PROBES: Dict[str, FrozenSet[str]] = {
 #: The only modules, by repository path, that may reach each module's writers.
 ALLOWED_IMPORTERS: Dict[str, Set[str]] = {
     "cuepoint.data.tag_writer": {
-        # The existing paths write through rekordbox.py.
-        "src/cuepoint/data/rekordbox.py",
+        # EXPORT-01 removed rekordbox.py's tag-writing wrappers, so CLEAN-10's
+        # service is the only route left from the runtime into tag_writer.
         "src/cuepoint/services/tag_write_service.py",
         # A developer's debugging script for the same existing path.
         "scripts/debug_sync_to_split_test.py",
     },
     "cuepoint.data.tag_fields": {"src/cuepoint/services/tag_write_service.py"},
-    "cuepoint.data.rekordbox": {
-        # The package re-exports the writers it has always exported. inKey's
-        # Sync Tags was the only runtime caller, and it retired (CLEAN-14).
+    # EXPORT-01 removed this module's writers, so nothing reaches one.
+    "cuepoint.data.rekordbox": set(),
+    "cuepoint.data.rekordbox_export": {
+        # The package re-exports the patch. EXPORT-05's job will be the second
+        # entry here, and nothing else should be.
         "src/cuepoint/data/__init__.py",
     },
 }
@@ -336,17 +341,18 @@ class TestTheScannerItself:
                 "cuepoint.data.tag_fields",
             ),
             (
-                "import cuepoint.data.rekordbox as rb\nrb.write_tags_to_paths([])",
-                "cuepoint.data.rekordbox",
+                "import cuepoint.data.rekordbox_export as rx\n"
+                "rx.patch_collection_xml(a, {}, b)",
+                "cuepoint.data.rekordbox_export",
             ),
             (
-                "import cuepoint.data.rekordbox\n"
-                "cuepoint.data.rekordbox.write_updated_collection_xml(a, b)",
-                "cuepoint.data.rekordbox",
+                "import cuepoint.data.rekordbox_export\n"
+                "cuepoint.data.rekordbox_export.patch_collection_xml(a, {}, b)",
+                "cuepoint.data.rekordbox_export",
             ),
             (
-                "from cuepoint.data import write_tags_to_paths",
-                "cuepoint.data.rekordbox",
+                "from cuepoint.data import patch_collection_xml",
+                "cuepoint.data.rekordbox_export",
             ),
             (
                 "import importlib\nimportlib.import_module('cuepoint.data.tag_fields')",
@@ -370,6 +376,8 @@ class TestTheScannerItself:
             "from cuepoint.data.tag_fields import read_tag_fields, tag_format_of",
             "from cuepoint.data import rekordbox\nrekordbox.is_readable(p)",
             "from cuepoint.data.tag_writer import _normalize_year",
+            "from cuepoint.data.rekordbox_export import TrackExportValues",
+            "from cuepoint.data import TrackExportValues, PatchResult",
         ],
     )
     def test_reading_is_not_writing(self, source):

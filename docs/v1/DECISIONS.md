@@ -2461,8 +2461,10 @@ previews, two jobs and two sets of documentation, and the common case wants both
 
 **Decision**: For each of the five override fields and for the rating, the export writes the effective
 value — CuePoint's when there is one, otherwise the imported value unchanged. It sets an attribute only
-where that effective value differs from what the source file already holds, compared on the parsed value
-rather than on the text. There is no per-field choice at export time.
+where that effective value differs from what the source file already holds. For BPM, year and the rating
+the comparison is on the parsed value, so two spellings of one number are one value. For the key it is on
+the text that would be written, because the notation is the user's own choice (DEC-089). There is no
+per-field choice at export time.
 
 **Reason**: The rule exists once already: `effective_value` and `effective_rating` in
 `models/track_metadata.py`, mirrored as `COALESCE(override, imported)` in the browse SQL. Reusing it
@@ -2483,6 +2485,12 @@ for anything corrected by DEC-069's hand edit rather than by an override.
   so a source carrying `Rating="3"` on an unrated-in-CuePoint track would come back as `Rating="153"`.
   Comparing parsed values means that track is not touched at all. It also makes the exported diff
   minimal, which is worth having when the artifact is a file someone loads into their Rekordbox.
+- **The key is the exception, and has to be** (found while implementing EXPORT-01). A parsed comparison
+  would make `Am` and `8A` equal, so a user who chose Camelot would get a file with no Camelot in it —
+  the notation would silently do nothing. Comparing the rendered text is what makes DEC-089's choice
+  take effect. The cost is that a source spelling a key unusually, say `A min`, is normalized to
+  Rekordbox's own `Am` on a track with no override; that is a change to the same key rather than to a
+  different one, and it is rare, so it is accepted rather than special-cased.
 - Where a write *is* warranted, the rating is written in the multiples-of-51 encoding Rekordbox itself
   writes. A `_stars_to_rating` beside `_rating_to_stars` is the only implementation, with a round-trip
   test over 0–5.

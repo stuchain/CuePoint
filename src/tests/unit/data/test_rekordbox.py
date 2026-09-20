@@ -12,12 +12,18 @@ from cuepoint.data.rekordbox import (
     MAX_XML_SIZE_BYTES,
     RBTrack,
     extract_artists_from_title,
+    get_playlist_track_ids,
+    get_track_locations,
     is_readable,
     is_writable,
     parse_collection,
     parse_rekordbox,
     read_playlist_index,
 )
+
+
+def _fixtures_dir() -> Path:
+    return Path(__file__).resolve().parent.parent.parent / "fixtures" / "rekordbox"
 
 
 class TestRBTrack:
@@ -729,3 +735,68 @@ class TestParseCollection:
             )
         finally:
             os.unlink(xml_path)
+
+
+# ---------------------------------------------------------------------------
+# Readers that served the retired write-back path (EXPORT-01).
+#
+# `get_playlist_track_ids` and `get_track_locations` outlived it: the CLI's
+# processor still reads locations, and these tests moved here from
+# `test_rekordbox_write.py` when that file went with the writers it covered.
+# ---------------------------------------------------------------------------
+
+
+class TestGetPlaylistTrackIds:
+    """Tests for get_playlist_track_ids."""
+
+    def test_returns_track_ids_in_playlist_order(self):
+        """Given a fixture XML with one playlist and 3 tracks, assert returned list matches order."""
+        small_xml = _fixtures_dir() / "small.xml"
+        if not small_xml.exists():
+            pytest.skip("fixtures/rekordbox/small.xml not found")
+        track_ids = get_playlist_track_ids(str(small_xml), "My Playlist")
+        assert track_ids == ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+
+    def test_unknown_playlist_raises_value_error(self):
+        """Given unknown playlist name, assert raises ValueError."""
+        small_xml = _fixtures_dir() / "small.xml"
+        if not small_xml.exists():
+            pytest.skip("fixtures/rekordbox/small.xml not found")
+        with pytest.raises(ValueError, match="Playlist not found"):
+            get_playlist_track_ids(str(small_xml), "Nonexistent Playlist")
+
+
+class TestGetTrackLocations:
+    """Tests for get_track_locations."""
+
+    def test_returns_locations_when_present(self):
+        """XML with Location attributes returns track_id -> path mapping."""
+        xml_content = """<?xml version="1.0" encoding="UTF-8"?>
+<DJ_PLAYLISTS Version="1.0.0">
+    <COLLECTION>
+        <TRACK TrackID="1" Name="A" Artist="B" Location="file://localhost/C:/Music/track1.mp3"/>
+        <TRACK TrackID="2" Name="C" Artist="D" Location="file://localhost/D:/Songs/track2.flac"/>
+    </COLLECTION>
+    <PLAYLISTS><NODE Name="ROOT"><NODE Name="P" Type="1"><TRACK Key="1"/><TRACK Key="2"/></NODE></NODE></PLAYLISTS>
+</DJ_PLAYLISTS>"""
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".xml", delete=False, encoding="utf-8"
+        ) as f:
+            f.write(xml_content)
+            path = f.name
+        try:
+            locations = get_track_locations(path)
+            assert "1" in locations
+            assert "2" in locations
+            assert "track1.mp3" in locations["1"] or "track1" in locations["1"]
+            assert "track2.flac" in locations["2"] or "track2" in locations["2"]
+        finally:
+            Path(path).unlink(missing_ok=True)
+
+    def test_empty_when_no_location(self):
+        """XML without Location returns empty or no entry for those tracks."""
+        minimal_xml = _fixtures_dir() / "minimal.xml"
+        if not minimal_xml.exists():
+            pytest.skip("fixtures/rekordbox/minimal.xml not found")
+        locations = get_track_locations(str(minimal_xml))
+        assert locations == {}
