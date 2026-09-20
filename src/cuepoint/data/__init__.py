@@ -10,7 +10,8 @@ Modules:
     beatport: Beatport scraping and parsing utilities
     beatport_search: Direct Beatport search with multiple methods
     rekordbox: Rekordbox XML parsing utilities
-    rekordbox_export: Writing a patched copy of a Rekordbox XML (EXPORT-01)
+    rekordbox_export: Writing a patched copy of a Rekordbox XML, with
+        CuePoint's own playlists appended (EXPORT-01, EXPORT-02)
     providers: Search provider interface and registry
 """
 
@@ -19,14 +20,22 @@ from cuepoint.data.rekordbox import (
     playlist_path_for_display,
 )
 from cuepoint.data.rekordbox_export import (
+    CUEPOINT_FOLDER_NAME,
+    ExportFolder,
+    ExportPlaylist,
     PatchResult,
+    PlaylistResult,
     TrackExportValues,
     patch_collection_xml,
     refuse_source_as_destination,
 )
 
 __all__ = [
+    "CUEPOINT_FOLDER_NAME",
+    "ExportFolder",
+    "ExportPlaylist",
     "PatchResult",
+    "PlaylistResult",
     "TrackExportValues",
     "get_track_locations",
     "patch_collection_xml",

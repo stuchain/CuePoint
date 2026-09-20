@@ -2451,6 +2451,28 @@ previews, two jobs and two sets of documentation, and the common case wants both
 - A Collection's order is the exported playlist's order (DEC-058), and a track appearing twice in a
   Collection appears twice in the playlist.
 
+**Amended 2026-09-20 (precision, found while implementing EXPORT-02 — the decision above is
+unchanged)**: three things the wording left open, each settled by what the format actually is.
+
+- **"Beside it" means inside the tree's root folder, not next to it.** Rekordbox writes
+  `PLAYLISTS` holding a single `NODE Name="ROOT"`, and everything a user sees is inside that node. A
+  folder appended as `ROOT`'s sibling is outside the tree Rekordbox reads, so CuePoint's folder goes
+  in as `ROOT`'s last child. Three shapes no Rekordbox export has — a self-closing `ROOT`, a
+  `PLAYLISTS` with no folder in it, and a document with no `PLAYLISTS` at all — are handled by
+  creating what is missing, because the alternative is an export that silently drops the playlists a
+  user explicitly asked for.
+- **The root folder's `Count` is the one attribute written outside CuePoint's own subtree.**
+  "Leaves the mirrored tree exactly as the source has it" holds for every node in that tree; the
+  folder those nodes sit in has gained a child, and a `NODE` declaring `Count="3"` while holding
+  four is a document contradicting itself, with Rekordbox as the reader that has to choose. The
+  number written is the real count of child nodes rather than the old number plus one, so a file
+  that was already wrong comes out right. A root folder that never declared a `Count` is not given
+  one.
+- **The collision check folds case.** Two top-level nodes a user cannot tell apart in the tree are
+  a collision whatever the bytes say. Merging is never the answer either way: a folder called
+  `CuePoint` may be the user's own, holding work this export has no business writing into or, later,
+  offering to delete.
+
 **Decided with**: User · **Date**: 2026-09-20
 
 ---
@@ -2584,6 +2606,10 @@ Rekordbox would be the one to break the news.
   sentence.
 - Only the recorded size and modification time are compared. Nothing is hashed, so the check costs a
   `stat` on a file that may be hundreds of megabytes.
+- A dropped reference is counted once per appearance, not once per track id, so the preview's number and
+  the playlist's own arithmetic agree: entries written plus entries dropped is always the length of the
+  Collection on screen. A track filed twice and missing from the file costs the playlist two entries, and
+  saying "one" would be answering a different question (added 2026-09-20 with EXPORT-02).
 
 **Decided with**: User · **Date**: 2026-09-20
 

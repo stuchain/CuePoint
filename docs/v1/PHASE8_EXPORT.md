@@ -1,7 +1,8 @@
 # CuePoint v1.0.0 — Phase 8: Rekordbox Export, Detailed Step Specifications
 
-Status: **EXPORT-01 implemented; EXPORT-02…EXPORT-07 specified.** The seven steps below replace the
-roadmap's placeholder inventory (EXPORT-01…EXPORT-08, which Round 10's answers came in one under).
+Status: **EXPORT-01 and EXPORT-02 implemented; EXPORT-03…EXPORT-07 specified.** The seven steps
+below replace the roadmap's placeholder inventory (EXPORT-01…EXPORT-08, which Round 10's answers
+came in one under).
 Per the process, no implementation happens from this document — each step needs an explicit
 "Implement EXPORT-NN" instruction, scoped to exactly that step, and its outcome is recorded under
 the step afterwards. The one open point this specification raised — where export is reached from —
@@ -344,7 +345,7 @@ pre-existing baseline.
 
 ---
 
-## EXPORT-02 — Appending CuePoint's Playlist Tree
+## EXPORT-02 — Appending CuePoint's Playlist Tree ✅ IMPLEMENTED 2026-09-20
 
 **Objective**: Turn a set of chosen Collections, Smart Collections and folders into `PLAYLISTS`
 nodes appended to the patched document, without touching the mirrored Rekordbox tree.
@@ -405,6 +406,123 @@ spec, so `iter_playlist_nodes` and a real export are the reference. Getting `Cou
 is the likely defect and is tested directly.
 
 **Complexity**: **M**
+
+**Outcome**: Complete. The tree is rendered by the same module and written in the same pass:
+`patch_collection_xml` gained a `playlists` argument taking a tree of `ExportFolder` and
+`ExportPlaylist`, and reports one `PlaylistResult` per playlist written. `PatchResult` gained
+`playlists`, `playlist_folder`, `playlist_folder_renamed` and a `dropped_reference_count` that sums
+the drops. 605 lines joined `rekordbox_export.py`.
+
+**Why the same pass, rather than a second function over the first one's output.** Appending is a
+second change to the same document. Doing it afterwards would mean reading and rewriting the file
+twice, and reading back a destination the caller has just been handed — the shape
+`refuse_source_as_destination` exists to stop anyone talking themselves into. One read, one splice
+list, one atomic write, and a failure anywhere still leaves nothing behind.
+
+**Four decisions taken while implementing.**
+
+1. **The tree arrives resolved; nothing here knows what a Collection is.** The specification listed
+   "the browse query's scope resolution for a Smart Collection's membership" under existing code
+   reused, but that is a database question and this is `data/`, which imports from no service and
+   opens no connection. So a Smart Collection's membership, a Collection's stored order and the
+   folders they are filed under are resolved by EXPORT-04 and EXPORT-05, which run those queries
+   once for the preview and once for the job — which is what will make "the preview cannot disagree
+   with the result" a property rather than a hope. The consequence here is that every one of these
+   166 tests runs without a database, so the two riskiest steps of the phase are also the two
+   cheapest to prove.
+2. **CuePoint's folder goes inside the tree's root folder, and that folder's `Count` is corrected.**
+   "Beside the mirrored tree" read two ways; Rekordbox settles it, since a node appended as `ROOT`'s
+   sibling is outside the tree Rekordbox reads. `ROOT` therefore gains a child — and a folder
+   declaring `Count="3"` while holding four is a document contradicting itself, with Rekordbox as
+   the reader that has to choose. That one attribute is the only thing this step writes outside its
+   own subtree, it is set to the real number of children rather than the old number plus one, and a
+   root that never declared a `Count` is not given one. DEC-078 now says all of this.
+3. **A playlist carries the caller's own token back out.** `ExportPlaylist.ref` is never written to
+   the file and comes back in the result. EXPORT-05 records one row per exported playlist, and
+   matching those rows on the name or the path would be guessing: two Collections in different
+   folders may share a name, and DEC-086 stores what CuePoint wrote rather than what still exists.
+4. **The insertion matches the document rather than imposing a style.** The newline is whichever the
+   file uses, the indentation unit is derived by dividing the container's own indentation by its
+   depth, and a document written without line breaks gets an insertion without any — a block of
+   pretty-printing in the middle of a single line would be a change to how the file is written,
+   which is not this step's business, and the same reasoning as DEC-077's. The indentation is read
+   in two places, better one first: the whitespace before a paired container's closing tag is the
+   indentation that tag sits at, and it is right even where the start tag shares its line with
+   something else; a self-closing container has no such run, so there the start tag's own line
+   answers.
+
+**Three document shapes no Rekordbox export has are handled rather than refused**, because the
+alternative is an export that silently drops the playlists a user explicitly asked for: a
+self-closing `ROOT` (which an empty library really does produce) is opened into a pair, a
+`PLAYLISTS` with no folder inside gets one, and a document with no `PLAYLISTS` at all gets both. A
+`PLAYLISTS` holding playlists directly gets a sibling rather than a parent invented around somebody
+else's nodes.
+
+**A name is written as it will be read.** A tab or a newline inside an attribute value is legal but
+every parser turns it into a space, so it becomes one here instead of appearing to survive.
+Surrounding whitespace goes for the same reason: `_playlist_node_from_element` trims a name it
+reads, as does every other reader of this tree, so a name written with it would not be the name
+anybody sees. Characters XML 1.0 cannot represent are dropped, because the promise this module makes
+is a well-formed file. A tree deeper than `MAX_EXPORT_DEPTH` (16, against `MAX_COLLECTION_DEPTH`'s
+8) is refused by name, because a `RecursionError` from inside a splice is not a usable failure.
+
+**Measured**, on a 17.3 MiB source of 50,000 tracks carrying 100,000 position marks and 50,000 tempo
+elements, patching 10,000 tracks *and* appending 200 playlists in 20 folders — 24,000 entries:
+**1.86 s**, against EXPORT-01's 1.70 s for the attribute half alone. Every position mark and tempo
+element survived, and the 13.9 MiB tail of 40,000 untouched tracks was byte-identical.
+`iter_playlist_nodes` read the result back in 0.61 s and found all 221 nodes with all 120 entries
+each.
+
+**Tests**: 55 more in `test_rekordbox_export.py`, 166 in the file. The first is EXPORT-01's property
+restated for this half: the exported file is asserted to equal the source with one spelled-out block
+inserted and one `Count` digit changed, and nothing else — on the bytes, so an appender that
+reformatted the mirror while adding to it fails here rather than passing a structural comparison.
+The rest cover the three-level nesting read back through `iter_playlist_nodes`, the node shape
+attribute by attribute, `Count` and `Entries` asserted to equal the children actually written for
+every node in a document, a repeated track exporting twice against a `COLLECTION` that still holds
+it once, the Collection's order rather than the table's, a dropped reference shortening `Entries`
+and being counted, a blank reference, the arithmetic that entries plus drops is the Collection's own
+length, an empty Collection as an empty playlist, a legacy `ID` track as a valid reference, a track
+whose file is gone staying in (DEC-088), the collision going to `CuePoint (2)` then `(3)` and
+folding case, a `CuePoint` folder deeper in the tree not counting, the existing folder left
+untouched beside ours, a `Count` that was already wrong coming out right, `small.xml`'s root gaining
+no `Count` because it never had one, all four container shapes with their indentation asserted, tab
+indentation, CRLF, a compact document, a root element sharing its line with the declaration, names
+carrying XML syntax and non-ASCII in an ASCII document, a newline, surrounding whitespace and a
+control character in a name, a `>` inside the root folder's *own* name — which a scan looking for
+the first `>` after the element name would splice into the middle of — a document whose `PLAYLISTS`
+comes before its `COLLECTION` so the splices run the other way, the depth refusal leaving no
+destination behind, and a 2,000-entry playlist because a four-entry fixture can hide an off-by-one.
+
+**Seventeen mutations were introduced deliberately to prove the tests bite**, and all seventeen
+failed the suite: leaving the root `Count` stale, writing a track the file does not hold, deduping a
+repeated entry, counting `Entries` from what was asked for rather than what was written, a playlist
+written with a folder's `Type`, an entry named with `TrackID` instead of `Key`, merging into an
+existing `CuePoint` folder, a case-sensitive collision check, an unescaped name, a name keeping
+characters XML cannot represent, a self-closing container treated as a pair, wrappers closed in the
+order they opened, the tree appended beside the root folder instead of inside it, a folder `Count`
+of zero, an ASCII document given a UTF-8 playlist name, and each of the two indentation readings
+disabled in turn. The second of those survived at first: the tests covering a self-closing container
+checked that it had been opened into a pair without checking where the block landed, so the fallback
+reading was unexercised — which is why those two now assert the indented block in full.
+
+**Two test defects of my own, both found by running rather than by reading**: an assertion expecting
+`Genre="House"` where the fixture's track is single-quoted and a patch keeps a value's own quoting,
+and `Path.write_text`, which translates a line feed into the platform's line ending and so handed a
+test a CRLF document it had not spelled. Documents are now written through a `_write_xml` helper
+that writes bytes, and CRLF is a case of its own.
+
+**Checks run**: `python -m pytest src/tests/unit` — **6,899 passed, 46 skipped** — and
+`src/tests/integration src/tests/regression src/tests/acceptance` — **368 passed, 19 skipped** —
+both exit 0, plus `src/tests/unit/data` and the export file alone many times during the work. `ruff
+check src/`, `ruff format --check src/` (593 files), `python scripts/check_no_qt_in_core.py` and
+`git diff --check` are clean, and the mypy gates (`test_step55_mypy_validation.py`,
+`test_mypy_foundation.py`) pass 7. `mypy` reports nothing attributable to any changed file.
+
+**Still owed by this step's DoD**: the file opening in Rekordbox itself, which belongs to
+EXPORT-07's manual pass and is recorded there rather than claimed here. Everything structural the
+criterion asked for is asserted — the document re-parses, and CuePoint's own reader walks the
+appended tree and finds every node, kind, path and entry where it should be.
 
 ---
 
