@@ -156,6 +156,16 @@ class DatabaseService(IDatabaseService):
             # connection to it: close it here, on its own thread, and reopen.
             self.close()
 
+        # Every connection whose thread has ended is closed here, on the way to
+        # opening a new one. The engine serves each HTTP request on a thread of
+        # its own, so without this the registry — and the process's open file
+        # handles — grew by one connection per request for as long as the
+        # engine ran, and nothing but a restore or a shutdown ever gave one
+        # back. Reaping on open rather than on a timer keeps it to the moment a
+        # connection is already being paid for, and an ended thread's
+        # connection is safe to close for the reason close_all() states.
+        self._close_ended_threads()
+
         # Opening is serialized across threads. Switching a database to WAL
         # needs a brief exclusive lock, and SQLite reports SQLITE_BUSY for a
         # contended "PRAGMA journal_mode" without consulting the busy handler.
@@ -344,6 +354,30 @@ class DatabaseService(IDatabaseService):
             connection.close()
         except sqlite3.Error:
             pass
+
+    def _close_ended_threads(self) -> None:
+        """Close the connections of threads that have ended.
+
+        The registry's own housekeeping: a thread that has ended cannot be in
+        the middle of a statement and can never ask for its connection again,
+        so its connection is closeable from anywhere and useful to no one.
+        """
+        with self._lock:
+            ended = [
+                connection
+                for connection, owner in self._connections
+                if not owner.is_alive()
+            ]
+            if not ended:
+                return
+            self._connections = [
+                entry for entry in self._connections if entry[0] not in ended
+            ]
+        for connection in ended:
+            try:
+                connection.close()
+            except sqlite3.Error:
+                pass
 
     def close_all(self) -> None:
         """Close every connection no thread can still be using.

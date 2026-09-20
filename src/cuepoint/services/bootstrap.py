@@ -119,9 +119,38 @@ from cuepoint.services.telemetry_service import TelemetryService
 from cuepoint.utils.di_container import get_container
 
 
+class _Bootstrapped:
+    """Marker registered last, so a container knows it has been wired.
+
+    Not a service: nothing resolves it. It exists because
+    :func:`bootstrap_services` has to be able to answer "have I already run on
+    this container?", and it is registered at the very end so a call that
+    failed half way leaves no marker and the next one starts over.
+    """
+
+
 def bootstrap_services() -> None:
-    """Register all services with the DI container."""
+    """Register all services with the DI container, once per container.
+
+    **Calling this twice must not replace what the first call registered.**
+    Four callers say "make sure the services exist" — the engine's launch
+    backup, its job runner, and the config and inCrate routes — and each one
+    used to register a *new* ``DatabaseService`` over the last. Anything
+    resolved before that point kept the old one, so two objects in the same
+    process held two SQLite connections to the same file. That is not a
+    tidiness problem: a 50,000-track import took its write lock on one
+    connection, and the job store — holding a repository from the earlier
+    bootstrap — tried to record progress on the other, waiting out the whole
+    five-second busy timeout on every tick. An import that takes three seconds
+    took hours (CLEAN-14's E2E timeouts).
+
+    A container that has been wired is left exactly as it is. Tests that want
+    fresh services call :func:`~cuepoint.utils.di_container.reset_container`
+    first, which drops the container and with it the marker.
+    """
     container = get_container()
+    if container.is_registered(_Bootstrapped):
+        return
 
     # Register logging service first (needed by others)
     logging_service = LoggingService()
@@ -671,3 +700,7 @@ def bootstrap_services() -> None:
             register_alert_hook(_log_alert)
     except Exception:
         pass
+
+    # Last, so that only a container that got all of the above is treated as
+    # wired and skipped by the next call.
+    container.register_singleton(_Bootstrapped, _Bootstrapped())

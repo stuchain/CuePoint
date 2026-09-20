@@ -391,6 +391,37 @@ class TestConcurrency:
         # referenced here, so identity is stable for the whole assertion.
         assert len({id(c) for c in connections}) == 4, "connections were shared"
 
+    def test_a_finished_threads_connection_does_not_stay_open(self, service):
+        """Connections do not pile up one per short-lived thread.
+
+        The engine serves every HTTP request on a thread of its own, and each
+        one that touches the library opens a connection. Nothing closed them
+        when those threads ended, so a session's open connections — and the
+        process's file handles — only ever grew: a few thousand after an hour
+        of the desktop app polling for job status. Each open is also a file
+        open and three pragmas, so the growth was not free either.
+        """
+        opened: list[sqlite3.Connection] = []
+
+        def short_lived() -> None:
+            opened.append(service.connect())
+
+        for _ in range(8):
+            thread = threading.Thread(target=short_lived)
+            thread.start()
+            thread.join(timeout=30)
+            assert not thread.is_alive(), "a worker thread hung"
+
+        # This thread's own connection is opened last, so the reaping it does
+        # cannot be mistaken for the threads having tidied up after themselves.
+        mine = service.connect()
+
+        assert len(opened) == 8
+        for connection in opened:
+            with pytest.raises(sqlite3.ProgrammingError):
+                connection.execute("SELECT 1")
+        assert mine.execute("SELECT 1").fetchone()[0] == 1
+
     def test_many_threads_open_a_fresh_database_simultaneously(self, tmp_path):
         """First launch: several threads reach for a brand-new database at once.
 

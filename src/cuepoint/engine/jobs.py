@@ -8,6 +8,7 @@ inKey (CLEAN-14, DEC-071); a match now runs over library tracks, in
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
 import uuid
@@ -17,6 +18,8 @@ from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Sequence
 
 from cuepoint.compat.gui_types import ProgressInfo
+
+_logger = logging.getLogger(__name__)
 
 _services_bootstrapped = False
 _bootstrap_lock = threading.Lock()
@@ -193,7 +196,13 @@ class JobStore:
                     updated_at=job.updated_at,
                 )
             )
-        except Exception:  # noqa: BLE001 — a job record must not fail a job
+        except Exception as exc:  # noqa: BLE001 — a job record must not fail a job
+            # Best-effort, but not silent. A swallowed failure here is invisible
+            # in every other way — the job runs on, the UI reads memory — and
+            # one of them (two database connections contending for the write
+            # lock, a whole busy timeout per tick) hid as nothing but a slow
+            # import until a stack dump found it (CLEAN-14).
+            _logger.debug("[jobs] could not record job %s: %s", job.id, exc)
             return
 
     def register_controller(self, job_id: str, controller: Any) -> None:

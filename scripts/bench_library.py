@@ -54,12 +54,16 @@ from typing import Any, Dict, List, Optional
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from cuepoint.persistence.activity_repository import ActivityRepository  # noqa: E402
+from cuepoint.persistence.authored_data_repository import (  # noqa: E402
+    AuthoredDataRepository,
+)
 from cuepoint.persistence.collection_repository import (  # noqa: E402
     CollectionRepository,
 )
 from cuepoint.persistence.library_source_repository import (  # noqa: E402
     LibrarySourceRepository,
 )
+from cuepoint.persistence.match_repository import MatchRepository  # noqa: E402
 from cuepoint.persistence.playlist_repository import PlaylistRepository  # noqa: E402
 from cuepoint.persistence.tag_repository import TagRepository  # noqa: E402
 from cuepoint.persistence.track_metadata_repository import (  # noqa: E402
@@ -80,6 +84,8 @@ from cuepoint.services.library_import_service import (  # noqa: E402
     LibraryImportService,
 )
 from cuepoint.services.library_service import LibraryService  # noqa: E402
+from cuepoint.services.match_apply import MatchApplyService  # noqa: E402
+from cuepoint.services.match_state import MatchStateService  # noqa: E402
 from cuepoint.services.metadata_service import MetadataService  # noqa: E402
 from cuepoint.services.migration_runner import MigrationRunner  # noqa: E402
 from cuepoint.services.tag_service import TagService  # noqa: E402
@@ -256,6 +262,7 @@ def build_service(
             track_repository=tracks,
             collection_repository=CollectionRepository(database),
             metadata_repository=TrackMetadataRepository(database),
+            authored_repository=AuthoredDataRepository(database),
         ),
     )
     return service, tracks, playlists
@@ -455,7 +462,17 @@ def build_organization(database, tracks_repo, total: int):
     metadata = MetadataService(
         TrackMetadataRepository(database), tracks_repo, activity, database
     )
-    batch = BatchService(metadata, tags, collections, tracks_repo, activity, database)
+    matches = MatchRepository(database)
+    batch = BatchService(
+        metadata,
+        tags,
+        collections,
+        tracks_repo,
+        activity,
+        database,
+        MatchStateService(matches, tracks_repo, activity, database),
+        MatchApplyService(matches, metadata, tracks_repo, database),
+    )
     return tags, collections, batch
 
 

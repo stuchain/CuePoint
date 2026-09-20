@@ -3762,7 +3762,8 @@ over a sandboxed library of real MP3 files.
 **Found running the E2E suite, and not changed.** Forty-one passed and one was skipped.
 
 - **Two imports time out, as they did before this step:** LIBRARY-10's 250,000-track refresh label
-  and ORG-13's 50,000-track batch, each still importing at ninety seconds.
+  and ORG-13's 50,000-track batch, each still importing at ninety seconds. **Both were a real bug**
+  — two database connections in one engine, above — and both pass since it was fixed.
 - **PLAYER-10's failed queue sometimes splits its one message in two** ("3 tracks could not be
   played", then the rest). It failed three runs in five on the tree before this step, so it is a
   timing flake of that step's coalescing, recorded here rather than fixed in passing.
@@ -4016,6 +4017,29 @@ whatever earlier ones deferred.
   the page by ids and sort keys and reads the hundred rows after, in one statement (0.13 s, the same
   rows). Sorting by match score read every score from `match_candidates` (164 ms); migration 0019
   keeps it on `track_match` as `candidate_score`, filled by `MatchRepository.set_match` (35 ms).
+- **Every import in the app crawled, and nobody had looked.** The two E2E timeouts below were not
+  the tests being demanding: a 50,000-track import that the engine does in 2.4 s took over ten
+  minutes in the app, one track every five seconds. `bootstrap_services()` registered a *new*
+  `DatabaseService` over the old one on each call, and the engine calls it more than once — the
+  launch backup at startup, the first job through `_ensure_services`. The job store resolves its
+  repository once, while the import request is still being served, so it kept the first one: the
+  import held the write lock on one connection and recorded its progress on another, waiting out
+  the whole five-second busy timeout every tick, silently, because a job record is written
+  best-effort. Bootstrapping is now once per container, a swallowed job-record failure is logged at
+  debug, and the two regression tests fail on the old code
+  (`test_regression_two_database_connections.py`). 50,000 tracks import in 3.2 s through the app
+  and 250,000 in 13.2 s; the whole E2E suite went from 15 minutes to 2.8.
+- **The engine leaked a database connection per request.** Each HTTP request is served on its own
+  thread and each thread opens its own connection; nothing closed them when those threads ended, so
+  a session's open connections only grew — 351 after 351 requests, measured. `connect()` now closes
+  the connections of threads that have ended, on its way to opening one
+  (`test_database_service.py::test_a_finished_threads_connection_does_not_stay_open`).
+- **`scripts/bench_library.py` could not run at all**: `LibraryService` gained a required
+  `authored_repository` in ORG-04 and `BatchService` two match services in CLEAN-05, and the script
+  was never updated — so the library table in the performance guide had not been re-measurable
+  since. Both are wired now, and a full 50,000-track run agrees with the published numbers (import
+  10.75 s against 10.9 s, re-import 13.81 against 13.9, apply 14.14 against 14.0), so the guide is
+  left as it stands.
 - **Test races**: the duplicate-scan tests started a scan beside the import's own follow-up scan,
   and the journey's second candidate tied the first on score, so which ranked first depended on
   which page the matcher's workers fetched first. The fixture's second candidate now scores 91.1
@@ -4073,9 +4097,9 @@ leaves no process behind.
 **Checks run.** The full Python suite (7,162 passed, 67 skipped; earlier runs found the
 duplicate-scan race and the close_all crash above, both fixed), ruff, formatting, the Qt guard,
 version coupling, the engine smoke test; the renderer's 2,576 tests, type-check, lint and
-`build:check`; the Electron tests (393) and type-check; the E2E suite (44 passed, 1 skipped; the two
-failures are the 250,000-track refresh and the 50,000-track Organization batch timing out at 90 s,
-as before this step).
+`build:check`; the Electron tests (393) and type-check; the E2E suite (46 passed, 1 skipped, in 2.8
+minutes — the two imports that timed out at 90 s did so because of the connection bug above, and
+pass since it was fixed).
 
 ## Phase 7 acceptance, checked (2026-09-19)
 
@@ -4109,7 +4133,7 @@ In a packaged Windows build unless said otherwise; macOS is owed, as above.
     membership warns with a count per kind; one touching none applies without a prompt (CLEAN-05;
     the journey's refresh names the reviewed track).
 14. **Met, on Windows.** Scale numbers are measured and recorded; the full Python suite, renderer
-    gates, E2E (bar the two timeouts that predate this phase's last step), the Qt guard, version
+    gates, E2E (all of it), the Qt guard, version
     coupling, the desktop-contract test and the file-write boundary test pass.
 15. **Met.** No decision in DEC-001…DEC-076 is contradicted; DEC-065 and DEC-071 carry
     implementation notes.

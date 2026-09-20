@@ -169,6 +169,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer matches playlist files
 
 ### Fixed
+- Importing a large library in the app crawled: a 50,000-track collection that
+  takes three seconds reported one track every five seconds and never finished.
+  Two parts of the engine had ended up with a connection each to the same
+  library file, so recording an import's progress waited on a lock the import
+  itself was holding. The same import now takes 3 seconds, and 250,000 tracks
+  13 seconds
+- The engine no longer leaves a database connection open for every request it
+  has ever served; a long session used to accumulate thousands
 - A packaged build never reached its engine: the window looked for its preload
   outside the installed app, so nothing in it could talk to CuePoint's engine
 - Quitting the packaged app on Windows left its engine running in the
