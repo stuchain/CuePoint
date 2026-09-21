@@ -57,6 +57,8 @@ export interface LibraryPaneProps {
   onNotify?: (message: string, tone: "info" | "warning") => void;
   /** Bumped to put the keyboard in the Collections tree (ORG-13, DEC-062). */
   collectionsFocusToken?: number;
+  /** A Collection's "Export to Rekordbox…" (EXPORT-07, DEC-087). */
+  onExportCollection?: (node: CollectionNode) => void;
 }
 
 export function LibraryPane({
@@ -69,6 +71,7 @@ export function LibraryPane({
   onDropTracks,
   onNotify,
   collectionsFocusToken = 0,
+  onExportCollection,
 }: LibraryPaneProps) {
   return (
     <div className="cp-library-pane">
@@ -121,6 +124,7 @@ export function LibraryPane({
         onFreezeSmart={collections.freezeSmart}
         onDropTracks={onDropTracks}
         onNotify={onNotify}
+        onExport={onExportCollection}
       />
 
       <PlaylistPane

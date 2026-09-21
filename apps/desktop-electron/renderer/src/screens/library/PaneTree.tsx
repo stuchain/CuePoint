@@ -65,6 +65,12 @@ export interface PaneTreeProps {
   /** Trailing controls for a row — the section decides what they are. */
   actions?: (row: PaneTreeRow) => ReactNode;
   onRowKeyDown?: (key: string, event: KeyboardEvent<HTMLElement>) => void;
+  /**
+   * A row's context menu, asked for with the mouse or the keyboard — the menu
+   * key or Shift+F10, as the track table answers them. The section draws the
+   * menu; the tree says where. Absent, right-clicking a row does nothing new.
+   */
+  onRowContextMenu?: (key: string, anchor: { x: number; y: number }) => void;
   onDragStart?: (key: string, event: React.DragEvent<HTMLElement>) => void;
   onDragEnd?: () => void;
   onDragOver?: (key: string, event: React.DragEvent<HTMLElement>) => void;
@@ -94,6 +100,7 @@ export function PaneTree({
   onRenameCancel,
   actions,
   onRowKeyDown,
+  onRowContextMenu,
   onDragStart,
   onDragEnd,
   onDragOver,
@@ -154,6 +161,16 @@ export function PaneTree({
       case " ":
         event.preventDefault();
         onSelect(row.key);
+        break;
+      case "ContextMenu":
+      case "F10":
+        if (onRowContextMenu && (event.key === "ContextMenu" || event.shiftKey)) {
+          event.preventDefault();
+          const box = event.currentTarget.getBoundingClientRect();
+          onRowContextMenu(row.key, { x: box.left + box.width / 4, y: box.bottom });
+          break;
+        }
+        onRowKeyDown?.(row.key, event);
         break;
       default:
         onRowKeyDown?.(row.key, event);
@@ -218,6 +235,15 @@ export function PaneTree({
               onSelect(row.key);
             }}
             onKeyDown={(event) => onKeyDown(event, row)}
+            onContextMenu={
+              onRowContextMenu
+                ? (event) => {
+                    event.preventDefault();
+                    setFocusKey(row.key);
+                    onRowContextMenu(row.key, { x: event.clientX, y: event.clientY });
+                  }
+                : undefined
+            }
             onDragStart={onDragStart ? (event) => onDragStart(row.key, event) : undefined}
             onDragEnd={onDragEnd}
             onDragOver={onDragOver ? (event) => onDragOver(row.key, event) : undefined}

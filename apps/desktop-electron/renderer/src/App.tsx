@@ -37,7 +37,12 @@ import {
   ToolSelectionScreen,
 } from "./screens";
 import { libraryOpening } from "./screens/library/libraryLink";
-import { cleanOpening, cleanTrackState } from "./screens/clean/cleanLink";
+import {
+  cleanOpening,
+  cleanSectionOpening,
+  cleanSectionState,
+  cleanTrackState,
+} from "./screens/clean/cleanLink";
 import { ScaleProvider } from "./tokens/ScaleContext";
 import { ThemeProvider } from "./tokens/ThemeContext";
 import { shouldShowOnboarding } from "./components/OnboardingDialog";
@@ -118,11 +123,18 @@ function AppShell() {
             openWith={libraryOpening(location)}
             onOpenRekordboxInstructions={() => setRekordboxOpen(true)}
             onOpenInClean={(trackId) => navigate("/clean", { state: cleanTrackState(trackId) })}
+            onOpenMissingFiles={() => navigate("/clean", { state: cleanSectionState("missing") })}
           />
         );
       case "clean":
         // The Inspector's link opens one track's review (CLEAN-13).
-        return <CleanScreen openWith={cleanOpening(location)} />;
+        // The Rekordbox export's missing-file count opens Missing files (EXPORT-07).
+        return (
+          <CleanScreen
+            openWith={cleanOpening(location)}
+            openSection={cleanSectionOpening(location)}
+          />
+        );
       // DEC-062: Collections is a way into the Library page, not a second
       // browser. Same screen, aimed at the tree — and `destinationToRemember`
       // stores `library` for it, so the two entries never fight over which one
@@ -133,6 +145,7 @@ function AppShell() {
             focus="collections"
             onOpenRekordboxInstructions={() => setRekordboxOpen(true)}
             onOpenInClean={(trackId) => navigate("/clean", { state: cleanTrackState(trackId) })}
+            onOpenMissingFiles={() => navigate("/clean", { state: cleanSectionState("missing") })}
           />
         );
       case "incrate":

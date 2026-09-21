@@ -7,10 +7,10 @@ saved filters that keep answering as your library grows.
 All of it lives beside the Library page's track table, in the left pane, so
 organizing and browsing are the same screen rather than two.
 
-> **None of this appears in Rekordbox.** CuePoint reads your Rekordbox export
-> and writes nothing back — not to the XML, not to your audio files. Your
-> Collections, tags and ratings are CuePoint's, and they stay in CuePoint until
-> a later release adds an export. See
+> **None of this appears in Rekordbox until you export it.** CuePoint never
+> writes to the XML you imported or to your audio files. Your Collections and
+> ratings reach Rekordbox when you choose **Export to Rekordbox…**; tags, notes
+> and favorites stay in CuePoint. See
 > [What Rekordbox does and does not see](#what-rekordbox-does-and-does-not-see).
 
 ## Collections
@@ -27,6 +27,8 @@ hold tracks.
   arranged, not alphabetically, and that order is saved.
 - **Move and file** Collections by dragging them between folders.
 - **Rename** with F2 or the pencil, **delete** with Delete or the ✕.
+- **Right-click** a Collection, Smart Collection or folder — or press the menu
+  key or Shift+F10 — for the same actions and **Export to Rekordbox…**.
 
 A delete says what it will remove before it removes it — "this folder and the
 three Collections in it" — and **no Collection operation ever deletes a track**.
@@ -128,16 +130,23 @@ tracks into it as though it were new.
 
 ## What Rekordbox does and does not see
 
-**Nothing you do here is visible in Rekordbox.** Collections are not playlists,
-CuePoint ratings are not Rekordbox ratings, and tags are not written into your
-audio files. CuePoint never modifies your XML export or your music files.
+**Nothing you do here is visible in Rekordbox until you export it.**
+Collections are not Rekordbox playlists and CuePoint ratings are not Rekordbox
+ratings, until **Export to Rekordbox…** writes them into a new XML file for
+Rekordbox to open. CuePoint never modifies the XML you imported or your music
+files. See [Exporting to Rekordbox](rekordbox-export.md).
+
+- **Exported**: your key, BPM, genre, label, year and rating, and the
+  Collections and Smart Collections you choose, as playlists.
+- **Never exported**: tags, notes and favorites. Rekordbox's XML has nowhere to
+  put them. To send a tag, make a Smart Collection whose rule is that tag, and
+  export that.
 
 That is deliberate: a tool that reads your library and writes only to its own
-database is one whose mistakes are recoverable. Carrying your organization back
-out to Rekordbox is a later release, and it will be something you ask for
-explicitly rather than something that happens.
+database is one whose mistakes are recoverable, and an export is something you
+ask for explicitly rather than something that happens.
 
-Two things follow from it:
+Two more things follow from it:
 
 - Rekordbox playlists shown in the left pane are a mirror, and are read-only by
   every path. You cannot drag into them, and nothing here changes them.

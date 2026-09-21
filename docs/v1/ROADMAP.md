@@ -257,7 +257,7 @@ DEC-011's refresh warning now counts every track carrying the user's own data �
 tags, review decisions and applied values as well as Collections — and DEC-076's artwork is cached
 as real thumbnails, making Pillow a runtime dependency behind one guarded decoder.
 
-## Phase 8 — Rekordbox Export (EXPORT-01 … EXPORT-07) — specified; EXPORT-01…EXPORT-06 done
+## Phase 8 — Rekordbox Export (EXPORT-01 … EXPORT-07) — implemented; the check in Rekordbox itself and macOS packaged checks owed
 
 No full-XML export exists today (only the narrow attribute-patch write) — this phase builds real
 export, carrying forward the existing "always write a new file, never silently overwrite the source"
@@ -301,6 +301,17 @@ crosses the bridge as a value carrying its reason, since a rejection loses every
 message on the way to the renderer, and the folder and notation to start from are read from the
 export record rather than kept as settings that could drift from it. A test in Python holds every
 TypeScript shape against what the engine actually serializes.
+
+EXPORT-07 draws it and closes the phase: one dialog reached from the Library header's **Collection
+file** menu and from a new context menu on the Collections tree, stating the destination, the source
+and its staleness, the tracks and fields that change, the playlists, the warnings and the notation's
+consequence in that order, over fixtures the Python suite produces from the real engine. A Settings
+section shows where exports go, a user-guide page and ADR-006 record what the export keeps and why,
+and an end-to-end journey passes three times in a row in the packaged Windows build — cue points and
+grids kept, the source and every audio file byte-identical. Adding the header entry first stacked the
+header's buttons and left the track table 20 pixels tall, which only the packaged run could see; import
+and export now share one menu. Phase acceptance is recorded point by point in `PHASE8_EXPORT.md`:
+opening the result in Rekordbox itself, and the macOS packaged checks, are owed.
 
 Round 10's central finding came from the code rather than the roadmap: `POSITION_MARK` and `TEMPO`
 appear nowhere in `src/`, so CuePoint has never parsed a cue point or a beat grid. An XML generated

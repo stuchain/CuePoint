@@ -2,12 +2,15 @@ import { Button, Panel, TextField } from "../components";
 import { hasEngineBridge } from "../api/cuepointBridge.types";
 import { useBeatportToken } from "../hooks/useBeatportToken";
 import { AudioSettingsPanel } from "./AudioSettingsPanel";
+import { RekordboxExportSettingsPanel } from "./RekordboxExportSettingsPanel";
 import { ThemeSettingsPanel } from "./ThemeSettingsPanel";
 import "./screens.css";
 
 /**
  * Settings. Exporting matches moved to Clean's "Export review list" when
- * Results retired (DEC-071), so this page holds settings only.
+ * Results retired (DEC-071), so this page holds settings only. The Rekordbox
+ * export's section shows where exports go and offers no way to start one
+ * (DEC-087).
  */
 export function SettingsExportScreen() {
   const engineAvailable = hasEngineBridge();
@@ -34,6 +37,8 @@ export function SettingsExportScreen() {
       <ThemeSettingsPanel />
 
       <AudioSettingsPanel />
+
+      <RekordboxExportSettingsPanel />
 
       <Panel title="Settings">
         <div className="settings-form">

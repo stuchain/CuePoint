@@ -8,6 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Export to Rekordbox. **Export to Rekordbox…** in the Library's **Collection
+  file** menu, or on a Collection, Smart Collection or folder's right-click menu, writes a new
+  Rekordbox XML file carrying your key, BPM, genre, label, year and rating, and
+  the Collections you tick as playlists in a `CuePoint` folder. It is made by
+  patching a copy of the file you imported, so cue points, beat grids and
+  everything else Rekordbox wrote are kept exactly as they were. A preview
+  states what will be written first — the tracks and fields that change, each
+  playlist, a source file that has changed since the import (with **Refresh
+  first**), tracks the file lacks, missing audio files and a folder name that
+  is already taken — and the button says what it will do. Tags, notes and
+  favorites are not exported; the file you imported and your audio files are
+  never written. The export runs as a job you can stop, and is listed in
+  Activity. See the new user guide page, Exporting to Rekordbox
+- Settings shows where Rekordbox exports go, the key notation the next one
+  starts in, and the recent exports
+- The Collections tree has a right-click menu (also the menu key and
+  Shift+F10) with rename, delete, duplicate, freeze and Export to Rekordbox…
 - Resuming a match. A match you stopped, or one CuePoint's closing cut short,
   is offered on the Clean page with how many tracks it left, and an interrupted
   one's Activity entry offers **Resume** too. Resuming matches only the tracks
@@ -122,6 +139,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   files
 
 ### Changed
+- **Import a different collection…** is in the Library header's new
+  **Collection file** menu, beside **Export to Rekordbox…**. Three buttons did
+  not fit the header at the default window size and pushed the track table
+  almost out of sight
 - **Clean is how matching is done.** The inKey and Results pages are gone from
   Tools; import your collection in the Library and match a playlist, a
   Collection or the whole library from Clean. A remembered page or a link to

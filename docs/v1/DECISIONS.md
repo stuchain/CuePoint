@@ -2852,6 +2852,24 @@ playlist that exists only inside one exported file and has no identity in CuePoi
 exportable object is what stops the export record (DEC-086), the preview and the docs from each having
 to describe two.
 
+### Precision (2026-09-21, found while implementing EXPORT-07 — the decision above is unchanged)
+
+- **In the header, export shares a menu with import.** Three buttons do not fit the Library header:
+  at the default window size and scale it is about 600 pixels wide, "Check for changes", "Import a
+  different collection…" and "Export to Rekordbox…" need over a thousand, and each took a line of
+  its own — leaving the track table 20 pixels tall, measured in the packaged app. So "Check for
+  changes" stays a button and the other two are the two items of one menu, **Collection file ▾**:
+  still in the header, still beside each other, and named for the relationship this amendment gives
+  as the reason they belong together. An end-to-end test holds the table's height at the default
+  window size, so the header cannot grow over it again unnoticed.
+- **The Collections tree gained a context menu to carry the entry.** It had none: every row action
+  was a trailing button. The menu offers what those buttons do and "Export to Rekordbox…", opens on
+  right-click, the menu key and Shift+F10, and changes nothing about the selection.
+- **The entry is offered on folders too**, not only on a Collection or Smart Collection. The export
+  already reads a chosen folder as everything filed under it (EXPORT-04), and the dialog lets a
+  folder be ticked; a DJ exporting a "Gigs" folder right-clicks the folder, and offering the entry on
+  every row but that one would be a gap with no reason behind it.
+
 ---
 
 ## DEC-088 — Tracks With Missing Files Are Exported and Counted
@@ -2869,7 +2887,9 @@ the export would turn a routine action into a chore, because missing files are n
 
 **Implications**:
 - The preview states the count and links to Clean's missing-file view, so the information is offered
-  without being enforced.
+  without being enforced. (Implemented in EXPORT-07 as **Show missing files**, which opens the Clean
+  page on its Missing files tab through the router's location state, as a Health count opens the
+  Library; the link opens the tab without making it the one Clean remembers.)
 - Whether a file is missing is read from Phase 7's existing `track_files` state, not checked during the
   export. A never-checked library reports that it has not been checked rather than reporting zero.
 - No `Location` is ever rewritten. CuePoint does not fix paths (DEC-073), and an export is not the place

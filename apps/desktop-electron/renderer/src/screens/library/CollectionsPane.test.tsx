@@ -1064,3 +1064,102 @@ describe("a Smart Collection's own gestures", () => {
     expect(screen.queryByRole("button", { name: "Freeze Recent techno" })).toBeNull();
   });
 });
+
+describe("a row's context menu (EXPORT-07, DEC-087)", () => {
+  const menu = () => screen.getByRole("menu");
+  const entries = () => within(menu()).getAllByRole("menuitem").map((item) => item.textContent);
+
+  it("offers export on a Collection, with the row's own actions", () => {
+    const onExport = vi.fn();
+    paneWith(NODES, [1], { onExport });
+    fireEvent.contextMenu(rowFor("Warmups"));
+
+    expect(entries()).toEqual(["Rename", "Delete…", "Export to Rekordbox…"]);
+  });
+
+  it("opens the export with that node, and closes", async () => {
+    const onExport = vi.fn();
+    paneWith(NODES, [1], { onExport });
+    fireEvent.contextMenu(rowFor("Warmups"));
+
+    await userEvent.setup().click(within(menu()).getByRole("menuitem", { name: "Export to Rekordbox…" }));
+
+    expect(onExport).toHaveBeenCalledTimes(1);
+    expect(onExport.mock.calls[0]![0]).toMatchObject({ id: 2, name: "Warmups" });
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("offers it on a Smart Collection beside its own gestures", () => {
+    const onExport = vi.fn();
+    paneWith(NODES, [1], { onExport });
+    fireEvent.contextMenu(rowFor("Recent techno"));
+
+    expect(entries()).toEqual([
+      "Duplicate",
+      "Freeze to a Collection…",
+      "Rename",
+      "Delete…",
+      "Export to Rekordbox…",
+    ]);
+  });
+
+  it("offers it on a folder, which stands for everything filed under it", async () => {
+    const onExport = vi.fn();
+    paneWith(NODES, [1], { onExport });
+    fireEvent.contextMenu(rowFor("Sets"));
+
+    await userEvent.setup().click(within(menu()).getByRole("menuitem", { name: "Export to Rekordbox…" }));
+    expect(onExport.mock.calls[0]![0]).toMatchObject({ id: 1, kind: "folder" });
+  });
+
+  it("offers no export when the page cannot export", () => {
+    paneWith(NODES, [1]);
+    fireEvent.contextMenu(rowFor("Warmups"));
+    expect(entries()).not.toContain("Export to Rekordbox…");
+  });
+
+  it("opens from the keyboard, with the menu key and with Shift+F10", () => {
+    const onExport = vi.fn();
+    paneWith(NODES, [1], { onExport });
+
+    fireEvent.keyDown(rowFor("Warmups"), { key: "ContextMenu" });
+    expect(entries()).toContain("Export to Rekordbox…");
+    fireEvent.keyDown(menu(), { key: "Escape" });
+    expect(screen.queryByRole("menu")).toBeNull();
+
+    fireEvent.keyDown(rowFor("Warmups"), { key: "F10", shiftKey: true });
+    expect(entries()).toContain("Export to Rekordbox…");
+  });
+
+  it("leaves F10 alone without Shift", () => {
+    paneWith(NODES, [1], { onExport: vi.fn() });
+    fireEvent.keyDown(rowFor("Warmups"), { key: "F10" });
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("does the row's own actions from the menu too", async () => {
+    const user = userEvent.setup();
+    const { onPreviewDelete, onFreezeSmart } = paneWith(NODES, [1], { onExport: vi.fn() });
+
+    fireEvent.contextMenu(rowFor("Warmups"));
+    await user.click(within(menu()).getByRole("menuitem", { name: "Delete…" }));
+    expect(onPreviewDelete).toHaveBeenCalledWith(2);
+    expect(await screen.findByRole("dialog", { name: /Delete Warmups/ })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Keep it" }));
+
+    fireEvent.contextMenu(rowFor("Recent techno"));
+    await user.click(within(menu()).getByRole("menuitem", { name: "Freeze to a Collection…" }));
+    await user.click(await screen.findByRole("button", { name: "Freeze it" }));
+    expect(onFreezeSmart).toHaveBeenCalledWith(5);
+
+    fireEvent.contextMenu(rowFor("Warmups"));
+    await user.click(within(menu()).getByRole("menuitem", { name: "Rename" }));
+    expect(screen.getByDisplayValue("Warmups")).toBeInTheDocument();
+  });
+
+  it("changes nothing about what is selected", () => {
+    const { onSelect } = paneWith(NODES, [1], { onExport: vi.fn() });
+    fireEvent.contextMenu(rowFor("Warmups"));
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+});

@@ -31,7 +31,12 @@ import { ScaleProvider } from "../../tokens/ScaleContext";
 import { CleanScreen } from "./CleanScreen";
 import fixture from "./cleanEmpty.fixture.json";
 import { CLEAN_SECTION_STORAGE_KEY } from "./cleanSections";
-import { cleanOpening, cleanTrackState } from "./cleanLink";
+import {
+  cleanOpening,
+  cleanSectionOpening,
+  cleanSectionState,
+  cleanTrackState,
+} from "./cleanLink";
 
 const UNTOUCHED = fixture.untouched.health as LibraryHealth;
 
@@ -1166,5 +1171,48 @@ describe("opening one track from the Library (CLEAN-13)", () => {
     expect(cleanOpening({ state: { cuepointCleanTrack: 0 }, key: "k" })).toBeNull();
     expect(cleanOpening({ state: null, key: "k" })).toBeNull();
     expect(cleanOpening({ state: cleanTrackState(4), key: "k" })).toEqual({ trackId: 4, token: "k" });
+  });
+});
+
+describe("opening a part from somewhere else (EXPORT-07)", () => {
+  function Opened() {
+    const location = useLocation();
+    return <CleanScreen openSection={cleanSectionOpening(location)} />;
+  }
+
+  function renderOpened() {
+    return render(
+      <ScaleProvider>
+        <ToastProvider>
+          <MemoryRouter
+            initialEntries={[{ pathname: "/clean", state: cleanSectionState("missing") }]}
+          >
+            <Routes>
+              <Route path="/clean" element={<Opened />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ScaleProvider>,
+    );
+  }
+
+  it("opens Missing files, whatever part was used last, and does not remember it", async () => {
+    localStorage.setItem(CLEAN_SECTION_STORAGE_KEY, "health");
+    renderOpened();
+
+    expect(await screen.findByRole("tab", { name: "Missing files", selected: true })).toBeInTheDocument();
+    expect(await screen.findByText(/use Relocate in Rekordbox/)).toBeInTheDocument();
+    expect(localStorage.getItem(CLEAN_SECTION_STORAGE_KEY)).toBe("health");
+  });
+
+  it("ignores a location that carries no part, or one that is not a part", () => {
+    expect(cleanSectionOpening({ state: { cuepointCleanSection: "exports" }, key: "k" })).toBeNull();
+    expect(cleanSectionOpening({ state: { cuepointCleanSection: 2 }, key: "k" })).toBeNull();
+    expect(cleanSectionOpening({ state: null, key: "k" })).toBeNull();
+    expect(cleanSectionOpening({ state: cleanTrackState(4), key: "k" })).toBeNull();
+    expect(cleanSectionOpening({ state: cleanSectionState("missing"), key: "k" })).toEqual({
+      section: "missing",
+      token: "k",
+    });
   });
 });

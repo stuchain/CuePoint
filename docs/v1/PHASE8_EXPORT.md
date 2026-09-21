@@ -1,6 +1,7 @@
 # CuePoint v1.0.0 — Phase 8: Rekordbox Export, Detailed Step Specifications
 
-Status: **EXPORT-01…EXPORT-06 implemented; EXPORT-07 specified.**
+Status: **EXPORT-01…EXPORT-07 implemented. Phase acceptance checked on Windows (below); opening
+the result in Rekordbox itself, and the macOS packaged checks, are owed.**
 The seven steps below replace the roadmap's placeholder inventory (EXPORT-01…EXPORT-08, which
 Round 10's answers came in one under).
 Per the process, no implementation happens from this document — each step needs an explicit
@@ -1237,7 +1238,7 @@ again.
 
 ---
 
-## EXPORT-07 — The Export Dialog, the Entry Points, and the Phase Comes Together
+## EXPORT-07 — The Export Dialog, the Entry Points, and the Phase Comes Together ✅ IMPLEMENTED 2026-09-21
 
 **Objective**: The UI a user actually drives, from both entry points, and the phase's acceptance.
 
@@ -1308,6 +1309,123 @@ is how a user exports something they did not mean to.
 
 **Complexity**: **M**
 
+**Outcome**: Complete on Windows. `screens/library/RekordboxExportDialog.tsx` is the one dialog,
+reached from the Library header and from a new context menu on the Collections tree, and
+`screens/library/rekordboxExport.ts` makes every sentence it shows — pure functions of the engine's
+answer, in `tagWriting.ts`'s shape. It states what will be written in the specification's order: the
+destination with **Choose…**/**Change…**, the source and any staleness with **Refresh first**, the
+tracks and the changed count broken down by field, the playlists with their paths and entry counts,
+the warnings, and last the key notation with its consequence line beside it. Confirm says what it
+will do ("Export 3,880 tracks and 4 playlists"), is disabled — and says why — while a refusal
+stands, before a destination is chosen and while a preview is being asked, and nothing is written
+until it is pressed. The export is then followed as a job with **Stop**, and ends in what it wrote,
+how to open it in Rekordbox, and **Show in folder**. `screens/RekordboxExportSettingsPanel.tsx` is
+Settings' section: where the next save dialog opens, the notation it starts in, and the recent
+exports by how each ended, with no way to start one.
+
+**Seven decisions taken while implementing.**
+
+1. **Import and export share one header menu, "Collection file".** The first version added a third
+   button beside "Check for changes" and "Import a different collection…". Every unit test passed;
+   the full end-to-end run failed ORG-13's journey, and measuring the packaged window found why: at
+   the default size and scale the header is about 600 pixels wide, the three labels need over a
+   thousand, and each button took a line of its own — a 471-pixel header over a track table 20
+   pixels tall. "Check for changes" stays a button; the other two are the items of one menu, which
+   is also the relationship DEC-087's amendment gave as the reason they belong together. The header
+   measures 271 pixels again (273 before this step), and the journey now asserts the table keeps its
+   height at the default window size. Recorded in DEC-087.
+
+2. **The Collections tree gained a context menu.** DEC-087 names "the context menu of a Collection",
+   and the tree had none — every row action was a trailing button. `PaneTree` gained
+   `onRowContextMenu`, answered for right-click, the menu key and Shift+F10, and the Collections
+   section draws `TrackContextMenu` with what its buttons do plus **Export to Rekordbox…**. The
+   buttons stay, because a menu is not what a first-time user finds.
+
+3. **The entry is offered on folders too.** The export reads a chosen folder as everything filed
+   under it (EXPORT-04) and the dialog lets one be ticked, so the one row it would be missing from
+   is the one a DJ exporting "Gigs" would right-click. Recorded in DEC-087.
+
+4. **The preview is asked for as the choices change, not by a button.** A preview is a read that
+   costs 3.4 s at 50,000 tracks and nothing below that, so it is asked 150 ms after the last tick or
+   notation change, an answer to an older question is dropped, and the numbers for the old choice
+   leave the screen while the new one is asked — a count shown beside a choice it does not describe
+   is the underselling this step's risk names. Confirm acts only on the preview of the choices on
+   screen.
+
+5. **A busy library is waited for, not only reported.** A preview or a start refused because an
+   import, refresh, batch edit or other export holds the library names the job; the dialog follows
+   that job and asks again when it ends, so "an import is running" resolves by itself. A refused
+   destination stands until another file is chosen, with **Choose another file…** beside it; a
+   source that is gone offers **Import a different collection…**, which closes the dialog and runs
+   the page's own import.
+
+6. **The dialog's fixtures are produced by the engine.** "Empty and refusal states come from real
+   engine responses, not hand-written shapes" is met as CLEAN-12 met it:
+   `test_rekordbox_export_dialog_fixture.py` builds nineteen situations over a real library — a copy
+   that changes nothing, a chosen scope in each notation, a stale and an unknowable source, a name
+   collision, an empty folder and an empty Collection, five refusals and a busy library, a written
+   and a cancelled result, history with and without exports — and holds
+   `rekordboxExport.fixture.json` to what the engine answers, with paths moved to a fictional user's
+   folder and times fixed by what they record. A change to the payload fails in Python, where it was
+   made.
+
+7. **The missing-file count links to Clean** (DEC-088) through a new `cleanSectionState`: the
+   location opens the Clean page on Missing files, once per navigation, without making it the tab
+   Clean remembers. Recorded in DEC-088.
+
+**Documentation.** `docs/user-guide/rekordbox-export.md` is new and says plainly what the
+specification lists: tags, notes and favorites do not reach Rekordbox; the export is opened in
+Rekordbox as a second library ("rekordbox xml"), not merged; CuePoint never writes the file it
+imported; and cue points and beat grids are kept because the file is patched, not rebuilt.
+`features.md`, `organization.md` (which still said export was "a later release"), `library.md`, the
+docs index and the changelog are updated. **ADR-006** records that the export patches rather than
+generates, with the signals that would justify revisiting it.
+
+**Tests**: 21 new in Python and 132 in the renderer, and one end-to-end journey.
+`rekordboxExport.test.ts` (59) holds every sentence against the engine's fixtures: each notation's
+consequence line, staleness with its real numbers, every warning in the specification's order, a
+never-checked library not counted as zero, the confirm label and what blocks it, every refusal's
+words and next step, and what is sent for a ticked folder. `RekordboxExportDialog.test.tsx` (44)
+covers both pre-selections, the order of the sections, each warning and notation line drawn, confirm
+disabled while a refusal stands, a late answer dropped and old numbers taken away, the destination
+chosen and reopened, a start refused, a stop, a failure, a busy library waited for, and Refresh
+first handing off. `LibraryScreen.export.test.tsx` (11) opens the dialog from the header's menu with
+nothing ticked and from a Collection's and a Smart Collection's context menu with that node ticked,
+and asserts **export appears in neither the selection Actions menu nor the track context menu**. The
+Collections pane (+9), Settings (7) and Clean's section link (+2) have theirs.
+`e2e/rekordboxExport.spec.ts` drives the real window through the whole of it (below).
+
+**Forty-one mutations were introduced deliberately to prove the tests bite, and all forty-one now
+fail the suite.** Thirty-five failed on the first run; one could not be applied as written and was
+corrected, and one survived — the dialog drawing an old preview's numbers while a new question was
+being asked — which gained the test in decision 4. The rest covered each notation's line, staleness,
+every blocker of confirm, the confirm label, both missing-file branches, the collision, the folder
+rules, each refusal's next step, a playlist's drop count, the size fallback, the remembered
+notation, the late answer, the busy retry, the start refusal, closing while running, the reopened
+destination, broken Smart Collections, import and stop going missing, Refresh first starting an
+export, both entry points' pre-selection, the dialog left open behind a refresh, the missing bridge,
+folders left out of the menu, the keyboard menu, the selection moving on right-click, the header's
+two menu items and its fallback, and Clean's link remembering its tab or taking any string. The
+fixture test was checked the same way: changing one field of the preview's payload fails three
+states.
+
+**Checks run**: the full `src/tests/unit` (7,417 passed, 47 skipped), `src/tests/integration
+src/tests/regression src/tests/acceptance -m "not slow"` (368 passed, 19 skipped), the renderer's
+`npm test` (2,773 passed), `npm run typecheck`, `npm run lint` (exit 0; its eight warnings are in
+files this step does not touch) and `npm run build:check`, the Electron workspace's `npm test` (431
+passed) and `npm run typecheck`, the whole E2E suite against the development build (47 passed, 1
+skipped), the export journey three times in a row against the packaged build
+(`release/win-unpacked`, rebuilt with a fresh engine sidecar), `ruff check src/`, `ruff format
+--check src/`, `python scripts/check_no_qt_in_core.py`, `python
+scripts/check_desktop_version_coupling.py`, `PYTHONPATH=src python scripts/smoke_engine_health.py`,
+the mypy gates and `git diff --check`.
+
+**Packaging note.** `npm run pack` failed at electron-builder's download of its Windows code-signing
+tools: the archive holds macOS symbolic links, which this Windows account has no privilege to
+create. The tools were extracted once into electron-builder's cache, skipping those links, and the
+pack then succeeded. Nothing in the repository changed for it; a machine with Developer Mode or an
+elevated shell does not meet it.
+
 ---
 
 ## Phase-level acceptance
@@ -1338,6 +1456,64 @@ Phase 7's macOS passes.
 14. The scale claims are measured and recorded at 50,000 tracks with 10,000 overrides and Phase 6's
     organization on top: preview duration, export duration, peak memory and output file size.
 15. `write_updated_collection_xml` and the five other orphaned writers no longer exist.
+
+## Phase 8 acceptance, checked (2026-09-21)
+
+In a packaged Windows build unless said otherwise. **Owed**: opening the result in Rekordbox itself
+(points 1–6 ask for it), because doing so from here would change the Imported Library setting of the
+Rekordbox installed on this machine, which is the user's; and every macOS packaged check, alongside
+Phase 5's and Phase 7's.
+
+1. **Met, except the look in Rekordbox, which is owed.** A collection exported to a new file in the
+   packaged journey, and the file read back through CuePoint's own importer — the reader built for
+   Rekordbox's files — with its tree intact: the mirrored `Journey` playlist, the `CuePoint` folder
+   and `Saturday` with its four entries. Opening it in Rekordbox 6 as the Imported Library is the
+   user's step; the guide says how.
+2. **Met in the file; the look in Rekordbox is owed.** A track with a hot cue, a memory cue and a
+   beat grid carries all three byte for byte after the export, asserted in the journey, and
+   EXPORT-01 proved the same at 50,000 tracks with 100,000 position marks.
+3. **Met in the file; the look in Rekordbox is owed.** A key override is written (`Tonality="Cm"`,
+   and `5A` in Camelot); a track without one keeps what Rekordbox had and its attribute is not
+   rewritten (DEC-079, EXPORT-01's byte-identity tests, the journey).
+4. **Met in the file; the look in Rekordbox is owed.** A CuePoint rating of five stars is written as
+   `Rating="255"`; `Rating="0"` and `Rating="255"` that CuePoint never touched are left as they were
+   (the journey; EXPORT-01's `Rating="3"` test).
+5. **Met.** A Collection filed in the user's order, with a closing reprise, is written as `Saturday`
+   inside `CuePoint` with its four entries in that order and the repeated track twice (the journey;
+   EXPORT-02 for nested folders).
+6. **Met.** A Smart Collection is written as a playlist of what it matches at that moment: `Techno`,
+   holding its one member, exported from its own context menu in the journey; EXPORT-04 holds its
+   count to the Library's browse of it.
+7. **Met.** A note, a tag and a favorite set on a track appear nowhere in the exported file (the
+   journey), and the patch writes six attributes and nothing else (EXPORT-01).
+8. **Met.** A source saved again after the import is reported with its modified time and size,
+   recorded and actual, and **Refresh first** is offered — and the export can still be confirmed
+   (the journey; the dialog's tests over the engine's stale fixture). Tracks the file lacks are
+   dropped from playlists and counted, per appearance (EXPORT-04, the dialog).
+9. **Met.** With the source moved away, the preview refuses and names the file, and confirm is
+   disabled (the journey).
+10. **Met.** Choosing the source as the destination is refused with "an export never writes over
+    it", confirm is held until another file is chosen, and the source is byte-identical afterwards
+    (the journey; EXPORT-05 for a relative path, a case difference and a symlink).
+11. **Met, in the engine's tests.** A cancel at each of the three stopping points leaves no file at
+    the destination and no temp file (`test_rekordbox_export_write.py`,
+    `test_rekordbox_export_progress.py`); the dialog's **Stop** reaches the job and says nothing was
+    written. A 3-track export in the packaged journey finishes before a person could stop it.
+12. **Met.** The export runs as a `rekordbox_export` job the status strip names "Exporting to
+    Rekordbox" (EXPORT-05); afterwards it is in Activity as `rekordbox.exported`, and the record
+    states the destination, the counts and the notation — asserted through the bridge in the
+    packaged journey and shown in Settings.
+13. **Met.** The journey hashes every audio file of its library, and the source, before and after
+    exporting: all byte-identical. `test_file_write_boundary.py` still holds that nothing in the
+    phase can reach a tag writer (DEC-085).
+14. **Met, and measured again end to end.** Through a real engine process at 50,000 tracks with
+    10,000 overrides, a folder of 20 Collections of 500 and a Smart Collection (35,000 entries, 21
+    playlists): preview **3.4 s**, export **3.6 s**, the engine's peak working set **222 MiB**
+    across both previews and both exports, and a **21.9 MiB** file from a 20.8 MiB source. In
+    Camelot, where all 50,000 keys are rewritten: 7.3 s and 7.6 s, 22.0 MiB. EXPORT-04 and EXPORT-05
+    measured the service alone at 3.0 s and 3.1 s with a 161 MiB peak.
+15. **Met.** `write_updated_collection_xml`, `build_rekordbox_updates` and the other orphaned
+    writers exist nowhere in `src/`; `test_rekordbox_export.py` asserts their absence.
 
 ## Deferred, with reasons
 

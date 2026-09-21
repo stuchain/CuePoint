@@ -49,6 +49,8 @@ import { LibraryHeader } from "./LibraryHeader";
 import { LIBRARY_COLUMNS } from "./libraryColumns";
 import { LibraryPane } from "./LibraryPane";
 import { RefreshPreviewDialog } from "./RefreshPreviewDialog";
+import { RekordboxExportDialog } from "./RekordboxExportDialog";
+import { rekordboxExportBridge } from "../../api/rekordboxExportBridge";
 import { SelectionActions } from "./SelectionActions";
 import { QUEUE_ACTION_LIMIT, useLibraryPlayback } from "./useLibraryPlayback";
 import { TrackDetailPanel } from "./TrackDetailPanel";
@@ -117,6 +119,9 @@ interface BatchTarget {
   trackId?: number | null;
 }
 
+/** What the header's export opens with ticked: nothing (DEC-087). */
+const NOTHING_TICKED: readonly number[] = [];
+
 const BUSY_LABEL: Record<Exclude<Busy, null>, string> = {
   importing: "Importing…",
   checking: "Checking…",
@@ -147,6 +152,11 @@ export interface LibraryScreenProps {
    * routing stays in `App.tsx`. Absent, the Inspector offers no link.
    */
   onOpenInClean?: (trackId: number) => void;
+  /**
+   * Clean's missing-file view (DEC-088), which the Rekordbox export's
+   * missing-file count links to. A prop for `focus`'s reason.
+   */
+  onOpenMissingFiles?: () => void;
 }
 
 export function LibraryScreen({
@@ -154,6 +164,7 @@ export function LibraryScreen({
   focus,
   openWith,
   onOpenInClean,
+  onOpenMissingFiles,
 }: LibraryScreenProps) {
   const { push } = useToast();
   const [summary, setSummary] = useState<LibrarySummary | null>(null);
@@ -164,6 +175,12 @@ export function LibraryScreen({
   const [query, setQuery] = useState<LibraryQuery>(DEFAULT_LIBRARY_QUERY);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [copying, setCopying] = useState(false);
+  /**
+   * The Rekordbox export, open, and what it opened with ticked (EXPORT-07).
+   * One dialog for both ways in — the header and a Collection's menu — so
+   * there is one preview and one confirm path (DEC-087).
+   */
+  const [exporting, setExporting] = useState<{ ids: readonly number[] } | null>(null);
 
   const watching = useRef<{ stop: () => void }[]>([]);
   const mounted = useRef(true);
@@ -1149,6 +1166,47 @@ export function LibraryScreen({
     [collections, diff, loadSummary, playlists, push, run, window_],
   );
 
+  // --------------------------------------------------------- Rekordbox export
+
+  const openExport = useCallback(
+    (ids: readonly number[]) => {
+      if (!rekordboxExportBridge()) {
+        push("Exporting to Rekordbox needs the desktop app with the engine connected.", "warning");
+        return;
+      }
+      setExporting({ ids });
+    },
+    [push],
+  );
+
+  const exportDialog = (
+    <RekordboxExportDialog
+      open={exporting !== null}
+      initialIds={exporting?.ids ?? NOTHING_TICKED}
+      tree={collections.tree}
+      onClose={() => setExporting(null)}
+      // DEC-082: one click to the recommended path. The dialog closes and the
+      // refresh starts; the export is not queued behind it, because the
+      // refresh may change what the user meant to export.
+      onRefreshFirst={() => {
+        setExporting(null);
+        void handleCheck();
+      }}
+      onImport={() => {
+        setExporting(null);
+        void handleImport();
+      }}
+      onOpenMissingFiles={
+        onOpenMissingFiles
+          ? () => {
+              setExporting(null);
+              onOpenMissingFiles();
+            }
+          : undefined
+      }
+    />
+  );
+
   // ------------------------------------------------------------------ render
 
   const filtered = query.q.trim() !== "" || (query.filters?.rules.length ?? 0) > 0;
@@ -1273,6 +1331,7 @@ export function LibraryScreen({
         busyLabel={busy ? BUSY_LABEL[busy] : null}
         onCheck={() => void handleCheck()}
         onImport={() => void handleImport()}
+        onExport={() => openExport(NOTHING_TICKED)}
         appliedLine={lastApplied ? appliedLine(lastApplied) : null}
       />
 
@@ -1287,6 +1346,7 @@ export function LibraryScreen({
           onDropTracks={dropTracks}
           onNotify={(message, tone) => push(message, tone === "warning" ? "warning" : "success")}
           collectionsFocusToken={collectionsFocus}
+          onExportCollection={(node) => openExport([node.id])}
         />
 
         <div className="library-screen__main">
@@ -1490,6 +1550,8 @@ export function LibraryScreen({
         onCancel={() => setDiff(null)}
         onApply={(options) => void handleApply(options)}
       />
+
+      {exportDialog}
 
       <SaveSmartDialog
         open={saveOpen}

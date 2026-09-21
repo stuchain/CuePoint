@@ -57,6 +57,7 @@
 
 .library-header__actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-sm);
   margin-left: auto;
 }

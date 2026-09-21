@@ -36,6 +36,7 @@ Suggested first commits:
 | ADR-003 | [003-http-ipc.md](003-http-ipc.md) | HTTP on loopback + session token |
 | ADR-004 | [004-player-backend.md](004-player-backend.md) | Bundled mpv sidecar over JSON IPC |
 | ADR-005 | [005-matching-on-the-library.md](005-matching-on-the-library.md) | Desktop matching runs on library tracks; inKey's file-based routes removed |
+| ADR-006 | [006-rekordbox-export-patches.md](006-rekordbox-export-patches.md) | The Rekordbox export patches a copy of the imported XML; it never generates one |
 
 ## ADR quality bar (analytical)
 

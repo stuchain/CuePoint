@@ -19,6 +19,10 @@ Open **Library** in the sidebar.
 When it finishes, the page shows what CuePoint now holds and which file it came
 from. **It remembers that file**, so refreshing later takes one click.
 
+To switch to a different export later, open **Collection file ▾** at the top of
+the Library and choose **Import a different collection…**. The same menu has
+**Export to Rekordbox…** — see [Exporting to Rekordbox](rekordbox-export.md).
+
 A 50,000-track collection takes about eleven seconds to import. See
 [Performance](performance.md#the-library) for the measured numbers.
 
@@ -189,9 +193,11 @@ time.
 **Collections, tags, ratings, favorites, notes and your own values are
 CuePoint's, and they are invisible in Rekordbox.** CuePoint reads your export
 and never writes to it, so nothing you organize here changes what Rekordbox
-shows you. The one way anything leaves CuePoint is
-[Writing tags to files](#writing-tags-to-files), which happens only when you
-ask, after a preview. See [Organizing your library](organization.md).
+shows you. Two things take your work out of CuePoint, and each happens only
+when you ask, after a preview: [Exporting to Rekordbox](rekordbox-export.md),
+which writes a new XML file with your values and Collections (tags, notes and
+favorites stay behind), and [Writing tags to files](#writing-tags-to-files).
+See [Organizing your library](organization.md).
 
 ### CuePoint checks that your files are still there — and never moves them
 

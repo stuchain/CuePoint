@@ -21,11 +21,20 @@
  * **A broken Smart Collection is still a row.** ORG-06 reports a saved filter
  * whose tag or Collection has been deleted; showing the rule that broke is
  * more useful than hiding it, so the row is drawn, marked, and still opens.
+ *
+ * **A row has a context menu** (EXPORT-07): what its trailing buttons do, and
+ * "Export to Rekordbox…" (DEC-087), which opens the export with that node
+ * ticked. The buttons stay, because a menu is not a thing a first-time user
+ * finds; the menu is where an action with no button of its own can live.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Modal } from "../../components/Modal";
 import { PixelIcon } from "../../components/PixelIcon";
+import {
+  TrackContextMenu,
+  type TrackContextMenuItem,
+} from "../../components/TrackContextMenu";
 import type { CollectionNode, CollectionSubtree } from "../../api/cuepointBridge.types";
 import { PaneTree, type PaneTreeRow } from "./PaneTree";
 import {
@@ -112,6 +121,12 @@ export interface CollectionsPaneProps {
   }>;
   /** Said out loud: a toast, a status line — the page decides. */
   onNotify?: (message: string, tone: "info" | "warning") => void;
+  /**
+   * Export this node to Rekordbox (EXPORT-07, DEC-087): opens the export with
+   * it ticked. Offered on every kind — a folder stands for everything filed
+   * under it, as the export reads it — and absent when the page cannot export.
+   */
+  onExport?: (node: CollectionNode) => void;
 }
 
 /** A new node's name before the user has typed one. */
@@ -137,6 +152,7 @@ export function CollectionsPane({
   onFreezeSmart,
   onDropTracks,
   onNotify,
+  onExport,
 }: CollectionsPaneProps) {
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [dropTarget, setDropTarget] = useState<number | null>(null);
@@ -150,6 +166,10 @@ export function CollectionsPane({
   /** The Smart Collection a freeze is being confirmed for (DEC-061). */
   const [freezing, setFreezing] = useState<CollectionTreeNode | null>(null);
   const [frozenBusy, setFrozenBusy] = useState(false);
+  /** The row a context menu is open on, and where. */
+  const [menu, setMenu] = useState<{ node: CollectionTreeNode; x: number; y: number } | null>(
+    null,
+  );
   const sectionRef = useRef<HTMLElement>(null);
   // The last token acted on. Held in a ref rather than state because consuming
   // it must not itself cause a render — and because the effect below has to be
@@ -331,6 +351,34 @@ export function CollectionsPane({
     if (!result.ok) say(result.error ?? "Could not move that.", "warning");
   };
 
+  /** One row's menu: what its buttons do, and what has no button (DEC-087). */
+  const menuItems = (node: CollectionTreeNode): TrackContextMenuItem[] => {
+    const items: TrackContextMenuItem[] = [];
+    if (node.kind === "smart" && onDuplicateSmart) {
+      items.push({ id: "duplicate", label: "Duplicate", onSelect: () => void duplicate(node) });
+    }
+    if (node.kind === "smart" && onFreezeSmart) {
+      items.push({
+        id: "freeze",
+        label: "Freeze to a Collection…",
+        onSelect: () => setFreezing(node),
+      });
+    }
+    items.push(
+      { id: "rename", label: "Rename", onSelect: () => setRenamingId(node.id) },
+      { id: "delete", label: "Delete…", onSelect: () => void askToDelete(node) },
+    );
+    if (onExport) {
+      items.push({
+        id: "export",
+        label: "Export to Rekordbox…",
+        onSelect: () => onExport(node),
+        separatorBefore: true,
+      });
+    }
+    return items;
+  };
+
   const treeRows: PaneTreeRow[] = rows.map((row) => ({
     key: String(row.node.id),
     name: row.node.name,
@@ -430,6 +478,10 @@ export function CollectionsPane({
           onDragOver={onDragOver}
           onDragLeave={() => setDropTarget(null)}
           onDrop={(key, event) => void onDrop(key, event)}
+          onRowContextMenu={(key, anchor) => {
+            const node = nodeFor(key);
+            if (node) setMenu({ node, ...anchor });
+          }}
           onRowKeyDown={(key, event) => {
             const node = nodeFor(key);
             if (!node) return;
@@ -524,6 +576,16 @@ export function CollectionsPane({
           onDragLeave={() => setDropTarget(null)}
           onDrop={(event) => void onDrop(null, event)}
           aria-hidden
+        />
+      )}
+
+      {menu && (
+        <TrackContextMenu
+          x={menu.x}
+          y={menu.y}
+          items={menuItems(menu.node)}
+          onClose={() => setMenu(null)}
+          label={`Actions for ${menu.node.name}`}
         />
       )}
 

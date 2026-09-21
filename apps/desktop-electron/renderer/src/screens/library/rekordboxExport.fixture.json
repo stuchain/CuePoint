@@ -1,0 +1,712 @@
+{
+  "chosen": {
+    "preview": {
+      "absent_track_count": 1,
+      "changed_fields": [
+        "key",
+        "genre",
+        "rating"
+      ],
+      "changed_track_count": 2,
+      "changes_nothing": false,
+      "dropped_reference_count": 2,
+      "fields_changed": {
+        "genre": 1,
+        "key": 1,
+        "rating": 1
+      },
+      "file_check_known": true,
+      "key_format": "normal",
+      "missing_file_count": 1,
+      "playlist_folder": "CuePoint",
+      "playlist_folder_renamed": false,
+      "playlists": [
+        {
+          "collection_id": 2,
+          "dropped_count": 1,
+          "entry_count": 3,
+          "kind": "collection",
+          "name": "Saturday",
+          "path": "CuePoint/Gigs/Saturday",
+          "requested_count": 4
+        },
+        {
+          "collection_id": 4,
+          "dropped_count": 0,
+          "entry_count": 1,
+          "kind": "collection",
+          "name": "Summer",
+          "path": "CuePoint/Gigs/2026/Summer",
+          "requested_count": 1
+        },
+        {
+          "collection_id": 7,
+          "dropped_count": 0,
+          "entry_count": 1,
+          "kind": "collection",
+          "name": "Loose",
+          "path": "CuePoint/Loose",
+          "requested_count": 1
+        },
+        {
+          "collection_id": 8,
+          "dropped_count": 1,
+          "entry_count": 2,
+          "kind": "smart",
+          "name": "Fast",
+          "path": "CuePoint/Fast",
+          "requested_count": 3
+        }
+      ],
+      "source": {
+        "actual_modified_at": "2026-09-03T09:00:00+00:00",
+        "actual_size_bytes": 821,
+        "path": "C:\\Users\\dj\\Music\\collection.xml",
+        "recorded_modified_at": "2026-09-03T09:00:00+00:00",
+        "recorded_size_bytes": 821,
+        "signals": [],
+        "stale": false
+      },
+      "track_count": 4,
+      "unknown_track_count": 1
+    },
+    "refusal": null
+  },
+  "chosen_camelot": {
+    "preview": {
+      "absent_track_count": 1,
+      "changed_fields": [
+        "key",
+        "genre",
+        "rating"
+      ],
+      "changed_track_count": 3,
+      "changes_nothing": false,
+      "dropped_reference_count": 2,
+      "fields_changed": {
+        "genre": 1,
+        "key": 3,
+        "rating": 1
+      },
+      "file_check_known": true,
+      "key_format": "camelot",
+      "missing_file_count": 1,
+      "playlist_folder": "CuePoint",
+      "playlist_folder_renamed": false,
+      "playlists": [
+        {
+          "collection_id": 2,
+          "dropped_count": 1,
+          "entry_count": 3,
+          "kind": "collection",
+          "name": "Saturday",
+          "path": "CuePoint/Gigs/Saturday",
+          "requested_count": 4
+        },
+        {
+          "collection_id": 4,
+          "dropped_count": 0,
+          "entry_count": 1,
+          "kind": "collection",
+          "name": "Summer",
+          "path": "CuePoint/Gigs/2026/Summer",
+          "requested_count": 1
+        },
+        {
+          "collection_id": 7,
+          "dropped_count": 0,
+          "entry_count": 1,
+          "kind": "collection",
+          "name": "Loose",
+          "path": "CuePoint/Loose",
+          "requested_count": 1
+        },
+        {
+          "collection_id": 8,
+          "dropped_count": 1,
+          "entry_count": 2,
+          "kind": "smart",
+          "name": "Fast",
+          "path": "CuePoint/Fast",
+          "requested_count": 3
+        }
+      ],
+      "source": {
+        "actual_modified_at": "2026-09-03T09:00:00+00:00",
+        "actual_size_bytes": 821,
+        "path": "C:\\Users\\dj\\Music\\collection.xml",
+        "recorded_modified_at": "2026-09-03T09:00:00+00:00",
+        "recorded_size_bytes": 821,
+        "signals": [],
+        "stale": false
+      },
+      "track_count": 4,
+      "unknown_track_count": 1
+    },
+    "refusal": null
+  },
+  "chosen_short": {
+    "preview": {
+      "absent_track_count": 1,
+      "changed_fields": [
+        "key",
+        "genre",
+        "rating"
+      ],
+      "changed_track_count": 3,
+      "changes_nothing": false,
+      "dropped_reference_count": 2,
+      "fields_changed": {
+        "genre": 1,
+        "key": 3,
+        "rating": 1
+      },
+      "file_check_known": true,
+      "key_format": "short",
+      "missing_file_count": 1,
+      "playlist_folder": "CuePoint",
+      "playlist_folder_renamed": false,
+      "playlists": [
+        {
+          "collection_id": 2,
+          "dropped_count": 1,
+          "entry_count": 3,
+          "kind": "collection",
+          "name": "Saturday",
+          "path": "CuePoint/Gigs/Saturday",
+          "requested_count": 4
+        },
+        {
+          "collection_id": 4,
+          "dropped_count": 0,
+          "entry_count": 1,
+          "kind": "collection",
+          "name": "Summer",
+          "path": "CuePoint/Gigs/2026/Summer",
+          "requested_count": 1
+        },
+        {
+          "collection_id": 7,
+          "dropped_count": 0,
+          "entry_count": 1,
+          "kind": "collection",
+          "name": "Loose",
+          "path": "CuePoint/Loose",
+          "requested_count": 1
+        },
+        {
+          "collection_id": 8,
+          "dropped_count": 1,
+          "entry_count": 2,
+          "kind": "smart",
+          "name": "Fast",
+          "path": "CuePoint/Fast",
+          "requested_count": 3
+        }
+      ],
+      "source": {
+        "actual_modified_at": "2026-09-03T09:00:00+00:00",
+        "actual_size_bytes": 821,
+        "path": "C:\\Users\\dj\\Music\\collection.xml",
+        "recorded_modified_at": "2026-09-03T09:00:00+00:00",
+        "recorded_size_bytes": 821,
+        "signals": [],
+        "stale": false
+      },
+      "track_count": 4,
+      "unknown_track_count": 1
+    },
+    "refusal": null
+  },
+  "collision": {
+    "preview": {
+      "absent_track_count": 1,
+      "changed_fields": [],
+      "changed_track_count": 0,
+      "changes_nothing": false,
+      "dropped_reference_count": 0,
+      "fields_changed": {},
+      "file_check_known": false,
+      "key_format": "normal",
+      "missing_file_count": null,
+      "playlist_folder": "CuePoint (2)",
+      "playlist_folder_renamed": true,
+      "playlists": [
+        {
+          "collection_id": 7,
+          "dropped_count": 0,
+          "entry_count": 1,
+          "kind": "collection",
+          "name": "Loose",
+          "path": "CuePoint (2)/Loose",
+          "requested_count": 1
+        }
+      ],
+      "source": {
+        "actual_modified_at": "2026-09-03T09:00:00+00:00",
+        "actual_size_bytes": 869,
+        "path": "C:\\Users\\dj\\Music\\collection.xml",
+        "recorded_modified_at": "2026-09-03T09:00:00+00:00",
+        "recorded_size_bytes": 869,
+        "signals": [],
+        "stale": false
+      },
+      "track_count": 4,
+      "unknown_track_count": 1
+    },
+    "refusal": null
+  },
+  "destination_is_source": {
+    "preview": null,
+    "refusal": {
+      "code": "REKORDBOX_EXPORT_DESTINATION_REFUSED",
+      "job_id": null,
+      "job_type": null,
+      "message": "Refusing to write the export over the collection it was read from: C:\\Users\\dj\\Music\\collection.xml. Choose a different file.",
+      "path": "C:\\Users\\dj\\Music\\collection.xml",
+      "reason": "destination_is_source"
+    }
+  },
+  "destination_not_xml": {
+    "preview": null,
+    "refusal": {
+      "code": "REKORDBOX_EXPORT_DESTINATION_REFUSED",
+      "job_id": null,
+      "job_type": null,
+      "message": "An export is saved as an .xml file: C:\\Users\\dj\\Music\\Exports\\set.mp3",
+      "path": "C:\\Users\\dj\\Music\\Exports\\set.mp3",
+      "reason": "destination_not_xml"
+    }
+  },
+  "empty_collection": {
+    "preview": {
+      "absent_track_count": 1,
+      "changed_fields": [],
+      "changed_track_count": 0,
+      "changes_nothing": false,
+      "dropped_reference_count": 0,
+      "fields_changed": {},
+      "file_check_known": false,
+      "key_format": "normal",
+      "missing_file_count": null,
+      "playlist_folder": "CuePoint",
+      "playlist_folder_renamed": false,
+      "playlists": [
+        {
+          "collection_id": 8,
+          "dropped_count": 0,
+          "entry_count": 0,
+          "kind": "collection",
+          "name": "Next week",
+          "path": "CuePoint/Next week",
+          "requested_count": 0
+        }
+      ],
+      "source": {
+        "actual_modified_at": "2026-09-03T09:00:00+00:00",
+        "actual_size_bytes": 821,
+        "path": "C:\\Users\\dj\\Music\\collection.xml",
+        "recorded_modified_at": "2026-09-03T09:00:00+00:00",
+        "recorded_size_bytes": 821,
+        "signals": [],
+        "stale": false
+      },
+      "track_count": 4,
+      "unknown_track_count": 1
+    },
+    "refusal": null
+  },
+  "empty_folder": {
+    "preview": {
+      "absent_track_count": 1,
+      "changed_fields": [],
+      "changed_track_count": 0,
+      "changes_nothing": true,
+      "dropped_reference_count": 0,
+      "fields_changed": {},
+      "file_check_known": false,
+      "key_format": "normal",
+      "missing_file_count": null,
+      "playlist_folder": null,
+      "playlist_folder_renamed": false,
+      "playlists": [],
+      "source": {
+        "actual_modified_at": "2026-09-03T09:00:00+00:00",
+        "actual_size_bytes": 821,
+        "path": "C:\\Users\\dj\\Music\\collection.xml",
+        "recorded_modified_at": "2026-09-03T09:00:00+00:00",
+        "recorded_size_bytes": 821,
+        "signals": [],
+        "stale": false
+      },
+      "track_count": 4,
+      "unknown_track_count": 1
+    },
+    "refusal": null
+  },
+  "history": {
+    "exports": [
+      {
+        "changed_track_count": 0,
+        "destination_path": "C:\\Users\\dj\\Music\\Exports\\CuePoint Export 2026-09-21.xml",
+        "dropped_reference_count": 0,
+        "error": null,
+        "fields": [],
+        "file_check_known": true,
+        "finished_at": "2026-09-21T20:02:04+00:00",
+        "id": 2,
+        "job_id": "job-second",
+        "key_format": "normal",
+        "missing_file_count": 1,
+        "outcome": "cancelled",
+        "playlists": [],
+        "source_path": "C:\\Users\\dj\\Music\\collection.xml",
+        "source_stale": false,
+        "started_at": "2026-09-21T20:02:00+00:00",
+        "track_count": 0
+      },
+      {
+        "changed_track_count": 3,
+        "destination_path": "C:\\Users\\dj\\Music\\Exports\\CuePoint Export 2026-09-21.xml",
+        "dropped_reference_count": 2,
+        "error": null,
+        "fields": [
+          "key",
+          "genre",
+          "rating"
+        ],
+        "file_check_known": true,
+        "finished_at": "2026-09-21T20:01:04+00:00",
+        "id": 1,
+        "job_id": "job-first",
+        "key_format": "camelot",
+        "missing_file_count": 1,
+        "outcome": "written",
+        "playlists": [
+          {
+            "collection_id": 2,
+            "dropped_count": 1,
+            "entry_count": 3,
+            "id": 1,
+            "kind": "collection",
+            "name": "Saturday",
+            "path": "CuePoint/Gigs/Saturday",
+            "requested_count": 4,
+            "rules": null
+          },
+          {
+            "collection_id": 4,
+            "dropped_count": 0,
+            "entry_count": 1,
+            "id": 2,
+            "kind": "collection",
+            "name": "Summer",
+            "path": "CuePoint/Gigs/2026/Summer",
+            "requested_count": 1,
+            "rules": null
+          },
+          {
+            "collection_id": 7,
+            "dropped_count": 0,
+            "entry_count": 1,
+            "id": 3,
+            "kind": "collection",
+            "name": "Loose",
+            "path": "CuePoint/Loose",
+            "requested_count": 1,
+            "rules": null
+          },
+          {
+            "collection_id": 8,
+            "dropped_count": 1,
+            "entry_count": 2,
+            "id": 4,
+            "kind": "smart",
+            "name": "Fast",
+            "path": "CuePoint/Fast",
+            "requested_count": 3,
+            "rules": {
+              "match": "all",
+              "rules": [
+                {
+                  "field": "bpm",
+                  "operator": "gte",
+                  "value": 124.0
+                }
+              ]
+            }
+          }
+        ],
+        "source_path": "C:\\Users\\dj\\Music\\collection.xml",
+        "source_stale": false,
+        "started_at": "2026-09-21T20:01:00+00:00",
+        "track_count": 4
+      }
+    ],
+    "limit": 20,
+    "remembered": {
+      "export_id": 1,
+      "folder": "C:\\Users\\dj\\Music\\Exports",
+      "folder_exists": true,
+      "key_format": "camelot"
+    }
+  },
+  "history_empty": {
+    "exports": [],
+    "limit": 20,
+    "remembered": {
+      "export_id": null,
+      "folder": null,
+      "folder_exists": false,
+      "key_format": "normal"
+    }
+  },
+  "library_busy": {
+    "preview": null,
+    "refusal": {
+      "code": "LIBRARY_BUSY",
+      "job_id": "job-import",
+      "job_type": "library_import",
+      "message": "A library_import job is already running: job-import",
+      "path": null,
+      "reason": null
+    }
+  },
+  "never_imported": {
+    "preview": null,
+    "refusal": {
+      "code": "REKORDBOX_EXPORT_SOURCE_REFUSED",
+      "job_id": null,
+      "job_type": null,
+      "message": "There is no collection file to export from: this library has not been imported from a Rekordbox XML yet.",
+      "path": null,
+      "reason": "source_never_imported"
+    }
+  },
+  "result_cancelled": {
+    "changed_track_count": 0,
+    "destination_path": "C:\\Users\\dj\\Music\\Exports\\CuePoint Export 2026-09-21.xml",
+    "dropped_reference_count": 0,
+    "error": null,
+    "export_id": 1,
+    "fields": [],
+    "key_format": "normal",
+    "missing_file_count": null,
+    "outcome": "cancelled",
+    "playlist_count": 0,
+    "report": null,
+    "source_path": "C:\\Users\\dj\\Music\\collection.xml",
+    "source_stale": false,
+    "summary": "Rekordbox export to CuePoint Export 2026-09-21.xml cancelled; nothing was written",
+    "track_count": 0
+  },
+  "result_written": {
+    "changed_track_count": 3,
+    "destination_path": "C:\\Users\\dj\\Music\\Exports\\CuePoint Export 2026-09-21.xml",
+    "dropped_reference_count": 2,
+    "error": null,
+    "export_id": 1,
+    "fields": [
+      "key",
+      "genre",
+      "rating"
+    ],
+    "key_format": "camelot",
+    "missing_file_count": 1,
+    "outcome": "written",
+    "playlist_count": 4,
+    "report": {
+      "absent_track_count": 1,
+      "changed_fields": [
+        "key",
+        "genre",
+        "rating"
+      ],
+      "changed_track_count": 3,
+      "changes_nothing": false,
+      "dropped_reference_count": 2,
+      "fields_changed": {
+        "genre": 1,
+        "key": 3,
+        "rating": 1
+      },
+      "file_check_known": true,
+      "key_format": "camelot",
+      "missing_file_count": 1,
+      "playlist_folder": "CuePoint",
+      "playlist_folder_renamed": false,
+      "playlists": [
+        {
+          "collection_id": 2,
+          "dropped_count": 1,
+          "entry_count": 3,
+          "kind": "collection",
+          "name": "Saturday",
+          "path": "CuePoint/Gigs/Saturday",
+          "requested_count": 4
+        },
+        {
+          "collection_id": 4,
+          "dropped_count": 0,
+          "entry_count": 1,
+          "kind": "collection",
+          "name": "Summer",
+          "path": "CuePoint/Gigs/2026/Summer",
+          "requested_count": 1
+        },
+        {
+          "collection_id": 7,
+          "dropped_count": 0,
+          "entry_count": 1,
+          "kind": "collection",
+          "name": "Loose",
+          "path": "CuePoint/Loose",
+          "requested_count": 1
+        },
+        {
+          "collection_id": 8,
+          "dropped_count": 1,
+          "entry_count": 2,
+          "kind": "smart",
+          "name": "Fast",
+          "path": "CuePoint/Fast",
+          "requested_count": 3
+        }
+      ],
+      "source": {
+        "actual_modified_at": "2026-09-03T09:00:00+00:00",
+        "actual_size_bytes": 821,
+        "path": "C:\\Users\\dj\\Music\\collection.xml",
+        "recorded_modified_at": "2026-09-03T09:00:00+00:00",
+        "recorded_size_bytes": 821,
+        "signals": [],
+        "stale": false
+      },
+      "track_count": 4,
+      "unknown_track_count": 1
+    },
+    "source_path": "C:\\Users\\dj\\Music\\collection.xml",
+    "source_stale": false,
+    "summary": "Exported 4 tracks to Rekordbox as CuePoint Export 2026-09-21.xml: 3 tracks changed, 4 playlists added",
+    "track_count": 4
+  },
+  "source_invalid": {
+    "preview": null,
+    "refusal": {
+      "code": "REKORDBOX_EXPORT_SOURCE_REFUSED",
+      "job_id": null,
+      "job_type": null,
+      "message": "The collection XML is not well-formed: no element found: line 1, column 26",
+      "path": "C:\\Users\\dj\\Music\\collection.xml",
+      "reason": "source_invalid"
+    }
+  },
+  "source_missing": {
+    "preview": null,
+    "refusal": {
+      "code": "REKORDBOX_EXPORT_SOURCE_REFUSED",
+      "job_id": null,
+      "job_type": null,
+      "message": "The collection this library was imported from is not there: C:\\Users\\dj\\Music\\collection.xml. Import or refresh from the file's new location.",
+      "path": "C:\\Users\\dj\\Music\\collection.xml",
+      "reason": "source_missing"
+    }
+  },
+  "stale": {
+    "preview": {
+      "absent_track_count": 1,
+      "changed_fields": [],
+      "changed_track_count": 0,
+      "changes_nothing": false,
+      "dropped_reference_count": 0,
+      "fields_changed": {},
+      "file_check_known": false,
+      "key_format": "normal",
+      "missing_file_count": null,
+      "playlist_folder": "CuePoint",
+      "playlist_folder_renamed": false,
+      "playlists": [
+        {
+          "collection_id": 7,
+          "dropped_count": 0,
+          "entry_count": 1,
+          "kind": "collection",
+          "name": "Loose",
+          "path": "CuePoint/Loose",
+          "requested_count": 1
+        }
+      ],
+      "source": {
+        "actual_modified_at": "2026-09-14T18:30:00+00:00",
+        "actual_size_bytes": 830,
+        "path": "C:\\Users\\dj\\Music\\collection.xml",
+        "recorded_modified_at": "2026-09-03T09:00:00+00:00",
+        "recorded_size_bytes": 821,
+        "signals": [
+          "mtime",
+          "size"
+        ],
+        "stale": true
+      },
+      "track_count": 4,
+      "unknown_track_count": 1
+    },
+    "refusal": null
+  },
+  "stale_unknown": {
+    "preview": {
+      "absent_track_count": 1,
+      "changed_fields": [],
+      "changed_track_count": 0,
+      "changes_nothing": true,
+      "dropped_reference_count": 0,
+      "fields_changed": {},
+      "file_check_known": false,
+      "key_format": "normal",
+      "missing_file_count": null,
+      "playlist_folder": null,
+      "playlist_folder_renamed": false,
+      "playlists": [],
+      "source": {
+        "actual_modified_at": "2026-09-14T18:30:00+00:00",
+        "actual_size_bytes": 821,
+        "path": "C:\\Users\\dj\\Music\\collection.xml",
+        "recorded_modified_at": null,
+        "recorded_size_bytes": null,
+        "signals": [],
+        "stale": null
+      },
+      "track_count": 4,
+      "unknown_track_count": 1
+    },
+    "refusal": null
+  },
+  "whole_library": {
+    "preview": {
+      "absent_track_count": 1,
+      "changed_fields": [],
+      "changed_track_count": 0,
+      "changes_nothing": true,
+      "dropped_reference_count": 0,
+      "fields_changed": {},
+      "file_check_known": false,
+      "key_format": "normal",
+      "missing_file_count": null,
+      "playlist_folder": null,
+      "playlist_folder_renamed": false,
+      "playlists": [],
+      "source": {
+        "actual_modified_at": "2026-09-03T09:00:00+00:00",
+        "actual_size_bytes": 821,
+        "path": "C:\\Users\\dj\\Music\\collection.xml",
+        "recorded_modified_at": "2026-09-03T09:00:00+00:00",
+        "recorded_size_bytes": 821,
+        "signals": [],
+        "stale": false
+      },
+      "track_count": 4,
+      "unknown_track_count": 1
+    },
+    "refusal": null
+  }
+}

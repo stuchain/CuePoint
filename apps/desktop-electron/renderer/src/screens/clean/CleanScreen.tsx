@@ -21,7 +21,7 @@ import { DuplicatesView } from "./DuplicatesView";
 import { HealthView } from "./HealthView";
 import { MissingFilesView } from "./MissingFilesView";
 import { ReviewView } from "./ReviewView";
-import type { CleanOpening } from "./cleanLink";
+import type { CleanOpening, CleanSectionOpening } from "./cleanLink";
 import {
   CLEAN_SECTIONS,
   loadCleanSection,
@@ -38,12 +38,18 @@ export interface CleanScreenProps {
    * Applied once per navigation, as the Library's `openWith` is.
    */
   openWith?: CleanOpening | null;
+  /**
+   * A part to open on (EXPORT-07): the Rekordbox export's missing-file count
+   * opens Missing files (DEC-088). Applied once per navigation, as `openWith`
+   * is, and not remembered as the part last used — a link is not a choice.
+   */
+  openSection?: CleanSectionOpening | null;
 }
 
-export function CleanScreen({ openWith = null }: CleanScreenProps = {}) {
+export function CleanScreen({ openWith = null, openSection = null }: CleanScreenProps = {}) {
   const navigate = useNavigate();
   const [section, setSection] = useState<CleanSection>(() =>
-    openWith ? "review" : loadCleanSection(),
+    openWith ? "review" : (openSection?.section ?? loadCleanSection()),
   );
   const opened = useRef<string | null>(null);
   const [focus, setFocus] = useState<CleanOpening | null>(null);
@@ -54,6 +60,12 @@ export function CleanScreen({ openWith = null }: CleanScreenProps = {}) {
     setSection("review");
     setFocus(openWith);
   }, [openWith]);
+
+  useEffect(() => {
+    if (!openSection || opened.current === openSection.token) return;
+    opened.current = openSection.token;
+    setSection(openSection.section);
+  }, [openSection]);
   const cleanHealth = useCleanHealth();
   const { reload: reloadHealth } = cleanHealth;
   const [summary, setSummary] = useState<LibrarySummary | null | undefined>(undefined);

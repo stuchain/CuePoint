@@ -1,0 +1,95 @@
+/*
+ * The Rekordbox export in Settings (EXPORT-07, DEC-087). The audio panel's
+ * shapes and tokens; nothing here is a visual idea of its own.
+ */
+
+.cp-export-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.cp-export-settings__hint {
+  margin: 0;
+  max-width: 60ch;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.cp-export-settings__problem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--accent-danger);
+  font-size: var(--font-size-xs);
+}
+
+.cp-export-settings__facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: 0;
+}
+
+.cp-export-settings__facts > div {
+  display: grid;
+  grid-template-columns: minmax(8rem, auto) minmax(0, 1fr);
+  gap: var(--space-sm);
+  font-size: var(--font-size-sm);
+}
+
+.cp-export-settings__facts dt {
+  color: var(--fg-muted);
+}
+
+.cp-export-settings__facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-data);
+}
+
+.cp-export-settings__heading {
+  margin: 0 0 var(--space-xs);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.cp-export-settings__list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(2px * var(--scale));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--font-size-xs);
+}
+
+.cp-export-settings__item {
+  display: grid;
+  grid-template-columns: minmax(8rem, auto) minmax(0, 1fr) minmax(0, 2fr);
+  gap: var(--space-sm);
+  padding-bottom: calc(2px * var(--scale));
+  border-bottom: var(--border-width) solid var(--border-muted);
+  font-family: var(--font-data);
+}
+
+.cp-export-settings__file {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cp-export-settings__item[data-outcome="cancelled"] .cp-export-settings__outcome,
+.cp-export-settings__item[data-outcome="failed"] .cp-export-settings__outcome {
+  color: var(--fg-muted);
+}
+
+@media (max-width: 640px) {
+  .cp-export-settings__item {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -13,7 +13,7 @@ shortcuts — see [The CuePoint window](the-window.md).
 | **Collections** | CuePoint's own Collections and Smart Collections, beside Rekordbox's playlists | [Organizing your library](organization.md) |
 | **Clean** | Match tracks on Beatport, review the matches, find missing files and possible duplicates, and see what needs you | [Clean](clean.md) |
 | **inCrate** (Tools) | Discover new music on Beatport from the artists and labels in your collection, and build a Beatport playlist | [inCrate](../features/incrate.md) |
-| **Settings** | Theme, audio output and the Beatport token inCrate uses | [The CuePoint window](the-window.md#interface-scale-and-theme) |
+| **Settings** | Theme, audio output, where Rekordbox exports go, and the Beatport token inCrate uses | [The CuePoint window](the-window.md#interface-scale-and-theme) |
 
 Music plays in the player along the bottom of the window — see
 [Playing music](player.md).
@@ -55,7 +55,17 @@ Put your values into the audio files themselves, after a preview, with a record
 that lets every file be restored. Rekordbox shows the new values after it
 re-reads the files. See [Writing tags to files](library.md#writing-tags-to-files).
 
-### Export
+### Export to Rekordbox
+
+**Export to Rekordbox…** in the Library's **Collection file** menu, or on a
+Collection's right-click menu, writes a new Rekordbox XML file carrying your key, BPM, genre, label, year
+and rating, and the Collections you choose as playlists. It is made by patching
+a copy of the file you imported, so **cue points and beat grids are kept**
+exactly as Rekordbox wrote them. A preview says what will be written first;
+tags, notes and favorites are not exported; the imported file is never written.
+See [Exporting to Rekordbox](rekordbox-export.md).
+
+### Export a review list
 
 **Export review list…** on the Clean page saves tracks with their match state,
 score and Beatport match as CSV, JSON or Excel.
@@ -67,7 +77,8 @@ CuePoint's own. See [Organizing your library](organization.md).
 
 ## What CuePoint never does
 
-- It never writes to your Rekordbox export or database.
+- It never writes to the Rekordbox XML you imported, or to Rekordbox's
+  database. An export to Rekordbox is always a new file you choose.
 - It never deletes, moves or renames a track or a file. Moving a file is done in
   Rekordbox with **Relocate**.
 - It never writes to an audio file unless you choose **Write tags to files**,
